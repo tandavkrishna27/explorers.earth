@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 
 export const createRecommendationLinkMutation = gql`
   mutation CreateRecommendationList($data: RecommendationListInput!) {
-    createRecommendationList(data: $data) {
+    createRecommendationList(status: PUBLISHED, data: $data) {
       Instagram_Media_URL
       List_Name
       List_Name_Details
@@ -24,7 +24,7 @@ export const createRecommendationLinkMutation = gql`
 
 export const createRecommendationCategoryMutation = gql`
   mutation CreateRecommendationCategory($data: RecommendationCategoryInput!) {
-    createRecommendationCategory(data: $data) {
+    createRecommendationCategory(status: PUBLISHED, data: $data) {
       Category_Name
       documentId
     }
@@ -33,7 +33,7 @@ export const createRecommendationCategoryMutation = gql`
 
 export const CreateRecommendedPlaceMutation = gql`
   mutation CreateRecommendedPlace($data: RecommendedPlaceInput!) {
-    createRecommendedPlace(data: $data) {
+    createRecommendedPlace(status: PUBLISHED, data: $data) {
       documentId
     }
   }
@@ -52,7 +52,7 @@ export const updateRecommendationListVisiblity = gql`
     $documentId: ID!
     $data: RecommendationListInput!
   ) {
-    updateRecommendationList(documentId: $documentId, data: $data) {
+    updateRecommendationList(documentId: $documentId, status: PUBLISHED, data: $data) {
       Visibility
     }
   }
@@ -63,7 +63,7 @@ export const updateRecommendedListMutation = gql`
     $documentId: ID!
     $data: RecommendationListInput!
   ) {
-    updateRecommendationList(documentId: $documentId, data: $data) {
+    updateRecommendationList(documentId: $documentId, status: PUBLISHED, data: $data) {
       List_Name
       Instagram_Media_URL
       List_Name_Details
@@ -87,7 +87,7 @@ export const deleteRecommendedPlaceMutation = gql`
 
 export const updateRecommendationPlaceMutation = gql`
   mutation update($documentId: ID!, $data: RecommendedPlaceInput!) {
-    updateRecommendedPlace(documentId: $documentId, data: $data) {
+    updateRecommendedPlace(documentId: $documentId, status: PUBLISHED, data: $data) {
       documentId
     }
   }
@@ -96,7 +96,7 @@ export const updateRecommendationPlaceMutation = gql`
 // Person-specific mutations (uses Person_Details JSON field instead of Place_Details)
 export const CreateRecommendedPersonMutation = gql`
   mutation CreateRecommendedPerson($data: RecommendedPlaceInput!) {
-    createRecommendedPlace(data: $data) {
+    createRecommendedPlace(status: PUBLISHED, data: $data) {
       documentId
     }
   }
@@ -104,7 +104,7 @@ export const CreateRecommendedPersonMutation = gql`
 
 export const updateRecommendedPersonMutation = gql`
   mutation updatePerson($documentId: ID!, $data: RecommendedPlaceInput!) {
-    updateRecommendedPlace(documentId: $documentId, data: $data) {
+    updateRecommendedPlace(documentId: $documentId, status: PUBLISHED, data: $data) {
       documentId
     }
   }

@@ -20,11 +20,10 @@ const navItems = [
   {
     id: "recommendations",
     icon: Heart,
-    // Links to the recommendations hub (/hub → RecommendationsHub) which spans
-    // ALL categories, not just Places — so it's labeled "Recommendations", not
-    // the legacy places-only name.
+    // Recommendations hub spans ALL categories, not just Places — labeled
+    // "Recommendations", routed straight to /recommendations (the hub).
     text: "Recommendations",
-    path: "/hub",
+    path: "/recommendations",
   },
   {
     id: "analytics",

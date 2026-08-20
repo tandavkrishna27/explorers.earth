@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 
 export const CREATE_GUIDE_MUTATION = gql`
   mutation CreateGuide($data: GuideInput!) {
-    createGuide(data: $data) {
+    createGuide(status: PUBLISHED, data: $data) {
       documentId
       Title
       Description
@@ -18,7 +18,7 @@ export const CREATE_GUIDE_MUTATION = gql`
 
 export const UPDATE_GUIDE_MUTATION = gql`
   mutation UpdateGuide($documentId: ID!, $data: GuideInput!) {
-    updateGuide(documentId: $documentId, data: $data) {
+    updateGuide(documentId: $documentId, status: PUBLISHED, data: $data) {
       documentId
       Title
       Description
@@ -44,7 +44,7 @@ export const DELETE_GUIDE_MUTATION = gql`
 
 export const CREATE_GUIDE_SECTION_MUTATION = gql`
   mutation CreateGuideSection($data: GuideSectionInput!) {
-    createGuideSection(data: $data) {
+    createGuideSection(status: PUBLISHED, data: $data) {
       documentId
       Title
       Sequence
@@ -64,7 +64,7 @@ export const CREATE_GUIDE_SECTION_MUTATION = gql`
 
 export const UPDATE_GUIDE_SECTION_MUTATION = gql`
   mutation UpdateGuideSection($documentId: ID!, $data: GuideSectionInput!) {
-    updateGuideSection(documentId: $documentId, data: $data) {
+    updateGuideSection(documentId: $documentId, status: PUBLISHED, data: $data) {
       documentId
       Title
       Sequence

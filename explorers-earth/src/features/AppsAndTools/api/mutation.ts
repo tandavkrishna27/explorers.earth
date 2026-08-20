@@ -14,6 +14,7 @@ export const CREATE_APP_LIST = gql`
     $account: ID!
   ) {
     createAppList(
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description
@@ -48,6 +49,7 @@ export const UPDATE_APP_LIST = gql`
   ) {
     updateAppList(
       documentId: $documentId
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description
@@ -102,6 +104,7 @@ export const CREATE_RECOMMENDED_APP = gql`
     $app_category: ID
   ) {
     createRecommendedApp(
+      status: PUBLISHED
       data: {
         app_url: $app_url
         title: $title
@@ -152,6 +155,7 @@ export const UPDATE_RECOMMENDED_APP = gql`
   ) {
     updateRecommendedApp(
       documentId: $documentId
+      status: PUBLISHED
       data: {
         user_recommendation_note: $user_recommendation_note
         user_rating: $user_rating
@@ -200,6 +204,7 @@ export const TOGGLE_APP_PIN = gql`
   ) {
     updateRecommendedApp(
       documentId: $documentId
+      status: PUBLISHED
       data: { is_pinned: $is_pinned, pin_order: $pin_order }
     ) {
       documentId

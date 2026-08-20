@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { LogoFull } from '../../../assets/icons/EoeLogo';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Globe, ChevronDown, Menu, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -134,9 +135,7 @@ export default function LandingHeader() {
             onClick={handleLogoClick}
             className="flex min-h-11 items-center transition-opacity hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c87941] focus-visible:ring-offset-2"
           >
-            <span className="text-lg font-black tracking-[-0.02em] sm:text-xl">
-              explorers.earth
-            </span>
+            <LogoFull className="h-6 text-[#17231a] sm:h-7" />
           </button>
 
           {/* Desktop Navigation */}

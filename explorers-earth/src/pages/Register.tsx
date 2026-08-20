@@ -7,6 +7,8 @@ import {
 } from "../features/Authentication/data";
 import { useNavigate, useLocation } from "react-router-dom";
 import AuthForm from "../features/Authentication/components/AuthForm";
+import AuthLayout from "../components/auth/AuthLayout";
+import AuthShell from "../components/auth/AuthShell";
 import { registerQuery } from "../features/Authentication/api/mutation";
 import { EarthLoader } from "../components/EarthLoader";
 import useEmailStore from "../store/useEmailStore";
@@ -19,8 +21,6 @@ import { createWebPageGEOData } from "../utils/geoHelpers";
 import { useTranslation } from "react-i18next";
 import useToast from "../hooks/useToast";
 import { isManualAuthEnabled } from "../config/featureFlags";
-import Button from "../components/ui/Button";
-import GoogleIcon from "../assets/icons/GoogleIcon";
 import { storeUserCredentials } from "../utils/sessionCredentials";
 
 const Auth = () => {
@@ -232,11 +232,10 @@ const Auth = () => {
         geoData={geoData}
       />
 
-      <div className="relative flex items-center justify-center min-h-screen bg-black w-full px-4 py-8">
-        <div className="w-full max-w-md md:max-w-lg lg:max-w-xl">
-          {/* MANUAL AUTH DISABLED - OAuth Only Mode */}
-          {isManualAuthEnabled() ? (
-            // Original manual registration form (currently disabled)
+      {isManualAuthEnabled() ? (
+        // Manual registration form (active) on the Earthrise scene
+        <AuthShell>
+          <div className="ea-formhost dashboard-theme-dark">
             <AuthForm
               initialValues={formState}
               validationSchema={validationSchema as any}
@@ -254,64 +253,37 @@ const Auth = () => {
                 <div className="flex flex-col items-center gap-2">
                   <div className="flex justify-center items-center gap-1">
                     <p className="text-xs">{t("auth.alreadyHaveAccount")}</p>
-                    <a
-                      href="/login"
-                      className="text-dashboard-accent underline text-xs"
-                    >
+                    <a href="/login" className="text-dashboard-accent underline text-xs">
                       {t("auth.login")}
                     </a>
                   </div>
-                  <a
-                    href="/claimaccount"
-                    className="text-dashboard-accent underline text-xs"
-                  >
+                  <a href="/claimaccount" className="text-dashboard-accent underline text-xs">
                     Claim Existing Account?
                   </a>
                 </div>
               }
             />
-          ) : (
-            // OAuth-only registration (currently active)
-            <div className="dashboard-theme dashboard-theme-dark">
-              <div className="flex flex-col items-center justify-center mb-4 md:mb-6 w-3/4 max-w-[75%] mx-auto">
-                <img
-                  src="/logo.svg"
-                  alt="explorers.earth"
-                  className="object-contain w-full"
-                  style={{
-                    height: "auto",
-                    maxHeight: "60px",
-                    filter: "brightness(0) invert(1)",
-                  }}
-                />
-              </div>
-              <div className="font-poppins flex flex-col gap-6 w-full bg-dashboard-sidebar p-6 md:p-8 rounded-3xl shadow-dashboard-elevated text-dashboard">
-                <div className="font-poppins text-center">
-                  <h1 className="font-semibold text-2xl md:text-3xl text-white">{t('auth.signup')}</h1>
-                  <p className="text-sm mt-2 text-gray-300">{t('auth.signupSubtitle')}</p>
-                </div>
-
-                <div className="flex flex-col gap-4">
-                  <Button
-                    btnText={t('auth.signUpWithGoogle')}
-                    size="small"
-                    type="button"
-                    endIcon={<GoogleIcon />}
-                    variant="google"
-                    onClickHandler={handleGoogleSignUp}
-                  />
-
-                  <div className="text-center mt-2">
-                    <p className="text-xs text-gray-400">
-                      Sign up with your Google account to get started
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </AuthShell>
+      ) : (
+        // OAuth-only registration — "Earthrise" brand screen
+        <AuthLayout
+          eyebrow={t("auth.brand.tagline", "Every place connects us")}
+          title={t("auth.register.title2", "Map your world.")}
+          subtitle={t("auth.register.sub2", "Curate the places, films and sounds you love — and share your world in one link.")}
+          googleLabel={t("auth.signUpWithGoogle")}
+          onGoogle={handleGoogleSignUp}
+          termsPrefix={t("auth.terms.prefix", "By continuing you agree to our")}
+          termsLabel={t("auth.terms.terms", "Terms")}
+          privacyLabel={t("auth.terms.privacy", "Privacy Policy")}
+          andWord={t("common.and", "and")}
+          switchPrompt={t("auth.alreadyHaveAccount")}
+          switchCta={t("auth.login")}
+          switchTo="/login"
+          secureLabel={t("auth.secureSignIn", "Secure sign-in")}
+          helpers={[{ label: t("auth.claimAccount", "Claim account"), to: "/claimaccount" }]}
+        />
+      )}
     </>
   );
 };

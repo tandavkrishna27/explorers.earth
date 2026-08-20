@@ -336,8 +336,7 @@ const AppsHome = () => {
     if (location.state?.justCreatedList && accountData) {
       const acc = accountData?.usersPermissionsUser?.accounts?.[0];
       const isPublic = acc?.public_apps === "Yes";
-      const hasNoValue = acc?.public_apps !== "No" && acc?.public_apps !== "Yes";
-      if (!isPublic && !hasNoValue) {
+      if (!isPublic) {
         setVisibilityPrompt({
           isOpen: true,
           categoryName: "Apps & Tools",

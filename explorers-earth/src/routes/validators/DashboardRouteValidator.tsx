@@ -24,14 +24,11 @@ const DashboardRouteValidator = ({
       /^\/analytics$/,
       /^\/settings$/,
       /^\/music$/,
+      /^\/recommendations\/music(\/.*)?$/, // Music routes
       /^\/instagram$/,
       /^\/onboarding$/,
-      /^\/guides$/,
-      /^\/guides\/new$/,
-      /^\/guides\/[^/]+$/, // Guide details: /guides/:guideId
-      /^\/guides\/[^/]+\/edit$/,
-      /^\/guides\/[^/]+\/sections\/new$/, // Add section: /guides/:guideId/sections/new
-      /^\/guides\/[^/]+\/sections\/[^/]+\/edit$/, // Edit section: /guides/:guideId/sections/:sectionId/edit
+      /^\/guides(\/.*)?$/,
+      /^\/recommendations\/guides(\/.*)?$/, // All guides routes
       /^\/recommendations\/movies(\/.*)?$/, // All movies & shows routes
       /^\/recommendations\/books(\/.*)?$/, // All books routes
       /^\/recommendations\/games(\/.*)?$/, // All games routes

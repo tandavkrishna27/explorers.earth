@@ -73,11 +73,36 @@ jobs:
           source: "explorers-earth/dist/"
           target: "/home/deployuser/explorers-frontend"
 
-      - name: Reload Nginx
+      - name: Validate and activate Nginx
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.EXPLORERS_DEPLOY_HOST }}
           username: ${{ secrets.EXPLORERS_DEPLOY_USER }}
           key: ${{ secrets.EXPLORERS_DEPLOY_KEY }}
           script: |
-            sudo systemctl reload nginx
+            print_nginx_diagnostics() {
+              sudo systemctl status nginx --no-pager -l || true
+              sudo journalctl -u nginx -n 100 --no-pager || true
+            }
+
+            if ! sudo nginx -t; then
+              print_nginx_diagnostics
+              exit 1
+            fi
+
+            if sudo systemctl is-active --quiet nginx; then
+              if ! sudo systemctl reload nginx; then
+                print_nginx_diagnostics
+                exit 1
+              fi
+            else
+              if ! sudo systemctl start nginx; then
+                print_nginx_diagnostics
+                exit 1
+              fi
+            fi
+
+            if ! sudo systemctl is-active --quiet nginx; then
+              print_nginx_diagnostics
+              exit 1
+            fi

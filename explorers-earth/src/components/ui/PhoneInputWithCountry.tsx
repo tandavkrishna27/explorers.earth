@@ -48,40 +48,38 @@ const PhoneInputWithCountry: React.FC<PhoneInputWithCountryProps> = ({
     }
   }, [selectedCountry]);
 
-  // Parse the current value to extract country and phone number
+  // Parse the stored value to extract country + national number. Always surface
+  // the digits — even for a value that doesn't fully validate — so the input is
+  // never rendered blank while a value is stored (a blank box is what lets a
+  // later country change silently wipe the number).
   useEffect(() => {
-    if (value) {
-      try {
-        const parsed = parsePhoneNumberFromString(value);
-        if (parsed && parsed.isValid()) {
-          const countryCode = parsed.country;
-          const nationalNumber = parsed.nationalNumber;
-          
-          // Find the country in our list
-          const country = countries.find(c => c.code === countryCode);
-          if (country) {
-            setSelectedCountry(country);
-            setPhoneNumber(nationalNumber);
-          } else {
-            // If country not found, try to extract from the value
-            const callingCode = parsed.countryCallingCode;
-            const country = countries.find(c => c.callingCode === `+${callingCode}`);
-            if (country) {
-              setSelectedCountry(country);
-              setPhoneNumber(nationalNumber);
-            }
-          }
+    if (!value) return;
+    try {
+      const parsed = parsePhoneNumberFromString(value);
+      if (parsed) {
+        const country =
+          countries.find((c) => c.code === parsed.country) ||
+          countries.find((c) => c.callingCode === `+${parsed.countryCallingCode}`);
+        if (country) {
+          setSelectedCountry(country);
         }
-      } catch (error) {
-        // If parsing fails, keep the current values
-        console.warn('Could not parse phone number:', error);
+        setPhoneNumber(parsed.nationalNumber);
+        return;
       }
+    } catch (error) {
+      console.warn('Could not parse phone number:', error);
     }
+    // Present but unparseable: still show the digits so it isn't rendered blank.
+    setPhoneNumber(value.replace(/^\+/, ''));
   }, [value]);
 
   const handleCountryChange = (country: Country) => {
     setSelectedCountry(country);
-    updatePhoneValue(country.callingCode, phoneNumber);
+    // Re-emit only when there's an actual number. Changing the country while the
+    // field is empty must NOT push '' upward — that would wipe a stored value.
+    if (phoneNumber.trim()) {
+      updatePhoneValue(country.callingCode, phoneNumber);
+    }
   };
 
   const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {

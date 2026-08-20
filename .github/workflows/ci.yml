@@ -70,7 +70,11 @@ jobs:
         run: npm ci
 
       - name: Run TypeScript compiler check
-        run: npx tsc --noEmit
+        # Use `tsc -b` (not `--noEmit`): the root tsconfig.json is references-only
+        # (`files: []`), and in non-build mode tsc ignores project references and
+        # checks zero files — a false green. `-b` follows references and matches
+        # the compile step in `npm run build`.
+        run: npx tsc -b
 
   # ─────────────────────────────────────────
   # Job 3: Unit Tests with Coverage Report

@@ -1,106 +1,64 @@
-import React, { useLayoutEffect } from "react";
+import React, { useLayoutEffect, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Home from "../assets/icons/Home";
 import SettingsIcon from "../assets/icons/SettingsIcon";
 import DirectionBoard from "../assets/icons/DirectionBoard";
-import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import Profile from "../assets/icons/Profile";
 import Analytics from "../assets/icons/Analytics";
-import MusicNote from "../assets/icons/MusicNote";
-const MovieIcon = ({ fill = "currentColor" }: { fill?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    width="20"
-    height="20"
-  >
-    <path
-      fill={fill}
-      d="M2 3.993A1 1 0 0 1 2.992 3h18.016c.548 0 .992.445.992.993v16.014a1 1 0 0 1-.992.993H2.992A.993.993 0 0 1 2 20.007zM4 5v2h2V5zm14 0v2h2V5zM4 9v2h2V9zm14 0v2h2V9zM4 13v2h2v-2zm14 0v2h2v-2zM4 17v2h2v-2zm14 0v2h2v-2z"
-    />
-  </svg>
-);
-
-const BookIcon = ({ fill = "currentColor" }: { fill?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    width="20"
-    height="20"
-  >
-    <path
-      fill={fill}
-      d="M21 21h-8V6a3 3 0 0 1 3-3h5a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1m-10 0H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a3 3 0 0 1 3 3zm0 0h2v2h-2z"
-    />
-  </svg>
-);
-
-const GameIcon = ({ fill = "currentColor" }: { fill?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    width="20"
-    height="20"
-  >
-    <path
-      fill={fill}
-      d="M17 4a6 6 0 0 1 6 6v4a6 6 0 0 1-6 6H7a6 6 0 0 1-6-6v-4a6 6 0 0 1 6-6zm-7 5H8v2H6v2h1.999L8 15h2l-.001-2H12v-2h-2zm8 4h-2v2h2zm-2-4h-2v2h2z"
-    />
-  </svg>
-);
-
-const AppIcon = ({ fill = "currentColor" }: { fill?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    width="20"
-    height="20"
-  >
-    <path
-      fill={fill}
-      d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-5 18c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm5.2-3H6.8V6h10.4v11z"
-    />
-  </svg>
-);
-
-const ProductIcon = ({ fill = "currentColor" }: { fill?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    width="20"
-    height="20"
-  >
-    <path
-      fill={fill}
-      d="M19 6h-2c0-2.76-2.24-5-5-5S7 3.24 7 6H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7-3c1.66 0 3 1.34 3 3H9c0-1.66 1.34-3 3-3zm7 17H5V8h14v12zm-7-8c-1.66 0-3-1.34-3-3H7c0 2.76 2.24 5 5 5s5-2.24 5-5h-2c0 1.66-1.34 3-3 3z"
-    />
-  </svg>
-);
-
-
-const PeopleIcon = ({ fill = "currentColor" }: { fill?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    width="20"
-    height="20"
-  >
-    <path
-      fill={fill}
-      d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"
-    />
-  </svg>
-);
 
 import { useDashboardTheme } from "../contexts/DashboardThemeContext";
 import { Tooltip } from "react-tooltip";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useQuery, gql } from "@apollo/client";
+import LogoutIcon from "../assets/icons/LogoutIcon";
+import { LogoFull, LogoIcon } from "../assets/icons/EoeLogo";
+import useAuthStore from "../store/store";
+import { IMAGE_CONFIG } from "../config";
+import { useLogout } from "../hooks/useLogout";
+
+const SIDEBAR_ACCOUNT_QUERY = gql`
+  query SidebarAccount($documentId: ID!) {
+    usersPermissionsUser(documentId: $documentId) {
+      accounts {
+        documentId
+        Account_Name
+        profile_picture {
+          url
+        }
+      }
+    }
+  }
+`;
 
 const Sidebar = () => {
   const { t } = useTranslation();
-  const { theme, isSidebarOpen: isOpen } = useDashboardTheme();
+  const { isSidebarOpen: isOpen } = useDashboardTheme();
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const handleLogout = useLogout();
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const { data: acctData } = useQuery(SIDEBAR_ACCOUNT_QUERY, {
+    variables: { documentId: user?.documentId },
+    skip: !user?.documentId,
+  });
+  const avatarUrl =
+    acctData?.usersPermissionsUser?.accounts?.[0]?.profile_picture?.url ||
+    IMAGE_CONFIG.defaultImages.profile;
+
+  // Close the account popover on any outside click
+  useEffect(() => {
+    if (!showAccountMenu) return;
+    const onDown = (e: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setShowAccountMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [showAccountMenu]);
 
   // Set CSS variable for sidebar width to help with button positioning
   // Use useLayoutEffect for immediate synchronous execution before paint
@@ -123,17 +81,10 @@ const Sidebar = () => {
       {/* Fixed Header - Logo and Toggle Button */}
       <div className={`flex w-full py-2.5 flex-shrink-0 min-h-[56px] ${isOpen ? "items-center justify-start pl-[20px] pr-3 gap-3" : "flex-col items-center justify-center gap-2 px-4"}`}>
         {isOpen ? (
-          <div className="flex-shrink-0 flex-1 min-w-0">
-            <img
-              src="/logo.svg"
-              alt="explorers.earth"
-              className="object-contain max-h-[40px] w-auto"
-              style={{
-                filter: theme === 'dark' ? "brightness(0) invert(1)" : "brightness(0)",
-              }}
-            />
-          </div>
-        ) : null}
+          <LogoFull className="h-7 text-dashboard flex-shrink-0" />
+        ) : (
+          <LogoIcon className="h-8 text-dashboard flex-shrink-0" />
+        )}
       </div>
 
       {/* Sidebar Menu */}
@@ -155,63 +106,8 @@ const Sidebar = () => {
         <SidebarItem
           isOpen={isOpen}
           Icon={DirectionBoard}
-          title={t("sidebar.places")}
+          title={"Recommendations"}
           to="/recommendations"
-        />
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={TravelGuideIcon}
-          title={"Guides"}
-          to="/guides"
-        />
-        {/* Movies & Shows */}
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={MovieIcon}
-          title={"Movies"}
-          to="/recommendations/movies"
-        />
-        {/* Books */}
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={BookIcon}
-          title={"Books"}
-          to="/recommendations/books"
-        />
-        {/* Games */}
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={GameIcon}
-          title={"Games"}
-          to="/recommendations/games"
-        />
-        {/* Apps & Tools */}
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={AppIcon}
-          title={"Apps & Tools"}
-          to="/recommendations/apps"
-        />
-        {/* Products */}
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={ProductIcon}
-          title={"Products"}
-          to="/recommendations/products"
-        />
-        {/* People */}
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={PeopleIcon}
-          title={"People"}
-          to="/recommendations/people"
-        />
-        {/* Music button - show for all users */}
-        <SidebarItem
-          isOpen={isOpen}
-          Icon={MusicNote}
-          title={t('sidebar.music')}
-          to="/music"
         />
         <SidebarItem
           isOpen={isOpen}
@@ -219,13 +115,106 @@ const Sidebar = () => {
           title={t('sidebar.analytics')}
           to="/analytics"
         />
+      </nav>
+
+      {/* Footer: Settings, then the account avatar pinned to the bottom */}
+      <div className="flex flex-col gap-2 flex-shrink-0 w-full px-2 pb-2">
         <SidebarItem
           isOpen={isOpen}
           Icon={SettingsIcon}
           title={t("sidebar.settings")}
           to="/settings"
         />
-      </nav>
+
+        {/* Account avatar + popover (View public profile · Logout) */}
+        <div ref={accountMenuRef} className="relative w-full">
+          <button
+            type="button"
+            onClick={() => setShowAccountMenu((v) => !v)}
+            {...(!isOpen ? { "data-tooltip-id": "account" } : {})}
+            className={`relative flex items-center rounded-lg transition-all w-full hover:bg-dashboard-muted ${isOpen ? "gap-3 px-3 py-2" : "justify-center py-2"
+              }`}
+          >
+            <img
+              src={avatarUrl}
+              alt="account"
+              className="h-8 w-8 rounded-full object-cover border border-dashboard flex-shrink-0"
+            />
+            {isOpen && (
+              <span className="text-sm font-medium text-dashboard truncate max-w-[150px] text-left">
+                {user?.username || "Account"}
+              </span>
+            )}
+          </button>
+
+          <AnimatePresence>
+            {showAccountMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                transition={{ duration: 0.15 }}
+                className={`absolute bottom-full mb-2 bg-dashboard-sidebar rounded-xl shadow-dashboard-elevated border border-dashboard overflow-hidden z-50 ${isOpen ? "left-0 w-full" : "left-full ml-2 w-56"
+                  }`}
+              >
+                <div className="px-4 py-3 bg-dashboard-muted border-b border-dashboard flex items-center gap-3">
+                  <img
+                    src={avatarUrl}
+                    alt="account"
+                    className="h-9 w-9 rounded-full object-cover ring-2 ring-white flex-shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-dashboard truncate">
+                      {user?.username || "User"}
+                    </p>
+                    <p className="text-xs text-dashboard-muted">Account</p>
+                  </div>
+                </div>
+                <div className="py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAccountMenu(false);
+                      if (user?.username) navigate(`/${user.username}`);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-dashboard hover:bg-dashboard-muted transition-colors"
+                  >
+                    <div className="w-5 h-5 flex items-center justify-center">
+                      <Profile fill="currentColor" />
+                    </div>
+                    <span>View public profile</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAccountMenu(false);
+                      handleLogout();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-dashboard hover:bg-dashboard-muted transition-colors"
+                  >
+                    <div className="w-5 h-5 flex items-center justify-center">
+                      <LogoutIcon size="18" />
+                    </div>
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {!isOpen && createPortal(
+            <Tooltip
+              id="account"
+              place="right"
+              style={{ fontSize: "12px", zIndex: 1000 }}
+              className="!bg-gray-800 !text-white !border !border-gray-600 !rounded-lg !px-2 !py-1"
+            >
+              Account
+            </Tooltip>,
+            document.body
+          )}
+        </div>
+      </div>
     </div>
   );
 };

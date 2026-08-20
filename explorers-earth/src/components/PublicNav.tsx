@@ -11,6 +11,7 @@ import {
   getPublicAccountBasicQuery,
   getPublicCategoryListCountsQuery,
 } from "../features/PublicHome/api/query";
+import { computePinnedNavTabIds } from "../utils/navPinning";
 
 const PublicNav = memo(() => {
   const navigate = useNavigate();
@@ -27,6 +28,11 @@ const PublicNav = memo(() => {
       },
     },
     skip: !username,
+    // Revalidate on mount so "View Public Page" reflects the owner's latest
+    // visibility/pin config. Account isn't normalized in apolloCache, so a hub
+    // edit to pinned_nav_tabs/visibility doesn't patch this separate cache-first
+    // query; without this it would show stale config until a hard reload.
+    fetchPolicy: "cache-and-network",
   });
 
   const accountData = data?.accounts[0];
@@ -66,13 +72,14 @@ const PublicNav = memo(() => {
   };
 
   // Tab visibility logic based on Account collection fields
-  const showRecommendationsTab = accountData?.public_recommendations === "Yes" || accountData?.public_recommendations === "No" ? accountData?.public_recommendations === "Yes" : true; // Default to show if not set
-  const showProfileTab = true; // Always show public profile tab by default
-  const showMusicTab = accountData?.public_music === "Yes" || accountData?.public_music === "No" ? accountData?.public_music === "Yes" : false; // Default to hide if not set
-  const showGuidesTab = accountData?.public_guides === "Yes"; // Only show when explicitly "Yes"
-  const showMoviesTab = accountData?.public_movie === "Yes"; // Only show when explicitly "Yes"
-  const showBooksTab = accountData?.public_books === "Yes"; // Only show when explicitly "Yes"
-  const showGamesTab = accountData?.public_games === "Yes" || accountData?.public_games === "No" ? accountData?.public_games === "Yes" : true; // Default to show if not set
+  // Strict opt-in: a category tab is public only when explicitly "Yes".
+  const showRecommendationsTab = accountData?.public_recommendations === "Yes";
+  const showProfileTab = true; // Always show public profile tab
+  const showMusicTab = accountData?.public_music === "Yes";
+  const showGuidesTab = accountData?.public_guides === "Yes";
+  const showMoviesTab = accountData?.public_movie === "Yes";
+  const showBooksTab = accountData?.public_books === "Yes";
+  const showGamesTab = accountData?.public_games === "Yes";
   const showAppsTab = accountData?.public_apps === "Yes";
   const showProductsTab = accountData?.public_products === "Yes";
   const showPeopleTab = accountData?.public_people === "Yes";
@@ -243,38 +250,11 @@ const PublicNav = memo(() => {
   ];
 
   // ─── Footer Nav Logic ──────────────────────────────────────────────────
-  const MAX_NAV_SLOTS = 5;
-  const autoPinning = accountData?.auto_pinning === null || accountData?.auto_pinning === undefined ? true : accountData.auto_pinning;
-
-  const pinnedTabs: string[] = Array.isArray(accountData?.pinned_nav_tabs)
-    ? accountData.pinned_nav_tabs.includes('public_profile')
-      ? accountData.pinned_nav_tabs
-      : ['public_profile', ...accountData.pinned_nav_tabs]
-    : ['public_profile'];
-
-  let finalNavItems: typeof navItems = [];
-
-  if (autoPinning) {
-    // 1. Auto Pinning Enabled:
-    // Display profile tab first, then fill remaining slots with published categories ranked by list count (descending).
-    const profileTab = navItems.find(item => item.id === 'public_profile');
-    const otherTabs = navItems
-      .filter(item => item.id !== 'public_profile')
-      .sort((a, b) => (categoryListCountMap[b.id] ?? 0) - (categoryListCountMap[a.id] ?? 0));
-    
-    finalNavItems = [
-      ...(profileTab ? [profileTab] : []),
-      ...otherTabs
-    ].slice(0, MAX_NAV_SLOTS);
-  } else {
-    // 2. Auto Pinning Disabled (Manual mode):
-    // Strictly show only the categories manually pinned by the user, capped at MAX_NAV_SLOTS.
-    finalNavItems = pinnedTabs
-      .map(id => navItems.find(item => item.id === id))
-      .filter(Boolean) as typeof navItems;
-    
-    finalNavItems = finalNavItems.slice(0, MAX_NAV_SLOTS);
-  }
+  // Single source of truth for pinned/shown tabs (auto-rank vs manual, max 5).
+  // See src/utils/navPinning.ts — shared with the Recommendations Hub.
+  const finalNavItems = computePinnedNavTabIds(accountData, categoryListCountMap)
+    .map(id => navItems.find(item => item.id === id))
+    .filter(Boolean) as typeof navItems;
   // ───────────────────────────────────────────────────────────────────────
 
 

@@ -43,12 +43,12 @@ const PublicRoutes = [
     } />
     <Route path="places">
       <Route index element={
-        <TabVisibilityGuard tabField="public_recommendations" defaultVisible={true}>
+        <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
           <PublicHomePage />
         </TabVisibilityGuard>
       } />
       <Route path=":placeSlug" element={
-        <TabVisibilityGuard tabField="public_recommendations" defaultVisible={true}>
+        <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
           <PublicHomePage />
         </TabVisibilityGuard>
       } />
@@ -111,17 +111,17 @@ const PublicRoutes = [
     {/* Games public routes */}
     <Route path="games">
       <Route index element={
-        <TabVisibilityGuard tabField="public_games" defaultVisible={true}>
+        <TabVisibilityGuard tabField="public_games" defaultVisible={false}>
           <PublicGames />
         </TabVisibilityGuard>
       } />
       <Route path="genre/:genreSlug" element={
-        <TabVisibilityGuard tabField="public_games" defaultVisible={true}>
+        <TabVisibilityGuard tabField="public_games" defaultVisible={false}>
           <PublicGamesGenre />
         </TabVisibilityGuard>
       } />
       <Route path=":listSlug" element={
-        <TabVisibilityGuard tabField="public_games" defaultVisible={true}>
+        <TabVisibilityGuard tabField="public_games" defaultVisible={false}>
           <PublicGamesList />
         </TabVisibilityGuard>
       } />

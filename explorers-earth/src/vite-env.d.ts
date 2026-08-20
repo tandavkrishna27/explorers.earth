@@ -6,3 +6,6 @@ declare global {
     googleMapsLoaded?: boolean;
   }
 }
+
+// quill2-emoji ships no type declarations
+declare module 'quill2-emoji';

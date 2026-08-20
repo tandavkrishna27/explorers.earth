@@ -46,6 +46,7 @@ interface AuthFormProps {
   isOnboarding?: boolean; // New prop to determine if this is an onboarding form
   enablePasswordValidation?: boolean; // New prop to control password validation
   turnstileSiteKey?: string; // New prop for Cloudflare Turnstile
+  formId?: string; // Optional id so an external button can submit this form (onboarding footer)
 }
 
 const AuthForm: FC<AuthFormProps> = memo(
@@ -67,6 +68,7 @@ const AuthForm: FC<AuthFormProps> = memo(
     isOnboarding = false, // Default to false (not onboarding)
     enablePasswordValidation = false, // Default to false for login forms
     turnstileSiteKey, // Site key for Cloudflare Turnstile
+    formId, // External-submit hook for the onboarding footer
   }) => {
     const { t } = useTranslation();
 
@@ -100,21 +102,7 @@ const AuthForm: FC<AuthFormProps> = memo(
       return requiredFields.includes(fieldName);
     };
     return (
-      <div className="dashboard-theme dashboard-theme-dark">
-        {!isOnboarding && (
-          <div className="flex flex-col items-center justify-center mt-2 md:mt-3 mb-4 md:mb-6 w-3/4 max-w-[75%] mx-auto">
-            <img
-              src="/logo.svg"
-              alt="explorers.earth"
-              className="object-contain w-full"
-              style={{
-                height: "auto",
-                maxHeight: "60px",
-                filter: "brightness(0) invert(1)",
-              }}
-            />
-          </div>
-        )}
+      <div className="dashboard-theme">
         <Formik
           initialValues={initialValues}
           validationSchema={validationSchema}
@@ -129,12 +117,21 @@ const AuthForm: FC<AuthFormProps> = memo(
         >
           {({ isSubmitting, values, setFieldValue, setFieldTouched, touched, errors }) => (
             <Form
-              className={`font-poppins flex flex-col gap-4 w-full bg-dashboard-sidebar p-6 rounded-3xl shadow-dashboard-elevated text-dashboard mb-4 md:mb-6`}
+              id={formId}
+              className={`font-poppins flex flex-col gap-4 w-full text-dashboard ${
+                isOnboarding
+                  ? "" // onboarding steps sit directly in the outer card — no nested box
+                  : "bg-dashboard-sidebar p-6 rounded-3xl shadow-dashboard-elevated mb-4 md:mb-6"
+              }`}
             >
-              <div className=" font-poppins">
-                <h1 className="font-semibold text-2xl text-white">{heading}</h1>
-                <p className="text-sm mt-1 text-gray-300">{description}</p>
-              </div>
+              {/* In onboarding the step title/subtitle are shown by the progress
+                  bar, so hide the duplicate heading here. */}
+              {!isOnboarding && (
+                <div className=" font-poppins">
+                  <h1 className="font-semibold text-2xl text-white">{heading}</h1>
+                  <p className="text-sm mt-1 text-gray-300">{description}</p>
+                </div>
+              )}
               <div className=" flex flex-col gap-2 md:gap-6 ">
                 {formFields.map((field) => (
                   <div key={field.name} className="flex flex-col gap-2">
@@ -446,7 +443,7 @@ const AuthForm: FC<AuthFormProps> = memo(
                   >
                     {t("auth.acceptTerms")}{" "}
                     <a
-                      href="/terms"
+                      href="/terms?return=/register"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-dashboard-accent underline hover:text-dashboard-accent/80"
@@ -484,24 +481,28 @@ const AuthForm: FC<AuthFormProps> = memo(
                 </div>
               )}
 
-              <Button
-                btnText={
-                  isSubmitting || isLoading
-                    ? t("auth.validations.general.processing")
-                    : finalSubmitButtonLabel
-                }
-                size="small"
-                type="submit"
-                variant="primary"
-                isLoading={isSubmitting || isLoading}
-              />
+              {/* In onboarding the primary action lives in the pinned footer,
+                  which submits this form via its formId — so hide this button. */}
+              {!isOnboarding && (
+                <Button
+                  btnText={
+                    isSubmitting || isLoading
+                      ? t("auth.validations.general.processing")
+                      : finalSubmitButtonLabel
+                  }
+                  size="small"
+                  type="submit"
+                  variant="primary"
+                  isLoading={isSubmitting || isLoading}
+                />
+              )}
 
               {GoogleAuthHandler && (
                 <>
                   <div className="flex items-center justify-center gap-2">
-                    <div className="flex-grow border-t border-black"></div>
+                    <div className="flex-grow border-t border-white/15"></div>
                     <p className="font-poppins text-sm px-2">{t("auth.or")}</p>
-                    <div className="flex-grow border-t border-black"></div>
+                    <div className="flex-grow border-t border-white/15"></div>
                   </div>
 
                   <Button

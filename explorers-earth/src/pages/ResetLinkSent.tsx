@@ -1,17 +1,24 @@
-import { motion } from "framer-motion";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { forgotPasswordMutation } from "../features/Authentication/api/mutation";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { isManualAuthEnabled } from "../config/featureFlags";
+import AuthShell from "../components/auth/AuthShell";
+
+const MailIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="m3 7 9 6 9-6" />
+  </svg>
+);
 
 const ResetLinkSent = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const email = location.state?.email;
+  const email = location.state?.email as string | undefined;
 
   const [forgotPassword, { loading }] = useMutation(forgotPasswordMutation);
 
@@ -36,6 +43,8 @@ const ResetLinkSent = () => {
   }, [cooldown]);
 
   const handleResend = async () => {
+    // The email is only held in router state; if it's gone (e.g. a refresh),
+    // send the user back to request a fresh link instead of failing silently.
     if (!email) {
       toast.error(t('toast.error.emailNotFound'));
       navigate("/forgot-password");
@@ -53,53 +62,53 @@ const ResetLinkSent = () => {
       } else {
         toast.error(t('toast.error.resetLinkResendFailed'));
       }
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        toast.error(t('toast.error.resetLinkResendFailed'));
-      } else {
-        toast.error(t('toast.error.resetLinkResendFailed'));
-      }
+    } catch {
+      toast.error(t('toast.error.resetLinkResendFailed'));
     }
   };
 
   return (
-    <div className="min-h-screen flex font-poppins items-center justify-center bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white px-4 sm:px-6 py-6 sm:py-10">
-      <div className="relative w-full max-w-md mx-auto">
-        <motion.div
-          className="backdrop-blur-sm bg-gray-900/80 border border-gray-800 p-6 sm:p-8 rounded-2xl shadow-2xl text-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <motion.h2
-            className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple to-purple-500"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            {t('auth.resetLinkSent.title')}
-          </motion.h2>
+    <AuthShell>
+      <main className="ea-card ea-center">
+        <div className="ea-iconwrap"><MailIcon /></div>
 
-          <p className="text-sm sm:text-base text-gray-400 mt-2 sm:mt-3 mb-4 sm:mb-6">
-            {t('auth.resetLinkSent.description')}
+        <div className="ea-eyebrow" style={{ justifyContent: "center" }}>
+          <span className="ea-spark" />
+          {t("auth.eyebrow.checkInbox", { defaultValue: "Check your inbox" })}
+        </div>
+
+        <h1 className="ea-title">
+          {t("auth.resetLinkSent.title", { defaultValue: "Reset link sent" })}
+        </h1>
+        <p className="ea-sub">
+          {t("auth.resetLinkSent.description", {
+            defaultValue: "Check your email for a link to reset your password. It expires soon.",
+          })}
+        </p>
+        {email && (
+          <p className="ea-note">
+            <span className="ea-email-chip">{email}</span>
           </p>
+        )}
 
-          <motion.button
-            onClick={handleResend}
-            disabled={loading || cooldown > 0}
-            className="w-full py-2.5 sm:py-3 px-4 rounded-xl font-medium shadow-lg transition duration-200 text-sm sm:text-base bg-gradient-to-r from-purple to-purple-600 hover:from-purple hover:to-purple-700 text-white disabled:opacity-50"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            {loading
-              ? t('auth.resetLinkSent.resending')
-              : cooldown > 0
-              ? t('auth.resetLinkSent.resendWithCooldown', { cooldown })
-              : t('auth.resetLinkSent.resendMail')}
-          </motion.button>
-        </motion.div>
-      </div>
-    </div>
+        <button
+          type="button"
+          onClick={handleResend}
+          disabled={loading || cooldown > 0}
+          className="ea-primary"
+        >
+          {loading
+            ? t("auth.resetLinkSent.resending", { defaultValue: "Sending…" })
+            : cooldown > 0
+              ? t("auth.resetLinkSent.resendWithCooldown", { cooldown, defaultValue: "Resend in {{cooldown}}s" })
+              : t("auth.resetLinkSent.resendMail", { defaultValue: "Resend email" })}
+        </button>
+
+        <p className="ea-altrow">
+          <Link to="/login">{t("auth.validations.forgotPassword.backToLogin")}</Link>
+        </p>
+      </main>
+    </AuthShell>
   );
 };
 

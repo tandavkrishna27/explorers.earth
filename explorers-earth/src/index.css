@@ -120,7 +120,7 @@
 
 :root {
   --dash-bg: #fffcf6;
-  --dash-sidebar-bg: #f6f1e7;
+  --dash-sidebar-bg: #ffffff;
   --dash-accent: #3B82F6;
   --dash-accent-text: #ffffff;
   --dash-text: #17231a;
@@ -218,7 +218,7 @@ body[data-sidebar-open="false"] .dashboard-content {
 /* Dark theme overrides */
 .dashboard-theme-dark {
   --dash-bg: #060608;
-  --dash-sidebar-bg: #0B0B0E;
+  --dash-sidebar-bg: #14141C;
   --dash-accent: #60A5FA;
   --dash-accent-text: #060608;
   --dash-text: #F9FAFB;
@@ -2274,6 +2274,34 @@ input {
 }
 .dashboard-theme .placeholder-white\/30::placeholder {
   color: color-mix(in srgb, var(--dash-text) 30%, transparent) !important;
+}
+
+/* Recommendation cards render on an always-dark surface in BOTH themes, so their
+   foreground must stay real white. The theme-wide .text-white remap above turns
+   text-white into --dash-text (dark in light mode), which would make card titles,
+   descriptions, and animated layers invisible. Re-assert white — scoped strictly
+   to .rec-card (higher specificity than the global rule) so nothing else is
+   affected. In dark mode this is an imperceptible #F9FAFB -> #fff. */
+.dashboard-theme .rec-card .text-white { color: #fff !important; }
+.dashboard-theme .rec-card .text-white\/90 { color: rgba(255, 255, 255, 0.9) !important; }
+.dashboard-theme .rec-card .text-white\/80 { color: rgba(255, 255, 255, 0.8) !important; }
+.dashboard-theme .rec-card .text-white\/70 { color: rgba(255, 255, 255, 0.7) !important; }
+.dashboard-theme .rec-card .text-white\/60 { color: rgba(255, 255, 255, 0.6) !important; }
+.dashboard-theme .rec-card .text-white\/55 { color: rgba(255, 255, 255, 0.55) !important; }
+.dashboard-theme .rec-card .text-white\/50 { color: rgba(255, 255, 255, 0.5) !important; }
+.dashboard-theme .rec-card .text-white\/45 { color: rgba(255, 255, 255, 0.45) !important; }
+.dashboard-theme .rec-card .text-white\/40 { color: rgba(255, 255, 255, 0.4) !important; }
+.dashboard-theme .rec-card .text-white\/30 { color: rgba(255, 255, 255, 0.3) !important; }
+.dashboard-theme .rec-card .text-white\/20 { color: rgba(255, 255, 255, 0.2) !important; }
+.dashboard-theme .rec-card .text-white\/10 { color: rgba(255, 255, 255, 0.1) !important; }
+
+/* Light mode only: the sidebar and header are near-white on a near-white page,
+   so they vanish as panels. Lift them with a soft shadow + hairline ring.
+   Scoped to html:not(.dashboard-theme-dark) so dark mode is provably untouched;
+   box-shadow only, so there is no layout shift. */
+html:not(.dashboard-theme-dark) .dashboard-theme.bg-dashboard-sidebar,
+html:not(.dashboard-theme-dark) .dashboard-header {
+  box-shadow: 0 6px 24px rgba(23, 35, 26, 0.10), 0 0 0 1px rgba(23, 35, 26, 0.08);
 }
 
 /* Keep text white inside elements with explicit dark background colors */

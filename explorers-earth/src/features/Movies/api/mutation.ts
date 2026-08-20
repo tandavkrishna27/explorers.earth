@@ -14,6 +14,7 @@ export const CREATE_MOVIE_LIST = gql`
     $account: ID!
   ) {
     createMovieList(
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description
@@ -48,6 +49,7 @@ export const UPDATE_MOVIE_LIST = gql`
   ) {
     updateMovieList(
       documentId: $documentId
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description
@@ -109,6 +111,7 @@ export const CREATE_RECOMMENDED_MOVIE = gql`
     $cast_details: JSON
   ) {
     createRecommendedMovie(
+      status: PUBLISHED
       data: {
         tmdb_id: $tmdb_id
         media_type: $media_type
@@ -163,6 +166,7 @@ export const UPDATE_RECOMMENDED_MOVIE = gql`
   ) {
     updateRecommendedMovie(
       documentId: $documentId
+      status: PUBLISHED
       data: {
         user_recommendation_note: $user_recommendation_note
         user_rating: $user_rating
@@ -206,6 +210,7 @@ export const TOGGLE_MOVIE_PIN = gql`
   ) {
     updateRecommendedMovie(
       documentId: $documentId
+      status: PUBLISHED
       data: { is_pinned: $is_pinned, pin_order: $pin_order }
     ) {
       documentId

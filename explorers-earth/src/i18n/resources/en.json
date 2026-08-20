@@ -284,6 +284,7 @@
     "loginTitle": "Login",
     "newToExplorers": "New to explorers?",
     "onboarding": {
+      "stepCount": "Step {{current}} of {{total}}",
       "accountDetails": {
         "accountType": "Account Type",
         "bio": "Bio",

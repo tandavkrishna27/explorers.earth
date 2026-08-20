@@ -3,15 +3,15 @@ import { resetPasswordMutation } from "../features/Authentication/api/mutation";
 import { Formik, Form, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { toast } from "sonner";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { EarthLoader } from "../components/EarthLoader";
 import { ApolloError } from "@apollo/client";
-import { motion } from "framer-motion";
 import PasswordInput from "../components/ui/PasswordInput";
 import { validatePassword } from "../utils/passwordValidator";
 import { useTranslation } from "react-i18next";
 import { isManualAuthEnabled } from "../config/featureFlags";
 import { useEffect } from "react";
+import AuthShell from "../components/auth/AuthShell";
 
 const ResetPassword = () => {
   const { t } = useTranslation();
@@ -56,8 +56,6 @@ const ResetPassword = () => {
       return;
     }
 
-
-
     try {
       const variables = {
         password: values.password,
@@ -65,12 +63,9 @@ const ResetPassword = () => {
         code,
       };
 
-      const response = await resetPassword({
-        variables,
-      });
+      const response = await resetPassword({ variables });
 
       if (response.data?.resetPassword?.user) {
-        // Adjusted to check user field instead of 'ok'
         toast.success(t('toast.success.passwordResetSuccessful'));
         navigate("/login");
       } else {
@@ -114,126 +109,74 @@ const ResetPassword = () => {
   }
 
   return (
-    <div className="min-h-screen flex font-poppins items-center justify-center bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white px-4 sm:px-6 py-6 sm:py-10">
-      <div className="relative w-full max-w-md mx-auto">
-        <motion.div
-          className="backdrop-blur-sm bg-gray-900/80 border border-gray-800 p-6 sm:p-8 rounded-2xl shadow-2xl text-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+    <AuthShell>
+      <main className="ea-card">
+        <div className="ea-eyebrow">
+          <span className="ea-spark" />
+          {t("auth.eyebrow.newPassword", { defaultValue: "New password" })}
+        </div>
+
+        <h1 className="ea-title">{t("auth.resetPassword.title", { defaultValue: "Set a new password" })}</h1>
+        <p className="ea-sub">
+          {t("auth.resetPassword.subtitle", { defaultValue: "Choose a strong password you haven't used before." })}
+        </p>
+
+        <Formik
+          initialValues={initialValues}
+          validationSchema={validationSchema}
+          onSubmit={handleSubmit}
         >
-          <motion.h2
-            className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple to-purple-500"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            Reset Password
-          </motion.h2>
+          {({ values, setFieldValue }) => (
+            <Form className="ea-form">
+              <div className="ea-field">
+                <PasswordInput
+                  value={values.password}
+                  onChange={(value) => setFieldValue("password", value)}
+                  label={t('auth.resetPassword.newPassword', { defaultValue: 'New password' })}
+                  labelColor="white"
+                  placeholder={t('auth.resetPassword.newPasswordPlaceholder')}
+                  showStrengthMeter={true}
+                  className="w-full"
+                  data-testid="new-password-input"
+                />
+                <ErrorMessage name="password" component="div" className="ea-fielderr" />
+              </div>
 
-          <p className="text-sm sm:text-base text-gray-400 mt-2 sm:mt-3 mb-4 sm:mb-6">
-            Enter your new password below.
-          </p>
+              <div className="ea-field">
+                <PasswordInput
+                  value={values.confirmPassword}
+                  onChange={(value) => setFieldValue("confirmPassword", value)}
+                  label={t('auth.resetPassword.confirmPassword', { defaultValue: 'Confirm password' })}
+                  labelColor="white"
+                  placeholder={t('auth.resetPassword.confirmPasswordPlaceholder')}
+                  showStrengthMeter={false}
+                  showValidationStatus={false}
+                  className="w-full"
+                  data-testid="confirm-password-input"
+                />
+                <ErrorMessage name="confirmPassword" component="div" className="ea-fielderr" />
 
-          <Formik
-            initialValues={initialValues}
-            validationSchema={validationSchema}
-            onSubmit={handleSubmit}
-          >
-            {({ values, setFieldValue }) => (
-              <Form className="space-y-4 text-left">
-                {/* New Password Field */}
-                <div>
-                  <PasswordInput
-                    value={values.password}
-                    onChange={(value) => setFieldValue("password", value)}
-                    label={t('auth.resetPassword.newPassword')}
-                    labelColor="white"
-                    placeholder={t('auth.resetPassword.newPasswordPlaceholder')}
-                    showStrengthMeter={true}
-                    className="w-full"
-                    data-testid="new-password-input"
-                  />
-                  <ErrorMessage
-                    name="password"
-                    component="div"
-                    className="text-red-500 text-sm mt-1"
-                  />
-                </div>
+                {values.confirmPassword && (
+                  <div className="mt-2 text-xs" style={{ color: values.password === values.confirmPassword ? "#7fd06a" : "#f0a37f" }}>
+                    {values.password === values.confirmPassword
+                      ? t('auth.validations.confirmPassword.match')
+                      : t('auth.validations.confirmPassword.mustMatch')}
+                  </div>
+                )}
+              </div>
 
-                {/* Confirm Password Field */}
-                <div>
-                  <PasswordInput
-                    value={values.confirmPassword}
-                    onChange={(value) =>
-                      setFieldValue("confirmPassword", value)
-                    }
-                    label={t('auth.resetPassword.confirmPassword')}
-                    labelColor="white"
-                    placeholder={t('auth.resetPassword.confirmPasswordPlaceholder')}
-                    showStrengthMeter={false}
-                    showValidationStatus={false}
-                    className="w-full"
-                    data-testid="confirm-password-input"
-                  />
-                  <ErrorMessage
-                    name="confirmPassword"
-                    component="div"
-                    className="text-red-500 text-sm mt-1"
-                  />
+              <button type="submit" className="ea-primary">
+                {t("auth.resetPassword.title", { defaultValue: "Reset password" })}
+              </button>
+            </Form>
+          )}
+        </Formik>
 
-                  {/* Password match indicator */}
-                  {values.confirmPassword && (
-                    <div className="mt-2">
-                      {values.password === values.confirmPassword ? (
-                        <div className="flex items-center text-green-600 text-xs">
-                          <svg
-                            className="w-3 h-3 mr-1"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          <span>{t('auth.validations.confirmPassword.match')}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center text-red-600 text-xs">
-                          <svg
-                            className="w-3 h-3 mr-1"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          <span>{t('auth.validations.confirmPassword.mustMatch')}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <motion.button
-                  type="submit"
-                  className="w-full py-2.5 sm:py-3 px-4 rounded-xl font-medium shadow-lg transition duration-200 text-sm sm:text-base bg-gradient-to-r from-purple to-purple-600 hover:from-purple hover:to-purple-700 text-white"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  Reset Password
-                </motion.button>
-              </Form>
-            )}
-          </Formik>
-        </motion.div>
-      </div>
-    </div>
+        <p className="ea-altrow">
+          <Link to="/login">{t("auth.validations.forgotPassword.backToLogin")}</Link>
+        </p>
+      </main>
+    </AuthShell>
   );
 };
 

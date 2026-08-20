@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import useAuthStore from "../../../store/store";
 import { useTranslation } from "react-i18next";
 import { updateLocalTunesUsername } from "../../../services/localTunesService";
+import { mobileNumberField } from "./mobileNumberField";
 
 
 // Utility function to convert English account type keys to translated values
@@ -281,7 +282,7 @@ export const useUpdateProfile = (
               },
               Account_Type: getAccountTypeValue(values.accountType, t),
               mobile_number_visibility: values.mobilenumberVisiblity,
-              mobile_number: values.mobilenumberLink,
+              ...mobileNumberField(values.mobilenumberLink),
             },
           },
         });

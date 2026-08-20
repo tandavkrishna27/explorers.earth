@@ -19,10 +19,10 @@ import { useTranslation } from "react-i18next";
 import { useMemo, useState } from "react";
 import useToast from "../hooks/useToast";
 import { isManualAuthEnabled } from "../config/featureFlags";
-import Button from "../components/ui/Button";
-import GoogleIcon from "../assets/icons/GoogleIcon";
 import { storeUserCredentials } from "../utils/sessionCredentials";
 import { consumeSsoReturn } from "../utils/tunesSso";
+import AuthLayout from "../components/auth/AuthLayout";
+import AuthShell from "../components/auth/AuthShell";
 
 const Login = () => {
   const { t, i18n } = useTranslation();
@@ -215,11 +215,10 @@ const Login = () => {
         geoData={geoData}
       />
 
-      <div className="relative flex items-center justify-center min-h-screen bg-black w-full px-4 py-8">
-        <div className="w-full max-w-md md:max-w-lg lg:max-w-xl">
-          {/* MANUAL AUTH DISABLED - OAuth Only Mode */}
-          {isManualAuthEnabled() ? (
-            // Original manual authentication form (currently disabled)
+      {isManualAuthEnabled() ? (
+        // Manual username/password form (active) on the Earthrise scene
+        <AuthShell>
+          <div className="ea-formhost dashboard-theme-dark">
             <AuthForm
               initialValues={loginInitialValues}
               validationSchema={validationSchema}
@@ -233,7 +232,6 @@ const Login = () => {
               isRegistration={false}
               children={
                 <div className="flex flex-col items-center gap-2 mt-2">
-                  {/* Blocked / Deactivated account banner */}
                   {blockedAccount && (
                     <div className="w-full rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center mb-1">
                       <p className="text-amber-400 text-sm font-medium">
@@ -249,72 +247,45 @@ const Login = () => {
                   )}
                   <div className="flex justify-center items-center gap-1">
                     <p className="text-xs">{t("auth.newToExplorers")}</p>
-                    <a
-                      href="/register"
-                      className="text-dashboard-accent underline text-xs"
-                    >
+                    <a href="/register" className="text-dashboard-accent underline text-xs">
                       {t("auth.register")}
                     </a>
                   </div>
                   <div className="flex justify-center items-center gap-4">
-                    <a
-                      href="/forgot-password"
-                      className="text-dashboard-accent underline text-xs"
-                    >
+                    <a href="/forgot-password" className="text-dashboard-accent underline text-xs">
                       {t("auth.forgotPassword")}
                     </a>
-                    <a
-                      href="/claimaccount"
-                      className="text-dashboard-accent underline text-xs"
-                    >
+                    <a href="/claimaccount" className="text-dashboard-accent underline text-xs">
                       {t("auth.claimAccount")}
                     </a>
                   </div>
                 </div>
               }
             />
-          ) : (
-            // OAuth-only authentication (currently active)
-            <div className="dashboard-theme dashboard-theme-dark">
-              <div className="flex flex-col items-center justify-center mb-4 md:mb-6 w-3/4 max-w-[75%] mx-auto">
-                <img
-                  src="/logo.svg"
-                  alt="explorers.earth"
-                  className="object-contain w-full"
-                  style={{
-                    height: "auto",
-                    maxHeight: "60px",
-                    filter: "brightness(0) invert(1)",
-                  }}
-                />
-              </div>
-              <div className="font-poppins flex flex-col gap-6 w-full bg-dashboard-sidebar p-6 md:p-8 rounded-3xl shadow-dashboard-elevated text-dashboard">
-                <div className="font-poppins text-center">
-                  <h1 className="font-semibold text-2xl md:text-3xl text-white">{t('auth.loginTitle')}</h1>
-                  <p className="text-sm mt-2 text-gray-300">{t('auth.loginSubtitle')}</p>
-                </div>
-
-                <div className="flex flex-col gap-4">
-                  <Button
-                    btnText={t('auth.signInWithGoogle')}
-                    size="small"
-                    type="button"
-                    endIcon={<GoogleIcon />}
-                    variant="google"
-                    onClickHandler={handleGoogleSignIn}
-                  />
-
-                  <div className="text-center mt-2">
-                    <p className="text-xs text-gray-400">
-                      Sign in with your Google account to continue
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </AuthShell>
+      ) : (
+        // OAuth-only authentication — "Earthrise" brand screen
+        <AuthLayout
+          eyebrow={t("auth.brand.tagline", "Every place connects us")}
+          title={t("auth.login.title2", "Welcome back, explorer.")}
+          subtitle={t("auth.login.sub2", "Your map is right where you left it.")}
+          googleLabel={t("auth.signInWithGoogle")}
+          onGoogle={handleGoogleSignIn}
+          termsPrefix={t("auth.terms.prefix", "By continuing you agree to our")}
+          termsLabel={t("auth.terms.terms", "Terms")}
+          privacyLabel={t("auth.terms.privacy", "Privacy Policy")}
+          andWord={t("common.and", "and")}
+          switchPrompt={t("auth.newToExplorers")}
+          switchCta={t("auth.register")}
+          switchTo="/register"
+          secureLabel={t("auth.secureSignIn", "Secure sign-in")}
+          helpers={[
+            { label: t("auth.forgotPassword"), to: "/forgot-password" },
+            { label: t("auth.claimAccount"), to: "/claimaccount" },
+          ]}
+        />
+      )}
     </>
   );
 };

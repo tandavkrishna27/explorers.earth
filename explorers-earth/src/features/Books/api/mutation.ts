@@ -14,6 +14,7 @@ export const CREATE_BOOK_LIST = gql`
     $account: ID!
   ) {
     createBookList(
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description
@@ -48,6 +49,7 @@ export const UPDATE_BOOK_LIST = gql`
   ) {
     updateBookList(
       documentId: $documentId
+      status: PUBLISHED
       data: {
         List_Name: $List_Name
         list_description: $list_description
@@ -109,6 +111,7 @@ export const CREATE_RECOMMENDED_BOOK = gql`
     $book_categories: [ID]
   ) {
     createRecommendedBook(
+      status: PUBLISHED
       data: {
         volume_id: $volume_id
         title: $title
@@ -161,6 +164,7 @@ export const UPDATE_RECOMMENDED_BOOK = gql`
   ) {
     updateRecommendedBook(
       documentId: $documentId
+      status: PUBLISHED
       data: {
         user_recommendation_note: $user_recommendation_note
         user_rating: $user_rating
@@ -203,6 +207,7 @@ export const TOGGLE_BOOK_PIN = gql`
   ) {
     updateRecommendedBook(
       documentId: $documentId
+      status: PUBLISHED
       data: { is_pinned: $is_pinned, pin_order: $pin_order }
     ) {
       documentId

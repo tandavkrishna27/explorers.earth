@@ -1,0 +1,90 @@
+/* explorers.earth onboarding — the "Earthrise" scene (warm-dark ground + point-
+   cloud globe + vignette) shared with the auth screens, plus a slim progress bar
+   that replaces the old four-column stepper. All classes are ob- prefixed so they
+   can't collide with the dashboard/global styles. */
+
+.ob-scene {
+  --ob-cream:#f5efe2; --ob-muted:#a9b5a6; --ob-line:rgba(245,239,226,.14);
+  --ob-terra:#e0925c; --ob-green:#43c02f;
+  position:relative; min-height:100dvh; width:100%;
+  display:flex; align-items:center; justify-content:center;
+  padding:0; overflow:hidden;               /* mobile: card goes edge-to-edge */
+  background:
+    radial-gradient(48% 46% at 50% 0%, rgba(224,146,92,.16), transparent 62%),
+    radial-gradient(60% 60% at 50% 120%, rgba(67,192,47,.12), transparent 60%),
+    radial-gradient(120% 120% at 50% 0%, #12211a 0%, #0f1c15 42%, #0b1410 100%);
+}
+@media (min-width:640px){ .ob-scene{ padding:16px 20px } }
+
+/* GlobeCanvas renders <canvas class="ea-globe">; position it within the scene.
+   Identical to the auth shell rule, so there's no conflict if both stylesheets load. */
+.ob-scene .ea-globe{ position:absolute; inset:0; width:100%; height:100%; z-index:1 }
+.ob-vignette{ position:absolute; inset:0; z-index:2; pointer-events:none;
+  background:radial-gradient(120% 100% at 50% 50%, transparent 40%, rgba(6,11,8,.5) 92%) }
+
+/* the glassy card that floats over the scene */
+.ob-card{
+  position:relative; z-index:3; overflow:hidden;
+  background:linear-gradient(180deg, rgba(20,20,28,.86), rgba(12,12,17,.82));
+  border:1px solid var(--ob-line);
+  box-shadow:0 40px 100px -30px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06);
+  backdrop-filter:blur(16px) saturate(120%);
+  -webkit-backdrop-filter:blur(16px) saturate(120%);
+}
+/* Consistent card height so it never resizes between steps: full-viewport on
+   mobile, a fixed centered frame on desktop. Only the body region scrolls. */
+.ob-frame{ height:100dvh; max-height:100dvh; border-radius:0 }
+@media (min-width:640px){
+  /* Tall enough to show the tallest step (Account) without scrolling on a normal
+     desktop; clamps to the viewport on shorter laptops. The subtracted amount
+     matches the scene's top+bottom padding (16px * 2) so card + padding always
+     fits the viewport and the footer is never clipped. */
+  .ob-frame{ height:min(880px, calc(100dvh - 32px)); border-radius:24px }
+}
+.ob-topbar{ flex:none; background:linear-gradient(180deg, rgba(20,20,28,.92), rgba(20,20,28,.66)) }
+
+/* Center each step's content vertically when it fits (short steps like Contact
+   get breathing room top & bottom instead of hugging the header). "safe center"
+   falls back to top-alignment when content is taller than the body, so tall
+   steps (Account/Address) still scroll from the top and never clip. */
+.ob-body{ display:flex; flex-direction:column; justify-content:safe center }
+
+/* pinned footer + its floating primary action */
+.ob-footer{
+  flex:none;
+  border-top:1px solid var(--ob-line);
+  background:linear-gradient(180deg, rgba(20,20,28,.55), rgba(16,16,22,.94));
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  padding:14px 18px calc(14px + env(safe-area-inset-bottom, 0px));
+  display:flex; flex-direction:column; gap:10px;
+}
+@media (min-width:640px){ .ob-footer{ padding:16px 24px } }
+.ob-primary{
+  width:100%; height:48px; border-radius:14px; border:none;
+  font-family:inherit; font-size:.95rem; font-weight:700; letter-spacing:.01em;
+  color:var(--dash-accent-text); background:var(--dash-accent);
+  cursor:pointer; transition:filter .14s, transform .1s, opacity .14s;
+  box-shadow:0 12px 26px -12px rgba(0,0,0,.6);
+}
+.ob-primary:hover{ filter:brightness(1.05) }
+.ob-primary:active{ transform:translateY(1px) }
+.ob-primary:disabled{ opacity:.55; cursor:not-allowed }
+.ob-primary:focus-visible{ outline:2px solid var(--ob-terra); outline-offset:3px }
+
+/* slim progress bar */
+.ob-prog-title{
+  font-size:clamp(1.35rem,5vw,1.6rem); font-weight:800; letter-spacing:-.02em;
+  color:var(--ob-cream); margin:0; line-height:1.1;
+}
+.ob-prog-count{
+  font-size:.72rem; font-weight:600; color:var(--ob-muted);
+  font-variant-numeric:tabular-nums; letter-spacing:.05em; white-space:nowrap;
+}
+.ob-prog-sub{ font-size:.8rem; color:var(--ob-muted); line-height:1.45; margin:9px 0 0 }
+.ob-track{ height:5px; border-radius:99px; background:rgba(255,255,255,.10); overflow:hidden; margin-top:12px }
+.ob-fill{
+  height:100%; border-radius:99px;
+  background:linear-gradient(90deg, var(--ob-terra), var(--ob-green));
+  transition:width .45s cubic-bezier(.4,0,.2,1);
+}
+@media (prefers-reduced-motion:reduce){ .ob-fill{ transition:none } }

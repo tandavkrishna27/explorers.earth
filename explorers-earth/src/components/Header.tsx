@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 import Down from "../assets/icons/Down";
 import { gql, useQuery } from "@apollo/client";
-import { toast } from "sonner";
 import CrossIcon from "../assets/icons/CrossIcon";
 import Profile from "../assets/icons/Profile";
 import HomeIcon from "../assets/icons/Home";
@@ -16,10 +15,10 @@ import MoonIcon from "../assets/icons/MoonIcon";
 import SwitchButton from "./ui/SwitchButton";
 import Button from "./ui/Button";
 import MenuIcon from "../assets/icons/MenuIcon";
-import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import { isManualAuthEnabled } from "../config/featureFlags";
 import { useDashboardTheme } from "../contexts/DashboardThemeContext";
+import { useLogout } from "../hooks/useLogout";
 import { IMAGE_CONFIG } from "../config";
 
 const getCurrentAccountDataQuery = gql`
@@ -44,20 +43,21 @@ const getCurrentAccountDataQuery = gql`
 
 
 const recommendationCategories = [
+  { id: 'hub', name: 'All Recommendations', path: '/recommendations' },
   { id: 'places', name: 'Places', path: '/recommendations/places' },
+  { id: 'guides', name: 'Guides', path: '/recommendations/guides' },
+  { id: 'music', name: 'Music', path: '/recommendations/music' },
   { id: 'movies', name: 'Movies & Shows', path: '/recommendations/movies' },
   { id: 'books', name: 'Books', path: '/recommendations/books' },
   { id: 'games', name: 'Games', path: '/recommendations/games' },
   { id: 'apps', name: 'Apps & Tools', path: '/recommendations/apps' },
   { id: 'products', name: 'Products', path: '/recommendations/products' },
   { id: 'people', name: 'People', path: '/recommendations/people' },
-  { id: 'music', name: 'Music', path: '/music' },
-  { id: 'guides', name: 'Guides', path: '/guides' },
 ];
 
 const Header = memo(() => {
   const [showMobileMenu, setShowMobileMenu] = useState<boolean>(false);
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { data } = useQuery(getCurrentAccountDataQuery, {
     variables: { documentId: user?.documentId },
     skip: !user?.documentId,
@@ -72,9 +72,9 @@ const Header = memo(() => {
   const categoryMenuRef = useRef<HTMLDivElement>(null);
 
   const currentCategory = recommendationCategories.find(cat => {
-    // Exact match for /recommendations as Places
-    if (cat.id === 'places' && location.pathname === '/recommendations') return true;
-    // Prefix match for all categories
+    if (cat.id === 'hub') {
+      return location.pathname === '/recommendations' || location.pathname === '/recommendations/';
+    }
     return location.pathname.startsWith(cat.path);
   });
 
@@ -96,31 +96,7 @@ const Header = memo(() => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = async () => {
-    logout();
-
-    // Clear all explorers storage
-    localStorage.removeItem("auth-storage");
-    localStorage.removeItem("qrtoken");
-
-    // Clear Local Tunes session
-    localStorage.removeItem("localTunes_session");
-
-    // Clear session storage (user credentials)
-    sessionStorage.removeItem("explorers_user_credentials");
-
-    // Clear all other possible storage
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // Clear all cookies
-    document.cookie.split(";").forEach(function (c) {
-      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-    });
-
-    navigate("/login");
-    toast(t("toast.success.loggedOutSuccessfully"));
-  };
+  const handleLogout = useLogout();
 
   const accountData = data?.usersPermissionsUser?.accounts;
 
@@ -130,7 +106,6 @@ const Header = memo(() => {
     { path: '/home', exact: true, label: 'Home', icon: <HomeIcon fill="currentColor" /> },
     { path: '/profile', exact: true, label: 'Profile', icon: <Profile fill="currentColor" /> },
     { path: '/settings', exact: true, label: 'Settings', icon: <SettingsIcon fill="currentColor" /> },
-    { path: '/guides', exact: false, label: 'Guides', icon: <TravelGuideIcon fill="currentColor" /> },
   ];
 
   const currentNamedPage = namedPages.find(p =>
@@ -264,24 +239,19 @@ const Header = memo(() => {
 
         <div className="hidden md:flex flex-row items-center gap-4 absolute right-1 md:right-2 top-1/2 -translate-y-1/2">
           {isAuthenticated ? (
-            <div
-              className="flex items-center gap-2 cursor-pointer"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                e.nativeEvent.stopImmediatePropagation();
-                setShowMobileMenu((prev) => !prev);
-              }}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? t("sidebar.lightMode") : t("sidebar.darkMode")}
+              title={theme === 'dark' ? t("sidebar.lightMode") : t("sidebar.darkMode")}
+              className="w-9 h-9 rounded-full border border-dashboard flex items-center justify-center text-dashboard hover:bg-dashboard-muted hover:ring-2 hover:ring-dashboard transition-all cursor-pointer"
             >
-              <img
-                className="h-9 w-9 rounded-full border border-dashboard hover:ring-2 hover:ring-dashboard transition-all"
-                src={
-                  accountData?.[0]?.profile_picture?.url ||
-                  IMAGE_CONFIG.defaultImages.profile
-                }
-                alt="profile"
-              />
-            </div>
+              {theme === 'dark' ? (
+                <SunIcon fill="var(--dash-icon-primary)" />
+              ) : (
+                <MoonIcon fill="var(--dash-icon-primary)" />
+              )}
+            </button>
           ) : (
             <button
               className="px-4 py-1.5 rounded-lg bg-[var(--dash-accent)] text-white font-medium text-sm hover:brightness-110 transition-all border-none cursor-pointer"
