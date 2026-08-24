@@ -135,6 +135,14 @@ const generateCoveringArray = (): CoveringRow[] => {
   return selected;
 };
 
+const batchCoveringRows = (rows: readonly CoveringRow[]) => {
+  const batches: CoveringRow[][] = [];
+  for (let index = 0; index < rows.length; index += 12) {
+    batches.push(rows.slice(index, index + 12));
+  }
+  return batches;
+};
+
 async function restoreWithEmergency({
   normalRestore,
   emergencyRestore,
@@ -256,24 +264,43 @@ test('covering array dry run proves all values and all factor pairs', () => {
   ).toBe(true);
 
   const measuredPublishBudgetSeconds = 8;
-  const preflightAndVerificationBudgetSeconds = 120;
-  const normalPublishCount = matrix.length + 2;
+  const preflightAndVerificationBudgetSeconds = 300;
+  const batches = batchCoveringRows(matrix);
+  const normalPublishCount = matrix.length + batches.length * 2;
   const estimatedSeconds =
     normalPublishCount * measuredPublishBudgetSeconds +
     preflightAndVerificationBudgetSeconds;
   console.info(
-    `covering-array rows=${matrix.length} matrix-publishes=${matrix.length} ` +
+    `covering-array rows=${matrix.length} batches=${batches.length} matrix-publishes=${matrix.length} ` +
       `normal-total-publishes=${normalPublishCount} optional-emergency-publishes=1 ` +
       `estimated-minutes=${Math.ceil(estimatedSeconds / 60)}`,
   );
+});
+
+test('live timeout preserves at least five minutes for exact restore', () => {
+  for (const batch of LIVE_BATCHES) {
+    const batchPublishBudgetMs = (batch.length + 2) * 8_000;
+    expect(liveBatchTimeoutMs(batch) - batchPublishBudgetMs).toBeGreaterThanOrEqual(
+      5 * 60_000,
+    );
+  }
+});
+
+test('live matrix is split into ordered batches of at most twelve rows', () => {
+  const matrix = generateCoveringArray();
+  const batches = batchCoveringRows(matrix);
+  expect(batches.length).toBeGreaterThan(1);
+  expect(batches.every((batch) => batch.length <= 12)).toBe(true);
+  expect(batches.flat()).toEqual(matrix);
 });
 
 const LIVE_USERNAME = process.env.E2E_PROFILE_USERNAME;
 const LIVE_STORAGE_STATE = process.env.E2E_PROFILE_STORAGE_STATE;
 const LIVE_WRITES_APPROVED = process.env.E2E_PROFILE_LIVE_WRITES === '1';
 const LIVE_MATRIX = generateCoveringArray();
-const LIVE_TIMEOUT_MS =
-  (LIVE_MATRIX.length + 2) * 8_000 + 120_000;
+const LIVE_BATCHES = batchCoveringRows(LIVE_MATRIX);
+const liveBatchTimeoutMs = (rows: readonly CoveringRow[]) =>
+  (rows.length + 2) * 8_000 + 5 * 60_000;
 
 const PRESET_LABELS: Record<string, string> = {
   'cinematic-dark': 'Cinematic Dark',
@@ -474,6 +501,36 @@ const orderForShape = (
   return canonical;
 };
 
+const expectedPublicOrderForRow = (
+  shape: CoveringRow['orderShape'],
+  firstView: CoveringRow['firstView'],
+) => {
+  const savedOrder = orderForShape(shape, firstView);
+  if (
+    CATEGORY_IDS.includes(firstView as (typeof CATEGORY_IDS)[number])
+  ) {
+    return [
+      firstView as (typeof CATEGORY_IDS)[number],
+      ...savedOrder.filter((id) => id !== firstView),
+    ];
+  }
+  return savedOrder;
+};
+
+test('live row oracle promotes a category first view independently of saved order', () => {
+  expect(expectedPublicOrderForRow('reverse', 'places')).toEqual([
+    'places',
+    'people',
+    'products',
+    'apps',
+    'guides',
+    'games',
+    'books',
+    'movies',
+    'music',
+  ]);
+});
+
 async function setDashboardOrder(
   page: Page,
   target: readonly (typeof CATEGORY_IDS)[number][],
@@ -629,9 +686,10 @@ async function verifyPublicRow(
   }
   await expect(page.getByTestId(LAYOUT_TEST_IDS[row.layout])).toBeVisible();
   const rendered = await publicCategoryIds(page, row.layout);
-  const expectedOrder = orderForShape(row.orderShape, row.firstView).filter((id) =>
-    rendered.includes(id),
-  );
+  const expectedOrder = expectedPublicOrderForRow(
+    row.orderShape,
+    row.firstView,
+  ).filter((id) => rendered.includes(id));
   expect(rendered.slice(0, expectedOrder.length)).toEqual(expectedOrder);
   if (
     CATEGORY_IDS.includes(row.firstView as (typeof CATEGORY_IDS)[number]) &&
@@ -712,6 +770,7 @@ async function normalExactRestore(
 }
 
 test.describe('approved live profile writes', () => {
+  test.describe.configure({ mode: 'serial' });
   test.use({
     storageState: LIVE_STORAGE_STATE || undefined,
   });
@@ -720,10 +779,11 @@ test.describe('approved live profile writes', () => {
     'Requires approved profile account, auth storage state, and E2E_PROFILE_LIVE_WRITES=1',
   );
 
-  test('publishes the pairwise matrix and restores exact raw social_media', async ({
-    page,
-  }) => {
-    test.setTimeout(LIVE_TIMEOUT_MS);
+  for (const [batchIndex, liveRows] of LIVE_BATCHES.entries()) {
+  test(`publishes pairwise matrix batch ${batchIndex + 1}/${LIVE_BATCHES.length} and restores exact raw social_media`, async ({
+      page,
+    }) => {
+    test.setTimeout(liveBatchTimeoutMs(liveRows));
     const username = LIVE_USERNAME!;
     const baselineAccount = await openDashboard(page);
     const baselineSnapshot = restorableAccountSnapshot(baselineAccount);
@@ -790,7 +850,7 @@ test.describe('approved live profile writes', () => {
       baselineHasBusiness =
         (await page.getByRole('tab', { name: 'Business Details' }).count()) > 0;
 
-      for (const row of LIVE_MATRIX) {
+      for (const row of liveRows) {
         const beforeRow = await openDashboard(page);
         assertAccountVersion(beforeRow, expectedUpdatedAt);
         await applyDashboardRow(page, row);
@@ -865,6 +925,7 @@ test.describe('approved live profile writes', () => {
 
     if (liveFailure) throw liveFailure;
   });
+  }
 });
 
 test.describe('Public Profile Theme & Customization E2E', () => {

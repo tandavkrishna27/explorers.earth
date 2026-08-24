@@ -75,7 +75,7 @@
 
 ## Intentional limitations and follow-ups
 
-- **Live 72-row account mutation was not executed.** It remains gated behind explicit write approval/auth storage. Deterministic tests prove the matrix and restore/concurrency machinery, but they do not prove the current dev Strapi account accepts every live row.
+- **Live analytics ingestion is blocked by Strapi API-token permissions.** Three runtime-only token variants were tested. The dedicated supplied token can read owner-scoped analytics (HTTP 200) but Strapi rejects analytics create with `Forbidden access`; no tagged UAT event was persisted. A least-privilege token needs analytics `find`, `findOne`, and `create` permissions before PR clearance.
 - **Visible user Chrome control was unavailable in this environment.** Browser QA used Playwright Chromium. Do not describe this run as visible Chrome UAT.
 - **No Strapi code or schema was changed.** The analytics boundary uses Local Tunes and existing Strapi data contracts.
 - **Local Tunes user-sync was not touched.** Its errors remain owned by the separate session.
@@ -91,8 +91,20 @@
 | Batch | Baseline captured | Live writes | Restore | Equality proof |
 |---|---|---|---|---|
 | Deterministic unit/browser suites | Fixture state | No | N/A | Fixture assertions passed |
-| Live theme matrix | Harness supports full snapshot | Skipped by gate | Not needed | Restore/concurrency logic passed deterministic tests |
+| Live theme matrix | Exact raw account snapshot per batch | 72 matrix rows + 12 sentinels/restores | 6/6 batches restored | Deep `social_media`, restorable snapshot, initial tab/layout/order, and public baseline passed after every batch |
 | Visible Chrome UAT | N/A | No | N/A | Chrome control unavailable |
+
+## Live UAT execution — 2026-08-24
+
+- Authenticated `tk2727` through an isolated Playwright storage state under the system temporary directory; no auth state or credential was written to Git.
+- The original monolithic live test exposed two harness defects: its public-order oracle ignored category-first promotion, and its global timeout could close the page before cleanup. Both received failing regression tests before correction.
+- After one interrupted run, the profile was recovered to the recorded baseline (Sunset Glow, Crimson, ambient gradient, Gallery first, grid, rotated order), the sentinel was explicitly removed, and dashboard/public witnesses passed.
+- The final harness split the covering array into six ordered serial batches of 12 rows. All 6 passed in 37.1 minutes; every batch independently snapshot, version-guarded, published, deep-restored, and verified the public baseline.
+- Focused responsive/privacy browser gate: 9/9 passed, covering mobile/desktop Settings/Profile geometry, 200% reflow, RTL, consented five-field UTM payloads, owner suppression, and category list/item ownership.
+- Live browser checks passed at 375×812 and 1440×900 for Profile/Gallery/Appearance, Settings, public root, and all nine direct category URLs without “can't load this section.”
+- Live analytics reached Local Tunes correctly and retried as designed, but Strapi rejected event creation with HTTP 403 surfaced as Local Tunes 502. Owner-scoped reads succeeded with the supplied token. PR gate remains closed.
+- Final regression after the harness fixes: frontend 1,122/1,122; backend 113/113; frontend and backend production builds passed; frontend lint reported zero errors; normal Playwright 55 passed, 6 intentional live-write skips, 0 failed. The separately approved live run passed all 6 skipped batches.
+- One cross-tab integration test consistently exceeded Vitest's default five-second ceiling only under the full 1,122-test load while passing alone. Its test-local timeout was raised to ten seconds; the next full run passed without changing product behavior.
 
 ## Suggested user UAT
 
