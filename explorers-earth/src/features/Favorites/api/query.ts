@@ -184,6 +184,7 @@ export const recommendedPlacesQuery = gql`
 export const allRecommendedPlacesQuery = gql`
   query AllRecommendedPlaces($documentId: ID!) {
     recommendationList(documentId: $documentId) {
+      documentId
       recommended_places(pagination: { limit: 1000 }, sort: ["createdAt:asc"]) {
         documentId
         Place_Details

@@ -1,131 +1,177 @@
-import { FC, memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useState, type FC } from "react";
+import { Link } from "react-router-dom";
+import { IMAGE_CONFIG } from "../../../config";
 import { isDisplayableNumber, toDisplayNumber } from "../../../utils/rating";
 
-interface PublicPlaceCardProps {
+interface PublicPlaceCardBaseProps {
   title: string;
   image?: string | null;
   previewImages?: string[];
   subtitle?: string;
   rating?: number;
   reviews?: number;
-  onClickhandler: () => void;
   className?: string;
 }
 
-const PublicPlaceCard: FC<PublicPlaceCardProps> = memo(
-  ({ title, image, previewImages, subtitle, rating, reviews, onClickhandler, className }) => {
-    const validPreviews = useMemo(() => {
-      return (previewImages || []).filter((url) => !!url);
-    }, [previewImages]);
+type PublicPlaceCardNavigation = { href: string; onAction?: never };
+type PublicPlaceCardAction = { onAction: () => void; href?: never };
 
-    const hasPreviewCollage = !image && validPreviews.length > 0;
+export type PublicPlaceCardProps = PublicPlaceCardBaseProps &
+  (PublicPlaceCardNavigation | PublicPlaceCardAction);
 
-    return (
-      <div
-        onClick={onClickhandler}
-        className={`place-rec-card relative flex-shrink-0 rounded-[16px] overflow-hidden flex flex-col justify-between p-2.5 border border-white/[0.08] cursor-pointer shadow-[0_6px_16px_rgba(0,0,0,0.35)] transition-all duration-300 hover:scale-[1.02] hover:border-white/25 select-none ${className || "w-[135px] h-[155px] md:w-[155px] md:h-[180px]"}`}
-        style={
-          !hasPreviewCollage && image
-            ? {
-                backgroundImage: `url('${image}')`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }
-            : {
-                background: "linear-gradient(135deg, #181c2b 0%, #0d0e15 50%, #050608 100%)",
-              }
-        }
-      >
-        {/* Collage Background */}
-        {hasPreviewCollage && (
-          <div className="absolute inset-0 z-0 grid gap-[1px] bg-black pointer-events-none">
-            {validPreviews.length === 1 && (
-              <img src={validPreviews[0]} alt="" className="w-full h-full object-cover" />
-            )}
-            {validPreviews.length === 2 && (
-              <div className="grid grid-cols-2 h-full w-full gap-[1px]">
-                <img src={validPreviews[0]} alt="" className="w-full h-full object-cover" />
-                <img src={validPreviews[1]} alt="" className="w-full h-full object-cover" />
+const FALLBACK_IMAGE = IMAGE_CONFIG.defaultImages.place;
+
+const DecorativeImage = ({
+  src,
+  loading = "lazy",
+}: {
+  src: string;
+  loading?: "eager" | "lazy";
+}) => {
+  const [resolvedSource, setResolvedSource] = useState(src || FALLBACK_IMAGE);
+
+  useEffect(() => {
+    setResolvedSource(src || FALLBACK_IMAGE);
+  }, [src]);
+
+  return (
+    <img
+      src={resolvedSource}
+      alt=""
+      aria-hidden="true"
+      loading={loading}
+      decoding="async"
+      onError={() => setResolvedSource(FALLBACK_IMAGE)}
+      className="absolute inset-0 h-full w-full object-cover"
+    />
+  );
+};
+
+const PublicPlaceCard: FC<PublicPlaceCardProps> = memo((props) => {
+  const {
+    title,
+    image,
+    previewImages,
+    subtitle,
+    rating,
+    reviews,
+    className,
+  } = props;
+  const validPreviews = useMemo(
+    () => (previewImages || []).filter(Boolean).slice(0, 4),
+    [previewImages],
+  );
+  const hasPreviewCollage = !image && validPreviews.length > 0;
+  const showRating = isDisplayableNumber(rating);
+  const showReviews =
+    isDisplayableNumber(reviews) && toDisplayNumber(reviews) > 0;
+  const rootClassName = `profile-presentation-focus place-rec-card relative flex flex-col flex-shrink-0 justify-between overflow-hidden rounded-[16px] border border-white/[0.08] p-2.5 text-left shadow-[0_6px_16px_rgba(0,0,0,0.35)] transition-all duration-200 hover:scale-[1.02] hover:border-white/25 select-none ${
+    className || "h-[155px] w-[135px] md:h-[180px] md:w-[155px]"
+  }`;
+
+  const content = (
+    <>
+      <div className="absolute inset-0 z-0 overflow-hidden bg-[var(--bg-card,#0d0e15)] pointer-events-none">
+        {hasPreviewCollage ? (
+          <div
+            className={`grid h-full w-full gap-px bg-[var(--border-card,rgba(255,255,255,0.08))] ${
+              validPreviews.length === 1
+                ? "grid-cols-1"
+                : "grid-cols-2"
+            }`}
+          >
+            {validPreviews.map((preview, index) => (
+              <div
+                key={`${preview}-${index}`}
+                className={`relative min-h-0 min-w-0 overflow-hidden ${
+                  validPreviews.length === 3 && index === 0
+                    ? "row-span-2"
+                    : ""
+                }`}
+              >
+                <DecorativeImage src={preview} />
               </div>
-            )}
-            {validPreviews.length === 3 && (
-              <div className="grid grid-cols-2 h-full w-full gap-[1px]">
-                <img src={validPreviews[0]} alt="" className="w-full h-full object-cover" />
-                <div className="grid grid-rows-2 gap-[1px] h-full">
-                  <img src={validPreviews[1]} alt="" className="w-full h-full object-cover" />
-                  <img src={validPreviews[2]} alt="" className="w-full h-full object-cover" />
-                </div>
-              </div>
-            )}
-            {validPreviews.length >= 4 && (
-              <div className="grid grid-cols-2 grid-rows-2 h-full w-full gap-[1px]">
-                <img src={validPreviews[0]} alt="" className="w-full h-full object-cover" />
-                <img src={validPreviews[1]} alt="" className="w-full h-full object-cover" />
-                <img src={validPreviews[2]} alt="" className="w-full h-full object-cover" />
-                <img src={validPreviews[3]} alt="" className="w-full h-full object-cover" />
-              </div>
-            )}
+            ))}
           </div>
+        ) : (
+          <DecorativeImage src={image || FALLBACK_IMAGE} />
         )}
-
-        {/* Shading overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/85 z-10 pointer-events-none" />
-
-        {/* Top left direction arrow icon */}
-        <div className="relative z-20 flex justify-between items-center w-full">
-          <div className="w-[26px] h-[26px] rounded-full bg-[#0f1624]/65 backdrop-blur-[3px] border border-white/20 flex items-center justify-center">
-            <svg
-              width="10"
-              height="10"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="white"
-              strokeWidth="3"
-            >
-              <path
-                d="M7 17L17 7M17 7H7M17 7V17"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-        </div>
-
-        {/* Bottom Title, Subtitle, & Rating */}
-        <div className="relative z-20 flex flex-col gap-0.5 w-full">
-          <h4 className="text-[0.75rem] md:text-[0.82rem] font-bold text-white tracking-wide truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] font-poppins">
-            {title}
-          </h4>
-          {subtitle && (
-            <div className="mt-0.5">
-              <span className="inline-block bg-white/10 backdrop-blur-[2px] px-1.5 py-0.5 rounded-[4px] text-[0.56rem] md:text-[0.6rem] font-semibold text-white/85 tracking-wide font-poppins">
-                {subtitle}
-              </span>
-            </div>
-          )}
-          {(() => {
-            const showRating = isDisplayableNumber(rating);
-            const showReviews =
-              isDisplayableNumber(reviews) && toDisplayNumber(reviews) > 0;
-            if (!showRating && !showReviews) return null;
-            return (
-              <div className="flex items-center gap-1 text-[0.58rem] md:text-[0.62rem] font-semibold text-white/90 font-poppins mt-0.5">
-                {showRating && (
-                  <span className="text-[#fbbf24] flex items-center gap-0.5">
-                    ★ {toDisplayNumber(rating).toFixed(1)}
-                  </span>
-                )}
-                {showReviews && (
-                  <span className="text-white/70">({toDisplayNumber(reviews)})</span>
-                )}
-              </div>
-            );
-          })()}
-        </div>
       </div>
+
+      <span
+        aria-hidden="true"
+        className="absolute inset-0 z-10 bg-gradient-to-b from-black/10 to-black/85 pointer-events-none"
+      />
+
+      <span className="relative z-20 flex w-full items-center justify-between">
+        <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full border border-white/20 bg-black/55 backdrop-blur-[3px]">
+          <svg
+            aria-hidden="true"
+            width="10"
+            height="10"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            className="text-white"
+          >
+            <path
+              d="M7 17L17 7M17 7H7M17 7V17"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </span>
+
+      <span className="relative z-20 flex w-full flex-col gap-0.5">
+        <h4 className="truncate font-poppins text-[0.75rem] font-bold tracking-wide text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] md:text-[0.82rem]">
+          {title}
+        </h4>
+        {subtitle && (
+          <span className="mt-0.5">
+            <span className="inline-block rounded-[4px] bg-black/45 px-1.5 py-0.5 font-poppins text-[0.56rem] font-semibold tracking-wide text-white/90 backdrop-blur-[2px] md:text-[0.6rem]">
+              {subtitle}
+            </span>
+          </span>
+        )}
+        {(showRating || showReviews) && (
+          <span className="mt-0.5 flex items-center gap-1 font-poppins text-[0.58rem] font-semibold text-white/90 md:text-[0.62rem]">
+            {showRating && (
+              <span className="flex items-center gap-0.5 text-amber-300">
+                ★ {toDisplayNumber(rating).toFixed(1)}
+              </span>
+            )}
+            {showReviews && (
+              <span className="text-white/75">
+                ({toDisplayNumber(reviews)})
+              </span>
+            )}
+          </span>
+        )}
+      </span>
+    </>
+  );
+
+  if ("href" in props && props.href) {
+    return (
+      <Link to={props.href} aria-label={title} className={rootClassName}>
+        {content}
+      </Link>
     );
   }
-);
+
+  return (
+    <button
+      type="button"
+      aria-label={title}
+      onClick={props.onAction}
+      className={rootClassName}
+    >
+      {content}
+    </button>
+  );
+});
 
 PublicPlaceCard.displayName = "PublicPlaceCard";
 

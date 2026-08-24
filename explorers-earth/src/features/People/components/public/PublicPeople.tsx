@@ -13,6 +13,7 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import PersonTopPicksHero from "./PersonTopPicksHero";
 import PersonTopPicksMobileHero from "./PersonTopPicksMobileHero";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsernamePeople($username: String!) {
@@ -64,6 +65,22 @@ const PublicPeople = () => {
   }, [loading, outletContext]);
 
   const lists: PersonList[] = data?.personLists ?? [];
+  const analytics = useTrackAnalytics(
+    createAnalyticsOptions.people(accountDocumentId || "", username),
+  );
+
+  const owningListByPersonId = useMemo(() => {
+    const ownership = new Map<string, { documentId: string; name: string }>();
+    lists.forEach((list) => {
+      list.recommended_people?.forEach((person) => {
+        ownership.set(person.documentId, {
+          documentId: list.documentId,
+          name: list.List_Name,
+        });
+      });
+    });
+    return ownership;
+  }, [lists]);
 
   const allPeople = useMemo(() => {
     return deduplicatePeople(lists.flatMap((l) => l.recommended_people ?? []));
@@ -81,7 +98,16 @@ const PublicPeople = () => {
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
     setModalState({ open: true, person });
-  }, []);
+    const owningList = owningListByPersonId.get(person.documentId);
+    analytics.trackClick("person-card", {
+      id: person.documentId,
+      listId: person.person_list?.documentId || owningList?.documentId,
+      listName: person.person_list?.List_Name || owningList?.name,
+      title: person.name,
+      platform: person.primary_platform || undefined,
+      category: person.people_category?.Category_name,
+    });
+  }, [analytics, owningListByPersonId]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -91,6 +117,7 @@ const PublicPeople = () => {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied!");
     }
+    analytics.trackClick("share-button", { context: "people-header" });
   };
 
   const personCount = allPeople.length;
@@ -211,7 +238,13 @@ const PublicPeople = () => {
                         key={list.documentId}
                         list={list}
                         onPersonClick={handlePersonClick}
-                        onViewAll={() => navigate(`/${username}/people/${list.slug}`)}
+                        onViewAll={() => {
+                          analytics.trackClick("person-list", {
+                            listId: list.documentId,
+                            listName: list.List_Name,
+                          });
+                          navigate(`/${username}/people/${list.slug}`);
+                        }}
                       />
                     ))}
                   </div>

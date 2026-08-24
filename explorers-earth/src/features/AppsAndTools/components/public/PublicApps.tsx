@@ -13,6 +13,7 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import AppTopPicksHero from "./AppTopPicksHero";
 import AppTopPicksMobileHero from "./AppTopPicksMobileHero";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsernameApps($username: String!) {
@@ -64,6 +65,22 @@ const PublicApps = () => {
   }, [loading, outletContext]);
 
   const lists: AppList[] = data?.appLists ?? [];
+  const analytics = useTrackAnalytics(
+    createAnalyticsOptions.apps(accountDocumentId || "", username),
+  );
+
+  const owningListByAppId = useMemo(() => {
+    const ownership = new Map<string, { documentId: string; name: string }>();
+    lists.forEach((list) => {
+      list.recommended_apps?.forEach((app) => {
+        ownership.set(app.documentId, {
+          documentId: list.documentId,
+          name: list.List_Name,
+        });
+      });
+    });
+    return ownership;
+  }, [lists]);
 
   const allApps = useMemo(() => {
     return deduplicateApps(lists.flatMap((l) => l.recommended_apps ?? []));
@@ -81,7 +98,15 @@ const PublicApps = () => {
 
   const handleAppClick = useCallback((app: RecommendedApp) => {
     setModalState({ open: true, app });
-  }, []);
+    const owningList = owningListByAppId.get(app.documentId);
+    analytics.trackClick("app-card", {
+      id: app.documentId,
+      listId: app.app_list?.documentId || owningList?.documentId,
+      listName: app.app_list?.List_Name || owningList?.name,
+      title: app.title,
+      category: app.app_category?.name,
+    });
+  }, [analytics, owningListByAppId]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -91,6 +116,7 @@ const PublicApps = () => {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied!");
     }
+    analytics.trackClick("share-button", { context: "apps-header" });
   };
 
   const appCount = allApps.length;
@@ -214,7 +240,13 @@ const PublicApps = () => {
                         key={list.documentId}
                         list={list}
                         onAppClick={handleAppClick}
-                        onViewAll={() => navigate(`/${username}/apps/${list.slug}`)}
+                        onViewAll={() => {
+                          analytics.trackClick("app-list", {
+                            listId: list.documentId,
+                            listName: list.List_Name,
+                          });
+                          navigate(`/${username}/apps/${list.slug}`);
+                        }}
                       />
                     ))}
                   </div>

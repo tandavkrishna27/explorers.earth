@@ -83,6 +83,7 @@ const PublicBooks = () => {
     // Track which book was clicked — sends Recommendation_Id to Strapi
     analytics.trackClick('book-card', {
       id: book.documentId,
+      listId: book.book_list?.documentId,
       title: book.title,
       authors: book.authors?.join(', '),
       listName: book.book_list?.List_Name,

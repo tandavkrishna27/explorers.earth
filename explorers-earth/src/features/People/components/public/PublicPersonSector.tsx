@@ -15,6 +15,7 @@ import PersonDetailModal from "./PersonDetailModal";
 import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsernameForPersonSector($username: String!) {
@@ -44,6 +45,9 @@ const PublicPersonSector = () => {
 
   const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
   const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const analytics = useTrackAnalytics(
+    createAnalyticsOptions.people(accountDocumentId || "", username),
+  );
 
   const { data, loading: peopleLoading, error } = useQuery<{ personLists: PersonList[] }>(PUBLIC_PEOPLE_DATA, {
     variables: { accountDocumentId },
@@ -74,9 +78,30 @@ const PublicPersonSector = () => {
     );
   }, [allPeople, sectorSlug]);
 
+  const owningListByPersonId = useMemo(() => {
+    const ownership = new Map<string, { documentId: string; name: string }>();
+    lists.forEach((list) => {
+      list.recommended_people?.forEach((person) => {
+        ownership.set(person.documentId, {
+          documentId: list.documentId,
+          name: list.List_Name,
+        });
+      });
+    });
+    return ownership;
+  }, [lists]);
+
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
     setSelectedPerson(person);
-  }, []);
+    const owningList = owningListByPersonId.get(person.documentId);
+    analytics.trackClick("person-card", {
+      id: person.documentId,
+      listId: person.person_list?.documentId || owningList?.documentId,
+      listName: person.person_list?.List_Name || owningList?.name,
+      title: person.full_name || person.name,
+      category: person.people_category?.Category_name,
+    });
+  }, [analytics, owningListByPersonId]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -90,6 +115,10 @@ const PublicPersonSector = () => {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied!");
     }
+    analytics.trackClick("share-button", {
+      context: "people-sector-header",
+      sector: sectorSlug,
+    });
   };
 
   const pageTitle = `${sectorName} | ${creatorName}'s People Sector | explorers`;

@@ -1,6 +1,10 @@
 {
   "about": {
     "closing": "Ако сте любопитни.\nАко сте обмислени.\nАко сте готови да забавите и да погледнете по-близо —\nвече принадлежите тук.",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe",
     "section1": {
       "line1": "Изследването започва с осъзнаване.",
       "line2": "С забелязване на това, което другите пропускат.",
@@ -49,6 +53,7 @@
         "explorers story",
         "who we are explorers"
       ],
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow.",
       "title": "Explorers of Earth | About Us"
     },
     "subtitle": {
@@ -325,7 +330,8 @@
         "mobileNumberPlaceholder": "Въведете мобилния си номер",
         "next": "Напред",
         "title": "Контактни детайли"
-      }
+      },
+      "stepCount": "Step {{current}} of {{total}}"
     },
     "or": "или",
     "password": "Парола",
@@ -883,6 +889,38 @@
         "visible": "Видим",
         "whatsappNumber": "Номер WhatsApp"
       },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "Преместването на {{category}} е отменено. Редът е възстановен.",
+          "drop": "{{category}} е поставено на позиция {{position}} от {{total}}.",
+          "handle": "Плъзнете {{category}}",
+          "instructions": "Натиснете интервал или Enter, за да повдигнете. Използвайте стрелките или Home и End за преместване. Натиснете интервал или Enter, за да пуснете, или Escape за отказ.",
+          "lift": "{{category}} е повдигнато. Позиция {{position}} от {{total}}.",
+          "move": "{{category}} е преместено на позиция {{position}} от {{total}}."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
+      },
       "publicProfile": {
         "accountTypes": {
           "business": "Бизнес",
@@ -937,6 +975,65 @@
       "tabs": {
         "account": "Акаунт",
         "publicProfile": "Публичен Профил"
+      },
+      "themeAppearance": {
+        "accentTitle": "Accent color",
+        "firstView": {
+          "business": "Business",
+          "categoryFirst": "Recommendations — {{category}} first",
+          "gallery": "Gallery",
+          "help": "Category choices promote that category but keep all other public categories.",
+          "label": "First view",
+          "savedOrder": "Recommendations — saved order"
+        },
+        "presetTitle": "Select theme preset",
+        "recommendations": {
+          "categories": {
+            "apps": "Apps & Tools",
+            "books": "Books",
+            "games": "Games",
+            "guides": "Guides",
+            "movies": "Movies & Shows",
+            "music": "Music",
+            "people": "People",
+            "places": "Places",
+            "products": "Products"
+          },
+          "featured": "Featured",
+          "help": "Choose how recommendation categories are arranged on your public profile.",
+          "layoutLegend": "Recommendations layout",
+          "layouts": {
+            "featured": {
+              "description": "A larger first category followed by compact rows.",
+              "label": "Featured First"
+            },
+            "grid": {
+              "description": "A compact grid that makes categories easy to scan.",
+              "label": "Category Mosaic"
+            },
+            "shelves": {
+              "description": "Horizontal shelves with recommendation previews.",
+              "label": "Classic Shelves"
+            }
+          },
+          "moved": "{{category}} moved to position {{position}} of {{total}}",
+          "moveDown": "Move {{category}} down",
+          "moveUp": "Move {{category}} up",
+          "orderHelp": "Move categories into the order visitors should scan them.",
+          "orderTitle": "Category order",
+          "position": "{{position}} of {{total}}",
+          "previewCaption": "Illustrative preview",
+          "previewLabel": "Recommendations layout preview",
+          "publicVisibilityNote": "Public Visibility controls whether a category appears.",
+          "title": "Recommendations presentation"
+        },
+        "wallpaperLabel": "Wallpaper and cover style",
+        "wallpaperOptions": {
+          "ambientGradient": "Ambient mesh gradient",
+          "bannerTop": "Top cover banner photo",
+          "fullWallpaperImage": "Full-screen background image",
+          "solidColor": "Solid minimal background"
+        }
       }
     },
     "recommendations": {
@@ -1109,6 +1206,7 @@
         "linkCopied": "Link copied to clipboard!",
         "linkCopyError": "Failed to copy link. Please try again.",
         "listCreated": "Recommendation List Created Successfully!!!",
+        "listCreateFailed": "Failed to create recommendation list. Please try again.",
         "listPublished": "Списъкът с препоръки е публикуван успешно!",
         "listPublishError": "List Should have atleast one Recommended Place to be Published",
         "listUnpublished": "Списъкът с препоръки е премахнат от публикация успешно!",
@@ -1146,99 +1244,101 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "tagline": "Нека вашите препоръки пътуват по света.",
+    "copyright": "© 2025 изследователи. Всички права запазени.",
     "email": "hello@explorers.earth",
-    "sections": {
+    "freeForever": "Свободен завинаги.",
+    "links": {
+      "about": "За",
+      "contact": "Контакт",
+      "cookies": "Политика за бисквитки",
+      "faq": "ЧЗВ",
+      "howItWorks": "Как работи",
+      "privacy": "Политика за поверителност",
       "product": "Продукт",
+      "shareAnywhere": "Споделяйте навсякъде",
+      "terms": "Правила и условия",
+      "useCases": "Use Cases"
+    },
+    "madeWithLove": "Направено с любов на земята",
+    "sections": {
+      "company": "Компания",
       "contact": "Контакт",
       "legal": "Законни",
-      "company": "Компания"
+      "product": "Продукт"
     },
-    "links": {
-      "howItWorks": "Как работи",
-      "faq": "ЧЗВ",
-      "contact": "Контакт",
-      "about": "За",
-      "terms": "Правила и условия",
-      "privacy": "Политика за поверителност",
-      "cookies": "Политика за бисквитки",
-      "product": "Продукт",
-      "shareAnywhere": "Споделяйте навсякъде"
-    },
-    "copyright": "© 2025 изследователи. Всички права запазени.",
-    "madeWithLove": "Направено с любов на земята",
-    "freeForever": "Свободен завинаги."
+    "tagline": "Нека вашите препоръки пътуват по света."
   },
   "header": {
+    "auth": {
+      "claimFree": "Заявете безплатно",
+      "claimFreePage": "Изискайте безплатна страница",
+      "login": "Вход",
+      "signUp": "Регистрация"
+    },
     "nav": {
-      "howItWorks": "Как работи",
-      "whoIsFor": "За кого е",
-      "faq": "ЧЗВ",
       "about": "За нас",
+      "closeMenu": "Затваряне на навигационното меню",
       "contact": "Контакт",
+      "faq": "ЧЗВ",
+      "howItWorks": "Как работи",
+      "openMenu": "Отворете менюто за навигация",
       "product": "Продукт",
       "share": "Споделете",
-      "openMenu": "Отворете менюто за навигация",
-      "closeMenu": "Затваряне на навигационното меню"
-    },
-    "auth": {
-      "login": "Вход",
-      "signUp": "Регистрация",
-      "claimFreePage": "Изискайте безплатна страница",
-      "claimFree": "Заявете безплатно"
+      "useCases": "Use Cases",
+      "whoIsFor": "За кого е"
     }
   },
   "hero": {
+    "badge": "Свободен завинаги",
+    "countries": {
+      "ae": "ОАЕ",
+      "au": "Австралия",
+      "br": "Бразилия",
+      "de": "Германия",
+      "fr": "Франция",
+      "gb": "Великобритания",
+      "in": "Индия",
+      "jp": "Япония",
+      "sg": "Сингапур",
+      "us": "САЩ"
+    },
+    "ctaButton": "Заявете своята страница Explorer",
+    "globalStrip": "Explorers споделят препоръки по целия свят",
     "headline": "Всички ваши препоръки - една връзка, един QR",
-    "subtext": "Създайте една споделяема страница за всичко, което препоръчвате – места, хора, продукти, книги, филми, предавания, музика, игри, приложения и др.",
+    "headlinePrefix": "Всичко твое",
+    "headlineSuffix": "в една връзка и QR.",
     "inputLabel": "Заявете своя URL адрес за изследователи:",
     "inputPlaceholder": "вашето име",
-    "ctaButton": "Заявете своята страница Explorer",
-    "signupPrompt": "Регистрирайте се, за да получите своя сега",
-    "headlinePrefix": "Всичко твое",
+    "preview": {
+      "items": {
+        "book": "книга",
+        "game": "Игра",
+        "music": "Музика",
+        "place": "място"
+      },
+      "onePageText": "Споделете го като връзка, QR, съобщение или ръководство.",
+      "onePageTitle": "Една страница за всяка добра препоръка.",
+      "screenAlt": "Екран с препоръки за страница Explorer",
+      "todayList": "Днешният списък"
+    },
     "rotatingWords": [
       "препоръки",
       "курации",
       "колекции",
       "любими"
     ],
-    "headlineSuffix": "в една връзка и QR.",
-    "badge": "Свободен завинаги",
-    "globalStrip": "Explorers споделят препоръки по целия свят",
-    "preview": {
-      "todayList": "Днешният списък",
-      "onePageTitle": "Една страница за всяка добра препоръка.",
-      "onePageText": "Споделете го като връзка, QR, съобщение или ръководство.",
-      "items": {
-        "place": "място",
-        "book": "книга",
-        "music": "Музика",
-        "game": "Игра"
-      },
-      "screenAlt": "Екран с препоръки за страница Explorer"
-    },
-    "countries": {
-      "in": "Индия",
-      "us": "САЩ",
-      "gb": "Великобритания",
-      "jp": "Япония",
-      "fr": "Франция",
-      "au": "Австралия",
-      "br": "Бразилия",
-      "ae": "ОАЕ",
-      "sg": "Сингапур",
-      "de": "Германия"
-    }
+    "signupPrompt": "Регистрирайте се, за да получите своя сега",
+    "subtext": "Създайте една споделяема страница за всичко, което препоръчвате – места, хора, продукти, книги, филми, предавания, музика, игри, приложения и др."
   },
   "languageModal": {
     "close": "затвори",
-    "searchPlaceholder": "Търсене на езици...",
-    "title": "Изберете език",
-    "subtitle": "Изберете езика, който искате да използвате в изследователите.",
-    "noLanguagesFound": "Няма намерени езици",
-    "tryDifferentSearch": "Опитайте с друга дума за търсене.",
+    "escToClose": "Натиснете Esc, за да затворите",
     "languagesAvailable": "{{count}} налични езици",
-    "escToClose": "Натиснете Esc, за да затворите"
+    "noLanguagesFound": "Няма намерени езици",
+    "searchPlaceholder": "Търсене на езици...",
+    "subtitle": "Изберете езика, който искате да използвате в изследователите.",
+    "title": "Изберете език",
+    "tryDifferentSearch": "Опитайте с друга дума за търсене."
   },
   "legal": {
     "cookies": {
@@ -1280,6 +1380,38 @@
       "warning": "Any QR codes or links with your old username will no longer work — you'll need to update and re-share them."
     }
   },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
     "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
@@ -1297,210 +1429,351 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
+    "analytics": {
+      "dashboardTitle": "Табло за анализ",
+      "engagement": "Годеж",
+      "headline": "Вижте с какво се занимават хората.",
+      "last30Days": "Последните 30 дни",
+      "livePreview": "Преглед на живо",
+      "referrals": "Реферали",
+      "scanningDesc": "Вижте как хората достигат до вашата страница от връзки, QR кодове и споделени допирни точки.",
+      "scanningTitle": "Разберете сканирането и щракванията",
+      "spotsDesc": "Научете кои места, продукти, списъци и ръководства получават най-много любов.",
+      "spotsTitle": "Намерете топ препоръки",
+      "subtext": "Разберете кои препоръки хората отварят, запазват и преразглеждат във вашите връзки и QR кодове.",
+      "totalScans": "Общо сканиране",
+      "workingDesc": "Проследявайте кои препоръки хората отварят, запазват и преглеждат отново.",
+      "workingTitle": "Вижте какво работи"
+    },
     "createCustomize": {
-      "headline": "Създайте своята Explorer страница за минути",
-      "subtext": "Съберете това, което препоръчвате, организирайте го по свой начин и го споделете навсякъде с една връзка или QR.",
       "bulletPoints": {
         "addSpots": {
-          "title": "Добавете места, преживявания, маршрути, звуци и бележки",
-          "description": ""
-        },
-        "organize": {
-          "title": "Организирайте по местоположение или интерес",
-          "description": ""
+          "description": "",
+          "title": "Добавете места, преживявания, маршрути, звуци и бележки"
         },
         "generate": {
-          "title": "Редактирайте по всяко време - вашата връзка винаги остава същата",
-          "description": ""
+          "description": "",
+          "title": "Редактирайте по всяко време - вашата връзка винаги остава същата"
+        },
+        "organize": {
+          "description": "",
+          "title": "Организирайте по местоположение или интерес"
         },
         "share": {
-          "title": "Споделяйте цифрово или чрез QR в реалния свят",
-          "description": ""
+          "description": "",
+          "title": "Споделяйте цифрово или чрез QR в реалния свят"
         }
       },
+      "headline": "Създайте своята Explorer страница за минути",
       "mockup": {
-        "title": "Моите препоръки",
-        "addPlace": "Добавяне на място"
+        "addPlace": "Добавяне на място",
+        "title": "Моите препоръки"
       },
       "steps": [
         {
-          "title": "Добавете каквото препоръчвате",
-          "body": "Места, хора, продукти, книги, филми, предавания, музика, игри, приложения, ръководства и бележки."
+          "body": "Места, хора, продукти, книги, филми, предавания, музика, игри, приложения, ръководства и бележки.",
+          "title": "Добавете каквото препоръчвате"
         },
         {
-          "title": "Организирайте го по свой начин",
-          "body": "Групирайте по град, тема, списък, категория, пътуване или момент, така че хората да могат да изследват естествено."
+          "body": "Групирайте по град, тема, списък, категория, пътуване или момент, така че хората да могат да изследват естествено.",
+          "title": "Организирайте го по свой начин"
         },
         {
-          "title": "Споделете една връзка или QR",
-          "body": "Вашата страница се актуализира по всяко време, докато същата връзка и QR продължават да работят навсякъде."
-        }
-      ]
-    },
-    "shareAnywhere": {
-      "headline": "Една връзка. Много пътувания.",
-      "subtext": "Вашата връзка Explorer се превръща в живо ръководство - нещо, което хората могат да запазят, преразгледат и изследват със собствено темпо.\n\nСподелете го в профил, съобщение, маса, стена или карта.\nКъдето и да отиде, вашата перспектива върви с него.",
-      "scanText": "Сканирайте за местни препоръки",
-      "storefrontText": "Перфектен за витрини",
-      "instagramTitle": "Добавете към вашата Instagram/Tiktok биография",
-      "instagramDesc": "Споделете незабавно с вашите последователи",
-      "menuTitle": "Отпечатайте го за Storefront",
-      "menuDesc": "Лесни физически контактни точки",
-      "welcomeTitle": "Включете в книгите за добре дошли",
-      "welcomeDesc": "Идеално за домакини и водачи",
-      "cafeMenu": "Кафе меню",
-      "tokyoFoodGuide": "Моят гид за храна в Токио explorers.earth/jane",
-      "cards": [
-        {
-          "title": "Линк в био",
-          "eyebrow": "Готов за профил"
-        },
-        {
-          "title": "QR кодове",
-          "eyebrow": "Готов за офлайн"
-        },
-        {
-          "title": "Съобщения",
-          "eyebrow": "Готов за чат"
-        },
-        {
-          "title": "Добре дошли водачи",
-          "eyebrow": "Готов за гости"
+          "body": "Вашата страница се актуализира по всяко време, докато същата връзка и QR продължават да работят навсякъде.",
+          "title": "Споделете една връзка или QR"
         }
       ],
+      "subtext": "Съберете това, което препоръчвате, организирайте го по свой начин и го споделете навсякъде с една връзка или QR."
+    },
+    "faq": {
+      "error": "Грешка при зареждане на FAQ. Моля, опитайте отново по-късно.",
+      "fallbackItems": [
+        {
+          "Answer": "Места, хора, продукти, книги, филми, предавания, музика, игри, приложения, ръководства и бележки.",
+          "Question": "Какво мога да добавя към моята страница Explorer?",
+          "Sequence": 1
+        },
+        {
+          "Answer": "да Вашата Explorer страница може да бъде споделена като връзка или QR за профили, съобщения, таблици, карти и печатни ръководства.",
+          "Question": "Мога ли да го споделя с код QR?",
+          "Sequence": 2
+        },
+        {
+          "Answer": "да Можете да поддържате страницата си свежа, докато същата връзка и QR продължават да работят.",
+          "Question": "Мога ли да актуализирам препоръките си по-късно?",
+          "Sequence": 3
+        },
+        {
+          "Answer": "да Страницата може ясно да комуникира безплатното обещание без тежък език за плащане.",
+          "Question": "Изследователите безплатни ли са завинаги?",
+          "Sequence": 4
+        }
+      ],
+      "headline": "Имате въпроси?",
+      "loading": "Зареждане на FAQ...",
+      "subtext": "Отговорихме на най-често срещаните неща, които хората питат преди да започнат."
+    },
+    "features": {
+      "communityDriven": {
+        "title": "Откриване, движено от общността"
+      },
+      "livingGuides": {
+        "title": "Живи, редактируеми ръководства"
+      },
+      "locationAware": {
+        "title": "Препоръки, които отчитат местоположението"
+      },
+      "privacyFirst": {
+        "title": "Поверителност на първо място по дизайн"
+      },
+      "simpleLinks": {
+        "title": "Прости връзки и споделяне на QR"
+      },
+      "soundPlaylists": {
+        "title": "Опционален звук и плейлисти"
+      },
+      "subtitle": "Прости, обмислени функции, които позволяват на вашите препоръки да блестят.",
+      "title": "Създаден да остане настрана"
+    },
+    "finalCTA": {
+      "creating": "Създаване на вашия explorers...",
+      "ctaButton": "Резервирайте вашия explorers – Безплатно завинаги",
+      "disclaimer": "Не се изисква кредитна карта • Настройка за 2 минути",
+      "headline": "Започнете да споделяте света си днес",
+      "subtext": "Резервирайте безплатния си explorers и преобразувайте местните си прозрения в споделяеми ръководства."
+    },
+    "localTunes": {
+      "body": "Изследването не е само визуално. Звукът носи памет, контекст и емоция.\n\nTunes ви позволява да събирате и споделяте саундтракове за места, пътувания и настроения — независимо дали е музика, открита по пътя, или звуци, които определят място за вас.\n\nБезпроблемно свързано с вашия Explorer профил.",
+      "closingStatement": "Tunes е <strong>безплатен</strong> за изследване, а за платени функции можете да надстроите по-късно.",
+      "exploreButton": "Изследвайте Tunes",
+      "features": {
+        "karaokeReady": {
+          "description": "Перфектно за караоке вечери с колаборативни плейлисти и заявки за песни в реално време.",
+          "title": "Готово за Караоке"
+        },
+        "qrCodeSharing": {
+          "description": "Споделете вашето музикално преживяване с просто сканиране на QR код — не са необходими приложения или изтегляния.",
+          "title": "Споделяне на QR Код"
+        },
+        "realtimeCollaboration": {
+          "description": "Позволете на гостите да добавят песни към вашия плейлист веднага, като запазите пълен контрол върху това, което се възпроизвежда.",
+          "title": "Сътрудничество в Реално Време"
+        },
+        "silentParties": {
+          "description": "Организирайте уникални тихи партита, където всички слушат чрез собствените си слушалки.",
+          "title": "Тихи Партита"
+        },
+        "voteLikeSystem": {
+          "description": "Гостите могат да гласуват за любимите си песни, за да влияят на опашката на плейлиста в реално време.",
+          "title": "Система за Гласуване и Харесване"
+        },
+        "youtubeIntegration": {
+          "description": "Интегрирайте се безпроблемно с YouTube, за да получите достъп до милиони песни и да създадете перфектната атмосфера.",
+          "title": "Интеграция с YouTube"
+        }
+      },
+      "featuresHeading": "Мощни Функции",
+      "mainHeading": "Tunes",
+      "title": "Слушайте, докато изследвате",
+      "venueHeading": "Перфектно за Всяко Място",
+      "venues": {
+        "barsPubs": "Барове и Кръчми",
+        "coffeeShops": "Кафенета",
+        "eventsWeddings": "Събития и Сватби",
+        "gymsFitness": "Фитнес и Спортни Зали",
+        "restaurants": "Ресторанти",
+        "retailStores": "Търговски Обекти"
+      }
+    },
+    "productCategories": {
+      "actions": [
+        "Запазване",
+        "Организирайте",
+        "Споделете"
+      ],
+      "categories": [
+        {
+          "description": "Ресторанти, квартали, музеи, маршрути и скрити скъпоценни камъни, които хората наистина могат да посетят.",
+          "id": "places",
+          "label": "Места",
+          "title": "Местни места, водачи и маршрути"
+        },
+        {
+          "description": "Създатели, основатели, водачи, художници, учители, експерти и хора, които са оформили вашия вкус.",
+          "id": "people",
+          "label": "хора",
+          "title": "Хора, които си струва да следвате или да се учите от тях"
+        },
+        {
+          "description": "Книги, които продължавате да препоръчвате в чатове, бележки, бюлетини и разговори за пътуване.",
+          "id": "books",
+          "label": "Книги",
+          "title": "Книги и списъци за четене"
+        },
+        {
+          "description": "Филми, сериали, документални филми и списъци за гледане за всякакъв вид настроение или публика.",
+          "id": "movies",
+          "label": "Филми и телевизия",
+          "title": "Филми, предавания и списъци за гледане"
+        },
+        {
+          "description": "Игри, куестове, светове и преживявания, които хората трябва да изпробват следващите.",
+          "id": "games",
+          "label": "игри",
+          "title": "Игри и светове за изследване"
+        },
+        {
+          "description": "Изпълнители, албуми, песни, плейлисти и саундтраци, свързани с места и моменти.",
+          "id": "music",
+          "label": "Музика",
+          "title": "Албуми, изпълнители и плейлисти"
+        },
+        {
+          "description": "Ежедневни любими неща, екипировка за пътуване, инструменти за творци, подаръци и продукти, които си струва да спестите.",
+          "id": "products",
+          "label": "Продукти",
+          "title": "Продукти, които хората наистина препоръчват"
+        },
+        {
+          "description": "Софтуер, уебсайтове, шаблони, инструменти и ресурси, които правят живота по-лесен.",
+          "id": "apps",
+          "label": "Приложения и инструменти",
+          "title": "Приложения, инструменти и полезни връзки"
+        }
+      ],
+      "headline": "Препоръчайте повече от места.",
+      "overlayLabel": "Explorer страница",
+      "subtext": "Създайте една страница за места, хора, продукти, книги, филми, предавания, музика, игри, приложения и инструменти.",
+      "visualDetails": {
+        "apps": [
+          "Инструменти за планиране",
+          "Полезни приложения",
+          "Връзки към ресурси"
+        ],
+        "products": [
+          "Туристическа екипировка",
+          "Ежедневно носене",
+          "Комплект за създаване"
+        ]
+      },
+      "visualLabels": {
+        "apps": "Полезен стек",
+        "products": "Истински фаворити"
+      }
+    },
+    "referEarn": {
+      "comingSoon": "Програма за награди от препоръки (скоро)",
+      "earnedThisMonth": "Печелено този месец",
+      "headline": "Споделяйте, препоръчвайте и печелете",
+      "networkTitle": "Изградете мрежата си и печелете автоматично",
+      "passiveTitle": "Преобразувайте препоръките в пасивни награди",
+      "rewardsDesc": "Получавайте пари, когато хората използват вашите препоръки",
+      "rewardsTitle": "Печелете награди",
+      "subtext": "Преобразувайте препоръките си в пасивни награди — получавайте кредит, когато други използват вашия QR."
+    },
+    "shareAnywhere": {
+      "cafeMenu": "Кафе меню",
+      "cards": [
+        {
+          "eyebrow": "Готов за профил",
+          "title": "Линк в био"
+        },
+        {
+          "eyebrow": "Готов за офлайн",
+          "title": "QR кодове"
+        },
+        {
+          "eyebrow": "Готов за чат",
+          "title": "Съобщения"
+        },
+        {
+          "eyebrow": "Готов за гости",
+          "title": "Добре дошли водачи"
+        }
+      ],
+      "headline": "Една връзка. Много пътувания.",
+      "instagramDesc": "Споделете незабавно с вашите последователи",
+      "instagramTitle": "Добавете към вашата Instagram/Tiktok биография",
+      "menuDesc": "Лесни физически контактни точки",
+      "menuTitle": "Отпечатайте го за Storefront",
+      "profileCarouselCaption": "Профили Instagram & TikTok",
+      "qrEverywhereDesc": "Перфектен за всяко място",
+      "qrEverywhereTitle": "Добавете връзката QR навсякъде",
+      "scanText": "Сканирайте за местни препоръки",
+      "storefrontText": "Перфектен за витрини",
+      "subtext": "Вашата връзка Explorer се превръща в живо ръководство - нещо, което хората могат да запазят, преразгледат и изследват със собствено темпо.\n\nСподелете го в профил, съобщение, маса, стена или карта.\nКъдето и да отиде, вашата перспектива върви с него.",
+      "tokyoFoodGuide": "Моят гид за храна в Токио explorers.earth/jane",
       "visual": {
-        "scanForPicks": "Сканирайте за избор",
-        "messageBubble": "Ето моя списък от Киото",
-        "welcomeGuide": "Добре дошъл водач",
         "guideItems": [
           "Закуска наблизо",
           "Музеен маршрут",
           "Вечерна разходка"
         ],
-        "savedRecommendation": "Запазена препоръка"
+        "messageBubble": "Ето моя списък от Киото",
+        "savedRecommendation": "Запазена препоръка",
+        "scanForPicks": "Сканирайте за избор",
+        "welcomeGuide": "Добре дошъл водач"
       },
-      "profileCarouselCaption": "Профили Instagram & TikTok",
-      "qrEverywhereTitle": "Добавете връзката QR навсякъде",
-      "qrEverywhereDesc": "Перфектен за всяко място"
+      "welcomeDesc": "Идеално за домакини и водачи",
+      "welcomeTitle": "Включете в книгите за добре дошли"
     },
-    "analytics": {
-      "headline": "Вижте с какво се занимават хората.",
-      "subtext": "Разберете кои препоръки хората отварят, запазват и преразглеждат във вашите връзки и QR кодове.",
-      "workingTitle": "Вижте какво работи",
-      "workingDesc": "Проследявайте кои препоръки хората отварят, запазват и преглеждат отново.",
-      "scanningTitle": "Разберете сканирането и щракванията",
-      "scanningDesc": "Вижте как хората достигат до вашата страница от връзки, QR кодове и споделени допирни точки.",
-      "spotsTitle": "Намерете топ препоръки",
-      "spotsDesc": "Научете кои места, продукти, списъци и ръководства получават най-много любов.",
-      "dashboardTitle": "Табло за анализ",
-      "last30Days": "Последните 30 дни",
-      "totalScans": "Общо сканиране",
-      "engagement": "Годеж",
-      "referrals": "Реферали",
-      "livePreview": "Преглед на живо"
-    },
-    "referEarn": {
-      "headline": "Споделяйте, препоръчвайте и печелете",
-      "subtext": "Преобразувайте препоръките си в пасивни награди — получавайте кредит, когато други използват вашия QR.",
-      "comingSoon": "Програма за награди от препоръки (скоро)",
-      "rewardsTitle": "Печелете награди",
-      "rewardsDesc": "Получавайте пари, когато хората използват вашите препоръки",
-      "earnedThisMonth": "Печелено този месец",
-      "passiveTitle": "Преобразувайте препоръките в пасивни награди",
-      "networkTitle": "Изградете мрежата си и печелете автоматично"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Слушайте, докато изследвате",
-      "body": "Изследването не е само визуално. Звукът носи памет, контекст и емоция.\n\nTunes ви позволява да събирате и споделяте саундтракове за места, пътувания и настроения — независимо дали е музика, открита по пътя, или звуци, които определят място за вас.\n\nБезпроблемно свързано с вашия Explorer профил.",
-      "exploreButton": "Изследвайте Tunes",
-      "featuresHeading": "Мощни Функции",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Сътрудничество в Реално Време",
-          "description": "Позволете на гостите да добавят песни към вашия плейлист веднага, като запазите пълен контрол върху това, което се възпроизвежда."
+    "testimonials": {
+      "headline": "Обичан от пътници, творци и домакини",
+      "items": [
+        {
+          "id": "1",
+          "location": "Мумбай, Индия",
+          "name": "Прия Шарма",
+          "quote": "изследователите промениха начина, по който споделям знанията си за пътуване. Моите последователи обичат да получават незабавен достъп до моите подбрани препоръки!",
+          "role": "Travel Blogger"
         },
-        "qrCodeSharing": {
-          "title": "Споделяне на QR Код",
-          "description": "Споделете вашето музикално преживяване с просто сканиране на QR код — не са необходими приложения или изтегляния."
+        {
+          "id": "2",
+          "location": "Делхи, Индия",
+          "name": "Радж Пател",
+          "quote": "Гостите ми наистина харесват персонализирания код QR в техния комплект за добре дошли. Това се превърна в моето отличително докосване!",
+          "role": "Airbnb Хост"
         },
-        "youtubeIntegration": {
-          "title": "Интеграция с YouTube",
-          "description": "Интегрирайте се безпроблемно с YouTube, за да получите достъп до милиони песни и да създадете перфектната атмосфера."
+        {
+          "id": "3",
+          "location": "Токио, Япония",
+          "name": "Юки Танака",
+          "quote": "Споделяме нашите изследователи с клиенти, за да препоръчаме други местни места. Създаде невероятни връзки в общността.",
+          "role": "Собственик на ресторант"
         },
-        "voteLikeSystem": {
-          "title": "Система за Гласуване и Харесване",
-          "description": "Гостите могат да гласуват за любимите си песни, за да влияят на опашката на плейлиста в реално време."
+        {
+          "id": "4",
+          "location": "Сао Пауло, Бразилия",
+          "name": "Мария Силва",
+          "quote": "explores ми помага да разширя опита си отвъд часовете за обиколка. Клиентите имат достъп до моите препоръки по всяко време!",
+          "role": "Екскурзовод"
         },
-        "silentParties": {
-          "title": "Тихи Партита",
-          "description": "Организирайте уникални тихи партита, където всички слушат чрез собствените си слушалки."
+        {
+          "id": "5",
+          "location": "Сидни, Австралия",
+          "name": "Джеймс Уилсън",
+          "quote": "Като инфлуенсър в пътуванията, изследователите правят толкова лесно споделянето на любимите ми места с моята публика. Кодовата функция QR е брилянтна!",
+          "role": "Пътуващ инфлуенсър"
         },
-        "karaokeReady": {
-          "title": "Готово за Караоке",
-          "description": "Перфектно за караоке вечери с колаборативни плейлисти и заявки за песни в реално време."
+        {
+          "id": "6",
+          "location": "Париж, Франция",
+          "name": "Софи Мартин",
+          "quote": "Използвам изследователи, за да създавам пешеходни обиколки за моите клиенти. Те могат да сканират QR и да изследват със собствено темпо!",
+          "role": "Местен гид"
         }
-      },
-      "venueHeading": "Перфектно за Всяко Място",
-      "venues": {
-        "barsPubs": "Барове и Кръчми",
-        "restaurants": "Ресторанти",
-        "coffeeShops": "Кафенета",
-        "eventsWeddings": "Събития и Сватби",
-        "retailStores": "Търговски Обекти",
-        "gymsFitness": "Фитнес и Спортни Зали"
-      },
-      "closingStatement": "Tunes е <strong>безплатен</strong> за изследване, а за платени функции можете да надстроите по-късно."
+      ],
+      "scrollLeft": "Превъртете препоръките наляво",
+      "scrollRight": "Превъртете препоръките надясно",
+      "subtext": "Вижте как хората по света използват изследователите, за да споделят най-важното."
     },
     "whoIsFor": {
-      "headline": "Създаден за хора, чийто вкус помага на другите.",
-      "subtext": "Независимо дали споделяте град, рафт, продуктов списък, плейлист или ръководство за гости, изследователите предоставят на вашите препоръки дом.",
       "cards": [
         "Лични изследователи",
         "Създатели и куратори",
         "Домакини и фирми",
         "Марки и организации"
       ],
-      "useCases": {
-        "travelers": "Пътуващите",
-        "travelersDesc": "Споделяйте открити скъпоценни камъни с други изследователи",
-        "influencers": "Инфлуенсъри",
-        "influencersDesc": "Осигурете приходи от местните знания и изградете общност",
-        "airbnbHosts": "Airbnb Хостове",
-        "airbnbHostsDesc": "Подобрете изживяването на гостите с местни прозрения",
-        "hotels": "хотели",
-        "hotelsDesc": "Предоставете подбрани местни препоръки",
-        "restaurants": "Ресторанти",
-        "restaurantsDesc": "Кръстосано популяризиране с други местни фирми",
-        "cafes": "кафенета",
-        "cafesDesc": "Споделяйте любимите неща в квартала с клиентите",
-        "localGuides": "Местни гидове",
-        "localGuidesDesc": "Разширете експертния опит извън отделните обиколки",
-        "creators": "Създатели",
-        "creatorsDesc": "Добавете стойност отвъд съдържанието с полезни съвети",
-        "tourOperators": "Туроператори",
-        "tourOperatorsDesc": "Разширете опита отвъд планираните обиколки",
-        "anyBusiness": "Всеки бизнес",
-        "anyBusinessDesc": "Изградете общност и лоялност на клиентите"
-      },
-      "explorerLabel": "Explorer",
-      "visual": {
-        "personal": [
-          "кафене",
-          "книга",
-          "пътека",
-          "Албум",
-          "филм",
-          "Игра"
-        ],
-        "creators": [
-          "#1",
-          "#2",
-          "#3",
-          "#4"
-        ],
-        "hostsQr": "QR"
-      },
       "chips": [
         "Пътуващите",
         "Местните",
@@ -1532,198 +1805,79 @@
         "Летища",
         "неправителствени организации",
         "Правителствени екипи"
-      ]
-    },
-    "testimonials": {
-      "headline": "Обичан от пътници, творци и домакини",
-      "subtext": "Вижте как хората по света използват изследователите, за да споделят най-важното.",
-      "scrollLeft": "Превъртете препоръките наляво",
-      "scrollRight": "Превъртете препоръките надясно",
-      "items": [
-        {
-          "id": "1",
-          "name": "Прия Шарма",
-          "role": "Travel Blogger",
-          "location": "Мумбай, Индия",
-          "quote": "изследователите промениха начина, по който споделям знанията си за пътуване. Моите последователи обичат да получават незабавен достъп до моите подбрани препоръки!"
-        },
-        {
-          "id": "2",
-          "name": "Радж Пател",
-          "role": "Airbnb Хост",
-          "location": "Делхи, Индия",
-          "quote": "Гостите ми наистина харесват персонализирания код QR в техния комплект за добре дошли. Това се превърна в моето отличително докосване!"
-        },
-        {
-          "id": "3",
-          "name": "Юки Танака",
-          "role": "Собственик на ресторант",
-          "location": "Токио, Япония",
-          "quote": "Споделяме нашите изследователи с клиенти, за да препоръчаме други местни места. Създаде невероятни връзки в общността."
-        },
-        {
-          "id": "4",
-          "name": "Мария Силва",
-          "role": "Екскурзовод",
-          "location": "Сао Пауло, Бразилия",
-          "quote": "explores ми помага да разширя опита си отвъд часовете за обиколка. Клиентите имат достъп до моите препоръки по всяко време!"
-        },
-        {
-          "id": "5",
-          "name": "Джеймс Уилсън",
-          "role": "Пътуващ инфлуенсър",
-          "location": "Сидни, Австралия",
-          "quote": "Като инфлуенсър в пътуванията, изследователите правят толкова лесно споделянето на любимите ми места с моята публика. Кодовата функция QR е брилянтна!"
-        },
-        {
-          "id": "6",
-          "name": "Софи Мартин",
-          "role": "Местен гид",
-          "location": "Париж, Франция",
-          "quote": "Използвам изследователи, за да създавам пешеходни обиколки за моите клиенти. Те могат да сканират QR и да изследват със собствено темпо!"
-        }
-      ]
-    },
-    "faq": {
-      "headline": "Имате въпроси?",
-      "subtext": "Отговорихме на най-често срещаните неща, които хората питат преди да започнат.",
-      "loading": "Зареждане на FAQ...",
-      "error": "Грешка при зареждане на FAQ. Моля, опитайте отново по-късно.",
-      "fallbackItems": [
-        {
-          "Sequence": 1,
-          "Question": "Какво мога да добавя към моята страница Explorer?",
-          "Answer": "Места, хора, продукти, книги, филми, предавания, музика, игри, приложения, ръководства и бележки."
-        },
-        {
-          "Sequence": 2,
-          "Question": "Мога ли да го споделя с код QR?",
-          "Answer": "да Вашата Explorer страница може да бъде споделена като връзка или QR за профили, съобщения, таблици, карти и печатни ръководства."
-        },
-        {
-          "Sequence": 3,
-          "Question": "Мога ли да актуализирам препоръките си по-късно?",
-          "Answer": "да Можете да поддържате страницата си свежа, докато същата връзка и QR продължават да работят."
-        },
-        {
-          "Sequence": 4,
-          "Question": "Изследователите безплатни ли са завинаги?",
-          "Answer": "да Страницата може ясно да комуникира безплатното обещание без тежък език за плащане."
-        }
-      ]
-    },
-    "features": {
-      "title": "Създаден да остане настрана",
-      "subtitle": "Прости, обмислени функции, които позволяват на вашите препоръки да блестят.",
-      "simpleLinks": {
-        "title": "Прости връзки и споделяне на QR"
-      },
-      "livingGuides": {
-        "title": "Живи, редактируеми ръководства"
-      },
-      "locationAware": {
-        "title": "Препоръки, които отчитат местоположението"
-      },
-      "soundPlaylists": {
-        "title": "Опционален звук и плейлисти"
-      },
-      "privacyFirst": {
-        "title": "Поверителност на първо място по дизайн"
-      },
-      "communityDriven": {
-        "title": "Откриване, движено от общността"
-      }
-    },
-    "finalCTA": {
-      "headline": "Започнете да споделяте света си днес",
-      "subtext": "Резервирайте безплатния си explorers и преобразувайте местните си прозрения в споделяеми ръководства.",
-      "ctaButton": "Резервирайте вашия explorers – Безплатно завинаги",
-      "disclaimer": "Не се изисква кредитна карта • Настройка за 2 минути",
-      "creating": "Създаване на вашия explorers..."
-    },
-    "productCategories": {
-      "headline": "Препоръчайте повече от места.",
-      "subtext": "Създайте една страница за места, хора, продукти, книги, филми, предавания, музика, игри, приложения и инструменти.",
-      "actions": [
-        "Запазване",
-        "Организирайте",
-        "Споделете"
       ],
-      "overlayLabel": "Explorer страница",
-      "visualLabels": {
-        "products": "Истински фаворити",
-        "apps": "Полезен стек"
-      },
-      "visualDetails": {
-        "products": [
-          "Туристическа екипировка",
-          "Ежедневно носене",
-          "Комплект за създаване"
-        ],
-        "apps": [
-          "Инструменти за планиране",
-          "Полезни приложения",
-          "Връзки към ресурси"
-        ]
-      },
-      "categories": [
-        {
-          "id": "places",
-          "label": "Места",
-          "title": "Местни места, водачи и маршрути",
-          "description": "Ресторанти, квартали, музеи, маршрути и скрити скъпоценни камъни, които хората наистина могат да посетят."
+      "explore": "See this perspective",
+      "explorerLabel": "Explorer",
+      "eyebrow": "Ways to use explorers",
+      "headline": "Създаден за хора, чийто вкус помага на другите.",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
         },
-        {
-          "id": "people",
-          "label": "хора",
-          "title": "Хора, които си струва да следвате или да се учите от тях",
-          "description": "Създатели, основатели, водачи, художници, учители, експерти и хора, които са оформили вашия вкус."
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
         },
-        {
-          "id": "books",
-          "label": "Книги",
-          "title": "Книги и списъци за четене",
-          "description": "Книги, които продължавате да препоръчвате в чатове, бележки, бюлетини и разговори за пътуване."
-        },
-        {
-          "id": "movies",
-          "label": "Филми и телевизия",
-          "title": "Филми, предавания и списъци за гледане",
-          "description": "Филми, сериали, документални филми и списъци за гледане за всякакъв вид настроение или публика."
-        },
-        {
-          "id": "games",
-          "label": "игри",
-          "title": "Игри и светове за изследване",
-          "description": "Игри, куестове, светове и преживявания, които хората трябва да изпробват следващите."
-        },
-        {
-          "id": "music",
-          "label": "Музика",
-          "title": "Албуми, изпълнители и плейлисти",
-          "description": "Изпълнители, албуми, песни, плейлисти и саундтраци, свързани с места и моменти."
-        },
-        {
-          "id": "products",
-          "label": "Продукти",
-          "title": "Продукти, които хората наистина препоръчват",
-          "description": "Ежедневни любими неща, екипировка за пътуване, инструменти за творци, подаръци и продукти, които си струва да спестите."
-        },
-        {
-          "id": "apps",
-          "label": "Приложения и инструменти",
-          "title": "Приложения, инструменти и полезни връзки",
-          "description": "Софтуер, уебсайтове, шаблони, инструменти и ресурси, които правят живота по-лесен."
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
         }
-      ]
+      },
+      "subtext": "Независимо дали споделяте град, рафт, продуктов списък, плейлист или ръководство за гости, изследователите предоставят на вашите препоръки дом.",
+      "useCases": {
+        "airbnbHosts": "Airbnb Хостове",
+        "airbnbHostsDesc": "Подобрете изживяването на гостите с местни прозрения",
+        "anyBusiness": "Всеки бизнес",
+        "anyBusinessDesc": "Изградете общност и лоялност на клиентите",
+        "cafes": "кафенета",
+        "cafesDesc": "Споделяйте любимите неща в квартала с клиентите",
+        "creators": "Създатели",
+        "creatorsDesc": "Добавете стойност отвъд съдържанието с полезни съвети",
+        "hotels": "хотели",
+        "hotelsDesc": "Предоставете подбрани местни препоръки",
+        "influencers": "Инфлуенсъри",
+        "influencersDesc": "Осигурете приходи от местните знания и изградете общност",
+        "localGuides": "Местни гидове",
+        "localGuidesDesc": "Разширете експертния опит извън отделните обиколки",
+        "restaurants": "Ресторанти",
+        "restaurantsDesc": "Кръстосано популяризиране с други местни фирми",
+        "tourOperators": "Туроператори",
+        "tourOperatorsDesc": "Разширете опита отвъд планираните обиколки",
+        "travelers": "Пътуващите",
+        "travelersDesc": "Споделяйте открити скъпоценни камъни с други изследователи"
+      },
+      "visual": {
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR",
+        "personal": [
+          "кафене",
+          "книга",
+          "пътека",
+          "Албум",
+          "филм",
+          "Игра"
+        ]
+      }
     }
   },
   "seo": {
-    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
     "landing": {
-      "title": "изследователи - Откривайте и споделяйте персонализирани местни препоръки",
       "description": "Открийте и споделете любимите си местни места с изследователи. Създавайте персонализирани пътеводители на града, организирайте места, които трябва да посетите, и ги направете откриваеми с кодове QR за споделяне. Разгледайте скрити скъпоценни камъни, подбрани препоръки и местни съвети за пътуване на интерактивни карти.",
+      "geoDescription": "Открийте и споделете любимите си местни места с персонализирани QR кодове и връзки за споделяне",
+      "geoFeatures": [
+        "Персонализирано генериране на код QR",
+        "Споделяне на местни препоръки",
+        "Анализи и прозрения",
+        "Оптимизиран за мобилни устройства дизайн",
+        "Откриване на общността"
+      ],
+      "geoIndustry": "технология",
       "keywords": [
         "открийте места близо до мен",
         "персонализирани пътеводители",
@@ -1751,16 +1905,10 @@
         "съвети за пътуване",
         "местни петна"
       ],
-      "geoDescription": "Открийте и споделете любимите си местни места с персонализирани QR кодове и връзки за споделяне",
-      "geoFeatures": [
-        "Персонализирано генериране на код QR",
-        "Споделяне на местни препоръки",
-        "Анализи и прозрения",
-        "Оптимизиран за мобилни устройства дизайн",
-        "Откриване на общността"
-      ],
-      "geoIndustry": "технология"
-    }
+      "title": "изследователи - Откривайте и споделяйте персонализирани местни препоръки"
+    },
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
   },
   "settings": {
     "account": {
@@ -2278,13 +2426,91 @@
       "validationPending": "Validation is pending. Please wait"
     }
   },
+  "useCases": {
+    "cta": {
+      "button": "Claim your Explorer page",
+      "description": "Start with the recommendations you already share. Give them one place to live.",
+      "title": "Make a home for what you would pass on."
+    },
+    "hero": {
+      "chooseLabel": "Choose a perspective",
+      "description": "Whether the point of view is personal, creative, or shared by a brand, explorers gives it a thoughtful home.",
+      "eyebrow": "Ways to explore",
+      "title": "Different perspectives. One place to share them.",
+      "visualAlt": "Three perspectives connected through a place, an Explorer profile, and a storefront."
+    },
+    "journey": {
+      "description": "The shape changes with the person behind it. The rhythm stays simple.",
+      "eyebrow": "One simple rhythm",
+      "steps": {
+        "collect": {
+          "description": "Bring together what you genuinely recommend across the parts of life that matter to you.",
+          "title": "Collect"
+        },
+        "shape": {
+          "description": "Organize it with enough context for someone else to understand why it belongs.",
+          "title": "Shape"
+        },
+        "share": {
+          "description": "Offer one living link or QR that people can save, scan, and return to.",
+          "title": "Share"
+        }
+      },
+      "title": "Three perspectives. One way of sharing with care."
+    },
+    "perspectives": {
+      "brands": {
+        "description": "Curate the places, products, guides, and ideas that express what your organization genuinely values.",
+        "label": "Brands",
+        "points": [
+          "Build collections with a clear and human perspective.",
+          "Connect locations, products, and useful context.",
+          "Give people something thoughtful to save and revisit."
+        ],
+        "title": "Turn your point of view into an experience people can enter."
+      },
+      "creators": {
+        "description": "Turn the recommendations scattered across posts, videos, conversations, and notes into something people can return to.",
+        "label": "Creators",
+        "points": [
+          "Create a durable home for your point of view.",
+          "Organize recommendations around stories and themes.",
+          "Share through one link or QR wherever people find you."
+        ],
+        "title": "Give your audience more than a feed."
+      },
+      "personal": {
+        "description": "Keep the places, books, films, tools, people, and small discoveries you return to in one living collection.",
+        "label": "Personal",
+        "points": [
+          "Bring different kinds of recommendations together.",
+          "Add the context that makes each choice yours.",
+          "Share one page that can keep evolving with you."
+        ],
+        "title": "A home for the things that shape your world."
+      }
+    },
+    "seo": {
+      "description": "See how people, creators, and brands can collect what they value, shape it with context, and share it through one thoughtful Explorer page.",
+      "keywords": [
+        "explorers use cases",
+        "personal recommendations page",
+        "creator recommendations",
+        "brand curation",
+        "share recommendations",
+        "curated collections"
+      ],
+      "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
+      "title": "Use Cases | explorers.earth"
+    }
+  },
   "usernameClaim": {
-    "validating": "Потвърждава се...",
-    "claimFree": "Заявете безплатно",
-    "trySuggestions": "Опитайте: {{suggestions}}",
     "available": "Потребителското име е налично.",
-    "unavailable": "Потребителското име не е налично.",
+    "checkingAvailability": "Проверява се наличността...",
+    "claimFree": "Заявете безплатно",
     "confirmOnSignup": "Ние ще потвърдим наличността при записване.",
-    "checkingAvailability": "Проверява се наличността..."
+    "trySuggestions": "Опитайте: {{suggestions}}",
+    "unavailable": "Потребителското име не е налично.",
+    "validating": "Потвърждава се..."
   }
 }

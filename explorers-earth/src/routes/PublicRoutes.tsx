@@ -11,6 +11,7 @@ import PublicGuides from "../features/PublicHome/components/PublicGuides";
 import PublicGuideDetailPage from "../features/PublicHome/components/PublicGuideDetailPage";
 import { UsernameValidator } from "./validators";
 import TabVisibilityGuard from "./validators/TabVisibilityGuard";
+import UsernameRootRedirect from "./validators/UsernameRootRedirect";
 import { PublicMovies, PublicMovieList, PublicMovieGenre } from "../features/Movies";
 import { PublicBooks, PublicBookList, PublicBookSubject } from "../features/Books";
 import { PublicGames, PublicGamesList, PublicGamesGenre } from "../features/Games";
@@ -52,9 +53,21 @@ const PublicRoutes = [
           <PublicHomePage />
         </TabVisibilityGuard>
       } />
-      <Route path="map" element={<MapView />} />
-      <Route path=":placeSlug/map" element={<MapView />} />
-      <Route path=":place/placesmap" element={<PlaceMapView />} />
+      <Route path="map" element={
+        <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
+          <MapView />
+        </TabVisibilityGuard>
+      } />
+      <Route path=":placeSlug/map" element={
+        <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
+          <MapView />
+        </TabVisibilityGuard>
+      } />
+      <Route path=":place/placesmap" element={
+        <TabVisibilityGuard tabField="public_recommendations" defaultVisible={false}>
+          <PlaceMapView />
+        </TabVisibilityGuard>
+      } />
     </Route>
     <Route path="guides">
       <Route index element={
@@ -173,6 +186,7 @@ const PublicRoutes = [
         </TabVisibilityGuard>
       } />
     </Route>
+    <Route path="*" element={<UsernameRootRedirect />} />
   </Route>,
 ];
 

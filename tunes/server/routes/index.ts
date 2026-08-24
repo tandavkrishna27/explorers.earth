@@ -19,6 +19,8 @@ import { setupEmailRoutes } from "./emailRoutes";
 import { setupPageRoutes } from "./pageRoutes";
 import { setupReactivationRoutes } from "./reactivationRoutes";
 import scrapeRoutes from "./scrapeRoutes";
+import { setupExplorersAnalyticsRoutes } from "./explorersAnalyticsRoutes";
+import { createExplorersAnalyticsDependencies } from "../services/explorers-analytics-composition";
 
 export function registerRoutes(app: Express, _storage: IStorage): Server {
   setupSwagger(app);
@@ -31,6 +33,7 @@ export function registerRoutes(app: Express, _storage: IStorage): Server {
   setupEmailRoutes(app);
   setupPageRoutes(app);
   setupReactivationRoutes(app);
+  setupExplorersAnalyticsRoutes(app, createExplorersAnalyticsDependencies());
 
   setupUserRoutes(app);
   setupPaymentRoutes(app);

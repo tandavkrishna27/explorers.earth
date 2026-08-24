@@ -5,6 +5,7 @@ import type { RecommendedMovie, TMDBCastMember } from "../../types";
 import { buildPosterUrl, buildBackdropUrl, buildLogoUrl, formatRating, formatRuntime, getGenreNames, extractNoteText } from "../../utils/movieHelpers";
 import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
+import SafePublicRichText from "../../../PublicHome/components/SafePublicRichText";
 
 interface MovieDetailModalProps {
   movie: RecommendedMovie | null;
@@ -272,7 +273,10 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                   {noteText && (
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
                       <p className="text-xs font-semibold text-blue-400 mb-1.5 uppercase tracking-wider">Creator's Note</p>
-                      <div className="text-sm text-white/80 leading-relaxed [&_p]:mb-2 [&_p]:last:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h2]:text-md [&_h3]:text-base font-normal max-w-none" dangerouslySetInnerHTML={{ __html: noteText }} />
+                      <SafePublicRichText
+                        className="text-sm text-white/80 leading-relaxed [&_p]:mb-2 [&_p]:last:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h2]:text-md [&_h3]:text-base font-normal max-w-none"
+                        html={noteText}
+                      />
                     </div>
                   )}
 

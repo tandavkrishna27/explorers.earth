@@ -89,6 +89,7 @@ const PublicMovies = () => {
     // Track which movie was clicked — sends Recommendation_Id to Strapi
     analytics.trackClick('movie-card', {
       id: movie.documentId,
+      listId: movie.movie_list?.documentId,
       title: movie.title,
       mediaType: movie.media_type || 'movie',
       listName: movie.movie_list?.List_Name,

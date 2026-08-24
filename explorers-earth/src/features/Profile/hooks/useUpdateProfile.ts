@@ -1,21 +1,24 @@
 import { gql, useMutation } from "@apollo/client";
-import { KeyValuePair } from "../components/ProfileForm";
-import { toast } from "sonner";
-import useAuthStore from "../../../store/store";
 import { useTranslation } from "react-i18next";
 import { updateLocalTunesUsername } from "../../../services/localTunesService";
+import useAuthStore from "../../../store/store";
+import { readSocialVisibility } from "../config/socialVisibility";
+import type { KeyValuePair } from "../types/profileSave";
 import { mobileNumberField } from "./mobileNumberField";
 
-
-// Utility function to convert English account type keys to translated values
-const getAccountTypeValue = (key: string, t: any): string => {
-  const accountTypeMap: { [key: string]: string } = {
-    'personal': t('dashboard.profile.publicProfile.accountTypes.personal'),
-    'creator': t('dashboard.profile.publicProfile.accountTypes.creator'),
-    'business': t('dashboard.profile.publicProfile.accountTypes.business')
+const getAccountTypeValue = (
+  key: unknown,
+  t: (key: string) => string,
+): string => {
+  const accountTypeMap: Record<string, string> = {
+    personal: t("dashboard.profile.publicProfile.accountTypes.personal"),
+    creator: t("dashboard.profile.publicProfile.accountTypes.creator"),
+    business: t("dashboard.profile.publicProfile.accountTypes.business"),
   };
-
-  return accountTypeMap[key] || t('dashboard.profile.publicProfile.accountTypes.personal');
+  return (
+    accountTypeMap[String(key)] ||
+    t("dashboard.profile.publicProfile.accountTypes.personal")
+  );
 };
 
 export interface Visibility {
@@ -31,8 +34,136 @@ export interface Visibility {
   Gmail?: boolean;
   X?: boolean;
   YoutubeMusic?: boolean;
+  "Youtube Music"?: boolean;
   AppleMusic?: boolean;
+  "Apple Music"?: boolean;
   Spotify?: boolean;
+}
+
+export type BooleanKeyValuePair = { [key in keyof Visibility]?: boolean };
+
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+
+const mergePlatform = (
+  socialMedia: Record<string, unknown>,
+  key: string,
+  link: unknown,
+  visibility: boolean,
+) => ({
+  ...asRecord(socialMedia[key]),
+  link: typeof link === "string" ? link : "",
+  visibility,
+});
+
+export function buildSocialMediaInput(
+  values: KeyValuePair,
+): Record<string, unknown> {
+  const socialMedia = asRecord(values.social_media);
+  const visibility = asRecord(values.visibility);
+  const rawTheme = asRecord(socialMedia.theme_settings);
+  const editedTheme = asRecord(values.theme_settings);
+  const rawRecommendations = asRecord(rawTheme.recommendations);
+  const editedRecommendations = asRecord(editedTheme.recommendations);
+  const hasRecommendations =
+    Object.keys(rawRecommendations).length > 0 ||
+    Object.keys(editedRecommendations).length > 0;
+
+  return {
+    ...socialMedia,
+    theme_settings: {
+      ...rawTheme,
+      ...editedTheme,
+      ...(hasRecommendations
+        ? {
+            recommendations: {
+              ...rawRecommendations,
+              ...editedRecommendations,
+            },
+          }
+        : {}),
+    },
+    instagram: mergePlatform(
+      socialMedia,
+      "instagram",
+      values.instagramLink,
+      readSocialVisibility(visibility, "Instagram"),
+    ),
+    youtube: mergePlatform(
+      socialMedia,
+      "youtube",
+      values.youtubeLink,
+      readSocialVisibility(visibility, "Youtube"),
+    ),
+    whatsapp: mergePlatform(
+      socialMedia,
+      "whatsapp",
+      values.whatsappLink,
+      readSocialVisibility(visibility, "Whatsapp"),
+    ),
+    website: mergePlatform(
+      socialMedia,
+      "website",
+      values.websiteLink,
+      readSocialVisibility(visibility, "Website"),
+    ),
+    facebook: mergePlatform(
+      socialMedia,
+      "facebook",
+      values.facebookLink,
+      readSocialVisibility(visibility, "Facebook"),
+    ),
+    linkedin: mergePlatform(
+      socialMedia,
+      "linkedin",
+      values.linkedinLink,
+      readSocialVisibility(visibility, "Linkedin"),
+    ),
+    snapchat: mergePlatform(
+      socialMedia,
+      "snapchat",
+      values.snapchatLink,
+      readSocialVisibility(visibility, "Snapchat"),
+    ),
+    tiktok: mergePlatform(
+      socialMedia,
+      "tiktok",
+      values.tiktokLink,
+      readSocialVisibility(visibility, "Tiktok"),
+    ),
+    email: mergePlatform(
+      socialMedia,
+      "email",
+      values.gmailLink,
+      readSocialVisibility(visibility, "Gmail"),
+    ),
+    X: mergePlatform(
+      socialMedia,
+      "X",
+      values.XLink,
+      readSocialVisibility(visibility, "X"),
+    ),
+    spotify: mergePlatform(
+      socialMedia,
+      "spotify",
+      values.spotifyLink,
+      readSocialVisibility(visibility, "Spotify"),
+    ),
+    youtubeMusic: mergePlatform(
+      socialMedia,
+      "youtubeMusic",
+      values.youtubeMusicLink,
+      readSocialVisibility(visibility, "YoutubeMusic"),
+    ),
+    appleMusic: mergePlatform(
+      socialMedia,
+      "appleMusic",
+      values.appleMusicLink,
+      readSocialVisibility(visibility, "AppleMusic"),
+    ),
+  };
 }
 
 const onboardingQuery = gql`
@@ -47,7 +178,6 @@ const onboardingQuery = gql`
   }
 `;
 
-// Corrected mutation - matches the one in api/mutation.ts
 const updateProfileMutation = gql`
   mutation UpdateAccount($documentId: ID!, $data: AccountInput!) {
     updateAccount(documentId: $documentId, data: $data) {
@@ -62,7 +192,7 @@ const updateProfileMutation = gql`
       mobile_number_visibility
       social_media
       Public_Profile_Address
-  Feed_Data
+      Feed_Data
       profile_picture {
         url
         alternativeText
@@ -75,303 +205,136 @@ const updateProfileMutation = gql`
   }
 `;
 
-export type BooleanKeyValuePair = { [key in keyof Visibility]?: boolean };
+const updateUserMutation = gql`
+  mutation UpdateUsersPermissionsUser(
+    $id: ID!
+    $data: UsersPermissionsUserInput!
+  ) {
+    updateUsersPermissionsUser(id: $id, data: $data) {
+      data {
+        username
+      }
+    }
+  }
+`;
+
+const accountAddressInput = (values: KeyValuePair) => ({
+  streetNumber: values.streetNumber,
+  streetName: values.streetName,
+  postalCode: values.postalCode,
+  state: values.state,
+  city: values.city,
+  country: values.country,
+  address: values.address,
+});
 
 export const useUpdateProfile = (
   documentId: string | undefined,
-  refetch: () => void
+  refetch: () => unknown | Promise<unknown>,
 ) => {
-  // mutation for profile uploading
   const { user } = useAuthStore();
   const { t } = useTranslation();
   const [updateProfile] = useMutation(updateProfileMutation);
   const [createAccount] = useMutation(onboardingQuery);
-  const [updateUser] = useMutation(gql`
-    mutation UpdateUsersPermissionsUser($id: ID!, $data: UsersPermissionsUserInput!) {
-      updateUsersPermissionsUser(id: $id, data: $data) {
-        data {
-          username
-        }
-      }
-    }
-  `);
+  const [updateUser] = useMutation(updateUserMutation);
 
-  // submit function for updating profile values
   const handleSubmit = async (values: KeyValuePair) => {
-    try {
-      if (!documentId) {
-        const visibility: BooleanKeyValuePair = (values.visibility ??
-          {}) as BooleanKeyValuePair;
-        // If documentId is undefined, create a new account
-        const response = await createAccount({
-          variables: {
-            data: {
-              Bio: values.bio,
-              Addresss: {
-                streetNumber: values.streetNumber,
-                streetName: values.streetName,
-                postalCode: values.postalCode,
-                state: values.state,
-                city: values.city,
-                country: values.country,
-                address: values.address,
-              },
-              Primary_Address: {
-                address: values.primaryAddressCombined,
-              },
-              Public_Profile_Address: values.Public_Profile_Address || null,
-              Feed_Data: values.Feed_Data || [],
-              social_media: {
-                instagram: {
-                  link: values.instagramLink,
-                  visibility: visibility.Instagram ?? false,
-                },
-                youtube: {
-                  link: values.youtubeLink,
-                  visibility: visibility.Youtube ?? false,
-                },
-                whatsapp: {
-                  link: values.whatsappLink,
-                  visibility: visibility.Whatsapp ?? false,
-                },
-                website: {
-                  link: values.websiteLink,
-                  visibility: visibility.Website ?? false,
-                },
-                facebook: {
-                  link: values.facebookLink,
-                  visibility: visibility.Facebook ?? false,
-                },
-                linkedin: {
-                  link: values.linkedinLink,
-                  visibility: visibility.Linkedin ?? false,
-                },
-                snapchat: {
-                  link: values.snapchatLink,
-                  visibility: visibility.Snapchat ?? false,
-                },
-                tiktok: {
-                  link: values.tiktokLink,
-                  visibility: visibility.Tiktok ?? false,
-                },
-                email: {
-                  link: values.gmailLink,
-                  visibility: visibility.Gmail ?? false,
-                },
-                X: {
-                  link: values.XLink,
-                  visibility: visibility.X ?? false,
-                },
-                spotify: {
-                  link: values.spotifyLink,
-                  visibility: visibility.Spotify ?? false,
-                },
-                youtubeMusic: {
-                  link: values.youtubeMusicLink,
-                  visibility: visibility.YoutubeMusic ?? false,
-                },
-                appleMusic: {
-                  link: values.appleMusicLink,
-                  visibility: visibility.AppleMusic ?? false,
-                },
-              },
-              Account_Type: getAccountTypeValue(values.accountType, t),
-              Account_Name: values.accountName,
-              username: values.username,
-              mobile_number_visibility: values.mobilenumberVisiblity,
-              mobile_number: values.mobilenumberLink,
-              users_permissions_users: user?.documentId,
-            },
+    const socialMedia = buildSocialMediaInput(values);
+
+    if (!documentId) {
+      const response = await createAccount({
+        variables: {
+          data: {
+            Bio: values.bio,
+            Addresss: accountAddressInput(values),
+            Primary_Address: { address: values.primaryAddressCombined },
+            Public_Profile_Address: values.Public_Profile_Address || null,
+            Feed_Data: values.Feed_Data || [],
+            social_media: socialMedia,
+            Account_Type: getAccountTypeValue(values.accountType, t),
+            Account_Name: values.accountName,
+            username: values.username,
+            mobile_number_visibility: values.mobilenumberVisiblity,
+            mobile_number: values.mobilenumberLink,
+            users_permissions_users: user?.documentId,
           },
-        });
-
-        if (response.data) {
-          toast.success(t('dashboard.profile.common.savedAndPublishedSuccessfully'));
-          refetch();
-        }
-      } else {
-        // If documentId exists, update the profile
-        const visibility: BooleanKeyValuePair = (values.visibility ?? {}) as BooleanKeyValuePair;
-        // Determine if username actually changed compared to current authenticated user
-        // This prevents unnecessary updates to the UsersPermissionsUser record which would
-        // otherwise bump updatedAt and incorrectly reset username cooldown.
-        const currentUsername = user?.username ?? "";
-        const incomingUsername: string | undefined = values.username;
-        const usernameChanged = Boolean(
-          incomingUsername && incomingUsername.trim() !== currentUsername
-        );
-
-        // 1. Update Account (all fields including username)
-        const response = await updateProfile({
-          variables: {
-            documentId: documentId,
-            data: {
-              Bio: values.bio,
-              Account_Name: values.accountName,
-              // Only include username in Account update if it actually changed
-              ...(usernameChanged && incomingUsername
-                ? { username: incomingUsername }
-                : {}),
-              Addresss: {
-                streetNumber: values.streetNumber,
-                streetName: values.streetName,
-                postalCode: values.postalCode,
-                state: values.state,
-                city: values.city,
-                country: values.country,
-                address: values.address,
-              },
-              Primary_Address: {
-                address: values.primaryAddressCombined,
-              },
-              Public_Profile_Address: values.Public_Profile_Address || null,
-              Feed_Data: values.Feed_Data || [],
-              social_media: {
-                instagram: {
-                  link: values.instagramLink,
-                  visibility: visibility.Instagram ?? false,
-                },
-                youtube: {
-                  link: values.youtubeLink,
-                  visibility: visibility.Youtube ?? false,
-                },
-                whatsapp: {
-                  link: values.whatsappLink,
-                  visibility: visibility.Whatsapp ?? false,
-                },
-                website: {
-                  link: values.websiteLink,
-                  visibility: visibility.Website ?? false,
-                },
-                facebook: {
-                  link: values.facebookLink,
-                  visibility: visibility.Facebook ?? false,
-                },
-                linkedin: {
-                  link: values.linkedinLink,
-                  visibility: visibility.Linkedin ?? false,
-                },
-                snapchat: {
-                  link: values.snapchatLink,
-                  visibility: visibility.Snapchat ?? false,
-                },
-                tiktok: {
-                  link: values.tiktokLink,
-                  visibility: visibility.Tiktok ?? false,
-                },
-                email: {
-                  link: values.gmailLink,
-                  visibility: visibility.Gmail ?? false,
-                },
-                X: {
-                  link: values.XLink,
-                  visibility: visibility.X ?? false,
-                },
-                spotify: {
-                  link: values.spotifyLink,
-                  visibility: visibility.Spotify ?? false,
-                },
-                youtubeMusic: {
-                  link: values.youtubeMusicLink,
-                  visibility: visibility.YoutubeMusic ?? false,
-                },
-                appleMusic: {
-                  link: values.appleMusicLink,
-                  visibility: visibility.AppleMusic ?? false,
-                },
-              },
-              Account_Type: getAccountTypeValue(values.accountType, t),
-              mobile_number_visibility: values.mobilenumberVisiblity,
-              ...mobileNumberField(values.mobilenumberLink),
-            },
-          },
-        });
-
-        // 2. Update User (username field) ONLY when username actually changed
-        if (user?.id && usernameChanged && incomingUsername) {
-          await updateUser({
-            variables: {
-              id: user.id,
-              data: { username: incomingUsername },
-            },
-          });
-        }
-
-        // ✅ FIXED: Proper response validation with backend confirmation
-        if (response.data?.updateAccount?.documentId) {
-          // Update auth store with new username only if it changed
-          if (user && usernameChanged && incomingUsername) {
-            const authStore = useAuthStore.getState();
-            authStore.login({
-              ...user,
-              username: incomingUsername,
-              token: authStore.token || "", // Preserve existing token
-            });
-
-            // Sync username change with LocalTunes
-            console.log('🔄 Starting LocalTunes username sync...', {
-              currentUsername: currentUsername,
-              newUsername: incomingUsername
-            });
-            try {
-              // Pass user details for sync
-              const localTunesResult = await updateLocalTunesUsername(
-                incomingUsername,
-                currentUsername
-              );
-              console.log('LocalTunes username sync result:', localTunesResult);
-              if (localTunesResult.success) {
-                console.log('✅ Username synced with LocalTunes');
-                toast.success('Username changed successfully in both explorers and LocalTunes!');
-              } else {
-                console.warn('⚠️ LocalTunes username sync warning:', localTunesResult.message);
-                // Show a warning but don't fail the username change
-                if (localTunesResult.message &&
-                  !localTunesResult.message.includes('disabled') &&
-                  !localTunesResult.message.includes('not found')) {
-                  // Check if it's the development mode restriction
-                  if (localTunesResult.message.includes('development mode')) {
-                    toast.warning('Username changed in explorers. Please also change your username in LocalTunes manually.');
-                  } else {
-                    toast.warning(`explorers username changed, but ${localTunesResult.message}`);
-                  }
-                }
-              }
-            } catch (localTunesError) {
-              console.error('❌ LocalTunes username sync error:', localTunesError);
-              // Don't fail the entire username change process
-              toast.warning('Username changed in explorers, but could not sync with LocalTunes');
-            }
-          }
-
-          toast.success(t('dashboard.profile.common.savedAndPublishedSuccessfully'));
-          // Only refetch after confirmed backend success
-          refetch();
-        } else {
-          // Backend did not confirm profile update
-          toast.error(t('dashboard.profile.common.saveAndPublishFailed'));
-        }
+        },
+      });
+      const createdAccount = response.data?.createAccount;
+      if (!createdAccount) {
+        throw new Error("Profile creation was not confirmed");
       }
-    } catch (error) {
-      if (typeof error === "object" && error !== null) {
-        const err = error as any;
+      await refetch();
+      return createdAccount;
+    }
 
-        // Provide specific error messages based on error type
-        if (err.graphQLErrors?.length > 0) {
-          const graphQLError = err.graphQLErrors[0];
-          toast.error(t("toast.error.updateFailedWithError", { error: graphQLError.message || t("toast.error.graphQLErrorOccurred") }));
-        } else if (err.networkError) {
-          toast.error(t('dashboard.profile.common.networkError'));
-        } else {
-          toast.error(t('dashboard.profile.common.unexpectedError'));
+    const currentUsername = user?.username ?? "";
+    const incomingUsername =
+      typeof values.username === "string" ? values.username.trim() : "";
+    const usernameChanged = Boolean(
+      incomingUsername && incomingUsername !== currentUsername,
+    );
+    const response = await updateProfile({
+      variables: {
+        documentId,
+        data: {
+          Bio: values.bio,
+          Account_Name: values.accountName,
+          ...(usernameChanged ? { username: incomingUsername } : {}),
+          Addresss: accountAddressInput(values),
+          Primary_Address: { address: values.primaryAddressCombined },
+          Public_Profile_Address: values.Public_Profile_Address || null,
+          Feed_Data: values.Feed_Data || [],
+          social_media: socialMedia,
+          Account_Type: getAccountTypeValue(values.accountType, t),
+          mobile_number_visibility: values.mobilenumberVisiblity,
+          ...mobileNumberField(
+            typeof values.mobilenumberLink === "string"
+              ? values.mobilenumberLink
+              : undefined,
+          ),
+        },
+      },
+    });
+    const updatedAccount = response.data?.updateAccount;
+    if (!updatedAccount?.documentId) {
+      throw new Error("Profile update was not confirmed");
+    }
+
+    if (user?.id && usernameChanged) {
+      await updateUser({
+        variables: {
+          id: user.id,
+          data: { username: incomingUsername },
+        },
+      });
+
+      const authStore = useAuthStore.getState();
+      authStore.login({
+        ...user,
+        username: incomingUsername,
+        token: authStore.token || "",
+      });
+
+      try {
+        const localTunesResult = await updateLocalTunesUsername(
+          incomingUsername,
+          currentUsername,
+        );
+        if (!localTunesResult.success) {
+          console.warn(
+            "LocalTunes username sync did not complete:",
+            localTunesResult.message,
+          );
         }
-      } else {
-        toast.error(t('dashboard.profile.common.somethingWentWrong'));
+      } catch (localTunesError) {
+        console.warn("LocalTunes username sync failed:", localTunesError);
       }
     }
+
+    await refetch();
+    return updatedAccount;
   };
 
-  return {
-    handleSubmit,
-  };
+  return { handleSubmit };
 };

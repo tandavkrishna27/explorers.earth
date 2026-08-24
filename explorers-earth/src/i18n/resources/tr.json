@@ -1,6 +1,10 @@
 {
   "about": {
     "closing": "Eğer meraklıysanız.\nEğer düşünceliyseniz.\nEğer yavaşlamaya ve daha yakından bakmaya istekliyseniz —\nzaten buraya aitsiniz.",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe",
     "section1": {
       "line1": "Keşif farkındalıkla başlar.",
       "line2": "Başkalarının gözden kaçırdığı şeyleri fark etmekle.",
@@ -49,6 +53,7 @@
         "explorers story",
         "who we are explorers"
       ],
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow.",
       "title": "Explorers of Earth | About Us"
     },
     "subtitle": {
@@ -325,7 +330,8 @@
         "mobileNumberPlaceholder": "Cep telefonu numaranızı girin",
         "next": "İleri",
         "title": "İletişim Detayları"
-      }
+      },
+      "stepCount": "Step {{current}} of {{total}}"
     },
     "or": "veya",
     "password": "Şifre",
@@ -883,6 +889,38 @@
         "visible": "Görünür",
         "whatsappNumber": "WhatsApp numarası"
       },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "{{category}} taşıma işlemi iptal edildi. Sıra geri yüklendi.",
+          "drop": "{{category}}, {{total}} içinde {{position}}. konuma bırakıldı.",
+          "handle": "{{category}} öğesini sürükle",
+          "instructions": "Kaldırmak için Boşluk veya Enter tuşuna basın. Taşımak için ok tuşlarını ya da Home ve End tuşlarını kullanın. Bırakmak için Boşluk veya Enter, iptal etmek için Escape tuşuna basın.",
+          "lift": "{{category}} kaldırıldı. {{total}} içinde {{position}}. konum.",
+          "move": "{{category}}, {{total}} içinde {{position}}. konuma taşındı."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
+      },
       "publicProfile": {
         "accountTypes": {
           "business": "İşletme",
@@ -937,6 +975,65 @@
       "tabs": {
         "account": "Hesap",
         "publicProfile": "Halka Açık Profil"
+      },
+      "themeAppearance": {
+        "accentTitle": "Accent color",
+        "firstView": {
+          "business": "Business",
+          "categoryFirst": "Recommendations — {{category}} first",
+          "gallery": "Gallery",
+          "help": "Category choices promote that category but keep all other public categories.",
+          "label": "First view",
+          "savedOrder": "Recommendations — saved order"
+        },
+        "presetTitle": "Select theme preset",
+        "recommendations": {
+          "categories": {
+            "apps": "Apps & Tools",
+            "books": "Books",
+            "games": "Games",
+            "guides": "Guides",
+            "movies": "Movies & Shows",
+            "music": "Music",
+            "people": "People",
+            "places": "Places",
+            "products": "Products"
+          },
+          "featured": "Featured",
+          "help": "Choose how recommendation categories are arranged on your public profile.",
+          "layoutLegend": "Recommendations layout",
+          "layouts": {
+            "featured": {
+              "description": "A larger first category followed by compact rows.",
+              "label": "Featured First"
+            },
+            "grid": {
+              "description": "A compact grid that makes categories easy to scan.",
+              "label": "Category Mosaic"
+            },
+            "shelves": {
+              "description": "Horizontal shelves with recommendation previews.",
+              "label": "Classic Shelves"
+            }
+          },
+          "moved": "{{category}} moved to position {{position}} of {{total}}",
+          "moveDown": "Move {{category}} down",
+          "moveUp": "Move {{category}} up",
+          "orderHelp": "Move categories into the order visitors should scan them.",
+          "orderTitle": "Category order",
+          "position": "{{position}} of {{total}}",
+          "previewCaption": "Illustrative preview",
+          "previewLabel": "Recommendations layout preview",
+          "publicVisibilityNote": "Public Visibility controls whether a category appears.",
+          "title": "Recommendations presentation"
+        },
+        "wallpaperLabel": "Wallpaper and cover style",
+        "wallpaperOptions": {
+          "ambientGradient": "Ambient mesh gradient",
+          "bannerTop": "Top cover banner photo",
+          "fullWallpaperImage": "Full-screen background image",
+          "solidColor": "Solid minimal background"
+        }
       }
     },
     "recommendations": {
@@ -1109,6 +1206,7 @@
         "linkCopied": "Bağlantı panoya kopyalandı!",
         "linkCopyError": "Bağlantı kopyalanamadı. Lütfen tekrar deneyin.",
         "listCreated": "Öneri Listesi Başarıyla Oluşturuldu!!!",
+        "listCreateFailed": "Failed to create recommendation list. Please try again.",
         "listPublished": "Öneri listesi başarıyla yayınlandı!",
         "listPublishError": "Yayınlanmak için listede en az bir önerilen yer olmalıdır",
         "listUnpublished": "Öneri listesi başarıyla yayından kaldırıldı!",
@@ -1146,99 +1244,101 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "tagline": "Önerilerinizin dünyayı dolaşmasına izin verin.",
+    "copyright": "© 2025 kaşifler. Her hakkı saklıdır.",
     "email": "hello@explorers.earth",
-    "sections": {
+    "freeForever": "Sonsuza kadar özgür.",
+    "links": {
+      "about": "Hakkında",
+      "contact": "Temas etmek",
+      "cookies": "Çerez Politikası",
+      "faq": "SSS",
+      "howItWorks": "Nasıl çalışır?",
+      "privacy": "Gizlilik Politikası",
       "product": "Ürün",
+      "shareAnywhere": "Her yerde paylaşın",
+      "terms": "Şartlar ve Koşullar",
+      "useCases": "Use Cases"
+    },
+    "madeWithLove": "Yeryüzünde sevgiyle yaratıldı",
+    "sections": {
+      "company": "Şirket",
       "contact": "İletişim",
       "legal": "Yasal",
-      "company": "Şirket"
+      "product": "Ürün"
     },
-    "links": {
-      "howItWorks": "Nasıl çalışır?",
-      "faq": "SSS",
-      "contact": "Temas etmek",
-      "about": "Hakkında",
-      "terms": "Şartlar ve Koşullar",
-      "privacy": "Gizlilik Politikası",
-      "cookies": "Çerez Politikası",
-      "product": "Ürün",
-      "shareAnywhere": "Her yerde paylaşın"
-    },
-    "copyright": "© 2025 kaşifler. Her hakkı saklıdır.",
-    "madeWithLove": "Yeryüzünde sevgiyle yaratıldı",
-    "freeForever": "Sonsuza kadar özgür."
+    "tagline": "Önerilerinizin dünyayı dolaşmasına izin verin."
   },
   "header": {
+    "auth": {
+      "claimFree": "Ücretsiz talep edin",
+      "claimFreePage": "Ücretsiz sayfayı talep edin",
+      "login": "Giriş Yap",
+      "signUp": "Kayıt Ol"
+    },
     "nav": {
-      "howItWorks": "Nasıl çalışır?",
-      "whoIsFor": "Kimler İçin",
-      "faq": "SSS",
       "about": "Hakkında",
+      "closeMenu": "Gezinme menüsünü kapat",
       "contact": "İletişim",
+      "faq": "SSS",
+      "howItWorks": "Nasıl çalışır?",
+      "openMenu": "Gezinme menüsünü aç",
       "product": "Ürün",
       "share": "Paylaşmak",
-      "openMenu": "Gezinme menüsünü aç",
-      "closeMenu": "Gezinme menüsünü kapat"
-    },
-    "auth": {
-      "login": "Giriş Yap",
-      "signUp": "Kayıt Ol",
-      "claimFreePage": "Ücretsiz sayfayı talep edin",
-      "claimFree": "Ücretsiz talep edin"
+      "useCases": "Use Cases",
+      "whoIsFor": "Kimler İçin"
     }
   },
   "hero": {
+    "badge": "Sonsuza kadar özgür",
+    "countries": {
+      "ae": "BAE",
+      "au": "Avustralya",
+      "br": "Brezilya",
+      "de": "Almanya",
+      "fr": "Fransa",
+      "gb": "Birleşik Krallık",
+      "in": "Hindistan",
+      "jp": "Japonya",
+      "sg": "Singapur",
+      "us": "Amerika Birleşik Devletleri"
+    },
+    "ctaButton": "Explorer sayfanızı talep edin",
+    "globalStrip": "Explorer'lar dünya çapında önerileri paylaşıyor",
     "headline": "Tüm önerileriniz - tek bağlantı, tek QR",
-    "subtext": "Yerler, kişiler, ürünler, kitaplar, filmler, şovlar, müzik, oyunlar, uygulamalar ve daha fazlası gibi önerdiğiniz her şey için paylaşılabilir bir sayfa oluşturun.",
+    "headlinePrefix": "Hepsi senin",
+    "headlineSuffix": "tek bir bağlantıda ve QR.",
     "inputLabel": "Gezgin URL'nizi talep edin:",
     "inputPlaceholder": "Adınız",
-    "ctaButton": "Explorer sayfanızı talep edin",
-    "signupPrompt": "Şimdi sizinkini almak için kaydolun",
-    "headlinePrefix": "Hepsi senin",
+    "preview": {
+      "items": {
+        "book": "Kitap",
+        "game": "Oyun",
+        "music": "Müzik",
+        "place": "Yer"
+      },
+      "onePageText": "Bağlantı, QR, mesaj veya kılavuz olarak paylaşın.",
+      "onePageTitle": "Her iyi öneri için bir sayfa.",
+      "screenAlt": "Explorer sayfa önerileri ekranı",
+      "todayList": "Bugünün listesi"
+    },
     "rotatingWords": [
       "öneriler",
       "kürasyonlar",
       "koleksiyonlar",
       "favoriler"
     ],
-    "headlineSuffix": "tek bir bağlantıda ve QR.",
-    "badge": "Sonsuza kadar özgür",
-    "globalStrip": "Explorer'lar dünya çapında önerileri paylaşıyor",
-    "preview": {
-      "todayList": "Bugünün listesi",
-      "onePageTitle": "Her iyi öneri için bir sayfa.",
-      "onePageText": "Bağlantı, QR, mesaj veya kılavuz olarak paylaşın.",
-      "items": {
-        "place": "Yer",
-        "book": "Kitap",
-        "music": "Müzik",
-        "game": "Oyun"
-      },
-      "screenAlt": "Explorer sayfa önerileri ekranı"
-    },
-    "countries": {
-      "in": "Hindistan",
-      "us": "Amerika Birleşik Devletleri",
-      "gb": "Birleşik Krallık",
-      "jp": "Japonya",
-      "fr": "Fransa",
-      "au": "Avustralya",
-      "br": "Brezilya",
-      "ae": "BAE",
-      "sg": "Singapur",
-      "de": "Almanya"
-    }
+    "signupPrompt": "Şimdi sizinkini almak için kaydolun",
+    "subtext": "Yerler, kişiler, ürünler, kitaplar, filmler, şovlar, müzik, oyunlar, uygulamalar ve daha fazlası gibi önerdiğiniz her şey için paylaşılabilir bir sayfa oluşturun."
   },
   "languageModal": {
     "close": "Kapalı",
-    "searchPlaceholder": "Dilleri ara...",
-    "title": "Dil Seçiniz",
-    "subtitle": "Kaşiflerde kullanmak istediğiniz dili seçin.",
-    "noLanguagesFound": "Dil bulunamadı",
-    "tryDifferentSearch": "Farklı bir arama terimi deneyin.",
+    "escToClose": "Kapatmak için Esc tuşuna basın",
     "languagesAvailable": "{{count}} dil mevcut",
-    "escToClose": "Kapatmak için Esc tuşuna basın"
+    "noLanguagesFound": "Dil bulunamadı",
+    "searchPlaceholder": "Dilleri ara...",
+    "subtitle": "Kaşiflerde kullanmak istediğiniz dili seçin.",
+    "title": "Dil Seçiniz",
+    "tryDifferentSearch": "Farklı bir arama terimi deneyin."
   },
   "legal": {
     "cookies": {
@@ -1280,6 +1380,38 @@
       "warning": "Eski kullanıcı adınızla ilgili QR kodlar veya bağlantılar artık çalışmayacak — bunları güncellemeniz ve yeniden paylaşmanız gerekecek."
     }
   },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
     "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
@@ -1297,210 +1429,351 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
+    "analytics": {
+      "dashboardTitle": "Analitik Kontrol Paneli",
+      "engagement": "Nişanlanmak",
+      "headline": "İnsanların nelerle meşgul olduğunu görün.",
+      "last30Days": "Son 30 gün",
+      "livePreview": "Canlı önizleme",
+      "referrals": "Tavsiyeler",
+      "scanningDesc": "İnsanların bağlantılardan, QR kodlarından ve paylaşılan temas noktalarından sayfanıza nasıl ulaştığını görün.",
+      "scanningTitle": "Taramaları ve tıklamaları anlama",
+      "spotsDesc": "Hangi yerlerin, ürünlerin, listelerin ve rehberlerin en çok ilgi gördüğünü öğrenin.",
+      "spotsTitle": "En iyi önerileri bulun",
+      "subtext": "Bağlantılarınız ve QR kodlarınız üzerinden insanların hangi önerileri açtığını, kaydettiğini ve tekrar ziyaret ettiğini anlayın.",
+      "totalScans": "Toplam Tarama Sayısı",
+      "workingDesc": "İnsanların hangi önerileri açtığını, kaydettiğini ve tekrar ziyaret ettiğini takip edin.",
+      "workingTitle": "Neyin işe yaradığını görün"
+    },
     "createCustomize": {
-      "headline": "Explorer sayfanızı dakikalar içinde oluşturun",
-      "subtext": "Önerdiklerinizi toplayın, kendi yönteminizle düzenleyin ve tek bir bağlantıyla veya QR ile istediğiniz yerde paylaşın.",
       "bulletPoints": {
         "addSpots": {
-          "title": "Yerler, deneyimler, rotalar, sesler ve notlar ekleyin",
-          "description": ""
-        },
-        "organize": {
-          "title": "Konuma veya ilgi alanına göre düzenleyin",
-          "description": ""
+          "description": "",
+          "title": "Yerler, deneyimler, rotalar, sesler ve notlar ekleyin"
         },
         "generate": {
-          "title": "Dilediğiniz zaman düzenleyin; bağlantınız her zaman aynı kalır",
-          "description": ""
+          "description": "",
+          "title": "Dilediğiniz zaman düzenleyin; bağlantınız her zaman aynı kalır"
+        },
+        "organize": {
+          "description": "",
+          "title": "Konuma veya ilgi alanına göre düzenleyin"
         },
         "share": {
-          "title": "Dijital olarak veya gerçek dünyada bir QR aracılığıyla paylaşın",
-          "description": ""
+          "description": "",
+          "title": "Dijital olarak veya gerçek dünyada bir QR aracılığıyla paylaşın"
         }
       },
+      "headline": "Explorer sayfanızı dakikalar içinde oluşturun",
       "mockup": {
-        "title": "Önerilerim",
-        "addPlace": "Yer Ekle"
+        "addPlace": "Yer Ekle",
+        "title": "Önerilerim"
       },
       "steps": [
         {
-          "title": "Önerdiklerinizi ekleyin",
-          "body": "Yerler, kişiler, ürünler, kitaplar, filmler, şovlar, müzik, oyunlar, uygulamalar, kılavuzlar ve notlar."
+          "body": "Yerler, kişiler, ürünler, kitaplar, filmler, şovlar, müzik, oyunlar, uygulamalar, kılavuzlar ve notlar.",
+          "title": "Önerdiklerinizi ekleyin"
         },
         {
-          "title": "Kendi yönteminizle düzenleyin",
-          "body": "İnsanların doğal bir şekilde keşfedebilmesi için şehre, temaya, listeye, kategoriye, yolculuğa veya ana göre gruplandırın."
+          "body": "İnsanların doğal bir şekilde keşfedebilmesi için şehre, temaya, listeye, kategoriye, yolculuğa veya ana göre gruplandırın.",
+          "title": "Kendi yönteminizle düzenleyin"
         },
         {
-          "title": "Bir bağlantı paylaşın veya QR",
-          "body": "Aynı bağlantı ve QR her yerde çalışmaya devam ederken sayfanız istediğiniz zaman güncellenir."
-        }
-      ]
-    },
-    "shareAnywhere": {
-      "headline": "Tek bağlantı. Birçok yolculuk.",
-      "subtext": "Explorer bağlantınız yaşayan bir rehbere dönüşür; insanların kaydedebileceği, tekrar ziyaret edebileceği ve kendi hızlarında keşfedebileceği bir şey.\n\nBunu bir profilde, mesajda, masada, duvarda veya kartta paylaşın.\nNereye giderse bakış açınız da onunla birlikte gider.",
-      "scanText": "Yerel önerileri tarayın",
-      "storefrontText": "Vitrin vitrinleri için mükemmel",
-      "instagramTitle": "Instagram/Tiktok Bio'nuza ekleyin",
-      "instagramDesc": "Takipçilerinizle anında paylaşın",
-      "menuTitle": "Storefront için yazdırın",
-      "menuDesc": "Fiziksel temas noktaları kolaylaştırıldı",
-      "welcomeTitle": "Hoş geldiniz kitaplarına dahil et",
-      "welcomeDesc": "Ev sahipleri ve rehberler için mükemmel",
-      "cafeMenu": "Kafe Menüsü",
-      "tokyoFoodGuide": "Tokyo yemek rehberim explorers.earth/jane",
-      "cards": [
-        {
-          "title": "Bağlantı bio'da",
-          "eyebrow": "Profile hazır"
-        },
-        {
-          "title": "QR kodları",
-          "eyebrow": "Çevrimdışı kullanıma hazır"
-        },
-        {
-          "title": "Mesajlar",
-          "eyebrow": "Sohbete hazır"
-        },
-        {
-          "title": "Hoş geldiniz rehberleri",
-          "eyebrow": "Konuk hazır"
+          "body": "Aynı bağlantı ve QR her yerde çalışmaya devam ederken sayfanız istediğiniz zaman güncellenir.",
+          "title": "Bir bağlantı paylaşın veya QR"
         }
       ],
+      "subtext": "Önerdiklerinizi toplayın, kendi yönteminizle düzenleyin ve tek bir bağlantıyla veya QR ile istediğiniz yerde paylaşın."
+    },
+    "faq": {
+      "error": "SSS yüklenirken hata oluştu. Lütfen daha sonra tekrar deneyin.",
+      "fallbackItems": [
+        {
+          "Answer": "Yerler, kişiler, ürünler, kitaplar, filmler, şovlar, müzik, oyunlar, uygulamalar, kılavuzlar ve notlar.",
+          "Question": "Explorer sayfama neler ekleyebilirim?",
+          "Sequence": 1
+        },
+        {
+          "Answer": "Evet. Explorer sayfanız profiller, mesajlar, tablolar, kartlar ve basılı kılavuzlar için bir bağlantı veya QR olarak paylaşılabilir.",
+          "Question": "QR koduyla paylaşabilir miyim?",
+          "Sequence": 2
+        },
+        {
+          "Answer": "Evet. Aynı bağlantı ve QR çalışmaya devam ederken sayfanızı güncel tutabilirsiniz.",
+          "Question": "Önerilerimi daha sonra güncelleyebilir miyim?",
+          "Sequence": 3
+        },
+        {
+          "Answer": "Evet. Sayfa, ödeme ağırlıklı bir dil olmadan ücretsiz vaadi net bir şekilde iletebilir.",
+          "Question": "Kaşifler sonsuza kadar özgür mü?",
+          "Sequence": 4
+        }
+      ],
+      "headline": "Sorularınız mı var?",
+      "loading": "SSS yükleniyor...",
+      "subtext": "İnsanların başlamadan önce en sık sorduğu şeyleri yanıtladık."
+    },
+    "features": {
+      "communityDriven": {
+        "title": "Topluluk odaklı keşif"
+      },
+      "livingGuides": {
+        "title": "Canlı, düzenlenebilir rehberler"
+      },
+      "locationAware": {
+        "title": "Konum bilinçli öneriler"
+      },
+      "privacyFirst": {
+        "title": "Tasarıma göre gizlilik öncelikli"
+      },
+      "simpleLinks": {
+        "title": "Basit bağlantılar ve QR paylaşımı"
+      },
+      "soundPlaylists": {
+        "title": "İsteğe bağlı ses ve çalma listeleri"
+      },
+      "subtitle": "Önerilerinizin parlamasına izin veren basit, düşünceli özellikler.",
+      "title": "Yoldan uzak durmak için inşa edildi"
+    },
+    "finalCTA": {
+      "creating": "explorers'ınız oluşturuluyor...",
+      "ctaButton": "explorers Rezerve Et – Sonsuza Kadar Ücretsiz",
+      "disclaimer": "Kredi kartı gerekmez • 2 dakikada kurulum",
+      "headline": "Dünyanızı bugün paylaşmaya başlayın",
+      "subtext": "Ücretsiz explorers'ınızı rezerve edin ve yerel içgörülerinizi paylaşılabilir rehberlere dönüştürün."
+    },
+    "localTunes": {
+      "body": "Keşif sadece görsel değildir. Ses hafıza, bağlam ve duygu taşır.\n\nTunes, yerler, yolculuklar ve ruh halleri için müzik parçaları toplamanıza ve paylaşmanıza olanak tanır — yolda keşfedilen müzik olsun veya sizin için bir yeri tanımlayan sesler olsun.\n\nExplorer profilinizle sorunsuz bir şekilde bağlanır.",
+      "closingStatement": "Tunes keşfetmek için <strong>ücretsiz</strong>dir ve ücretli özellikler için daha sonra yükseltebilirsiniz.",
+      "exploreButton": "Tunes'u Keşfet",
+      "features": {
+        "karaokeReady": {
+          "description": "İşbirlikçi çalma listeleri ve gerçek zamanlı şarkı istekleriyle karaoke geceleri için mükemmel.",
+          "title": "Karaoke Hazır"
+        },
+        "qrCodeSharing": {
+          "description": "Basit bir QR kod taramasıyla müzik deneyiminizi paylaşın — uygulama veya indirme gerekmez.",
+          "title": "QR Kod Paylaşımı"
+        },
+        "realtimeCollaboration": {
+          "description": "Misafirlerin çalma listenize anında şarkı eklemesine izin verin, çalan içeriği tam kontrol altında tutun.",
+          "title": "Gerçek Zamanlı İşbirliği"
+        },
+        "silentParties": {
+          "description": "Herkesin kendi kulaklıklarından dinlediği benzersiz sessiz partiler düzenleyin.",
+          "title": "Sessiz Partiler"
+        },
+        "voteLikeSystem": {
+          "description": "Misafirler favori şarkılarına oy vererek çalma listesi kuyruğunu gerçek zamanlı olarak etkileyebilir.",
+          "title": "Oylama ve Beğeni Sistemi"
+        },
+        "youtubeIntegration": {
+          "description": "Milyonlarca şarkıya erişmek ve mükemmel atmosferi yaratmak için YouTube ile sorunsuz bir şekilde entegre olun.",
+          "title": "YouTube Entegrasyonu"
+        }
+      },
+      "featuresHeading": "Güçlü Özellikler",
+      "mainHeading": "Tunes",
+      "title": "Keşfederken dinleyin",
+      "venueHeading": "Her Mekan İçin Mükemmel",
+      "venues": {
+        "barsPubs": "Barlar ve Pub'lar",
+        "coffeeShops": "Kahve Dükkanları",
+        "eventsWeddings": "Etkinlikler ve Düğünler",
+        "gymsFitness": "Spor Salonları ve Fitness",
+        "restaurants": "Restoranlar",
+        "retailStores": "Perakende Mağazalar"
+      }
+    },
+    "productCategories": {
+      "actions": [
+        "Kaydetmek",
+        "Organize et",
+        "Paylaşmak"
+      ],
+      "categories": [
+        {
+          "description": "İnsanların gerçekten ziyaret edebileceği restoranlar, mahalleler, müzeler, rotalar ve gizli mücevherler.",
+          "id": "places",
+          "label": "Yer",
+          "title": "Yerel noktalar, rehberler ve rotalar"
+        },
+        {
+          "description": "Yaratıcılar, kurucular, rehberler, sanatçılar, öğretmenler, uzmanlar ve zevkinizi şekillendiren insanlar.",
+          "id": "people",
+          "label": "İnsanlar",
+          "title": "Takip etmeye veya öğrenmeye değer kişiler"
+        },
+        {
+          "description": "Sohbetlerde, notlarda, haber bültenlerinde ve seyahat sohbetlerinde önermeye devam ettiğiniz kitaplar.",
+          "id": "books",
+          "label": "Kitaplar",
+          "title": "Kitaplar ve okuma listeleri"
+        },
+        {
+          "description": "Her türlü ruh haline ve izleyiciye uygun filmler, diziler, belgeseller ve izleme listeleri.",
+          "id": "movies",
+          "label": "Filmler ve TV",
+          "title": "Filmler, şovlar ve izleme listeleri"
+        },
+        {
+          "description": "İnsanların bundan sonra denemesi gereken oyunlar, görevler, dünyalar ve deneyimler.",
+          "id": "games",
+          "label": "Oyunlar",
+          "title": "Keşfedilecek oyunlar ve dünyalar"
+        },
+        {
+          "description": "Yerlere ve anlara bağlı sanatçılar, albümler, şarkılar, çalma listeleri ve film müzikleri.",
+          "id": "music",
+          "label": "Müzik",
+          "title": "Albümler, sanatçılar ve çalma listeleri"
+        },
+        {
+          "description": "Gündelik favoriler, seyahat malzemeleri, yaratıcı araçlar, hediyeler ve tasarruf edilmeye değer ürünler.",
+          "id": "products",
+          "label": "Ürünler",
+          "title": "İnsanların gerçekten tavsiye ettiği ürünler"
+        },
+        {
+          "description": "Hayatı kolaylaştıran yazılımlar, web siteleri, şablonlar, araçlar ve kaynaklar.",
+          "id": "apps",
+          "label": "Uygulamalar ve Araçlar",
+          "title": "Uygulamalar, araçlar ve faydalı bağlantılar"
+        }
+      ],
+      "headline": "Yerlerden daha fazlasını tavsiye edin.",
+      "overlayLabel": "Explorer sayfa",
+      "subtext": "Yerler, kişiler, ürünler, kitaplar, filmler, şovlar, müzik, oyunlar, uygulamalar ve araçlar için tek bir sayfa oluşturun.",
+      "visualDetails": {
+        "apps": [
+          "Planlama araçları",
+          "Yararlı uygulamalar",
+          "Kaynak bağlantıları"
+        ],
+        "products": [
+          "Seyahat malzemeleri",
+          "Günlük taşıma",
+          "İçerik oluşturucu seti"
+        ]
+      },
+      "visualLabels": {
+        "apps": "Yararlı yığın",
+        "products": "Gerçek favoriler"
+      }
+    },
+    "referEarn": {
+      "comingSoon": "Yönlendirme Ödül Programı (Yakında)",
+      "earnedThisMonth": "Bu ay kazanılan",
+      "headline": "Paylaşın, yönlendirin ve kazanın",
+      "networkTitle": "Ağınızı oluşturun ve otomatik kazanın",
+      "passiveTitle": "Önerileri pasif ödüllere dönüştürün",
+      "rewardsDesc": "İnsanlar önerilerinizi kullandığında para kazanın",
+      "rewardsTitle": "Ödül Kazanın",
+      "subtext": "Önerilerinizi pasif ödüllere dönüştürün — başkaları QR'ınızı kullandığında kredi kazanın."
+    },
+    "shareAnywhere": {
+      "cafeMenu": "Kafe Menüsü",
+      "cards": [
+        {
+          "eyebrow": "Profile hazır",
+          "title": "Bağlantı bio'da"
+        },
+        {
+          "eyebrow": "Çevrimdışı kullanıma hazır",
+          "title": "QR kodları"
+        },
+        {
+          "eyebrow": "Sohbete hazır",
+          "title": "Mesajlar"
+        },
+        {
+          "eyebrow": "Konuk hazır",
+          "title": "Hoş geldiniz rehberleri"
+        }
+      ],
+      "headline": "Tek bağlantı. Birçok yolculuk.",
+      "instagramDesc": "Takipçilerinizle anında paylaşın",
+      "instagramTitle": "Instagram/Tiktok Bio'nuza ekleyin",
+      "menuDesc": "Fiziksel temas noktaları kolaylaştırıldı",
+      "menuTitle": "Storefront için yazdırın",
+      "profileCarouselCaption": "Instagram ve TikTok profilleri",
+      "qrEverywhereDesc": "Her Mekan İçin Mükemmel",
+      "qrEverywhereTitle": "QR bağlantısını her yere ekleyin",
+      "scanText": "Yerel önerileri tarayın",
+      "storefrontText": "Vitrin vitrinleri için mükemmel",
+      "subtext": "Explorer bağlantınız yaşayan bir rehbere dönüşür; insanların kaydedebileceği, tekrar ziyaret edebileceği ve kendi hızlarında keşfedebileceği bir şey.\n\nBunu bir profilde, mesajda, masada, duvarda veya kartta paylaşın.\nNereye giderse bakış açınız da onunla birlikte gider.",
+      "tokyoFoodGuide": "Tokyo yemek rehberim explorers.earth/jane",
       "visual": {
-        "scanForPicks": "Seçimleri tarayın",
-        "messageBubble": "İşte Kyoto listem",
-        "welcomeGuide": "Hoş geldiniz kılavuzu",
         "guideItems": [
           "Yakında kahvaltı",
           "Müze güzergahı",
           "Akşam yürüyüşü"
         ],
-        "savedRecommendation": "Öneri kaydedildi"
+        "messageBubble": "İşte Kyoto listem",
+        "savedRecommendation": "Öneri kaydedildi",
+        "scanForPicks": "Seçimleri tarayın",
+        "welcomeGuide": "Hoş geldiniz kılavuzu"
       },
-      "profileCarouselCaption": "Instagram ve TikTok profilleri",
-      "qrEverywhereTitle": "QR bağlantısını her yere ekleyin",
-      "qrEverywhereDesc": "Her Mekan İçin Mükemmel"
+      "welcomeDesc": "Ev sahipleri ve rehberler için mükemmel",
+      "welcomeTitle": "Hoş geldiniz kitaplarına dahil et"
     },
-    "analytics": {
-      "headline": "İnsanların nelerle meşgul olduğunu görün.",
-      "subtext": "Bağlantılarınız ve QR kodlarınız üzerinden insanların hangi önerileri açtığını, kaydettiğini ve tekrar ziyaret ettiğini anlayın.",
-      "workingTitle": "Neyin işe yaradığını görün",
-      "workingDesc": "İnsanların hangi önerileri açtığını, kaydettiğini ve tekrar ziyaret ettiğini takip edin.",
-      "scanningTitle": "Taramaları ve tıklamaları anlama",
-      "scanningDesc": "İnsanların bağlantılardan, QR kodlarından ve paylaşılan temas noktalarından sayfanıza nasıl ulaştığını görün.",
-      "spotsTitle": "En iyi önerileri bulun",
-      "spotsDesc": "Hangi yerlerin, ürünlerin, listelerin ve rehberlerin en çok ilgi gördüğünü öğrenin.",
-      "dashboardTitle": "Analitik Kontrol Paneli",
-      "last30Days": "Son 30 gün",
-      "totalScans": "Toplam Tarama Sayısı",
-      "engagement": "Nişanlanmak",
-      "referrals": "Tavsiyeler",
-      "livePreview": "Canlı önizleme"
-    },
-    "referEarn": {
-      "headline": "Paylaşın, yönlendirin ve kazanın",
-      "subtext": "Önerilerinizi pasif ödüllere dönüştürün — başkaları QR'ınızı kullandığında kredi kazanın.",
-      "comingSoon": "Yönlendirme Ödül Programı (Yakında)",
-      "rewardsTitle": "Ödül Kazanın",
-      "rewardsDesc": "İnsanlar önerilerinizi kullandığında para kazanın",
-      "earnedThisMonth": "Bu ay kazanılan",
-      "passiveTitle": "Önerileri pasif ödüllere dönüştürün",
-      "networkTitle": "Ağınızı oluşturun ve otomatik kazanın"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Keşfederken dinleyin",
-      "body": "Keşif sadece görsel değildir. Ses hafıza, bağlam ve duygu taşır.\n\nTunes, yerler, yolculuklar ve ruh halleri için müzik parçaları toplamanıza ve paylaşmanıza olanak tanır — yolda keşfedilen müzik olsun veya sizin için bir yeri tanımlayan sesler olsun.\n\nExplorer profilinizle sorunsuz bir şekilde bağlanır.",
-      "exploreButton": "Tunes'u Keşfet",
-      "featuresHeading": "Güçlü Özellikler",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Gerçek Zamanlı İşbirliği",
-          "description": "Misafirlerin çalma listenize anında şarkı eklemesine izin verin, çalan içeriği tam kontrol altında tutun."
+    "testimonials": {
+      "headline": "Gezginler, yaratıcılar ve ev sahipleri tarafından sevilir",
+      "items": [
+        {
+          "id": "1",
+          "location": "Mumbai, Hindistan",
+          "name": "Priya Sharma",
+          "quote": "kaşifler seyahat bilgilerimi paylaşma biçimimi değiştirdi. Takipçilerim, özenle seçilmiş önerilerime anında erişmeyi seviyor!",
+          "role": "Seyahat Blogcusu"
         },
-        "qrCodeSharing": {
-          "title": "QR Kod Paylaşımı",
-          "description": "Basit bir QR kod taramasıyla müzik deneyiminizi paylaşın — uygulama veya indirme gerekmez."
+        {
+          "id": "2",
+          "location": "Delhi, Hindistan",
+          "name": "Raj Patel",
+          "quote": "Misafirlerim, karşılama kitlerindeki kişiselleştirilmiş QR kodunu kesinlikle seviyorlar. Bu benim imza dokunuşum haline geldi!",
+          "role": "Airbnb Ana Bilgisayar"
         },
-        "youtubeIntegration": {
-          "title": "YouTube Entegrasyonu",
-          "description": "Milyonlarca şarkıya erişmek ve mükemmel atmosferi yaratmak için YouTube ile sorunsuz bir şekilde entegre olun."
+        {
+          "id": "3",
+          "location": "Tokyo, Japonya",
+          "name": "Yuki Tanaka",
+          "quote": "Diğer yerel noktaları önermek için kaşiflerimizi müşterilerimizle paylaşıyoruz. Harika topluluk bağlantıları yarattı.",
+          "role": "Restoran Sahibi"
         },
-        "voteLikeSystem": {
-          "title": "Oylama ve Beğeni Sistemi",
-          "description": "Misafirler favori şarkılarına oy vererek çalma listesi kuyruğunu gerçek zamanlı olarak etkileyebilir."
+        {
+          "id": "4",
+          "location": "São Paulo, Brezilya",
+          "name": "Maria Silva",
+          "quote": "kaşifler uzmanlığımı tur saatlerinin ötesine taşımama yardımcı oluyor. Müşteriler önerilerime istedikleri zaman erişebilirler!",
+          "role": "Tur Rehberi"
         },
-        "silentParties": {
-          "title": "Sessiz Partiler",
-          "description": "Herkesin kendi kulaklıklarından dinlediği benzersiz sessiz partiler düzenleyin."
+        {
+          "id": "5",
+          "location": "Sidney, Avustralya",
+          "name": "James Wilson",
+          "quote": "Bir seyahat fenomeni olarak kaşifler, favori yerlerimi izleyicilerimle paylaşmayı çok kolaylaştırıyor. QR kodu özelliği harika!",
+          "role": "Seyahat Etkileyici"
         },
-        "karaokeReady": {
-          "title": "Karaoke Hazır",
-          "description": "İşbirlikçi çalma listeleri ve gerçek zamanlı şarkı istekleriyle karaoke geceleri için mükemmel."
+        {
+          "id": "6",
+          "location": "Paris, Fransa",
+          "name": "Sophie Martin",
+          "quote": "Müşterilerime yürüyüş turları oluşturmak için kaşifleri kullanıyorum. QR'ı tarayabilir ve kendi hızlarında keşfedebilirler!",
+          "role": "Yerel Rehber"
         }
-      },
-      "venueHeading": "Her Mekan İçin Mükemmel",
-      "venues": {
-        "barsPubs": "Barlar ve Pub'lar",
-        "restaurants": "Restoranlar",
-        "coffeeShops": "Kahve Dükkanları",
-        "eventsWeddings": "Etkinlikler ve Düğünler",
-        "retailStores": "Perakende Mağazalar",
-        "gymsFitness": "Spor Salonları ve Fitness"
-      },
-      "closingStatement": "Tunes keşfetmek için <strong>ücretsiz</strong>dir ve ücretli özellikler için daha sonra yükseltebilirsiniz."
+      ],
+      "scrollLeft": "Referansları sola kaydır",
+      "scrollRight": "Referansları sağa kaydır",
+      "subtext": "Dünyanın dört bir yanındaki insanların en önemli şeyleri paylaşmak için kaşifleri nasıl kullandığını görün."
     },
     "whoIsFor": {
-      "headline": "Zevkleri başkalarına yardımcı olan insanlar için tasarlandı.",
-      "subtext": "İster bir şehri, ister bir rafı, bir ürün listesini, bir oynatma listesini veya bir misafir rehberini paylaşıyor olun, kaşifler önerilerinize bir yuva sağlar.",
       "cards": [
         "Kişisel kaşifler",
         "Yaratıcılar ve küratörler",
         "Ev sahipleri ve işletmeler",
         "Markalar ve kuruluşlar"
       ],
-      "useCases": {
-        "travelers": "Gezginler",
-        "travelersDesc": "Keşfedilen mücevherleri diğer kaşiflerle paylaşın",
-        "influencers": "Etkileyenler",
-        "influencersDesc": "Yerel bilgiden para kazanın ve topluluk oluşturun",
-        "airbnbHosts": "Airbnb Ana Bilgisayarlar",
-        "airbnbHostsDesc": "Yerel bilgilerle konuk deneyimini geliştirin",
-        "hotels": "Oteller",
-        "hotelsDesc": "Seçilmiş yerel öneriler sağlayın",
-        "restaurants": "Restoranlar",
-        "restaurantsDesc": "Diğer yerel işletmelerle çapraz tanıtım yapın",
-        "cafes": "Kafeler",
-        "cafesDesc": "Mahallenin favorilerini müşterilerle paylaşın",
-        "localGuides": "Yerel Rehberler",
-        "localGuidesDesc": "Uzmanlığı bireysel turların ötesine taşıyın",
-        "creators": "Yaratıcılar",
-        "creatorsDesc": "Uygulanabilir ipuçlarıyla içeriğin ötesine değer katın",
-        "tourOperators": "Tur Operatörleri",
-        "tourOperatorsDesc": "Deneyimi planlı turların ötesine taşıyın",
-        "anyBusiness": "Herhangi Bir İşletme",
-        "anyBusinessDesc": "Topluluk ve müşteri sadakati oluşturun"
-      },
-      "explorerLabel": "Explorer",
-      "visual": {
-        "personal": [
-          "Kafe",
-          "Kitap",
-          "İz",
-          "Albüm",
-          "Film",
-          "Oyun"
-        ],
-        "creators": [
-          "#1",
-          "#2",
-          "#3",
-          "#4"
-        ],
-        "hostsQr": "QR"
-      },
       "chips": [
         "Gezginler",
         "Yerliler",
@@ -1532,198 +1805,79 @@
         "Havalimanları",
         "STK'lar",
         "Hükümet ekipleri"
-      ]
-    },
-    "testimonials": {
-      "headline": "Gezginler, yaratıcılar ve ev sahipleri tarafından sevilir",
-      "subtext": "Dünyanın dört bir yanındaki insanların en önemli şeyleri paylaşmak için kaşifleri nasıl kullandığını görün.",
-      "scrollLeft": "Referansları sola kaydır",
-      "scrollRight": "Referansları sağa kaydır",
-      "items": [
-        {
-          "id": "1",
-          "name": "Priya Sharma",
-          "role": "Seyahat Blogcusu",
-          "location": "Mumbai, Hindistan",
-          "quote": "kaşifler seyahat bilgilerimi paylaşma biçimimi değiştirdi. Takipçilerim, özenle seçilmiş önerilerime anında erişmeyi seviyor!"
-        },
-        {
-          "id": "2",
-          "name": "Raj Patel",
-          "role": "Airbnb Ana Bilgisayar",
-          "location": "Delhi, Hindistan",
-          "quote": "Misafirlerim, karşılama kitlerindeki kişiselleştirilmiş QR kodunu kesinlikle seviyorlar. Bu benim imza dokunuşum haline geldi!"
-        },
-        {
-          "id": "3",
-          "name": "Yuki Tanaka",
-          "role": "Restoran Sahibi",
-          "location": "Tokyo, Japonya",
-          "quote": "Diğer yerel noktaları önermek için kaşiflerimizi müşterilerimizle paylaşıyoruz. Harika topluluk bağlantıları yarattı."
-        },
-        {
-          "id": "4",
-          "name": "Maria Silva",
-          "role": "Tur Rehberi",
-          "location": "São Paulo, Brezilya",
-          "quote": "kaşifler uzmanlığımı tur saatlerinin ötesine taşımama yardımcı oluyor. Müşteriler önerilerime istedikleri zaman erişebilirler!"
-        },
-        {
-          "id": "5",
-          "name": "James Wilson",
-          "role": "Seyahat Etkileyici",
-          "location": "Sidney, Avustralya",
-          "quote": "Bir seyahat fenomeni olarak kaşifler, favori yerlerimi izleyicilerimle paylaşmayı çok kolaylaştırıyor. QR kodu özelliği harika!"
-        },
-        {
-          "id": "6",
-          "name": "Sophie Martin",
-          "role": "Yerel Rehber",
-          "location": "Paris, Fransa",
-          "quote": "Müşterilerime yürüyüş turları oluşturmak için kaşifleri kullanıyorum. QR'ı tarayabilir ve kendi hızlarında keşfedebilirler!"
-        }
-      ]
-    },
-    "faq": {
-      "headline": "Sorularınız mı var?",
-      "subtext": "İnsanların başlamadan önce en sık sorduğu şeyleri yanıtladık.",
-      "loading": "SSS yükleniyor...",
-      "error": "SSS yüklenirken hata oluştu. Lütfen daha sonra tekrar deneyin.",
-      "fallbackItems": [
-        {
-          "Sequence": 1,
-          "Question": "Explorer sayfama neler ekleyebilirim?",
-          "Answer": "Yerler, kişiler, ürünler, kitaplar, filmler, şovlar, müzik, oyunlar, uygulamalar, kılavuzlar ve notlar."
-        },
-        {
-          "Sequence": 2,
-          "Question": "QR koduyla paylaşabilir miyim?",
-          "Answer": "Evet. Explorer sayfanız profiller, mesajlar, tablolar, kartlar ve basılı kılavuzlar için bir bağlantı veya QR olarak paylaşılabilir."
-        },
-        {
-          "Sequence": 3,
-          "Question": "Önerilerimi daha sonra güncelleyebilir miyim?",
-          "Answer": "Evet. Aynı bağlantı ve QR çalışmaya devam ederken sayfanızı güncel tutabilirsiniz."
-        },
-        {
-          "Sequence": 4,
-          "Question": "Kaşifler sonsuza kadar özgür mü?",
-          "Answer": "Evet. Sayfa, ödeme ağırlıklı bir dil olmadan ücretsiz vaadi net bir şekilde iletebilir."
-        }
-      ]
-    },
-    "features": {
-      "title": "Yoldan uzak durmak için inşa edildi",
-      "subtitle": "Önerilerinizin parlamasına izin veren basit, düşünceli özellikler.",
-      "simpleLinks": {
-        "title": "Basit bağlantılar ve QR paylaşımı"
-      },
-      "livingGuides": {
-        "title": "Canlı, düzenlenebilir rehberler"
-      },
-      "locationAware": {
-        "title": "Konum bilinçli öneriler"
-      },
-      "soundPlaylists": {
-        "title": "İsteğe bağlı ses ve çalma listeleri"
-      },
-      "privacyFirst": {
-        "title": "Tasarıma göre gizlilik öncelikli"
-      },
-      "communityDriven": {
-        "title": "Topluluk odaklı keşif"
-      }
-    },
-    "finalCTA": {
-      "headline": "Dünyanızı bugün paylaşmaya başlayın",
-      "subtext": "Ücretsiz explorers'ınızı rezerve edin ve yerel içgörülerinizi paylaşılabilir rehberlere dönüştürün.",
-      "ctaButton": "explorers Rezerve Et – Sonsuza Kadar Ücretsiz",
-      "disclaimer": "Kredi kartı gerekmez • 2 dakikada kurulum",
-      "creating": "explorers'ınız oluşturuluyor..."
-    },
-    "productCategories": {
-      "headline": "Yerlerden daha fazlasını tavsiye edin.",
-      "subtext": "Yerler, kişiler, ürünler, kitaplar, filmler, şovlar, müzik, oyunlar, uygulamalar ve araçlar için tek bir sayfa oluşturun.",
-      "actions": [
-        "Kaydetmek",
-        "Organize et",
-        "Paylaşmak"
       ],
-      "overlayLabel": "Explorer sayfa",
-      "visualLabels": {
-        "products": "Gerçek favoriler",
-        "apps": "Yararlı yığın"
-      },
-      "visualDetails": {
-        "products": [
-          "Seyahat malzemeleri",
-          "Günlük taşıma",
-          "İçerik oluşturucu seti"
-        ],
-        "apps": [
-          "Planlama araçları",
-          "Yararlı uygulamalar",
-          "Kaynak bağlantıları"
-        ]
-      },
-      "categories": [
-        {
-          "id": "places",
-          "label": "Yer",
-          "title": "Yerel noktalar, rehberler ve rotalar",
-          "description": "İnsanların gerçekten ziyaret edebileceği restoranlar, mahalleler, müzeler, rotalar ve gizli mücevherler."
+      "explore": "See this perspective",
+      "explorerLabel": "Explorer",
+      "eyebrow": "Ways to use explorers",
+      "headline": "Zevkleri başkalarına yardımcı olan insanlar için tasarlandı.",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
         },
-        {
-          "id": "people",
-          "label": "İnsanlar",
-          "title": "Takip etmeye veya öğrenmeye değer kişiler",
-          "description": "Yaratıcılar, kurucular, rehberler, sanatçılar, öğretmenler, uzmanlar ve zevkinizi şekillendiren insanlar."
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
         },
-        {
-          "id": "books",
-          "label": "Kitaplar",
-          "title": "Kitaplar ve okuma listeleri",
-          "description": "Sohbetlerde, notlarda, haber bültenlerinde ve seyahat sohbetlerinde önermeye devam ettiğiniz kitaplar."
-        },
-        {
-          "id": "movies",
-          "label": "Filmler ve TV",
-          "title": "Filmler, şovlar ve izleme listeleri",
-          "description": "Her türlü ruh haline ve izleyiciye uygun filmler, diziler, belgeseller ve izleme listeleri."
-        },
-        {
-          "id": "games",
-          "label": "Oyunlar",
-          "title": "Keşfedilecek oyunlar ve dünyalar",
-          "description": "İnsanların bundan sonra denemesi gereken oyunlar, görevler, dünyalar ve deneyimler."
-        },
-        {
-          "id": "music",
-          "label": "Müzik",
-          "title": "Albümler, sanatçılar ve çalma listeleri",
-          "description": "Yerlere ve anlara bağlı sanatçılar, albümler, şarkılar, çalma listeleri ve film müzikleri."
-        },
-        {
-          "id": "products",
-          "label": "Ürünler",
-          "title": "İnsanların gerçekten tavsiye ettiği ürünler",
-          "description": "Gündelik favoriler, seyahat malzemeleri, yaratıcı araçlar, hediyeler ve tasarruf edilmeye değer ürünler."
-        },
-        {
-          "id": "apps",
-          "label": "Uygulamalar ve Araçlar",
-          "title": "Uygulamalar, araçlar ve faydalı bağlantılar",
-          "description": "Hayatı kolaylaştıran yazılımlar, web siteleri, şablonlar, araçlar ve kaynaklar."
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
         }
-      ]
+      },
+      "subtext": "İster bir şehri, ister bir rafı, bir ürün listesini, bir oynatma listesini veya bir misafir rehberini paylaşıyor olun, kaşifler önerilerinize bir yuva sağlar.",
+      "useCases": {
+        "airbnbHosts": "Airbnb Ana Bilgisayarlar",
+        "airbnbHostsDesc": "Yerel bilgilerle konuk deneyimini geliştirin",
+        "anyBusiness": "Herhangi Bir İşletme",
+        "anyBusinessDesc": "Topluluk ve müşteri sadakati oluşturun",
+        "cafes": "Kafeler",
+        "cafesDesc": "Mahallenin favorilerini müşterilerle paylaşın",
+        "creators": "Yaratıcılar",
+        "creatorsDesc": "Uygulanabilir ipuçlarıyla içeriğin ötesine değer katın",
+        "hotels": "Oteller",
+        "hotelsDesc": "Seçilmiş yerel öneriler sağlayın",
+        "influencers": "Etkileyenler",
+        "influencersDesc": "Yerel bilgiden para kazanın ve topluluk oluşturun",
+        "localGuides": "Yerel Rehberler",
+        "localGuidesDesc": "Uzmanlığı bireysel turların ötesine taşıyın",
+        "restaurants": "Restoranlar",
+        "restaurantsDesc": "Diğer yerel işletmelerle çapraz tanıtım yapın",
+        "tourOperators": "Tur Operatörleri",
+        "tourOperatorsDesc": "Deneyimi planlı turların ötesine taşıyın",
+        "travelers": "Gezginler",
+        "travelersDesc": "Keşfedilen mücevherleri diğer kaşiflerle paylaşın"
+      },
+      "visual": {
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR",
+        "personal": [
+          "Kafe",
+          "Kitap",
+          "İz",
+          "Albüm",
+          "Film",
+          "Oyun"
+        ]
+      }
     }
   },
   "seo": {
-    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
     "landing": {
-      "title": "kaşifler - Kişiselleştirilmiş Yerel Önerileri Keşfedin ve Paylaşın",
       "description": "Favori yerel noktalarınızı keşfedin ve kaşiflerle paylaşın. Kişiselleştirilmiş şehir rehberleri oluşturun, mutlaka ziyaret edilmesi gereken yerleri düzenleyin ve paylaşılabilir QR kodlarıyla bunları keşfedilebilir hale getirin. Etkileşimli haritalarda gizli mücevherleri, seçilmiş önerileri ve yerel seyahat ipuçlarını keşfedin.",
+      "geoDescription": "Kişiselleştirilmiş QR kodları ve paylaşılabilir bağlantılarla favori yerel mekanlarınızı keşfedin ve paylaşın",
+      "geoFeatures": [
+        "Kişiselleştirilmiş QR kodu oluşturma",
+        "Yerel öneri paylaşımı",
+        "Analitik ve içgörüler",
+        "Mobil cihazlar için optimize edilmiş tasarım",
+        "Topluluk keşfi"
+      ],
+      "geoIndustry": "Teknoloji",
       "keywords": [
         "yakınımdaki yerleri keşfet",
         "kişiselleştirilmiş seyahat rehberleri",
@@ -1751,16 +1905,10 @@
         "seyahat ipuçları",
         "yerel noktalar"
       ],
-      "geoDescription": "Kişiselleştirilmiş QR kodları ve paylaşılabilir bağlantılarla favori yerel mekanlarınızı keşfedin ve paylaşın",
-      "geoFeatures": [
-        "Kişiselleştirilmiş QR kodu oluşturma",
-        "Yerel öneri paylaşımı",
-        "Analitik ve içgörüler",
-        "Mobil cihazlar için optimize edilmiş tasarım",
-        "Topluluk keşfi"
-      ],
-      "geoIndustry": "Teknoloji"
-    }
+      "title": "kaşifler - Kişiselleştirilmiş Yerel Önerileri Keşfedin ve Paylaşın"
+    },
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
   },
   "settings": {
     "account": {
@@ -2278,13 +2426,91 @@
       "validationPending": "Doğrulama bekliyor. Lütfen bekleyin"
     }
   },
+  "useCases": {
+    "cta": {
+      "button": "Claim your Explorer page",
+      "description": "Start with the recommendations you already share. Give them one place to live.",
+      "title": "Make a home for what you would pass on."
+    },
+    "hero": {
+      "chooseLabel": "Choose a perspective",
+      "description": "Whether the point of view is personal, creative, or shared by a brand, explorers gives it a thoughtful home.",
+      "eyebrow": "Ways to explore",
+      "title": "Different perspectives. One place to share them.",
+      "visualAlt": "Three perspectives connected through a place, an Explorer profile, and a storefront."
+    },
+    "journey": {
+      "description": "The shape changes with the person behind it. The rhythm stays simple.",
+      "eyebrow": "One simple rhythm",
+      "steps": {
+        "collect": {
+          "description": "Bring together what you genuinely recommend across the parts of life that matter to you.",
+          "title": "Collect"
+        },
+        "shape": {
+          "description": "Organize it with enough context for someone else to understand why it belongs.",
+          "title": "Shape"
+        },
+        "share": {
+          "description": "Offer one living link or QR that people can save, scan, and return to.",
+          "title": "Share"
+        }
+      },
+      "title": "Three perspectives. One way of sharing with care."
+    },
+    "perspectives": {
+      "brands": {
+        "description": "Curate the places, products, guides, and ideas that express what your organization genuinely values.",
+        "label": "Brands",
+        "points": [
+          "Build collections with a clear and human perspective.",
+          "Connect locations, products, and useful context.",
+          "Give people something thoughtful to save and revisit."
+        ],
+        "title": "Turn your point of view into an experience people can enter."
+      },
+      "creators": {
+        "description": "Turn the recommendations scattered across posts, videos, conversations, and notes into something people can return to.",
+        "label": "Creators",
+        "points": [
+          "Create a durable home for your point of view.",
+          "Organize recommendations around stories and themes.",
+          "Share through one link or QR wherever people find you."
+        ],
+        "title": "Give your audience more than a feed."
+      },
+      "personal": {
+        "description": "Keep the places, books, films, tools, people, and small discoveries you return to in one living collection.",
+        "label": "Personal",
+        "points": [
+          "Bring different kinds of recommendations together.",
+          "Add the context that makes each choice yours.",
+          "Share one page that can keep evolving with you."
+        ],
+        "title": "A home for the things that shape your world."
+      }
+    },
+    "seo": {
+      "description": "See how people, creators, and brands can collect what they value, shape it with context, and share it through one thoughtful Explorer page.",
+      "keywords": [
+        "explorers use cases",
+        "personal recommendations page",
+        "creator recommendations",
+        "brand curation",
+        "share recommendations",
+        "curated collections"
+      ],
+      "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
+      "title": "Use Cases | explorers.earth"
+    }
+  },
   "usernameClaim": {
-    "validating": "Doğrulanıyor...",
-    "claimFree": "Ücretsiz talep edin",
-    "trySuggestions": "Şunu deneyin: {{suggestions}}",
     "available": "Kullanıcı adı mevcut.",
-    "unavailable": "Kullanıcı adı mevcut değil.",
+    "checkingAvailability": "Kullanılabilirlik kontrol ediliyor...",
+    "claimFree": "Ücretsiz talep edin",
     "confirmOnSignup": "Kayıt sırasında kullanılabilirliği doğrulayacağız.",
-    "checkingAvailability": "Kullanılabilirlik kontrol ediliyor..."
+    "trySuggestions": "Şunu deneyin: {{suggestions}}",
+    "unavailable": "Kullanıcı adı mevcut değil.",
+    "validating": "Doğrulanıyor..."
   }
 }

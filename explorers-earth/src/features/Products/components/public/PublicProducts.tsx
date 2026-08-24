@@ -13,6 +13,7 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import ProductTopPicksHero from "./ProductTopPicksHero";
 import ProductTopPicksMobileHero from "./ProductTopPicksMobileHero";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsernameProducts($username: String!) {
@@ -64,6 +65,22 @@ const PublicProducts = () => {
   }, [loading, outletContext]);
 
   const lists: ProductList[] = data?.productLists ?? [];
+  const analytics = useTrackAnalytics(
+    createAnalyticsOptions.products(accountDocumentId || "", username),
+  );
+
+  const owningListByProductId = useMemo(() => {
+    const ownership = new Map<string, { documentId: string; name: string }>();
+    lists.forEach((list) => {
+      list.recommended_products?.forEach((product) => {
+        ownership.set(product.documentId, {
+          documentId: list.documentId,
+          name: list.List_Name,
+        });
+      });
+    });
+    return ownership;
+  }, [lists]);
 
   const allProducts = useMemo(() => {
     return deduplicateProducts(lists.flatMap((l) => l.recommended_products ?? []));
@@ -81,7 +98,15 @@ const PublicProducts = () => {
 
   const handleProductClick = useCallback((product: RecommendedProduct) => {
     setModalState({ open: true, product });
-  }, []);
+    const owningList = owningListByProductId.get(product.documentId);
+    analytics.trackClick("product-card", {
+      id: product.documentId,
+      listId: product.product_list?.documentId || owningList?.documentId,
+      listName: product.product_list?.List_Name || owningList?.name,
+      title: product.title,
+      category: product.product_category?.name,
+    });
+  }, [analytics, owningListByProductId]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -91,6 +116,7 @@ const PublicProducts = () => {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied!");
     }
+    analytics.trackClick("share-button", { context: "products-header" });
   };
 
   const productCount = allProducts.length;
@@ -214,7 +240,13 @@ const PublicProducts = () => {
                         key={list.documentId}
                         list={list}
                         onProductClick={handleProductClick}
-                        onViewAll={() => navigate(`/${username}/products/${list.slug}`)}
+                        onViewAll={() => {
+                          analytics.trackClick("product-list", {
+                            listId: list.documentId,
+                            listName: list.List_Name,
+                          });
+                          navigate(`/${username}/products/${list.slug}`);
+                        }}
                       />
                     ))}
                   </div>

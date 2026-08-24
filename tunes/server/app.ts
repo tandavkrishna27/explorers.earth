@@ -4,6 +4,10 @@ import { log } from "./vite";
 import cookieParser from "cookie-parser";
 import type { Server } from "http";
 import { storage } from "./storage";
+import {
+  resolveTrustProxySetting,
+  shouldLogRequestBody,
+} from "./security/request-security-policy";
 
 /**
  * Builds the Express app with all middleware + routes wired, and returns it
@@ -22,10 +26,13 @@ import { storage } from "./storage";
  */
 export async function createApp(): Promise<{ app: express.Express; server: Server }> {
   const app = express();
+  const trustProxySetting = resolveTrustProxySetting(
+    process.env.TRUST_PROXY_CIDRS,
+  );
 
-  // Enable trust proxy FIRST, before any middleware
-  // This is critical for secure cookies to work properly
-  app.set("trust proxy", true);
+  // Trust only the configured ingress hops. This keeps req.ip useful for
+  // coarse country resolution without accepting arbitrary forwarded IPs.
+  app.set("trust proxy", trustProxySetting);
 
   // Basic middleware setup
   app.use(express.json());
@@ -101,7 +108,7 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
       console.log(`🟦 [Request Logger] ${req.method} ${req.originalUrl}`);
       console.log(`🟦 Path: ${path}`);
       console.log(`🟦 Content-Type: ${req.headers['content-type']}`);
-      if (isPost) {
+      if (isPost && shouldLogRequestBody(path)) {
         // Log body preview for POST requests
         try {
           const bodyPreview = JSON.stringify(req.body).substring(0, 200);
@@ -129,6 +136,9 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
 
   console.log('Starting server initialization...');
   const server = await registerRoutes(app, storage);
+  // Auth setup historically changed this setting; restore the single global
+  // policy after every route has registered.
+  app.set("trust proxy", trustProxySetting);
 
   // Error handling middleware (registered after routes, before the Vite/static
   // catch-all that the entrypoint adds — preserves the original ordering)

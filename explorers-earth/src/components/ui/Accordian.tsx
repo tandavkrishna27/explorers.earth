@@ -1,184 +1,141 @@
-import { useState, ReactNode, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
+import {
+  type HTMLAttributes,
+  type ReactNode,
+  useId,
+  useState,
+} from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import UpArrow from "../../assets/icons/UpArrow";
 import Down from "../../assets/icons/Down";
+
+export interface AccordionProps
+  extends Omit<HTMLAttributes<HTMLDivElement>, "id"> {
+  heading: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+  id?: string;
+  headingIcon?: ReactNode;
+  onOpenChange?: (isOpen: boolean) => void;
+  variant?: "card" | "flat";
+}
 
 const Accordion = ({
   heading,
   children,
   defaultOpen = false,
+  id,
+  headingIcon,
   onOpenChange,
+  variant = "card",
+  className = "",
   ...props
-}: {
-  heading: string;
-  children: ReactNode;
-  defaultOpen?: boolean;
-  onOpenChange?: (isOpen: boolean) => void;
-  [key: string]: any;
-}) => {
+}: AccordionProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const accordionRef = useRef<HTMLDivElement>(null);
+  const generatedId = useId().replace(/:/g, "");
+  const prefersReducedMotion = useReducedMotion();
+  const accordionId = id || `accordion-${generatedId}`;
+  const triggerId = `${accordionId}-trigger`;
+  const contentId = `${accordionId}-content`;
+  const isFlat = variant === "flat";
 
-  // Function to scroll page to bottom of accordion - works on all screen sizes
-  const scrollToAccordionBottom = () => {
-    if (accordionRef.current) {
-      // Wait for accordion to fully expand
-      setTimeout(() => {
-        const accordionElement = accordionRef.current;
-        if (accordionElement) {
-          // Get viewport dimensions
-          const viewportHeight = window.innerHeight;
-          const viewportWidth = window.innerWidth;
-          const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
-
-          // Get accordion position after expansion
-          const rect = accordionElement.getBoundingClientRect();
-          const accordionBottom = currentScroll + rect.bottom;
-
-          // Check if accordion is already fully visible
-          const isFullyVisible = rect.top >= 0 && rect.bottom <= viewportHeight;
-
-          // Calculate target scroll position based on screen size
-          let targetScroll;
-
-          if (viewportWidth >= 1024) {
-            // Large screens: scroll to show accordion bottom with padding
-            targetScroll = accordionBottom - viewportHeight + 200;
-          } else if (viewportWidth >= 768) {
-            // Medium screens: show bottom with padding
-            targetScroll = accordionBottom - viewportHeight + 200;
-          } else {
-            // Small screens: show bottom with small padding
-            targetScroll = accordionBottom - viewportHeight + 100;
-          }
-
-          // Ensure valid scroll position
-          const documentHeight = document.documentElement.scrollHeight;
-          const maxScroll = documentHeight - viewportHeight;
-          const finalScroll = Math.min(Math.max(targetScroll, 0), maxScroll);
-
-          // Debug logging
-          console.log('Scroll Debug:', {
-            viewportWidth,
-            viewportHeight,
-            currentScroll,
-            accordionBottom,
-            targetScroll,
-            finalScroll,
-            maxScroll,
-            isFullyVisible,
-            shouldScroll: viewportWidth >= 1024 || (!isFullyVisible && Math.abs(finalScroll - currentScroll) > 10)
-          });
-
-          // Always scroll on large screens, or if accordion is not fully visible
-          const shouldScroll = viewportWidth >= 1024 || (!isFullyVisible && Math.abs(finalScroll - currentScroll) > 10);
-
-          if (shouldScroll) {
-            console.log('Scrolling to:', finalScroll);
-            window.scrollTo({
-              top: finalScroll,
-              behavior: 'smooth'
-            });
-          } else {
-            console.log('Not scrolling - accordion is fully visible or no significant difference');
-          }
-
-          // Fallback for large screens - use scrollIntoView if manual scroll didn't work
-          if (viewportWidth >= 1024) {
-            setTimeout(() => {
-              accordionElement.scrollIntoView({
-                behavior: 'smooth',
-                block: 'end',
-                inline: 'nearest'
-              });
-            }, 100);
-          }
-        }
-      }, 300); // Wait for accordion animation to complete
-    }
-  };
-
-  // Handle accordion toggle with scroll
   const handleToggle = () => {
-    const newIsOpen = !isOpen;
-    setIsOpen(newIsOpen);
-
-    // Notify parent of state change
-    onOpenChange?.(newIsOpen);
-
-    // If opening, scroll to bottom after accordion expands
-    if (newIsOpen) {
-      scrollToAccordionBottom();
-    }
+    const nextIsOpen = !isOpen;
+    setIsOpen(nextIsOpen);
+    onOpenChange?.(nextIsOpen);
   };
-
-  // Auto-scroll when accordion opens (for defaultOpen case)
-  useEffect(() => {
-    if (isOpen && accordionRef.current) {
-      // Scroll after accordion is rendered
-      scrollToAccordionBottom();
-    }
-  }, [isOpen]);
 
   return (
     <div
-      ref={accordionRef}
-      className="bg-dashboard-sidebar backdrop-blur-sm rounded-xl border border-dashboard shadow-dashboard-elevated transition-all duration-300 hover:shadow-dashboard-elevated hover:border-dashboard-accent hover:rounded-xl"
+      className={`${
+        isFlat
+          ? "border-b border-dashboard"
+          : "bg-dashboard-sidebar backdrop-blur-sm rounded-xl border border-dashboard shadow-dashboard-elevated transition-all duration-300 hover:shadow-dashboard-elevated hover:border-dashboard-accent"
+      } ${className}`.trim()}
       style={{
-        // Use visible instead of hidden to allow emoji picker to overflow
-        overflow: isOpen ? 'visible' : 'hidden',
-        // Ensure proper stacking context for emoji picker
-        position: 'relative',
-        zIndex: isOpen ? 1 : 'auto'
+        // Open emoji pickers and media controls must be able to escape the row.
+        overflow: isOpen ? "visible" : "hidden",
+        position: "relative",
+        zIndex: isOpen ? 1 : "auto",
       }}
       {...props}
     >
       <button
+        id={triggerId}
         type="button"
         onClick={handleToggle}
-        className={`w-full flex justify-between items-center px-4 py-3 md:px-5 md:py-4 text-dashboard font-poppins transition-all duration-300 hover:bg-dashboard-muted focus:outline-none focus:ring-2 focus:ring-dashboard-accent/50 focus:bg-dashboard-muted group ${isOpen ? 'rounded-t-xl' : 'rounded-xl'
-          }`}
+        className={`group flex min-h-[52px] w-full items-center justify-between gap-3 px-1 py-3 text-left font-poppins text-dashboard transition-colors hover:bg-dashboard-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dashboard-accent ${
+          isFlat
+            ? isOpen
+              ? "rounded-t-lg"
+              : "rounded-lg"
+            : isOpen
+              ? "rounded-t-xl px-4 md:px-5"
+              : "rounded-xl px-4 md:px-5"
+        }`}
         aria-expanded={isOpen}
-        aria-controls={`accordion-content-${heading.replace(/\s+/g, '-').toLowerCase()}`}
+        aria-controls={contentId}
       >
-        <span className="text-base md:text-lg font-semibold text-dashboard-light group-hover:text-dashboard transition-colors duration-200">
-          {heading}
+        <span className="flex min-w-0 items-center gap-3">
+          {headingIcon && (
+            <span
+              aria-hidden="true"
+              className="shrink-0 text-dashboard-accent"
+            >
+              {headingIcon}
+            </span>
+          )}
+          <span className="text-base font-semibold text-dashboard-light transition-colors group-hover:text-dashboard md:text-lg">
+            {heading}
+          </span>
         </span>
-        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-dashboard-muted group-hover:bg-dashboard-accent/20 transition-all duration-300 group-focus:bg-dashboard-accent/20 group-focus:ring-2 group-focus:ring-dashboard-accent/30">
-          <motion.div
+        <span
+          aria-hidden="true"
+          className={`flex min-h-11 min-w-11 items-center justify-center ${
+            isFlat
+              ? "text-dashboard-light group-hover:text-dashboard"
+              : "rounded-full bg-dashboard-muted text-dashboard-light transition-colors group-hover:bg-dashboard-accent/20 group-hover:text-dashboard"
+          }`}
+        >
+          <motion.span
             animate={{ rotate: isOpen ? 180 : 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="text-dashboard-light group-hover:text-dashboard transition-colors duration-200"
+            transition={{
+              duration: prefersReducedMotion ? 0 : 0.2,
+              ease: "easeInOut",
+            }}
           >
             {isOpen ? <UpArrow /> : <Down />}
-          </motion.div>
-        </div>
+          </motion.span>
+        </span>
       </button>
 
       <motion.div
-        id={`accordion-content-${heading.replace(/\s+/g, '-').toLowerCase()}`}
-        initial={{ height: 0, opacity: 0 }}
+        id={contentId}
+        role="region"
+        aria-labelledby={triggerId}
+        hidden={!isOpen}
+        initial={false}
         animate={{
           height: isOpen ? "auto" : 0,
-          opacity: isOpen ? 1 : 0
+          opacity: isOpen ? 1 : 0,
         }}
-        exit={{ height: 0, opacity: 0 }}
         transition={{
-          duration: 0.25,
-          ease: [0.4, 0, 0.2, 1] // Custom cubic-bezier for smoother animation
+          duration: prefersReducedMotion ? 0 : 0.25,
+          ease: [0.4, 0, 0.2, 1],
         }}
         style={{
-          // Important: Use visible to allow child elements (emoji picker) to overflow
-          overflow: isOpen ? 'visible' : 'hidden',
-          // Ensure proper z-index stacking for emoji picker
-          position: 'relative',
-          zIndex: isOpen ? 1 : 'auto'
+          overflow: isOpen ? "visible" : "hidden",
+          position: "relative",
+          zIndex: isOpen ? 1 : "auto",
         }}
       >
-        <div className="px-4 pb-3 pt-4 md:px-5 md:pb-4 md:pt-5 border-t border-dashboard rounded-b-xl">
-          <div className="font-poppins text-dashboard-light">
-            {children}
-          </div>
+        <div
+          className={
+            isFlat
+              ? "rounded-b-lg px-1 pb-5 pt-2"
+              : "rounded-b-xl border-t border-dashboard px-4 pb-3 pt-4 md:px-5 md:pb-4 md:pt-5"
+          }
+        >
+          <div className="font-poppins text-dashboard-light">{children}</div>
         </div>
       </motion.div>
     </div>

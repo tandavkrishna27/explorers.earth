@@ -9,6 +9,7 @@ import ProductDetailModal from "./ProductDetailModal";
 import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsernameForProductList($username: String!) {
@@ -43,7 +44,14 @@ const PublicProductList = () => {
 
   const list = data?.productLists?.[0];
   const products = deduplicateProducts<RecommendedProduct>(list?.recommended_products ?? []);
+  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
   const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const analytics = useTrackAnalytics(
+    {
+      ...createAnalyticsOptions.products(accountDocumentId || "", username, list?.documentId),
+      waitForLocation: true,
+    },
+  );
 
   useEffect(() => {
     if (!loading) {
@@ -53,7 +61,14 @@ const PublicProductList = () => {
 
   const handleProductClick = useCallback((product: RecommendedProduct) => {
     setSelectedProduct(product);
-  }, []);
+    analytics.trackClick("product-card", {
+      id: product.documentId,
+      listId: list?.documentId,
+      listName: list?.List_Name,
+      title: product.title,
+      category: product.product_category?.name,
+    });
+  }, [analytics, list]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -63,6 +78,11 @@ const PublicProductList = () => {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied!");
     }
+    analytics.trackClick("share-button", {
+      context: "products-list-header",
+      listId: list?.documentId,
+      listName: list?.List_Name,
+    });
   };
 
   const pageTitle = list ? `${list.List_Name} | ${creatorName}'s Product List | explorers` : `Product List | explorers`;

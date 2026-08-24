@@ -9,6 +9,7 @@ import AppDetailModal from "./AppDetailModal";
 import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsernameForAppList($username: String!) {
@@ -43,7 +44,14 @@ const PublicAppList = () => {
 
   const list = data?.appLists?.[0];
   const apps = deduplicateApps<RecommendedApp>(list?.recommended_apps ?? []);
+  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
   const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const analytics = useTrackAnalytics(
+    {
+      ...createAnalyticsOptions.apps(accountDocumentId || "", username, list?.documentId),
+      waitForLocation: true,
+    },
+  );
 
   useEffect(() => {
     if (!loading) {
@@ -53,7 +61,14 @@ const PublicAppList = () => {
 
   const handleAppClick = useCallback((app: RecommendedApp) => {
     setSelectedApp(app);
-  }, []);
+    analytics.trackClick("app-card", {
+      id: app.documentId,
+      listId: list?.documentId,
+      listName: list?.List_Name,
+      title: app.title,
+      category: app.app_category?.name,
+    });
+  }, [analytics, list]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -63,6 +78,11 @@ const PublicAppList = () => {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied!");
     }
+    analytics.trackClick("share-button", {
+      context: "apps-list-header",
+      listId: list?.documentId,
+      listName: list?.List_Name,
+    });
   };
 
   const pageTitle = list ? `${list.List_Name} | ${creatorName}'s App List | explorers` : `App List | explorers`;

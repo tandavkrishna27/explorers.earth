@@ -10,6 +10,7 @@ import PersonDetailModal from "./PersonDetailModal";
 import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 
 const ACCOUNT_BY_USERNAME = gql`
   query AccountByUsernameForPersonList($username: String!) {
@@ -44,7 +45,14 @@ const PublicPersonList = () => {
 
   const list = data?.personLists?.[0];
   const people = deduplicatePeople<RecommendedPerson>(list?.recommended_people ?? []);
+  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
   const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
+  const analytics = useTrackAnalytics(
+    {
+      ...createAnalyticsOptions.people(accountDocumentId || "", username, list?.documentId),
+      waitForLocation: true,
+    },
+  );
 
   useEffect(() => {
     if (!loading) {
@@ -54,7 +62,14 @@ const PublicPersonList = () => {
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
     setSelectedPerson(person);
-  }, []);
+    analytics.trackClick("person-card", {
+      id: person.documentId,
+      listId: list?.documentId,
+      listName: list?.List_Name,
+      title: person.full_name || person.name,
+      category: person.people_category?.Category_name,
+    });
+  }, [analytics, list]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -64,6 +79,11 @@ const PublicPersonList = () => {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied!");
     }
+    analytics.trackClick("share-button", {
+      context: "people-list-header",
+      listId: list?.documentId,
+      listName: list?.List_Name,
+    });
   };
 
   const pageTitle = list ? `${list.List_Name} | ${creatorName}'s People List | explorers` : `People List | explorers`;

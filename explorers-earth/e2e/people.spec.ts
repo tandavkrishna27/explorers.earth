@@ -3,23 +3,32 @@ import { setupMockAuthentication } from './setup/auth';
 
 test.beforeEach(async ({ context, page }) => {
   await setupMockAuthentication(context);
+  let recommendationCreated = false;
 
   await page.route('**/graphql', async route => {
     const payload = route.request().postDataJSON();
 
-    if (payload?.query?.includes('CheckOnboardingStatus') || payload?.query?.includes('MyAccount') || payload?.query?.includes('UsersPermissionsUser')) {
+    if (payload?.query?.includes('CheckOnboardingStatus') || payload?.query?.includes('MyAccount') || payload?.query?.includes('UsersPermissionsUser') || payload?.query?.includes('usersPermissionsUser')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           data: {
             usersPermissionsUser: {
+              id: 'fixture-user',
+              documentId: 'fixture-user',
+              username: 'testuser',
+              email: 'test@example.test',
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
               accounts: [
                 {
                   documentId: 'acc-123',
+                  username: 'testuser',
                   Account_Name: 'Test Account',
                   Account_Type: 'business',
                   mobile_number: '1234567890',
+                  profile_picture: null,
                   public_movie: 'No',
                   public_books: 'No',
                   public_games: 'No',
@@ -35,23 +44,29 @@ test.beforeEach(async ({ context, page }) => {
           }
         })
       });
-    } else if (payload?.query?.includes('createPeopleList')) {
+    } else if (payload?.query?.includes('createPersonList')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           data: {
-            createPeopleList: {
+            createPersonList: {
               documentId: 'people-list-123',
               List_Name: 'Inspiring Founders',
+              list_description: null,
               slug: 'inspiring-founders',
+              Visibility: false,
               visibility: false,
+              cover_image: null,
+              top_people_heading: null,
               display_order: 0,
+              account: { documentId: 'acc-123', username: 'testuser' },
             }
           }
         })
       });
     } else if (payload?.query?.includes('createRecommendedPerson')) {
+      recommendationCreated = true;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -60,11 +75,14 @@ test.beforeEach(async ({ context, page }) => {
             createRecommendedPerson: {
               documentId: 'person-rec-456',
               name: 'Mock Person Name',
+              display_order: 0,
+              is_pinned: false,
+              people_category: null,
             }
           }
         })
       });
-    } else if (payload?.query?.includes('PEOPLE_LISTS_BY_ACCOUNT') || payload?.query?.includes('PeopleLists')) {
+    } else if ((payload?.query?.includes('PEOPLE_LISTS_BY_ACCOUNT') || payload?.query?.includes('PeopleLists') || payload?.query?.includes('PersonLists') || payload?.query?.includes('personLists')) && !payload?.query?.includes('PeopleByList')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -74,9 +92,14 @@ test.beforeEach(async ({ context, page }) => {
               {
                 documentId: 'people-list-123',
                 List_Name: 'Inspiring Founders',
+                list_description: null,
                 slug: 'inspiring-founders',
+                Visibility: false,
                 visibility: false,
+                cover_image: null,
+                top_people_heading: null,
                 display_order: 0,
+                account: { documentId: 'acc-123', username: 'testuser' },
                 recommended_people: []
               }
             ]
@@ -93,10 +116,15 @@ test.beforeEach(async ({ context, page }) => {
               {
                 documentId: 'people-list-123',
                 List_Name: 'Inspiring Founders',
+                list_description: null,
                 slug: 'inspiring-founders',
                 Visibility: false,
+                visibility: false,
+                cover_image: null,
+                top_people_heading: null,
                 display_order: 0,
-                recommended_people: [
+                account: { documentId: 'acc-123', username: 'testuser' },
+                recommended_people: recommendationCreated ? [
                   {
                     documentId: 'person-rec-456',
                     name: 'Mock Person Name',
@@ -115,11 +143,17 @@ test.beforeEach(async ({ context, page }) => {
                     display_order: 0,
                     people_category: null
                   }
-                ]
+                ] : []
               }
             ]
           }
         })
+      });
+    } else if (payload?.query?.includes('peopleCategories')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { peopleCategories: [] } }),
       });
     } else {
       await route.fulfill({
@@ -147,6 +181,10 @@ test.beforeEach(async ({ context, page }) => {
 });
 
 test('Flow 7: People List and Scraper E2E', async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on('console', message => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
   await page.goto('/recommendations/people');
 
   const addListBtn = page.locator('button:has-text("New List")').first();
@@ -181,4 +219,8 @@ test('Flow 7: People List and Scraper E2E', async ({ page }) => {
   await saveBtn.click();
 
   await expect(page).toHaveURL(/\/recommendations\/people\/people-list-123/);
+  await expect(page.getByRole('heading', { name: 'Publish this list?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Keep Draft' }).click();
+  await expect(page.getByRole('heading', { name: 'Publish this list?' })).toBeHidden();
+  expect(consoleErrors).toEqual([]);
 });

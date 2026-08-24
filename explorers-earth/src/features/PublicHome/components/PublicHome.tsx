@@ -1529,7 +1529,7 @@ const PublicHome = memo(() => {
                                 return (
                                   <PublicPlaceCard
                                     key={place.documentId}
-                                    onClickhandler={() =>
+                                    onAction={() =>
                                       setIsExpanded({
                                         visible: true,
                                         documentId: place.documentId,
@@ -1647,7 +1647,7 @@ const PublicHome = memo(() => {
                                   return (
                                     <PublicPlaceCard
                                       key={place.documentId}
-                                      onClickhandler={() =>
+                                      onAction={() =>
                                         setIsExpanded({
                                           visible: true,
                                           documentId: place.documentId,

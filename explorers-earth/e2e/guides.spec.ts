@@ -123,6 +123,17 @@ test.beforeEach(async ({ context, page }) => {
 
   // Mock places details HTTP request
   await page.route('https://places.googleapis.com/v1/places/**', async route => {
+    if (route.request().url().includes('/photos/mock-photo-ref/media')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'image/gif',
+        body: Buffer.from(
+          'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+          'base64',
+        ),
+      });
+      return;
+    }
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -130,12 +141,35 @@ test.beforeEach(async ({ context, page }) => {
         id: 'mock-london-id',
         primaryType: 'locality',
         primaryTypeDisplayName: { text: 'City' },
-        rating: 4.9
+        rating: 4.9,
+        photos: [{ name: 'places/mock-london-id/photos/mock-photo-ref' }],
       })
+    });
+  });
+  await page.route('**/api/guides?**', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [{ id: 123, documentId: 'guide-123', Guide_Media: [] }],
+      }),
+    });
+  });
+  await page.route('**/api/upload', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { id: 456, url: 'https://cdn.example.test/guides/london.gif' },
+      ]),
     });
   });
   await page.route('**/graphql', async route => {
     const payload = route.request().postDataJSON();
+    const operationName =
+      payload?.operationName ||
+      payload?.query?.match(/(?:query|mutation)\s+(\w+)/i)?.[1] ||
+      '';
 
     if (payload?.query?.includes('CheckOnboardingStatus') || payload?.query?.includes('GetUserAccount') || payload?.query?.toLowerCase().includes('userspermissionsuser')) {
       await route.fulfill({
@@ -171,37 +205,27 @@ test.beforeEach(async ({ context, page }) => {
           }
         })
       });
-    } else if (payload?.query?.includes('createGuide') || payload?.query?.includes('CreateGuide')) {
+    } else if (operationName === 'CreateGuide') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           data: {
-            createGuide: {
-              documentId: 'guide-123',
-              Title: 'Weekend in London',
-              slug: 'weekend-in-london',
-              Visibility: false,
-              display_order: 0,
-            }
+            createGuide: createMockGuide({ Visibility: false })
           }
         })
       });
-    } else if (payload?.query?.includes('createGuideSection') || payload?.query?.includes('CreateGuideSection')) {
+    } else if (operationName === 'CreateGuideSection') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           data: {
-            createGuideSection: {
-              documentId: 'section-456',
-              Title: 'Day 1: Royal London',
-              Sequence: 1,
-            }
+            createGuideSection: createMockGuide().guide_sections[0]
           }
         })
       });
-    } else if (payload?.query?.toLowerCase().includes('guidecategories')) {
+    } else if (operationName === 'GetGuideCategories') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -217,7 +241,7 @@ test.beforeEach(async ({ context, page }) => {
           }
         })
       });
-    } else if (payload?.query?.toLowerCase().includes('getguides') || payload?.query?.toLowerCase().includes('guides')) {
+    } else if (operationName === 'GetGuides') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -227,7 +251,7 @@ test.beforeEach(async ({ context, page }) => {
           }
         })
       });
-    } else if (payload?.query?.toLowerCase().includes('getguidebyid') || payload?.query?.toLowerCase().includes('guide(')) {
+    } else if (operationName === 'GetGuideById') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -236,6 +260,26 @@ test.beforeEach(async ({ context, page }) => {
             guide: createMockGuide()
           }
         })
+      });
+    } else if (
+      operationName === 'PublicCategoryListCounts' ||
+      operationName === 'CheckPublishedLists'
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            recommendationLists: [],
+            bookLists: [],
+            movieLists: [],
+            gameLists: [],
+            appLists: [],
+            productLists: [],
+            personLists: [],
+            guides: [createMockGuide()],
+          },
+        }),
       });
     } else {
       await route.fulfill({
@@ -247,25 +291,22 @@ test.beforeEach(async ({ context, page }) => {
   });
 });
 
-// SKIPPED: Flow 9 fails because the guide create form's category input
-// uses a multi-select combobox with placeholder "Search and select categories"
-// that is rendered inside a portal/modal and is not immediately visible after
-// navigating to /guides/new in the test environment. The form structure differs
-// from what the mock data setup provides, causing the locator to timeout.
-// TODO: Add data-testid="guide-category-input" to the combobox and update test.
-test.skip('Flow 9: Guides List and Timeline Section E2E', async ({ page }) => {
-  page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
-  page.on('request', request => {
-    if (request.url().includes('/graphql') && request.postDataJSON()?.query) {
-      const q = request.postDataJSON().query;
-      const match = q.match(/(query|mutation)\s+(\w+)/);
-      console.log('>> GRAPHQL:', match ? match[2] : 'unnamed');
-    } else {
-      console.log('>>', request.method(), request.url());
+test('Flow 9: Guides List and Timeline Section E2E', async ({ page }) => {
+  const consoleIssues: string[] = [];
+  const failedResponses: string[] = [];
+  page.on('console', message => {
+    if (
+      message.type() === 'error' ||
+      (message.type() === 'warning' && message.text().includes('go.apollo.dev'))
+    ) {
+      consoleIssues.push(message.text());
     }
   });
-  page.on('response', response => console.log('<<', response.status(), response.url()));
-  
+  page.on('response', response => {
+    if (response.status() >= 400) {
+      failedResponses.push(`${response.status()} ${response.url()}`);
+    }
+  });
   await page.goto('/guides');
 
   const addListBtn = page.locator('button:has-text("Create Guide")').first();
@@ -304,7 +345,9 @@ test.skip('Flow 9: Guides List and Timeline Section E2E', async ({ page }) => {
   await daysOption.click();
 
   // Select categories (minimum 4 required)
-  const categoryInput = page.locator('input[placeholder*="Search and select categories"]');
+  const categoryInput = page.locator(
+    'input[placeholder="Search and select categories..."], input[placeholder="Add more categories..."]'
+  );
   await expect(categoryInput).toBeVisible();
   const categories = ['Adventure', 'Food & Drink', 'Culture', 'Sightseeing'];
   for (const cat of categories) {
@@ -335,6 +378,14 @@ test.skip('Flow 9: Guides List and Timeline Section E2E', async ({ page }) => {
   // Verify redirected to guide detail view
   await expect(page).toHaveURL(/\/guides\/guide-123/);
 
+  // Creating the first guide offers to expose the Guides tab publicly. Keep the
+  // account-private choice in this flow; visibility publishing is covered by
+  // the dedicated category visibility tests.
+  const keepPrivateButton = page.getByRole('button', { name: 'Keep Private' });
+  await expect(keepPrivateButton).toBeVisible();
+  await keepPrivateButton.click();
+  await expect(keepPrivateButton).toBeHidden();
+
   // Click Add Day/Stop
   const addDayBtn = page.locator('button:has-text("Add Day/Stop")');
   await expect(addDayBtn).toBeVisible();
@@ -342,4 +393,6 @@ test.skip('Flow 9: Guides List and Timeline Section E2E', async ({ page }) => {
 
   // Redirected to section create page
   await expect(page).toHaveURL(/\/guides\/guide-123\/sections\/new/);
+  expect(failedResponses).toEqual([]);
+  expect(consoleIssues).toEqual([]);
 });

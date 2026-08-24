@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { Button } from './ui/landingButton';
 import { loadAnalytics } from '../../../utils/analytics';
 import { useTranslation } from 'react-i18next';
+import { ANALYTICS_CONSENT_CHANGED_EVENT } from '../../../services/explorersAnalyticsClient';
 
 interface CookiePreferences {
   essential: boolean;
@@ -20,6 +21,14 @@ export default function CookieConsent() {
     analytics: false,
     marketing: false,
   });
+
+  const storeConsent = (consent: CookiePreferences) => {
+    localStorage.setItem(
+      'explorers-cookie-consent',
+      JSON.stringify({ ...consent, timestamp: new Date().toISOString() }),
+    );
+    window.dispatchEvent(new Event(ANALYTICS_CONSENT_CHANGED_EVENT));
+  };
 
   useEffect(() => {
     // Check if user has already made a choice
@@ -49,7 +58,7 @@ export default function CookieConsent() {
       marketing: true,
       timestamp: new Date().toISOString(),
     };
-    localStorage.setItem('explorers-cookie-consent', JSON.stringify(consentData));
+    storeConsent(consentData);
     loadAnalytics();
     setIsVisible(false);
   };
@@ -61,7 +70,7 @@ export default function CookieConsent() {
       marketing: false,
       timestamp: new Date().toISOString(),
     };
-    localStorage.setItem('explorers-cookie-consent', JSON.stringify(consentData));
+    storeConsent(consentData);
     setIsVisible(false);
   };
 
@@ -70,7 +79,7 @@ export default function CookieConsent() {
       ...preferences,
       timestamp: new Date().toISOString(),
     };
-    localStorage.setItem('explorers-cookie-consent', JSON.stringify(consentData));
+    storeConsent(consentData);
     if (consentData.analytics) {
       loadAnalytics();
     }

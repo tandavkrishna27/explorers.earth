@@ -21,12 +21,15 @@ console.log('BASE_URL:', process.env.BASE_URL);
 
 import { createApp } from "./app";
 import { setupVite, serveStatic } from "./vite";
+import { pool } from "./db";
+import { ensureExplorersAnalyticsSchema } from "./startup/explorers-analytics-migration";
 
 // Start the HTTP server only when run as the entrypoint — NOT under test.
 // Tests import { createApp } from "./app" directly and never bind a port.
 if (process.env.NODE_ENV !== 'test') {
   (async () => {
     try {
+      await ensureExplorersAnalyticsSchema(pool);
       const { app, server } = await createApp();
 
       if (app.get("env") === "development") {

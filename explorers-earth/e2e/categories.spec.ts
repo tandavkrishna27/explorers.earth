@@ -1,142 +1,152 @@
-import { test, expect } from '@playwright/test';
-import { setupMockAuthentication } from './setup/auth';
+import { expect, test, type Page, type Route } from "@playwright/test";
+import { setupMockAuthentication } from "./setup/auth";
+
+const consoleIssues = new WeakMap<Page, string[]>();
+const failedResponses = new WeakMap<Page, string[]>();
+
+const operationName = (route: Route) => {
+  const payload = route.request().postDataJSON() as
+    | { operationName?: string; query?: string }
+    | undefined;
+  return (
+    payload?.operationName ||
+    payload?.query?.match(/(?:query|mutation)\s+(\w+)/)?.[1] ||
+    "Unknown"
+  );
+};
+
+const account = {
+  __typename: "Account",
+  documentId: "mock-account-123",
+  Account_Name: "Test Account",
+  Account_Type: "business",
+  mobile_number: "1234567890",
+  localtunes_integrated: false,
+  public_profile: "Yes",
+  public_recommendations: "Yes",
+  public_music: "No",
+  public_movie: "No",
+  public_guides: "No",
+  public_books: "No",
+  public_games: "No",
+  public_apps: "No",
+  public_products: "No",
+  public_people: "No",
+  pinned_nav_tabs: [],
+  auto_pinning: false,
+  profile_picture: null,
+};
+
+const user = {
+  __typename: "UsersPermissionsUser",
+  documentId: "mock-user-123",
+  username: "testuser",
+  email: "test@explorers.earth",
+  accounts: [account],
+};
 
 test.beforeEach(async ({ context, page }) => {
   await setupMockAuthentication(context);
+  await context.addInitScript(() => {
+    sessionStorage.setItem("localtunes_sync_done", "1");
+  });
 
-  // Mock all external endpoints and GraphQL queries to keep E2E tests stable and fast
-  await page.route('**/graphql', async route => {
-    const payload = route.request().postDataJSON();
+  const pageConsoleIssues: string[] = [];
+  const pageFailedResponses: string[] = [];
+  consoleIssues.set(page, pageConsoleIssues);
+  failedResponses.set(page, pageFailedResponses);
+  page.on("console", (message) => {
+    const text = message.text();
+    if (
+      message.type() === "error" ||
+      (message.type() === "warning" && text.includes("go.apollo.dev"))
+    ) {
+      pageConsoleIssues.push(text);
+    }
+  });
+  page.on("response", (response) => {
+    if (response.status() >= 400) {
+      pageFailedResponses.push(`${response.status()} ${response.url()}`);
+    }
+  });
 
-    if (payload?.query?.includes('CheckOnboardingStatus')) {
-      await route.fulfill({
+  await page.route("**/graphql", async (route) => {
+    const operation = operationName(route);
+    if (
+      operation === "CheckOnboardingStatus" ||
+      operation === "CheckOnboardingForSync" ||
+      operation === "SidebarAccount" ||
+      operation === "user"
+    ) {
+      return route.fulfill({
         status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            usersPermissionsUser: {
-              accounts: [
-                {
-                  Account_Name: 'Test Account',
-                  Account_Type: 'business',
-                  mobile_number: '1234567890'
-                }
-              ]
-            }
-          }
-        })
+        contentType: "application/json",
+        body: JSON.stringify({ data: { usersPermissionsUser: user } }),
       });
-    } else {
-      await route.fulfill({
+    }
+    if (operation === "Account") {
+      return route.fulfill({
         status: 200,
-        contentType: 'application/json',
+        contentType: "application/json",
+        body: JSON.stringify({ data: { accounts: [account] } }),
+      });
+    }
+    if (operation === "PublicCategoryListCounts") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
         body: JSON.stringify({
           data: {
-            accounts: {
-              data: [
-                {
-                  id: '1',
-                  attributes: {
-                    username: 'testuser',
-                    name: 'Test User',
-                    avatar_url: null,
-                  }
-                }
-              ]
-            },
-            recommendedMovies: { data: [] },
-          recommendedBooks: { data: [] },
-          recommendedGames: { data: [] },
-          recommendedMusic: { data: [] },
-          recommendedProducts: { data: [] },
-          recommendedApps: { data: [] },
-          recommendedPeople: { data: [] },
-          recommendedPlaces: { data: [] },
-          recommendedGuides: { data: [] }
-        }
-      })
+            recommendationLists: [],
+            bookLists: [],
+            movieLists: [],
+            gameLists: [],
+            appLists: [],
+            productLists: [],
+            personLists: [],
+            guides: [],
+          },
+        }),
+      });
+    }
+
+    return route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: null,
+        errors: [{ message: `Unhandled operation ${operation}` }],
+      }),
     });
+  });
+});
+
+test.afterEach(async ({ page }) => {
+  expect(failedResponses.get(page) || []).toEqual([]);
+  expect(consoleIssues.get(page) || []).toEqual([]);
+});
+
+test("recommendations hub renders every supported category cleanly", async ({
+  page,
+}) => {
+  await page.goto("/recommendations", { waitUntil: "domcontentloaded" });
+  await expect(
+    page.getByRole("heading", { name: "All Your Recommendations in One Place" }),
+  ).toBeVisible();
+
+  const cards = page.locator(".rec-card");
+  await expect(cards).toHaveCount(9);
+  for (const label of [
+    "Places",
+    "Music",
+    "Movies & Shows",
+    "Books",
+    "Games",
+    "Apps & Tools",
+    "Products",
+    "People",
+    "Guides",
+  ]) {
+    await expect(cards.getByText(label, { exact: true })).toBeVisible();
   }
-});
-
-  await page.route('**/api/products/scrape-link', async route => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ title: 'Mock Product Name', description: 'Product Bio', price: 9.99 })
-    });
-  });
-
-  await page.route('**/api/apps/scrape-url', async route => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ title: 'Mock App Name', description: 'App Bio', platform: 'iOS' })
-    });
-  });
-
-  await page.route('**/api/people/scrape-profile', async route => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ name: 'Mock Person Name', bio: 'Person Bio', platform: 'linkedin' })
-    });
-  });
-});
-
-test.describe('Explorers Earth Content Flow E2Es', () => {
-  test('1. Movies: Can navigate to Movies tab', async ({ page }) => {
-    await page.goto('/');
-    // Check if body or header displays page elements
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
-  });
-
-  test('2. Books: Can navigate to Books tab', async ({ page }) => {
-    await page.goto('/');
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
-  });
-
-  test('3. Games: Can navigate to Games tab', async ({ page }) => {
-    await page.goto('/');
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
-  });
-
-  test('4. Music: Can navigate to Music tab', async ({ page }) => {
-    await page.goto('/');
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
-  });
-
-  test('5. Products: Can navigate to Products tab', async ({ page }) => {
-    await page.goto('/');
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
-  });
-
-  test('6. Apps: Can navigate to Apps tab', async ({ page }) => {
-    await page.goto('/');
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
-  });
-
-  test('7. People: Can navigate to People tab', async ({ page }) => {
-    await page.goto('/');
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
-  });
-
-  test('8. Locations: Can navigate to Locations tab', async ({ page }) => {
-    await page.goto('/');
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
-  });
-
-  test('9. Guides: Can navigate to Guides tab', async ({ page }) => {
-    await page.goto('/');
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
-  });
 });

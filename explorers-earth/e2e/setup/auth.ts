@@ -18,6 +18,7 @@ export async function setupMockAuthentication(context: BrowserContext) {
         state: {
           isAuthenticated: true,
           token: 'mock-jwt-token-xyz',
+          jwt: 'mock-jwt-token-xyz',
           user: {
             id: 'mock-user-123',
             documentId: 'mock-user-123',
@@ -35,6 +36,12 @@ export async function setupMockAuthentication(context: BrowserContext) {
         role: 'explorer'
       }));
       window.localStorage.setItem('auth_session', 'mock-session-id-456');
+      window.localStorage.setItem('explorers-cookie-consent', JSON.stringify({
+        essential: true,
+        analytics: false,
+        marketing: false,
+        timestamp: '2026-08-24T00:00:00.000Z',
+      }));
     } catch (e) {
       // Safe to ignore on about:blank, will run again on target origin
     }

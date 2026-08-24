@@ -115,7 +115,7 @@ const ContentEngagementChart: React.FC<ContentEngagementChartProps> = ({ events 
       {chartData.length > 0 && (
         <div>
           <p className="text-xs font-semibold dt-label uppercase tracking-wider mb-3">Views &amp; Clicks by Page</p>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={220} minWidth={0} initialDimension={{ width: 1, height: 1 }}>
             <BarChart data={chartData} barCategoryGap="25%" barGap={4}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
               <XAxis

@@ -85,6 +85,7 @@ const PublicGames = () => {
     // Track which game was clicked — sends Recommendation_Id to Strapi
     analytics.trackClick('game-card', {
       id: game.documentId,
+      listId: game.game_list?.documentId,
       title: game.title,
       genres: game.genres?.join(', '),
       listName: game.game_list?.List_Name,

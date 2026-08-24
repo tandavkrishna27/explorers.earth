@@ -196,7 +196,7 @@ const MediaItemsInListChart: React.FC<MediaItemsInListChartProps> = ({
       {/* ── Pie chart ─────────────────────────────────────────────── */}
       {pieData.length > 0 ? (
         <div className="w-full" style={{ height: `${chartConfig.chartHeight}px` }}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 1, height: 1 }}>
             <PieChart>
               <Pie
                 data={pieData}

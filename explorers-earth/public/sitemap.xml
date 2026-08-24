@@ -9,7 +9,7 @@
   <!-- Landing Page - Main entry point -->
   <url>
     <loc>https://explorers.earth/</loc>
-    <lastmod>2026-07-15</lastmod>
+    <lastmod>2026-08-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -17,7 +17,7 @@
   <!-- About Page -->
   <url>
     <loc>https://explorers.earth/about</loc>
-    <lastmod>2026-07-15</lastmod>
+    <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -25,7 +25,7 @@
   <!-- Use Cases Page -->
   <url>
     <loc>https://explorers.earth/use-cases</loc>
-    <lastmod>2026-07-15</lastmod>
+    <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -33,28 +33,28 @@
   <!-- Legal & Information Pages -->
   <url>
     <loc>https://explorers.earth/contact</loc>
-    <lastmod>2026-07-15</lastmod>
+    <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
     <loc>https://explorers.earth/privacy</loc>
-    <lastmod>2026-07-15</lastmod>
+    <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
     <loc>https://explorers.earth/terms</loc>
-    <lastmod>2026-07-15</lastmod>
+    <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
     <loc>https://explorers.earth/cookies</loc>
-    <lastmod>2026-07-15</lastmod>
+    <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -63,21 +63,21 @@
   
   <url>
     <loc>https://explorers.earth/login</loc>
-    <lastmod>2026-07-15</lastmod>
+    <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
 
   <url>
     <loc>https://explorers.earth/register</loc>
-    <lastmod>2026-07-15</lastmod>
+    <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
 
   <url>
     <loc>https://explorers.earth/forgot-password</loc>
-    <lastmod>2026-07-15</lastmod>
+    <lastmod>2026-08-24</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>

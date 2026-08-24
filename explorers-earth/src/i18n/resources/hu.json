@@ -1,6 +1,10 @@
 {
   "about": {
     "closing": "Ha kíváncsi vagy.\nHa megfontolt vagy.\nHa hajlandó vagy lassítani és közelebbről megnézni —\nmár ide tartozol.",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe",
     "section1": {
       "line1": "A felfedezés a tudatossággal kezdődik.",
       "line2": "Azzal, hogy észrevesszük, amit mások figyelmen kívül hagynak.",
@@ -49,6 +53,7 @@
         "explorers story",
         "who we are explorers"
       ],
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow.",
       "title": "Explorers of Earth | About Us"
     },
     "subtitle": {
@@ -325,7 +330,8 @@
         "mobileNumberPlaceholder": "Adja meg mobiltelefonszámát",
         "next": "Következő",
         "title": "Kapcsolattartási adatok"
-      }
+      },
+      "stepCount": "Step {{current}} of {{total}}"
     },
     "or": "vagy",
     "password": "Jelszó",
@@ -883,6 +889,38 @@
         "visible": "Látható",
         "whatsappNumber": "WhatsApp szám"
       },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "A(z) {{category}} áthelyezése megszakítva. A sorrend visszaállt.",
+          "drop": "A(z) {{category}} a(z) {{position}}. helyre került, összesen {{total}} közül.",
+          "handle": "{{category}} húzása",
+          "instructions": "A felemeléshez nyomja meg a Szóköz vagy az Enter billentyűt. A mozgatáshoz használja a nyílbillentyűket, illetve a Home és End billentyűt. A lehelyezéshez nyomja meg a Szóköz vagy az Enter, a megszakításhoz az Escape billentyűt.",
+          "lift": "{{category}} felemelve. {{position}}. hely, összesen {{total}} közül.",
+          "move": "{{category}} áthelyezve a(z) {{position}}. helyre, összesen {{total}} közül."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
+      },
       "publicProfile": {
         "accountTypes": {
           "business": "Üzlet",
@@ -937,6 +975,65 @@
       "tabs": {
         "account": "Fiók",
         "publicProfile": "Nyilvános Profil"
+      },
+      "themeAppearance": {
+        "accentTitle": "Accent color",
+        "firstView": {
+          "business": "Business",
+          "categoryFirst": "Recommendations — {{category}} first",
+          "gallery": "Gallery",
+          "help": "Category choices promote that category but keep all other public categories.",
+          "label": "First view",
+          "savedOrder": "Recommendations — saved order"
+        },
+        "presetTitle": "Select theme preset",
+        "recommendations": {
+          "categories": {
+            "apps": "Apps & Tools",
+            "books": "Books",
+            "games": "Games",
+            "guides": "Guides",
+            "movies": "Movies & Shows",
+            "music": "Music",
+            "people": "People",
+            "places": "Places",
+            "products": "Products"
+          },
+          "featured": "Featured",
+          "help": "Choose how recommendation categories are arranged on your public profile.",
+          "layoutLegend": "Recommendations layout",
+          "layouts": {
+            "featured": {
+              "description": "A larger first category followed by compact rows.",
+              "label": "Featured First"
+            },
+            "grid": {
+              "description": "A compact grid that makes categories easy to scan.",
+              "label": "Category Mosaic"
+            },
+            "shelves": {
+              "description": "Horizontal shelves with recommendation previews.",
+              "label": "Classic Shelves"
+            }
+          },
+          "moved": "{{category}} moved to position {{position}} of {{total}}",
+          "moveDown": "Move {{category}} down",
+          "moveUp": "Move {{category}} up",
+          "orderHelp": "Move categories into the order visitors should scan them.",
+          "orderTitle": "Category order",
+          "position": "{{position}} of {{total}}",
+          "previewCaption": "Illustrative preview",
+          "previewLabel": "Recommendations layout preview",
+          "publicVisibilityNote": "Public Visibility controls whether a category appears.",
+          "title": "Recommendations presentation"
+        },
+        "wallpaperLabel": "Wallpaper and cover style",
+        "wallpaperOptions": {
+          "ambientGradient": "Ambient mesh gradient",
+          "bannerTop": "Top cover banner photo",
+          "fullWallpaperImage": "Full-screen background image",
+          "solidColor": "Solid minimal background"
+        }
       }
     },
     "recommendations": {
@@ -1109,6 +1206,7 @@
         "linkCopied": "Link copied to clipboard!",
         "linkCopyError": "Failed to copy link. Please try again.",
         "listCreated": "Recommendation List Created Successfully!!!",
+        "listCreateFailed": "Failed to create recommendation list. Please try again.",
         "listPublished": "Ajánlási lista sikeresen közzétéve!",
         "listPublishError": "List Should have atleast one Recommended Place to be Published",
         "listUnpublished": "Ajánlási lista sikeresen eltávolítva a közzétételből!",
@@ -1146,99 +1244,101 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "tagline": "Hagyja, hogy ajánlásai bejárják a világot.",
+    "copyright": "© 2025 felfedezők. Minden jog fenntartva.",
     "email": "hello@explorers.earth",
-    "sections": {
+    "freeForever": "Örökre ingyen.",
+    "links": {
+      "about": "Körülbelül",
+      "contact": "Érintkezés",
+      "cookies": "Cookie-szabályzat",
+      "faq": "GYIK",
+      "howItWorks": "Hogyan működik",
+      "privacy": "Adatvédelmi szabályzat",
       "product": "Termék",
+      "shareAnywhere": "Oszd meg bárhol",
+      "terms": "Általános Szerződési Feltételek",
+      "useCases": "Use Cases"
+    },
+    "madeWithLove": "Szeretettel készült a földön",
+    "sections": {
+      "company": "Vállalat",
       "contact": "Kapcsolat",
       "legal": "Jogi",
-      "company": "Vállalat"
+      "product": "Termék"
     },
-    "links": {
-      "howItWorks": "Hogyan működik",
-      "faq": "GYIK",
-      "contact": "Érintkezés",
-      "about": "Körülbelül",
-      "terms": "Általános Szerződési Feltételek",
-      "privacy": "Adatvédelmi szabályzat",
-      "cookies": "Cookie-szabályzat",
-      "product": "Termék",
-      "shareAnywhere": "Oszd meg bárhol"
-    },
-    "copyright": "© 2025 felfedezők. Minden jog fenntartva.",
-    "madeWithLove": "Szeretettel készült a földön",
-    "freeForever": "Örökre ingyen."
+    "tagline": "Hagyja, hogy ajánlásai bejárják a világot."
   },
   "header": {
+    "auth": {
+      "claimFree": "Igénylés ingyenes",
+      "claimFreePage": "Ingyenes oldal igénylése",
+      "login": "Bejelentkezés",
+      "signUp": "Regisztráció"
+    },
     "nav": {
-      "howItWorks": "Hogyan működik",
-      "whoIsFor": "Kinek szól",
-      "faq": "GYIK",
       "about": "Rólunk",
+      "closeMenu": "A navigációs menü bezárása",
       "contact": "Kapcsolat",
+      "faq": "GYIK",
+      "howItWorks": "Hogyan működik",
+      "openMenu": "Nyissa meg a navigációs menüt",
       "product": "Termék",
       "share": "Részesedés",
-      "openMenu": "Nyissa meg a navigációs menüt",
-      "closeMenu": "A navigációs menü bezárása"
-    },
-    "auth": {
-      "login": "Bejelentkezés",
-      "signUp": "Regisztráció",
-      "claimFreePage": "Ingyenes oldal igénylése",
-      "claimFree": "Igénylés ingyenes"
+      "useCases": "Use Cases",
+      "whoIsFor": "Kinek szól"
     }
   },
   "hero": {
+    "badge": "Örökre ingyen",
+    "countries": {
+      "ae": "Egyesült Arab Emírségek",
+      "au": "Ausztrália",
+      "br": "Brazília",
+      "de": "Németország",
+      "fr": "Franciaország",
+      "gb": "Egyesült Királyság",
+      "in": "India",
+      "jp": "Japán",
+      "sg": "Szingapúr",
+      "us": "Egyesült Államok"
+    },
+    "ctaButton": "Explorer oldal igénylése",
+    "globalStrip": "Az Explorer világszerte megosztja az ajánlásokat",
     "headline": "Minden ajánlása – egy link, egy QR",
-    "subtext": "Hozzon létre egy megosztható oldalt mindennek, amit ajánl – helyek, személyek, termékek, könyvek, filmek, műsorok, zenék, játékok, alkalmazások és egyebek.",
+    "headlinePrefix": "Mind a tiéd",
+    "headlineSuffix": "egy linkben és QR.",
     "inputLabel": "Igényelje felfedezői URL-jét:",
     "inputPlaceholder": "a neved",
-    "ctaButton": "Explorer oldal igénylése",
-    "signupPrompt": "Regisztráljon, hogy megszerezze a sajátját",
-    "headlinePrefix": "Mind a tiéd",
+    "preview": {
+      "items": {
+        "book": "Könyv",
+        "game": "Játék",
+        "music": "Zene",
+        "place": "Hely"
+      },
+      "onePageText": "Ossza meg hivatkozásként, QR, üzenetként vagy útmutatóként.",
+      "onePageTitle": "Egy oldal minden jó ajánlásért.",
+      "screenAlt": "Explorer oldalajánló képernyő",
+      "todayList": "A mai lista"
+    },
     "rotatingWords": [
       "ajánlásokat",
       "kurátorok",
       "gyűjtemények",
       "kedvencek"
     ],
-    "headlineSuffix": "egy linkben és QR.",
-    "badge": "Örökre ingyen",
-    "globalStrip": "Az Explorer világszerte megosztja az ajánlásokat",
-    "preview": {
-      "todayList": "A mai lista",
-      "onePageTitle": "Egy oldal minden jó ajánlásért.",
-      "onePageText": "Ossza meg hivatkozásként, QR, üzenetként vagy útmutatóként.",
-      "items": {
-        "place": "Hely",
-        "book": "Könyv",
-        "music": "Zene",
-        "game": "Játék"
-      },
-      "screenAlt": "Explorer oldalajánló képernyő"
-    },
-    "countries": {
-      "in": "India",
-      "us": "Egyesült Államok",
-      "gb": "Egyesült Királyság",
-      "jp": "Japán",
-      "fr": "Franciaország",
-      "au": "Ausztrália",
-      "br": "Brazília",
-      "ae": "Egyesült Arab Emírségek",
-      "sg": "Szingapúr",
-      "de": "Németország"
-    }
+    "signupPrompt": "Regisztráljon, hogy megszerezze a sajátját",
+    "subtext": "Hozzon létre egy megosztható oldalt mindennek, amit ajánl – helyek, személyek, termékek, könyvek, filmek, műsorok, zenék, játékok, alkalmazások és egyebek."
   },
   "languageModal": {
     "close": "Közeli",
-    "searchPlaceholder": "Nyelvek keresése...",
-    "title": "Válassza a Nyelv lehetőséget",
-    "subtitle": "Válassza ki a nyelvet, amelyet használni szeretne a felfedezők között.",
-    "noLanguagesFound": "Nem található nyelv",
-    "tryDifferentSearch": "Próbálkozzon másik keresési kifejezéssel.",
+    "escToClose": "Nyomja meg az Esc billentyűt a bezáráshoz",
     "languagesAvailable": "{{count}} nyelvek állnak rendelkezésre",
-    "escToClose": "Nyomja meg az Esc billentyűt a bezáráshoz"
+    "noLanguagesFound": "Nem található nyelv",
+    "searchPlaceholder": "Nyelvek keresése...",
+    "subtitle": "Válassza ki a nyelvet, amelyet használni szeretne a felfedezők között.",
+    "title": "Válassza a Nyelv lehetőséget",
+    "tryDifferentSearch": "Próbálkozzon másik keresési kifejezéssel."
   },
   "legal": {
     "cookies": {
@@ -1280,6 +1380,38 @@
       "warning": "Any QR codes or links with your old username will no longer work — you'll need to update and re-share them."
     }
   },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
     "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
@@ -1297,210 +1429,351 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
+    "analytics": {
+      "dashboardTitle": "Analytics irányítópult",
+      "engagement": "Eljegyzés",
+      "headline": "Nézze meg, mivel foglalkoznak az emberek.",
+      "last30Days": "Az elmúlt 30 nap",
+      "livePreview": "Élő előnézet",
+      "referrals": "Áttételek",
+      "scanningDesc": "Tekintse meg, hogyan jutnak el az emberek az oldalára linkek, QR kódok és megosztott kapcsolati pontok révén.",
+      "scanningTitle": "Értse meg a szkenneléseket és a kattintásokat",
+      "spotsDesc": "Megtudhatja, mely helyek, termékek, listák és útmutatók kapják a legtöbb szeretetet.",
+      "spotsTitle": "Keresse meg a legjobb ajánlásokat",
+      "subtext": "Megértheti, hogy az emberek mely ajánlásokat nyitják meg, mentik el és keresik fel újra az Ön linkjein és QR kódjain keresztül.",
+      "totalScans": "Összes szkennelés",
+      "workingDesc": "Kövesse nyomon, hogy az emberek mely ajánlásokat nyitják meg, mentik és keresik fel újra.",
+      "workingTitle": "Nézze meg, mi működik"
+    },
     "createCustomize": {
-      "headline": "Készítse el Explorer oldalát percek alatt",
-      "subtext": "Gyűjtsd össze, amit ajánlasz, rendezd el a kívánt módon, és oszd meg bárhol egyetlen hivatkozással vagy az QR segítségével.",
       "bulletPoints": {
         "addSpots": {
-          "title": "Adjon hozzá helyeket, élményeket, útvonalakat, hangokat és jegyzeteket",
-          "description": ""
-        },
-        "organize": {
-          "title": "Szervezz hely vagy érdeklődés szerint",
-          "description": ""
+          "description": "",
+          "title": "Adjon hozzá helyeket, élményeket, útvonalakat, hangokat és jegyzeteket"
         },
         "generate": {
-          "title": "Szerkessze bármikor – a link mindig ugyanaz marad",
-          "description": ""
+          "description": "",
+          "title": "Szerkessze bármikor – a link mindig ugyanaz marad"
+        },
+        "organize": {
+          "description": "",
+          "title": "Szervezz hely vagy érdeklődés szerint"
         },
         "share": {
-          "title": "Ossza meg digitálisan vagy QR-n keresztül a való világban",
-          "description": ""
+          "description": "",
+          "title": "Ossza meg digitálisan vagy QR-n keresztül a való világban"
         }
       },
+      "headline": "Készítse el Explorer oldalát percek alatt",
       "mockup": {
-        "title": "Az én ajánlásaim",
-        "addPlace": "Hely hozzáadása elemre"
+        "addPlace": "Hely hozzáadása elemre",
+        "title": "Az én ajánlásaim"
       },
       "steps": [
         {
-          "title": "Add hozzá, amit ajánlasz",
-          "body": "Helyek, személyek, termékek, könyvek, filmek, műsorok, zenék, játékok, alkalmazások, útmutatók és jegyzetek."
+          "body": "Helyek, személyek, termékek, könyvek, filmek, műsorok, zenék, játékok, alkalmazások, útmutatók és jegyzetek.",
+          "title": "Add hozzá, amit ajánlasz"
         },
         {
-          "title": "Szervezze meg a maga módján",
-          "body": "Csoportosítson város, téma, lista, kategória, utazás vagy pillanat szerint, hogy az emberek természetesen felfedezhessék."
+          "body": "Csoportosítson város, téma, lista, kategória, utazás vagy pillanat szerint, hogy az emberek természetesen felfedezhessék.",
+          "title": "Szervezze meg a maga módján"
         },
         {
-          "title": "Ossz meg egy linket vagy QR",
-          "body": "Oldala bármikor frissül, miközben ugyanaz a hivatkozás és az QR továbbra is működik mindenhol."
-        }
-      ]
-    },
-    "shareAnywhere": {
-      "headline": "Egy link. Sok utazás.",
-      "subtext": "Az Ön Explorer linkje élő útmutatóvá válik – olyasvalamit, amit az emberek a saját tempójukban menthetnek, újra meglátogathatnak és felfedezhetnek.\n\nOszd meg profilon, üzeneten, asztalon, falon vagy kártyán.\nBárhová is megy, a te perspektívád is vele jár.",
-      "scanText": "Keressen helyi ajánlásokat",
-      "storefrontText": "Kiválóan alkalmas kirakatokhoz",
-      "instagramTitle": "Add hozzá az Instagram/Tiktok Bio-hoz",
-      "instagramDesc": "Azonnal ossza meg követőivel",
-      "menuTitle": "Nyomtassa ki a kirakathoz",
-      "menuDesc": "A fizikai érintkezési pontok egyszerűvé teszik",
-      "welcomeTitle": "Szerepeld be az üdvözlő könyvekbe",
-      "welcomeDesc": "Ideális házigazdáknak és idegenvezetőknek",
-      "cafeMenu": "Cafe menü",
-      "tokyoFoodGuide": "A tokiói ételkalauzom explorers.earth/jane",
-      "cards": [
-        {
-          "title": "Link a bioban",
-          "eyebrow": "Profilkész"
-        },
-        {
-          "title": "QR kódok",
-          "eyebrow": "Offline használatra kész"
-        },
-        {
-          "title": "Üzenetek",
-          "eyebrow": "Csevegésre kész"
-        },
-        {
-          "title": "Üdvözöljük útmutatók",
-          "eyebrow": "Vendégkész"
+          "body": "Oldala bármikor frissül, miközben ugyanaz a hivatkozás és az QR továbbra is működik mindenhol.",
+          "title": "Ossz meg egy linket vagy QR"
         }
       ],
+      "subtext": "Gyűjtsd össze, amit ajánlasz, rendezd el a kívánt módon, és oszd meg bárhol egyetlen hivatkozással vagy az QR segítségével."
+    },
+    "faq": {
+      "error": "Hiba a FAQ betöltésében. Kérjük, próbáljátok újra később.",
+      "fallbackItems": [
+        {
+          "Answer": "Helyek, személyek, termékek, könyvek, filmek, műsorok, zenék, játékok, alkalmazások, útmutatók és jegyzetek.",
+          "Question": "Mit adhatok hozzá az Explorer oldalamhoz?",
+          "Sequence": 1
+        },
+        {
+          "Answer": "Igen. Az Ön Explorer oldala megosztható hivatkozásként vagy QR profilok, üzenetek, táblázatok, kártyák és nyomtatott útmutatók számára.",
+          "Question": "Megoszthatom QR kóddal?",
+          "Sequence": 2
+        },
+        {
+          "Answer": "Igen. Megőrizheti oldalát frissen, miközben ugyanaz a hivatkozás és az QR továbbra is működik.",
+          "Question": "Frissíthetem később az ajánlásaimat?",
+          "Sequence": 3
+        },
+        {
+          "Answer": "Igen. Az oldal egyértelműen kommunikálni tudja az ingyenes ígéretet, nehézkes nyelvezet nélkül.",
+          "Question": "A felfedezők örökre szabadok?",
+          "Sequence": 4
+        }
+      ],
+      "headline": "Vannak kérdéseitek?",
+      "loading": "FAQ betöltése...",
+      "subtext": "Megválaszoltuk a leggyakoribb dolgokat, amiket az emberek kérdeznek, mielőtt elkezdenék."
+    },
+    "features": {
+      "communityDriven": {
+        "title": "Közösség által vezérelt felfedezés"
+      },
+      "livingGuides": {
+        "title": "Élő, szerkeszthető útmutatók"
+      },
+      "locationAware": {
+        "title": "Helyismeret-alapú ajánlások"
+      },
+      "privacyFirst": {
+        "title": "Adatvédelem első a tervezés szerint"
+      },
+      "simpleLinks": {
+        "title": "Egyszerű linkek és QR megosztás"
+      },
+      "soundPlaylists": {
+        "title": "Opcionális hang és lejátszási listák"
+      },
+      "subtitle": "Egyszerű, átgondolt funkciók, amelyek lehetővé teszik, hogy ajánlásaitok ragyogjanak.",
+      "title": "Úgy tervezve, hogy kívül maradjon"
+    },
+    "finalCTA": {
+      "creating": "A explorers létrehozása...",
+      "ctaButton": "Foglaljátok le a explorers-t – Örökre Ingyenes",
+      "disclaimer": "Nem szükséges hitelkártya • Beállítás 2 perc alatt",
+      "headline": "Kezdjétek el megosztani a világotokat ma",
+      "subtext": "Foglaljátok le az ingyenes explorers-t és alakítsátok át a helyi betekintéseiteket megosztható útmutatókká."
+    },
+    "localTunes": {
+      "body": "A felfedezés nem csak vizuális. A hang emléket, kontextust és érzelmet hordoz.\n\nA Tunes lehetővé teszi, hogy helyekhez, utazásokhoz és hangulatokhoz gyűjts és ossz meg zenéket — legyen az úton felfedezett zene vagy hangok, amelyek egy helyet definiálnak számodra.\n\nZökkenőmentesen csatlakozik az Explorer profilodhoz.",
+      "closingStatement": "A Tunes <strong>ingyenes</strong> felfedezésre, és a fizetős funkciókhoz később frissíthetsz.",
+      "exploreButton": "Felfedezés Tunes",
+      "features": {
+        "karaokeReady": {
+          "description": "Tökéletes karaoke estékhez együttműködő lejátszási listákkal és valós idejű dal kérésekkel.",
+          "title": "Karaoke Kész"
+        },
+        "qrCodeSharing": {
+          "description": "Oszd meg zenei élményedet egy egyszerű QR kód szkenneléssel — nincs szükség alkalmazásokra vagy letöltésekre.",
+          "title": "QR Kód Megosztás"
+        },
+        "realtimeCollaboration": {
+          "description": "Engedélyezd a vendégeknek, hogy azonnal adjanak hozzá dalokat a lejátszási listádhoz, miközben teljes kontrollt tartasz azon, ami lejátszódik.",
+          "title": "Valós Idejű Együttműködés"
+        },
+        "silentParties": {
+          "description": "Rendezz egyedi csendes bulikat, ahol mindenki a saját fejhallgatóján keresztül hallgat.",
+          "title": "Csendes Buli"
+        },
+        "voteLikeSystem": {
+          "description": "A vendégek szavazhatnak kedvenc dalaikra, hogy valós időben befolyásolják a lejátszási lista sorát.",
+          "title": "Szavazási és Kedvelési Rendszer"
+        },
+        "youtubeIntegration": {
+          "description": "Zökkenőmentesen integrálódj a YouTube-dal, hogy hozzáférj milliók dalához és tökéletes légkört teremts.",
+          "title": "YouTube Integráció"
+        }
+      },
+      "featuresHeading": "Erős Funkciók",
+      "mainHeading": "Tunes",
+      "title": "Hallgass, miközben felfedezel",
+      "venueHeading": "Tökéletes Minden Helyhez",
+      "venues": {
+        "barsPubs": "Bárok és Pubok",
+        "coffeeShops": "Kávézók",
+        "eventsWeddings": "Események és Esküvők",
+        "gymsFitness": "Edzőtermek és Fitness",
+        "restaurants": "Étteremek",
+        "retailStores": "Kiskereskedelmi Üzletek"
+      }
+    },
+    "productCategories": {
+      "actions": [
+        "Megtakarítás",
+        "Szervez",
+        "Részesedés"
+      ],
+      "categories": [
+        {
+          "description": "Éttermek, városrészek, múzeumok, útvonalak és rejtett drágakövek, amelyeket az emberek valóban meglátogathatnak.",
+          "id": "places",
+          "label": "Helyek",
+          "title": "Helyi helyek, útmutatók és útvonalak"
+        },
+        {
+          "description": "Alkotók, alapítók, útmutatók, művészek, tanárok, szakértők és olyan emberek, akik az Ön ízlését alakították.",
+          "id": "people",
+          "label": "Emberek",
+          "title": "Olyan emberek, akiket érdemes követni, vagy akiktől érdemes tanulni"
+        },
+        {
+          "description": "A chatekben, jegyzetekben, hírlevelekben és utazási beszélgetésekben folyamatosan ajánlott könyvek.",
+          "id": "books",
+          "label": "Könyvek",
+          "title": "Könyvek és olvasási listák"
+        },
+        {
+          "description": "Filmek, sorozatok, dokumentumfilmek és figyelőlisták mindenféle hangulathoz és közönséghez.",
+          "id": "movies",
+          "label": "Filmek és TV",
+          "title": "Filmek, műsorok és figyelőlisták"
+        },
+        {
+          "description": "Játékok, küldetések, világok és élmények, amelyeket az embereknek érdemes legközelebb kipróbálniuk.",
+          "id": "games",
+          "label": "Játékok",
+          "title": "Játékok és felfedeznivaló világok"
+        },
+        {
+          "description": "Helyekhez és pillanatokhoz kapcsolódó előadók, albumok, dalok, lejátszási listák és hangsávok.",
+          "id": "music",
+          "label": "Zene",
+          "title": "Albumok, előadók és lejátszási listák"
+        },
+        {
+          "description": "Mindennapi kedvencek, utazási felszerelések, alkotói eszközök, ajándékok és termékek, amelyeket érdemes megtakarítani.",
+          "id": "products",
+          "label": "Termékek",
+          "title": "Azok a termékek, amelyeket az emberek valóban ajánlanak"
+        },
+        {
+          "description": "Szoftverek, webhelyek, sablonok, eszközök és erőforrások, amelyek megkönnyítik az életet.",
+          "id": "apps",
+          "label": "Alkalmazások és eszközök",
+          "title": "Alkalmazások, eszközök és hasznos linkek"
+        }
+      ],
+      "headline": "Többet ajánl, mint helyet.",
+      "overlayLabel": "Explorer oldal",
+      "subtext": "Hozzon létre egy oldalt helyek, személyek, termékek, könyvek, filmek, műsorok, zenék, játékok, alkalmazások és eszközök számára.",
+      "visualDetails": {
+        "apps": [
+          "Tervezési eszközök",
+          "Hasznos alkalmazások",
+          "Erőforrás linkek"
+        ],
+        "products": [
+          "Utazási felszerelés",
+          "Napi szállítás",
+          "Alkotói készlet"
+        ]
+      },
+      "visualLabels": {
+        "apps": "Hasznos verem",
+        "products": "Igazi kedvencek"
+      }
+    },
+    "referEarn": {
+      "comingSoon": "Hivatkozási jutalom program (hamarosan)",
+      "earnedThisMonth": "Ebben a hónapban keresve",
+      "headline": "Osszátok meg, hivatkozzatok és keressetek",
+      "networkTitle": "Építsétek fel a hálózatotokat és keressetek automatikusan",
+      "passiveTitle": "Alakítsátok át az ajánlásokat passzív jutalmakka",
+      "rewardsDesc": "Kapjatok pénzt, amikor az emberek használják az ajánlásaitokat",
+      "rewardsTitle": "Jutalmak szerzése",
+      "subtext": "Alakítsátok át az ajánlásaitokat passzív jutalmakka — kapjatok kreditet, amikor mások használják a QR-kódotokat."
+    },
+    "shareAnywhere": {
+      "cafeMenu": "Cafe menü",
+      "cards": [
+        {
+          "eyebrow": "Profilkész",
+          "title": "Link a bioban"
+        },
+        {
+          "eyebrow": "Offline használatra kész",
+          "title": "QR kódok"
+        },
+        {
+          "eyebrow": "Csevegésre kész",
+          "title": "Üzenetek"
+        },
+        {
+          "eyebrow": "Vendégkész",
+          "title": "Üdvözöljük útmutatók"
+        }
+      ],
+      "headline": "Egy link. Sok utazás.",
+      "instagramDesc": "Azonnal ossza meg követőivel",
+      "instagramTitle": "Add hozzá az Instagram/Tiktok Bio-hoz",
+      "menuDesc": "A fizikai érintkezési pontok egyszerűvé teszik",
+      "menuTitle": "Nyomtassa ki a kirakathoz",
+      "profileCarouselCaption": "Instagram és TikTok profilok",
+      "qrEverywhereDesc": "Tökéletes minden helyszínre",
+      "qrEverywhereTitle": "Adja hozzá az QR hivatkozást mindenhol",
+      "scanText": "Keressen helyi ajánlásokat",
+      "storefrontText": "Kiválóan alkalmas kirakatokhoz",
+      "subtext": "Az Ön Explorer linkje élő útmutatóvá válik – olyasvalamit, amit az emberek a saját tempójukban menthetnek, újra meglátogathatnak és felfedezhetnek.\n\nOszd meg profilon, üzeneten, asztalon, falon vagy kártyán.\nBárhová is megy, a te perspektívád is vele jár.",
+      "tokyoFoodGuide": "A tokiói ételkalauzom explorers.earth/jane",
       "visual": {
-        "scanForPicks": "Keresés a csákányok után",
-        "messageBubble": "Itt van a kiotói listám",
-        "welcomeGuide": "Üdvözlő útmutató",
         "guideItems": [
           "Reggeli a közelben",
           "Múzeumi útvonal",
           "Esti séta"
         ],
-        "savedRecommendation": "Mentett ajánlás"
+        "messageBubble": "Itt van a kiotói listám",
+        "savedRecommendation": "Mentett ajánlás",
+        "scanForPicks": "Keresés a csákányok után",
+        "welcomeGuide": "Üdvözlő útmutató"
       },
-      "profileCarouselCaption": "Instagram és TikTok profilok",
-      "qrEverywhereTitle": "Adja hozzá az QR hivatkozást mindenhol",
-      "qrEverywhereDesc": "Tökéletes minden helyszínre"
+      "welcomeDesc": "Ideális házigazdáknak és idegenvezetőknek",
+      "welcomeTitle": "Szerepeld be az üdvözlő könyvekbe"
     },
-    "analytics": {
-      "headline": "Nézze meg, mivel foglalkoznak az emberek.",
-      "subtext": "Megértheti, hogy az emberek mely ajánlásokat nyitják meg, mentik el és keresik fel újra az Ön linkjein és QR kódjain keresztül.",
-      "workingTitle": "Nézze meg, mi működik",
-      "workingDesc": "Kövesse nyomon, hogy az emberek mely ajánlásokat nyitják meg, mentik és keresik fel újra.",
-      "scanningTitle": "Értse meg a szkenneléseket és a kattintásokat",
-      "scanningDesc": "Tekintse meg, hogyan jutnak el az emberek az oldalára linkek, QR kódok és megosztott kapcsolati pontok révén.",
-      "spotsTitle": "Keresse meg a legjobb ajánlásokat",
-      "spotsDesc": "Megtudhatja, mely helyek, termékek, listák és útmutatók kapják a legtöbb szeretetet.",
-      "dashboardTitle": "Analytics irányítópult",
-      "last30Days": "Az elmúlt 30 nap",
-      "totalScans": "Összes szkennelés",
-      "engagement": "Eljegyzés",
-      "referrals": "Áttételek",
-      "livePreview": "Élő előnézet"
-    },
-    "referEarn": {
-      "headline": "Osszátok meg, hivatkozzatok és keressetek",
-      "subtext": "Alakítsátok át az ajánlásaitokat passzív jutalmakka — kapjatok kreditet, amikor mások használják a QR-kódotokat.",
-      "comingSoon": "Hivatkozási jutalom program (hamarosan)",
-      "rewardsTitle": "Jutalmak szerzése",
-      "rewardsDesc": "Kapjatok pénzt, amikor az emberek használják az ajánlásaitokat",
-      "earnedThisMonth": "Ebben a hónapban keresve",
-      "passiveTitle": "Alakítsátok át az ajánlásokat passzív jutalmakka",
-      "networkTitle": "Építsétek fel a hálózatotokat és keressetek automatikusan"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Hallgass, miközben felfedezel",
-      "body": "A felfedezés nem csak vizuális. A hang emléket, kontextust és érzelmet hordoz.\n\nA Tunes lehetővé teszi, hogy helyekhez, utazásokhoz és hangulatokhoz gyűjts és ossz meg zenéket — legyen az úton felfedezett zene vagy hangok, amelyek egy helyet definiálnak számodra.\n\nZökkenőmentesen csatlakozik az Explorer profilodhoz.",
-      "exploreButton": "Felfedezés Tunes",
-      "featuresHeading": "Erős Funkciók",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Valós Idejű Együttműködés",
-          "description": "Engedélyezd a vendégeknek, hogy azonnal adjanak hozzá dalokat a lejátszási listádhoz, miközben teljes kontrollt tartasz azon, ami lejátszódik."
+    "testimonials": {
+      "headline": "Szeretik az utazók, alkotók és házigazdák",
+      "items": [
+        {
+          "id": "1",
+          "location": "Mumbai, India",
+          "name": "Priya Sharma",
+          "quote": "a felfedezők megváltoztatták azt, ahogyan megosztom utazási ismereteimet. Követőim szeretnek azonnali hozzáférést kapni a kurátoraimhoz!",
+          "role": "Utazás Blogger"
         },
-        "qrCodeSharing": {
-          "title": "QR Kód Megosztás",
-          "description": "Oszd meg zenei élményedet egy egyszerű QR kód szkenneléssel — nincs szükség alkalmazásokra vagy letöltésekre."
+        {
+          "id": "2",
+          "location": "Delhi, India",
+          "name": "Raj Patel",
+          "quote": "Vendégeim nagyon szeretik a személyre szabott QR kódot üdvözlőcsomagjukban. Ez lett a jellegzetes érintésem!",
+          "role": "Airbnb Gazda"
         },
-        "youtubeIntegration": {
-          "title": "YouTube Integráció",
-          "description": "Zökkenőmentesen integrálódj a YouTube-dal, hogy hozzáférj milliók dalához és tökéletes légkört teremts."
+        {
+          "id": "3",
+          "location": "Tokió, Japán",
+          "name": "Yuki Tanaka",
+          "quote": "Megosztjuk felfedezőinket az ügyfelekkel, hogy más helyi helyeket ajánljunk. Csodálatos közösségi kapcsolatokat hozott létre.",
+          "role": "Étterem Tulajdonos"
         },
-        "voteLikeSystem": {
-          "title": "Szavazási és Kedvelési Rendszer",
-          "description": "A vendégek szavazhatnak kedvenc dalaikra, hogy valós időben befolyásolják a lejátszási lista sorát."
+        {
+          "id": "4",
+          "location": "São Paulo, Brazília",
+          "name": "Mária Silva",
+          "quote": "A felfedezők segítségével kiterjeszthetem szakértelmemet a túraidőn túlra is. Ügyfeleink bármikor hozzáférhetnek az ajánlásaimhoz!",
+          "role": "Idegenvezető"
         },
-        "silentParties": {
-          "title": "Csendes Buli",
-          "description": "Rendezz egyedi csendes bulikat, ahol mindenki a saját fejhallgatóján keresztül hallgat."
+        {
+          "id": "5",
+          "location": "Sydney, Ausztrália",
+          "name": "James Wilson",
+          "quote": "Utazási befolyásolóként a felfedezők nagyon egyszerűen megoszthatják kedvenc helyeimet a közönséggel. Az QR kód funkció zseniális!",
+          "role": "Utazási befolyásoló"
         },
-        "karaokeReady": {
-          "title": "Karaoke Kész",
-          "description": "Tökéletes karaoke estékhez együttműködő lejátszási listákkal és valós idejű dal kérésekkel."
+        {
+          "id": "6",
+          "location": "Párizs, Franciaország",
+          "name": "Sophie Martin",
+          "quote": "Felfedezőket használok gyalogtúrák létrehozásához ügyfeleim számára. Beolvashatják az QR-t, és saját tempójukban felfedezhetik!",
+          "role": "Helyi idegenvezető"
         }
-      },
-      "venueHeading": "Tökéletes Minden Helyhez",
-      "venues": {
-        "barsPubs": "Bárok és Pubok",
-        "restaurants": "Étteremek",
-        "coffeeShops": "Kávézók",
-        "eventsWeddings": "Események és Esküvők",
-        "retailStores": "Kiskereskedelmi Üzletek",
-        "gymsFitness": "Edzőtermek és Fitness"
-      },
-      "closingStatement": "A Tunes <strong>ingyenes</strong> felfedezésre, és a fizetős funkciókhoz később frissíthetsz."
+      ],
+      "scrollLeft": "Görgessétek a véleményeket balra",
+      "scrollRight": "Görgessétek a véleményeket jobbra",
+      "subtext": "Tekintse meg, hogyan használják az emberek világszerte a felfedezőket a legfontosabb dolgok megosztására."
     },
     "whoIsFor": {
-      "headline": "Olyan emberek számára készült, akiknek az ízlése segít másoknak.",
-      "subtext": "Akár egy várost, egy polcot, egy terméklistát, egy lejátszási listát vagy egy vendégkalauzt oszt meg, a felfedezők otthont adnak az ajánlásoknak.",
       "cards": [
         "Személyes felfedezők",
         "Alkotók és kurátorok",
         "Házigazdák és vállalkozások",
         "Márkák és szervezetek"
       ],
-      "useCases": {
-        "travelers": "Utazók",
-        "travelersDesc": "Ossza meg felfedezett gyöngyszemeit felfedezőtársaival",
-        "influencers": "Befolyásolók",
-        "influencersDesc": "Pénzt szerezhet a helyi tudásból és építhet közösséget",
-        "airbnbHosts": "Airbnb Gazdagépek",
-        "airbnbHostsDesc": "Növelje a vendégek élményét a helyi betekintésekkel",
-        "hotels": "Szállodák",
-        "hotelsDesc": "Adjon válogatott helyi ajánlásokat",
-        "restaurants": "Éttermek",
-        "restaurantsDesc": "Keresztreklámozás más helyi vállalkozásokkal",
-        "cafes": "Kávézók",
-        "cafesDesc": "Ossza meg a környék kedvenceit az ügyfelekkel",
-        "localGuides": "Helyi idegenvezetők",
-        "localGuidesDesc": "Szakértelem az egyéni túrákon túl",
-        "creators": "Alkotók",
-        "creatorsDesc": "A gyakorlati tippekkel a tartalman túl értéket ad",
-        "tourOperators": "Utazásszervezők",
-        "tourOperatorsDesc": "Bővítse a tapasztalatokat a tervezett túrákon túl",
-        "anyBusiness": "Bármilyen üzlet",
-        "anyBusinessDesc": "Építs közösséget és vásárlói hűséget"
-      },
-      "explorerLabel": "Explorer",
-      "visual": {
-        "personal": [
-          "Kávéház",
-          "Könyv",
-          "Nyom",
-          "Album",
-          "Film",
-          "Játék"
-        ],
-        "creators": [
-          "#1",
-          "#2",
-          "#3",
-          "#4"
-        ],
-        "hostsQr": "QR"
-      },
       "chips": [
         "Utazók",
         "Helyiek",
@@ -1532,198 +1805,79 @@
         "Repülőterek",
         "civil szervezetek",
         "Kormányzati csapatok"
-      ]
-    },
-    "testimonials": {
-      "headline": "Szeretik az utazók, alkotók és házigazdák",
-      "subtext": "Tekintse meg, hogyan használják az emberek világszerte a felfedezőket a legfontosabb dolgok megosztására.",
-      "scrollLeft": "Görgessétek a véleményeket balra",
-      "scrollRight": "Görgessétek a véleményeket jobbra",
-      "items": [
-        {
-          "id": "1",
-          "name": "Priya Sharma",
-          "role": "Utazás Blogger",
-          "location": "Mumbai, India",
-          "quote": "a felfedezők megváltoztatták azt, ahogyan megosztom utazási ismereteimet. Követőim szeretnek azonnali hozzáférést kapni a kurátoraimhoz!"
-        },
-        {
-          "id": "2",
-          "name": "Raj Patel",
-          "role": "Airbnb Gazda",
-          "location": "Delhi, India",
-          "quote": "Vendégeim nagyon szeretik a személyre szabott QR kódot üdvözlőcsomagjukban. Ez lett a jellegzetes érintésem!"
-        },
-        {
-          "id": "3",
-          "name": "Yuki Tanaka",
-          "role": "Étterem Tulajdonos",
-          "location": "Tokió, Japán",
-          "quote": "Megosztjuk felfedezőinket az ügyfelekkel, hogy más helyi helyeket ajánljunk. Csodálatos közösségi kapcsolatokat hozott létre."
-        },
-        {
-          "id": "4",
-          "name": "Mária Silva",
-          "role": "Idegenvezető",
-          "location": "São Paulo, Brazília",
-          "quote": "A felfedezők segítségével kiterjeszthetem szakértelmemet a túraidőn túlra is. Ügyfeleink bármikor hozzáférhetnek az ajánlásaimhoz!"
-        },
-        {
-          "id": "5",
-          "name": "James Wilson",
-          "role": "Utazási befolyásoló",
-          "location": "Sydney, Ausztrália",
-          "quote": "Utazási befolyásolóként a felfedezők nagyon egyszerűen megoszthatják kedvenc helyeimet a közönséggel. Az QR kód funkció zseniális!"
-        },
-        {
-          "id": "6",
-          "name": "Sophie Martin",
-          "role": "Helyi idegenvezető",
-          "location": "Párizs, Franciaország",
-          "quote": "Felfedezőket használok gyalogtúrák létrehozásához ügyfeleim számára. Beolvashatják az QR-t, és saját tempójukban felfedezhetik!"
-        }
-      ]
-    },
-    "faq": {
-      "headline": "Vannak kérdéseitek?",
-      "subtext": "Megválaszoltuk a leggyakoribb dolgokat, amiket az emberek kérdeznek, mielőtt elkezdenék.",
-      "loading": "FAQ betöltése...",
-      "error": "Hiba a FAQ betöltésében. Kérjük, próbáljátok újra később.",
-      "fallbackItems": [
-        {
-          "Sequence": 1,
-          "Question": "Mit adhatok hozzá az Explorer oldalamhoz?",
-          "Answer": "Helyek, személyek, termékek, könyvek, filmek, műsorok, zenék, játékok, alkalmazások, útmutatók és jegyzetek."
-        },
-        {
-          "Sequence": 2,
-          "Question": "Megoszthatom QR kóddal?",
-          "Answer": "Igen. Az Ön Explorer oldala megosztható hivatkozásként vagy QR profilok, üzenetek, táblázatok, kártyák és nyomtatott útmutatók számára."
-        },
-        {
-          "Sequence": 3,
-          "Question": "Frissíthetem később az ajánlásaimat?",
-          "Answer": "Igen. Megőrizheti oldalát frissen, miközben ugyanaz a hivatkozás és az QR továbbra is működik."
-        },
-        {
-          "Sequence": 4,
-          "Question": "A felfedezők örökre szabadok?",
-          "Answer": "Igen. Az oldal egyértelműen kommunikálni tudja az ingyenes ígéretet, nehézkes nyelvezet nélkül."
-        }
-      ]
-    },
-    "features": {
-      "title": "Úgy tervezve, hogy kívül maradjon",
-      "subtitle": "Egyszerű, átgondolt funkciók, amelyek lehetővé teszik, hogy ajánlásaitok ragyogjanak.",
-      "simpleLinks": {
-        "title": "Egyszerű linkek és QR megosztás"
-      },
-      "livingGuides": {
-        "title": "Élő, szerkeszthető útmutatók"
-      },
-      "locationAware": {
-        "title": "Helyismeret-alapú ajánlások"
-      },
-      "soundPlaylists": {
-        "title": "Opcionális hang és lejátszási listák"
-      },
-      "privacyFirst": {
-        "title": "Adatvédelem első a tervezés szerint"
-      },
-      "communityDriven": {
-        "title": "Közösség által vezérelt felfedezés"
-      }
-    },
-    "finalCTA": {
-      "headline": "Kezdjétek el megosztani a világotokat ma",
-      "subtext": "Foglaljátok le az ingyenes explorers-t és alakítsátok át a helyi betekintéseiteket megosztható útmutatókká.",
-      "ctaButton": "Foglaljátok le a explorers-t – Örökre Ingyenes",
-      "disclaimer": "Nem szükséges hitelkártya • Beállítás 2 perc alatt",
-      "creating": "A explorers létrehozása..."
-    },
-    "productCategories": {
-      "headline": "Többet ajánl, mint helyet.",
-      "subtext": "Hozzon létre egy oldalt helyek, személyek, termékek, könyvek, filmek, műsorok, zenék, játékok, alkalmazások és eszközök számára.",
-      "actions": [
-        "Megtakarítás",
-        "Szervez",
-        "Részesedés"
       ],
-      "overlayLabel": "Explorer oldal",
-      "visualLabels": {
-        "products": "Igazi kedvencek",
-        "apps": "Hasznos verem"
-      },
-      "visualDetails": {
-        "products": [
-          "Utazási felszerelés",
-          "Napi szállítás",
-          "Alkotói készlet"
-        ],
-        "apps": [
-          "Tervezési eszközök",
-          "Hasznos alkalmazások",
-          "Erőforrás linkek"
-        ]
-      },
-      "categories": [
-        {
-          "id": "places",
-          "label": "Helyek",
-          "title": "Helyi helyek, útmutatók és útvonalak",
-          "description": "Éttermek, városrészek, múzeumok, útvonalak és rejtett drágakövek, amelyeket az emberek valóban meglátogathatnak."
+      "explore": "See this perspective",
+      "explorerLabel": "Explorer",
+      "eyebrow": "Ways to use explorers",
+      "headline": "Olyan emberek számára készült, akiknek az ízlése segít másoknak.",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
         },
-        {
-          "id": "people",
-          "label": "Emberek",
-          "title": "Olyan emberek, akiket érdemes követni, vagy akiktől érdemes tanulni",
-          "description": "Alkotók, alapítók, útmutatók, művészek, tanárok, szakértők és olyan emberek, akik az Ön ízlését alakították."
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
         },
-        {
-          "id": "books",
-          "label": "Könyvek",
-          "title": "Könyvek és olvasási listák",
-          "description": "A chatekben, jegyzetekben, hírlevelekben és utazási beszélgetésekben folyamatosan ajánlott könyvek."
-        },
-        {
-          "id": "movies",
-          "label": "Filmek és TV",
-          "title": "Filmek, műsorok és figyelőlisták",
-          "description": "Filmek, sorozatok, dokumentumfilmek és figyelőlisták mindenféle hangulathoz és közönséghez."
-        },
-        {
-          "id": "games",
-          "label": "Játékok",
-          "title": "Játékok és felfedeznivaló világok",
-          "description": "Játékok, küldetések, világok és élmények, amelyeket az embereknek érdemes legközelebb kipróbálniuk."
-        },
-        {
-          "id": "music",
-          "label": "Zene",
-          "title": "Albumok, előadók és lejátszási listák",
-          "description": "Helyekhez és pillanatokhoz kapcsolódó előadók, albumok, dalok, lejátszási listák és hangsávok."
-        },
-        {
-          "id": "products",
-          "label": "Termékek",
-          "title": "Azok a termékek, amelyeket az emberek valóban ajánlanak",
-          "description": "Mindennapi kedvencek, utazási felszerelések, alkotói eszközök, ajándékok és termékek, amelyeket érdemes megtakarítani."
-        },
-        {
-          "id": "apps",
-          "label": "Alkalmazások és eszközök",
-          "title": "Alkalmazások, eszközök és hasznos linkek",
-          "description": "Szoftverek, webhelyek, sablonok, eszközök és erőforrások, amelyek megkönnyítik az életet."
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
         }
-      ]
+      },
+      "subtext": "Akár egy várost, egy polcot, egy terméklistát, egy lejátszási listát vagy egy vendégkalauzt oszt meg, a felfedezők otthont adnak az ajánlásoknak.",
+      "useCases": {
+        "airbnbHosts": "Airbnb Gazdagépek",
+        "airbnbHostsDesc": "Növelje a vendégek élményét a helyi betekintésekkel",
+        "anyBusiness": "Bármilyen üzlet",
+        "anyBusinessDesc": "Építs közösséget és vásárlói hűséget",
+        "cafes": "Kávézók",
+        "cafesDesc": "Ossza meg a környék kedvenceit az ügyfelekkel",
+        "creators": "Alkotók",
+        "creatorsDesc": "A gyakorlati tippekkel a tartalman túl értéket ad",
+        "hotels": "Szállodák",
+        "hotelsDesc": "Adjon válogatott helyi ajánlásokat",
+        "influencers": "Befolyásolók",
+        "influencersDesc": "Pénzt szerezhet a helyi tudásból és építhet közösséget",
+        "localGuides": "Helyi idegenvezetők",
+        "localGuidesDesc": "Szakértelem az egyéni túrákon túl",
+        "restaurants": "Éttermek",
+        "restaurantsDesc": "Keresztreklámozás más helyi vállalkozásokkal",
+        "tourOperators": "Utazásszervezők",
+        "tourOperatorsDesc": "Bővítse a tapasztalatokat a tervezett túrákon túl",
+        "travelers": "Utazók",
+        "travelersDesc": "Ossza meg felfedezett gyöngyszemeit felfedezőtársaival"
+      },
+      "visual": {
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR",
+        "personal": [
+          "Kávéház",
+          "Könyv",
+          "Nyom",
+          "Album",
+          "Film",
+          "Játék"
+        ]
+      }
     }
   },
   "seo": {
-    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
     "landing": {
-      "title": "felfedezők – Fedezze fel és ossza meg a személyre szabott helyi ajánlásokat",
       "description": "Fedezze fel és ossza meg kedvenc helyi helyeit felfedezőkkel. Hozzon létre személyre szabott városkalauzokat, rendezze meg a kihagyhatatlan helyeket, és tegye őket felfedezhetővé a megosztható QR kódokkal. Fedezze fel a rejtett drágaköveket, a válogatott ajánlásokat és a helyi utazási tippeket interaktív térképeken.",
+      "geoDescription": "Fedezze fel és ossza meg kedvenc helyi helyeit személyre szabott QR kódokkal és megosztható linkekkel",
+      "geoFeatures": [
+        "Személyre szabott QR kód generálás",
+        "Helyi ajánlások megosztása",
+        "Elemzések és betekintések",
+        "Mobilra optimalizált kialakítás",
+        "Közösségi felfedezés"
+      ],
+      "geoIndustry": "Technológia",
       "keywords": [
         "felfedezni a közelemben lévő helyeket",
         "személyre szabott útikalauzok",
@@ -1751,16 +1905,10 @@
         "utazási tippek",
         "helyi foltok"
       ],
-      "geoDescription": "Fedezze fel és ossza meg kedvenc helyi helyeit személyre szabott QR kódokkal és megosztható linkekkel",
-      "geoFeatures": [
-        "Személyre szabott QR kód generálás",
-        "Helyi ajánlások megosztása",
-        "Elemzések és betekintések",
-        "Mobilra optimalizált kialakítás",
-        "Közösségi felfedezés"
-      ],
-      "geoIndustry": "Technológia"
-    }
+      "title": "felfedezők – Fedezze fel és ossza meg a személyre szabott helyi ajánlásokat"
+    },
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
   },
   "settings": {
     "account": {
@@ -2278,13 +2426,91 @@
       "validationPending": "Validation is pending. Please wait"
     }
   },
+  "useCases": {
+    "cta": {
+      "button": "Claim your Explorer page",
+      "description": "Start with the recommendations you already share. Give them one place to live.",
+      "title": "Make a home for what you would pass on."
+    },
+    "hero": {
+      "chooseLabel": "Choose a perspective",
+      "description": "Whether the point of view is personal, creative, or shared by a brand, explorers gives it a thoughtful home.",
+      "eyebrow": "Ways to explore",
+      "title": "Different perspectives. One place to share them.",
+      "visualAlt": "Three perspectives connected through a place, an Explorer profile, and a storefront."
+    },
+    "journey": {
+      "description": "The shape changes with the person behind it. The rhythm stays simple.",
+      "eyebrow": "One simple rhythm",
+      "steps": {
+        "collect": {
+          "description": "Bring together what you genuinely recommend across the parts of life that matter to you.",
+          "title": "Collect"
+        },
+        "shape": {
+          "description": "Organize it with enough context for someone else to understand why it belongs.",
+          "title": "Shape"
+        },
+        "share": {
+          "description": "Offer one living link or QR that people can save, scan, and return to.",
+          "title": "Share"
+        }
+      },
+      "title": "Three perspectives. One way of sharing with care."
+    },
+    "perspectives": {
+      "brands": {
+        "description": "Curate the places, products, guides, and ideas that express what your organization genuinely values.",
+        "label": "Brands",
+        "points": [
+          "Build collections with a clear and human perspective.",
+          "Connect locations, products, and useful context.",
+          "Give people something thoughtful to save and revisit."
+        ],
+        "title": "Turn your point of view into an experience people can enter."
+      },
+      "creators": {
+        "description": "Turn the recommendations scattered across posts, videos, conversations, and notes into something people can return to.",
+        "label": "Creators",
+        "points": [
+          "Create a durable home for your point of view.",
+          "Organize recommendations around stories and themes.",
+          "Share through one link or QR wherever people find you."
+        ],
+        "title": "Give your audience more than a feed."
+      },
+      "personal": {
+        "description": "Keep the places, books, films, tools, people, and small discoveries you return to in one living collection.",
+        "label": "Personal",
+        "points": [
+          "Bring different kinds of recommendations together.",
+          "Add the context that makes each choice yours.",
+          "Share one page that can keep evolving with you."
+        ],
+        "title": "A home for the things that shape your world."
+      }
+    },
+    "seo": {
+      "description": "See how people, creators, and brands can collect what they value, shape it with context, and share it through one thoughtful Explorer page.",
+      "keywords": [
+        "explorers use cases",
+        "personal recommendations page",
+        "creator recommendations",
+        "brand curation",
+        "share recommendations",
+        "curated collections"
+      ],
+      "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
+      "title": "Use Cases | explorers.earth"
+    }
+  },
   "usernameClaim": {
-    "validating": "Érvényesítés folyamatban...",
-    "claimFree": "Igénylés ingyenes",
-    "trySuggestions": "Próbáld ki: {{suggestions}}",
     "available": "Felhasználónév elérhető.",
-    "unavailable": "Felhasználónév nem elérhető.",
+    "checkingAvailability": "Elérhetőség ellenőrzése...",
+    "claimFree": "Igénylés ingyenes",
     "confirmOnSignup": "Az elérhetőséget a jelentkezéskor visszaigazoljuk.",
-    "checkingAvailability": "Elérhetőség ellenőrzése..."
+    "trySuggestions": "Próbáld ki: {{suggestions}}",
+    "unavailable": "Felhasználónév nem elérhető.",
+    "validating": "Érvényesítés folyamatban..."
   }
 }

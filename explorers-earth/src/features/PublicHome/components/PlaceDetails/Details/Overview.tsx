@@ -11,6 +11,8 @@ import BoldLinkIcon from "../../../../../assets/icons/BoldLinkIcon";
 import YouTubeEmbed from "../../../../../components/YoutubeEmbed";
 import { getCurrentLocation } from "../../../../../utils/getCurrentLocation";
 import { coordinatesState } from "./Address";
+import SafePublicRichText from "../../SafePublicRichText";
+import { normalizePublicWebHref } from "../../../utils/publicProfileContent";
 
 interface OverviewProps {
   fetchedPlace: {
@@ -54,6 +56,10 @@ const Overview: FC<OverviewProps> = memo(({ fetchedPlace, onTabChange }) => {
       }))
     );
   }, [fetchedPlace?.media_details?.imageDetails]);
+  const websiteHref = useMemo(
+    () => normalizePublicWebHref(fetchedPlace.Places_Social_Link),
+    [fetchedPlace.Places_Social_Link],
+  );
 
   // Handle media click
   const handleMediaClick = (index: number) => {
@@ -84,8 +90,8 @@ const Overview: FC<OverviewProps> = memo(({ fetchedPlace, onTabChange }) => {
   };
 
   const handleWebsiteRedirect = () => {
-    if (fetchedPlace.Places_Social_Link) {
-      window.open(fetchedPlace.Places_Social_Link, "_blank");
+    if (websiteHref) {
+      window.open(websiteHref, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -128,7 +134,7 @@ const Overview: FC<OverviewProps> = memo(({ fetchedPlace, onTabChange }) => {
         <div className="flex flex-col items-center gap-2">
           <button
             onClick={handleWebsiteRedirect}
-            disabled={!fetchedPlace.Places_Social_Link}
+            disabled={!websiteHref}
             className="w-12 h-12 rounded-full border border-dashboard flex items-center justify-center hover:bg-dashboard-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <BoldLinkIcon color="var(--dash-text)" />
@@ -154,11 +160,9 @@ const Overview: FC<OverviewProps> = memo(({ fetchedPlace, onTabChange }) => {
             <h1 className="font-poppins text-dashboard font-semibold text-sm mt-4 py-2 border-dashboard">
               Why would you recommend?
             </h1>
-            <div
+            <SafePublicRichText
               className="text-dashboard text-sm leading-6 p-2"
-              dangerouslySetInnerHTML={{
-                __html: fetchedPlace?.user_recommendation_note,
-              }}
+              html={fetchedPlace?.user_recommendation_note}
             />
           </div>
 
@@ -193,11 +197,9 @@ const Overview: FC<OverviewProps> = memo(({ fetchedPlace, onTabChange }) => {
               <h1 className="font-poppins text-dashboard font-semibold text-sm mt-4 py-2 border-dashboard">
                 Why would you recommend?
               </h1>
-              <div
+              <SafePublicRichText
                 className="text-dashboard text-sm leading-6 p-2"
-                dangerouslySetInnerHTML={{
-                  __html: fetchedPlace?.user_recommendation_note,
-                }}
+                html={fetchedPlace?.user_recommendation_note}
               />
             </div>
           )}

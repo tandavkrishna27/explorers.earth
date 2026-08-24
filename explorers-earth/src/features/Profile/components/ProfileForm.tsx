@@ -1,3 +1,4 @@
+import ThemeAppearanceSection from "./ThemeAppearanceSection";
 import { Formik, Form, Field, ErrorMessage, useFormikContext } from "formik";
 import { FC, memo, ReactNode, useEffect, useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -5,16 +6,25 @@ import * as Yup from "yup";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { countries } from "../../../components/ui/CountryCodeDropdown";
 import { createProfileValidationSchema } from "../data";
+import {
+  SOCIAL_VISIBILITY_FORM_FIELDS,
+  type SocialVisibilityKey,
+} from "../config/socialVisibility";
 import Button from "../../../components/ui/Button";
 import AddressInput from "./AddressInput";
 import BusinessLocationFields from "./BusinessLocationFields";
 import FeedFields from "./FeedFields.tsx";
 import { Places } from "../types/types";
+import {
+  awaitProfileSaveTerminal,
+  type KeyValuePair,
+  type ProfileSubmit,
+  type SaveTerminalStatus,
+} from "../types/profileSave";
 import TiptapEditor from "../../Favorites/components/TiptapEditor";
 // import SwitchButton from "../../../components/ui/SwitchButton";
 import { AddIcon } from "../../../assets/icons/AddIcon";
 import CrossIcon from "../../../assets/icons/CrossIcon";
-import { toast } from "sonner";
 import EyeOnIcon from "../../../assets/icons/EyeOnIcon";
 import EyeOffIcon from "../../../assets/icons/EyeOffIcon";
 import CurrLocation from "../../../assets/icons/CurrLocation";
@@ -38,6 +48,13 @@ import AppleMusic from "../../../assets/icons/AppleMusic";
 import TiktokIcon from "../../../assets/icons/TiktokIcon";
 import SnapchatIcon from "../../../assets/icons/SnapchatIcon";
 import MobileIcon from "../../../assets/icons/MobileIcon";
+import type { LucideIcon } from "lucide-react";
+import { toast } from "sonner";
+import type {
+  FeedAsyncState,
+  ProfileWorkspace,
+  ProfileWorkspaceId,
+} from "../types/profileWorkspaces";
 
 // Helper function to normalize mobile number format
 // Converts wrong format (ISO code + number, like "AF9140284510") to correct format (+numeric code, like "+939140284510")
@@ -95,11 +112,10 @@ const phoneValidationSchema = Yup.object({
     ),
 });
 
-// generic type for defining objects
-export type KeyValuePair = { [key: string]: string | any };
+export type { KeyValuePair } from "../types/profileSave";
 
 // types for form field
-interface FormField {
+export interface FormField {
   name: string;
   label: string;
   type: string;
@@ -108,6 +124,7 @@ interface FormField {
   options?: string[];
   optionLabels?: string[];
   as?: string;
+  span?: "auto" | "full";
   components?: {
     icon?: ReactNode;
     value?: string;
@@ -118,16 +135,24 @@ interface FormField {
 }
 
 export interface FormSection {
+  id?: string;
   heading: string;
   description?: string;
+  presentation?: "accordion" | "direct";
+  icon?: LucideIcon;
+  defaultOpen?: boolean;
+  layout?: {
+    columns: 1 | 2;
+    minWidth?: number;
+  };
+  structuralLabel?: "section" | "field";
   formFields: FormField[];
 }
 
 // types for profile form component
-interface ProfileFormProps {
+interface ProfileFormBaseProps {
   initialValues: KeyValuePair;
-  onSubmit: (values: KeyValuePair) => void;
-  formFields: FormSection[];
+  onSubmit: ProfileSubmit;
   setPlaces: (places: Places, setFieldValue?: (field: string, value: any) => void) => void;
   DetectLocation: (setFieldValue?: (field: string, value: any) => void) => void;
   usernameDisabled?: boolean; // legacy support; we will not disable, but keep prop for compatibility
@@ -135,7 +160,45 @@ interface ProfileFormProps {
   onFormDirtyChange?: (isDirty: boolean) => void; // Callback to notify parent about dirty state
   onResetDirtyState?: (resetFn: () => void) => void; // Callback to expose reset function to parent
   onFeedDataChange?: () => void; // Callback to notify when Feed_Data changes
+  onFeedAsyncStateChange?: (state: FeedAsyncState) => void;
+  onRegisterSubmit?: (
+    submit: (() => Promise<SaveTerminalStatus>) | null,
+  ) => void;
+  surface?: "contained" | "flat";
+  actionsPlacement?: "fixed" | "inline";
 }
+
+interface SingleProfileFormProps extends ProfileFormBaseProps {
+  mode?: "single";
+  formFields: FormSection[];
+  workspaces?: never;
+  activeWorkspace?: never;
+  scopeKey?: never;
+}
+
+interface WorkspaceProfileFormProps extends ProfileFormBaseProps {
+  mode: "workspaces";
+  workspaces: ProfileWorkspace<FormSection>[];
+  activeWorkspace: ProfileWorkspaceId;
+  scopeKey: string;
+  // Compatibility snapshot for page-level harnesses; workspace rendering uses
+  // `workspaces` so switching never creates a second Formik boundary.
+  formFields: FormSection[];
+}
+
+export type ProfileFormProps =
+  | SingleProfileFormProps
+  | WorkspaceProfileFormProps;
+
+const createInitialVisibility = (
+  initialValues: KeyValuePair,
+): Record<string, boolean> =>
+  Object.fromEntries(
+    Object.entries(SOCIAL_VISIBILITY_FORM_FIELDS).map(([key, fieldName]) => [
+      key,
+      Boolean(initialValues[fieldName]),
+    ]),
+  );
 
 // Runs the form's side effects from inside the Formik provider. Extracted from
 // the render-prop callback because React hooks may not be called in callbacks.
@@ -177,7 +240,152 @@ const ProfileFormEffects: FC<{
   return null;
 };
 
-const ProfileForm: FC<ProfileFormProps> = memo(
+const ProfileFormSectionShell: FC<{
+  section: FormSection;
+  sectionIndex: number;
+  surface: "contained" | "flat";
+  children: ReactNode;
+}> = ({ section, sectionIndex, surface, children }) => {
+  const SectionIcon = section.icon;
+  const sectionId = section.id || `profile-form-section-${sectionIndex}`;
+  const isDirect = section.presentation === "direct";
+  const dataWalkthrough =
+    section.formFields.some(
+      (field) => field.name === "accountName" || field.name === "bio",
+    )
+      ? "profile-information-accordion"
+      : section.formFields.some((field) => field.name === "socialLinks")
+        ? "social-media-accordion"
+        : undefined;
+
+  if (isDirect) {
+    const headingId = `${sectionId}-heading`;
+    return (
+      <section
+        aria-labelledby={headingId}
+        className={sectionIndex > 0 ? "mt-8" : ""}
+      >
+        <header className="mb-5">
+          <div className="flex items-center gap-3">
+            {SectionIcon && (
+              <SectionIcon
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 text-dashboard-accent"
+              />
+            )}
+            <h2
+              id={headingId}
+              className="text-lg font-semibold text-dashboard"
+            >
+              {section.heading}
+            </h2>
+          </div>
+          {section.description && (
+            <p className="mt-2 text-sm leading-6 text-dashboard-light">
+              {section.description}
+            </p>
+          )}
+        </header>
+        {children}
+      </section>
+    );
+  }
+
+  return (
+    <div className={sectionIndex > 0 ? "mt-3 md:mt-4" : ""}>
+      <Accordion
+        id={sectionId}
+        heading={section.heading}
+        headingIcon={
+          SectionIcon ? (
+            <SectionIcon aria-hidden="true" className="h-5 w-5" />
+          ) : undefined
+        }
+        defaultOpen={section.defaultOpen ?? false}
+        variant={surface === "flat" ? "flat" : "card"}
+        data-walkthrough={dataWalkthrough}
+      >
+        {section.description && (
+          <p className="mb-4 mt-2 text-sm text-dashboard-light">
+            {section.description}
+          </p>
+        )}
+        {children}
+      </Accordion>
+    </div>
+  );
+};
+
+const ProfileFormActions: FC<{
+  onRegisterSubmit?: ProfileFormProps["onRegisterSubmit"];
+  submit: (
+    values: KeyValuePair,
+    resetForm: (nextState?: { values: KeyValuePair }) => void,
+  ) => Promise<SaveTerminalStatus>;
+  isSaving: boolean;
+  placement: "fixed" | "inline";
+}> = ({ onRegisterSubmit, submit, isSaving, placement }) => {
+  const { t } = useTranslation();
+  const { values, resetForm } = useFormikContext<KeyValuePair>();
+  const valuesRef = useRef(values);
+  const resetFormRef = useRef(resetForm);
+  const submitRef = useRef(submit);
+  const inFlightRef = useRef<Promise<SaveTerminalStatus> | null>(null);
+
+  valuesRef.current = values;
+  resetFormRef.current = resetForm;
+  submitRef.current = submit;
+
+  const submitCurrentSnapshot = useCallback(() => {
+    if (inFlightRef.current) return inFlightRef.current;
+
+    const submission = submitRef.current(
+      valuesRef.current,
+      resetFormRef.current,
+    );
+    inFlightRef.current = submission;
+    void submission.then(
+      () => {
+        if (inFlightRef.current === submission) inFlightRef.current = null;
+      },
+      () => {
+        if (inFlightRef.current === submission) inFlightRef.current = null;
+      },
+    );
+    return submission;
+  }, []);
+
+  useEffect(() => {
+    if (!onRegisterSubmit) return;
+    onRegisterSubmit(submitCurrentSnapshot);
+    return () => onRegisterSubmit(null);
+  }, [onRegisterSubmit, submitCurrentSnapshot]);
+
+  return (
+    <div
+      className={
+        placement === "fixed"
+          ? "profile-editor-save-dock fixed left-0 right-0 z-[100] flex justify-center bg-dashboard-bg px-4 py-2"
+          : "profile-editor-save-dock mt-4 flex justify-end bg-transparent py-2"
+      }
+    >
+      <div data-walkthrough="save-publish-button">
+        <Button
+          btnText={t("dashboard.profile.common.saveAndPublish")}
+          type="button"
+          variant="primary"
+          size="small"
+          isLoading={isSaving}
+          onClick={submitCurrentSnapshot}
+          disabled={isSaving}
+          className="min-h-11 rounded-md bg-primary px-8 py-3 font-semibold text-white shadow-dashboard-elevated transition-colors hover:bg-primary-dark md:px-12"
+        />
+      </div>
+    </div>
+  );
+};
+
+const ProfileFormSession: FC<ProfileFormProps> = memo(
   ({
     initialValues,
     onSubmit,
@@ -189,8 +397,23 @@ const ProfileForm: FC<ProfileFormProps> = memo(
     onFormDirtyChange,
     onResetDirtyState,
     onFeedDataChange,
+    onFeedAsyncStateChange,
+    onRegisterSubmit,
+    mode = "single",
+    workspaces,
+    activeWorkspace,
+    scopeKey,
+    surface = "contained",
+    actionsPlacement = "fixed",
   }) => {
     const { t } = useTranslation();
+    const isWorkspaceMode = mode === "workspaces";
+    const [visitedWorkspaces, setVisitedWorkspaces] = useState(
+      () =>
+        new Set<ProfileWorkspaceId>(
+          isWorkspaceMode && activeWorkspace ? [activeWorkspace] : [],
+        ),
+    );
     const validationSchema = createProfileValidationSchema(t);
     const [address, setAddress] = useState<string>("");
     const [sameAsAddress, setSameAsAddress] = useState(false);
@@ -201,6 +424,9 @@ const ProfileForm: FC<ProfileFormProps> = memo(
     // ✅ SIMPLE: useState-based dirty state tracking - only when user actually changes something
     const [isFormDirty, setIsFormDirty] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [pendingFeedOperations, setPendingFeedOperations] = useState(
+      () => new Map<string, FeedAsyncState["operation"]>(),
+    );
     // Track if form has been initialized to prevent false positives during initialization
     const [isFormInitialized, setIsFormInitialized] = useState(false);
 
@@ -211,6 +437,41 @@ const ProfileForm: FC<ProfileFormProps> = memo(
       }, 100);
       return () => clearTimeout(timer);
     }, []);
+
+    useEffect(() => {
+      if (!isWorkspaceMode || !activeWorkspace) return;
+      setVisitedWorkspaces((current) => {
+        if (current.has(activeWorkspace)) return current;
+        const next = new Set(current);
+        next.add(activeWorkspace);
+        return next;
+      });
+    }, [activeWorkspace, isWorkspaceMode]);
+
+    const handleFeedAsyncStateChange = useCallback(
+      (state: FeedAsyncState) => {
+        const { pending, operation, requestId } = state;
+        setPendingFeedOperations((current) => {
+          const next = new Map(current);
+          if (pending) next.set(requestId, operation);
+          else next.delete(requestId);
+          return next;
+        });
+        onFeedAsyncStateChange?.(state);
+      },
+      [onFeedAsyncStateChange],
+    );
+
+    const renderGroups: ProfileWorkspace<FormSection>[] = isWorkspaceMode
+      ? workspaces || []
+      : [
+          {
+            id: "profile",
+            headingId: "",
+            sections: formFields,
+            width: "readable",
+          },
+        ];
 
     // Notify parent component about dirty state changes
     useEffect(() => {
@@ -250,41 +511,14 @@ const ProfileForm: FC<ProfileFormProps> = memo(
     }, [initialValues]);
 
     // Visibility state management
-    const [visibility, setVisibility] = useState<{ [key: string]: boolean }>({});
+    const [visibility, setVisibility] = useState<{ [key: string]: boolean }>(
+      () => createInitialVisibility(initialValues),
+    );
 
     // Mobile number visibility state
     const [isPublic, setIsPublic] = useState<boolean>(
       initialValues.mobilenumberVisiblity ?? true
     );
-
-    // Initialize visibility state from initial values
-    useEffect(() => {
-      const initialVisibility: { [key: string]: boolean } = {};
-
-      // Map platform names to their visibility field names
-      const platformVisibilityMap: { [key: string]: string } = {
-        "Instagram": "instagramvisiblity",
-        "Whatsapp": "whatsappvisiblity",
-        "Youtube": "youtubevisiblity",
-        "X": "Xvisiblity",
-        "Spotify": "spotifyvisiblity",
-        "Website": "websitevisiblity",
-        "Facebook": "facebookvisiblity",
-        "Youtube Music": "youtubeMusicvisiblity",
-        "Gmail": "gmailvisiblity",
-        "Linkedin": "linkedinvisiblity",
-        "Apple Music": "appleMusicvisiblity",
-        "Tiktok": "tiktokvisiblity",
-        "Snapchat": "snapchatvisiblity"
-      };
-
-      // Initialize visibility state for each platform
-      Object.entries(platformVisibilityMap).forEach(([platform, fieldName]) => {
-        initialVisibility[platform] = initialValues[fieldName] || false;
-      });
-
-      setVisibility(initialVisibility);
-    }, [initialValues]);
 
     // Initialize mobile visibility from initial values
     useEffect(() => {
@@ -311,6 +545,36 @@ const ProfileForm: FC<ProfileFormProps> = memo(
       t('dashboard.profile.publicProfile.fields.tiktok'),
       t('dashboard.profile.publicProfile.fields.snapchat'),
     ];
+    const socialLinkFieldByLabel = new Map<string, string>([
+      [t('dashboard.profile.publicProfile.fields.instagram'), "instagramLink"],
+      [t('dashboard.profile.publicProfile.fields.whatsapp'), "whatsappLink"],
+      [t('dashboard.profile.publicProfile.fields.youtube'), "youtubeLink"],
+      [t('dashboard.profile.publicProfile.fields.x'), "XLink"],
+      [t('dashboard.profile.publicProfile.fields.spotify'), "spotifyLink"],
+      [t('dashboard.profile.publicProfile.fields.website'), "websiteLink"],
+      [t('dashboard.profile.publicProfile.fields.facebook'), "facebookLink"],
+      [t('dashboard.profile.publicProfile.fields.youtubeMusic'), "youtubeMusicLink"],
+      [t('dashboard.profile.publicProfile.fields.gmail'), "gmailLink"],
+      [t('dashboard.profile.publicProfile.fields.linkedin'), "linkedinLink"],
+      [t('dashboard.profile.publicProfile.fields.appleMusic'), "appleMusicLink"],
+      [t('dashboard.profile.publicProfile.fields.tiktok'), "tiktokLink"],
+      [t('dashboard.profile.publicProfile.fields.snapchat'), "snapchatLink"],
+    ]);
+    const socialVisibilityKeyByLabel = new Map<string, string>([
+      [t('dashboard.profile.publicProfile.fields.instagram'), "Instagram"],
+      [t('dashboard.profile.publicProfile.fields.whatsapp'), "Whatsapp"],
+      [t('dashboard.profile.publicProfile.fields.youtube'), "Youtube"],
+      [t('dashboard.profile.publicProfile.fields.x'), "X"],
+      [t('dashboard.profile.publicProfile.fields.spotify'), "Spotify"],
+      [t('dashboard.profile.publicProfile.fields.website'), "Website"],
+      [t('dashboard.profile.publicProfile.fields.facebook'), "Facebook"],
+      [t('dashboard.profile.publicProfile.fields.youtubeMusic'), "YoutubeMusic"],
+      [t('dashboard.profile.publicProfile.fields.gmail'), "Gmail"],
+      [t('dashboard.profile.publicProfile.fields.linkedin'), "Linkedin"],
+      [t('dashboard.profile.publicProfile.fields.appleMusic'), "AppleMusic"],
+      [t('dashboard.profile.publicProfile.fields.tiktok'), "Tiktok"],
+      [t('dashboard.profile.publicProfile.fields.snapchat'), "Snapchat"],
+    ]);
 
     // Initialize active fields from initial values - only on mount
     useEffect(() => {
@@ -475,15 +739,34 @@ const ProfileForm: FC<ProfileFormProps> = memo(
     };
 
     // Visibility toggle
+    const getVisibilityKey = (fieldName: string): SocialVisibilityKey | string =>
+      socialVisibilityKeyByLabel.get(fieldName) || fieldName;
+
     const handleToggleVisibility = (fieldName: string) => {
+      const visibilityKey = getVisibilityKey(fieldName);
       setVisibility((prev) => ({
         ...prev,
-        [fieldName]: !prev[fieldName],
+        [visibilityKey]: !prev[visibilityKey],
       }));
+      setIsFormDirty(true);
     };
 
     // Form submission handler
-    const formHandleSubmit = async (values: KeyValuePair) => {
+    const formHandleSubmit = async (
+      values: KeyValuePair,
+      resetForm?: (nextState?: { values: KeyValuePair }) => void,
+    ): Promise<SaveTerminalStatus> => {
+      const pendingOperation = pendingFeedOperations.values().next().value;
+      if (pendingOperation) {
+        toast.error(
+          t("dashboard.profile.editor.finishOperationFirst", {
+            operation: pendingOperation.replace(/-/g, " "),
+            defaultValue: `Finish the ${pendingOperation.replace(/-/g, " ")} before saving.`,
+          }),
+        );
+        return "failed";
+      }
+
       setIsSaving(true);
       try {
         // Combine all form data
@@ -499,54 +782,8 @@ const ProfileForm: FC<ProfileFormProps> = memo(
 
         // Add social media fields
         taggableFields.forEach((field) => {
-          // Map platform names to their corresponding field names
-          let fieldName = "";
-          switch (field) {
-            case "Instagram":
-              fieldName = "instagramLink";
-              break;
-            case "Whatsapp":
-              fieldName = "whatsappLink";
-              break;
-            case "Mobile":
-              fieldName = "mobilenumberLink";
-              break;
-            case "Youtube":
-              fieldName = "youtubeLink";
-              break;
-            case "X":
-              fieldName = "XLink";
-              break;
-            case "Spotify":
-              fieldName = "spotifyLink";
-              break;
-            case "Website":
-              fieldName = "websiteLink";
-              break;
-            case "Facebook":
-              fieldName = "facebookLink";
-              break;
-            case "Youtube Music":
-              fieldName = "youtubeMusicLink";
-              break;
-            case "Gmail":
-              fieldName = "gmailLink";
-              break;
-            case "Linkedin":
-              fieldName = "linkedinLink";
-              break;
-            case "Apple Music":
-              fieldName = "appleMusicLink";
-              break;
-            case "Tiktok":
-              fieldName = "tiktokLink";
-              break;
-            case "Snapchat":
-              fieldName = "snapchatLink";
-              break;
-            default:
-              fieldName = field.toLowerCase().replace(/\s+/g, "") + "Link";
-          }
+          const fieldName = socialLinkFieldByLabel.get(field);
+          if (!fieldName) return;
 
           if (activeFields.includes(field)) {
             (formData as any)[fieldName] = values[fieldName] || "";
@@ -555,14 +792,17 @@ const ProfileForm: FC<ProfileFormProps> = memo(
           }
         });
 
-        await onSubmit(formData);
+        const result = await onSubmit(formData);
+        const terminal = await awaitProfileSaveTerminal(result);
 
-        // Reset dirty state after successful submission
-        resetDirtyState();
+        if (terminal === "saved") {
+          resetDirtyState();
+          resetForm?.({ values });
+        }
 
-        toast.success(t('toast.success.profileUpdatedSuccessfully'));
-      } catch (error) {
-        toast.error(t('dashboard.profile.common.failedToUpdateProfile'));
+        return terminal;
+      } catch {
+        return "failed";
       } finally {
         setIsSaving(false);
       }
@@ -571,14 +811,16 @@ const ProfileForm: FC<ProfileFormProps> = memo(
     return (
       <Formik
         initialValues={initialValues}
-        onSubmit={formHandleSubmit}
+        onSubmit={(values) => {
+          void formHandleSubmit(values);
+        }}
         validationSchema={validationSchema}
         enableReinitialize={false}
       >
         {({ values, setFieldValue, handleChange, touched, errors }) => {
           return (
             <Form
-              className="font-poppins flex flex-col gap-4 w-full"
+              className="w-full scroll-pt-24 scroll-pb-36 pb-[calc(7rem+env(safe-area-inset-bottom))] font-poppins md:pb-0"
               onSubmit={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -596,37 +838,81 @@ const ProfileForm: FC<ProfileFormProps> = memo(
                 isFormInitialized={isFormInitialized}
                 initialValues={initialValues}
               />
-              <div className="bg-dashboard-muted backdrop-blur-sm rounded-2xl border border-white p-2 md:p-6 shadow-dashboard-elevated w-full max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-3xl mx-auto">
-                {formFields.map((section, sectionIndex) => (
-                  section.heading === t('dashboard.profile.publicProfile.sections.howToReachUs') && values.accountType !== 'business' ? null :
-                    <div
-                      key={sectionIndex}
-                      className={sectionIndex > 0 ? "mt-3 md:mt-4" : ""}
-                    >
-                      <Accordion
-                        heading={section.heading}
-                        defaultOpen={false}
-                        data-walkthrough={
-                          (section.heading.toLowerCase().includes('profile information') ||
-                            (section.heading.toLowerCase().includes('account') && section.formFields.some(f => f.name === 'accountName' || f.name === 'bio')))
-                            ? 'profile-information-accordion'
-                            : section.formFields.some(f => f.name === 'socialLinks')
-                              ? 'social-media-accordion'
-                              : undefined
-                        }
-                      >
+              <div
+                className={
+                  surface === "flat"
+                    ? "mx-auto w-full"
+                    : "mx-auto w-full max-w-sm rounded-2xl border border-white bg-dashboard-muted p-2 shadow-dashboard-elevated backdrop-blur-sm sm:max-w-md md:max-w-2xl md:p-6 lg:max-w-3xl"
+                }
+              >
+                {renderGroups.map((workspace) => {
+                  const isActive =
+                    !isWorkspaceMode || workspace.id === activeWorkspace;
+                  const shouldMount =
+                    !isWorkspaceMode ||
+                    isActive ||
+                    visitedWorkspaces.has(workspace.id);
 
-                        {section.description && (
-                          <p className="text-sm text-dashboard-light mb-4 mt-2">
-                            {section.description}
-                          </p>
-                        )}
+                  return (
+                    <section
+                      key={workspace.id}
+                      id={
+                        isWorkspaceMode
+                          ? `profile-editor-panel-${workspace.id}`
+                          : undefined
+                      }
+                      role={isWorkspaceMode ? "tabpanel" : undefined}
+                      aria-labelledby={
+                        isWorkspaceMode
+                          ? `profile-editor-tab-${workspace.id}${
+                              isActive ? ` ${workspace.headingId}` : ""
+                            }`
+                          : undefined
+                      }
+                      hidden={isWorkspaceMode ? !isActive : undefined}
+                      className={`mx-auto w-full ${
+                        workspace.width === "wide"
+                          ? "max-w-[960px]"
+                          : "max-w-3xl"
+                      }`}
+                    >
+                      {shouldMount &&
+                        workspace.sections.map((section, sectionIndex) =>
+                          section.heading ===
+                            t(
+                              "dashboard.profile.publicProfile.sections.howToReachUs",
+                            ) && values.accountType !== "business" ? null : (
+                            <ProfileFormSectionShell
+                              key={section.id || sectionIndex}
+                              section={section}
+                              sectionIndex={sectionIndex}
+                              surface={surface}
+                            >
+                              <div
+                                className={
+                                  section.layout?.columns === 2
+                                    ? "profile-fields-container"
+                                    : ""
+                                }
+                              >
+                                <div
+                                  className={
+                                    section.layout?.columns === 2
+                                      ? "profile-fields-grid"
+                                      : ""
+                                  }
+                                >
                         {section.formFields.map((field, index) => (
                           <div
                             key={field.name || index}
-                            className="flex flex-col gap-2 mt-3 md:mt-4 first:mt-0"
+                            className={`mt-3 flex flex-col gap-2 first:mt-0 md:mt-4 ${
+                              section.layout?.columns === 2 && field.span === "full"
+                                ? "profile-fields-cell-full"
+                                : ""
+                            }`}
                           >
-                            {field.label !== t('dashboard.profile.account.fields.address') &&
+                            {section.structuralLabel !== "section" &&
+                              field.label !== t('dashboard.profile.account.fields.address') &&
                               field.name !== "socialLinks" && (
                                 <div className="flex flex-col sm:flex-row gap-1 items-start sm:items-center">
                                   <label className="block text-sm font-medium text-dashboard-light mb-1 leading-tight break-words">
@@ -910,7 +1196,7 @@ const ProfileForm: FC<ProfileFormProps> = memo(
                                                 variant="ghost"
                                                 size="small"
                                                 startIcon={
-                                                  visibility[platform] ? (
+                                                  visibility[getVisibilityKey(platform)] ? (
                                                     <EyeOnIcon
                                                       stroke="#22c55e"
                                                       size="5"
@@ -924,7 +1210,7 @@ const ProfileForm: FC<ProfileFormProps> = memo(
                                                 }
                                                 data-tooltip-id={`visibility-tooltip`}
                                                 data-tooltip-content={
-                                                  visibility[platform]
+                                                  visibility[getVisibilityKey(platform)]
                                                     ? t('dashboard.profile.common.visible')
                                                     : t('dashboard.profile.common.hidden')
                                                 }
@@ -1127,13 +1413,35 @@ const ProfileForm: FC<ProfileFormProps> = memo(
                                   }}
                                 />
                               </div>
-                            ) : field.type === "feed" ? (
+                            ) : field.type === "theme_settings" ? (
+                               <div className="mt-2">
+                                 <ThemeAppearanceSection
+                                   themeSettings={values.theme_settings || {}}
+                                   isActive={
+                                     !isWorkspaceMode || activeWorkspace === "appearance"
+                                   }
+                                   scopeKey={
+                                     isWorkspaceMode && scopeKey
+                                       ? scopeKey
+                                       : "profile-form"
+                                   }
+                                   onChange={(updated) => {
+                                     setFieldValue("theme_settings", updated);
+                                     if (isFormInitialized) {
+                                       setIsFormDirty(true);
+                                     }
+                                   }}
+                                 />
+                               </div>
+                             ) : field.type === "feed" ? (
                               <div className="mt-2">
-                                <FeedFields
-                                  values={values}
-                                  setFieldValue={setFieldValue}
-                                  onFeedDataChange={onFeedDataChange}
-                                  onFormDirtyChange={() => {
+                                 <FeedFields
+                                   values={values}
+                                   setFieldValue={setFieldValue}
+                                   onFeedDataChange={onFeedDataChange}
+                                   onAsyncStateChange={handleFeedAsyncStateChange}
+                                   showHeading={section.structuralLabel !== "section"}
+                                   onFormDirtyChange={() => {
                                     // Mark form as dirty when user interacts with feed fields (only after initialization)
                                     if (isFormInitialized) {
                                       setIsFormDirty(true);
@@ -1167,32 +1475,21 @@ const ProfileForm: FC<ProfileFormProps> = memo(
                             )}
                           </div>
                         ))}
-                      </Accordion>
-                    </div>
-                ))}
+                                </div>
+                              </div>
+                            </ProfileFormSectionShell>
+                          ),
+                        )}
+                    </section>
+                  );
+                })}
               </div>
-
-              <div
-                className="fixed bottom-20 md:bottom-6 left-0 md:left-[var(--sidebar-width,0)] right-0 z-[100] flex justify-center pointer-events-none transition-all duration-300"
-                style={{ left: isDesktop ? 'var(--sidebar-width, 0)' : '0' }}
-              >
-                <div className="pointer-events-auto flex justify-center w-full px-4">
-                  <div data-walkthrough="save-publish-button" className="w-fit">
-                    <Button
-                      btnText={t('dashboard.profile.common.saveAndPublish')}
-                      type="button"
-                      variant="primary"
-                      size="small"
-                      isLoading={isSaving}
-                      onClick={async () => {
-                        await formHandleSubmit(values);
-                      }}
-                      disabled={isSaving}
-                      className="shadow-2xl hover:shadow-3xl transition-all duration-200 rounded-full px-8 md:px-12 py-3 backdrop-blur-sm bg-primary hover:bg-primary-dark text-white font-semibold whitespace-nowrap"
-                    />
-                  </div>
-                </div>
-              </div>
+              <ProfileFormActions
+                onRegisterSubmit={onRegisterSubmit}
+                submit={formHandleSubmit}
+                isSaving={isSaving}
+                placement={actionsPlacement}
+              />
               {/* Global Tooltip Component */}
               {isDesktop && (
                 <Tooltip
@@ -1208,6 +1505,13 @@ const ProfileForm: FC<ProfileFormProps> = memo(
     );
   }
 );
+
+const ProfileForm: FC<ProfileFormProps> = memo((props) => (
+  <ProfileFormSession
+    key={props.mode === "workspaces" ? props.scopeKey : "single"}
+    {...props}
+  />
+));
 
 ProfileForm.displayName = "ProfileForm";
 

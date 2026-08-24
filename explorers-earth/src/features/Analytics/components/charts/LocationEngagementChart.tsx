@@ -300,7 +300,7 @@ const LocationEngagementChart: React.FC<LocationEngagementChartProps> = ({ rawAn
 
       {/* Chart */}
       <div className="w-full px-2 sm:px-0" style={{ height: `${chartConfig.chartHeight}px` }}>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 1, height: 1 }}>
           <LineChart
             data={chartData}
             margin={{ top: 5, right: 10, left: 10, bottom: 5 }}

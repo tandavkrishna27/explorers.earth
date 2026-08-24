@@ -89,7 +89,7 @@ const PageViewsTrendChart: React.FC<PageViewsTrendChartProps> = ({ events }) => 
       </div>
 
       {isMultiDay ? (
-        <ResponsiveContainer width="100%" height={240}>
+        <ResponsiveContainer width="100%" height={240} minWidth={0} initialDimension={{ width: 1, height: 1 }}>
           <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
             <XAxis

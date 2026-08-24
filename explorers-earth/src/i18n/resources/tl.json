@@ -1,6 +1,10 @@
 {
   "about": {
     "closing": "Kung curious kayo.\nKung maingat kayo.\nKung handa kayong magbagal at tumingin nang mas malapit —\nnasa inyo na dito.",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe",
     "section1": {
       "line1": "Ang pag-e-explore ay nagsisimula sa kamalayan.",
       "line2": "Sa pagpansin sa kung ano ang dinadaanan ng iba.",
@@ -49,6 +53,7 @@
         "explorers story",
         "who we are explorers"
       ],
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow.",
       "title": "Mga Explorer ng Daigdig | Tungkol sa Amin"
     },
     "subtitle": {
@@ -325,7 +330,8 @@
         "mobileNumberPlaceholder": "Ilagay ang inyong mobile number",
         "next": "Susunod",
         "title": "Mga Detalye ng Contact"
-      }
+      },
+      "stepCount": "Step {{current}} of {{total}}"
     },
     "or": "o",
     "password": "Password",
@@ -883,6 +889,38 @@
         "visible": "Nakikita",
         "whatsappNumber": "Numero ng WhatsApp"
       },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "Kinansela ang paglipat sa {{category}}. Ibinalik ang pagkakasunod-sunod.",
+          "drop": "Inilapag ang {{category}} sa posisyong {{position}} sa {{total}}.",
+          "handle": "I-drag ang {{category}}",
+          "instructions": "Pindutin ang Space o Enter para buhatin. Gamitin ang mga arrow key o Home at End para ilipat. Pindutin ang Space o Enter para ilapag, o Escape para kanselahin.",
+          "lift": "Binuhat ang {{category}}. Posisyon {{position}} sa {{total}}.",
+          "move": "Inilipat ang {{category}} sa posisyong {{position}} sa {{total}}."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
+      },
       "publicProfile": {
         "accountTypes": {
           "business": "Negosyo",
@@ -937,6 +975,65 @@
       "tabs": {
         "account": "Account",
         "publicProfile": "Pampublikong Profile"
+      },
+      "themeAppearance": {
+        "accentTitle": "Accent color",
+        "firstView": {
+          "business": "Business",
+          "categoryFirst": "Recommendations — {{category}} first",
+          "gallery": "Gallery",
+          "help": "Category choices promote that category but keep all other public categories.",
+          "label": "First view",
+          "savedOrder": "Recommendations — saved order"
+        },
+        "presetTitle": "Select theme preset",
+        "recommendations": {
+          "categories": {
+            "apps": "Apps & Tools",
+            "books": "Books",
+            "games": "Games",
+            "guides": "Guides",
+            "movies": "Movies & Shows",
+            "music": "Music",
+            "people": "People",
+            "places": "Places",
+            "products": "Products"
+          },
+          "featured": "Featured",
+          "help": "Choose how recommendation categories are arranged on your public profile.",
+          "layoutLegend": "Recommendations layout",
+          "layouts": {
+            "featured": {
+              "description": "A larger first category followed by compact rows.",
+              "label": "Featured First"
+            },
+            "grid": {
+              "description": "A compact grid that makes categories easy to scan.",
+              "label": "Category Mosaic"
+            },
+            "shelves": {
+              "description": "Horizontal shelves with recommendation previews.",
+              "label": "Classic Shelves"
+            }
+          },
+          "moved": "{{category}} moved to position {{position}} of {{total}}",
+          "moveDown": "Move {{category}} down",
+          "moveUp": "Move {{category}} up",
+          "orderHelp": "Move categories into the order visitors should scan them.",
+          "orderTitle": "Category order",
+          "position": "{{position}} of {{total}}",
+          "previewCaption": "Illustrative preview",
+          "previewLabel": "Recommendations layout preview",
+          "publicVisibilityNote": "Public Visibility controls whether a category appears.",
+          "title": "Recommendations presentation"
+        },
+        "wallpaperLabel": "Wallpaper and cover style",
+        "wallpaperOptions": {
+          "ambientGradient": "Ambient mesh gradient",
+          "bannerTop": "Top cover banner photo",
+          "fullWallpaperImage": "Full-screen background image",
+          "solidColor": "Solid minimal background"
+        }
       }
     },
     "recommendations": {
@@ -1109,6 +1206,7 @@
         "linkCopied": "Link copied to clipboard!",
         "linkCopyError": "Failed to copy link. Please try again.",
         "listCreated": "Recommendation List Created Successfully!!!",
+        "listCreateFailed": "Failed to create recommendation list. Please try again.",
         "listPublished": "Recommendation list Published successfully!",
         "listPublishError": "List Should have atleast one Recommended Place to be Published",
         "listUnpublished": "Recommendation list Unpublished successfully!",
@@ -1146,99 +1244,101 @@
     "verificationSent": "Verification email sent to:"
   },
   "footer": {
-    "tagline": "Hayaang maglakbay sa mundo ang iyong mga rekomendasyon.",
+    "copyright": "© 2025 explorer. Lahat ng karapatan ay nakalaan.",
     "email": "hello@explorers.earth",
-    "sections": {
-      "product": "produkto",
-      "contact": "Makipag-ugnayan",
-      "legal": "Legal",
-      "company": "kumpanya"
-    },
+    "freeForever": "Libre magpakailanman.",
     "links": {
-      "howItWorks": "Paano ito gumagana",
-      "faq": "FAQ",
       "about": "Tungkol sa",
       "contact": "Makipag-ugnayan",
-      "terms": "Mga Tuntunin at Kundisyon",
-      "privacy": "Patakaran sa Privacy",
       "cookies": "Patakaran sa Cookie",
+      "faq": "FAQ",
+      "howItWorks": "Paano ito gumagana",
+      "privacy": "Patakaran sa Privacy",
       "product": "produkto",
-      "shareAnywhere": "Ibahagi kahit saan"
+      "shareAnywhere": "Ibahagi kahit saan",
+      "terms": "Mga Tuntunin at Kundisyon",
+      "useCases": "Use Cases"
     },
-    "copyright": "© 2025 explorer. Lahat ng karapatan ay nakalaan.",
     "madeWithLove": "Ginawa nang may pag-ibig sa lupa",
-    "freeForever": "Libre magpakailanman."
+    "sections": {
+      "company": "kumpanya",
+      "contact": "Makipag-ugnayan",
+      "legal": "Legal",
+      "product": "produkto"
+    },
+    "tagline": "Hayaang maglakbay sa mundo ang iyong mga rekomendasyon."
   },
   "header": {
+    "auth": {
+      "claimFree": "Libre ang pag-claim",
+      "claimFreePage": "I-claim ang libreng page",
+      "login": "Mag-login",
+      "signUp": "Mag-sign Up"
+    },
     "nav": {
-      "howItWorks": "Paano ito gumagana",
-      "whoIsFor": "Para Kanino",
-      "faq": "FAQ",
       "about": "Tungkol",
+      "closeMenu": "Isara ang menu ng nabigasyon",
       "contact": "Makipag-ugnayan",
+      "faq": "FAQ",
+      "howItWorks": "Paano ito gumagana",
+      "openMenu": "Buksan ang menu ng nabigasyon",
       "product": "produkto",
       "share": "Ibahagi",
-      "openMenu": "Buksan ang menu ng nabigasyon",
-      "closeMenu": "Isara ang menu ng nabigasyon"
-    },
-    "auth": {
-      "login": "Mag-login",
-      "signUp": "Mag-sign Up",
-      "claimFreePage": "I-claim ang libreng page",
-      "claimFree": "Libre ang pag-claim"
+      "useCases": "Use Cases",
+      "whoIsFor": "Para Kanino"
     }
   },
   "hero": {
+    "badge": "Libre magpakailanman",
+    "countries": {
+      "ae": "UAE",
+      "au": "Australia",
+      "br": "Brazil",
+      "de": "Alemanya",
+      "fr": "France",
+      "gb": "United Kingdom",
+      "in": "India",
+      "jp": "Japan",
+      "sg": "Singapore",
+      "us": "Estados Unidos"
+    },
+    "ctaButton": "I-claim ang iyong Explorer page",
+    "globalStrip": "Ang Explorers ay nagbabahagi ng mga rekomendasyon sa buong mundo",
     "headline": "Lahat ng iyong mga rekomendasyon - isang link, isang QR",
-    "subtext": "Gumawa ng isang naibabahaging page para sa lahat ng iyong inirerekomenda - mga lugar, tao, produkto, aklat, pelikula, palabas, musika, laro, app, at higit pa.",
+    "headlinePrefix": "Lahat ng iyong",
+    "headlineSuffix": "sa isang link at QR.",
     "inputLabel": "I-claim ang URL ng iyong mga explorer:",
     "inputPlaceholder": "pangalan mo",
-    "ctaButton": "I-claim ang iyong Explorer page",
-    "signupPrompt": "Mag-sign up upang makuha ang iyo ngayon",
-    "headlinePrefix": "Lahat ng iyong",
+    "preview": {
+      "items": {
+        "book": "Aklat",
+        "game": "Laro",
+        "music": "Musika",
+        "place": "Lugar"
+      },
+      "onePageText": "Ibahagi ito bilang isang link, QR, mensahe, o gabay.",
+      "onePageTitle": "Isang pahina para sa bawat magandang rekomendasyon.",
+      "screenAlt": "Explorer page ng mga rekomendasyon sa screen",
+      "todayList": "Listahan ngayon"
+    },
     "rotatingWords": [
       "mga rekomendasyon",
       "mga curation",
       "mga koleksyon",
       "mga paborito"
     ],
-    "headlineSuffix": "sa isang link at QR.",
-    "badge": "Libre magpakailanman",
-    "globalStrip": "Ang Explorers ay nagbabahagi ng mga rekomendasyon sa buong mundo",
-    "preview": {
-      "todayList": "Listahan ngayon",
-      "onePageTitle": "Isang pahina para sa bawat magandang rekomendasyon.",
-      "onePageText": "Ibahagi ito bilang isang link, QR, mensahe, o gabay.",
-      "items": {
-        "place": "Lugar",
-        "book": "Aklat",
-        "music": "Musika",
-        "game": "Laro"
-      },
-      "screenAlt": "Explorer page ng mga rekomendasyon sa screen"
-    },
-    "countries": {
-      "in": "India",
-      "us": "Estados Unidos",
-      "gb": "United Kingdom",
-      "jp": "Japan",
-      "fr": "France",
-      "au": "Australia",
-      "br": "Brazil",
-      "ae": "UAE",
-      "sg": "Singapore",
-      "de": "Alemanya"
-    }
+    "signupPrompt": "Mag-sign up upang makuha ang iyo ngayon",
+    "subtext": "Gumawa ng isang naibabahaging page para sa lahat ng iyong inirerekomenda - mga lugar, tao, produkto, aklat, pelikula, palabas, musika, laro, app, at higit pa."
   },
   "languageModal": {
     "close": "Isara",
-    "searchPlaceholder": "Maghanap ng mga wika...",
-    "title": "Piliin ang Wika",
-    "subtitle": "Piliin ang wikang gusto mong gamitin sa mga explorer.",
-    "noLanguagesFound": "Walang nahanap na mga wika",
-    "tryDifferentSearch": "Subukan ang ibang termino para sa paghahanap.",
+    "escToClose": "Pindutin ang Esc upang isara",
     "languagesAvailable": "Available ang {{count}} na wika",
-    "escToClose": "Pindutin ang Esc upang isara"
+    "noLanguagesFound": "Walang nahanap na mga wika",
+    "searchPlaceholder": "Maghanap ng mga wika...",
+    "subtitle": "Piliin ang wikang gusto mong gamitin sa mga explorer.",
+    "title": "Piliin ang Wika",
+    "tryDifferentSearch": "Subukan ang ibang termino para sa paghahanap."
   },
   "legal": {
     "cookies": {
@@ -1280,6 +1380,38 @@
       "warning": "Any QR codes or links with your old username will no longer work — you'll need to update and re-share them."
     }
   },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
     "confirmDescription": "Your account has been successfully reactivated. You can now sign in with your credentials.",
@@ -1297,210 +1429,351 @@
     "tryAgain": "Request New Link"
   },
   "sections": {
+    "analytics": {
+      "dashboardTitle": "Dashboard ng Analytics",
+      "engagement": "Pakikipag-ugnayan",
+      "headline": "Tingnan kung ano ang ginagawa ng mga tao.",
+      "last30Days": "Huling 30 araw",
+      "livePreview": "Live na preview",
+      "referrals": "Mga referral",
+      "scanningDesc": "Tingnan kung paano naaabot ng mga tao ang iyong pahina mula sa mga link, QR code, at nakabahaging touchpoint.",
+      "scanningTitle": "Unawain ang mga pag-scan at pag-click",
+      "spotsDesc": "Matutunan kung aling mga lugar, produkto, listahan, at gabay ang higit na nagmamahal.",
+      "spotsTitle": "Maghanap ng mga nangungunang rekomendasyon",
+      "subtext": "Unawain kung aling mga rekomendasyon ang binubuksan, sine-save, at muling binibisita ng mga tao sa iyong mga link at QR code.",
+      "totalScans": "Kabuuang mga Pag-scan",
+      "workingDesc": "Subaybayan kung aling mga rekomendasyon ang bubuksan, sine-save, at muling binibisita ng mga tao.",
+      "workingTitle": "Tingnan kung ano ang gumagana"
+    },
     "createCustomize": {
-      "headline": "Gawin ang iyong Explorer na pahina sa ilang minuto",
-      "subtext": "Kolektahin ang iyong inirerekomenda, ayusin ito sa iyong paraan, at ibahagi ito kahit saan gamit ang isang link o QR.",
       "bulletPoints": {
         "addSpots": {
-          "title": "Magdagdag ng mga lugar, karanasan, ruta, tunog, at tala",
-          "description": ""
-        },
-        "organize": {
-          "title": "Ayusin ayon sa lokasyon o interes",
-          "description": ""
+          "description": "",
+          "title": "Magdagdag ng mga lugar, karanasan, ruta, tunog, at tala"
         },
         "generate": {
-          "title": "Mag-edit anumang oras — palaging nananatiling pareho ang iyong link",
-          "description": ""
+          "description": "",
+          "title": "Mag-edit anumang oras — palaging nananatiling pareho ang iyong link"
+        },
+        "organize": {
+          "description": "",
+          "title": "Ayusin ayon sa lokasyon o interes"
         },
         "share": {
-          "title": "Ibahagi sa digital o sa pamamagitan ng QR sa totoong mundo",
-          "description": ""
+          "description": "",
+          "title": "Ibahagi sa digital o sa pamamagitan ng QR sa totoong mundo"
         }
       },
+      "headline": "Gawin ang iyong Explorer na pahina sa ilang minuto",
       "mockup": {
-        "title": "Aking Mga Rekomendasyon",
-        "addPlace": "Magdagdag ng Lugar"
+        "addPlace": "Magdagdag ng Lugar",
+        "title": "Aking Mga Rekomendasyon"
       },
       "steps": [
         {
-          "title": "Idagdag ang iyong inirerekomenda",
-          "body": "Mga lugar, tao, produkto, aklat, pelikula, palabas, musika, laro, app, gabay, at tala."
+          "body": "Mga lugar, tao, produkto, aklat, pelikula, palabas, musika, laro, app, gabay, at tala.",
+          "title": "Idagdag ang iyong inirerekomenda"
         },
         {
-          "title": "Ayusin ito sa iyong paraan",
-          "body": "Pagsamahin ayon sa lungsod, tema, listahan, kategorya, paglalakbay, o sandali para natural na makapag-explore ang mga tao."
+          "body": "Pagsamahin ayon sa lungsod, tema, listahan, kategorya, paglalakbay, o sandali para natural na makapag-explore ang mga tao.",
+          "title": "Ayusin ito sa iyong paraan"
         },
         {
-          "title": "Ibahagi ang isang link o QR",
-          "body": "Ang iyong pahina ay nag-a-update anumang oras habang ang parehong link at QR ay patuloy na gumagana sa lahat ng dako."
-        }
-      ]
-    },
-    "shareAnywhere": {
-      "headline": "Isang link. Maraming paglalakbay.",
-      "subtext": "Ang iyong link na Explorer ay naging isang buhay na gabay — isang bagay na maaaring i-save, bisitahin muli, at tuklasin ng mga tao sa sarili nilang bilis.\n\nIbahagi ito sa isang profile, mensahe, mesa, dingding, o card.\nSaan man ito magpunta, kasama ang iyong pananaw.",
-      "scanText": "Mag-scan para sa mga lokal na rekomendasyon",
-      "storefrontText": "Perpekto para sa mga storefront display",
-      "instagramTitle": "Idagdag sa iyong Instagram/Tiktok Bio",
-      "instagramDesc": "Ibahagi kaagad sa iyong mga tagasubaybay",
-      "menuTitle": "I-print ito para sa Storefront",
-      "menuDesc": "Pinadali ang mga pisikal na touchpoint",
-      "welcomeTitle": "Isama sa mga welcome book",
-      "welcomeDesc": "Perpekto para sa mga host at gabay",
-      "cafeMenu": "Menu ng Cafe",
-      "tokyoFoodGuide": "Aking Tokyo food guide explorers.earth/jane",
-      "cards": [
-        {
-          "title": "Link sa bio",
-          "eyebrow": "Handa na ang profile"
-        },
-        {
-          "title": "QR code",
-          "eyebrow": "Offline-ready"
-        },
-        {
-          "title": "Mga mensahe",
-          "eyebrow": "Handang makipag-chat"
-        },
-        {
-          "title": "Maligayang pagdating mga gabay",
-          "eyebrow": "Handa sa panauhin"
+          "body": "Ang iyong pahina ay nag-a-update anumang oras habang ang parehong link at QR ay patuloy na gumagana sa lahat ng dako.",
+          "title": "Ibahagi ang isang link o QR"
         }
       ],
+      "subtext": "Kolektahin ang iyong inirerekomenda, ayusin ito sa iyong paraan, at ibahagi ito kahit saan gamit ang isang link o QR."
+    },
+    "faq": {
+      "error": "Error sa pag-load ng FAQ. Pakisubukan ulit mamaya.",
+      "fallbackItems": [
+        {
+          "Answer": "Mga lugar, tao, produkto, aklat, pelikula, palabas, musika, laro, app, gabay, at tala.",
+          "Question": "Ano ang maaari kong idagdag sa aking Explorer na pahina?",
+          "Sequence": 1
+        },
+        {
+          "Answer": "Oo. Maaaring ibahagi ang iyong Explorer page bilang isang link o QR para sa mga profile, mensahe, talahanayan, card, at naka-print na gabay.",
+          "Question": "Maaari ko bang ibahagi ito sa isang QR code?",
+          "Sequence": 2
+        },
+        {
+          "Answer": "Oo. Maaari mong panatilihing sariwa ang iyong pahina habang patuloy na gumagana ang parehong link at QR.",
+          "Question": "Maaari ko bang i-update ang aking mga rekomendasyon sa ibang pagkakataon?",
+          "Sequence": 3
+        },
+        {
+          "Answer": "Oo. Malinaw na maipapahayag ng page ang libreng pangako nang walang wikang mabigat sa pagbabayad.",
+          "Question": "Libre ba ang mga explorer magpakailanman?",
+          "Sequence": 4
+        }
+      ],
+      "headline": "May mga tanong?",
+      "loading": "Naglo-load ang FAQ...",
+      "subtext": "Nasagot na namin ang pinakakaraniwang mga bagay na tinatanong ng mga tao bago magsimula."
+    },
+    "features": {
+      "communityDriven": {
+        "title": "Community-driven na pagtuklas"
+      },
+      "livingGuides": {
+        "title": "Buhay, na-e-edit na mga gabay"
+      },
+      "locationAware": {
+        "title": "Location-aware na mga rekomendasyon"
+      },
+      "privacyFirst": {
+        "title": "Privacy-first sa pamamagitan ng disenyo"
+      },
+      "simpleLinks": {
+        "title": "Simpleng link at QR sharing"
+      },
+      "soundPlaylists": {
+        "title": "Opsyonal na tunog at playlist"
+      },
+      "subtitle": "Mga simpleng, maingat na feature na nagpapatingkad sa inyong mga rekomendasyon.",
+      "title": "Binuo upang manatili sa labas ng daan"
+    },
+    "finalCTA": {
+      "creating": "Ginagawa ang inyong explorers...",
+      "ctaButton": "I-reserve ang inyong explorers – Libre Magpakailanman",
+      "disclaimer": "Hindi kailangan ng credit card • Setup sa 2 minuto",
+      "headline": "Simulan ang pagbabahagi ng inyong mundo ngayon",
+      "subtext": "I-reserve ang inyong libreng explorers at i-convert ang inyong lokal na insights sa shareable na mga gabay."
+    },
+    "localTunes": {
+      "body": "Ang pag-e-explore ay hindi lamang visual. Ang tunog ay nagdadala ng memorya, konteksto, at emosyon.\n\nBinibigyang-daan ng LocalTunes na kolektahin at ibahagi ang mga soundtrack para sa mga lugar, paglalakbay, at mood — maging ito ay musika na natuklasan sa daan o mga tunog na nagbibigay-kahulugan sa isang lugar para sa inyo.\n\nWalang putol na nakakonekta sa inyong Explorer profile.",
+      "closingStatement": "Ang Tunes ay <strong>libre</strong> na i-explore, at para sa paid features maaari kayong mag-upgrade pagkatapos.",
+      "exploreButton": "I-explore ang Tunes",
+      "features": {
+        "karaokeReady": {
+          "description": "Perpekto para sa mga gabi ng karaoke na may collaborative playlists at real-time na song requests.",
+          "title": "Handa para sa Karaoke"
+        },
+        "qrCodeSharing": {
+          "description": "Ibahagi ang inyong karanasan sa musika sa pamamagitan ng simpleng QR code scan - walang apps o downloads na kailangan.",
+          "title": "QR Code Sharing"
+        },
+        "realtimeCollaboration": {
+          "description": "Hayaan ang mga bisita na magdagdag ng mga kanta sa inyong playlist agad habang pinapanatili ninyo ang buong kontrol sa kung ano ang tumutugtog.",
+          "title": "Real-time na Pakikipagtulungan"
+        },
+        "silentParties": {
+          "description": "Mag-host ng natatanging silent parties kung saan lahat ay nakikinig sa pamamagitan ng kanilang sariling headphones.",
+          "title": "Silent Parties"
+        },
+        "voteLikeSystem": {
+          "description": "Maaaring bumoto ang mga bisita para sa kanilang mga paboritong kanta upang maimpluwensyahan ang playlist queue sa real-time.",
+          "title": "Vote & Like System"
+        },
+        "youtubeIntegration": {
+          "description": "Walang putol na isama sa YouTube upang ma-access ang milyun-milyong kanta at lumikha ng perpektong kapaligiran.",
+          "title": "YouTube Integration"
+        }
+      },
+      "featuresHeading": "Malakas na Features",
+      "mainHeading": "Tunes",
+      "title": "Makinig habang nag-e-explore kayo",
+      "venueHeading": "Perpekto para sa Bawat Venue",
+      "venues": {
+        "barsPubs": "Mga Bar & Pub",
+        "coffeeShops": "Mga Coffee Shop",
+        "eventsWeddings": "Mga Event & Kasal",
+        "gymsFitness": "Mga Gym & Fitness",
+        "restaurants": "Mga Restaurant",
+        "retailStores": "Mga Retail Store"
+      }
+    },
+    "productCategories": {
+      "actions": [
+        "I-save",
+        "Ayusin",
+        "Ibahagi"
+      ],
+      "categories": [
+        {
+          "description": "Mga restaurant, kapitbahayan, museo, ruta, at mga nakatagong hiyas na maaaring mabisita ng mga tao.",
+          "id": "places",
+          "label": "Mga lugar",
+          "title": "Mga lokal na lugar, gabay, at ruta"
+        },
+        {
+          "description": "Mga creator, founder, gabay, artist, guro, eksperto, at mga taong humubog sa iyong panlasa.",
+          "id": "people",
+          "label": "Mga tao",
+          "title": "Mga taong karapat-dapat sundan o matutunan"
+        },
+        {
+          "description": "Mga aklat na patuloy mong inirerekomenda sa mga chat, tala, newsletter, at pag-uusap sa paglalakbay.",
+          "id": "books",
+          "label": "Mga libro",
+          "title": "Mga libro at listahan ng babasahin"
+        },
+        {
+          "description": "Mga pelikula, serye, dokumentaryo, at watchlist para sa bawat uri ng mood o audience.",
+          "id": "movies",
+          "label": "Mga pelikula at TV",
+          "title": "Mga pelikula, palabas, at watchlist"
+        },
+        {
+          "description": "Mga laro, pakikipagsapalaran, mundo, at karanasang dapat subukan ng mga tao sa susunod.",
+          "id": "games",
+          "label": "Mga laro",
+          "title": "Mga laro at mundo upang galugarin"
+        },
+        {
+          "description": "Mga artist, album, kanta, playlist, at soundtrack na konektado sa mga lugar at sandali.",
+          "id": "music",
+          "label": "Musika",
+          "title": "Mga album, artist, at playlist"
+        },
+        {
+          "description": "Pang-araw-araw na paborito, gamit sa paglalakbay, tool ng creator, regalo, at produktong sulit na i-save.",
+          "id": "products",
+          "label": "Mga produkto",
+          "title": "Mga produktong talagang inirerekomenda ng mga tao"
+        },
+        {
+          "description": "Software, website, template, tool, at mapagkukunan na nagpapadali sa buhay.",
+          "id": "apps",
+          "label": "Mga App at Tool",
+          "title": "Mga app, tool, at kapaki-pakinabang na link"
+        }
+      ],
+      "headline": "Magrekomenda ng higit sa mga lugar.",
+      "overlayLabel": "Explorer pahina",
+      "subtext": "Gumawa ng isang page para sa mga lugar, tao, produkto, aklat, pelikula, palabas, musika, laro, app, at tool.",
+      "visualDetails": {
+        "apps": [
+          "Mga tool sa pagpaplano",
+          "Mga kapaki-pakinabang na app",
+          "Mga link ng mapagkukunan"
+        ],
+        "products": [
+          "Mga gamit sa paglalakbay",
+          "Pang-araw-araw na dala",
+          "Creator kit"
+        ]
+      },
+      "visualLabels": {
+        "apps": "Kapaki-pakinabang na stack",
+        "products": "Mga totoong paborito"
+      }
+    },
+    "referEarn": {
+      "comingSoon": "Referral rewards program (malapit na)",
+      "earnedThisMonth": "Nakita sa buwang ito",
+      "headline": "Magbahagi, mag-refer, at kumita",
+      "networkTitle": "Magtayo ng inyong network at kumita nang automatic",
+      "passiveTitle": "I-convert ang mga rekomendasyon sa passive rewards",
+      "rewardsDesc": "Kumuha ng pera kapag ginagamit ng mga tao ang inyong mga rekomendasyon",
+      "rewardsTitle": "Kumuha ng mga Reward",
+      "subtext": "I-convert ang inyong mga rekomendasyon sa passive rewards — kumuha ng credit kapag ginagamit ng iba ang inyong QR."
+    },
+    "shareAnywhere": {
+      "cafeMenu": "Menu ng Cafe",
+      "cards": [
+        {
+          "eyebrow": "Handa na ang profile",
+          "title": "Link sa bio"
+        },
+        {
+          "eyebrow": "Offline-ready",
+          "title": "QR code"
+        },
+        {
+          "eyebrow": "Handang makipag-chat",
+          "title": "Mga mensahe"
+        },
+        {
+          "eyebrow": "Handa sa panauhin",
+          "title": "Maligayang pagdating mga gabay"
+        }
+      ],
+      "headline": "Isang link. Maraming paglalakbay.",
+      "instagramDesc": "Ibahagi kaagad sa iyong mga tagasubaybay",
+      "instagramTitle": "Idagdag sa iyong Instagram/Tiktok Bio",
+      "menuDesc": "Pinadali ang mga pisikal na touchpoint",
+      "menuTitle": "I-print ito para sa Storefront",
+      "profileCarouselCaption": "Instagram at TikTok na mga profile",
+      "qrEverywhereDesc": "Perpekto para sa Bawat Venue",
+      "qrEverywhereTitle": "Idagdag ang link na QR kahit saan",
+      "scanText": "Mag-scan para sa mga lokal na rekomendasyon",
+      "storefrontText": "Perpekto para sa mga storefront display",
+      "subtext": "Ang iyong link na Explorer ay naging isang buhay na gabay — isang bagay na maaaring i-save, bisitahin muli, at tuklasin ng mga tao sa sarili nilang bilis.\n\nIbahagi ito sa isang profile, mensahe, mesa, dingding, o card.\nSaan man ito magpunta, kasama ang iyong pananaw.",
+      "tokyoFoodGuide": "Aking Tokyo food guide explorers.earth/jane",
       "visual": {
-        "scanForPicks": "I-scan para sa mga pinili",
-        "messageBubble": "Narito ang aking listahan sa Kyoto",
-        "welcomeGuide": "Maligayang pagdating gabay",
         "guideItems": [
           "Malapit na almusal",
           "Ruta ng museo",
           "Lakad sa gabi"
         ],
-        "savedRecommendation": "Naka-save na rekomendasyon"
+        "messageBubble": "Narito ang aking listahan sa Kyoto",
+        "savedRecommendation": "Naka-save na rekomendasyon",
+        "scanForPicks": "I-scan para sa mga pinili",
+        "welcomeGuide": "Maligayang pagdating gabay"
       },
-      "profileCarouselCaption": "Instagram at TikTok na mga profile",
-      "qrEverywhereTitle": "Idagdag ang link na QR kahit saan",
-      "qrEverywhereDesc": "Perpekto para sa Bawat Venue"
+      "welcomeDesc": "Perpekto para sa mga host at gabay",
+      "welcomeTitle": "Isama sa mga welcome book"
     },
-    "analytics": {
-      "headline": "Tingnan kung ano ang ginagawa ng mga tao.",
-      "subtext": "Unawain kung aling mga rekomendasyon ang binubuksan, sine-save, at muling binibisita ng mga tao sa iyong mga link at QR code.",
-      "workingTitle": "Tingnan kung ano ang gumagana",
-      "workingDesc": "Subaybayan kung aling mga rekomendasyon ang bubuksan, sine-save, at muling binibisita ng mga tao.",
-      "scanningTitle": "Unawain ang mga pag-scan at pag-click",
-      "scanningDesc": "Tingnan kung paano naaabot ng mga tao ang iyong pahina mula sa mga link, QR code, at nakabahaging touchpoint.",
-      "spotsTitle": "Maghanap ng mga nangungunang rekomendasyon",
-      "spotsDesc": "Matutunan kung aling mga lugar, produkto, listahan, at gabay ang higit na nagmamahal.",
-      "dashboardTitle": "Dashboard ng Analytics",
-      "last30Days": "Huling 30 araw",
-      "totalScans": "Kabuuang mga Pag-scan",
-      "engagement": "Pakikipag-ugnayan",
-      "referrals": "Mga referral",
-      "livePreview": "Live na preview"
-    },
-    "referEarn": {
-      "headline": "Magbahagi, mag-refer, at kumita",
-      "subtext": "I-convert ang inyong mga rekomendasyon sa passive rewards — kumuha ng credit kapag ginagamit ng iba ang inyong QR.",
-      "comingSoon": "Referral rewards program (malapit na)",
-      "rewardsTitle": "Kumuha ng mga Reward",
-      "rewardsDesc": "Kumuha ng pera kapag ginagamit ng mga tao ang inyong mga rekomendasyon",
-      "earnedThisMonth": "Nakita sa buwang ito",
-      "passiveTitle": "I-convert ang mga rekomendasyon sa passive rewards",
-      "networkTitle": "Magtayo ng inyong network at kumita nang automatic"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Makinig habang nag-e-explore kayo",
-      "body": "Ang pag-e-explore ay hindi lamang visual. Ang tunog ay nagdadala ng memorya, konteksto, at emosyon.\n\nBinibigyang-daan ng LocalTunes na kolektahin at ibahagi ang mga soundtrack para sa mga lugar, paglalakbay, at mood — maging ito ay musika na natuklasan sa daan o mga tunog na nagbibigay-kahulugan sa isang lugar para sa inyo.\n\nWalang putol na nakakonekta sa inyong Explorer profile.",
-      "exploreButton": "I-explore ang Tunes",
-      "featuresHeading": "Malakas na Features",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Real-time na Pakikipagtulungan",
-          "description": "Hayaan ang mga bisita na magdagdag ng mga kanta sa inyong playlist agad habang pinapanatili ninyo ang buong kontrol sa kung ano ang tumutugtog."
+    "testimonials": {
+      "headline": "Gusto ng mga manlalakbay, creator, at host",
+      "items": [
+        {
+          "id": "1",
+          "location": "Mumbai, India",
+          "name": "Priya Sharma",
+          "quote": "Binago ng mga explorer kung paano ko ibinabahagi ang aking kaalaman sa paglalakbay. Gustung-gusto ng aking mga tagasunod na makakuha ng agarang access sa aking mga na-curate na rekomendasyon!",
+          "role": "Blogger sa Paglalakbay"
         },
-        "qrCodeSharing": {
-          "title": "QR Code Sharing",
-          "description": "Ibahagi ang inyong karanasan sa musika sa pamamagitan ng simpleng QR code scan - walang apps o downloads na kailangan."
+        {
+          "id": "2",
+          "location": "Delhi, India",
+          "name": "Raj Patel",
+          "quote": "Gustong-gusto ng aking mga bisita ang personalized na QR code sa kanilang welcome kit. Naging signature touch ko na!",
+          "role": "Airbnb Host"
         },
-        "youtubeIntegration": {
-          "title": "YouTube Integration",
-          "description": "Walang putol na isama sa YouTube upang ma-access ang milyun-milyong kanta at lumikha ng perpektong kapaligiran."
+        {
+          "id": "3",
+          "location": "Tokyo, Japan",
+          "name": "Yuki Tanaka",
+          "quote": "Ibinabahagi namin ang aming mga explorer sa mga customer para magrekomenda ng iba pang lokal na lugar. Lumikha ito ng mga kamangha-manghang koneksyon sa komunidad.",
+          "role": "May-ari ng Restaurant"
         },
-        "voteLikeSystem": {
-          "title": "Vote & Like System",
-          "description": "Maaaring bumoto ang mga bisita para sa kanilang mga paboritong kanta upang maimpluwensyahan ang playlist queue sa real-time."
+        {
+          "id": "4",
+          "location": "São Paulo, Brazil",
+          "name": "Maria Silva",
+          "quote": "tinutulungan ako ng mga explorer na palawigin ang aking kadalubhasaan lampas sa mga oras ng paglilibot. Maaaring ma-access ng mga kliyente ang aking mga rekomendasyon anumang oras!",
+          "role": "Tour Guide"
         },
-        "silentParties": {
-          "title": "Silent Parties",
-          "description": "Mag-host ng natatanging silent parties kung saan lahat ay nakikinig sa pamamagitan ng kanilang sariling headphones."
+        {
+          "id": "5",
+          "location": "Sydney, Australia",
+          "name": "James Wilson",
+          "quote": "Bilang isang influencer sa paglalakbay, ginagawang madali ng mga explorer na ibahagi ang aking mga paboritong lugar sa aking audience. Ang tampok na QR code ay napakatalino!",
+          "role": "Influencer sa Paglalakbay"
         },
-        "karaokeReady": {
-          "title": "Handa para sa Karaoke",
-          "description": "Perpekto para sa mga gabi ng karaoke na may collaborative playlists at real-time na song requests."
+        {
+          "id": "6",
+          "location": "Paris, France",
+          "name": "Sophie Martin",
+          "quote": "Gumagamit ako ng mga explorer para gumawa ng mga walking tour para sa aking mga kliyente. Maaari nilang i-scan ang QR at mag-explore sa sarili nilang bilis!",
+          "role": "Local Guide"
         }
-      },
-      "venueHeading": "Perpekto para sa Bawat Venue",
-      "venues": {
-        "barsPubs": "Mga Bar & Pub",
-        "restaurants": "Mga Restaurant",
-        "coffeeShops": "Mga Coffee Shop",
-        "eventsWeddings": "Mga Event & Kasal",
-        "retailStores": "Mga Retail Store",
-        "gymsFitness": "Mga Gym & Fitness"
-      },
-      "closingStatement": "Ang Tunes ay <strong>libre</strong> na i-explore, at para sa paid features maaari kayong mag-upgrade pagkatapos."
+      ],
+      "scrollLeft": "I-scroll ang mga testimonial sa kaliwa",
+      "scrollRight": "I-scroll ang mga testimonial sa kanan",
+      "subtext": "Tingnan kung paano ginagamit ng mga tao sa buong mundo ang mga explorer para ibahagi ang pinakamahalaga."
     },
     "whoIsFor": {
-      "headline": "Ginawa para sa mga taong nakakatulong ang panlasa sa iba.",
-      "subtext": "Nagbabahagi ka man ng lungsod, istante, listahan ng produkto, playlist, o gabay sa panauhin, binibigyan ng mga explorer ang iyong mga rekomendasyon ng tahanan.",
       "cards": [
         "Mga personal na explorer",
         "Mga tagalikha at tagapangasiwa",
         "Mga host at negosyo",
         "Mga tatak at organisasyon"
       ],
-      "useCases": {
-        "travelers": "Mga manlalakbay",
-        "travelersDesc": "Ibahagi ang mga natuklasang hiyas sa mga kapwa explorer",
-        "influencers": "Mga influencer",
-        "influencersDesc": "Pagkakitaan ang lokal na kaalaman at bumuo ng komunidad",
-        "airbnbHosts": "Airbnb Mga Host",
-        "airbnbHostsDesc": "Pagandahin ang karanasan ng bisita gamit ang mga lokal na insight",
-        "hotels": "Mga hotel",
-        "hotelsDesc": "Magbigay ng mga na-curate na lokal na rekomendasyon",
-        "restaurants": "Mga restawran",
-        "restaurantsDesc": "Cross-promote sa iba pang mga lokal na negosyo",
-        "cafes": "Mga cafe",
-        "cafesDesc": "Ibahagi ang mga paborito ng kapitbahayan sa mga customer",
-        "localGuides": "Mga Local Guide",
-        "localGuidesDesc": "I-scale ang kadalubhasaan lampas sa mga indibidwal na paglilibot",
-        "creators": "Mga tagalikha",
-        "creatorsDesc": "Magdagdag ng halaga sa kabila ng content na may mga naaaksyong tip",
-        "tourOperators": "Mga Tour Operator",
-        "tourOperatorsDesc": "Palawakin ang karanasan nang higit pa sa mga naka-iskedyul na paglilibot",
-        "anyBusiness": "Anumang Negosyo",
-        "anyBusinessDesc": "Bumuo ng katapatan ng komunidad at customer"
-      },
-      "explorerLabel": "Explorer",
-      "visual": {
-        "personal": [
-          "Cafe",
-          "Aklat",
-          "Trail",
-          "Album",
-          "Pelikula",
-          "Laro"
-        ],
-        "creators": [
-          "#1",
-          "#2",
-          "#3",
-          "#4"
-        ],
-        "hostsQr": "QR"
-      },
       "chips": [
         "Mga manlalakbay",
         "Mga lokal",
@@ -1532,198 +1805,79 @@
         "Mga paliparan",
         "mga NGO",
         "Mga pangkat ng gobyerno"
-      ]
-    },
-    "testimonials": {
-      "headline": "Gusto ng mga manlalakbay, creator, at host",
-      "subtext": "Tingnan kung paano ginagamit ng mga tao sa buong mundo ang mga explorer para ibahagi ang pinakamahalaga.",
-      "scrollLeft": "I-scroll ang mga testimonial sa kaliwa",
-      "scrollRight": "I-scroll ang mga testimonial sa kanan",
-      "items": [
-        {
-          "id": "1",
-          "name": "Priya Sharma",
-          "role": "Blogger sa Paglalakbay",
-          "location": "Mumbai, India",
-          "quote": "Binago ng mga explorer kung paano ko ibinabahagi ang aking kaalaman sa paglalakbay. Gustung-gusto ng aking mga tagasunod na makakuha ng agarang access sa aking mga na-curate na rekomendasyon!"
-        },
-        {
-          "id": "2",
-          "name": "Raj Patel",
-          "role": "Airbnb Host",
-          "location": "Delhi, India",
-          "quote": "Gustong-gusto ng aking mga bisita ang personalized na QR code sa kanilang welcome kit. Naging signature touch ko na!"
-        },
-        {
-          "id": "3",
-          "name": "Yuki Tanaka",
-          "role": "May-ari ng Restaurant",
-          "location": "Tokyo, Japan",
-          "quote": "Ibinabahagi namin ang aming mga explorer sa mga customer para magrekomenda ng iba pang lokal na lugar. Lumikha ito ng mga kamangha-manghang koneksyon sa komunidad."
-        },
-        {
-          "id": "4",
-          "name": "Maria Silva",
-          "role": "Tour Guide",
-          "location": "São Paulo, Brazil",
-          "quote": "tinutulungan ako ng mga explorer na palawigin ang aking kadalubhasaan lampas sa mga oras ng paglilibot. Maaaring ma-access ng mga kliyente ang aking mga rekomendasyon anumang oras!"
-        },
-        {
-          "id": "5",
-          "name": "James Wilson",
-          "role": "Influencer sa Paglalakbay",
-          "location": "Sydney, Australia",
-          "quote": "Bilang isang influencer sa paglalakbay, ginagawang madali ng mga explorer na ibahagi ang aking mga paboritong lugar sa aking audience. Ang tampok na QR code ay napakatalino!"
-        },
-        {
-          "id": "6",
-          "name": "Sophie Martin",
-          "role": "Local Guide",
-          "location": "Paris, France",
-          "quote": "Gumagamit ako ng mga explorer para gumawa ng mga walking tour para sa aking mga kliyente. Maaari nilang i-scan ang QR at mag-explore sa sarili nilang bilis!"
-        }
-      ]
-    },
-    "faq": {
-      "headline": "May mga tanong?",
-      "subtext": "Nasagot na namin ang pinakakaraniwang mga bagay na tinatanong ng mga tao bago magsimula.",
-      "loading": "Naglo-load ang FAQ...",
-      "error": "Error sa pag-load ng FAQ. Pakisubukan ulit mamaya.",
-      "fallbackItems": [
-        {
-          "Sequence": 1,
-          "Question": "Ano ang maaari kong idagdag sa aking Explorer na pahina?",
-          "Answer": "Mga lugar, tao, produkto, aklat, pelikula, palabas, musika, laro, app, gabay, at tala."
-        },
-        {
-          "Sequence": 2,
-          "Question": "Maaari ko bang ibahagi ito sa isang QR code?",
-          "Answer": "Oo. Maaaring ibahagi ang iyong Explorer page bilang isang link o QR para sa mga profile, mensahe, talahanayan, card, at naka-print na gabay."
-        },
-        {
-          "Sequence": 3,
-          "Question": "Maaari ko bang i-update ang aking mga rekomendasyon sa ibang pagkakataon?",
-          "Answer": "Oo. Maaari mong panatilihing sariwa ang iyong pahina habang patuloy na gumagana ang parehong link at QR."
-        },
-        {
-          "Sequence": 4,
-          "Question": "Libre ba ang mga explorer magpakailanman?",
-          "Answer": "Oo. Malinaw na maipapahayag ng page ang libreng pangako nang walang wikang mabigat sa pagbabayad."
-        }
-      ]
-    },
-    "features": {
-      "title": "Binuo upang manatili sa labas ng daan",
-      "subtitle": "Mga simpleng, maingat na feature na nagpapatingkad sa inyong mga rekomendasyon.",
-      "simpleLinks": {
-        "title": "Simpleng link at QR sharing"
-      },
-      "livingGuides": {
-        "title": "Buhay, na-e-edit na mga gabay"
-      },
-      "locationAware": {
-        "title": "Location-aware na mga rekomendasyon"
-      },
-      "soundPlaylists": {
-        "title": "Opsyonal na tunog at playlist"
-      },
-      "privacyFirst": {
-        "title": "Privacy-first sa pamamagitan ng disenyo"
-      },
-      "communityDriven": {
-        "title": "Community-driven na pagtuklas"
-      }
-    },
-    "finalCTA": {
-      "headline": "Simulan ang pagbabahagi ng inyong mundo ngayon",
-      "subtext": "I-reserve ang inyong libreng explorers at i-convert ang inyong lokal na insights sa shareable na mga gabay.",
-      "ctaButton": "I-reserve ang inyong explorers – Libre Magpakailanman",
-      "disclaimer": "Hindi kailangan ng credit card • Setup sa 2 minuto",
-      "creating": "Ginagawa ang inyong explorers..."
-    },
-    "productCategories": {
-      "headline": "Magrekomenda ng higit sa mga lugar.",
-      "subtext": "Gumawa ng isang page para sa mga lugar, tao, produkto, aklat, pelikula, palabas, musika, laro, app, at tool.",
-      "actions": [
-        "I-save",
-        "Ayusin",
-        "Ibahagi"
       ],
-      "overlayLabel": "Explorer pahina",
-      "visualLabels": {
-        "products": "Mga totoong paborito",
-        "apps": "Kapaki-pakinabang na stack"
-      },
-      "visualDetails": {
-        "products": [
-          "Mga gamit sa paglalakbay",
-          "Pang-araw-araw na dala",
-          "Creator kit"
-        ],
-        "apps": [
-          "Mga tool sa pagpaplano",
-          "Mga kapaki-pakinabang na app",
-          "Mga link ng mapagkukunan"
-        ]
-      },
-      "categories": [
-        {
-          "id": "places",
-          "label": "Mga lugar",
-          "title": "Mga lokal na lugar, gabay, at ruta",
-          "description": "Mga restaurant, kapitbahayan, museo, ruta, at mga nakatagong hiyas na maaaring mabisita ng mga tao."
+      "explore": "See this perspective",
+      "explorerLabel": "Explorer",
+      "eyebrow": "Ways to use explorers",
+      "headline": "Ginawa para sa mga taong nakakatulong ang panlasa sa iba.",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
         },
-        {
-          "id": "people",
-          "label": "Mga tao",
-          "title": "Mga taong karapat-dapat sundan o matutunan",
-          "description": "Mga creator, founder, gabay, artist, guro, eksperto, at mga taong humubog sa iyong panlasa."
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
         },
-        {
-          "id": "books",
-          "label": "Mga libro",
-          "title": "Mga libro at listahan ng babasahin",
-          "description": "Mga aklat na patuloy mong inirerekomenda sa mga chat, tala, newsletter, at pag-uusap sa paglalakbay."
-        },
-        {
-          "id": "movies",
-          "label": "Mga pelikula at TV",
-          "title": "Mga pelikula, palabas, at watchlist",
-          "description": "Mga pelikula, serye, dokumentaryo, at watchlist para sa bawat uri ng mood o audience."
-        },
-        {
-          "id": "games",
-          "label": "Mga laro",
-          "title": "Mga laro at mundo upang galugarin",
-          "description": "Mga laro, pakikipagsapalaran, mundo, at karanasang dapat subukan ng mga tao sa susunod."
-        },
-        {
-          "id": "music",
-          "label": "Musika",
-          "title": "Mga album, artist, at playlist",
-          "description": "Mga artist, album, kanta, playlist, at soundtrack na konektado sa mga lugar at sandali."
-        },
-        {
-          "id": "products",
-          "label": "Mga produkto",
-          "title": "Mga produktong talagang inirerekomenda ng mga tao",
-          "description": "Pang-araw-araw na paborito, gamit sa paglalakbay, tool ng creator, regalo, at produktong sulit na i-save."
-        },
-        {
-          "id": "apps",
-          "label": "Mga App at Tool",
-          "title": "Mga app, tool, at kapaki-pakinabang na link",
-          "description": "Software, website, template, tool, at mapagkukunan na nagpapadali sa buhay."
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
         }
-      ]
+      },
+      "subtext": "Nagbabahagi ka man ng lungsod, istante, listahan ng produkto, playlist, o gabay sa panauhin, binibigyan ng mga explorer ang iyong mga rekomendasyon ng tahanan.",
+      "useCases": {
+        "airbnbHosts": "Airbnb Mga Host",
+        "airbnbHostsDesc": "Pagandahin ang karanasan ng bisita gamit ang mga lokal na insight",
+        "anyBusiness": "Anumang Negosyo",
+        "anyBusinessDesc": "Bumuo ng katapatan ng komunidad at customer",
+        "cafes": "Mga cafe",
+        "cafesDesc": "Ibahagi ang mga paborito ng kapitbahayan sa mga customer",
+        "creators": "Mga tagalikha",
+        "creatorsDesc": "Magdagdag ng halaga sa kabila ng content na may mga naaaksyong tip",
+        "hotels": "Mga hotel",
+        "hotelsDesc": "Magbigay ng mga na-curate na lokal na rekomendasyon",
+        "influencers": "Mga influencer",
+        "influencersDesc": "Pagkakitaan ang lokal na kaalaman at bumuo ng komunidad",
+        "localGuides": "Mga Local Guide",
+        "localGuidesDesc": "I-scale ang kadalubhasaan lampas sa mga indibidwal na paglilibot",
+        "restaurants": "Mga restawran",
+        "restaurantsDesc": "Cross-promote sa iba pang mga lokal na negosyo",
+        "tourOperators": "Mga Tour Operator",
+        "tourOperatorsDesc": "Palawakin ang karanasan nang higit pa sa mga naka-iskedyul na paglilibot",
+        "travelers": "Mga manlalakbay",
+        "travelersDesc": "Ibahagi ang mga natuklasang hiyas sa mga kapwa explorer"
+      },
+      "visual": {
+        "creators": [
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "hostsQr": "QR",
+        "personal": [
+          "Cafe",
+          "Aklat",
+          "Trail",
+          "Album",
+          "Pelikula",
+          "Laro"
+        ]
+      }
     }
   },
   "seo": {
-    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
-    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places",
     "landing": {
-      "title": "explorer - Tumuklas at Magbahagi ng Mga Personalized na Lokal na Rekomendasyon",
       "description": "Tuklasin at ibahagi ang iyong mga paboritong lokal na lugar sa mga explorer. Gumawa ng mga personalized na gabay sa lungsod, ayusin ang mga lugar na dapat puntahan, at gawin itong natutuklasan gamit ang mga naibabahaging QR code. Galugarin ang mga nakatagong hiyas, na-curate na rekomendasyon, at mga lokal na tip sa paglalakbay sa mga interactive na mapa.",
+      "geoDescription": "Tuklasin at ibahagi ang iyong mga paboritong lokal na lugar gamit ang mga personalized na QR code at mga naibabahaging link",
+      "geoFeatures": [
+        "Personalized QR code generation",
+        "Pagbabahagi ng lokal na rekomendasyon",
+        "Analytics at mga insight",
+        "Naka-optimize sa mobile na disenyo",
+        "Pagtuklas ng komunidad"
+      ],
+      "geoIndustry": "Teknolohiya",
       "keywords": [
         "tumuklas ng mga lugar na malapit sa akin",
         "mga personalized na gabay sa paglalakbay",
@@ -1751,16 +1905,10 @@
         "mga tip sa paglalakbay",
         "mga lokal na lugar"
       ],
-      "geoDescription": "Tuklasin at ibahagi ang iyong mga paboritong lokal na lugar gamit ang mga personalized na QR code at mga naibabahaging link",
-      "geoFeatures": [
-        "Personalized QR code generation",
-        "Pagbabahagi ng lokal na rekomendasyon",
-        "Analytics at mga insight",
-        "Naka-optimize sa mobile na disenyo",
-        "Pagtuklas ng komunidad"
-      ],
-      "geoIndustry": "Teknolohiya"
-    }
+      "title": "explorer - Tumuklas at Magbahagi ng Mga Personalized na Lokal na Rekomendasyon"
+    },
+    "loginTitle": "Login to explorers | Access Your Personalized Recommendations & Places",
+    "registerTitle": "Sign Up for explorers | Join the Community & Share Your Favorite Local Places"
   },
   "settings": {
     "account": {
@@ -2278,13 +2426,91 @@
       "validationPending": "Naghihintay pa ang validation. Maghintay"
     }
   },
+  "useCases": {
+    "cta": {
+      "button": "Claim your Explorer page",
+      "description": "Start with the recommendations you already share. Give them one place to live.",
+      "title": "Make a home for what you would pass on."
+    },
+    "hero": {
+      "chooseLabel": "Choose a perspective",
+      "description": "Whether the point of view is personal, creative, or shared by a brand, explorers gives it a thoughtful home.",
+      "eyebrow": "Ways to explore",
+      "title": "Different perspectives. One place to share them.",
+      "visualAlt": "Three perspectives connected through a place, an Explorer profile, and a storefront."
+    },
+    "journey": {
+      "description": "The shape changes with the person behind it. The rhythm stays simple.",
+      "eyebrow": "One simple rhythm",
+      "steps": {
+        "collect": {
+          "description": "Bring together what you genuinely recommend across the parts of life that matter to you.",
+          "title": "Collect"
+        },
+        "shape": {
+          "description": "Organize it with enough context for someone else to understand why it belongs.",
+          "title": "Shape"
+        },
+        "share": {
+          "description": "Offer one living link or QR that people can save, scan, and return to.",
+          "title": "Share"
+        }
+      },
+      "title": "Three perspectives. One way of sharing with care."
+    },
+    "perspectives": {
+      "brands": {
+        "description": "Curate the places, products, guides, and ideas that express what your organization genuinely values.",
+        "label": "Brands",
+        "points": [
+          "Build collections with a clear and human perspective.",
+          "Connect locations, products, and useful context.",
+          "Give people something thoughtful to save and revisit."
+        ],
+        "title": "Turn your point of view into an experience people can enter."
+      },
+      "creators": {
+        "description": "Turn the recommendations scattered across posts, videos, conversations, and notes into something people can return to.",
+        "label": "Creators",
+        "points": [
+          "Create a durable home for your point of view.",
+          "Organize recommendations around stories and themes.",
+          "Share through one link or QR wherever people find you."
+        ],
+        "title": "Give your audience more than a feed."
+      },
+      "personal": {
+        "description": "Keep the places, books, films, tools, people, and small discoveries you return to in one living collection.",
+        "label": "Personal",
+        "points": [
+          "Bring different kinds of recommendations together.",
+          "Add the context that makes each choice yours.",
+          "Share one page that can keep evolving with you."
+        ],
+        "title": "A home for the things that shape your world."
+      }
+    },
+    "seo": {
+      "description": "See how people, creators, and brands can collect what they value, shape it with context, and share it through one thoughtful Explorer page.",
+      "keywords": [
+        "explorers use cases",
+        "personal recommendations page",
+        "creator recommendations",
+        "brand curation",
+        "share recommendations",
+        "curated collections"
+      ],
+      "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
+      "title": "Use Cases | explorers.earth"
+    }
+  },
   "usernameClaim": {
-    "validating": "Pinapatunayan...",
-    "claimFree": "Libre ang pag-claim",
-    "trySuggestions": "Subukan ang: {{suggestions}}",
     "available": "Available ang username.",
-    "unavailable": "Hindi available ang username.",
+    "checkingAvailability": "Sinusuri ang availability...",
+    "claimFree": "Libre ang pag-claim",
     "confirmOnSignup": "Kukumpirmahin namin ang availability sa pag-signup.",
-    "checkingAvailability": "Sinusuri ang availability..."
+    "trySuggestions": "Subukan ang: {{suggestions}}",
+    "unavailable": "Hindi available ang username.",
+    "validating": "Pinapatunayan..."
   }
 }

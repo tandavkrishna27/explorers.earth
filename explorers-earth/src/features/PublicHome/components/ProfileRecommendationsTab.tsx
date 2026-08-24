@@ -1,140 +1,89 @@
-import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
+import { gql, useQuery } from "@apollo/client";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
 import {
-  MapPin, Music, Film, BookOpen, Gamepad2, Compass,
-  Smartphone, ShoppingBag, Users
+  BookOpen,
+  Compass,
+  Film,
+  Gamepad2,
+  MapPin,
+  Music,
+  ShoppingBag,
+  Smartphone,
+  Users,
 } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "../../../lib/queryClient";
-import { extractGuestUrlFromLocalTunesLink } from "../../../utils/localTunesUtils";
-import { toUrlSlug } from "../../../utils/formatAddress";
-import PublicPlaceCard from "./PublicPlaceCard";
 import type { PlaylistResponse } from "../../../types/music";
+import { toUrlSlug } from "../../../utils/formatAddress";
+import { extractGuestUrlFromLocalTunesLink } from "../../../utils/localTunesUtils";
+import {
+  isRecommendationCategoryVisible,
+  normalizeRecommendationsPresentation,
+  orderEligibleRecommendationCategoryIds,
+} from "../../Profile/constants/recommendationsPresentation";
+import type {
+  NormalizedRecommendationsPresentationSettings,
+  RecommendationCategoryId,
+  RecommendationsPresentationWire,
+} from "../../Profile/types/themeTypes";
+import ProfileRecommendationsLayouts, {
+  type RecommendationCategoryReadyViewModel,
+  type RecommendationCategorySlotViewModel,
+  type RecommendationListCardViewModel,
+} from "./ProfileRecommendationsLayouts";
 
-type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
-
-interface CategoryConfig {
-  key: CategoryKey;
-  label: string;
-  icon: React.ComponentType<any>;
-  visibilityField: string;
-  color: string;
+export interface PublicRecommendationAccountData {
+  documentId?: string;
+  public_recommendations?: string;
+  public_music?: string;
+  public_movie?: string;
+  public_books?: string;
+  public_games?: string;
+  public_guides?: string;
+  public_apps?: string;
+  public_products?: string;
+  public_people?: string;
+  localtunes_public?: string;
+  [key: string]: unknown;
 }
 
-const CATEGORIES: CategoryConfig[] = [
-  { 
-    key: "places",  
-    label: "Places",        
-    icon: MapPin, 
-    visibilityField: "public_recommendations",
-    color: "emerald",
-  },
-  { 
-    key: "music",   
-    label: "Music",         
-    icon: Music, 
-    visibilityField: "public_music",
-    color: "purple",
-  },
-  { 
-    key: "movies",  
-    label: "Movies & Shows", 
-    icon: Film, 
-    visibilityField: "public_movie",
-    color: "blue",
-  },
-  { 
-    key: "books",   
-    label: "Books",         
-    icon: BookOpen, 
-    visibilityField: "public_books",
-    color: "orange",
-  },
-  { 
-    key: "games",   
-    label: "Games",         
-    icon: Gamepad2, 
-    visibilityField: "public_games",
-    color: "pink",
-  },
-  { 
-    key: "guides",   
-    label: "Guides",         
-    icon: Compass, 
-    visibilityField: "public_guides",
-    color: "cyan",
-  },
-  { 
-    key: "apps",   
-    label: "Apps & Tools",         
-    icon: Smartphone, 
-    visibilityField: "public_apps",
-    color: "violet",
-  },
-  { 
-    key: "products",   
-    label: "Products",         
-    icon: ShoppingBag, 
-    visibilityField: "public_products",
-    color: "rose",
-  },
-  { 
-    key: "people",   
-    label: "People",         
-    icon: Users, 
-    visibilityField: "public_people",
-    color: "indigo",
-  },
-];
+interface ProfileRecommendationsTabProps {
+  accountData: PublicRecommendationAccountData;
+  username: string;
+  presentation?:
+    | RecommendationsPresentationWire
+    | NormalizedRecommendationsPresentationSettings
+    | null;
+  preferredCategory?: RecommendationCategoryId;
+}
 
-const getHexColor = (color: string) => {
-  switch (color) {
-    case "emerald": return "#10b981";
-    case "purple":  return "#a855f7";
-    case "blue":    return "#3b82f6";
-    case "orange":  return "#f97316";
-    case "pink":    return "#ec4899";
-    case "cyan":    return "#06b6d4";
-    case "violet":  return "#8b5cf6";
-    case "rose":    return "#f43f5e";
-    case "indigo":  return "#6366f1";
-    default:        return "#ffffff";
-  }
-};
+interface RecommendationCategoryQueryState {
+  id: RecommendationCategoryId;
+  dataStatus: "loading" | "empty" | "ready";
+  lists: RecommendationListCardViewModel[];
+  listCount: number;
+  itemCount?: {
+    value: number;
+    isLowerBound: boolean;
+    singular: string;
+    plural: string;
+  };
+  error: unknown | null;
+  retry: () => Promise<unknown>;
+}
 
-const resolveCoverUrl = (
-  path: string | null | undefined,
-  type?: "movie" | "book" | "game" | "place" | "guide" | "music" | "app" | "product" | "person"
-): string | undefined => {
-  if (!path || path === "null" || path === "undefined") return undefined;
-
-  // If it's already a full URL, return it
-  if (path.startsWith("http")) return path;
-
-  // If it starts with /uploads/ (local Strapi upload), prepend backend URL
-  if (path.startsWith("/uploads/")) {
-    const backendUrl = import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337";
-    return `${backendUrl}${path}`;
-  }
-
-  // If it's a movie poster from TMDB (starts with / but not /uploads/)
-  if (type === "movie") {
-    return `https://image.tmdb.org/t/p/w185${path.startsWith("/") ? path : `/${path}`}`;
-  }
-
-  // If it starts with / but not /uploads/ for other types, prepend backend URL anyway
-  if (path.startsWith("/")) {
-    const backendUrl = import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337";
-    return `${backendUrl}${path}`;
-  }
-
-  return path;
-};
-
-const formatCount = (count: number, singular: string, plural: string) => {
-  return `${count} ${count === 1 ? singular : plural}`;
-};
+const CATEGORY_CONFIG = {
+  places: { label: "Places", labelKey: "dashboard.profile.themeAppearance.recommendations.categories.places", icon: MapPin, color: "#10b981" },
+  music: { label: "Music", labelKey: "dashboard.profile.themeAppearance.recommendations.categories.music", icon: Music, color: "#a855f7" },
+  movies: { label: "Movies & Shows", labelKey: "dashboard.profile.themeAppearance.recommendations.categories.movies", icon: Film, color: "#3b82f6" },
+  books: { label: "Books", labelKey: "dashboard.profile.themeAppearance.recommendations.categories.books", icon: BookOpen, color: "#f97316" },
+  games: { label: "Games", labelKey: "dashboard.profile.themeAppearance.recommendations.categories.games", icon: Gamepad2, color: "#ec4899" },
+  guides: { label: "Guides", labelKey: "dashboard.profile.themeAppearance.recommendations.categories.guides", icon: Compass, color: "#06b6d4" },
+  apps: { label: "Apps & Tools", labelKey: "dashboard.profile.themeAppearance.recommendations.categories.apps", icon: Smartphone, color: "#8b5cf6" },
+  products: { label: "Products", labelKey: "dashboard.profile.themeAppearance.recommendations.categories.products", icon: ShoppingBag, color: "#f43f5e" },
+  people: { label: "People", labelKey: "dashboard.profile.themeAppearance.recommendations.categories.people", icon: Users, color: "#6366f1" },
+} as const;
 
 const GET_PLACES_LISTS = gql`
   query GetPlacesLists($accountDocumentId: ID!) {
@@ -151,15 +100,10 @@ const GET_PLACES_LISTS = gql`
       slug
       Visibility
       List_Name_Details
-      recommendationCount: recommended_places(pagination: { limit: 500 }) {
-        documentId
-      }
       recommended_places(pagination: { limit: 4 }) {
         documentId
         media_details
-        Media {
-          url
-        }
+        Media { url }
         Place_Details
       }
     }
@@ -180,12 +124,7 @@ const GET_MOVIES_LISTS = gql`
       List_Name
       slug
       Visibility
-      cover_image {
-        url
-      }
-      recommendationCount: recommended_movies(pagination: { limit: 500 }) {
-        documentId
-      }
+      cover_image { url }
       recommended_movies(pagination: { limit: 4 }) {
         documentId
         poster_path
@@ -208,12 +147,7 @@ const GET_BOOKS_LISTS = gql`
       List_Name
       slug
       visibility
-      cover_image {
-        url
-      }
-      recommendationCount: recommended_books(pagination: { limit: 500 }) {
-        documentId
-      }
+      cover_image { url }
       recommended_books(pagination: { limit: 4 }) {
         documentId
         cover_url
@@ -236,12 +170,7 @@ const GET_GAMES_LISTS = gql`
       List_Name
       slug
       Visibility
-      cover_image {
-        url
-      }
-      recommendationCount: recommended_games(pagination: { limit: 500 }) {
-        documentId
-      }
+      cover_image { url }
       recommended_games(pagination: { limit: 4 }) {
         documentId
         cover_url
@@ -265,12 +194,7 @@ const GET_APPS_LISTS = gql`
       List_Name
       slug
       Visibility
-      cover_image {
-        url
-      }
-      recommendationCount: recommended_apps(pagination: { limit: 500 }) {
-        documentId
-      }
+      cover_image { url }
       recommended_apps(pagination: { limit: 4 }) {
         documentId
         logo_url
@@ -293,12 +217,7 @@ const GET_PRODUCTS_LISTS = gql`
       List_Name
       slug
       Visibility
-      cover_image {
-        url
-      }
-      recommendationCount: recommended_products(pagination: { limit: 500 }) {
-        documentId
-      }
+      cover_image { url }
       recommended_products(pagination: { limit: 4 }) {
         documentId
         logo_url
@@ -322,9 +241,6 @@ const GET_PEOPLE_LISTS = gql`
       List_Name
       slug
       Visibility
-      recommendationCount: recommended_people(pagination: { limit: 500 }) {
-        documentId
-      }
       recommended_people(pagination: { limit: 4 }) {
         documentId
         avatar_path
@@ -348,485 +264,593 @@ const GET_GUIDES_LISTS = gql`
       Title
       slug
       Visibility
-      Guide_Media {
-        url
-      }
+      Guide_Media { url }
     }
   }
 `;
 
-interface ProfileRecommendationsTabProps {
-  accountData: {
-    documentId?: string;
-    public_recommendations?: string;
-    public_music?: string;
-    public_movie?: string;
-    public_books?: string;
-    public_games?: string;
-    public_guides?: string;
-    public_apps?: string;
-    public_products?: string;
-    public_people?: string;
-    localtunes_public?: string;
-  };
-  username: string;
-}
-
-interface ListCardData {
-  id: string;
-  title: string;
-  image?: string | null;
-  previewImages?: string[];
-  subtitle?: string;
-  onClick: () => void;
-}
-
-const CategorySection = ({
-  cat,
-  lists,
-  username,
-}: {
-  cat: CategoryConfig;
-  lists: ListCardData[];
-  username: string;
-}) => {
-  const navigate = useNavigate();
-  const IconComponent = cat.icon;
-
-  if (!lists || lists.length === 0) return null;
-
-  return (
-    <div className="flex flex-col gap-3 mb-6">
-      <div className="flex justify-between items-end">
-        <div className="flex flex-col gap-0.5 max-w-[75%]">
-          <h2
-            onClick={() => navigate(`/${username}/${cat.key}`)}
-            className="text-lg font-black text-white cursor-pointer hover:text-blue-500 transition-colors duration-200 flex items-center gap-2 font-poppins"
-          >
-            <IconComponent className="w-[20px] h-[20px] shrink-0" style={{ color: getHexColor(cat.color) }} />
-            <span className="tracking-wide font-black text-[1.125rem]">{cat.label}</span>
-          </h2>
-        </div>
-        <button
-          onClick={() => navigate(`/${username}/${cat.key}`)}
-          className="text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors flex items-center gap-0.5 border-none bg-transparent cursor-pointer"
-        >
-          See All ➔
-        </button>
-      </div>
-
-      {/* Horizontal Cards Scrollable list */}
-      <div
-        className="flex gap-4 overflow-x-auto pt-2 pb-4 px-1 -mt-2 scrollbar-hide"
-        style={{ scrollbarWidth: "none" }}
-      >
-        {lists.map((list) => (
-          <PublicPlaceCard
-            key={list.id}
-            title={list.title}
-            image={list.image}
-            previewImages={list.previewImages}
-            subtitle={list.subtitle}
-            onClickhandler={list.onClick}
-          />
-        ))}
-      </div>
-    </div>
-  );
+const resolveCoverUrl = (
+  path: string | null | undefined,
+  type?: "movie" | "book" | "game" | "place" | "guide" | "music" | "app" | "product" | "person",
+) => {
+  if (!path || path === "null" || path === "undefined") return undefined;
+  if (path.startsWith("http") || path.startsWith("data:")) return path;
+  if (type === "movie" && !path.startsWith("/uploads/")) {
+    return `https://image.tmdb.org/t/p/w185${path.startsWith("/") ? path : `/${path}`}`;
+  }
+  if (path.startsWith("/")) {
+    const backend =
+      import.meta.env.VITE_REST_API_URL?.replace("/api", "") ||
+      "http://localhost:1337";
+    return `${backend}${path}`;
+  }
+  return path;
 };
 
-const ProfileRecommendationsTab = ({ accountData, username }: ProfileRecommendationsTabProps) => {
-  const navigate = useNavigate();
+const relationCount = (value: unknown) =>
+  Array.isArray(value)
+    ? { value: value.length, isLowerBound: value.length >= 4 }
+    : { value: 0, isLowerBound: false };
 
-  // Determine visibility states for each category
-  const placesEnabled = useMemo(() => {
-    const value = accountData?.public_recommendations;
-    return value === "Yes" || value === undefined || value === null;
-  }, [accountData]);
+const formatCount = (
+  count: { value: number; isLowerBound: boolean },
+  singular: string,
+  plural: string,
+) => `${count.value.toLocaleString()}${count.isLowerBound ? "+" : ""} ${count.value === 1 ? singular : plural}`;
 
-  const musicEnabled = accountData?.public_music === "Yes";
-  const moviesEnabled = accountData?.public_movie === "Yes";
-  const booksEnabled = accountData?.public_books === "Yes";
-  const gamesEnabled = accountData?.public_games === "Yes";
-  const guidesEnabled = accountData?.public_guides === "Yes";
-  const appsEnabled = accountData?.public_apps === "Yes";
-  const productsEnabled = accountData?.public_products === "Yes";
-  const peopleEnabled = accountData?.public_people === "Yes";
+const aggregateCount = (
+  lists: any[],
+  singular: string,
+  plural: string,
+): RecommendationCategoryQueryState["itemCount"] => {
+  const counts = lists.map((list) =>
+    relationCount(
+      list.recommended_places ||
+        list.recommended_movies ||
+        list.recommended_books ||
+        list.recommended_games ||
+        list.recommended_apps ||
+        list.recommended_products ||
+        list.recommended_people,
+    ),
+  );
+  return {
+    value: counts.reduce((total, count) => total + count.value, 0),
+    isLowerBound: counts.some((count) => count.isLowerBound),
+    singular,
+    plural,
+  };
+};
 
-  const visibleCategories = useMemo(() => {
-    return CATEGORIES.filter(cat => {
-      const field = cat.visibilityField as keyof typeof accountData;
-      const value = accountData[field];
-      if (cat.key === "places") {
-        return value === "Yes" || value === undefined || value === null;
-      }
-      return value === "Yes";
-    });
-  }, [accountData]);
+const previewUrls = (values: unknown[]) =>
+  values.filter((value): value is string => Boolean(value)).slice(0, 4);
 
-  // Run 8 resilient queries independently, skipping if category is disabled or no documentId
-  const { data: placesData, loading: placesLoading } = useQuery(GET_PLACES_LISTS, {
-    variables: { accountDocumentId: accountData?.documentId },
-    skip: !accountData?.documentId || !placesEnabled,
-    errorPolicy: "all",
+const parseProductImage = (product: any) => {
+  if (!product?.images) return product?.logo_url;
+  try {
+    const parsed =
+      typeof product.images === "string"
+        ? JSON.parse(product.images)
+        : product.images;
+    return (Array.isArray(parsed) ? parsed[0] : parsed) || product.logo_url;
+  } catch {
+    return product.logo_url;
+  }
+};
+
+const makeApolloState = ({
+  id,
+  enabled,
+  documentId,
+  query,
+  lists,
+  itemCount,
+}: {
+  id: RecommendationCategoryId;
+  enabled: boolean;
+  documentId?: string;
+  query: any;
+  lists: RecommendationListCardViewModel[];
+  itemCount?: RecommendationCategoryQueryState["itemCount"];
+}): RecommendationCategoryQueryState | null => {
+  if (!enabled) return null;
+  const missingAccountError = documentId
+    ? null
+    : new Error("The public profile account is unavailable");
+  const error = missingAccountError || query.error || null;
+  const dataStatus = missingAccountError
+    ? "empty"
+    : query.loading && query.data == null
+      ? "loading"
+      : lists.length > 0
+        ? "ready"
+        : "empty";
+  return {
+    id,
+    dataStatus,
+    lists,
+    listCount: lists.length,
+    itemCount,
+    error,
+    retry: async () => {
+      if (!documentId) return Promise.reject(missingAccountError);
+      return query.refetch?.();
+    },
+  };
+};
+
+const ProfileRecommendationsTab = ({
+  accountData,
+  username,
+  presentation,
+  preferredCategory,
+}: ProfileRecommendationsTabProps) => {
+  const { t } = useTranslation();
+  const [isRetrying, setIsRetrying] = useState(false);
+  const retryLock = useRef(false);
+  const normalizedPresentation = useMemo(
+    () => normalizeRecommendationsPresentation(presentation),
+    [presentation],
+  );
+  const accountRecord = accountData as Record<string, unknown>;
+  const enabled = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.keys(CATEGORY_CONFIG).map((id) => [
+          id,
+          isRecommendationCategoryVisible(
+            accountRecord,
+            id as RecommendationCategoryId,
+          ),
+        ]),
+      ) as Record<RecommendationCategoryId, boolean>,
+    [accountRecord],
+  );
+  const documentId = accountData.documentId;
+  const apolloOptions = (categoryEnabled: boolean) => ({
+    variables: { accountDocumentId: documentId },
+    skip: !documentId || !categoryEnabled,
+    errorPolicy: "all" as const,
+    notifyOnNetworkStatusChange: true,
   });
 
-  const { data: moviesData, loading: moviesLoading } = useQuery(GET_MOVIES_LISTS, {
-    variables: { accountDocumentId: accountData?.documentId },
-    skip: !accountData?.documentId || !moviesEnabled,
-    errorPolicy: "all",
-  });
+  const placesQuery = useQuery(GET_PLACES_LISTS, apolloOptions(enabled.places));
+  const moviesQuery = useQuery(GET_MOVIES_LISTS, apolloOptions(enabled.movies));
+  const booksQuery = useQuery(GET_BOOKS_LISTS, apolloOptions(enabled.books));
+  const gamesQuery = useQuery(GET_GAMES_LISTS, apolloOptions(enabled.games));
+  const appsQuery = useQuery(GET_APPS_LISTS, apolloOptions(enabled.apps));
+  const productsQuery = useQuery(GET_PRODUCTS_LISTS, apolloOptions(enabled.products));
+  const peopleQuery = useQuery(GET_PEOPLE_LISTS, apolloOptions(enabled.people));
+  const guidesQuery = useQuery(GET_GUIDES_LISTS, apolloOptions(enabled.guides));
 
-  const { data: booksData, loading: booksLoading } = useQuery(GET_BOOKS_LISTS, {
-    variables: { accountDocumentId: accountData?.documentId },
-    skip: !accountData?.documentId || !booksEnabled,
-    errorPolicy: "all",
-  });
-
-  const { data: gamesData, loading: gamesLoading } = useQuery(GET_GAMES_LISTS, {
-    variables: { accountDocumentId: accountData?.documentId },
-    skip: !accountData?.documentId || !gamesEnabled,
-    errorPolicy: "all",
-  });
-
-  const { data: appsData, loading: appsLoading } = useQuery(GET_APPS_LISTS, {
-    variables: { accountDocumentId: accountData?.documentId },
-    skip: !accountData?.documentId || !appsEnabled,
-    errorPolicy: "all",
-  });
-
-  const { data: productsData, loading: productsLoading } = useQuery(GET_PRODUCTS_LISTS, {
-    variables: { accountDocumentId: accountData?.documentId },
-    skip: !accountData?.documentId || !productsEnabled,
-    errorPolicy: "all",
-  });
-
-  const { data: peopleData, loading: peopleLoading } = useQuery(GET_PEOPLE_LISTS, {
-    variables: { accountDocumentId: accountData?.documentId },
-    skip: !accountData?.documentId || !peopleEnabled,
-    errorPolicy: "all",
-  });
-
-  const { data: guidesData, loading: guidesLoading } = useQuery(GET_GUIDES_LISTS, {
-    variables: { accountDocumentId: accountData?.documentId },
-    skip: !accountData?.documentId || !guidesEnabled,
-    errorPolicy: "all",
-  });
-
-  // Extract Local Tunes playlist ID if configured
-  const guestUrl = useMemo(() => {
-    const localTunesPublicLink = accountData?.localtunes_public;
-    return localTunesPublicLink ? extractGuestUrlFromLocalTunesLink(localTunesPublicLink) : null;
-  }, [accountData?.localtunes_public]);
-
-  // REST TanStack query to fetch music playlists
-  const { data: musicPlaylistData, isLoading: musicLoading } = useReactQuery<PlaylistResponse>({
-    queryKey: [`/api/playlist/${guestUrl}`],
+  const guestUrl = useMemo(
+    () =>
+      accountData.localtunes_public
+        ? extractGuestUrlFromLocalTunesLink(accountData.localtunes_public)
+        : null,
+    [accountData.localtunes_public],
+  );
+  const musicQuery = useReactQuery<PlaylistResponse>({
+    queryKey: ["public-profile-playlists", guestUrl],
     queryFn: () => apiRequest("GET", `/api/playlist/${guestUrl}`),
-    enabled: !!guestUrl && musicEnabled,
+    enabled: Boolean(guestUrl && enabled.music),
     staleTime: 5 * 60 * 1000,
   });
 
-  const isLoading = 
-    (placesEnabled && placesLoading) ||
-    (moviesEnabled && moviesLoading) ||
-    (booksEnabled && booksLoading) ||
-    (gamesEnabled && gamesLoading) ||
-    (appsEnabled && appsLoading) ||
-    (productsEnabled && productsLoading) ||
-    (peopleEnabled && peopleLoading) ||
-    (guidesEnabled && guidesLoading) ||
-    (musicEnabled && musicLoading && !musicPlaylistData);
+  const placesRaw = placesQuery.data?.recommendationLists || [];
+  const placesLists = placesRaw
+    .filter((list: any) => list.Visibility === true)
+    .map((list: any) => {
+      let cover: string | undefined;
+      try {
+        const details =
+          typeof list.List_Name_Details === "string"
+            ? JSON.parse(list.List_Name_Details)
+            : list.List_Name_Details;
+        cover = details?.thumbnail;
+      } catch {
+        cover = undefined;
+      }
+      const count = relationCount(list.recommended_places);
+      return {
+        id: list.documentId,
+        title: list.List_Name || "",
+        image: resolveCoverUrl(cover, "place"),
+        previewImages: previewUrls(
+          (list.recommended_places || []).map((place: any) =>
+            resolveCoverUrl(
+              place.media_details?.thumbnail?.url ||
+                place.Media?.[0]?.url ||
+                place.Place_Details?.Photos?.[0],
+              "place",
+            ),
+          ),
+        ),
+        subtitle: formatCount(count, "Place", "Places"),
+        href: `/${username}/places/${list.slug || toUrlSlug(list.List_Name || "")}`,
+      };
+    });
 
-  // Map category data into lists safely
-  const categoriesWithLists = useMemo(() => {
-    const result: Record<CategoryKey, ListCardData[]> = {
-      places: [],
-      music: [],
-      movies: [],
-      books: [],
-      games: [],
-      guides: [],
-      apps: [],
-      products: [],
-      people: [],
-    };
+  const moviesRaw = moviesQuery.data?.movieLists || [];
+  const moviesLists = moviesRaw
+    .filter((list: any) => list.Visibility === true)
+    .map((list: any) => {
+      const count = relationCount(list.recommended_movies);
+      return {
+        id: list.documentId,
+        title: list.List_Name || "",
+        image: resolveCoverUrl(list.cover_image?.url, "movie"),
+        previewImages: previewUrls(
+          (list.recommended_movies || []).map((movie: any) =>
+            resolveCoverUrl(movie.poster_path, "movie"),
+          ),
+        ),
+        subtitle: formatCount(count, "Movie", "Movies"),
+        href: `/${username}/movies/${list.slug || toUrlSlug(list.List_Name || "")}`,
+      };
+    });
 
-    // 1. Places Lists
-    if (placesData?.recommendationLists) {
-      result.places = placesData.recommendationLists
-        .filter((list: any) => list.Visibility === true)
-        .map((list: any) => {
-          let coverImg = null;
-          if (list.List_Name_Details) {
-            try {
-              const details = typeof list.List_Name_Details === "string"
-                ? JSON.parse(list.List_Name_Details)
-                : list.List_Name_Details;
-              if (details?.thumbnail) {
-                coverImg = details.thumbnail;
-              }
-            } catch {
-              // Ignore JSON parse error
-            }
-          }
-          const previews = (list.recommended_places || [])
-            .map((place: any) => place.media_details?.thumbnail?.url || place.Media?.[0]?.url || place.Place_Details?.Photos?.[0] || "")
-            .map((url: string) => resolveCoverUrl(url, "place") || "")
-            .filter((url: string) => !!url);
+  const booksRaw = booksQuery.data?.bookLists || [];
+  const booksLists = booksRaw
+    .filter((list: any) => list.visibility === true)
+    .map((list: any) => {
+      const count = relationCount(list.recommended_books);
+      return {
+        id: list.documentId,
+        title: list.List_Name || "",
+        image: resolveCoverUrl(list.cover_image?.url, "book"),
+        previewImages: previewUrls(
+          (list.recommended_books || []).map((book: any) =>
+            resolveCoverUrl(book.cover_url, "book"),
+          ),
+        ),
+        subtitle: formatCount(count, "Book", "Books"),
+        href: `/${username}/books/${list.slug || toUrlSlug(list.List_Name || "")}`,
+      };
+    });
 
-          return {
-            id: list.documentId,
-            title: list.List_Name || "",
-            image: resolveCoverUrl(coverImg, "place"),
-            previewImages: previews,
-            subtitle: formatCount(list.recommendationCount?.length || 0, "Place", "Places"),
-            onClick: () => navigate(`/${username}/places/${toUrlSlug(list.List_Name || "")}`),
-          };
-        });
-    }
+  const gamesRaw = gamesQuery.data?.gameLists || [];
+  const gamesLists = gamesRaw
+    .filter((list: any) => list.Visibility === true)
+    .map((list: any) => {
+      const count = relationCount(list.recommended_games);
+      return {
+        id: list.documentId,
+        title: list.List_Name || "",
+        image: resolveCoverUrl(list.cover_image?.url, "game"),
+        previewImages: previewUrls(
+          (list.recommended_games || []).map((game: any) =>
+            resolveCoverUrl(
+              game.cover_url || game.media_details?.thumbnail?.url,
+              "game",
+            ),
+          ),
+        ),
+        subtitle: formatCount(count, "Game", "Games"),
+        href: `/${username}/games/${list.slug || toUrlSlug(list.List_Name || "")}`,
+      };
+    });
 
-    // 2. Music (Playlists)
-    if (musicPlaylistData?.playlists) {
-      result.music = musicPlaylistData.playlists
-        .filter((p: any) => p.isVisibleToGuests)
-        .map((playlist: any) => {
-          const previews = (playlist.songs || [])
-            .map((song: any) => song.thumbnailUrl || "")
-            .map((url: string) => resolveCoverUrl(url, "music") || "")
-            .filter((url: string) => !!url);
+  const appsRaw = appsQuery.data?.appLists || [];
+  const appsLists = appsRaw
+    .filter((list: any) => list.Visibility === true)
+    .map((list: any) => {
+      const count = relationCount(list.recommended_apps);
+      return {
+        id: list.documentId,
+        title: list.List_Name || "",
+        image: resolveCoverUrl(list.cover_image?.url, "app"),
+        previewImages: previewUrls(
+          (list.recommended_apps || []).map((app: any) =>
+            resolveCoverUrl(app.logo_url, "app"),
+          ),
+        ),
+        subtitle: formatCount(count, "App", "Apps"),
+        href: `/${username}/apps/${list.slug || toUrlSlug(list.List_Name || "")}`,
+      };
+    });
 
-          return {
-            id: String(playlist.id),
-            title: playlist.name || "",
-            image: null,
-            previewImages: previews,
-            subtitle: formatCount(playlist.songs?.length || 0, "Song", "Songs"),
-            onClick: () => navigate(`/${username}/music`),
-          };
-        });
-    }
+  const productsRaw = productsQuery.data?.productLists || [];
+  const productsLists = productsRaw
+    .filter((list: any) => list.Visibility === true)
+    .map((list: any) => {
+      const count = relationCount(list.recommended_products);
+      return {
+        id: list.documentId,
+        title: list.List_Name || "",
+        image: resolveCoverUrl(list.cover_image?.url, "product"),
+        previewImages: previewUrls(
+          (list.recommended_products || []).map((product: any) =>
+            resolveCoverUrl(parseProductImage(product), "product"),
+          ),
+        ),
+        subtitle: formatCount(count, "Product", "Products"),
+        href: `/${username}/products/${list.slug || toUrlSlug(list.List_Name || "")}`,
+      };
+    });
 
-    // 3. Movies Lists
-    if (moviesData?.movieLists) {
-      result.movies = moviesData.movieLists
-        .filter((list: any) => list.Visibility === true)
-        .map((list: any) => {
-          const previews = (list.recommended_movies || [])
-            .map((movie: any) => movie.poster_path ? resolveCoverUrl(movie.poster_path, "movie") : "")
-            .filter((url: string) => !!url);
+  const peopleRaw = peopleQuery.data?.personLists || [];
+  const peopleLists = peopleRaw
+    .filter((list: any) => list.Visibility === true)
+    .map((list: any) => {
+      const count = relationCount(list.recommended_people);
+      return {
+        id: list.documentId,
+        title: list.List_Name || "",
+        image: null,
+        previewImages: previewUrls(
+          (list.recommended_people || []).map((person: any) =>
+            resolveCoverUrl(
+              person.avatar_path || person.media_details?.thumbnail?.url,
+              "person",
+            ),
+          ),
+        ),
+        subtitle: formatCount(count, "Person", "People"),
+        href: `/${username}/people/${list.slug || toUrlSlug(list.List_Name || "")}`,
+      };
+    });
 
-          return {
-            id: list.documentId,
-            title: list.List_Name || "",
-            image: resolveCoverUrl(list.cover_image?.url, "movie"),
-            previewImages: previews,
-            subtitle: formatCount(list.recommendationCount?.length || 0, "Movie", "Movies"),
-            onClick: () => navigate(`/${username}/movies/${list.slug}`),
-          };
-        });
-    }
+  const guidesRaw = guidesQuery.data?.guides || [];
+  const guidesLists = guidesRaw
+    .filter((guide: any) => guide.Visibility === true)
+    .map((guide: any) => ({
+      id: guide.documentId,
+      title: guide.Title || "",
+      image: resolveCoverUrl(guide.Guide_Media?.[0]?.url, "guide"),
+      previewImages: [],
+      href: `/${username}/guides/${guide.slug || toUrlSlug(guide.Title || "") || guide.documentId}`,
+    }));
 
-    // 4. Books Lists
-    if (booksData?.bookLists) {
-      result.books = booksData.bookLists
-        .filter((list: any) => list.visibility === true)
-        .map((list: any) => {
-          const previews = (list.recommended_books || [])
-            .map((book: any) => book.cover_url ? resolveCoverUrl(book.cover_url, "book") : "")
-            .filter((url: string) => !!url);
+  const musicRaw = musicQuery.data?.playlists || [];
+  const musicLists = musicRaw
+    .filter((playlist: any) => playlist.isVisibleToGuests)
+    .map((playlist: any) => ({
+      id: String(playlist.id),
+      title: playlist.name || "",
+      image: null,
+      previewImages: previewUrls(
+        (playlist.songs || []).map((song: any) =>
+          resolveCoverUrl(song.thumbnailUrl, "music"),
+        ),
+      ),
+      subtitle: formatCount(
+        { value: playlist.songs?.length || 0, isLowerBound: false },
+        "Song",
+        "Songs",
+      ),
+      href: `/${username}/music`,
+    }));
 
-          return {
-            id: list.documentId,
-            title: list.List_Name || "",
-            image: resolveCoverUrl(list.cover_image?.url, "book"),
-            previewImages: previews,
-            subtitle: formatCount(list.recommendationCount?.length || 0, "Book", "Books"),
-            onClick: () => navigate(`/${username}/books/${list.slug}`),
-          };
-        });
-    }
+  const states = [
+    makeApolloState({
+      id: "places",
+      enabled: enabled.places,
+      documentId,
+      query: placesQuery,
+      lists: placesLists,
+      itemCount: aggregateCount(placesRaw, "place", "places"),
+    }),
+    enabled.music
+      ? {
+          id: "music" as const,
+          dataStatus:
+            (musicQuery.isLoading || musicQuery.isFetching) && !musicQuery.data
+              ? ("loading" as const)
+              : musicLists.length
+                ? ("ready" as const)
+                : ("empty" as const),
+          lists: musicLists,
+          listCount: musicLists.length,
+          itemCount: {
+            value: musicRaw.reduce(
+              (total: number, playlist: any) =>
+                total + (playlist.songs?.length || 0),
+              0,
+            ),
+            isLowerBound: false,
+            singular: "song",
+            plural: "songs",
+          },
+          error: musicQuery.error || null,
+          retry: async () => musicQuery.refetch(),
+        }
+      : null,
+    makeApolloState({
+      id: "movies",
+      enabled: enabled.movies,
+      documentId,
+      query: moviesQuery,
+      lists: moviesLists,
+      itemCount: aggregateCount(moviesRaw, "movie", "movies"),
+    }),
+    makeApolloState({
+      id: "books",
+      enabled: enabled.books,
+      documentId,
+      query: booksQuery,
+      lists: booksLists,
+      itemCount: aggregateCount(booksRaw, "book", "books"),
+    }),
+    makeApolloState({
+      id: "games",
+      enabled: enabled.games,
+      documentId,
+      query: gamesQuery,
+      lists: gamesLists,
+      itemCount: aggregateCount(gamesRaw, "game", "games"),
+    }),
+    makeApolloState({
+      id: "guides",
+      enabled: enabled.guides,
+      documentId,
+      query: guidesQuery,
+      lists: guidesLists,
+    }),
+    makeApolloState({
+      id: "apps",
+      enabled: enabled.apps,
+      documentId,
+      query: appsQuery,
+      lists: appsLists,
+      itemCount: aggregateCount(appsRaw, "app", "apps"),
+    }),
+    makeApolloState({
+      id: "products",
+      enabled: enabled.products,
+      documentId,
+      query: productsQuery,
+      lists: productsLists,
+      itemCount: aggregateCount(productsRaw, "product", "products"),
+    }),
+    makeApolloState({
+      id: "people",
+      enabled: enabled.people,
+      documentId,
+      query: peopleQuery,
+      lists: peopleLists,
+      itemCount: aggregateCount(peopleRaw, "person", "people"),
+    }),
+  ].filter((state): state is RecommendationCategoryQueryState => state !== null);
 
-    // 5. Games Lists
-    if (gamesData?.gameLists) {
-      result.games = gamesData.gameLists
-        .filter((list: any) => list.Visibility === true)
-        .map((list: any) => {
-          const previews = (list.recommended_games || [])
-            .map((game: any) => game.cover_url || game.media_details?.thumbnail?.url ? resolveCoverUrl(game.cover_url || game.media_details?.thumbnail?.url, "game") : "")
-            .filter((url: string) => !!url);
-
-          return {
-            id: list.documentId,
-            title: list.List_Name || "",
-            image: resolveCoverUrl(list.cover_image?.url, "game"),
-            previewImages: previews,
-            subtitle: formatCount(list.recommendationCount?.length || 0, "Game", "Games"),
-            onClick: () => navigate(`/${username}/games/${list.slug}`),
-          };
-        });
-    }
-
-    // 6. Guides Lists
-    if (guidesData?.guides) {
-      result.guides = guidesData.guides
-        .filter((guide: any) => guide.Visibility === true)
-        .map((guide: any) => {
-          return {
-            id: guide.documentId,
-            title: guide.Title || "",
-            image: resolveCoverUrl(guide.Guide_Media?.[0]?.url, "guide"),
-            previewImages: [],
-            onClick: () => navigate(`/${username}/guides/${guide.slug || toUrlSlug(guide.Title) || guide.documentId}`),
-          };
-        });
-    }
-
-    // 7. Apps Lists
-    if (appsData?.appLists) {
-      result.apps = appsData.appLists
-        .filter((list: any) => list.Visibility === true)
-        .map((list: any) => {
-          const previews = (list.recommended_apps || [])
-            .map((app: any) => app.logo_url ? resolveCoverUrl(app.logo_url, "app") : "")
-            .filter((url: string) => !!url);
-
-          return {
-            id: list.documentId,
-            title: list.List_Name || "",
-            image: resolveCoverUrl(list.cover_image?.url, "app"),
-            previewImages: previews,
-            subtitle: formatCount(list.recommendationCount?.length || 0, "App", "Apps"),
-            onClick: () => navigate(`/${username}/apps/${list.slug}`),
-          };
-        });
-    }
-
-    // 8. Products Lists
-    if (productsData?.productLists) {
-      result.products = productsData.productLists
-        .filter((list: any) => list.Visibility === true)
-        .map((list: any) => {
-          const previews = (list.recommended_products || [])
-            .map((prod: any) => {
-              let firstImg = null;
-              if (prod.images) {
-                try {
-                  const parsed = typeof prod.images === "string" ? JSON.parse(prod.images) : prod.images;
-                  firstImg = Array.isArray(parsed) ? parsed[0] : parsed;
-                } catch {
-                  // Ignore JSON parse error
-                }
-              }
-              return firstImg || prod.logo_url ? resolveCoverUrl(firstImg || prod.logo_url, "product") : "";
-            })
-            .filter((url: string) => !!url);
-
-          return {
-            id: list.documentId,
-            title: list.List_Name || "",
-            image: resolveCoverUrl(list.cover_image?.url, "product"),
-            previewImages: previews,
-            subtitle: formatCount(list.recommendationCount?.length || 0, "Product", "Products"),
-            onClick: () => navigate(`/${username}/products/${list.slug}`),
-          };
-        });
-    }
-
-    // 9. People Lists
-    if (peopleData?.personLists) {
-      result.people = peopleData.personLists
-        .filter((list: any) => list.Visibility === true)
-        .map((list: any) => {
-          const previews = (list.recommended_people || [])
-            .map((person: any) => person.avatar_path || person.media_details?.thumbnail?.url ? resolveCoverUrl(person.avatar_path || person.media_details?.thumbnail?.url, "person") : "")
-            .filter((url: string) => !!url);
-
-          return {
-            id: list.documentId,
-            title: list.List_Name || "",
-            image: null,
-            previewImages: previews,
-            subtitle: formatCount(list.recommendationCount?.length || 0, "Person", "People"),
-            onClick: () => navigate(`/${username}/people/${list.slug}`),
-          };
-        });
-    }
-
-    return result;
-  }, [
-    placesData,
-    musicPlaylistData,
-    moviesData,
-    booksData,
-    gamesData,
-    guidesData,
-    appsData,
-    productsData,
-    peopleData,
-    username,
-    navigate
-  ]);
-
-  // Loading skeleton state
-  if (isLoading) {
-    return (
-      <div className="pt-2 pb-12 flex flex-col gap-6">
-        {visibleCategories.map(cat => {
-          const IconComponent = cat.icon;
-          return (
-            <div key={cat.key} className="flex flex-col gap-3">
-              <div className="flex justify-between items-end">
-                <div className="flex flex-col gap-0.5 max-w-[75%]">
-                  <h2 className="text-base font-extrabold text-white/50 flex items-center gap-1.5 font-poppins">
-                    <IconComponent className="w-4 h-4 shrink-0 text-white/20" />
-                    <span className="tracking-wide text-xs">{cat.label}</span>
-                  </h2>
-                </div>
-              </div>
-              <div className="flex gap-4 overflow-x-auto pt-2 pb-4 px-1 -mt-2 scrollbar-hide">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="w-[135px] h-[155px] md:w-[155px] md:h-[180px] rounded-[16px] bg-white/5 skeleton-shimmer flex-shrink-0" />
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  // Filter out any categories that have no visible lists to avoid empty rows
-  const categoriesToShow = visibleCategories.filter(cat => {
-    const list = categoriesWithLists[cat.key];
-    return list && list.length > 0;
+  const stateById = new Map(states.map((state) => [state.id, state]));
+  const orderedIds = orderEligibleRecommendationCategoryIds({
+    savedOrder: normalizedPresentation.categoryOrder,
+    eligible: states.map((state) => state.id),
+    preferred: preferredCategory,
   });
+  const orderedSlots = orderedIds.reduce<
+    RecommendationCategorySlotViewModel[]
+  >((slots, id) => {
+      const state = stateById.get(id);
+      if (!state || state.dataStatus === "empty") return slots;
+      const config = CATEGORY_CONFIG[id];
+      const label = t(config.labelKey, config.label);
+      if (state.dataStatus === "loading") {
+        slots.push({ status: "loading", id, label });
+        return slots;
+      }
+      const itemCountLabel = state.itemCount
+        ? formatCount(
+            {
+              value: state.itemCount.value,
+              isLowerBound: state.itemCount.isLowerBound,
+            },
+            state.itemCount.singular,
+            state.itemCount.plural,
+          )
+        : undefined;
+      const ready: RecommendationCategoryReadyViewModel = {
+        status: "ready",
+        id,
+        label,
+        color: config.color,
+        icon: config.icon,
+        lists: state.lists,
+        listCount: state.listCount,
+        itemCountLabel,
+        href: `/${username}/${id}`,
+      };
+      slots.push(ready);
+      return slots;
+    }, []);
+  const hasError = states.some((state) => state.error != null);
+  const isLoading = states.some((state) => state.dataStatus === "loading");
+  const hasRenderableContent = orderedSlots.length > 0;
 
-  if (categoriesToShow.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-        <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-4">
-          <svg viewBox="0 0 24 24" fill="none" className="w-7 h-7 text-white/30" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-          </svg>
-        </div>
-        <p className="text-white/40 font-medium">No recommendations visible</p>
-        <p className="text-white/25 text-sm mt-1">The user hasn't enabled any recommendation categories or created any lists yet.</p>
-      </div>
-    );
-  }
+  const retryFailed = async () => {
+    if (retryLock.current) return;
+    const retrySnapshot = states
+      .filter((state) => state.error != null)
+      .map((state) => state.retry);
+    if (!retrySnapshot.length) return;
+    retryLock.current = true;
+    setIsRetrying(true);
+    try {
+      await Promise.allSettled(retrySnapshot.map((retry) => retry()));
+    } finally {
+      retryLock.current = false;
+      setIsRetrying(false);
+    }
+  };
+
+  const retryButton = (
+    <button
+      type="button"
+      onClick={retryFailed}
+      disabled={isRetrying}
+      className="profile-presentation-focus mt-3 min-h-12 rounded-lg border border-[var(--accent-color)] px-4 font-poppins text-sm font-semibold text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {isRetrying
+        ? t("publicProfile.recommendations.retrying", "Retrying…")
+        : t("publicProfile.recommendations.retry", "Try again")}
+    </button>
+  );
 
   return (
-    <div className="pt-2 pb-12 flex flex-col gap-6">
-      {categoriesToShow.map(cat => (
-        <CategorySection
-          key={cat.key}
-          cat={cat}
-          lists={categoriesWithLists[cat.key]}
-          username={username}
+    <section
+      role="region"
+      aria-label={t("publicProfile.recommendations.regionLabel", "Recommendations")}
+      aria-busy={isLoading}
+      className="space-y-4 pb-12 pt-2 text-[var(--text-primary)]"
+    >
+      {hasError && hasRenderableContent && (
+        <aside
+          role="status"
+          className="rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] p-4"
+        >
+          <p className="font-poppins text-sm font-semibold text-[var(--text-primary)]">
+            {t(
+              "publicProfile.recommendations.partialError",
+              "Some categories are unavailable",
+            )}
+          </p>
+          {retryButton}
+        </aside>
+      )}
+
+      {hasRenderableContent && (
+        <ProfileRecommendationsLayouts
+          layout={normalizedPresentation.layout}
+          slots={orderedSlots}
         />
-      ))}
-    </div>
+      )}
+
+      {!isLoading && !hasRenderableContent && hasError && (
+        <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] p-6 text-center">
+          <h2 className="font-poppins text-lg font-black text-[var(--text-primary)]">
+            {t(
+              "publicProfile.recommendations.loadError",
+              "Couldn’t load recommendations",
+            )}
+          </h2>
+          <p className="mt-2 font-poppins text-sm text-[var(--text-secondary)]">
+            {t(
+              "publicProfile.recommendations.loadErrorHelp",
+              "Try again to load the unavailable categories.",
+            )}
+          </p>
+          {retryButton}
+        </div>
+      )}
+
+      {!isLoading && !hasRenderableContent && !hasError && (
+        <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] p-6 text-center">
+          <h2 className="font-poppins text-lg font-black text-[var(--text-primary)]">
+            {t(
+              "publicProfile.recommendations.empty",
+              "No public recommendations yet",
+            )}
+          </h2>
+          <p className="mt-2 font-poppins text-sm text-[var(--text-secondary)]">
+            {t(
+              "publicProfile.recommendations.emptyHelp",
+              "Check back later for new recommendations.",
+            )}
+          </p>
+        </div>
+      )}
+    </section>
   );
 };
 

@@ -40,7 +40,8 @@ import { APP_LISTS_BY_ACCOUNT } from "../features/AppsAndTools/api/query";
 import { PRODUCT_LISTS_BY_ACCOUNT } from "../features/Products/api/query";
 import { PERSON_LISTS_BY_ACCOUNT } from "../features/People/api/query";
 import { useTunesDashboard } from "../hooks/useTunesDashboard";
-import { GET_PUBLIC_PAGE_ANALYTICS } from "../features/Analytics/api/queries";
+import type { PublicPageAnalyticsData } from "../features/Analytics/api/queries";
+import { readExplorersAnalyticsEvents } from "../services/explorersAnalyticsClient";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { X, Loader2 } from "lucide-react";
@@ -150,6 +151,7 @@ HomeSkeleton.displayName = "HomeSkeleton";
 const Home = memo(() => {
   const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
+  const token = useAuthStore((state) => state.token);
   const { setSelectedCity } = useCityStore();
   const { setSetupStatus } = useSetupStore();
   const location = useLocation();
@@ -165,6 +167,7 @@ const Home = memo(() => {
   const [showGuidesShareModal, setShowGuidesShareModal] = useState<boolean>(false);
   const [showGuideShareModals, setShowGuideShareModals] = useState<{ [key: string]: boolean }>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [analyticsData, setAnalyticsData] = useState<PublicPageAnalyticsData[]>([]);
   const [activeTab, setActiveTab] = useState<
     "places" | "movies" | "books" | "games" | "music" | "guides" | "apps" | "products" | "people"
   >("places");
@@ -350,12 +353,34 @@ const Home = memo(() => {
     skip: !accountDocumentId || !user?.username,
   });
 
-  // Fetch analytics data for dynamic view count
-  const { data: analyticsData } = useQuery(GET_PUBLIC_PAGE_ANALYTICS, {
-    errorPolicy: "all",
-    fetchPolicy: "cache-and-network",
-    skip: !user?.documentId || !accountDocumentId,
-  });
+  // Read the signed-in account's all-time view count through the authenticated
+  // backend boundary. Never download another account's analytics to the browser.
+  useEffect(() => {
+    let active = true;
+    if (!accountDocumentId || !token) {
+      setAnalyticsData([]);
+      return () => {
+        active = false;
+      };
+    }
+
+    void readExplorersAnalyticsEvents({
+      accountId: accountDocumentId,
+      from: new Date(0).toISOString(),
+      to: new Date().toISOString(),
+      token,
+    })
+      .then((records) => {
+        if (active) setAnalyticsData(records as PublicPageAnalyticsData[]);
+      })
+      .catch(() => {
+        if (active) setAnalyticsData([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [accountDocumentId, token]);
 
   // Refetch guides when navigating back from guide creation/editing (matching Recommendations pattern)
   useEffect(() => {
@@ -492,18 +517,15 @@ const Home = memo(() => {
   }, [listNames, movieLists, bookLists, gameLists, allGuides, appLists, productLists, personLists]);
 
   const totalViewsCount = useMemo(() => {
-    if (!analyticsData?.publicPageAnalytics || !accountDocumentId) return "0";
-    const accountData = analyticsData.publicPageAnalytics.filter(
-      (item: any) => item.Account_Id === accountDocumentId
-    );
-    const allEvents: any[] = accountData.flatMap((item: any) => item.Stats || []);
+    if (!analyticsData.length) return "0";
+    const allEvents = analyticsData.flatMap((item) => item.Stats || []);
     const totalViews = allEvents.filter(event => event.type === 'view').length;
 
     if (totalViews >= 1000) {
       return (totalViews / 1000).toFixed(1) + "k";
     }
     return totalViews.toString();
-  }, [analyticsData, accountDocumentId]);
+  }, [analyticsData]);
 
   // Update setup store when status changes
   useEffect(() => {

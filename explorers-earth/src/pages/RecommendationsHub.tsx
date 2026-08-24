@@ -145,13 +145,9 @@ const Bird = ({ delay }: { delay: number }) => (
       stroke="currentColor" 
       strokeWidth="1.5" 
       strokeLinecap="round" 
-      animate={{ 
-        d: [
-          "M2 10 C 6 6, 10 6, 12 8 C 14 6, 18 6, 22 10", 
-          "M4 6 C 8 8, 10 8, 12 8 C 14 8, 16 8, 20 6"
-        ] 
-      }} 
+      animate={{ scaleY: [1, 0.55, 1], y: [0, -1, 0] }}
       transition={{ duration: 1.5, repeat: Infinity, repeatType: "reverse", delay: delay, ease: "easeInOut" }} 
+      style={{ transformOrigin: "12px 8px" }}
     />
   </motion.svg>
 );
@@ -170,14 +166,9 @@ const AmbientMotion = ({ category }: { category: CategoryKey }) => {
           <motion.path
             d="M0 50 Q 25 30, 50 50 T 100 50 V100 H0 Z"
             fill="white"
-            animate={{ 
-              d: [
-                "M0 50 Q 25 30, 50 50 T 100 50 V100 H0 Z", 
-                "M0 50 Q 25 70, 50 50 T 100 50 V100 H0 Z", 
-                "M0 50 Q 25 30, 50 50 T 100 50 V100 H0 Z"
-              ] 
-            }}
+            animate={{ opacity: [0.7, 1, 0.7], scaleY: [1, 0.82, 1] }}
             transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+            style={{ transformOrigin: "50px 100px" }}
           />
         </svg>
       </div>
@@ -255,7 +246,14 @@ const MusicAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
       <motion.div className="absolute bottom-[-10%] left-[-5%] w-48 h-48 border border-purple-500/10 rounded-full" animate={{ scale: [1, 1.3, 1], opacity: [0.1, 0.3, 0.1] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} />
       <motion.div style={{ y: yMoon }} className="absolute top-[-10px] left-[15%] w-32 h-32 bg-purple-500/10 rounded-full blur-[50px]" />
       <motion.svg style={{ y: y1 }} className="absolute bottom-0 w-full h-[50%] opacity-20" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <motion.path d="M0 50 Q 25 40, 50 50 T 100 50 V 100 H 0 Z" fill="currentColor" className="text-purple-300" animate={{ d: ["M0 50 Q 25 40, 50 50 T 100 50 V 100 H 0 Z", "M0 50 Q 25 60, 50 50 T 100 50 V 100 H 0 Z", "M0 50 Q 25 40, 50 50 T 100 50 V 100 H 0 Z"] }} transition={{ duration: 6, repeat: Infinity }} />
+        <motion.path
+          d="M0 50 Q 25 40, 50 50 T 100 50 V 100 H 0 Z"
+          fill="currentColor"
+          className="text-purple-300"
+          animate={{ opacity: [0.75, 1, 0.75], scaleY: [1, 0.86, 1] }}
+          transition={{ duration: 6, repeat: Infinity }}
+          style={{ transformOrigin: "50px 100px" }}
+        />
       </motion.svg>
       <FloatingItem x={30} delay={0} duration={20}><Music size={14}/></FloatingItem>
       <FloatingItem x={70} delay={5} duration={25}><Music size={18}/></FloatingItem>

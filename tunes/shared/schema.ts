@@ -136,6 +136,19 @@ export const analyticsSnapshots = pgTable("analytics_snapshots", {
   additionalMetrics: jsonb("additional_metrics"),
 });
 
+// Idempotency receipts for explorers.earth analytics ingestion. The event
+// payload remains in Strapi; this table stores only delivery state and hashes,
+// never visitor IP addresses or analytics metadata.
+export const explorersAnalyticsReceipts = pgTable("explorers_analytics_receipts", {
+  eventId: text("event_id").primaryKey(),
+  payloadHash: text("payload_hash").notNull(),
+  status: text("status").notNull().default("pending"),
+  strapiDocumentId: text("strapi_document_id"),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Add user_activity table
 export const userActivity = pgTable("user_activity", {
   id: serial("id").primaryKey(),

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { Song, PlaylistResponse } from "../../types/music";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -98,7 +98,6 @@ export default function PublicMusic() {
   const queryClient = useQueryClient();
   const { updateTheme } = useTheme();
   const [themeUpdated, setThemeUpdated] = useState(false);
-  const [guestUrl, setGuestUrl] = useState<string | null>(null);
   const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const [accordionsOpen, setAccordionsOpen] = useState({
     queue: true,
@@ -120,35 +119,50 @@ export default function PublicMusic() {
 
 
   // First, fetch account data to get Local Tunes link
-  const { data: accountData, loading: accountLoading } = useApolloQuery(getPublicAccountBasicQuery, {
+  const {
+    data: accountData,
+    loading: accountLoading,
+    error: accountError,
+  } = useApolloQuery(getPublicAccountBasicQuery, {
     variables: {
       filters: {
         username: { eq: username }
       }
     },
     skip: !username,
-    onCompleted: (data) => {
-      console.log('Account data received:', data);
-      const localTunesPublicLink = data?.accounts?.[0]?.localtunes_public;
-
-      if (localTunesPublicLink) {
-        console.log('LocalTunes public link:', localTunesPublicLink);
-        const extractedGuestUrl = extractGuestUrlFromLocalTunesLink(localTunesPublicLink);
-        console.log('Extracted guestUrl:', extractedGuestUrl);
-        if (extractedGuestUrl) {
-          setGuestUrl(extractedGuestUrl);
-        } else {
-          toast("Invalid Local Tunes playlist link for this user", { variant: "destructive" });
-        }
-      } else {
-        toast("No Local Tunes playlist found for this user", { variant: "destructive" });
-      }
-    },
-    onError: (error) => {
-      console.error("Error fetching account data:", error);
-      toast("Error loading user data", { variant: "destructive" });
-    }
   });
+  const localTunesPublicLink = accountData?.accounts?.[0]?.localtunes_public;
+  const guestUrl = useMemo(
+    () =>
+      typeof localTunesPublicLink === "string"
+        ? extractGuestUrlFromLocalTunesLink(localTunesPublicLink)
+        : null,
+    [localTunesPublicLink],
+  );
+  const accountNoticeRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (accountLoading) return;
+    const notice = accountError
+      ? "account-error"
+      : localTunesPublicLink && !guestUrl
+        ? "invalid-playlist"
+        : !localTunesPublicLink
+          ? "missing-playlist"
+          : null;
+    if (!notice || accountNoticeRef.current === notice) return;
+    accountNoticeRef.current = notice;
+    if (notice === "account-error") {
+      toast("Error loading user data", { variant: "destructive" });
+    } else if (notice === "invalid-playlist") {
+      toast("Invalid Local Tunes playlist link for this user", {
+        variant: "destructive",
+      });
+    } else {
+      toast("No Local Tunes playlist found for this user", {
+        variant: "destructive",
+      });
+    }
+  }, [accountError, accountLoading, guestUrl, localTunesPublicLink, toast]);
 
   // Fetch user by username to get user documentId
   const { data: userData } = useApolloQuery(GET_USER_BY_USERNAME_QUERY, {
@@ -486,9 +500,9 @@ export default function PublicMusic() {
 
   // Show loader during the full chain:
   // 1. Account data is still fetching
-  // 2. Account loaded but onCompleted hasn't set guestUrl yet (brief async gap)
-  // 3. guestUrl is set and playlist is being fetched
-  const isPageLoading = accountLoading || (!accountLoading && !guestUrl && !error) || isLoading;
+  // A missing or invalid Local Tunes link is a resolved empty/error state, not
+  // an indefinite loader. Only wait for a playlist request when a URL exists.
+  const isPageLoading = accountLoading || (Boolean(guestUrl) && isLoading);
 
   useEffect(() => {
     if (!isPageLoading) {
@@ -1023,7 +1037,7 @@ export default function PublicMusic() {
                     Queue
                     <span className="acc-count">{(playlist?.songs || []).length} songs</span>
                   </div>
-                  <svg className={`acc-chevron ${accordionsOpen.queue ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg className={`acc-chevron ${accordionsOpen.queue ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="6 9 12 15 18 9"/>
                   </svg>
                 </button>
@@ -1053,7 +1067,7 @@ export default function PublicMusic() {
                       Recently Played
                       <span className="acc-count">{(playlist?.playedSongs || []).length} songs</span>
                     </div>
-                    <svg className={`acc-chevron ${accordionsOpen.history ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg className={`acc-chevron ${accordionsOpen.history ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="6 9 12 15 18 9"/>
                     </svg>
                   </button>
@@ -1091,7 +1105,7 @@ export default function PublicMusic() {
                       Playlists
                       <span className="acc-count">{playlist.playlists.filter(p => p.isVisibleToGuests).length} playlists</span>
                     </div>
-                    <svg className={`acc-chevron ${accordionsOpen.playlists ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg className={`acc-chevron ${accordionsOpen.playlists ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="6 9 12 15 18 9"/>
                     </svg>
                   </button>
@@ -1165,7 +1179,7 @@ export default function PublicMusic() {
                       </div>
                       Play on Your Device
                     </div>
-                    <svg className={`acc-chevron ${accordionsOpen.device ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg className={`acc-chevron ${accordionsOpen.device ? 'open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="6 9 12 15 18 9"/>
                     </svg>
                   </button>

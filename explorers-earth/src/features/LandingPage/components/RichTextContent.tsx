@@ -1,5 +1,5 @@
 import React from 'react';
-import 'react-quill-new/dist/quill.snow.css';
+import 'quill/dist/quill.snow.css';
 
 interface RichTextContentProps {
   content: any[];

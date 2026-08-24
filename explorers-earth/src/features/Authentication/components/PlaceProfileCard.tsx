@@ -1,5 +1,6 @@
 import React from "react";
 import Button from "../../../components/ui/Button";
+import { normalizePublicWebHref } from "../../PublicHome/utils/publicProfileContent";
 
 interface ClaimablePlaceProfile {
   documentId: string;
@@ -38,6 +39,8 @@ const PlaceProfileCard: React.FC<PlaceProfileCardProps> = ({
   onBack,
   showVerifyButton = false,
 }) => {
+  const websiteHref = normalizePublicWebHref(profile.Website);
+
   const getPlaceTypes = () => {
     if (!profile.Meta_Data?.types) return "Place";
     return profile.Meta_Data.types
@@ -103,14 +106,20 @@ const PlaceProfileCard: React.FC<PlaceProfileCardProps> = ({
               <h4 className="text-xs sm:text-sm font-medium text-dashboard-light mb-1">
                 Website
               </h4>
-              <a
-                href={profile.Website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-dashboard-accent hover:text-dashboard-accent underline text-xs sm:text-sm break-all"
-              >
-                {profile.Website}
-              </a>
+              {websiteHref ? (
+                <a
+                  href={websiteHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-dashboard-accent hover:text-dashboard-accent underline text-xs sm:text-sm break-all"
+                >
+                  {profile.Website}
+                </a>
+              ) : (
+                <p className="text-dashboard text-xs sm:text-sm break-all">
+                  {profile.Website}
+                </p>
+              )}
             </div>
           )}
         </div>

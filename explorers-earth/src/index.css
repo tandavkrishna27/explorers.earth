@@ -2728,3 +2728,681 @@ html:not(.dashboard-theme-dark) .dashboard-header {
 .dashboard-theme [class*="bg-black"] p.bg-gray-200.text-black {
   color: #000000 !important;
 }
+
+/* Public recommendation presentation restores a visible focus indicator
+   within the legacy global focus reset above. */
+.profile-presentation-focus:focus-visible {
+  outline: 3px solid var(--text-primary) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 1px var(--bg-page) !important;
+}
+
+/* Profile editor: flat icon rail, stable workspace rhythm, and a scoped
+   replacement for the legacy global focus reset. */
+.profile-editor {
+  max-width: 100%;
+  overflow-x: clip;
+  scroll-padding-top: calc(8.5rem + env(safe-area-inset-top));
+  scroll-padding-bottom: calc(7rem + env(safe-area-inset-bottom));
+}
+
+.profile-editor-save-dock {
+  bottom: calc(5rem + env(safe-area-inset-bottom));
+}
+
+.profile-editor-tab-rail {
+  position: sticky;
+  z-index: 90;
+  width: 100%;
+  padding-block: 0.5rem;
+  background: var(--dash-bg);
+  transition: top var(--dash-transition);
+}
+
+.profile-editor-tab-rail::after {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: min(48rem, 100%);
+  border-bottom: 1px solid var(--dash-border);
+  content: "";
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.profile-editor-tab-rail.sticky-top-offset {
+  top: calc(4rem + env(safe-area-inset-top));
+}
+
+.profile-editor-tablist {
+  display: flex;
+  width: fit-content;
+  max-width: calc(100% - 2rem);
+  margin-inline: auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-family: 'Poppins', sans-serif;
+}
+
+.profile-editor-tab {
+  position: relative;
+  display: inline-flex;
+  width: 3rem;
+  height: 3rem;
+  min-width: 3rem;
+  min-height: 3rem;
+  flex: 0 0 3rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--dash-radius-md);
+  background: transparent;
+  color: var(--dash-icon-secondary);
+  transition: color var(--dash-transition), background-color var(--dash-transition);
+}
+
+.profile-editor-tab:hover {
+  background: var(--dash-muted);
+  color: var(--dash-text);
+}
+
+.profile-editor-tab[aria-selected="true"] {
+  color: var(--dash-icon-accent);
+}
+
+.profile-editor-tab[aria-selected="true"]::before {
+  position: absolute;
+  inset-inline: 0.75rem;
+  bottom: 0.25rem;
+  height: 0.125rem;
+  border-radius: var(--dash-radius-sm);
+  background: var(--dash-accent);
+  content: "";
+}
+
+.profile-editor-tab-tooltip {
+  z-index: 100;
+  max-width: calc(100vw - 2rem) !important;
+  padding: 0.25rem 0.5rem !important;
+  border: 1px solid var(--dash-border);
+  border-radius: var(--dash-radius-sm);
+  background: var(--dash-sidebar-bg) !important;
+  color: var(--dash-text) !important;
+  font-family: 'Poppins', sans-serif;
+  font-size: var(--dash-subtext-size);
+  font-weight: var(--dash-label-weight);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  transition: opacity var(--dash-transition) !important;
+}
+
+.profile-editor-workspace-shell {
+  container-name: profile-editor;
+  container-type: inline-size;
+  max-width: 100%;
+  scroll-margin-top: calc(8.5rem + env(safe-area-inset-top));
+}
+
+.profile-fields-container {
+  container-name: profile-fields;
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.profile-fields-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 1.25rem;
+}
+
+.profile-fields-grid > * {
+  min-width: 0;
+}
+
+@container profile-fields (min-width: 640px) {
+  .profile-fields-container .profile-fields-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-fields-container .profile-fields-cell-full {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Appearance workspace: four flat areas, container-driven choices, and a
+   category preview that becomes a second column only when its owner fits. */
+.profile-editor-workspace-shell :is(
+  .appearance-workspace,
+  .appearance-recommendations-controls,
+  .appearance-area,
+  .appearance-order-layout,
+  .appearance-order-editor,
+  .appearance-preview
+) {
+  min-width: 0;
+}
+
+.profile-editor-workspace-shell .appearance-area {
+  padding-block: 1.5rem;
+  border-top: 1px solid var(--dash-border);
+}
+
+.profile-editor-workspace-shell .appearance-workspace > .appearance-area:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.profile-editor-workspace-shell .appearance-area-heading {
+  margin-bottom: 1rem;
+}
+
+.profile-editor-workspace-shell .appearance-area-title {
+  color: var(--dash-text);
+  font-family: 'Poppins', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.profile-editor-workspace-shell .appearance-area-description {
+  margin-top: 0.25rem;
+  color: var(--dash-text-light);
+  font-size: var(--dash-subtext-size);
+  line-height: 1.5;
+}
+
+.profile-editor-workspace-shell .appearance-control-title {
+  margin-bottom: 0.5rem;
+  color: var(--dash-text);
+  font-size: var(--dash-label-size);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.profile-editor-workspace-shell .appearance-area fieldset {
+  min-inline-size: 0;
+}
+
+.profile-editor-workspace-shell .appearance-theme-presets,
+.profile-editor-workspace-shell .appearance-theme-secondary-grid,
+.profile-editor-workspace-shell .appearance-layout-options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.profile-editor-workspace-shell .appearance-horizontal-strip {
+  width: 100%;
+  min-width: 0;
+  grid-auto-columns: minmax(14.5rem, 86%);
+  grid-auto-flow: column;
+  grid-template-columns: none;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding: 0.125rem 0.125rem 0.75rem;
+  scroll-padding-inline: 0.125rem;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: thin;
+}
+
+.profile-editor-workspace-shell .appearance-horizontal-strip > * {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.profile-editor-workspace-shell .appearance-accent-strip {
+  max-width: 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding-block: 0.125rem 0.5rem;
+  scrollbar-width: thin;
+}
+
+.profile-editor-workspace-shell .appearance-accent-strip > * {
+  flex: 0 0 auto;
+}
+
+.profile-editor-workspace-shell .appearance-theme-preset {
+  display: grid;
+  min-width: 0;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--dash-border);
+  border-radius: var(--dash-radius-lg);
+  background-color: var(--dash-muted);
+  color: var(--dash-text);
+  text-align: start;
+  transition: border-color var(--dash-transition),
+    background-color var(--dash-transition),
+    box-shadow var(--dash-transition), transform var(--dash-transition);
+}
+
+.profile-editor-workspace-shell .appearance-theme-preset:hover {
+  border-color: var(--dash-accent);
+  background-color: color-mix(
+    in srgb,
+    var(--dash-accent) 6%,
+    var(--dash-muted)
+  );
+  transform: translateY(-1px);
+}
+
+.profile-editor-workspace-shell .appearance-theme-preset-selected {
+  border-color: var(--dash-accent);
+  background-color: color-mix(
+    in srgb,
+    var(--dash-accent) 10%,
+    var(--dash-muted)
+  );
+  box-shadow: 0 0 0 1px var(--dash-accent);
+}
+
+.profile-editor-workspace-shell .appearance-theme-preview {
+  display: grid;
+  min-width: 0;
+  height: 4.25rem;
+  grid-template-rows: 0.9rem minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid;
+  border-radius: var(--dash-radius-md);
+}
+
+.profile-editor-workspace-shell .appearance-theme-preview-nav {
+  display: flex;
+  align-items: center;
+  padding-inline: 0.35rem;
+}
+
+.profile-editor-workspace-shell .appearance-theme-preview-accent {
+  width: 1rem;
+  height: 0.18rem;
+  border-radius: var(--dash-radius-sm);
+}
+
+.profile-editor-workspace-shell .appearance-theme-preview-body {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 0.35rem;
+  padding: 0.4rem;
+}
+
+.profile-editor-workspace-shell .appearance-theme-preview-stack {
+  display: grid;
+  min-height: 0;
+  gap: 0.3rem;
+}
+
+.profile-editor-workspace-shell .appearance-theme-preview-card {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid;
+  border-radius: var(--dash-radius-sm);
+}
+
+.profile-editor-workspace-shell .appearance-theme-preview-card-featured {
+  border-radius: var(--dash-radius-md);
+}
+
+.profile-editor-workspace-shell .appearance-theme-preset-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.profile-editor-workspace-shell .appearance-theme-preset-name {
+  color: var(--dash-text);
+  font-size: var(--dash-label-size);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.profile-editor-workspace-shell .appearance-theme-preset-description {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--dash-text-light);
+  font-size: var(--dash-subtext-size);
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.profile-editor-workspace-shell .appearance-theme-secondary-grid {
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, 16rem), 1fr)
+  );
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.profile-editor-workspace-shell .appearance-layout-option {
+  min-width: 0;
+}
+
+.profile-editor-workspace-shell .appearance-layout-option-label {
+  margin-inline-start: 0.5rem;
+}
+
+.profile-editor-workspace-shell .appearance-order-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+}
+
+.profile-editor-workspace-shell .appearance-category-list {
+  border-top: 1px solid var(--dash-border);
+}
+
+.profile-editor-workspace-shell .appearance-category-row {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 3.75rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid var(--dash-border);
+  border-radius: var(--dash-radius-md);
+  background-color: transparent;
+  cursor: grab;
+  touch-action: pan-y;
+  transition: background-color var(--dash-transition),
+    border-color var(--dash-transition), box-shadow var(--dash-transition),
+    margin-block var(--dash-transition);
+}
+
+.profile-editor-workspace-shell .appearance-category-row:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--dash-accent) 5%,
+    transparent
+  );
+}
+
+.profile-editor-workspace-shell
+  .appearance-category-row[data-reorder-active="true"] {
+  z-index: 1;
+  border-bottom-color: var(--dash-accent);
+  background-color: var(--dash-sidebar-bg);
+  outline: 2px solid var(--dash-accent);
+  outline-offset: -2px;
+  cursor: grabbing;
+}
+
+.profile-editor-workspace-shell .appearance-drag-handle {
+  display: inline-flex;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  flex: 0 0 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background-color: transparent;
+  color: var(--dash-text-light);
+  cursor: grab;
+  touch-action: none;
+  transition: background-color var(--dash-transition),
+    color var(--dash-transition);
+}
+
+.profile-editor-workspace-shell .appearance-drag-handle:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--dash-accent) 10%,
+    transparent
+  );
+  color: var(--dash-accent);
+}
+
+.profile-editor-workspace-shell
+  .appearance-category-row[data-reorder-active="true"]
+  .appearance-drag-handle {
+  color: var(--dash-accent);
+  cursor: grabbing;
+}
+
+.profile-editor-workspace-shell .appearance-drag-handle:disabled {
+  cursor: default;
+}
+
+.profile-editor-workspace-shell .appearance-category-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.profile-editor-workspace-shell .appearance-category-label,
+.profile-editor-workspace-shell .appearance-preview-category-label {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--dash-text);
+  font-size: var(--dash-label-size);
+  font-weight: var(--dash-label-weight);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.profile-editor-workspace-shell .appearance-category-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.5rem;
+}
+
+.profile-editor-workspace-shell .appearance-category-action,
+.profile-editor-workspace-shell .appearance-preview-toggle {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  flex: 0 0 2.75rem;
+  cursor: pointer;
+}
+
+.profile-editor-workspace-shell .appearance-preview {
+  align-self: start;
+}
+
+.profile-editor-workspace-shell .appearance-preview-promotion-note {
+  margin-bottom: 0.5rem;
+  color: var(--dash-text-light);
+  font-size: var(--dash-subtext-size);
+  line-height: 1.5;
+}
+
+.profile-editor-workspace-shell .appearance-preview-caption {
+  margin-bottom: 0.75rem;
+  color: var(--dash-text-light);
+  font-size: var(--dash-subtext-size);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.profile-editor-workspace-shell .appearance-preview-summary,
+.profile-editor-workspace-shell .appearance-preview-items {
+  border-top: 1px solid var(--dash-border);
+}
+
+.profile-editor-workspace-shell .appearance-preview-summary > li,
+.profile-editor-workspace-shell .appearance-preview-category {
+  min-width: 0;
+  padding-block: 0.75rem;
+  border-bottom: 1px solid var(--dash-border);
+}
+
+.profile-editor-workspace-shell .appearance-preview-marker {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: var(--dash-subtext-size);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.profile-editor-workspace-shell .appearance-preview-toggle {
+  width: auto;
+  margin-top: 0.75rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--dash-border);
+  border-radius: var(--dash-radius-md);
+  color: var(--dash-text);
+  font-size: var(--dash-button-size);
+  font-weight: 600;
+  transition: border-color var(--dash-transition);
+}
+
+.profile-editor-workspace-shell .appearance-preview-toggle:hover {
+  border-color: var(--dash-accent);
+}
+
+.profile-editor-workspace-shell .appearance-preview-items[hidden] {
+  display: none !important;
+}
+
+.profile-editor-workspace-shell .appearance-preview-items[data-layout="grid"]:not([hidden]) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  border-top: 0;
+}
+
+.profile-editor-workspace-shell .appearance-preview-items[data-layout="grid"]
+  .appearance-preview-category {
+  padding: 0.75rem;
+  border: 1px solid var(--dash-border);
+  border-radius: var(--dash-radius-md);
+}
+
+.profile-editor-workspace-shell .appearance-preview-category-featured {
+  min-height: 5rem;
+  border-color: var(--dash-accent);
+}
+
+.profile-editor-workspace-shell .appearance-preview-desktop {
+  display: none;
+}
+
+@container profile-editor (min-width: 520px) {
+  .profile-editor-workspace-shell .appearance-horizontal-strip {
+    grid-auto-columns: auto;
+    grid-auto-flow: row;
+    overflow-x: visible;
+    padding: 0;
+    scroll-snap-type: none;
+  }
+
+  .profile-editor-workspace-shell .appearance-accent-strip {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    padding-block: 0;
+  }
+
+  .profile-editor-workspace-shell .appearance-theme-presets,
+  .profile-editor-workspace-shell .appearance-layout-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container profile-editor (min-width: 768px) {
+  .profile-editor-workspace-shell .appearance-theme-presets,
+  .profile-editor-workspace-shell .appearance-layout-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container profile-editor (min-width: 904px) {
+  .profile-editor-workspace-shell .appearance-order-layout {
+    grid-template-columns: minmax(560px, 1fr) minmax(0, 320px);
+    gap: 1.5rem;
+  }
+
+  .profile-editor-workspace-shell .appearance-preview-mobile {
+    display: none;
+  }
+
+  .profile-editor-workspace-shell .appearance-preview-desktop {
+    display: block;
+  }
+}
+
+@media (min-width: 1024px) and (min-height: 720px) {
+  @container profile-editor (min-width: 904px) {
+    .profile-editor-workspace-shell .appearance-preview {
+      position: sticky;
+      top: calc(8.5rem + env(safe-area-inset-top));
+      max-height: calc(100dvh - 8.5rem - 7rem - 3rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-color: var(--dash-border) transparent;
+    }
+  }
+}
+
+.profile-editor :is(button, a, input, select, textarea, [role="tab"], [contenteditable="true"]):focus-visible {
+  outline: 2px solid var(--dash-focus-ring) !important;
+  outline-offset: 2px !important;
+}
+
+.profile-editor button:focus-visible {
+  transform: none;
+}
+
+.profile-editor :is(button, a, input, select, textarea, [role="tab"], [contenteditable="true"]) {
+  scroll-margin-top: calc(8.5rem + env(safe-area-inset-top));
+  scroll-margin-bottom: calc(7rem + env(safe-area-inset-bottom));
+}
+
+body.hide-dashboard-header .profile-editor-tab-rail.sticky-top-offset {
+  top: env(safe-area-inset-top) !important;
+}
+
+@media (min-width: 640px) {
+  .profile-editor-tab {
+    width: 3.25rem;
+    height: 3.25rem;
+    min-width: 3.25rem;
+    min-height: 3.25rem;
+    flex-basis: 3.25rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .profile-editor-save-dock {
+    right: auto;
+    bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    left: calc(
+      var(--sidebar-width) + (100vw - var(--sidebar-width)) / 2
+    );
+    width: auto;
+    padding: 0;
+    background: transparent;
+    transform: translateX(-50%);
+  }
+
+  .profile-editor-tab-rail.sticky-top-offset {
+    top: calc(2.875rem + env(safe-area-inset-top));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-presentation-focus {
+    transition-duration: 0.01ms !important;
+  }
+
+  .profile-editor-tab,
+  .profile-editor-tab-rail,
+  .profile-editor-tab-tooltip {
+    transition-duration: 0.01ms !important;
+  }
+
+  .profile-editor-workspace-shell .appearance-category-row,
+  .profile-editor-workspace-shell .appearance-drag-handle {
+    transition-duration: 0.01ms !important;
+  }
+}

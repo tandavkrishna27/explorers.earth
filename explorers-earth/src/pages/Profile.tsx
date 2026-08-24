@@ -1,10 +1,21 @@
-import { memo, useState, useEffect, useMemo } from "react";
+import {
+  memo,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import ProfileForm from "../features/Profile/components/ProfileForm";
+import ProfileForm, {
+  type FormSection,
+} from "../features/Profile/components/ProfileForm";
 import { useQuery } from "@apollo/client";
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import { profileDataQuery } from "../features/Profile/api/query";
@@ -34,6 +45,7 @@ import TiktokIcon from "../assets/icons/TiktokIcon";
 import SnapchatIcon from "../assets/icons/SnapchatIcon";
 import LinkTo from "../assets/icons/LinkTo";
 import { Tooltip } from "react-tooltip";
+import { Images, Palette, UserRound } from "lucide-react";
 import {
   generateProfileUploadPath,
   generateRandomFileName,
@@ -46,6 +58,22 @@ import { validateUsername } from "../utils/usernameValidation";
 import useSetupStore from "../store/useSetupStore";
 import { calculateIsProfileComplete } from "../utils/setupStatusCalculations";
 import ProfileSetupAccordion from "../components/ProfileSetupAccordion";
+import {
+  createDeferredProfileSave,
+  type DeferredProfileSave,
+  type ProfileSaveResult,
+  type SaveTerminalStatus,
+} from "../features/Profile/types/profileSave";
+import {
+  getAppearanceFields,
+  getGalleryFields,
+  getProfileFields,
+} from "../features/Profile/config/profileFormSections";
+import type {
+  FeedAsyncState,
+  ProfileWorkspace,
+} from "../features/Profile/types/profileWorkspaces";
+import { normalizePublicEmailHref } from "../features/PublicHome/utils/publicProfileContent";
 
 // ✅ VISIBILITY FIX: Removed unused Account type - now using GraphQL data directly
 // type Account = { ... }
@@ -102,209 +130,47 @@ const getAccountTypeKey = (storedValue: string, t: any): string => {
   return commonTranslations[storedValue] || 'personal';
 };
 
-// Fields that affect how the user's profile appears to others
-const getPublicTabFields = (t: any) => [
-  {
-    heading: t('dashboard.profile.publicProfile.sections.profileInformation'), // Bio section
-    formFields: [
-      { name: "bio", label: t('dashboard.profile.publicProfile.fields.bio'), type: "textarea", as: "textarea" },
-      {
-        name: "accountName",
-        label: t('dashboard.profile.account.fields.accountName'),
-        type: "text",
-        isRequired: true,
-      },
-      {
-        name: "primaryAddressCombined",
-        label: t('dashboard.profile.publicProfile.fields.primaryAddress'),
-        type: "primaryAddressCombined",
-        isRequired: true,
-        hasCurrLocation: true,
-      },
-    ],
-  },
-  {
-    heading: t('dashboard.profile.publicProfile.sections.socialMedia'), // All social media links and information
-    formFields: [
-      {
-        name: "socialLinks",
-        label: t('dashboard.profile.publicProfile.fields.socialMedia'),
-        type: "custom",
-        components: [
-          {
-            icon: <InstagramIcon color="white" />,
-            label: t('dashboard.profile.publicProfile.fields.instagram'),
-            name: "instagramLink",
-            type: "text",
-          },
-          {
-            icon: <MobileIcon fill="white" />,
-            label: t('dashboard.home.mobile'),
-            name: "mobilenumberLink",
-            type: "text",
-          },
-          {
-            icon: <WhatsappIcon fill="white" />,
-            label: t('dashboard.profile.publicProfile.fields.whatsapp'),
-            name: "whatsappLink",
-            type: "text",
-          },
-          {
-            icon: <YoutubeIcon color="white" />,
-            label: t('dashboard.profile.publicProfile.fields.youtube'),
-            name: "youtubeLink",
-            type: "text",
-          },
-          {
-            icon: <TwitterIcon color="white" />,
-            label: t('dashboard.profile.publicProfile.fields.x'),
-            name: "XLink",
-            type: "text",
-          },
-          {
-            icon: <Spotify color="white" />,
-            label: t('dashboard.profile.publicProfile.fields.spotify'),
-            name: "spotifyLink",
-            type: "text",
-          },
-          {
-            icon: <LinkIcon color="white" />,
-            label: t('dashboard.profile.publicProfile.fields.website'),
-            name: "websiteLink",
-            type: "text",
-          },
-          {
-            icon: <FacebookIcon color="white" />,
-            label: t('dashboard.profile.publicProfile.fields.facebook'),
-            name: "facebookLink",
-            type: "text",
-          },
-          {
-            icon: <YoutubeMusic color="white" />,
-            label: t('dashboard.profile.publicProfile.fields.youtubeMusic'),
-            name: "youtubeMusicLink",
-            type: "text",
-          },
-          {
-            icon: <Gmail color="white" />,
-            label: t('dashboard.profile.publicProfile.fields.gmail'),
-            name: "gmailLink",
-            type: "text",
-          },
-          {
-            icon: <LinkedinIcon color="white" />,
-            label: t('dashboard.profile.publicProfile.fields.linkedin'),
-            name: "linkedinLink",
-            type: "text",
-          },
-          {
-            icon: <AppleMusic color="white" />,
-            label: t('dashboard.profile.publicProfile.fields.appleMusic'),
-            name: "appleMusicLink",
-            type: "text",
-          },
-          {
-            icon: <TiktokIcon color="white" />,
-            label: t('dashboard.profile.publicProfile.fields.tiktok'),
-            name: "tiktokLink",
-            type: "text",
-          },
-          {
-            icon: <SnapchatIcon color="white" />,
-            label: t('dashboard.profile.publicProfile.fields.snapchat'),
-            name: "snapchatLink",
-            type: "text",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    heading: t('dashboard.profile.publicProfile.sections.howToReachUs'), // Business location information for public profile
-    description: t('dashboard.profile.publicProfile.sections.howToReachUsDescription'),
-    formFields: [
-      {
-        name: "businessLocation",
-        label: t('dashboard.profile.publicProfile.fields.businessLocation'),
-        type: "businessLocation",
-        isRequired: false,
-      },
-    ],
-  },
-  {
-    heading: t('dashboard.profile.publicProfile.sections.feed'), // New feed section for media
-    formFields: [
-      {
-        name: "feed",
-        label: t('dashboard.profile.publicProfile.fields.feed'),
-        type: "feed",
-        isRequired: false,
-      },
-    ],
-  },
-];
-
-// Tab 2: ACCOUNT TAB - Contains private account information and settings
-// Fields that affect account functionality and address information
-const getAccountTabFields = (t: any) => [
-  {
-    heading: t('dashboard.profile.account.sections.account'), // Private account credentials and identification
-    formFields: [
-      { name: "username", label: t('dashboard.profile.account.fields.username'), type: "text", isRequired: true },
-      {
-        name: "accountType",
-        label: t('dashboard.profile.publicProfile.fields.accountType'),
-        type: "radio",
-        isRequired: true,
-        options: [
-          "personal",
-          "creator",
-          "business"
-        ],
-        optionLabels: [
-          t('dashboard.profile.publicProfile.accountTypes.personal'),
-          t('dashboard.profile.publicProfile.accountTypes.creator'),
-          t('dashboard.profile.publicProfile.accountTypes.business')
-        ]
-      },
-    ],
-  },
-  {
-    heading: t('dashboard.profile.account.sections.billingAddress'), // Detailed address components for account records
-    formFields: [
-      { name: "address", label: t('dashboard.profile.account.fields.address'), type: "text" },
-      { name: "streetName", label: t('dashboard.profile.account.fields.streetName'), type: "text" },
-      { name: "state", label: t('dashboard.profile.account.fields.state'), type: "text" },
-      { name: "city", label: t('dashboard.profile.account.fields.city'), type: "text" },
-      { name: "country", label: t('dashboard.profile.account.fields.country'), type: "text" },
-      { name: "postalCode", label: t('dashboard.profile.account.fields.postalCode'), type: "text" },
-    ],
-  },
-];
-
 const ProfileSkeleton = memo(() => {
   return (
-    <div className="bg-dashboard-bg md:px-6 md:py-2 md:pt-0 pb-24 md:pb-6 min-h-screen">
-      <div className="pb-4 w-full flex flex-col gap-0 pt-0">
-        {/* Cinematic Header Cover Shimmer */}
-        <div className="relative max-w-3xl mx-auto w-full mt-4 h-[200px] overflow-hidden rounded-xl bg-white/5 border border-white/5 shadow-xl skeleton-card">
+    <div
+      aria-hidden="true"
+      className="profile-editor min-h-screen bg-dashboard-bg pb-24 md:px-6 md:pb-6"
+    >
+      <div className="flex w-full flex-col pb-4">
+        <div className="relative mx-auto mt-4 h-[200px] w-full max-w-3xl overflow-hidden rounded-lg bg-dashboard-muted">
           <div className="absolute inset-0 skeleton-shimmer" />
           <div className="absolute bottom-4 left-6 flex items-center gap-4">
-            {/* Avatar skeleton */}
-            <div className="w-16 h-16 rounded-full bg-white/10 skeleton-shimmer border-2 border-white/5" />
+            <div className="h-16 w-16 rounded-full bg-dashboard-sidebar skeleton-shimmer" />
             <div className="space-y-1.5">
-              <div className="h-5 w-32 bg-white/10 rounded skeleton-shimmer" />
-              <div className="h-3 w-20 bg-white/5 rounded skeleton-shimmer" />
+              <div className="h-5 w-32 rounded bg-dashboard-sidebar skeleton-shimmer" />
+              <div className="h-3 w-20 rounded bg-dashboard-sidebar skeleton-shimmer" />
             </div>
           </div>
         </div>
 
-        {/* Form Fields Accordion Shimmers */}
-        <div className="max-w-3xl mx-auto w-full mt-6 space-y-4">
+        <div className="profile-editor-tab-rail sticky-top-offset">
+          <div className="profile-editor-tablist" role="presentation">
+            {[1, 2, 3].map((tab) => (
+              <span
+                className="profile-editor-tab skeleton-shimmer"
+                key={tab}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="profile-editor-workspace-shell mx-auto w-full max-w-3xl px-4 pt-6">
+          <div className="mb-4 h-6 w-40 rounded bg-dashboard-muted skeleton-shimmer" />
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-dashboard-sidebar border border-dashboard-border/30 rounded-xl p-4 space-y-3 h-14 flex items-center justify-between skeleton-card">
-              <div className="h-4 w-1/3 bg-white/10 rounded skeleton-shimmer" />
-              <div className="h-4 w-4 bg-white/5 rounded-full skeleton-shimmer" />
+            <div
+              className="flex min-h-[60px] items-center justify-between border-b border-dashboard py-3"
+              key={i}
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-5 w-5 rounded bg-dashboard-muted skeleton-shimmer" />
+                <div className="h-4 w-36 rounded bg-dashboard-muted skeleton-shimmer" />
+              </div>
+              <div className="h-4 w-4 rounded bg-dashboard-muted skeleton-shimmer" />
             </div>
           ))}
         </div>
@@ -314,8 +180,60 @@ const ProfileSkeleton = memo(() => {
 });
 ProfileSkeleton.displayName = "ProfileSkeleton";
 
+const PROFILE_TABS = [
+  {
+    key: "profile",
+    icon: UserRound,
+    labelKey: "dashboard.profile.editor.tabs.profile",
+    labelFallback: "Profile",
+    headingKey: "dashboard.profile.editor.headings.profile",
+    headingFallback: "Profile details",
+  },
+  {
+    key: "gallery",
+    icon: Images,
+    labelKey: "dashboard.profile.editor.tabs.gallery",
+    labelFallback: "Gallery",
+    headingKey: "dashboard.profile.editor.headings.gallery",
+    headingFallback: "Gallery",
+  },
+  {
+    key: "appearance",
+    icon: Palette,
+    labelKey: "dashboard.profile.editor.tabs.appearance",
+    labelFallback: "Appearance",
+    headingKey: "dashboard.profile.editor.headings.appearance",
+    headingFallback: "Appearance",
+  },
+] as const;
+
+type ProfileTabKey = (typeof PROFILE_TABS)[number]["key"];
+
+const getEditorCopy = (
+  t: TFunction,
+  key: string,
+  fallback: string,
+  language?: string,
+  hasTranslationResources = false,
+) => {
+  const translated = t(key, { defaultValue: fallback });
+  if ((!language || language === "en") && !hasTranslationResources) {
+    return fallback;
+  }
+  return translated === key ? fallback : translated;
+};
+
+interface ProfileAccountSession {
+  accountScope: string;
+  generation: number;
+}
+
+interface ProfileSaveOperation extends ProfileAccountSession {
+  operationId: number;
+}
+
 const Profile = memo(() => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [showPreview, setShowPreview] = useState<boolean>(false);
   // local state for account details
   // ✅ VISIBILITY FIX: Remove redundant account state - use GraphQL data directly
@@ -403,6 +321,20 @@ const Profile = memo(() => {
 
   // ✅ VISIBILITY FIX: Get account data from GraphQL response, not separate axios call
   const account = data?.usersPermissionsUser?.accounts?.[0];
+  const emailSocial =
+    account?.social_media?.email ?? account?.social_media?.gmail;
+  const emailHref = normalizePublicEmailHref(emailSocial?.link);
+  const resolvedAccountScope = account?.documentId
+    ? String(account.documentId)
+    : null;
+  const activeAccountScopeRef = useRef<string | null>(resolvedAccountScope);
+  const accountSessionGenerationRef = useRef(0);
+  const saveOperationSequenceRef = useRef(0);
+  const submittingSaveOperationRef = useRef<ProfileSaveOperation | null>(null);
+  // Cache the last concrete account scope so a transient query refresh does not
+  // remount the editor or clear pending work for the same account.
+  const stableAccountScope =
+    resolvedAccountScope ?? activeAccountScopeRef.current;
 
   // Prepare profile data for walkthrough — memoized to prevent new object on every render
   const profileData = useMemo(() => ({
@@ -512,20 +444,105 @@ const Profile = memo(() => {
   // This modal prevents accidental username changes by showing warnings about link/QR code impacts
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [pendingFormValues, setPendingFormValues] = useState<any>(null);
+  const pendingUsernameSaveRef = useRef<{
+    values: any;
+    deferred: DeferredProfileSave;
+    operation: ProfileSaveOperation;
+  } | null>(null);
 
   // Unsaved changes modal state
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [hasUnsavedFeedChanges, setHasUnsavedFeedChanges] = useState(false);
+  const [pendingFeedOperations, setPendingFeedOperations] = useState(
+    () => new Map<string, FeedAsyncState["operation"]>(),
+  );
+  const hasPendingFeedOperations = pendingFeedOperations.size > 0;
   const [pendingTabChange, setPendingTabChange] = useState<string | null>(null);
   const [resetDirtyStateFn, setResetDirtyStateFn] = useState<(() => void) | null>(null);
-  const [currentActiveTab, setCurrentActiveTab] = useState<string>("publicProfile");
+  const registeredSubmitRef = useRef<
+    (() => Promise<SaveTerminalStatus>) | null
+  >(null);
+  const registeredSubmitScopeRef = useRef<string | null>(null);
+  const [currentActiveTab, setCurrentActiveTab] =
+    useState<ProfileTabKey>("profile");
+
+  const captureCurrentAccountSession = useCallback(
+    (): ProfileAccountSession | null => {
+      if (
+        !stableAccountScope ||
+        activeAccountScopeRef.current !== stableAccountScope
+      ) {
+        return null;
+      }
+      return {
+        accountScope: stableAccountScope,
+        generation: accountSessionGenerationRef.current,
+      };
+    },
+    [stableAccountScope],
+  );
+
+  const beginProfileSaveOperation = useCallback(() => {
+    const session = captureCurrentAccountSession();
+    if (!session) return null;
+    saveOperationSequenceRef.current += 1;
+    return {
+      ...session,
+      operationId: saveOperationSequenceRef.current,
+    };
+  }, [captureCurrentAccountSession]);
+
+  const isAccountSessionActive = useCallback(
+    (session: ProfileAccountSession | null) =>
+      Boolean(
+        session &&
+          activeAccountScopeRef.current === session.accountScope &&
+          accountSessionGenerationRef.current === session.generation,
+      ),
+    [],
+  );
+
+  const ownsSubmittingState = useCallback(
+    (operation: ProfileSaveOperation) =>
+      isAccountSessionActive(operation) &&
+      submittingSaveOperationRef.current === operation,
+    [isAccountSessionActive],
+  );
+
+  const isLatestSaveForActiveSession = useCallback(
+    (operation: ProfileSaveOperation) =>
+      isAccountSessionActive(operation) &&
+      saveOperationSequenceRef.current === operation.operationId,
+    [isAccountSessionActive],
+  );
+
+  const handleRegisterProfileSubmit = useCallback(
+    (submit: (() => Promise<SaveTerminalStatus>) | null) => {
+      if (submit) {
+        registeredSubmitRef.current = submit;
+        registeredSubmitScopeRef.current = stableAccountScope;
+        return;
+      }
+
+      // An old keyed form can clean up after the new account has registered.
+      // Only clear the registration that belongs to this callback's scope.
+      if (registeredSubmitScopeRef.current === stableAccountScope) {
+        registeredSubmitRef.current = null;
+        registeredSubmitScopeRef.current = null;
+      }
+    },
+    [stableAccountScope],
+  );
 
   /**
    * Helper function to process business location images and submit form
    * This handles both user uploaded files and combines them with Google images
    */
-  const processBusinessImagesAndSubmit = async (values: any) => {
+  const processBusinessImagesAndSubmit = async (
+    values: any,
+    operation: ProfileSaveOperation,
+  ) => {
     // Construct Public_Profile_Address from individual business fields
     const businessData = {
       title: values.title || values.businessTitle || "",
@@ -556,138 +573,163 @@ const Profile = memo(() => {
     delete values.feedImportedMedia;
 
     // Submit the updated form values (includes Public_Profile_Address + Feed_Data)
-    await originalHandleSubmit(values);
+    const response = await originalHandleSubmit(values);
 
-    // After successful submission, reset feed changes tracking
-    setHasUnsavedFeedChanges(false);
+    // The request is allowed to settle for its initiating account, but an old
+    // continuation must not mutate a newer account session.
+    if (ownsSubmittingState(operation)) {
+      setHasUnsavedFeedChanges(false);
+    }
+    return response;
   };
 
-  /**
-   * Enhanced form submission handler with username change confirmation
-   *
-   * Flow:
-   * 1. Check if username has changed from current value
-   * 2. If username changed and cooldown allows it:
-   *    - Validate username format using existing validation rules
-   *    - Show confirmation modal warning about link impacts
-   * 3. If username unchanged or cooldown prevents change:
-   *    - Proceed with normal form submission
-   *
-   * Cooldown enforcement: Modal only shows if usernameDisabled is false
-   * Validation: Uses same username validation as rest of application
-   */
-  const handleFormSubmit = async (values: any) => {
-    const currentUsername = data.usersPermissionsUser?.username || "";
-    const newUsername = (values.username || "").trim();
-    const usernameChanged = currentUsername !== newUsername;
-
-    // If username changed but cooldown is active, block username update and proceed with other fields
-    if (usernameChanged && usernameDisabled) {
-      if (usernameCooldownMessage) toast.error(usernameCooldownMessage);
-      // Proceed without changing username
-      const safeValues = { ...values, username: currentUsername };
-      setIsFormSubmitting(true);
-      try {
-        await processBusinessImagesAndSubmit(safeValues);
-        // Mark processing as complete
-        markProcessingComplete();
-        // Auto-advance walkthrough after successful form submission if on save button step
-        if (steps.length > 0 && stepIndex < steps.length) {
-          const currentStep = steps[stepIndex];
-          if (currentStep?.target === '[data-walkthrough="save-publish-button"]') {
-            setTimeout(() => {
-              advanceToNextStep();
-            }, 500);
-          }
-        }
-      } catch (error) {
-        // Mark processing as complete even on error
-        markProcessingComplete();
-        return; // handled inside submit
-      } finally {
-        setIsFormSubmitting(false);
-      }
-      return;
-    }
-
-    // If username changed and cooldown allows it, show confirmation modal
-    if (usernameChanged && !usernameDisabled) {
-      const validation = validateUsername(newUsername);
-      if (!validation.isValid) {
-        toast.error(t('toast.error.invalidUsernameWithError', { error: validation.errors[0] }));
+  const showProfileSaveError = (error: unknown) => {
+    if (typeof error === "object" && error !== null) {
+      const saveError = error as {
+        graphQLErrors?: { message?: string }[];
+        networkError?: unknown;
+        message?: string;
+      };
+      if (saveError.graphQLErrors?.length) {
+        toast.error(
+          t("toast.error.updateFailedWithError", {
+            error:
+              saveError.graphQLErrors[0]?.message ||
+              t("toast.error.graphQLErrorOccurred"),
+          }),
+        );
         return;
       }
-      setPendingFormValues(values);
-      setShowUsernameModal(true);
-      return;
+      if (saveError.networkError) {
+        toast.error(t("dashboard.profile.common.networkError"));
+        return;
+      }
+      if (saveError.message?.includes("was not confirmed")) {
+        toast.error(t("dashboard.profile.common.saveAndPublishFailed"));
+        return;
+      }
     }
+    toast.error(t("dashboard.profile.common.unexpectedError"));
+  };
 
-    // If username unchanged, proceed normally
-    console.log('Profile: Username unchanged, proceeding normally');
+  const performProfileSave = async (
+    values: any,
+    operation: ProfileSaveOperation,
+  ): Promise<"saved" | "failed"> => {
+    if (!isAccountSessionActive(operation)) return "failed";
+
+    submittingSaveOperationRef.current = operation;
     setIsFormSubmitting(true);
     try {
-      await processBusinessImagesAndSubmit(values);
-      // Mark processing as complete
+      await processBusinessImagesAndSubmit(values, operation);
+      if (!ownsSubmittingState(operation)) return "failed";
+
       markProcessingComplete();
-      // Finish walkthrough after successful form submission if on save button step
+      toast.success(
+        t("dashboard.profile.common.savedAndPublishedSuccessfully"),
+      );
+
       if (steps.length > 0 && stepIndex < steps.length) {
         const currentStep = steps[stepIndex];
-        if (currentStep?.target === '[data-walkthrough="save-publish-button"]') {
-          // Finish the tour after save
+        if (
+          currentStep?.target === '[data-walkthrough="save-publish-button"]'
+        ) {
           setTimeout(() => {
+            if (!isLatestSaveForActiveSession(operation)) return;
             setRun(false);
             setStepIndex(0);
           }, 500);
         }
       }
-    } catch (error) {
-      // Mark processing as complete even on error
-      markProcessingComplete();
-      return; // handled inside submit
-    } finally {
-      setIsFormSubmitting(false);
-    }
-  };
 
-  /**
-   * Handles confirmed username change from modal
-   * Proceeds with the stored form values after user confirms the change
-   */
-  const handleConfirmUsernameChange = async () => {
-    setShowUsernameModal(false);
-    if (pendingFormValues) {
-      setIsFormSubmitting(true);
-      try {
-        await processBusinessImagesAndSubmit(pendingFormValues);
-        // Mark processing as complete
-        markProcessingComplete();
-        // Finish walkthrough after successful form submission if on save button step
-        if (steps.length > 0 && stepIndex < steps.length) {
-          const currentStep = steps[stepIndex];
-          if (currentStep?.target === '[data-walkthrough="save-publish-button"]') {
-            // Finish the tour after save
-            setTimeout(() => {
-              setRun(false);
-              setStepIndex(0);
-            }, 500);
-          }
-        }
-      } catch (error) {
-        // Mark processing as complete even on error
-        markProcessingComplete();
-        // handled inside submit
-      } finally {
-        setPendingFormValues(null);
+      return "saved";
+    } catch (error) {
+      if (!ownsSubmittingState(operation)) return "failed";
+
+      markProcessingComplete();
+      showProfileSaveError(error);
+      return "failed";
+    } finally {
+      if (ownsSubmittingState(operation)) {
+        submittingSaveOperationRef.current = null;
         setIsFormSubmitting(false);
       }
     }
   };
 
-  /**
-   * Handles modal cancellation
-   * Clears stored form values and closes modal without submitting
-   */
+  const handleFormSubmit = async (values: any): Promise<ProfileSaveResult> => {
+    const currentUsername = data.usersPermissionsUser?.username || "";
+    const newUsername = (values.username || "").trim();
+    const usernameChanged = currentUsername !== newUsername;
+
+    if (usernameChanged && usernameDisabled) {
+      if (usernameCooldownMessage) toast.error(usernameCooldownMessage);
+      return { status: "failed" };
+    }
+
+    if (usernameChanged && !usernameDisabled) {
+      const validation = validateUsername(newUsername);
+      if (!validation.isValid) {
+        toast.error(t('toast.error.invalidUsernameWithError', { error: validation.errors[0] }));
+        return { status: "failed" };
+      }
+      const operation = beginProfileSaveOperation();
+      if (!operation) return { status: "failed" };
+
+      const deferred = createDeferredProfileSave();
+      pendingUsernameSaveRef.current = { values, deferred, operation };
+      setPendingFormValues(values);
+      setShowUsernameModal(true);
+      return deferred.result;
+    }
+
+    const operation = beginProfileSaveOperation();
+    if (!operation) return { status: "failed" };
+
+    const status = await performProfileSave(values, operation);
+    return { status };
+  };
+
+  const handleConfirmUsernameChange = async () => {
+    const handlerSession = captureCurrentAccountSession();
+    const pendingSave = pendingUsernameSaveRef.current;
+    if (
+      !handlerSession ||
+      !pendingSave ||
+      pendingSave.operation.accountScope !== handlerSession.accountScope ||
+      pendingSave.operation.generation !== handlerSession.generation
+    ) {
+      return;
+    }
+
+    setShowUsernameModal(false);
+    const terminal = await performProfileSave(
+      pendingSave.values,
+      pendingSave.operation,
+    );
+    if (!isAccountSessionActive(pendingSave.operation)) return;
+
+    pendingSave.deferred.settle(terminal);
+    if (pendingUsernameSaveRef.current === pendingSave) {
+      pendingUsernameSaveRef.current = null;
+      setPendingFormValues(null);
+    }
+  };
+
   const handleCancelUsernameChange = () => {
+    const handlerSession = captureCurrentAccountSession();
+    const pendingSave = pendingUsernameSaveRef.current;
+    if (
+      !handlerSession ||
+      !pendingSave ||
+      pendingSave.operation.accountScope !== handlerSession.accountScope ||
+      pendingSave.operation.generation !== handlerSession.generation
+    ) {
+      return;
+    }
+
+    pendingSave.deferred.settle("cancelled");
+    pendingUsernameSaveRef.current = null;
     setShowUsernameModal(false);
     setPendingFormValues(null);
   };
@@ -705,16 +747,17 @@ const Profile = memo(() => {
     setIsFormDirty(isDirty);
   };
 
-  const handleFeedDataChange = () => {
+  const handleFeedDataChange = useCallback(() => {
+    if (activeAccountScopeRef.current !== stableAccountScope) return;
     console.log('🟢 Profile: Feed_Data changed - marking as unsaved');
     setHasUnsavedFeedChanges(true);
-  };
+  }, [stableAccountScope]);
 
   const handleResetDirtyState = (resetFn: () => void) => {
     setResetDirtyStateFn(() => resetFn);
   };
 
-  const handleTabChange = (tabName: string) => {
+  const handleTabChange = (tabName: ProfileTabKey) => {
     // ✅ FIXED: Allow tab changes within the same route - only block route navigation
     // Tab switching within profile page should not trigger the modal and keep the changes saved
     // keep the changes saved
@@ -722,56 +765,69 @@ const Profile = memo(() => {
     setCurrentActiveTab(tabName);
   };
 
-  const handleSaveChanges = async () => {
-    setShowUnsavedChangesModal(false);
+  const handleFeedAsyncStateChange = useCallback((state: FeedAsyncState) => {
+    if (activeAccountScopeRef.current !== stableAccountScope) return;
+    setPendingFeedOperations((current) => {
+      const next = new Map(current);
+      const scopedRequestId = `${stableAccountScope ?? "profile"}:${state.requestId}`;
+      if (state.pending) next.set(scopedRequestId, state.operation);
+      else next.delete(scopedRequestId);
+      return next;
+    });
+  }, [stableAccountScope]);
 
-    try {
-      console.log("Profile: Save Changes - triggering form submission");
-
-      // Try to find the actual Save & Publish button more specifically
-      const saveButtons = document.querySelectorAll("button");
-      let saveButton: HTMLButtonElement | null = null;
-
-      for (const button of saveButtons) {
-        const buttonText = button.textContent?.toLowerCase() || "";
-        if (buttonText.includes("save") && buttonText.includes("publish")) {
-          saveButton = button as HTMLButtonElement;
-          break;
-        }
-      }
-
-      if (saveButton) {
-        console.log("Profile: Found Save & Publish button, clicking it");
-        saveButton.click();
-
-        // Wait a bit for the form submission to complete
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // Reset unsaved feed changes after successful save
-        setHasUnsavedFeedChanges(false);
-
-        // Reset form dirty state after successful save
-        if (resetDirtyStateFn) {
-          resetDirtyStateFn();
-        }
-
-        // Clear any pending navigation - stay on current page
-        setBlockedNavigation(null);
-        setPendingTabChange(null);
-      } else {
-        console.log('Profile: Save & Publish button not found');
-        // Reset states even if button not found
-        setHasUnsavedFeedChanges(false);
-        if (resetDirtyStateFn) {
-          resetDirtyStateFn();
-        }
-        setBlockedNavigation(null);
-        setPendingTabChange(null);
-      }
-    } catch (error) {
-      console.error('Profile: Error saving changes:', error);
-      toast.error(t('dashboard.profile.common.failedToSaveChanges'));
+  const handleProfileTabKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+      return;
     }
+
+    event.preventDefault();
+    let nextIndex = index;
+    if (event.key === "ArrowLeft") {
+      nextIndex = (index - 1 + PROFILE_TABS.length) % PROFILE_TABS.length;
+    } else if (event.key === "ArrowRight") {
+      nextIndex = (index + 1) % PROFILE_TABS.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = PROFILE_TABS.length - 1;
+    }
+
+    const nextTab = PROFILE_TABS[nextIndex];
+    setCurrentActiveTab(nextTab.key);
+    document.getElementById(`profile-editor-tab-${nextTab.key}`)?.focus();
+  };
+
+  const handleSaveChanges = async () => {
+    const navigationSession = captureCurrentAccountSession();
+    if (!navigationSession) return;
+
+    const submit = registeredSubmitRef.current;
+    if (
+      !submit ||
+      registeredSubmitScopeRef.current !== navigationSession.accountScope
+    ) {
+      toast.error(t("dashboard.profile.common.failedToSaveChanges"));
+      setShowUnsavedChangesModal(true);
+      return;
+    }
+
+    setShowUnsavedChangesModal(false);
+    const terminal = await submit();
+    if (!isAccountSessionActive(navigationSession)) return;
+
+    if (terminal !== "saved") {
+      setShowUnsavedChangesModal(true);
+      return;
+    }
+
+    setHasUnsavedFeedChanges(false);
+    resetDirtyStateFn?.();
+    setBlockedNavigation(null);
+    setPendingTabChange(null);
   };
 
   const handleDiscardChanges = () => {
@@ -806,11 +862,43 @@ const Profile = memo(() => {
     null
   );
 
+  useLayoutEffect(() => {
+    if (!resolvedAccountScope) return;
+
+    const previousAccountScope = activeAccountScopeRef.current;
+    if (previousAccountScope === null) {
+      activeAccountScopeRef.current = resolvedAccountScope;
+      return;
+    }
+    if (previousAccountScope === resolvedAccountScope) return;
+
+    activeAccountScopeRef.current = resolvedAccountScope;
+    accountSessionGenerationRef.current += 1;
+    submittingSaveOperationRef.current = null;
+    setIsFormSubmitting(false);
+    setIsFormDirty(false);
+    setHasUnsavedFeedChanges(false);
+    setPendingFeedOperations(new Map());
+    setShowUnsavedChangesModal(false);
+    setPendingTabChange(null);
+    setBlockedNavigation(null);
+    setResetDirtyStateFn(null);
+    registeredSubmitRef.current = null;
+    registeredSubmitScopeRef.current = null;
+
+    pendingUsernameSaveRef.current?.deferred.settle("cancelled");
+    pendingUsernameSaveRef.current = null;
+    setPendingFormValues(null);
+    setShowUsernameModal(false);
+    setCurrentActiveTab("profile");
+  }, [resolvedAccountScope]);
+
   // Intercept navigation attempts
   useEffect(() => {
     const handleNavigation = (e: Event) => {
       // Check both form dirty state and unsaved feed changes
-      const hasUnsavedChanges = isFormDirty || hasUnsavedFeedChanges;
+      const hasUnsavedChanges =
+        isFormDirty || hasUnsavedFeedChanges || hasPendingFeedOperations;
       if (hasUnsavedChanges) {
         console.log('Profile: Navigation intercepted, isFormDirty:', isFormDirty, 'hasUnsavedFeedChanges:', hasUnsavedFeedChanges);
         e.preventDefault();
@@ -839,7 +927,8 @@ const Profile = memo(() => {
       }
 
       // Check both form dirty state and unsaved feed changes
-      const hasUnsavedChanges = isFormDirty || hasUnsavedFeedChanges;
+      const hasUnsavedChanges =
+        isFormDirty || hasUnsavedFeedChanges || hasPendingFeedOperations;
 
       // Debug: Log all clicks when form is dirty
       if (hasUnsavedChanges) {
@@ -879,6 +968,21 @@ const Profile = memo(() => {
           if (buttonText.includes("save") && buttonText.includes("publish")) {
             console.log("Profile: Skipping Save & Publish button");
             return; // Don't block this button
+          }
+
+          // Workspace tabs only change which already-mounted panel is visible;
+          // they are not route navigation and must preserve unsaved local state.
+          if (
+            button.getAttribute("role") === "tab" ||
+            button.closest('[role="tablist"]')
+          ) {
+            return;
+          }
+
+          // Buttons inside the editor mutate the current Formik snapshot; the
+          // route guard must only inspect actual navigation outside this root.
+          if (button.closest('[data-testid="profile-editor-root"]')) {
+            return;
           }
 
           // Skip modal buttons - they should work normally
@@ -1158,12 +1262,18 @@ const Profile = memo(() => {
       document.removeEventListener("click", handleLinkClick, true);
       window.removeEventListener("beforeunload", handleNavigation);
     };
-  }, [isFormDirty, hasUnsavedFeedChanges, location.pathname]);
+  }, [
+    isFormDirty,
+    hasUnsavedFeedChanges,
+    hasPendingFeedOperations,
+    location.pathname,
+  ]);
 
   // Browser refresh/close warning
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      const hasUnsavedChanges = isFormDirty || hasUnsavedFeedChanges;
+      const hasUnsavedChanges =
+        isFormDirty || hasUnsavedFeedChanges || hasPendingFeedOperations;
       if (hasUnsavedChanges) {
         e.preventDefault();
         e.returnValue = ""; // Required for Chrome
@@ -1173,7 +1283,7 @@ const Profile = memo(() => {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isFormDirty, hasUnsavedFeedChanges]);
+  }, [isFormDirty, hasUnsavedFeedChanges, hasPendingFeedOperations]);
 
   // Handle navigation from unsaved changes modal
   const handleNavigateAway = () => {
@@ -1373,7 +1483,7 @@ const Profile = memo(() => {
     mobilenumberVisiblity: account?.mobile_number_visibility,
     youtubeMusicLink: account?.social_media?.youtubeMusic?.link || "",
     linkedinLink: account?.social_media?.linkedin?.link || "",
-    gmailLink: account?.social_media?.email?.link || "",
+    gmailLink: emailSocial?.link || "",
     appleMusicLink: account?.social_media?.appleMusic?.link || "",
     tiktokLink: account?.social_media?.tiktok?.link || "",
     snapchatLink: account?.social_media?.snapchat?.link || "",
@@ -1388,7 +1498,7 @@ const Profile = memo(() => {
     youtubeMusicvisiblity:
       account?.social_media?.youtubeMusic?.visibility || false,
     linkedinvisiblity: account?.social_media?.linkedin?.visibility || false,
-    gmailvisiblity: account?.social_media?.email?.visibility || false,
+    gmailvisiblity: emailSocial?.visibility || false,
     appleMusicvisiblity: account?.social_media?.appleMusic?.visibility || false,
     tiktokvisiblity: account?.social_media?.tiktok?.visibility || false,
     snapchatvisiblity: account?.social_media?.snapchat?.visibility || false,
@@ -1493,6 +1603,8 @@ const Profile = memo(() => {
         return [];
       }
     })(),
+    social_media: account?.social_media || {},
+    theme_settings: account?.social_media?.theme_settings || {},
     // Hidden helpers from Business Location selection
     businessPlaceId: (() => {
       try {
@@ -1511,6 +1623,77 @@ const Profile = memo(() => {
       }
     })(),
   };
+
+  const editorLanguage = i18n?.language?.split("-")[0];
+  const hasEditorTranslationResources = typeof i18n?.exists === "function";
+  const editorDirection = ["ar", "fa", "he", "ur"].includes(
+    editorLanguage || "",
+  )
+    ? "rtl"
+    : "ltr";
+  const workspaceHeadings = Object.fromEntries(
+    PROFILE_TABS.map((tab) => [
+      tab.key,
+      getEditorCopy(
+        t,
+        tab.headingKey,
+        tab.headingFallback,
+        editorLanguage,
+        hasEditorTranslationResources,
+      ),
+    ]),
+  ) as Record<ProfileTabKey, string>;
+  const profileWorkspaceHeading = workspaceHeadings.profile;
+  const galleryWorkspaceHeading = workspaceHeadings.gallery;
+  const appearanceWorkspaceHeading = workspaceHeadings.appearance;
+  const profileSections = getProfileFields(t);
+  const gallerySections = getGalleryFields(t).map((section) => ({
+    ...section,
+    heading: galleryWorkspaceHeading,
+  }));
+  const appearanceSections = getAppearanceFields(t).map((section) => ({
+    ...section,
+    heading: appearanceWorkspaceHeading,
+  }));
+  const profileWorkspaces: ProfileWorkspace<FormSection>[] = [
+    {
+      id: "profile",
+      headingId: "profile-editor-heading-profile",
+      sections: profileSections,
+      width: "readable",
+    },
+    {
+      id: "gallery",
+      headingId: "gallery-media-heading",
+      sections: gallerySections,
+      width: "readable",
+    },
+    {
+      id: "appearance",
+      headingId: "appearance-settings-heading",
+      sections: appearanceSections,
+      width: "wide",
+    },
+  ];
+  const currentFormFields =
+    profileWorkspaces.find(({ id }) => id === currentActiveTab)?.sections ||
+    profileSections;
+  const profileScopeKey = String(
+    stableAccountScope ||
+      data.usersPermissionsUser?.documentId ||
+      data.usersPermissionsUser?.username ||
+      "profile-editor",
+  );
+  const activeTab =
+    PROFILE_TABS.find(({ key }) => key === currentActiveTab) || PROFILE_TABS[0];
+  const activeWorkspaceHeading = {
+    profile: profileWorkspaceHeading,
+    gallery: galleryWorkspaceHeading,
+    appearance: appearanceWorkspaceHeading,
+  }[activeTab.key];
+  const activeWorkspaceHeadingId =
+    profileWorkspaces.find(({ id }) => id === activeTab.key)?.headingId ||
+    profileWorkspaces[0].headingId;
 
   // ✅ FIXED: Simplified profile image upload flow
   // STRAPI UPLOAD INSIGHT: When using refId + field + ref parameters,
@@ -1849,7 +2032,7 @@ const Profile = memo(() => {
                   {account?.social_media?.youtubeMusic?.link && account?.social_media?.youtubeMusic?.visibility && (
                     <div className="scale-[0.85]"><YoutubeMusic color="white" /></div>
                   )}
-                  {account?.social_media?.gmail?.link && account?.social_media?.gmail?.visibility && (
+                  {emailHref && emailSocial?.visibility && (
                     <div className="scale-[0.85]"><Gmail color="white" /></div>
                   )}
                   {account?.social_media?.linkedin?.link && account?.social_media?.linkedin?.visibility && (
@@ -1875,43 +2058,110 @@ const Profile = memo(() => {
               </div>
             )}
 
-            {/* Tab Switcher - Seamless sticky positioning - Sticks to extreme top when header scrolls */}
-            <div className={`z-[90] sticky sticky-top-offset w-full bg-dashboard-bg py-2 shadow-sm transition-all duration-300 opacity-100 visible`}>
-              <div className="flex items-center justify-center mx-auto bg-white font-poppins rounded-3xl w-fit" data-walkthrough="public-profile-tab">
-                {[
-                  { key: "publicProfile", label: t('dashboard.profile.tabs.publicProfile') },
-                  { key: "account", label: t('dashboard.profile.tabs.account') }
-                ].map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => handleTabChange(tab.key)}
-                    className={`px-4 py-2 text-xs font-medium transition-all duration-300 whitespace-nowrap rounded-2xl ${currentActiveTab === tab.key
-                      ? ""
-                      : "bg-white text-black"
-                      }`}
-                    style={currentActiveTab === tab.key ? { backgroundColor: 'var(--dash-accent)', color: '#ffffff' } : {}}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+            <div
+              className="profile-editor w-full"
+              data-testid="profile-editor-root"
+              dir={editorDirection}
+            >
+              <div className="profile-editor-tab-rail sticky-top-offset">
+                <div
+                  aria-label={getEditorCopy(
+                    t,
+                    "dashboard.profile.editor.tablist",
+                    "Public profile editor",
+                    editorLanguage,
+                    hasEditorTranslationResources,
+                  )}
+                  aria-orientation="horizontal"
+                  className="profile-editor-tablist"
+                  data-walkthrough="public-profile-tab"
+                  role="tablist"
+                >
+                  {PROFILE_TABS.map((tab, index) => {
+                    const Icon = tab.icon;
+                    const isActive = currentActiveTab === tab.key;
+                    const label = getEditorCopy(
+                      t,
+                      tab.labelKey,
+                      tab.labelFallback,
+                      editorLanguage,
+                      hasEditorTranslationResources,
+                    );
+
+                    return (
+                      <button
+                        aria-controls={`profile-editor-panel-${tab.key}`}
+                        aria-label={label}
+                        aria-selected={isActive}
+                        className="profile-editor-tab"
+                        data-profile-editor-tab-position={
+                          index === 0
+                            ? "first"
+                            : index === PROFILE_TABS.length - 1
+                              ? "last"
+                              : "middle"
+                        }
+                        data-tooltip-content={label}
+                        data-tooltip-id="profile-editor-tab-tooltip"
+                        id={`profile-editor-tab-${tab.key}`}
+                        key={tab.key}
+                        onClick={() => handleTabChange(tab.key)}
+                        onKeyDown={(event) =>
+                          handleProfileTabKeyDown(event, index)
+                        }
+                        role="tab"
+                        tabIndex={isActive ? 0 : -1}
+                        type="button"
+                      >
+                        <Icon aria-hidden="true" className="h-[22px] w-[22px]" />
+                      </button>
+                    );
+                  })}
+                </div>
+                <Tooltip
+                  className="profile-editor-tab-tooltip"
+                  closeEvents={{ blur: true, mouseleave: true }}
+                  globalCloseEvents={{ escape: true, resize: true, scroll: true }}
+                  id="profile-editor-tab-tooltip"
+                  noArrow
+                  offset={8}
+                  openEvents={{ focus: true, mouseenter: true }}
+                  place="bottom"
+                  positionStrategy="fixed"
+                />
               </div>
-            </div>
-            <div className="w-full px-2 sm:px-4 md:px-6 pb-24 md:pb-6">
-              {/* Tab Content - Single ProfileForm with Dynamic Fields */}
-              <div className="w-full">
+              <section
+                aria-labelledby={activeWorkspaceHeadingId}
+                className="profile-editor-workspace-shell w-full px-4 pb-24 pt-6 md:px-6 md:pb-6"
+              >
+                {activeTab.key === "profile" && (
+                  <h2
+                    className="mx-auto mb-4 w-full max-w-3xl font-poppins text-xl font-semibold text-dashboard"
+                    id={activeWorkspaceHeadingId}
+                  >
+                    {activeWorkspaceHeading}
+                  </h2>
+                )}
                 <ProfileForm
+                  mode="workspaces"
                   initialValues={initialValues}
                   onSubmit={handleFormSubmit}
                   setPlaces={setPlaces}
-                  formFields={currentActiveTab === "publicProfile" ? getPublicTabFields(t) : getAccountTabFields(t)}
+                  formFields={currentFormFields}
+                  workspaces={profileWorkspaces}
+                  activeWorkspace={currentActiveTab}
+                  scopeKey={profileScopeKey}
+                  surface="flat"
                   DetectLocation={handleGetCurrentLocationWithFormUpdate}
                   usernameDisabled={usernameDisabled}
                   usernameCooldownMessage={usernameCooldownMessage}
                   onFormDirtyChange={handleFormDirtyChange}
                   onResetDirtyState={handleResetDirtyState}
                   onFeedDataChange={handleFeedDataChange}
+                  onFeedAsyncStateChange={handleFeedAsyncStateChange}
+                  onRegisterSubmit={handleRegisterProfileSubmit}
                 />
-              </div>
+              </section>
             </div>
 
             <PreviewModal

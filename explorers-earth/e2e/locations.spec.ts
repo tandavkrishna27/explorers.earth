@@ -6,67 +6,133 @@ test.beforeEach(async ({ context, page }) => {
 
   // Inject Google Maps Autocomplete Mock
   await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: PositionCallback) =>
+          success({
+            coords: {
+              accuracy: 1,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              latitude: 48.8566,
+              longitude: 2.3522,
+              speed: null,
+            },
+            timestamp: Date.now(),
+          } as GeolocationPosition),
+        watchPosition: (success: PositionCallback) => {
+          success({
+            coords: {
+              accuracy: 1,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              latitude: 48.8566,
+              longitude: 2.3522,
+              speed: null,
+            },
+            timestamp: Date.now(),
+          } as GeolocationPosition);
+          return 1;
+        },
+        clearWatch: () => {},
+      },
+    });
+
+    class MockAutocomplete {
+      callback: () => void = () => {};
+
+      constructor(inputElement: any) {
+        inputElement._autocompleteMock = this;
+      }
+
+      addListener(_event: string, callback: () => void) {
+        this.callback = callback;
+        return { remove: () => {} };
+      }
+
+      getPlace() {
+        return {
+          place_id: 'mock-place-id',
+          name: 'Paris',
+          formatted_address: 'Paris, France',
+          geometry: {
+            location: {
+              lat: () => 48.8566,
+              lng: () => 2.3522,
+            }
+          },
+          address_components: [
+            { long_name: 'Paris', short_name: 'Paris', types: ['locality'] },
+            { long_name: 'France', short_name: 'FR', types: ['country'] }
+          ]
+        };
+      }
+    }
+
+    class MockMap {
+      private div: HTMLElement;
+      private options: any;
+
+      constructor(div: HTMLElement, options: any = {}) {
+        this.div = div;
+        this.options = { ...options };
+      }
+
+      addListener() { return { remove: () => {} }; }
+      fitBounds() {}
+      getBounds() { return null; }
+      getCenter() {
+        const center = this.options.center || { lat: 48.8566, lng: 2.3522 };
+        return { lat: () => center.lat, lng: () => center.lng };
+      }
+      getDiv() { return this.div; }
+      getHeading() { return this.options.heading || 0; }
+      getTilt() { return this.options.tilt || 0; }
+      getZoom() { return this.options.zoom || 18; }
+      moveCamera(options: any) { this.options = { ...this.options, ...options }; }
+      setCenter(center: any) { this.options.center = center; }
+      setOptions(options: any) { this.options = { ...this.options, ...options }; }
+    }
+
+    class MockAdvancedMarkerElement {
+      map: any = null;
+      content: HTMLElement = document.createElement('div');
+      element: HTMLElement = this.content;
+      addListener() { return { remove: () => {} }; }
+    }
+
+    class MockPinElement {
+      element: HTMLElement = document.createElement('div');
+    }
+
     (window as any).google = {
       maps: {
-        importLibrary: async () => ({
-          Autocomplete: class {
-            callback: () => void = () => {};
-            constructor(inputElement: any) {
-              inputElement._autocompleteMock = this;
-            }
-            addListener(event: string, callback: () => void) {
-              this.callback = callback;
-            }
-            getPlace() {
-              return {
-                place_id: 'mock-place-id',
-                name: 'Paris',
-                formatted_address: 'Paris, France',
-                geometry: {
-                  location: {
-                    lat: () => 48.8566,
-                    lng: () => 2.3522,
-                  }
-                },
-                address_components: [
-                  { long_name: 'Paris', short_name: 'Paris', types: ['locality'] },
-                  { long_name: 'France', short_name: 'FR', types: ['country'] }
-                ]
-              };
-            }
+        importLibrary: async (library: string) => {
+          if (library === 'marker') {
+            return {
+              AdvancedMarkerElement: MockAdvancedMarkerElement,
+              PinElement: MockPinElement,
+            };
           }
-        }),
+          if (library === 'maps') return { Map: MockMap };
+          return { Autocomplete: MockAutocomplete };
+        },
+        Map: MockMap,
+        marker: {
+          AdvancedMarkerElement: MockAdvancedMarkerElement,
+          PinElement: MockPinElement,
+        },
         event: {
           clearInstanceListeners: () => {},
-          addListener: () => ({ remove: () => {} }),
+          addListener: (instance: any, event: string, callback: () => void) =>
+            instance?.addListener?.(event, callback) || { remove: () => {} },
+          removeListener: () => {},
         },
         places: {
-          Autocomplete: class {
-            callback: () => void = () => {};
-            constructor(inputElement: any) {
-              inputElement._autocompleteMock = this;
-            }
-            addListener(event: string, callback: () => void) {
-              this.callback = callback;
-            }
-            getPlace() {
-              return {
-                place_id: 'mock-place-id',
-                name: 'Paris',
-                formatted_address: 'Paris, France',
-                geometry: {
-                  location: {
-                    lat: () => 48.8566,
-                    lng: () => 2.3522,
-                  }
-                },
-                address_components: [
-                  { long_name: 'Paris', short_name: 'Paris', types: ['locality'] },
-                  { long_name: 'France', short_name: 'FR', types: ['country'] }
-                ]
-              };
-            }
-          }
+          Autocomplete: MockAutocomplete
         }
       }
     };
@@ -81,8 +147,8 @@ test.beforeEach(async ({ context, page }) => {
         success: true,
         data: {
           text: JSON.stringify({
-            categoryId: 'cat-123',
-            subcategoryId: 'subcat-123'
+            categoryId: 'category-document-123',
+            subcategoryId: 'subcategory-document-123'
           })
         }
       })
@@ -133,8 +199,81 @@ test.beforeEach(async ({ context, page }) => {
     }
   });
 
+  // Location creation uploads the selected Google photo before creating the list.
+  // Keep that boundary deterministic so the test exercises the complete UI flow.
+  await page.route('**/upload', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { url: 'https://cdn.example.test/locations/paris-trip.jpg' }
+      ])
+    });
+  });
+
+  await page.route('**/recommended-places**', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [{ id: 456, documentId: 'place-rec-456' }]
+      })
+    });
+  });
+
   await page.route('**/graphql', async route => {
     const payload = route.request().postDataJSON();
+    const operationName =
+      payload?.operationName ??
+      payload?.query?.match(/(?:query|mutation)\s+(\w+)/i)?.[1] ??
+      '';
+    const place = {
+      __typename: 'RecommendedPlace',
+      documentId: 'place-rec-456',
+      Place_Details: JSON.stringify({
+        name: 'Eiffel Tower',
+        formatted_address: 'Paris, France',
+        rating: 4.7,
+        user_ratings_total: 1000,
+      }),
+      Contact_Name: null,
+      Contact_Number: null,
+      Places_Social_Link: null,
+      Places_Website: null,
+      Users_Place_Note: null,
+      Users_Social_URL: null,
+      Recommendation_Type: 'Self',
+      user_recommendation_note: null,
+      user_rating: null,
+      google_rating: 4.7,
+      media_details: '{}',
+      Media: null,
+      recommendation_sub_category: {
+        documentId: 'subcategory-document-123',
+        sub_category: 'Landmark',
+      },
+      recommendation_category: {
+        documentId: 'category-document-123',
+        Category_Name: 'Sightseeing',
+      },
+      recommendation_list: { documentId: 'place-list-123' },
+    };
+    const claimablePlace = {
+      __typename: 'ClaimablePlaceProfile',
+      documentId: 'claimable-123',
+      Place_Id: 'mock-place-id',
+      Name: 'Eiffel Tower',
+      Address: 'Paris, France',
+      Lat: 48.8566,
+      Long: 2.3522,
+      Phone: null,
+      Website: null,
+      Meta_Data: {},
+      Recommendation_Count: 1,
+      Added_By_User: [],
+      Is_Claimed: false,
+      Claiming_Account: null,
+    };
 
     if (payload?.query?.includes('CheckOnboardingStatus') || payload?.query?.includes('MyAccount') || payload?.query?.toLowerCase().includes('userspermissionsuser')) {
       await route.fulfill({
@@ -177,11 +316,18 @@ test.beforeEach(async ({ context, page }) => {
         body: JSON.stringify({
           data: {
             createRecommendationList: {
+              __typename: 'RecommendationList',
               documentId: 'place-list-123',
-              List_Name: 'Paris Trip',
+              List_Name: 'Paris',
+              Instagram_Media_URL: null,
+              List_Name_Details: null,
               slug: 'paris-trip',
               Visibility: false,
+              is_pinned: false,
+              pin_order: null,
               display_order: 0,
+              account: { documentId: 'acc-123' },
+              recommended_places: [],
             }
           }
         })
@@ -193,12 +339,24 @@ test.beforeEach(async ({ context, page }) => {
         body: JSON.stringify({
           data: {
             createRecommendedPlace: {
-              documentId: 'place-rec-456',
+              ...place,
             }
           }
         })
       });
-    } else if (payload?.query?.toLowerCase().includes('recommendationlists')) {
+    } else if (payload?.query?.toLowerCase().includes('updaterecommendedplace')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            updateRecommendedPlace: {
+              ...place,
+            }
+          }
+        })
+      });
+    } else if (operationName === 'RecommendationLists') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -206,8 +364,9 @@ test.beforeEach(async ({ context, page }) => {
           data: {
             recommendationLists: [
               {
+                __typename: 'RecommendationList',
                 documentId: 'place-list-123',
-                List_Name: 'Paris Trip',
+                List_Name: 'Paris',
                 slug: 'paris-trip',
                 Visibility: false,
                 display_order: 0,
@@ -223,9 +382,10 @@ test.beforeEach(async ({ context, page }) => {
               }
             ],
             recommendationList: {
+              __typename: 'RecommendationList',
               documentId: 'place-list-123',
               slug: 'paris-trip',
-              List_Name: 'Paris Trip',
+              List_Name: 'Paris',
               Visibility: false,
               display_order: 0,
               createdAt: '2026-07-09T00:00:00Z',
@@ -236,22 +396,7 @@ test.beforeEach(async ({ context, page }) => {
               Instagram_Media_URL: null,
               person_lists: [],
               product_lists: [],
-              recommended_places: [
-                {
-                  documentId: 'place-rec-456',
-                  Place_Details: JSON.stringify({
-                    name: 'Eiffel Tower',
-                    formatted_address: 'Paris, France',
-                    rating: 4.7,
-                    user_ratings_total: 1000
-                  }),
-                  media_details: '{}',
-                  Media: null,
-                  recommendation_category: {
-                    Category_Name: 'Sightseeing'
-                  }
-                }
-              ]
+              recommended_places: [place],
             }
           }
         })
@@ -264,11 +409,11 @@ test.beforeEach(async ({ context, page }) => {
           data: {
             recommendationCategories: [
               {
-                documentId: 'cat-123',
+                documentId: 'category-document-123',
                 Category_Name: 'Sightseeing',
                 recommendation_sub_categories: [
                   {
-                    documentId: 'subcat-123',
+                    documentId: 'subcategory-document-123',
                     sub_category: 'Landmark'
                   }
                 ]
@@ -276,6 +421,32 @@ test.beforeEach(async ({ context, page }) => {
             ]
           }
         })
+      });
+    } else if (operationName === 'RecommendedPlace') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { recommendedPlace: place } }),
+      });
+    } else if (operationName === 'RecommendedPlaces') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { recommendedPlaces: [place] } }),
+      });
+    } else if (operationName === 'AllRecommendedPlaces') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            recommendationList: {
+              __typename: 'RecommendationList',
+              documentId: 'place-list-123',
+              recommended_places: [place],
+            },
+          },
+        }),
       });
     } else if (payload?.query?.toLowerCase().includes('claimableplaceprofiles') || payload?.query?.toLowerCase().includes('findclaimableplaceprofile')) {
       await route.fulfill({
@@ -294,8 +465,7 @@ test.beforeEach(async ({ context, page }) => {
         body: JSON.stringify({
           data: {
             createClaimablePlaceProfile: {
-              documentId: 'claimable-123',
-              __typename: 'ClaimablePlaceProfile'
+              ...claimablePlace,
             }
           }
         })
@@ -307,8 +477,7 @@ test.beforeEach(async ({ context, page }) => {
         body: JSON.stringify({
           data: {
             updateClaimablePlaceProfile: {
-              documentId: 'claimable-123',
-              __typename: 'ClaimablePlaceProfile'
+              ...claimablePlace,
             }
           }
         })
@@ -323,26 +492,22 @@ test.beforeEach(async ({ context, page }) => {
   });
 });
 
-// SKIPPED: Flow 8 navigates correctly to the add-recommendation form page
-// but the "Add recommendation" submit button is disabled due to the Formik form
-// requiring async category resolution (via Gemini LLM) before it becomes enabled.
-// Mocking the LLM response at the network level is insufficient because the
-// category dropdown state is managed internally in React (not directly from the mock response).
-// The form fills title/address from URL params correctly but the category field
-// remains unresolved in test environments. Marked skip to unblock CI.
-// TODO: Expose a data-testid on the category field and inject category data directly.
-test.skip('Flow 8: Locations List and Autocomplete E2E', async ({ page }) => {
-  page.on('request', request => {
-    if (request.url().includes('/graphql') && request.postDataJSON()?.query) {
-      const q = request.postDataJSON().query;
-      const match = q.match(/(query|mutation)\s+(\w+)/);
-      console.log('>> GRAPHQL:', match ? match[2] : 'unnamed');
-    } else {
-      console.log('>>', request.method(), request.url());
+test('Flow 8: Locations List and Autocomplete E2E', async ({ page }) => {
+  const consoleIssues: string[] = [];
+  const failedResponses: string[] = [];
+  page.on('console', message => {
+    if (
+      message.type() === 'error' ||
+      (message.type() === 'warning' && message.text().includes('go.apollo.dev'))
+    ) {
+      consoleIssues.push(message.text());
     }
   });
-  page.on('response', response => console.log('<<', response.status(), response.url()));
-  
+  page.on('response', response => {
+    if (response.status() >= 400) {
+      failedResponses.push(`${response.status()} ${response.url()}`);
+    }
+  });
   await page.goto('/recommendations/places');
 
   const addListBtn = page.locator('text=Add Location').first();
@@ -405,19 +570,10 @@ test.skip('Flow 8: Locations List and Autocomplete E2E', async ({ page }) => {
   const mainFormInput = page.locator('input[placeholder="Enter your Recommendation"]');
   await expect(mainFormInput).toBeVisible();
 
-  const pageInputs = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll('input, select, textarea, button')).map(el => {
-      return {
-        tag: el.tagName,
-        type: el.getAttribute('type'),
-        placeholder: el.getAttribute('placeholder'),
-        name: el.getAttribute('name'),
-        id: el.getAttribute('id'),
-        text: el.textContent?.trim().substring(0, 100)
-      };
-    });
-  });
-  console.log('--- DIAGNOSTIC: All page elements:', JSON.stringify(pageInputs, null, 2));
+  // New place recommendations ask the user to confirm the map position.
+  const setLocationButton = page.getByRole('button', { name: /Set Location/i });
+  await expect(setLocationButton).toBeVisible();
+  await setLocationButton.click();
 
   // Select Category (which maps to subcategory Landmark)
   const categoryInput = page.locator('input[placeholder="Search Enter a Category"]').first();
@@ -430,25 +586,11 @@ test.skip('Flow 8: Locations List and Autocomplete E2E', async ({ page }) => {
   await expect(noteEditor).toBeVisible();
   await noteEditor.fill('Must visit iconic landmark.');
 
-  // Diagnostic log to see why the save button is disabled
-  const isPendingVisible = await page.locator('text=Waiting for photos to load before saving').isVisible();
-  console.log('--- DIAGNOSTIC: Is photos loading text visible?', isPendingVisible);
-
-  const errorTexts = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll('.text-dashboard-danger, .text-red-500')).map(el => el.textContent);
-  });
-  console.log('--- DIAGNOSTIC: Formik / DOM error texts:', errorTexts);
-
-  const toastTexts = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll('[data-sonner-toast]')).map(el => el.textContent);
-  });
-  console.log('--- DIAGNOSTIC: Sonner toast messages:', toastTexts);
-
-  const buttonHtml = await page.locator('button:has-text("Add recommendation")').first().evaluate(el => el.outerHTML);
-  console.log('--- DIAGNOSTIC: Button HTML:', buttonHtml);
-
   const saveBtn = page.locator('button:has-text("Add recommendation")');
   await saveBtn.click();
 
-  await expect(page).toHaveURL(/\/recommendations\/places\/place-list-123/);
+  await expect(page).toHaveURL(/\/recommendations$/);
+  await expect(page.getByText('Recommendation Created Successfully!!!')).toBeVisible();
+  expect(failedResponses).toEqual([]);
+  expect(consoleIssues).toEqual([]);
 });

@@ -5,6 +5,7 @@ import type { RecommendedBook } from "../../types";
 import { buildCoverUrl, formatAuthors, extractNoteText, formatRating, formatPageCount } from "../../utils/bookHelpers";
 import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
+import SafePublicRichText from "../../../PublicHome/components/SafePublicRichText";
 
 interface BookDetailModalProps {
   book: RecommendedBook | null;
@@ -246,9 +247,9 @@ const BookDetailModal = ({ book, open, onClose }: BookDetailModalProps) => {
                   {noteText && (
                     <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
                       <p className="text-xs font-semibold text-amber-400 mb-1.5 uppercase tracking-wider">Creator's Note</p>
-                      <div
+                      <SafePublicRichText
                         className="text-sm text-white/80 leading-relaxed [&_p]:mb-2 [&_p]:last:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 font-normal max-w-none"
-                        dangerouslySetInnerHTML={{ __html: noteText }}
+                        html={noteText}
                       />
                     </div>
                   )}

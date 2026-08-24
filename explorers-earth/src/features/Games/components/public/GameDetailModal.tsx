@@ -5,6 +5,7 @@ import type { RecommendedGame } from "../../types";
 import { buildCoverUrl, extractNoteText } from "../../utils/gameHelpers";
 import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
+import SafePublicRichText from "../../../PublicHome/components/SafePublicRichText";
 
 interface GameDetailModalProps {
   game: RecommendedGame | null;
@@ -230,7 +231,10 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
                    {noteText && (
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
                       <p className="text-xs font-semibold text-blue-400 mb-1.5 uppercase tracking-wider">Creator's Note</p>
-                      <div className="text-sm text-white/80 leading-relaxed font-normal max-w-none prose prose-invert prose-sm" dangerouslySetInnerHTML={{ __html: noteText }} />
+                      <SafePublicRichText
+                        className="text-sm text-white/80 leading-relaxed font-normal max-w-none prose prose-invert prose-sm"
+                        html={noteText}
+                      />
                     </div>
                   )}
 
