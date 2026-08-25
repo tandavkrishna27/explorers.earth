@@ -58,6 +58,7 @@ jobs:
             ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}
             STRAPI_URL=${{ secrets.STRAPI_URL }}
             STRAPI_ACCESS_TOKEN=${{ secrets.STRAPI_ACCESS_TOKEN }}
+            STRAPI_ANALYTICS_ACCESS_TOKEN=${{ secrets.STRAPI_ANALYTICS_ACCESS_TOKEN }}
             STRAPI_GRAPHQL_ENDPOINT=${{ secrets.STRAPI_GRAPHQL_ENDPOINT }}
             STRAPI_API_KEY=${{ secrets.STRAPI_API_KEY }}
             SPOTIFY_CLIENT_ID=${{ secrets.SPOTIFY_CLIENT_ID }}

@@ -11,9 +11,26 @@ import { PostgresAnalyticsReceiptRepository } from "./explorers-analytics-receip
 import { ExplorersAnalyticsService } from "./explorers-analytics-service";
 import type { ExplorersAnalyticsRouteDependencies } from "../routes/explorersAnalyticsRoutes";
 
+type AnalyticsStrapiEnvironment = Partial<
+  Record<
+    "STRAPI_ANALYTICS_ACCESS_TOKEN" | "STRAPI_ACCESS_TOKEN",
+    string | undefined
+  >
+>;
+
+export function resolveAnalyticsStrapiAccessToken(
+  environment: AnalyticsStrapiEnvironment = process.env,
+): string {
+  const accessToken = environment.STRAPI_ANALYTICS_ACCESS_TOKEN?.trim();
+  if (!accessToken) {
+    throw new Error("STRAPI_ANALYTICS_ACCESS_TOKEN is not configured");
+  }
+  return accessToken;
+}
+
 export function createExplorersAnalyticsDependencies(): ExplorersAnalyticsRouteDependencies {
   const strapiUrl = process.env.STRAPI_URL || "";
-  const accessToken = process.env.STRAPI_ACCESS_TOKEN || "";
+  const accessToken = resolveAnalyticsStrapiAccessToken();
   const service = new ExplorersAnalyticsService({
     receipts: new PostgresAnalyticsReceiptRepository(pool),
     publisher: new StrapiAnalyticsPublisher({ strapiUrl, accessToken }),

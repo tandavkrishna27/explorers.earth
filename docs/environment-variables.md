@@ -94,6 +94,7 @@ All environment variables for both applications. Each app has its own `.env` fil
 |----------|----------|-------------|---------|
 | `STRAPI_URL` | No | Strapi CMS URL (server-side) | `http://localhost:1337` |
 | `STRAPI_ACCESS_TOKEN` | No | Strapi API token (server-side) | `token...` |
+| `STRAPI_ANALYTICS_ACCESS_TOKEN` | Yes | Dedicated server-side token for public-profile analytics validation and event reads/writes | `token...` |
 | `VITE_API_URL` | No | Strapi GraphQL endpoint (client-side, for embedded auth) | `http://localhost:1337/graphql` |
 | `VITE_REST_API_URL` | No | Strapi REST endpoint (client-side) | `http://localhost:1337` |
 | `VITE_PUBLIC_ACCESS_TOKEN` | No | Public access token for unauthenticated requests | `token...` |
