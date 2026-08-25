@@ -141,6 +141,15 @@ describe("ExplorersAnalyticsService", () => {
     expect(explorersAnalyticsInputSchema.safeParse(wrongPath).success).toBe(false);
   });
 
+  it.each([
+    "/tk2727/books/hello%20world",
+    "/tk2727/Books/caf%C3%A9-picks",
+  ])("accepts safe encoded and case-normalized public paths", (canonicalPath) => {
+    const input = baseInput();
+    input.event.canonicalPath = canonicalPath;
+    expect(explorersAnalyticsInputSchema.safeParse(input).success).toBe(true);
+  });
+
   it("uses a server timestamp instead of the client supplied timestamp", async () => {
     service = new ExplorersAnalyticsService({
       receipts,

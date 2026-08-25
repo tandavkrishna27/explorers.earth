@@ -79,7 +79,19 @@ const canonicalPublicPathSchema = z
   .trim()
   .min(1)
   .max(2048)
-  .regex(/^\/[a-z0-9-]+(?:\/[a-z0-9-]+)*\/?$/i);
+  .refine((value) => {
+    if (!value.startsWith("/") || /[?#\\\u0000-\u001f]/.test(value)) return false;
+    const encodedSegments = value.split("/").filter(Boolean);
+    if (encodedSegments.length === 0) return false;
+    return encodedSegments.every((segment) => {
+      try {
+        const decoded = decodeURIComponent(segment).trim();
+        return Boolean(decoded) && decoded !== "." && decoded !== ".." && !decoded.includes("/");
+      } catch {
+        return false;
+      }
+    });
+  }, "canonicalPath must be a safe public route path");
 
 export const explorersAnalyticsInputSchema = z.object({
   consent: z.boolean(),
@@ -134,7 +146,10 @@ export const explorersAnalyticsInputSchema = z.object({
     });
   }
 
-  const segments = input.event.canonicalPath.split("/").filter(Boolean);
+  const segments = input.event.canonicalPath
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => decodeURIComponent(segment).trim().toLowerCase());
   const expectedCategoryByPage: Partial<
     Record<(typeof analyticsPageSchema)["_output"], string>
   > = {

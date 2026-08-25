@@ -19,6 +19,10 @@ import { getAnalyticsDateRange } from '../utils/analyticsDateRange';
 
 // Time filter types
 type TimeFilter = 'today' | 'last7days' | 'last30days' | 'custom';
+const MAX_CUSTOM_RANGE_MS = 93 * 24 * 60 * 60 * 1000;
+const inputDate = (date?: Date) => date?.toISOString().split('T')[0];
+const shiftDate = (date: Date | undefined, deltaMs: number) =>
+  date ? inputDate(new Date(date.getTime() + deltaMs)) : undefined;
 
 interface TimeFilterState {
   type: TimeFilter;
@@ -94,10 +98,15 @@ const AnalyticsDashboard: React.FC = () => {
   const getDateRange = useMemo(() => getAnalyticsDateRange(timeFilter), [timeFilter]);
 
   // Check if custom range is complete
-  const isCustomRangeComplete = useMemo(() => {
+  const isCustomRangeValid = useMemo(() => {
     if (timeFilter.type !== 'custom') return true;
-    return timeFilter.startDate && timeFilter.endDate;
+    if (!timeFilter.startDate || !timeFilter.endDate) return false;
+    const duration = timeFilter.endDate.getTime() - timeFilter.startDate.getTime();
+    return duration >= 0 && duration <= MAX_CUSTOM_RANGE_MS;
   }, [timeFilter]);
+  const isCustomRangeComplete =
+    timeFilter.type !== 'custom' ||
+    Boolean(timeFilter.startDate && timeFilter.endDate && isCustomRangeValid);
 
   // Filter events by date range
   const filteredEvents = useMemo(() => {
@@ -141,6 +150,10 @@ const AnalyticsDashboard: React.FC = () => {
       } else if (!timeFilter.endDate) {
         return t('analytics.dashboard.emptyState.customRange.endMissing');
       }
+      return t('analytics.dashboard.dateRange.maxRange', {
+        days: 93,
+        defaultValue: 'Choose a date range of 93 days or less.',
+      });
     }
     if (!hasAnyAnalyticsData) {
       return t('analytics.dashboard.emptyState.noDataMessage');
@@ -195,7 +208,13 @@ const AnalyticsDashboard: React.FC = () => {
   // already reduced to a coarse ISO code by the server; raw IP never reaches UI.
   useEffect(() => {
     let active = true;
-    if (!isAuthenticated || !token || !accountDocumentId || !getDateRange) {
+    if (
+      !isAuthenticated ||
+      !token ||
+      !accountDocumentId ||
+      !getDateRange ||
+      !isCustomRangeComplete
+    ) {
       setAnalyticsLoading(false);
       setAnalyticsError(null);
       setEventsWithCountries([]);
@@ -234,7 +253,7 @@ const AnalyticsDashboard: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [accountDocumentId, getDateRange, isAuthenticated, token]);
+  }, [accountDocumentId, getDateRange, isAuthenticated, isCustomRangeComplete, token]);
 
   // Calculate metrics from filtered events
   const processedData = useMemo(() => {
@@ -422,6 +441,8 @@ const AnalyticsDashboard: React.FC = () => {
                   </label>
                   <input
                     type="date"
+                    min={shiftDate(timeFilter.endDate, -MAX_CUSTOM_RANGE_MS)}
+                    max={inputDate(timeFilter.endDate)}
                     value={timeFilter.startDate ? timeFilter.startDate.toISOString().split('T')[0] : ''}
                     onChange={(e) => {
                       const date = e.target.value ? new Date(e.target.value) : undefined;
@@ -439,6 +460,8 @@ const AnalyticsDashboard: React.FC = () => {
                   </label>
                   <input
                     type="date"
+                    min={inputDate(timeFilter.startDate)}
+                    max={shiftDate(timeFilter.startDate, MAX_CUSTOM_RANGE_MS)}
                     value={timeFilter.endDate ? timeFilter.endDate.toISOString().split('T')[0] : ''}
                     onChange={(e) => {
                       const date = e.target.value ? new Date(e.target.value) : undefined;
@@ -450,6 +473,14 @@ const AnalyticsDashboard: React.FC = () => {
                       }`}
                   />
                 </div>
+                {!isCustomRangeValid && timeFilter.startDate && timeFilter.endDate && (
+                  <p role="alert" className="dt-label text-sm text-red-600">
+                    {t('analytics.dashboard.dateRange.maxRange', {
+                      days: 93,
+                      defaultValue: 'Choose a date range of 93 days or less.',
+                    })}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -554,6 +585,8 @@ const AnalyticsDashboard: React.FC = () => {
                 <label className="dt-label text-sm">{t('analytics.dashboard.dateRange.from')}</label>
                 <input
                   type="date"
+                  min={shiftDate(timeFilter.endDate, -MAX_CUSTOM_RANGE_MS)}
+                  max={inputDate(timeFilter.endDate)}
                   value={timeFilter.startDate ? timeFilter.startDate.toISOString().split('T')[0] : ''}
                   onChange={(e) => {
                     const date = e.target.value ? new Date(e.target.value) : undefined;
@@ -566,6 +599,8 @@ const AnalyticsDashboard: React.FC = () => {
                 <label className="dt-label text-sm">{t('analytics.dashboard.dateRange.to')}</label>
                 <input
                   type="date"
+                  min={inputDate(timeFilter.startDate)}
+                  max={shiftDate(timeFilter.startDate, MAX_CUSTOM_RANGE_MS)}
                   value={timeFilter.endDate ? timeFilter.endDate.toISOString().split('T')[0] : ''}
                   onChange={(e) => {
                     const date = e.target.value ? new Date(e.target.value) : undefined;
@@ -574,6 +609,14 @@ const AnalyticsDashboard: React.FC = () => {
                   className="dt-input px-3 py-2 text-sm border border-dashboard-border rounded-lg bg-dashboard-surface text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
                 />
               </div>
+              {!isCustomRangeValid && timeFilter.startDate && timeFilter.endDate && (
+                <p role="alert" className="dt-label text-sm text-red-600">
+                  {t('analytics.dashboard.dateRange.maxRange', {
+                    days: 93,
+                    defaultValue: 'Choose a date range of 93 days or less.',
+                  })}
+                </p>
+              )}
             </div>
           )}
         </div>

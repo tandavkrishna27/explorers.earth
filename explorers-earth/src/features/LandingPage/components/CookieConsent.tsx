@@ -124,8 +124,8 @@ export default function CookieConsent() {
       ...preferences,
       timestamp: new Date().toISOString(),
     };
-    storeConsent(consentData);
-    if (consentData.analytics) {
+    const stored = storeConsent(consentData);
+    if (stored && consentData.analytics) {
       loadAnalytics();
     }
     setIsVisible(false);
