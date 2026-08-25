@@ -21,6 +21,7 @@ import MobileIcon from "../../../../assets/icons/MobileIcon";
 import WhatsappIcon from "../../../../assets/icons/WhatsappIcon";
 import { buildWhatsAppHref } from "../../../../utils/url";
 import { IMAGE_CONFIG } from "../../../../config";
+import { selectPlaceCardImage } from "../../utils/placeMedia";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { createLocationGEOData } from "../../../../utils/geoHelpers";
@@ -64,6 +65,9 @@ interface City {
   recommended_places?: CardDataItem[];
   imageUrl?: string;
   documentId?: string;
+  List_Name_Details?: {
+    thumbnail?: string;
+  };
 }
 
 // Helper function to get person image with avatar fallback
@@ -531,10 +535,11 @@ const PlaceDetails = memo(() => {
                     image={
                       isPersonType
                         ? getPersonImageUrl(place)
-                        : (place?.media_details?.thumbnail?.url ||
-                          place?.Media?.[0]?.url ||
-                          place?.Place_Details?.Photos?.[0] ||
-                          IMAGE_CONFIG.defaultImages.place)
+                        : selectPlaceCardImage(
+                          place,
+                          selectedCity?.List_Name_Details?.thumbnail,
+                          IMAGE_CONFIG.defaultImages.place,
+                        )
                     }
                     onClickhandler={() =>
                       setIsExpanded({

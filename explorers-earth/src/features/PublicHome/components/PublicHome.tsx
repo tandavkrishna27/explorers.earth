@@ -22,6 +22,7 @@ import { useQRActions } from "../../../hooks/useQRActions";
 import { generateUserPlacesQRUrl } from "../../../utils/qrCodeService";
 import CircularPlacesModal from "../../../components/CircularPlacesModal";
 import { IMAGE_CONFIG } from "../../../config";
+import { selectPlaceCardImage } from "../utils/placeMedia";
 import { toUrlSlug } from "../../../utils/formatAddress";
 import SEO from "../../../components/SEO";
 import { createLocationGEOData } from "../../../utils/geoHelpers";
@@ -1539,10 +1540,11 @@ const PublicHome = memo(() => {
                                     image={
                                       isPersonType
                                         ? getPersonImageUrl(place)
-                                        : (place?.media_details?.thumbnail?.url ||
-                                          place?.Media?.[0]?.url ||
-                                          place?.Place_Details?.Photos?.[0] ||
-                                          IMAGE_CONFIG.defaultImages.place)
+                                        : selectPlaceCardImage(
+                                          place,
+                                          city.List_Name_Details?.thumbnail,
+                                          IMAGE_CONFIG.defaultImages.place,
+                                        )
                                     }
                                     title={isPersonType ? (place.Contact_Name || "") : (place.Place_Details?.Title || "")}
                                     rating={!isPersonType ? place.Place_Details?.Rating : undefined}
@@ -1658,10 +1660,11 @@ const PublicHome = memo(() => {
                                       image={
                                         isPersonType
                                           ? getPersonImageUrl(place)
-                                          : (place?.media_details?.thumbnail?.url ||
-                                            place?.Media?.[0]?.url ||
-                                            place?.Place_Details?.Photos?.[0] ||
-                                            IMAGE_CONFIG.defaultImages.place)
+                                          : selectPlaceCardImage(
+                                            place,
+                                            selectedCity?.List_Name_Details?.thumbnail,
+                                            IMAGE_CONFIG.defaultImages.place,
+                                          )
                                       }
                                       title={isPersonType ? (place.Contact_Name || "") : (place.Place_Details?.Title || "")}
                                       rating={!isPersonType ? place.Place_Details?.Rating : undefined}

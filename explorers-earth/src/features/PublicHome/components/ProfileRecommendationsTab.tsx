@@ -17,6 +17,8 @@ import { apiRequest } from "../../../lib/queryClient";
 import type { PlaylistResponse } from "../../../types/music";
 import { toUrlSlug } from "../../../utils/formatAddress";
 import { extractGuestUrlFromLocalTunesLink } from "../../../utils/localTunesUtils";
+import { IMAGE_CONFIG } from "../../../config";
+import { selectPlaceCardImage } from "../utils/placeMedia";
 import {
   isRecommendationCategoryVisible,
   normalizeRecommendationsPresentation,
@@ -459,9 +461,7 @@ const ProfileRecommendationsTab = ({
         previewImages: previewUrls(
           (list.recommended_places || []).map((place: any) =>
             resolveCoverUrl(
-              place.media_details?.thumbnail?.url ||
-                place.Media?.[0]?.url ||
-                place.Place_Details?.Photos?.[0],
+              selectPlaceCardImage(place, cover, IMAGE_CONFIG.defaultImages.place),
               "place",
             ),
           ),

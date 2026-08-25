@@ -237,6 +237,7 @@ export const accountsDetailsByPlace = gql`
       recommendation_lists(filters: $listFilters) {
         documentId
         List_Name
+        List_Name_Details
         Visibility
         is_pinned
         pin_order
@@ -331,6 +332,9 @@ export const placeDetailsQuery = gql`
       user_recommendation_note
       user_rating
       google_rating
+      recommendation_list {
+        List_Name_Details
+      }
       recommendation_category {
         Category_Name
       }

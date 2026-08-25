@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { KeyValuePair } from "../components/RecommendForm";
 import axios from "axios";
 import { useMutation, useQuery, useApolloClient } from "@apollo/client";
@@ -23,6 +23,10 @@ import {
 } from "../../../utils/uploadPathGenerator";
 import { createClaimablePlaceProfileService } from "../services/claimablePlaceProfileService";
 import { fetchPlaceDetails } from "../../../utils/placeDetailsFetcher";
+import {
+  RecommendationMediaSaveError,
+  saveRecommendationMedia,
+} from "../utils/recommendationMediaSave";
 
 /**
  * Coerce a value to a finite number, or null. Used for Place_Details.Rating /
@@ -136,6 +140,7 @@ export const useAddRecommendation = ({
       fileName: string;
     }[]
   >([]);
+  const pendingCreatedRecommendationRef = useRef<string | null>(null);
 
   // handle remove user Image
   const { t } = useTranslation();
@@ -209,27 +214,25 @@ export const useAddRecommendation = ({
       setIsLoading(true);
 
       try {
-        // Check for duplicates in the current recommendation list
-        const { data: currentList } = await placeRefetch();
-
-        // Normalize the new title for comparison (use title for comparison)
-        const normalizedNewTitle = values.title?.trim().toLowerCase().replace(/\s+/g, ' ') || '';
-
-        // Check if the recommendation already exists in the list
-        const isDuplicate = currentList?.recommendationList?.recommended_places?.some(
-          (place: any) => {
-            const existingTitle = place?.Place_Details?.Title?.trim().toLowerCase().replace(/\s+/g, ' ');
-            return existingTitle === normalizedNewTitle && normalizedNewTitle !== '';
-          }
-        );
-
-        if (isDuplicate) {
-          const itemType = recommendationType === "person" ? "person" : "place";
-          toast.error(
-            t("toast.error.placeAlreadyExists", { itemType })
+        const pendingDocumentId = pendingCreatedRecommendationRef.current;
+        if (!pendingDocumentId) {
+          // Check for duplicates in the current recommendation list before the
+          // first create. Retries resume the already-created recommendation.
+          const { data: currentList } = await placeRefetch();
+          const normalizedNewTitle = values.title?.trim().toLowerCase().replace(/\s+/g, ' ') || '';
+          const isDuplicate = currentList?.recommendationList?.recommended_places?.some(
+            (place: any) => {
+              const existingTitle = place?.Place_Details?.Title?.trim().toLowerCase().replace(/\s+/g, ' ');
+              return existingTitle === normalizedNewTitle && normalizedNewTitle !== '';
+            }
           );
-          setIsLoading(false);
-          return;
+
+          if (isDuplicate) {
+            const itemType = recommendationType === "person" ? "person" : "place";
+            toast.error(t("toast.error.placeAlreadyExists", { itemType }));
+            setIsLoading(false);
+            return;
+          }
         }
 
 
@@ -274,7 +277,11 @@ export const useAddRecommendation = ({
         // Prepare data based on recommendation type
         let responseData;
 
-        if (recommendationType === "person") {
+        if (pendingDocumentId) {
+          responseData = {
+            data: { createRecommendedPlace: { documentId: pendingDocumentId } },
+          };
+        } else if (recommendationType === "person") {
           // For person: Use Person_Details JSON field for Instagram/LinkedIn and address
           const personDetailsJson = {
             instagram: values.recommendation || '', // Instagram/LinkedIn URL
@@ -331,271 +338,102 @@ export const useAddRecommendation = ({
 
         const response = responseData;
 
-        let createdPlace = null;
-        try {
-          createdPlace = await axios.get(
-            `${import.meta.env.VITE_REST_API_URL}/recommended-places`,
-            {
-              params: {
-                filters: {
-                  documentId: {
-                    $eq: response.data.createRecommendedPlace.documentId,
+        const createdDocumentId = response?.data?.createRecommendedPlace?.documentId;
+        if (!createdDocumentId) {
+          throw new Error("Recommendation creation returned no document ID");
+        }
+        pendingCreatedRecommendationRef.current = createdDocumentId;
+
+        await saveRecommendationMedia({
+          lookup: async () => {
+            const createdPlace = await axios.get(
+              `${import.meta.env.VITE_REST_API_URL}/recommended-places`,
+              {
+                params: { filters: { documentId: { $eq: createdDocumentId } } },
+                headers: { Authorization: `Bearer ${token}` },
+              },
+            );
+            const record = createdPlace.data?.data?.[0];
+            if (!record?.id || !record?.documentId) {
+              throw new Error("Created recommendation could not be found");
+            }
+            return { id: record.id, documentId: record.documentId };
+          },
+          upload: async (createdPlace) => {
+            const uploadFile = async (
+              file: Blob | File | string,
+              fileName?: string,
+              type?: string,
+            ) => {
+              const randomFileName = generateRandomFileName(fileName);
+              const formData = new FormData();
+              formData.append("files", new File([file], randomFileName, type ? { type } : undefined));
+              formData.append("refId", String(createdPlace.id));
+              formData.append("field", "Media");
+              formData.append("ref", "api::recommended-place.recommended-place");
+              formData.append(
+                "path",
+                generateRecommendationUploadPath(
+                  sanitizeUsername(user?.username || "user"),
+                  selectedCity?.documentId || listId || "unknown-list",
+                  createdPlace.documentId,
+                  randomFileName,
+                ),
+              );
+              const result = await axios.post(
+                `${import.meta.env.VITE_REST_API_URL}/upload`,
+                formData,
+                {
+                  headers: {
+                    "Content-Type": "multipart/form-data",
+                    Authorization: `Bearer ${token}`,
                   },
                 },
-              },
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-        } catch (corsError) {
-          console.warn("CORS error when fetching created place, but recommendation was created successfully:", corsError);
-          // Continue with the flow even if we can't fetch the created place due to CORS
-          // The place was successfully created in Strapi
-        }
+              );
+              return result.data || [];
+            };
 
-        // Extract the thumbnail image from fetchedGoogleMedia
-        const safeFetchedGoogleMedia = Array.isArray(fetchedGoogleMedia) ? fetchedGoogleMedia : [];
-        const thumbnailImage = safeFetchedGoogleMedia.find(
-          (img) => img.isThumbnail === true
-        );
-        let thumbnailResponse = null;
+            const safeFetchedGoogleMedia = Array.isArray(fetchedGoogleMedia)
+              ? fetchedGoogleMedia
+              : [];
+            const thumbnail = safeFetchedGoogleMedia.find((item) => item.isThumbnail);
+            const thumbnailResult = thumbnail
+              ? await uploadFile(thumbnail.photoBlob ?? "", thumbnail.fileName)
+              : [];
+            const imageDetails = await Promise.all([
+              ...safeFetchedGoogleMedia
+                .filter((item) => !item.isThumbnail)
+                .map((item) => uploadFile(item.photoBlob ?? "", item.fileName)),
+              ...uploadedUserMedia.map(({ file, fileName }) =>
+                uploadFile(file, fileName, file.type),
+              ),
+              ...(instagramMedia || []).map((item) =>
+                uploadFile(item.photoBlob ?? "", item.fileName),
+              ),
+            ]);
 
-        if (thumbnailImage && createdPlace?.data?.data?.[0]?.id) {
-          try {
-            const formData = new FormData();
-
-            // Generate structured path for recommendation thumbnail
-            const username = sanitizeUsername(user?.username || 'user');
-            const recommendationListId = selectedCity?.documentId || listId || 'unknown-list';
-            const placeId = createdPlace.data.data[0].documentId || 'unknown-place';
-            const randomFileName = generateRandomFileName(thumbnailImage.fileName);
-            const structuredPath = generateRecommendationUploadPath(
-              username,
-              recommendationListId,
-              placeId,
-              randomFileName
-            );
-
-            formData.append(
-              "files",
-              new File(
-                [thumbnailImage.photoBlob ?? ""],
-                randomFileName
-              )
-            );
-            formData.append("refId", createdPlace.data.data[0].id);
-            formData.append("field", "Media");
-            formData.append("ref", "api::recommended-place.recommended-place");
-            formData.append("path", structuredPath);
-
-            thumbnailResponse = await axios.post(
-              `${import.meta.env.VITE_REST_API_URL}/upload`,
-              formData,
-              {
-                headers: {
-                  "Content-Type": "multipart/form-data",
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            );
-          } catch (uploadError) {
-            console.warn("Error uploading thumbnail:", uploadError);
-          }
-        }
-
-        // Upload remaining Google Media (excluding the thumbnail)
-        const uploadPromises = fetchedGoogleMedia
-          .filter((img) => !img.isThumbnail)
-          .map(({ photoBlob, fileName }) => {
-            if (!createdPlace?.data?.data?.[0]?.id) {
-              console.warn("No place ID available for upload");
-              return null;
-            }
-
-            const formData = new FormData();
-
-            // Generate structured path for recommendation media
-            const username = sanitizeUsername(user?.username || 'user');
-            const recommendationListId = selectedCity?.documentId || listId || 'unknown-list';
-            const placeId = createdPlace.data.data[0].documentId || 'unknown-place';
-            const randomFileName = generateRandomFileName(fileName);
-            const structuredPath = generateRecommendationUploadPath(
-              username,
-              recommendationListId,
-              placeId,
-              randomFileName
-            );
-
-            formData.append(
-              "files",
-              new File([photoBlob ?? ""], randomFileName)
-            );
-            formData.append("refId", createdPlace.data.data[0].id);
-            formData.append("field", "Media");
-            formData.append("ref", "api::recommended-place.recommended-place");
-            formData.append("path", structuredPath);
-
-            return axios.post(
-              `${import.meta.env.VITE_REST_API_URL}/upload`,
-              formData,
-              {
-                headers: {
-                  "Content-Type": "multipart/form-data",
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            ).catch(error => {
-              console.warn("Error uploading media:", error);
-              return null;
-            });
-          })
-          .filter(Boolean);
-
-        const uploadedImageResponse = (
-          await Promise.all(uploadPromises)
-        ).filter(Boolean);
-
-        // Upload user media
-        const userUploadPromises = uploadedUserMedia.map(
-          ({ file, fileName }) => {
-            if (!createdPlace?.data?.data?.[0]?.id) {
-              console.warn("No place ID available for user upload");
-              return Promise.resolve({ status: "rejected", reason: "No place ID" });
-            }
-
-            const formData = new FormData();
-
-            // Generate structured path for user-uploaded recommendation media
-            const username = sanitizeUsername(user?.username || 'user');
-            const recommendationListId = selectedCity?.documentId || listId || 'unknown-list';
-            const placeId = createdPlace.data.data[0].documentId || 'unknown-place';
-            const randomFileName = generateRandomFileName(fileName);
-            const structuredPath = generateRecommendationUploadPath(
-              username,
-              recommendationListId,
-              placeId,
-              randomFileName
-            );
-
-            formData.append(
-              "files",
-              new File([file], randomFileName, { type: file.type })
-            );
-            formData.append("refId", createdPlace.data.data[0].id);
-            formData.append("field", "Media");
-            formData.append("ref", "api::recommended-place.recommended-place");
-            formData.append("path", structuredPath);
-
-            return axios.post(
-              `${import.meta.env.VITE_REST_API_URL}/upload`,
-              formData,
-              {
-                headers: {
-                  "Content-Type": "multipart/form-data",
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            ).catch(error => {
-              console.warn("Error uploading user media:", error);
-              return { status: "rejected", reason: error };
-            });
-          }
-        );
-
-        const userUploadedImageResponse = await Promise.allSettled(
-          userUploadPromises
-        );
-        const resolvedResponses = userUploadedImageResponse
-          .filter((result): result is PromiseFulfilledResult<any> => {
-            return result.status === "fulfilled" &&
-              result.value &&
-              typeof result.value === 'object' &&
-              'data' in result.value;
-          })
-          .map((result) => result.value.data);
-
-        // Upload Instagram scraped media
-        const igUploadPromises = (instagramMedia || []).map(
-          ({ photoBlob, fileName }) => {
-            if (!createdPlace?.data?.data?.[0]?.id) {
-              console.warn("No place ID available for Instagram media upload");
-              return Promise.resolve({ status: "rejected", reason: "No place ID" });
-            }
-
-            const formData = new FormData();
-            const username = sanitizeUsername(user?.username || 'user');
-            const recommendationListId = selectedCity?.documentId || listId || 'unknown-list';
-            const placeId = createdPlace.data.data[0].documentId || 'unknown-place';
-            const randomFileName = generateRandomFileName(fileName);
-            const structuredPath = generateRecommendationUploadPath(
-              username,
-              recommendationListId,
-              placeId,
-              randomFileName
-            );
-
-            formData.append(
-              "files",
-              new File([photoBlob ?? ""], randomFileName)
-            );
-            formData.append("refId", createdPlace.data.data[0].id);
-            formData.append("field", "Media");
-            formData.append("ref", "api::recommended-place.recommended-place");
-            formData.append("path", structuredPath);
-
-            return axios.post(
-              `${import.meta.env.VITE_REST_API_URL}/upload`,
-              formData,
-              {
-                headers: {
-                  "Content-Type": "multipart/form-data",
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            ).catch(error => {
-              console.warn("Error uploading Instagram media:", error);
-              return { status: "rejected", reason: error };
-            });
-          }
-        );
-
-        const igUploadedResponse = await Promise.allSettled(igUploadPromises);
-        const resolvedIgResponses = igUploadedResponse
-          .filter((result): result is PromiseFulfilledResult<any> => {
-            return result.status === "fulfilled" &&
-              result.value &&
-              typeof result.value === 'object' &&
-              'data' in result.value;
-          })
-          .map((result) => result.value.data);
-
-        // Merge all media
-        const transformedArray = [
-          ...uploadedImageResponse.flatMap((item) => item?.data || []),
-          ...resolvedResponses.flatMap((responseArray) => responseArray || []),
-          ...resolvedIgResponses.flatMap((responseArray) => responseArray || []),
-        ];
-
-        // Update the recommendation place with media details
-        try {
-          if (createdPlace?.data?.data?.[0]?.documentId) {
+            return {
+              thumbnail: thumbnailResult[0] || null,
+              imageDetails: imageDetails.flat(),
+              scalarId: createdPlace.id,
+            };
+          },
+          saveMetadata: async (documentId, media) => {
             await updateRecommendationPlace({
               variables: {
-                documentId: createdPlace.data.data[0].documentId,
+                documentId,
                 data: {
                   media_details: {
-                    imageDetails: transformedArray,
-                    scalarId: createdPlace.data.data[0].id,
-                    thumbnail: thumbnailResponse?.data?.[0] || null,
+                    imageDetails: media.imageDetails,
+                    scalarId: media.scalarId ?? documentId,
+                    thumbnail: media.thumbnail,
                   },
                 },
               },
             });
-          }
-        } catch (error) {
-          // Non-fatal: cache update failure is recovered by the refetch below
-        }
+          },
+        });
+        pendingCreatedRecommendationRef.current = null;
 
         // Update Claimable_Place_Profile after successful recommendation creation
         // Only for place recommendations, not person recommendations
@@ -697,6 +535,14 @@ export const useAddRecommendation = ({
         }
       } catch (error) {
         setIsLoading(false);
+        if (error instanceof RecommendationMediaSaveError) {
+          toast.error(
+            "Recommendation saved, but media could not be completed. Your selected files are still here; retry to continue.",
+          );
+        } else {
+          toast.error("Failed to save recommendation. Please try again.");
+        }
+        throw error;
       }
     }
   };

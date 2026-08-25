@@ -1,0 +1,2744 @@
+/* Font imports must precede all other at-rules for Tailwind build ordering */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .landing-page {
+    --landing-cream: #f6f1e7;
+    --landing-cream-2: #fffcf6;
+    --landing-cream-3: #eadfcf;
+    --landing-ink: #17231a;
+    --landing-muted: #66715f;
+    --landing-green: #1b3b1a;
+    --landing-green-2: #375c3b;
+    --landing-moss: #dce9ce;
+    --landing-sage: #b8c9ab;
+    --landing-orange: #c87941;
+    --landing-gold: #d8a15d;
+    --landing-dark-green: #102513;
+    --landing-line: rgba(23, 35, 26, .14);
+    --landing-shadow: 0 24px 80px rgba(27, 59, 26, .14);
+    --landing-radius: 26px;
+    background: var(--landing-cream);
+    color: var(--landing-ink);
+    font-family: "DM Sans", system-ui, sans-serif;
+  }
+
+  .landing-display {
+    font-family: "Fraunces", Georgia, serif;
+    letter-spacing: -0.025em;
+  }
+
+  .landing-section {
+    padding-block: 86px;
+  }
+
+  .landing-section-band {
+    background: var(--landing-cream-2);
+    border-block: 1px solid var(--landing-line);
+  }
+
+  .landing-section-alt {
+    background: var(--landing-cream);
+  }
+
+  .landing-card {
+    border: 1px solid var(--landing-line);
+    border-radius: var(--landing-radius);
+    background: rgba(255, 255, 255, .62);
+    box-shadow: var(--landing-shadow);
+  }
+
+  .landing-soft-card {
+    border: 1px solid var(--landing-line);
+    border-radius: var(--landing-radius);
+    background: rgba(255, 255, 255, .58);
+  }
+
+  .landing-green-button {
+    color: #fff;
+    background: var(--landing-green);
+    box-shadow: 0 12px 26px rgba(33, 75, 42, .22);
+  }
+
+  .landing-green-button:hover {
+    background: var(--landing-dark-green);
+  }
+
+  .landing-muted {
+    color: var(--landing-muted);
+  }
+
+  .landing-claim-box {
+    border: 1px solid var(--landing-line);
+    background: rgba(255, 255, 255, .75);
+    box-shadow: 0 18px 44px rgba(23, 35, 26, .10);
+    backdrop-filter: blur(18px);
+  }
+}
+
+/* Horizontal scrolling animation for song titles */
+@keyframes scroll {
+  0% {
+    transform: translateX(100%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-scroll {
+  animation: scroll 10s linear infinite;
+}
+
+/* =============================================
+   Dashboard Theme (Scoped)
+   ---------------------------------------------
+   Applies ONLY inside elements with .dashboard-theme
+   Colors (dark green theme):
+     --dash-bg: #2E4032 (primary background)
+     --dash-sidebar-bg: #223126 (sidebar background)
+     --dash-accent: #3498DB (interactive / active)
+     --dash-text: #FFFFFF (primary text/icons)
+     --dash-muted: #3C4E40 (inactive tabs/dividers, subtle surfaces)
+   Typography tokens:
+     Heading: 20px / 700
+     Label: 14px / 500
+     Input: 16px / 400
+     Subtext: 12px / 300 (muted)
+     Button: 16px / 600
+   ---------------------------------------------
+   Do NOT place global overrides here. Keep everything
+   nested so public / landing pages remain unaffected.
+============================================== */
+
+/* Poppins included in consolidated import above */
+
+:root {
+  --dash-bg: #fffcf6;
+  --dash-sidebar-bg: #ffffff;
+  --dash-accent: #3B82F6;
+  --dash-accent-text: #ffffff;
+  --dash-text: #17231a;
+  --dash-text-light: #17231a;
+  --dash-text-muted: color-mix(in srgb, #17231a 55%, transparent);
+  --dash-muted: #eadfcf;
+  --dash-border: rgba(23, 35, 26, 0.14);
+  --dash-focus-ring: #3B82F6;
+  --dash-danger: #EF4444;
+  --dash-danger-hover: #DC2626;
+  --status-published: 142 69% 58%;
+  --status-draft: 0 84% 60%;
+  --dash-radius-sm: 4px;
+  --dash-radius-md: 8px;
+  --dash-radius-lg: 14px;
+  --dash-heading-size: 20px;
+  --dash-heading-weight: 700;
+  --dash-label-size: 14px;
+  --dash-label-weight: 500;
+  --dash-input-size: 16px;
+  --dash-input-weight: 400;
+  --dash-subtext-size: 12px;
+  --dash-subtext-weight: 300;
+  --dash-button-size: 14px;
+  --dash-button-weight: 400;
+  --dash-transition: 160ms cubic-bezier(.4, 0, .2, 1);
+  /* Icon colors */
+  --dash-icon-primary: #17231a;
+  --dash-icon-secondary: #66715f;
+  --dash-icon-accent: #3B82F6;
+  --dash-icon-muted: #66715f;
+  /* Sidebar width - default value for initial render (will be overridden by Sidebar component) */
+  --sidebar-width: 0px;
+
+  /* Additional category & theme layout variables */
+  --dash-container-bg: #fffcf6;
+  --dash-tab-bg:      #eadfcf;
+  --dash-search-bg:   #f6f1e7;
+  --dash-map-banner:  linear-gradient(135deg, #dce9ce, #b8c9ab);
+  --status-pub:       #4ade80;
+  --status-draft:     #f87171;
+  --text-light:       102 9% 41%;
+
+  /* Skeleton loaders variables */
+  --skeleton-bg: #f0e7d8;
+  --skeleton-shimmer-base: rgba(23, 35, 26, 0.05);
+  --skeleton-shimmer-bright: rgba(23, 35, 26, 0.09);
+  --skeleton-shimmer-sweep: rgba(255, 255, 255, 0.6);
+  --skeleton-shadow: rgba(23, 35, 26, 0.04);
+  --skeleton-gradient-1: rgba(255, 252, 246, 0.95);
+  --skeleton-gradient-2: rgba(255, 252, 246, 0.45);
+  --skeleton-gradient-3: rgba(255, 252, 246, 0.05);
+}
+
+.dashboard-theme {
+  font-family: 'Poppins', sans-serif;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --sidebar-width: 256px;
+  }
+}
+
+/* =============================================
+   Dashboard Layout - Sidebar-Aware Content Area
+   Uses body[data-sidebar-open] set by Sidenav's
+   useLayoutEffect to drive margin + width WITHOUT
+   needing a React re-render.
+============================================== */
+.dashboard-content {
+  margin-left: calc(256px + 0.5rem);
+  width: calc(100% - 256px - 0.5rem);
+  transition: margin-left 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    width 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body[data-sidebar-open="false"] .dashboard-content {
+  margin-left: calc(64px + 0.5rem);
+  width: calc(100% - 64px - 0.5rem);
+}
+
+/* Floating action bar (Cancel / Update) — tracks the sidebar just like .dashboard-content */
+@media (min-width: 768px) {
+  .action-bar-offset {
+    left: calc(256px + 0.5rem);
+    transition: left 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  body[data-sidebar-open="false"] .action-bar-offset {
+    left: calc(64px + 0.5rem);
+  }
+}
+
+/* Dark theme overrides */
+.dashboard-theme-dark {
+  --dash-bg: #060608;
+  --dash-sidebar-bg: #14141C;
+  --dash-accent: #60A5FA;
+  --dash-accent-text: #060608;
+  --dash-text: #F9FAFB;
+  --dash-text-light: #FFFFFF;
+  --dash-text-muted: color-mix(in srgb, #F9FAFB 50%, transparent);
+  --dash-muted: #121217;
+  --dash-border: #1E1E26;
+  --dash-focus-ring: #60A5FA;
+  --dash-danger: #F87171;
+  --dash-danger-hover: #EF4444;
+  /* Icon colors for dark theme */
+  --dash-icon-primary: #F9FAFB;
+  --dash-icon-secondary: #9CA3AF;
+  --dash-icon-accent: #60A5FA;
+  --dash-icon-muted: #6B7280;
+
+  /* Additional category & theme layout variables */
+  --dash-container-bg: #060608;
+  --dash-tab-bg:      #0C0C10;
+  --dash-search-bg:   #0E0E12;
+  --dash-map-banner:  linear-gradient(135deg, #121217, #060608);
+  --status-pub:       #4ade80;
+  --status-draft:     #f87171;
+  --text-light:       219 14% 82%;
+
+  /* Skeleton loaders variables */
+  --skeleton-bg: #121217;
+  --skeleton-shimmer-base: rgba(255, 255, 255, 0.05);
+  --skeleton-shimmer-bright: rgba(255, 255, 255, 0.12);
+  --skeleton-shimmer-sweep: rgba(255, 255, 255, 0.08);
+  --skeleton-shadow: rgba(0, 0, 0, 0.4);
+  --skeleton-gradient-1: rgba(0, 0, 0, 0.9);
+  --skeleton-gradient-2: rgba(0, 0, 0, 0.45);
+  --skeleton-gradient-3: rgba(0, 0, 0, 0.08);
+}
+
+@layer components {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    /* Internet Explorer 10+ */
+    scrollbar-width: none;
+    /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+    /* Safari and Chrome */
+  }
+
+  .dashboard-theme .dt-heading {
+    font-size: var(--dash-heading-size);
+    font-weight: var(--dash-heading-weight);
+    color: var(--dash-text);
+    line-height: 1.2;
+  }
+
+  .dashboard-theme .dt-label {
+    font-size: var(--dash-label-size);
+    font-weight: var(--dash-label-weight);
+    color: var(--dash-text);
+  }
+
+  .dashboard-theme .dt-input {
+    font-size: var(--dash-input-size);
+    font-weight: var(--dash-input-weight);
+    color: var(--dash-text);
+    background: var(--dash-muted);
+    border-radius: var(--dash-radius-sm);
+    padding: 0.5rem 3rem 0.5rem 0.75rem;
+    border: 1px solid var(--dash-border);
+    transition: var(--dash-transition);
+  }
+
+  .dashboard-theme .dt-input:focus {
+    outline: 2px solid var(--dash-accent);
+    outline-offset: 2px;
+  }
+
+
+  .dashboard-theme .dt-editor .ql-container {
+    border: 1px solid var(--dash-border) !important;
+    border-radius: var(--dash-radius-sm);
+    background: var(--dash-muted) !important;
+  }
+
+  .dashboard-theme .dt-editor .ql-editor {
+    color: var(--dash-text) !important;
+    background: transparent !important;
+  }
+
+  .dashboard-theme .dt-editor .ql-toolbar {
+    border: 1px solid var(--dash-border) !important;
+    border-bottom: none !important;
+    border-radius: var(--dash-radius-sm) var(--dash-radius-sm) 0 0;
+    background: var(--dash-sidebar-bg) !important;
+  }
+
+  .dashboard-theme .dt-editor .ql-toolbar .ql-stroke {
+    stroke: var(--dash-text) !important;
+  }
+
+  .dashboard-theme .dt-editor .ql-toolbar .ql-fill {
+    fill: var(--dash-text) !important;
+  }
+
+  .dashboard-theme .dt-editor .ql-editor::before {
+    color: var(--dash-light) !important;
+    opacity: 0.6 !important;
+  }
+
+  .dashboard-theme .dt-editor .ql-picker-options {
+    background: var(--dash-sidebar-bg) !important;
+    border: 1px solid var(--dash-border) !important;
+  }
+
+  .dashboard-theme .dt-editor .ql-picker-item {
+    color: var(--dash-text) !important;
+  }
+
+  .dashboard-theme .dt-editor .ql-picker-item:hover {
+    background: var(--dash-muted) !important;
+  }
+
+  .dashboard-theme .dt-editor:focus-within {
+    outline: 2px solid var(--dash-accent);
+    outline-offset: 2px;
+    border-radius: var(--dash-radius-sm);
+  }
+
+  .dashboard-theme .dt-subtext {
+    font-size: var(--dash-subtext-size);
+    font-weight: var(--dash-subtext-weight);
+    color: color-mix(in srgb, var(--dash-text) 65%, transparent);
+  }
+
+  .dashboard-theme .dt-button-text {
+    font-size: var(--dash-button-size);
+    font-weight: var(--dash-button-weight);
+  }
+
+  .dashboard-theme .dt-divider {
+    height: 1px;
+    background: var(--dash-muted);
+    width: 100%;
+  }
+
+  .dashboard-theme .dt-surface {
+    background: var(--dash-sidebar-bg);
+    border: 1px solid var(--dash-border);
+    border-radius: var(--dash-radius-md);
+  }
+
+  .dashboard-theme .dt-surface-muted {
+    background: var(--dash-muted);
+    border-radius: var(--dash-radius-md);
+  }
+
+  .dashboard-theme .dt-accent {
+    color: var(--dash-accent);
+  }
+
+  .dashboard-theme .dt-accent-bg {
+    background: var(--dash-accent);
+    color: #fff;
+  }
+
+  .dashboard-theme .dt-interactive {
+    transition: var(--dash-transition);
+  }
+
+  .dashboard-theme .dt-interactive:hover {
+    background: color-mix(in srgb, var(--dash-accent) 15%, transparent);
+  }
+
+  .dashboard-theme .dt-active {
+    background: var(--dash-muted);
+    color: var(--dash-accent);
+  }
+
+  .dashboard-theme .dt-scrollarea {
+    scrollbar-color: var(--dash-muted) transparent;
+  }
+
+  .dashboard-theme .dt-scrollarea::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .dashboard-theme .dt-scrollarea::-webkit-scrollbar-thumb {
+    background: var(--dash-muted);
+    border-radius: 8px;
+  }
+
+  .dashboard-theme .dt-outline-focus:focus-visible {
+    outline: 2px solid var(--dash-accent);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+
+  .dashboard-theme .bg-dashboard-bg,
+  .dashboard-theme.bg-dashboard-bg {
+    background: var(--dash-bg) !important;
+  }
+
+  .dashboard-theme .bg-dashboard-sidebar,
+  .dashboard-theme.bg-dashboard-sidebar {
+    background: var(--dash-sidebar-bg) !important;
+  }
+
+  .dashboard-theme .bg-dashboard-muted,
+  .dashboard-theme.bg-dashboard-muted {
+    background: var(--dash-muted) !important;
+  }
+
+  .dashboard-theme .bg-dashboard-accent,
+  .dashboard-theme.bg-dashboard-accent {
+    background: var(--dash-accent) !important;
+  }
+
+  .dashboard-theme .bg-dashboard-danger,
+  .dashboard-theme.bg-dashboard-danger {
+    background: var(--dash-danger) !important;
+  }
+
+  .dashboard-theme .bg-dashboard-overlay,
+  .dashboard-theme.bg-dashboard-overlay {
+    background: rgba(0, 0, 0, 0.55) !important;
+  }
+
+  .dashboard-theme .bg-dashboard-modal,
+  .dashboard-theme.bg-dashboard-modal {
+    background: color-mix(in srgb, var(--dash-sidebar-bg) 85%, black);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .dashboard-theme .text-dashboard,
+  .dashboard-theme.text-dashboard {
+    color: var(--dash-text) !important;
+  }
+
+  .dashboard-theme .text-dashboard-light,
+  .dashboard-theme.text-dashboard-light {
+    color: var(--dash-text-light) !important;
+  }
+
+  .dashboard-theme .text-dashboard-muted {
+    color: var(--dash-text-muted) !important;
+  }
+
+  /* Icon color utilities */
+  .dashboard-theme .icon-primary {
+    color: var(--dash-icon-primary) !important;
+  }
+
+  .dashboard-theme .icon-secondary {
+    color: var(--dash-icon-secondary) !important;
+  }
+
+  .dashboard-theme .icon-accent {
+    color: var(--dash-icon-accent) !important;
+  }
+
+  .dashboard-theme .icon-muted {
+    color: var(--dash-icon-muted) !important;
+  }
+
+  .dashboard-theme .text-dashboard-accent {
+    color: var(--dash-accent) !important;
+  }
+
+  .dashboard-theme .text-dashboard-danger {
+    color: var(--dash-danger) !important;
+  }
+
+  .dashboard-theme .border-dashboard {
+    border-color: var(--dash-border) !important;
+  }
+
+  .dashboard-theme .border-dashboard-accent {
+    border-color: var(--dash-accent) !important;
+  }
+
+  .dashboard-theme .ring-dashboard-accent:focus-visible {
+    outline: 2px solid var(--dash-accent);
+    outline-offset: 2px;
+  }
+
+  .dashboard-theme .shadow-dashboard-elevated {
+    box-shadow: 0 4px 16px -4px rgba(0, 0, 0, .4), 0 2px 6px -2px rgba(0, 0, 0, .3);
+  }
+
+  /* Tab component utilities */
+  .dashboard-theme .tab-container {
+    background: var(--dash-sidebar-bg) !important;
+  }
+
+  .dashboard-theme .tab-active {
+    background: var(--dash-accent) !important;
+  }
+
+  .dashboard-theme .tab-inactive-text {
+    color: #000000 !important;
+  }
+
+  .dashboard-theme .tab-active-border {
+    border-bottom-color: var(--dash-accent) !important;
+  }
+
+  .dashboard-theme .tab-hover:hover {
+    opacity: 0.8;
+  }
+
+  /* Accordion component utilities */
+  .dashboard-theme .accordion-section {
+    background: var(--dash-sidebar-bg) !important;
+  }
+
+  .dashboard-theme .accordion-hover:hover {
+    background: var(--dash-muted) !important;
+  }
+
+  /* Checkbox component utilities */
+  .dashboard-theme .checkbox-accent {
+    accent-color: var(--dash-accent) !important;
+  }
+
+  /* Taggable field button utilities */
+  .dashboard-theme .tag-button {
+    background: var(--dash-muted) !important;
+    color: var(--dash-text) !important;
+    border: 2px solid transparent !important;
+  }
+
+  .dashboard-theme .tag-button-active {
+    background: var(--dash-muted) !important;
+    color: var(--dash-text) !important;
+    border: 2px solid var(--dash-accent) !important;
+  }
+
+  .dashboard-theme .tag-remove-icon {
+    position: absolute !important;
+    right: -0.25rem !important;
+    top: -0.25rem !important;
+    background: white !important;
+    color: var(--dash-danger) !important;
+    border-radius: 9999px !important;
+    font-size: 0.875rem !important;
+    cursor: pointer !important;
+  }
+
+  /* 3D Effects for Books */
+  .book-perspective {
+    perspective: 1500px;
+  }
+  .book-static-tilt {
+    transform: rotateY(-18deg) rotateX(2deg);
+    transform-origin: left;
+    filter: drop-shadow(4px 4px 8px rgba(0,0,0,0.4));
+  }
+  .book-tilt {
+    transform: rotateY(-35deg) scale(1.02);
+    transform-origin: left;
+    filter: drop-shadow(15px 15px 30px rgba(0,0,0,0.6));
+  }
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+  .book-pages-stack {
+    background: linear-gradient(
+      to right,
+      #d1d1d1 0%,
+      #ffffff 15%,
+      #e0e0e0 30%,
+      #ffffff 45%,
+      #e0e0e0 60%,
+      #ffffff 75%,
+      #e0e0e0 90%,
+      #ffffff 100%
+    );
+    background-size: 3px 100%;
+  }
+
+  /* Refined Curled Corner */
+  .book-corner-curl {
+    clip-path: polygon(0 0, 100% 0, 100% 90%, 90% 100%, 0 100%);
+  }
+
+  .book-perspective {
+    perspective: 2000px;
+  }
+
+  .book-static-tilt {
+    transform: rotateY(-22deg) rotateX(2deg) rotateZ(0deg);
+    transform-origin: left center;
+  }
+}
+
+/* Make placeholder text lighter than regular input text.
+   Placed OUTSIDE @layer so it overrides Tailwind placeholder: utilities. */
+.dashboard-theme input::placeholder,
+.dashboard-theme textarea::placeholder,
+.dashboard-theme .dt-input::placeholder,
+.dashboard-theme select::placeholder {
+  color: color-mix(in srgb, var(--dash-text) 40%, transparent) !important;
+  opacity: 1 !important;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+/* Apply to the entire document or a specific element */
+::-webkit-scrollbar {
+  width: 8px;
+  /* Width of the scrollbar */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #b0b0b0;
+  /* Gray color */
+  border-radius: 10px;
+  /* Rounded ends */
+}
+
+::-webkit-scrollbar-track {
+  background-color: currentColor;
+  /* Transparent background for the track */
+}
+
+.modal-scroll::-webkit-scrollbar-track {
+  background-color: white;
+  /* Transparent background for the track */
+}
+
+
+/* Apply to the entire document or a specific element */
+.preview-scroll::-webkit-scrollbar {
+  width: 1px;
+  /* Width of the scrollbar */
+}
+
+.preview-scroll::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  /* Gray color */
+  border-radius: 100px;
+  /* Rounded ends */
+}
+
+.preview-scroll::-webkit-scrollbar-track {
+  background-color: currentColor;
+  /* Transparent background for the track */
+}
+
+.preview-scroll::-webkit-scrollbar-track {
+  background-color: currentColor;
+  /* Transparent background for the track */
+}
+
+/* Thin scrollbar for mobile modals */
+.modal-thin-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  /* Thin width for mobile */
+}
+
+.modal-thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #b0b0b0;
+  border-radius: 10px;
+}
+
+.modal-thin-scrollbar::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+/* Firefox support for thin scrollbar */
+.modal-thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #b0b0b0 transparent;
+}
+
+
+
+
+/* Remove default focus outlines and add custom focus styles */
+* {
+  outline: none !important;
+}
+
+button:focus,
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Custom focus styles for better UX */
+button:focus-visible {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
+}
+
+a:focus-visible {
+  color: rgba(59, 130, 246, 0.8);
+  transition: color 0.2s ease;
+}
+
+/* Global smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent horizontal overflow issues */
+/* NOTE: overflow-x: hidden on html/body breaks position: sticky! */
+/* We use width: 100% instead of 100vw to avoid scrollbar width issues */
+html,
+body {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Don't apply overflow to #root - it breaks sticky positioning in nested content */
+#root {
+  width: 100%;
+}
+
+/* Fix for horizontal displacement caused by Joyride/Walkthrough */
+.joyride-active,
+.joyride-active body {
+  overflow-x: hidden !important;
+  width: 100% !important;
+  padding-right: 0 !important;
+  position: static !important;
+  /* Prevent Joyride from making body relative/fixed if it causes shifts */
+}
+
+/* Ensure containers don't cause horizontal overflow */
+.container {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Fix for grid layouts that might cause overflow */
+.grid {
+  max-width: 100%;
+}
+
+/* Ensure responsive containers work properly */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Enhanced button animations */
+.btn-animated {
+  transition: all 0.2s ease;
+  transform: translateY(0);
+}
+
+.btn-animated:hover {
+  transform: translateY(-2px);
+}
+
+.btn-animated:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Button spinner animation */
+@keyframes btn-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Input field animations */
+.input-animated {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Hide dashboard header on scroll (used in DashboardLayout) */
+.dashboard-header {
+  position: fixed !important;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 100;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              left 300ms cubic-bezier(0.4, 0, 0.2, 1),
+              width 300ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  will-change: transform, left, width;
+}
+
+body.hide-dashboard-header .dashboard-header {
+  transform: translateY(-100%);
+}
+
+/* Ensure the scroll container clears its padding when header is hidden */
+body.hide-dashboard-header .dashboard-content > div.overflow-auto {
+  padding-top: 0 !important;
+  transition: padding-top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Responsive Sticky Top for page-level headers that need to offset the global header */
+.sticky-top-offset {
+  top: 64px;
+  transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (min-width: 768px) {
+  .sticky-top-offset {
+    top: 46px;
+  }
+}
+
+body.hide-dashboard-header .sticky-top-offset {
+  top: 0 !important;
+}
+
+/* Header sidebar-aware positioning */
+@media (min-width: 768px) {
+  .dashboard-header {
+    left: calc(256px + 1rem) !important;
+    width: calc(100% - 256px - 2rem) !important;
+  }
+
+  body[data-sidebar-open="false"] .dashboard-header {
+    left: calc(64px + 1rem) !important;
+    width: calc(100% - 64px - 2rem) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .dashboard-header {
+    left: 0.5rem !important;
+    right: 0.5rem !important;
+    width: calc(100% - 1rem) !important;
+  }
+}
+
+/* Ensure navbar/footer stays fixed at bottom and is not affected by sticky elements */
+@media (max-width: 767px) {
+  .bg-dashboard-sidebar.fixed.bottom-0 {
+    left: 0 !important;
+    right: 0 !important;
+  }
+}
+
+.bg-dashboard-sidebar.fixed.bottom-0 {
+  position: fixed !important;
+  bottom: 0 !important;
+  z-index: 50 !important;
+}
+
+.input-animated:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Background animations */
+.floating-background {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+
+  33% {
+    transform: translateY(-10px) rotate(1deg);
+  }
+
+  66% {
+    transform: translateY(5px) rotate(-1deg);
+  }
+}
+
+/* Gradient animations for hero */
+.animated-gradient {
+  background: linear-gradient(-45deg, #065f46, #047857, #059669, #10b981);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Skeleton shimmer effect for loading placeholders */
+@keyframes skeletonShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      var(--skeleton-shimmer-sweep, rgba(255, 255, 255, 0.08)) 50%,
+      transparent 100%);
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+}
+
+.skeleton-card {
+  background: var(--skeleton-bg, rgba(255, 255, 255, 0.03)) !important;
+  border: none !important;
+  border-width: 0 !important;
+  outline: none !important;
+  box-shadow: 0 10px 25px -5px var(--skeleton-shadow, rgba(0, 0, 0, 0.4)), 0 8px 10px -6px var(--skeleton-shadow, rgba(0, 0, 0, 0.4)) !important;
+}
+
+/* Touch ripple effect */
+.ripple-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-effect::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.ripple-effect:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Animated borders */
+.animated-border {
+  position: relative;
+  background: linear-gradient(45deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+  background-size: 200% 200%;
+  animation: borderMove 3s linear infinite;
+}
+
+@keyframes borderMove {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 20 14.3% 4.1%;
+  --muted: 60 4.8% 95.9%;
+  --muted-foreground: 25 5.3% 44.7%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 20 14.3% 4.1%;
+  --card: 0 0% 100%;
+  --card-foreground: 20 14.3% 4.1%;
+  --border: 20 5.9% 90%;
+  --input: 20 5.9% 90%;
+  --primary: 207 90% 54%;
+  --primary-foreground: 211 100% 99%;
+  --secondary: 60 4.8% 95.9%;
+  --secondary-foreground: 24 9.8% 10%;
+  --accent: 60 4.8% 95.9%;
+  --accent-foreground: 24 9.8% 10%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 60 9.1% 97.8%;
+  --ring: 20 14.3% 4.1%;
+  --radius: 0.5rem;
+
+  /* Travel-inspired color palette */
+  --evergreen: 107 48% 16%;
+  /* #1B3B1A */
+  --light-evergreen: 107 35% 26%;
+  /* #375C3B */
+  --soft-off-white: 60 14% 98%;
+  /* #F9F9F6 */
+  --warm-beige: 39 29% 94%;
+  /* #F3EFE5 */
+  --cool-mist: 195 28% 91%;
+  /* #E3EEF1 */
+  --clay-tone: 22 28% 91%;
+  /* #EFE7E2 */
+  --charcoal: 220 13% 18%;
+  /* #1F2937 */
+  --deep-charcoal: 0 0% 10%;
+  /* #1A1A1A */
+  --light-gray: 214 32% 97%;
+  /* #F3F4F6 */
+  --amber: 37 91% 50%;
+  /* #F59E0B */
+  --blue-cta: 218 91% 60%;
+  /* #3B82F6 */
+  --blue-final: 221 83% 53%;
+  /* #2563EB */
+  --text-light: 219 14% 82%;
+  /* #D1D5DB */
+  --hover-blue: 214 88% 68%;
+  /* #60A5FA */
+  --status-published: 142 69% 58%;
+  /* Green for published status */
+  --status-draft: 0 84% 60%;
+  /* Red for draft status */
+}
+
+.dark {
+  --background: 240 10% 2%;
+  --foreground: 0 0% 98%;
+  --muted: 240 3.7% 8%;
+  --muted-foreground: 240 5% 64.9%;
+  --popover: 240 10% 2%;
+  --popover-foreground: 0 0% 98%;
+  --card: 240 10% 2.5%;
+  --card-foreground: 0 0% 98%;
+  --border: 240 3.7% 10%;
+  --input: 240 3.7% 10%;
+  --primary: 207 90% 54%;
+  --primary-foreground: 211 100% 99%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --ring: 240 4.9% 83.9%;
+  --radius: 0.5rem;
+}
+
+@layer base {
+  /* * {
+    @apply border-border;
+  } */
+
+  /* Global emoji picker styling for dark theme */
+  .ql-emoji-toolbar,
+  .ql-emoji-toolbar .ql-picker-options,
+  .ql-emoji-toolbar .ql-picker-menu,
+  .ql-emoji-toolbar .ql-emoji-picker,
+  .ql-emoji-toolbar .ql-emoji-picker-menu,
+  .ql-emoji-picker,
+  .ql-emoji-picker-menu,
+  .ql-picker-options {
+    background-color: rgba(55, 65, 81, 0.95) !important;
+    border: 1px solid rgb(75, 85, 99) !important;
+    border-radius: 0.375rem !important;
+    padding: 8px !important;
+    z-index: 1000 !important;
+    color: white !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  }
+
+  .ql-emoji-toolbar .ql-emoji-item,
+  .ql-emoji-toolbar .ql-picker-item,
+  .ql-emoji-toolbar .ql-emoji-picker-item,
+  .ql-emoji-picker .ql-emoji-item,
+  .ql-emoji-picker .ql-picker-item,
+  .ql-picker-item {
+    color: white !important;
+    background-color: transparent !important;
+    border: none !important;
+    padding: 4px !important;
+    margin: 2px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+  }
+
+  .ql-emoji-toolbar .ql-emoji-item:hover,
+  .ql-emoji-toolbar .ql-picker-item:hover,
+  .ql-emoji-toolbar .ql-emoji-picker-item:hover,
+  .ql-emoji-picker .ql-emoji-item:hover,
+  .ql-emoji-picker .ql-picker-item:hover,
+  .ql-picker-item:hover {
+    background-color: rgba(59, 130, 246, 0.2) !important;
+  }
+
+  .ql-emoji-toolbar .ql-emoji-item:active,
+  .ql-emoji-toolbar .ql-picker-item:active,
+  .ql-emoji-toolbar .ql-emoji-picker-item:active,
+  .ql-emoji-picker .ql-emoji-item:active,
+  .ql-emoji-picker .ql-picker-item:active,
+  .ql-picker-item:active {
+    background-color: rgba(59, 130, 246, 0.4) !important;
+  }
+
+  /* 
+  body {
+    @apply font-inter antialiased bg-background text-foreground;
+  } */
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  .font-inter {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  .bg-evergreen {
+    background-color: hsl(var(--evergreen));
+  }
+
+  .bg-light-evergreen {
+    background-color: hsl(var(--light-evergreen));
+  }
+
+  .bg-clay-brown {
+    background-color: hsl(var(--clay-brown));
+  }
+
+  .bg-deep-blue {
+    background-color: hsl(var(--deep-blue));
+  }
+
+  .bg-maroon-red {
+    background-color: hsl(var(--maroon-red));
+  }
+
+  .bg-charcoal {
+    background-color: hsl(var(--charcoal));
+  }
+
+  .bg-charcoal-dark {
+    background-color: hsl(var(--charcoal-dark));
+  }
+
+  .bg-off-white {
+    background-color: hsl(var(--off-white));
+  }
+
+  .bg-mint-grey {
+    background-color: hsl(var(--mint-grey));
+  }
+
+  .bg-light-grey {
+    background-color: hsl(var(--light-grey));
+  }
+
+  .bg-cta-blue {
+    background-color: hsl(var(--cta-blue));
+  }
+
+  .text-evergreen {
+    color: hsl(var(--evergreen));
+  }
+
+  .text-light-evergreen {
+    color: hsl(var(--light-evergreen));
+  }
+
+  .text-clay-brown {
+    color: hsl(var(--clay-brown));
+  }
+
+  .text-deep-blue {
+    color: hsl(var(--deep-blue));
+  }
+
+  .text-maroon-red {
+    color: hsl(var(--maroon-red));
+  }
+
+  .text-charcoal {
+    color: hsl(var(--charcoal));
+  }
+
+  .text-charcoal-dark {
+    color: hsl(var(--charcoal-dark));
+  }
+
+  .text-off-white {
+    color: hsl(var(--off-white));
+  }
+
+  .text-mint-grey {
+    color: hsl(var(--mint-grey));
+  }
+
+  .text-light-grey {
+    color: hsl(var(--light-grey));
+  }
+
+  .text-cta-blue {
+    color: hsl(var(--cta-blue));
+  }
+
+  .border-evergreen {
+    border-color: hsl(var(--evergreen));
+  }
+
+  .border-light-evergreen {
+    border-color: hsl(var(--light-evergreen));
+  }
+
+  .border-clay-brown {
+    border-color: hsl(var(--clay-brown));
+  }
+
+  .border-deep-blue {
+    border-color: hsl(var(--deep-blue));
+  }
+
+  .border-maroon-red {
+    border-color: hsl(var(--maroon-red));
+  }
+
+  .border-charcoal {
+    border-color: hsl(var(--charcoal));
+  }
+
+  .border-charcoal-dark {
+    border-color: hsl(var(--charcoal-dark));
+  }
+
+  .border-off-white {
+    border-color: hsl(var(--off-white));
+  }
+
+  .border-mint-grey {
+    border-color: hsl(var(--mint-grey));
+  }
+
+  .border-light-grey {
+    border-color: hsl(var(--light-grey));
+  }
+
+  .border-cta-blue {
+    border-color: hsl(var(--cta-blue));
+  }
+}
+
+/* Hide scrollbar for testimonial carousel */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Focus states for accessibility */
+button:focus,
+input:focus,
+a:focus {
+  outline: 2px solid hsl(var(--cta-blue));
+  outline-offset: 2px;
+}
+
+/* Custom animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Ensure image action overlays are always visible in Profile > Public Profile > Feed */
+.always-show-overlays .react-grid-gallery--custom-overlay,
+.always-show-overlays .ReactGridGallery_custom-overlay,
+.always-show-overlays [class*="custom-overlay"],
+.always-show-overlays [class*="customOverlay"] {
+  /* Override any hover-only visibility from the gallery */
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+/* Smooth transitions for all interactive elements */
+/* Exclude Button component buttons to prevent background color fading */
+button:not([data-button-component="true"]),
+a,
+input {
+  transition: all 0.2s ease;
+}
+
+/* Ensure proper contrast for accessibility */
+.bg-evergreen,
+.bg-clay-brown,
+.bg-deep-blue,
+.bg-maroon-red,
+.bg-charcoal,
+.bg-charcoal-dark {
+  color: white;
+}
+
+.bg-off-white,
+.bg-mint-grey,
+.bg-light-grey {
+  color: hsl(var(--charcoal));
+}
+
+/* Google Maps Autocomplete Dropdown Styling */
+.pac-container {
+  background-color: white !important;
+  border: 1px solid #ccc !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  z-index: 10002 !important;
+  font-family: 'Poppins', sans-serif !important;
+}
+
+.pac-item {
+  padding: 12px 16px !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  cursor: pointer !important;
+  color: #374151 !important;
+  font-size: 14px !important;
+}
+
+.pac-item:hover {
+  background-color: #f3f4f6 !important;
+}
+
+.pac-item-selected {
+  background-color: #dbeafe !important;
+}
+
+.pac-item-query {
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+}
+
+.pac-matched {
+  font-weight: 600 !important;
+  color: #3b82f6 !important;
+}
+
+/* Mobile responsiveness improvements */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Left align header content on mobile */
+  .bg-dashboard-sidebar>div.flex.flex-row {
+    justify-content: space-between !important;
+    position: relative;
+  }
+
+  /* Logo container sizing on small screens - left aligned */
+  .logo-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  .logo-container img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Keep mobile menu icon on the right */
+  .bg-dashboard-sidebar>div.flex.flex-row>div.md\:hidden {
+    position: absolute;
+    right: 0.5rem;
+  }
+}
+
+/* Header logo color based on theme */
+.header-logo {
+  filter: brightness(0) invert(1);
+}
+
+/* Light mode - dark ink logo */
+.dashboard-theme .header-logo-light {
+  filter: brightness(0);
+}
+
+/* Dark mode - logo matches dark theme text color (slightly softer white) */
+.dashboard-theme-dark .dashboard-theme .header-logo-dark {
+  filter: brightness(0) invert(1);
+  opacity: 0.95;
+}
+
+/* Vertical Timeline Custom Styles */
+.vertical-timeline::before {
+  background: var(--dash-accent) !important;
+}
+
+.vertical-timeline-element-content {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.vertical-timeline-element-content:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3) !important;
+  transform: translateY(-2px) !important;
+  border-color: rgba(52, 152, 219, 0.3) !important;
+}
+
+.vertical-timeline-element-content-arrow {
+  border-right-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.vertical-timeline-element-icon {
+  box-shadow: 0 0 0 4px var(--dash-bg), inset 0 2px 0 rgba(0, 0, 0, .08), 0 3px 0 4px rgba(0, 0, 0, .05) !important;
+}
+
+/* Light theme adjustments for timeline */
+.dashboard-theme .vertical-timeline-element-content {
+  background: rgba(255, 255, 255, 0.7) !important;
+  color: var(--dash-text) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid var(--dash-border) !important;
+}
+
+.dashboard-theme .vertical-timeline-element-content-arrow {
+  border-right-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.dashboard-theme .vertical-timeline-element-content h3 {
+  color: var(--dash-text) !important;
+}
+
+.dashboard-theme .vertical-timeline-element-content p {
+  color: var(--dash-text-muted) !important;
+  font-size: 0.875rem !important;
+  /* text-sm equivalent (14px) */
+  line-height: 1.25rem !important;
+  /* leading-5 equivalent */
+  font-weight: 400 !important;
+  /* Normal weight for descriptions */
+}
+
+/* Dark theme adjustments for timeline */
+.dashboard-theme-dark .dashboard-theme .vertical-timeline-element-content {
+  background: rgba(30, 33, 42, 0.8) !important;
+  color: var(--dash-text) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dashboard-theme-dark .dashboard-theme .vertical-timeline-element-content-arrow {
+  border-right-color: rgba(30, 33, 42, 0.8) !important;
+}
+
+.dashboard-theme-dark .dashboard-theme .vertical-timeline-element-content h3 {
+  color: var(--dash-text) !important;
+}
+
+.dashboard-theme-dark .dashboard-theme .vertical-timeline-element-content p {
+  color: var(--dash-text-muted) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  font-weight: 400 !important;
+}
+
+/* Responsive Timeline Icon/Dot Sizing */
+/* Mobile devices - reduce icon size for better visual hierarchy */
+@media only screen and (max-width: 639px) {
+  .vertical-timeline-element-icon {
+    width: 28px !important;
+    height: 28px !important;
+    left: 0 !important;
+  }
+
+  .vertical-timeline-element-icon svg {
+    width: 16px !important;
+    height: 16px !important;
+    margin-left: -8px !important;
+    margin-top: -8px !important;
+  }
+
+  /* Adjust icon text/number size for smaller dots */
+  .vertical-timeline-element-icon span {
+    font-size: 12px !important;
+    line-height: 1 !important;
+  }
+
+  /* Adjust timeline line position to align with smaller icon center */
+  .vertical-timeline::before {
+    left: 13px !important;
+    /* Center of 28px icon (14px - 1px line width/2) */
+    width: 2px !important;
+    /* Thinner line on mobile */
+  }
+
+  /* Adjust content margin to account for smaller icon */
+  .vertical-timeline-element-content {
+    margin-left: 46px !important;
+    /* 28px icon + 18px spacing */
+  }
+
+  /* Adjust content arrow to align with smaller icon */
+  .vertical-timeline-element-content-arrow {
+    top: 10px !important;
+  }
+
+  /* Adjust shadow ring size for smaller icons */
+  .vertical-timeline-element-icon {
+    box-shadow: 0 0 0 2px var(--dash-bg), inset 0 1px 0 rgba(0, 0, 0, .08), 0 2px 0 2px rgba(0, 0, 0, .05) !important;
+  }
+}
+
+/* Small tablets - slightly reduced icon size */
+@media only screen and (min-width: 640px) and (max-width: 767px) {
+  .vertical-timeline-element-icon {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .vertical-timeline-element-icon svg {
+    width: 18px !important;
+    height: 18px !important;
+    margin-left: -9px !important;
+    margin-top: -9px !important;
+  }
+
+  .vertical-timeline-element-icon span {
+    font-size: 13px !important;
+  }
+
+  .vertical-timeline::before {
+    left: 15px !important;
+    /* Center of 32px icon */
+    width: 3px !important;
+  }
+
+  .vertical-timeline-element-content {
+    margin-left: 50px !important;
+    /* 32px icon + 18px spacing */
+  }
+
+  .vertical-timeline-element-content-arrow {
+    top: 12px !important;
+  }
+}
+
+/* Tablets and larger - slightly smaller than default */
+@media only screen and (min-width: 768px) and (max-width: 1169px) {
+  .vertical-timeline-element-icon {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  .vertical-timeline-element-icon svg {
+    width: 20px !important;
+    height: 20px !important;
+    margin-left: -10px !important;
+    margin-top: -10px !important;
+  }
+
+  .vertical-timeline-element-icon span {
+    font-size: 15px !important;
+  }
+
+  .vertical-timeline::before {
+    left: 16px !important;
+    width: 3px !important;
+  }
+
+  .vertical-timeline-element-content {
+    margin-left: 54px !important;
+  }
+
+  .vertical-timeline-element-content-arrow {
+    top: 14px !important;
+  }
+}
+
+/* Desktop - library handles 60px icons automatically at 1170px+ */
+/* No overrides needed, let library defaults work */
+
+/* Airplane Icon Centering - Override negative margins for proper centering */
+/* Override negative margins specifically for airplane icons */
+.vertical-timeline-element-icon .timeline-icon-airplane {
+  margin: 0 !important;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+  display: block !important;
+}
+
+/* Mobile - Airplane icons */
+@media only screen and (max-width: 639px) {
+  .vertical-timeline-element-icon .timeline-icon-airplane {
+    width: 16px !important;
+    height: 16px !important;
+    max-width: 16px !important;
+    max-height: 16px !important;
+  }
+}
+
+/* Small tablets - Airplane icons */
+@media only screen and (min-width: 640px) and (max-width: 767px) {
+  .vertical-timeline-element-icon .timeline-icon-airplane {
+    width: 18px !important;
+    height: 18px !important;
+    max-width: 18px !important;
+    max-height: 18px !important;
+  }
+}
+
+/* Tablets - Airplane icons */
+@media only screen and (min-width: 768px) and (max-width: 1169px) {
+  .vertical-timeline-element-icon .timeline-icon-airplane {
+    width: 20px !important;
+    height: 20px !important;
+    max-width: 20px !important;
+    max-height: 20px !important;
+  }
+}
+
+/* Desktop - Airplane icons */
+@media only screen and (min-width: 1170px) {
+  .vertical-timeline-element-icon .timeline-icon-airplane {
+    width: 24px !important;
+    height: 24px !important;
+    max-width: 24px !important;
+    max-height: 24px !important;
+  }
+}
+
+/* Custom Loading Bar Animation */
+@keyframes loadingBar {
+  0% {
+    transform: translateX(-100%);
+    width: 100%;
+  }
+
+  50% {
+    transform: translateX(0%);
+    width: 100%;
+  }
+
+  100% {
+    transform: translateX(100%);
+    width: 100%;
+  }
+}
+
+.animate-loading-bar {
+  animation: loadingBar 2s ease-in-out infinite;
+  display: block;
+  position: relative;
+  overflow: hidden;
+}
+
+/* =============================================
+   Add Place Overlay
+   Full-screen modal matching the CircularPlacesModal
+   (View All) overlay pattern.
+============================================== */
+
+/* Outer backdrop: identical to CircularPlacesModal */
+.add-place-overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.60);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 200;
+}
+
+/* Panel: full-screen glassmorphic layer, content centered */
+.add-place-overlay-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.20);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  overflow: hidden;
+}
+
+/* Header row */
+.add-place-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 22px 60px 14px;
+  flex-shrink: 0;
+}
+
+.add-place-overlay-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .add-place-overlay-title {
+    font-size: 22px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .add-place-overlay-title {
+    font-size: 26px;
+  }
+}
+
+/* Close button - top-right absolute like CircularPlacesModal */
+.add-place-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.15s ease;
+}
+
+.add-place-close-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: scale(1.08);
+}
+
+.add-place-close-btn:active {
+  transform: scale(0.94);
+}
+
+/* Scrollable content — centered column, max width */
+.add-place-overlay-content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 24px 48px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 768px) {
+  .add-place-overlay-content {
+    padding: 24px 40px 60px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .add-place-overlay-content {
+    padding: 20px 60px 40px;
+    justify-content: center;
+  }
+}
+
+.add-place-overlay-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.add-place-overlay-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+/* Inner wrapper — transparent, just centers and constrains width */
+.add-place-inner {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .add-place-inner {
+    max-width: 640px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .add-place-inner {
+    max-width: 760px;
+  }
+}
+
+/* Input group */
+.add-place-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.add-place-input-label {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.90);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+}
+
+@media (min-width: 768px) {
+  .add-place-input-label {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .add-place-input-label {
+    font-size: 16px;
+    letter-spacing: 0.12em;
+  }
+}
+
+.add-place-ig-label-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.add-place-ig-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Instagram header row: label on left, mode toggle on right */
+.add-place-ig-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Segmented control pill */
+.add-place-ig-toggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* Each tab in the toggle */
+.add-place-ig-tab {
+  font-family: 'Poppins', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.60);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.add-place-ig-tab:hover:not(.active) {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.add-place-ig-tab.active {
+  background: #ffffff;
+  color: #1a1a1a;
+}
+
+@media (min-width: 768px) {
+  .add-place-ig-tab {
+    font-size: 12px;
+    padding: 6px 18px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .add-place-ig-tab {
+    font-size: 13px;
+    padding: 7px 22px;
+  }
+}
+
+/* Input + Go button row */
+.add-place-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+/* White input fields */
+.add-place-input {
+  flex: 1;
+  background: #ffffff;
+  color: #1a1a1a;
+  border: 1.5px solid transparent;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  min-width: 0;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .add-place-input {
+    padding: 14px 18px;
+    font-size: 15px;
+    border-radius: 12px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .add-place-input {
+    padding: 16px 22px;
+    font-size: 16px;
+    border-radius: 14px;
+  }
+}
+
+.add-place-input::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+.add-place-input:focus {
+  outline: none;
+  border-color: #3498DB;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.18);
+}
+
+/* Go button */
+.add-place-go-btn {
+  flex-shrink: 0;
+  background: #3498DB;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 0 20px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.15s ease, opacity 0.18s ease;
+  white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  .add-place-go-btn {
+    padding: 0 28px;
+    font-size: 15px;
+    border-radius: 12px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .add-place-go-btn {
+    padding: 0 36px;
+    font-size: 16px;
+    border-radius: 14px;
+  }
+}
+
+.add-place-go-btn:hover:not(:disabled) {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
+.add-place-go-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.add-place-go-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* OR divider */
+.add-place-or-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.add-place-or-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.25);
+  display: block;
+}
+
+.add-place-or-text {
+  font-family: 'Poppins', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.10em;
+  flex-shrink: 0;
+}
+
+/* Search hint text */
+.add-place-search-hint {
+  font-family: 'Poppins', sans-serif;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.65);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+@media (min-width: 768px) {
+  .add-place-search-hint {
+    font-size: 13px;
+    margin-top: 8px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .add-place-search-hint {
+    font-size: 14px;
+    margin-top: 10px;
+  }
+}
+
+/* Nearby Suggestions section — full width below inputs */
+.add-place-suggestions-section {
+  width: 100%;
+  max-width: 520px;
+  margin-top: 24px;
+}
+
+@media (min-width: 768px) {
+  .add-place-suggestions-section {
+    max-width: 640px;
+    margin-top: 32px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .add-place-suggestions-section {
+    max-width: 760px;
+    margin-top: 40px;
+  }
+}
+
+.add-place-suggestions-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+}
+
+@media (min-width: 768px) {
+  .add-place-suggestions-title {
+    font-size: 20px;
+    margin-bottom: 14px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .add-place-suggestions-title {
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+}
+
+/* Ensure Google Places autocomplete dropdown appears above the overlay */
+.pac-container {
+  z-index: 9999 !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18) !important;
+  font-family: 'Poppins', sans-serif !important;
+  margin-top: 4px !important;
+  overflow: hidden;
+}
+
+.pac-item {
+  padding: 8px 14px !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+.pac-item:first-child {
+  border-top: none !important;
+}
+
+.pac-item:hover,
+.pac-item-selected {
+  background: rgba(52, 152, 219, 0.08) !important;
+}
+
+.pac-item-query {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #1a1a1a !important;
+}
+
+.pac-matched {
+  font-weight: 600 !important;
+  color: #3498DB !important;
+}
+
+.pac-icon {
+  margin-top: 2px !important;
+}
+
+.landing-testimonials-marquee {
+  animation: landingTestimonialsMarquee 48s linear infinite;
+}
+
+.landing-testimonials-marquee-static {
+  animation: none;
+}
+
+@keyframes landingTestimonialsMarquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-testimonials-marquee {
+    animation: none;
+  }
+}
+
+/* =============================================
+   Dashboard Theme Specific Text/Utility Overrides for Light Mode
+   ============================================= */
+.dashboard-theme .text-white {
+  color: var(--dash-text) !important;
+}
+.dashboard-theme .text-white\/90 {
+  color: color-mix(in srgb, var(--dash-text) 90%, transparent) !important;
+}
+.dashboard-theme .text-white\/80 {
+  color: color-mix(in srgb, var(--dash-text) 80%, transparent) !important;
+}
+.dashboard-theme .text-white\/70 {
+  color: color-mix(in srgb, var(--dash-text) 70%, transparent) !important;
+}
+.dashboard-theme .text-white\/60 {
+  color: color-mix(in srgb, var(--dash-text) 60%, transparent) !important;
+}
+.dashboard-theme .text-white\/55 {
+  color: color-mix(in srgb, var(--dash-text) 55%, transparent) !important;
+}
+.dashboard-theme .text-white\/50 {
+  color: color-mix(in srgb, var(--dash-text) 50%, transparent) !important;
+}
+.dashboard-theme .text-white\/45 {
+  color: color-mix(in srgb, var(--dash-text) 45%, transparent) !important;
+}
+.dashboard-theme .text-white\/40 {
+  color: color-mix(in srgb, var(--dash-text) 40%, transparent) !important;
+}
+.dashboard-theme .text-white\/30 {
+  color: color-mix(in srgb, var(--dash-text) 30%, transparent) !important;
+}
+.dashboard-theme .text-white\/20 {
+  color: color-mix(in srgb, var(--dash-text) 20%, transparent) !important;
+}
+.dashboard-theme .text-white\/10 {
+  color: color-mix(in srgb, var(--dash-text) 10%, transparent) !important;
+}
+.dashboard-theme .placeholder-white\/30::placeholder {
+  color: color-mix(in srgb, var(--dash-text) 30%, transparent) !important;
+}
+
+/* Recommendation cards render on an always-dark surface in BOTH themes, so their
+   foreground must stay real white. The theme-wide .text-white remap above turns
+   text-white into --dash-text (dark in light mode), which would make card titles,
+   descriptions, and animated layers invisible. Re-assert white — scoped strictly
+   to .rec-card (higher specificity than the global rule) so nothing else is
+   affected. In dark mode this is an imperceptible #F9FAFB -> #fff. */
+.dashboard-theme .rec-card .text-white { color: #fff !important; }
+.dashboard-theme .rec-card .text-white\/90 { color: rgba(255, 255, 255, 0.9) !important; }
+.dashboard-theme .rec-card .text-white\/80 { color: rgba(255, 255, 255, 0.8) !important; }
+.dashboard-theme .rec-card .text-white\/70 { color: rgba(255, 255, 255, 0.7) !important; }
+.dashboard-theme .rec-card .text-white\/60 { color: rgba(255, 255, 255, 0.6) !important; }
+.dashboard-theme .rec-card .text-white\/55 { color: rgba(255, 255, 255, 0.55) !important; }
+.dashboard-theme .rec-card .text-white\/50 { color: rgba(255, 255, 255, 0.5) !important; }
+.dashboard-theme .rec-card .text-white\/45 { color: rgba(255, 255, 255, 0.45) !important; }
+.dashboard-theme .rec-card .text-white\/40 { color: rgba(255, 255, 255, 0.4) !important; }
+.dashboard-theme .rec-card .text-white\/30 { color: rgba(255, 255, 255, 0.3) !important; }
+.dashboard-theme .rec-card .text-white\/20 { color: rgba(255, 255, 255, 0.2) !important; }
+.dashboard-theme .rec-card .text-white\/10 { color: rgba(255, 255, 255, 0.1) !important; }
+
+/* Light mode only: the sidebar and header are near-white on a near-white page,
+   so they vanish as panels. Lift them with a soft shadow + hairline ring.
+   Scoped to html:not(.dashboard-theme-dark) so dark mode is provably untouched;
+   box-shadow only, so there is no layout shift. */
+html:not(.dashboard-theme-dark) .dashboard-theme.bg-dashboard-sidebar,
+html:not(.dashboard-theme-dark) .dashboard-header {
+  box-shadow: 0 6px 24px rgba(23, 35, 26, 0.10), 0 0 0 1px rgba(23, 35, 26, 0.08);
+}
+
+/* Keep text white inside elements with explicit dark background colors */
+.dashboard-theme .bg-dashboard-danger,
+.dashboard-theme .bg-dashboard-danger *,
+.dashboard-theme .bg-blue-cta,
+.dashboard-theme .bg-blue-cta *,
+.dashboard-theme .bg-blue-final,
+.dashboard-theme .bg-blue-final *,
+.dashboard-theme [class*="bg-black"],
+.dashboard-theme [class*="bg-black"] *,
+.dashboard-theme [class*="bg-[#121824]"],
+.dashboard-theme [class*="bg-[#121824]"] *,
+.dashboard-theme [class*="bg-[#1a2332]"],
+.dashboard-theme [class*="bg-[#1a2332]"] * {
+  color: #ffffff !important;
+}
+
+/* Ensure text inside elements with the dashboard accent background preserves the dynamic accent text color token */
+.dashboard-theme .bg-dashboard-accent,
+.dashboard-theme .bg-dashboard-accent *,
+.dashboard-theme .bg-\[hsl\(var\(--dash-accent\)\)\],
+.dashboard-theme .bg-\[hsl\(var\(--dash-accent\)\)\] * {
+  color: var(--dash-accent-text) !important;
+}
+
+.dashboard-theme [class*="bg-black"] .text-white\/90,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/90,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/90 {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/80,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/80,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/80 {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/70,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/70,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/70 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/60,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/60,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/60 {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/55,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/55,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/55 {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/50,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/50,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/50 {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/45,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/45,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/45 {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/40,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/40,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/40 {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/30,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/30,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/30 {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/20,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/20,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/20 {
+  color: rgba(255, 255, 255, 0.2) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/10,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/10,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/10 {
+  color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Keep text white inside buttons or links styled with text-white */
+.dashboard-theme button.text-white,
+.dashboard-theme button.text-white *,
+.dashboard-theme button .text-white,
+.dashboard-theme a.text-white,
+.dashboard-theme a.text-white *,
+.dashboard-theme button[type="submit"],
+.dashboard-theme button[type="submit"] * {
+  color: #ffffff !important;
+}
+
+/* Resolve unstyled custom border class */
+.dashboard-theme .border-dashboard-border,
+.dashboard-theme.border-dashboard-border,
+.bg-dashboard-sidebar.border-dashboard-border,
+.bg-dashboard-sidebar .border-dashboard-border,
+.bg-dashboard-card.border-dashboard-border,
+.bg-dashboard-card .border-dashboard-border,
+.bg-dashboard-muted.border-dashboard-border,
+.bg-dashboard-muted .border-dashboard-border {
+  border-color: var(--dash-border) !important;
+}
+
+.bg-dashboard-sidebar .text-white,
+.bg-dashboard-card .text-white,
+.bg-dashboard-muted .text-white {
+  color: var(--dash-text) !important;
+}
+.bg-dashboard-sidebar .text-white\/90,
+.bg-dashboard-card .text-white\/90,
+.bg-dashboard-muted .text-white\/90 {
+  color: color-mix(in srgb, var(--dash-text) 90%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/80,
+.bg-dashboard-card .text-white\/80,
+.bg-dashboard-muted .text-white\/80 {
+  color: color-mix(in srgb, var(--dash-text) 80%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/70,
+.bg-dashboard-card .text-white\/70,
+.bg-dashboard-muted .text-white\/70 {
+  color: color-mix(in srgb, var(--dash-text) 70%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/60,
+.bg-dashboard-card .text-white\/60,
+.bg-dashboard-muted .text-white\/60 {
+  color: color-mix(in srgb, var(--dash-text) 60%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/55,
+.bg-dashboard-card .text-white\/55,
+.bg-dashboard-muted .text-white\/55 {
+  color: color-mix(in srgb, var(--dash-text) 55%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/50,
+.bg-dashboard-card .text-white\/50,
+.bg-dashboard-muted .text-white\/50 {
+  color: color-mix(in srgb, var(--dash-text) 50%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/45,
+.bg-dashboard-card .text-white\/45,
+.bg-dashboard-muted .text-white\/45 {
+  color: color-mix(in srgb, var(--dash-text) 45%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/40,
+.bg-dashboard-card .text-white\/40,
+.bg-dashboard-muted .text-white\/40 {
+  color: color-mix(in srgb, var(--dash-text) 40%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/30,
+.bg-dashboard-card .text-white\/30,
+.bg-dashboard-muted .text-white\/30 {
+  color: color-mix(in srgb, var(--dash-text) 30%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/20,
+.bg-dashboard-card .text-white\/20,
+.bg-dashboard-muted .text-white\/20 {
+  color: color-mix(in srgb, var(--dash-text) 20%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/10,
+.bg-dashboard-card .text-white\/10,
+.bg-dashboard-muted .text-white\/10 {
+  color: color-mix(in srgb, var(--dash-text) 10%, transparent) !important;
+}
+
+/* Keep text white inside buttons or links styled with text-white in modal wrappers */
+.bg-dashboard-sidebar button.text-white,
+.bg-dashboard-sidebar button.text-white *,
+.bg-dashboard-sidebar button[type="submit"],
+.bg-dashboard-sidebar button[type="submit"] *,
+.bg-dashboard-card button.text-white,
+.bg-dashboard-card button.text-white *,
+.bg-dashboard-card button[type="submit"],
+.bg-dashboard-card button[type="submit"] *,
+.bg-dashboard-muted button.text-white,
+.bg-dashboard-muted button.text-white *,
+.bg-dashboard-muted button[type="submit"],
+.bg-dashboard-muted button[type="submit"] * {
+  color: #ffffff !important;
+}
+
+/* Category Empty State Illustrations color inversion for light theme white strokes/fills */
+.dashboard-theme .category-empty-state svg *[fill="white"],
+.dashboard-theme .category-empty-state svg *[fill="#F2F2F2"],
+.dashboard-theme .category-empty-state svg *[fill="#ffffff"] {
+  fill: var(--dash-text) !important;
+}
+.dashboard-theme .category-empty-state svg *[stroke="white"],
+.dashboard-theme .category-empty-state svg *[stroke="#F2F2F2"],
+.dashboard-theme .text-white\/10 {
+  color: color-mix(in srgb, var(--dash-text) 10%, transparent) !important;
+}
+.dashboard-theme .placeholder-white\/30::placeholder {
+  color: color-mix(in srgb, var(--dash-text) 30%, transparent) !important;
+}
+
+/* Keep text white inside elements with explicit dark background colors */
+.dashboard-theme .bg-dashboard-danger,
+.dashboard-theme .bg-dashboard-danger *,
+.dashboard-theme .bg-blue-cta,
+.dashboard-theme .bg-blue-cta *,
+.dashboard-theme .bg-blue-final,
+.dashboard-theme .bg-blue-final *,
+.dashboard-theme [class*="bg-black"],
+.dashboard-theme [class*="bg-black"] *,
+.dashboard-theme [class*="bg-[#121824]"],
+.dashboard-theme [class*="bg-[#121824]"] *,
+.dashboard-theme [class*="bg-[#1a2332]"],
+.dashboard-theme [class*="bg-[#1a2332]"] * {
+  color: #ffffff !important;
+}
+
+/* Ensure text inside elements with the dashboard accent background preserves the dynamic accent text color token */
+.dashboard-theme .bg-dashboard-accent,
+.dashboard-theme .bg-dashboard-accent *,
+.dashboard-theme .bg-\[hsl\(var\(--dash-accent\)\)\],
+.dashboard-theme .bg-\[hsl\(var\(--dash-accent\)\)\] * {
+  color: var(--dash-accent-text) !important;
+}
+
+.dashboard-theme [class*="bg-black"] .text-white\/90,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/90,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/90 {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/80,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/80,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/80 {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/70,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/70,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/70 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/60,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/60,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/60 {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/55,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/55,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/55 {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/50,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/50,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/50 {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/45,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/45,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/45 {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/40,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/40,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/40 {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/30,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/30,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/30 {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/20,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/20,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/20 {
+  color: rgba(255, 255, 255, 0.2) !important;
+}
+.dashboard-theme [class*="bg-black"] .text-white\/10,
+.dashboard-theme [class*="bg-[#121824]"] .text-white\/10,
+.dashboard-theme [class*="bg-[#1a2332]"] .text-white\/10 {
+  color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Keep text white inside buttons or links styled with text-white */
+.dashboard-theme button.text-white,
+.dashboard-theme button.text-white *,
+.dashboard-theme button .text-white,
+.dashboard-theme a.text-white,
+.dashboard-theme a.text-white *,
+.dashboard-theme button[type="submit"],
+.dashboard-theme button[type="submit"] * {
+  color: #ffffff !important;
+}
+
+/* Resolve unstyled custom border class */
+.dashboard-theme .border-dashboard-border,
+.dashboard-theme.border-dashboard-border,
+.bg-dashboard-sidebar.border-dashboard-border,
+.bg-dashboard-sidebar .border-dashboard-border,
+.bg-dashboard-card.border-dashboard-border,
+.bg-dashboard-card .border-dashboard-border,
+.bg-dashboard-muted.border-dashboard-border,
+.bg-dashboard-muted .border-dashboard-border {
+  border-color: var(--dash-border) !important;
+}
+
+.bg-dashboard-sidebar .text-white,
+.bg-dashboard-card .text-white,
+.bg-dashboard-muted .text-white {
+  color: var(--dash-text) !important;
+}
+.bg-dashboard-sidebar .text-white\/90,
+.bg-dashboard-card .text-white\/90,
+.bg-dashboard-muted .text-white\/90 {
+  color: color-mix(in srgb, var(--dash-text) 90%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/80,
+.bg-dashboard-card .text-white\/80,
+.bg-dashboard-muted .text-white\/80 {
+  color: color-mix(in srgb, var(--dash-text) 80%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/70,
+.bg-dashboard-card .text-white\/70,
+.bg-dashboard-muted .text-white\/70 {
+  color: color-mix(in srgb, var(--dash-text) 70%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/60,
+.bg-dashboard-card .text-white\/60,
+.bg-dashboard-muted .text-white\/60 {
+  color: color-mix(in srgb, var(--dash-text) 60%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/55,
+.bg-dashboard-card .text-white\/55,
+.bg-dashboard-muted .text-white\/55 {
+  color: color-mix(in srgb, var(--dash-text) 55%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/50,
+.bg-dashboard-card .text-white\/50,
+.bg-dashboard-muted .text-white\/50 {
+  color: color-mix(in srgb, var(--dash-text) 50%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/45,
+.bg-dashboard-card .text-white\/45,
+.bg-dashboard-muted .text-white\/45 {
+  color: color-mix(in srgb, var(--dash-text) 45%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/40,
+.bg-dashboard-card .text-white\/40,
+.bg-dashboard-muted .text-white\/40 {
+  color: color-mix(in srgb, var(--dash-text) 40%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/30,
+.bg-dashboard-card .text-white\/30,
+.bg-dashboard-muted .text-white\/30 {
+  color: color-mix(in srgb, var(--dash-text) 30%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/20,
+.bg-dashboard-card .text-white\/20,
+.bg-dashboard-muted .text-white\/20 {
+  color: color-mix(in srgb, var(--dash-text) 20%, transparent) !important;
+}
+.bg-dashboard-sidebar .text-white\/10,
+.bg-dashboard-card .text-white\/10,
+.bg-dashboard-muted .text-white\/10 {
+  color: color-mix(in srgb, var(--dash-text) 10%, transparent) !important;
+}
+
+/* Keep text white inside buttons or links styled with text-white in modal wrappers */
+.bg-dashboard-sidebar button.text-white,
+.bg-dashboard-sidebar button.text-white *,
+.bg-dashboard-sidebar button[type="submit"],
+.bg-dashboard-sidebar button[type="submit"] *,
+.bg-dashboard-card button.text-white,
+.bg-dashboard-card button.text-white *,
+.bg-dashboard-card button[type="submit"],
+.bg-dashboard-card button[type="submit"] *,
+.bg-dashboard-muted button.text-white,
+.bg-dashboard-muted button.text-white *,
+.bg-dashboard-muted button[type="submit"],
+.bg-dashboard-muted button[type="submit"] * {
+  color: #ffffff !important;
+}
+
+/* Category Empty State Illustrations color inversion for light theme white strokes/fills */
+.dashboard-theme .category-empty-state svg *[fill="white"],
+.dashboard-theme .category-empty-state svg *[fill="#F2F2F2"],
+.dashboard-theme .category-empty-state svg *[fill="#ffffff"] {
+  fill: var(--dash-text) !important;
+}
+.dashboard-theme .category-empty-state svg *[stroke="white"],
+.dashboard-theme .category-empty-state svg *[stroke="#F2F2F2"],
+.dashboard-theme .category-empty-state svg *[stroke="#ffffff"] {
+  stroke: var(--dash-text) !important;
+}
+.dashboard-theme .category-empty-state svg text[fill="white"] {
+  fill: var(--dash-text) !important;
+}
+
+/* Ensure outlined buttons (Delete, Edit) in dashboard tab panels are visible and responsive */
+.dashboard-theme button.border-white.text-white {
+  border-color: var(--dash-border) !important;
+  color: var(--dash-text) !important;
+}
+
+.dashboard-theme button.border-white.text-white:hover {
+  border-color: var(--dash-accent) !important;
+  color: var(--dash-accent) !important;
+}
+
+/* Override to make sure outlined buttons inside Accordions on list views are responsive */
+.dashboard-theme .bg-dashboard-sidebar button.border-white.text-white,
+.dashboard-theme .bg-dashboard-sidebar button.border-white.text-white * {
+  border-color: var(--dash-border) !important;
+  color: var(--dash-text) !important;
+}
+
+.dashboard-theme .bg-dashboard-sidebar button.border-white.text-white:hover,
+.dashboard-theme .bg-dashboard-sidebar button.border-white.text-white:hover * {
+  border-color: var(--dash-accent) !important;
+  color: var(--dash-accent) !important;
+}
+
+/* Ensure bottom share buttons and text in list view My QR section are responsive and visible */
+.dashboard-theme .bg-dashboard-sidebar .border-t.border-white\/5,
+.dashboard-theme .bg-dashboard-sidebar .border-t.border-white\/5 *:not(.text-green-400) {
+  color: var(--dash-text) !important;
+}
+
+/* Ensure the QR code tagline pill text remains visible and black on its light background */
+.dashboard-theme [class*="bg-black"] p.bg-gray-200.text-black {
+  color: #000000 !important;
+}
+
+/* Public recommendation presentation restores a visible focus indicator
+   within the legacy global focus reset above. */
+.profile-presentation-focus:focus-visible {
+  outline: 3px solid var(--text-primary) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 1px var(--bg-page) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-presentation-focus {
+    transition-duration: 0.01ms !important;
+  }
+}

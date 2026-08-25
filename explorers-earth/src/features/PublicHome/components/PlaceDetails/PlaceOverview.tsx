@@ -16,6 +16,7 @@ import { useParams } from "react-router-dom";
 import { createPlaceGEOData } from "../../../../utils/geoHelpers";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { IMAGE_CONFIG } from "../../../../config";
+import { selectPlaceCardImage } from "../../utils/placeMedia";
 
 interface PlaceOverviewProps {
   placeId: string | null;
@@ -250,8 +251,11 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
           <div className="relative">
             <img
               src={
-                fetchedPlace?.media_details?.imageDetails[0]?.url ??
-                IMAGE_CONFIG.defaultImages.place
+                selectPlaceCardImage(
+                  fetchedPlace,
+                  fetchedPlace?.recommendation_list?.List_Name_Details?.thumbnail,
+                  IMAGE_CONFIG.defaultImages.place,
+                )
               }
               alt="Place"
               className="h-60 w-full object-cover"

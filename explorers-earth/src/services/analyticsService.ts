@@ -205,11 +205,11 @@ export const useTrackAnalytics = (
           (metadata?.cityId as string | undefined) ||
           locationId
         : null;
-      const dynamicRecommendationId = canUseCanonicalTargets
-        ? (metadata?.recommendationId as string | undefined) ||
-          (metadata?.placeId as string | undefined) ||
-          (metadata?.id as string | undefined) ||
-          recommendationId
+        const dynamicRecommendationId = canUseCanonicalTargets
+          ? (metadata?.recommendationId as string | undefined) ||
+            (metadata?.placeId as string | undefined) ||
+            (metadata?.id as string | undefined) ||
+            recommendationId
         : null;
       const eventId =
         retryEventIds.current.get(eventKey) || createAnalyticsEventId();
