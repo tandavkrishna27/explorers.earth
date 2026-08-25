@@ -98,6 +98,7 @@ export async function postExplorersAnalyticsEvent(
       const response = await fetchImpl(endpoint(baseUrl), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        referrerPolicy: 'no-referrer',
         body,
         signal: AbortSignal.timeout(10_000),
       });

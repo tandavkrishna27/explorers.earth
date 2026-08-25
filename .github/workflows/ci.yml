@@ -195,6 +195,9 @@ jobs:
           # integration enabled or the playlist UI never renders.
           VITE_LOCAL_TUNES_ENABLED: true
           VITE_LOCAL_TUNES_API_URL: http://localhost:5173
+          # Keep billing requests same-origin so the deterministic Playwright
+          # fixture can intercept them instead of constructing /undefined URLs.
+          VITE_PAYMENT_API_URL: http://localhost:5173
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

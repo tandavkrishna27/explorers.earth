@@ -70,6 +70,14 @@ test.beforeEach(async ({ context, page }) => {
     }
   });
 
+  await page.route("**/api/playlists?**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ playlists: [] }),
+    });
+  });
+
   await page.route("**/graphql", async (route) => {
     const operation = operationName(route);
     if (

@@ -830,6 +830,8 @@ test.describe("public recommendation presentation visual matrix", () => {
     expect(serialized).not.toContain("rawIp");
     expect(serialized).not.toContain("userAgent");
     expect(serialized).not.toContain(`?${attribution}`);
+    expect(view.headers.referer).toBeUndefined();
+    expect(click.headers.referer).toBeUndefined();
   });
 
   test("does not track an authenticated owner viewing their own public profile", async ({
@@ -1466,7 +1468,10 @@ test.describe("public recommendation presentation visual matrix", () => {
         .locator(":scope > [data-category-id]");
       const first = await categories.nth(0).boundingBox();
       const second = await categories.nth(1).boundingBox();
-      if (width < 640) {
+      const cssViewportWidth = await page.evaluate(
+        () => document.documentElement.clientWidth,
+      );
+      if (cssViewportWidth < 640) {
         expect(Math.abs((first?.y || 0) - (second?.y || 0))).toBeGreaterThan(10);
       } else {
         expect(Math.abs((first?.y || 0) - (second?.y || 0))).toBeLessThan(2);
@@ -1577,6 +1582,13 @@ test.describe("public recommendation presentation visual matrix", () => {
       if (!localStorage.getItem("dashboard-theme")) {
         localStorage.setItem("dashboard-theme", "dark");
       }
+    });
+    await page.route("**/api/auth/sync", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true }),
+      });
     });
     const mutations: string[] = [];
     const dashboardAccount = {

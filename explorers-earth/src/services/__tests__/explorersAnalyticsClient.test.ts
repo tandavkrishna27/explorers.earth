@@ -78,6 +78,7 @@ describe('explorersAnalyticsClient', () => {
     expect(init).toMatchObject({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      referrerPolicy: 'no-referrer',
     });
     expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
     expect(JSON.parse(init.body as string)).toEqual(payload);

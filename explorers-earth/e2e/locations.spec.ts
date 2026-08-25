@@ -156,7 +156,7 @@ test.beforeEach(async ({ context, page }) => {
   });
 
   // Consolidated Google Places API Mock Handler
-  await page.route('https://places.googleapis.com/v1/places/**', async route => {
+  await page.route('https://places.googleapis.com/v1/places**', async route => {
     const url = route.request().url();
     
     if (url.includes('mock-photo-ref/media')) {
