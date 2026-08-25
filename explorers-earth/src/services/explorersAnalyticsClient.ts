@@ -99,6 +99,7 @@ export async function postExplorersAnalyticsEvent(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body,
+        signal: AbortSignal.timeout(10_000),
       });
       if (response.ok && response.status !== 202) return;
 
@@ -163,6 +164,7 @@ export async function readExplorersAnalyticsEvents(
   const response = await fetchImpl(url.toString(), {
     method: 'GET',
     headers: { Authorization: `Bearer ${scope.token}` },
+    signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error(await errorMessage(response));
 

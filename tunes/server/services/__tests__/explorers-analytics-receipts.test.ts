@@ -10,10 +10,11 @@ describe("PostgresAnalyticsReceiptRepository", () => {
           payload_hash: "hash-1",
           status: "pending",
           strapi_document_id: null,
+          lease_id: "lease-1",
         },
       ],
     });
-    const repository = new PostgresAnalyticsReceiptRepository({ query });
+    const repository = new PostgresAnalyticsReceiptRepository({ query }, () => "lease-1");
 
     await expect(repository.begin("evt-1", "hash-1")).resolves.toEqual({
       acquired: true,
@@ -21,9 +22,10 @@ describe("PostgresAnalyticsReceiptRepository", () => {
       payloadHash: "hash-1",
       status: "pending",
       documentId: undefined,
+      leaseId: "lease-1",
     });
     expect(query.mock.calls[0][0]).toContain("ON CONFLICT (event_id) DO NOTHING");
-    expect(query.mock.calls[0][1]).toEqual(["evt-1", "hash-1"]);
+    expect(query.mock.calls[0][1]).toEqual(["evt-1", "hash-1", "lease-1"]);
   });
 
   it("returns the existing committed receipt after an idempotency collision", async () => {
@@ -38,6 +40,7 @@ describe("PostgresAnalyticsReceiptRepository", () => {
             payload_hash: "hash-1",
             status: "committed",
             strapi_document_id: "strapi-1",
+            lease_id: null,
           },
         ],
       });
@@ -65,11 +68,12 @@ describe("PostgresAnalyticsReceiptRepository", () => {
             event_id: "evt-1",
             payload_hash: "hash-1",
             status: "pending",
-            strapi_document_id: null,
+          strapi_document_id: null,
+          lease_id: "lease-2",
           },
         ],
       });
-    const repository = new PostgresAnalyticsReceiptRepository({ query });
+    const repository = new PostgresAnalyticsReceiptRepository({ query }, () => "lease-2");
 
     await expect(repository.begin("evt-1", "hash-1")).resolves.toEqual({
       acquired: true,
@@ -77,6 +81,7 @@ describe("PostgresAnalyticsReceiptRepository", () => {
       payloadHash: "hash-1",
       status: "pending",
       documentId: undefined,
+      leaseId: "lease-2",
     });
     expect(query.mock.calls[1][0]).toContain("updated_at < NOW() - INTERVAL");
     expect(query.mock.calls[1][0]).toContain("payload_hash = $2");
@@ -110,15 +115,17 @@ describe("PostgresAnalyticsReceiptRepository", () => {
     const query = vi.fn().mockResolvedValue({ rows: [] });
     const repository = new PostgresAnalyticsReceiptRepository({ query });
 
-    await repository.commit("evt-1", "strapi-1");
-    await repository.fail("evt-2", "upstream unavailable");
+    await repository.commit("evt-1", "strapi-1", "lease-1");
+    await repository.fail("evt-2", "upstream unavailable", "lease-2");
 
     expect(query.mock.calls[0][0]).toContain("status = 'committed'");
-    expect(query.mock.calls[0][1]).toEqual(["evt-1", "strapi-1"]);
+    expect(query.mock.calls[0][0]).toContain("lease_id = $3");
+    expect(query.mock.calls[0][1]).toEqual(["evt-1", "strapi-1", "lease-1"]);
     expect(query.mock.calls[1][0]).toContain("status = 'failed'");
     expect(query.mock.calls[1][1]).toEqual([
       "evt-2",
       "upstream unavailable",
+      "lease-2",
     ]);
     expect(JSON.stringify(query.mock.calls)).not.toMatch(/Stats|metadata|utm/i);
   });

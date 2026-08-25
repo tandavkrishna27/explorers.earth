@@ -60,6 +60,27 @@ const metadataSchema = z
   })
   .strict();
 
+const analyticsPageSchema = z.enum([
+  "public-profile",
+  "public-home",
+  "recommendation-detail",
+  "public-music",
+  "public-movies",
+  "public-books",
+  "public-games",
+  "public-apps",
+  "public-products",
+  "public-people",
+  "public-guides",
+]);
+
+const canonicalPublicPathSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(2048)
+  .regex(/^\/[a-z0-9-]+(?:\/[a-z0-9-]+)*\/?$/i);
+
 export const explorersAnalyticsInputSchema = z.object({
   consent: z.boolean(),
   eventId: z.string().trim().min(8).max(128),
@@ -70,15 +91,77 @@ export const explorersAnalyticsInputSchema = z.object({
     .object({
       type: z.enum(["view", "click", "interaction"]),
       timestamp: z.string().datetime(),
-      page: z.string().trim().min(1).max(128),
+      page: analyticsPageSchema,
       element: z.string().trim().min(1).max(256).optional(),
-      canonicalPath: z.string().trim().min(1).max(2048),
+      canonicalPath: canonicalPublicPathSchema,
       referrerOrigin: referrerOriginSchema.optional(),
       metadata: metadataSchema.optional(),
       utmParams: utmSchema.optional(),
     })
     .strict(),
-}).strict();
+}).strict().superRefine((input, context) => {
+  const metadata = input.event.metadata;
+  const metadataLocationId = metadata?.listId ?? metadata?.cityId;
+  const metadataRecommendationId =
+    metadata?.recommendationId ?? metadata?.placeId ?? metadata?.id;
+
+  if (metadataLocationId && input.locationId !== metadataLocationId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["locationId"],
+      message: "locationId must match the metadata list target",
+    });
+  }
+  if (
+    metadataRecommendationId &&
+    input.recommendationId !== metadataRecommendationId
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["recommendationId"],
+      message: "recommendationId must match the metadata item target",
+    });
+  }
+  if (
+    /(?:^|-)card(?:-|$)/i.test(input.event.element ?? "") &&
+    !input.locationId &&
+    !input.recommendationId
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["event", "element"],
+      message: "card events require a validated list or item target",
+    });
+  }
+
+  const segments = input.event.canonicalPath.split("/").filter(Boolean);
+  const expectedCategoryByPage: Partial<
+    Record<(typeof analyticsPageSchema)["_output"], string>
+  > = {
+    "public-home": "places",
+    "recommendation-detail": "places",
+    "public-music": "music",
+    "public-movies": "movies",
+    "public-books": "books",
+    "public-games": "games",
+    "public-apps": "apps",
+    "public-products": "products",
+    "public-people": "people",
+    "public-guides": "guides",
+  };
+  const expectedCategory = expectedCategoryByPage[input.event.page];
+  const pathMatchesPage =
+    input.event.page === "public-profile"
+      ? segments.length === 1
+      : segments.length >= 2 && segments[1] === expectedCategory;
+  if (!pathMatchesPage) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["event", "canonicalPath"],
+      message: "canonicalPath does not match the analytics page",
+    });
+  }
+});
 
 export type ExplorersAnalyticsInput = z.infer<typeof explorersAnalyticsInputSchema>;
 
@@ -112,12 +195,13 @@ export interface AnalyticsReceipt {
   payloadHash: string;
   status: "pending" | "committed" | "failed";
   documentId?: string;
+  leaseId?: string;
 }
 
 export interface AnalyticsReceiptRepository {
   begin(eventId: string, payloadHash: string): Promise<AnalyticsReceipt>;
-  commit(eventId: string, documentId: string): Promise<void>;
-  fail?(eventId: string, message: string): Promise<void>;
+  commit(eventId: string, documentId: string, leaseId: string): Promise<void>;
+  fail?(eventId: string, message: string, leaseId: string): Promise<void>;
 }
 
 export interface AnalyticsPublisher {
@@ -193,19 +277,23 @@ export class ExplorersAnalyticsService {
   private readonly receipts: AnalyticsReceiptRepository;
   private readonly publisher: AnalyticsPublisher;
   private readonly resolveCountry: (ip: string | null) => string | null;
+  private readonly now: () => Date;
 
   constructor({
     receipts,
     publisher,
     resolveCountry,
+    now = () => new Date(),
   }: {
     receipts: AnalyticsReceiptRepository;
     publisher: AnalyticsPublisher;
     resolveCountry: (ip: string | null) => string | null;
+    now?: () => Date;
   }) {
     this.receipts = receipts;
     this.publisher = publisher;
     this.resolveCountry = resolveCountry;
+    this.now = now;
   }
 
   async ingest(
@@ -225,7 +313,6 @@ export class ExplorersAnalyticsService {
       recommendationId: input.recommendationId ?? null,
       event: {
         type: input.event.type,
-        timestamp: input.event.timestamp,
         page: input.event.page,
         ...(input.event.element ? { element: input.event.element } : {}),
         canonicalPath: input.event.canonicalPath,
@@ -257,7 +344,8 @@ export class ExplorersAnalyticsService {
         input.eventId,
       );
       if (existingDocumentId) {
-        await this.receipts.commit(input.eventId, existingDocumentId);
+        if (!receipt.leaseId) throw new Error("Analytics receipt lease is missing");
+        await this.receipts.commit(input.eventId, existingDocumentId, receipt.leaseId);
         return {
           status: "committed",
           documentId: existingDocumentId,
@@ -270,13 +358,15 @@ export class ExplorersAnalyticsService {
       ...normalizedWithoutCountry,
       event: {
         ...normalizedWithoutCountry.event,
+        timestamp: this.now().toISOString(),
         country: normalizeCountry(this.resolveCountry(context.getIp())),
       },
     };
 
     try {
       const published = await this.publisher.publish(payload);
-      await this.receipts.commit(input.eventId, published.documentId);
+      if (!receipt.leaseId) throw new Error("Analytics receipt lease is missing");
+      await this.receipts.commit(input.eventId, published.documentId, receipt.leaseId);
       return {
         status: "committed",
         documentId: published.documentId,
@@ -286,6 +376,7 @@ export class ExplorersAnalyticsService {
       await this.receipts.fail?.(
         input.eventId,
         error instanceof Error ? error.message : "analytics publish failed",
+        receipt.leaseId ?? "",
       );
       throw error;
     }

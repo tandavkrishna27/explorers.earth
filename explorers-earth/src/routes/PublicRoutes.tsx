@@ -3,7 +3,6 @@ import { Route } from "react-router-dom";
 // Import components
 import PublicProfile from "../features/PublicHome/components/PublicProfile";
 import PublicHomePage from "../pages/public/PublicHomePage";
-import Community from "../features/PublicHome/components/Community";
 import MapView from "../features/PublicHome/components/MapView";
 import PlaceMapView from "../features/PublicHome/components/PlaceMapView";
 import PublicMusic from "../pages/public/PublicMusic";
@@ -81,8 +80,6 @@ const PublicRoutes = [
         </TabVisibilityGuard>
       } />
     </Route>
-    <Route path="community" element={<Community />} />
-
     {/* Movies & Shows public routes */}
     <Route path="movies">
       <Route index element={

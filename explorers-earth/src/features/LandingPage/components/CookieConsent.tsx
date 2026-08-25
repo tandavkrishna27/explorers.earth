@@ -5,6 +5,8 @@ import { Button } from './ui/landingButton';
 import { loadAnalytics } from '../../../utils/analytics';
 import { useTranslation } from 'react-i18next';
 import { ANALYTICS_CONSENT_CHANGED_EVENT } from '../../../services/explorersAnalyticsClient';
+import { useLocation } from 'react-router-dom';
+import { validateUsername } from '../../../utils/usernameValidation';
 
 interface CookiePreferences {
   essential: boolean;
@@ -12,8 +14,41 @@ interface CookiePreferences {
   marketing: boolean;
 }
 
+const INTERNAL_FIRST_PATH_SEGMENTS = new Set([
+  '404',
+  'about',
+  'analytics',
+  'claimaccount',
+  'checkout',
+  'contact',
+  'cookies',
+  'email-confirmed',
+  'email-verification',
+  'forgot-password',
+  'google-auth',
+  'guides',
+  'home',
+  'hub',
+  'instagram',
+  'login',
+  'music',
+  'onboarding',
+  'privacy',
+  'reactivate',
+  'reactivate-confirm',
+  'recommendations',
+  'register',
+  'reset-link-sent',
+  'reset-password',
+  'sso',
+  'subscription-plans',
+  'terms',
+  'use-cases',
+]);
+
 export default function CookieConsent() {
   const { t } = useTranslation();
+  const { pathname } = useLocation();
   const [isVisible, setIsVisible] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const [preferences, setPreferences] = useState<CookiePreferences>({
@@ -22,17 +57,28 @@ export default function CookieConsent() {
     marketing: false,
   });
 
-  const storeConsent = (consent: CookiePreferences) => {
-    localStorage.setItem(
-      'explorers-cookie-consent',
-      JSON.stringify({ ...consent, timestamp: new Date().toISOString() }),
-    );
-    window.dispatchEvent(new Event(ANALYTICS_CONSENT_CHANGED_EVENT));
+  const storeConsent = (consent: CookiePreferences): boolean => {
+    try {
+      localStorage.setItem(
+        'explorers-cookie-consent',
+        JSON.stringify({ ...consent, timestamp: new Date().toISOString() }),
+      );
+      window.dispatchEvent(new Event(ANALYTICS_CONSENT_CHANGED_EVENT));
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   useEffect(() => {
     // Check if user has already made a choice
-    const storedConsent = localStorage.getItem('explorers-cookie-consent');
+    let storedConsent: string | null = null;
+    try {
+      storedConsent = localStorage.getItem('explorers-cookie-consent');
+    } catch {
+      // Storage can be unavailable in restricted browser contexts. Consent
+      // remains fail-closed and the banner is still shown for this page.
+    }
     if (!storedConsent) {
       // Show banner after 2 seconds delay
       const timer = setTimeout(() => {
@@ -58,8 +104,7 @@ export default function CookieConsent() {
       marketing: true,
       timestamp: new Date().toISOString(),
     };
-    storeConsent(consentData);
-    loadAnalytics();
+    if (storeConsent(consentData)) loadAnalytics();
     setIsVisible(false);
   };
 
@@ -93,14 +138,22 @@ export default function CookieConsent() {
 
   if (!isVisible) return null;
 
+  const firstPathSegment = pathname.split('/').filter(Boolean)[0] ?? '';
+  const isPublicProfileRoute =
+    !INTERNAL_FIRST_PATH_SEGMENTS.has(firstPathSegment.toLowerCase()) &&
+    validateUsername(firstPathSegment).isValid;
+
   return (
     <AnimatePresence>
       <motion.div
+        data-testid="cookie-consent-positioner"
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
         transition={{ duration: 0.4, ease: 'easeInOut' }}
-        className="fixed bottom-3 left-3 right-3 z-50 sm:bottom-0 sm:left-0 sm:right-0 sm:p-6"
+        className={`fixed left-3 right-3 z-50 sm:left-0 sm:right-0 sm:p-6 ${
+          isPublicProfileRoute ? 'bottom-16' : 'bottom-3 sm:bottom-0'
+        }`}
       >
         <div
           className="mx-auto max-h-[42dvh] max-w-6xl overflow-y-auto backdrop-blur-sm border border-gray-200 rounded-lg shadow-2xl sm:max-h-none"
@@ -204,10 +257,18 @@ export default function CookieConsent() {
                   <div className="ml-4">
                     <button
                       onClick={() => setPreferences(prev => ({ ...prev, analytics: !prev.analytics }))}
-                      className={`w-12 h-6 rounded-full flex items-center transition-all focus:outline-none focus:ring-2 focus:ring-green-500 ${preferences.analytics ? 'bg-green-500 justify-end' : 'bg-gray-300 justify-start'
-                        } px-1`}
+                      type="button"
+                      role="switch"
+                      aria-checked={preferences.analytics}
+                      aria-label={t('cookieConsent.analyticsCookies.title')}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-green-500"
                     >
-                      <div className="w-4 h-4 bg-white rounded-full"></div>
+                      <span
+                        className={`flex h-6 w-12 items-center rounded-full px-1 transition-all ${preferences.analytics ? 'justify-end bg-green-500' : 'justify-start bg-gray-300'}`}
+                        aria-hidden="true"
+                      >
+                        <span className="h-4 w-4 rounded-full bg-white" />
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -221,10 +282,18 @@ export default function CookieConsent() {
                   <div className="ml-4">
                     <button
                       onClick={() => setPreferences(prev => ({ ...prev, marketing: !prev.marketing }))}
-                      className={`w-12 h-6 rounded-full flex items-center transition-all focus:outline-none focus:ring-2 focus:ring-green-500 ${preferences.marketing ? 'bg-green-500 justify-end' : 'bg-gray-300 justify-start'
-                        } px-1`}
+                      type="button"
+                      role="switch"
+                      aria-checked={preferences.marketing}
+                      aria-label={t('cookieConsent.marketingCookies.title')}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-green-500"
                     >
-                      <div className="w-4 h-4 bg-white rounded-full"></div>
+                      <span
+                        className={`flex h-6 w-12 items-center rounded-full px-1 transition-all ${preferences.marketing ? 'justify-end bg-green-500' : 'justify-start bg-gray-300'}`}
+                        aria-hidden="true"
+                      >
+                        <span className="h-4 w-4 rounded-full bg-white" />
+                      </span>
                     </button>
                   </div>
                 </div>

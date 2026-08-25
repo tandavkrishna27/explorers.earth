@@ -199,6 +199,24 @@ describe("explorers analytics routes", () => {
     expect(service.readAccountEvents).not.toHaveBeenCalled();
   });
 
+  it.each([
+    {
+      from: "2026-08-31T00:00:00.000Z",
+      to: "2026-08-01T00:00:00.000Z",
+    },
+    {
+      from: "2025-01-01T00:00:00.000Z",
+      to: "2026-08-01T00:00:00.000Z",
+    },
+  ])("rejects reversed or oversized analytics windows", async (scope) => {
+    const { app, authorizeOwner } = buildApp();
+    const response = await request(app)
+      .get("/api/explorers/analytics/events")
+      .query({ accountId: "account-1", ...scope });
+    expect(response.status).toBe(400);
+    expect(authorizeOwner).not.toHaveBeenCalled();
+  });
+
   it("returns a controlled 502 when authorization or scoped reads fail", async () => {
     const authorizationFailure = buildApp();
     authorizationFailure.authorizeOwner.mockRejectedValue(

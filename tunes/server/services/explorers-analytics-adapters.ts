@@ -377,8 +377,9 @@ export class StrapiAnalyticsPublisher implements AnalyticsPublisher {
     to: string;
   }): Promise<unknown[]> {
     const pageSize = 100;
+    const maxPages = 100;
     const records: unknown[] = [];
-    for (let page = 1; ; page += 1) {
+    for (let page = 1; page <= maxPages; page += 1) {
       const data = await this.request(READ_EVENTS, {
         ...scope,
         page,
@@ -389,6 +390,9 @@ export class StrapiAnalyticsPublisher implements AnalyticsPublisher {
         : [];
       records.push(...batch);
       if (batch.length < pageSize) break;
+      if (page === maxPages) {
+        throw new Error("Analytics read exceeded the 10,000-record safety cap");
+      }
     }
     return records;
   }

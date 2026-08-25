@@ -1,11 +1,6 @@
-name: Deploy tunes to Hetzner
+name: Legacy manual tunes deploy (GHCR)
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'tunes/**'
   workflow_dispatch:
 
 env:
@@ -67,13 +62,19 @@ jobs:
     steps:
       - name: SSH into server and deploy tunes
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          STRAPI_ANALYTICS_ACCESS_TOKEN: ${{ secrets.STRAPI_ANALYTICS_ACCESS_TOKEN }}
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script_stop: true
+          envs: STRAPI_ANALYTICS_ACCESS_TOKEN
           script: |
             set -e
+
+            test -n "$STRAPI_ANALYTICS_ACCESS_TOKEN"
+            export STRAPI_ANALYTICS_ACCESS_TOKEN
 
             echo "Navigating to app directory..."
             cd /opt/app

@@ -20,11 +20,11 @@ export const PublicProfileFooter = memo(({ brandingStyle = 'enabled' }: PublicPr
 
       {brandingStyle === 'enabled' && (
         <div className="mt-4 flex flex-wrap items-center justify-center gap-3 font-poppins text-xs text-slate-600 sm:gap-4">
-          <Link to="/" className="profile-presentation-focus rounded-md px-1 py-1 transition-colors hover:text-slate-950">Create your profile</Link>
+          <Link to="/" className="profile-presentation-focus inline-flex min-h-11 items-center rounded-md px-2 transition-colors hover:text-slate-950">Create your profile</Link>
           <span>•</span>
-          <a href="mailto:support@explorers.earth" className="profile-presentation-focus rounded-md px-1 py-1 transition-colors hover:text-slate-950">Report</a>
+          <a href="mailto:support@explorers.earth" className="profile-presentation-focus inline-flex min-h-11 items-center rounded-md px-2 transition-colors hover:text-slate-950">Report</a>
           <span>•</span>
-          <Link to="/privacy" className="profile-presentation-focus rounded-md px-1 py-1 transition-colors hover:text-slate-950">Privacy</Link>
+          <Link to="/privacy" className="profile-presentation-focus inline-flex min-h-11 items-center rounded-md px-2 transition-colors hover:text-slate-950">Privacy</Link>
         </div>
       )}
     </footer>

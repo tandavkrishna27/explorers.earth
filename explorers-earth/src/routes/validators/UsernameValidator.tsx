@@ -72,7 +72,6 @@ const UsernameValidator = ({ children }: UsernameValidatorProps) => {
           );
         const validRoutes = [
           "places",
-          "community",
           "music",
           "guides",
           "movies",
@@ -114,7 +113,6 @@ const UsernameValidator = ({ children }: UsernameValidatorProps) => {
 
         const hasInvalidLength =
           (currentRoute === "music" && restSegments.length !== 1) ||
-          (currentRoute === "community" && restSegments.length !== 1) ||
           (currentRoute === "guides" &&
             !(
               restSegments.length === 1 ||

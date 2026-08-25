@@ -78,7 +78,6 @@ describe("UsernameValidator", () => {
     "/tk2727/products/recommendations",
     "/tk2727/people",
     "/tk2727/people/sector/tech",
-    "/tk2727/community",
     "/tk2727/places/hello-world/placesmap",
   ])("allows valid profile route %s", (pathname) => {
     renderWithPath(pathname);
@@ -102,6 +101,7 @@ describe("UsernameValidator", () => {
     "/tk2727/places/top/more",
     "/tk2727/products/slug/extra",
     "/tk2727/placeslug/slug",
+    "/tk2727/community",
   ])("redirects invalid path %s to profile root", (pathname) => {
     renderWithPath(pathname);
 

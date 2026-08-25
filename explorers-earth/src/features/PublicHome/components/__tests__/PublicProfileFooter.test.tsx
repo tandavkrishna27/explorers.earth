@@ -16,6 +16,11 @@ describe('PublicProfileFooter', () => {
       '/eoe-full.svg',
     );
     expect(screen.getByText(/Create your profile/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Create your profile/i })).toHaveClass(
+      'min-h-11',
+    );
+    expect(screen.getByRole('link', { name: /Report/i })).toHaveClass('min-h-11');
+    expect(screen.getByRole('link', { name: /Privacy/i })).toHaveClass('min-h-11');
   });
 
   it('renders null when branding is disabled', () => {

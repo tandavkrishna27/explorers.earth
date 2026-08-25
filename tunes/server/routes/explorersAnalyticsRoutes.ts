@@ -10,6 +10,23 @@ const readScopeSchema = z.object({
   accountId: z.string().trim().min(1).max(128),
   from: z.string().datetime(),
   to: z.string().datetime(),
+}).superRefine((scope, context) => {
+  const from = Date.parse(scope.from);
+  const to = Date.parse(scope.to);
+  const maxWindowMs = 93 * 24 * 60 * 60 * 1_000;
+  if (from > to) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["from"],
+      message: "from must not be after to",
+    });
+  } else if (to - from > maxWindowMs) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["from"],
+      message: "analytics window must not exceed 93 days",
+    });
+  }
 });
 
 export interface ExplorersAnalyticsRouteDependencies {

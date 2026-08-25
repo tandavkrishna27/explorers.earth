@@ -23,10 +23,11 @@ class MemoryReceipts implements AnalyticsReceiptRepository {
       recovered: false as const,
       payloadHash,
       status: "pending" as const,
+      leaseId: `lease-${eventId}`,
     };
   }
 
-  async commit(eventId: string, documentId: string) {
+  async commit(eventId: string, documentId: string, _leaseId: string) {
     const current = this.receipts.get(eventId);
     if (!current) throw new Error("missing receipt");
     this.receipts.set(eventId, {
@@ -50,7 +51,7 @@ const baseInput = () => ({
   consent: true,
   eventId: "evt-20260824-0001",
   accountId: "account-document-1",
-  locationId: null,
+  locationId: "reading-list",
   recommendationId: "recommendation-1",
   event: {
     type: "click" as const,
@@ -104,6 +105,57 @@ describe("ExplorersAnalyticsService", () => {
       token: "secret",
     } as any;
     expect(explorersAnalyticsInputSchema.safeParse(piiMetadata).success).toBe(false);
+  });
+
+  it("rejects card/list identity metadata when the validated top-level target is omitted", () => {
+    const missingListTarget = baseInput();
+    missingListTarget.locationId = null;
+    expect(explorersAnalyticsInputSchema.safeParse(missingListTarget).success).toBe(false);
+
+    const missingRecommendationTarget = baseInput();
+    missingRecommendationTarget.recommendationId = null;
+    missingRecommendationTarget.event.metadata = {
+      recommendationId: "recommendation-1",
+    };
+    expect(
+      explorersAnalyticsInputSchema.safeParse(missingRecommendationTarget).success,
+    ).toBe(false);
+
+    const forgedCardWithoutAnyTarget = baseInput();
+    forgedCardWithoutAnyTarget.locationId = null;
+    forgedCardWithoutAnyTarget.recommendationId = null;
+    forgedCardWithoutAnyTarget.event.metadata = { title: "Forged movie" };
+    forgedCardWithoutAnyTarget.event.element = "movie-card-forged";
+    expect(
+      explorersAnalyticsInputSchema.safeParse(forgedCardWithoutAnyTarget).success,
+    ).toBe(false);
+  });
+
+  it("rejects unsupported analytics pages and page/path mismatches", () => {
+    const unknownPage = baseInput();
+    unknownPage.event.page = "invented-dashboard-total" as any;
+    expect(explorersAnalyticsInputSchema.safeParse(unknownPage).success).toBe(false);
+
+    const wrongPath = baseInput();
+    wrongPath.event.canonicalPath = "/tk2727/movies/forged";
+    expect(explorersAnalyticsInputSchema.safeParse(wrongPath).success).toBe(false);
+  });
+
+  it("uses a server timestamp instead of the client supplied timestamp", async () => {
+    service = new ExplorersAnalyticsService({
+      receipts,
+      publisher,
+      resolveCountry,
+      now: () => new Date("2026-08-25T10:00:00.000Z"),
+    });
+    const input = baseInput();
+    input.event.timestamp = "2001-01-01T00:00:00.000Z";
+
+    await service.ingest(input, { getIp: () => "8.8.8.8" });
+
+    expect(publish.mock.calls[0][0].event.timestamp).toBe(
+      "2026-08-25T10:00:00.000Z",
+    );
   });
 
   it("checks consent before reading the request IP or writing anything", async () => {
@@ -195,6 +247,7 @@ describe("ExplorersAnalyticsService", () => {
         recovered: true,
         payloadHash: "replaced-before-use",
         status: "pending",
+        leaseId: "recovery-lease",
       }),
       commit,
     };
@@ -216,6 +269,7 @@ describe("ExplorersAnalyticsService", () => {
       recovered: true,
       payloadHash: committedReceipt.payloadHash,
       status: "pending",
+      leaseId: "recovery-lease",
     });
 
     const recoveredPublisher: AnalyticsPublisher = {
@@ -240,6 +294,7 @@ describe("ExplorersAnalyticsService", () => {
     expect(commit).toHaveBeenCalledWith(
       baseInput().eventId,
       "strapi-event-existing",
+      "recovery-lease",
     );
   });
 });
