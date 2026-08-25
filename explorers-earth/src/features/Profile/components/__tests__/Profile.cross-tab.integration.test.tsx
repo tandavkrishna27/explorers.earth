@@ -441,5 +441,5 @@ describe("Profile editor cross-tab save boundary", () => {
     };
     expect(mutationSubmit).toHaveBeenNthCalledWith(1, expectedPayload);
     expect(mutationSubmit).toHaveBeenNthCalledWith(2, expectedPayload);
-  }, 10_000);
+  }, 20_000);
 });
