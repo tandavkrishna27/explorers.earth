@@ -1,126 +1,23 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import axios, { AxiosError } from "axios";
-import useAuthStore from "../store/store";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { EarthLoader } from "../components/EarthLoader";
+import { authClient } from "../lib/authClient";
+import useAuthStore from "../store/store";
 
-/**
- * GoogleAuthRedirect — handles /google-auth/callback
- *
- * Strapi OAuth flow for production (explorers.earth):
- *
- *  1. User clicks "Sign in with Google"
- *     → browser navigates to https://api.localqr.earth/api/connect/google
- *
- *  2. Strapi redirects to Google consent page.
- *
- *  3. Google calls the Strapi backend callback:
- *     https://api.localqr.earth/api/connect/google/callback
- *
- *  4. Strapi validates the Google code, creates/finds the user, mints a JWT,
- *     then redirects the browser to the configured "front-end URL":
- *     https://explorers.earth/google-auth/callback?access_token=<JWT>
- *     ↑ the access_token here IS the Strapi JWT — NOT a Google token.
- *
- *  5. This component reads that JWT, fetches the user profile, stores
- *     the application token, and navigates to /home.
- *
- * IMPORTANT: No second OAuth exchange is performed here. The access_token
- * provided by Strapi's redirect is already the final authentication token.
- */
-const GoogleAuthRedirect = () => {
+/** Better Auth has already handled the provider callback and issued an HttpOnly session. */
+export default function GoogleAuthRedirect() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const loginState = useAuthStore((state) => state.login);
-  const [authStatus, setAuthStatus] = useState<string>("Authenticating with Google...");
-
   useEffect(() => {
-    const handleGoogleAuth = async () => {
-      const params = new URLSearchParams(location.search);
-
-      // This token is already the Strapi JWT — Strapi mints it server-side
-      // before redirecting here. No further exchange with Google is needed.
-      const strapiJwt = params.get("access_token");
-
-      if (!strapiJwt) {
-        console.error("[GoogleAuthRedirect] No access_token in URL", location.search);
-        navigate("/login?error=oauth_failed");
-        return;
-      }
-
-      try {
-        setAuthStatus("Verifying your account...");
-
-        let finalJwt = strapiJwt;
-
-        // If the token is a Google Access Token (starts with ya29), exchange it for a Strapi JWT
-        if (strapiJwt && strapiJwt.startsWith('ya29')) {
-          console.log("[GoogleAuthRedirect] Google token detected. Exchanging for Strapi JWT via proxy...");
-          // Use relative path to avoid CORS errors
-          const exchangeResponse = await axios.get(`/api/auth/google/callback?access_token=${strapiJwt}`);
-          
-          if (exchangeResponse.data && exchangeResponse.data.jwt) {
-            finalJwt = exchangeResponse.data.jwt;
-            console.log("[GoogleAuthRedirect] Exchange successful!");
-          } else {
-            throw new Error("Failed to exchange Google token for Strapi JWT");
-          }
-        }
-
-        console.log("[GoogleAuthRedirect] Fetching profile with JWT:", finalJwt?.substring(0, 10) + "...");
-
-        // Use the relative path to go through the Nginx proxy
-        const response = await axios.get("/api/users/me", {
-          headers: {
-            Authorization: `Bearer ${finalJwt}`,
-          },
-        });
-
-        const user = response.data;
-
-        if (!user || !user.id) {
-          console.error("[GoogleAuthRedirect] Unexpected /users/me response:", user);
-          navigate("/login?error=oauth_failed");
-          return;
-        }
-
-        // Handle successful login with the final Strapi JWT (not the Google token)
-        loginState({
-          token: finalJwt,
-          documentId: user.documentId ?? String(user.id),
-          blocked: user.blocked ?? false,
-          id: String(user.id),
-          email: user.email,
-          username: user.username,
-        });
-
-        // Persist the final Strapi JWT
-        localStorage.setItem("qrtoken", finalJwt);
-
-        // Add a small delay for state update before redirect
-        setAuthStatus("Login successful! Redirecting...");
-        setTimeout(() => {
-          navigate("/home");
-        }, 1500);
-      } catch (error) {
-        console.error("[GoogleAuthRedirect] Error fetching user profile:", error);
-        if (error instanceof AxiosError && error.response) {
-          console.error("[GoogleAuthRedirect] Status:", error.response.status);
-          console.error("[GoogleAuthRedirect] Data:", error.response.data);
-        }
-        navigate("/login?error=oauth_failed");
-      }
-    };
-
-    handleGoogleAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <div className="bg-black">
-      <EarthLoader context="login" statusMessage={authStatus} />
-    </div>
-  );
-};
-
-export default GoogleAuthRedirect;
+    let live = true;
+    const task = authClient.refresh();
+    const generation = useAuthStore.getState().generation;
+    void task.then(() => {
+      if (!live || useAuthStore.getState().generation !== generation) return;
+      const status = useAuthStore.getState().status;
+      navigate(status === "active-complete" ? "/home" : status === "active-incomplete" ? "/onboarding"
+        : status === "terminal" ? "/reactivate" : "/login?error=oauth_failed", { replace: true });
+    });
+    return () => { live = false; };
+  }, [navigate]);
+  return <div className="bg-black"><EarthLoader context="login" statusMessage="Verifying your account..." /></div>;
+}

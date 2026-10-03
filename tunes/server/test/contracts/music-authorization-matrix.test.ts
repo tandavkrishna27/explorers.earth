@@ -21,6 +21,9 @@ describe("generated full Music authorization matrix", () => {
     expect(matrix.routes).toEqual(expect.arrayContaining([
       expect.objectContaining({ method: "POST", path: "/api/playlist/:guestUrl/requests", decision: "guest" }),
       expect.objectContaining({ method: "ALL", path: "/{*musicRetiredPath}", decision: "tombstone" }),
+      expect.objectContaining({ method: "ALL", path: "/api/auth/*splat", decision: "explorers-auth" }),
+      expect.objectContaining({ method: "POST", path: "/api/explorers/v1/recovery/start", decision: "explorers-recovery" }),
+      expect.objectContaining({ method: "GET", path: "/api/explorers/v1/me", decision: "explorers-owner" }),
     ]));
     expect(matrix.events).toEqual(expect.arrayContaining([
       expect.objectContaining({ direction: "receive", event: "connection", decision: "owner-or-guest" }),

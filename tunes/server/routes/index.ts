@@ -1,3 +1,4 @@
+import {startAnalyticsMaintenance} from '../application/analyticsMaintenance';
 import type { Express } from "express";
 import type { Server } from "http";
 import type { IStorage } from "../storage";
@@ -47,6 +48,7 @@ import { setupLocalMusicBoundary } from "./musicLocalBoundary";
 import { setupLocalMusicHealthRoutes } from "../deployment/music-local-health";
 import { assertValidatedLocalMusicProfile, type ValidatedLocalMusicProfile } from "../config/music-local-profile";
 import { installProfileOptionalMusicIntegrations, musicCompositionPolicy } from "../config/music-local-composition";
+import { assertCanonicalPlatformRouteGraph } from "../config/platform-route-graph";
 import { requestLocalMusicRuntimeShutdown } from "../config/music-local-shutdown";
 
 const featureAllowlist = (value?: string) => new Set((value ?? "").split(",").map((item) => item.trim()).filter(Boolean));
@@ -62,6 +64,7 @@ export async function registerRoutes(
   },
   localProfile?: ValidatedLocalMusicProfile,
 ): Promise<{ server: Server; shutdown: () => Promise<void> }> {
+  assertCanonicalPlatformRouteGraph(musicConfig.mode, localProfile);
   if (localProfile) {
     assertValidatedLocalMusicProfile(localProfile, process.env);
     setupLocalMusicBoundary(app);
@@ -179,9 +182,10 @@ export async function registerRoutes(
     }));
     setupExplorersPublicProfileRoutes(app, { shell: publicProfileService.shell.bind(publicProfileService), category: publicProfileService.category.bind(publicProfileService), detail: publicProfileService.detail.bind(publicProfileService) });
   }
+  let canonicalAnalyticsEnabled=false;
   installProfileOptionalMusicIntegrations(localProfile, {
     nativeAuth: () => setupAuthRoutes(app),
-    analyticsPublishing: () => setupExplorersAnalyticsRoutes(app, createExplorersAnalyticsDependencies()),
+    analyticsPublishing: () => {setupExplorersAnalyticsRoutes(app, createExplorersAnalyticsDependencies());canonicalAnalyticsEnabled=true;},
     reactivation: () => setupReactivationRoutes(app, {
       reactivateMusic: async (identity) => { await lifecycle.reactivateBoundIdentity(identity); },
     }),
@@ -202,9 +206,11 @@ export async function registerRoutes(
   let suspensionListener: Awaited<ReturnType<typeof startMusicReconciliationSuspensionListener>> | undefined;
   let lifecycleWorker: ReturnType<typeof startMusicLifecycleWorker> | undefined;
   let publicationShredTimer: NodeJS.Timeout | undefined;
+  let stopAnalyticsMaintenance:(()=>Promise<void>)|undefined;
   let cleanupPromise: Promise<void> | undefined;
   const shutdown = (): Promise<void> => cleanupPromise ??= (async () => {
     lifecycleWorker?.stop();
+    await stopAnalyticsMaintenance?.();
     if (publicationShredTimer) clearInterval(publicationShredTimer);
     await ownerSocketRegistry.disconnectAllSockets().catch(() => undefined);
     await Promise.allSettled([
@@ -213,6 +219,7 @@ export async function registerRoutes(
     ].filter((operation): operation is Promise<void> => operation !== undefined));
   })();
   try {
+  if(canonicalAnalyticsEnabled)stopAnalyticsMaintenance=startAnalyticsMaintenance(pool);
   publicChangeListener = await startMusicPublicChangeListener({
     pool,
     fanout: (change) => publicSocketRegistry.publish(change),
@@ -278,6 +285,9 @@ export async function registerRoutes(
 
   // iTunes Search Proxy
   app.get("/itunes-api/search", async (req, res) => {
+    if (musicConfig.mode === "fixture") {
+      return res.status(503).json({ error: "FIXTURE_PROVIDER_UNAVAILABLE" });
+    }
     try {
       const { term, entity, limit, media } = req.query;
       const url = `https://itunes.apple.com/search?term=${encodeURIComponent(String(term || ""))}&entity=${entity || "software"}&limit=${limit || 12}&media=${media || "software"}`;

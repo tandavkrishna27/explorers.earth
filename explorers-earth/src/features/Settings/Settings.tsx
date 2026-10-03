@@ -9,75 +9,45 @@ import { UnpublishCategoryDialog } from "./components/UnpublishCategoryDialog";
 import EyeOffIcon from "../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../assets/icons/EyeOnIcon";
 import Button from "../../components/ui/Button";
-import { gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import {
   updatePasswordMutation,
-  deleteExplorerAccountMutation,
-  deleteExplorerUserMutation,
-  addReasonForLeavingMutation,
-  updateBlockedStatusMutation,
-  getUserAccountQuery,
 } from "./api/mutation";
 import useAuthStore from "../../store/store";
 import { toast } from "sonner";
 import Modal from "../../components/ui/Modal";
 import { useNavigate } from "react-router-dom";
-import { loginQuery } from "../Authentication/api/mutation";
 import { EarthLoader } from "../../components/EarthLoader";
 import PasswordInput from "../../components/ui/PasswordInput";
 import { validatePassword } from "../../utils/passwordValidator";
 import { useTranslation } from "react-i18next";
 import LanguageSelector, { LANGUAGES } from "./components/LanguageSelector";
-import { selectCompletedAccount } from "../music/musicIdentityCoordinator";
 import ProfileAccountSettings from "./components/ProfileAccountSettings";
 import { getPublicCategoryListCountsQuery } from "../PublicHome/api/query";
-import {
-  AccountLifecycleError,
-  type AccountLifecycleStatus,
-} from "../../services/accountLifecycleService";
-import { createLazyAccountLifecycleService } from "../../services/lazyAccountLifecycleService";
+import { createCanonicalAccountLifecycleService, type CanonicalAccountLifecycleDto } from "../../services/accountLifecycleService";
 import AccountDeletionLifecyclePanel from "./components/AccountDeletionLifecyclePanel";
-import { closeLocalMusicSession } from "../music/musicSessionBoundary";
-import { createDeletionCancellationCoordinator, deactivateExplorerAndMusic } from "./accountDeactivationCoordinator";
 import { useAccountLifecycleIdentity } from "../../services/useAccountLifecycleIdentity";
 import { computePinnedNavTabIds } from "../../utils/navPinning";
 import { useOwnerMusicAvailability } from "../music/PublicMusicAvailabilityProvider";
+import { useCanonicalAccount } from "../Profile/api/useCanonicalAccount";
+import { useLogout } from "../../hooks/useLogout";
+import { closeLocalMusicSession } from "../music/musicSessionBoundary";
 
-
-const providerQuery = gql`
-  query UsersPermissionsUser($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      provider
-    }
-  }
-`;
-
+// Retained category UI reads its legacy settings projection until category conversion.
+// The transport in main.tsx strips all canonical/session credentials from this read.
 const settingsAccountQuery = gql`
   query SettingsAccount($documentId: ID!) {
     usersPermissionsUser(documentId: $documentId) {
       documentId
       accounts {
-        documentId
-        Account_Name
-        Account_Type
-        mobile_number
-        Addresss
-        public_profile
-        public_recommendations
-        public_music
-        public_movie
-        public_guides
-        public_books
-        public_games
-        public_apps
-        public_products
-        public_people
-        pinned_nav_tabs
-        auto_pinning
+        documentId Account_Name Account_Type mobile_number Addresss public_profile
+        public_recommendations public_music public_movie public_guides public_books
+        public_games public_apps public_products public_people pinned_nav_tabs auto_pinning
       }
     }
   }
 `;
+
 
 const Settings = memo(() => {
   const identity = useAccountLifecycleIdentity();
@@ -114,7 +84,9 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   // state for handling password modal
   const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
   // accessing the data form the global state
-  const { user, logout, updateUserBlocked } = useAuthStore();
+  const { user, logout } = useAuthStore();
+  const endSession = useLogout();
+  const canonicalAccount = useCanonicalAccount();
   // local state for handling the password
   const [newPassword, setNewPassword] = useState<string>("");
   // local state for handling the password
@@ -125,11 +97,9 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   const [isNewPasswordValid, setIsNewPasswordValid] = useState<boolean>(false);
   // update password mutation
   const [updatePassword] = useMutation(updatePasswordMutation);
-  const [login] = useMutation(loginQuery);
   // accessing user status
   const userBlocked = user?.blocked;
   // status update mutation
-  const [updateBlockedStatus] = useMutation(updateBlockedStatusMutation);
   // local state for modal
   const [showModal, setShowModal] = useState<boolean>(false);
   const [password, setPassword] = useState<string>("");
@@ -143,10 +113,12 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   const [deletePasswordConfirm, setDeletePasswordConfirm] =
     useState<string>("");
   const [deleteReason, setDeleteReason] = useState<string>("");
+  const [deletionFeedbackId, setDeletionFeedbackId] = useState<string | null>(null);
+  const feedbackAttempt = useRef<{ reason: string; key: string } | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<string>("");
   const [deleteAccountLoading, setDeleteAccountLoading] =
     useState<boolean>(false);
-  const [deletionLifecycle, setDeletionLifecycle] = useState<AccountLifecycleStatus["operation"] | null>(null);
+  const [deletionLifecycle, setDeletionLifecycle] = useState<CanonicalAccountLifecycleDto | null>(null);
   const [deletionAuthorityResolved, setDeletionAuthorityResolved] = useState(false);
   const lifecycleActionRunning = useRef(false);
   const lifecycleStatusSequence = useRef(0);
@@ -158,7 +130,6 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
     isRedirectingAfterPasswordChange,
     setIsRedirectingAfterPasswordChange,
   ] = useState<boolean>(false);
-  const [addReasonForLeaving] = useMutation(addReasonForLeavingMutation);
   const [publicVisibilitySectionOpen, setPublicVisibilitySectionOpen] = useState<boolean>(false);
   const [pinnedNavTabsSectionOpen, setPinnedNavTabsSectionOpen] = useState<boolean>(false);
   const [languageSectionOpen, setLanguageSectionOpen] = useState<boolean>(false);
@@ -170,22 +141,11 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   );
   const navigationHeading = useRef<HTMLHeadingElement>(null);
 
-  const { data } = useQuery(providerQuery, {
-    variables: {
-      documentId: user?.documentId,
-    },
-    skip: !user?.documentId,
-  });
+  const data = { usersPermissionsUser: { provider: "google" } };
 
-  // Query for current user's account data for tab visibility settings
-  const { data: currentUserAccountData, loading: settingsLoading } = useQuery(settingsAccountQuery, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
+  const { loading: settingsLoading } = useQuery(settingsAccountQuery, {
+    variables: { documentId: user?.documentId }, skip: !user?.documentId,
   });
-
-  const currentAccountCandidates = currentUserAccountData?.usersPermissionsUser?.accounts;
-  const selectedSettingsAccount = selectCompletedAccount(currentAccountCandidates);
-  const currentAccount = currentAccountCandidates?.find((candidate: { documentId?: string }) => candidate.documentId === selectedSettingsAccount?.documentId);
   const navigationAccountDocumentId = categoryNavigation.snapshot?.scope.accountDocumentId;
   const { data: listCountsData } = useQuery(getPublicCategoryListCountsQuery, {
     variables: {
@@ -200,9 +160,6 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
     }
   }, [settingsLoading]);
 
-  const apolloClient = useApolloClient();
-  const [deleteExplorerAccount] = useMutation(deleteExplorerAccountMutation);
-  const [deleteExplorerUser] = useMutation(deleteExplorerUserMutation);
   const { t, i18n } = useTranslation();
   const navText = (key: string, fallback: string) => {
     const fullKey = `settings.publicNavigation.${key}`;
@@ -233,14 +190,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
     navigationHeading.current?.scrollIntoView?.({ block: "start" });
     navigationHeading.current?.focus({ preventScroll: true });
   }, [settingsLoading, activeTab, pinnedNavTabsSectionOpen]);
-  const accountLifecycle = useMemo(() => createLazyAccountLifecycleService({
-    baseUrl: import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth",
-    getBearer: lifecycleIdentity.getBearer,
-  }), [lifecycleIdentity]);
-  const deletionCancellation = useMemo(() => createDeletionCancellationCoordinator({
-    cancelDeletion: accountLifecycle.cancel,
-    resumeMusic: accountLifecycle.resume,
-  }), [accountLifecycle]);
+  const accountLifecycle = useMemo(() => createCanonicalAccountLifecycleService({ isCurrent: lifecycleIdentity.isCurrent }), [lifecycleIdentity]);
 
   useEffect(() => {
     if (!lifecycleIdentity.isCurrent()) {
@@ -256,18 +206,16 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
       try {
         const result = await accountLifecycle.status();
         if (!isCurrent()) return;
-        setDeletionLifecycle(result.operation);
+        setDeletionLifecycle(result.status === "active" ? null : result);
         setDeletionAuthorityResolved(true);
-        if (result.operation.status === "pending_deletion" || result.operation.status === "tombstoned") {
+        if (result.status === "pending_deletion" || result.status === "deleted") {
           setShowDeleteAccountModal(true);
           setDeleteStep(4);
         }
       } catch (error) {
         if (!isCurrent()) return;
-        if (error instanceof AccountLifecycleError && error.code === "LIFECYCLE_NOT_FOUND") {
-          setDeletionLifecycle(null);
-          setDeletionAuthorityResolved(true);
-        }
+        setDeletionLifecycle(null);
+        setDeletionAuthorityResolved(false);
       }
     };
     void refresh();
@@ -281,9 +229,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
     };
   }, [accountLifecycle, lifecycleIdentity]);
 
-  const deletionIsTerminal = deletionLifecycle?.deadLetter === true
-    || deletionLifecycle?.phase === "finalized"
-    || deletionLifecycle?.status === "tombstoned";
+  const deletionIsTerminal = deletionLifecycle?.status === "deleted";
   const deletionActionsBlocked = !deletionAuthorityResolved || deletionIsTerminal;
 
   const beginLifecycleAction = () => {
@@ -473,309 +419,89 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
     }
   };
 
-  // deactive user account
+  // The current Better Auth session is the only authority for these commands.
   const handleConfirmDeactivateAccount = async () => {
     if (!lifecycleIdentity.isCurrent() || lifecycleActionRunning.current) return;
-
-    const isGoogleUser = data?.usersPermissionsUser?.provider === "google";
-
-    if (!username) {
-      toast.error(t("settings.account.changePassword.accountDetailsRequired"));
-      return;
+    if (!username.trim() || username.trim() !== user?.username) {
+      toast.error(t("settings.account.deactivateAccount.enterUsername")); return;
     }
-
-    // Only validate password for manual auth users
-    if (!isGoogleUser && !password) {
-      toast.error(t("settings.account.changePassword.accountDetailsRequired"));
-      return;
-    }
-
+    const revision = canonicalAccount.data?.revision;
+    if (!revision) { toast.error("Account details are unavailable. Retry after refreshing."); return; }
     if (!beginLifecycleAction()) return;
     try {
-      // Only validate password by login for manual auth users
-      if (!isGoogleUser) {
-        // login
-        const response = await login({
-          // passing variables
-          variables: {
-            input: {
-              identifier: username,
-              password: password,
-            },
-          },
-        });
-
-        lifecycleIdentity.assertCurrent();
-        if (!response.data) {
-          return;
-        }
-      }
-
-      // Proceed with account deactivation/activation
-      try {
-        const updateExplorerBlocked = async () => {
-          lifecycleIdentity.assertCurrent();
-          const response = await updateBlockedStatus({
-            variables: {
-              updateUsersPermissionsUserId: user?.id,
-              data: { blocked: !userBlocked },
-            },
-          });
-          lifecycleIdentity.assertCurrent();
-          return response.data?.updateUsersPermissionsUser?.data?.blocked === !userBlocked;
-        };
-        if (userBlocked) {
-          if (!await updateExplorerBlocked()) throw new Error("Explorer account status update was not confirmed.");
-        } else {
-          await deactivateExplorerAndMusic({
-            blockExplorer: updateExplorerBlocked,
-            suspendMusic: accountLifecycle.suspend,
-            resumeMusic: accountLifecycle.resume,
-          });
-        }
-        lifecycleIdentity.assertCurrent();
-        toast.success(
-          userBlocked
-            ? t("settings.account.deactivateAccount.activatedMessage")
-            : t("settings.account.deactivateAccount.successMessage")
-        );
-        updateUserBlocked(!userBlocked);
-        setShowModal(false);
-        navigate("/");
-        logout();
-        closeLocalMusicSession();
-      } catch (error) {
-        if (!lifecycleIdentity.isCurrent()) return;
-        console.error(error);
-        toast.error(t("settings.account.changePassword.updateAccountStatusFailed"));
-      }
+      await accountLifecycle.deactivate(revision, crypto.randomUUID());
+      lifecycleIdentity.assertCurrent();
+      toast.success(t("settings.account.deactivateAccount.successMessage"));
+      setShowModal(false);
+      await endSession({ serverRevoked: true });
     } catch (error) {
-      if (!lifecycleIdentity.isCurrent()) return;
-      const errorMessage =
-        (error as any)?.graphQLErrors?.[0]?.message || t("toast.error.somethingWentWrong");
-      toast.error(errorMessage);
-      // logging the error as well
-    } finally {
-      finishLifecycleAction();
-    }
+      if (lifecycleIdentity.isCurrent()) toast.error(error instanceof Error ? error.message : "Deactivation failed.");
+    } finally { finishLifecycleAction(); }
   };
 
-  // Multi-step modal handlers
   const handleDeleteAccountStep2 = () => {
     if (!lifecycleIdentity.isCurrent()) return;
-    const isGoogleUser = data?.usersPermissionsUser?.provider === "google";
-
-    if (!deleteUsername) {
+    if (!canonicalAccount.data?.id || !deleteUsername.trim() || deleteUsername.trim() !== user?.username) {
       toast.error(t("auth.validations.general.fillRequiredFields"));
       return;
     }
-
-    // Only validate password for manual auth users
-    if (!isGoogleUser) {
-      if (!deletePassword || !deletePasswordConfirm) {
-        toast.error(t("auth.validations.general.fillRequiredFields"));
-        return;
-      }
-      if (deletePassword !== deletePasswordConfirm) {
-        toast.error(t("auth.validations.confirmPassword.mustMatch"));
-        return;
-      }
-    }
-
     setDeleteStep(3);
   };
 
   const handleDeleteAccountStep3 = async () => {
     if (!lifecycleIdentity.isCurrent()) return;
-    if (!deleteReason.trim()) {
+    const reason = deleteReason.trim();
+    if (!reason || reason.length > 2000) {
       toast.error(t("settings.account.deleteAccount.step4.reasonRequired"));
       return;
     }
+    if (feedbackAttempt.current?.reason !== reason) feedbackAttempt.current = { reason, key: crypto.randomUUID() };
     try {
-      await addReasonForLeaving({
-        variables: {
-          Reasons: { reason: deleteReason },
-          User_Details: {
-            username: deleteUsername,
-            userID: user?.id,
-            email: user?.email,
-            address: currentAccount?.Addresss,
-          },
-        },
-      });
-      if (lifecycleIdentity.isCurrent()) setDeleteStep(4);
+      const feedback = await accountLifecycle.recordDeletionFeedback(reason, feedbackAttempt.current.key);
+      lifecycleIdentity.assertCurrent();
+      setDeletionFeedbackId(feedback.id);
+      setDeleteStep(4);
     } catch (error) {
-      if (!lifecycleIdentity.isCurrent()) return;
-      toast.error(t("settings.account.changePassword.saveReasonFailed"));
+      if (lifecycleIdentity.isCurrent()) toast.error(error instanceof Error ? error.message : t("settings.account.changePassword.saveReasonFailed"));
     }
   };
 
+  const deletionAttemptKey = useRef<string | null>(null);
   const handleDeleteAccountFinal = async () => {
     if (!lifecycleIdentity.isCurrent() || deletionActionsBlocked || lifecycleActionRunning.current) return;
     if (deleteConfirmation.trim() !== t("settings.account.deleteAccount.step4.confirmTextValue")) {
-      toast.error(
-        t("settings.account.deleteAccount.step4.confirmationRequired")
-      );
+      toast.error(t("settings.account.deleteAccount.step4.confirmationRequired"));
       return;
     }
-
-    const isGoogleUser = data?.usersPermissionsUser?.provider === "google";
-
+    const revision = canonicalAccount.data?.revision;
+    if (!revision || !deletionFeedbackId) { toast.error("Feedback or account details are unavailable."); return; }
     if (!beginLifecycleAction()) return;
+    deletionAttemptKey.current ??= crypto.randomUUID();
     try {
-      // Only validate password for manual auth users
-      if (!isGoogleUser) {
-        // Validate password before proceeding with deletion
-        if (!deletePassword.trim()) {
-          toast.error(t("settings.account.changePassword.passwordRequiredForDeletion"));
-          setDeleteAccountLoading(false);
-          return;
-        }
-
-        // First, validate the password by attempting to login
-        const loginResponse = await login({
-          variables: {
-            input: {
-              identifier: deleteUsername,
-              password: deletePassword,
-            },
-          },
-        });
-
-        lifecycleIdentity.assertCurrent();
-
-        if (!loginResponse.data?.login?.jwt) {
-          toast.error(t("settings.account.changePassword.invalidPassword"));
-          setDeleteAccountLoading(false);
-          return;
-        }
-      }
-
-      // Proceed with account deletion
-      if (!currentAccount?.documentId) {
-        toast.error(
-          t("settings.account.changePassword.accountDocumentIdNotFound")
-        );
-        setDeleteAccountLoading(false);
-        return;
-      }
-
-      await performDurableAccountDeletion();
+      const result = await accountLifecycle.deleteAccount(revision, deletionFeedbackId, deletionAttemptKey.current);
+      lifecycleIdentity.assertCurrent();
+      setDeletionLifecycle(result);
+      toast.success(t("settings.account.deleteAccount.step4.successMessage"));
+      await endSession({ serverRevoked: true });
     } catch (error) {
-      if (!lifecycleIdentity.isCurrent()) return;
-      console.error(error);
-      // Check if it's a login error (invalid password) - only for manual auth users
-      if (!isGoogleUser && error instanceof Error && error.message.includes('Invalid identifier or password')) {
-        toast.error(t("settings.account.changePassword.invalidPassword"));
-      } else {
-        toast.error(t("settings.account.changePassword.deleteAccountFailed"));
-      }
-    } finally {
-      finishLifecycleAction();
-    }
-  };
-
-  const clearDeletedAccountAuth = () => {
-    lifecycleIdentity.assertCurrent();
-    logout();
-    closeLocalMusicSession();
-    localStorage.removeItem("auth-storage");
-    localStorage.removeItem("qrtoken");
-    localStorage.clear();
-    sessionStorage.clear();
-    navigate("/login");
-  };
-
-  const performDurableAccountDeletion = async () => {
-    lifecycleIdentity.assertCurrent();
-    if (deletionActionsBlocked) {
-      throw new AccountLifecycleError("LIFECYCLE_TERMINAL", 409, "Account deletion cannot be restarted.", false);
-    }
-    await accountLifecycle.deleteAccount({
-      readAccountPresence: async (durableAccountDocumentId) => {
-        try {
-          lifecycleIdentity.assertCurrent();
-          const result = await apolloClient.query({
-            query: getUserAccountQuery,
-            variables: { documentId: user?.documentId },
-            fetchPolicy: "network-only",
-          });
-          lifecycleIdentity.assertCurrent();
-          const accounts = result.data?.usersPermissionsUser?.accounts;
-          if (!Array.isArray(accounts)) return { status: "unknown" } as const;
-          if (accounts.length === 0) return { status: "absent" } as const;
-          if (accounts.length !== 1) return { status: "unknown" } as const;
-          const selected = accounts.find((account: { documentId?: string }) => account.documentId === durableAccountDocumentId);
-          return typeof selected?.documentId === "string"
-            ? { status: "present", accountDocumentId: selected.documentId } as const
-            : { status: "unknown" } as const;
-        } catch {
-          return { status: "unknown" } as const;
-        }
-      },
-      deleteExplorerAccount: async (authoritativeAccountDocumentId) => {
-        lifecycleIdentity.assertCurrent();
-        const result = await deleteExplorerAccount({ variables: { accountDocumentId: authoritativeAccountDocumentId } });
-        lifecycleIdentity.assertCurrent();
-        return typeof result.data?.deleteAccount?.documentId === "string"
-          ? result.data.deleteAccount.documentId
-          : null;
-      },
-      deleteExplorerUser: async () => {
-        lifecycleIdentity.assertCurrent();
-        const result = await deleteExplorerUser({
-          variables: {
-            userId: user?.id,
-            filters: { documentId: { eq: user?.documentId } },
-            recommendationDocumentId: user?.documentId,
-          },
-        });
-        lifecycleIdentity.assertCurrent();
-        return typeof result.data?.deleteUsersPermissionsUser?.data?.documentId === "string"
-          ? result.data.deleteUsersPermissionsUser.data.documentId
-          : null;
-      },
-      clearAuth: () => {
-        lifecycleIdentity.assertCurrent();
-        toast.success(t("settings.account.deleteAccount.step4.successMessage"));
-        clearDeletedAccountAuth();
-      },
-    });
+      if (lifecycleIdentity.isCurrent()) toast.error(error instanceof Error ? error.message : t("settings.account.changePassword.deleteAccountFailed"));
+    } finally { finishLifecycleAction(); }
   };
 
   const cancelDurableDeletion = async () => {
-    if (deletionActionsBlocked || deletionLifecycle?.boundaryCrossed || !beginLifecycleAction()) return;
-    try {
-      const result = await deletionCancellation.cancelAndResume();
-      if (!lifecycleIdentity.isCurrent()) return;
-      setDeletionLifecycle(result.operation);
-      setShowDeleteAccountModal(false);
-      setDeleteStep(1);
-      toast.success("Account deletion was cancelled and Music was reactivated.");
-    } catch (error) {
-      if (!lifecycleIdentity.isCurrent()) return;
-      toast.error(error instanceof Error ? error.message : "Account deletion could not be cancelled.");
-    } finally {
-      finishLifecycleAction();
-    }
+    // Pending deletion has no ordinary Actor; cancellation requires a fresh Google recovery proof.
+    navigate("/reactivate");
   };
 
   const retryDurableDeletion = async () => {
-    if (deletionActionsBlocked || !beginLifecycleAction()) return;
+    if (!lifecycleIdentity.isCurrent()) return;
     try {
-      await performDurableAccountDeletion();
+      const result = await accountLifecycle.status();
+      if (lifecycleIdentity.isCurrent()) setDeletionLifecycle(result);
     } catch (error) {
-      if (!lifecycleIdentity.isCurrent()) return;
-      toast.error(error instanceof Error ? error.message : "Account deletion could not be resumed.");
-      try {
-        const result = await accountLifecycle.status();
-        if (lifecycleIdentity.isCurrent()) setDeletionLifecycle(result.operation);
-      } catch { /* keep the last durable view */ }
-    } finally {
-      finishLifecycleAction();
+      if (lifecycleIdentity.isCurrent()) toast.error(error instanceof Error ? error.message : "Lifecycle status is unavailable.");
     }
   };
-
   // Show loading screen during password change redirect
   if (isRedirectingAfterPasswordChange) {
     return (

@@ -1,10 +1,11 @@
-FROM node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS base
+FROM public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS base
 
 # Set working directory here
 WORKDIR /app
 
-# Install dependencies for Puppeteer
-RUN apk upgrade --no-cache
+# Refresh Alpine packages for each image commit, even with a remote build cache.
+ARG BUILD_COMMIT
+RUN : "$BUILD_COMMIT" && apk upgrade --no-cache
 RUN apk add --no-cache \
       chromium \
       nss \
@@ -19,29 +20,24 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 
 # Separate layer for dependencies
 FROM base AS deps
+COPY auth-runtime/package.json auth-runtime/package-lock.json auth-runtime/index.js auth-runtime/index.d.ts ./auth-runtime/
 COPY package.json package-lock.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm ci --engine-strict
 
 # Keep build and test tooling out of the runtime image.
 FROM base AS prod-deps
+COPY auth-runtime/package.json auth-runtime/package-lock.json auth-runtime/index.js auth-runtime/index.d.ts ./auth-runtime/
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --legacy-peer-deps
+RUN npm ci --omit=dev --engine-strict
+# npm retains optional peer tooling here despite --omit=dev. The server runs
+# compiled JavaScript, so keep tsx and its older Go-built esbuild out of runner.
+RUN rm -rf node_modules/tsx node_modules/.bin/tsx
 
 # Build the application
 FROM deps AS builder
 
-# Accept VITE_ build args - these are embedded into the frontend bundle at build time
-ARG VITE_API_URL
-ARG VITE_REST_API_URL
-ARG VITE_PUBLIC_ACCESS_TOKEN
-
-# Set them as ENV so Vite can read them during build
-ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_REST_API_URL=$VITE_REST_API_URL
-ENV VITE_PUBLIC_ACCESS_TOKEN=$VITE_PUBLIC_ACCESS_TOKEN
-
 COPY . .
-RUN npm run build
+RUN npm run build:api
 
 # Production image
 FROM base AS runner
@@ -59,8 +55,8 @@ LABEL org.opencontainers.image.revision=$BUILD_COMMIT \
 
 # Copy production dependencies and build output
 COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=prod-deps /app/auth-runtime ./auth-runtime
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/public ./public
 
 # Copy necessary config files
 COPY package.json ./
@@ -75,4 +71,4 @@ HEALTHCHECK --interval=15s --timeout=3s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:5000/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
 # Set the default command
-CMD ["node", "dist/server/index.js"]
+CMD ["node", "dist/server/api.js"]

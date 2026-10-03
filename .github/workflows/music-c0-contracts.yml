@@ -2,12 +2,20 @@ name: Music C0 contracts
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - "package.json"
+      - "package-lock.json"
       - "tunes/**"
+      - "explorers-earth/**"
       - "fixtures/**"
+      - "scripts/replatform-local.ts"
+      - "scripts/generate-music-fixture-dockerignore.mjs"
+      - ".dockerignore"
       - "docker-compose.music-test.yml"
+      - "docker-compose.replatform.yml"
       - ".env.music*.example"
+      - ".github/workflows/**"
       - ".github/workflows/music-c0-contracts.yml"
       - ".github/workflows/test.yml"
       - ".github/workflows/music-reconcile.yml"
@@ -16,10 +24,17 @@ on:
     branches: [main, develop]
     paths:
       - "package.json"
+      - "package-lock.json"
       - "tunes/**"
+      - "explorers-earth/**"
       - "fixtures/**"
+      - "scripts/replatform-local.ts"
+      - "scripts/generate-music-fixture-dockerignore.mjs"
+      - ".dockerignore"
       - "docker-compose.music-test.yml"
+      - "docker-compose.replatform.yml"
       - ".env.music*.example"
+      - ".github/workflows/**"
       - ".github/workflows/music-c0-contracts.yml"
       - ".github/workflows/test.yml"
       - ".github/workflows/music-reconcile.yml"
@@ -40,14 +55,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22.12"
+          node-version: "24.21.0"
           cache: npm
           cache-dependency-path: |
             package-lock.json
             tunes/package-lock.json
       - run: npm ci
       - run: npm ci --prefix tunes
-      - name: Prove public JSON command on Node 22.12
+      - name: Prove public JSON command on Node 24.21.0
         run: node node_modules/tsx/dist/cli.mjs tunes/scripts/music-cli.ts fixtures:capture --format json
       - if: runner.os == 'Linux'
         run: npm test --prefix tunes -- --run server/test/contracts

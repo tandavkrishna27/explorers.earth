@@ -7,6 +7,9 @@
     "types": ["node", "vite/client", "passport"]
   },
   "include": [
+    "server/services/movieCatalog.ts",
+    "server/explorers/categories/movies.ts",
+    "server/test/movie-catalog.test.ts",
     "scripts/inventory-runtime-surfaces.ts",
     "scripts/inventory-runtime-tables.ts",
     "scripts/music-*.ts",
@@ -17,6 +20,7 @@
     "server/services/musicReconciler.ts",
     "server/services/musicReconciliationSuspensionListener.ts",
     "server/types/express.d.ts",
+    "server/utils/types/geoip-lite.d.ts",
     "server/test/contracts/*.test.ts"
   ],
   "exclude": []

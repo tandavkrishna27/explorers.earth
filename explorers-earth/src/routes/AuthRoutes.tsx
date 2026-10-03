@@ -1,11 +1,5 @@
-import { Route } from "react-router-dom";
+import { Navigate, Route } from "react-router-dom";
 import Login from "../pages/Login";
-import Register from "../pages/Register";
-import ForgotPassword from "../pages/ForgotPassword";
-import ResetPassword from "../pages/ResetPassword";
-import ResetLinkSent from "../pages/ResetLinkSent";
-import EmailVerification from "../pages/EmailVerification";
-import EmailConfirmed from "../pages/EmailConfirmed";
 import GoogleAuthRedirect from "../pages/GoogleAuthRedirect";
 import PublicMusic from "../pages/public/PublicMusic";
 import Landing from "../pages/Landing";
@@ -25,16 +19,16 @@ const AuthRoutes = [
   <Route key="guest-routes" element={<GuestRoute />}>
     <Route path="/" element={<Landing />} />
     <Route path="/login" element={<Login />} />
-    <Route path="/register" element={<Register />} />
-    <Route path="/forgot-password" element={<ForgotPassword />} />
+    <Route path="/register" element={<Navigate to="/login" replace />} />
+    <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
   </Route>,
 
   /* Routes accessible to everyone regardless of auth state */
-  <Route key="reset" path="/reset-password" element={<ResetPassword />} />,
-  <Route key="reset-link" path="/reset-link-sent" element={<ResetLinkSent />} />,
+  <Route key="reset" path="/reset-password" element={<Navigate to="/login" replace />} />,
+  <Route key="reset-link" path="/reset-link-sent" element={<Navigate to="/login" replace />} />,
   <Route key="claimaccount" path="/claimaccount" element={<ClaimAccount />} />,
-  <Route key="email-verification" path="/email-verification" element={<EmailVerification />} />,
-  <Route key="email-confirmed" path="/email-confirmed" element={<EmailConfirmed />} />,
+  <Route key="email-verification" path="/email-verification" element={<Navigate to="/login" replace />} />,
+  <Route key="email-confirmed" path="/email-confirmed" element={<Navigate to="/login" replace />} />,
   <Route key="contact" path="/contact" element={<Contact />} />,
   <Route key="about" path="/about" element={<About />} />,
   <Route key="use-cases" path="/use-cases" element={<UseCases />} />,

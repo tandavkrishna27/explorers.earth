@@ -2,9 +2,15 @@ import { expect, test, type Browser, type BrowserContext, type Locator, type Pag
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Kind, parse, print, visit, type SelectionSetNode } from 'graphql';
+import { canonicalAccountFixture } from '../../src/test/canonicalAccountFixture';
+import { bookFixtureId, createBooksOwnerFixture } from './books-owner-content';
+import { commandKeySchema, updateCollectionSchema, contentRevisionSchema, collectionCoreDtoSchema, updateAccountRequestSchema, accountDtoSchema } from '../../../tunes/shared/explorersContract';
 
 export const fixtureUser = { id: 'browser-user', documentId: 'browser-user', username: 'fixture-owner', email: 'owner@example.test', blocked: false };
 export const token = 'synthetic-browser-authority-not-a-live-token';
+const sessionCookie = 'better-auth.session_token';
+const sessionValue = 'contained-browser-session';
+const sessionId = 'contained-browser-session-id';
 export const categories = [
   { field: 'public_recommendations', route: 'places', label: 'Places Tab', root: 'recommendationLists' },
   { field: 'public_movie', route: 'movies', label: 'Movies & Shows Tab', root: 'movieLists' },
@@ -52,7 +58,7 @@ export function fixtureState(extra: Record<string, unknown> = {}, mode: 'private
     guide_sections: [], Guide_Media: [], Guide_Tags: [], Number_Of_Days: 1,
   }]])) as Record<string, Record<string, any>[]>;
   return {
-    account, lists, mode, revision: 1, identityReady: true, ownerWorkspace: true,
+    account, lists, mode, revision: 1, canonicalAccountRevision: 1, identityReady: true, ownerWorkspace: true,
     alternateAccounts: new Map<string, Record<string, any>>(),
     guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false, allowQueueVisibility: true },
     playlists: [{ id: 1, name: 'Private owner playlist', description: null, isVisibleToGuests: false, songs: [] }],
@@ -72,6 +78,16 @@ export function fixtureState(extra: Record<string, unknown> = {}, mode: 'private
   };
 }
 export type FixtureState = ReturnType<typeof fixtureState>;
+export function canonicalCategoryAccount(state:FixtureState) {
+  return accountDtoSchema.parse(canonicalAccountFixture({handle:state.account.username,displayName:state.account.Account_Name,
+    accountType:state.account.Account_Type,mobileNumber:state.account.mobile_number,
+    onboardingStatus:state.account.Account_Name&&state.account.Account_Type&&state.account.mobile_number?'complete':'incomplete',
+    publicProfile:state.account.public_profile==='Yes',autoPinning:state.account.auto_pinning,revision:state.canonicalAccountRevision,
+    categories:[...categories.map((category,displayOrder)=>({category:category.route,isPublic:state.account[category.field]==='Yes',displayOrder,
+      pinnedOrder:state.account.pinned_nav_tabs.includes(category.field)?state.account.pinned_nav_tabs.indexOf(category.field):null})),
+      {category:'music',isPublic:state.account.public_music==='Yes',displayOrder:8,pinnedOrder:state.account.pinned_nav_tabs.includes('public_music')?state.account.pinned_nav_tabs.indexOf('public_music'):null}],
+  }));
+}
 
 function canonical(source: string) { return print(visit(parse(source), { Field(node) { return node.name.value === '__typename' ? null : undefined; } })); }
 // Read only checked-in frontend source, never .env or the mixed live fixture.
@@ -109,6 +125,8 @@ export function invalidateGuests(state: FixtureState) { for (const send of state
 
 export async function installContainedRoutes(context: BrowserContext, origin: string, state: FixtureState) {
   const errors: string[] = [];
+  const booksOwnerFixture = createBooksOwnerFixture(() => state.lists.bookLists, state.account.documentId);
+  const booksCommands = new Map<string, { body: string; result: unknown }>();
   const denied: string[] = [];
   const vendors: string[] = [];
   const expectedHttpErrors = new Map<string, number>();
@@ -120,7 +138,7 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       if (message.type() !== 'error') return;
       const status = expectedHttpErrors.get(message.location().url);
       if (expectedOffline.has(message.location().url) && message.text() === 'Failed to load resource: net::ERR_INTERNET_DISCONNECTED') observedHttpErrors.push(`offline ${new URL(message.location().url).pathname}`);
-      else if (status && message.text() === `Failed to load resource: the server responded with a status of ${status} (${status === 404 ? 'Not Found' : status === 429 ? 'Too Many Requests' : status === 409 ? 'Conflict' : 'Service Unavailable'})`) observedHttpErrors.push(`${status} ${new URL(message.location().url).pathname}`);
+      else if (status && message.text() === `Failed to load resource: the server responded with a status of ${status} (${status === 401 ? 'Unauthorized' : status === 404 ? 'Not Found' : status === 429 ? 'Too Many Requests' : status === 409 ? 'Conflict' : 'Service Unavailable'})`) observedHttpErrors.push(`${status} ${new URL(message.location().url).pathname}`);
       else errors.push(message.text());
     });
   };
@@ -144,6 +162,110 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
   await context.route('**/*', async route => {
     const request = route.request(); const url = new URL(request.url());
     const isContainedMusicAuthority = url.origin === 'https://localtunes.test';
+    // Canonical authentication follows the cookie actually sent by this request.
+    // Playwright's abbreviated headers() collection can omit Cookie.
+    const hasOwnerSession = async () => ((await request.headerValue('cookie')) ?? '')
+      .split(';').some(cookie => cookie.trim() === `${sessionCookie}=${sessionValue}`);
+    if(url.origin===origin&&url.pathname==='/api/explorers/v1/account'&&url.search===''&&request.method()==='PATCH') {
+      const reply=(body:unknown,status=200)=>{if(status>=400)expectedHttpErrors.set(request.url(),status);return route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});};
+      const fail=(code:string,status:number)=>reply({error:{code,message:'Contained Books account command rejected',requestId:'books-fixture'}},status);
+      if(!await hasOwnerSession())return fail('UNAUTHENTICATED',401);
+      const parsed=updateAccountRequestSchema.safeParse(request.postDataJSON());
+      const observed=canonicalCategoryAccount(state);
+      if(parsed.success&&parsed.data.expectedRevision!==observed.revision)return fail('CONFLICT',409);
+      if(!parsed.success||Object.keys(parsed.data).sort().join(',')!=='categories,expectedRevision'||!parsed.data.categories||parsed.data.categories.length!==observed.categories.length
+        ||new Set(parsed.data.categories.map(c=>c.category)).size!==observed.categories.length
+        ||parsed.data.categories.some(c=>{const previous=observed.categories.find(p=>p.category===c.category);return !previous||c.displayOrder!==previous.displayOrder||c.category!=='books'&&(c.isPublic!==previous.isPublic||c.pinnedOrder!==previous.pinnedOrder);})) {
+        denied.push('Books account command shape');return fail('INVALID_INPUT',422);
+      }
+      const books=parsed.data.categories.find(c=>c.category==='books')!;
+      state.account.public_books=books.isPublic?'Yes':'No';
+      state.account.pinned_nav_tabs=state.account.pinned_nav_tabs.filter((field:string)=>field!=='public_books');
+      if(books.pinnedOrder!==null)state.account.pinned_nav_tabs.splice(books.pinnedOrder,0,'public_books');
+      state.canonicalAccountRevision++;
+      state.writes.push({name:'PATCH /api/explorers/v1/account',variables:parsed.data,owner:true});
+      return reply({account:canonicalCategoryAccount(state)});
+    }
+    const bookCollectionCommand = url.pathname.match(/^\/api\/explorers\/v1\/collections\/([0-9a-f-]{36})$/);
+    if (url.origin === origin && bookCollectionCommand && url.search === '' && ['PATCH','DELETE'].includes(request.method())) {
+      const reply = (body:unknown,status=200) => {
+        if (status >= 400) expectedHttpErrors.set(request.url(),status);
+        return route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
+      };
+      const fail = (code:string,status:number) => reply({error:{code,message:'Contained Books command rejected',requestId:'books-fixture'}},status);
+      if (!await hasOwnerSession()) return fail('UNAUTHENTICATED',401);
+      const key = await request.headerValue('idempotency-key');
+      const body = request.postDataJSON();
+      const parsed = (request.method()==='PATCH'?updateCollectionSchema:contentRevisionSchema).safeParse(body);
+      if (!parsed.success || !commandKeySchema.safeParse(key).success || Object.keys(body).some(field=>!['expectedRevision','title','description','heading','visibility','publicationState'].includes(field))) { denied.push('Books collection command shape'); return fail('INVALID_INPUT',422); }
+      const replayKey = `${request.method()}:${bookCollectionCommand[1]}:${key}`, serialized = JSON.stringify(body);
+      const previous = booksCommands.get(replayKey);
+      if (previous) return previous.body === serialized ? reply(previous.result) : fail('CONFLICT',409);
+      const list = state.lists.bookLists.find(list => bookFixtureId('collection',list.documentId) === bookCollectionCommand[1]);
+      if (!list) return fail('NOT_FOUND',404);
+      if (list.account?.documentId !== state.account.documentId) return fail('FORBIDDEN',403);
+      if (body.expectedRevision !== (list.canonicalRevision ?? 1)) return fail('CONFLICT',409);
+      const fault = state.faults.get(url.pathname)?.shift(); if(fault?.gate) await fault.gate;
+      if (!state.lists.bookLists.includes(list) || body.expectedRevision !== (list.canonicalRevision ?? 1)) return fail('CONFLICT',409);
+      if(fault?.kind==='error') return fail('PROVIDER_UNAVAILABLE',fault.status??503);
+      state.writes.push({name:`${request.method()} ${url.pathname}`,variables:body,owner:true});
+      let result:unknown;
+      if(request.method()==='DELETE') {
+        state.lists.bookLists=state.lists.bookLists.filter(candidate=>candidate!==list);
+        result={collection:{id:bookCollectionCommand[1],archived:true}};
+      } else {
+        if(body.title!==undefined) list.List_Name=body.title;
+        if(body.description!==undefined) list.list_description=body.description;
+        if(body.heading!==undefined) list.top_reads_heading=body.heading;
+        if(body.visibility!==undefined) list.visibility=body.visibility==='public';
+        if(body.publicationState!==undefined) { list.Visibility=body.publicationState==='published'; list.canonicalPublicationState=body.publicationState; }
+        list.canonicalRevision=(list.canonicalRevision??1)+1;
+        result={collection:collectionCoreDtoSchema.parse({id:bookCollectionCommand[1],accountId:canonicalAccountFixture().id,category:'books',title:list.List_Name,slug:list.slug,
+          visibility:list.visibility?'public':'private',publicationState:list.Visibility?'published':'draft',revision:list.canonicalRevision,
+          description:list.list_description??null,heading:list.top_reads_heading??null,coverMediaId:null})};
+      }
+      booksCommands.set(replayKey,{body:serialized,result});
+      return fault?.kind==='lost' ? fail('PROVIDER_UNAVAILABLE',503) : reply(result);
+    }
+    if (url.origin === origin && request.method() === 'GET') {
+      const booksResponse = booksOwnerFixture(url);
+      if (booksResponse) {
+        const authenticated = await hasOwnerSession();
+        state.apiCalls.push({ path: url.pathname, method: 'GET', authenticated });
+        const fault = state.faults.get(url.pathname)?.shift();
+        if (fault?.gate) await fault.gate;
+        const status = authenticated ? fault?.kind === 'error' ? fault.status ?? 503 : booksResponse.status : 401;
+        if (authenticated && fault?.kind === 'offline') { expectedOffline.add(request.url()); return route.abort('internetdisconnected'); }
+        if (status >= 400) expectedHttpErrors.set(request.url(), status);
+        return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(status === 401
+          ? { error: { code: 'UNAUTHENTICATED', message: 'Fixture session is required', requestId: 'books-fixture' } }
+          : fault?.kind === 'error' ? { error: { code: 'PROVIDER_UNAVAILABLE', message: 'Contained Books failure', requestId: 'books-fixture' } }
+          : fault?.kind === 'partial' ? fault.data ?? {} : booksResponse.body) });
+      }
+    }
+    if (url.origin === origin && url.pathname === '/api/auth/get-session' && url.search === '' && request.method() === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(
+        await hasOwnerSession() ? { user: { id: fixtureUser.id, email: fixtureUser.email }, session: { id: sessionId } } : null,
+      ) });
+    }
+    if (url.origin === origin && url.pathname === '/api/explorers/v1/me' && request.method() === 'GET') {
+      if (!await hasOwnerSession()) {
+        expectedHttpErrors.set(request.url(), 401);
+        return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: {
+          code: 'UNAUTHENTICATED', message: 'Fixture session is required', requestId: 'category-fixture-account-read',
+        } }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ account: canonicalCategoryAccount(state) }) });
+    }
+    if (url.origin === origin && url.pathname === '/api/explorers/v1/account/lifecycle' && url.search === '' && request.method() === 'GET') {
+      if (!await hasOwnerSession()) {
+        expectedHttpErrors.set(request.url(), 401);
+        return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: { code: 'UNAUTHENTICATED' } }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ lifecycle: {
+        accountId: canonicalAccountFixture().id, status: 'active', operationId: null, revision: canonicalAccountFixture().revision,
+      } }) });
+    }
     const waitForDestination = async () => {
       const pending = state.destinationGates.entries().next().value as [string, Promise<void>] | undefined;
       if (!pending) return;
@@ -236,7 +358,12 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       if (status >= 400) expectedHttpErrors.set(request.url(), status);
       return route.fulfill({ status, headers, contentType: 'application/json', body: JSON.stringify(body) });
     };
-    const owner = request.headers().authorization === `Bearer ${token}`;
+    // The contained legacy GraphQL adapter maps the fixture's verified session
+    // to its Strapi subject without giving the browser a JWT or forwarding a
+    // canonical credential to GraphQL. It remains test-only and exact-origin.
+    const owner = request.headers().authorization === `Bearer ${token}`
+      || url.origin === origin && url.pathname === '/graphql' && (await context.cookies(origin))
+        .some(cookie => cookie.name === sessionCookie && cookie.value === sessionValue);
     if (url.pathname === '/graphql' && request.method() === 'POST') {
       await waitForDestination();
       const body = request.postDataJSON();
@@ -348,13 +475,10 @@ export async function openFixture(browser: Browser, origin: string, state: Fixtu
   reducedMotion?: 'reduce' | 'no-preference';
   safeArea?: { top?: number; right?: number; bottom?: number; left?: number };
 } = {}) {
-  const entries = options.owner ? [
-    { name: 'auth-storage', value: JSON.stringify({ state: { isAuthenticated: true, user: fixtureUser, token }, version: 0 }) },
-    { name: 'user', value: JSON.stringify(fixtureUser) }, { name: 'qrtoken', value: token },
-  ] : [];
+  const entries: { name: string; value: string }[] = [];
   if (options.theme) entries.push({ name: 'dashboard-theme', value: options.theme });
   const context = await browser.newContext({ baseURL: origin, serviceWorkers: 'block', hasTouch: options.touch ?? false, reducedMotion: options.reducedMotion, viewport: { width: options.width ?? 1280, height: options.height ?? 900 },
-    storageState: { cookies: options.owner ? [{ name: 'token', value: token, domain: '127.0.0.1', path: '/', expires: -1, httpOnly: false, secure: false, sameSite: 'Lax' }] : [], origins: [{ origin, localStorage: entries }] },
+    storageState: { cookies: options.owner ? [{ name: sessionCookie, value: sessionValue, domain: new URL(origin).hostname, path: '/', expires: -1, httpOnly: true, secure: false, sameSite: 'Lax' }] : [], origins: [{ origin, localStorage: entries }] },
   });
   if (options.safeArea) await context.addInitScript((safeArea) => {
     const values = {

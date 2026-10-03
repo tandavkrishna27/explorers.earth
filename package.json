@@ -4,7 +4,7 @@
   "description": "Monorepo runner for tunes and explorers-earth",
   "private": true,
   "engines": {
-    "node": ">=22.12"
+    "node": "^24.21.0"
   },
   "scripts": {
     "dev": "concurrently --names \"TUNES,EXPLORERS-EARTH\" --prefix-colors \"cyan.bold,magenta.bold\" --kill-others-on-fail \"npm run dev --prefix tunes\" \"npm run dev --prefix explorers-earth\"",
@@ -12,6 +12,7 @@
     "dev:explorers-earth": "npm run dev --prefix explorers-earth",
     "install:all": "npm install --prefix tunes && npm install --prefix explorers-earth",
     "build:all": "npm run build --prefix tunes && npm run build --prefix explorers-earth",
+    "build:api": "npm run build:api --prefix tunes",
     "music-cli": "tsx tunes/scripts/music-cli.ts",
     "music:bootstrap": "npm run --silent music-cli -- bootstrap",
     "music:doctor": "npm run --silent music-cli -- doctor",
@@ -40,7 +41,14 @@
     "music:fixtures:capture": "npm run --silent music-cli -- fixtures:capture",
     "music:reconcile": "npm run --silent music-cli -- reconcile",
     "music:types:scoped": "npm run music:types:scoped --prefix tunes",
-    "music:types:baseline": "npm run music:types:baseline --prefix tunes"
+    "music:types:baseline": "npm run music:types:baseline --prefix tunes",
+    "platform:release": "tsx scripts/platform-release.ts",
+    "platform:local": "tsx scripts/replatform-local.ts",
+    "platform:test:integration": "tsx scripts/replatform-local.ts test:integration",
+    "platform:test:routes": "tsx scripts/replatform-local.ts test:routes",
+    "platform:test:browser-egress": "node explorers-earth/scripts/replatform-browser-egress.mjs",
+    "platform:test:e2e": "node scripts/replatform-e2e.mjs",
+    "platform:seed": "tsx scripts/replatform-local.ts seed"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

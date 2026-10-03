@@ -1,4 +1,4 @@
-import { startMusicServer } from "./config/music-startup";
+import { loadProductionRuntime, startMusicServer } from "./config/music-startup";
 
 function installCrashHandlers(): void {
   process.on("uncaughtException", (error) => {
@@ -14,7 +14,12 @@ function installCrashHandlers(): void {
 async function main(): Promise<void> {
   const dotenv = await import("dotenv");
   dotenv.default.config();
-  const { app } = await startMusicServer(process.env);
+  const { app } = await startMusicServer(process.env, {
+    loadRuntime: async () => ({
+      ...await loadProductionRuntime(),
+      setupVite: async (app, server) => (await import("./vite")).setupVite(app, server),
+    }),
+  });
   installCrashHandlers();
   console.log(`Server listening on http://0.0.0.0:${process.env.PORT || "5000"}`);
   console.log(`Environment: ${app.get("env")}`);

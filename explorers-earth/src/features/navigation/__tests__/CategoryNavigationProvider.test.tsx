@@ -16,9 +16,9 @@ const login = (documentId = 'u1') => useAuthStore.getState().login({ id: documen
 const userData = (saved: ReturnType<typeof account>, documentId = 'u1') => ({ usersPermissionsUser: { __typename: 'UsersPermissionsUser', documentId, provider: 'local', confirmed: true, blocked: false, accounts: [saved] } });
 const deferred = () => { let resolve!: () => void; const promise = new Promise<void>((r) => { resolve = r; }); return { promise, resolve }; };
 
-function harness(options: { consumer?: boolean; verifyMusicPin?: MusicPinVerifier; initial?: object } = {}) {
+function harness(options: { consumer?: boolean; verifyMusicPin?: MusicPinVerifier; initial?: object; failReads?: boolean } = {}) {
   let saved = account(options.initial);
-  let failMutation = false; let failReads = false; let failContent = false; let failReadsAfterMutation = false;
+  let failMutation = false; let failReads = options.failReads ?? false; let failContent = false; let failReadsAfterMutation = false;
   let pauseRead: Promise<void> | undefined;
   let pauseMutation: Promise<void> | undefined;
   let providerKey = 0;
@@ -68,6 +68,14 @@ function harness(options: { consumer?: boolean; verifyMusicPin?: MusicPinVerifie
 describe('CategoryNavigationProvider', () => {
   beforeEach(() => { login(); publishPublicProfileInvalidation.mockReset(); });
   afterEach(() => { cleanup(); useAuthStore.getState().logout(); vi.restoreAllMocks(); });
+
+  it('keeps category writes disabled and names the category outage without questioning the verified session', async () => {
+    const h = harness({ failReads: true });
+    await waitFor(() => expect(h.value.error).toBe('Category settings could not be loaded. Refresh to try again.'));
+    expect(useAuthStore.getState().isAuthenticated).toBe(true);
+    expect(h.value.authority).toBeUndefined();
+    expect(h.requests.map((request) => request.name)).toEqual(['CategoryNavigationAccount']);
+  });
 
   it('is inert on unrelated routes and fresh-reads when a consumer enters', async () => {
     const h = harness({ consumer: false });

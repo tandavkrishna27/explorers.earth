@@ -1,0 +1,2205 @@
+{
+  "schemaVersion": 2,
+  "kind": "discovery-only-not-execution",
+  "name": "music",
+  "provenance": {
+    "schemaVersion": 2,
+    "sha": "106960f2a6a9eafd5240ec7a506f3b212e2db280",
+    "sourceHash": "1f695a38ec64115a0b8561927248f5a589820731142acd1394f560ac8efc5872",
+    "configHash": "0f2b0d8c885522ae26a60f2401f7f0da0d89f2b64a7b2adbd95f81bf35a9bd98",
+    "lockHash": "35e2297d928f7098394650081ca5ca45c2d5a958923d8c6dafa7ce27e00fe537"
+  },
+  "sourceSnapshot": "source-v2.json",
+  "identities": [
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "Music suspension outage leaves Strapi and browser authority active for retry"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "a crossed-boundary retry preserves ordering and completes at login"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "a crossed-boundary retry refuses any additional Account outside the durable tuple"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "a lost Account mutation response keeps user authority and reload resumes with only the user deletion"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "a lost nullable cancel response reloads the exact cancelled terminal state without another prepare"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "a never-provisioned Explorer identity treats exact Music absence as a safe deactivation no-op"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "an in-flight boundary cannot continue under replacement identity"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "an in-flight cancel cannot continue under replacement identity"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "an unconfirmed Strapi block compensates Music without reporting success"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "dead-letter escalation is typed and offers no destructive retry"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "finalized deletion hides every ordinary delete entry point and performs no destructive call"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "google account deactivation suspends Music before blocking Strapi"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "local account deactivation suspends Music before blocking Strapi"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "pending Music deletion prevents Strapi deactivation and browser auth cleanup"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "pending deletion survives reload and a second tab, then cancels only before the boundary"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "same-identity partial cancellation retries only Music resume after token refresh"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "unresolved delayed lifecycle authority fails closed before any destructive control"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "titlePath": [
+        "unresolved error lifecycle authority fails closed before any destructive control"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "titlePath": [
+        "approved owner workspace is responsive and complete on desktop"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "titlePath": [
+        "approved owner workspace is responsive and complete on mobile"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "titlePath": [
+        "axe and keyboard-only Music sharing are clean at 375px"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "titlePath": [
+        "axe and keyboard-only Music sharing are clean at desktop"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "titlePath": [
+        "approved owner workspace is responsive and complete on desktop"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "titlePath": [
+        "approved owner workspace is responsive and complete on mobile"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "titlePath": [
+        "axe and keyboard-only Music sharing are clean at 375px"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "titlePath": [
+        "axe and keyboard-only Music sharing are clean at desktop"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "titlePath": [
+        "approved owner workspace is responsive and complete on desktop"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "titlePath": [
+        "approved owner workspace is responsive and complete on mobile"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "titlePath": [
+        "axe and keyboard-only Music sharing are clean at 375px"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "titlePath": [
+        "axe and keyboard-only Music sharing are clean at desktop"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music loading animation respects reduced-motion preference"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 1024px"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 320px"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 375px"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 640px"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 768px"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "a Music outage keeps the Explorer shell usable and explicit retry recovers"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "a valid public owner with no visible playlists has the exact reachable empty state"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "account-generation resets Music authority across tabs without logging Explorer out"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "logout boundary clears Explorer authentication in another tab"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "playlist tabs, keyboard reorder, and polite announcement work without mutable owner data"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "public private, missing, and invalid links converge on the exact 404"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "public rate-limit retry waits for Retry-After and then reaches the empty state"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "sharing dialog traps focus, closes with Escape, and exposes only approved modes"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "sharing save uses one canonical publication command and restores focus"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music loading animation respects reduced-motion preference"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 1024px"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 320px"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 375px"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 640px"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 768px"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "a Music outage keeps the Explorer shell usable and explicit retry recovers"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "a valid public owner with no visible playlists has the exact reachable empty state"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "account-generation resets Music authority across tabs without logging Explorer out"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "logout boundary clears Explorer authentication in another tab"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "playlist tabs, keyboard reorder, and polite announcement work without mutable owner data"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "public private, missing, and invalid links converge on the exact 404"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "public rate-limit retry waits for Retry-After and then reaches the empty state"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "sharing dialog traps focus, closes with Escape, and exposes only approved modes"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "sharing save uses one canonical publication command and restores focus"
+      ],
+      "project": "firefox-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music loading animation respects reduced-motion preference"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 1024px"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 320px"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 375px"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 640px"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "Music ready-empty remains responsive and accessible at 768px"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "a Music outage keeps the Explorer shell usable and explicit retry recovers"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "a valid public owner with no visible playlists has the exact reachable empty state"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "account-generation resets Music authority across tabs without logging Explorer out"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "logout boundary clears Explorer authentication in another tab"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "playlist tabs, keyboard reorder, and polite announcement work without mutable owner data"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "public private, missing, and invalid links converge on the exact 404"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "public rate-limit retry waits for Retry-After and then reaches the empty state"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "sharing dialog traps focus, closes with Escape, and exposes only approved modes"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music.spec.ts",
+      "titlePath": [
+        "sharing save uses one canonical publication command and restores focus"
+      ],
+      "project": "webkit-music-visual",
+      "repeat": 0
+    }
+  ],
+  "inventoryHash": "76e1b34e409310a88b620c88b324aa4ae5287fda466219cb01053f79006ce68b",
+  "configPaths": [
+    "explorers-earth/playwright.config.ts"
+  ],
+  "lockPaths": [
+    "explorers-earth/package-lock.json",
+    "tunes/package-lock.json"
+  ],
+  "discovery": {
+    "command": [
+      "node",
+      "node_modules/@playwright/test/cli.js",
+      "test",
+      "e2e/music.spec.ts",
+      "e2e/account-lifecycle.spec.ts",
+      "e2e/music-accessibility.spec.ts",
+      "--project=chromium-pr-safe",
+      "--project=firefox-music-visual",
+      "--project=webkit-music-visual",
+      "--retries=0",
+      "--list",
+      "--reporter=json"
+    ],
+    "cwd": "explorers-earth",
+    "node": "v24.21.0",
+    "playwright": "1.61.1",
+    "status": 0,
+    "signal": null,
+    "errors": [],
+    "projects": {
+      "chromium-pr-safe": 1,
+      "firefox-music-visual": 1,
+      "webkit-music-visual": 1
+    },
+    "rawStdoutHash": "3739e01db72bc1fec65252bd4c6ec1edc91e55cb270d37dab5ff6c19c4b92c12",
+    "independentComparison": true,
+    "historicalIdentityEquality": true,
+    "selectionShards": [
+      {
+        "index": 1,
+        "count": 19,
+        "assignmentHash": "57a2e1c19844f1ba05adfee75e4f0f83a7632a0163ba6bfe68428671c127522e",
+        "selectedExact": true
+      },
+      {
+        "index": 2,
+        "count": 19,
+        "assignmentHash": "405d3c8337be559839488cbe44a8c96c9b415d0aadf8e02900378b9711f0159f",
+        "selectedExact": true
+      },
+      {
+        "index": 3,
+        "count": 19,
+        "assignmentHash": "b62932c9769155afc4bc4a2a091cd05c6e3999ccd322627696e33b64733589ac",
+        "selectedExact": true
+      },
+      {
+        "index": 4,
+        "count": 18,
+        "assignmentHash": "d913388f6f1ff200337927c01c364452c9595a9c16168a670aa387d34ed9fb4d",
+        "selectedExact": true
+      }
+    ]
+  },
+  "discoverySuites": [
+    {
+      "title": "account-lifecycle.spec.ts",
+      "file": "account-lifecycle.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "an in-flight cancel cannot continue under replacement identity",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-60c35684ac92421ac97d",
+          "file": "account-lifecycle.spec.ts",
+          "line": 227,
+          "column": 3
+        },
+        {
+          "title": "an in-flight boundary cannot continue under replacement identity",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-a008fb20fabac01b29bb",
+          "file": "account-lifecycle.spec.ts",
+          "line": 227,
+          "column": 3
+        },
+        {
+          "title": "same-identity partial cancellation retries only Music resume after token refresh",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-6e13295f81c10d9c3ed0",
+          "file": "account-lifecycle.spec.ts",
+          "line": 253,
+          "column": 1
+        },
+        {
+          "title": "a never-provisioned Explorer identity treats exact Music absence as a safe deactivation no-op",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-0335d4eda4619c622b69",
+          "file": "account-lifecycle.spec.ts",
+          "line": 272,
+          "column": 1
+        },
+        {
+          "title": "google account deactivation suspends Music before blocking Strapi",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-c53a55ae231e7a8f658d",
+          "file": "account-lifecycle.spec.ts",
+          "line": 286,
+          "column": 3
+        },
+        {
+          "title": "local account deactivation suspends Music before blocking Strapi",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-e03015e59de391829902",
+          "file": "account-lifecycle.spec.ts",
+          "line": 286,
+          "column": 3
+        },
+        {
+          "title": "Music suspension outage leaves Strapi and browser authority active for retry",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-6a35ad662f08261ae36f",
+          "file": "account-lifecycle.spec.ts",
+          "line": 303,
+          "column": 1
+        },
+        {
+          "title": "pending Music deletion prevents Strapi deactivation and browser auth cleanup",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-c89f3c7af561d1427f8b",
+          "file": "account-lifecycle.spec.ts",
+          "line": 317,
+          "column": 1
+        },
+        {
+          "title": "an unconfirmed Strapi block compensates Music without reporting success",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-822a5537079fa01ee20f",
+          "file": "account-lifecycle.spec.ts",
+          "line": 332,
+          "column": 1
+        },
+        {
+          "title": "pending deletion survives reload and a second tab, then cancels only before the boundary",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-6db6823bb427322aff45",
+          "file": "account-lifecycle.spec.ts",
+          "line": 359,
+          "column": 1
+        },
+        {
+          "title": "a lost nullable cancel response reloads the exact cancelled terminal state without another prepare",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-d6fee526fa3312e58128",
+          "file": "account-lifecycle.spec.ts",
+          "line": 377,
+          "column": 1
+        },
+        {
+          "title": "a crossed-boundary retry preserves ordering and completes at login",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-fdf18f7fd6adfd9d83e7",
+          "file": "account-lifecycle.spec.ts",
+          "line": 394,
+          "column": 1
+        },
+        {
+          "title": "a crossed-boundary retry refuses any additional Account outside the durable tuple",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-d336ad3ce75d14cb89c5",
+          "file": "account-lifecycle.spec.ts",
+          "line": 407,
+          "column": 1
+        },
+        {
+          "title": "a lost Account mutation response keeps user authority and reload resumes with only the user deletion",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-efab53476e3dcce97b47",
+          "file": "account-lifecycle.spec.ts",
+          "line": 420,
+          "column": 1
+        },
+        {
+          "title": "dead-letter escalation is typed and offers no destructive retry",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-67f49a937090456c794e",
+          "file": "account-lifecycle.spec.ts",
+          "line": 441,
+          "column": 1
+        },
+        {
+          "title": "finalized deletion hides every ordinary delete entry point and performs no destructive call",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-294ae68c25ba8dadb217",
+          "file": "account-lifecycle.spec.ts",
+          "line": 455,
+          "column": 1
+        },
+        {
+          "title": "unresolved delayed lifecycle authority fails closed before any destructive control",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-d6345633bc2cc3df7cd7",
+          "file": "account-lifecycle.spec.ts",
+          "line": 469,
+          "column": 3
+        },
+        {
+          "title": "unresolved error lifecycle authority fails closed before any destructive control",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "074ceb194d86b294e2b9-3865440a6182e3a4e131",
+          "file": "account-lifecycle.spec.ts",
+          "line": 469,
+          "column": 3
+        }
+      ]
+    },
+    {
+      "title": "music-accessibility.spec.ts",
+      "file": "music-accessibility.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "axe and keyboard-only Music sharing are clean at 375px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "200824d4a8fbe737f053-59680c535264deba0be3",
+          "file": "music-accessibility.spec.ts",
+          "line": 34,
+          "column": 3
+        },
+        {
+          "title": "axe and keyboard-only Music sharing are clean at desktop",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "200824d4a8fbe737f053-535ec79c30ea2022c2ea",
+          "file": "music-accessibility.spec.ts",
+          "line": 34,
+          "column": 3
+        },
+        {
+          "title": "approved owner workspace is responsive and complete on mobile",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "200824d4a8fbe737f053-89be1a1bff0038b98b83",
+          "file": "music-accessibility.spec.ts",
+          "line": 94,
+          "column": 3
+        },
+        {
+          "title": "approved owner workspace is responsive and complete on desktop",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "200824d4a8fbe737f053-933d14ce4551f2fa5447",
+          "file": "music-accessibility.spec.ts",
+          "line": 94,
+          "column": 3
+        },
+        {
+          "title": "axe and keyboard-only Music sharing are clean at 375px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "200824d4a8fbe737f053-a5277c0ae9d9b3ce69ef",
+          "file": "music-accessibility.spec.ts",
+          "line": 34,
+          "column": 3
+        },
+        {
+          "title": "axe and keyboard-only Music sharing are clean at desktop",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "200824d4a8fbe737f053-3e332036b75455070abd",
+          "file": "music-accessibility.spec.ts",
+          "line": 34,
+          "column": 3
+        },
+        {
+          "title": "approved owner workspace is responsive and complete on mobile",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "200824d4a8fbe737f053-dade1388a07dd484ee2e",
+          "file": "music-accessibility.spec.ts",
+          "line": 94,
+          "column": 3
+        },
+        {
+          "title": "approved owner workspace is responsive and complete on desktop",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "200824d4a8fbe737f053-d2fcf7ab64622822cb33",
+          "file": "music-accessibility.spec.ts",
+          "line": 94,
+          "column": 3
+        },
+        {
+          "title": "axe and keyboard-only Music sharing are clean at 375px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "200824d4a8fbe737f053-4ae297f5ada4da7d007d",
+          "file": "music-accessibility.spec.ts",
+          "line": 34,
+          "column": 3
+        },
+        {
+          "title": "axe and keyboard-only Music sharing are clean at desktop",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "200824d4a8fbe737f053-6cfd11f73d3de44134ac",
+          "file": "music-accessibility.spec.ts",
+          "line": 34,
+          "column": 3
+        },
+        {
+          "title": "approved owner workspace is responsive and complete on mobile",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "200824d4a8fbe737f053-6b6669f5ef5ca52b4c50",
+          "file": "music-accessibility.spec.ts",
+          "line": 94,
+          "column": 3
+        },
+        {
+          "title": "approved owner workspace is responsive and complete on desktop",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "200824d4a8fbe737f053-1d7f01efa2de5f18d1bf",
+          "file": "music-accessibility.spec.ts",
+          "line": 94,
+          "column": 3
+        }
+      ]
+    },
+    {
+      "title": "music.spec.ts",
+      "file": "music.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Music ready-empty remains responsive and accessible at 320px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-cf12f12e10e7e488320d",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "Music ready-empty remains responsive and accessible at 375px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-71b7357fd31a08c55c11",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "Music ready-empty remains responsive and accessible at 640px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-62acbc61ae288b993ec2",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "Music ready-empty remains responsive and accessible at 768px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-7045a41f22a0781671a4",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "Music ready-empty remains responsive and accessible at 1024px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-922fa7abc4ff38e813f8",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "sharing dialog traps focus, closes with Escape, and exposes only approved modes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-54cf2e14c6383ca0b412",
+          "file": "music.spec.ts",
+          "line": 288,
+          "column": 1
+        },
+        {
+          "title": "sharing save uses one canonical publication command and restores focus",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-346c747dabd91e5c3485",
+          "file": "music.spec.ts",
+          "line": 317,
+          "column": 1
+        },
+        {
+          "title": "account-generation resets Music authority across tabs without logging Explorer out",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-a8aa550f50d439643a34",
+          "file": "music.spec.ts",
+          "line": 333,
+          "column": 1
+        },
+        {
+          "title": "logout boundary clears Explorer authentication in another tab",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-e3eca575862d01740e9c",
+          "file": "music.spec.ts",
+          "line": 362,
+          "column": 1
+        },
+        {
+          "title": "playlist tabs, keyboard reorder, and polite announcement work without mutable owner data",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-74fbf46a4d241645bcc9",
+          "file": "music.spec.ts",
+          "line": 377,
+          "column": 1
+        },
+        {
+          "title": "a Music outage keeps the Explorer shell usable and explicit retry recovers",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-714b46bc8971f4521e0c",
+          "file": "music.spec.ts",
+          "line": 404,
+          "column": 1
+        },
+        {
+          "title": "Music loading animation respects reduced-motion preference",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-850736e31a566dc6b295",
+          "file": "music.spec.ts",
+          "line": 415,
+          "column": 1
+        },
+        {
+          "title": "public private, missing, and invalid links converge on the exact 404",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-2fe7eb45fea1373f62d8",
+          "file": "music.spec.ts",
+          "line": 431,
+          "column": 1
+        },
+        {
+          "title": "a valid public owner with no visible playlists has the exact reachable empty state",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-dabcc5c6ddd05bef2f09",
+          "file": "music.spec.ts",
+          "line": 438,
+          "column": 1
+        },
+        {
+          "title": "public rate-limit retry waits for Retry-After and then reaches the empty state",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium-pr-safe",
+              "projectName": "chromium-pr-safe",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-598f1f310d2fa2b18ddf",
+          "file": "music.spec.ts",
+          "line": 450,
+          "column": 1
+        },
+        {
+          "title": "Music ready-empty remains responsive and accessible at 320px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-8b1753fb91450ab540d7",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "Music ready-empty remains responsive and accessible at 375px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-3c7c7fef93fa17adc74c",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "Music ready-empty remains responsive and accessible at 640px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-6b84df5a7dfd730da929",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "Music ready-empty remains responsive and accessible at 768px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-c023916114ed28ffeaa7",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "Music ready-empty remains responsive and accessible at 1024px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-2aac282edf9c60018cb0",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "sharing dialog traps focus, closes with Escape, and exposes only approved modes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-6cab2bd87ef535bd4da0",
+          "file": "music.spec.ts",
+          "line": 288,
+          "column": 1
+        },
+        {
+          "title": "sharing save uses one canonical publication command and restores focus",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-eb473ecd11dbd763f34b",
+          "file": "music.spec.ts",
+          "line": 317,
+          "column": 1
+        },
+        {
+          "title": "account-generation resets Music authority across tabs without logging Explorer out",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-dadb4208cb099fd87f6c",
+          "file": "music.spec.ts",
+          "line": 333,
+          "column": 1
+        },
+        {
+          "title": "logout boundary clears Explorer authentication in another tab",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-a6dbaa01465fd7a3d196",
+          "file": "music.spec.ts",
+          "line": 362,
+          "column": 1
+        },
+        {
+          "title": "playlist tabs, keyboard reorder, and polite announcement work without mutable owner data",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-86fb15505c51639d8ca9",
+          "file": "music.spec.ts",
+          "line": 377,
+          "column": 1
+        },
+        {
+          "title": "a Music outage keeps the Explorer shell usable and explicit retry recovers",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-efc4cab3d40d14ea8051",
+          "file": "music.spec.ts",
+          "line": 404,
+          "column": 1
+        },
+        {
+          "title": "Music loading animation respects reduced-motion preference",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-99ab1564c02cc77a6fa5",
+          "file": "music.spec.ts",
+          "line": 415,
+          "column": 1
+        },
+        {
+          "title": "public private, missing, and invalid links converge on the exact 404",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-4f8d10071748496d88bb",
+          "file": "music.spec.ts",
+          "line": 431,
+          "column": 1
+        },
+        {
+          "title": "a valid public owner with no visible playlists has the exact reachable empty state",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-a749fda826cbcb06756d",
+          "file": "music.spec.ts",
+          "line": 438,
+          "column": 1
+        },
+        {
+          "title": "public rate-limit retry waits for Retry-After and then reaches the empty state",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox-music-visual",
+              "projectName": "firefox-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-8e17be2a17a19da69514",
+          "file": "music.spec.ts",
+          "line": 450,
+          "column": 1
+        },
+        {
+          "title": "Music ready-empty remains responsive and accessible at 320px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-9a0caedc111551755ef8",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "Music ready-empty remains responsive and accessible at 375px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-8449b8d7a6dc159a3de6",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "Music ready-empty remains responsive and accessible at 640px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-bb74c6b322fb9f090d91",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "Music ready-empty remains responsive and accessible at 768px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-76bf7aa003ec361a78a9",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "Music ready-empty remains responsive and accessible at 1024px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-5bfedb8a9a6bcef7008f",
+          "file": "music.spec.ts",
+          "line": 221,
+          "column": 3
+        },
+        {
+          "title": "sharing dialog traps focus, closes with Escape, and exposes only approved modes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-ef64a9cdeacc75ae5126",
+          "file": "music.spec.ts",
+          "line": 288,
+          "column": 1
+        },
+        {
+          "title": "sharing save uses one canonical publication command and restores focus",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-273daa3a692e2d4d5a45",
+          "file": "music.spec.ts",
+          "line": 317,
+          "column": 1
+        },
+        {
+          "title": "account-generation resets Music authority across tabs without logging Explorer out",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-60519c67c760faa53e4e",
+          "file": "music.spec.ts",
+          "line": 333,
+          "column": 1
+        },
+        {
+          "title": "logout boundary clears Explorer authentication in another tab",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-bfbb16f5093c8966adbc",
+          "file": "music.spec.ts",
+          "line": 362,
+          "column": 1
+        },
+        {
+          "title": "playlist tabs, keyboard reorder, and polite announcement work without mutable owner data",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-67b10d3a4f5e8f1efd08",
+          "file": "music.spec.ts",
+          "line": 377,
+          "column": 1
+        },
+        {
+          "title": "a Music outage keeps the Explorer shell usable and explicit retry recovers",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-b1cbd0d10740172523a0",
+          "file": "music.spec.ts",
+          "line": 404,
+          "column": 1
+        },
+        {
+          "title": "Music loading animation respects reduced-motion preference",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-ea98eada5d06168f6c47",
+          "file": "music.spec.ts",
+          "line": 415,
+          "column": 1
+        },
+        {
+          "title": "public private, missing, and invalid links converge on the exact 404",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-7533709678ec9854c4e8",
+          "file": "music.spec.ts",
+          "line": 431,
+          "column": 1
+        },
+        {
+          "title": "a valid public owner with no visible playlists has the exact reachable empty state",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-386491ff724c1013e833",
+          "file": "music.spec.ts",
+          "line": 438,
+          "column": 1
+        },
+        {
+          "title": "public rate-limit retry waits for Retry-After and then reaches the empty state",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit-music-visual",
+              "projectName": "webkit-music-visual",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "d97237201e8c41ddec1a-5ca5ac39399b1cd1027d",
+          "file": "music.spec.ts",
+          "line": 450,
+          "column": 1
+        }
+      ]
+    }
+  ]
+}

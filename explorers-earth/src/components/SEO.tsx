@@ -1,3 +1,4 @@
+import { isCanonicalRuntime, getPublicRuntimeConfig } from "../lib/publicRuntimeConfig";
 import { Helmet } from 'react-helmet-async';
 import { GEOData } from '../types/geoTypes';
 import { getBaseUrl } from '../utils/getCurrentDomain';
@@ -203,8 +204,8 @@ const SEO: React.FC<SEOProps> = ({
 
   // Create robots meta content
   const robotsContent = [];
-  if (noIndex) robotsContent.push('noindex');
-  if (noFollow) robotsContent.push('nofollow');
+  if (noIndex || (isCanonicalRuntime() && getPublicRuntimeConfig().environment === 'qa')) robotsContent.push('noindex');
+  if (noFollow || (isCanonicalRuntime() && getPublicRuntimeConfig().environment === 'qa')) robotsContent.push('nofollow');
   if (robotsContent.length === 0) robotsContent.push('index', 'follow');
 
   // GEO Processing - Generate AI-optimized metadata

@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import useAuthStore from "../../../../store/store";
 import { motion, Reorder } from "framer-motion";
-import { useMutation } from "@apollo/client";
+import { explorersApiClient } from "../../../../lib/explorersApiClient";
+import { useBooksOwnerContent } from "../../api/useBooksOwnerContent";
+import { booksCommandKey } from "../../api/booksClient";
 import { X, Star, Minus, Loader2, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { UPDATE_RECOMMENDED_BOOK } from "../../api/mutation";
+
 import type { RecommendedBook } from "../../types";
 import { buildCoverUrl, formatAuthors } from "../../utils/bookHelpers";
 
@@ -15,11 +18,15 @@ interface TopReadsManagerProps {
 }
 
 const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManagerProps) => {
+  const generation = useAuthStore(state=>state.generation);
+  const origin = useRef(generation);
+  const current = () => useAuthStore.getState().generation === origin.current;
+  useEffect(()=>{if(generation!==origin.current)onClose();},[generation,onClose]);
   const [pinnedBooks, setPinnedBooks] = useState<RecommendedBook[]>(
     [...books].sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999))
   );
   const [saving, setSaving] = useState(false);
-  const [updateBook] = useMutation(UPDATE_RECOMMENDED_BOOK);
+  const {content,refetch} = useBooksOwnerContent();
 
   const unpinnedBooks = allBooks.filter(
     (b) => !pinnedBooks.find((pb) => pb.documentId === b.documentId)
@@ -39,76 +46,34 @@ const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManage
 
   const handleMoveUp = (index: number) => {
     if (index === 0) return;
-    setPinnedBooks(prev => {
-      const next = [...prev];
-      [next[index - 1], next[index]] = [next[index], next[index - 1]];
-      syncOrder(next);
-      return next;
-    });
+    if(saving || !content) return;
+    const next=[...pinnedBooks];[next[index-1],next[index]]=[next[index],next[index-1]];setPinnedBooks(next);void syncOrder(next);
   };
 
   const handleMoveDown = (index: number) => {
     if (index === pinnedBooks.length - 1) return;
-    setPinnedBooks(prev => {
-      const next = [...prev];
-      [next[index + 1], next[index]] = [next[index], next[index + 1]];
-      syncOrder(next);
-      return next;
-    });
+    if(saving || !content) return;
+    const next=[...pinnedBooks];[next[index+1],next[index]]=[next[index],next[index+1]];setPinnedBooks(next);void syncOrder(next);
   };
 
-  const syncOrder = async (orderToSync: RecommendedBook[]) => {
-    try {
-      for (let i = 0; i < orderToSync.length; i++) {
-        await updateBook({
-          variables: {
-            documentId: orderToSync[i].documentId,
-            is_pinned: true,
-            pin_order: i,
-          },
-        });
-      }
-      onRefetch();
-    } catch {
-      toast.error("Failed to auto-save new order.");
-    }
+  const pinsFor = (items:RecommendedBook[]) => items.map(book => {
+    const selectedCollection=content?.observation.topPicks?.find(pin=>pin.recommendationId===book.documentId)?.collectionId ?? book.book_list?.documentId;
+    const membership=content?.observation.memberships.find(m=>m.recommendationId===book.documentId && m.collectionId===selectedCollection);
+    if(!membership) throw new Error("Refresh Books before saving pins");
+    return {recommendationId:book.documentId,collectionId:membership.collectionId};
+  });
+  const syncOrder = async (orderToSync:RecommendedBook[]) => {
+    if(saving || !content) return; setSaving(true);
+    try { await explorersApiClient.upsertMyCategoryTopPickOrder(content.observation,pinsFor(orderToSync),booksCommandKey()); if(!current())return;await refetch();if(current())onRefetch(); }
+    catch(error){ if(current())toast.error(error instanceof Error?error.message:"Failed to auto-save new order."); }
+    finally {if(current())setSaving(false);}
   };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      // Save pinned books with their new order
-      for (let i = 0; i < pinnedBooks.length; i++) {
-        await updateBook({
-          variables: {
-            documentId: pinnedBooks[i].documentId,
-            is_pinned: true,
-            pin_order: i,
-          },
-        });
-      }
-      // Unpin books that were pinned before but are now removed
-      for (const b of unpinnedBooks) {
-        if (books.find((pb) => pb.documentId === b.documentId)) {
-          await updateBook({
-            variables: {
-              documentId: b.documentId,
-              is_pinned: false,
-              pin_order: null,
-            },
-          });
-        }
-      }
-      toast.success("Top Reads updated!");
-      onRefetch();
-      onClose();
-    } catch {
-      toast.error("Failed to save. Please try again.");
-    } finally {
-      setSaving(false);
-    }
+  const handleSave=async()=> {
+    if(saving || !content) return; setSaving(true);
+    try {await explorersApiClient.setMyCategoryTopPicks(content.observation,pinsFor(pinnedBooks),booksCommandKey());if(!current())return;await refetch();if(!current())return;toast.success("Top Reads updated!");onRefetch();onClose();}
+    catch(error){if(current())toast.error(error instanceof Error?error.message:"Failed to save. Please try again.");}
+    finally {if(current())setSaving(false);}
   };
-
   return (
     <motion.div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-end md:items-center justify-center md:p-4"
@@ -135,7 +100,7 @@ const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManage
             <Star size={16} className="text-amber-400" fill="currentColor" />
             Manage Top Reads ({pinnedBooks.length}/15)
           </h2>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
+          <button aria-label="Close Top Reads" onClick={onClose} className="text-white/40 hover:text-white transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -164,14 +129,16 @@ const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManage
                       <div className="flex flex-col items-center gap-1 flex-shrink-0">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleMoveUp(i); }}
-                          disabled={i === 0}
+                          aria-label={`Move ${book.title} up`}
+                          disabled={i === 0 || saving || !content}
                           className="text-white/20 hover:text-white disabled:opacity-0 transition-colors p-0.5"
                         >
                           <ChevronUp size={12} />
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleMoveDown(i); }}
-                          disabled={i === pinnedBooks.length - 1}
+                          aria-label={`Move ${book.title} down`}
+                          disabled={i === pinnedBooks.length - 1 || saving || !content}
                           className="text-white/20 hover:text-white disabled:opacity-0 transition-colors p-0.5"
                         >
                           <ChevronDown size={12} />
@@ -190,6 +157,7 @@ const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManage
                         <p className="text-xs text-white/40 truncate">{formatAuthors(book.authors)}</p>
                       </div>
                       <button
+                        aria-label={`Unpin ${book.title}`}
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => { e.stopPropagation(); handleUnpin(book); }}
                         className="text-white/30 hover:text-red-400 transition-colors flex-shrink-0 mx-2"
@@ -240,7 +208,7 @@ const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManage
         <div className="px-5 py-4 border-t border-white/8">
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !content}
             className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-sm text-gray-900 font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
           >
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Star size={15} fill="currentColor" />}

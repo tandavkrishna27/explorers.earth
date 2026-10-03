@@ -11,14 +11,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import ProfileForm, {
   type FormSection,
 } from "../features/Profile/components/ProfileForm";
-import { useQuery } from "@apollo/client";
+import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
+import { buildBusinessPublicAddress, toProfileViewModel } from "../features/Profile/api/profileClient";
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
-import { profileDataQuery } from "../features/Profile/api/query";
 import { mapAddressComponents } from "../utils/mapAddress";
 import { useUpdateProfile } from "../features/Profile/hooks/useUpdateProfile";
 import { useReverseGeocoding } from "../features/Profile/hooks/useReverseGeocoding";
@@ -52,6 +52,7 @@ import {
   sanitizeUsername,
 } from "../utils/uploadPathGenerator";
 import { IMAGE_CONFIG } from "../config";
+import { explorersApiClient } from "../lib/explorersApiClient";
 import UsernameChangeConfirmationModal from "../components/ui/UsernameChangeConfirmationModal";
 import UnsavedChangesModal from "../components/ui/UnsavedChangesModal";
 import { validateUsername } from "../utils/usernameValidation";
@@ -246,8 +247,11 @@ const Profile = memo(() => {
   const [uploadedImage, setUploadedImage] = useState<string>("");
   // local state for handling background image uploading
   const [uploadedBackground, setUploadedBackground] = useState<string>("");
+  const [mediaRevisionAdvance, setMediaRevisionAdvance] = useState<{
+    accountId: string; fromRevision: number; toRevision: number;
+  } | null>(null);
   // accessing auth data from the zustand store
-  const { user, token } = useAuthStore();
+  const { user, token, generation: sessionGeneration } = useAuthStore();
   // local state for handling accurate address
   const [placesState, setPlacesState] = useState<Places | null>();
   // local state for upload progress
@@ -311,11 +315,11 @@ const Profile = memo(() => {
   // accessing user document Id
   const documentId = user?.documentId;
 
-  const { data, loading, error, refetch } = useQuery(profileDataQuery, {
-    variables: { documentId },
-    fetchPolicy: "cache-and-network", // Always fetch fresh data but use cache while loading
-    skip: !documentId, // Skip query if documentId is not available
-  });
+  const accountQuery = useCanonicalAccount();
+  const data: any = accountQuery.data ? { usersPermissionsUser: { username: accountQuery.data.handle,
+    accounts: [toProfileViewModel(accountQuery.data)] } } : undefined;
+  const { error, refetch } = accountQuery;
+  const loading = accountQuery.isLoading;
 
   useEffect(() => {
     if (!loading) {
@@ -398,7 +402,11 @@ const Profile = memo(() => {
     }
   }, [account, uploadedBackground, uploadedImage]);
 
-  const { isProfileComplete, isRecommendationsComplete, setSetupStatus } = useSetupStore();
+  const { isProfileComplete, isRecommendationsComplete, setSetupStatus, bindAccount } = useSetupStore();
+
+  useEffect(() => {
+    if (accountQuery.data) bindAccount(accountQuery.data.id, accountQuery.data.onboardingStatus, sessionGeneration);
+  }, [accountQuery.data?.id, accountQuery.data?.onboardingStatus, bindAccount, sessionGeneration]);
 
   // Sync setup status with store
   const currentIsProfileComplete = useMemo(() => {
@@ -411,9 +419,9 @@ const Profile = memo(() => {
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 Syncing profile completion status:', currentIsProfileComplete);
       }
-      setSetupStatus(currentIsProfileComplete, isRecommendationsComplete);
+      setSetupStatus(currentIsProfileComplete, isRecommendationsComplete, accountQuery.data?.id, sessionGeneration);
     }
-  }, [currentIsProfileComplete, isProfileComplete, isRecommendationsComplete, setSetupStatus, account]);
+  }, [currentIsProfileComplete, isProfileComplete, isRecommendationsComplete, setSetupStatus, account, sessionGeneration]);
 
   // custom hook for handling adress submission
   const { handleSubmit: originalHandleSubmit } = useUpdateProfile(
@@ -524,16 +532,7 @@ const Profile = memo(() => {
     operation: ProfileSaveOperation,
   ) => {
     // Construct Public_Profile_Address from individual business fields
-    const businessData = {
-      title: values.title || values.businessTitle || "",
-      address: values.businessAddress || "",
-      contact: values.businessContact || "",
-      website: values.businessWebsite || "",
-      about: values.about || values.businessDescription || "",
-      // Persist selected Google place_id so users can import later
-      placeId: values.businessPlaceId || "",
-      places: null,
-    };
+    const businessData = buildBusinessPublicAddress(values);
 
     // Only include Public_Profile_Address if any business field has data
     const hasBusinessData = Object.values(businessData).some(
@@ -595,14 +594,14 @@ const Profile = memo(() => {
   const performProfileSave = async (
     values: any,
     operation: ProfileSaveOperation,
-  ): Promise<"saved" | "failed"> => {
-    if (!isAccountSessionActive(operation)) return "failed";
+  ): Promise<ProfileSaveResult> => {
+    if (!isAccountSessionActive(operation)) return { status: "failed" };
 
     submittingSaveOperationRef.current = operation;
     setIsFormSubmitting(true);
     try {
-      await processBusinessImagesAndSubmit(values, operation);
-      if (!ownsSubmittingState(operation)) return "failed";
+      const saved = await processBusinessImagesAndSubmit(values, operation);
+      if (!ownsSubmittingState(operation)) return { status: "failed" };
 
       markProcessingComplete();
       toast.success(
@@ -622,13 +621,13 @@ const Profile = memo(() => {
         }
       }
 
-      return "saved";
+      return { status: "saved", committedRevision: saved.revision };
     } catch (error) {
-      if (!ownsSubmittingState(operation)) return "failed";
+      if (!ownsSubmittingState(operation)) return { status: "failed" };
 
       markProcessingComplete();
       showProfileSaveError(error);
-      return "failed";
+      return { status: "failed" };
     } finally {
       if (ownsSubmittingState(operation)) {
         submittingSaveOperationRef.current = null;
@@ -666,8 +665,7 @@ const Profile = memo(() => {
     const operation = beginProfileSaveOperation();
     if (!operation) return { status: "failed" };
 
-    const status = await performProfileSave(values, operation);
-    return { status };
+    return performProfileSave(values, operation);
   };
 
   const handleConfirmUsernameChange = async () => {
@@ -689,7 +687,8 @@ const Profile = memo(() => {
     );
     if (!isAccountSessionActive(pendingSave.operation)) return;
 
-    pendingSave.deferred.settle(terminal);
+    pendingSave.deferred.settle(terminal.status === "saved" ? "saved" : "failed",
+      terminal.status === "saved" ? terminal.committedRevision : undefined);
     if (pendingUsernameSaveRef.current === pendingSave) {
       pendingUsernameSaveRef.current = null;
       setPendingFormValues(null);
@@ -1437,6 +1436,8 @@ const Profile = memo(() => {
   }
 
   const initialValues = {
+    ...((typeof account?.documentId === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(account.documentId))
+      ? { documentId: account.documentId, revision: account.revision } : {}),
     username: data.usersPermissionsUser?.username || "",
     accountName: account?.Account_Name || "",
     accountType: getAccountTypeKey(account?.Account_Type || "", t),
@@ -1708,6 +1709,24 @@ const Profile = memo(() => {
       // Pause walkthrough during upload
       setIsUploading(true);
 
+      if (accountQuery.data) {
+        const media = await explorersApiClient.createMedia(file, "profile");
+        try {
+          const current = await explorersApiClient.getMyProfile();
+          const updated = await explorersApiClient.updateAccount({ expectedRevision: current.revision, profileImageId: media.id });
+          setMediaRevisionAdvance({ accountId: current.id, fromRevision: current.revision, toRevision: updated.revision });
+        } catch (error) {
+          await explorersApiClient.deleteMedia(media.id).catch(() => undefined);
+          throw error;
+        }
+        setUploadedImage(media.url);
+        await refetch();
+        toast.success(t('toast.success.profileImageUpdated'));
+        markProcessingComplete();
+        if (steps[stepIndex]?.target === '[data-walkthrough="profile-picture"]') advanceToNextStep();
+        return;
+      }
+
       const accountId = await resolveSelectedAccountUploadId();
 
       const formData = new FormData();
@@ -1787,6 +1806,24 @@ const Profile = memo(() => {
     try {
       // Pause walkthrough during upload
       setIsUploading(true);
+
+      if (accountQuery.data) {
+        const media = await explorersApiClient.createMedia(file, "background");
+        try {
+          const current = await explorersApiClient.getMyProfile();
+          const updated = await explorersApiClient.updateAccount({ expectedRevision: current.revision, backgroundImageId: media.id });
+          setMediaRevisionAdvance({ accountId: current.id, fromRevision: current.revision, toRevision: updated.revision });
+        } catch (error) {
+          await explorersApiClient.deleteMedia(media.id).catch(() => undefined);
+          throw error;
+        }
+        setUploadedBackground(media.url);
+        await refetch();
+        toast.success(t('toast.success.backgroundImageUpdated'));
+        markProcessingComplete();
+        if (steps[stepIndex]?.target === '[data-walkthrough="cover-image"]') advanceToNextStep();
+        return;
+      }
 
       const accountId = await resolveSelectedAccountUploadId();
 
@@ -2118,6 +2155,7 @@ const Profile = memo(() => {
                   mode="workspaces"
                   initialValues={initialValues}
                   onSubmit={handleFormSubmit}
+                  externalRevisionAdvance={mediaRevisionAdvance}
                   setPlaces={setPlaces}
                   formFields={currentFormFields}
                   workspaces={profileWorkspaces}

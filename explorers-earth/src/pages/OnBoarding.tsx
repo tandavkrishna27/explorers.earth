@@ -1,4 +1,3 @@
-import { gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
 import AuthForm from "../features/Authentication/components/AuthForm";
 import {
   FormValues,
@@ -21,16 +20,7 @@ import { mapAddressComponents } from "../utils/mapAddress";
 import CurrLocation from "../assets/icons/CurrLocation";
 import { AuthFormField } from "../features/Authentication/components/AuthForm";
 import { GOOGLE_GEOCODING_BASE_URL } from "../config";
-import {
-  generateProfileUploadPath,
-  generateRandomFileName,
-  sanitizeUsername,
-} from "../utils/uploadPathGenerator";
 import { createUsernameValidation } from "../features/Authentication/data";
-import {
-  isFreePlan
-} from "../services/paymentService";
-import { createUserSubscriptionPlan, getSongLimits, updateSongLimit as updateSongLimitAPI, createSongLimit, getSubscriptionPlans } from "../services/subscriptionService";
 import Modal from "../components/ui/Modal";
 
 //import { usernameValidation } from "../features/Authentication/data";
@@ -41,87 +31,14 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { LogOut, ArrowLeft } from "lucide-react";
 import GlobeCanvas from "../components/auth/GlobeCanvas";
 import OnboardingProgress from "../components/onboarding/OnboardingProgress";
-import { decideAccountAction } from "./onboardingAccountDecision";
 import {
   createFinalizeLock,
   beginFinalize,
   endFinalize,
 } from "./onboardingFinalizeLock";
-import { useQuery as useReactQuery } from "@tanstack/react-query";
-import {
-  selectExplorerAccountDocument,
-  selectExplorerAccountState,
-  selectExplorerAccountUploadTarget,
-} from "../features/music/musicIdentityCoordinator";
-import { closeLocalMusicSession } from "../features/music/musicSessionBoundary";
-
-const onboardingQuery = gql`
-  mutation createAccount($data: AccountInput!) {
-    createAccount(data: $data) {
-      documentId
-      Account_Name
-      Account_Type
-      username
-      Bio
-      Addresss
-      mobile_number
-      Primary_Address
-    }
-  }
-`;
-
-/**
- * GraphQL mutation to update user details during onboarding.
- * Note: Only queries username and documentId as 'id' field is not available on UsersPermissionsUser type.
- */
-const updateUserMutation = gql`
-  mutation UpdateUsersPermissionsUser(
-    $id: ID!
-    $data: UsersPermissionsUserInput!
-  ) {
-    updateUsersPermissionsUser(id: $id, data: $data) {
-      data {
-        username
-        documentId
-      }
-    }
-  }
-`;
-
-const checkAccountQuery = gql`
-  query CheckAccount($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      accounts {
-        documentId
-        Account_Name
-        Account_Type
-        mobile_number
-      }
-    }
-  }
-`;
-
-
-
-const UPDATE_USER_IS_SUBSCRIBED_MUTATION = gql`
-  mutation UpdateUsersPermissionsUser($id: ID!, $data: UsersPermissionsUserInput!) {
-    updateUsersPermissionsUser(id: $id, data: $data) {
-      data {
-        documentId
-        is_subscribed
-      }
-    }
-  }
-`;
-
-const UPDATE_ACCOUNT_MUTATION = gql`
-  mutation UpdateAccount($documentId: ID!, $data: AccountInput!) {
-    updateAccount(documentId: $documentId, data: $data) {
-      documentId
-    }
-  }
-`;
-
+import { useLogout } from "../hooks/useLogout";
+import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
+import { explorersApiClient } from "../lib/explorersApiClient";
 
 // Get account fields with i18n translations
 const getAccountFields = (t: any) => [
@@ -329,19 +246,6 @@ const addressValidationSchema = (t: any) =>
     ),
   });
 
-interface SubscriptionPlan {
-  documentId: string;
-  plan_name: string;
-  cost: string;
-  songs_quota: string;
-  ai_guide_quota: string;
-  features: Array<{ feature: string }> | string;
-  duration: string;
-  plan_code: string;
-  feature_control: any;
-  max_devices: number;
-}
-
 /**
  * ONBOARDING COMPONENT - REFACTORED FOR USERNAME SYNCHRONIZATION
  *
@@ -385,7 +289,6 @@ interface SubscriptionPlan {
 
 const OnBoarding = () => {
   const { t } = useTranslation();
-  const apolloClient = useApolloClient();
   const [activeStep, setActiveStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -397,17 +300,14 @@ const OnBoarding = () => {
   // phone step (incomplete account) or overrunning the steps array (crash). This
   // ref flips synchronously before the first await; released in the finally.
   const stepSubmitLock = useRef(false);
-  const [hasShownAccountExistsToast, setHasShownAccountExistsToast] =
+  const [hasShownAccountExistsToast] =
     useState(false);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
 
-  const [createAccount] = useMutation(onboardingQuery);
-  const [updateUser] = useMutation(updateUserMutation);
   const storedUsername = useAuthStore((state) => state.user?.username);
   const documentId = useAuthStore((state) => state.user?.documentId);
-  const logout = useAuthStore((state) => state.logout);
+  const endSession = useLogout();
   // const { isAuthenticated } = useAuthStore();
-  const token = useAuthStore((state) => state.token);
   const navigate = useNavigate();
   const location = useLocation();
  
@@ -415,56 +315,14 @@ const OnBoarding = () => {
  
   const handleLogout = async () => {
     setShowLogoutModal(false);
-    logout();
-    closeLocalMusicSession();
- 
-    // Clear all explorers storage
-    localStorage.removeItem("auth-storage");
-    localStorage.removeItem("qrtoken");
- 
- 
-    // Clear all other possible storage
-    localStorage.clear();
-    sessionStorage.clear();
- 
-    // Clear all cookies
- 
-    navigate("/login");
-    toast(t("toast.success.loggedOutSuccessfully", "Logged out successfully!"));
+    await endSession();
   };
 
 
-  // Subscription plan state
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [selectedPlanData, setSelectedPlanData] = useState<SubscriptionPlan | null>(null);
   const [isCreatingSubscription, setIsCreatingSubscription] = useState(false);
   // Synchronous re-entrancy lock for the free-plan finalize/create path (guards
   // against a double-click creating duplicate accounts; see onboardingFinalizeLock).
   const finalizeLockRef = useRef(createFinalizeLock());
-  const [accountDocumentId, setAccountDocumentId] = useState<string | null>(null);
-
-  // Subscription plan queries and mutations - using backend API
-  const { data: subscriptionPlansData, isLoading: subscriptionPlansLoading } = useReactQuery({
-    queryKey: ['subscriptionPlans'],
-    queryFn: getSubscriptionPlans,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
-  });
-  const [updateUserIsSubscribed] = useMutation(UPDATE_USER_IS_SUBSCRIBED_MUTATION);
-
-  // Auto-select Free plan by default when subscription plans are loaded
-  useEffect(() => {
-    if (subscriptionPlansData && subscriptionPlansData.length > 0 && !selectedPlan) {
-      const freePlan = subscriptionPlansData.find(
-        (plan: SubscriptionPlan) => plan.plan_name?.toLowerCase() === 'free'
-      );
-      if (freePlan) {
-        setSelectedPlan(freePlan.documentId);
-        setSelectedPlanData(freePlan);
-      }
-    }
-  }, [subscriptionPlansData, selectedPlan]);
-  const [_updateAccount] = useMutation(UPDATE_ACCOUNT_MUTATION);
 
   // Only fetch user data if we don't already have a username and haven't submitted
   const shouldFetchUser =
@@ -563,52 +421,13 @@ const OnBoarding = () => {
   }, [userLoading]);
 
   /**
-   * Cross-browser duplicate prevention using server-side checks
-   * This works across different browsers and devices
-   */
-  useEffect(() => {
-    const checkExistingAccount = async () => {
-      if (!documentId || !token || hasShownAccountExistsToast) return;
-
-
-      try {
-        // Check if account already exists on the server
-        const existingAccountCheck = await axios.get(
-          `${import.meta.env.VITE_REST_API_URL
-          }/accounts?filters%5Busers_permissions_users%5D%5BdocumentId%5D%5B%24eq%5D=${documentId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (existingAccountCheck.data?.data?.length > 0) {
-          console.log("Account already exists on server, redirecting to home");
-          if (!hasShownAccountExistsToast) {
-            setHasShownAccountExistsToast(true);
-            toast.error(t('toast.error.accountAlreadyExists'));
-            setTimeout(() => navigate('/home'), 2000);
-          }
-          return;
-        }
-      } catch (error) {
-        console.warn("Could not check existing accounts:", error);
-        // Continue with onboarding if check fails
-      }
-    };
-
-    checkExistingAccount();
-  }, [documentId, token, navigate, hasShownAccountExistsToast, t]);
-
-  /**
    * Handle errors when fetching user data
    * Only show toast for critical errors, not authentication issues
    */
   useEffect(() => {
-    if (userError && userError.networkError) {
+    if (userError) {
       // Only show toast for network errors, not 401 authentication errors
-      if (!userError.networkError.message?.includes("401")) {
+      if (!userError.message?.includes("401")) {
         toast.error(t("toast.error.onboardingFailed"));
       }
     }
@@ -628,22 +447,11 @@ const OnBoarding = () => {
   const { currentLocation, handleGetCurrentLocation } = useReverseGeocoding();
 
   // Check for existing accounts to prevent duplicates - only run on onboarding page
-  const {
-    data: existingAccountData,
-    loading: accountCheckLoading,
-    refetch,
-  } = useQuery(checkAccountQuery, {
-    variables: { documentId },
-    skip: !documentId || !token || hasShownAccountExistsToast || hasSubmitted,
-    fetchPolicy: "network-only", // Always check fresh data
-    errorPolicy: "ignore", // Ignore errors to prevent UI disruption
-  });
-
-  // Check if user already has a complete account
-  const existingAccountSelection = selectExplorerAccountState(existingAccountData?.usersPermissionsUser?.accounts, {
-    authoritative: !accountCheckLoading && Array.isArray(existingAccountData?.usersPermissionsUser?.accounts),
-  });
-  const hasCompleteAccount = existingAccountSelection.kind === "selected" || existingAccountSelection.kind === "ambiguous";
+  const canonicalAccount = useCanonicalAccount();
+  const accountCheckLoading = canonicalAccount.isLoading;
+  const refetch = canonicalAccount.refetch;
+  // Check if the canonical account has completed onboarding.
+  const hasCompleteAccount = canonicalAccount.data?.onboardingStatus === "complete";
 
   // Redirect if account already exists and is complete
   useEffect(() => {
@@ -779,64 +587,6 @@ const OnBoarding = () => {
     }
   }, [currentLocation, places, mappedAddressData]);
 
-  const uploadImage = async (
-    file: File,
-    field: string,
-    accountId: string,
-    usernameForPath: string
-  ) => {
-    const formData = new FormData();
-
-    // Generate structured path for organized storage
-    const sanitizedUsername = sanitizeUsername(usernameForPath || "user");
-    const uploadType = field === "profile_picture" ? "profile" : "background";
-    const randomFileName = generateRandomFileName(file.name);
-    const structuredPath = generateProfileUploadPath(
-      sanitizedUsername,
-      uploadType,
-      randomFileName
-    );
-
-    formData.append("files", file);
-    formData.append("refId", accountId);
-    formData.append("field", field);
-    formData.append("ref", "api::account.account");
-    formData.append("path", structuredPath);
-
-    try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_REST_API_URL}/upload`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.data && response.data[0]?.url) {
-        return response.data[0].url;
-      }
-      throw new Error("No URL in response");
-    } catch (error) {
-      console.error("Onboarding media upload failed:", error);
-      throw error;
-    }
-  };
-
-  const resolveUploadAccountId = async (accountDocId: string): Promise<string> => {
-    if (!documentId) throw new Error("Explorer user authority is unavailable");
-    const lookup = await axios.get(
-      `${import.meta.env.VITE_REST_API_URL}/accounts?filters%5BdocumentId%5D%5B%24eq%5D=${encodeURIComponent(accountDocId)}&filters%5Busers_permissions_users%5D%5BdocumentId%5D%5B%24eq%5D=${encodeURIComponent(documentId)}`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    const selection = selectExplorerAccountUploadTarget(lookup.data?.data, accountDocId, { authoritative: true });
-    if (selection.kind !== "selected") throw new Error("Explorer Account upload authority is unavailable");
-    return selection.account.id;
-  };
-
-
   const handleSubmit = async (values: FormValues) => {
     console.log("handleSubmit called with values:", values);
     console.log("hasCompleteAccount:", hasCompleteAccount);
@@ -960,335 +710,51 @@ const OnBoarding = () => {
   };
 
 
-  // Calculate subscription dates based on duration
-  const calculateSubscriptionDates = (duration: string) => {
-    const startDate = new Date();
-    const endDate = new Date();
-
-    if (duration === 'monthly') {
-      endDate.setMonth(endDate.getMonth() + 1);
-    } else if (duration === 'yearly') {
-      endDate.setFullYear(endDate.getFullYear() + 1);
-    }
-
-    return {
-      start_date: startDate.toISOString(),
-      end_date: endDate.toISOString()
-    };
-  };
-
-
   // Handle Step 5 submission (subscription plan selection)
   // Accepts optional explicit plan/formData for programmatic calls (e.g. auto-free-plan).
   // When called from the plan selection UI, these params are undefined and state values are used.
-  const handleSubscriptionSubmit = async (
-    explicitPlanId?: string,
-    explicitPlanData?: SubscriptionPlan,
-    explicitFormData?: typeof formData
-  ) => {
-    const planId = explicitPlanId ?? selectedPlan;
-    const planData = explicitPlanData ?? selectedPlanData;
-    const currentFormData = explicitFormData ?? formData;
+  const handleSubscriptionSubmit = async (currentFormData: typeof formData) => {
 
-    if (!planId || !planData) {
-      toast.error("Please select a subscription plan");
-      return;
-    }
-
-    const authUser = useAuthStore.getState().user;
-    if (!authUser?.id || !authUser?.documentId) {
-      toast.error("User information not available");
-      return;
-    }
-
-    // Check if plan is free - if free, create subscription directly
-    // If paid, navigate to checkout page
-    if (!isFreePlan(planData)) {
-      // Navigate to checkout for paid plans with currentFormData
-      navigate('/checkout', {
-        state: {
-          plan: planData,
-          fromOnboarding: true,
-          formData: currentFormData,
-        },
-      });
-      return;
-    }
-
-    // For free plans, proceed with existing subscription creation flow.
-    // Re-entrancy guard: a double-click can reach here twice before the state
-    // guard flips, creating duplicate accounts/subscriptions. beginFinalize flips
-    // the lock synchronously (before any await); bail if one is already running.
-    if (!beginFinalize(finalizeLockRef.current)) return;
-    setIsCreatingSubscription(true);
-
-    try {
-      // Step 0: Create explorers account (if not already created)
-      console.log('Step 0: Checking if account exists, then creating if needed...');
-
-      // Check if account already exists
-      let accountDocId = accountDocumentId;
-      // Whether the existence lookup actually completed. If it throws we must
-      // NOT assume "no account" — creating one blindly risks a duplicate.
-      let existenceCheckSucceeded = false;
-
-      if (!accountDocId) {
-        try {
-          const existingAccountCheck = await refetch();
-          const selection = selectExplorerAccountDocument(
-            existingAccountCheck.data?.usersPermissionsUser?.accounts,
-            { authoritative: true },
-          );
-          existenceCheckSucceeded = selection.kind === "missing" || selection.kind === "selected";
-          if (selection.kind === "selected") {
-            console.log('Account already exists, using existing account');
-            accountDocId = selection.account.documentId;
-            setAccountDocumentId(accountDocId);
-          }
-        } catch (checkError) {
-          console.warn("Could not verify existing accounts:", checkError);
-        }
-      }
-
-      // Don't blind-create when we couldn't verify the account doesn't already
-      // exist — that would produce a duplicate account (the Account relation is unordered,
-      // so the incomplete one can win and bounce the user back to onboarding).
-      if (decideAccountAction(accountDocId, existenceCheckSucceeded) === "abort") {
-        toast.error(
-          t("toast.error.accountVerifyFailed", {
-            defaultValue:
-              "Couldn't verify your account. Please check your connection and try again.",
-          })
-        );
-        setIsCreatingSubscription(false);
-        return;
-      }
-
-      // Resolved username may be updated below if the user changed it during onboarding.
-      let usernameToUse = currentFormData.username || storedUsername || "user";
-
-      // Create account only if it doesn't exist
-      if (!accountDocId) {
-
-        console.log('Creating new explorers account...');
-
-        if (!currentFormData.primaryAddress || currentFormData.primaryAddress.trim() === "") {
-          toast.error(t('toast.error.primaryAddressRequired'));
-          setIsCreatingSubscription(false);
-          return;
-        }
-
-        // Format phone number to E.164 format before saving
-        let formattedPhoneNumber = currentFormData.mobile_number;
-        try {
-          const phoneNumber = parsePhoneNumberFromString(currentFormData.mobile_number);
-          if (phoneNumber && phoneNumber.isValid()) {
-            formattedPhoneNumber = phoneNumber.format('E.164');
-          }
-        } catch (error) {
-          console.warn('Could not format phone number:', error);
-        }
-
-        // Check if username was changed during onboarding and update user record if needed
-        if (currentFormData.username && currentFormData.username !== storedUsername) {
-          try {
-            const updateUserResponse = await updateUser({
-              variables: {
-                id: authUser.id,
-                data: { username: currentFormData.username },
-              },
-            });
-
-            if (updateUserResponse.data?.updateUsersPermissionsUser?.data) {
-              usernameToUse = currentFormData.username;
-              const currentUser = useAuthStore.getState().user;
-              if (currentUser) {
-                useAuthStore.getState().login({
-                  ...currentUser,
-                  username: currentFormData.username,
-                  token: token!,
-                });
-              }
-            }
-          } catch (error) {
-            toast.error(t('toast.error.usernameUpdateFailed'));
-            usernameToUse = storedUsername || "user";
-          }
-        }
-
-        const primaryAddressObject = {
-          address: currentFormData.primaryAddress,
-        };
-        const addressObject = {
-          address: currentFormData.address || "",
-          streetName: currentFormData.streetName || "",
-          city: currentFormData.city || "",
-          state: currentFormData.state || "",
-          country: currentFormData.country || "",
-          postalCode: currentFormData.postalCode || "",
-        };
-
-        const accountResponse = await createAccount({
-          variables: {
-            data: {
-              Account_Name: currentFormData.accountName,
-              Account_Type: currentFormData.accountType,
-              Primary_Address: JSON.stringify(primaryAddressObject),
-              Addresss: JSON.stringify(addressObject),
-              Bio: currentFormData.bio,
-              mobile_number: formattedPhoneNumber,
-              username: usernameToUse,
-              users_permissions_users: documentId,
-            },
-          },
+    if (canonicalAccount.data) {
+      if (!beginFinalize(finalizeLockRef.current)) return;
+      setIsCreatingSubscription(true);
+      const uploaded: string[] = [];
+      try {
+        const current = await explorersApiClient.getMyProfile();
+        const profile = tempProfileImage ? await explorersApiClient.createMedia(tempProfileImage, "profile") : null;
+        if (profile) uploaded.push(profile.id);
+        const background = tempBackgroundImage ? await explorersApiClient.createMedia(tempBackgroundImage, "background") : null;
+        if (background) uploaded.push(background.id);
+        const type = String(currentFormData.accountType).toLowerCase();
+        await explorersApiClient.updateAccount({ expectedRevision: current.revision,
+          handle: currentFormData.username.trim().toLowerCase(), displayName: currentFormData.accountName.trim(),
+          accountType: type.includes("business") ? "Business" : type.includes("creator") ? "Creator" : "Personal",
+          bioPlain: currentFormData.bio?.trim() || null,
+          mobileNumber: currentFormData.mobile_number?.trim() || null,
+          primaryAddress: currentFormData.primaryAddress ? { address: currentFormData.primaryAddress } : null,
+          additionalAddresses: [{ address: currentFormData.address || "", city: currentFormData.city || "",
+            country: currentFormData.country || "", state: currentFormData.state || "", streetName: currentFormData.streetName || "" }],
+          ...(profile ? { profileImageId: profile.id } : {}),
+          ...(background ? { backgroundImageId: background.id } : {}),
+          onboardingStatus: "complete",
         });
-
-        if (!accountResponse.data?.createAccount) {
-          throw new Error("Failed to create account");
-        }
-
-        console.log('explorers account created successfully');
-
-        const createdAccountDocId = accountResponse.data.createAccount.documentId;
-        if (!createdAccountDocId) throw new Error("Created Account authority is unavailable");
-        accountDocId = createdAccountDocId;
-        setAccountDocumentId(createdAccountDocId);
-
-        // Upload images if available
-        if (tempProfileImage || tempBackgroundImage) {
-          try {
-            const accountId = await resolveUploadAccountId(createdAccountDocId);
-            if (tempProfileImage) {
-              await uploadImage(
-                tempProfileImage,
-                "profile_picture",
-                accountId,
-                usernameToUse
-              );
-              toast.success(t('toast.success.imageUploaded'));
-            }
-            if (tempBackgroundImage) {
-              await uploadImage(
-                tempBackgroundImage,
-                "bg_picture",
-                accountId,
-                usernameToUse
-              );
-              toast.success(t('toast.success.imageUploaded'));
-            }
-          } catch (imageError) {
-            console.warn("Image upload failed, but account was created:", imageError);
-            toast.error(t('toast.error.imageUploadFailed'));
-          }
-        }
-
         await refetch();
-        toast.success(t('toast.success.accountCreated'));
+        const onboardingKey = `onboarding_${current.id}`;
+        localStorage.setItem(onboardingKey, JSON.stringify({ status: "completed", timestamp: Date.now() }));
         setHasSubmitted(true);
-      } else {
-        console.log('Using existing account, skipping account creation');
+        navigate("/home");
+      } catch (error: any) {
+        await Promise.all(uploaded.map((id) => explorersApiClient.deleteMedia(id).catch(() => undefined)));
+        toast.error(error?.message || "Couldn't save your account. Please try again.");
+      } finally {
+        setIsCreatingSubscription(false);
+        endFinalize(finalizeLockRef.current);
       }
-
-      console.log('Creating subscription entry...');
-      const { start_date, end_date } = calculateSubscriptionDates(planData.duration);
-
-      const subscriptionResponse = await createUserSubscriptionPlan({
-        user_id: authUser.documentId,
-        plan_id: planId,
-        start_date: start_date,
-        end_date: end_date
-      });
-
-      if (!subscriptionResponse) {
-        throw new Error("Failed to create subscription entry");
-      }
-
-      console.log('Subscription entry created successfully');
-
-      // Create or reset song_requests and ai_guide_requests for the user
-      if (authUser?.username) {
-        try {
-          // Get the songLimit record for this user using API
-          const songLimits = await getSongLimits(authUser.username);
-          const songLimitRecord = songLimits?.[0];
-
-          if (songLimitRecord?.documentId) {
-            // Record exists - reset song_requests and ai_guide_requests to 0
-            await updateSongLimitAPI(songLimitRecord.documentId, {
-              song_requests: 0,
-              ai_guide_requests: 0
-            });
-            console.log('Song requests and AI guide requests reset to 0');
-          } else {
-            // Record doesn't exist - create a new one with default values
-            await createSongLimit({
-              username: authUser.username,
-              song_requests: 0,
-              ai_guide_requests: 0
-            });
-            console.log('Song limit record created with default values (0/0)');
-          }
-        } catch (error) {
-          // If getSongLimits fails (404), try to create a new record
-          console.log('Song limit record not found, attempting to create...', error);
-          try {
-            await createSongLimit({
-              username: authUser.username,
-              song_requests: 0,
-              ai_guide_requests: 0
-            });
-            console.log('Song limit record created with default values (0/0)');
-          } catch (createError) {
-            console.log('Could not create song limit record:', createError);
-          }
-        }
-      }
-
-      console.log('Updating subscription status...');
-
-      await updateUserIsSubscribed({
-        variables: {
-          id: authUser.id,
-          data: {
-            is_subscribed: true
-          }
-        }
-      });
-
-      console.log('All updates completed successfully');
-
-      // Mark onboarding as completed
-      const userId = useAuthStore.getState().user?.documentId;
-      if (userId) {
-        const onboardingKey = `onboarding_${userId}`;
-        const tabIdKey = `onboarding_tab_${userId}`;
-        const currentTabId = sessionStorage.getItem(tabIdKey);
-        localStorage.setItem(
-          onboardingKey,
-          JSON.stringify({
-            status: "completed",
-            timestamp: Date.now(),
-            tabId: currentTabId,
-          })
-        );
-      }
-
-      toast.success("Account created and subscription activated successfully!");
-
-      // The sole eligibility observer owns automatic Music setup. Refetch it
-      // after Account completion without letting a Music outage undo onboarding.
-      void apolloClient.refetchQueries({ include: ["MusicIdentityEligibility"] }).catch(() => undefined);
-
-      // Navigate to home after successful completion
-      setHasSubmitted(true);
-      navigate("/home");
-    } catch (error: any) {
-      console.error("Error processing subscription:", error);
-      toast.error(error.message || "Failed to process subscription. Please try again.");
-    } finally {
-      setIsCreatingSubscription(false);
-      endFinalize(finalizeLockRef.current);
+      return;
     }
+    toast.error("Couldn't verify your account. Please check your connection and try again.");
+    return;
+
   };
 
   /**
@@ -1301,22 +767,7 @@ const OnBoarding = () => {
    *   2. Uncomment the 'Subscription Plans' entry in the steps array below
    */
   const handleSubscriptionSubmitWithFreePlan = async (currentFormData: typeof formData) => {
-    const freePlan = subscriptionPlansData?.find(
-      (plan: SubscriptionPlan) => plan.plan_name?.toLowerCase() === 'free'
-    );
-
-    if (!freePlan) {
-      if (subscriptionPlansLoading) {
-        toast.error("Subscription plans are still loading. Please wait a moment and try again.");
-      } else {
-        toast.error("Free plan not available. Please contact support.");
-      }
-      return;
-    }
-
-    console.log('Auto-selecting free plan:', freePlan.plan_name, freePlan.documentId);
-    // Pass plan explicitly to avoid stale-state race condition
-    await handleSubscriptionSubmit(freePlan.documentId, freePlan, currentFormData);
+    await handleSubscriptionSubmit(currentFormData);
   };
 
   // Final step (Address). Validates the address fields, then creates the account
@@ -1516,6 +967,18 @@ const OnBoarding = () => {
     );
   }
 
+  if (canonicalAccount.error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black text-white">
+        <div className="text-center">
+          <p>Couldn't verify your account. Please check your connection and try again.</p>
+          <button type="button" className="mt-4 rounded-lg bg-purple-600 px-5 py-2"
+            onClick={() => canonicalAccount.refetch()}>Retry</button>
+        </div>
+      </div>
+    );
+  }
+
   /**
    * Don't render onboarding form if account already exists and is complete
    * But show a loading state instead of null to prevent blank page
@@ -1564,7 +1027,7 @@ const OnBoarding = () => {
   }
 
   // Ensure we always render something
-  if (!documentId || !token) {
+  if (!documentId) {
     console.log("OnBoarding: Missing required data, showing error");
     return (
       <div className="flex items-center justify-center min-h-screen bg-black">

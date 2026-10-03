@@ -13,6 +13,9 @@ import { Route, Routes } from 'react-router-dom';
 import { PublicMusicAvailabilityProvider, usePublicMusicAvailability } from '../../music/PublicMusicAvailabilityProvider';
 const usePublicProfileShell = vi.hoisted(() => vi.fn());
 vi.mock('../../PublicHome/api/usePublicProfileShell', () => ({ usePublicProfileShell }));
+vi.mock('../../Profile/api/useCanonicalAccount', () => ({ useCanonicalAccount: () => ({
+  data: { id: 'a1', revision: 1 }, isLoading: false,
+}) }));
 vi.mock('../components/ProfileAccountSettings', () => ({ default: () => null }));
 vi.mock('../components/BillingTab', () => ({ default: () => null }));
 vi.mock('../components/LanguageSelector', () => ({ default: () => null, LANGUAGES: [{ code: 'en', name: 'English' }] }));

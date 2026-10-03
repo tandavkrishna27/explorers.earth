@@ -30,9 +30,10 @@ import { GET_GUIDES_QUERY, GET_USER_ACCOUNT_QUERY } from "../features/Guides/api
 import type { Guide } from "../features/Guides/types";
 import { getAllUserLocations } from "../utils/geoHelpers";
 import InteractiveMap from "../components/InteractiveMap";
-import { calculateIsProfileComplete, calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
+import { calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
 import { selectCompletedAccount } from "../features/music/musicIdentityCoordinator";
 import { publicMusicShareUrl } from "../features/music/musicShareUrl";
+import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 
 // Category integrations
 import { MOVIE_LISTS_BY_ACCOUNT } from "../features/Movies/api/query";
@@ -193,6 +194,9 @@ HomeSkeleton.displayName = "HomeSkeleton";
 const Home = memo(() => {
   const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
+  const sessionGeneration = useAuthStore((state) => state.generation);
+  const canonicalAccount = useCanonicalAccount();
+  const canonicalHandle = canonicalAccount.data?.handle ?? "";
   const token = useAuthStore((state) => state.token);
   const { setSelectedCity } = useCityStore();
   const { setSetupStatus } = useSetupStore();
@@ -485,8 +489,8 @@ const Home = memo(() => {
     else if (activeTab === "products") subPath = "products";
     else if (activeTab === "people") subPath = "people";
 
-    return `${url}/${user?.username}/${subPath}`;
-  }, [activeTab, tunesDashboard.dashboard?.publication, url, user?.username]);
+    return `${url}/${canonicalHandle}/${subPath}`;
+  }, [activeTab, tunesDashboard.dashboard?.publication, url, canonicalHandle]);
   const listNames = userLists?.recommendationLists;
   const allGuides: Guide[] = guidesData?.guides || [];
   // Show all guides (drafts and published) on Home Dashboard, matching Recommendations behavior
@@ -497,11 +501,7 @@ const Home = memo(() => {
   }, [allGuides, listNames]);
 
   // Calculate completion flags - Enhanced profile completion check
-  const isProfileComplete = useMemo(() => {
-    const dashboardAccount = dashboardStatusData?.me?.accounts?.find((candidate: { documentId?: string }) => candidate.documentId === accountDocumentId);
-    const accountData = dashboardAccount || account;
-    return calculateIsProfileComplete(accountData);
-  }, [dashboardStatusData, account, accountDocumentId]);
+  const isProfileComplete = canonicalAccount.data?.onboardingStatus === "complete";
 
   const isRecommendationsComplete = useMemo(() => {
     // Try dashboardStatusData first, then fallback to listNames
@@ -528,12 +528,12 @@ const Home = memo(() => {
   const isAllSetupComplete = useMemo(() => {
     // Wait for critical data to load before making a decision
     // Don't show setup card during loading - show loading spinner instead
-    if (dashboardStatusLoading || loading) {
+    if (canonicalAccount.isPending || dashboardStatusLoading || loading) {
       return false; // Wait for data to load - loading state handles this
     }
 
     // If we have account data (from either source), proceed with checks
-    const hasAccountData = dashboardStatusData?.me?.accounts?.find((candidate: { documentId?: string }) => candidate.documentId === accountDocumentId) || account;
+    const hasAccountData = canonicalAccount.data;
     if (!hasAccountData) {
       return false; // No account data available yet - show setup card
     }
@@ -557,7 +557,7 @@ const Home = memo(() => {
 
     // If both steps are complete, hide the setup card immediately
     return bothComplete;
-  }, [isProfileComplete, isRecommendationsComplete, dashboardStatusLoading, loading, dashboardStatusData, account, accountDocumentId]);
+  }, [isProfileComplete, isRecommendationsComplete, canonicalAccount.data, canonicalAccount.isPending, dashboardStatusLoading, loading]);
 
   const totalActiveListsCount = useMemo(() => {
     const activePlaces = listNames?.filter((list: any) => list.Visibility === true)?.length || 0;
@@ -597,10 +597,10 @@ const Home = memo(() => {
   useEffect(() => {
     // Update store whenever completion flags change
     // Only update if we have data loaded (not during initial loading)
-    if (!loading) {
-      setSetupStatus(isProfileComplete, isRecommendationsComplete);
+    if (!loading && canonicalAccount.data) {
+      setSetupStatus(isProfileComplete, isRecommendationsComplete, canonicalAccount.data.id, sessionGeneration);
     }
-  }, [loading, isProfileComplete, isRecommendationsComplete, setSetupStatus]);
+  }, [loading, isProfileComplete, isRecommendationsComplete, canonicalAccount.data, setSetupStatus, sessionGeneration]);
 
   // Clear walkthrough session storage when setup is complete
   // This prevents the walkthrough from auto-starting when users add places after completing setup
@@ -767,7 +767,7 @@ const Home = memo(() => {
   ];
 
   // Show loading state if any critical query is loading
-  if (loading || dashboardStatusLoading) {
+  if (loading || dashboardStatusLoading || canonicalAccount.isPending) {
     if ((window as any).__dashboardLoaded) {
       return <HomeSkeleton />;
     }
@@ -990,8 +990,8 @@ const Home = memo(() => {
   return (
     <>
       <SEO
-        title={t("dashboard.home.seo.title", { username: user?.username || "" })}
-        description={t("dashboard.home.seo.description", { username: user?.username || "" })}
+        title={t("dashboard.home.seo.title", { username: canonicalHandle })}
+        description={t("dashboard.home.seo.description", { username: canonicalHandle })}
         keywords={[
           t("dashboard.home.seo.keywords.explorersDashboard"),
           t("dashboard.home.seo.keywords.qrCodeManagement"),
@@ -1020,7 +1020,7 @@ const Home = memo(() => {
           >
 
             <h1 className="text-xl md:text-3xl font-bold font-poppins text-dashboard leading-tight md:leading-normal py-2 px-4 text-center">
-              {t("dashboard.home.welcomeBack")}, {user?.username}
+              {t("dashboard.home.welcomeBack")}, {canonicalHandle}
             </h1>
             {!account?.Account_Name && (
               <Button
@@ -1113,7 +1113,7 @@ const Home = memo(() => {
                 shareButtons={shareButtons}
                 isOpen={showProfileShareModal}
                 onClose={() => setShowProfileShareModal(false)}
-                url={`${url}/${user?.username}`}
+                url={`${url}/${canonicalHandle}`}
                 utmParams={profileUtmParams}
                 backgroundImage={account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background}
               />
@@ -1122,7 +1122,7 @@ const Home = memo(() => {
                 shareButtons={shareButtons}
                 isOpen={showRecommendationsShareModal}
                 onClose={() => setShowRecommendationsShareModal(false)}
-                url={`${url}/${user?.username}/places`}
+                url={`${url}/${canonicalHandle}/places`}
                 utmParams={recommendationUtmParams}
                 backgroundImage={account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background}
               />
@@ -1293,7 +1293,7 @@ const Home = memo(() => {
                                       [item.documentId]: false,
                                     }))
                                   }
-                                  url={`${url}/${user?.username}/places/${toUrlSlug(item.List_Name)}`}
+                                  url={`${url}/${canonicalHandle}/places/${toUrlSlug(item.List_Name)}`}
                                   utmParams={recommendationUtmParams}
                                   backgroundImage={poster || account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background}
                                 />
@@ -1615,7 +1615,7 @@ const Home = memo(() => {
                                       [guide.documentId]: false,
                                     }))
                                   }
-                                  url={`${url}/${user?.username}/guides`}
+                                  url={`${url}/${canonicalHandle}/guides`}
                                   utmParams={guidesUtmParams}
                                   backgroundImage={poster || account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background}
                                   hideQRTab={true}
@@ -1818,7 +1818,7 @@ const Home = memo(() => {
                 shareButtons={shareButtons}
                 isOpen={showRecommendationsShareModal}
                 onClose={() => setShowRecommendationsShareModal(false)}
-                url={`${url}/${user?.username}/places`}
+                url={`${url}/${canonicalHandle}/places`}
                 utmParams={recommendationUtmParams}
                 backgroundImage={account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background}
               />
@@ -1827,7 +1827,7 @@ const Home = memo(() => {
                 shareButtons={shareButtons}
                 isOpen={showGuidesShareModal}
                 onClose={() => setShowGuidesShareModal(false)}
-                url={`${url}/${user?.username}/guides`}
+                url={`${url}/${canonicalHandle}/guides`}
                 utmParams={guidesUtmParams}
                 backgroundImage={account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background}
                 hideQRTab={true}
@@ -1868,7 +1868,7 @@ const Home = memo(() => {
           }}
           accountDocumentId={accountDocumentId}
           currentListCount={movieLists.length}
-          username={user?.username || ""}
+          username={canonicalHandle}
           defaultListName={prefillTitle}
           onCreated={(newId) => {
             refetchMovies();
@@ -1901,7 +1901,7 @@ const Home = memo(() => {
               navigate(`/recommendations/books`, { state: { justCreatedList: true } });
             }
           }}
-          username={user?.username || ""}
+          username={canonicalHandle}
         />
       )}
 
@@ -1924,7 +1924,7 @@ const Home = memo(() => {
               navigate(`/recommendations/games`, { state: { justCreatedList: true } });
             }
           }}
-          username={user?.username || ""}
+          username={canonicalHandle}
         />
       )}
 
@@ -1983,7 +1983,7 @@ const Home = memo(() => {
               navigate(`/recommendations/apps`, { state: { justCreatedList: true } });
             }
           }}
-          username={user?.username || ""}
+          username={canonicalHandle}
         />
       )}
 
@@ -2006,7 +2006,7 @@ const Home = memo(() => {
               navigate(`/recommendations/products`, { state: { justCreatedList: true } });
             }
           }}
-          username={user?.username || ""}
+          username={canonicalHandle}
         />
       )}
 
@@ -2029,7 +2029,7 @@ const Home = memo(() => {
               navigate(`/recommendations/people`, { state: { justCreatedList: true } });
             }
           }}
-          username={user?.username || ""}
+          username={canonicalHandle}
         />
       )}
     </>

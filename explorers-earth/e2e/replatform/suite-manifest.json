@@ -1,0 +1,399 @@
+{
+  "version": 1,
+  "scope": "delivered-auth-profile-books",
+  "inventoryBoundary": "Exact protected fixture discovery must match at every run",
+  "lanes": [
+    {
+      "name": "auth",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/auth.spec.ts",
+      "projects": [
+        "chromium-pr-safe"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+          "titlePath": [
+            "stale local auth never opens a private deep link; public login remains reachable"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+          "titlePath": [
+            "failed Google start returns the routed login form with a retryable error"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+          "titlePath": [
+            "failed recovery start returns the routed recovery form with a retryable error"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+          "titlePath": [
+            "failed logout fences a receiving tab after reload and a newly opened tab"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+          "titlePath": [
+            "real local session gates onboarding and cross-tab logout revokes both tabs"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+          "titlePath": [
+            "purpose-bound proof recovers once against real API and requires a fresh ordinary session"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "profile",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/profile.spec.ts",
+      "projects": [
+        "chromium-pr-safe"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+          "titlePath": [
+            "canonical onboarding and profile round-trip at 1365px"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+          "titlePath": [
+            "canonical onboarding and profile round-trip at 390px"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "books",
+      "runner": "tunes/scripts/books-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/books.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/books.spec.ts",
+      "projects": [
+        "books-desktop",
+        "books-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "owner form create, Add with all fields, publication, repeat edits and archive reload"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "owner form create, Add with all fields, publication, repeat edits and archive reload"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "anonymous later list, complete subject children, full eligible hero and modal"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "anonymous later list, complete subject children, full eligible hero and modal"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "cover success, one-slot failure and both fallback remain distinct real API Add outcomes"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "cover success, one-slot failure and both fallback remain distinct real API Add outcomes"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "fresh privacy gates, real bytes, altered owner denial and stale revision retention"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "fresh privacy gates, real bytes, altered owner denial and stale revision retention"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "15 across lists, rejected 16th, staged unpin plus immediate reorder and explicit Save"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "15 across lists, rejected 16th, staged unpin plus immediate reorder and explicit Save"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "snapshot transport failure keeps Add draft and successful retry creates one recommendation"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "snapshot transport failure keeps Add draft and successful retry creates one recommendation"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "Add retry after pin transport failure patches changed draft without duplicate creation or covers"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "Add retry after pin transport failure patches changed draft without duplicate creation or covers"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "committed create with lost response replays original receipt and retains cover identity"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "committed create with lost response replays original receipt and retains cover identity"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "delayed canonical catalog continuation cannot append after query change or search unmount"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "delayed canonical catalog continuation cannot append after query change or search unmount"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "unsent invalid buy URL can be corrected and saved once"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "unsent invalid buy URL can be corrected and saved once"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "lifecycle",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/lifecycle.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "projects": [
+        "lifecycle-chromium"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "active Settings requires trimmed feedback and retries one durable submission"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "foreign feedback and stale revision cannot delete an active owner"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "UI deactivation revokes both tabs and the old session"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "UI deletion is cancelled by a real Google recovery callback"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "recovery proof expires and cannot grant ordinary authority"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "concurrent recovery completes exactly once and rejects replay"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "wrong provider identity cannot recover a retained account"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "terminal maintenance preserves tombstone and denies recovery"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "foreign and absent origins cannot mutate lifecycle state"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "delayed old lifecycle response cannot navigate a new owner"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "Auth is one Chromium desktop project",
+    "Profile uses two viewport cases in one desktop project; 390px is not a mobile device project",
+    "Books has desktop and mobile Chromium projects",
+    "Lifecycle is one Chromium desktop project; provider simulation is not deployed Google acceptance"
+  ],
+  "pending": [
+    {
+      "ticket": "2.4",
+      "obligation": "Configured deployed Google callback and consent evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.4",
+      "obligation": "Analytics acceptance",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.5",
+      "obligation": "Unified QA deployment, image/schema and trusted producer evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "4/5",
+      "obligation": "Other six canonical category producer families",
+      "status": "pending"
+    },
+    {
+      "ticket": "6.1-6.3",
+      "obligation": "Music mapped-owner HTTP/socket and feature parity",
+      "status": "pending"
+    },
+    {
+      "ticket": "7.1/7.2",
+      "obligation": "Cross-category consumers and all nine categories",
+      "status": "pending"
+    },
+    {
+      "ticket": "8.1-8.4",
+      "obligation": "Removal, rename, exact QA digest promotion and deployment",
+      "status": "pending"
+    }
+  ]
+}

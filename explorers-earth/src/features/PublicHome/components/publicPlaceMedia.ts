@@ -42,6 +42,9 @@ const resolveSavedMediaUrl = (candidate: unknown): string | undefined => {
   const value = readCandidateUrl(candidate);
   if (!value) return undefined;
 
+  const canonicalMediaPath = /^\/api\/explorers\/v1\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/content$/i;
+  if (canonicalMediaPath.test(value)) return value;
+
   if (value.startsWith("/uploads/")) {
     return `${publicStrapiOrigin()}${value}`;
   }
@@ -51,6 +54,8 @@ const resolveSavedMediaUrl = (candidate: unknown): string | undefined => {
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
       return undefined;
     }
+    if (typeof window !== "undefined" && parsed.origin === window.location.origin
+      && canonicalMediaPath.test(parsed.pathname) && !parsed.search && !parsed.hash) return parsed.toString();
     if (parsed.origin === publicStrapiOrigin() || isAmazonS3Host(parsed.hostname)) {
       return parsed.toString();
     }

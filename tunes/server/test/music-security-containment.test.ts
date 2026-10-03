@@ -63,6 +63,12 @@ vi.mock("../services/musicReconciliationSuspensionListener", () => ({
 }));
 // This route-security suite is DB-free; the PostgreSQL notification transport
 // has its own listener tests and must not connect during app composition here.
+// DB-free HTTP containment has no background-retention database authority.
+// Real immediate/non-overlapping retention and shutdown are tested separately.
+vi.mock("../application/analyticsMaintenance", () => ({
+  startAnalyticsMaintenance: vi.fn(() => vi.fn(async () => undefined)),
+}));
+
 vi.mock("../services/musicPublicChangeListener", () => ({
   startMusicPublicChangeListener: vi.fn(async () => ({ stop: vi.fn(async () => undefined) })),
 }));

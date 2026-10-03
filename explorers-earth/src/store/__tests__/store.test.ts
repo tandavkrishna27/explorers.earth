@@ -114,18 +114,34 @@ describe('useAuthStore', () => {
     expect(state.user).toBeNull();
   });
 
-  it('should persist state to localStorage', () => {
-    // Note: Vitest jsdom provides localStorage
+  it('does not persist browser authority to localStorage', () => {
     useAuthStore.getState().login(initialData);
-    
     const storedStr = localStorage.getItem('auth-storage');
-    expect(storedStr).not.toBeNull();
-    
     if (storedStr) {
       const stored = JSON.parse(storedStr);
-      expect(stored.state.isAuthenticated).toBe(true);
-      expect(stored.state.token).toBe('fake-jwt-token');
-      expect(stored.state.user.username).toBe('testuser');
+      expect(stored.state).not.toHaveProperty('isAuthenticated');
+      expect(stored.state).not.toHaveProperty('token');
+      expect(stored.state).not.toHaveProperty('user');
     }
+  });
+
+  it('does not revive a persisted Strapi credential or grant owner access before session verification', () => {
+    localStorage.setItem('auth-storage', JSON.stringify({ state: {
+      isAuthenticated: true, token: 'old-jwt', user: initialData,
+    }, version: 0 }));
+    useAuthStore.persist.rehydrate();
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(useAuthStore.getState().token).toBeNull();
+  });
+
+  it('rejects an old verification result after an A to B to A session change', () => {
+    const oldGeneration = useAuthStore.getState().beginVerification();
+    useAuthStore.getState().logout();
+    const nextGeneration = useAuthStore.getState().beginVerification();
+    expect(nextGeneration).not.toBe(oldGeneration);
+    useAuthStore.getState().acceptVerified(oldGeneration, {
+      id: 'account-a', userId: 'user-a', username: 'A', email: 'a@example.invalid', onboardingStatus: 'complete', revision: 1,
+    });
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
   });
 });

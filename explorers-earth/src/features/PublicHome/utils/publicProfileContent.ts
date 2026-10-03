@@ -96,7 +96,7 @@ const retainSafeQuillFormatting = (template: HTMLTemplateElement) => {
     const backgroundColor = parsedStyle.style.getPropertyValue("background-color").trim();
 
     element.removeAttribute("style");
-    if (element.tagName !== "SPAN") return;
+    if (!["SPAN", "STRONG", "B", "EM", "I", "U", "S"].includes(element.tagName)) return;
 
     if (isSafeQuillColor(color)) element.style.color = color;
     if (isSafeQuillColor(backgroundColor)) {

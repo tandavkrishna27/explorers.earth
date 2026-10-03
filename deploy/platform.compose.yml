@@ -1,0 +1,240 @@
+# Synthetic local reference graph; not hosted deployment authority.
+# Generate only through the reviewed runtime plan; supplied image digests below are placeholders.
+{
+  "name": "platform-rehearsal",
+  "services": {
+    "postgres": {
+      "image": "postgres:15-alpine@sha256:fceb6f86328c36f2438fae3b851b0cc57c4a7e69a58c866d9ce24281f2cf0c9c",
+      "environment": {
+        "POSTGRES_USER": "platform_owner",
+        "POSTGRES_DB": "platform_qa",
+        "POSTGRES_PASSWORD_FILE": "/run/secrets/migrator"
+      },
+      "volumes": [
+        "postgres-data:/var/lib/postgresql/data",
+        "/owned/migrator:/run/secrets/migrator:ro"
+      ],
+      "networks": [
+        "database"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD-SHELL",
+          "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""
+        ],
+        "interval": "3s",
+        "timeout": "3s",
+        "retries": 20
+      },
+      "restart": "unless-stopped"
+    },
+    "migrate": {
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "cap_drop": [
+        "ALL"
+      ],
+      "image": "ghcr.io/tandavkrishna27/explorers-api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "command": [
+        "node",
+        "dist/server/deployment/run-migration-gate.js"
+      ],
+      "restart": "no",
+      "environment": {
+        "MUSIC_MODE": "live",
+        "MUSIC_DATABASE_HOST": "postgres",
+        "MUSIC_DATABASE_PORT": "5432",
+        "MUSIC_DATABASE_NAME": "platform_qa",
+        "MUSIC_DATABASE_MIGRATOR_USER": "platform_owner",
+        "MUSIC_DATABASE_USER": "platform_owner",
+        "MUSIC_DATABASE_PASSWORD_FILE": "/run/secrets/migrator",
+        "MUSIC_RUNTIME_DATABASE_USER": "platform_login",
+        "MUSIC_RUNTIME_DATABASE_PASSWORD_FILE": "/run/secrets/runtime",
+        "MUSIC_IMAGE_DIGEST": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "MUSIC_IMAGE_COMMIT": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "MUSIC_MIGRATION_MARKER": "0037_explorers_movies_provider_context",
+        "MUSIC_GATE_ATTESTATION_KEY": "synthetic-only-not-a-release-key-123456789",
+        "MUSIC_GATE_ATTESTATION_PATH": "/deployment-gates/gate.json"
+      },
+      "volumes": [
+        "/owned/migrator:/run/secrets/migrator:ro",
+        "/owned/runtime:/run/secrets/runtime:ro",
+        "gate-evidence:/deployment-gates"
+      ],
+      "networks": [
+        "database"
+      ],
+      "depends_on": {
+        "postgres": {
+          "condition": "service_healthy"
+        }
+      }
+    },
+    "api": {
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "cap_drop": [
+        "ALL"
+      ],
+      "image": "ghcr.io/tandavkrishna27/explorers-api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "command": [
+        "node",
+        "dist/server/api.js"
+      ],
+      "env_file": [
+        {
+          "path": "/owned/api.env",
+          "required": true
+        }
+      ],
+      "environment": {
+        "MUSIC_MODE": "live",
+        "MUSIC_DATABASE_HOST": "postgres",
+        "MUSIC_DATABASE_PORT": "5432",
+        "MUSIC_DATABASE_NAME": "platform_qa",
+        "MUSIC_DATABASE_MIGRATOR_USER": "platform_owner",
+        "NODE_ENV": "production",
+        "EXPLORERS_API_MODE": "canonical",
+        "PORT": "5000",
+        "MUSIC_DATABASE_USER": "platform_login",
+        "MUSIC_DATABASE_PASSWORD_FILE": "/run/secrets/runtime",
+        "EXPLORERS_PUBLIC_ORIGIN": "https://qa.platform.invalid",
+        "EXPLORERS_DEPLOYMENT_TIER": "qa",
+        "EXPLORERS_MEDIA_ENVIRONMENT": "qa"
+      },
+      "volumes": [
+        "/owned/runtime:/run/secrets/runtime:ro"
+      ],
+      "networks": [
+        "database",
+        "api"
+      ],
+      "depends_on": {
+        "migrate": {
+          "condition": "service_completed_successfully"
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5000/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+        ],
+        "interval": "3s",
+        "timeout": "3s",
+        "retries": 20
+      },
+      "restart": "unless-stopped"
+    },
+    "render": {
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "cap_drop": [
+        "ALL"
+      ],
+      "image": "public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1",
+      "read_only": true,
+      "command": [
+        "node",
+        "/opt/platform-runtime/scripts/render-platform-runtime.mjs",
+        "/run/platform/public-config.json",
+        "/template/index.html",
+        "/runtime-web"
+      ],
+      "volumes": [
+        "/owned/runtime-source:/opt/platform-runtime:ro",
+        "/owned/public.json:/run/platform/public-config.json:ro",
+        "/owned/index.html:/template/index.html:ro",
+        "runtime-web:/runtime-web"
+      ],
+      "network_mode": "none",
+      "restart": "no"
+    },
+    "web": {
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "cap_drop": [
+        "ALL"
+      ],
+      "cap_add": [
+        "CHOWN",
+        "SETUID",
+        "SETGID",
+        "NET_BIND_SERVICE"
+      ],
+      "image": "ghcr.io/tandavkrishna27/explorers-web@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "volumes": [
+        "runtime-web:/runtime-web:ro"
+      ],
+      "networks": [
+        "web"
+      ],
+      "depends_on": {
+        "render": {
+          "condition": "service_completed_successfully"
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "wget",
+          "-q",
+          "-O",
+          "/dev/null",
+          "http://127.0.0.1/"
+        ],
+        "interval": "3s",
+        "timeout": "3s",
+        "retries": 20
+      },
+      "restart": "unless-stopped"
+    },
+    "proxy": {
+      "image": "traefik:v3.1@sha256:8516638b18e67e999d293e4ff0e5baf7807674cd4bdd3d36d448497bcbf0a174",
+      "command": [
+        "--api.dashboard=false",
+        "--providers.file.filename=/routing/platform-routing.yml",
+        "--entrypoints.websecure.address=:443"
+      ],
+      "ports": [
+        "127.0.0.1:0:443"
+      ],
+      "volumes": [
+        "/owned/routing.yml:/routing/platform-routing.yml:ro",
+        "/owned/tls:/tls:ro"
+      ],
+      "networks": [
+        "api",
+        "web"
+      ],
+      "depends_on": {
+        "api": {
+          "condition": "service_healthy"
+        },
+        "web": {
+          "condition": "service_healthy"
+        }
+      },
+      "restart": "unless-stopped"
+    }
+  },
+  "networks": {
+    "database": {
+      "internal": true
+    },
+    "api": {},
+    "web": {
+      "internal": true
+    }
+  },
+  "volumes": {
+    "postgres-data": {},
+    "gate-evidence": {},
+    "runtime-web": {}
+  }
+}

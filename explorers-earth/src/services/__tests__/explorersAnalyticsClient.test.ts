@@ -36,8 +36,25 @@ type LegacyAnalyticsReadScope = {
 };
 
 describe('explorersAnalyticsClient', () => {
+  it.each([new Response(null,{status:204}),new Response('{}',{status:200}),new Response('{"status":"committed"}',{status:201}),new Response('html',{status:200})])('does not acknowledge an invalid success envelope',async(response)=>{
+    await expect(postExplorersAnalyticsEvent(payload,{fetchImpl:vi.fn(async()=>response),retryCount:0})).rejects.toThrow('receipt');
+  });
+  it('accepts a retired committed duplicate without a document ID',async()=>{
+    await expect(postExplorersAnalyticsEvent(payload,{fetchImpl:vi.fn(async()=>new Response('{"status":"committed","duplicate":true,"retired":true}',{status:200})),retryCount:0})).resolves.toBeUndefined();
+  });
+  it('stops a transient retry if consent is withdrawn by the first request',async()=>{
+    const fetchImpl=vi.fn(async()=>{localStorage.clear();throw new TypeError('lost acknowledgement');});
+    await expect(postExplorersAnalyticsEvent(payload,{fetchImpl})).rejects.toThrow('consent');expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+  it('never submits without current browser consent and stops pending polls after withdrawal',async()=>{
+    localStorage.clear();const fetchImpl=vi.fn().mockResolvedValue(new Response(null,{status:202}));
+    await expect(postExplorersAnalyticsEvent(payload,{fetchImpl})).rejects.toThrow('consent');expect(fetchImpl).not.toHaveBeenCalled();
+    localStorage.setItem('explorers-cookie-consent',JSON.stringify({analytics:true}));
+    await expect(postExplorersAnalyticsEvent(payload,{fetchImpl,sleep:async()=>{localStorage.clear();}})).rejects.toThrow('consent');expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem('explorers-cookie-consent',JSON.stringify({analytics:true}));
   });
 
   afterEach(() => {
@@ -47,6 +64,7 @@ describe('explorersAnalyticsClient', () => {
   });
 
   it('enables analytics only after an explicit analytics consent', () => {
+    localStorage.clear();
     expect(hasAnalyticsConsent()).toBe(false);
 
     localStorage.setItem('explorers-cookie-consent', '{bad json');
@@ -99,7 +117,7 @@ describe('explorersAnalyticsClient', () => {
     expect(init.body).not.toContain('rawIp');
   });
 
-  it.runIf(import.meta.env.DEV)('routes the default development POST through the same-origin Music proxy', async () => {
+  it('routes canonical POST directly to the same-origin API', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ status: 'committed', duplicate: false }), {
         status: 201,
@@ -112,7 +130,7 @@ describe('explorersAnalyticsClient', () => {
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     const [url, init] = fetchImpl.mock.calls[0];
-    expect(url).toBe('/__localtunes/api/explorers/analytics/events');
+    expect(url).toBe('/api/explorers/analytics/events');
     expect(init).toMatchObject({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -124,7 +142,7 @@ describe('explorersAnalyticsClient', () => {
 
   it('keeps an explicitly injected HTTPS transport direct', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ status: 'committed' }), { status: 201 }),
+      new Response(JSON.stringify({ status: 'committed', duplicate: false }), { status: 201 }),
     );
 
     await postExplorersAnalyticsEvent(payload, {
@@ -138,12 +156,12 @@ describe('explorersAnalyticsClient', () => {
     );
   });
 
-  it('keeps an omitted production POST fetch on the configured HTTPS origin', async () => {
+  it('keeps canonical production POST same-origin despite a historical Music origin', async () => {
     vi.stubEnv('DEV', false);
     vi.stubEnv('VITE_LOCAL_TUNES_API_URL', 'https://analytics-production.example');
     vi.resetModules();
     const fetchImpl = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ status: 'committed' }), { status: 201 }),
+      new Response(JSON.stringify({ status: 'committed', duplicate: false }), { status: 201 }),
     );
     vi.stubGlobal('fetch', fetchImpl);
     const { postExplorersAnalyticsEvent: postWithProductionDefaults } =
@@ -152,7 +170,7 @@ describe('explorersAnalyticsClient', () => {
     await postWithProductionDefaults(payload, { retryCount: 0 });
 
     expect(fetchImpl).toHaveBeenCalledWith(
-      'https://analytics-production.example/api/explorers/analytics/events',
+      '/api/explorers/analytics/events',
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -195,7 +213,7 @@ describe('explorersAnalyticsClient', () => {
     );
   });
 
-  it.runIf(import.meta.env.DEV)('rejects an unexpected default analytics origin before network I/O', async () => {
+  it('rejects a non-committed injected response', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetchImpl);
 
@@ -204,15 +222,15 @@ describe('explorersAnalyticsClient', () => {
         baseUrl: 'https://unexpected.example.test',
         retryCount: 0,
       }),
-    ).rejects.toThrow('unexpected origin');
-    expect(fetchImpl).not.toHaveBeenCalled();
+     ).rejects.toThrow('receipt');
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it('retries a transient failure once with the identical event ID', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(new Response('temporary', { status: 503 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 'committed' }), { status: 201 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 'committed', duplicate: false }), { status: 201 }));
 
     await postExplorersAnalyticsEvent(payload, {
       baseUrl: 'http://localhost:5000',

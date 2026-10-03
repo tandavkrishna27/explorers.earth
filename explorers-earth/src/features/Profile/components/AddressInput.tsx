@@ -1,3 +1,4 @@
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { useState, useEffect, useRef, FC } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { Places } from "../types/types";
@@ -171,7 +172,7 @@ const AddressInput: FC<AddressInputProps> = ({
               `https://places.googleapis.com/v1/places/${place.place_id}`,
               {
                 headers: {
-                  "X-Goog-Api-Key": import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+                  "X-Goog-Api-Key": mapsBrowserKey(),
                   "X-Goog-FieldMask": "id,displayName,formattedAddress,types,primaryType,primaryTypeDisplayName,addressComponents,location,rating",
                 },
               }

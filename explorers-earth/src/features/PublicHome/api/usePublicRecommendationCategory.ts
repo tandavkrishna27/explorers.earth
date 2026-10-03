@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import {completeBooksPreviews} from '../../Books/api/publicBooksContinuation';
 import { publicProfileGatewayClient, type PublicCategory } from "./publicProfileGatewayClient";
 import { subscribePublicProfileInvalidation } from "./publicProfileInvalidation";
 import { mergePublicPage, PUBLIC_PROFILE_PAGE_SIZE, readPublicPageRows } from "./publicProfilePagination";
@@ -14,10 +15,14 @@ export function usePublicRecommendationCategory(
   const normalizedUsername = username?.trim().toLowerCase();
   const scope = normalizedUsername ? `${normalizedUsername}\u0000${category}` : undefined;
   const deferredInvalidation = useRef<string>();
+  const richPage=async(value:Promise<unknown>,signal:AbortSignal,bypass:boolean)=>{
+    const page=await value;
+    return category==='books'?completeBooksPreviews(page,(slug,cursor)=>publicProfileGatewayClient.detailPage(username!,category,slug,{limit:24,cursor},signal,bypass)):page;
+  };
   const state = usePublicPagedResource({
     scope, enabled, bypassFirst: Boolean(scope && deferredInvalidation.current === scope),
-    readFirst: (signal, bypass) => publicProfileGatewayClient.category(username!, category, signal, bypass),
-    readNext: (offset, signal, bypass) => publicProfileGatewayClient.categoryPage(username!, category, { limit: PUBLIC_PROFILE_PAGE_SIZE, cursor: `o${offset}` }, signal, bypass),
+    readFirst: (signal, bypass) => richPage(publicProfileGatewayClient.category(username!, category, signal, bypass),signal,bypass),
+    readNext: (offset, signal, bypass) => richPage(publicProfileGatewayClient.categoryPage(username!, category, { limit: PUBLIC_PROFILE_PAGE_SIZE, cursor: `o${offset}` }, signal, bypass),signal,bypass),
     peek: () => publicProfileGatewayClient.peekCategory(username!, category) as PublicPagePayload | undefined,
     readRows: (data) => readPublicPageRows(data, category, false),
     merge: (previous, next) => mergePublicPage(previous, next, category, false),

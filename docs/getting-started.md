@@ -2,7 +2,7 @@
 
 ## Supported local fixture
 
-The supported integrated Music development path uses Node.js 22.12+, npm, Docker,
+The supported integrated Music development path uses Node.js 24.21.0 (24.x), npm, Docker,
 and Docker Compose v2. It starts deterministic fixture Strapi, disposable
 PostgreSQL 15, the production-built Tunes service, and the production-built
 Explorer client. You do not need a local PostgreSQL or Strapi service for this

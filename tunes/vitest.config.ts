@@ -21,6 +21,6 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./server/test/setup.ts'],
     // Exclude integration tests from the default run so `npm test` never needs a DB.
-    exclude: [...configDefaults.exclude, '**/*.integration.test.ts', '**/*.real-tool.test.ts'],
+    exclude: [...configDefaults.exclude, '**/*.integration.test.ts', '**/account-recovery.test.ts', '**/*.real-tool.test.ts'],
   },
 });

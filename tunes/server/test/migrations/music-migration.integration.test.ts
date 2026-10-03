@@ -49,6 +49,65 @@ async function expectRejected(pool: pg.Pool, sql: string, values: unknown[] = []
 }
 
 describePostgres("C3 PostgreSQL 15 migration chain", () => {
+  it('upgrades historical0036 to Movies0037 and rejects readiness at the older floor',async()=>{const pool=await freshDatabase('movies_upgrade'),prior=loadMusicMigrations().filter(m=>m.id<'0037');await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});const before=(await pool.query('SELECT id,checksum,schema_checksum,applied_at FROM music_schema_migrations ORDER BY id')).rows;await expect(verifyMusicDatabase(pool)).rejects.toThrow();expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0037_explorers_movies_provider_context']);expect((await pool.query("SELECT id,checksum,schema_checksum,applied_at FROM music_schema_migrations WHERE id<'0037' ORDER BY id")).rows).toEqual(before);expect((await pool.query('SELECT count(*) FROM movie_provider_genre_terms')).rows[0].count).toBe('35');expect((await verifyMusicDatabase(pool)).ready).toBe(true);await resources.closePool(pool);});
+
+  it('upgrades 0035 to analytics without advancing content revisions and fails readiness without0036',async()=>{
+    const pool=await freshDatabase('analytics_upgrade'),prior=loadMusicMigrations().filter(m=>m.id<'0036');
+    await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
+    const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
+    await pool.query("INSERT INTO account_category_content_state(account_id,category,revision) VALUES($1,'books',7)",[account]);
+    const before=await pool.query('SELECT * FROM account_category_content_state WHERE account_id=$1',[account]);
+    await expect(verifyMusicDatabase(pool)).rejects.toThrow();
+    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0036_explorers_analytics_events','0037_explorers_movies_provider_context']);
+    expect((await pool.query('SELECT * FROM account_category_content_state WHERE account_id=$1',[account])).rows).toEqual(before.rows);
+    expect((await pool.query("SELECT to_regclass('analytics_events') AS events,to_regclass('analytics_event_receipts') AS receipts")).rows[0]).toEqual({events:'analytics_events',receipts:'analytics_event_receipts'});
+    await verifyMusicDatabase(pool);expect((await migrateMusicDatabase(pool)).appliedIds).toEqual([]);
+  });
+  it('upgrades populated 0032 to the override companion once without changing existing category revisions',async()=>{
+    const pool=await freshDatabase('override_upgrade'),prior=loadMusicMigrations().filter(m=>m.id<'0033');
+    await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
+    const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
+    await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Before override','before',0)",[account]);
+    const before=(await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows;
+    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context','0035_explorers_book_cover_import','0036_explorers_analytics_events','0037_explorers_movies_provider_context']);
+    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual([]);
+    expect((await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows).toEqual(before);
+    expect((await pool.query('SELECT count(*)::int n FROM recommendation_display_overrides')).rows[0].n).toBe(0);
+    expect((await pool.query("SELECT has_table_privilege('music_runtime','recommendation_display_overrides','SELECT,INSERT,UPDATE,DELETE') allowed,has_table_privilege('music_runtime','account_category_content_state','UPDATE') counter_write")).rows[0]).toEqual({allowed:true,counter_write:false});
+    await pool.query("UPDATE music_schema_migrations SET checksum=repeat('0',64) WHERE id='0033_explorers_recommendation_display_overrides'");
+    await expect(migrateMusicDatabase(pool)).rejects.toThrow('migration checksum mismatch');
+    await resources.closePool(pool);
+  });
+  it('upgrades 0031 to owner seek indexes without changing revision counters or runtime authority',async()=>{
+    const pool=await freshDatabase('owner_page_upgrade'),prior=loadMusicMigrations().filter(m=>m.id<'0032');
+    await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
+    const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
+    await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Prior list','prior',0)",[account]);
+    const before=(await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows;
+    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0032_explorers_owner_page_indexes','0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context','0035_explorers_book_cover_import','0036_explorers_analytics_events','0037_explorers_movies_provider_context']);
+    expect((await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows).toEqual(before);
+    const indexes=(await pool.query("SELECT indexname FROM pg_indexes WHERE schemaname='public' AND indexname IN ('collections_owner_order_idx','recommendations_owner_id_idx','collection_items_owner_page_idx','collection_items_owner_collection_order_idx') ORDER BY indexname")).rows;
+    expect(indexes).toHaveLength(4);
+    const privilege=(await pool.query("SELECT has_table_privilege('music_runtime','account_category_content_state','SELECT') readable,has_table_privilege('music_runtime','account_category_content_state','UPDATE') writable")).rows[0];expect(privilege).toEqual({readable:true,writable:false});
+    await resources.closePool(pool);
+  });
+  it('lets an account-first writer finish before freezing revision backfill sources',async()=>{
+    const pool=await freshDatabase('revision_writer_lock'),prior=loadMusicMigrations().filter(m=>m.id<'0031');
+    await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
+    const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
+    await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Before migration','before',0)",[account]);
+    const writer=await pool.connect();let pending:Promise<any>|undefined;
+    try {
+      await writer.query('BEGIN');await writer.query("SET LOCAL lock_timeout='500ms'");await writer.query('SELECT id FROM creator_accounts WHERE id=$1 FOR UPDATE',[account]);
+      pending=migrateMusicDatabase(pool).then(value=>({value})).catch(error=>({error}));
+      let waiting=false;const deadline=Date.now()+5000;
+      while(Date.now()<deadline&&!waiting) {waiting=(await pool.query('SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type=\'Lock\'')).rowCount!>0;if(!waiting) await new Promise(resolve=>setTimeout(resolve,10));}
+      expect(waiting).toBe(true);
+      await writer.query("UPDATE collections SET title='Committed before migration' WHERE account_id=$1",[account]);await writer.query('COMMIT');
+      expect((await pending).error).toBeUndefined();
+      expect((await pool.query('SELECT revision::text FROM account_category_content_state WHERE account_id=$1',[account])).rows).toEqual([{revision:'1'}]);
+    } finally {await writer.query('ROLLBACK');await pending;writer.release();await resources.closePool(pool);}
+  });
   aroundEach(async (runTest) => {
     await resources.runWithCleanup(runTest);
   });
@@ -76,7 +135,22 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     }
   });
 
-  it("migrates a fresh database, creates all 28 manifested runtime tables and controls, verifies, and repeats as a no-op", async () => {
+  it("backfills a populated 0030 database and upgrades category revisions once",async()=>{
+    const pool=await freshDatabase('content_revision_upgrade'),prior=loadMusicMigrations().filter(m=>m.id<'0031');
+    await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
+    const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
+    await pool.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Old list','old',0),($1,'guides','Old guide','guide',0)",[account]);
+    const upgraded=await migrateMusicDatabase(pool);expect(upgraded.appliedIds).toEqual(['0031_explorers_content_revision','0032_explorers_owner_page_indexes','0033_explorers_recommendation_display_overrides','0034_explorers_books_provider_context','0035_explorers_book_cover_import','0036_explorers_analytics_events','0037_explorers_movies_provider_context']);
+    expect((await pool.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1 ORDER BY category',[account])).rows).toEqual([{category:'books',revision:'1'},{category:'guides',revision:'1'}]);
+    const db=await pool.connect();try {await db.query('BEGIN');await db.query('SET LOCAL ROLE music_runtime');
+      await db.query("UPDATE collections SET heading='Post upgrade' WHERE account_id=$1 AND category='books'",[account]);await db.query('COMMIT');
+    } finally {await db.query('ROLLBACK');db.release();}
+    expect((await pool.query("SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category='books'",[account])).rows[0].revision).toBe('2');
+    expect((await migrateMusicDatabase(pool)).appliedIds).toEqual([]);
+    const triggers=await pool.query("SELECT count(*)::int AS count FROM pg_trigger WHERE NOT tgisinternal AND tgname LIKE '%_content_revision_%'");expect(triggers.rows[0].count).toBe(37);
+    await resources.closePool(pool);
+  });
+  it("migrates a fresh database, creates all 56 manifested runtime tables and controls, verifies, and repeats as a no-op", async () => {
     const pool = await freshDatabase("baseline");
     const first = await migrateMusicDatabase(pool);
     const second = await migrateMusicDatabase(pool);
@@ -328,18 +402,21 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
         (first === "create" ? "6" : "7").repeat(64), `provision-race-${suffix}`,
       ]);
       const tombstone = () => pool.query(insertTombstone, [userDocumentId, accountDocumentId, `delete-race-${suffix}`]);
-      const [firstPromise, secondPromise] = await resources.withClient(pool, async (blocker: pg.PoolClient) => {
+      const { settledPending } = await resources.withClient(pool, async (blocker: pg.PoolClient) => {
         await blocker.query("BEGIN");
         await blocker.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:user:${userDocumentId}`]);
         await blocker.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:account:${accountDocumentId}`]);
         const firstPending = first === "create" ? create() : tombstone();
         await waitForWaiters(1);
         const secondPending = first === "create" ? tombstone() : create();
+        // Attach rejection handlers before releasing the blocker: the losing
+        // query may reject before withClient returns to the outer assertion.
+        const settledPending = Promise.allSettled([firstPending, secondPending]);
         await waitForWaiters(2);
         await blocker.query("COMMIT");
-        return [firstPending, secondPending] as const;
+        return { settledPending };
       });
-      const [firstResult, secondResult] = await Promise.allSettled([firstPromise, secondPromise]);
+      const [firstResult, secondResult] = await settledPending;
       expect(firstResult.status).toBe("fulfilled");
       expect(secondResult.status).toBe("rejected");
       const state = await pool.query<{ live: number; tombstone: number }>(`SELECT
@@ -487,18 +564,21 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
             (strapi_user_document_id,strapi_account_document_id,reason,lifecycle_operation_id)
             VALUES ($1,$2,'direct-race',$3)`, [userDocumentId, accountDocumentId, `direct-tombstone-${suffix}`]);
         const deletion = () => pool.query("SELECT finalize_music_identity_deletion($1,$2,$3)", [userId, `delete-${suffix}`, "race-delete"]);
-        const [firstPromise, secondPromise] = await resources.withClient(pool, async (blocker: pg.PoolClient) => {
+        const { settledPending } = await resources.withClient(pool, async (blocker: pg.PoolClient) => {
           await blocker.query("BEGIN");
           await blocker.query("SELECT lock_music_identity_pair($1,$2)", [userDocumentId, accountDocumentId]);
           const firstPending = first === "delete" ? deletion() : competitor();
           await waitForWaiters(1);
           const secondPending = first === "delete" ? competitor() : deletion();
+          // Attach both rejection handlers before releasing the lock: either
+          // operation can reject before this callback returns to the test.
+          const settledPending = Promise.allSettled([firstPending, secondPending]);
           await waitForWaiters(2);
           await blocker.query("COMMIT");
-          return [firstPending, secondPending] as const;
+          return { settledPending };
         });
         const settled = await Promise.race([
-          Promise.allSettled([firstPromise, secondPromise]),
+          settledPending,
           new Promise<never>((_, reject) => setTimeout(() => reject(new Error("delete lock-order deadlock")), 5_000)),
         ]);
         expect(settled.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
@@ -741,7 +821,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
       await pool.query(`SELECT count(*) FROM ${table.name}`);
       families.add(table.family);
     }
-    expect(families).toEqual(new Set(["security-audit", "analytics", "pii", "user-content"]));
+    expect(families).toEqual(new Set(["security-audit", "analytics", "pii", "user-content", "identity", "identity-credential", "profile", "media"]));
 
     const app = express();
     setupMusicFixtureProbeRoute(app, {

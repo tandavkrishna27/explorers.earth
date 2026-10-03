@@ -1,6 +1,10 @@
+import { runtimeOrigin } from "../../../../lib/publicRuntimeConfig";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
+import { explorersApiClient } from "../../../../lib/explorersApiClient";
+import { useBooksOwnerContent } from "../../api/useBooksOwnerContent";
+import { useBookListCommands } from "../../api/useBookListCommands";
+import { booksCommandKey } from "../../api/booksClient";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, MoreVertical, Trash2,
@@ -11,11 +15,7 @@ import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import Accordion from "../../../../components/ui/Accordian";
 import useAuthStore from "../../../../store/store";
-import { BOOKS_BY_LIST, booksByListVars } from "../../api/query";
-import {
-  UPDATE_BOOK_LIST, DELETE_BOOK_LIST,
-  TOGGLE_BOOK_PIN, DELETE_RECOMMENDED_BOOK,
-} from "../../api/mutation";
+
 import { deduplicateBooks, buildCoverUrl, formatAuthors, extractNoteText } from "../../utils/bookHelpers";
 import type { RecommendedBook, BookList } from "../../types";
 import BookDetailModal from "../public/BookDetailModal";
@@ -23,7 +23,7 @@ import TopReadsManager from "./TopReadsManager";
 import Switch from "../../../../components/ui/Switch";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 
-const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || window.location.origin;
+const VITE_BASE_URL = runtimeOrigin(import.meta.env.VITE_BASE_URL || window.location.origin);
 
 // ─────────────────────────────────────────────────────────────
 // Book Row in Recommendations Tab
@@ -36,13 +36,13 @@ interface BookRowProps {
   onClick: (book: RecommendedBook) => void;
 }
 
-const BookRow = ({ 
-  book, 
-  onPinToggle, 
-  onEdit, 
-  onDelete, 
+const BookRow = ({
+  book,
+  onPinToggle,
+  onEdit,
+  onDelete,
   onClick,
-  isPinning 
+  isPinning
 }: BookRowProps & { isPinning: boolean }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const authors = formatAuthors(book.authors);
@@ -111,6 +111,7 @@ const BookRow = ({
         {/* Menu */}
         <div className="relative" onClick={(e) => e.stopPropagation()}>
           <button
+            aria-label={`Book actions for ${book.title}`}
             onClick={() => setMenuOpen(!menuOpen)}
             className="p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/8 transition-all"
           >
@@ -158,8 +159,7 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [updateBookList, { loading: isUpdating }] = useMutation(UPDATE_BOOK_LIST);
-  const [deleteBookList] = useMutation(DELETE_BOOK_LIST);
+  const {update:updateBookList,archive:deleteBookList,loading:isUpdating}=useBookListCommands();
 
   const shareUrl = `${VITE_BASE_URL}/${list.account?.username ?? "user"}/books/${list.slug}`;
 
@@ -253,7 +253,7 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
                     className="w-full bg-dashboard-muted border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white resize-none focus:outline-none focus:border-white/30 transition-colors"
                   />
                 </div>
-                <button 
+                <button
                   onClick={() => setIsEditing(false)}
                   className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl flex justify-center text-sm mt-3 transition-all font-semibold"
                 >
@@ -290,7 +290,7 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
                 </span>
               </div>
             )}
-            
+
             <div className="flex justify-center items-center my-6">
               <div className="flex relative flex-col justify-between items-center h-[16rem] w-[14rem] p-6 bg-black border border-white/20 text-white rounded-2xl shadow-2xl">
                 <div className="absolute bottom-0 left-0 w-full h-1/2 rounded-b-2xl bg-gradient-to-t from-amber-600/20 to-transparent pointer-events-none" />
@@ -307,7 +307,7 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
             </div>
 
             <div className="flex items-center justify-center gap-8 mt-5 mb-1 pt-4 border-t border-white/5">
-              <div 
+              <div
                 className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => {
                   if (navigator.share) {
@@ -328,7 +328,7 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
                 </div>
                 <span className="text-[11px] text-white/60 font-medium">{copied ? "Copied" : "Link"}</span>
               </div>
-              <div 
+              <div
                 className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => {
                    const svg = document.getElementById('book-qr');
@@ -386,22 +386,17 @@ const BookListView = () => {
   const [pinningId, setPinningId] = useState<string | null>(null);
   const [modalState, setModalState] = useState<{ open: boolean; book: RecommendedBook | null }>({ open: false, book: null });
   const [showTopReadsManager, setShowTopReadsManager] = useState(false);
-  const { user } = useAuthStore();
+  const { user, generation } = useAuthStore();
+  useEffect(()=>{setDeleteTarget(null);setListVisibilityPrompt(null);setModalState({open:false,book:null});setShowTopReadsManager(false);setDeleting(false);setPinningId(null);},[generation,listId]);
 
-  const { data, loading, refetch } = useQuery(BOOKS_BY_LIST, {
-    variables: booksByListVars(listId ?? ""),
-    skip: !listId,
-    fetchPolicy: "cache-and-network",
-  });
+  const { data, content, loading, error, refetch } = useBooksOwnerContent(listId);
 
-  const [toggleBookPin] = useMutation(TOGGLE_BOOK_PIN);
-  const [deleteRecommendedBook] = useMutation(DELETE_RECOMMENDED_BOOK);
-  const [updateBookList, { loading: isUpdating }] = useMutation(UPDATE_BOOK_LIST);
+  const {update:updateBookList,loading:isUpdating}=useBookListCommands();
 
   const rawList = data?.bookLists?.[0];
   const books: RecommendedBook[] = deduplicateBooks(rawList?.recommended_books);
   const pinnedBooks = books.filter((b) => b.is_pinned);
-  const pinnedCount = pinnedBooks.length;
+  const pinnedCount = content?.observation.topPicks?.length ?? 0;
 
   const list: BookList | null = rawList
     ? {
@@ -440,13 +435,10 @@ const BookListView = () => {
     }
     setPinningId(book.documentId);
     try {
-      await toggleBookPin({
-        variables: {
-          documentId: book.documentId,
-          is_pinned: willPin,
-          pin_order: willPin ? pinnedCount : null,
-        },
-      });
+      if(!content || !listId) throw new Error("Refresh Books before saving pins");
+      const pins=(content.observation.topPicks??[]).filter(pin=>pin.recommendationId!==book.documentId).map(pin=>({recommendationId:pin.recommendationId,collectionId:pin.collectionId}));
+      if(willPin) pins.push({recommendationId:book.documentId,collectionId:listId});
+      await explorersApiClient.setMyCategoryTopPicks(content.observation,pins,booksCommandKey());
       refetch();
     } catch {
       toast.error("Failed to update pin.");
@@ -488,7 +480,9 @@ const BookListView = () => {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await deleteRecommendedBook({ variables: { documentId: deleteTarget.documentId } });
+      const observation=content?.details.get(deleteTarget.documentId);
+      if(!observation) throw new Error("Refresh Books before deleting");
+      await explorersApiClient.archiveMyRecommendation(observation,booksCommandKey());
       toast.success("Book removed.");
       setDeleteTarget(null);
       refetch();
@@ -499,6 +493,7 @@ const BookListView = () => {
     }
   };
 
+  if(error && !list) return <div role="alert">{error.message} <button onClick={() => void refetch()}>Retry</button></div>;
   if (loading && !list) {
     return (
       <div className="p-6 space-y-4 max-w-3xl mx-auto">
@@ -628,7 +623,7 @@ const BookListView = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-base font-semibold text-white mb-2">Remove "{deleteTarget.title}"?</h3>
-              <p className="text-sm text-white/50 mb-5">This book will be removed from the list.</p>
+              <p className="text-sm text-white/50 mb-5">This recommendation will be removed from every list in your account.</p>
               <div className="flex gap-3">
                 <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2.5 rounded-xl bg-white/8 text-sm text-white/70">Cancel</button>
                 <button

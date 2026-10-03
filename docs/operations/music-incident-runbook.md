@@ -2,7 +2,7 @@
 
 ## Scope and first response
 
-Use this runbook for identity/ownership conflicts, credential compromise, unauthorized owner/guest behavior, lifecycle drift, reconciliation anomalies, migration/readiness failure, or public exposure. Production mutation remains separately authorized; this document does not open `GATE_PROD`.
+Use this runbook for identity/ownership conflicts, credential compromise, unauthorized owner/guest behavior, lifecycle drift, reconciliation anomalies, migration/readiness failure, or public exposure. Production mutation remains separately authorized and requires independent protected-environment approval.
 
 Preserve the request/run ID, exact commit and image digest, current/previous migration marker, sanitized readiness state, affected operation ID, and time window. Do not copy tokens, cookies, emails, identity payloads, guest URLs/capabilities, database strings, response headers, or raw upstream errors into tickets or chat.
 

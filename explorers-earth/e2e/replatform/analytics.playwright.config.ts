@@ -1,0 +1,3 @@
+import {defineConfig} from '@playwright/test';
+if(!process.env.BOOKS_E2E_FIXTURE_PATH||!process.env.PLAYWRIGHT_EXTERNAL_BASE_URL?.startsWith('http://127.0.0.1:'))throw new Error('Analytics requires its owned fixture');
+export default defineConfig({testDir:'.',testMatch:'analytics.spec.ts',fullyParallel:false,workers:1,retries:0,forbidOnly:true,timeout:60000,expect:{timeout:15000},reporter:'line',use:{baseURL:process.env.PLAYWRIGHT_EXTERNAL_BASE_URL,headless:true,trace:'off',screenshot:'off',video:'off'},projects:[{name:'analytics-desktop',use:{browserName:'chromium',viewport:{width:1365,height:900}}},{name:'analytics-mobile',use:{browserName:'chromium',viewport:{width:390,height:844},isMobile:true,hasTouch:true}}]});

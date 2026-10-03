@@ -1,187 +1,79 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { useQuery } from "@apollo/client";
 import useAuthStore from "../../store/store";
 import ProtectedRoute from "../ProtectedRoute";
 
-// Mock Apollo's useQuery so we can drive {data, loading, error} directly.
-vi.mock("@apollo/client", () => ({
-  useQuery: vi.fn(),
-  gql: (strings: TemplateStringsArray, ...values: any[]) =>
-    String.raw({ raw: strings }, ...values),
+const query = vi.hoisted(() => ({ current: { data: { id: "account-a", onboardingStatus: "complete" },
+  isLoading: false, error: null as Error | null, refetch: vi.fn() } }));
+vi.mock("../../features/Profile/api/useCanonicalAccount", () => ({
+  useCanonicalAccount: vi.fn(() => query.current),
 }));
-// EarthLoader pulls in heavy animation deps; stub it to a simple marker.
 vi.mock("../EarthLoader", () => ({ EarthLoader: () => <div>LOADING</div> }));
-// useLogout pulls in Apollo client + i18n + sonner; stub it (the gate only calls it).
 vi.mock("../../hooks/useLogout", () => ({ useLogout: () => vi.fn() }));
 
-const mockStore = (v: unknown) =>
-  useAuthStore.setState({ token: null, ...(v as Partial<ReturnType<typeof useAuthStore.getState>>) });
-const mockQuery = (v: unknown) =>
-  (useQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue(v);
+const signIn = () => useAuthStore.setState({ isAuthenticated: true, status: "active-complete",
+  user: { id: "user-a", documentId: "user-a", username: "google-name",
+    email: "a@example.invalid", blocked: false }, token: "fixture" });
+const mount = (path = "/home") => render(<MemoryRouter initialEntries={[path]}><Routes>
+  <Route element={<ProtectedRoute />}>
+    <Route path="/home" element={<div>PROTECTED HOME</div>} />
+    <Route path="/onboarding" element={<div>ONBOARDING PAGE</div>} />
+  </Route>
+  <Route path="/login" element={<div>LOGIN PAGE</div>} />
+</Routes></MemoryRouter>);
 
-const AUTHED = { isAuthenticated: true, user: { documentId: "d1" } };
-const account = (fields: Record<string, unknown>) => ({
-  usersPermissionsUser: { accounts: [fields] },
-});
-const COMPLETE = account({
-  documentId: "account-document-1",
-  Account_Name: "Bhavya",
-  Account_Type: "Personal",
-  mobile_number: "+919876543210",
-});
-
-const renderAt = (path = "/home") =>
-  render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route element={<ProtectedRoute />}>
-          <Route path="/home" element={<div>PROTECTED HOME</div>} />
-          <Route path="/settings" element={<div>PROTECTED SETTINGS</div>} />
-        </Route>
-        <Route path="/onboarding" element={<div>ONBOARDING PAGE</div>} />
-        <Route path="/login" element={<div>LOGIN PAGE</div>} />
-      </Routes>
-    </MemoryRouter>
-  );
-
-describe("ProtectedRoute onboarding gate", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it.each([false, true])("keeps non-lifecycle routes usable with invalid Music configuration (authenticated=%s)", (authenticated) => {
-    vi.stubEnv("VITE_LOCAL_TUNES_API_URL", "http://localhost:5000");
-    try {
-      mockStore(authenticated ? AUTHED : { isAuthenticated: false, user: null });
-      mockQuery({ data: COMPLETE, loading: false, error: null });
-      renderAt();
-      expect(screen.getByText(authenticated ? "PROTECTED HOME" : "LOGIN PAGE")).toBeInTheDocument();
-    } finally { vi.unstubAllEnvs(); }
+describe("ProtectedRoute canonical onboarding gate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks(); signIn();
+    query.current = { data: { id: "account-a", onboardingStatus: "complete" },
+      isLoading: false, error: null, refetch: vi.fn() };
   });
 
-  it("redirects to /login when not authenticated", () => {
-    mockStore({ isAuthenticated: false, user: null });
-    mockQuery({ data: null, loading: false, error: null });
-    renderAt();
+  it("redirects anonymous users to login", () => {
+    useAuthStore.setState({ isAuthenticated: false, user: null, token: null });
+    mount();
     expect(screen.getByText("LOGIN PAGE")).toBeInTheDocument();
   });
 
-  it("shows the loader while the check is loading (never assumes onboarding)", () => {
-    mockStore(AUTHED);
-    mockQuery({ data: null, loading: true, error: null });
-    renderAt();
+  it("does not render owner content from a stale local authentication flag", () => {
+    useAuthStore.setState({ isAuthenticated: true, status: "signed-out", token: "old-jwt" });
+    mount();
+    expect(screen.getByText("LOGIN PAGE")).toBeInTheDocument();
+    expect(screen.queryByText("PROTECTED HOME")).toBeNull();
+  });
+
+  it("waits for authoritative account data", () => {
+    query.current = { data: undefined as any, isLoading: true, error: null, refetch: vi.fn() };
+    mount();
     expect(screen.getByText("LOADING")).toBeInTheDocument();
     expect(screen.queryByText("ONBOARDING PAGE")).toBeNull();
   });
 
-  it("renders the protected page for a complete account", () => {
-    mockStore(AUTHED);
-    mockQuery({ data: COMPLETE, loading: false, error: null });
-    renderAt();
+  it("uses canonical completion instead of Google or legacy profile fields", () => {
+    mount();
     expect(screen.getByText("PROTECTED HOME")).toBeInTheDocument();
   });
 
-  it("redirects to /onboarding when mobile_number is empty (incomplete account)", () => {
-    mockStore(AUTHED);
-    mockQuery({
-      data: account({ Account_Name: "Bhavya", Account_Type: "Personal", mobile_number: "" }),
-      loading: false,
-      error: null,
-    });
-    renderAt();
+  it("redirects an incomplete canonical account to onboarding", () => {
+    query.current = { data: { id: "account-a", onboardingStatus: "incomplete" },
+      isLoading: false, error: null, refetch: vi.fn() };
+    mount();
     expect(screen.getByText("ONBOARDING PAGE")).toBeInTheDocument();
   });
 
-  it("redirects to /onboarding for a brand-new user (no account yet)", () => {
-    mockStore(AUTHED);
-    mockQuery({
-      data: { usersPermissionsUser: { accounts: [] } },
-      loading: false,
-      error: null,
-    });
-    renderAt();
-    expect(screen.getByText("ONBOARDING PAGE")).toBeInTheDocument();
-  });
-
-  it("selects the same immutable complete Account regardless of response order", () => {
-    mockStore(AUTHED);
-    const incomplete = { documentId: "account-incomplete", Account_Name: "Draft", Account_Type: "Personal", mobile_number: "" };
-    const complete = { documentId: "account-complete", Account_Name: "Ready", Account_Type: "Personal", mobile_number: "+919876543210" };
-    mockQuery({ data: { usersPermissionsUser: { accounts: [incomplete, complete] } }, loading: false, error: null });
-    renderAt();
-    expect(screen.getByText("PROTECTED HOME")).toBeInTheDocument();
-  });
-
-  it("keeps multiple complete Accounts in a recoverable unknown state instead of picking index zero", () => {
-    mockStore(AUTHED);
-    mockQuery({
-      data: { usersPermissionsUser: { accounts: [
-        { documentId: "account-a", Account_Name: "A", Account_Type: "Personal", mobile_number: "+10000000001" },
-        { documentId: "account-b", Account_Name: "B", Account_Type: "Business", mobile_number: "+10000000002" },
-      ] } },
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-    renderAt();
+  it("keeps failed owner reads in a recoverable retry state", () => {
+    query.current = { data: undefined as any, isLoading: false, error: new Error("offline"), refetch: vi.fn() };
+    mount();
     expect(screen.queryByText("ONBOARDING PAGE")).toBeNull();
-    expect(screen.getByText("Try again")).toBeInTheDocument();
-  });
-
-  it("keeps account-less pending deletion on Settings so reload can resume", async () => {
-    // Break caught: successful Account deletion redirects to onboarding before the user mutation can retry.
-    mockStore({ ...AUTHED, token: "authoritative-bearer-proof" });
-    mockQuery({ data: { usersPermissionsUser: { accounts: [] } }, loading: false, error: null, refetch: vi.fn() });
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
-      version: "music-lifecycle/v1",
-      operation: {
-        operationId: "durable-operation", status: "pending_deletion", phase: "prepared", state: "requested",
-        boundaryCrossed: true, retryable: true, deadLetter: false,
-        upstreamUserDocumentId: "user-document-a", upstreamAccountDocumentId: "account-document-a",
-      },
-    }), { status: 200 })));
-    renderAt("/settings");
-    expect(await screen.findByText("PROTECTED SETTINGS")).toBeInTheDocument();
-    vi.unstubAllGlobals();
-  });
-
-  it("does NOT bounce to /onboarding on an error with no data — shows a recoverable state (the regression)", () => {
-    mockStore(AUTHED);
-    mockQuery({ data: null, loading: false, error: new Error("network blip") });
-    renderAt();
-    // Must never redirect to onboarding on an error...
-    expect(screen.queryByText("ONBOARDING PAGE")).toBeNull();
-    // ...and must not be a perpetual loader either — offer a way out.
     expect(screen.getByText("Try again")).toBeInTheDocument();
     expect(screen.getByText("Log out")).toBeInTheDocument();
   });
 
-  it("does NOT bounce to /onboarding on an error with truthy-but-partial data (null user)", () => {
-    // errorPolicy:"all" can return { usersPermissionsUser: null } alongside an error.
-    // That must NOT be read as "not onboarded".
-    mockStore(AUTHED);
-    mockQuery({ data: { usersPermissionsUser: null }, loading: false, error: new Error("field error") });
-    renderAt();
-    expect(screen.queryByText("ONBOARDING PAGE")).toBeNull();
-    expect(screen.getByText("Try again")).toBeInTheDocument();
-  });
-
-  it("does NOT bounce to /onboarding on an error with an incomplete account (field may have errored)", () => {
-    mockStore(AUTHED);
-    mockQuery({
-      data: account({ Account_Name: "Bhavya", Account_Type: "Personal", mobile_number: "" }),
-      loading: false,
-      error: new Error("partial"),
-    });
-    renderAt();
-    expect(screen.queryByText("ONBOARDING PAGE")).toBeNull();
-    expect(screen.getByText("Try again")).toBeInTheDocument();
-  });
-
-  it("treats complete cached data alongside an authoritative error as recoverable unknown", () => {
-    mockStore(AUTHED);
-    mockQuery({ data: COMPLETE, loading: false, error: new Error("partial") });
-    renderAt();
+  it("does not trust cached completion when the canonical read errors", () => {
+    query.current = { data: { id: "account-a", onboardingStatus: "complete" },
+      isLoading: false, error: new Error("offline"), refetch: vi.fn() };
+    mount();
     expect(screen.queryByText("PROTECTED HOME")).toBeNull();
     expect(screen.getByText("Try again")).toBeInTheDocument();
   });

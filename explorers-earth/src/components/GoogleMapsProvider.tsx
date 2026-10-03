@@ -1,3 +1,4 @@
+import { mapsBrowserKey } from "../lib/publicRuntimeConfig";
 import { createContext, useContext, type ComponentType, type ReactNode } from "react";
 import { APIProvider } from "@vis.gl/react-google-maps";
 
@@ -8,7 +9,7 @@ export function GoogleMapsProvider({ children }: { children: ReactNode }) {
   if (alreadyProvided) return children;
   return (
     <GoogleMapsProviderContext.Provider value>
-      <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}>{children}</APIProvider>
+      <APIProvider apiKey={mapsBrowserKey()}>{children}</APIProvider>
     </GoogleMapsProviderContext.Provider>
   );
 }

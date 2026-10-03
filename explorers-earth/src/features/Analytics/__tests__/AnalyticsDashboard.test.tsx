@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useQuery } from '@apollo/client';
 import useAuthStore from '../../../store/store';
 import {
@@ -68,6 +68,8 @@ describe('AnalyticsDashboard data boundary', () => {
   const readEvents = vi.mocked(readExplorersAnalyticsEvents);
 
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-01T12:00:00.000Z'));
     vi.clearAllMocks();
     useAuthStore.setState({
       isAuthenticated: true,
@@ -117,6 +119,10 @@ describe('AnalyticsDashboard data boundary', () => {
         ],
       },
     ]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('requests only the signed-in account and selected date range from Local Tunes', async () => {

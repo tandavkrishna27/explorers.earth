@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0021_explorers_analytics_receipts" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0037_explorers_movies_provider_context" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -20,6 +20,22 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0018_transactional_queue_replacement",
   "0019_queue_visibility_control",
   "0020_public_snapshot_revision",
+  "0021_explorers_analytics_receipts",
+  "0022_explorers_identity",
+  "0023_explorers_authorization",
+  "0024_explorers_profile_media",
+  "0025_explorers_media_attachment_guard",
+  "0026_explorers_media_slot_compatibility",
+  "0027_explorers_lifecycle",
+  "0028_explorers_recovery_proof_retention",
+  "0029_explorers_recommendations",
+  "0030_explorers_media_purpose_guard",
+  "0031_explorers_content_revision",
+  "0032_explorers_owner_page_indexes",
+  "0033_explorers_recommendation_display_overrides",
+  "0034_explorers_books_provider_context",
+  "0035_explorers_book_cover_import",
+  "0036_explorers_analytics_events",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -45,6 +61,22 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0018_transactional_queue_replacement",
   "0019_queue_visibility_control",
   "0020_public_snapshot_revision",
+  "0021_explorers_analytics_receipts",
+  "0022_explorers_identity",
+  "0023_explorers_authorization",
+  "0024_explorers_profile_media",
+  "0025_explorers_media_attachment_guard",
+  "0026_explorers_media_slot_compatibility",
+  "0027_explorers_lifecycle",
+  "0028_explorers_recovery_proof_retention",
+  "0029_explorers_recommendations",
+  "0030_explorers_media_purpose_guard",
+  "0031_explorers_content_revision",
+  "0032_explorers_owner_page_indexes",
+  "0033_explorers_recommendation_display_overrides",
+  "0034_explorers_books_provider_context",
+  "0035_explorers_book_cover_import",
+  "0036_explorers_analytics_events",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 

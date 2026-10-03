@@ -94,6 +94,20 @@ describe('analyticsService', () => {
   });
 
   describe('useTrackAnalytics', () => {
+    it('waits for usable data before a view or click and tracks a successful empty surface',async()=>{
+      const hook=renderHook(({ready})=>useTrackAnalytics({accountId:'acc1',pageName:'public-books',ready}),{initialProps:{ready:false}});
+      await act(async()=>{hook.result.current.trackClick('book-card',{id:'book-1'});});expect(postEvent).not.toHaveBeenCalled();
+      hook.rerender({ready:true});await waitFor(()=>expect(postEvent).toHaveBeenCalledTimes(1));
+    });
+    it('freezes retry metadata timestamp and attribution despite caller and clock changes',async()=>{
+      postEvent.mockRejectedValueOnce(new Error('lost acknowledgement')).mockResolvedValueOnce(undefined);
+      const hook=renderHook(()=>useTrackAnalytics({accountId:'acc1',pageName:'public-books',autoTrackView:false}));
+      const metadata={id:'book-1',listId:'list-1',title:'original'};
+      await act(async()=>{await hook.result.current.trackEvent({type:'click',element:'book-card',metadata});});
+      const original=JSON.stringify(postEvent.mock.calls[0][0]);metadata.title='changed';vi.setSystemTime(new Date('2026-08-25T10:00:00Z'));sessionStorage.clear();
+      await act(async()=>{await hook.result.current.trackEvent({type:'click',element:'book-card',metadata});});
+      expect(JSON.stringify(postEvent.mock.calls[1][0])).toBe(original);
+    });
     it('auto-tracks a consented view through Local Tunes', async () => {
       renderHook(() =>
         useTrackAnalytics({
@@ -266,6 +280,7 @@ describe('analyticsService', () => {
       expect(postEvent).toHaveBeenCalledTimes(1);
 
       postEvent.mockResolvedValueOnce(undefined);
+      vi.setSystemTime(new Date('2026-08-24T11:00:00.000Z'));
       await act(async () => result.current.trackView());
 
       await waitFor(() => expect(postEvent).toHaveBeenCalledTimes(2));
@@ -274,6 +289,7 @@ describe('analyticsService', () => {
         'event-original-123',
       ]);
       expect(createEventId).toHaveBeenCalledTimes(1);
+      expect(postEvent.mock.calls[1][0]).toEqual(postEvent.mock.calls[0][0]);
       expect(
         sessionStorage.getItem(
           'analytics_public-profile_view_acc1_null_null_%2Ftk2727',

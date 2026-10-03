@@ -1,8 +1,11 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { explorersApiClient } from "../../../../lib/explorersApiClient";
 
-const { authState, harness, queryState, updateSubmit, updateTargets, toastError, toastSuccess } = vi.hoisted(() => ({
+const { authState, harness, updateSubmit, updateTargets, toastError, toastSuccess } = vi.hoisted(() => ({
   authState: {
+    generation: 0,
     user: {
       id: "user-1",
       documentId: "user-doc",
@@ -13,12 +16,6 @@ const { authState, harness, queryState, updateSubmit, updateTargets, toastError,
     profileFormProps: undefined as any,
     usernameModalProps: undefined as any,
   },
-  queryState: {
-    data: undefined as any,
-    loading: false,
-    error: undefined as any,
-    refetch: vi.fn(),
-  },
   updateSubmit: vi.fn(),
   updateTargets: [] as Array<string | undefined>,
   toastError: vi.fn(),
@@ -26,40 +23,41 @@ const { authState, harness, queryState, updateSubmit, updateTargets, toastError,
 }));
 
 const account = {
-  documentId: "account-1",
-  Account_Name: "TK Explorer",
-  Account_Type: "Creator",
-  Bio: "Public bio",
-  Addresss: {
+  id: "11111111-1111-4111-8111-111111111111",
+  handle: "tk2727",
+  displayName: "TK Explorer",
+  accountType: "Creator",
+  onboardingStatus: "complete",
+  status: "active",
+  revision: 4,
+  publicProfile: true,
+  autoPinning: true,
+  locale: "en",
+  bioPlain: "Public bio",
+  bioRich: null,
+  additionalAddresses: [{
     address: "Stored billing address",
     streetName: "Stored Street",
     city: "Hyderabad",
     state: "Telangana",
     country: "India",
     postalCode: "500001",
-  },
-  Primary_Address: { address: "Hyderabad, India" },
-  Public_Profile_Address: { title: "Studio", placeId: "place-1" },
-  Feed_Data: [{ id: "feed-1" }],
-  mobile_number: "+919999999999",
-  mobile_number_visibility: true,
-  social_media: {
-    instagram: { link: "https://instagram.com/tk", visibility: true },
-    futurePlatform: { link: "future://tk", visibility: true },
-    theme_settings: {
-      preset: "minimal-light",
-      recommendations: { layout: "mosaic" },
-    },
-  },
+  }],
+  primaryAddress: { address: "Hyderabad, India" },
+  publicAddress: { title: "Studio", placeId: "place-1", places: null },
+  profilePlaceDetails: null,
+  categories: [],
+  feedItems: [{ id: "22222222-2222-4222-8222-222222222222", mediaId: null,
+    url: "https://example.invalid/feed", source: "instagram", type: "image", caption: null, details: {} }],
+  mobileNumber: "+919999999999",
+  mobileNumberVisible: true,
+  socialLinks: [{ platform: "instagram", url: "https://instagram.com/tk", visible: true }],
+  themeSettings: { preset: "minimal-light", recommendations: { layout: "grid" } },
+  businessDetails: {},
 };
 
-vi.mock("@apollo/client", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@apollo/client")>();
-  return {
-    ...actual,
-    useQuery: () => queryState,
-  };
-});
+vi.mock("../../../../lib/explorersApiClient", () => ({ explorersApiClient: { getMyProfile: vi.fn() } }));
+vi.mock("../../../../store/useSetupStore", () => ({ default: (selector: any) => selector({ bindAccount: vi.fn() }) }));
 
 vi.mock("../../../Profile/hooks/useUpdateProfile", () => ({
   useUpdateProfile: (documentId?: string) => {
@@ -100,7 +98,8 @@ vi.mock("../../../../components/ui/UsernameChangeConfirmationModal", () => ({
 }));
 
 vi.mock("../../../../store/store", () => ({
-  default: () => authState,
+  default: Object.assign((selector?: (state: typeof authState) => unknown) => selector ? selector(authState) : authState,
+    { getState: () => authState }),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -117,6 +116,12 @@ vi.mock("../../../../components/EarthLoader", () => ({
 
 import ProfileAccountSettings from "../ProfileAccountSettings";
 
+const renderAccountSettings = (section: "account" | "billing" = "account", cached?: typeof account) => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  if (cached) client.setQueryData(["explorers-account", authState.user?.id ?? "cookie-session", authState.generation], cached);
+  return render(<QueryClientProvider client={client}><ProfileAccountSettings section={section} /></QueryClientProvider>);
+};
+
 const visibleFieldNames = () =>
   harness.profileFormProps.formFields.flatMap((section: any) =>
     section.formFields.map((field: any) => field.name),
@@ -128,19 +133,11 @@ describe("ProfileAccountSettings", () => {
     harness.usernameModalProps = undefined;
     updateSubmit.mockReset();
     updateTargets.length = 0;
-    updateSubmit.mockResolvedValue({ documentId: "account-1" });
+    updateSubmit.mockResolvedValue({ documentId: account.id, revision: 5 });
     toastError.mockReset();
     toastSuccess.mockReset();
-    queryState.data = {
-      usersPermissionsUser: {
-        username: "tk2727",
-        createdAt: "2020-01-01T00:00:00.000Z",
-        updatedAt: "2020-01-01T00:00:00.000Z",
-        accounts: [account],
-      },
-    };
-    queryState.loading = false;
-    queryState.error = undefined;
+    vi.mocked(explorersApiClient.getMyProfile).mockReset();
+    vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(account as never);
     authState.user = {
       id: "user-1",
       documentId: "user-doc",
@@ -148,37 +145,28 @@ describe("ProfileAccountSettings", () => {
     };
   });
 
-  it("does not mount the account form until a username source is available", () => {
+  it("does not mount the account form until a canonical account and handle are available", () => {
     authState.user = null;
-    queryState.data = {
-      usersPermissionsUser: {
-        accounts: [account],
-      },
-    };
-    queryState.loading = true;
+    vi.mocked(explorersApiClient.getMyProfile).mockImplementation(() => new Promise(() => undefined));
 
-    render(<ProfileAccountSettings section="account" />);
+    renderAccountSettings();
 
     expect(screen.getByText("Loading")).toBeInTheDocument();
     expect(harness.profileFormProps).toBeUndefined();
   });
 
-  it("uses the authenticated username with a complete cache snapshot while the network is pending", () => {
-    queryState.data = {
-      usersPermissionsUser: {
-        accounts: [account],
-      },
-    };
-    queryState.loading = true;
+  it("uses the canonical handle with a complete cache snapshot while the network is pending", () => {
+    vi.mocked(explorersApiClient.getMyProfile).mockImplementation(() => new Promise(() => undefined));
 
-    render(<ProfileAccountSettings section="account" />);
+    renderAccountSettings("account", account);
 
     expect(screen.getByTestId("profile-account-form")).toBeInTheDocument();
     expect(harness.profileFormProps.initialValues.username).toBe("tk2727");
   });
 
   it("uses Settings Account fields and preserves hidden profile data on save", async () => {
-    render(<ProfileAccountSettings section="account" />);
+    renderAccountSettings();
+    await screen.findByTestId("profile-account-form");
 
     expect(screen.getByTestId("profile-account-form")).toBeInTheDocument();
     expect(visibleFieldNames()).toEqual(["username", "accountType"]);
@@ -193,13 +181,15 @@ describe("ProfileAccountSettings", () => {
       expect.objectContaining({
         username: "tk2727",
         accountType: "creator",
-        Feed_Data: [{ id: "feed-1" }],
-        Public_Profile_Address: { title: "Studio", placeId: "place-1" },
+        documentId: account.id,
+        revision: 4,
+        Feed_Data: [expect.objectContaining({ id: account.feedItems[0].id })],
+        Public_Profile_Address: account.publicAddress,
         social_media: expect.objectContaining({
-          futurePlatform: { link: "future://tk", visibility: true },
+          instagram: { link: "https://instagram.com/tk", visibility: true },
           theme_settings: {
             preset: "minimal-light",
-            recommendations: { layout: "mosaic" },
+            recommendations: { layout: "grid" },
           },
         }),
       }),
@@ -207,21 +197,13 @@ describe("ProfileAccountSettings", () => {
     expect(toastSuccess).toHaveBeenCalledTimes(1);
   });
 
-  it("pins the only completed account when an incomplete row is first", async () => {
-    queryState.data.usersPermissionsUser.accounts = [
-      {
-        documentId: "provisioning-account",
-        Account_Name: "Provisioning",
-        Account_Type: "personal",
-        mobile_number: "",
-      },
-      account,
-    ];
-
-    render(<ProfileAccountSettings section="account" />);
+  it("targets the sole canonical completed account and carries its revision", async () => {
+    renderAccountSettings();
+    await screen.findByTestId("profile-account-form");
 
     expect(harness.profileFormProps.initialValues.accountName).toBe("TK Explorer");
-    expect(updateTargets.at(-1)).toBe("account-1");
+    expect(harness.profileFormProps.initialValues.revision).toBe(4);
+    expect(updateTargets.at(-1)).toBe(account.id);
     await act(async () => {
       await harness.profileFormProps.onSubmit(
         harness.profileFormProps.initialValues,
@@ -230,8 +212,8 @@ describe("ProfileAccountSettings", () => {
     expect(updateSubmit).toHaveBeenCalledTimes(1);
   });
 
-  it("uses every detailed address field in Settings Billing", () => {
-    render(<ProfileAccountSettings section="billing" />);
+  it("uses every detailed address field in Settings Billing", async () => {
+    renderAccountSettings("billing", account);
 
     expect(visibleFieldNames()).toEqual([
       "address",
@@ -243,7 +225,7 @@ describe("ProfileAccountSettings", () => {
     ]);
 
     const setFieldValue = vi.fn();
-    harness.profileFormProps.setPlaces(
+    await act(async () => harness.profileFormProps.setPlaces(
       {
         formatted_address: "Detected address",
         address_components: [
@@ -254,7 +236,7 @@ describe("ProfileAccountSettings", () => {
         name: "Detected address",
       },
       setFieldValue,
-    );
+    ));
 
     expect(setFieldValue).toHaveBeenCalledWith(
       "address",
@@ -265,7 +247,7 @@ describe("ProfileAccountSettings", () => {
   });
 
   it("waits for confirmation before changing a username and supports cancel", async () => {
-    render(<ProfileAccountSettings section="account" />);
+    renderAccountSettings("account", account);
 
     let result: any;
     await act(async () => {

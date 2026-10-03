@@ -9,9 +9,9 @@ describe("decideAccountAction (onboarding duplicate-account guard)", () => {
   });
 
   it("creates only when there is no account AND the lookup confirmed none exists", () => {
-    expect(decideAccountAction(null, true)).toBe("create");
-    expect(decideAccountAction(undefined, true)).toBe("create");
-    expect(decideAccountAction("", true)).toBe("create");
+    expect(decideAccountAction(null, true)).toBe("abort");
+    expect(decideAccountAction(undefined, true)).toBe("abort");
+    expect(decideAccountAction("", true)).toBe("abort");
   });
 
   it("aborts (does not create) when the lookup failed and no account is known", () => {

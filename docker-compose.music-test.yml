@@ -27,7 +27,7 @@ services:
       - ${MUSIC_DB_MIGRATOR_SECRET_FILE_HOST:?MUSIC_DB_MIGRATOR_SECRET_FILE_HOST is required}:/run/secrets/music-db-migrator:ro
 
   strapi:
-    image: node:22.12-alpine
+    image: public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
     working_dir: /workspace
     command: ["node", "--experimental-strip-types", "tunes/scripts/music-fixture-server.ts", "--port", "1337"]
     environment:
@@ -60,7 +60,7 @@ services:
       MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
       MUSIC_IMAGE_DIGEST: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       MUSIC_IMAGE_COMMIT: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      MUSIC_MIGRATION_MARKER: 0021_explorers_analytics_receipts
+      MUSIC_MIGRATION_MARKER: 0037_explorers_movies_provider_context
       MUSIC_GATE_ATTESTATION_KEY: fixture-migration-gate-key-at-least-32-characters
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/fixture.json
     depends_on:
@@ -83,6 +83,7 @@ services:
         VITE_PUBLIC_ACCESS_TOKEN: fixture-public-token
     environment:
       NODE_ENV: production
+      EXPLORERS_API_MODE: legacy-music
       PORT: 5000
       MUSIC_DATABASE_HOST: postgres
       MUSIC_DATABASE_PORT: "5432"
@@ -142,7 +143,8 @@ services:
       MUSIC_FEATURE_COHORT_SALT: fixture-owner-workspace
       MUSIC_FEATURE_COHORT_VERSION: fixture-owner-workspace-v1
       MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: "100"
-      MUSIC_EXPECTED_MIGRATION_ID: 0021_explorers_analytics_receipts
+      MUSIC_EXPECTED_MIGRATION_ID: 0037_explorers_movies_provider_context
+      EXPLORERS_MEDIA_ENVIRONMENT: local
       MUSIC_RECONCILIATION_ENABLED: "false"
       MUSIC_RECONCILIATION_MAX_ROWS: "0"
     ports: ["127.0.0.1:55000:5000"]

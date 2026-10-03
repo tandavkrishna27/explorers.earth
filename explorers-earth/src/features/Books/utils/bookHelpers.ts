@@ -111,12 +111,12 @@ export function deduplicateBooks<T extends { documentId: string; volume_id?: str
   books: T[] | null | undefined
 ): T[] {
   if (!books || !Array.isArray(books)) return [];
-  
-  // Group by volume_id (if available) or fallback to documentId
+
+  // Recommendation identity survives repeated memberships; provider identity does not merge owner records.
   const groups = new Map<string, T[]>();
   for (const b of books) {
     if (!b) continue;
-    const key = b.volume_id || b.documentId;
+    const key = b.documentId;
     if (!key) continue;
     if (!groups.has(key)) {
       groups.set(key, []);
@@ -173,11 +173,7 @@ export function buildCoverUrl(coverUrl: string | null | undefined): string {
   if (!coverUrl) return "";
   // If it's already an absolute URL (S3 or Google Books), use as-is
   if (coverUrl.startsWith("http")) return coverUrl;
-  // If it's a Strapi relative path, prefix with the REST API URL
-  if (coverUrl.startsWith("/")) {
-    const base =
-      import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337";
-    return `${base}${coverUrl}`;
-  }
-  return coverUrl;
+  // Canonical media URLs are same-origin and carry server byte authority.
+  if (coverUrl.startsWith("/api/explorers/v1/media/")) return coverUrl;
+  return "";
 }

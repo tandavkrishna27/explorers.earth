@@ -1,33 +1,37 @@
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 vi.mock("../../components/SEO", () => ({ default: () => null }));
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.resetModules(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.resetModules(); });
 
-it("submits reactivation email through the Music proxy", async () => {
-  vi.stubEnv("DEV", true);
-  vi.stubEnv("VITE_LOCAL_TUNES_API_URL", "https://music.localhost");
-  const requests: Array<{ url: string; body: unknown }> = [];
-  vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
-    requests.push({ url: String(input), body: JSON.parse(String(init?.body)) });
-    return new Response("{}", { status: 200 });
-  });
+it("starts Google recovery without collecting an email address", async () => {
+  const requests: string[] = [];
+  vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+    requests.push(input);
+    return input.endsWith("/start") ? new Response(null, { status: 204 })
+      : new Response(JSON.stringify({ url: "https://accounts.google.com/example" }), { status: 200 });
+  }));
   const { default: Page } = await import("../ReactivateAccount");
   render(<MemoryRouter><Page /></MemoryRouter>);
-  await act(async () => { fireEvent.change(screen.getByRole("textbox"), { target: { value: "test@example.com" } }); });
-  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "reactivateAccount.sendButton" })); });
-  await waitFor(() => expect(requests).toEqual([{ url: "/__localtunes/api/user/request-reactivation", body: { email: "test@example.com" } }]));
+  expect(screen.queryByRole("textbox")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: /Google/i }));
+  await waitFor(() => expect(requests).toEqual(["/api/explorers/v1/recovery/start", "/api/auth/sign-in/social"]));
 });
 
-it("confirms the reactivation link through the same proxy", async () => {
-  vi.stubEnv("DEV", true);
-  vi.stubEnv("VITE_LOCAL_TUNES_API_URL", "https://music.localhost");
-  const requests: string[] = [];
-  vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
-    requests.push(String(input)); return new Response('{"success":true}', { status: 200 });
-  });
+it("ignores a legacy URL token and requires the cookie proof before submitting revision-bound recovery", async () => {
+  const requests: Array<{ url: string; method: string; body?: unknown }> = [];
+  vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+    requests.push({ url: input, method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : undefined });
+    return input.endsWith("/status")
+      ? new Response(JSON.stringify({ recovery: { status: "suspended", revision: 7 } }), { status: 200 })
+      : new Response(JSON.stringify({ lifecycle: { status: "active", revision: 8 } }), { status: 200 });
+  }));
   const { default: Page } = await import("../ReactivateConfirm");
-  render(<MemoryRouter initialEntries={["/reactivate-confirm?token=test-only-token"]}><Page /></MemoryRouter>);
-  await waitFor(() => expect(requests).toEqual(["/__localtunes/api/user/reactivate?token=test-only-token"]));
+  render(<MemoryRouter initialEntries={["/reactivate-confirm?token=untrusted"]}><Page /></MemoryRouter>);
+  await waitFor(() => expect(screen.getByRole("button", { name: /reactivate/i })).toBeInTheDocument());
+  fireEvent.click(screen.getByRole("button", { name: /reactivate/i }));
+  await waitFor(() => expect(requests).toEqual([
+    { url: "/api/explorers/v1/recovery/status", method: "GET" },
+    { url: "/api/explorers/v1/recovery/complete", method: "POST", body: { expectedRevision: 7 } },
+  ]));
 });

@@ -1,3 +1,4 @@
+import { runtimeOrigin, runtimeSocketTransport } from "../../lib/publicRuntimeConfig";
 import { io } from "socket.io-client";
 import { resolveMusicSocketTransport } from "./musicDevelopmentTransport";
 import { publicMusicObservability, type PublicMusicObservability } from "./publicMusicObservability";
@@ -36,11 +37,11 @@ export function subscribeToPublicMusic(
   const random = dependencies.random ?? Math.random;
   const observability = dependencies.observability ?? publicMusicObservability;
   const socketFactory = dependencies.socketFactory ?? ((auth) => {
-    const transport = resolveMusicSocketTransport({
+    const transport = runtimeSocketTransport(resolveMusicSocketTransport({
       development: import.meta.env.DEV,
-      musicOrigin: import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth",
+      musicOrigin: runtimeOrigin(import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth"),
       browserOrigin: window.location.origin,
-    });
+    }));
     return io(transport.origin, {
       path: transport.path, transports: ["websocket", "polling"], auth,
       reconnection: true, reconnectionDelay: 1_000, reconnectionDelayMax: 30_000, randomizationFactor: 0.2,

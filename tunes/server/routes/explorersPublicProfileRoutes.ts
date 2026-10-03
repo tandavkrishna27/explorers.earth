@@ -21,6 +21,10 @@ export function setupExplorersPublicProfileRoutes(
     legacyHeaders: false,
     handler: (_request, response) => response.status(429).json(rateLimited),
   }));
+  app.use("/api/explorers/v1/profiles", (_request, response, next) => {
+    response.setHeader("Cache-Control", "no-store");
+    next();
+  });
   app.get("/api/explorers/v1/profiles/:username", async (req, res) => {
     let username: string;
     try { username = parsePublicProfileUsername(req.params.username); }
@@ -30,7 +34,7 @@ export function setupExplorersPublicProfileRoutes(
     catch { return res.status(503).json(unavailable); }
     if (!value) return res.status(404).json(notFound);
     const etag = `"${createHash("sha256").update(JSON.stringify(value)).digest("base64url")}"`;
-    res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=30");
+    res.setHeader("Cache-Control", "no-store");
     res.setHeader("ETag", etag);
     if (req.get("if-none-match") === etag) return res.status(304).end();
     return res.status(200).json(value);
@@ -46,7 +50,7 @@ export function setupExplorersPublicProfileRoutes(
     }
     if (!value) return res.status(404).json(notFound);
     const etag = `"${createHash("sha256").update(JSON.stringify(value)).digest("base64url")}"`;
-    res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=30");
+    res.setHeader("Cache-Control", "no-store");
     res.setHeader("ETag", etag);
     if (req.get("if-none-match") === etag) return res.status(304).end();
     return res.status(200).json(value);
@@ -60,7 +64,7 @@ export function setupExplorersPublicProfileRoutes(
     catch { return res.status(503).json(unavailable); }
     if (!value) return res.status(404).json(notFound);
     const etag = `"${createHash("sha256").update(JSON.stringify(value)).digest("base64url")}"`;
-    res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=30");
+    res.setHeader("Cache-Control", "no-store");
     res.setHeader("ETag", etag);
     if (req.get("if-none-match") === etag) return res.status(304).end();
     return res.status(200).json(value);

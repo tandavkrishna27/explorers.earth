@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { setupMockAuthentication } from "./setup/auth";
+import { canonicalAccountFixture } from "../src/test/canonicalAccountFixture";
 
 const artifactDirectory = resolve(process.cwd(), "../.artifacts/task-9");
 const credential = "browser-only-music-credential";
@@ -42,6 +43,16 @@ async function installMusicMocks(page: Page, options: MockOptions = {}) {
   const warnings: string[] = [];
   const pageErrors: string[] = [];
   const playlists = options.playlists ?? [];
+
+  await page.route("**/api/explorers/v1/me", route => {
+    if (route.request().method() !== "GET" || new URL(route.request().url()).origin !== new URL(String(test.info().project.use.baseURL)).origin) return route.abort("blockedbyclient");
+    return route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ account: canonicalAccountFixture({
+      handle: "testuser", displayName: accountState.Account_Name,
+      mobileNumber: accountState.mobile_number,
+    }) }),
+    });
+  });
 
   page.on("console", (message) => {
     if (["warning", "error"].includes(message.type())) warnings.push(message.text());

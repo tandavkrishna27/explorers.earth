@@ -14,7 +14,7 @@
 export const FEATURE_FLAGS = {
   // Set to false to use only Google OAuth authentication
   // Set to true to re-enable email/password authentication
-  ENABLE_MANUAL_AUTH: true,
+  ENABLE_MANUAL_AUTH: false,
   
   // Future feature flags can be added here
   // ENABLE_SOCIAL_SHARING: true,

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { 
   validateFiles, 
+  validateFile,
   FileValidationOptions, 
   ACCEPT_STRINGS,
   getSupportedFormatsText 
@@ -12,6 +13,7 @@ import {
 export { ACCEPT_STRINGS } from '../utils/fileValidation';
 
 interface UseFileUploadOptions extends FileValidationOptions {
+  canonicalPurpose?: "profile" | "background" | "feed" | "recommendation";
   onValidFiles?: (files: File[]) => void;
   onInvalidFiles?: (invalidFiles: { file: File; error: string }[]) => void;
   showToastOnError?: boolean;
@@ -40,12 +42,15 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
     onInvalidFiles,
     showToastOnError = true,
     showToastOnSuccess = true,
+    canonicalPurpose,
   } = options;
 
   const [isValidating, setIsValidating] = useState(false);
 
   // Generate accept string for file input
   const acceptString = (() => {
+    if (canonicalPurpose === "profile" || canonicalPurpose === "background") return ACCEPT_STRINGS.IMAGES_ONLY;
+    if (canonicalPurpose === "feed") return `${ACCEPT_STRINGS.IMAGES_ONLY},video/mp4`;
     if (allowImages && allowVideos) return ACCEPT_STRINGS.IMAGES_AND_VIDEOS;
     if (allowImages) return ACCEPT_STRINGS.IMAGES_ONLY;
     if (allowVideos) return ACCEPT_STRINGS.VIDEOS_ONLY;
@@ -62,12 +67,17 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       setIsValidating(true);
 
       try {
-        const { validFiles, invalidFiles } = validateFiles(files, {
-          allowImages,
-          allowVideos,
+        const { validFiles: selectedFiles, invalidFiles } = validateFiles(files, {
+          allowImages: canonicalPurpose ? true : allowImages,
+          allowVideos: canonicalPurpose === "feed" || (!canonicalPurpose && allowVideos),
           maxImageSize,
           maxVideoSize,
           customErrorMessages,
+        });
+        const validFiles = selectedFiles.filter((file) => {
+          if (!canonicalPurpose || file.type !== "video/webm" && file.type !== "video/quicktime") return true;
+          invalidFiles.push({ file, error: "Only MP4 video is supported for profile media" });
+          return false;
         });
 
         // Handle invalid files
@@ -105,6 +115,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
     [
       allowImages,
       allowVideos,
+      canonicalPurpose,
       maxImageSize,
       maxVideoSize,
       customErrorMessages,
@@ -123,3 +134,8 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
     supportedFormatsText,
   };
 };
+
+export function validateCanonicalImage(file: File): string | null {
+  const result = validateFile(file, { allowImages: true, allowVideos: false, maxImageSize: 5 * 1024 * 1024 });
+  return result.isValid ? null : result.error ?? "Invalid image";
+}

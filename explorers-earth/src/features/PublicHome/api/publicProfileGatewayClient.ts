@@ -1,3 +1,4 @@
+import { runtimeOrigin } from "../../../lib/publicRuntimeConfig";
 export type PublicCategory = "places" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 export type PublicProfilePage = { limit?: number; cursor?: string };
 
@@ -79,8 +80,8 @@ export function createPublicProfileGatewayClient(baseUrl: string, fetchImpl: Fet
 export const publicProfileGatewayClient = createPublicProfileGatewayClient(
   // Keep the runtime boundary explicit: this project's ImportMetaEnv may not
   // declare custom VITE_* fields even though Vite exposes them at runtime.
-  resolvePublicProfileGatewayOrigin({
+  runtimeOrigin(resolvePublicProfileGatewayOrigin({
     VITE_PUBLIC_PROFILE_GATEWAY_URL: import.meta.env.VITE_PUBLIC_PROFILE_GATEWAY_URL,
     VITE_LOCAL_TUNES_API_URL: import.meta.env.VITE_LOCAL_TUNES_API_URL,
-  }),
+  })),
 );

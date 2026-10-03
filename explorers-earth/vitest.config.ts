@@ -12,6 +12,11 @@ export default defineConfig({
     // controller in ../tunes. Resolve its bare GraphQL import from this
     // package's declared dependency; CI installs packages independently.
     alias: [{
+      // The shared API schema uses Zod 3; the frontend's declared Zod 4
+      // package provides that compatibility export in isolated frontend CI.
+      find: /^zod\/v3$/,
+      replacement: require.resolve('zod/v3'),
+    }, {
       find: /^graphql$/,
       replacement: resolve(fileURLToPath(new URL('./', import.meta.url)), 'node_modules/graphql/index.mjs'),
     }],

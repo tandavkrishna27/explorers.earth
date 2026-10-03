@@ -20,7 +20,19 @@ const { accountScope, get, post, mutationSubmit, toastError, toastSuccess } = vi
 }));
 
 vi.mock("axios", () => ({ default: { get, post } }));
+vi.mock("../../../../lib/explorersApiClient", () => ({ explorersApiClient: {
+  createMedia: (...args: unknown[]) => post(...args).then((result: any) => result.data[0]),
+  deleteMedia: vi.fn(),
+} }));
 vi.mock("sonner", () => ({ toast: { error: toastError, success: toastSuccess, warning: vi.fn() } }));
+vi.mock("../../api/useCanonicalAccount", () => ({
+  useCanonicalAccount: () => ({ data: { id: accountScope.current.documentId, handle: "tinoue",
+    onboardingStatus: "complete", revision: 1 }, isLoading: false, error: null, refetch: vi.fn() }),
+}));
+vi.mock("../../api/profileClient", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../../api/profileClient")>(),
+  toProfileViewModel: () => accountScope.current,
+}));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({
   t: (key: string, fallback?: unknown) => typeof fallback === "string" ? fallback : key,
 }) }));
@@ -38,7 +50,7 @@ vi.mock("../../../../store/store", () => ({ default: () => ({ user: { documentId
 vi.mock("../../hooks/useUpdateProfile", () => ({ useUpdateProfile: () => ({ handleSubmit: mutationSubmit }) }));
 vi.mock("../../hooks/useReverseGeocoding", () => ({ useReverseGeocoding: () => ({ currentLocation: null, mappedAddress: {}, handleGetCurrentLocation: vi.fn() }) }));
 vi.mock("../../../../hooks/useProfileWalkthrough", () => ({ useProfileWalkthrough: () => ({ run: false, steps: [], stepIndex: 0, setRun: vi.fn(), setStepIndex: vi.fn(), handleJoyrideCallback: vi.fn(), advanceToNextStep: vi.fn(), markProcessingComplete: vi.fn() }) }));
-vi.mock("../../../../store/useSetupStore", () => ({ default: () => ({ isProfileComplete: true, isRecommendationsComplete: true, setSetupStatus: vi.fn() }) }));
+vi.mock("../../../../store/useSetupStore", () => ({ default: () => ({ isProfileComplete: true, isRecommendationsComplete: true, setSetupStatus: vi.fn(), bindAccount: vi.fn() }) }));
 vi.mock("../../../../utils/setupStatusCalculations", () => ({ calculateIsProfileComplete: () => true }));
 vi.mock("../../../../utils/aspectRatioUtils", () => ({ detectMediaAspectRatio: vi.fn(), detectUrlAspectRatio: vi.fn().mockResolvedValue({ aspectRatio: "4:5", width: 800, height: 1000 }) }));
 vi.mock("../AddressInput", () => ({

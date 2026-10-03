@@ -1,7 +1,9 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { loadEnv } from 'vite'
+import { createRequire } from 'node:module'
 import { resolveMusicDevelopmentProxyTarget } from './src/features/music/musicDevelopmentTransport'
+const require = createRequire(import.meta.url)
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -21,6 +23,11 @@ export default defineConfig(({ mode }) => {
     console.warn('Music development proxy disabled: invalid Music origin.')
   }
   return ({
+  resolve: {
+    // Shared schemas live outside this package's dependency ancestry. Bundle the
+    // compatibility export from the frontend's declared Zod dependency.
+    alias: [{ find: /^zod\/v3$/, replacement: require.resolve('zod/v3') }],
+  },
   plugins: [
     react(),
   ],

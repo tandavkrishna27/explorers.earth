@@ -55,6 +55,12 @@ import {
 const repositoryRoot = resolve(import.meta.dirname, "../../../..");
 
 const EXPECTED_INTEGRATION_FILES = [
+  "server/test/account-recovery.test.ts",
+  "server/test/explorers-lifecycle.integration.test.ts",
+  "server/test/explorers-media.integration.test.ts",
+  "server/test/explorers-profile.integration.test.ts",
+  "server/test/explorers-recovery-callback.integration.test.ts",
+  "server/test/explorers-recovery.integration.test.ts",
   "server/test/google-sync.integration.test.ts",
   "server/test/load/music-load-http-postgres.integration.test.ts",
   "server/test/load/music-load-postgres.integration.test.ts",

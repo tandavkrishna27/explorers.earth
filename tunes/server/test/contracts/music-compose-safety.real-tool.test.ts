@@ -25,7 +25,10 @@ describe("Music Compose ownership safety", () => {
       write("explorers-earth/public/robots.txt");
       write("explorers-earth/scripts/generate-static-files.js");
       write("tunes/shared/musicPublicationContract.ts");
+      write("tunes/shared/explorersOwnerContentContract.ts");
       for (const hostile of [
+        "explorers-earth/.env.oauth.local",
+        "tunes/.env.oauth.local",
         "explorers-earth/server/.chrome-profile/Default/Cookies",
         "explorers-earth/test-results/music/trace.zip",
         "explorers-earth/test-results/screenshots/capability.png",
@@ -68,6 +71,7 @@ describe("Music Compose ownership safety", () => {
         "explorers-earth/public/robots.txt",
         "explorers-earth/scripts/generate-static-files.js",
         "explorers-earth/src/main.tsx",
+        "tunes/shared/explorersOwnerContentContract.ts",
         "tunes/shared/musicPublicationContract.ts",
       ]);
     } finally {

@@ -1,0 +1,83 @@
+/** Historical GraphQL documents used only to restore pre-replatform fixture snapshots. */
+export const onboardingStatus = gql`
+  query CheckOnboardingStatus($documentId: ID!) {
+    usersPermissionsUser(documentId: $documentId) {
+      accounts { documentId Account_Name Account_Type mobile_number }
+    }
+  }
+`;
+export const sidebarAccount = gql`
+  query SidebarAccount($documentId: ID!) {
+    usersPermissionsUser(documentId: $documentId) {
+      accounts { documentId Account_Name profile_picture { url } }
+    }
+  }
+`;
+
+export const headerAccount = gql`
+  query user($documentId: ID!) {
+    usersPermissionsUser(documentId: $documentId) {
+      accounts {
+        profile_picture { url }
+        Account_Name
+        documentId
+        public_recommendations
+        public_movie
+        public_books
+        public_games
+        public_music
+      }
+    }
+  }
+`;
+import { gql } from "@apollo/client";
+
+export const profileDataQuery = gql`
+  query UsersPermissionsUser($documentId: ID!) {
+    usersPermissionsUser(documentId: $documentId) {
+      username
+      email
+      mobile_number
+      mobile_number_visibility
+      createdAt
+      updatedAt
+      accounts {
+        documentId
+        Account_Name
+        Account_Type
+        Bio
+        Addresss
+        Primary_Address
+        Public_Profile_Address
+  Feed_Data
+        social_media
+        mobile_number
+        mobile_number_visibility
+        createdAt
+        updatedAt
+        profile_picture {
+          url
+        }
+        bg_picture {
+          url
+        }
+      }
+    }
+  }
+`;
+gql`
+  query MusicIdentityEligibility($documentId: ID!) {
+    usersPermissionsUser(documentId: $documentId) {
+      documentId
+      provider
+      confirmed
+      blocked
+      accounts {
+        documentId
+        Account_Name
+        Account_Type
+        mobile_number
+      }
+    }
+  }
+`;

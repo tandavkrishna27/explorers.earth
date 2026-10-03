@@ -1,0 +1,2020 @@
+{
+  "schemaVersion": 2,
+  "kind": "discovery-only-not-execution",
+  "name": "publishing",
+  "provenance": {
+    "schemaVersion": 2,
+    "sha": "106960f2a6a9eafd5240ec7a506f3b212e2db280",
+    "sourceHash": "1f695a38ec64115a0b8561927248f5a589820731142acd1394f560ac8efc5872",
+    "configHash": "b106b6302ba07d354053810c7fe4b417a634ecb47dcc63c5cc732d253690bdd5",
+    "lockHash": "35e2297d928f7098394650081ca5ca45c2d5a958923d8c6dafa7ce27e00fe537"
+  },
+  "sourceSnapshot": "source-v2.json",
+  "identities": [
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "320px error/pending controls remain visible, keyboard-recoverable, and RTL Music has no overflow"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Auto + saved Music → header Off → Manual → Settings On never restores removed pin"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Music Express requires explicit same-key recovery or separate fresh confirmation"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Music Strapi requires explicit same-key recovery or separate fresh confirmation"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Music expired replay requires explicit same-key recovery or separate fresh confirmation"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Music identity not ready is disabled without blocking ordinary Settings"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Music invalid is disabled without blocking ordinary Settings"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Music lost response requires explicit same-key recovery or separate fresh confirmation"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Music pin hint No/private is truthful without changing placement"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Music pin hint No/public is truthful without changing placement"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Music pin hint Yes/public is truthful without changing placement"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Music pin hint checking and outage preserve the saved pin at 1280px"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Music pin hint checking and outage preserve the saved pin at 320px"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Music unknown is disabled without blocking ordinary Settings"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Music verification requires explicit same-key recovery or separate fresh confirmation"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "No+public Make private recovery never publishes first"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Settings On → reload/Pin → anonymous friendly/share → header Off revokes open guest and old link"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Unlisted sharing is explicit, dialog closure drops capability and old link is refused after Off"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "Yes+unlisted Make private recovery never publishes first"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "admitted account mutation settles across mobile→desktop replacement before the next explicit pin"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "authoritative friendly fallback replaces history, preserves only safe UTM and drops capability fragment"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "cold mobile Music and breakpoint remount during pending read cannot leak an old write"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "delayed cross-device old Public can win backend ordering and must surface conflict"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "friendly 429 retains route and recovers with the intended retry policy"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "friendly 503 retains route and recovers with the intended retry policy"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "friendly pending descriptor never redirects; failed account read Retry performs a fresh account read"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "geometry 1280/dark: Settings and complete/compact Music, keyboard and touch"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "geometry 1280/light: Settings and complete/compact Music, keyboard and touch"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "geometry 1440/dark: Settings and complete/compact Music, keyboard and touch"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "geometry 1440/light: Settings and complete/compact Music, keyboard and touch"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "geometry 320/dark: Settings and complete/compact Music, keyboard and touch"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "geometry 320/light: Settings and complete/compact Music, keyboard and touch"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "geometry 375/dark: Settings and complete/compact Music, keyboard and touch"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "geometry 375/light: Settings and complete/compact Music, keyboard and touch"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "geometry 390/dark: Settings and complete/compact Music, keyboard and touch"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "geometry 390/light: Settings and complete/compact Music, keyboard and touch"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "geometry 768/dark: Settings and complete/compact Music, keyboard and touch"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "geometry 768/light: Settings and complete/compact Music, keyboard and touch"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix No/private/Auto/absent is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix No/private/Auto/saved is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix No/private/Manual/absent is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix No/private/Manual/saved is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix No/public/Auto/absent is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix No/public/Auto/saved is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix No/public/Manual/absent is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix No/public/Manual/saved is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix No/unlisted/Auto/absent is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix No/unlisted/Auto/saved is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix No/unlisted/Manual/absent is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix No/unlisted/Manual/saved is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix Yes/private/Auto/absent is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix Yes/private/Auto/saved is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix Yes/private/Manual/absent is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix Yes/private/Manual/saved is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix Yes/public/Auto/absent is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix Yes/public/Auto/saved is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix Yes/public/Manual/absent is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix Yes/public/Manual/saved is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix Yes/unlisted/Auto/absent is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix Yes/unlisted/Auto/saved is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix Yes/unlisted/Manual/absent is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "matrix Yes/unlisted/Manual/saved is truthful and read-only"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "navigating away from a pending Unlisted dialog discards the capability outcome"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "pending account read across A→B→A and logout never authorizes a stale publication"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "same-key Private replay cannot clear account after another device restored Public"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "session storage denial retains in-memory stable retry without automatic writes"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "two owner tabs observe verified final Music On and Off without automatic commands"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "unknown/invalid username bad%20username keeps normal 404"
+      ],
+      "project": "",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "titlePath": [
+        "unknown/invalid username unknown-fixture-user keeps normal 404"
+      ],
+      "project": "",
+      "repeat": 0
+    }
+  ],
+  "inventoryHash": "4554db56155c930cf21d4419cd63c7c4ec665753dee0fa42d2cc3582306cceba",
+  "configPaths": [
+    "explorers-earth/playwright.music-publishing.config.ts",
+    "explorers-earth/playwright.category-navigation.config.ts"
+  ],
+  "lockPaths": [
+    "explorers-earth/package-lock.json",
+    "tunes/package-lock.json"
+  ],
+  "discovery": {
+    "command": [
+      "node",
+      "node_modules/@playwright/test/cli.js",
+      "test",
+      "--config=playwright.music-publishing.config.ts",
+      "--list",
+      "--reporter=json"
+    ],
+    "cwd": "explorers-earth",
+    "node": "v24.21.0",
+    "playwright": "1.61.1",
+    "status": 0,
+    "signal": null,
+    "errors": [],
+    "projects": {
+      "": 1
+    },
+    "rawStdoutHash": "cc0589657d5e18c6f568d7deb9993a905f840e79373435ba1019a739f02a6aef",
+    "independentComparison": true,
+    "historicalIdentityEquality": true,
+    "selectionShards": [
+      {
+        "index": 1,
+        "count": 14,
+        "assignmentHash": "3c54337a5852597f8975d7c6d6add882acd91636c73566233c1cbc04011d536e",
+        "selectedExact": true
+      },
+      {
+        "index": 2,
+        "count": 14,
+        "assignmentHash": "82c9e96c7fd24ad25d4615750f019893d8503fe556fff379f8624a697b3bf614",
+        "selectedExact": true
+      },
+      {
+        "index": 3,
+        "count": 14,
+        "assignmentHash": "6aa82a2c94644d25b35ce90134406236b9860ef30b8c672696ab4e5eec33e1fb",
+        "selectedExact": true
+      },
+      {
+        "index": 4,
+        "count": 14,
+        "assignmentHash": "533ad33b2addbe6035637ac950c938ee7c17a38b37df391f98e7084e437c3281",
+        "selectedExact": true
+      },
+      {
+        "index": 5,
+        "count": 13,
+        "assignmentHash": "570538cf1c9ea3f892b6e63848318382b521ee532ad5fb3288e76d9ea9c9643c",
+        "selectedExact": true
+      }
+    ]
+  },
+  "discoverySuites": [
+    {
+      "title": "music-publish-controls.spec.ts",
+      "file": "music-publish-controls.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Music pin hint checking and outage preserve the saved pin at 320px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-b2039ccdf12c6437aab1",
+          "file": "music-publish-controls.spec.ts",
+          "line": 5,
+          "column": 3
+        },
+        {
+          "title": "Music pin hint checking and outage preserve the saved pin at 1280px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-f981a18a0645b6b789ae",
+          "file": "music-publish-controls.spec.ts",
+          "line": 5,
+          "column": 3
+        },
+        {
+          "title": "Music pin hint No/private is truthful without changing placement",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-96032013951c5f2e83a0",
+          "file": "music-publish-controls.spec.ts",
+          "line": 37,
+          "column": 3
+        },
+        {
+          "title": "Music pin hint Yes/public is truthful without changing placement",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-57ef3d76bad21a368666",
+          "file": "music-publish-controls.spec.ts",
+          "line": 37,
+          "column": 3
+        },
+        {
+          "title": "Music pin hint No/public is truthful without changing placement",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-42f7ed008464fcb6dcac",
+          "file": "music-publish-controls.spec.ts",
+          "line": 37,
+          "column": 3
+        },
+        {
+          "title": "matrix No/private/Manual/absent is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-56ea8700a8aa3af017ed",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix No/private/Manual/saved is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-ef86cf638c2b70a7a0ee",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix No/private/Auto/absent is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-afc31aeb52a5933e728c",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix No/private/Auto/saved is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-808c5592b59d41ca9ec9",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix No/unlisted/Manual/absent is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-99de824f42310682f9e9",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix No/unlisted/Manual/saved is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-3d05085298ff58db4f30",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix No/unlisted/Auto/absent is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-a6f1189ea09629b0f44b",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix No/unlisted/Auto/saved is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-f54cf616c1b5ef2bb08d",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix No/public/Manual/absent is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-261db8a7d8ccdd1cb644",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix No/public/Manual/saved is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-3aca5d5e7c74ce84c060",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix No/public/Auto/absent is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-fa6820e2533c97709877",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix No/public/Auto/saved is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-121c5344d6477fae38e9",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix Yes/private/Manual/absent is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-05b1eed68885c1b1cd81",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix Yes/private/Manual/saved is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-1b6c6fa7d557742bf1a7",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix Yes/private/Auto/absent is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-62bb9547e709de8155e2",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix Yes/private/Auto/saved is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-d060b3351d2c81113a24",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix Yes/unlisted/Manual/absent is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-c5820796ad29e2a5a03b",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix Yes/unlisted/Manual/saved is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-f9522e6e6e18c931b391",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix Yes/unlisted/Auto/absent is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-330a8b51aecf2b405404",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix Yes/unlisted/Auto/saved is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-774216442f408e06ab89",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix Yes/public/Manual/absent is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-4db2f27dd68da2dfa37a",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix Yes/public/Manual/saved is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-18de9a69b7ed034c51ef",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix Yes/public/Auto/absent is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-fc56b4ac9ad9fc68452a",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "matrix Yes/public/Auto/saved is truthful and read-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-a6f1989bea51ced66569",
+          "file": "music-publish-controls.spec.ts",
+          "line": 64,
+          "column": 3
+        },
+        {
+          "title": "Settings On → reload/Pin → anonymous friendly/share → header Off revokes open guest and old link",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-d476afe715f4b40e0ef0",
+          "file": "music-publish-controls.spec.ts",
+          "line": 79,
+          "column": 1
+        },
+        {
+          "title": "Auto + saved Music → header Off → Manual → Settings On never restores removed pin",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-a7be3389c2052a52081e",
+          "file": "music-publish-controls.spec.ts",
+          "line": 110,
+          "column": 1
+        },
+        {
+          "title": "No+public Make private recovery never publishes first",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-53e3d70fe9ae71e5c838",
+          "file": "music-publish-controls.spec.ts",
+          "line": 131,
+          "column": 3
+        },
+        {
+          "title": "Yes+unlisted Make private recovery never publishes first",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-dad8d0afd0cfce38a229",
+          "file": "music-publish-controls.spec.ts",
+          "line": 131,
+          "column": 3
+        },
+        {
+          "title": "Music Strapi requires explicit same-key recovery or separate fresh confirmation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-7823a663651a7953eb41",
+          "file": "music-publish-controls.spec.ts",
+          "line": 145,
+          "column": 3
+        },
+        {
+          "title": "Music Express requires explicit same-key recovery or separate fresh confirmation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-b1381c3006a6266e884d",
+          "file": "music-publish-controls.spec.ts",
+          "line": 145,
+          "column": 3
+        },
+        {
+          "title": "Music lost response requires explicit same-key recovery or separate fresh confirmation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-4cc16ecee35002d8ba62",
+          "file": "music-publish-controls.spec.ts",
+          "line": 145,
+          "column": 3
+        },
+        {
+          "title": "Music verification requires explicit same-key recovery or separate fresh confirmation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-cd62c667d3b4b4aa5fa9",
+          "file": "music-publish-controls.spec.ts",
+          "line": 145,
+          "column": 3
+        },
+        {
+          "title": "Music expired replay requires explicit same-key recovery or separate fresh confirmation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-2f8b1acb30e77d4b2379",
+          "file": "music-publish-controls.spec.ts",
+          "line": 145,
+          "column": 3
+        },
+        {
+          "title": "friendly 429 retains route and recovers with the intended retry policy",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-85de9720597daa664814",
+          "file": "music-publish-controls.spec.ts",
+          "line": 169,
+          "column": 3
+        },
+        {
+          "title": "friendly 503 retains route and recovers with the intended retry policy",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-966e1c3613daa627fa73",
+          "file": "music-publish-controls.spec.ts",
+          "line": 169,
+          "column": 3
+        },
+        {
+          "title": "geometry 320/light: Settings and complete/compact Music, keyboard and touch",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-c95fd64054d62da7f81c",
+          "file": "music-publish-controls.spec.ts",
+          "line": 189,
+          "column": 3
+        },
+        {
+          "title": "geometry 320/dark: Settings and complete/compact Music, keyboard and touch",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-19371b9714b852b157c8",
+          "file": "music-publish-controls.spec.ts",
+          "line": 189,
+          "column": 3
+        },
+        {
+          "title": "geometry 375/light: Settings and complete/compact Music, keyboard and touch",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-302edb30d901b2312fee",
+          "file": "music-publish-controls.spec.ts",
+          "line": 189,
+          "column": 3
+        },
+        {
+          "title": "geometry 375/dark: Settings and complete/compact Music, keyboard and touch",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-c50dcf6a43ff52f09ccd",
+          "file": "music-publish-controls.spec.ts",
+          "line": 189,
+          "column": 3
+        },
+        {
+          "title": "geometry 390/light: Settings and complete/compact Music, keyboard and touch",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-b595929527bbc74963c9",
+          "file": "music-publish-controls.spec.ts",
+          "line": 189,
+          "column": 3
+        },
+        {
+          "title": "geometry 390/dark: Settings and complete/compact Music, keyboard and touch",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-d4ccfc5757cd7c7b150b",
+          "file": "music-publish-controls.spec.ts",
+          "line": 189,
+          "column": 3
+        },
+        {
+          "title": "geometry 768/light: Settings and complete/compact Music, keyboard and touch",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-29df24bf8d3c577f7657",
+          "file": "music-publish-controls.spec.ts",
+          "line": 189,
+          "column": 3
+        },
+        {
+          "title": "geometry 768/dark: Settings and complete/compact Music, keyboard and touch",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-fec7b7d4185bdeeb9115",
+          "file": "music-publish-controls.spec.ts",
+          "line": 189,
+          "column": 3
+        },
+        {
+          "title": "geometry 1280/light: Settings and complete/compact Music, keyboard and touch",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-dec6514159b355b21d52",
+          "file": "music-publish-controls.spec.ts",
+          "line": 189,
+          "column": 3
+        },
+        {
+          "title": "geometry 1280/dark: Settings and complete/compact Music, keyboard and touch",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-57859d30ffa8a28c592e",
+          "file": "music-publish-controls.spec.ts",
+          "line": 189,
+          "column": 3
+        },
+        {
+          "title": "geometry 1440/light: Settings and complete/compact Music, keyboard and touch",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-436a920a86771d7d7422",
+          "file": "music-publish-controls.spec.ts",
+          "line": 189,
+          "column": 3
+        },
+        {
+          "title": "geometry 1440/dark: Settings and complete/compact Music, keyboard and touch",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-bd36acd16d1f00d5d6db",
+          "file": "music-publish-controls.spec.ts",
+          "line": 189,
+          "column": 3
+        },
+        {
+          "title": "authoritative friendly fallback replaces history, preserves only safe UTM and drops capability fragment",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-c514adf01647da4c7f2b",
+          "file": "music-publish-controls.spec.ts",
+          "line": 213,
+          "column": 1
+        },
+        {
+          "title": "unknown/invalid username unknown-fixture-user keeps normal 404",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-cbd066af6c0fd9d5baba",
+          "file": "music-publish-controls.spec.ts",
+          "line": 225,
+          "column": 3
+        },
+        {
+          "title": "unknown/invalid username bad%20username keeps normal 404",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-3e3d04b2f9cc1759e52b",
+          "file": "music-publish-controls.spec.ts",
+          "line": 225,
+          "column": 3
+        },
+        {
+          "title": "friendly pending descriptor never redirects; failed account read Retry performs a fresh account read",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-8545908845607f301385",
+          "file": "music-publish-controls.spec.ts",
+          "line": 235,
+          "column": 1
+        },
+        {
+          "title": "same-key Private replay cannot clear account after another device restored Public",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-4df7848e16728e741bbb",
+          "file": "music-publish-controls.spec.ts",
+          "line": 255,
+          "column": 1
+        },
+        {
+          "title": "session storage denial retains in-memory stable retry without automatic writes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-af43b8edf5b53468bee2",
+          "file": "music-publish-controls.spec.ts",
+          "line": 271,
+          "column": 1
+        },
+        {
+          "title": "cold mobile Music and breakpoint remount during pending read cannot leak an old write",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-75367bf4e68005a3405b",
+          "file": "music-publish-controls.spec.ts",
+          "line": 288,
+          "column": 1
+        },
+        {
+          "title": "Music invalid is disabled without blocking ordinary Settings",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-0cc06bf2e49b43d96e61",
+          "file": "music-publish-controls.spec.ts",
+          "line": 306,
+          "column": 3
+        },
+        {
+          "title": "Music unknown is disabled without blocking ordinary Settings",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-b8e782a3b34d0941cad9",
+          "file": "music-publish-controls.spec.ts",
+          "line": 306,
+          "column": 3
+        },
+        {
+          "title": "Music identity not ready is disabled without blocking ordinary Settings",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-014cebac1517cd26b718",
+          "file": "music-publish-controls.spec.ts",
+          "line": 306,
+          "column": 3
+        },
+        {
+          "title": "two owner tabs observe verified final Music On and Off without automatic commands",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-eea20a6abc9c48ba2dd6",
+          "file": "music-publish-controls.spec.ts",
+          "line": 326,
+          "column": 1
+        },
+        {
+          "title": "delayed cross-device old Public can win backend ordering and must surface conflict",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-3bb61b0ad72d02a7c0bc",
+          "file": "music-publish-controls.spec.ts",
+          "line": 338,
+          "column": 1
+        },
+        {
+          "title": "pending account read across A→B→A and logout never authorizes a stale publication",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-44bc65ef3f84a3900f93",
+          "file": "music-publish-controls.spec.ts",
+          "line": 353,
+          "column": 1
+        },
+        {
+          "title": "Unlisted sharing is explicit, dialog closure drops capability and old link is refused after Off",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-2d01bc62e94c22f9ffff",
+          "file": "music-publish-controls.spec.ts",
+          "line": 367,
+          "column": 1
+        },
+        {
+          "title": "320px error/pending controls remain visible, keyboard-recoverable, and RTL Music has no overflow",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-4f107101ebe7dd371d1d",
+          "file": "music-publish-controls.spec.ts",
+          "line": 387,
+          "column": 1
+        },
+        {
+          "title": "navigating away from a pending Unlisted dialog discards the capability outcome",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-34fae0d2664168a756b5",
+          "file": "music-publish-controls.spec.ts",
+          "line": 405,
+          "column": 1
+        },
+        {
+          "title": "admitted account mutation settles across mobile→desktop replacement before the next explicit pin",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "c5b8467cb55945c7c20d-5d4e1620c875f4da3e38",
+          "file": "music-publish-controls.spec.ts",
+          "line": 422,
+          "column": 1
+        }
+      ]
+    }
+  ]
+}

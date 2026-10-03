@@ -54,6 +54,9 @@ export type MusicSurfaceDecision =
   | "tombstone"
   | "admin-tombstone"
   | "owner-or-guest"
+  | "explorers-auth"
+  | "explorers-owner"
+  | "explorers-recovery"
   | "unclassified";
 
 export interface RuntimeRouteSurface {
@@ -115,9 +118,66 @@ const OWNER_PREFIXES = [
   "/api/seo",
 ];
 
-export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "path" | "classification">): MusicSurfaceDecision {
+export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "path" | "classification"> & Partial<Pick<RuntimeRouteSurface, "source">>): MusicSurfaceDecision {
+  if(route.classification!=='tombstone'&&route.classification!=='admin-tombstone'){
+    if(route.source==='tunes/server/routes/explorersAnalyticsRoutes.ts'&&route.path==='/api/explorers/analytics/events'){
+      if(route.method==='POST')return 'public';
+      if(route.method==='GET')return 'strapi-identity'; // Historical GET only, until Epic7.2.
+    }
+    if(route.source==='tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/analytics/summary')return 'explorers-owner';
+  }
+  if (route.source === "tunes/server/auth/canonicalApp.ts") {
+    if (["USE", "ALL"].includes(route.method) && (route.path === "/api/auth" || route.path === "/api/auth/*splat")) return "explorers-auth";
+    if (route.method === "POST" && route.path === "/api/explorers/v1/recovery/start") return "explorers-recovery";
+    if (route.method === "GET" && route.path === "/api/explorers/v1/me") return "explorers-owner";
+  }
   if (route.classification === "admin-tombstone") return "admin-tombstone";
   if (route.classification === "tombstone") return "tombstone";
+  if(route.source==='tunes/server/routes/explorersPublicContentRoutes.ts' && route.method==='GET' && [
+    '/api/explorers/v1/public/profiles/:username/collections/:category',
+    '/api/explorers/v1/public/recommendations/search',
+    '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations',
+    '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations/:id',
+  ].includes(route.path)) return 'public';
+  if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/books')return 'explorers-owner';
+  if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/movies')return 'explorers-owner';
+  if (route.source === "tunes/server/routes/explorersRecommendationRoutes.ts"
+      && [
+        ["POST", "/api/explorers/v1/entities/resolve"],
+        ["POST", "/api/explorers/v1/collections"],
+        ["GET", "/api/explorers/v1/collections"],
+        ["GET", "/api/explorers/v1/collections/:id"],
+        ["GET", "/api/explorers/v1/collections/:id/editable"],
+        ["GET", "/api/explorers/v1/recommendations"],
+        ["GET", "/api/explorers/v1/recommendations/search"],
+        ["GET", "/api/explorers/v1/recommendations/:id"],
+        ["GET", "/api/explorers/v1/recommendations/:id/editable"],
+        ["GET", "/api/explorers/v1/categories/:category/content-snapshot"],
+        ["GET", "/api/explorers/v1/categories/:category/content-snapshot/validate"],
+        ["GET", "/api/explorers/v1/categories/:category/memberships"],
+        ["GET", "/api/explorers/v1/categories/:category/top-picks"],
+         ["PUT", "/api/explorers/v1/categories/:category/top-picks"],
+         ["PATCH", "/api/explorers/v1/categories/:category/top-picks/order"],
+        ["PATCH", "/api/explorers/v1/collections/:id"],
+        ["PATCH", "/api/explorers/v1/collections/:id/order"],
+        ["DELETE", "/api/explorers/v1/collections/:id"],
+        ["POST", "/api/explorers/v1/recommendations"],
+        ["POST", "/api/explorers/v1/recommendations/:id/entity"], ["POST", "/api/explorers/v1/recommendations/:id/book-covers"],
+        ["PATCH", "/api/explorers/v1/recommendations/:id"],
+        ["DELETE", "/api/explorers/v1/recommendations/:id"],
+      ].some(([method,path])=>route.method===method && route.path===path)) return "explorers-owner";
+  if (route.source === "tunes/server/routes/explorersAccountRoutes.ts"
+      && route.method === "PATCH" && route.path === "/api/explorers/v1/account") return "explorers-owner";
+  if (route.source === "tunes/server/routes/explorersLifecycleRoutes.ts") {
+    if (route.path.startsWith("/api/explorers/v1/account/")) return "explorers-owner";
+    if (route.path === "/api/explorers/v1/recovery/status" || route.path === "/api/explorers/v1/recovery/complete")
+      return "explorers-recovery";
+  }
+  if (route.source === "tunes/server/routes/explorersMediaRoutes.ts") {
+    if (route.method === "POST" && route.path === "/api/explorers/v1/media") return "explorers-owner";
+    if (route.method === "DELETE" && route.path === "/api/explorers/v1/media/:id") return "explorers-owner";
+    if (["GET", "HEAD"].includes(route.method) && route.path === "/api/explorers/v1/media/:id/content") return "public";
+  }
   if (route.method === "GET" && PUBLIC_PROFILE_GET_PATHS.has(route.path)) return "public";
   if (route.path === "/api/music/identity/ensure" || route.path.startsWith("/api/music/identity/lifecycle/")) return "strapi-identity";
   if (route.path === "/api/music/identity/current") return "owner";
@@ -141,12 +201,13 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
 }
 
 function allowedFor(decision: MusicSurfaceDecision) {
+  const identityFlow = decision === "explorers-auth" || decision === "explorers-recovery";
   return {
-    unauthenticated: decision === "public" || decision === "guest" || decision === "native-session",
-    owner: decision === "owner" || decision === "paid-owner" || decision === "owner-or-guest",
+    unauthenticated: decision === "public" || decision === "guest" || decision === "native-session" || decision === "explorers-auth" || decision === "explorers-recovery",
+    owner: decision === "owner" || decision === "paid-owner" || decision === "owner-or-guest" || decision === "explorers-owner" || decision === "explorers-auth",
     otherUser: false,
-    suspended: false,
-    pendingDeletion: false,
+    suspended: identityFlow,
+    pendingDeletion: identityFlow,
     staleEntitlement: decision === "owner",
     guestValid: decision === "guest" || decision === "owner-or-guest",
     guestInvalid: false,
@@ -175,7 +236,15 @@ export function authorizationMatrixFromInventory(inventory: {
       if (decision === "guest" && route.method !== "GET"
           && route.path !== "/api/playlist/:guestUrl/requests"
           && route.path !== "/api/explorers/analytics/music/:publicSlug/events") allowed.unauthenticated = false;
-      return { method: route.method, path: route.path, source: route.source, decision, allowed };
+      const flowAccess = decision === "explorers-auth"
+        ? { purpose: "provider-authentication", grantsApplicationAuthority: false }
+        : decision === "explorers-recovery"
+          ? { purpose: route.path.endsWith("/start") ? "recovery-intent-issuance" : "recovery-proof-consumption", grantsApplicationAuthority: false }
+          : undefined;
+      return {
+        method: route.method, path: route.path, source: route.source, decision, allowed,
+        ...(flowAccess ? { flowAccess } : {}),
+      };
     }),
     events: inventory.events.map((event) => {
       const decision: MusicSurfaceDecision = event.direction === "emit" && event.event === "guest_request" ? "owner"

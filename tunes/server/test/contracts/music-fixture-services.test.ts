@@ -372,7 +372,7 @@ describe("deterministic Music fixture services", () => {
     const authority = `Bearer ${token}`;
     const service = createMusicFixtureService({ username, accountDocumentId, userDocumentId, token });
     const tuple = { namespace, username, accountDocumentId, userDocumentId };
-    const profileQuery = checkedInGraphqlOperation("explorers-earth/src/features/Profile/api/query.ts", "UsersPermissionsUser");
+    const profileQuery = checkedInGraphqlOperation("tunes/scripts/legacy-profile-fixture-documents.txt", "UsersPermissionsUser");
     const settingsQuery = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UsersPermissionsUser");
     const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts", "UpdateAccount");
     const visibilityMutation = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UpdateAccount");
@@ -484,7 +484,7 @@ describe("deterministic Music fixture services", () => {
       userDocumentId: "fixture-user-document-id", token,
     })).toThrow("complete namespaced authority tuple");
     const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts", "UpdateAccount");
-    const profileQuery = checkedInGraphqlOperation("explorers-earth/src/features/Profile/api/query.ts", "UsersPermissionsUser");
+    const profileQuery = checkedInGraphqlOperation("tunes/scripts/legacy-profile-fixture-documents.txt", "UsersPermissionsUser");
     const tuple = { namespace, username, accountDocumentId, userDocumentId };
 
     const denied = [
@@ -512,7 +512,7 @@ describe("deterministic Music fixture services", () => {
     const authority = `Bearer ${token}`;
     const service = createMusicFixtureService({ username, accountDocumentId, userDocumentId, token });
     const updateMutation = checkedInGraphqlOperation("explorers-earth/src/features/Settings/api/mutation.ts", "UpdateAccount");
-    const profileQuery = checkedInGraphqlOperation("explorers-earth/src/features/Profile/api/query.ts", "UsersPermissionsUser");
+    const profileQuery = checkedInGraphqlOperation("tunes/scripts/legacy-profile-fixture-documents.txt", "UsersPermissionsUser");
     type QualificationAuthority = {
       expectedRevision: number;
       namespace: string;

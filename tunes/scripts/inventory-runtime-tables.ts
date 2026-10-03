@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
 
@@ -81,7 +81,12 @@ function sqlStatements(file: string, source: string): string[] {
 }
 
 export function inventoryRuntimeTables(repositoryRoot: string): RuntimeTableInventory {
-  const schema = readFileSync(join(repositoryRoot, "tunes", "shared", "schema.ts"), "utf8");
+  const shared = join(repositoryRoot, "tunes", "shared");
+  const schema = ["schema.ts", "authSchema.ts", "explorersSchema.ts"]
+    .map((file) => join(shared, file))
+    .filter((file) => existsSync(file))
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
   const drizzleTables = sorted([...schema.matchAll(/pgTable\(\s*["']([a-z_][a-z0-9_]*)["']/g)].map((match) => match[1]));
   const rawSqlTables = new Set<string>();
   for (const file of sourceFiles(join(repositoryRoot, "tunes", "server"))) {
@@ -89,7 +94,7 @@ export function inventoryRuntimeTables(repositoryRoot: string): RuntimeTableInve
     const statements = sqlStatements(file, source);
     for (const statement of statements) {
       const commonTableExpressions = new Set(
-        [...statement.matchAll(/(?:\bWITH\s+(?:RECURSIVE\s+)?|,\s*)([a-z_][a-z0-9_]*)\s*(?:\([^)]*\)\s*)?AS\s*\(/gi)].map((match) => match[1].toLowerCase()),
+        [...statement.matchAll(/(?:\bWITH\s+(?:RECURSIVE\s+)?|,\s*)([a-z_][a-z0-9_]*)\s*(?:\([^)]*\)\s*)?AS\s*(?:(?:NOT\s+)?MATERIALIZED\s*)?\(/gi)].map((match) => match[1].toLowerCase()),
       );
       for (const match of statement.matchAll(/\b(?:DELETE\s+FROM|FROM|JOIN|UPDATE(?!\s+(?:OF|SKIP|SET)\b)|INTO)\s+(?:LATERAL\s+)?(?:"?public"?\.)?["']?([a-z_][a-z0-9_]*)["']?/gi)) {
         const table = match[1].toLowerCase();

@@ -1,5 +1,7 @@
 import type { Express, Request } from "express";
 import { z } from "zod";
+import {AuthorizationError} from '../application/authorization';
+import type {AnalyticsRequestContext} from '../application/analytics';
 import {
   explorersAnalyticsInputSchema,
   IdempotencyConflictError,
@@ -167,7 +169,7 @@ const readScopeSchema = z.object({
 });
 
 export interface ExplorersAnalyticsRouteDependencies {
-  service: Pick<ExplorersAnalyticsService, "ingest" | "readAccountEvents">;
+  service: {ingest(input:z.infer<typeof explorersAnalyticsInputSchema>,context:{getIp:()=>string|null;music?:AnalyticsRequestContext['music']}):Promise<{status:'consent-denied'}|{status:'pending'|'dropped';duplicate:true}|{status:'committed';duplicate:boolean;documentId?:string;retired?:true}>;readAccountEvents(scope:{accountId:string;from:string;to:string}):Promise<unknown[]>};
   authorizeOwner: (request: Request, accountId: string) => Promise<boolean>;
   validatePublicTarget: (
     input: z.infer<typeof explorersAnalyticsInputSchema>,
@@ -210,12 +212,13 @@ export function setupExplorersAnalyticsRoutes(
       if (!(await dependencies.validatePublicTarget(analyticsInput))) {
         return res.status(404).json({ message: "Music page unavailable" });
       }
-      const result = await dependencies.service.ingest(analyticsInput, { getIp: () => req.ip || null });
+      const result = await dependencies.service.ingest(analyticsInput, { getIp: () => req.ip || null,music:{mode:'friendly',legacyAccountId:accountDocumentId} });
       if (result.status === "pending") return res.status(202).json({ status: "pending", duplicate: true });
       if (result.status === "dropped") return res.status(409).json({ status: "dropped", duplicate: true });
       if (result.status === "consent-denied") return res.status(204).send();
       return res.status(result.duplicate ? 200 : 201).json({ status: "committed", duplicate: result.duplicate });
     } catch (error) {
+      if(error instanceof AuthorizationError)return res.status(error.status).json({message:error.message});
       if (error instanceof IdempotencyConflictError) return res.status(409).json({ message: error.message });
       console.error("Friendly Music analytics ingestion failed");
       return res.status(502).json({ message: "Analytics ingestion failed" });
@@ -255,6 +258,7 @@ export function setupExplorersAnalyticsRoutes(
       }
       const result = await dependencies.service.ingest(analyticsInput, {
         getIp: () => req.ip || null,
+        music:{mode:target.mode,publicSlug,capability},
       });
       if (result.status === "pending") return res.status(202).json({ status: "pending", duplicate: true });
       if (result.status === "dropped") return res.status(409).json({ status: "dropped", duplicate: true });
@@ -264,6 +268,7 @@ export function setupExplorersAnalyticsRoutes(
         duplicate: result.duplicate,
       });
     } catch (error) {
+      if(error instanceof AuthorizationError)return res.status(error.status).json({message:error.message});
       if (error instanceof IdempotencyConflictError) {
         return res.status(409).json({ message: error.message });
       }
@@ -311,10 +316,11 @@ export function setupExplorersAnalyticsRoutes(
       if (result.status === "dropped") return res.status(409).json(result);
       return res.status(result.duplicate ? 200 : 201).json(result);
     } catch (error) {
+      if(error instanceof AuthorizationError)return res.status(error.status).json({message:error.message});
       if (error instanceof IdempotencyConflictError) {
         return res.status(409).json({ message: error.message });
       }
-      console.error("Explorers analytics ingestion failed", error);
+      console.error("Explorers analytics ingestion failed");
       return res.status(502).json({ message: "Analytics ingestion failed" });
     }
   });
@@ -332,7 +338,7 @@ export function setupExplorersAnalyticsRoutes(
       const events = await dependencies.service.readAccountEvents(parsed.data);
       return res.status(200).json({ events });
     } catch (error) {
-      console.error("Explorers analytics read failed", error);
+      console.error("Explorers analytics read failed");
       return res.status(502).json({ message: "Analytics read failed" });
     }
   });

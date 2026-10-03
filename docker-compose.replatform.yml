@@ -1,0 +1,201 @@
+name: explorers-replatform-local
+
+x-music-labels: &music-labels
+  com.explorers.replatform.fixture: "true"
+  com.explorers.replatform.project: "explorers-replatform-local"
+
+x-tunes-fixture-image: &tunes-fixture-image
+  image: explorers-replatform-local-tunes:c4
+  # Built explicitly before dependent services start; this tag is never remote.
+  pull_policy: never
+
+services:
+  postgres:
+    image: public.ecr.aws/docker/library/postgres:15-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81
+    environment:
+      POSTGRES_DB: music_fixture
+      POSTGRES_USER: music_migrator
+      POSTGRES_PASSWORD_FILE: /run/secrets/music-db-migrator
+    ports: ["127.0.0.1:51434:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U music_migrator -d music_fixture"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    labels: *music-labels
+    networks: [replatform-local]
+    volumes:
+      - replatform-local-postgres:/var/lib/postgresql/data
+      - ${MUSIC_DB_MIGRATOR_SECRET_FILE_HOST:?MUSIC_DB_MIGRATOR_SECRET_FILE_HOST is required}:/run/secrets/music-db-migrator:ro
+
+  strapi:
+    image: public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+    working_dir: /workspace
+    command: ["node", "--experimental-strip-types", "tunes/scripts/music-fixture-server.ts", "--port", "1337"]
+    environment:
+      MUSIC_E2E_ACCOUNT_USERNAME: ${MUSIC_E2E_ACCOUNT_USERNAME:-e2e-public-music-fixture-owner}
+      MUSIC_E2E_ACCOUNT_DOCUMENT_ID: ${MUSIC_E2E_ACCOUNT_DOCUMENT_ID:-e2e-public-music-fixture-account}
+      MUSIC_E2E_USER_DOCUMENT_ID: ${MUSIC_E2E_USER_DOCUMENT_ID:-e2e-public-music-fixture-user}
+      MUSIC_E2E_STRAPI_TOKEN: ${MUSIC_E2E_STRAPI_TOKEN:-fixture-read-only-token}
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:1337/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    labels: *music-labels
+    networks: [replatform-local]
+    volumes: [./:/workspace:ro]
+
+  tunes-migrate:
+    <<: *tunes-fixture-image
+    command: ["node", "dist/server/deployment/run-migration-gate.js"]
+    restart: "no"
+    environment:
+      MUSIC_STRAPI_HOST_PORT: "51338"
+      MUSIC_MODE: fixture
+      EXPLORERS_API_MODE: legacy-music
+      MUSIC_DATABASE_HOST: postgres
+      MUSIC_DATABASE_PORT: "5432"
+      MUSIC_DATABASE_NAME: music_fixture
+      MUSIC_DATABASE_USER: music_migrator
+      MUSIC_DATABASE_PASSWORD_FILE: /run/secrets/music-db-migrator
+      MUSIC_RUNTIME_DATABASE_USER: music_runtime_login
+      MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
+      MUSIC_IMAGE_DIGEST: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      MUSIC_IMAGE_COMMIT: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      MUSIC_MIGRATION_MARKER: 0037_explorers_movies_provider_context
+      MUSIC_GATE_ATTESTATION_KEY: fixture-migration-gate-key-at-least-32-characters
+      MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/fixture.json
+    depends_on:
+      postgres: { condition: service_healthy }
+    labels: *music-labels
+    networks: [replatform-local]
+    volumes:
+      - replatform-local-gates:/deployment-gates
+      - ${MUSIC_DB_MIGRATOR_SECRET_FILE_HOST:?MUSIC_DB_MIGRATOR_SECRET_FILE_HOST is required}:/run/secrets/music-db-migrator:ro
+      - ${MUSIC_DB_RUNTIME_SECRET_FILE_HOST:?MUSIC_DB_RUNTIME_SECRET_FILE_HOST is required}:/run/secrets/music-db-runtime:ro
+
+  tunes:
+    <<: *tunes-fixture-image
+    build:
+      context: ./tunes
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      MUSIC_DEPLOYMENT_HEALTH_ENABLED: "true"
+      PORT: 5000
+      MUSIC_DATABASE_HOST: postgres
+      MUSIC_DATABASE_PORT: "5432"
+      MUSIC_DATABASE_NAME: music_fixture
+      MUSIC_DATABASE_USER: music_runtime_login
+      MUSIC_DATABASE_MIGRATOR_USER: music_migrator
+      MUSIC_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
+      STRAPI_URL: http://strapi:1337
+      MUSIC_FIXTURE_STRAPI_ORIGIN: http://strapi:1337
+      TRUST_PROXY_HOPS: "0"
+      STRAPI_ACCESS_TOKEN: ${MUSIC_E2E_STRAPI_TOKEN:-fixture-read-only-token}
+      STRAPI_ANALYTICS_ACCESS_TOKEN: ${MUSIC_E2E_STRAPI_TOKEN:-fixture-read-only-token}
+      MUSIC_E2E_STRAPI_TOKEN: ${MUSIC_E2E_STRAPI_TOKEN:-fixture-read-only-token}
+      MUSIC_E2E_ACCOUNT_USERNAME: ${MUSIC_E2E_ACCOUNT_USERNAME:-e2e-public-music-fixture-owner}
+      MUSIC_E2E_ACCOUNT_DOCUMENT_ID: ${MUSIC_E2E_ACCOUNT_DOCUMENT_ID:-e2e-public-music-fixture-account}
+      STRAPI_JWT_SECRET: fixture-strapi-jwt-secret-at-least-32-characters
+      STRAPI_FIXTURE_URL: http://127.0.0.1:51338
+      ALLOWED_ORIGINS: http://127.0.0.1:51474
+      MUSIC_STRAPI_HOST_PORT: "51338"
+      MUSIC_MODE: fixture
+      EXPLORERS_API_MODE: legacy-music
+      MUSIC_FIXTURE_VERSION: "1"
+      MUSIC_FIXTURE_SKIP_ANALYTICS_SCHEMA_DDL: "true"
+      MUSIC_FIXTURE_ANALYTICS_SCHEMA_MARKER: explorers-analytics-receipts-v1
+      SESSION_SECRET: fixture-session-secret-at-least-32-characters
+      COOKIE_SECRET: fixture-cookie-secret-at-least-32-characters
+      MUSIC_SIGNING_KEY_CURRENT_ID: fixture-current
+      MUSIC_SIGNING_KEY_CURRENT_SECRET: fixture-current-secret-at-least-32-characters
+      MUSIC_SIGNING_KEY_PREVIOUS_ID: fixture-previous
+      MUSIC_SIGNING_KEY_PREVIOUS_SECRET: fixture-previous-secret-at-least-32-characters
+      MUSIC_CONNECT_TIMEOUT_MS: "5000"
+      MUSIC_READ_TIMEOUT_MS: "10000"
+      MUSIC_IDENTITY_MAX_CONCURRENCY: "8"
+      MUSIC_IDENTITY_MAX_PENDING: "32"
+      MUSIC_IDENTITY_MAX_INFLIGHT: "32"
+      MUSIC_IDENTITY_RETRIES: "2"
+      MUSIC_IDENTITY_OVERALL_TIMEOUT_MS: "15000"
+      MUSIC_IDENTITY_CACHE_TTL_MS: "30000"
+      MUSIC_CIRCUIT_FAILURE_THRESHOLD: "3"
+      MUSIC_IDENTITY_CIRCUIT_OPEN_MS: "15000"
+      MUSIC_RATE_LIMIT_PER_MINUTE: "60"
+      MUSIC_IDENTITY_GLOBAL_RATE_PER_MINUTE: "600"
+      MUSIC_IDENTITY_RATE_MAX_ENTRIES: "10000"
+      MUSIC_TOKEN_CURRENT_KID: fixture-current
+      MUSIC_TOKEN_CURRENT_SECRET_FILE: /run/secrets/music-token/current
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: fixture-publication-v1
+      MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI
+      MUSIC_PUBLIC_ID_HMAC_KEY: VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ
+      MUSIC_TOKEN_LIFETIME_SECONDS: "600"
+      MUSIC_TOKEN_CLOCK_SKEW_SECONDS: "15"
+      MUSIC_PROVISIONING_KILL_SWITCH: "true"
+      MUSIC_PROVISIONING_COHORT: disabled
+      MUSIC_NEW_ENTRY_KILL_SWITCH: "false"
+      MUSIC_COHORT_ENABLED: "false"
+      MUSIC_COHORT_USER_DOCUMENT_IDS: ""
+      # Disposable local UAT exercises the complete owner workspace. Production
+      # remains fail-closed unless its independently managed rollout enables it.
+      MUSIC_WORKSPACE_KILL_SWITCH: "false"
+      MUSIC_FEATURE_COHORT_SALT: fixture-owner-workspace
+      MUSIC_FEATURE_COHORT_VERSION: fixture-owner-workspace-v1
+      MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: "100"
+      MUSIC_EXPECTED_MIGRATION_ID: 0037_explorers_movies_provider_context
+      EXPLORERS_MEDIA_ENVIRONMENT: local
+      MUSIC_RECONCILIATION_ENABLED: "false"
+      MUSIC_RECONCILIATION_MAX_ROWS: "0"
+    depends_on:
+      postgres: { condition: service_healthy }
+      strapi: { condition: service_healthy }
+      tunes-migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5000/api/music-fixture/readiness').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    labels: *music-labels
+    networks: [replatform-local]
+    volumes:
+      - ${MUSIC_TOKEN_SECRET_FILE_HOST:?MUSIC_TOKEN_SECRET_FILE_HOST is required}:/run/secrets/music-token/current:ro
+      - ${MUSIC_DB_RUNTIME_SECRET_FILE_HOST:?MUSIC_DB_RUNTIME_SECRET_FILE_HOST is required}:/run/secrets/music-db-runtime:ro
+
+  explorers:
+    build:
+      context: .
+      dockerfile: explorers-earth/Dockerfile.music-fixture
+      args:
+        VITE_API_URL: http://127.0.0.1:51474/graphql
+        VITE_REST_API_URL: http://127.0.0.1:51474
+        VITE_PUBLIC_ACCESS_TOKEN: fixture-public-token
+        # The fixture browser calls this same-origin Nginx route. Nginx then
+        # reaches only the branch-local Tunes service on the fixture network.
+        VITE_LOCAL_TUNES_API_URL: http://127.0.0.1:51474
+        MUSIC_FIXTURE_BUNDLE_CHECK: "1"
+    ports: ["127.0.0.1:51474:80"]
+    depends_on:
+      tunes: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null && wget -qO- http://127.0.0.1/api/music-fixture/readiness >/dev/null"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    labels: *music-labels
+    networks: [replatform-edge, replatform-local]
+    volumes: [./explorers-earth/nginx.replatform.conf:/etc/nginx/conf.d/default.conf:ro]
+
+networks:
+  replatform-edge:
+    labels: *music-labels
+  replatform-local:
+    internal: true
+    labels: *music-labels
+
+volumes:
+  replatform-local-postgres:
+    labels: *music-labels
+  replatform-local-gates:
+    labels: *music-labels

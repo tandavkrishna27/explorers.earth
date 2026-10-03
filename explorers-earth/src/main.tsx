@@ -1,3 +1,4 @@
+import { isCanonicalRuntime } from "./lib/publicRuntimeConfig";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
@@ -17,25 +18,20 @@ import { queryClient } from "./lib/queryClient";
 import { ThemeProvider } from "./components/theme-provider";
 import { initAnalytics } from "./utils/analytics";
 
-// setting headers for authentication
+// Retained Strapi GraphQL calls are public or gated by their own legacy adapter.
+// A canonical Better Auth cookie or persisted JWT is never forwarded here.
 const authLink = setContext((_, { headers }) => {
-  // get the authentication token from local storage if it exists
-  const token = localStorage.getItem("qrtoken");
-  
-  // return the headers to the context so httpLink can read them
+  const { authorization: _authorization, Authorization: _Authorization,
+    "x-account-id": _accountId, "x-user-id": _userId, ...safeHeaders } = headers ?? {};
   return {
-    headers: {
-      ...headers,
-      // Public GraphQL permissions handle anonymous requests. Sending a stale
-      // fallback token turns otherwise valid public queries into HTTP 401s.
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
+    headers: safeHeaders,
   };
 });
 
 // create a httpLink with the help of Graphql
 const httpLink = createHttpLink({
-  uri: import.meta.env.VITE_API_URL,
+  uri: isCanonicalRuntime() ? "/graphql" : import.meta.env.VITE_API_URL,
+  credentials: "omit",
 });
 
 // initalising the apollo client

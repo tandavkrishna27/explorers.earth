@@ -4,17 +4,18 @@ import { MemoryRouter } from 'react-router-dom';
 import { MockedProvider } from '@apollo/client/testing';
 import Sidebar from '../components/Sidenav';
 import { DashboardThemeProvider } from '../contexts/DashboardThemeContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 describe('Sidebar Navigation Component', () => {
   it('renders exactly 5 core navigation items', () => {
     render(
-      <MockedProvider addTypename={false}>
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MockedProvider addTypename={false}>
         <MemoryRouter initialEntries={['/home']}>
           <DashboardThemeProvider>
             <Sidebar />
           </DashboardThemeProvider>
         </MemoryRouter>
-      </MockedProvider>
+      </MockedProvider></QueryClientProvider>
     );
 
     expect(screen.getByText(/Home/i)).toBeInTheDocument();

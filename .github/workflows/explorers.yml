@@ -1,16 +1,18 @@
 name: Deploy Explorers Frontend
 
 on:
-  workflow_run:
-    workflows: ["CI Pipeline"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    # Legacy static deployment has no recorded immutable artifact digest or
+    # source-revision verification. Keep it unavailable until the release
+    # workflow owned by Epic 8 replaces this path.
+    if: ${{ false }}
 
     steps:
       - uses: actions/checkout@v4

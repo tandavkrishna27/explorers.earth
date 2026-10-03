@@ -1,0 +1,196 @@
+{
+  "version": "owned-synthetic-proxy/v1",
+  "count": 38,
+  "identities": [
+    {
+      "file": "auth.spec.ts",
+      "project": "proxy-identity",
+      "title": "stale local auth never opens a private deep link; public login remains reachable"
+    },
+    {
+      "file": "auth.spec.ts",
+      "project": "proxy-identity",
+      "title": "failed Google start returns the routed login form with a retryable error"
+    },
+    {
+      "file": "auth.spec.ts",
+      "project": "proxy-identity",
+      "title": "failed recovery start returns the routed recovery form with a retryable error"
+    },
+    {
+      "file": "auth.spec.ts",
+      "project": "proxy-identity",
+      "title": "failed logout fences a receiving tab after reload and a newly opened tab"
+    },
+    {
+      "file": "auth.spec.ts",
+      "project": "proxy-identity",
+      "title": "real local session gates onboarding and cross-tab logout revokes both tabs"
+    },
+    {
+      "file": "auth.spec.ts",
+      "project": "proxy-identity",
+      "title": "purpose-bound proof recovers once against real API and requires a fresh ordinary session"
+    },
+    {
+      "file": "profile.spec.ts",
+      "project": "proxy-identity",
+      "title": "canonical onboarding and profile round-trip at 1365px"
+    },
+    {
+      "file": "profile.spec.ts",
+      "project": "proxy-identity",
+      "title": "canonical onboarding and profile round-trip at 390px"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-desktop",
+      "title": "owner form create, Add with all fields, publication, repeat edits and archive reload"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-desktop",
+      "title": "anonymous later list, complete subject children, full eligible hero and modal"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-desktop",
+      "title": "cover success, one-slot failure and both fallback remain distinct real API Add outcomes"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-desktop",
+      "title": "fresh privacy gates, real bytes, altered owner denial and stale revision retention"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-desktop",
+      "title": "15 across lists, rejected 16th, staged unpin plus immediate reorder and explicit Save"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-desktop",
+      "title": "snapshot transport failure keeps Add draft and successful retry creates one recommendation"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-desktop",
+      "title": "Add retry after pin transport failure patches changed draft without duplicate creation or covers"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-desktop",
+      "title": "committed create with lost response replays original receipt and retains cover identity"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-desktop",
+      "title": "delayed canonical catalog continuation cannot append after query change or search unmount"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-desktop",
+      "title": "unsent invalid buy URL can be corrected and saved once"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-mobile",
+      "title": "owner form create, Add with all fields, publication, repeat edits and archive reload"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-mobile",
+      "title": "anonymous later list, complete subject children, full eligible hero and modal"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-mobile",
+      "title": "cover success, one-slot failure and both fallback remain distinct real API Add outcomes"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-mobile",
+      "title": "fresh privacy gates, real bytes, altered owner denial and stale revision retention"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-mobile",
+      "title": "15 across lists, rejected 16th, staged unpin plus immediate reorder and explicit Save"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-mobile",
+      "title": "snapshot transport failure keeps Add draft and successful retry creates one recommendation"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-mobile",
+      "title": "Add retry after pin transport failure patches changed draft without duplicate creation or covers"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-mobile",
+      "title": "committed create with lost response replays original receipt and retains cover identity"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-mobile",
+      "title": "delayed canonical catalog continuation cannot append after query change or search unmount"
+    },
+    {
+      "file": "books.spec.ts",
+      "project": "books-mobile",
+      "title": "unsent invalid buy URL can be corrected and saved once"
+    },
+    {
+      "file": "analytics.spec.ts",
+      "project": "analytics-desktop",
+      "title": "consent absent and normalized owner produce zero persisted events"
+    },
+    {
+      "file": "analytics.spec.ts",
+      "project": "analytics-desktop",
+      "title": "profile Books list subject and card events persist issued targets"
+    },
+    {
+      "file": "analytics.spec.ts",
+      "project": "analytics-desktop",
+      "title": "committed lost acknowledgement replays identical bytes to one event"
+    },
+    {
+      "file": "analytics.spec.ts",
+      "project": "analytics-desktop",
+      "title": "consent withdrawal after committed lost acknowledgement stops retry"
+    },
+    {
+      "file": "analytics.spec.ts",
+      "project": "analytics-desktop",
+      "title": "live privacy denies exact replay and Actor summary stays account scoped"
+    },
+    {
+      "file": "analytics.spec.ts",
+      "project": "analytics-mobile",
+      "title": "consent absent and normalized owner produce zero persisted events"
+    },
+    {
+      "file": "analytics.spec.ts",
+      "project": "analytics-mobile",
+      "title": "profile Books list subject and card events persist issued targets"
+    },
+    {
+      "file": "analytics.spec.ts",
+      "project": "analytics-mobile",
+      "title": "committed lost acknowledgement replays identical bytes to one event"
+    },
+    {
+      "file": "analytics.spec.ts",
+      "project": "analytics-mobile",
+      "title": "consent withdrawal after committed lost acknowledgement stops retry"
+    },
+    {
+      "file": "analytics.spec.ts",
+      "project": "analytics-mobile",
+      "title": "live privacy denies exact replay and Actor summary stays account scoped"
+    }
+  ]
+}

@@ -60,7 +60,7 @@ export function createCategoryNavigationApi(dependencies: {
       query: categoryNavigationAccountQuery, variables: { documentId: userDocumentId },
       fetchPolicy: 'network-only', errorPolicy: 'none', context: { queryDeduplication: false },
     });
-    if (result.loading || result.errors?.length) throw new NavigationError('uncertain', 'Account could not be verified.');
+    if (result.loading || result.errors?.length) throw new NavigationError('uncertain', 'Category settings could not be loaded. Refresh to try again.');
     const account = selectNavigationAccount(result.data?.usersPermissionsUser, userDocumentId);
     const visibility = {} as NavigationSnapshot['visibility'];
     for (const category of CATEGORY_IDS) {

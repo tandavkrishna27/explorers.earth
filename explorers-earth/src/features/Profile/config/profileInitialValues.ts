@@ -82,6 +82,8 @@ export const buildProfileInitialValues = ({
   const platform = (name: string) => asRecord(socialMedia[name]);
 
   return {
+    ...((typeof safeAccount.documentId === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(safeAccount.documentId))
+      ? { documentId: safeAccount.documentId, revision: safeAccount.revision } : {}),
     username,
     accountName: safeAccount.Account_Name || "",
     accountType: getAccountTypeKey(

@@ -111,19 +111,21 @@ describe("Music E2E transactional state restore", () => {
     expect(sql.indexOf(marker)).toBeLessThan(sql.lastIndexOf("ENABLE ALWAYS TRIGGER music_publication_operation_immutability"));
   });
 
-  it("uses the exact frozen 0021 table, migration, and trigger authority", async () => {
+  it("uses the exact frozen production table, migration, and trigger authority", async () => {
     // Production break caught: a dynamic public-table query or incomplete
     // trigger inventory could truncate an unexpected table or replay through a
     // trigger whose semantics mutate the captured bytes.
     const contract = await loadRestoreContract();
     expect(contract.MUSIC_FIXTURE_TABLES).toEqual([
-      "activity_logs", "analytics_snapshots", "api_tokens", "email_logs", "email_templates",
-      "explorers_analytics_receipts", "guest_interactions", "music_credential_revocation_operations",
-      "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
+      "account_category_content_state", "account_category_pin_state", "account_category_settings", "account_lifecycle_operations", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
+      "activity_logs", "analytics_event_receipts", "analytics_events", "analytics_snapshots", "api_tokens", "application_command_receipts", "auth_account", "auth_session", "auth_user",
+      "auth_verification", "book_entity_details", "book_recommendation_context", "category_recommendation_pins", "collection_items", "collection_media", "collections", "creator_accounts", "deletion_feedback", "email_logs", "email_templates", "entities", "entity_identifiers",
+      "explorers_analytics_receipts", "guest_interactions", "initial_account_bindings", "media_assets", "media_objects",
+      "movie_entity_details", "movie_entity_provider_genres", "movie_provider_genre_terms", "movie_recommendation_context", "music_credential_revocation_operations", "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
       "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens",
       "music_schema_migrations", "page_contents", "playback_states", "played_songs", "playlist_songs",
-      "playlists", "seo_settings", "session", "songs", "system_settings", "team_members", "user_activity",
-      "user_profiles", "user_sessions", "users", "widgets", "youtube_api_calls", "youtube_api_usage",
+      "playlists", "profile_feed_items", "profile_media", "recommendation_book_covers", "recommendation_display_overrides", "recommendation_media", "recommendation_taxonomy", "recommendations", "seo_settings", "session", "songs", "system_settings", "taxonomy_term_translations", "taxonomy_terms", "team_members", "user_activity",
+      "user_profiles", "user_security_state", "user_sessions", "users", "widgets", "youtube_api_calls", "youtube_api_usage",
       "youtube_music", "youtube_music_playlists", "youtube_playlists", "youtube_tokens",
     ]);
     expect(contract.MUSIC_FIXTURE_MIGRATION_IDS).toEqual([
@@ -136,8 +138,26 @@ describe("Music E2E transactional state restore", () => {
       "0015_publication_operation_archive", "0016_publication_operation_retention",
       "0017_publication_idempotency_key_retirement", "0018_transactional_queue_replacement",
       "0019_queue_visibility_control", "0020_public_snapshot_revision", "0021_explorers_analytics_receipts",
+      "0022_explorers_identity",
+      "0023_explorers_authorization",
+      "0024_explorers_profile_media",
+      "0025_explorers_media_attachment_guard",
+      "0026_explorers_media_slot_compatibility",
+      "0027_explorers_lifecycle",
+      "0028_explorers_recovery_proof_retention",
+      "0029_explorers_recommendations",
+      "0030_explorers_media_purpose_guard",
+      "0031_explorers_content_revision",
+      "0032_explorers_owner_page_indexes",
+      "0033_explorers_recommendation_display_overrides",
+      "0034_explorers_books_provider_context", "0035_explorers_book_cover_import", "0036_explorers_analytics_events", "0037_explorers_movies_provider_context",
     ]);
-    expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual([
+    const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
+      { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
+      { table: "auth_session", name: "auth_session_version_before_insert", enabled: "O", type: 7 },
+      { table: "collection_media", name: "collection_media_ready_guard", enabled: "O", type: 21 },
+      { table: "entities", name: "entity_recommendation_kind_guard", enabled: "O", type: 17 },
+      { table: "media_assets", name: "media_asset_reference_guard", enabled: "O", type: 17 },
       { table: "music_credential_revocation_operations", name: "music_credential_revocation_history_immutability", enabled: "A", type: 27 },
       { table: "music_identity_lifecycle_operations", name: "music_lifecycle_operation_state", enabled: "O", type: 19 },
       { table: "music_identity_tombstones", name: "music_identity_tombstone_immutability", enabled: "O", type: 19 },
@@ -145,11 +165,56 @@ describe("Music E2E transactional state restore", () => {
       { table: "music_publication_operation_archive", name: "music_publication_operation_archive_immutability", enabled: "A", type: 27 },
       { table: "music_publication_operations", name: "music_publication_operation_immutability", enabled: "A", type: 31 },
       { table: "music_reactivation_tokens", name: "music_reactivation_token_identity_immutability", enabled: "O", type: 19 },
+      { table: "profile_feed_items", name: "profile_feed_ready_guard", enabled: "O", type: 21 },
+      { table: "profile_media", name: "profile_media_ready_guard", enabled: "O", type: 21 },
+      { table: "recommendation_media", name: "recommendation_media_ready_guard", enabled: "O", type: 21 },
+      { table: "recommendations", name: "recommendation_entity_kind_guard", enabled: "O", type: 21 },
       { table: "users", name: "users_music_identity_immutability", enabled: "O", type: 19 },
       { table: "users", name: "users_music_identity_insert", enabled: "O", type: 7 },
       { table: "users", name: "users_reject_unauthorized_music_identity_delete", enabled: "O", type: 11 },
       { table: "users", name: "users_retain_music_identity_tombstone", enabled: "O", type: 9 },
-    ]);
+    ];
+    expectedTriggers.push({table:'recommendation_book_covers',name:'recommendation_book_cover_ready_guard',enabled:'O',type:21},{table:'media_assets',name:'media_asset_book_cover_reverse_guard',enabled:'O',type:17},{table:'recommendations',name:'recommendation_book_cover_category_guard',enabled:'O',type:17});
+    for(const [event,type] of [['insert',4],['update',16],['delete',8]] as const)expectedTriggers.push({table:'recommendation_book_covers',name:'recommendation_book_covers_content_revision_'+event,enabled:'O',type,function:'explorers_content_revision_'+event});
+    expectedTriggers.push({table:'entities',name:'entities_book_details_kind_guard',enabled:'O',type:17},{table:'book_entity_details',name:'book_entity_details_kind_guard',enabled:'O',type:21},{table:'book_recommendation_context',name:'book_recommendation_context_category_guard',enabled:'O',type:21},{table:'recommendations',name:'recommendations_book_context_category_guard',enabled:'O',type:17});
+    for(const [event,type] of [['insert',4],['update',16],['delete',8]] as const)expectedTriggers.push({table:'book_recommendation_context',name:'book_recommendation_context_content_revision_'+event,enabled:'O',type,function:'explorers_content_revision_'+event});
+    expectedTriggers.push({table:"collections",name:"collections_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
+    expectedTriggers.push({table:"collections",name:"collections_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
+    expectedTriggers.push({table:"collections",name:"collections_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
+    expectedTriggers.push({table:"recommendations",name:"recommendations_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
+    expectedTriggers.push({table:"recommendations",name:"recommendations_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
+    expectedTriggers.push({table:"recommendations",name:"recommendations_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
+    expectedTriggers.push({table:"collection_items",name:"collection_items_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
+    expectedTriggers.push({table:"collection_items",name:"collection_items_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
+    expectedTriggers.push({table:"collection_items",name:"collection_items_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
+    expectedTriggers.push({table:"collection_media",name:"collection_media_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
+    expectedTriggers.push({table:"collection_media",name:"collection_media_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
+    expectedTriggers.push({table:"collection_media",name:"collection_media_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
+    expectedTriggers.push({table:"recommendation_media",name:"recommendation_media_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
+    expectedTriggers.push({table:"recommendation_media",name:"recommendation_media_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
+    expectedTriggers.push({table:"recommendation_media",name:"recommendation_media_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
+    expectedTriggers.push({table:"category_recommendation_pins",name:"category_recommendation_pins_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
+    expectedTriggers.push({table:"category_recommendation_pins",name:"category_recommendation_pins_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
+    expectedTriggers.push({table:"category_recommendation_pins",name:"category_recommendation_pins_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
+    expectedTriggers.push({table:"account_category_pin_state",name:"account_category_pin_state_content_revision_insert",enabled:"O",type:4,function:"explorers_content_revision_insert"});
+    expectedTriggers.push({table:"account_category_pin_state",name:"account_category_pin_state_content_revision_update",enabled:"O",type:16,function:"explorers_content_revision_update"});
+    expectedTriggers.push({table:"account_category_pin_state",name:"account_category_pin_state_content_revision_delete",enabled:"O",type:8,function:"explorers_content_revision_delete"});
+    expectedTriggers.push({table:"creator_accounts",name:"creator_accounts_content_revision_lifecycle",enabled:"O",type:17,function:"explorers_content_revision_lifecycle"});
+    for(const [event,type] of [['insert',4],['update',16],['delete',8]] as const) expectedTriggers.push({table:'recommendation_display_overrides',name:`recommendation_display_overrides_content_revision_${event}`,enabled:'O',type,function:`explorers_content_revision_${event}`});
+    expectedTriggers.push({table:'recommendation_taxonomy',name:'recommendation_taxonomy_parent_lock',enabled:'O',type:31});
+    expectedTriggers.push({table:'recommendation_taxonomy',name:'recommendation_taxonomy_constraint',enabled:'O',type:29});
+    expectedTriggers.push({table:'movie_entity_details',name:'movie_details_constraint',enabled:'O',type:21});
+    expectedTriggers.push({table:'entities',name:'movie_details_entity_constraint',enabled:'O',type:17});
+    expectedTriggers.push({table:'entity_identifiers',name:'movie_details_identity_constraint',enabled:'O',type:29});
+    expectedTriggers.push({table:'movie_entity_provider_genres',name:'movie_genre_parent_lock',enabled:'O',type:31});
+    expectedTriggers.push({table:'movie_entity_provider_genres',name:'movie_genres_constraint',enabled:'O',type:29});
+    expectedTriggers.push({table:'movie_entity_details',name:'movie_genres_details_constraint',enabled:'O',type:21});
+    expectedTriggers.push({table:'taxonomy_terms',name:'taxonomy_tree_lock',enabled:'O',type:23});
+    expectedTriggers.push({table:'taxonomy_terms',name:'taxonomy_tree_constraint',enabled:'O',type:21});
+    expectedTriggers.push({table:'movie_recommendation_context',name:'movie_context_constraint',enabled:'O',type:23});
+    expectedTriggers.push({table:'recommendations',name:'movie_context_replacement_constraint',enabled:'O',type:19});
+    for(const table of ['movie_recommendation_context','recommendation_taxonomy']) for(const [event,type] of [['insert',4],['update',16],['delete',8]] as const) expectedTriggers.push({table,name:table+'_content_revision_'+event,enabled:'O',type,function:'explorers_content_revision_'+event});
+    expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual(expectedTriggers.sort((a,b)=>a.table.localeCompare(b.table)||a.name.localeCompare(b.name)));
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_TABLES)).toBe(true);
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_MIGRATION_IDS)).toBe(true);
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS)).toBe(true);

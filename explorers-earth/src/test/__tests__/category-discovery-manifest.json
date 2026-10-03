@@ -1,0 +1,182 @@
+[
+  {
+    "project": "",
+    "title": "Places ripple radius stays finite at startup, repeat and route re-entry"
+  },
+  {
+    "project": "",
+    "title": "Profile mandatory, five slots, unpublished pin blocked and hidden saved choice removable"
+  },
+  {
+    "project": "",
+    "title": "Task 6 contained content-state matrix 1440x1000"
+  },
+  {
+    "project": "",
+    "title": "Task 6 contained content-state matrix 320x900"
+  },
+  {
+    "project": "",
+    "title": "Task 6 repair rejected Retry is contained 1440x1000"
+  },
+  {
+    "project": "",
+    "title": "Task 6 repair rejected Retry is contained 320x900"
+  },
+  {
+    "project": "",
+    "title": "Task 6 repair shared state contrast 1440x1000"
+  },
+  {
+    "project": "",
+    "title": "Task 6 repair shared state contrast 320x900"
+  },
+  {
+    "project": "",
+    "title": "actual HTML consent accept persists only its explicit choice, never recurring seeds"
+  },
+  {
+    "project": "",
+    "title": "actual HTML consent close persists only its explicit choice, never recurring seeds"
+  },
+  {
+    "project": "",
+    "title": "actual HTML consent custom-off persists only its explicit choice, never recurring seeds"
+  },
+  {
+    "project": "",
+    "title": "actual HTML consent custom-on persists only its explicit choice, never recurring seeds"
+  },
+  {
+    "project": "",
+    "title": "actual HTML consent reject persists only its explicit choice, never recurring seeds"
+  },
+  {
+    "project": "",
+    "title": "all eight empty list responses never mutate category publication or saved pins"
+  },
+  {
+    "project": "",
+    "title": "apps: Auto saved → header Off → reload → Hub On → Manual explicit Pin"
+  },
+  {
+    "project": "",
+    "title": "apps: Settings Off → guest fallback → header On → explicit manual Pin"
+  },
+  {
+    "project": "",
+    "title": "books: Auto saved → header Off → reload → Hub On → Manual explicit Pin"
+  },
+  {
+    "project": "",
+    "title": "books: Settings Off → guest fallback → header On → explicit manual Pin"
+  },
+  {
+    "project": "",
+    "title": "catchall deliberately denies unknown external HTTP and WebSocket without forwarding"
+  },
+  {
+    "project": "",
+    "title": "category lost failure remains honest and recovers through explicit Refresh"
+  },
+  {
+    "project": "",
+    "title": "category read failure remains honest and recovers through explicit Refresh"
+  },
+  {
+    "project": "",
+    "title": "category verification failure remains honest and recovers through explicit Refresh"
+  },
+  {
+    "project": "",
+    "title": "category write failure remains honest and recovers through explicit Refresh"
+  },
+  {
+    "project": "",
+    "title": "consent storage denial keeps actual bootstrap and explicit Accept fail closed"
+  },
+  {
+    "project": "",
+    "title": "contained actual Settings boot verifies account without mounting consent or writing preferences"
+  },
+  {
+    "project": "",
+    "title": "direct dashboard/public/share never mount consent; landing delayed banner cancels on navigation"
+  },
+  {
+    "project": "",
+    "title": "games: Auto saved → header Off → reload → Hub On → Manual explicit Pin"
+  },
+  {
+    "project": "",
+    "title": "games: Settings Off → guest fallback → header On → explicit manual Pin"
+  },
+  {
+    "project": "",
+    "title": "guides: Auto saved → header Off → reload → Hub On → Manual explicit Pin"
+  },
+  {
+    "project": "",
+    "title": "guides: Settings Off → guest fallback → header On → explicit manual Pin"
+  },
+  {
+    "project": "",
+    "title": "last list Draft and Delete preserve category settings/pins, private items stay filtered"
+  },
+  {
+    "project": "",
+    "title": "movies: Auto saved → header Off → reload → Hub On → Manual explicit Pin"
+  },
+  {
+    "project": "",
+    "title": "movies: Settings Off → guest fallback → header On → explicit manual Pin"
+  },
+  {
+    "project": "",
+    "title": "offline/online and Music outage preserve unrelated pins until explicit fresh owner action"
+  },
+  {
+    "project": "",
+    "title": "ordinary stale loaded account rereads latest pins and route/account change blocks pending intent"
+  },
+  {
+    "project": "",
+    "title": "people: Auto saved → header Off → reload → Hub On → Manual explicit Pin"
+  },
+  {
+    "project": "",
+    "title": "people: Settings Off → guest fallback → header On → explicit manual Pin"
+  },
+  {
+    "project": "",
+    "title": "places: Auto saved → header Off → reload → Hub On → Manual explicit Pin"
+  },
+  {
+    "project": "",
+    "title": "places: Settings Off → guest fallback → header On → explicit manual Pin"
+  },
+  {
+    "project": "",
+    "title": "products: Auto saved → header Off → reload → Hub On → Manual explicit Pin"
+  },
+  {
+    "project": "",
+    "title": "products: Settings Off → guest fallback → header On → explicit manual Pin"
+  },
+  {
+    "project": "",
+    "title": "public Places pagination requests one bounded unauthenticated detail page"
+  },
+  {
+    "project": "",
+    "title": "public category pages read every recommendation type through the unauthenticated gateway"
+  },
+  {
+    "project": "",
+    "title": "public shell continuity smoke covers every top-level destination"
+  },
+  {
+    "project": "",
+    "title": "two owner tabs merge latest pins, rapid repeated activation cannot add duplicate writes"
+  }
+]

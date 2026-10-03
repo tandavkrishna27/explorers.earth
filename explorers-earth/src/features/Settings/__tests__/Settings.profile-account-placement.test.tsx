@@ -11,6 +11,9 @@ import english from "../../../i18n/resources/en.json";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import useAuthStore from "../../../store/store";
+vi.mock("../../Profile/api/useCanonicalAccount", () => ({ useCanonicalAccount: () => ({
+  data: { id: navigation.accountId, revision: 1 }, isLoading: false,
+}) }));
 
 const preference = vi.hoisted(() => ({ value: "Yes" as string | undefined }));
 const translations = createInstance();

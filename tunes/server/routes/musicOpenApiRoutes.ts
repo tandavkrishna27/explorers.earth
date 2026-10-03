@@ -398,6 +398,24 @@ const paths = {
       "x-max-encoded-bytes": 524288,
     },
   },
+  "/api/explorers/analytics/events": {
+    get: {
+      summary: "Read historical Explorer analytics for the bearer-owned account",
+      description: "Temporary historical Strapi read retained until Epic7.2; the authoritative Explorer bearer must own accountId. Inclusive fromDate/toDate calendar dates and an IANA timeZone form a window of at most93 calendar days. This is not the canonical Actor summary or Music credential flow.",
+      security: explorerSecurity,
+      parameters: [requestIdParameter,
+        {name:"accountId",in:"query",required:true,schema:{type:"string",minLength:1,maxLength:128}},
+        {name:"fromDate",in:"query",required:true,schema:{type:"string",format:"date"}},
+        {name:"toDate",in:"query",required:true,schema:{type:"string",format:"date"}},
+        {name:"timeZone",in:"query",required:true,schema:{type:"string"},description:"A valid IANA timezone; calendar dates must exist in this zone."}],
+      responses: {
+        "200": success("Historical scoped records; pagination is bounded to10000 records.",{type:"object",additionalProperties:false,required:["events"],properties:{events:{type:"array",maxItems:10000,items:{}}}}),
+        "400": success("Invalid account/date/timezone scope.",{type:"object",required:["message"],properties:{message:{type:"string"}}}),
+        "403": success("Authoritative bearer does not own the selected account.",{type:"object",required:["message"],properties:{message:{type:"string"}}}),
+        "502": success("Historical identity/read provider is unavailable.",{type:"object",required:["message"],properties:{message:{type:"string"}}}),
+      },
+    },
+  },
   "/api/explorers/analytics/music/{publicSlug}/events": {
     post: {
       summary: "Record one privacy-safe public Music product interaction",

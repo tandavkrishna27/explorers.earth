@@ -1,0 +1,4 @@
+# Preserve immutable upstream bytes and exact real-verifier stdout across host checkouts.
+*.json -text
+*.jsonl -text
+*.whl -text

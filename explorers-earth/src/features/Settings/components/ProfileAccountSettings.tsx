@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { useQuery } from "@apollo/client";
+import { useCanonicalAccount } from "../../Profile/api/useCanonicalAccount";
+import { toProfileViewModel } from "../../Profile/api/profileClient";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import ProfileForm from "../../Profile/components/ProfileForm";
-import { profileDataQuery } from "../../Profile/api/query";
 import { useUpdateProfile } from "../../Profile/hooks/useUpdateProfile";
 import { useReverseGeocoding } from "../../Profile/hooks/useReverseGeocoding";
 import {
@@ -56,11 +56,11 @@ const ProfileAccountSettings = ({
     deferred: DeferredProfileSave;
   } | null>(null);
 
-  const { data, loading, error, refetch } = useQuery(profileDataQuery, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const accountQuery = useCanonicalAccount();
+  const data: any = accountQuery.data ? { usersPermissionsUser: { username: accountQuery.data.handle,
+    accounts: [toProfileViewModel(accountQuery.data)] } } : undefined;
+  const { error, refetch } = accountQuery;
+  const loading = accountQuery.isLoading;
 
   const accountCandidates = data?.usersPermissionsUser?.accounts;
   const selectedAccount = selectCompletedAccount(accountCandidates);
@@ -68,8 +68,7 @@ const ProfileAccountSettings = ({
     (candidate: { documentId?: string }) =>
       candidate.documentId === selectedAccount?.documentId,
   );
-  const resolvedUsername =
-    data?.usersPermissionsUser?.username || user?.username || "";
+  const resolvedUsername = accountQuery.data?.handle ?? "";
   const hasCompleteAccountSnapshot = Boolean(
     account &&
       resolvedUsername &&
@@ -171,20 +170,20 @@ const ProfileAccountSettings = ({
 
   const performSave = async (
     values: KeyValuePair,
-  ): Promise<"saved" | "failed"> => {
+  ): Promise<ProfileSaveResult> => {
     try {
-      await updateProfile(values);
+      const saved = await updateProfile(values);
       toast.success(
         translate("dashboard.profile.common.savedAndPublishedSuccessfully"),
       );
-      return "saved";
+      return { status: "saved", committedRevision: saved.revision };
     } catch (saveError) {
       const message =
         saveError instanceof Error ? saveError.message : "Unexpected error";
       toast.error(
         translate("toast.error.updateFailedWithError", { error: message }),
       );
-      return "failed";
+      return { status: "failed" };
     }
   };
 
@@ -192,7 +191,7 @@ const ProfileAccountSettings = ({
     values: KeyValuePair,
   ): Promise<ProfileSaveResult> => {
     if (section === "billing") {
-      return { status: await performSave(values) };
+      return performSave(values);
     }
 
     const currentUsername = data?.usersPermissionsUser?.username || "";
@@ -224,7 +223,7 @@ const ProfileAccountSettings = ({
       return deferred.result;
     }
 
-    return { status: await performSave(values) };
+    return performSave(values);
   };
 
   const confirmUsernameChange = async () => {
@@ -233,7 +232,8 @@ const ProfileAccountSettings = ({
     if (!pending) return;
 
     const terminal = await performSave(pending.values);
-    pending.deferred.settle(terminal);
+    pending.deferred.settle(terminal.status === "saved" ? "saved" : "failed",
+      terminal.status === "saved" ? terminal.committedRevision : undefined);
     pendingUsernameSaveRef.current = null;
     setPendingUsername("");
   };

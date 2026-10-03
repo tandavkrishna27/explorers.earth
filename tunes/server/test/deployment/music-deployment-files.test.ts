@@ -1,8 +1,10 @@
+import { DEPLOYABLE_MUSIC_MIGRATION_MARKERS,EXPECTED_MUSIC_MIGRATION_ID } from '../../../shared/music-migration-contract';
 import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { auditDeploymentAuthority } from "../../deployment/music-deployment";
+import { selectApiMode } from "../../apiMode";
 
 const repoRoot = resolve(import.meta.dirname, "../../../..");
 const read = (path: string) => readFileSync(resolve(repoRoot, path), "utf8");
@@ -28,14 +30,33 @@ function heredoc(source: string, opener: string): string {
 }
 
 describe("Music deployment authority files", () => {
+  it("selects legacy API startup for every Compose service using the Tunes API image", () => {
+    for (const [file, serviceNames] of [
+      ["docker-compose.yml", ["tunes-blue", "tunes-green"]],
+      ["docker-compose.music-test.yml", ["tunes"]],
+      ["docker-compose.replatform.yml", ["tunes"]],
+    ] as const) {
+      const compose = parseYaml(read(file));
+      for (const name of serviceNames) {
+        const service = compose.services[name];
+        expect(service, `${file}:${name}`).toBeDefined();
+        expect(service.command, `${file}:${name} must use the API image default entrypoint`).toBeUndefined();
+        expect(selectApiMode(service.environment), `${file}:${name}`).toBe("legacy-music");
+      }
+    }
+  });
   it("keeps development dependencies out of the production image", () => {
     const dockerfile = read("tunes/Dockerfile");
     expect(dockerfile).toContain(
-      "FROM node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS base",
+      "FROM public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS base",
     );
     expect(dockerfile).toContain("FROM base AS prod-deps");
-    expect(dockerfile).toContain("RUN apk upgrade --no-cache");
-    expect(dockerfile).toContain("RUN npm ci --omit=dev --legacy-peer-deps");
+    expect(dockerfile).toMatch(/ARG BUILD_COMMIT\r?\nRUN : "\$BUILD_COMMIT" && apk upgrade --no-cache/);
+    expect(dockerfile).toContain("RUN rm -rf node_modules/tsx node_modules/.bin/tsx");
+    expect(dockerfile).toContain("RUN npm ci --omit=dev");
+    expect(JSON.parse(read("tunes/package.json")).scripts.postinstall)
+      .toBe("npm ci --prefix auth-runtime --omit=dev");
+    expect(dockerfile).toContain("COPY --from=prod-deps /app/auth-runtime ./auth-runtime");
     expect(dockerfile).toContain(
       "COPY --from=prod-deps /app/node_modules ./node_modules",
     );
@@ -43,6 +64,10 @@ describe("Music deployment authority files", () => {
       "COPY --from=deps /app/node_modules ./node_modules",
     );
     expect(dockerfile).toContain("rm -rf /usr/local/lib/node_modules/npm");
+    expect(dockerfile).toContain("RUN npm run build:api");
+    expect(dockerfile).toContain('CMD ["node", "dist/server/api.js"]');
+    expect(dockerfile).not.toContain("COPY --from=builder /app/public");
+    expect(dockerfile).not.toContain("ARG VITE_");
     expect(read("tunes/server/app.ts")).not.toContain('from "./vite"');
     expect(read("tunes/server/runtime.ts")).not.toMatch(/from ["']vite["']/);
     expect(read("tunes/server/runtime.ts")).not.toContain("nanoid");
@@ -145,15 +170,25 @@ describe("Music deployment authority files", () => {
     expect(ci).toContain(
       "/app/migrations/0019_queue_visibility_control.sql",
     );
-    expect(ci).toContain(
+    for(const file of [
       "/app/migrations/0020_public_snapshot_revision.sql",
-      "/app/migrations/0021_explorers_analytics_receipts.sql",
-    );
+      "/app/migrations/0023_explorers_authorization.sql",
+      "/app/migrations/0025_explorers_media_attachment_guard.sql",
+      "/app/migrations/0026_explorers_media_slot_compatibility.sql",
+      "/app/migrations/0027_explorers_lifecycle.sql",
+      "/app/migrations/0029_explorers_recommendations.sql",
+      "/app/migrations/0030_explorers_media_purpose_guard.sql",
+      "/app/migrations/0031_explorers_content_revision.sql",
+      "/app/migrations/0032_explorers_owner_page_indexes.sql",
+      "/app/migrations/0033_explorers_recommendation_display_overrides.sql",
+      "/app/migrations/0034_explorers_books_provider_context.sql",
+      "/app/migrations/0035_explorers_book_cover_import.sql",
+    ]) expect(ci).toContain(file);
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
-      'production_current_marker="0021_explorers_analytics_receipts"',
+      'production_current_marker="0037_explorers_movies_provider_context"',
     );
     expect(read("tunes/scripts/music-docker-release-rehearsal.ts")).toContain(
-      'const marker = "0021_explorers_analytics_receipts"',
+      'const marker = "0037_explorers_movies_provider_context"',
     );
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
       "verify-publication-authority.mjs",
@@ -234,11 +269,7 @@ describe("Music deployment authority files", () => {
           );
         return deploysTunes && /(ssh|scp|docker\s+compose\s+up)/i.test(source);
       });
-    expect(competitors).toEqual(["tunes-test-direct-deploy.yml"]);
-    const temporary = parseYaml(
-      read(".github/workflows/tunes-test-direct-deploy.yml"),
-    );
-    expect(temporary.env.TEMPORARY_DIRECT_DEPLOY_EXPIRES).toBe("2026-08-28");
+    expect(competitors).toEqual([]);
   });
 
   it("bootstraps the floor from a verified C2 image without assuming C1 has C2 health metadata", () => {
@@ -434,11 +465,11 @@ describe("Music deployment authority files", () => {
       "STRAPI_JWT_SECRET: fixture-strapi-jwt-secret-at-least-32-characters",
     );
     expect(fixture).toContain("ALLOWED_ORIGINS: http://localhost:55173");
-    expect(fixture).toContain("MUSIC_MIGRATION_MARKER: 0021_explorers_analytics_receipts");
-    expect(fixture).toContain("MUSIC_EXPECTED_MIGRATION_ID: 0021_explorers_analytics_receipts");
-    expect(read("docker-compose.yml")).toContain("TUNES_BLUE_MIGRATION:-0021_explorers_analytics_receipts");
-    expect(read("docker-compose.yml")).toContain("TUNES_GREEN_MIGRATION:-0021_explorers_analytics_receipts");
-    expect(read("docker-compose.yml")).toContain("TUNES_CANDIDATE_MIGRATION:-0021_explorers_analytics_receipts");
+    expect(fixture).toContain("MUSIC_MIGRATION_MARKER: 0037_explorers_movies_provider_context");
+    expect(fixture).toContain("MUSIC_EXPECTED_MIGRATION_ID: 0037_explorers_movies_provider_context");
+    expect(read("docker-compose.yml")).toContain("TUNES_BLUE_MIGRATION:-0037_explorers_movies_provider_context");
+    expect(read("docker-compose.yml")).toContain("TUNES_GREEN_MIGRATION:-0037_explorers_movies_provider_context");
+    expect(read("docker-compose.yml")).toContain("TUNES_CANDIDATE_MIGRATION:-0037_explorers_movies_provider_context");
   });
 
   it("proves the built C2 commit contains C1 and carries the observed legacy Compose project through deploy", () => {
@@ -490,4 +521,9 @@ describe("Music deployment authority files", () => {
     });
     expect(issues.length).toBeGreaterThan(10);
   });
+});
+
+it('keeps the shell deployment marker history identical to the complete shared chain',()=>{
+ const engine=read('tunes/deployment/music-deploy-engine.sh'),declaration=engine.match(/readonly -a known_markers=\(([\s\S]*?)\r?\n\)/);expect(declaration).not.toBeNull();
+ const markers=Array.from(declaration![1].matchAll(/"([^"]+)"/g),match=>match[1]==='$legacy_marker'?'containment-no-schema-change':match[1]==='$production_current_marker'?EXPECTED_MUSIC_MIGRATION_ID:match[1]);expect(markers).toEqual([...DEPLOYABLE_MUSIC_MIGRATION_MARKERS]);
 });

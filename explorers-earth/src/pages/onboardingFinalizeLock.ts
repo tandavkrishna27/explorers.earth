@@ -1,13 +1,11 @@
 /**
- * Synchronous re-entrancy lock for the onboarding "finalize" path (free-plan
- * account + subscription creation).
+ * Synchronous re-entrancy lock for the canonical onboarding save.
  *
  * Why a ref-backed lock and not the `isCreatingSubscription` state: React state
  * updates only on the next render, so a double-click can pass the state guard
- * twice before it flips — and both executions then create a duplicate account
- * and subscription. This lock flips synchronously (no `await` between the check
- * and the set), so a second concurrent caller is rejected until the first one
- * releases it. See OnBoarding.tsx `handleSubscriptionSubmit`.
+ * twice before it flips. Two concurrent saves with the same account revision
+ * would produce an avoidable conflict, and each might upload duplicate media.
+ * The lock flips synchronously until the first caller releases it.
  */
 export interface FinalizeLock {
   running: boolean;

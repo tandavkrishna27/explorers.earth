@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: Explorers validation
 
 on:
   pull_request:
@@ -31,7 +31,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24.21.0'
           cache: 'npm'
           cache-dependency-path: explorers-earth/package-lock.json
 
@@ -54,7 +54,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24.21.0'
           cache: 'npm'
           cache-dependency-path: explorers-earth/package-lock.json
 
@@ -81,12 +81,17 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24.21.0'
           cache: 'npm'
           cache-dependency-path: explorers-earth/package-lock.json
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install shared fixture runtime dependencies
+        # Discovery loads the same shared runtime schemas as the browser lanes.
+        # Install their owning package before spawning Playwright's Node loader.
+        run: npm ci --prefix ../tunes --legacy-peer-deps
 
       - name: Run unit tests with coverage
         run: npm run test:coverage
@@ -114,7 +119,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24.21.0'
           cache: 'npm'
           cache-dependency-path: explorers-earth/package-lock.json
 
@@ -138,7 +143,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24.21.0'
           cache: 'npm'
           cache-dependency-path: explorers-earth/package-lock.json
 
@@ -152,48 +157,28 @@ jobs:
 
   # ─────────────────────────────────────────
   # Job 5: Playwright E2E Tests (headless)
-  # ─────────────────────────────────────────
-  e2e-tests:
-    name: 🎭 E2E Tests
+  e2e-category-a:
+    name: 🎭 E2E Category A
     runs-on: ubuntu-latest
-    # The four contained suites complete in about 30 minutes on hosted Linux;
-    # retain a bounded 45-minute budget for runner variance and artifact upload.
-    timeout-minutes: 45
-    needs: [lint, typecheck, unit-tests]
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24.21.0'
           cache: 'npm'
           cache-dependency-path: explorers-earth/package-lock.json
-
       - name: Install dependencies
         run: npm ci
-
-      # The public Music E2E fixture executes the sibling Tunes controller.
-      # Install that package explicitly; CI package installs are isolated.
       - name: Install Music fixture dependencies
         run: npm ci --prefix ../tunes --legacy-peer-deps
-
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium firefox webkit
-
+        run: npx playwright install --with-deps chromium
       - name: Run Playwright E2E tests
-        # Keep the required PR gate bounded and deterministic. The default
-        # Chromium project matches every repository E2E spec (including large
-        # qualification matrices), so invoking it without an allowlist cannot
-        # complete inside this job's 30-minute budget. These suites cover the
-        # changed public shell/navigation, publishing, Music, accessibility,
-        # and account-lifecycle boundaries; exhaustive matrices retain their
-        # dedicated fixture/qualification lanes documented in docs/testing.md.
         run: |
-          npx playwright test --config=playwright.category-navigation.config.ts
-          npx playwright test --config=playwright.public-shell-continuity.config.ts --project=chromium
-          npx playwright test --config=playwright.music-publishing.config.ts
-          npx playwright test e2e/music.spec.ts e2e/music-accessibility.spec.ts e2e/account-lifecycle.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual
+          npx playwright test --config=playwright.contained-auth-session.config.ts
+          npx playwright test --config=playwright.category-navigation-a.config.ts
         env:
           CI: true
           # Apollo uses VITE_API_URL verbatim as the GraphQL URI (src/main.tsx);
@@ -216,26 +201,273 @@ jobs:
           # fixture can intercept them instead of constructing /undefined URLs.
           VITE_PAYMENT_API_URL: http://localhost:5173
 
+
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report
-          path: |
-            explorers-earth/playwright-report/
-            .artifacts/category-navigation/report.json
-            .artifacts/public-shell-continuity/report.json
-            .artifacts/music-publishing/report.json
+          name: playwright-report-category-navigation-a
+          path: .artifacts/category-navigation-a/report.json
+          if-no-files-found: ignore
           retention-days: 7
-
       - name: Upload screenshots/videos on failure
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: e2e-failure-artifacts
-          path: |
-            explorers-earth/test-results/
-            .artifacts/category-navigation/results/
-            .artifacts/public-shell-continuity/results/
-            .artifacts/music-publishing/results/
+          name: e2e-failure-category-navigation-a
+          path: .artifacts/category-navigation-a/results/
+          if-no-files-found: ignore
           retention-days: 7
+
+  e2e-category-b:
+    name: 🎭 E2E Category B
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+          cache: 'npm'
+          cache-dependency-path: explorers-earth/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Music fixture dependencies
+        run: npm ci --prefix ../tunes --legacy-peer-deps
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright E2E tests
+        run: npx playwright test --config=playwright.category-navigation-b.config.ts
+        env:
+          CI: true
+          # Apollo uses VITE_API_URL verbatim as the GraphQL URI (src/main.tsx);
+          # it must end in /graphql for the specs' **/graphql route mocks to match.
+          VITE_API_URL: http://localhost:5173/graphql
+          # Empty by design: the contained public-page fixture uses its map
+          # adapter and must never load the external Google Maps runtime.
+          VITE_GOOGLE_MAPS_API_KEY: ""
+          VITE_PUBLIC_ACCESS_TOKEN: test-token
+          # Music flow (music.spec.ts) mocks the Local Tunes API and needs the
+          # integration enabled or the playlist UI never renders.
+          VITE_LOCAL_TUNES_ENABLED: true
+          VITE_LOCAL_TUNES_API_URL: https://localtunes.test
+          # Keep the public profile gateway inside the same deterministic
+          # request fixture instead of falling back to an external authority.
+          VITE_PUBLIC_PROFILE_GATEWAY_URL: https://localtunes.test
+          # Full-stack Music authority suites belong to the provisioned qualification lanes.
+          PLAYWRIGHT_PR_SAFE: true
+          # Keep billing requests same-origin so the deterministic Playwright
+          # fixture can intercept them instead of constructing /undefined URLs.
+          VITE_PAYMENT_API_URL: http://localhost:5173
+
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-category-navigation-b
+          path: .artifacts/category-navigation-b/report.json
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload screenshots/videos on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-failure-category-navigation-b
+          path: .artifacts/category-navigation-b/results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  e2e-public-shell:
+    name: 🎭 E2E Public shell
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+          cache: 'npm'
+          cache-dependency-path: explorers-earth/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Music fixture dependencies
+        run: npm ci --prefix ../tunes --legacy-peer-deps
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright E2E tests
+        run: npx playwright test --config=playwright.public-shell-continuity.config.ts --project=chromium
+        env:
+          CI: true
+          # Apollo uses VITE_API_URL verbatim as the GraphQL URI (src/main.tsx);
+          # it must end in /graphql for the specs' **/graphql route mocks to match.
+          VITE_API_URL: http://localhost:5173/graphql
+          # Empty by design: the contained public-page fixture uses its map
+          # adapter and must never load the external Google Maps runtime.
+          VITE_GOOGLE_MAPS_API_KEY: ""
+          VITE_PUBLIC_ACCESS_TOKEN: test-token
+          # Music flow (music.spec.ts) mocks the Local Tunes API and needs the
+          # integration enabled or the playlist UI never renders.
+          VITE_LOCAL_TUNES_ENABLED: true
+          VITE_LOCAL_TUNES_API_URL: https://localtunes.test
+          # Keep the public profile gateway inside the same deterministic
+          # request fixture instead of falling back to an external authority.
+          VITE_PUBLIC_PROFILE_GATEWAY_URL: https://localtunes.test
+          # Full-stack Music authority suites belong to the provisioned qualification lanes.
+          PLAYWRIGHT_PR_SAFE: true
+          # Keep billing requests same-origin so the deterministic Playwright
+          # fixture can intercept them instead of constructing /undefined URLs.
+          VITE_PAYMENT_API_URL: http://localhost:5173
+
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-public-shell-continuity
+          path: .artifacts/public-shell-continuity/report.json
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload screenshots/videos on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-failure-public-shell-continuity
+          path: .artifacts/public-shell-continuity/results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  e2e-publishing:
+    name: 🎭 E2E Publishing
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+          cache: 'npm'
+          cache-dependency-path: explorers-earth/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Music fixture dependencies
+        run: npm ci --prefix ../tunes --legacy-peer-deps
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright E2E tests
+        run: npx playwright test --config=playwright.music-publishing.config.ts
+        env:
+          CI: true
+          # Apollo uses VITE_API_URL verbatim as the GraphQL URI (src/main.tsx);
+          # it must end in /graphql for the specs' **/graphql route mocks to match.
+          VITE_API_URL: http://localhost:5173/graphql
+          # Empty by design: the contained public-page fixture uses its map
+          # adapter and must never load the external Google Maps runtime.
+          VITE_GOOGLE_MAPS_API_KEY: ""
+          VITE_PUBLIC_ACCESS_TOKEN: test-token
+          # Music flow (music.spec.ts) mocks the Local Tunes API and needs the
+          # integration enabled or the playlist UI never renders.
+          VITE_LOCAL_TUNES_ENABLED: true
+          VITE_LOCAL_TUNES_API_URL: https://localtunes.test
+          # Keep the public profile gateway inside the same deterministic
+          # request fixture instead of falling back to an external authority.
+          VITE_PUBLIC_PROFILE_GATEWAY_URL: https://localtunes.test
+          # Full-stack Music authority suites belong to the provisioned qualification lanes.
+          PLAYWRIGHT_PR_SAFE: true
+          # Keep billing requests same-origin so the deterministic Playwright
+          # fixture can intercept them instead of constructing /undefined URLs.
+          VITE_PAYMENT_API_URL: http://localhost:5173
+
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-music-publishing
+          path: .artifacts/music-publishing/report.json
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload screenshots/videos on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-failure-music-publishing
+          path: .artifacts/music-publishing/results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  e2e-music-account:
+    name: 🎭 E2E Music and account
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+          cache: 'npm'
+          cache-dependency-path: explorers-earth/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Music fixture dependencies
+        run: npm ci --prefix ../tunes --legacy-peer-deps
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Run Playwright E2E tests
+        run: npx playwright test e2e/music.spec.ts e2e/music-accessibility.spec.ts e2e/account-lifecycle.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual
+        env:
+          CI: true
+          # Apollo uses VITE_API_URL verbatim as the GraphQL URI (src/main.tsx);
+          # it must end in /graphql for the specs' **/graphql route mocks to match.
+          VITE_API_URL: http://localhost:5173/graphql
+          # Empty by design: the contained public-page fixture uses its map
+          # adapter and must never load the external Google Maps runtime.
+          VITE_GOOGLE_MAPS_API_KEY: ""
+          VITE_PUBLIC_ACCESS_TOKEN: test-token
+          # Music flow (music.spec.ts) mocks the Local Tunes API and needs the
+          # integration enabled or the playlist UI never renders.
+          VITE_LOCAL_TUNES_ENABLED: true
+          VITE_LOCAL_TUNES_API_URL: https://localtunes.test
+          # Keep the public profile gateway inside the same deterministic
+          # request fixture instead of falling back to an external authority.
+          VITE_PUBLIC_PROFILE_GATEWAY_URL: https://localtunes.test
+          # Full-stack Music authority suites belong to the provisioned qualification lanes.
+          PLAYWRIGHT_PR_SAFE: true
+          # Keep billing requests same-origin so the deterministic Playwright
+          # fixture can intercept them instead of constructing /undefined URLs.
+          VITE_PAYMENT_API_URL: http://localhost:5173
+
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-music-account
+          path: explorers-earth/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload screenshots/videos on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-failure-music-account
+          path: explorers-earth/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  replatform-required:
+    name: replatform-required
+    runs-on: ubuntu-24.04
+    if: always()
+    needs: [lint, typecheck, unit-tests, build, integration-tests, e2e-category-a, e2e-category-b, e2e-public-shell, e2e-publishing, e2e-music-account]
+    steps:
+      - name: Require each validation job to succeed
+        working-directory: ${{ github.workspace }}
+        env:
+          REQUIRED_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node -e "const results=JSON.parse(process.env.REQUIRED_RESULTS); const failures=Object.entries(results).filter(([, job]) => job.result !== 'success'); if(failures.length){ console.error('Required validation did not succeed:', failures.map(([name, job]) => name + '=' + job.result).join(', ')); process.exit(1) }"

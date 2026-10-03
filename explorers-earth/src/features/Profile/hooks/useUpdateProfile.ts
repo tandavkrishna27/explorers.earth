@@ -5,6 +5,8 @@ import { readSocialVisibility } from "../config/socialVisibility";
 import type { KeyValuePair } from "../types/profileSave";
 import { mobileNumberField } from "./mobileNumberField";
 import { musicApi } from "../../music/musicApi";
+import { explorersApiClient } from "../../../lib/explorersApiClient";
+import { toAccountUpdate, toProfileViewModel } from "../api/profileClient";
 
 const getAccountTypeValue = (
   key: unknown,
@@ -240,6 +242,15 @@ export const useUpdateProfile = (
 
   const handleSubmit = async (values: KeyValuePair) => {
     const socialMedia = buildSocialMediaInput(values);
+    if (documentId && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(documentId)) {
+      if (values.documentId !== documentId || !Number.isSafeInteger(values.revision) || values.revision < 1)
+        throw new Error("Profile form snapshot is unavailable");
+      const updated = await explorersApiClient.updateAccount(toAccountUpdate(
+        { ...values, social_media: socialMedia }, { revision: values.revision },
+      ));
+      await refetch();
+      return toProfileViewModel(updated);
+    }
 
     if (!documentId) {
       const response = await createAccount({
@@ -311,12 +322,7 @@ export const useUpdateProfile = (
         },
       });
 
-      const authStore = useAuthStore.getState();
-      authStore.login({
-        ...user,
-        username: incomingUsername,
-        token: authStore.token || "",
-      });
+      useAuthStore.getState().updateUsername(incomingUsername);
 
     }
 

@@ -13,15 +13,17 @@ const mockClearStore = vi.fn();
 vi.mock("@apollo/client", () => ({ useApolloClient: vi.fn() }));
 vi.mock("react-router-dom", () => ({ useNavigate: vi.fn() }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k: string) => k }) }));
-vi.mock("sonner", () => ({ toast: vi.fn() }));
+vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn() }) }));
 describe("useLogout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockClearStore.mockResolvedValue(undefined);
     (useApolloClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ clearStore: mockClearStore });
     (useNavigate as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockNavigate);
+    useAuthStore.getState().setLogoutError(false);
     useAuthStore.getState().logout();
     queryClient.clear();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 200 })));
   });
 
   it("clears the Apollo cache, clears storage, and redirects to /login", async () => {
@@ -67,5 +69,25 @@ describe("useLogout", () => {
 
     expect(mockClearStore).toHaveBeenCalledTimes(1);
     expect(mockNavigate).toHaveBeenCalledWith("/login");
+  });
+
+  it("fences local authority immediately and ends the server session while preserving presentation preferences", async () => {
+    localStorage.setItem("theme-storage", "dark");
+    useAuthStore.getState().login({ id: "A", documentId: "A", username: "A", email: "a@example.invalid", blocked: false, token: "legacy" });
+    const { result } = renderHook(() => useLogout());
+    const pending = result.current();
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    await pending;
+    expect(fetch).toHaveBeenCalledWith("/api/auth/sign-out", expect.objectContaining({ method: "POST", credentials: "include" }));
+    expect(localStorage.getItem("theme-storage")).toBe("dark");
+  });
+
+  it("keeps failed server revocation visible without restoring owner content", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 503 })));
+    useAuthStore.getState().login({ id: "A", documentId: "A", username: "A", email: "a@example.invalid", blocked: false, token: "legacy" });
+    const { result } = renderHook(() => useLogout());
+    await result.current();
+    expect(useAuthStore.getState()).toMatchObject({ isAuthenticated: false, status: "signed-out", logoutError: true });
+    expect(localStorage.getItem("explorers-logout-pending")).toBe(useAuthStore.getState().logoutAttemptId);
   });
 });

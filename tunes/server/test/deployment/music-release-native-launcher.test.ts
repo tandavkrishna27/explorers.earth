@@ -43,7 +43,7 @@ function protectedPreflightFixture(): {
   const sha = join(bin, "sha256sum");
   const find = join(bin, "find");
   for (const [path, source] of [
-    [node, "#!/bin/sh\nprintf '%s\\n' v22.12.0\n"],
+    [node, "#!/bin/sh\nprintf '%s\\n' v24.21.0\n"],
     [git, "#!/bin/sh\nexit 0\n"],
     [sha, "#!/bin/sh\nexec /usr/bin/sha256sum \"$@\"\n"],
     [find, "#!/bin/sh\nexec /usr/bin/find \"$@\"\n"],
@@ -65,7 +65,7 @@ function protectedPreflightFixture(): {
     args: [
       shellPath(node), shellPath(git), shellPath(sha), "/usr/bin/stat", shellPath(find),
       shellPath(npmRoot), shellPath(npmCli), shellPath(npmPath), shellPath(browserRoot),
-      uid!, gid!, "755", "v22.12.0", "*/chrome-linux*/chrome",
+      uid!, gid!, "755", "v24.21.0", "*/chrome-linux*/chrome",
       createHash("sha256").update(readFileSync(npmCli)).digest("hex"),
       shellPath(browserManifest),
     ],
@@ -127,8 +127,8 @@ describe("native Music release launch boundary", () => {
     expect(deployWorkflow).not.toContain("music-release-launcher");
   });
 
-  it.skipIf(process.platform !== "win32" || installedWindowsNodeVersion === "v22.12.0")(
-    "rejects a signed host Node that is not exact v22.12.0 before reaching the target",
+  it.skipIf(process.platform !== "win32" || installedWindowsNodeVersion === "v24.21.0")(
+    "rejects a signed host Node that is not exact v24.21.0 before reaching the target",
     () => {
       const launcher = nativeLauncher();
       const result = spawnSync(launcher.file, launcher.args, {
@@ -140,7 +140,7 @@ describe("native Music release launch boundary", () => {
         windowsHide: true,
       });
       expect(result.status, result.stderr).toBe(78);
-      expect(result.stderr).toContain("trusted native Node version must be exactly v22.12.0");
+      expect(result.stderr).toContain("trusted native Node version must be exactly v24.21.0");
       expect(result.stderr).not.toContain("native release source checkout must be clean");
     },
   );

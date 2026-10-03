@@ -1,3 +1,4 @@
+import { isCanonicalRuntime, getPublicRuntimeConfig } from "../lib/publicRuntimeConfig";
 import { hasAnalyticsConsent } from '../services/explorersAnalyticsClient';
 
 type ClarityQueue = ((...args: unknown[]) => void) & { q?: unknown[][] };
@@ -17,7 +18,10 @@ export const GA_MEASUREMENT_ID = 'G-C3QBWP3ZSK';
 const CLARITY_PROJECT_ID = 't7xux4xstk';
 
 export const loadAnalytics = (): void => {
+  const config = isCanonicalRuntime() ? getPublicRuntimeConfig() : undefined;
+  if (config && !config.analytics?.enabled) return;
   if (!hasAnalyticsConsent()) return;
+  const measurementId = config?.analytics?.identifier ?? GA_MEASUREMENT_ID;
 
   // Each vendor is independent: an existing GA global must not skip Clarity.
   if (!window.gtag) {
@@ -26,18 +30,18 @@ export const loadAnalytics = (): void => {
       window.dataLayer.push(args);
     };
     window.gtag('js', new Date());
-    window.gtag('config', GA_MEASUREMENT_ID);
+    window.gtag('config', measurementId);
 
     if (!document.getElementById('ga-script')) {
       const script = document.createElement('script');
       script.id = 'ga-script';
       script.async = true;
-      script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
       document.head.appendChild(script);
     }
   }
 
-  if (!window.clarity) {
+  if (!config && !window.clarity) {
     const clarity: ClarityQueue = (...args) => {
       (clarity.q ??= []).push(args);
     };

@@ -10,6 +10,7 @@ import {
   createAnalyticsEventId,
   hasAnalyticsConsent,
   postExplorersAnalyticsEvent,
+  type ExplorersAnalyticsWritePayload,
 } from './explorersAnalyticsClient';
 
 export interface AnalyticsEvent {
@@ -39,6 +40,7 @@ export interface UseTrackAnalyticsOptions {
   pageName: string;
   pageUsername?: string;
   autoTrackView?: boolean;
+  ready?: boolean;
   waitForLocation?: boolean;
   cityName?: string;
 }
@@ -130,6 +132,7 @@ export const useTrackAnalytics = (
     pageName,
     pageUsername,
     autoTrackView = true,
+    ready = true,
     waitForLocation = false,
     cityName,
   } = options;
@@ -141,14 +144,14 @@ export const useTrackAnalytics = (
   const canonicalPath = window.location.pathname;
   const inFlight = useRef(new Set<string>());
   const lastCallTime = useRef(new Map<string, number>());
-  const retryEventIds = useRef(new Map<string, string>());
+  const retryDeliveries = useRef(new Map<string, ExplorersAnalyticsWritePayload>());
   const { isAuthenticated, user } = useAuthStore();
 
   const shouldSkipTracking = Boolean(
     isAuthenticated &&
       user?.username &&
       pageUsername &&
-      user.username === pageUsername,
+      user.username.trim().toLowerCase() === pageUsername.trim().toLowerCase(),
   );
 
   const getSessionKey = useCallback(
@@ -185,13 +188,13 @@ export const useTrackAnalytics = (
 
   const trackEvent = useCallback(
     async (event: TrackableEvent): Promise<boolean> => {
-      if (shouldSkipTracking || !hasAnalyticsConsent()) return false;
+      if (!ready || shouldSkipTracking || !hasAnalyticsConsent()) return false;
       if (!accountId) {
         setError('Account ID is required for tracking');
         return false;
       }
 
-      const eventKey = `${pageName}_${canonicalPath}_${event.type}_${event.element || 'page'}`;
+      const eventKey = JSON.stringify([accountId, locationId, recommendationId, pageName, canonicalPath, event.type, event.element || 'page', event.metadata?.listId, event.metadata?.id, event.metadata?.recommendationId, event.metadata?.placeId, event.metadata?.guideId]);
       const eventTypeToCheck =
         event.type === 'click' && event.element
           ? `click-${event.element}`
@@ -231,13 +234,9 @@ export const useTrackAnalytics = (
             (metadata?.id as string | undefined) ||
             recommendationId
           : null;
-        const eventId =
-          retryEventIds.current.get(eventKey) || createAnalyticsEventId();
-        retryEventIds.current.set(eventKey, eventId);
-
-        await postExplorersAnalyticsEvent({
+        const delivery = retryDeliveries.current.get(eventKey) ?? {
           consent: true,
-          eventId,
+          eventId: createAnalyticsEventId(),
           accountId,
           locationId: dynamicLocationId ?? null,
           recommendationId: dynamicRecommendationId ?? null,
@@ -251,8 +250,10 @@ export const useTrackAnalytics = (
             ...(Object.keys(utmParams).length > 0 ? { utmParams } : {}),
             ...(referrerOrigin ? { referrerOrigin } : {}),
           },
-        });
-        retryEventIds.current.delete(eventKey);
+        };
+        retryDeliveries.current.set(eventKey, delivery);
+        await postExplorersAnalyticsEvent(delivery);
+        retryDeliveries.current.delete(eventKey);
         markEventAsTracked(eventTypeToCheck);
         return true;
       } catch (caught) {
@@ -274,6 +275,7 @@ export const useTrackAnalytics = (
       markEventAsTracked,
       pageName,
       recommendationId,
+      ready,
       shouldSkipTracking,
     ],
   );
@@ -334,6 +336,7 @@ export const useTrackAnalytics = (
   useEffect(() => {
     if (
       autoTrackView &&
+      ready &&
       hasConsent &&
       accountId &&
       !hasTrackedView &&
@@ -345,6 +348,7 @@ export const useTrackAnalytics = (
   }, [
     accountId,
     autoTrackView,
+    ready,
     hasConsent,
     hasTrackedView,
     locationId,

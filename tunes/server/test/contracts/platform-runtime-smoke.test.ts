@@ -1,0 +1,18 @@
+import {test} from 'vitest';
+import assert from 'node:assert/strict';
+import {assertUnauthenticatedSession,assertRestartQualification,selectCompiledExport} from '../../../../scripts/platform-runtime-smoke-contract.mjs';
+const session=()=>({status:200,headers:{'cache-control':'no-store','content-type':'application/json'},body:'null'});
+const schema=()=>({ready:true,currentId:'0037_explorers_movies_provider_context',currentChecksum:'a'.repeat(64),schemaChecksum:'b'.repeat(64)});
+test('defined unauthenticated session succeeds',()=>assert.doesNotThrow(()=>assertUnauthenticatedSession(session())));
+for(const status of [404,500,502])test('reject session HTTP '+status,()=>assert.throws(()=>assertUnauthenticatedSession({...session(),status})));
+for(const body of ['{}','{"session":null}','<!doctype html>',''])test('reject nonconforming session body '+JSON.stringify(body),()=>assert.throws(()=>assertUnauthenticatedSession({...session(),body})));
+test('reject session caching and wrong MIME',()=>{assert.throws(()=>assertUnauthenticatedSession({...session(),headers:{'cache-control':'public','content-type':'application/json'}}));assert.throws(()=>assertUnauthenticatedSession({...session(),headers:{'cache-control':'no-store','content-type':'text/html'}}));});
+const result=()=>({healthy:true,session:session(),schema:schema(),roleCount:1});
+test('exact healthy restart schema succeeds',()=>assert.doesNotThrow(()=>assertRestartQualification(result(),schema())));
+test('dead API cannot pass through retained role',()=>assert.throws(()=>assertRestartQualification({...result(),healthy:false},schema())));
+test('failed restarted session cannot pass',()=>assert.throws(()=>assertRestartQualification({...result(),session:{...session(),status:500}},schema())));
+for(const changes of [{ready:false},{currentId:'0035_book_cover_imports'},{currentChecksum:'c'.repeat(64)},{schemaChecksum:'c'.repeat(64)}])test('reject restart schema mismatch '+Object.keys(changes)[0],()=>assert.throws(()=>assertRestartQualification({...result(),schema:{...schema(),...changes}},schema())));
+test('invalid initial migration evidence cannot establish a baseline',()=>assert.throws(()=>assertRestartQualification(result(),{...schema(),currentChecksum:'invalid'})));
+test('runtime role existence remains required',()=>assert.throws(()=>assertRestartQualification({...result(),roleCount:0},schema())));
+test('selects exactly one packaged export with exact named membership',()=>assert.equal(selectCompiledExport([{file:'chunk-ABC12.js',source:'function readiness(){}; export {\nreadiness\n};'}],'readiness'),'chunk-ABC12.js'));
+test('missing or ambiguous packaged exports fail closed',()=>{assert.throws(()=>selectCompiledExport([],'readiness'));assert.throws(()=>selectCompiledExport([{file:'chunk-ABC12.js',source:'export {readiness};'},{file:'chunk-DEF12.js',source:'export {readiness};'}],'readiness'));assert.throws(()=>selectCompiledExport([{file:'chunk-ABC12.js',source:'export {readinessOther};'}],'readiness'));});

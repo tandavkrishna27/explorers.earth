@@ -1,9 +1,10 @@
+import { runtimeOrigin } from "../../lib/publicRuntimeConfig";
 import { createLocalTunesApiClient, type LocalTunesApiClient } from "../../lib/localTunesApiClient";
 import useAuthStore from "../../store/store";
 import { createMusicIdentityCoordinator } from "./musicIdentityCoordinator";
 import { createMusicDevelopmentFetch } from "./musicDevelopmentTransport";
 
-const musicOrigin = import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth";
+const musicOrigin = runtimeOrigin(import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth");
 
 let client: LocalTunesApiClient | undefined;
 let authority: string | undefined;

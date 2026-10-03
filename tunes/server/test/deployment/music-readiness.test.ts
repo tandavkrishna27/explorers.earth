@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import {
   CURRENT_MIGRATION_MARKER,
   createGateAttestation,
@@ -33,15 +35,15 @@ describe("Music liveness and readiness", () => {
     expect(ready).toEqual({ ready: true, ...image });
   });
 
-  it("binds current-image readiness to the 0021 journal marker and checksum", async () => {
-    // Break caught: a 0020 image can report ready against the 0019 schema or
-    // against a different migration checksum.
-    expect(CURRENT_MIGRATION_MARKER).toBe("0021_explorers_analytics_receipts");
+  it("binds current-image readiness to the approved 0037 journal marker and committed SQL checksum", async () => {
+    // A current image must refuse a historical journal or a different checksum.
+    // The attestation is synthetic; its checksum comes from committed SQL bytes.
+    expect(CURRENT_MIGRATION_MARKER).toBe("0037_explorers_movies_provider_context");
     const currentImage = {
       ...image,
-      migrationMarker: "0021_explorers_analytics_receipts" as ImageCandidate["migrationMarker"],
+      migrationMarker: CURRENT_MIGRATION_MARKER,
     };
-    const checksum = "fcb3b932c7c5ea853bd14d8131bc100b898317bdd76c60e3f8386d4c8593ceee";
+    const checksum = createHash("sha256").update(readFileSync(new URL(`../../../migrations/${CURRENT_MIGRATION_MARKER}.sql`, import.meta.url))).digest("hex");
     const attestation = createGateAttestation(currentImage, key, checksum);
     const common = {
       image: currentImage,
@@ -58,6 +60,15 @@ describe("Music liveness and readiness", () => {
     await expect(evaluateReadiness({
       ...common,
       migrationState: async () => ({ ready: true, currentId: "0019_queue_visibility_control", currentChecksum: checksum }),
+    })).resolves.toMatchObject({ ready: false, reason: "migration-state-invalid" });
+    await expect(evaluateReadiness({
+      ...common,
+      migrationState: async () => ({ ready: true, currentId: "0036_explorers_analytics_events", currentChecksum: checksum }),
+    })).resolves.toMatchObject({ ready: false, reason: "migration-state-invalid" });
+    await expect(evaluateReadiness(common)).resolves.toMatchObject({ ready: false, reason: "migration-state-invalid" });
+    await expect(evaluateReadiness({
+      ...common,
+      migrationState: async () => ({ ready: false, currentId: CURRENT_MIGRATION_MARKER, currentChecksum: checksum }),
     })).resolves.toMatchObject({ ready: false, reason: "migration-state-invalid" });
     await expect(evaluateReadiness({
       ...common,

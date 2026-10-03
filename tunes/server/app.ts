@@ -1,3 +1,4 @@
+import { contentBodyParser } from './application/contentBodyParser';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes/index";
 import { log } from "./runtime";
@@ -32,11 +33,23 @@ export function sanitizedRequestLogTarget(request: Pick<Request, "path">): strin
  *   setupVite / serveStatic
  *   server.listen(...)                                               request(app)...
  */
-export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig, localProfile?: ValidatedLocalMusicProfile): Promise<{
+export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig, localProfile?: ValidatedLocalMusicProfile, apiOnly = false): Promise<{
   app: express.Express;
   server: Server;
   shutdown?: () => Promise<void>;
 }> {
+  try {
+    return await composeApp(musicIdentityConfig, localProfile, apiOnly);
+  } catch (error) {
+    if (localProfile || apiOnly) return failAfterLocalMusicOwnedCleanup(error, {
+      closeSessionStore: closeLocalSessionStore,
+      closePool: async () => { await pool.end(); },
+    });
+    throw error;
+  }
+}
+
+async function composeApp(musicIdentityConfig: MusicIdentityRuntimeConfig, localProfile: ValidatedLocalMusicProfile | undefined, apiOnly: boolean): Promise<Awaited<ReturnType<typeof createApp>>> {
   installSafeConsole();
   if (localProfile) {
     assertValidatedLocalMusicProfile(localProfile, process.env);
@@ -67,13 +80,13 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig,
     next();
   });
   setupMusicIdentityBodylessPreflight(app);
-  app.use(express.json({ limit: "64kb" }));
+  app.use(contentBodyParser());
   app.use(express.urlencoded({ extended: false, limit: "64kb" }));
   app.use(cookieParser(process.env.COOKIE_SECRET || 'dev-only-cookie-secret'));
 
   // Serve favicon and related files directly from root and public directories
   // This ensures maximum browser compatibility for favicon display
-  if (!localProfile) {
+  if (!localProfile && !apiOnly) {
     app.use(express.static('.')); // Serve files from root directory
     app.use(express.static('public')); // Serve files from public directory
   }
@@ -168,19 +181,10 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig,
     fetchImpl: musicIdentityConfig.fetchImpl,
     timeoutMs: Math.min(musicIdentityConfig.overallTimeoutMs, 30_000),
   });
-  let registered: Awaited<ReturnType<typeof registerRoutes>>;
-  try {
-    registered = await registerRoutes(app, storage, routeMusicConfig, {
-      proveAbsence: (identity) => identityAbsenceProof.prove(identity),
-      fixtureReadToken: musicIdentityConfig.mode === "fixture" ? lifecycleProofToken : undefined,
-    }, localProfile);
-  } catch (error) {
-    if (localProfile) return failAfterLocalMusicOwnedCleanup(error, {
-      closeSessionStore: closeLocalSessionStore,
-      closePool: async () => { await pool.end(); },
-    });
-    throw error;
-  }
+  const registered = await registerRoutes(app, storage, routeMusicConfig, {
+    proveAbsence: (identity) => identityAbsenceProof.prove(identity),
+    fixtureReadToken: musicIdentityConfig.mode === "fixture" ? lifecycleProofToken : undefined,
+  }, localProfile);
   const { server } = registered;
 
   // Error handling middleware (registered after routes, before the Vite/static
@@ -189,7 +193,7 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig,
     containmentErrorHandler(err, req, res);
   });
 
-  if (!localProfile) return { app, server };
+  if (!localProfile && !apiOnly) return { app, server };
   return {
     app,
     server,

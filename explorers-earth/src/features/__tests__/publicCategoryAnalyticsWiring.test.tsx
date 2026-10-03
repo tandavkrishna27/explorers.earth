@@ -82,6 +82,7 @@ vi.mock('../../services/analyticsService', () => ({
     error: null,
   }),
   createAnalyticsOptions: {
+    books: (accountId: string, pageUsername?: string) => ({ accountId, pageUsername, pageName: "public-books" }),
     apps: analyticsMocks.appsOptions,
     products: analyticsMocks.productsOptions,
     people: analyticsMocks.peopleOptions,
@@ -256,10 +257,8 @@ describe('public category analytics wiring', () => {
     expect(screen.getAllByRole('banner')).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'Share' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Share' }));
-    expect(analyticsMocks.trackClick).toHaveBeenCalledWith('share-button', {
-      context,
-      ...metadata,
-    });
+    if (_label === 'book subject') expect(analyticsMocks.trackClick).not.toHaveBeenCalled();
+    else expect(analyticsMocks.trackClick).toHaveBeenCalledWith('share-button', { context, ...metadata });
   });
 
   it.each([

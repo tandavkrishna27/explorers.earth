@@ -7,7 +7,7 @@ import Modal from "../../../components/ui/Modal";
 import Button from "../../../components/ui/Button";
 import { toast } from "sonner";
 import { IMAGE_CONFIG } from "../../../config";
-import { ACCEPT_STRINGS } from "../../../hooks/useFileUpload";
+import { ACCEPT_STRINGS, validateCanonicalImage } from "../../../hooks/useFileUpload";
 import axios from "axios";
 
 interface ImageUploadProps {
@@ -66,6 +66,8 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     // targetting the file
     const file = event.target.files?.[0];
     if (file) {
+      const validationError = validateCanonicalImage(file);
+      if (validationError) { toast.error(validationError); event.target.value = ""; return; }
       // Initalising the File Reader to handle the uploaded File
       const reader = new FileReader();
       reader.onload = () => {

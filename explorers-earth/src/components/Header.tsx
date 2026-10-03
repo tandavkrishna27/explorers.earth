@@ -3,7 +3,7 @@ import useAuthStore from "../store/store";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import Down from "../assets/icons/Down";
-import { gql, useQuery } from "@apollo/client";
+import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 import CrossIcon from "../assets/icons/CrossIcon";
 import Profile from "../assets/icons/Profile";
 import HomeIcon from "../assets/icons/Home";
@@ -21,27 +21,6 @@ import { useDashboardTheme } from "../contexts/DashboardThemeContext";
 import { useLogout } from "../hooks/useLogout";
 import { IMAGE_CONFIG } from "../config";
 
-const getCurrentAccountDataQuery = gql`
-  query user($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      accounts {
-        profile_picture {
-          url
-        }
-        Account_Name
-        documentId
-        public_recommendations
-        public_movie
-        public_books
-        public_games
-        public_music
-      }
-    }
-  }
-`;
-
-
-
 const recommendationCategories = [
   { id: 'hub', name: 'All Recommendations', path: '/recommendations' },
   { id: 'places', name: 'Places', path: '/recommendations/places' },
@@ -57,11 +36,8 @@ const recommendationCategories = [
 
 const Header = memo(() => {
   const [showMobileMenu, setShowMobileMenu] = useState<boolean>(false);
-  const { isAuthenticated, user } = useAuthStore();
-  const { data } = useQuery(getCurrentAccountDataQuery, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-  });
+  const { isAuthenticated } = useAuthStore();
+  const { data: accountData } = useCanonicalAccount({ skip: !isAuthenticated });
   const navigate = useNavigate();
   const { t } = useTranslation();
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -97,10 +73,6 @@ const Header = memo(() => {
   }, []);
 
   const handleLogout = useLogout();
-
-  const accountData = data?.usersPermissionsUser?.accounts;
-
-
 
   const namedPages = [
     { path: '/home', exact: true, label: 'Home', icon: <HomeIcon fill="currentColor" /> },
@@ -224,7 +196,7 @@ const Header = memo(() => {
               <img
                 className="h-10 w-10 cursor-pointer rounded-full border-2 border-dashboard/800"
                 src={
-                  accountData?.[0]?.profile_picture?.url ||
+                  accountData?.profileImage?.url ||
                   IMAGE_CONFIG.defaultImages.profile
                 }
                 alt="profile"
@@ -281,14 +253,14 @@ const Header = memo(() => {
                     <img
                       className="h-10 w-10 rounded-full ring-2 ring-white"
                       src={
-                        accountData?.[0]?.profile_picture?.url ||
+                        accountData?.profileImage?.url ||
                         IMAGE_CONFIG.defaultImages.profile
                       }
                       alt="profile"
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-dashboard truncate">
-                        {user?.username || accountData?.[0]?.Account_Name || "User"}
+                        {accountData?.displayName || accountData?.handle || "User"}
                       </p>
                       <p className="text-xs text-dashboard-muted">Account Settings</p>
                     </div>

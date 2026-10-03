@@ -21,7 +21,7 @@ function harness(mode: 'fresh' | 'foreign' | 'retry' = 'fresh', failAt?: string,
     }, end: async () => { events.push(`close:${user}`); },
   } as unknown as Pool);
   const step = (name: string, result: unknown = undefined) => async () => { events.push(name); if (failAt === name) throw new Error('SENTINEL_PRIVATE_PG_ERROR'); return result; };
-  const schema = { ready: true, currentId: '0021_explorers_analytics_receipts', currentChecksum: 'd'.repeat(64), schemaChecksum: 'e'.repeat(64) };
+  const schema = { ready: true, currentId: '0037_explorers_movies_provider_context', currentChecksum: 'd'.repeat(64), schemaChecksum: 'e'.repeat(64) };
   const deps = {
     requireOwned: step('owned'), createPool: (config: { user?: string }) => { configs.push(config); events.push(`pool:${config.user}`); return pool(config.user!); },
     assertMigrator: step('authority'), preflight: step('preflight'), migrate: step('migrate', schema),
@@ -44,7 +44,7 @@ describe('guarded local database provisioning', () => {
   });
   it('bootstraps distinct non-superuser migrator and reuses the migration/role chain', async () => {
     const h = harness();
-    await expect(db.provisionLocalMusicDatabase(manifest, secrets, h.deps)).resolves.toMatchObject({ ready: true, migrationId: '0021_explorers_analytics_receipts' });
+    await expect(db.provisionLocalMusicDatabase(manifest, secrets, h.deps)).resolves.toMatchObject({ ready: true, migrationId: '0037_explorers_movies_provider_context' });
     expect(h.sql.some((sql) => sql.includes('CREATE ROLE "explorers_music_local_uat_migrator" LOGIN NOSUPERUSER NOCREATEDB CREATEROLE'))).toBe(true);
     expect(h.sql.some((sql) => /ALTER SCHEMA|DROP DATABASE|DROP ROLE/.test(sql))).toBe(false);
     expect(h.events.filter((event) => ['authority', 'preflight', 'migrate', 'provision-runtime', 'active-verify'].includes(event))).toEqual(['authority', 'preflight', 'migrate', 'provision-runtime', 'active-verify']);

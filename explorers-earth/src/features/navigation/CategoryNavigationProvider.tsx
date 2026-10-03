@@ -41,6 +41,7 @@ function createNavigationController(client: ApolloClient<object>, verifier: () =
   let operations = 0;
   let mounted = false;
   let observedAccount: string | undefined;
+  let observedSessionGeneration = useAuthStore.getState().generation;
   let stopAuth: (() => void) | undefined;
   let stopCache: (() => void) | undefined;
   let channel: BroadcastChannel | undefined;
@@ -48,7 +49,7 @@ function createNavigationController(client: ApolloClient<object>, verifier: () =
   const publish = (next: NavigationState) => { state = next; for (const listener of listeners) listener(); };
   const isCurrent = (origin: IntentAuthority) => {
     const auth = useAuthStore.getState();
-    return mounted && !!origin && auth.isAuthenticated && !auth.user?.blocked
+    return mounted && !!origin && auth.isAuthenticated && auth.generation === observedSessionGeneration && !auth.user?.blocked
       && auth.user?.documentId === origin.userDocumentId && generation === origin.generation
       && state.authority?.accountDocumentId === origin.accountDocumentId;
   };
@@ -61,18 +62,21 @@ function createNavigationController(client: ApolloClient<object>, verifier: () =
     if (!mounted || listeners.size === 0) return;
     const auth = useAuthStore.getState();
     if (!auth.isAuthenticated || !auth.user?.documentId || auth.user.blocked) return;
+    const sessionGeneration = auth.generation;
     const userDocumentId = auth.user.documentId;
     const startedGeneration = generation;
     const sequence = ++readSequence;
     try {
       const snapshot = await api.readAccount(userDocumentId);
-      if (!mounted || listeners.size === 0 || generation !== startedGeneration || sequence !== readSequence) return;
+      if (!mounted || listeners.size === 0 || generation !== startedGeneration || sequence !== readSequence
+        || useAuthStore.getState().generation !== sessionGeneration) return;
       observedAccount = snapshot.scope.accountDocumentId;
       const authority = Object.freeze({ ...snapshot.scope, generation });
       publish({ snapshot, authority, busy: operations > 0, pending: state.pending });
     } catch (error) {
-      if (!mounted || listeners.size === 0 || generation !== startedGeneration || sequence !== readSequence) return;
-      publish({ ...state, error: error instanceof NavigationError ? error.message : 'Account could not be verified. Refresh to try again.' });
+      if (!mounted || listeners.size === 0 || generation !== startedGeneration || sequence !== readSequence
+        || useAuthStore.getState().generation !== sessionGeneration) return;
+      publish({ ...state, error: error instanceof NavigationError ? error.message : 'Category settings could not be loaded. Refresh to try again.' });
     }
   }
   const refreshAfterInvalidation = () => {
@@ -136,8 +140,9 @@ function createNavigationController(client: ApolloClient<object>, verifier: () =
     if (mounted) return;
     mounted = true;
     stopAuth = useAuthStore.subscribe((next, previous) => {
-      if (next.isAuthenticated === previous.isAuthenticated && next.user?.documentId === previous.user?.documentId
+      if (next.generation === previous.generation && next.isAuthenticated === previous.isAuthenticated && next.user?.documentId === previous.user?.documentId
         && next.user?.blocked === previous.user?.blocked && next.token === previous.token) return;
+      observedSessionGeneration = next.generation;
       observedAccount = undefined;
       invalidate(); watchAccount(); void refresh();
     });

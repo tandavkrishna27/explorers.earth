@@ -14,6 +14,62 @@ const repositoryRoot = resolve(import.meta.dirname, "../../..");
 
 describe("Music surface authorization policy", () => {
   it.each([
+    ['POST','/api/explorers/analytics/events','tunes/server/routes/explorersAnalyticsRoutes.ts','public'],
+    ['GET','/api/explorers/analytics/summary','tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts','explorers-owner'],
+    ['GET','/api/explorers/analytics/events','tunes/server/routes/explorersAnalyticsRoutes.ts','strapi-identity'],
+  ])('classifies only exact analytics source and method: %s %s',(method,path,source,decision)=>{
+    const route={method,path,source,classification:'private'};expect(decisionForRoute(route)).toBe(decision);
+    for(const changed of [{source:'legacy.ts'},{method:'DELETE'},{path:path+'/internal'},{classification:'tombstone'}])expect(decisionForRoute({...route,...changed})).toBe('tombstone');
+  });
+  it.each([
+    ['POST','/api/explorers/v1/entities/resolve'],['POST','/api/explorers/v1/collections'],
+    ['PATCH','/api/explorers/v1/collections/:id'],['PATCH','/api/explorers/v1/collections/:id/order'],
+    ['DELETE','/api/explorers/v1/collections/:id'],['POST','/api/explorers/v1/recommendations'],
+    ['PATCH','/api/explorers/v1/recommendations/:id'],['DELETE','/api/explorers/v1/recommendations/:id'],
+    ['POST','/api/explorers/v1/recommendations/:id/entity'], ['POST','/api/explorers/v1/recommendations/:id/book-covers'],
+    ['GET','/api/explorers/v1/collections'],['GET','/api/explorers/v1/collections/:id'],
+    ['GET','/api/explorers/v1/recommendations'],['GET','/api/explorers/v1/recommendations/:id'],
+    ['GET','/api/explorers/v1/recommendations/search'],
+    ['GET','/api/explorers/v1/categories/:category/content-snapshot'],
+    ['GET','/api/explorers/v1/categories/:category/content-snapshot/validate'],
+    ['GET','/api/explorers/v1/categories/:category/memberships'],
+  ])('classifies only the implemented recommendation command %s %s', (method,path)=>{
+    const route={source:'tunes/server/routes/explorersRecommendationRoutes.ts',method,path,classification:'private'};
+    expect(decisionForRoute(route)).toBe('explorers-owner');
+    expect(decisionForRoute({...route,source:'legacy.ts'})).toBe('tombstone');
+    expect(decisionForRoute({...route,method:'PUT'})).toBe('tombstone');
+    expect(decisionForRoute({...route,method:'ALL'})).toBe('tombstone');
+    expect(decisionForRoute({...route,path:`${path}/admin`})).toBe('tombstone');
+    expect(decisionForRoute({...route,classification:'tombstone'})).toBe('tombstone');
+  });
+  it.each([
+    ["explorersCatalogRoutes", "GET", "/api/explorers/v1/catalog/books", "explorers-owner"],
+    ["explorersCatalogRoutes", "GET", "/api/explorers/v1/catalog/movies", "explorers-owner"],
+    ["explorersAccountRoutes", "PATCH", "/api/explorers/v1/account", "explorers-owner"],
+    ["explorersMediaRoutes", "POST", "/api/explorers/v1/media", "explorers-owner"],
+    ["explorersMediaRoutes", "DELETE", "/api/explorers/v1/media/:id", "explorers-owner"],
+    ["explorersMediaRoutes", "GET", "/api/explorers/v1/media/:id/content", "public"],
+    ["explorersMediaRoutes", "HEAD", "/api/explorers/v1/media/:id/content", "public"],
+  ])("classifies the exact canonical profile/media route %s %s %s", (file, method, path, decision) => {
+    const route = { source: `tunes/server/routes/${file}.ts`, method, path, classification: "private" };
+    expect(decisionForRoute(route)).toBe(decision);
+    expect(decisionForRoute({ ...route, source: "legacy.ts" })).toBe("tombstone");
+    expect(decisionForRoute({ ...route, method: "PUT" })).toBe("tombstone");
+    expect(decisionForRoute({ ...route, path: `${path}/admin` })).toBe("tombstone");
+    expect(decisionForRoute({ ...route, classification: "tombstone" })).toBe("tombstone");
+  });
+  it.each([
+    ["POST", "/api/explorers/v1/account/deletion", "explorers-owner"],
+    ["GET", "/api/explorers/v1/recovery/status", "explorers-recovery"],
+    ["POST", "/api/explorers/v1/recovery/complete", "explorers-recovery"],
+  ] as const)("classifies the lifecycle route %s %s only at its registered source", (method, path, decision) => {
+    const route = { source: "tunes/server/routes/explorersLifecycleRoutes.ts", method, path, classification: "private" };
+    expect(decisionForRoute(route)).toBe(decision);
+    expect(decisionForRoute({ ...route, source: "legacy.ts" })).toBe("tombstone");
+    expect(decisionForRoute({ ...route, path: "/api/explorers/v1/recovery/unknown" })).toBe("tombstone");
+  });
+
+  it.each([
     "/api/explorers/v1/profiles/:username",
     "/api/explorers/v1/profiles/:username/recommendations/:category",
     "/api/explorers/v1/profiles/:username/recommendations/:category/:slug",
@@ -24,9 +80,30 @@ describe("Music surface authorization policy", () => {
     expect(decisionForRoute({ method: "GET", path, classification: "admin-tombstone" })).toBe("admin-tombstone");
   });
 
+  it.each([
+    '/api/explorers/v1/public/profiles/:username/collections/:category',
+    '/api/explorers/v1/public/recommendations/search',
+    '/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations',
+  ])('recognizes only the exact public content GET source and path %s',path=>{
+    const route={method:'GET',path,source:'tunes/server/routes/explorersPublicContentRoutes.ts',classification:'private'};
+    expect(decisionForRoute(route)).toBe('public');
+    for(const changed of [{source:'other.ts'},{method:'POST'},{method:'ALL'},{path:path+'/internal'},{classification:'tombstone'}]) expect(decisionForRoute({...route,...changed})).toBe('tombstone');
+  });
   it("does not make unknown public profile paths public", () => {
     expect(decisionForRoute({ method: "GET", path: "/api/explorers/v1/profiles/:username/admin", classification: "private" })).toBe("tombstone");
     expect(decisionForRoute({ method: "GET", path: "/api/explorers/v1/profiles", classification: "private" })).toBe("tombstone");
+  });
+
+  it("classifies canonical auth only at its registered source and retains the legacy auth tombstone", () => {
+    const route = { method: "ALL", path: "/api/auth/*splat", classification: "private" };
+    expect(decisionForRoute({ ...route, source: "tunes/server/auth/canonicalApp.ts" })).toBe("explorers-auth");
+    expect(decisionForRoute({ ...route, source: "tunes/server/auth.ts" })).toBe("tombstone");
+    expect(decisionForRoute({ ...route, source: "tunes/server/auth/canonicalApp.ts", path: "/api/auth/legacy" }))
+      .toBe("tombstone");
+    expect(decisionForRoute({ ...route, source: "tunes/server/auth/canonicalApp.ts", method: "POST", path: "/api/explorers/v1/me" }))
+      .toBe("tombstone");
+    expect(decisionForRoute({ ...route, source: "tunes/server/auth/canonicalApp.ts", method: "GET", path: "/api/explorers/v1/recovery/start" }))
+      .toBe("tombstone");
   });
 
   it.each([
@@ -182,3 +259,5 @@ describe("Music surface authorization policy", () => {
     ]);
   });
 });
+
+it('admits Movies catalog only through its exact canonical source and GET while preserving retired guards',()=>{const r={source:'tunes/server/routes/explorersCatalogRoutes.ts',method:'GET',path:'/api/explorers/v1/catalog/movies',classification:'private'};expect(decisionForRoute(r)).toBe('explorers-owner');for(const change of [{method:'ALL'},{method:'POST'},{source:'tunes/server/routes/legacyMovies.ts'},{path:'/api/explorers/v1/catalog/movies/internal'},{path:'/api/movies'},{classification:'tombstone'}])expect(decisionForRoute({...r,...change})).toBe('tombstone');});

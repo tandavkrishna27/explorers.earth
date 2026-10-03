@@ -13,7 +13,27 @@ export const GATE_KIND = "music-schema-deployment-gate-v2" as const;
 export const LEGACY_GATE_KIND = "music-containment-deployment-gate-v1" as const;
 
 export function rollbackCompatibilityFloorMarker(marker: DeployableMusicMigrationMarker): DeployableMusicMigrationMarker {
-  return marker === "0021_explorers_analytics_receipts"
+  // Pre-0031 reprovisioners would regrant counter DML and trigger EXECUTE.
+  // This privilege boundary requires the matching executable after migration.
+  return marker === "0030_explorers_media_purpose_guard"
+    ? "0029_explorers_recommendations"
+    : marker === "0029_explorers_recommendations"
+    ? "0028_explorers_recovery_proof_retention"
+    : marker === "0028_explorers_recovery_proof_retention"
+    ? "0027_explorers_lifecycle"
+    : marker === "0027_explorers_lifecycle"
+    ? "0026_explorers_media_slot_compatibility"
+    : marker === "0026_explorers_media_slot_compatibility"
+    ? "0025_explorers_media_attachment_guard"
+    : marker === "0025_explorers_media_attachment_guard"
+    ? "0024_explorers_profile_media"
+    : marker === "0024_explorers_profile_media"
+    ? "0023_explorers_authorization"
+    : marker === "0023_explorers_authorization"
+    ? "0022_explorers_identity"
+    : marker === "0022_explorers_identity"
+    ? "0021_explorers_analytics_receipts"
+    : marker === "0021_explorers_analytics_receipts"
     ? "0020_public_snapshot_revision"
     : marker === "0020_public_snapshot_revision"
     ? "0019_queue_visibility_control"

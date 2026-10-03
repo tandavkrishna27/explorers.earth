@@ -1,93 +1,68 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import useAuthStore from "../../store/store";
 import ProtectedRoute from "../ProtectedRoute";
 
-const query = vi.hoisted(() => ({ refetch: vi.fn() }));
-vi.mock("@apollo/client", async (original) => ({
-  ...await original<typeof import("@apollo/client")>(),
-  useQuery: () => ({ data: { usersPermissionsUser: { accounts: [] } }, loading: false, error: undefined, refetch: query.refetch }),
-}));
-vi.mock("../EarthLoader", () => ({ EarthLoader: () => <div>Loading lifecycle</div> }));
-vi.mock("../../hooks/useLogout", () => ({ useLogout: () => useAuthStore.getState().logout }));
+const account = vi.hoisted(() => ({ status: "complete" as "complete" | "incomplete", loading: false, error: false }));
+vi.mock("../../features/Profile/api/useCanonicalAccount", () => ({ useCanonicalAccount: () => ({
+  data: account.error || account.loading ? undefined : { id: "current-account", onboardingStatus: account.status },
+  isLoading: account.loading, error: account.error ? new Error("outage") : null, refetch: vi.fn(),
+}) }));
+vi.mock("../EarthLoader", () => ({ EarthLoader: () => <div>Verifying session</div> }));
+vi.mock("../../hooks/useLogout", () => ({ useLogout: () => async () => useAuthStore.getState().logout() }));
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => { resolve = done; });
-  return { promise, resolve };
+function verify(id: string, complete = true) {
+  const generation = useAuthStore.getState().beginVerification();
+  useAuthStore.getState().acceptVerified(generation, { id, userId: `user-${id}`, username: id,
+    email: `${id}@example.invalid`, onboardingStatus: complete ? "complete" : "incomplete", revision: 1 });
 }
-const pending = () => new Response(JSON.stringify({ version: "music-lifecycle/v1", operation: {
-  operationId: "operation-a", status: "pending_deletion", phase: "prepared", state: "completed",
-  boundaryCrossed: false, retryable: false, deadLetter: false,
-  upstreamUserDocumentId: "user-a", upstreamAccountDocumentId: "account-a",
-} }), { status: 200 });
-const missing = () => new Response(JSON.stringify({ error: { code: "LIFECYCLE_NOT_FOUND" } }), { status: 404 });
-function signIn(identity: string) {
-  useAuthStore.getState().login({ id: identity, documentId: identity, username: identity, email: `${identity}@example.test`, blocked: false, token: `fixture-bearer-${identity}` });
-}
-function mount() {
-  const renderedFor: string[] = [];
-  function SettingsContent() {
-    const { user } = useAuthStore();
-    renderedFor.push(user?.documentId ?? "logged-out");
-    return <div>Settings recovery</div>;
-  }
-  render(<MemoryRouter initialEntries={["/settings"]}><Routes>
-    <Route element={<ProtectedRoute />}><Route path="/settings" element={<SettingsContent />} /></Route>
-    <Route path="/onboarding" element={<div>Onboarding</div>} />
+function mount(path = "/settings") {
+  return render(<MemoryRouter initialEntries={[path]}><Routes>
+    <Route element={<ProtectedRoute />}><Route path="/settings" element={<div>Private settings</div>} />
+      <Route path="/onboarding" element={<div>Onboarding</div>} /></Route>
     <Route path="/login" element={<div>Login</div>} />
+    <Route path="/reactivate" element={<div>Recovery</div>} />
+    <Route path="/reactivate-confirm" element={<div>Confirm recovery</div>} />
   </Routes></MemoryRouter>);
-  return renderedFor;
 }
 
 describe("ProtectedRoute lifecycle identity", () => {
-  beforeEach(() => { vi.clearAllMocks(); signIn("user-a"); });
-  afterEach(() => vi.unstubAllGlobals());
-
-  it("never renders A's recovery permission for cached B before effects run", async () => {
-    const next = deferred<Response>();
-    const fetcher = vi.fn().mockResolvedValueOnce(pending()).mockReturnValueOnce(next.promise);
-    vi.stubGlobal("fetch", fetcher);
-    const renderedFor = mount();
-    await screen.findByText("Settings recovery");
-    act(() => signIn("user-b"));
-    expect(renderedFor).not.toContain("user-b");
-    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
-    await act(async () => next.resolve(missing()));
-    expect(await screen.findByText("Onboarding")).toBeInTheDocument();
-  });
-
-  it.each(["success", "error"])("ignores stale A status %s after B becomes current", async (outcome) => {
-    const first = deferred<Response>();
-    const second = deferred<Response>();
-    vi.stubGlobal("fetch", vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise));
-    const renderedFor = mount();
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
-    act(() => signIn("user-b"));
-    await act(async () => first.resolve(outcome === "success" ? pending() : new Response("{}", { status: 503 })));
-    expect(renderedFor).not.toContain("user-b");
-    expect(screen.queryByText("Try again")).not.toBeInTheDocument();
-    await act(async () => second.resolve(missing()));
-    expect(await screen.findByText("Onboarding")).toBeInTheDocument();
-  });
-
-  it("retries lifecycle status even when onboarding refetch leaves data and loading unchanged", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(new Response("{}", { status: 503 })).mockResolvedValueOnce(pending()));
+  beforeEach(() => { useAuthStore.getState().logout(); account.status = "complete"; account.loading = false; account.error = false; });
+  afterEach(() => vi.restoreAllMocks());
+  it("never renders private content while the session is being verified", () => {
+    useAuthStore.getState().beginVerification();
     mount();
-    fireEvent.click(await screen.findByText("Try again"));
-    expect(await screen.findByText("Settings recovery")).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText("Private settings")).not.toBeInTheDocument();
+    expect(screen.getByText("Verifying session")).toBeInTheDocument();
   });
-
-  it("ignores in-flight status after logout", async () => {
-    const response = deferred<Response>();
-    vi.stubGlobal("fetch", vi.fn().mockReturnValue(response.promise));
-    const renderedFor = mount();
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+  it("moves an inactive session to the purpose-bound recovery flow", () => {
+    const generation = useAuthStore.getState().beginVerification();
+    useAuthStore.getState().verificationFailed(generation, "recovery-only");
+    mount();
+    expect(screen.getByText("Confirm recovery")).toBeInTheDocument();
+    expect(screen.queryByText("Private settings")).not.toBeInTheDocument();
+  });
+  it("removes private content synchronously when another session replaces it", () => {
+    verify("account-a");
+    mount();
+    expect(screen.getByText("Private settings")).toBeInTheDocument();
+    act(() => useAuthStore.getState().beginVerification());
+    expect(screen.queryByText("Private settings")).not.toBeInTheDocument();
+    expect(screen.getByText("Verifying session")).toBeInTheDocument();
+  });
+  it("keeps network failure retryable instead of assuming onboarding is incomplete", () => {
+    const generation = useAuthStore.getState().beginVerification();
+    useAuthStore.getState().verificationFailed(generation, "error");
+    mount();
+    expect(screen.queryByText("Onboarding")).not.toBeInTheDocument();
+    expect(screen.queryByText("Private settings")).not.toBeInTheDocument();
+  });
+  it("never grants a stale profile response authority after logout", () => {
+    verify("account-a"); account.loading = true;
+    mount();
     act(() => useAuthStore.getState().logout());
-    await act(async () => response.resolve(pending()));
     expect(screen.getByText("Login")).toBeInTheDocument();
-    expect(renderedFor).toEqual([]);
+    expect(screen.queryByText("Private settings")).not.toBeInTheDocument();
   });
 });

@@ -48,6 +48,7 @@ export class PublicProfileService {
   }
 
   private async account(username: string, bypassCache: boolean): Promise<Record<string, unknown> | undefined> {
+    if (this.ttlMs === 0) return this.gateway.resolveAccount(username);
     const cached = this.read(this.accounts, username, bypassCache);
     if (cached) return cached;
     const inFlight = this.accountReads.get(username);
@@ -71,6 +72,7 @@ export class PublicProfileService {
   }
 
   async category(username: string, category: PublicCategory, limit: number, options: PublicProfileReadOptions = {}): Promise<unknown | undefined> {
+    if (category === 'books') return this.freshBooksRead(username, () => this.gateway.resolveCategory(username, category, limit, options.cursor));
     const key = `${username}:${category}:${limit}:${options.cursor ?? "first"}`;
     const cached = this.read(this.categories, key, Boolean(options.bypassCache));
     if (cached !== undefined) return cached;
@@ -87,6 +89,7 @@ export class PublicProfileService {
   }
 
   async detail(username: string, category: PublicCategory, slug: string, limit: number, options: PublicProfileReadOptions = {}): Promise<unknown | undefined> {
+    if (category === 'books') return this.freshBooksRead(username, () => this.gateway.resolveDetail(username, category, slug, limit, options.cursor));
     const key = `${username}:${category}:${slug}:${limit}:${options.cursor ?? "first"}`;
     const cached = this.read(this.categories, key, Boolean(options.bypassCache));
     if (cached !== undefined) return cached;
@@ -95,5 +98,15 @@ export class PublicProfileService {
     const value = await this.categoryRead(key, () => this.gateway.resolveDetail(username, category, slug, limit, options.cursor));
     this.write(this.categories, key, value);
     return value;
+  }
+
+  // Books content never consumes cached or coalesced authorization. Recheck after
+  // composition too: a pre-hide request cannot repopulate or return an old read.
+  private async freshBooksRead(username: string, resolve: () => Promise<unknown>): Promise<unknown | undefined> {
+    const before = await this.gateway.resolveAccount(username);
+    if (!before || !canReadPublicCategory(before, 'books')) return undefined;
+    const value = await resolve();
+    const after = await this.gateway.resolveAccount(username);
+    return after && canReadPublicCategory(after, 'books') ? value : undefined;
   }
 }

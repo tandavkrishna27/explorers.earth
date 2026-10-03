@@ -1,72 +1,54 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
+import { explorersApiClient, type RecommendationObservation, type CollectionObservation } from "../../../../lib/explorersApiClient";
+import { useBooksOwnerContent } from "../../api/useBooksOwnerContent";
+import { booksCommandKey } from "../../api/booksClient";
+import { bookContextFromLinks } from "../../api/booksViewModel";
+import {createRecommendationSchema} from "../../../../../../tunes/shared/explorersContract";
+import type { BookCandidate } from "../../../../../../tunes/shared/explorersBookContract";
 import {
   ArrowLeft, Search, Star, Upload, X, Loader2, Check,
   BookOpen, Calendar, Hash, ExternalLink, Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import useAuthStore from "../../../../store/store";
-import { BOOKS_BY_LIST, booksByListVars, refetchBooksByList } from "../../api/query";
-import {
-  CREATE_RECOMMENDED_BOOK, UPDATE_RECOMMENDED_BOOK,
-} from "../../api/mutation";
-import googleBooksService, { type GoogleBooksItem, type MappedBook } from "../../../../services/googleBooksService";
-import { generateBookUploadPath, generateRandomFileName } from "../../../../utils/uploadPathGenerator";
+
 import { deduplicateBooks } from "../../utils/bookHelpers";
-import type { RecommendedBook, BuyLink } from "../../types";
+import type { RecommendedBook, BuyLink, BookFormSelection } from "../../types";
 import TiptapEditor from "../../../Favorites/components/TiptapEditor";
-import axios from "axios";
+import {formatAuthors} from "../../utils/bookHelpers";
 
 
-// ─────────────────────────────────────────────────────────────
-// S3 upload helper (reused pattern from Movies)
-// ─────────────────────────────────────────────────────────────
-async function uploadFileToStrapi(file: File, path: string, token: string | null): Promise<string> {
-  const formData = new FormData();
-  formData.append("files", file);
-  formData.append("path", path);
-
-  const res = await axios.post(`${import.meta.env.VITE_REST_API_URL}/upload`, formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-
-  return res.data[0]?.url ?? "";
-}
-
-// ─────────────────────────────────────────────────────────────
 // Inline Google Books Search Component
 // ─────────────────────────────────────────────────────────────
 interface InlineSearchProps {
-  onSelect: (item: GoogleBooksItem) => void;
+  onSelect: (item: BookCandidate) => void;
 }
 
-const InlineSearch = ({ onSelect }: InlineSearchProps) => {
+export const InlineSearch = ({ onSelect }: InlineSearchProps) => {
+  const generation=useAuthStore(state=>state.generation);
+  const authority=useRef<{controller:AbortController;sequence:number;query:string;generation:number}>();
+  const searchSequence=useRef(0);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<GoogleBooksItem[]>([]);
+  const [results, setResults] = useState<BookCandidate[]>([]);
   const [loading, setLoading] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [error,setError]=useState<string>();
+  const [cursor,setCursor]=useState<string|null>(null);
 
   useEffect(() => {
-    if (!query.trim()) { setResults([]); return; }
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const items = await googleBooksService.searchBooks(query, 12);
-        setResults(items);
-      } catch {
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 350);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [query]);
-
+    const controller=new AbortController();const current={controller,sequence:++searchSequence.current,query,generation};authority.current=current;setResults([]);setCursor(null);setError(undefined);
+    const active=()=>authority.current===current&&!controller.signal.aborted&&useAuthStore.getState().generation===generation;
+    if(!query.trim()){setLoading(false);return()=>controller.abort();}
+    setLoading(true);timerRef.current=setTimeout(async()=>{try{const page=await explorersApiClient.searchBookCandidates({query,limit:12},controller.signal);if(active()){setResults(page.items);setCursor(page.nextCursor);}}catch(e){if(active())setError(e instanceof Error?e.message:'Book search failed');}finally{if(active())setLoading(false);}},350);
+    return()=>{controller.abort();if(timerRef.current)clearTimeout(timerRef.current);};
+  },[query,generation]);
+  const loadMore=async()=>{
+    const current=authority.current;if(!current||!cursor||loading||current.controller.signal.aborted)return;
+    const active=()=>authority.current===current&&!current.controller.signal.aborted&&useAuthStore.getState().generation===current.generation;
+    setLoading(true);setError(undefined);
+    try{const page=await explorersApiClient.searchBookCandidates({query:current.query,limit:12,cursor},current.controller.signal);if(active()){setResults(old=>[...old,...page.items]);setCursor(page.nextCursor);}}catch(e){if(active())setError(e instanceof Error?e.message:'Book search failed');}finally{if(active())setLoading(false);}
+  };
   return (
     <div className="space-y-4">
       <div className="relative">
@@ -75,7 +57,7 @@ const InlineSearch = ({ onSelect }: InlineSearchProps) => {
           autoFocus
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {authority.current?.controller.abort();setQuery(e.target.value);}}
           placeholder="Search by title, author, or ISBN..."
           className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-amber-400/50 transition-colors"
         />
@@ -87,13 +69,13 @@ const InlineSearch = ({ onSelect }: InlineSearchProps) => {
       {results.length > 0 && (
         <div className="space-y-1 max-h-96 overflow-y-auto pr-1">
           {results.map((item) => {
-            const vi = item.volumeInfo;
-            const thumb = googleBooksService.getThumbnailUrl(vi);
-            const authors = googleBooksService.formatAuthors(vi.authors);
-            const year = googleBooksService.extractYear(vi.publishedDate);
+            const vi = {title:item.title,authors:item.preview.authors,averageRating:item.preview.providerRating};
+            const thumb = item.preview.coverUrl;
+            const authors = formatAuthors(vi.authors);
+            const year = item.preview.yearText;
             return (
               <button
-                key={item.id}
+                key={item.externalId}
                 onClick={() => onSelect(item)}
                 className="flex items-center gap-3 w-full text-left p-2.5 rounded-xl hover:bg-white/6 transition-colors border border-transparent hover:border-white/10"
               >
@@ -122,7 +104,9 @@ const InlineSearch = ({ onSelect }: InlineSearchProps) => {
         </div>
       )}
 
-      {!loading && query.trim() && results.length === 0 && (
+      {error && <div role="alert">{error} <button onClick={() => setQuery(query + " ")}>Retry</button></div>}
+      {cursor && <button disabled={loading} onClick={loadMore}>Load more books</button>}
+      {!loading && !error && query.trim() && results.length === 0 && (
         <p className="text-sm text-white/30 text-center py-4">No results found for "{query}"</p>
       )}
     </div>
@@ -135,11 +119,11 @@ const InlineSearch = ({ onSelect }: InlineSearchProps) => {
 const AddBookPage = () => {
   const { listId, bookId } = useParams<{ listId: string; bookId?: string }>();
   const navigate = useNavigate();
-  const { user, token } = useAuthStore();
+  const generation = useAuthStore(state=>state.generation);
   const isEdit = Boolean(bookId);
 
   // Form state
-  const [selectedBook, setSelectedBook] = useState<MappedBook | null>(null);
+  const [selectedBook, setSelectedBook] = useState<BookFormSelection | null>(null);
   const [note, setNote] = useState<any>("");
   const [userRating, setUserRating] = useState<number | null>(null);
   const [isPinned, setIsPinned] = useState(false);
@@ -151,20 +135,28 @@ const AddBookPage = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
 
-  const username: string = (user as any)?.username || "";
+  const [entityId,setEntityId]=useState<string>();
+  const editedObservation=useRef<RecommendationObservation>();
+  const initialized=useRef<string>();
+  const operationAbort=useRef(new AbortController());
+  const createdRecommendation=useRef<string>();
+  const pendingCreate=useRef<{parent:CollectionObservation;input:Parameters<typeof explorersApiClient.createMyRecommendation>[1];key:string}>();
+  const uploadedFiles=useRef(new Map<File,{id:string;url:string}>());
+  const selectionSequence=useRef(0);
+  const [snapshotPreviews,setSnapshotPreviews]=useState<string[]>([]);
+  useEffect(()=>{const urls=newSnapshots.map(file=>URL.createObjectURL(file));setSnapshotPreviews(urls);return()=>urls.forEach(url=>URL.revokeObjectURL(url));},[newSnapshots]);
+  useEffect(()=>{operationAbort.current=new AbortController();setSelectedBook(null);setEntityId(undefined);setNote("");setUserRating(null);setIsPinned(false);setBuyLinks([]);setNewSnapshots([]);setExistingSnapshots([]);setSaving(false);initialized.current=undefined;editedObservation.current=undefined;createdRecommendation.current=undefined;pendingCreate.current=undefined;uploadedFiles.current.clear();return()=>{operationAbort.current.abort();selectionSequence.current++;};},[generation,listId,bookId]);
 
   // Load existing book list (for display_order)
-  const { data: listData } = useQuery(BOOKS_BY_LIST, {
-    variables: booksByListVars(listId ?? ""),
-    skip: !listId,
-  });
+  const { data:listData,content,error:loadError } = useBooksOwnerContent(listId);
   const existingBooks: RecommendedBook[] = deduplicateBooks(listData?.bookLists?.[0]?.recommended_books);
 
   // Load book for edit mode
   useEffect(() => {
-    if (isEdit && bookId && existingBooks.length > 0) {
+    if (isEdit && bookId && content?.observation.generation===generation && existingBooks.length > 0 && initialized.current!==bookId) {
       const book = existingBooks.find((b) => b.documentId === bookId);
       if (book) {
+        editedObservation.current=content?.details.get(bookId);initialized.current=bookId;setEntityId(book.entity_id);
         setSelectedBook({
           volume_id: book.volume_id,
           title: book.title,
@@ -186,23 +178,21 @@ const AddBookPage = () => {
         setUserRating(book.user_rating ?? null);
         setIsPinned(book.is_pinned ?? false);
         setBuyLinks(book.buy_links ?? []);
-        setExistingSnapshots(book.media_details?.imageDetails ?? []);
+        setExistingSnapshots(book.Media.map(media=>({id:media.documentId!,url:media.url})));
       }
     }
-  }, [isEdit, bookId, existingBooks.length]);
+  }, [isEdit, bookId, existingBooks.length,content]);
 
-  const [createRecommendedBook] = useMutation(CREATE_RECOMMENDED_BOOK);
-  const [updateRecommendedBook] = useMutation(UPDATE_RECOMMENDED_BOOK);
-
-  const handleSelectBook = useCallback((item: GoogleBooksItem) => {
-    const mapped = googleBooksService.transformVolumeToBook(item);
-    setSelectedBook(mapped);
-    // Auto-populate buy link from Google Books
-    if (mapped.google_books_buy_link) {
-      setBuyLinks([{ name: "Google Books", url: mapped.google_books_buy_link, logo: "google-books" }]);
-    }
-  }, []);
-
+  const handleSelectBook = useCallback(async(item:BookCandidate) => {
+    const selection=++selectionSequence.current;
+    try {
+      const entity=await explorersApiClient.resolveBookEntity({kind:"provider",category:"books",provider:item.provider,externalKind:item.externalKind,externalId:item.externalId},booksCommandKey(),operationAbort.current.signal);
+      if(selection!==selectionSequence.current||useAuthStore.getState().generation!==generation)return;
+      const f=item.preview;setEntityId(entity.id);
+      setSelectedBook({volume_id:item.externalId,title:item.title,subtitle:f.subtitle,authors:f.authors,year:f.yearText??"",cover_url:f.coverUrl??"",cover_url_large:f.coverLargeUrl??"",subjects:f.subjects,publisher:f.publisher,page_count:f.pageCount,google_rating:f.providerRating,description:f.description,isbn_13:f.isbn13??"",preview_link:f.previewLink,google_books_buy_link:item.buyLinkSuggestion});
+      setBuyLinks(item.buyLinkSuggestion?[{name:"Google Books",url:item.buyLinkSuggestion,logo:"google-books"}]:[]);
+    }catch(e){toast.error(e instanceof Error?e.message:"Could not select Book");}
+  },[generation]);
   const handleAddBuyLink = () => {
     if (!newLinkUrl.trim()) return;
     setBuyLinks((prev) => [
@@ -214,127 +204,26 @@ const AddBookPage = () => {
   };
 
   const handleSave = async () => {
-    if (!selectedBook || !listId) return;
-    setSaving(true);
-    try {
-      let finalCoverUrl = selectedBook.cover_url;
-      let finalThumbnailUrl = selectedBook.cover_url_large;
-
-      // For create mode: upload cover + thumbnail to S3
-      if (!isEdit && selectedBook.cover_url?.startsWith("http")) {
-        try {
-          setUploadingCover(true);
-          const coverFilename = generateRandomFileName("cover", "jpg");
-          const thumbFilename = generateRandomFileName("thumb", "jpg");
-          const fullCoverPath = generateBookUploadPath(username || "user", listId, selectedBook.volume_id, coverFilename);
-          const directoryPath = fullCoverPath.substring(0, fullCoverPath.lastIndexOf('/'));
-
-          const TOKEN = token;
-          const qrtoken = localStorage.getItem('qrtoken');
-          const PROXY_BASE = import.meta.env.VITE_INSTAGRAM_API_URL || 'http://localhost:5000';
-
-          // Use the backend proxy for Google Books images to bypass CORS restrictions
-          const buildProxyUrl = (url: string) => 
-            `${PROXY_BASE}/api/instagram/media-proxy?url=${encodeURIComponent(url)}${qrtoken ? `&token=${qrtoken}` : ''}`;
-
-          const [coverRes, thumbRes] = await Promise.all([
-            axios.get(buildProxyUrl(selectedBook.cover_url), { responseType: 'blob' }).catch(() => null),
-            axios.get(buildProxyUrl(selectedBook.cover_url_large || selectedBook.cover_url), { responseType: 'blob' }).catch(() => null),
-          ]);
-
-          if (coverRes?.data) {
-            const coverFile = new File([coverRes.data], coverFilename, { type: "image/jpeg" });
-            finalCoverUrl = await uploadFileToStrapi(coverFile, directoryPath, TOKEN);
-          }
-          if (thumbRes?.data) {
-            const thumbFile = new File([thumbRes.data], thumbFilename, { type: "image/jpeg" });
-            finalThumbnailUrl = await uploadFileToStrapi(thumbFile, directoryPath, TOKEN);
-          }
-        } catch (err) {
-          console.error("Failed to upload book covers to S3:", err);
-          // Fallback: keep original Google Books URL if re-upload fails
-        } finally {
-          setUploadingCover(false);
-        }
-      }
-
-      // Upload manual snapshots
-      const uploadedSnapshots: { id: string; url: string }[] = [...existingSnapshots];
-      for (const file of newSnapshots) {
-        try {
-          const filename = generateRandomFileName(file.name);
-          const fullPath = generateBookUploadPath(username || "user", listId, selectedBook.volume_id, filename);
-          const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
-          const TOKEN = token;
-          const url = await uploadFileToStrapi(file, dirPath, TOKEN);
-          if (url) {
-            uploadedSnapshots.push({ id: filename, url });
-          }
-        } catch (err) {
-          console.error("Manual book snapshot upload failed:", err);
-          toast.error(`Failed to upload snapshot: ${file.name}`);
-        }
-      }
-
-      const mediaDetails = uploadedSnapshots.length > 0 ? { imageDetails: uploadedSnapshots } : null;
-
-      if (isEdit && bookId) {
-        await updateRecommendedBook({
-          variables: {
-            documentId: bookId,
-            user_recommendation_note: note || null,
-            user_rating: userRating,
-            buy_links: buyLinks.length > 0 ? buyLinks : [],
-            is_pinned: isPinned,
-            pin_order: isPinned ? 0 : null,
-            media_details: mediaDetails,
-          },
-        });
-        toast.success("Book updated!");
-      } else {
-        const displayOrder = existingBooks.length;
-        await createRecommendedBook({
-          variables: {
-            volume_id: selectedBook.volume_id,
-            title: selectedBook.title,
-            subtitle: selectedBook.subtitle,
-            authors: selectedBook.authors,
-            year: selectedBook.year || null,
-            cover_url: finalCoverUrl || null,
-            cover_url_large: finalThumbnailUrl || null,
-            subjects: selectedBook.subjects,
-            publisher: selectedBook.publisher,
-            page_count: selectedBook.page_count,
-            google_rating: selectedBook.google_rating,
-            description: selectedBook.description,
-            isbn_13: selectedBook.isbn_13 || null,
-            preview_link: selectedBook.preview_link,
-            user_recommendation_note: note || null,
-            user_rating: userRating,
-            buy_links: buyLinks.length > 0 ? buyLinks : [],
-            is_pinned: isPinned,
-            pin_order: isPinned ? 0 : null,
-            display_order: displayOrder,
-            media_details: mediaDetails,
-            book_list: listId,
-            book_categories: [],
-          },
-          // Refetch the list view's exact query so the new book is in cache
-          // before we navigate back — prevents the stale "empty list until reload".
-          refetchQueries: refetchBooksByList(listId ?? ""),
-          awaitRefetchQueries: true,
-        });
-        toast.success("Book added to list!");
-      }
-      navigate(`/recommendations/books/${listId}`, { state: { justAddedRecommendation: true } });
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to save. Please try again.");
-    } finally {
-      setSaving(false);
-    }
+    if(!selectedBook||!listId||!entityId||saving)return;setSaving(true);const signal=operationAbort.current.signal;
+    try{
+      const snapshots=[...existingSnapshots];
+      for(const file of newSnapshots){let uploaded=uploadedFiles.current.get(file);if(!uploaded){const media=await explorersApiClient.createMedia(file,"recommendation",signal);signal.throwIfAborted();if(useAuthStore.getState().generation!==generation)return;uploaded={id:media.id,url:`/api/explorers/v1/media/${media.id}/content`};uploadedFiles.current.set(file,uploaded);}snapshots.push(uploaded);}
+      signal.throwIfAborted();
+      const patch={note:note?{version:1 as const,format:"quill-html" as const,html:String(note)}:null,userRating,bookContext:bookContextFromLinks(buyLinks),mediaIds:snapshots.map(media=>media.id)};
+      const retryCreated=!isEdit&&Boolean(createdRecommendation.current||pendingCreate.current);
+      let recommendationId=bookId??createdRecommendation.current;
+      if(isEdit&&bookId){if(!editedObservation.current)throw new Error("Refresh before editing this Book");await explorersApiClient.updateMyRecommendation(editedObservation.current,patch,booksCommandKey(),signal);editedObservation.current=await explorersApiClient.getMyEditableRecommendation(bookId,signal);}
+      else if(!recommendationId){if(!pendingCreate.current){const parent=await explorersApiClient.getMyEditableCollection(listId,signal);const input={...patch,entityId,publicationState:"published" as const};if(!createRecommendationSchema.innerType().omit({collectionId:true,expectedCollectionRevision:true,category:true}).strict().safeParse(input).success)throw new Error("Invalid content command");pendingCreate.current={parent,input,key:booksCommandKey()};}const command=pendingCreate.current;const saved=await explorersApiClient.createMyRecommendation(command.parent,command.input,command.key,signal);recommendationId=saved.id;createdRecommendation.current=saved.id;pendingCreate.current=undefined;setUploadingCover(true);try{const observed=await explorersApiClient.getMyEditableRecommendation(saved.id,signal);const imported=await explorersApiClient.importBookCovers(observed,booksCommandKey(),signal);if(Object.values(imported.slots).some(slot=>slot.status==="fallback"))toast.info("Some covers use the original Book image.");}catch(e){toast.info("Cover copying was unavailable; the original Book image is retained.");}finally{setUploadingCover(false);}}
+      if(!recommendationId||useAuthStore.getState().generation!==generation)return;
+      if(retryCreated){const observed=editedObservation.current??await explorersApiClient.getMyEditableRecommendation(recommendationId,signal);await explorersApiClient.updateMyRecommendation(observed,patch,booksCommandKey(),signal);editedObservation.current=await explorersApiClient.getMyEditableRecommendation(recommendationId,signal);}
+      else if(!isEdit)editedObservation.current=await explorersApiClient.getMyEditableRecommendation(recommendationId,signal);
+      const observed=await explorersApiClient.getCompleteMyCategoryTopPicks({category:"books",status:"active"},signal);const pins=(observed.topPicks??[]).filter(pin=>pin.recommendationId!==recommendationId).map(pin=>({recommendationId:pin.recommendationId,collectionId:pin.collectionId}));
+      if(isPinned)pins.push({recommendationId,collectionId:listId});
+      await explorersApiClient.setMyCategoryTopPicks(observed,pins,booksCommandKey(),signal);
+      if(useAuthStore.getState().generation!==generation)return;
+      toast.success(isEdit?"Book updated!":"Book added to list!");navigate(`/recommendations/books/${listId}`,{state:{justAddedRecommendation:true}});
+    }catch(e){if(useAuthStore.getState().generation===generation)toast.error(e instanceof Error?e.message:"Failed to save. Please try again.");}finally{if(useAuthStore.getState().generation===generation)setSaving(false);}
   };
-
   return (
     <div className="min-h-screen text-dashboard pb-32">
        {/* Sticky header */}
@@ -356,6 +245,7 @@ const AddBookPage = () => {
        </div>
 
       <div className="max-w-2xl mx-auto px-4 pt-4 md:px-0">
+        {loadError && <p role="alert">{loadError.message}</p>}
         {/* Step 1: Search */}
         {!isEdit && (
           <div className="mb-4 bg-dashboard-sidebar border border-dashboard-border rounded-2xl p-4">
@@ -379,7 +269,7 @@ const AddBookPage = () => {
                 {selectedBook.subtitle && (
                   <p className="text-xs text-white/40 truncate">{selectedBook.subtitle}</p>
                 )}
-                <p className="text-xs text-white/50">{googleBooksService.formatAuthors(selectedBook.authors)}</p>
+                <p className="text-xs text-white/50">{formatAuthors(selectedBook.authors)}</p>
                 <div className="flex items-center gap-2 mt-0.5 text-[11px] text-white/30">
                   {selectedBook.year && <span className="flex items-center gap-0.5"><Calendar size={9} /> {selectedBook.year}</span>}
                   {selectedBook.page_count && <span className="flex items-center gap-0.5"><Hash size={9} /> {selectedBook.page_count}p</span>}
@@ -398,7 +288,7 @@ const AddBookPage = () => {
               </button>
             </div>
           ) : (
-            <InlineSearch onSelect={handleSelectBook} />
+            <InlineSearch key={generation} onSelect={handleSelectBook} />
           )}
         </div>
       )}
@@ -417,13 +307,13 @@ const AddBookPage = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-white truncate">{selectedBook.title}</p>
-            <p className="text-xs text-white/50">{googleBooksService.formatAuthors(selectedBook.authors)}</p>
+            <p className="text-xs text-white/50">{formatAuthors(selectedBook.authors)}</p>
           </div>
         </div>
       )}
 
       {/* Form fields (only shown once a book is selected) */}
-      {(selectedBook || isEdit) && (
+      {selectedBook && (
         <div className="space-y-5">
           <div className="border-t border-dashboard-border pt-1">
             <p className="text-xs text-dashboard-muted uppercase tracking-wider mb-4 font-medium">
@@ -453,6 +343,7 @@ const AddBookPage = () => {
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
                 <button
                   key={star}
+                  aria-label={`Rate ${star} out of 10`}
                   type="button"
                   onClick={() => setUserRating(userRating === star ? null : star)}
                   className={`p-1 transition-all hover:scale-110 active:scale-95 ${userRating && userRating >= star ? "text-amber-400" : "text-white/20 hover:text-white/40"}`}
@@ -519,6 +410,7 @@ const AddBookPage = () => {
                 className="flex-1 min-w-[160px] bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-amber-400/50 transition-colors"
               />
               <button
+                aria-label="Add link"
                 onClick={handleAddBuyLink}
                 disabled={!newLinkUrl.trim()}
                 className="px-3 py-2 rounded-xl bg-white/8 hover:bg-white/12 text-white/70 text-xs disabled:opacity-40 transition-colors flex items-center gap-1"
@@ -539,7 +431,7 @@ const AddBookPage = () => {
                   {existingSnapshots.map((snap) => (
                     <div key={snap.id} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group">
                       <img
-                        src={snap.url.startsWith("http") ? snap.url : `${import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337"}${snap.url}`}
+                        src={snap.url}
                         className="w-full h-full object-cover"
                         alt=""
                       />
@@ -556,9 +448,9 @@ const AddBookPage = () => {
               )}
               {newSnapshots.length > 0 && (
                 <div className="flex flex-wrap gap-3">
-                  {newSnapshots.map((file, i) => (
+                  {newSnapshots.map((_file, i) => (
                     <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group border border-white/10">
-                      <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt="" />
+                      <img src={snapshotPreviews[i]} className="w-full h-full object-cover" alt="" />
                       <button
                         type="button"
                         onClick={() => setNewSnapshots((prev) => prev.filter((_, idx) => idx !== i))}
@@ -600,7 +492,7 @@ const AddBookPage = () => {
               </button>
               <button
                 onClick={handleSave}
-                disabled={saving || (!selectedBook && !isEdit)}
+                disabled={saving || !selectedBook || !entityId}
                 className="flex-1 py-3 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {saving || uploadingCover ? (

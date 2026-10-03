@@ -6,6 +6,7 @@ name: explorers-production
 
 x-tunes-environment: &tunes-environment
   NODE_ENV: production
+  EXPLORERS_API_MODE: legacy-music
   PORT: "5000"
   MUSIC_DATABASE_HOST: db
   MUSIC_DATABASE_PORT: "5432"
@@ -88,6 +89,10 @@ x-tunes-environment: &tunes-environment
   MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL: ${MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL:-}
   MUSIC_PUBLIC_ID_HMAC_KEY_FILE: /run/secrets/music-publication-response/public-id
   ALLOWED_ORIGINS: https://localtunes.earth,https://explorers.earth
+  EXPLORERS_MEDIA_ENVIRONMENT: ${EXPLORERS_MEDIA_ENVIRONMENT:?EXPLORERS_MEDIA_ENVIRONMENT is required}
+  EXPLORERS_DEPLOYMENT_TIER: ${EXPLORERS_DEPLOYMENT_TIER:?EXPLORERS_DEPLOYMENT_TIER is required}
+  EXPLORERS_MEDIA_S3_BUCKET: ${EXPLORERS_MEDIA_S3_BUCKET:?EXPLORERS_MEDIA_S3_BUCKET is required}
+  EXPLORERS_MEDIA_S3_REGION: ${EXPLORERS_MEDIA_S3_REGION:?EXPLORERS_MEDIA_S3_REGION is required}
 
 x-tunes-service: &tunes-service
   restart: unless-stopped
@@ -162,13 +167,13 @@ services:
       <<: *tunes-environment
       MUSIC_IMAGE_DIGEST: ${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_BLUE_COMMIT:?TUNES_BLUE_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_BLUE_MIGRATION:-0021_explorers_analytics_receipts}
+      MUSIC_MIGRATION_MARKER: ${TUNES_BLUE_MIGRATION:-0037_explorers_movies_provider_context}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}.json
     labels:
       com.explorers.music.slot: blue
       com.explorers.music.commit: ${TUNES_BLUE_COMMIT:?TUNES_BLUE_COMMIT is required}
       com.explorers.music.digest: ${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}
-      com.explorers.music.migration: ${TUNES_BLUE_MIGRATION:-0021_explorers_analytics_receipts}
+      com.explorers.music.migration: ${TUNES_BLUE_MIGRATION:-0037_explorers_movies_provider_context}
 
   tunes-green:
     <<: *tunes-service
@@ -177,13 +182,13 @@ services:
       <<: *tunes-environment
       MUSIC_IMAGE_DIGEST: ${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_GREEN_COMMIT:?TUNES_GREEN_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_GREEN_MIGRATION:-0021_explorers_analytics_receipts}
+      MUSIC_MIGRATION_MARKER: ${TUNES_GREEN_MIGRATION:-0037_explorers_movies_provider_context}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}.json
     labels:
       com.explorers.music.slot: green
       com.explorers.music.commit: ${TUNES_GREEN_COMMIT:?TUNES_GREEN_COMMIT is required}
       com.explorers.music.digest: ${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}
-      com.explorers.music.migration: ${TUNES_GREEN_MIGRATION:-0021_explorers_analytics_receipts}
+      com.explorers.music.migration: ${TUNES_GREEN_MIGRATION:-0037_explorers_movies_provider_context}
 
   tunes-gate:
     profiles: [deployment]
@@ -201,7 +206,7 @@ services:
       MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
       MUSIC_IMAGE_DIGEST: ${TUNES_CANDIDATE_DIGEST:?TUNES_CANDIDATE_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${TUNES_CANDIDATE_COMMIT:?TUNES_CANDIDATE_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: ${TUNES_CANDIDATE_MIGRATION:-0021_explorers_analytics_receipts}
+      MUSIC_MIGRATION_MARKER: ${TUNES_CANDIDATE_MIGRATION:-0037_explorers_movies_provider_context}
       MUSIC_GATE_ATTESTATION_KEY: ${MUSIC_GATE_ATTESTATION_KEY:?MUSIC_GATE_ATTESTATION_KEY is required}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_CANDIDATE_DIGEST:?TUNES_CANDIDATE_DIGEST is required}.json
     depends_on:

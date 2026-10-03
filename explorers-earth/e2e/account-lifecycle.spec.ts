@@ -1,5 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { setupMockAuthentication } from "./setup/auth";
+import { canonicalAccountFixture } from "../src/test/canonicalAccountFixture";
 
 type LifecycleOperation = {
   operationId: string;
@@ -63,6 +64,16 @@ async function mockSettings(
   });
   await context.routeWebSocket("**/*", (socket) => socket.close());
   await setupMockAuthentication(context, { cookieDomain: fixtureOrigin.hostname });
+  // The canonical login account remains available independently of the legacy
+  // Music binding absence/deletion states exercised below.
+  await context.route("**/api/explorers/v1/me", route => {
+    if (route.request().method() !== "GET" || new URL(route.request().url()).origin !== fixtureOrigin.origin) return route.abort("blockedbyclient");
+    return route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ account: canonicalAccountFixture({
+      handle: "testuser",
+    }) }),
+    });
+  });
   await context.route("**/api/music/identity/lifecycle/**", async (route) => {
     const action = new URL(route.request().url()).pathname.split("/").at(-1)!;
     const userDocumentId = route.request().headers().authorization?.includes("fixture-user-b") ? "fixture-user-b" : "mock-user-123";

@@ -7,6 +7,7 @@ import { MusicPrincipalService } from "../middleware/musicPrincipal";
 import { MusicLifecycleService } from "../services/musicLifecycleService";
 import { MusicTokenService } from "../services/musicTokenService";
 import { manuallyRepairMusicDeletion, runMusicLifecycleWorkerOnce } from "../workers/musicLifecycleWorker";
+import { trackPostgresPoolShutdown } from "./helpers/postgresPoolShutdown";
 
 const exactTarget = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
 const enabled = process.env.MUSIC_C7_POSTGRES_TEST === "1";
@@ -14,6 +15,7 @@ const describePg = enabled ? describe.sequential : describe.skip;
 const databaseName = `music_c7_lifecycle_${process.pid}`;
 let admin: pg.Pool;
 let pool: pg.Pool;
+let closePool: (() => Promise<void>) | undefined;
 
 function identityInput(suffix: string): EnsureMusicIdentityInput {
   return {
@@ -80,11 +82,12 @@ describePg("C7 durable Music lifecycle on PostgreSQL 15", () => {
     const target = new URL(exactTarget);
     target.pathname = `/${databaseName}`;
     pool = new pg.Pool({ connectionString: target.toString(), max: 24 });
+    closePool = trackPostgresPoolShutdown(pool);
     await migrateMusicDatabase(pool);
   });
 
   afterAll(async () => {
-    await pool?.end();
+    await closePool?.();
     await admin?.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()", [databaseName]);
     await admin?.query(`DROP DATABASE IF EXISTS ${databaseName}`);
     await admin?.end();

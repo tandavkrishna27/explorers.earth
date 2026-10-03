@@ -27,4 +27,4 @@ export function containedConfig(port: number) {
     },
   });
 }
-export default containedConfig(55178);
+export default containedConfig(Number(process.env.CATEGORY_FIXTURE_PORT ?? 55178));

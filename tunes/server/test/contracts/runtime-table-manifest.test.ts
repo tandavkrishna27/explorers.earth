@@ -25,6 +25,7 @@ describe("runtime table manifest", () => {
         'const result = sql`INSERT INTO real_inserts (id) VALUES (${id})`;',
         'db.query(`SELECT extract(epoch FROM expires_at), id FROM real_reads`);',
         'db.query<{ id: number }>(`WITH RECURSIVE incoming(id) AS (SELECT id FROM real_reads) SELECT * FROM incoming`);',
+        'db.query(`WITH eligible AS MATERIALIZED (SELECT id FROM real_reads), ranked AS NOT MATERIALIZED (SELECT id FROM eligible) SELECT * FROM ranked`);',
         'db.query(`SELECT * FROM ${table} ORDER BY id`);',
         'const TABLE_NAME = "real_constant"; db.query(`SELECT * FROM ${TABLE_NAME}`);',
         'db.query(`SELECT * FROM public.real_qualified`);',

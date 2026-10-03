@@ -1,4 +1,7 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { explorersApiClient } from "../../lib/explorersApiClient";
+import { canonicalAccountFixture } from "../../test/canonicalAccountFixture";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type DocumentNode, useQuery } from "@apollo/client";
 import useAuthStore from "../../store/store";
@@ -48,9 +51,12 @@ vi.mock("../../hooks/useTunesDashboard", () => ({
   musicWorkspaceClient: {},
 }));
 
-vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
-}));
+vi.mock("../../lib/explorersApiClient", () => ({ explorersApiClient: { getMyProfile: vi.fn() } }));
+
+const render = (ui: React.ReactElement) => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(ui, { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+};
 
 vi.mock("react-router-dom", () => ({
   useLocation: () => ({ state: null }),
@@ -82,6 +88,7 @@ describe("Home analytics", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(canonicalAccountFixture());
     Element.prototype.scrollIntoView = vi.fn();
     accountQuery.loading = false;
     accountQuery.error = undefined;
@@ -168,7 +175,7 @@ describe("Home analytics", () => {
       toDate: expect.any(String),
     });
     expect(Date.parse(scope.toDate) - Date.parse(scope.fromDate)).toBeLessThanOrEqual(93 * 86_400_000);
-    expect(screen.getByRole("status", { name: "Views · last 90 days: Loading" })).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: "Views · last 90 days: Loading" })).toBeInTheDocument();
   });
 
   it("keeps analytics loading on a cold account lookup before requesting the resolved account", async () => {
@@ -186,7 +193,7 @@ describe("Home analytics", () => {
     view.rerender(<Home />);
 
     await waitFor(() => expect(readEvents).toHaveBeenCalledWith(expect.objectContaining({ accountId: "account-1" })));
-    expect(screen.getByRole("status", { name: "Views · last 90 days: Loading" })).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: "Views · last 90 days: Loading" })).toBeInTheDocument();
   });
 
   it("does not request analytics when the account lookup completes with an error", async () => {
@@ -204,7 +211,7 @@ describe("Home analytics", () => {
 
     render(<Home />);
 
-    expect(screen.getByRole("status", { name: "Views · last 90 days: Loading" })).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: "Views · last 90 days: Loading" })).toBeInTheDocument();
     await Promise.resolve();
     expect(readEvents).not.toHaveBeenCalled();
   });

@@ -246,6 +246,12 @@ describe("owned Task-4 UAT database lane", () => {
     expect(runnerSource).toContain('MUSIC_C13_IDENTITY_COUNT_ADAPTER_POSTGRES_TEST: "1"');
     expect(runnerSource).not.toContain("writeFileSync(passwordFile");
     expect(MUSIC_UAT_DATABASE_TEST_FILES).toEqual([
+      "server/test/explorers-lifecycle.integration.test.ts",
+      "server/test/account-recovery.test.ts",
+      "server/test/explorers-recovery.integration.test.ts",
+      "server/test/explorers-recovery-callback.integration.test.ts",
+      "server/test/explorers-profile.integration.test.ts",
+      "server/test/explorers-media.integration.test.ts",
       "server/test/migrations/music-migration.integration.test.ts",
       "server/test/music-credential.integration.test.ts",
       "server/test/music-domain-repository.integration.test.ts",

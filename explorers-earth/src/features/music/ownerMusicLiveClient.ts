@@ -1,3 +1,4 @@
+import { runtimeOrigin, runtimeSocketTransport } from "../../lib/publicRuntimeConfig";
 import { io } from "socket.io-client";
 import { resolveMusicSocketTransport } from "./musicDevelopmentTransport";
 
@@ -24,11 +25,11 @@ export function subscribeToOwnerMusic(
   dependencies: { socketFactory?: (auth: { token: string }) => SocketLike } = {},
 ): OwnerMusicSubscription {
   const socketFactory = dependencies.socketFactory ?? ((auth) => {
-    const transport = resolveMusicSocketTransport({
+    const transport = runtimeSocketTransport(resolveMusicSocketTransport({
       development: import.meta.env.DEV,
-      musicOrigin: import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth",
+      musicOrigin: runtimeOrigin(import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth"),
       browserOrigin: window.location.origin,
-    });
+    }));
     return io(transport.origin, {
       path: transport.path,
       transports: ["websocket", "polling"],

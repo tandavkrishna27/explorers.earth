@@ -29,7 +29,7 @@ for executable in "$node_path" "$git_path" "$sha256_path" "$find_path"; do
     exit 78
   fi
 done
-if [ "$("$node_path" --version)" != v22.12.0 ]; then
+if [ "$("$node_path" --version)" != v24.21.0 ]; then
   printf '%s\n' 'trusted native release executable is unavailable' >&2
   exit 78
 fi
@@ -51,10 +51,10 @@ for authority in "$0" "$channel_path" "$register_path" "$resolver_path" "$target
 done
 cd -- "$repository_root"
 
-npm_authority_root=/opt/explorers-music-node-v22.12.0
-npm_root=/opt/explorers-music-node-v22.12.0/lib/node_modules/npm
-npm_cli_path=/opt/explorers-music-node-v22.12.0/lib/node_modules/npm/bin/npm-cli.js
-npm_path=/opt/explorers-music-node-v22.12.0/bin/npm
+npm_authority_root=/opt/explorers-music-node-v24.21.0
+npm_root=/opt/explorers-music-node-v24.21.0/lib/node_modules/npm
+npm_cli_path=/opt/explorers-music-node-v24.21.0/lib/node_modules/npm/bin/npm-cli.js
+npm_path=/opt/explorers-music-node-v24.21.0/bin/npm
 playwright_path=/opt/explorers-music-playwright
 browser_manifest_path=/opt/explorers-music-playwright/.chromium-executable.sha256
 browser_pattern='*/chrome-linux*/chrome'
@@ -62,7 +62,7 @@ npm_cli_sha256=8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7
 additional_authorities=
 if [ "$mode" = qualification ] || [ "$mode" = nightly ]; then
   "$preflight_path" "$node_path" "$git_path" "$sha256_path" "$stat_path" "$find_path" \
-    "$npm_root" "$npm_cli_path" "$npm_path" "$playwright_path" 0 0 755 v22.12.0 "$browser_pattern" "$npm_cli_sha256" "$browser_manifest_path"
+    "$npm_root" "$npm_cli_path" "$npm_path" "$playwright_path" 0 0 755 v24.21.0 "$browser_pattern" "$npm_cli_sha256" "$browser_manifest_path"
   browser_executable=$("$find_path" "$playwright_path" -xdev -type f -path "$browser_pattern" -print)
   additional_authorities="$npm_cli_path $npm_path $browser_executable $browser_manifest_path"
 fi

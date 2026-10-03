@@ -1,5 +1,4 @@
-import { readFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,104 +9,8 @@ const require = createRequire(import.meta.url);
 const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
 describe("Tunes workflow provenance and input boundary", () => {
-  it("keeps the temporary ARM64 recovery deploy explicit, bounded, and rollback-capable", () => {
-    const source = read(".github/workflows/tunes-test-direct-deploy.yml");
-    const workflow = parseYaml(source);
-    const inputs = workflow.on.workflow_dispatch.inputs;
-    expect(inputs.confirm_test_deploy).toMatchObject({
-      required: true,
-      type: "boolean",
-      default: false,
-    });
-    expect(workflow.concurrency).toMatchObject({
-      group: "tunes-production-deploy",
-      "cancel-in-progress": false,
-    });
-    expect(source).toContain("github.ref == 'refs/heads/main'");
-    expect(source).toContain("platforms: linux/arm64");
-    expect(source).toContain("0019_queue_visibility_control");
-    expect(source).not.toContain("0020_public_snapshot_revision");
-    expect(source).toContain("pg_dumpall");
-    expect(source).toContain("rollback_image");
-    expect(source).toContain("trap rollback ERR");
-    expect(source).toContain("watchdog_script");
-    expect(source).toContain("deploy-heartbeat");
-    expect(source).toContain("WATCHDOG-ROLLBACK-FAILED");
-    expect(source).toContain("/health/ready");
-    expect(source).toContain("EXPECTED_COMMIT");
-    expect(source).toContain("EXPECTED_DIGEST");
-    expect(source).toContain("CURRENT_MIGRATION_MARKER");
-    expect(source).toContain("0017_publication_idempotency_key_retirement");
-    expect(source).toContain("rollback refused: current app is older than schema compatibility floor");
-    // Production break caught: the image deploy succeeds while the owner Music
-    // workspace remains fail-closed, hiding player, search, queue, and history.
-    expect(source).toContain('environment_file="$compose_dir/.env"');
-    expect(source).toContain('environment_backup="$backup_dir/environment-$stamp.env"');
-    expect(source).toContain('cp "$environment_file" "$environment_backup"');
-    expect(source).toContain('cp "$environment_backup" "$environment_file"');
-    expect(source).toContain('set_environment_value MUSIC_WORKSPACE_KILL_SWITCH false');
-    expect(source).toContain('set_environment_value MUSIC_FEATURE_COHORT_SALT explorers-owner-workspace-production-v1');
-    expect(source).toContain('set_environment_value MUSIC_FEATURE_COHORT_VERSION owner-workspace-production-v1');
-    expect(source).toContain('set_environment_value MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT 100');
-    // The installed host compose file can predate these variables. A dedicated
-    // Compose override must carry the rollout into the container independently.
-    expect(source).toContain('rollout_override_file="$compose_dir/.codex-owner-workspace.override.yml"');
-    expect(source).toContain('rollout_override_backup="$backup_dir/owner-workspace-$stamp.yml"');
-    expect(source).toContain('cat > "$rollout_override_file" <<\'EOF\'');
-    expect(source).toContain('-f "$rollout_override_file" up -d --no-deps --force-recreate app');
-    expect(source).toContain('rm -f "$rollout_override_file"');
-    expect(source).toContain('MUSIC_WORKSPACE_KILL_SWITCH=false');
-    expect(source).toContain('MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT=100');
-    expect(source).not.toContain('\\"');
-    expect(source).toContain(
-      `'{{index .Config.Labels "com.docker.compose.project"}}'`,
-    );
-    expect(source).toContain(
-      `'{{index .Config.Labels "org.opencontainers.image.revision"}}'`,
-    );
-    expect(source).toContain('today="$(date -u +%F)"');
-    expect(source).toContain('[[ "$today" < "$TEMPORARY_DIRECT_DEPLOY_EXPIRES" || "$today" == "$TEMPORARY_DIRECT_DEPLOY_EXPIRES" ]]');
-
-    const visit = (value: unknown): void => {
-      if (Array.isArray(value)) return value.forEach(visit);
-      if (!value || typeof value !== "object") return;
-      for (const [key, nested] of Object.entries(value)) {
-        if (key === "uses" && typeof nested === "string") {
-          expect(nested).toMatch(
-            /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+@[0-9a-f]{40}$/,
-          );
-        }
-        visit(nested);
-      }
-    };
-    visit(workflow);
-  });
-
-  it("executes the temporary direct-deploy preflight as a refusal after its declared expiry", () => {
-    // Break caught: an expired emergency path remains runnable because its
-    // deadline is documentation-only or uses a permissive comparison.
-    const workflow = parseYaml(read(".github/workflows/tunes-test-direct-deploy.yml"));
-    const expiry = workflow.env.TEMPORARY_DIRECT_DEPLOY_EXPIRES as string;
-    const nextDay = new Date(`${expiry}T00:00:00.000Z`);
-    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-    const afterExpiry = nextDay.toISOString().slice(0, 10);
-    const metadata = workflow.jobs["build-arm64"].steps.find(
-      (step: { id?: string }) => step.id === "meta",
-    ).run as string;
-    const guard = metadata.slice(0, metadata.indexOf('commit="'))
-      .replace('today="$(date -u +%F)"', `today="${afterExpiry}"`);
-    const bash = process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "/bin/bash";
-    const result = spawnSync(bash, ["-c", guard], {
-      cwd: repoRoot,
-      encoding: "utf8",
-      env: { ...process.env, TEMPORARY_DIRECT_DEPLOY_EXPIRES: expiry },
-      windowsHide: true,
-    });
-    expect({ expiry, afterExpiry, status: result.status }).toEqual({
-      expiry: "2026-08-28",
-      afterExpiry: "2026-08-29",
-      status: 1,
-    });
+  it("retires the expired temporary direct-deploy workflow", () => {
+    expect(existsSync(resolve(repoRoot, ".github/workflows/tunes-test-direct-deploy.yml"))).toBe(false);
   });
 
   it("pins every privileged production action to an immutable commit", () => {
@@ -165,7 +68,12 @@ describe("Tunes workflow provenance and input boundary", () => {
       "severity-cutoff": "high",
       "only-fixed": true,
     });
-    expect(disclosure.if).toBe("always()");
+    expect(actionable["continue-on-error"]).toBeUndefined();
+    const reserve = steps.find((step: any) => step.id === "report_reserve");
+    expect(reserve.if).toBe("always() && steps.scan_reserve.outcome == 'success'");
+    expect(reserve.run).toContain("bash scripts/image-ci-disk.sh reserve");
+    expect(steps.indexOf(reserve)).toBeLessThan(steps.indexOf(disclosure));
+    expect(disclosure.if).toBe("always() && steps.report_reserve.outcome == 'success'");
     expect(disclosure["continue-on-error"]).toBe(true);
     expect(disclosure.with).toMatchObject({
       "fail-build": false,
@@ -174,16 +82,30 @@ describe("Tunes workflow provenance and input boundary", () => {
       "output-format": "sarif",
     });
     expect(disclosure.with["output-file"]).toBe("grype-complete.sarif");
-    expect(upload.if).toBe("always()");
+    const validation = steps.find((step: any) => step.id === "report_valid");
+    expect(validation.if).toBe("always()");
+    expect(validation.run).toContain('test "$REPORT_RESERVE_OUTCOME" = success');
+    expect(validation.run).toContain('test "$COMPLETE_SCAN_OUTCOME" = success');
+    expect(validation.run).toContain("bash scripts/image-ci-disk.sh identity");
+    expect(validation.run).toContain("node scripts/image-ci-report.cjs grype-complete.sarif grype-complete.log");
+    expect(steps.indexOf(validation)).toBeLessThan(steps.indexOf(upload));
+    expect(upload.if).toBe("always() && steps.report_valid.outcome == 'success'");
     expect(upload.uses).toBe(
       "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
     );
-    expect(upload.with.path).toBe("grype-complete.sarif");
+    expect(upload.with.path.trim().split(/\r?\n/)).toEqual(["grype-complete.sarif", "grype-complete.log"]);
+    expect(disclosure.env.GRYPE_LOG_FILE).toBe("${{ github.workspace }}/grype-complete.log");
+    for (const name of ["Save the qualified image for an explicit release", "Transfer the qualified image to the release job"]) {
+      const step = steps.find((candidate: any) => candidate.name === name);
+      expect(step.if).toContain("success() && steps.scan_reserve.outcome == 'success' && steps.report_valid.outcome == 'success'");
+      expect(step.if).toContain("github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production");
+    }
+    const publish = workflow.jobs["publish-image"];
     expect(steps.indexOf(actionable)).toBeLessThan(
-      steps.findIndex(
-        (step: any) => step.name === "Push and expose registry digest",
-      ),
+      steps.findIndex((step: any) => step.name === "Transfer the qualified image to the release job"),
     );
+    expect(publish.needs).toEqual(["build-test-scan-push", "release-preflight"]);
+    expect(publish.steps.some((step: any) => step.name === "Push and expose registry digest")).toBe(true);
   });
 
   it("limits manual dispatch to one-time bootstrap or rollback and keeps normal deploy internal", () => {
@@ -235,7 +157,7 @@ describe("Tunes workflow provenance and input boundary", () => {
       "com.explorers.music.minimum-containment-commit",
     );
     expect(dockerfile).toContain(
-      "FROM node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS base",
+      "FROM public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS base",
     );
   });
 
@@ -356,7 +278,7 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(deploy).toContain(
       "$GITHUB_REPOSITORY/.github/workflows/tunes.yml@refs/heads/main",
     );
-    expect(ci).toContain("github.event_name == 'push'");
+    expect(ci).toContain("github.event_name == 'workflow_dispatch' && inputs.release_production");
     expect(ci).toMatch(
       /deploy-production:[\s\S]*?permissions:[\s\S]*?attestations: read/,
     );
@@ -422,8 +344,7 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(preflight).toBeDefined();
     expect(preflight.environment).toBeUndefined();
     expect(JSON.stringify(preflight)).not.toContain("secrets.");
-    expect(preflight.if).toContain("github.ref != 'refs/heads/main'");
-    expect(preflight.if).toContain("vars.GATE_PROD == 'open'");
+    expect(preflight.if).toBeUndefined();
     expect(
       preflight.steps.some((step: any) =>
         String(step.run ?? "").includes(
@@ -454,6 +375,6 @@ describe("Tunes workflow provenance and input boundary", () => {
       "new production credentials are environment-scoped only",
     );
     expect(prose).toContain("YAML check is not the security boundary");
-    expect(prose).toContain("GATE_PROD must remain closed");
+    expect(prose).toContain("independent approval");
   });
 });

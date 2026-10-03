@@ -2,6 +2,7 @@ import { test as base, type Page, type TestInfo } from "@playwright/test";
 import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { canonicalAccountFixture } from "../../src/test/canonicalAccountFixture";
 import {
   LIVE_PROFILE_BATCH_FAILURE_CODES,
   LIVE_PROFILE_BATCH_FAILURE_STAGES,
@@ -1009,6 +1010,17 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
   const ensureStarted = new Promise<void>((resolveStarted) => { markEnsureStarted = resolveStarted; });
   let releaseHeldEnsure!: () => void;
   const heldEnsure = new Promise<void>((resolveHeld) => { releaseHeldEnsure = resolveHeld; });
+
+  // The canonical account gates the dashboard independently of the Music
+  // eligibility/provider/lifecycle fault scenarios in this synthetic fixture.
+  await page.route("**/api/explorers/v1/me", route => {
+    if (route.request().method() !== "GET" || new URL(route.request().url()).origin !== new URL(String(base.info().project.use.baseURL)).origin) return route.abort("blockedbyclient");
+    return route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ account: canonicalAccountFixture({
+      handle: "testuser",
+    }) }),
+    });
+  });
 
   await page.route("**/graphql", async (route) => {
     strapiCalls += 1;

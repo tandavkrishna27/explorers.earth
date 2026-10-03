@@ -1,13 +1,29 @@
-name: Tunes immutable image CI
+name: API image validation
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - tunes/**
+      - explorers-earth/**
+      - scripts/replatform-local.ts
+      - scripts/generate-music-fixture-dockerignore.mjs
+      - scripts/image-ci-disk.sh
+      - scripts/image-ci-disk.test.cjs
+      - scripts/image-ci-report.cjs
+      - .dockerignore
+      - docs/architecture/music-runtime-surface-inventory.json
+      - package.json
+      - package-lock.json
+      - fixtures/**
+      - docs/replatform/**
+      - docs/replatform-audit/**
       - .env.music.example
       - .env.music.test.example
       - docker-compose.yml
       - docker-compose.music-test.yml
+      - docker-compose.replatform.yml
+      - .github/workflows/**
       - .github/workflows/tunes.yml
       - .github/workflows/tunes-deploy.yml
       - .github/workflows/music-reconcile.yml
@@ -15,14 +31,43 @@ on:
     branches: [main]
     paths:
       - tunes/**
+      - explorers-earth/**
+      - scripts/replatform-local.ts
+      - scripts/generate-music-fixture-dockerignore.mjs
+      - scripts/image-ci-disk.sh
+      - scripts/image-ci-disk.test.cjs
+      - scripts/image-ci-report.cjs
+      - .dockerignore
+      - docs/architecture/music-runtime-surface-inventory.json
+      - package.json
+      - package-lock.json
+      - fixtures/**
+      - docs/replatform/**
+      - docs/replatform-audit/**
       - .env.music.example
       - .env.music.test.example
       - docker-compose.yml
       - docker-compose.music-test.yml
+      - docker-compose.replatform.yml
+      - .github/workflows/**
       - .github/workflows/tunes.yml
       - .github/workflows/tunes-deploy.yml
       - .github/workflows/music-reconcile.yml
   workflow_dispatch:
+    inputs:
+      release_production:
+        description: Build, attest and deploy this exact main revision to Tunes production
+        type: boolean
+        required: true
+        default: false
+      validated_run_id:
+        description: Successful main Explorers validation push run for this exact source revision
+        type: string
+        required: true
+      music_validated_run_id:
+        description: Successful main Backend validation push run for this exact source revision
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -46,12 +91,7 @@ jobs:
           --health-retries 30
     permissions:
       contents: read
-      packages: write
-      id-token: write
-      attestations: write
     outputs:
-      image_ref: ${{ steps.push.outputs.image_ref }}
-      digest: ${{ steps.push.outputs.digest }}
       commit: ${{ github.sha }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -60,9 +100,12 @@ jobs:
       - name: Prove C1 containment ancestry
         shell: bash
         run: git merge-base --is-ancestor d226f7e4dc5a54195a59804ec729f72b5e8f10d7 "$GITHUB_SHA"
+      - name: Reclaim unused hosted image SDK space
+        shell: bash
+        run: bash scripts/image-ci-disk.sh cleanup
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22.12.0
+          node-version: 24.21.0
           cache: npm
           cache-dependency-path: tunes/package-lock.json
       - name: Test Tunes
@@ -81,6 +124,8 @@ jobs:
           npm run test:music-c8:repository-coverage
           npm run music:types:scoped
           npm run music:types:baseline
+      - name: Test hosted disk and image evidence contracts
+        run: node --test scripts/image-ci-disk.test.cjs scripts/node-runtime-alignment.test.cjs
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
       - name: Resolve immutable image name
         id: image
@@ -88,7 +133,11 @@ jobs:
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           echo "name=ghcr.io/${owner}/explorers-tunes" >> "$GITHUB_OUTPUT"
+      - name: Record disk before image build
+        shell: bash
+        run: bash scripts/image-ci-disk.sh snapshot
       - name: Build Tunes exactly once
+        id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ./tunes
@@ -106,7 +155,7 @@ jobs:
         run: >-
           docker run --rm --entrypoint node
           "${{ steps.image.outputs.name }}:${{ github.sha }}" -e
-          "const{existsSync}=require('node:fs');for(const p of ['/app/dist/server/deployment/run-migration-gate.js','/app/dist/server/deployment/run-registration-compat.js','/app/migrations/0001_runtime_baseline.sql','/app/migrations/0002_identity_lifecycle.sql','/app/migrations/0003_identity_lifecycle_hardening.sql','/app/migrations/0004_identity_delete_saga.sql','/app/migrations/0005_resource_bound_deletion_history.sql','/app/migrations/0006_numeric_identity_lock.sql','/app/migrations/0007_identity_provider_snapshot.sql','/app/migrations/0008_credential_revocation_operations.sql','/app/migrations/0009_credential_revocation_history_immutability.sql','/app/migrations/0010_least_privilege_runtime_role.sql','/app/migrations/0011_durable_publication_idempotency.sql','/app/migrations/0012_publication_replay_expiry_guard.sql','/app/migrations/0013_publication_operation_database_clock.sql','/app/migrations/0014_durable_reactivation_authority.sql','/app/migrations/0015_publication_operation_archive.sql','/app/migrations/0016_publication_operation_retention.sql','/app/migrations/0017_publication_idempotency_key_retirement.sql','/app/migrations/0018_transactional_queue_replacement.sql','/app/migrations/0019_queue_visibility_control.sql','/app/migrations/0020_public_snapshot_revision.sql','/app/migrations/0021_explorers_analytics_receipts.sql'])if(!existsSync(p))process.exit(1)"
+          "const{existsSync}=require('node:fs');for(const p of ['/app/dist/server/deployment/run-migration-gate.js','/app/dist/server/deployment/run-registration-compat.js','/app/migrations/0001_runtime_baseline.sql','/app/migrations/0002_identity_lifecycle.sql','/app/migrations/0003_identity_lifecycle_hardening.sql','/app/migrations/0004_identity_delete_saga.sql','/app/migrations/0005_resource_bound_deletion_history.sql','/app/migrations/0006_numeric_identity_lock.sql','/app/migrations/0007_identity_provider_snapshot.sql','/app/migrations/0008_credential_revocation_operations.sql','/app/migrations/0009_credential_revocation_history_immutability.sql','/app/migrations/0010_least_privilege_runtime_role.sql','/app/migrations/0011_durable_publication_idempotency.sql','/app/migrations/0012_publication_replay_expiry_guard.sql','/app/migrations/0013_publication_operation_database_clock.sql','/app/migrations/0014_durable_reactivation_authority.sql','/app/migrations/0015_publication_operation_archive.sql','/app/migrations/0016_publication_operation_retention.sql','/app/migrations/0017_publication_idempotency_key_retirement.sql','/app/migrations/0018_transactional_queue_replacement.sql','/app/migrations/0019_queue_visibility_control.sql','/app/migrations/0020_public_snapshot_revision.sql','/app/migrations/0021_explorers_analytics_receipts.sql','/app/migrations/0022_explorers_identity.sql','/app/migrations/0023_explorers_authorization.sql','/app/migrations/0024_explorers_profile_media.sql','/app/migrations/0025_explorers_media_attachment_guard.sql','/app/migrations/0026_explorers_media_slot_compatibility.sql','/app/migrations/0027_explorers_lifecycle.sql','/app/migrations/0028_explorers_recovery_proof_retention.sql','/app/migrations/0029_explorers_recommendations.sql','/app/migrations/0030_explorers_media_purpose_guard.sql','/app/migrations/0031_explorers_content_revision.sql','/app/migrations/0032_explorers_owner_page_indexes.sql','/app/migrations/0033_explorers_recommendation_display_overrides.sql','/app/migrations/0034_explorers_books_provider_context.sql','/app/migrations/0035_explorers_book_cover_import.sql'])if(!existsSync(p))process.exit(1)"
       - name: Prove the exact production image loads its server graph
         shell: bash
         run: |
@@ -114,17 +163,43 @@ jobs:
           timeout 30s docker run --rm --entrypoint node \
             "${{ steps.image.outputs.name }}:${{ github.sha }}" \
             dist/server/deployment/run-production-graph-smoke.js
+      - name: Require scanner disk reserve and exact built image
+        id: scan_reserve
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.name }}:${{ github.sha }}
+          EXPECTED_IMAGE_ID: ${{ steps.build.outputs.imageid }}
+        run: |
+          test -n "$EXPECTED_IMAGE_ID"
+          bash scripts/image-ci-disk.sh reserve
       - name: Block fixable high and critical image vulnerabilities
+        id: strict_scan
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
+        env:
+          TMPDIR: ${{ runner.temp }}
         with:
           image: ${{ steps.image.outputs.name }}:${{ github.sha }}
           fail-build: true
           severity-cutoff: high
           only-fixed: true
+      - name: Require disk reserve before complete scan
+        id: report_reserve
+        if: always() && steps.scan_reserve.outcome == 'success'
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.name }}:${{ github.sha }}
+          EXPECTED_IMAGE_ID: ${{ steps.build.outputs.imageid }}
+        run: bash scripts/image-ci-disk.sh reserve
       - name: Report all high and critical image vulnerabilities
-        if: always()
+        id: complete_scan
+        if: always() && steps.report_reserve.outcome == 'success'
         continue-on-error: true
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
+        env:
+          TMPDIR: ${{ runner.temp }}
+          GRYPE_LOG_FILE: ${{ github.workspace }}/grype-complete.log
+          GRYPE_LOG_LEVEL: info
+          NO_COLOR: "1"
         with:
           image: ${{ steps.image.outputs.name }}:${{ github.sha }}
           fail-build: false
@@ -132,45 +207,127 @@ jobs:
           only-fixed: false
           output-format: sarif
           output-file: grype-complete.sarif
-      - name: Retain complete vulnerability report
+      - name: Validate complete vulnerability report
+        id: report_valid
         if: always()
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.name }}:${{ github.sha }}
+          EXPECTED_IMAGE_ID: ${{ steps.build.outputs.imageid }}
+          COMPLETE_SCAN_OUTCOME: ${{ steps.complete_scan.outcome }}
+          REPORT_RESERVE_OUTCOME: ${{ steps.report_reserve.outcome }}
+        run: |
+          set -euo pipefail
+          test "$REPORT_RESERVE_OUTCOME" = success
+          test "$COMPLETE_SCAN_OUTCOME" = success
+          test -n "$EXPECTED_IMAGE_ID"
+          bash scripts/image-ci-disk.sh identity
+          bash scripts/image-ci-disk.sh snapshot
+          node scripts/image-ci-report.cjs grype-complete.sarif grype-complete.log
+      - name: Retain complete vulnerability report
+        if: always() && steps.report_valid.outcome == 'success'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: grype-complete-${{ github.sha }}
-          path: grype-complete.sarif
+          path: |
+            grype-complete.sarif
+            grype-complete.log
           if-no-files-found: error
-      - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Push and expose registry digest
-        if: github.event_name != 'pull_request'
-        id: push
+      - name: Save the qualified image for an explicit release
+        if: success() && steps.scan_reserve.outcome == 'success' && steps.report_valid.outcome == 'success' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
         shell: bash
         env:
           IMAGE_NAME: ${{ steps.image.outputs.name }}
         run: |
           set -euo pipefail
-          docker push "${IMAGE_NAME}:${GITHUB_SHA}"
-          image_ref="$(docker inspect --format '{{index .RepoDigests 0}}' "${IMAGE_NAME}:${GITHUB_SHA}")"
+          docker save "${IMAGE_NAME}:${GITHUB_SHA}" | gzip -1 > tunes-qualified-image.tar.gz
+      - name: Transfer the qualified image to the release job
+        if: success() && steps.scan_reserve.outcome == 'success' && steps.report_valid.outcome == 'success' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tunes-qualified-image-${{ github.sha }}
+          path: tunes-qualified-image.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+
+  release-preflight:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Require both successful main aggregates for exact source SHA
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VALIDATED_RUN_ID: ${{ inputs.validated_run_id }}
+          MUSIC_VALIDATED_RUN_ID: ${{ inputs.music_validated_run_id }}
+        run: |
+          set -euo pipefail
+          require_aggregate() {
+            local run_id="$1" workflow_path="$2" job_name="$3" run_json aggregate
+            [[ "$run_id" =~ ^[1-9][0-9]*$ ]]
+            run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id")"
+            jq -e --arg sha "$GITHUB_SHA" --arg path "$workflow_path" '
+              .head_sha == $sha and .head_branch == "main" and
+              .event == "push" and .conclusion == "success" and
+              .path == $path
+            ' <<< "$run_json" >/dev/null
+            aggregate="$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" --jq ".jobs[] | select(.name == \"$job_name\") | .conclusion")"
+            [[ "$aggregate" == success ]]
+          }
+          require_aggregate "$VALIDATED_RUN_ID" .github/workflows/ci.yml replatform-required
+          require_aggregate "$MUSIC_VALIDATED_RUN_ID" .github/workflows/test.yml music-required
+
+  publish-image:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
+    needs: [build-test-scan-push, release-preflight]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      commit: ${{ github.sha }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: tunes-qualified-image-${{ github.sha }}
+      - name: Load the qualified image without rebuilding
+        run: gzip -dc tunes-qualified-image.tar.gz | docker load
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Push and expose registry digest
+        id: push
+        shell: bash
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          image_name="ghcr.io/${owner}/explorers-tunes"
+          docker push "${image_name}:${GITHUB_SHA}"
+          image_ref="$(docker inspect --format '{{index .RepoDigests 0}}' "${image_name}:${GITHUB_SHA}")"
           digest="${image_ref##*@}"
           [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
           echo "image_ref=${image_ref}" >> "$GITHUB_OUTPUT"
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "image_name=${image_name}" >> "$GITHUB_OUTPUT"
       - name: Attest the pushed image provenance
-        if: github.event_name != 'pull_request'
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
-          subject-name: ${{ steps.image.outputs.name }}
+          subject-name: ${{ steps.push.outputs.image_name }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 
   deploy-production:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: build-test-scan-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.release_production && needs.publish-image.result == 'success'
+    needs: publish-image
     permissions:
       actions: read
       contents: read
@@ -178,8 +335,8 @@ jobs:
       attestations: read
     uses: ./.github/workflows/tunes-deploy.yml
     with:
-      digest: ${{ needs.build-test-scan-push.outputs.digest }}
-      commit: ${{ needs.build-test-scan-push.outputs.commit }}
+      digest: ${{ needs.publish-image.outputs.digest }}
+      commit: ${{ needs.publish-image.outputs.commit }}
     secrets:
       TUNES_DEPLOY_HOST: ${{ secrets.TUNES_DEPLOY_HOST }}
       TUNES_DEPLOY_KEY: ${{ secrets.TUNES_DEPLOY_KEY }}

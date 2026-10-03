@@ -20,12 +20,8 @@ vi.mock("../../../../../store/store", () => ({
   default: () => ({ user: { username: "qa", accountDocumentId: "acc-1" } }),
 }));
 
-vi.mock("@apollo/client", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@apollo/client")>();
-  return {
-    ...actual,
-    useMutation: () => [vi.fn(), { loading: false }],
-    useQuery: () => ({
+vi.mock("../../../api/useBooksOwnerContent", () => ({ useBooksOwnerContent: () => ({
+
       data: {
         bookLists: [
           {
@@ -43,9 +39,8 @@ vi.mock("@apollo/client", async (importOriginal) => {
       },
       loading: false,
       refetch: vi.fn(),
-    }),
-  };
-});
+    }) }));
+vi.mock("../../../api/useBookListCommands",()=>({useBookListCommands:()=>({update:vi.fn(),archive:vi.fn(),loading:false})}));
 
 import BookListView from "../BookListView";
 

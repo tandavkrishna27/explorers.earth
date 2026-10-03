@@ -46,6 +46,16 @@ describe("public Place saved-media resolution", () => {
     ).toBe(s3("item-media.jpg"));
   });
 
+  it("accepts only the same-origin canonical media content route", () => {
+    const id = "11111111-1111-4111-8111-111111111111";
+    expect(resolvePublicPlaceImage({ itemMedia: `/api/explorers/v1/media/${id}/content` }))
+      .toBe(`/api/explorers/v1/media/${id}/content`);
+    expect(resolvePublicPlaceImage({ itemMedia: `/api/explorers/v1/media/${id}/content/extra` }))
+      .toBe(IMAGE_CONFIG.defaultImages.place);
+    expect(resolvePublicPlaceImage({ itemMedia: `https://evil.example/api/explorers/v1/media/${id}/content` }))
+      .toBe(IMAGE_CONFIG.defaultImages.place);
+  });
+
   it("falls back from absent item media to the stored parent-list thumbnail", () => {
     expect(
       resolvePublicPlaceImage({

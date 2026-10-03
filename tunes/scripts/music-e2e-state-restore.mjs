@@ -51,7 +51,27 @@ const runtimeInventory = checkedRuntimeInventory();
 export const MUSIC_FIXTURE_TABLES = Object.freeze(runtimeInventory.tables);
 export const MUSIC_FIXTURE_MIGRATION_IDS = Object.freeze(runtimeInventory.migrationIds);
 
+const revisionTriggers = Object.freeze([
+  ...['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_display_overrides','book_recommendation_context','recommendation_book_covers','movie_recommendation_context','recommendation_taxonomy','category_recommendation_pins','account_category_pin_state'].flatMap(table =>
+    [['insert',4],['update',16],['delete',8]].map(([event,type]) => Object.freeze({
+      table,name:`${table}_content_revision_${event}`,enabled:'O',type,
+      function:`explorers_content_revision_${event}`,
+    }))),
+  Object.freeze({table:'creator_accounts',name:'creator_accounts_content_revision_lifecycle',enabled:'O',type:17,function:'explorers_content_revision_lifecycle'}),
+]);
 export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
+  Object.freeze({ table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 }),
+  Object.freeze({ table: "auth_session", name: "auth_session_version_before_insert", enabled: "O", type: 7 }),
+  Object.freeze({ table: "collection_media", name: "collection_media_ready_guard", enabled: "O", type: 21 }),
+  Object.freeze({ table: "entities", name: "entity_recommendation_kind_guard", enabled: "O", type: 17 }),
+  Object.freeze({table:'entities',name:'entities_book_details_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'book_entity_details',name:'book_entity_details_kind_guard',enabled:'O',type:21}),
+  Object.freeze({table:'book_recommendation_context',name:'book_recommendation_context_category_guard',enabled:'O',type:21}),
+  Object.freeze({table:'recommendations',name:'recommendations_book_context_category_guard',enabled:'O',type:17}),
+  Object.freeze({table:'recommendation_book_covers',name:'recommendation_book_cover_ready_guard',enabled:'O',type:21}),
+  Object.freeze({table:'media_assets',name:'media_asset_book_cover_reverse_guard',enabled:'O',type:17}),
+  Object.freeze({table:'recommendations',name:'recommendation_book_cover_category_guard',enabled:'O',type:17}),
+  Object.freeze({ table: "media_assets", name: "media_asset_reference_guard", enabled: "O", type: 17 }),
   Object.freeze({ table: "music_credential_revocation_operations", name: "music_credential_revocation_history_immutability", enabled: "A", type: 27 }),
   Object.freeze({ table: "music_identity_lifecycle_operations", name: "music_lifecycle_operation_state", enabled: "O", type: 19 }),
   Object.freeze({ table: "music_identity_tombstones", name: "music_identity_tombstone_immutability", enabled: "O", type: 19 }),
@@ -59,13 +79,31 @@ export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
   Object.freeze({ table: "music_publication_operation_archive", name: "music_publication_operation_archive_immutability", enabled: "A", type: 27 }),
   Object.freeze({ table: "music_publication_operations", name: "music_publication_operation_immutability", enabled: "A", type: 31 }),
   Object.freeze({ table: "music_reactivation_tokens", name: "music_reactivation_token_identity_immutability", enabled: "O", type: 19 }),
+  Object.freeze({ table: "profile_feed_items", name: "profile_feed_ready_guard", enabled: "O", type: 21 }),
+  Object.freeze({ table: "profile_media", name: "profile_media_ready_guard", enabled: "O", type: 21 }),
+  Object.freeze({ table: "recommendation_media", name: "recommendation_media_ready_guard", enabled: "O", type: 21 }),
+  Object.freeze({ table: "recommendations", name: "recommendation_entity_kind_guard", enabled: "O", type: 21 }),
   Object.freeze({ table: "users", name: "users_music_identity_immutability", enabled: "O", type: 19 }),
   Object.freeze({ table: "users", name: "users_music_identity_insert", enabled: "O", type: 7 }),
   Object.freeze({ table: "users", name: "users_reject_unauthorized_music_identity_delete", enabled: "O", type: 11 }),
   Object.freeze({ table: "users", name: "users_retain_music_identity_tombstone", enabled: "O", type: 9 }),
-]);
+  Object.freeze({table:'recommendation_taxonomy',name:'recommendation_taxonomy_parent_lock',enabled:'O',type:31}),
+  Object.freeze({table:'recommendation_taxonomy',name:'recommendation_taxonomy_constraint',enabled:'O',type:29}),
+  Object.freeze({table:'movie_entity_details',name:'movie_details_constraint',enabled:'O',type:21}),
+  Object.freeze({table:'entities',name:'movie_details_entity_constraint',enabled:'O',type:17}),
+  Object.freeze({table:'entity_identifiers',name:'movie_details_identity_constraint',enabled:'O',type:29}),
+  Object.freeze({table:'movie_entity_provider_genres',name:'movie_genre_parent_lock',enabled:'O',type:31}),
+  Object.freeze({table:'movie_entity_provider_genres',name:'movie_genres_constraint',enabled:'O',type:29}),
+  Object.freeze({table:'movie_entity_details',name:'movie_genres_details_constraint',enabled:'O',type:21}),
+  Object.freeze({table:'taxonomy_terms',name:'taxonomy_tree_lock',enabled:'O',type:23}),
+  Object.freeze({table:'taxonomy_terms',name:'taxonomy_tree_constraint',enabled:'O',type:21}),
+  Object.freeze({table:'movie_recommendation_context',name:'movie_context_constraint',enabled:'O',type:23}),
+  Object.freeze({table:'recommendations',name:'movie_context_replacement_constraint',enabled:'O',type:19}),
+  ...revisionTriggers,
+].sort((a,b) => a.table.localeCompare(b.table)||a.name.localeCompare(b.name)));
 
 const replayTriggers = Object.freeze([
+  ...revisionTriggers.map(({table,name}) => Object.freeze({table,name,mode:'ENABLE'})),
   Object.freeze({ table: "users", name: "users_music_identity_insert", mode: "ENABLE" }),
   Object.freeze({ table: "music_identity_tombstones", name: "music_identity_tombstone_insert", mode: "ENABLE" }),
   Object.freeze({ table: "music_publication_operations", name: "music_publication_operation_immutability", mode: "ENABLE ALWAYS" }),
@@ -105,12 +143,16 @@ const expectedTriggersSql = textArray(MUSIC_FIXTURE_TRIGGER_FINGERPRINTS.map(
   ({ table, name, enabled, type }) => `${table}|${name}|${enabled}|${type}`,
 ));
 const expectedMigrationsSql = textArray(expectedMigrationFingerprint());
+const expectedRevisionFunctionsSql = textArray(revisionTriggers.map(
+  ({table,name,function:fn}) => `${table}|${name}|${fn}`,
+).sort());
 
 const authoritySql = `DO $music_restore_authority$
 DECLARE
   actual_tables text[];
   actual_triggers text[];
   actual_migrations text[];
+  actual_revision_functions text[];
 BEGIN
   IF current_database() IS DISTINCT FROM 'music_fixture' OR current_user IS DISTINCT FROM 'music_migrator' THEN
     RAISE EXCEPTION USING ERRCODE='P0001', MESSAGE='fixture restore database authority mismatch';
@@ -128,6 +170,18 @@ BEGIN
     WHERE namespace.nspname='public' AND NOT trigger.tgisinternal;
   IF actual_triggers IS DISTINCT FROM ${expectedTriggersSql} THEN
     RAISE EXCEPTION USING ERRCODE='P0001', MESSAGE='fixture restore trigger authority mismatch';
+  END IF;
+  SELECT array_agg(format('%s|%s|%s',class.relname,trigger.tgname,procedure.proname) ORDER BY class.relname,trigger.tgname)
+    INTO actual_revision_functions FROM pg_catalog.pg_trigger trigger
+    JOIN pg_catalog.pg_class class ON class.oid=trigger.tgrelid
+    JOIN pg_catalog.pg_namespace namespace ON namespace.oid=class.relnamespace
+    JOIN pg_catalog.pg_proc procedure ON procedure.oid=trigger.tgfoid
+    JOIN pg_catalog.pg_namespace function_namespace ON function_namespace.oid=procedure.pronamespace
+    WHERE namespace.nspname='public' AND NOT trigger.tgisinternal
+      AND function_namespace.nspname='public' AND procedure.pronargs=0
+      AND trigger.tgname LIKE '%_content_revision_%';
+  IF actual_revision_functions IS DISTINCT FROM ${expectedRevisionFunctionsSql} THEN
+    RAISE EXCEPTION USING ERRCODE='P0001', MESSAGE='fixture restore revision function authority mismatch';
   END IF;
   SELECT array_agg(id || ':' || checksum ORDER BY id) INTO actual_migrations
     FROM public.music_schema_migrations;
@@ -198,7 +252,9 @@ export function buildMusicFixtureRestoreOperation({ containerId, dataDump }) {
   const input = Buffer.concat([
     Buffer.from(`${authoritySql}\n${disableReplayTriggersSql}\n${truncateSql}\n`),
     normalizedDump,
-    Buffer.from(`${enableReplayTriggersSql}\n${authoritySql}\n`),
+    // COPY queues existing deferred integrity guards. Validate them before ALTER
+    // TABLE re-enables the exact replay exceptions, still in this transaction.
+    Buffer.from(`SET CONSTRAINTS ALL IMMEDIATE;\n${enableReplayTriggersSql}\n${authoritySql}\n`),
   ]);
   return {
     file: dockerExecutable,

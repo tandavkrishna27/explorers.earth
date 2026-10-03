@@ -25,6 +25,12 @@ export type MusicUatEvidence = {
 };
 
 export const MUSIC_UAT_DATABASE_TEST_FILES = Object.freeze([
+  "server/test/explorers-lifecycle.integration.test.ts",
+  "server/test/account-recovery.test.ts",
+  "server/test/explorers-recovery.integration.test.ts",
+  "server/test/explorers-recovery-callback.integration.test.ts",
+  "server/test/explorers-profile.integration.test.ts",
+  "server/test/explorers-media.integration.test.ts",
   "server/test/migrations/music-migration.integration.test.ts",
   "server/test/music-credential.integration.test.ts",
   "server/test/music-domain-repository.integration.test.ts",
@@ -70,10 +76,11 @@ export function parseFinalizedVitestEvidence(raw: string, nativeExit: number, ro
     "suite totals disagree",
   );
   demand(report.numPendingTestSuites === 0, "unfinished suites");
-  demand(report.numTotalTestSuites === report.testResults.length, "suite results disagree");
 
   const seen = new Set<string>();
   const assertions = counts();
+  let nestedSuiteTotal = 0;
+  let nestedSuiteFailed = 0;
   const files: MusicVitestFileEvidence[] = report.testResults.map((value: unknown): MusicVitestFileEvidence => {
     const fileResult = object(value);
     demand(typeof fileResult.name === "string" && isAbsolute(fileResult.name), "absolute file required");
@@ -86,13 +93,26 @@ export function parseFinalizedVitestEvidence(raw: string, nativeExit: number, ro
       && fileResult.endTime >= fileResult.startTime, "invalid timing");
 
     const local = counts();
+    const nestedSuites = new Set<string>([""]);
+    const failedSuites = new Set<string>();
     for (const entry of fileResult.assertionResults) {
-      const status = object(entry).status;
+      const assertion = object(entry);
+      const status = assertion.status;
       demand(["passed", "failed", "skipped", "todo"].includes(status), "unfinished or unknown assertion");
+      demand(Array.isArray(assertion.ancestorTitles) && assertion.ancestorTitles.every((part: unknown) => typeof part === "string"), "invalid assertion ancestry");
+      const ancestry = assertion.ancestorTitles as string[];
+      for (let depth = 1; depth <= ancestry.length; depth++) nestedSuites.add(JSON.stringify(ancestry.slice(0, depth)));
+      if (status === "failed") {
+        failedSuites.add("");
+        for (let depth = 1; depth <= ancestry.length; depth++) failedSuites.add(JSON.stringify(ancestry.slice(0, depth)));
+      }
       local.selected++;
       local[status as "passed" | "failed" | "skipped" | "todo"]++;
     }
     demand(local.failed === 0 || fileResult.status === "failed", "file contradicts assertions");
+    if (fileResult.status === "failed") failedSuites.add("");
+    nestedSuiteTotal += nestedSuites.size;
+    nestedSuiteFailed += failedSuites.size;
     for (const key of Object.keys(local) as Array<keyof Counts>) assertions[key] += local[key];
 
     return {
@@ -113,9 +133,14 @@ export function parseFinalizedVitestEvidence(raw: string, nativeExit: number, ro
   demand(assertions.skipped === 0, "skipped assertions are not final evidence");
   const failed = files.filter((file) => file.status === "failed").length;
   const passedSuites = files.filter((file) => file.status === "passed").length;
+  const legacySuiteCounts = report.numTotalTestSuites === files.length
+    && report.numPassedTestSuites === passedSuites && report.numFailedTestSuites === failed;
+  const nestedSuiteCounts = report.numTotalTestSuites === nestedSuiteTotal
+    && report.numPassedTestSuites === nestedSuiteTotal - nestedSuiteFailed
+    && report.numFailedTestSuites === nestedSuiteFailed;
+  demand(report.numTotalTestSuites === files.length || report.numTotalTestSuites === nestedSuiteTotal, "suite results disagree");
   demand(
-    report.numPassedTestSuites === passedSuites
-      && report.numFailedTestSuites === failed,
+    legacySuiteCounts || nestedSuiteCounts,
     "suite status counts disagree",
   );
   demand(

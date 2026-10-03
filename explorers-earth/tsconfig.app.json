@@ -9,6 +9,7 @@
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    "paths": { "zod/v3": ["./node_modules/zod/v3"] },
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
