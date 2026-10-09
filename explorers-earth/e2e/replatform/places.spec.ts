@@ -141,7 +141,8 @@ async function equalMissing(pathname:string,missing:string,persona:PlacesPersona
 test.beforeEach(async ({},info)=>{manifest=await control('reset',info) as PlacesManifest;});
 
 function recordPublicPages(page:Page,pathname:string,detail:boolean) {
-  const pending:Promise<{offset:number;limit:number;ids:string[];terminal?:boolean}>[]=[];
+  type RecordedPage={offset:number;limit:number;ids:string[];terminal?:boolean};
+  const pending:Promise<RecordedPage|null>[]=[];
   const handler=(response:BrowserResponse)=>{
     const url=new URL(response.url());
     if(url.pathname!==`${base}${pathname}` || response.request().method()!=='GET' || response.status()!==200)return;
@@ -149,10 +150,33 @@ function recordPublicPages(page:Page,pathname:string,detail:boolean) {
       const rows=detail?dto.recommendationLists[0].recommended_places:dto.recommendationLists;
       return {offset:Number((url.searchParams.get('cursor')??'o0').slice(1)),limit:Number(url.searchParams.get('limit')??'12'),
         ids:rows.map((row:Dto)=>row.documentId),...(detail?{terminal:dto.recommendationLists[0].recommended_places_next_cursor===null}:{})};
-    }).catch(()=>({offset:-1,limit:0,ids:[]})));
+    }).catch(()=>null));
   };
   page.on('response',handler);
-  return async()=>{page.off('response',handler);return (await Promise.all(pending)).sort((a,b)=>a.offset-b.offset);};
+  return async()=>{
+    page.off('response',handler);
+    const results=await Promise.all(pending);
+    return {parseFailures:results.filter(row=>row===null).length,
+      pages:results.filter((row):row is RecordedPage=>row!==null).sort((a,b)=>a.offset-b.offset)};
+  };
+}
+function assertPublicPageShape(recording:{parseFailures:number;pages:{offset:number;limit:number;ids:string[];terminal?:boolean}[]},expected:number[][]) {
+  // Receipt sanitization retains source coordinates, not expected/actual payloads.
+  // Each fixed assertion below identifies a distinct safe failure classification.
+  const pages=recording.pages;
+  const duplicateConflicts=pages.filter((row,index)=>pages.slice(0,index).some(previous=>previous.offset===row.offset
+    && (previous.limit!==row.limit || previous.terminal!==row.terminal || JSON.stringify(previous.ids)!==JSON.stringify(row.ids)))).length;
+  const duplicateOffsets=pages.length-new Set(pages.map(row=>row.offset)).size;
+  expect(recording.parseFailures).toBe(0);
+  expect(duplicateConflicts).toBe(0);
+  expect(duplicateOffsets).toBe(0);
+  expect(pages.length).toBe(expected.length);
+  expect(pages.filter(row=>!Number.isInteger(row.offset) || row.offset<0).length).toBe(0);
+  expect(pages.filter((row,index)=>row.offset!==expected[index][0]).length).toBe(0);
+  expect(pages.filter((row,index)=>row.limit!==expected[index][1]).length).toBe(0);
+  expect(pages.filter((row,index)=>row.ids.length!==expected[index][2]).length).toBe(0);
+  if(expected[0].length===4)expect(pages.filter((row,index)=>Number(row.terminal)!==expected[index][3]).length).toBe(0);
+  return pages;
 }
 async function exhaustRendered(page:Page,rows:Locator,label:string,initial:number) {
   await expect.poll(()=>rows.count()).toBeGreaterThanOrEqual(initial);
@@ -227,16 +251,19 @@ test('Places: retained location create edit and reload preserve zero and absent 
   try {
     await page.getByRole('button',{name:'Update Location',exact:true}).click();
     const form=page.locator('input[name="placeUrl"]').locator('xpath=ancestor::form');
-    const validation=()=>form.getByText(/^(List Name is Required|Url name is Required)$/).count();
+    const validationPresent=await form.getByText(/^(List Name is Required|Url name is Required)$/).count()>0;
     try {update=await updated;} catch(error) {
       // Classify only at the existing mandatory PATCH wait boundary; no added readiness wait.
-      expect(originalGuardRefused).toBe(false);
-      expect(await validation()>0).toBe(false);
-      expect(editableStatuses.some(status=>status!==200)).toBe(false);
-      expect(updateError && patchRequests===0).toBe(false);
-      expect(patchRequests>0).toBe(true);
-      expect(editableRequests>0).toBe(true);
-      expect(patchStatuses.length>0).toBe(true);
+      const captured=Object.freeze({originalGuardRefused,validationPresent,
+        editableStatusFailure:editableStatuses.some(status=>status!==200),
+        updateErrorWithoutPatch:updateError && patchRequests===0,patchRequests,editableRequests,patchResponses:patchStatuses.length});
+      expect(captured.originalGuardRefused).toBe(false);
+      expect(captured.validationPresent).toBe(false);
+      expect(captured.editableStatusFailure).toBe(false);
+      expect(captured.updateErrorWithoutPatch).toBe(false);
+      expect(captured.patchRequests>0).toBe(true);
+      expect(captured.editableRequests>0).toBe(true);
+      expect(captured.patchResponses>0).toBe(true);
       throw error;
     }
     expect(update.status()).toBe(200);expect(update.request().postDataJSON().expectedRevision).toBe(before.revision);
@@ -283,7 +310,7 @@ test('Places: complete owner and anonymous pages contain every seeded list and r
     await exhaustRendered(anon.page,headings,'city lists',12);
     for(const row of lists)await expect(anon.page.getByRole('heading',{name:row.title,exact:true}).filter({visible:true}).first()).toBeVisible();
     expect(JSON.stringify((await headings.allTextContents()).map(title=>title.trim()))===JSON.stringify(lists.map(row=>row.title))).toBe(true);
-    const categoryResponses=await categoryPages();
+    const categoryResponses=assertPublicPageShape(await categoryPages(),[[0,12,12],[12,12,12],[24,12,12],[36,12,12],[48,12,5]]);
     expect(JSON.stringify(categoryResponses.map(row=>[row.offset,row.limit,row.ids.length]))===JSON.stringify([[0,12,12],[12,12,12],[24,12,12],[36,12,12],[48,12,5]])).toBe(true);
     expect(JSON.stringify(categoryResponses.flatMap(row=>row.ids))===JSON.stringify(manifest.expectedPublic.placesCollectionIds)).toBe(true);
     const detailPages=recordPublicPages(anon.page,publicPath(lists[0].slug),true);
@@ -293,7 +320,7 @@ test('Places: complete owner and anonymous pages contain every seeded list and r
     const titles=manifest.recommendations.filter(r=>r.collectionId===lists[0].id).map(r=>r.title);
     for(const title of titles)await expect(anon.page.getByRole('button',{name:title,exact:true})).toBeVisible();
     expect(JSON.stringify(await cards.evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label'))))===JSON.stringify(titles)).toBe(true);
-    const detailResponses=await detailPages();
+    const detailResponses=assertPublicPageShape(await detailPages(),[[0,24,24,0],[24,24,24,0],[48,24,5,1]]);
     expect(JSON.stringify(detailResponses.map(row=>[row.offset,row.limit,row.ids.length,row.terminal]))===JSON.stringify([[0,24,24,false],[24,24,24,false],[48,24,5,true]])).toBe(true);
     expect(JSON.stringify(detailResponses.flatMap(row=>row.ids))===JSON.stringify(manifest.expectedPublic.recommendationIds)).toBe(true);
     await anon.page.goto(`/${manifest.personas.ownerA.handle}/places/${lists[52].slug}`);await anon.page.reload();
@@ -348,7 +375,7 @@ test('Places: foreign owner edits and private contact reads cannot disclose owne
       expectedRevision:current.revision,placeContext:{...current.placeContext,contactVisibility:'public'}});
     expect(disclose.status).toBe(200);
     const publicDto=await json(publicPath(parent.slug));const published=publicDto.recommendationLists[0].recommended_places.find((r:Dto)=>r.documentId===rec.id);
-    expect(published.Contact_Name==='Owned private contact' && published.Contact_Number==='+15550001111').toBe(true);
+    expect(published.contact_name==='Owned private contact' && published.contact_number==='+15550001111').toBe(true);
     same(published.Place_Details.Public_Phone,privateDto.recommendationLists[0].recommended_places[0].Place_Details.Public_Phone);
     await anon.page.reload();await anon.page.getByRole('button',{name:rec.title,exact:true}).click();
     await expect(anon.page.getByRole('dialog',{name:'Place details',exact:true}).locator('[data-public-place-detail]').getByText('Call',{exact:true}).locator('..').getByRole('button')).toBeEnabled();anon.transport.assertExpected();
