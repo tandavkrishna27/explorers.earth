@@ -294,11 +294,13 @@ test('Places: retained location create edit and reload preserve zero and absent 
     }
     expect(update.status()).toBe(200);expect(update.request().postDataJSON().expectedRevision).toBe(before.revision);
   } finally {page.off('request',countRequest);page.off('response',countResponse);page.off('console',classifyConsole);}
+  await expect(page.locator('input[name="placeUrl"]').locator('xpath=ancestor::form')).toHaveCount(0);
   await expect.poll(async ()=>(await editable('collections',id)).slug).toBe('edited-fixture-city');
   const after=await editable('collections',id);
   same(after.placeLocation.locationSnapshot,before.placeLocation.locationSnapshot);
   same([after.placeLocation.locationEntityId,after.title,after.coverMediaId],[before.placeLocation.locationEntityId,before.title,before.coverMediaId]);
-  expect(after.description).toBe('Edited fixture note');expect(after.placeLocation.instagramMediaUrl).toBe('https://www.instagram.com/editedfixturecity/');
+  expect(after.description).toBe('Edited fixture note');
+  expect(after.placeLocation.instagramMediaUrl).toBe('https://www.instagram.com/editedfixturecity/');
   expect(after.revision>before.revision).toBe(true);expect(after.publicationState).toBe('draft');
   await page.reload();await expect(page.getByText('Fixture Zero City',{exact:true}).filter({visible:true}).first()).toBeVisible();
   expect(transport.observations.length).toBe(providerCount);transport.assertExpected();
