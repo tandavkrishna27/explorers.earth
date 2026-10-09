@@ -3,7 +3,7 @@ import { spawn, spawnSync, execFileSync, type ChildProcess } from 'node:child_pr
 import { createServer } from 'node:net';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, resolve, relative, isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 import { createCanonicalApp } from '../server/auth/canonicalApp';
@@ -16,6 +16,8 @@ import { MUSIC_UAT_DATABASE_ACK, startOwnedUatDatabase, stopOwnedUatDatabase,
 import { prepareFixtureMusicTokenSecret, cleanupFixtureMusicTokenSecret } from './music-fixture-secret';
 import { readSecureMusicSecretFile } from '../server/config/secure-music-secret-file';
 import { provisionMusicRuntimeLogin } from '../server/db/music-runtime-role';
+import { LocalObjectStorage } from '../server/services/objectStorage';
+import { startPlacesControl, assertPlacesStorageDirectory } from './places-browser-support';
 import { startLifecycleControl } from './lifecycle-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment, assertLifecycleResults, assertOwnedCleanup } from './lifecycle-browser-guards';
 import { extractProtectedReceiptArguments, createProtectedReceipt } from './protected-browser-receipt';
@@ -35,12 +37,17 @@ let authority: OwnedUatDatabaseAuthority | undefined;
 let db: pg.Pool | undefined;
 let runtime: pg.Pool | undefined;
 let lifecycleControl: Awaited<ReturnType<typeof startLifecycleControl>> | undefined;
+let placesControl: Awaited<ReturnType<typeof startPlacesControl>> | undefined;
+const placesSuite = suite === 'places' || suite === 'place-links';
+const storageDirectory = resolve(disposable, 'owned-media');
+const storage = placesSuite ? new LocalObjectStorage(storageDirectory) : undefined;
 let lifecycleReceipt: Record<string, unknown> | undefined;
 const artifacts = suite === 'lifecycle' && !protectedReceipt ? mkdtempSync(join(tmpdir(), 'explorers-lifecycle-artifacts-')) : undefined;
 let apiServer: ReturnType<ReturnType<typeof createCanonicalApp>['app']['listen']> | undefined;
 let vite: ChildProcess | undefined;
 let browser: ChildProcess | undefined;
 let interrupted = false;
+let placesPhase: 'startup'|'discovery'|'execution'|'cleanup' = 'startup';
 
 async function freePort(min = 55000, max = 60999): Promise<number> {
   for (let i = 0; i < 150; i++) {
@@ -103,7 +110,7 @@ async function main(): Promise<number> {
     const runtimeUrl = new URL(dbUrl); runtimeUrl.username = 'lifecycle_runtime'; runtimeUrl.password = runtimePassword;
     runtime = new pg.Pool({ connectionString: runtimeUrl.toString(), max: 5 });
   }
-  const composed = createCanonicalApp(runtime ?? db, config);
+  const composed = createCanonicalApp(runtime ?? db, config, storage ? {mediaStorage:storage} : {});
   if (suite === 'lifecycle') lifecycleControl = await startLifecycleControl(db, composed, config, await freePort(51000, 51999));
   apiServer = await new Promise((done) => {
     const server = composed.app.listen(apiPort, '127.0.0.1', () => done(server));
@@ -120,6 +127,7 @@ async function main(): Promise<number> {
     const cookie = `${context.authCookies.sessionToken.name}=${session.token}.${signature}`;
     personas[name] = { userId, cookie, handle: `profile${name.toLowerCase()}${runId.slice(0, 4)}` };
   }
+  if (placesSuite) placesControl = await startPlacesControl({pool:db,composed,config,runId,commit,personas,storage:storage!,storageDirectory,port:await freePort(51000,51999),apiOrigin:`http://127.0.0.1:${apiPort}`,lane:suite as 'places'|'place-links'});
   let recoveryProof: string | undefined;
   if (suite === 'auth') {
     const recovery = personas.ownerB;
@@ -141,22 +149,23 @@ async function main(): Promise<number> {
       subject: `google-${recovery.userId}`, sessionId: temporary.id })).token;
   }
   const fixturePath = join(disposable, 'sessions.json');
-  writeFileSync(fixturePath, JSON.stringify({ origin, personas, recoveryProof, lifecycleControl }), { mode: 0o600 });
+  writeFileSync(fixturePath, JSON.stringify({ origin, personas, recoveryProof, lifecycleControl, ...(placesSuite ? {version:1,runId,commit,apiOrigin:`http://127.0.0.1:${apiPort}`,placesControl} : {}) }), { mode: 0o600 });
   vite = spawn(process.execPath, [resolve(frontend, 'node_modules/vite/bin/vite.js'),
     '--config', 'e2e/replatform/profile.vite.config.ts'], {
     cwd: frontend, windowsHide: true, stdio: 'inherit', env: { ...process.env,
       PROFILE_E2E_LOCAL_AUTHORITY: 'owned-disposable-pg15', PROFILE_E2E_WEB_PORT: String(webPort),
-      PROFILE_E2E_API_PORT: String(apiPort) },
+      PROFILE_E2E_API_PORT: String(apiPort), ...(placesSuite ? { PROFILE_E2E_SUITE: suite } : {}) },
   });
   await waitFor(origin);
   const lifecycleConfig = ['--config', 'e2e/replatform/lifecycle.playwright.config.ts', '--project=lifecycle-chromium', '--retries=0'];
   const lifecycleEnv = { ...process.env, LIFECYCLE_E2E_FIXTURE_PATH: fixturePath, PLAYWRIGHT_EXTERNAL_BASE_URL: origin };
   let discovered: string[] = [];
-  let browserArgs = suite === 'lifecycle' ? lifecycleConfig : [`e2e/replatform/${suite}.spec.ts`, '--project=chromium-pr-safe', '--retries=0'];
+  let browserArgs = placesSuite ? ['--config', `e2e/replatform/${suite}.playwright.config.ts`, '--retries=0'] : suite === 'lifecycle' ? lifecycleConfig : [`e2e/replatform/${suite}.spec.ts`, '--project=chromium-pr-safe', '--retries=0'];
   const browserEnv = { ...process.env,
-    [suite === 'lifecycle' ? 'LIFECYCLE_E2E_FIXTURE_PATH' : suite === 'auth' ? 'AUTH_E2E_FIXTURE_PATH' : 'PROFILE_E2E_FIXTURE_PATH']: fixturePath,
+    [suite === 'places' ? 'PLACES_E2E_FIXTURE_PATH' : suite === 'place-links' ? 'PLACE_LINKS_E2E_FIXTURE_PATH' : suite === 'lifecycle' ? 'LIFECYCLE_E2E_FIXTURE_PATH' : suite === 'auth' ? 'AUTH_E2E_FIXTURE_PATH' : 'PROFILE_E2E_FIXTURE_PATH']: fixturePath,
     PLAYWRIGHT_EXTERNAL_BASE_URL: origin };
   if (protectedReceipt) browserArgs = protectedReceipt.arguments(browserArgs, disposable);
+  if (placesSuite) placesPhase = 'discovery';
   if (protectedReceipt) protectedReceipt.discovery(frontend, [...browserArgs, '--workers=1', '--forbid-only'], browserEnv, disposable);
   if (suite === 'lifecycle' && !protectedReceipt) {
     const listPath = join(artifacts!, 'discovery.json');
@@ -168,10 +177,11 @@ async function main(): Promise<number> {
     // Reject omissions/additions before executing any lifecycle case.
     assertLifecycleResults(discovered, discovered.map(title => ({ title, status: 'passed', retry: 0 })));
   }
+  if (placesSuite) placesPhase = 'execution';
   browser = spawn(process.execPath, [resolve(frontend, 'node_modules/@playwright/test/cli.js'),
     'test', ...browserArgs, ...(protectedReceipt ? ['--workers=1', '--forbid-only', '--reporter=json,line'] : suite === 'lifecycle' ? ['--reporter=json,line'] : [])], {
     cwd: frontend, windowsHide: true, stdio: 'inherit', env: { ...process.env,
-      [suite === 'lifecycle' ? 'LIFECYCLE_E2E_FIXTURE_PATH' : suite === 'auth' ? 'AUTH_E2E_FIXTURE_PATH' : 'PROFILE_E2E_FIXTURE_PATH']: fixturePath,
+      [suite === 'places' ? 'PLACES_E2E_FIXTURE_PATH' : suite === 'place-links' ? 'PLACE_LINKS_E2E_FIXTURE_PATH' : suite === 'lifecycle' ? 'LIFECYCLE_E2E_FIXTURE_PATH' : suite === 'auth' ? 'AUTH_E2E_FIXTURE_PATH' : 'PROFILE_E2E_FIXTURE_PATH']: fixturePath,
       ...(protectedReceipt ? protectedReceipt.executionEnvironment({}, disposable) : suite === 'lifecycle' ? { PLAYWRIGHT_JSON_OUTPUT_NAME: join(artifacts!, 'execution.json') } : {}),
       PLAYWRIGHT_EXTERNAL_BASE_URL: origin },
   });
@@ -206,6 +216,14 @@ try {
   await cleanup('Vite child', () => suite === 'lifecycle' || protectedReceipt ? stopLifecycleChild(vite) : stopChild(vite));
   await cleanup('API server', () => new Promise<void>((done, reject) => apiServer?.close(error => error ? reject(error) : done()) ?? done()));
   await cleanup('private lifecycle control', () => lifecycleControl?.close());
+  await cleanup('private Places control', () => placesControl?.close());
+  await cleanup('private Places storage', () => {
+    if (!placesSuite) return;
+    const path = relative(disposable, storageDirectory);
+    if (!path || path.startsWith('..') || isAbsolute(path)) throw new Error('Owned storage cleanup escaped private fixture');
+    assertPlacesStorageDirectory(storageDirectory);
+    rmSync(storageDirectory, {recursive:true,force:true});
+  });
   await cleanup('runtime pool', () => runtime?.end());
   await cleanup('seed pool', () => db?.end());
   await cleanup('attested owned database/container', async () => {
@@ -216,7 +234,12 @@ try {
   });
   await cleanup('fixture secret', () => cleanupFixtureMusicTokenSecret(root, passwordFile));
   await cleanup('private fixture directory', () => rmSync(disposable, { recursive: true, force: true }));
+  if (placesSuite && process.exitCode === 0) placesPhase = 'cleanup';
   if (protectedReceipt && authority) await cleanup('protected receipt qualification', () => protectedReceipt.finish(authority!, failures, interrupted));
+  if (placesSuite && protectedReceipt && (process.exitCode !== 0 || failures.length || interrupted)) {
+    const labels: Record<string,string> = {'browser child':'browser','Vite child':'vite','API server':'service-children','private lifecycle control':'control','private Places control':'control','private Places storage':'private-directory','runtime pool':'runtime-pool','seed pool':'migrator-pool','attested owned database/container':'owned-database','fixture secret':'private-directory','private fixture directory':'private-directory','protected receipt qualification':'receipt'};
+    await cleanup('protected failure receipt', () => protectedReceipt.failure(placesPhase, [...new Set(failures.map(label => labels[label] ?? 'receipt'))], interrupted));
+  }
   try { assertOwnedCleanup(failures); } catch (error) { process.exitCode = 1; process.stderr.write(`${(error as Error).message}\n`); }
   if (lifecycleReceipt && artifacts) { lifecycleReceipt.cleanup = failures.length ? { failed: failures } : 'owned database dropped; attested container removed; pools/control/children closed; secret removed'; writeFileSync(join(artifacts, 'receipt.json'), JSON.stringify(lifecycleReceipt, null, 2)); process.stdout.write(`Lifecycle receipt: ${join(artifacts, 'receipt.json')}\n`); }
   if (interrupted) process.exitCode = 130;

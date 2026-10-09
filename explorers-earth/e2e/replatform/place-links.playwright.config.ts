@@ -1,0 +1,3 @@
+import {defineConfig} from '@playwright/test';
+if(!process.env.PLACE_LINKS_E2E_FIXTURE_PATH||!/^http:\/\/127\.0\.0\.1:[1-9]\d{3,4}$/.test(process.env.PLAYWRIGHT_EXTERNAL_BASE_URL??''))throw new Error('Places requires its owned fixture');
+export default defineConfig({testDir:'.',testMatch:'place-links.spec.ts',fullyParallel:false,workers:1,retries:0,timeout:120000,expect:{timeout:15000},reporter:'line',use:{baseURL:process.env.PLAYWRIGHT_EXTERNAL_BASE_URL,headless:true,trace:'off',video:'off',screenshot:'off'},projects:[{name:'place-links-desktop',use:{browserName:'chromium',viewport:{width:1365,height:900}}},{name:'place-links-mobile',use:{browserName:'chromium',viewport:{width:390,height:844},isMobile:true,hasTouch:true}}]});

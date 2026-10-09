@@ -29,13 +29,13 @@ test('ambient hosted/database/production authority is rejected before any child'
  for(const key of ['DATABASE_URL','DATABASE_URL_TEST','DOCKER_HOST','DOCKER_CONTEXT','PLAYWRIGHT_EXTERNAL_BASE_URL','GATE_PROD','MUSIC_C10_STANDALONE_POSTGRES_ACK'])assert.throws(()=>assertEnvironment({[key]:'unowned'}));
  assert.throws(()=>assertEnvironment({NODE_ENV:'production'}));assert.doesNotThrow(()=>assertEnvironment({}));
 });
-test('manifest requires exactly seven nonempty unique delivered lanes and pending obligations',()=>{
+test('manifest requires exactly nine nonempty unique delivered lanes and pending obligations',()=>{
  assert.equal(validateManifest(manifest()),true);
  for(const change of [m=>m.lanes.pop(),m=>m.lanes.push(m.lanes[0]),m=>m.lanes[0].identities.pop(),m=>m.lanes[0].identities[0].file='../escape',m=>m.lanes[0].identities[0].titlePath=[],m=>m.pending=[],m=>m.version=2]){const m=manifest();change(m);assert.throws(()=>validateManifest(m));}
 });
 test('fake children qualify only scoped delivery while full milestone remains incomplete',async()=>{
  const m=manifest();const seen=[];const receipt=await qualifyLanes({manifest:m,provenance,runLane:async lane=>{seen.push(lane.name);return child(lane);}});
- assert.deepEqual(seen,['auth','profile','books','lifecycle','movies','games','music']);assert.equal(receipt.deliveredSlice,'passed');assert.equal(receipt.overallMilestone,'incomplete');assert.equal(receipt.releaseEligible,false);assert.equal(receipt.identities,118);
+ assert.deepEqual(seen,['auth','profile','books','lifecycle','movies','games','music','places','place-links']);assert.equal(receipt.deliveredSlice,'passed');assert.equal(receipt.overallMilestone,'incomplete');assert.equal(receipt.releaseEligible,false);assert.equal(receipt.identities,134);
 });
 for(const [name,change] of [
  ['nonzero',c=>c.status=1],['signal',c=>c.signal='SIGTERM'],['spawn error',c=>c.error='failed'],['missing receipt',c=>delete c.receipt],['wrong source',c=>c.receipt.provenance.commit='0'.repeat(40)],['source hash',c=>c.receipt.provenance.sourceHash='0'.repeat(64)],['wrong config',c=>c.receipt.config='other.config.ts'],['wrong project',c=>c.receipt.projects=['other']],['loader error',c=>c.receipt.errors.push({message:'missing module'})],['missing discovery',c=>c.receipt.discovery.pop()],['extra discovery',c=>c.receipt.discovery.push({...c.receipt.discovery[0],titlePath:['extra']})],['duplicate discovery',c=>c.receipt.discovery.push(c.receipt.discovery[0])],['missing result',c=>c.receipt.results.pop()],['extra result',c=>c.receipt.results.push(c.receipt.results[0])],['dynamic skip',c=>c.receipt.results[0].attempts[0].status='skipped'],['fixme',c=>c.receipt.results[0].expectedStatus='skipped'],['timeout',c=>c.receipt.results[0].attempts[0].status='timedOut'],['interrupted',c=>c.receipt.results[0].attempts[0].status='interrupted'],['retry pass',c=>c.receipt.results[0].attempts.push({status:'passed',retry:1})],['flaky',c=>c.receipt.results[0].status='flaky'],['empty attempts',c=>c.receipt.results[0].attempts=[]],['cleanup failure',c=>c.receipt.cleanup.status='failed'],['unowned database',c=>c.receipt.authority.owned=false],['failed browser child',c=>c.receipt.child.status=1]
@@ -57,7 +57,7 @@ test('raw dynamic skip cannot qualify even if process succeeds',()=>{const lane=
 
 test('already-dirty executed migration and helper edits change source provenance',()=>{
  const root=process.cwd(),directory=mkdtempSync(join(tmpdir(),'replatform-source-contract-'));
- const omitted=['tunes/migrations/0001_runtime_baseline.sql','tunes/scripts/music-uat-database.ts','tunes/scripts/music-fixture-secret.ts','tunes/scripts/music-qualification-postgres.ts','tunes/scripts/music-output-redaction.ts','tunes/scripts/music-vitest-evidence.ts','tunes/scripts/music-local-private-files.ps1','tunes/scripts/windows-write-through.ps1'];
+ const omitted=['tunes/migrations/0001_runtime_baseline.sql','tunes/scripts/music-uat-database.ts','tunes/scripts/music-fixture-secret.ts','tunes/scripts/music-qualification-postgres.ts','tunes/scripts/music-output-redaction.ts','tunes/scripts/music-vitest-evidence.ts','tunes/scripts/music-local-private-files.ps1','tunes/scripts/windows-write-through.ps1','tunes/scripts/places-browser-support.ts'];
  try{
   const original=snapshotSource(root);for(const path of new Set([...Object.keys(original.hashes),...omitted])){mkdirSync(dirname(join(directory,path)),{recursive:true});copyFileSync(join(root,path),join(directory,path));}
   const git=args=>execFileSync('git',args,{cwd:directory,windowsHide:true,stdio:'pipe'});
@@ -65,6 +65,18 @@ test('already-dirty executed migration and helper edits change source provenance
   for(const path of omitted){const before=snapshotSource(directory);assert.equal(before.provenance.dirty,true);writeFileSync(join(directory,path),readFileSync(join(directory,path),'utf8')+'\n// mutation\n');const after=snapshotSource(directory);assert.equal(after.provenance.dirty,true);assert.notEqual(after.provenance.sourceHash,before.provenance.sourceHash,path);}
   for(const path of ['tunes/scripts/music-output-redaction.ts','tunes/scripts/music-vitest-evidence.ts','explorers-earth/index.html','tunes/auth-runtime/node_modules/.package-lock.json','tunes/scripts/music-local-private-files.ps1','tunes/scripts/windows-write-through.ps1'])assert.ok(snapshotSource(directory).hashes[path],path);
   git(['rm','--cached','tunes/scripts/windows-write-through.ps1']);assert.throws(()=>snapshotSource(directory));git(['add','tunes/scripts/windows-write-through.ps1']);
+  const placesHelper='tunes/scripts/places-browser-support.ts',placesSource=readFileSync(join(directory,placesHelper),'utf8');
+  assert.ok(snapshotSource(directory).hashes[placesHelper]);
+  git(['rm','--cached',placesHelper]);assert.throws(()=>snapshotSource(directory));git(['add',placesHelper]);
+  for(const ignored of [false,true]){
+   const dependency='tunes/scripts/places-unreviewed-helper.ts';
+   writeFileSync(join(directory,'.gitignore'),ignored?'places-unreviewed-helper.ts\n':'');
+   writeFileSync(join(directory,dependency),'export const unowned=1;');
+   if(ignored)git(['check-ignore',dependency]);
+   writeFileSync(join(directory,placesHelper),placesSource+'\nimport "./places-unreviewed-helper";');
+   assert.throws(()=>snapshotSource(directory),/Unreviewed relative executed dependency/);
+   writeFileSync(join(directory,placesHelper),placesSource);rmSync(join(directory,dependency));
+  }
   writeFileSync(join(directory,'tunes/migrations/9999_untracked.sql'),'SELECT 1;');assert.throws(()=>snapshotSource(directory));rmSync(join(directory,'tunes/migrations/9999_untracked.sql'));
   writeFileSync(join(directory,'explorers-earth/src/untracked-runtime.ts'),'export default 1;');assert.throws(()=>snapshotSource(directory));rmSync(join(directory,'explorers-earth/src/untracked-runtime.ts'));
   writeFileSync(join(directory,'.gitignore'),'ignored-helper.ts\nignored-runtime.ts\n');writeFileSync(join(directory,'explorers-earth/src/ignored-runtime.ts'),'export default 1;');git(['check-ignore','explorers-earth/src/ignored-runtime.ts']);assert.throws(()=>snapshotSource(directory));rmSync(join(directory,'explorers-earth/src/ignored-runtime.ts'));writeFileSync(join(directory,'tunes/scripts/ignored-helper.ts'),'export const injected=1;');git(['check-ignore','tunes/scripts/ignored-helper.ts']);writeFileSync(join(directory,omitted[1]),readFileSync(join(directory,omitted[1]),'utf8')+'\nimport "./ignored-helper";');assert.throws(()=>snapshotSource(directory));  rmSync(join(directory,omitted[1]));assert.throws(()=>snapshotSource(directory));
@@ -144,7 +156,7 @@ test('ambient Movies fixture authority is denied before protected allocation',()
 
 const gamesTitles = ["Games manual: Home creates a native list and distinct same-title recommendations","Games manual: note and creator rating survive edit and reload without provider facts","Games manual: complete owner pages preserve memberships reorder and pin position zero","Games manual: Keep draft and Publish preserve keyboard decision and public state","Games manual: ready uploaded cover and gallery bytes enforce owner public and foreign attachment","Games manual: provider unavailable preserves draft and forbids browser credential authority","Games manual: anonymous category and list continuation reveal later rows and terminal state","Games manual: ancestor hide archive and suspension deny fresh and inflight public bytes","Games manual: two anonymous contexts and username transition never reuse private or late rows","Games manual: account and route changes fence every deferred save continuation"];
 const gamesManifest=()=>{const m=manifest(); if(!m.lanes.some(l=>l.name==='games')){m.scopeContents.push('games');m.lanes.push({name:'games',runner:'tunes/scripts/games-browser-fixture.ts',config:'explorers-earth/e2e/replatform/games.playwright.config.ts',spec:'explorers-earth/e2e/replatform/games.spec.ts',projects:['games-desktop','games-mobile'],identities:['games-desktop','games-mobile'].flatMap(project=>gamesTitles.map(title=>({file:'explorers-earth/e2e/replatform/games.spec.ts',titlePath:[title],project,repeat:0}))) });} return m;};
-test('Games adds exact twenty identities while the preceding seventy-four stay unchanged',async()=>{const m=gamesManifest();assert.equal(validateManifest(m),true);assert.equal(m.lanes.slice(0,5).reduce((n,l)=>n+l.identities.length,0),74);const r=await qualifyLanes({manifest:m,provenance,runLane:async lane=>child(lane)});assert.equal(r.identities,118);assert.equal(r.releaseEligible,false);});
+test('Games adds exact twenty identities while the preceding seventy-four stay unchanged',async()=>{const m=gamesManifest();assert.equal(validateManifest(m),true);assert.equal(m.lanes.slice(0,5).reduce((n,l)=>n+l.identities.length,0),74);const r=await qualifyLanes({manifest:m,provenance,runLane:async lane=>child(lane)});assert.equal(r.identities,134);assert.equal(r.releaseEligible,false);});
 test('Games exact identity admission rejects renamed duplicate extra and missing cases',()=>{for(const change of [l=>l.identities[0].titlePath=['renamed'],l=>l.identities[0].titlePath=['extra',gamesTitles[0]],l=>l.identities.pop(),l=>l.identities.push(l.identities[0]),l=>l.identities[0].repeat=1,l=>l.identities[0].project='games-other']){const m=gamesManifest();change(m.lanes.find(lane=>lane.name==='games'));assert.throws(()=>validateManifest(m));}});
 test('Games ambient fixture authority is rejected before any child',()=>{assert.throws(()=>assertEnvironment({GAMES_E2E_FIXTURE_PATH:'unowned'}));});
 
@@ -225,4 +237,19 @@ test('Games diagnostics retain fixed stages and causes without private data',()=
  }
  report.suites[0].specs[1].tests[0].results[0].error.message='[games-stage:secret] [games-cause:secret]';const safe=decodeProtectedFailureDiagnostics(report,lane,process.cwd())[0];assert.equal(Object.hasOwn(safe,'stage'),false);assert.equal(Object.hasOwn(safe,'cause'),false);
  const other=manifest().lanes[0],otherReport=rawReport(other,true);otherReport.suites[0].specs[1].tests[0].results[0]={status:'failed',retry:0,error:{message:'[games-stage:patch-request] [games-cause:request-aborted]'}};const cross=decodeProtectedFailureDiagnostics(otherReport,other,process.cwd())[0];assert.equal(Object.hasOwn(cross,'stage'),false);assert.equal(Object.hasOwn(cross,'cause'),false);
+});
+
+test('Places lanes preserve the original ordered118 and append exact proposed16 with zero retry custody',()=>{
+ const m=manifest();
+ assert.equal(createHash('sha256').update(JSON.stringify(m.lanes.slice(0,7))).digest('hex'),'7d574d84788ac979be8560ec3f65ad95a25f1d7b9605664a2656c1430e43de01');
+ assert.deepEqual(m.scopeContents,['auth','profile','books','lifecycle','movies','games','music','places','place-links']);
+ assert.equal(m.lanes.flatMap(lane=>lane.identities).length,134);
+ for(const name of ['places','place-links']){
+   const lane=m.lanes.find(lane=>lane.name===name);
+   assert.equal(lane.runner,'tunes/scripts/profile-browser-fixture.ts');
+   assert.equal(lane.identities.length,8);
+   assert.deepEqual(lane.projects,[`${name}-desktop`,`${name}-mobile`]);
+   const changed=structuredClone(m);changed.lanes.find(lane=>lane.name===name).identities[0].titlePath=['unreviewed'];assert.throws(()=>validateManifest(changed));
+ }
+ for(const key of ['PLACES_E2E_FIXTURE_PATH','PLACE_LINKS_E2E_FIXTURE_PATH','PROFILE_E2E_SUITE'])assert.throws(()=>assertEnvironment({[key]:'unowned'}));
 });

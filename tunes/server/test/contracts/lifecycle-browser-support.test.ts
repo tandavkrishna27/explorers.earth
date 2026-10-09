@@ -20,13 +20,13 @@ describe('owned lifecycle browser boundary', () => {
     });
     it('accepts only exact existing and lifecycle selectors', () => {
         expect(parseBrowserSuite(['--ack', ack])).toBe('profile');
-        for (const suite of ['auth', 'lifecycle'])
+        for (const suite of ['auth', 'lifecycle', 'places', 'place-links'])
             expect(parseBrowserSuite(['--suite', suite, '--ack', ack])).toBe(suite);
         for (const args of [[], ['--suite', 'music', '--ack', ack], ['--suite', 'lifecycle', '--ack', 'wrong'], ['--ack', ack, '--ack', ack], ['--suite', 'lifecycle', '--ack', ack, '--list']])
             expect(() => parseBrowserSuite(args)).toThrow();
     });
     it('rejects ambient and production authority', () => {
-        for (const key of ['DATABASE_URL', 'DATABASE_URL_TEST', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'GATE_PROD', 'MUSIC_DEPLOY_PRODUCTION', 'MUSIC_C10_STANDALONE_POSTGRES_ACK'])
+        for (const key of ['DATABASE_URL', 'DATABASE_URL_TEST', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'GATE_PROD', 'MUSIC_DEPLOY_PRODUCTION', 'MUSIC_C10_STANDALONE_POSTGRES_ACK', 'PLACES_E2E_FIXTURE_PATH', 'PLACE_LINKS_E2E_FIXTURE_PATH', 'PROFILE_E2E_SUITE'])
             expect(() => assertBrowserEnvironment({ [key]: 'x' })).toThrow();
         expect(() => assertBrowserEnvironment({ NODE_ENV: 'production' })).toThrow();
         expect(() => assertBrowserEnvironment({})).not.toThrow();

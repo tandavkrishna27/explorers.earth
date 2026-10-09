@@ -9,6 +9,8 @@ if (!Number.isInteger(webPort) || !Number.isInteger(apiPort) ||
     process.env.PROFILE_E2E_LOCAL_AUTHORITY !== 'owned-disposable-pg15') {
   throw new Error('Profile browser fixture requires exact local authority');
 }
+const suite = process.env.PROFILE_E2E_SUITE;
+if (suite !== undefined && !['places','place-links'].includes(suite)) throw new Error('Unknown guarded profile fixture lane');
 const origin = `http://127.0.0.1:${webPort}`;
 export default defineConfig({
   envDir: false,
@@ -26,7 +28,7 @@ export default defineConfig({
     'import.meta.env.VITE_FULL_ACCESS_TOKEN': JSON.stringify(''),
   },
   plugins: [react()],
-  resolve: { alias: { '@vis.gl/react-google-maps': fileURLToPath(new URL('../setup/maps-fixture.tsx', import.meta.url)) } },
+  resolve: { alias: { '@vis.gl/react-google-maps': fileURLToPath(new URL(suite ? '../setup/places-maps-fixture.tsx' : '../setup/maps-fixture.tsx', import.meta.url)) } },
   server: {
     host: '127.0.0.1', port: webPort, strictPort: true, hmr: false,
     proxy: { '/api': { target: `http://127.0.0.1:${apiPort}`, changeOrigin: false } },

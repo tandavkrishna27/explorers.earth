@@ -100,3 +100,8 @@ Retained edit now allows share-slug changes, excludes only the same canonical co
 
 The user has required Places taxonomy/pins, People sector browsing and Apps nightly scraping within Wave 2. These are now closing requirements. Retained decisions and available taxonomy inputs are being reconciled into concrete designs; no invented production vocabulary or live-provider qualification is implied. The prior 118-browser and 249-database receipts remain valid only for their recorded source commits.
 
+## Places fixture checkpoint — 2026-10-10
+
+The reviewed fixture/controller, Maps/REST simulation, cleanup, configurations and manifest append sixteen proposed Places/link identities while preserving the original ordered 118. Fresh root checks passed 16 focused contracts and all 74 coordinator tests, with zero skips. An exact tracked-helper admission defect found after staging was repaired and independently rereviewed before the passing rerun. No database or protected browser qualification has run for this package; the two browser specs remain to be authored.
+
+Spec preflight confirmed that PublicHome discards canonical nested People/Products lists, so a bounded rendering repair precedes the sixteen browser cases. The controlling plan now describes the actual public Places HTTP envelopes and offset/detail continuation rather than nonexistent generic cursor fields.
