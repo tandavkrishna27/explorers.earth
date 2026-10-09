@@ -1,0 +1,16 @@
+{
+  "sourceCommit": "42a5524e80071742745b3195077282a5f6305d37",
+  "outcome": "failed",
+  "files": { "total": 21, "passed": 19, "failed": 2 },
+  "tests": { "total": 242, "passed": 239, "failed": 3, "skipped": 0 },
+  "firstFailureCause": "fixture restore trigger authority mismatch",
+  "affectedFiles": ["music-e2e-initial-capture.integration.test.ts", "music-e2e-state-restore.integration.test.ts"],
+  "canonicalPublicLifecyclePassed": 4,
+  "canonicalIdentityPassed": 11,
+  "migrationSuiteCompleted": true,
+  "ownedContainerAbsentAfterExecution": true,
+  "databaseDropPositivelyProven": false,
+  "passingFinalizedProducerEnvelope": false,
+  "releaseEligible": false,
+  "evidenceLimits": "Counts are observed from the sanitized child log. Storage samples are observations, not a measured peak. The three legacy snapshot fixture compatibility failures remain candidate gates."
+}

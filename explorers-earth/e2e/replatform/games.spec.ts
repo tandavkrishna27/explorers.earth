@@ -1,11 +1,42 @@
 import {assertFixtureOrigin} from './proxy-fixture-authority.mjs';
 import {readFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
-import {test,expect,type Page,type BrowserContext,type APIRequestContext} from '@playwright/test';
+import {test,expect,type Page,type BrowserContext,type APIRequestContext,type TestInfo} from '@playwright/test';
 type Persona={userId:string;cookie:string;handle:string};
 const fixture=JSON.parse(readFileSync(process.env.GAMES_E2E_FIXTURE_PATH!,'utf8')) as {origin:string;controlCapability:string;personas:{ownerA:Persona;ownerB:Persona}};
 assertFixtureOrigin(fixture);if(fixture.origin!==process.env.PLAYWRIGHT_EXTERNAL_BASE_URL)throw Error('Games fixture origin mismatch');
 const base='/api/explorers/v1';
+// Failure-only bounded metadata: values are fixed labels; no request payload or IDs leave this scope.
+type GameDiagnostic={stage:string;cause?:string};
+const gameDiagnostics=new WeakMap<TestInfo,{events:GameDiagnostic[];editPath:string;dispose:()=>void}>();
+function diagnoseEdit(page:Page,info:TestInfo,rowId:string){
+ const events:GameDiagnostic[]=[],seen=new Set<string>();
+ const record=(stage:string,cause?:string)=>{const key=stage+':'+(cause??'');if(!seen.has(key)&&events.length<16){seen.add(key);events.push({stage,...(cause?{cause}:{})});}};
+ const matches=(request:any)=>request.method()==='PATCH'&&new URL(request.url()).pathname===`${base}/recommendations/${rowId}`;
+ const request=(r:any)=>{if(matches(r))record('patch-request');};
+ const response=(r:any)=>{if(matches(r.request()))record('patch-response',r.status()===200?'response-ok':'response-error');};
+ const failed=(r:any)=>{if(matches(r))record('patch-failed',/abort/i.test(r.failure()?.errorText??'')?'request-aborted':'request-transport');};
+ page.on('request',request);page.on('response',response);page.on('requestfailed',failed);
+ gameDiagnostics.set(info,{events,editPath:new URL(page.url()).pathname,dispose:()=>{page.off('request',request);page.off('response',response);page.off('requestfailed',failed);}});
+ return record;
+}
+async function retainEditDiagnostics(page:Page,info:TestInfo){
+ const state=gameDiagnostics.get(info);if(!state)return;state.dispose();gameDiagnostics.delete(info);
+ if(info.status===info.expectedStatus)return;
+ let snapshotTimer:ReturnType<typeof setTimeout>|undefined;
+ // One synchronous DOM snapshot with a bounded wait. Raw alert strings are classified inside the browser.
+ try{
+  state.events.push({stage:'edit-state',cause:new URL(page.url()).pathname===state.editPath?'edit-route':'route-changed'});
+  const snapshot=await Promise.race([page.evaluate(()=>{
+   const button=Array.from(document.querySelectorAll('button')).find(b=>b.textContent?.trim()==='Save game');
+   const alerts=Array.from(document.querySelectorAll('[role=alert]')).map(a=>a.textContent??'');
+   const alert=alerts.some(a=>a.includes('Reload the game before saving')||a.includes('Reload the owner detail before saving'))?'observation-mismatch':alerts.some(a=>a.includes('Game owner or route changed')||a.includes('Games owner changed')||a.includes('Owner changed'))?'owner-scope-changed':alerts.some(a=>a.includes('Invalid input')||a.includes('validation')||a.includes('Invalid rich note'))?'validation-failure':alerts.length?'alert-other':null;
+   return {button:button?(button.disabled?'save-disabled':'save-enabled'):'save-absent',alert};
+  }),new Promise<never>((_,reject)=>{snapshotTimer=setTimeout(()=>reject(new Error('bounded state unavailable')),1000);})]);
+  state.events.push({stage:'edit-state',cause:snapshot.button});if(snapshot.alert)state.events.push({stage:'edit-state',cause:snapshot.alert});
+ }catch{state.events.push({stage:'edit-state',cause:'state-unavailable'});}finally{if(snapshotTimer!==undefined)clearTimeout(snapshotTimer);}
+ for(const event of state.events)info.errors.push({message:`[games-stage:${event.stage}]${event.cause?` [games-cause:${event.cause}]`:''}`});
+}
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==','base64');
 async function cookies(context:BrowserContext,owner:Persona){const i=owner.cookie.indexOf('=');await context.addCookies([{name:owner.cookie.slice(0,i),value:owner.cookie.slice(i+1),url:fixture.origin,sameSite:'Lax'}]);}
 async function signIn(page:Page,owner=fixture.personas.ownerA){await cookies(page.context(),owner);await page.route('**/*',r=>{const u=new URL(r.request().url());return u.origin===fixture.origin||['data:','blob:'].includes(u.protocol)?r.continue():r.abort();});const me=await page.request.get(`${base}/me`);expect(me.status()).toBe(200);const account=(await me.json()).account;expect(account.id).not.toBe(owner.userId);return account;}
@@ -24,15 +55,15 @@ async function continueVisible(page:Page,label:string,title:string){const target
 const publicCaseTitles=["Games manual: Home creates a native list and distinct same-title recommendations","Games manual: note and creator rating survive edit and reload without provider facts","Games manual: complete owner pages preserve memberships reorder and pin position zero","Games manual: Keep draft and Publish preserve keyboard decision and public state","Games manual: ready uploaded cover and gallery bytes enforce owner public and foreign attachment","Games manual: provider unavailable preserves draft and forbids browser credential authority","Games manual: anonymous category and list continuation reveal later rows and terminal state","Games manual: ancestor hide archive and suspension deny fresh and inflight public bytes","Games manual: two anonymous contexts and username transition never reuse private or late rows","Games manual: account and route changes fence every deferred save continuation"];
 function publicCaseTag(info:{project:{name:string};title:string}){const project=info.project.name==='games-desktop'?'desktop':info.project.name==='games-mobile'?'mobile':undefined,index=publicCaseTitles.indexOf(info.title);if(!project||index<0)throw Error('Unknown public case identity');return project+'-'+index;}
 test.beforeEach(async({page},info)=>{const bodyTimeout=info.timeout,started=performance.now();const response=await page.request.post('/api/__games-fixture/control',{headers:{Origin:fixture.origin,'x-games-fixture-capability':fixture.controlCapability},data:{action:'public-begin-'+publicCaseTag(info)},timeout:80000});const elapsed=Math.ceil(performance.now()-started);expect(response.status()).toBe(200);const receipt=await response.json();expect(Number.isInteger(receipt.waitMs)&&receipt.waitMs>=0&&receipt.waitMs<75000).toBe(true);expect(elapsed).toBeLessThan(80000);info.setTimeout(bodyTimeout+elapsed);});
-test.afterEach(async({page},info)=>{const response=await page.request.post('/api/__games-fixture/control',{headers:{Origin:fixture.origin,'x-games-fixture-capability':fixture.controlCapability},data:{action:'public-end-'+publicCaseTag(info)},timeout:20000});expect(response.status()).toBe(200);});
+test.afterEach(async({page},info)=>{try{await retainEditDiagnostics(page,info);}finally{const response=await page.request.post('/api/__games-fixture/control',{headers:{Origin:fixture.origin,'x-games-fixture-capability':fixture.controlCapability},data:{action:'public-end-'+publicCaseTag(info)},timeout:20000});expect(response.status()).toBe(200);}});
 
 test('Games manual: Home creates a native list and distinct same-title recommendations',async({page},info)=>{
  await signIn(page);const bad=monitor(page);await page.goto('/recommendations/games');await page.getByRole('button',{name:'New List',exact:true}).filter({visible:true}).first().click();await page.locator('input[name="List_Name"]').fill(`Browser ${info.project.name}`);const response=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname===`${base}/collections`);await page.getByRole('button',{name:'Create List',exact:true}).click();expect((await response).status()).toBe(201);const list=(await (await response).json()).collection;
  const ids:string[]=[];for(let n=0;n<2;n++){await form(page,list);const row=await save(page,'Same editorial title');ids.push(row.id);await expect(page).toHaveURL(new RegExp(`/recommendations/games/${list.id}$`));}expect(new Set(ids).size).toBe(2);await page.reload();await expect(page.getByText('Same editorial title',{exact:true})).toHaveCount(2);for(const id of ids){const detail=await editable(page.request,'recommendations',id);expect(detail.gamePresentation).toMatchObject({origin:'manual',providerExternalId:null,providerFacts:null});}expect(bad).toEqual([]);
 });
 
-test('Games manual: note and creator rating survive edit and reload without provider facts',async({page})=>{
- await signIn(page);const list=await createList(page.request,'Edit roundtrip');await form(page,list);await page.getByRole('combobox',{name:'Your rating',exact:true}).selectOption('8');await page.locator('[contenteditable=true]').fill('Native rich note 😀');const row=await save(page,'Manual edit');const initial=await editable(page.request,'recommendations',row.id);expect(initial.userRating).toBe(8);expect(initial.note.html.replaceAll('&nbsp;',' ')).toContain('Native rich note 😀');await page.goto(`/recommendations/games/${list.id}/edit/${row.id}`);await expect(page.getByLabel('Game title',{exact:true})).toHaveValue('Manual edit');await expect(page.getByRole('combobox',{name:'Your rating',exact:true})).toHaveValue('8');await page.getByRole('combobox',{name:'Your rating',exact:true}).selectOption('');await page.locator('[contenteditable=true]').fill('Revised note 😀');const patched=page.waitForResponse(r=>r.request().method()==='PATCH'&&new URL(r.url()).pathname===`${base}/recommendations/${row.id}`);await page.getByRole('button',{name:'Save game',exact:true}).click();expect((await patched).status()).toBe(200);await page.reload();const detail=await editable(page.request,'recommendations',row.id);expect(detail.userRating).toBeNull();expect(detail.note.html.replaceAll('&nbsp;',' ')).toContain('Revised note 😀');expect(detail.gamePresentation.providerFacts).toBeNull();
+test('Games manual: note and creator rating survive edit and reload without provider facts',async({page},info)=>{
+ await signIn(page);const list=await createList(page.request,'Edit roundtrip');await form(page,list);await page.getByRole('combobox',{name:'Your rating',exact:true}).selectOption('8');await page.locator('[contenteditable=true]').fill('Native rich note 😀');const row=await save(page,'Manual edit');const initial=await editable(page.request,'recommendations',row.id);expect(initial.userRating).toBe(8);expect(initial.note.html.replaceAll('&nbsp;',' ')).toContain('Native rich note 😀');await page.goto(`/recommendations/games/${list.id}/edit/${row.id}`);await expect(page.getByLabel('Game title',{exact:true})).toHaveValue('Manual edit');await expect(page.getByRole('combobox',{name:'Your rating',exact:true})).toHaveValue('8');await page.getByRole('combobox',{name:'Your rating',exact:true}).selectOption('');await page.locator('[contenteditable=true]').fill('Revised note 😀');const record=diagnoseEdit(page,info,row.id);record('edit-waiter-registered');const patched=page.waitForResponse(r=>r.request().method()==='PATCH'&&new URL(r.url()).pathname===`${base}/recommendations/${row.id}`);record('save-click-started');await page.getByRole('button',{name:'Save game',exact:true}).click();record('save-click-completed');expect((await patched).status()).toBe(200);await page.reload();const detail=await editable(page.request,'recommendations',row.id);expect(detail.userRating).toBeNull();expect(detail.note.html.replaceAll('&nbsp;',' ')).toContain('Revised note 😀');expect(detail.gamePresentation.providerFacts).toBeNull();
 });
 
 test('Games manual: complete owner pages preserve memberships reorder and pin position zero',async({page})=>{

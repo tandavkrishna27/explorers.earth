@@ -8,6 +8,16 @@ The preceding clean implementation91aa9e66 protected94/94 local identities remai
 
 ## Current outcome
 
+### Latest execution: 42a5524e
+
+Clean source `42a5524e80071742745b3195077282a5f6305d37` passed the real owned Music startup preflight **38/38**, with cleanup passed. Its [receipt](receipts/wave2-42a5524e/music-preflight.json) qualifies that source only.
+
+The owned database suite completed **239/242 tests**, with three failures and zero skips across 21 files (19 passed, two failed). All four new canonical public lifecycle regressions and all eleven canonical identity tests passed; the migration suite completed after the capacity repair. The three failures share `fixture restore trigger authority mismatch`: the older snapshot inventory omits 48 triggers from migrations 0043–0050, including 26 revision triggers. Migration 0052 is already inventoried correctly. These compatibility gates remain open for the coordinated fixture work; they are not waived. The [failure record](receipts/wave2-42a5524e/owned-uat-failure.json) records the absence of a passing producer envelope and unproven database-drop success. The owned container was removed. Retained storage samples are observations, not a measured peak.
+
+The protected 118-identity browser run then **failed before Music**. Auth, profile, Books, lifecycle and Movies passed all 74 identities; Games passed 19 and timed out on one desktop manual edit/reload identity, with zero skips or retries and cleanup passed. Music was not run. [Qualification](receipts/wave2-42a5524e/qualification.json) and [Games failure](receipts/wave2-42a5524e/games-failure.json) are retained. Diagnosis identifies the edit PATCH response waiter as the failure boundary; it cannot yet distinguish a stalled Save action, pre-fetch rejection, aborted request or backend stall. A bounded diagnostic change is being prepared before another supported aggregate run. No production repair is justified by the existing receipt alone, and no release eligibility or push follows.
+
+### Earlier source receipts
+
 Clean source `e01ea86cbbc177961cc4ecf4121b8b76c0137b63` passed the real owned preflight **38/38**: one positive production startup/admission/shutdown case and 37 isolated rejection cases. Cleanup passed. Additional coverage inventory remains unexecuted.
 
 The protected 118-identity browser run on that same source finished **failed**: all preceding 94 identities passed; Music passed 13 and failed 11, with zero skips or retries. Cleanup passed, source remained intact, and interruption was false. [Exact-source qualification](receipts/wave2-e01ea86c/qualification.json), [Music failure](receipts/wave2-e01ea86c/music-failure.json), [lifecycle failure](receipts/wave2-e01ea86c/music-lifecycle-failure.json), and [owned preflight](receipts/wave2-e01ea86c/music-preflight.json) are retained. These results confer no release eligibility.

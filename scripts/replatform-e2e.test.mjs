@@ -214,3 +214,15 @@ const stalled=spawn(process.execPath,['-e',"process.send('ready');setInterval(()
   assert.equal(result.status,0);assert.equal(result.signal,null);
  }finally{rmSync(directory,{recursive:true,force:true});}
 });
+
+test('Games diagnostics retain fixed stages and causes without private data',()=>{
+ const lane=manifest().lanes.find(l=>l.name==='games'),report=rawReport(lane,true);
+ for(const [stage,cause] of [['patch-request','request-aborted'],['save-click-completed','save-enabled'],['edit-state','observation-mismatch']]){
+  report.suites[0].specs[1].tests[0].results[0]={status:'failed',retry:0,error:{message:`[games-stage:${stage}] [games-cause:${cause}] cookie=DO_NOT_EXPORT`}};
+  const diagnostics=decodeProtectedFailureDiagnostics(report,lane,process.cwd());assert.equal(diagnostics[0].stage,stage);assert.equal(diagnostics[0].cause,cause);assert.doesNotMatch(JSON.stringify(diagnostics),/cookie|DO_NOT_EXPORT/);
+  const c=structuredClone(child(lane));c.status=1;const failure={version:1,lane:lane.name,provenance,results:c.receipt.results,child:{status:1,signal:null},cleanup:{status:'passed'},artifacts:c.receipt.artifacts,diagnostics};assert.doesNotThrow(()=>validateFailureRecord(lane,failure,provenance,c));
+  for(const field of ['stage','cause'])for(const value of ['private-cookie','',null,{},'patch-request cookie']){const changed=structuredClone(failure);changed.diagnostics[0][field]=value;assert.throws(()=>validateFailureRecord(lane,changed,provenance,c));}
+ }
+ report.suites[0].specs[1].tests[0].results[0].error.message='[games-stage:secret] [games-cause:secret]';const safe=decodeProtectedFailureDiagnostics(report,lane,process.cwd())[0];assert.equal(Object.hasOwn(safe,'stage'),false);assert.equal(Object.hasOwn(safe,'cause'),false);
+ const other=manifest().lanes[0],otherReport=rawReport(other,true);otherReport.suites[0].specs[1].tests[0].results[0]={status:'failed',retry:0,error:{message:'[games-stage:patch-request] [games-cause:request-aborted]'}};const cross=decodeProtectedFailureDiagnostics(otherReport,other,process.cwd())[0];assert.equal(Object.hasOwn(cross,'stage'),false);assert.equal(Object.hasOwn(cross,'cause'),false);
+});
