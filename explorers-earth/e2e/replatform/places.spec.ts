@@ -1,6 +1,6 @@
 import {readFileSync} from 'node:fs';
 import {createHash, randomUUID} from 'node:crypto';
-import {test, expect, type Browser, type Page, type TestInfo, type Locator, type Response as BrowserResponse} from '@playwright/test';
+import {test, expect, type Browser, type Page, type TestInfo, type Locator, type Response as BrowserResponse, type Request as BrowserRequest, type ConsoleMessage} from '@playwright/test';
 import {assertFixtureOrigin} from './proxy-fixture-authority.mjs';
 import {installPlacesProviderTransport} from '../setup/places-provider-transport';
 import type {PlacesManifest, PlacesPersona} from '../../../tunes/scripts/places-browser-support';
@@ -202,9 +202,45 @@ test('Places: retained location create edit and reload preserve zero and absent 
   await page.locator('input[name="placeUrl"]').fill('edited-fixture-city');
   await page.locator('textarea[name="note"]').fill('Edited fixture note');
   await page.locator('input[name="recommendationSocialLink"]').fill('https://www.instagram.com/editedfixturecity/');
+  // Diagnostic state contains counts/status and fixed classifications only, never console payloads or DTOs.
+  let originalGuardRefused=false,updateError=false,editableRequests=0,patchRequests=0;
+  const editableStatuses:number[]=[],patchStatuses:number[]=[];
+  const countRequest=(request:BrowserRequest)=>{
+    const pathname=new URL(request.url()).pathname;
+    if(pathname===`${base}/collections/${id}/editable` && request.method()==='GET')editableRequests++;
+    if(pathname===`${base}/collections/${id}` && request.method()==='PATCH')patchRequests++;
+  };
+  const countResponse=(response:BrowserResponse)=>{
+    const pathname=new URL(response.url()).pathname;
+    if(pathname===`${base}/collections/${id}/editable` && response.request().method()==='GET')editableStatuses.push(response.status());
+    if(pathname===`${base}/collections/${id}` && response.request().method()==='PATCH')patchStatuses.push(response.status());
+  };
+  const classifyConsole=(message:ConsoleMessage)=>{
+    if(message.type()!=='error')return;
+    originalGuardRefused ||= message.text().includes('Reload the original location before editing');
+    updateError ||= message.text().includes('Failed to update recommendation list:');
+  };
+  page.on('request',countRequest);page.on('response',countResponse);page.on('console',classifyConsole);
   const updated=page.waitForResponse(r=>new URL(r.url()).pathname===`${base}/collections/${id}` && r.request().method()==='PATCH');
-  await page.getByRole('button',{name:'Update Location',exact:true}).click();
-  const update=await updated;expect(update.status()).toBe(200);expect(update.request().postDataJSON().expectedRevision).toBe(before.revision);
+  void updated.catch(()=>{}); // Earlier diagnostic failure must not produce an unhandled pending waiter.
+  let update:BrowserResponse;
+  try {
+    await page.getByRole('button',{name:'Update Location',exact:true}).click();
+    const form=page.locator('input[name="placeUrl"]').locator('xpath=ancestor::form');
+    const validation=()=>form.getByText(/^(List Name is Required|Url name is Required)$/).count();
+    try {update=await updated;} catch(error) {
+      // Classify only at the existing mandatory PATCH wait boundary; no added readiness wait.
+      expect(originalGuardRefused).toBe(false);
+      expect(await validation()>0).toBe(false);
+      expect(editableStatuses.some(status=>status!==200)).toBe(false);
+      expect(updateError && patchRequests===0).toBe(false);
+      expect(patchRequests>0).toBe(true);
+      expect(editableRequests>0).toBe(true);
+      expect(patchStatuses.length>0).toBe(true);
+      throw error;
+    }
+    expect(update.status()).toBe(200);expect(update.request().postDataJSON().expectedRevision).toBe(before.revision);
+  } finally {page.off('request',countRequest);page.off('response',countResponse);page.off('console',classifyConsole);}
   await expect.poll(async ()=>(await editable('collections',id)).slug).toBe('edited-fixture-city');
   const after=await editable('collections',id);
   same(after.placeLocation.locationSnapshot,before.placeLocation.locationSnapshot);
@@ -219,17 +255,17 @@ test('Places: retained location create edit and reload preserve zero and absent 
 test('Places: complete owner and anonymous pages contain every seeded list and recommendation',async ({page,browser})=>{
   await appPage(page,manifest.personas.ownerA);await page.goto('/recommendations/places');
   const owner=await complete('places'),lists=aLists();
-  same(owner.collections.filter(c=>!c.archived).sort((a,b)=>a.displayOrder-b.displayOrder).map(c=>c.id),manifest.expectedPublic.placesCollectionIds);
+  expect(JSON.stringify(owner.collections.filter(c=>!c.archived).sort((a,b)=>a.displayOrder-b.displayOrder).map(c=>c.id))===JSON.stringify(manifest.expectedPublic.placesCollectionIds)).toBe(true);
   const members=owner.memberships.filter(m=>m.collectionId===lists[0].id).sort((a,b)=>a.displayOrder-b.displayOrder);
-  same(members.map(m=>m.recommendationId),manifest.expectedPublic.recommendationIds);
-  same(members.map(m=>m.displayOrder),Array.from({length:53},(_,i)=>i));expect(owner.recommendations.length).toBe(53);
+  expect(JSON.stringify(members.map(m=>m.recommendationId))===JSON.stringify(manifest.expectedPublic.recommendationIds)).toBe(true);
+  expect(JSON.stringify(members.map(m=>m.displayOrder))===JSON.stringify(Array.from({length:53},(_,i)=>i))).toBe(true);expect(owner.recommendations.length).toBe(53);
   const categoryIds:string[]=[];
   for(const [offset,size] of [[0,24],[24,24],[48,5],[53,0]]) {
     const dto=await json(`${publicPath()}?limit=24${offset?`&cursor=o${offset}`:''}`);
     expect(dto.recommendationLists.length).toBe(size);categoryIds.push(...dto.recommendationLists.map((c:Dto)=>c.documentId));
     if(offset===0)expect(dto.recommendationLists[0].recommended_places.length).toBe(12);
   }
-  same(categoryIds,manifest.expectedPublic.placesCollectionIds);expect(new Set(categoryIds).size).toBe(53);
+  expect(JSON.stringify(categoryIds)===JSON.stringify(manifest.expectedPublic.placesCollectionIds)).toBe(true);expect(new Set(categoryIds).size).toBe(53);
   const recommendationIds:string[]=[],sizes:number[]=[];let cursor:string|null=null;
   do {
     const dto=await json(`${publicPath(lists[0].slug)}?limit=24${cursor?`&cursor=${cursor}`:''}`);
@@ -237,7 +273,8 @@ test('Places: complete owner and anonymous pages contain every seeded list and r
     recommendationIds.push(...row.recommended_places.map((r:Dto)=>r.documentId));cursor=row.recommended_places_next_cursor;
     expect(sizes.length).toBeLessThanOrEqual(3);expect(cursor).toBe(sizes.length===3?null:`o${sizes.length*24}`);
   } while(cursor);
-  same(sizes,[24,24,5]);same(recommendationIds,manifest.expectedPublic.recommendationIds);expect(new Set(recommendationIds).size).toBe(53);
+  expect(JSON.stringify(sizes)===JSON.stringify([24,24,5])).toBe(true);
+  expect(JSON.stringify(recommendationIds)===JSON.stringify(manifest.expectedPublic.recommendationIds)).toBe(true);expect(new Set(recommendationIds).size).toBe(53);
   const anon=await anonymous(browser);
   try {
     const categoryPages=recordPublicPages(anon.page,publicPath(),false);
@@ -245,19 +282,20 @@ test('Places: complete owner and anonymous pages contain every seeded list and r
     const headings=anon.page.locator('h2').filter({hasText:/^(Owned Zero City|Owned Absent City|Owned City C\d\d)$/});
     await exhaustRendered(anon.page,headings,'city lists',12);
     for(const row of lists)await expect(anon.page.getByRole('heading',{name:row.title,exact:true}).filter({visible:true}).first()).toBeVisible();
-    same((await headings.allTextContents()).map(title=>title.trim()),lists.map(row=>row.title));
+    expect(JSON.stringify((await headings.allTextContents()).map(title=>title.trim()))===JSON.stringify(lists.map(row=>row.title))).toBe(true);
     const categoryResponses=await categoryPages();
-    same(categoryResponses.map(row=>[row.offset,row.limit,row.ids.length]),[[0,12,12],[12,12,12],[24,12,12],[36,12,12],[48,12,5]]);
-    same(categoryResponses.flatMap(row=>row.ids),manifest.expectedPublic.placesCollectionIds);
+    expect(JSON.stringify(categoryResponses.map(row=>[row.offset,row.limit,row.ids.length]))===JSON.stringify([[0,12,12],[12,12,12],[24,12,12],[36,12,12],[48,12,5]])).toBe(true);
+    expect(JSON.stringify(categoryResponses.flatMap(row=>row.ids))===JSON.stringify(manifest.expectedPublic.placesCollectionIds)).toBe(true);
     const detailPages=recordPublicPages(anon.page,publicPath(lists[0].slug),true);
     await anon.page.goto(`/${manifest.personas.ownerA.handle}/places/${lists[0].slug}`);
     const cards=anon.page.locator('button[aria-label^="Owned Place R"]');
     await exhaustRendered(anon.page,cards,'places',24);
     const titles=manifest.recommendations.filter(r=>r.collectionId===lists[0].id).map(r=>r.title);
     for(const title of titles)await expect(anon.page.getByRole('button',{name:title,exact:true})).toBeVisible();
-    same(await cards.evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label'))),titles);
-    const detailResponses=await detailPages();same(detailResponses.map(row=>[row.offset,row.limit,row.ids.length,row.terminal]),[[0,24,24,false],[24,24,24,false],[48,24,5,true]]);
-    same(detailResponses.flatMap(row=>row.ids),manifest.expectedPublic.recommendationIds);
+    expect(JSON.stringify(await cards.evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label'))))===JSON.stringify(titles)).toBe(true);
+    const detailResponses=await detailPages();
+    expect(JSON.stringify(detailResponses.map(row=>[row.offset,row.limit,row.ids.length,row.terminal]))===JSON.stringify([[0,24,24,false],[24,24,24,false],[48,24,5,true]])).toBe(true);
+    expect(JSON.stringify(detailResponses.flatMap(row=>row.ids))===JSON.stringify(manifest.expectedPublic.recommendationIds)).toBe(true);
     await anon.page.goto(`/${manifest.personas.ownerA.handle}/places/${lists[52].slug}`);await anon.page.reload();
     await expect(anon.page.getByText(lists[52].title,{exact:true}).filter({visible:true}).first()).toBeVisible();
     anon.transport.assertExpected();
@@ -302,7 +340,7 @@ test('Places: foreign owner edits and private contact reads cannot disclose owne
     await anon.page.getByRole('button',{name:rec.title,exact:true}).click();
     await expect(anon.page.getByText('Owned private contact',{exact:true})).toHaveCount(0);
     expect(!(await anon.page.locator('body').innerText()).includes('+15550001111')).toBe(true);
-    const callButton=anon.page.getByText('Call',{exact:true}).locator('..').getByRole('button');
+    const callButton=anon.page.getByRole('dialog',{name:'Place details',exact:true}).locator('[data-public-place-detail]').getByText('Call',{exact:true}).locator('..').getByRole('button');
     await expect(callButton).toBeDisabled();
     // No retained disclosure toggle exists: explicit canonical API contact transition.
     const current=await editable('recommendations',rec.id);
@@ -313,6 +351,6 @@ test('Places: foreign owner edits and private contact reads cannot disclose owne
     expect(published.Contact_Name==='Owned private contact' && published.Contact_Number==='+15550001111').toBe(true);
     same(published.Place_Details.Public_Phone,privateDto.recommendationLists[0].recommended_places[0].Place_Details.Public_Phone);
     await anon.page.reload();await anon.page.getByRole('button',{name:rec.title,exact:true}).click();
-    await expect(anon.page.getByText('Call',{exact:true}).locator('..').getByRole('button')).toBeEnabled();anon.transport.assertExpected();
+    await expect(anon.page.getByRole('dialog',{name:'Place details',exact:true}).locator('[data-public-place-detail]').getByText('Call',{exact:true}).locator('..').getByRole('button')).toBeEnabled();anon.transport.assertExpected();
   } finally {await anon.context.close();}
 });
