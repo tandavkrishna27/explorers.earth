@@ -507,6 +507,7 @@ export const explorersApiClient = {
   },
   async updateMyCollection(observed:CollectionObservation,patch:Omit<UpdateCollectionInput,'expectedRevision'>,key:string,signal?:AbortSignal) {
    assertOwnerDetailObservation(observed,'collection');const editable=commandInput(updateCollectionSchema.innerType().omit({expectedRevision:true}).strict(),patch);
+   if(editable.slug!==undefined&&observed.detail.category!=='places')throw new ExplorersApiError(422,'INVALID_INPUT','Invalid content command');
    const body=commandInput(updateCollectionSchema,{...editable,expectedRevision:observed.resourceRevision});return contentCommand(`/collections/${observed.resourceId}`,'PATCH',body,key,'collection',collectionCoreDtoSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
   },
   /**

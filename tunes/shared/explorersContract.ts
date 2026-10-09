@@ -87,7 +87,8 @@ export const createCollectionSchema = z.object({category:contentCategorySchema,t
   parentLocationCollectionId:contentIdSchema.optional()}).strict()
   .refine(v=>v.placeLocation===undefined||v.category==='places','A location aggregate requires the places category')
   .refine(v=>v.parentLocationCollectionId===undefined||v.category==='products'||v.category==='people','Only Products and People lists link to a location');
-export const updateCollectionSchema = z.object({expectedRevision:contentRevision,title:contentTitle.optional(),
+// Slug syntax is shared; admission is restricted by issued/stored Places category.
+export const updateCollectionSchema = z.object({expectedRevision:contentRevision,title:contentTitle.optional(),slug:contentSlug.optional(),
   visibility:contentVisibility.optional(),publicationState:publicationState.optional(),description:collectionPlainText.optional(),
   heading:collectionHeading.optional(),coverMediaId:contentIdSchema.nullable().optional(),placeLocation:placeCollectionDetailsSchema.optional(),
   // A list's own place among its category's lists. displayOrder is where it sits;
