@@ -8,6 +8,14 @@ The preceding clean implementation91aa9e66 protected94/94 local identities remai
 
 ## Current outcome
 
+### Collection-cover repair: expected RED
+
+Independent review cleared the bounded Places/Products/People collection-cover branch and seven integration identities. A coverage finding was fixed before execution: a real eligible wrong-environment attachment now proves rejection before any storage read, with positive local controls. Guarded UAT registration expanded from 21 to 22 files; expected RED1 became GREEN43 for registration/evidence contracts, and scoped review was clear.
+
+Clean test-only source `3c0f01a86957b45cc494a7c7ea9cbcf39f4735ec`, retaining the unchanged production media repository, ran the acknowledged owned suite: **239 passed, 10 failed, zero skipped / 249 tests** across 22 files. All seven new cover cases failed their first positive anonymous GET with 404 instead of 200; the same three legacy snapshot authority failures remained. The [RED record](receipts/wave2-cover-3c0f01a8-red.json) retains its cleanup/evidence limits. This establishes the missing cover eligibility, not a pass for the repair.
+
+The exact reviewed production branch is now restored for integration. Root ruling allocates the snapshot repair as bounded inventory/revision replay metadata compatibility before combined GREEN: all 48 migration-derived fingerprints and 26 revision mappings must align, while integrity guards, source/catalog/function authority and counters remain protected. No production migration or runtime fixture cutover is part of that repair. Actual GREEN execution remains pending.
+
 ### Browser qualification: 7f536e55
 
 Clean source `7f536e55b8664ee1387149626a37f0653cc467c0` passed the supported protected aggregate: **118/118 identities**, including all 24 Music identities, with zero unexpected results and successful Music cleanup. The worktree was clean after terminal execution. [Exact-source qualification](receipts/wave2-7f536e55/qualification.json) and all seven lane receipts are retained. Overall parity is incomplete and release eligibility remains false. The earlier Games timeout has not acquired a proven root cause: the intervening change added diagnostics only, so this pass does not establish a production repair.

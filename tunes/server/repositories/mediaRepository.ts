@@ -65,6 +65,16 @@ export class MediaRepository {
       SELECT 1 FROM profile_feed_items pf JOIN creator_accounts a ON a.id=pf.account_id
       WHERE pf.media_id=$1 AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile=true
       UNION ALL
+      SELECT 1 FROM collection_media cm
+      JOIN media_assets m ON m.id=cm.media_id AND m.account_id=cm.account_id
+      JOIN collections c ON c.id=cm.collection_id AND c.account_id=cm.account_id
+      JOIN creator_accounts a ON a.id=c.account_id
+      JOIN account_category_settings s ON s.account_id=c.account_id AND s.category=c.category
+      WHERE cm.media_id=$1 AND cm.slot='cover' AND m.purpose='collection'
+        AND c.category IN ('places','products','people')
+        AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile
+        AND s.is_public AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'
+      UNION ALL
       SELECT 1 FROM (SELECT recommendation_id,account_id,media_id,NULL::uuid AS source_entity_id,NULL::text AS required_category FROM recommendation_media UNION ALL SELECT recommendation_id,account_id,media_id,NULL::uuid,'books'::text FROM recommendation_book_covers UNION ALL SELECT recommendation_id,account_id,media_id,source_entity_id,'movies'::text FROM recommendation_movie_media) rm
       JOIN recommendations r ON r.id=rm.recommendation_id AND r.account_id=rm.account_id
       JOIN collection_items ci ON ci.recommendation_id=r.id AND ci.account_id=r.account_id AND ci.category=r.category
