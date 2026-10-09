@@ -19,6 +19,15 @@ const root = resolve(import.meta.dirname, '../..'), tunes = join(root, 'tunes');
 const scriptDigest = () => createHash('sha256').update(readFileSync(import.meta.filename)).digest('hex');
 const rejection = 'Owned preflight rejected';
 type Result = { case: string; outcome: 'positive' | 'rejected'; listener: boolean; graceful: boolean; phase: string };
+type Failure = { phase: string; locations: { source: string; line: number; column: number }[] };
+function failureDiagnostic(error: unknown, phase: string): Failure {
+  const sources = new Set(['music-owned-browser-preflight.ts', 'music-owned-browser-profile.ts', 'music-startup.ts', 'music-database-config.ts', 'secure-music-secret-file.ts', 'music-runtime-role.ts', 'readiness.ts']);
+  const locations: Failure['locations'] = [];
+  if (error instanceof Error) for (const match of (error.stack ?? '').matchAll(/[\\/]([^\\/:()\s]+):(\d+):(\d+)/g)) {
+    if (sources.has(match[1]) && locations.length < 4) locations.push({ source: match[1], line: Number(match[2]), column: Number(match[3]) });
+  }
+  return { phase, locations };
+}
 function bounded<T>(operation: Promise<T>, milliseconds = 35000): Promise<T> {
   return new Promise((done, reject) => { const timer = setTimeout(() => reject(new Error(rejection)), milliseconds); operation.then(value => { clearTimeout(timer); done(value); }, error => { clearTimeout(timer); reject(error); }); });
 }
@@ -95,7 +104,7 @@ async function childMain() {
   } catch (error) {
     if (input.case !== 'positive' && !admitted && phase === 'admission' && !(error instanceof Error && error.message === 'Negative synchronization source mismatch') && (!input.barrier || barrierSeen)) {
       process.send!({ action: 'result', result: { case: input.case, outcome: 'rejected', listener: false, graceful: true, phase } });
-    } else { process.send!({ action: 'failed', phase }); process.exitCode = 1; }
+    } else { process.send!({ action: 'failed', diagnostic: failureDiagnostic(error, phase) }); process.exitCode = 1; }
   } finally {
     hook?.deregister(); delete (globalThis as any).__ownedNegativeBarrier;
     if (started?.server.listening) await bounded(started.shutdown(), 10000).catch(() => { process.exitCode = 1; });
@@ -112,6 +121,7 @@ async function main() {
   const runId = randomBytes(16).toString('hex'), capability = randomBytes(32).toString('hex');
   const directory = join(tmpdir(), `explorers-music-e2e-${runId}`), results: Result[] = [], cleanupFailures: string[] = [], children = new Set<ChildProcess>();
   let authority: OwnedUatDatabaseAuthority | undefined, migrator: ReturnType<typeof ownedPool> | undefined, runtime: ReturnType<typeof ownedPool> | undefined, interrupted = false, failed = false, phase = 'private-files';
+  let childFailure: Failure | undefined;
   const interrupt = () => { interrupted = true; for (const child of children) child.kill(); };
   const continuing = () => { if (interrupted) throw new Error(rejection); unchanged(); };
   process.once('SIGINT', interrupt); process.once('SIGTERM', interrupt);
@@ -140,7 +150,10 @@ async function main() {
       owners.push(await bounded(ensureInitialAccount(runtime.pool, userId))); continuing();
     }
     const authSecret = randomBytes(32).toString('hex'), authConfig = { googleClientId: 'owned-google-fixture', googleClientSecret: 'owned-google-fixture-only' }, pinnedNode = process.execPath;
-    const environment: NodeJS.ProcessEnv = { ...process.env, PATH: `${dirname(pinnedNode)}${delimiter}${process.env.PATH ?? ''}`, NODE_ENV: 'test', TZ: 'UTC', PORT: String(musicPort), EXPLORERS_PUBLIC_ORIGIN: browserOrigin, EXPLORERS_AUTH_SECRET: authSecret, GOOGLE_CLIENT_ID: authConfig.googleClientId, GOOGLE_CLIENT_SECRET: authConfig.googleClientSecret, MUSIC_MODE: 'fixture', MUSIC_DATABASE_HOST: '127.0.0.1', MUSIC_DATABASE_PORT: String(pgPort), MUSIC_DATABASE_NAME: authority.database, MUSIC_DATABASE_USER: runtimeRole, MUSIC_DATABASE_MIGRATOR_USER: 'music_migrator', MUSIC_DATABASE_PASSWORD_FILE: runtimePasswordFile, MUSIC_TOKEN_CURRENT_KID: `owned-${runId}`, MUSIC_TOKEN_CURRENT_SECRET_FILE: tokenSecretFile, MUSIC_TOKEN_LIFETIME_SECONDS: '600', MUSIC_TOKEN_CLOCK_SKEW_SECONDS: '0', MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: 'fixture-publication-v1', MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: 'fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI', MUSIC_PUBLIC_ID_HMAC_KEY: 'VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ', SESSION_SECRET: randomBytes(32).toString('base64url'), COOKIE_SECRET: randomBytes(32).toString('base64url'), STRAPI_JWT_SECRET: randomBytes(32).toString('base64url'), ALLOWED_ORIGINS: browserOrigin, STRAPI_URL: controlOrigin, MUSIC_FIXTURE_STRAPI_ORIGIN: controlOrigin, STRAPI_ACCESS_TOKEN: 'fixture-read-only-token', STRAPI_LIFECYCLE_PROOF_TOKEN: 'fixture-read-only-token', TRUST_PROXY_HOPS: '0', YOUTUBE_API_KEY: 'fixture-provider-key', MUSIC_PROVISIONING_KILL_SWITCH: 'true', MUSIC_PROVISIONING_COHORT: 'disabled', MUSIC_NEW_ENTRY_KILL_SWITCH: 'true', MUSIC_RECONCILIATION_ENABLED: 'false', MUSIC_RECONCILIATION_MAX_ROWS: '0', MUSIC_RECONCILIATION_APPLY_ENABLED: 'false', MUSIC_WORKSPACE_KILL_SWITCH: 'false', MUSIC_FEATURE_OWNER_WORKSPACE_ALLOWLIST: owners.map(value => value.accountId).join(','), MUSIC_FEATURE_GUEST_WORKSPACE_ALLOWLIST: owners.map(value => value.accountId).join(','), MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: '0', MUSIC_FEATURE_GUEST_WORKSPACE_PERCENT: '0', MUSIC_FEATURE_PLAYLIST_IMPORTS_ALLOWLIST: '', MUSIC_FEATURE_PLAYLIST_IMPORTS_PERCENT: '0', MUSIC_FEATURE_COHORT_VERSION: `owned-browser-${runId}`, MUSIC_FEATURE_COHORT_SALT: runId, MUSIC_FIXTURE_SKIP_ANALYTICS_SCHEMA_DDL: 'true', MUSIC_FIXTURE_ANALYTICS_SCHEMA_MARKER: 'explorers-analytics-receipts-v1' };
+    const inherited = { ...process.env };
+    // Windows child_process keeps one case-insensitive key; marker must bind that exact environment.
+    if (process.platform === 'win32') for (const key of Object.keys(inherited)) if (key.toLowerCase() === 'path') delete inherited[key];
+    const environment: NodeJS.ProcessEnv = { ...inherited, PATH: `${dirname(pinnedNode)}${delimiter}${process.env.PATH ?? ''}`, NODE_ENV: 'test', TZ: 'UTC', PORT: String(musicPort), EXPLORERS_PUBLIC_ORIGIN: browserOrigin, EXPLORERS_AUTH_SECRET: authSecret, GOOGLE_CLIENT_ID: authConfig.googleClientId, GOOGLE_CLIENT_SECRET: authConfig.googleClientSecret, MUSIC_MODE: 'fixture', MUSIC_DATABASE_HOST: '127.0.0.1', MUSIC_DATABASE_PORT: String(pgPort), MUSIC_DATABASE_NAME: authority.database, MUSIC_DATABASE_USER: runtimeRole, MUSIC_DATABASE_MIGRATOR_USER: 'music_migrator', MUSIC_DATABASE_PASSWORD_FILE: runtimePasswordFile, MUSIC_TOKEN_CURRENT_KID: `owned-${runId}`, MUSIC_TOKEN_CURRENT_SECRET_FILE: tokenSecretFile, MUSIC_TOKEN_LIFETIME_SECONDS: '600', MUSIC_TOKEN_CLOCK_SKEW_SECONDS: '0', MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: 'fixture-publication-v1', MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: 'fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI', MUSIC_PUBLIC_ID_HMAC_KEY: 'VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ', SESSION_SECRET: randomBytes(32).toString('base64url'), COOKIE_SECRET: randomBytes(32).toString('base64url'), STRAPI_JWT_SECRET: randomBytes(32).toString('base64url'), ALLOWED_ORIGINS: browserOrigin, STRAPI_URL: controlOrigin, MUSIC_FIXTURE_STRAPI_ORIGIN: controlOrigin, STRAPI_ACCESS_TOKEN: 'fixture-read-only-token', STRAPI_LIFECYCLE_PROOF_TOKEN: 'fixture-read-only-token', TRUST_PROXY_HOPS: '0', YOUTUBE_API_KEY: 'fixture-provider-key', MUSIC_PROVISIONING_KILL_SWITCH: 'true', MUSIC_PROVISIONING_COHORT: 'disabled', MUSIC_NEW_ENTRY_KILL_SWITCH: 'true', MUSIC_RECONCILIATION_ENABLED: 'false', MUSIC_RECONCILIATION_MAX_ROWS: '0', MUSIC_RECONCILIATION_APPLY_ENABLED: 'false', MUSIC_WORKSPACE_KILL_SWITCH: 'false', MUSIC_FEATURE_OWNER_WORKSPACE_ALLOWLIST: owners.map(value => value.accountId).join(','), MUSIC_FEATURE_GUEST_WORKSPACE_ALLOWLIST: owners.map(value => value.accountId).join(','), MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: '0', MUSIC_FEATURE_GUEST_WORKSPACE_PERCENT: '0', MUSIC_FEATURE_PLAYLIST_IMPORTS_ALLOWLIST: '', MUSIC_FEATURE_PLAYLIST_IMPORTS_PERCENT: '0', MUSIC_FEATURE_COHORT_VERSION: `owned-browser-${runId}`, MUSIC_FEATURE_COHORT_SALT: runId, MUSIC_FIXTURE_SKIP_ANALYTICS_SCHEMA_DDL: 'true', MUSIC_FIXTURE_ANALYTICS_SCHEMA_MARKER: 'explorers-analytics-receipts-v1' };
     const markerPath = join(directory, 'startup-marker.json');
     const marker = { version: 1, root, runId, commit, provenance: createHash('sha256').update(JSON.stringify(provenance)).digest('hex'), authority: { database: authority.database, port: authority.port, containerId: authority.containerId, imageId: authority.imageId }, runtimeRole, runtimePasswordFile, migratorPasswordFile, tokenSecretFile, capabilityFile, browserOrigin, canonicalPort, musicPort, accounts: owners.map(value => value.accountId), environment };
     async function runCase(name: string, mutate: (candidate: typeof marker, env: NodeJS.ProcessEnv) => void = () => {}, race?: () => void, barrier = 'after-initial') {
@@ -156,7 +169,14 @@ async function main() {
           child.on('message', (message: any) => {
             if (message?.action === 'barrier' && race) { try { continuing(); race(); child.send({ action: 'resume', capability }); } catch { reject(new Error(rejection)); } }
             else if (message?.action === 'result') received = message.result;
-            else if (message?.action === 'failed') reject(new Error(rejection));
+            else if (message?.action === 'failed') {
+              const diagnostic = message.diagnostic;
+              if (diagnostic && ['admission', 'production-startup', 'shutdown'].includes(diagnostic.phase) && Array.isArray(diagnostic.locations)) {
+                const safeSources = new Set(['music-owned-browser-preflight.ts', 'music-owned-browser-profile.ts', 'music-startup.ts', 'music-database-config.ts', 'secure-music-secret-file.ts', 'music-runtime-role.ts', 'readiness.ts']);
+                childFailure = { phase: diagnostic.phase, locations: diagnostic.locations.filter((item: any) => safeSources.has(item?.source) && Number.isSafeInteger(item.line) && item.line > 0 && Number.isSafeInteger(item.column) && item.column > 0).slice(0, 4).map((item: any) => ({ source: item.source, line: item.line, column: item.column })) };
+              }
+              reject(new Error(rejection));
+            }
           });
           child.send({ action: 'initialize', case: name, markerPath, capability: name === 'capability-mismatch' ? '0'.repeat(64) : capability, scriptDigest: ownDigest, barrier: race ? barrier : undefined });
         }), 60000);
@@ -228,7 +248,7 @@ async function main() {
     try { if (existsSync(directory)) { if (realpathSync(directory) !== resolve(directory) || dirname(directory) !== resolve(tmpdir()) || !/^explorers-music-e2e-[a-f0-9]{32}$/.test(directory.slice(dirname(directory).length + 1))) throw new Error(rejection); rmSync(directory, { recursive: true, force: true }); } } catch { cleanupFailures.push('private-files'); }
     try { unchanged(); } catch { cleanupFailures.push('source-custody'); }
     process.removeListener('SIGINT', interrupt); process.removeListener('SIGTERM', interrupt);
-    const report = { version: 'owned-music-preflight/v1', commit, scriptDigest: ownDigest, sourceDigest: createHash('sha256').update(JSON.stringify(provenance)).digest('hex'), node: process.version, successful: !failed && !interrupted && cleanupFailures.length === 0, failedPhase: failed ? phase : undefined, interrupted, results, cleanupFailures };
+    const report = { version: 'owned-music-preflight/v1', commit, scriptDigest: ownDigest, sourceDigest: createHash('sha256').update(JSON.stringify(provenance)).digest('hex'), node: process.version, successful: !failed && !interrupted && cleanupFailures.length === 0, failedPhase: failed ? phase : undefined, interrupted, childFailure, results, cleanupFailures };
     // Only controlled labels and source identities survive; no child output, raw errors or secrets.
     process.stdout.write(`${JSON.stringify(report)}\n`);
     process.exitCode = report.successful ? 0 : 1;

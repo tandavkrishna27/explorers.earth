@@ -2,9 +2,15 @@ import {createHash,randomBytes} from 'node:crypto';
 import {spawn,execFileSync} from 'node:child_process';
 import {readFileSync,writeFileSync,existsSync,mkdirSync,lstatSync,realpathSync,unlinkSync,readdirSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {resolve,join,dirname,basename,relative,isAbsolute} from 'node:path';
+import {resolve,join,dirname,basename,relative,isAbsolute,delimiter} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 const ACK='TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
+export function childNodeEnvironment(environment,platform=process.platform){
+ const entries=Object.entries(environment);
+ const path=entries.find(([key])=>platform==='win32'?key.toUpperCase()==='PATH':key==='PATH')?.[1]??'';
+ const inherited=Object.fromEntries(entries.filter(([key])=>platform!=='win32'||key.toUpperCase()!=='PATH'));
+ return {...inherited,PATH:dirname(process.execPath)+delimiter+path};
+}
 // Stable compatibility identifier. Scope contents are explicitly bound below.
 const SCOPE='delivered-auth-profile-books';
 const MANIFEST='explorers-earth/e2e/replatform/suite-manifest.json';

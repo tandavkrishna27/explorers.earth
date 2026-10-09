@@ -6,8 +6,17 @@ import {pathToFileURL} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {join,basename,dirname,resolve} from 'node:path';
-import {parseArguments,assertEnvironment,validateManifest,validateLaneReceipt,validateMusicTopology,qualifyLanes,capturedChild,decodeProtectedReport,snapshotSource,protectedBrowserConfiguration,validateFailureRecord,validateLifecycleFailureRecord,decodeProtectedFailureDiagnostics} from './replatform-e2e.mjs';
+import {childNodeEnvironment,parseArguments,assertEnvironment,validateManifest,validateLaneReceipt,validateMusicTopology,qualifyLanes,capturedChild,decodeProtectedReport,snapshotSource,protectedBrowserConfiguration,validateFailureRecord,validateLifecycleFailureRecord,decodeProtectedFailureDiagnostics} from './replatform-e2e.mjs';
 const ack='TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
+test('Windows child environment has one PATH key and survives exact environment custody roundtrip',()=>{
+ const clean=childNodeEnvironment({...process.env,Path:'controlled-path',PATH:'controlled-path'},'win32');
+ assert.deepEqual(Object.keys(clean).filter(key=>key.toUpperCase()==='PATH'),['PATH']);
+ assert.equal(clean.PATH.startsWith(dirname(process.execPath)),true);
+ const equality=execFileSync(process.execPath,['-e',"process.stdout.write(JSON.stringify(Object.entries(process.env).sort(([a],[b])=>a.localeCompare(b))))"],{env:clean,windowsHide:true,encoding:'utf8'});
+ const same=JSON.stringify(JSON.parse(equality))===JSON.stringify(Object.entries(clean).sort(([a],[b])=>a.localeCompare(b)));
+ assert.equal(same,true,'Child environment custody roundtrip must match');
+ assert.match(readFileSync(new URL('../tunes/scripts/canonical-music-browser-fixture.ts',import.meta.url),'utf8'),/\.\.\.contract\.childNodeEnvironment\(process\.env\)/);
+});
 const manifest=()=>JSON.parse(readFileSync(new URL('../explorers-earth/e2e/replatform/suite-manifest.json',import.meta.url)));
 const provenance={commit:'a'.repeat(40),sourceHash:'b'.repeat(64),manifestHash:'c'.repeat(64),dirty:true};
 const child=(lane)=>{const result=({status:0,signal:null,error:null,receipt:{version:1,lane:lane.name,provenance,config:lane.config,spec:lane.spec,projects:lane.projects,discovery:lane.identities,results:lane.identities.map(identity=>({identity,expectedStatus:'passed',status:'expected',attempts:[{status:'passed',retry:0}]})),errors:[],cleanup:{status:'passed'},artifacts:{trace:'off',video:'off',screenshot:'off',cleanup:'passed'},authority:{owned:true,database:'music_uat_'+'d'.repeat(32),containerId:'e'.repeat(64),imageId:'sha256:'+'f'.repeat(64)},child:{status:0,signal:null},startedAt:'2026-10-02T00:00:00.000Z',endedAt:'2026-10-02T00:00:01.000Z',playwright:'1.61.1'}});if(lane.name==='music')result.topology=musicTopology(result.receipt.authority);return result;};

@@ -18,6 +18,12 @@ Coordinator draft registration preserves94 preceding identities and adds24 Music
 
 ## Sequence
 
+### First owned execution
+
+Clean local source `981c219a29e73cc29040067170523afe85af7bb8` ran the acknowledged PG15 preflight. It failed the first positive case before any successful result; interruption was false and cleanup passed. No owned UAT container remained. The [sanitized failure receipt](receipts/wave2-music-preflight-981c219a-failure.json) is retained. No browser identity or release qualification follows.
+
+Diagnosis used an actual resource-free pinned child environment roundtrip: the parent marker retained both Windows `Path` and `PATH`, while the child received only `PATH`, making the strict environment comparison fail. Preflight and Music browser fixture now canonicalize PATH before constructing the child environment; exact production custody equality is preserved. The new real child roundtrip contract passed, with boolean-only diagnostics, and both bounded repairs passed independent review. The coordinator run with this added case passed70/70; the final disclosure-safe assertion also passed its focused rerun. Preflight failure diagnostics now retain only a fixed phase and up to four allowlisted source coordinates. Real execution of the repaired source is next.
+
 ### Current review checkpoint
 
 Music startup and harness repairs passed scoped source review. Parent database/control waits are bounded, and M07 reads public state inside the actual notification callback while the mutation is in flight. Integrated review then found a graceful shutdown acknowledgement followed by immediate termination; a bounded natural-exit wait replaced that path, its process-level regression passed and scoped rereview is clear. The coordinator topology and sanitized lifecycle-failure receipt contracts passed scoped source review. The final full coordinator run passed69/69, zero skips.
