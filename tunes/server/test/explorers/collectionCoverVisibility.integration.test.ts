@@ -108,7 +108,7 @@ async function positive(media: Asset, cookie?: string) {
   expect(response.status).toBe(200);
   expect(response.body).toEqual(png);
   expect(response.headers["cache-control"]).toBe(cookie ? "no-store" : "public, max-age=300, must-revalidate");
-  expect(response.headers.etag).toBeTruthy();
+  expect(response.headers.etag).toBe(`"${createHash("sha256").update(png).digest("hex")}"`);
   return response.headers.etag as string;
 }
 async function denied(media: Asset, etag: string, cookie?: string) {
@@ -119,10 +119,13 @@ async function denied(media: Asset, etag: string, cookie?: string) {
     if (cookie) pending = pending.set("cookie", cookie);
     const response = await pending;
     expect(response.status, mode).toBe(404);
-    expect(response.headers.etag).toBeUndefined();
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.headers.etag).not.toBe(etag);
     expect(response.headers["content-type"] ?? "").not.toContain("image/png");
     expect(response.body).not.toEqual(png);
     expect(response.body).not.toEqual(png.subarray(0, 4));
+    if (mode === "head") expect(response.text ?? "").toBe("");
+    else expect(response.body.error).toMatchObject({ code: "NOT_FOUND", message: "Media unavailable" });
   }
 }
 async function rejectedWrite(sql: string, values: unknown[]) {
@@ -243,7 +246,13 @@ describe("collection cover public visibility", () => {
         await pool.query("DELETE FROM collection_media WHERE collection_id=$1", [list.id]);
       } finally { clearTimeout(timer); barrier.release(); }
       const deniedResponse = await response;
-      expect(deniedResponse.status).toBe(404); expect(deniedResponse.headers.etag).toBeUndefined(); expect(deniedResponse.body).not.toEqual(png);
+      expect(deniedResponse.status).toBe(404);
+      expect(deniedResponse.headers["cache-control"]).toBe("no-store");
+      expect(deniedResponse.headers.etag).not.toBe(etag);
+      expect(deniedResponse.headers["content-type"] ?? "").not.toContain("image/png");
+      expect(deniedResponse.body).not.toEqual(png);
+      expect(deniedResponse.body).not.toEqual(png.subarray(0, 4));
+      expect(deniedResponse.body.error).toMatchObject({ code: "NOT_FOUND", message: "Media unavailable" });
       await attach(owner, list, media); await positive(media);
     }
   });

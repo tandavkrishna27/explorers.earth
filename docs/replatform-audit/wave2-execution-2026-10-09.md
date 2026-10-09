@@ -8,6 +8,14 @@ The preceding clean implementation91aa9e66 protected94/94 local identities remai
 
 ## Current outcome
 
+### Owned execution: ef9d96e0
+
+Clean `ef9d96e0b47dc6d8d049a6c3bf14cae94c5dc559` completed the owned 22-file suite: **243/249 passed**, six failed and zero skipped. All 242 previously registered tests passed, including the three formerly failing capture/restore cases and populated native replay coverage. The first cover case passed positive bytes for all three categories. The other six cover identities stopped at an assertion requiring no ETag on a 404 refusal. [Failure record](receipts/wave2-owned-ef9d96e0-failure.json) records the producer and cleanup limits.
+
+Diagnosis traced the observed weak validator to Express's default validator for the JSON error body. The canonical media route sets no-store and returns the unavailable 404 before setting the asset SHA validator or entering the 304 branch. The requirement is denial of private bytes, asset validators and conditional304; it does not prohibit a validator for the generic no-store error representation. A bounded test correction retains all identities, GET/HEAD/Range/old-ETag modes and visibility gates, adds exact positive PNG SHA validation, and requires denied responses to remain404/no-store without the old media validator or image bytes. Later phases of the six stopped cases remain unproven until rerun. No production cache-policy relaxation is made.
+
+Scoped rereview cleared that correction, including generic unavailable errors and empty HEAD bodies. Fresh root verification passed66/66 across restore/capture/UAT/services/media-cache contracts and73/73 coordinator contracts, with zero skips. The corrected full owned suite still needs a new actual execution result.
+
 ### Collection-cover repair: expected RED
 
 Independent review cleared the bounded Places/Products/People collection-cover branch and seven integration identities. A coverage finding was fixed before execution: a real eligible wrong-environment attachment now proves rejection before any storage read, with positive local controls. Guarded UAT registration expanded from 21 to 22 files; expected RED1 became GREEN43 for registration/evidence contracts, and scoped review was clear.
