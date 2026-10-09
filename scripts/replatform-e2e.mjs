@@ -175,7 +175,7 @@ export function snapshotSource(root){
  const dirty=Boolean(execFileSync('git',['status','--porcelain=v1','--untracked-files=normal'],{cwd:root,encoding:'utf8',windowsHide:true}).trim());
  return {provenance:{commit,sourceHash:digest(hashes),manifestHash:hashes[MANIFEST],dirty},hashes};
 }
-function validateLockedInstall(root,prefix){
+export function validateLockedInstall(root,prefix){
  const directory=join(root,prefix),lock=JSON.parse(readFileSync(join(directory,'package-lock.json'))),installed=JSON.parse(readFileSync(join(directory,'node_modules/.package-lock.json'))),pkg=JSON.parse(readFileSync(join(directory,'package.json')));
  for(const [path,value] of Object.entries(installed.packages??{})){if(path&&(!lock.packages?.[path]||lock.packages[path].version!==value.version||lock.packages[path].integrity!==value.integrity))fail(`Installed lock metadata mismatch in ${prefix||'root'}`);}
  for(const name of Object.keys({...pkg.dependencies,...pkg.devDependencies})){const key=`node_modules/${name}`;if(!installed.packages?.[key]||!lock.packages?.[key]||installed.packages[key].version!==lock.packages[key].version)fail(`Required locked dependency absent in ${prefix||'root'}`);}

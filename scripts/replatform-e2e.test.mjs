@@ -6,7 +6,7 @@ import {pathToFileURL} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {join,basename,dirname,resolve} from 'node:path';
-import {childNodeEnvironment,parseArguments,assertEnvironment,validateManifest,validateLaneReceipt,validateMusicTopology,qualifyLanes,capturedChild,decodeProtectedReport,snapshotSource,protectedBrowserConfiguration,validateFailureRecord,validateLifecycleFailureRecord,decodeProtectedFailureDiagnostics} from './replatform-e2e.mjs';
+import {validateLockedInstall,childNodeEnvironment,parseArguments,assertEnvironment,validateManifest,validateLaneReceipt,validateMusicTopology,qualifyLanes,capturedChild,decodeProtectedReport,snapshotSource,protectedBrowserConfiguration,validateFailureRecord,validateLifecycleFailureRecord,decodeProtectedFailureDiagnostics} from './replatform-e2e.mjs';
 const ack='TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
 test('Windows child environment has one PATH key and survives exact environment custody roundtrip',()=>{
  const clean=childNodeEnvironment({...process.env,Path:'controlled-path',PATH:'controlled-path'},'win32');
@@ -253,3 +253,33 @@ test('Places lanes preserve the original ordered118 and append exact proposed16 
  }
  for(const key of ['PLACES_E2E_FIXTURE_PATH','PLACE_LINKS_E2E_FIXTURE_PATH','PROFILE_E2E_SUITE'])assert.throws(()=>assertEnvironment({[key]:'unowned'}));
 });
+
+function lockedInstallFixture(prefix,check){
+ const root=mkdtempSync(join(tmpdir(),'replatform-lock-contract-')),directory=join(root,prefix);
+ const packages={'':{version:'ignored-installed-root'},'node_modules/direct':{version:'1.2.3',integrity:'sha512-direct'},'node_modules/dev':{version:'4.5.6',integrity:'sha512-dev'},'node_modules/direct/node_modules/transitive':{version:'7.8.9',integrity:'sha512-transitive'}};
+ const lock={lockfileVersion:3,packages:structuredClone(packages)},installed={lockfileVersion:3,packages:structuredClone(packages)},pkg={dependencies:{direct:'^1.2.3'},devDependencies:{dev:'^4.5.6'}};
+ lock.packages['']={version:'different-root-metadata'};
+ const paths={lock:join(directory,'package-lock.json'),installed:join(directory,'node_modules/.package-lock.json'),pkg:join(directory,'package.json')};
+ const write=()=>{writeFileSync(paths.lock,JSON.stringify(lock,null,2)+'\n');writeFileSync(paths.installed,JSON.stringify(installed));writeFileSync(paths.pkg,JSON.stringify(pkg));};
+ try{mkdirSync(join(directory,'node_modules'),{recursive:true});write();check({root,prefix,lock,installed,pkg,paths,write});}finally{rmSync(root,{recursive:true,force:true});}
+}
+for(const prefix of ['','tunes/auth-runtime'])test(`locked install hashes exact raw lock bytes with direct dev and transitive metadata at ${prefix||'root'}`,()=>{
+ lockedInstallFixture(prefix,({root,paths,write,lock})=>{
+  const digest=()=>createHash('sha256').update(readFileSync(paths.lock)).digest('hex');
+  assert.equal(validateLockedInstall(root,prefix),digest());
+  const initial=digest();writeFileSync(paths.lock,JSON.stringify(lock));assert.notEqual(digest(),initial);assert.equal(validateLockedInstall(root,prefix),digest());
+  delete lock.packages['node_modules/dev'].integrity;write();const installed=JSON.parse(readFileSync(paths.installed));delete installed.packages['node_modules/dev'].integrity;writeFileSync(paths.installed,JSON.stringify(installed));assert.equal(validateLockedInstall(root,prefix),digest());
+ });
+});
+for(const [name,mutate,message] of [
+ ['installed path absent from lock',f=>delete f.lock.packages['node_modules/direct/node_modules/transitive'],'Installed lock metadata mismatch'],
+ ['version mismatch',f=>f.installed.packages['node_modules/direct'].version='9.9.9','Installed lock metadata mismatch'],
+ ['integrity mismatch',f=>f.installed.packages['node_modules/dev'].integrity='sha512-other','Installed lock metadata mismatch'],
+ ['direct dependency absent from installed',f=>delete f.installed.packages['node_modules/direct'],'Required locked dependency absent'],
+ ['dev dependency absent from installed',f=>delete f.installed.packages['node_modules/dev'],'Required locked dependency absent'],
+ ['direct dependency absent from lock',f=>{delete f.installed.packages['node_modules/direct'];delete f.lock.packages['node_modules/direct'];},'Required locked dependency absent']
+])test(`locked install rejects ${name}`,()=>lockedInstallFixture('tunes',f=>{mutate(f);f.write();assert.throws(()=>validateLockedInstall(f.root,f.prefix),new RegExp(message+' in tunes'));}));
+for(const file of ['lock','installed','pkg'])for(const failure of ['missing','malformed'])test(`locked install rejects ${failure} ${file} input`,()=>lockedInstallFixture('',f=>{
+ if(failure==='missing')rmSync(f.paths[file]);else writeFileSync(f.paths[file],'{invalid json');
+ assert.throws(()=>validateLockedInstall(f.root,f.prefix),failure==='missing'?{code:'ENOENT'}:SyntaxError);
+}));
