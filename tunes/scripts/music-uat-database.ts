@@ -29,7 +29,9 @@ const POSTGRES_IMAGE = "postgres:15-alpine";
 const POSTGRES_USER = "music_migrator";
 const PASSWORD_DESTINATION = "/run/secrets/music-uat-database-password";
 const DATA_DESTINATION = "/var/lib/postgresql/data";
-const DATA_TMPFS_OPTIONS = "rw,noexec,nosuid,size=536870912";
+// The migration suite retains multiple isolated databases until its teardown.
+// Its WAL exhausted 512MiB; this remains an exact, attested disposable ceiling.
+const DATA_TMPFS_OPTIONS = "rw,noexec,nosuid,size=2147483648";
 const PORT_MINIMUM = 56_000;
 const PORT_MAXIMUM = 60_999;
 const FORBIDDEN_AMBIENT_KEYS = new Set([
@@ -154,7 +156,7 @@ function exactTmpfs(value: unknown): boolean {
   const options = value.split(",");
   return options.length === 4
     && new Set(options).size === 4
-    && ["rw", "noexec", "nosuid", "size=536870912"].every((option) => options.includes(option));
+    && ["rw", "noexec", "nosuid", "size=2147483648"].every((option) => options.includes(option));
 }
 
 export function validateUatDatabaseInspect(

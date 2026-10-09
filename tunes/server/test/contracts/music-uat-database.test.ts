@@ -59,7 +59,7 @@ function ownedInspect() {
     State: { Running: true, Health: { Status: "healthy" } },
     HostConfig: {
       PortBindings: { "5432/tcp": [{ HostIp: "127.0.0.1", HostPort: "58543" }] },
-      Tmpfs: { "/var/lib/postgresql/data": "rw,noexec,nosuid,size=536870912" },
+      Tmpfs: { "/var/lib/postgresql/data": "rw,noexec,nosuid,size=2147483648" },
     },
     Mounts: [{ Type: "bind", Destination: "/run/secrets/music-uat-database-password", RW: false }],
   };
@@ -107,6 +107,14 @@ describe("owned Task-4 UAT database lane", () => {
     })).toThrow(/exact fixture-owned/i);
   });
 
+  it("requires the exact bounded 2GiB migration-suite tmpfs capacity", () => {
+    const authority = parseUatDatabaseAuthority(authorityEnvironment())!;
+    for (const options of ["rw,noexec,nosuid,size=536870912", "rw,noexec,nosuid,size=4294967296", "rw,nosuid,size=2147483648", "rw,noexec,nosuid,size=2147483648,size=4294967296"]) {
+      const inspect = ownedInspect(); inspect.HostConfig!.Tmpfs!["/var/lib/postgresql/data"] = options;
+      expect(() => validateUatDatabaseInspect(authority, { contextHost, imageId, inspect })).toThrow(/exact fixture-owned/i);
+    }
+  });
+
   it("creates the unique database without an argument secret and always drops/removes the exact owner", async () => {
     const passwordFile = "C:\\protected\\music-uat-db-password";
     const mutations: string[][] = [];
@@ -135,7 +143,7 @@ describe("owned Task-4 UAT database lane", () => {
       "--publish", "127.0.0.1:58543:5432",
       "--env", `POSTGRES_DB=${database}`,
       "--env", "POSTGRES_PASSWORD_FILE=/run/secrets/music-uat-database-password",
-      "--tmpfs", "/var/lib/postgresql/data:rw,noexec,nosuid,size=536870912",
+      "--tmpfs", "/var/lib/postgresql/data:rw,noexec,nosuid,size=2147483648",
     ]));
     expect(creation.join(" ")).toContain("com.explorers.music.fixture=true");
     expect(creation.join(" ")).toContain(`com.explorers.music.uat-run=${runId}`);
