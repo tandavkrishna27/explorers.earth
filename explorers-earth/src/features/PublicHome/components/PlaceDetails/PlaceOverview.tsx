@@ -357,7 +357,7 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
 
             {/* Bottom: Category */}
             <div className="text-xs md:text-sm text-dashboard-light font-medium mt-1">
-              {fetchedPlace?.recommendation_category.Category_Name}
+              {fetchedPlace?.recommendation_category?.Category_Name}
             </div>
           </div>
 

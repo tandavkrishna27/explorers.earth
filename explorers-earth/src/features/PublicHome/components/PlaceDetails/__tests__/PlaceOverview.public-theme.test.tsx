@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PlaceOverview from "../PlaceOverview";
 import { PublicCategoryThemeProvider } from "../../PublicCategoryThemeContext";
 
-vi.mock("../Details/Overview", () => ({ default: () => <div>Overview content</div> }));
 vi.mock("../Details/MediaGallery", () => ({ default: () => <div>Media content</div> }));
 vi.mock("../Details/Address", () => ({ default: () => <div>Address content</div> }));
 
@@ -107,6 +106,7 @@ describe("PlaceOverview public theme surface", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     document.body.style.overflow = "";
   });
 
@@ -153,14 +153,43 @@ describe("PlaceOverview public theme surface", () => {
     expect(container.querySelector('[data-tab-surface="public-profile"]')).toBeInTheDocument();
   });
 
+  it.each([undefined, null])("keeps the public detail and contact actions usable with %s taxonomy", (recommendationCategory) => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    const { container, onClose } = renderOverview({
+      place: {
+        ...place,
+        recommendation_category: recommendationCategory,
+        Contact_Number: "+914012345678",
+        Places_Social_Link: "https://example.com/charminar",
+      },
+    });
+
+    expect(container.querySelector("[data-public-place-detail]")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Charminar" })).toBeInTheDocument();
+    const call = screen.getByText("Call").parentElement!.querySelector("button")!;
+    const website = screen.getByText("Website").parentElement!.querySelector("button")!;
+    expect(call).toBeEnabled();
+    expect(website).toBeEnabled();
+    fireEvent.click(call);
+    expect(open).toHaveBeenCalledWith("tel:+914012345678", "_self");
+    fireEvent.click(website);
+    expect(open).toHaveBeenCalledWith("https://example.com/charminar", "_blank", "noopener,noreferrer");
+    fireEvent.click(screen.getByRole("button", { name: "Close place details" }));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("continues to show a supplied category name", () => {
+    renderOverview();
+    expect(screen.getByText("Landmark")).toBeInTheDocument();
+  });
   it("preserves public tab switching", () => {
     renderOverview();
-    expect(screen.getByText("Overview content")).toBeInTheDocument();
+    expect(screen.getByText("Call")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Media" }));
 
     expect(screen.getByText("Media content")).toBeInTheDocument();
-    expect(screen.queryByText("Overview content")).not.toBeInTheDocument();
+    expect(screen.queryByText("Call")).not.toBeInTheDocument();
   });
 
   it("keeps dashboard callers on dashboard styling", () => {
