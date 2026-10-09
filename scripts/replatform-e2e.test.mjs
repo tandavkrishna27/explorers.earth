@@ -112,6 +112,30 @@ test('failure diagnostic allowlist rejects credentials, arbitrary messages and u
  for(const mutation of [r=>r.diagnostics[0].message='private cookie',r=>r.diagnostics[0].matcher='private cookie',r=>r.diagnostics[0].locations[0].file='private cookie',r=>r.diagnostics[0].locations[0].line=0,r=>r.diagnostics[0].identity={...lane.identities[1],titlePath:['unreviewed']},r=>r.diagnostics[0].kind='private cookie']){const changed=structuredClone(failure);mutation(changed);assert.throws(()=>validateFailureRecord(lane,changed,provenance,c));}
 });
 
+test('Music failure stages retain only reviewed fixed markers and reject arbitrary stage data',()=>{
+ const lane=manifest().lanes.find(value=>value.name==='music'),report=rawReport(lane,true);
+ report.suites[0].specs[1].tests[0].results[0]={status:'failed',retry:0,error:{message:'[music-stage:control-provider-timeout] cookie=DO_NOT_EXPORT'}};
+ const diagnostics=decodeProtectedFailureDiagnostics(report,lane,process.cwd());
+ assert.equal(diagnostics[0].stage,'control-provider-timeout');assert.doesNotMatch(JSON.stringify(diagnostics),/cookie|DO_NOT_EXPORT/);
+ const c=structuredClone(child(lane));c.status=1;const failure={version:1,lane:lane.name,provenance,results:c.receipt.results,child:{status:1,signal:null},cleanup:{status:'passed'},artifacts:c.receipt.artifacts,diagnostics};
+ assert.doesNotThrow(()=>validateFailureRecord(lane,failure,provenance,c));
+ for(const stage of ['private-cookie','',null,{},'control-provider-timeout cookie']){const changed=structuredClone(failure);changed.diagnostics[0].stage=stage;assert.throws(()=>validateFailureRecord(lane,changed,provenance,c));}
+ report.suites[0].specs[1].tests[0].results[0].error.message='[music-stage:private-cookie]';assert.equal(Object.hasOwn(decodeProtectedFailureDiagnostics(report,lane,process.cwd())[0],'stage'),false);
+ const other=manifest().lanes[1],otherReport=rawReport(other,true);otherReport.suites[0].specs[1].tests[0].results[0]={status:'failed',retry:0,error:{message:'[music-stage:control-provider-timeout]'}};assert.equal(Object.hasOwn(decodeProtectedFailureDiagnostics(otherReport,other,process.cwd())[0],'stage'),false);
+});
+
+test('Music IPC diagnostics retain only three reviewed fixed causes',()=>{
+ const lane=manifest().lanes.find(value=>value.name==='music'),report=rawReport(lane,true);
+ for(const cause of ['child-unavailable','child-timeout','child-failed']){
+  report.suites[0].specs[1].tests[0].results[0]={status:'failed',retry:0,error:{message:`[music-stage:control-provider-timeout] [music-cause:${cause}] cookie=DO_NOT_EXPORT`}};
+  const diagnostics=decodeProtectedFailureDiagnostics(report,lane,process.cwd());assert.equal(diagnostics[0].cause,cause);assert.doesNotMatch(JSON.stringify(diagnostics),/cookie|DO_NOT_EXPORT/);
+  const c=structuredClone(child(lane));c.status=1;const failure={version:1,lane:lane.name,provenance,results:c.receipt.results,child:{status:1,signal:null},cleanup:{status:'passed'},artifacts:c.receipt.artifacts,diagnostics};assert.doesNotThrow(()=>validateFailureRecord(lane,failure,provenance,c));
+  for(const unsafe of ['',null,{},'child-timeout cookie','secret']){const changed=structuredClone(failure);changed.diagnostics[0].cause=unsafe;assert.throws(()=>validateFailureRecord(lane,changed,provenance,c));}
+ }
+ report.suites[0].specs[1].tests[0].results[0].error.message='[music-cause:secret]';assert.equal(Object.hasOwn(decodeProtectedFailureDiagnostics(report,lane,process.cwd())[0],'cause'),false);
+ const other=manifest().lanes[1],otherReport=rawReport(other,true);otherReport.suites[0].specs[1].tests[0].results[0]={status:'failed',retry:0,error:{message:'[music-cause:child-failed]'}};assert.equal(Object.hasOwn(decodeProtectedFailureDiagnostics(otherReport,other,process.cwd())[0],'cause'),false);
+});
+
 test('Movies is a distinct mandatory24-identity lane and cannot be omitted or relabeled Books',()=>{
  const m=manifest(),movies=m.lanes.find(l=>l.name==='movies');assert.ok(movies);assert.equal(movies.identities.length,24);assert.deepEqual(movies.projects,['movies-desktop','movies-mobile']);
  for(const mutate of [x=>x.lanes.splice(x.lanes.findIndex(l=>l.name==='movies'),1),x=>x.lanes.find(l=>l.name==='movies').runner='tunes/scripts/books-browser-fixture.ts',x=>x.lanes.find(l=>l.name==='movies').identities[0].project='books-desktop',x=>x.lanes.find(l=>l.name==='movies').identities.pop()]){const changed=structuredClone(m);mutate(changed);assert.throws(()=>validateManifest(changed));}

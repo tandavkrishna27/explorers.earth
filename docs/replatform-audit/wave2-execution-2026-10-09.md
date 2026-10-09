@@ -6,7 +6,19 @@ User authorized Wave2 with subagents after CI completed for622f689385058ef918653
 
 The preceding clean implementation91aa9e66 protected94/94 local identities remains evidence for that source only.
 
-## In progress
+## Current outcome
+
+Clean source `e01ea86cbbc177961cc4ecf4121b8b76c0137b63` passed the real owned preflight **38/38**: one positive production startup/admission/shutdown case and 37 isolated rejection cases. Cleanup passed. Additional coverage inventory remains unexecuted.
+
+The protected 118-identity browser run on that same source finished **failed**: all preceding 94 identities passed; Music passed 13 and failed 11, with zero skips or retries. Cleanup passed, source remained intact, and interruption was false. [Exact-source qualification](receipts/wave2-e01ea86c/qualification.json), [Music failure](receipts/wave2-e01ea86c/music-failure.json), [lifecycle failure](receipts/wave2-e01ea86c/music-lifecycle-failure.json), and [owned preflight](receipts/wave2-e01ea86c/music-preflight.json) are retained. These results confer no release eligibility.
+
+Read-only subagent diagnosis confirmed that M02 never opens the created playlist before attempting Rename, desktop M06 targets the hidden mobile profile control, and M09 fixture suspension violates lifecycle operation/session-version database constraints. M05 raw package import differs from the passing app's bundled import, but its runtime cause remains unconfirmed. M10 fails subscription readiness before delayed notification mutations; M11's denied control action is not identified by existing sanitized diagnostics. A sole author is repairing confirmed harness causes and adding bounded diagnostics for unresolved boundaries. No push occurred.
+
+Independent repair review rejected the proposed legacy suspension call: canonical venues correctly have NULL Strapi identifiers. The fixture now uses the real canonical deactivation API. Source tracing then exposed a production authority gap: account deactivation changes canonical account/session state, while Music public and guest reads still gate only the Music identity. A bounded repository repair is being implemented to require an active mapped canonical account at existing public/guest authority reads and transactional mutation checks, while preserving unmapped legacy policy. No schema change or fabricated legacy identity is planned. A new real-database regression and the existing canonical identity suite are registered in the owned UAT producer; registry/evidence contracts passed42/42 after the expected missing-registration red test. Actual database and browser outcomes for the repaired source remain pending.
+
+The bounded repair is now prepared and independently reviewed: ten repository queries share the mapped-account availability gate; the fixture deactivates through the actual canonical API; public/unlisted suspension, pending deletion, another active account and unmapped legacy access have four database regression identities. Fixed stage labels and three allowlisted IPC causes retain diagnosis without raw private errors. Fresh root verification passed72/72 coordinator contracts and147/147 tests across repository, lifecycle and UAT/evidence contracts; the selected frontend spec/bridge type check passed without diagnostics. The new integration suite has not run. Its standalone type check reported five transitive dependency diagnostics outside the new test/repository, so no full TypeScript success is claimed. Independent rereview cleared the prior P1; real owned database, preflight and118-browser runs are next.
+
+## Preparation and review history
 
 Music owns the actual canonical/Music two-process browser harness and24 desktop/mobile identities. Startup requires a narrowly validated owned browser admission because existing C0 fixture startup binds a fixed database/disabled cohort. Independent source reviews found custody, environment, mutation, cancellation and shutdown gaps; repairs and focused checks passed before resource execution. Provider faults and virtual credential-expiry clock are labelled local test seams, not external provider or real elapsed-time evidence.
 

@@ -31,6 +31,8 @@ export const MUSIC_UAT_DATABASE_TEST_FILES = Object.freeze([
   "server/test/explorers-recovery-callback.integration.test.ts",
   "server/test/explorers-profile.integration.test.ts",
   "server/test/explorers-media.integration.test.ts",
+  "server/test/canonical-music-identity.integration.test.ts",
+  "server/test/canonical-music-public-lifecycle.integration.test.ts",
   "server/test/migrations/music-migration.integration.test.ts",
   "server/test/music-credential.integration.test.ts",
   "server/test/music-domain-repository.integration.test.ts",

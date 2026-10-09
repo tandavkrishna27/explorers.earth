@@ -77,7 +77,7 @@ describe("MusicDomainRepository owner predicates", () => {
     const client = { async query(text: string, values: unknown[] = []) {
       const normalized = text.replace(/\s+/g, " ").trim(); calls.push(normalized);
       if (/^(?:BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(normalized)) return { rows: [], rowCount: 0 };
-      if (/SELECT id FROM users WHERE guest_url/.test(normalized)) return { rows: [{ id: 7 }], rowCount: 1 };
+      if (/SELECT id FROM users u WHERE guest_url/.test(normalized)) return { rows: [{ id: 7 }], rowCount: 1 };
       if (/SELECT id,allow_song_requests/.test(normalized)) return { rows: [{ id: 7, allow_song_requests: true, guest_discoverable: true, guest_capability_hash: null }], rowCount: 1 };
       if (/SELECT request_hash,response_body FROM music_owner_operations/.test(normalized)) return { rows: receipt ? [receipt] : [], rowCount: receipt ? 1 : 0 };
       if (/WITH ordered AS/.test(normalized)) return { rows: [], rowCount: 0 };
@@ -99,7 +99,10 @@ describe("MusicDomainRepository owner predicates", () => {
       .resolves.toEqual({ status: "conflict" });
     expect({ queueInserts, queueRevisions, publicRevisions, notifications }).toEqual({ queueInserts: 1, queueRevisions: 1, publicRevisions: 1, notifications: 1 });
     expect(calls.filter((text) => text === "COMMIT")).toHaveLength(3);
-    expect(calls.findIndex((text) => text.includes("SELECT id FROM users WHERE guest_url")))
+    const authorityReads = calls.filter(text => /SELECT id(?:,allow_song_requests,guest_discoverable,guest_capability_hash)? FROM users u WHERE guest_url/.test(text));
+    expect(authorityReads).toHaveLength(6);
+    for (const text of authorityReads) expect(text).toContain("WHERE ami.music_user_id=u.id AND ca.status IS DISTINCT FROM 'active'");
+    expect(calls.findIndex((text) => text.includes("SELECT id FROM users u WHERE guest_url")))
       .toBeLessThan(calls.findIndex((text) => text.includes("pg_advisory_xact_lock")));
     expect(calls.findIndex((text) => text.includes("pg_advisory_xact_lock")))
       .toBeLessThan(calls.findIndex((text) => text.includes("SELECT id,allow_song_requests") && text.includes("FOR UPDATE")));
@@ -673,7 +676,10 @@ describe("MusicDomainRepository owner predicates", () => {
     await expect(new MusicDomainRepository(resourceHarness.pool).resolveGuestResource("public-slug", capability)).resolves.toMatchObject({
       state: "private",
     });
-    expect(resourceHarness.calls[0].text.replace(/\s+/g, " ")).toMatch(/u\.guest_url=\$2 AND \(u\.guest_discoverable=true OR \(\$3::boolean AND u\.guest_capability_hash=\$1\)\)/);
+    expect(resourceHarness.calls[0].text).toContain("u.guest_url=$2");
+    expect(resourceHarness.calls[0].text).toMatch(/AND \(u\.guest_discoverable=true OR \(\$3::boolean AND u\.guest_capability_hash=\$1\)\)/);
+    expect(resourceHarness.calls[0].text).toContain("WHERE ami.music_user_id=u.id AND ca.status IS DISTINCT FROM 'active'");
+    expect(socketHarness.calls[0].text).toContain("WHERE ami.music_user_id=u.id AND ca.status IS DISTINCT FROM 'active'");
   });
 
   it("returns the complete safe public playlist product shape", async () => {

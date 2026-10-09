@@ -105,11 +105,11 @@ function privateWrite(path: string, value: unknown) {
   } else writeFileSync(path, contents, { mode: 0o600, flag: 'wx' });
 }
 async function ipc(child: ChildProcess, capability: string, action: string, values: Record<string, unknown> = {}) {
-  if (!child.connected || child.exitCode !== null || child.signalCode !== null) throw new Error('Owned child control is unavailable');
+  if (!child.connected || child.exitCode !== null || child.signalCode !== null) throw new Error('[music-cause:child-unavailable]');
   const requestId = randomUUID();
   await new Promise<void>((done, reject) => {
-    const timer = setTimeout(() => { child.off('message', listener); reject(new Error('Owned child control timed out')); }, 10000);
-    const listener = (message: any) => { if (message?.requestId !== requestId) return; clearTimeout(timer); child.off('message', listener); message.action === 'ack' ? done() : reject(new Error('Owned child control failed')); };
+    const timer = setTimeout(() => { child.off('message', listener); reject(new Error('[music-cause:child-timeout]')); }, 10000);
+    const listener = (message: any) => { if (message?.requestId !== requestId) return; clearTimeout(timer); child.off('message', listener); message.action === 'ack' ? done() : reject(new Error('[music-cause:child-failed]')); };
     child.on('message', listener); child.send!({ capability, action, requestId, ...values });
   });
 }
@@ -211,12 +211,25 @@ async function main() {
           else if (body.action === 'provider') await ipc(musicChild!, capability, 'provider', { mode: body.mode });
           else if (body.action === 'reset') { await ipc(musicChild!, capability, 'clock', { offsetMs: 0 }); await ipc(canonicalChild!, capability, 'clock', { offsetMs: 0 }); await ipc(musicChild!, capability, 'provider', { mode: 'success' }); activeCase = undefined; }
           else if (body.action === 'mapping') { const result = await setup(runtime!.query('SELECT count(*)::int AS count FROM account_music_identity WHERE account_id=$1', [activeCase.owner.accountId])); value = { identityRows: result.rows[0].count }; }
-          else if (body.action === 'suspend') await setup(migrator!.query("UPDATE users SET identity_status='suspended' WHERE id=(SELECT music_user_id FROM account_music_identity WHERE account_id=$1)", [activeCase.owner.accountId]));
+          else if (body.action === 'suspend') {
+            const account = await setup(runtime!.query('SELECT revision::text FROM creator_accounts WHERE id=$1', [activeCase.owner.accountId]));
+            if (account.rows.length !== 1) throw new Error('Owned canonical account missing');
+            const deactivated = await setup(fetch(`http://127.0.0.1:${canonicalPort}/api/explorers/v1/account/deactivation`, {
+              method: 'POST', headers: { Cookie: activeCase.owner.cookie, Origin: browserOrigin, 'Content-Type': 'application/json', 'Idempotency-Key': randomUUID() },
+              body: JSON.stringify({ expectedRevision: Number(account.rows[0].revision) }), signal: cancellation.signal,
+            }));
+            const deactivation = await setup(deactivated.json()) as { lifecycle?: { status?: string; operationId?: string } };
+            if (deactivated.status !== 200 || deactivation.lifecycle?.status !== 'suspended' || !deactivation.lifecycle.operationId)
+              throw new Error('Owned canonical deactivation incomplete');
+          }
           else if (body.action === 'notify' && Number.isSafeInteger(body.revision) && body.revision >= 1) { const mapping = await setup(runtime!.query('SELECT music_user_id FROM account_music_identity WHERE account_id=$1', [activeCase.owner.accountId])); continuing(); await setup(runtime!.query("SELECT pg_notify('music_public_change',$1)", [JSON.stringify({ musicUserId: mapping.rows[0].music_user_id, kind: 'queue_changed', revision: body.revision })])); }
           else throw new Error('Owned action denied');
         }
         continuing(); response.setHeader('content-type', 'application/json'); response.end(JSON.stringify(value));
-      } catch { response.writeHead(403); response.end('{}'); }
+      } catch (error) {
+        const cause = error instanceof Error ? error.message.match(/^\[music-cause:(child-unavailable|child-timeout|child-failed)\]$/)?.[1] : undefined;
+        response.writeHead(403, { 'content-type': 'application/json' }); response.end(JSON.stringify(cause ? { cause } : {}));
+      }
     });
     controlServer.requestTimeout = 5000; controlServer.headersTimeout = 5000; controlServer.keepAliveTimeout = 1000;
     controlServer.on('connection', connection => { controlConnections.add(connection); connection.setTimeout(5000, () => connection.destroy()); connection.once('close', () => controlConnections.delete(connection)); });

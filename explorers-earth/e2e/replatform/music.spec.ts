@@ -19,10 +19,26 @@ const sockets = new Set<Socket>();
 const contexts = new Set<BrowserContext>();
 const ownerConnections = new WeakMap<Page, number>();
 const song = (n: number) => ({ youtubeId: `fixture000${n}`.slice(-11), title: `Owned song ${n}`, artist: 'Owned artist', thumbnailUrl: 'https://music-fixture.test/thumb.png' });
+async function stage<T>(name: string, operation: () => Promise<T>): Promise<T> {
+  try { return await operation(); } catch (error) {
+    const cause = error instanceof Error ? error.message.match(/^\[music-cause:(child-unavailable|child-timeout|child-failed)\]$/)?.[1] : undefined;
+    throw new Error(`[music-stage:${name}]${cause ? ` [music-cause:${cause}]` : ''}`);
+  }
+}
 async function control(action: string, input: Record<string, unknown> = {}) {
+  const names: Record<string, string> = { prepare: 'control-prepare', reset: 'control-reset', clock: 'control-clock', mapping: 'control-mapping', suspend: 'control-suspend', notify: 'control-notify' };
+  const modes = ['unavailable', 'timeout', 'rate-limit', 'oversized', 'success'];
+  const name = action === 'provider' && modes.includes(String(input.mode)) ? `control-provider-${input.mode}` : names[action];
+  if (!name) throw new Error('Owned Music control action invalid');
+  return stage(name, async () => {
   const response = await fetch(`${fixture.control.origin}/control`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-music-fixture-capability': fixture.control.capability }, body: JSON.stringify({ caseId, action, ...input }), signal: AbortSignal.timeout(15000) });
-  if (!response.ok) throw new Error(`Owned Music control denied action ${action}`);
+  if (!response.ok) {
+    const value = await response.json().catch(() => ({}));
+    const cause = ['child-unavailable', 'child-timeout', 'child-failed'].includes(value?.cause) ? value.cause : undefined;
+    throw new Error(cause ? `[music-cause:${cause}]` : 'Owned Music control denied');
+  }
   return response.json();
+  });
 }
 async function install(page: Page, owner: Owner) {
   ownerConnections.set(page, 0);
@@ -127,6 +143,8 @@ test('owner playlists songs queue playback and history preserve transactions', a
   await dialog.getByRole('button', { name: 'Create playlist', exact: true }).click();
   await expect(dialog).toBeHidden();
   const lists = await ownerRequest(page, 'GET', '/api/playlists'); const id = lists.body.find((value: any) => value.name === 'Owned list').id;
+  await page.getByRole('button', { name: 'Open Owned list', exact: true }).click();
+  await expect(page.getByRole('tabpanel', { name: 'Owned list', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Rename playlist', exact: true }).click();
   const rename = page.getByRole('dialog', { name: 'Rename playlist', exact: true });
   await rename.getByLabel('Playlist name', { exact: true }).fill('Owned edited');
@@ -181,14 +199,21 @@ test('expired owner credential refresh safely replays one mutation', async ({ pa
 
 test('transport reconnect mints a new HTTP socket ticket', async ({ page }) => {
   await ensure(page);
-  const proof = await page.evaluate(async () => {
-    const musicApiPath = '/src/features/music/musicApi.ts'; const { musicApi } = await import(musicApiPath);
-    const ownerLivePath = '/src/features/music/ownerMusicLiveClient.ts'; const { subscribeToOwnerMusic } = await import(ownerLivePath);
-    const socketModulePath = '/node_modules/socket.io-client/build/esm/index.js'; const { io } = await import(socketModulePath);
-    let connection: any, tickets = 0, previous = '', different = false, connections = 0;
-    const subscription = subscribeToOwnerMusic({ mintTicket: async () => { const value = await (await musicApi.request({ method: 'POST', path: '/api/music/socket-ticket' })).json(); const token = value.ticket.token ?? value.ticket; tickets++; if (previous) different = previous !== token; previous = token; return token; }, onInvalidate: async () => undefined }, { socketFactory: (auth: any) => { connection = io(location.origin, { path: '/__localtunes/ws', transports: ['websocket'], auth, reconnectionDelay: 50 }); connection.on('connect', () => connections++); return connection; } });
-    try { const wait = async (predicate: () => boolean) => { for (let n = 0; n < 200; n++) { if (predicate()) return; await new Promise(resolve => setTimeout(resolve, 50)); } throw new Error('Successful real reconnect not observed'); }; await wait(() => connections === 1); connection.io.engine.close(); await wait(() => connections >= 2); return { tickets, different, connections }; } finally { subscription.unsubscribe(); }
+  const modules = await page.evaluate(async () => {
+    const rawPath = '/node_modules/socket.io-client/build/esm/index.js', barePath = '/e2e/setup/music-socket-browser-fixture.ts';
+    return { rawImportSucceeded: await import(rawPath).then(value => typeof value.io === 'function', () => false), bareImportSucceeded: await import(barePath).then(value => typeof value.io === 'function', () => false) };
   });
+  test.info().annotations.push({ type: 'music-module-discriminator', description: JSON.stringify(modules) });
+  const proof = await page.evaluate(async () => {
+    const stage = async <T>(name: string, operation: () => Promise<T>): Promise<T> => { try { return await operation(); } catch (error) { if (error instanceof Error && error.message === '[music-stage:reconnect-ticket]') throw error; throw new Error(`[music-stage:${name}]`); } };
+    const musicApiPath = '/src/features/music/musicApi.ts'; const { musicApi } = await stage('reconnect-import-api', () => import(musicApiPath));
+    const ownerLivePath = '/src/features/music/ownerMusicLiveClient.ts'; const { subscribeToOwnerMusic } = await stage('reconnect-import-owner', () => import(ownerLivePath));
+    const socketModulePath = '/e2e/setup/music-socket-browser-fixture.ts'; const { io } = await stage('reconnect-import-socket', () => import(socketModulePath));
+    let connection: any, tickets = 0, previous = '', different = false, connections = 0, ticketFailed = false;
+    const subscription = subscribeToOwnerMusic({ mintTicket: () => stage('reconnect-ticket', async () => { const value = await (await musicApi.request({ method: 'POST', path: '/api/music/socket-ticket' })).json(); const token = value.ticket.token ?? value.ticket; tickets++; if (previous) different = previous !== token; previous = token; return token; }), onError: () => { ticketFailed = true; }, onInvalidate: async () => undefined }, { socketFactory: (auth: any) => { connection = io(location.origin, { path: '/__localtunes/ws', transports: ['websocket'], auth, reconnectionDelay: 50 }); connection.on('connect', () => connections++); return connection; } });
+    try { const wait = async (predicate: () => boolean) => { for (let n = 0; n < 200; n++) { if (ticketFailed) throw new Error('[music-stage:reconnect-ticket]'); if (predicate()) return; await new Promise(resolve => setTimeout(resolve, 50)); } throw new Error('Successful real reconnect not observed'); }; await stage('reconnect-first-connect', () => wait(() => connections === 1)); await stage('reconnect-engine-close', async () => connection.io.engine.close()); await stage('reconnect-second-connect', () => wait(() => connections >= 2)); return { tickets, different, connections }; } finally { subscription.unsubscribe(); }
+  });
+  expect(modules.bareImportSucceeded).toBe(true);
   expect(proof.tickets).toBeGreaterThanOrEqual(2); expect(proof.connections).toBeGreaterThanOrEqual(2); expect(proof.different).toBe(true);
 });
 
@@ -201,8 +226,14 @@ test('browser sign out revokes same session activity and preserves another sessi
   const published = await publication(page, 'unlisted');
   const guest = await socket({ guestCapability: published.capability });
   const response = page.waitForResponse(value => value.url().endsWith('/api/auth/sign-out') && value.request().method() === 'POST');
-  const logout = page.getByText('Logout', { exact: true }).first();
-  if (!await logout.isVisible()) await page.getByAltText('profile', { exact: true }).first().click();
+  const logout = page.getByRole('button', { name: 'Logout', exact: true });
+  if (!await logout.isVisible()) {
+    const desktop = page.getByRole('button').filter({ has: page.getByAltText('account', { exact: true }) });
+    if (await desktop.isVisible()) await desktop.click();
+    else await page.getByAltText('profile', { exact: true }).filter({ visible: true }).click();
+  }
+  await expect(logout).toBeVisible();
+  await expect(logout).toBeEnabled();
   await logout.click(); expect((await response).status()).toBe(200);
   expect((await page.context().request.get('/api/explorers/v1/me')).status()).toBe(401);
   const revoked = event(independentS1, 'music_error');
@@ -298,8 +329,18 @@ test('newer public revisions survive delayed and out of order notifications', as
   observer.on('music_public_change', value => revisions.push(value.revision));
   publicPage.on('response', response => { if (response.status() === 200 && response.url().includes('/api/music/public-resource/v1/')) void response.json().then(value => loaded.push(value.revision)); });
   await publicPage.route('**/*', route => new URL(route.request().url()).origin === fixture.origin ? route.continue() : route.abort());
-  let subscribed = false; publicPage.on('websocket', connection => connection.on('framereceived', frame => { if (String(frame.payload).includes('"role":"public"') && String(frame.payload).includes('connection_status')) subscribed = true; }));
-  await publicPage.goto(`${fixture.origin}/music/share/${published.publication.publicSlug}`); await expect.poll(() => subscribed).toBe(true);
+  let subscribed = false, socketAttempted = false;
+  publicPage.on('websocket', connection => {
+    const target = new URL(connection.url());
+    socketAttempted ||= target.host === new URL(fixture.origin).host && target.pathname.replace(/\/$/, '') === '/__localtunes/ws';
+    connection.on('framereceived', frame => { if (String(frame.payload).includes('"role":"public"') && String(frame.payload).includes('connection_status')) subscribed = true; });
+  });
+  const publicResponse = publicPage.waitForResponse(response => response.url().includes('/api/music/public-resource/v1/') && response.request().method() === 'GET');
+  await stage('public-route-load', () => publicPage.goto(`${fixture.origin}/music/share/${published.publication.publicSlug}`));
+  await stage('public-http-response', async () => expect((await publicResponse).status()).toBe(200));
+  await stage('public-schema-ready', () => expect(publicPage.getByRole('heading', { name: 'Music', exact: true })).toBeVisible());
+  await stage('public-socket-attempt', () => expect.poll(() => socketAttempted).toBe(true));
+  await stage('public-subscription-ready', () => expect.poll(() => subscribed).toBe(true));
   const firstChange = event(observer, 'music_public_change'); await ownerRequest(page, 'POST', '/api/playlist/songs', song(1)); await firstChange;
   const secondChange = event(observer, 'music_public_change'); await ownerRequest(page, 'POST', '/api/playlist/songs', song(2)); await secondChange;
   const newer = await guestResource(published.publication.publicSlug); expect(newer.body.revision).toBeGreaterThan(before.body.revision);
@@ -323,14 +364,14 @@ test('provider outage and retry preserve owner draft and bounded controls', asyn
   for (const mode of ['unavailable', 'timeout', 'rate-limit', 'oversized']) {
     await control('provider', { mode });
     const failed = page.waitForResponse(response => response.url().endsWith('/__localtunes/api/youtube/search'));
-    await region.getByRole('button', { name: 'Search', exact: true }).click(); expect([502, 503]).toContain((await failed).status());
-    await expect(region.getByRole('alert', { name: 'Music discovery error' })).toBeVisible();
-    await expect(input).toHaveValue('Owned saved search draft');
+    await region.getByRole('button', { name: 'Search', exact: true }).click(); await stage('provider-search-response', async () => expect([502, 503]).toContain((await failed).status()));
+    await stage('provider-error-visible', () => expect(region.getByRole('alert', { name: 'Music discovery error' })).toBeVisible());
+    await stage('provider-draft-preserved', () => expect(input).toHaveValue('Owned saved search draft'));
     await expect(region.getByRole('button', { name: 'Search', exact: true })).toBeEnabled();
     expect((await ownerRequest(page, 'GET', `/api/playlists/${draft.body.id}`)).body.name).toBe('Persistent provider draft');
   }
   await control('provider', { mode: 'success' }); const retried = page.waitForResponse(response => response.url().endsWith('/__localtunes/api/youtube/search'));
-  await region.getByRole('button', { name: 'Try search again', exact: true }).click(); expect((await retried).status()).toBe(200);
+  await region.getByRole('button', { name: 'Try search again', exact: true }).click(); await stage('provider-retry-response', async () => expect((await retried).status()).toBe(200));
   await expect(region.getByText('Owned provider result', { exact: true })).toBeVisible();
   const persisted = await page.evaluate(() => JSON.stringify([localStorage, sessionStorage])); expect(persisted).not.toMatch(/YOUTUBE_API_KEY|fixture-provider-key|Bearer|musicToken/);
 });

@@ -16,6 +16,14 @@ END`;
 
 type QueryPool = Pick<Pool, "query" | "connect">;
 
+// A legacy venue without a canonical mapping retains its existing availability.
+// A mapped venue must still belong to an active canonical account; an orphan fails closed.
+const CANONICAL_PUBLIC_AVAILABILITY_SQL = `NOT EXISTS (
+  SELECT 1 FROM account_music_identity ami
+  LEFT JOIN creator_accounts ca ON ca.id=ami.account_id
+  WHERE ami.music_user_id=u.id AND ca.status IS DISTINCT FROM 'active'
+)`;
+
 const QUEUE_MUTATION_LOCK = 0x4d51;
 const SAVED_PLAYLIST_LOCK = 0x4d53;
 const PLAYLIST_COLLECTION_LOCK = 0x4d54;
@@ -1045,7 +1053,8 @@ export class MusicDomainRepository {
     try {
       await client.query("BEGIN");
       const resolved = (await client.query(
-        `SELECT id FROM users WHERE guest_url=$1 AND identity_status='active'
+        `SELECT id FROM users u WHERE guest_url=$1 AND identity_status='active'
+              AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}
            AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$2 AND guest_capability_revoked_at IS NULL))`,
         [publicSlug, capabilityHash, capabilityValid],
       )).rows[0];
@@ -1054,7 +1063,8 @@ export class MusicDomainRepository {
       await client.query("SELECT pg_advisory_xact_lock($1,$2)", [QUEUE_MUTATION_LOCK, musicUserId]);
       const owner = (await client.query(
         `SELECT id,allow_song_requests,guest_discoverable,guest_capability_hash
-           FROM users WHERE guest_url=$1 AND identity_status='active'
+           FROM users u WHERE guest_url=$1 AND identity_status='active'
+              AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}
               AND id=$4
               AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$2 AND guest_capability_revoked_at IS NULL))
            FOR UPDATE`,
@@ -1253,6 +1263,7 @@ export class MusicDomainRepository {
                     AND owner.account_id::text=$1
                ))
           AND u.identity_status='active'
+          AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}
           AND u.guest_discoverable=true
           AND u.guest_url IS NOT NULL
           AND length(u.guest_url) BETWEEN 8 AND 128
@@ -1280,7 +1291,7 @@ export class MusicDomainRepository {
   async resolvePublicSnapshotRevision(musicUserId: number): Promise<number | undefined> {
     if (!Number.isSafeInteger(musicUserId) || musicUserId < 1) return undefined;
     const row = (await this.pool.query(
-      "SELECT public_snapshot_revision AS revision FROM users WHERE id=$1 AND identity_status='active'",
+      `SELECT public_snapshot_revision AS revision FROM users u WHERE id=$1 AND identity_status='active' AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}`,
       [musicUserId],
     )).rows[0];
     const revision = Number(row?.revision);
@@ -1302,7 +1313,7 @@ export class MusicDomainRepository {
                 u.allow_song_requests,u.allow_guest_play_on_device,u.allow_playlist_sharing,
                 u.allow_recently_played_visibility,u.allow_queue_visibility
            FROM users u
-          WHERE u.guest_url=$2
+          WHERE u.guest_url=$2 AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}
             AND (u.guest_discoverable=true OR ($3::boolean AND u.guest_capability_hash=$1))
           LIMIT 1`,
         [capabilityHash, publicSlug, capabilityValid],
@@ -1443,8 +1454,8 @@ export class MusicDomainRepository {
     const capabilityHash = capabilityValid ? hashGuestCapability(capability) : "0".repeat(64);
     const row = (await this.pool.query(
       `SELECT id,identity_status,guest_discoverable,guest_capability_hash,guest_capability_revoked_at
-         FROM users
-        WHERE guest_url=$2
+         FROM users u
+        WHERE guest_url=$2 AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}
           AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$1))
         LIMIT 1`,
       [capabilityHash, publicSlug, capabilityValid],
@@ -1490,7 +1501,7 @@ export class MusicDomainRepository {
         ) ORDER BY p.id) FILTER (WHERE p.id IS NOT NULL),'[]'::jsonb)
           FROM playlists p WHERE p.user_id=u.id AND p.is_visible_to_guests=true) AS visible_playlists
        FROM users u
-         WHERE u.guest_url=$2 AND (u.guest_discoverable=true OR ($3::boolean AND u.guest_capability_hash=$1))
+         WHERE u.guest_url=$2 AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL} AND (u.guest_discoverable=true OR ($3::boolean AND u.guest_capability_hash=$1))
        LIMIT 1`,
       [capabilityHash, publicSlug, capabilityValid],
     )).rows[0];
@@ -1533,8 +1544,9 @@ export class MusicDomainRepository {
   async resolveGuestSocketAuthority(capability: string) {
     if (!/^[A-Za-z0-9_-]{43}$/.test(capability)) return undefined;
     const row = (await this.pool.query(
-      `SELECT id,allow_song_requests,guest_capability_hash FROM users
-       WHERE guest_capability_hash=$1 AND guest_capability_revoked_at IS NULL AND identity_status='active'`,
+      `SELECT id,allow_song_requests,guest_capability_hash FROM users u
+       WHERE guest_capability_hash=$1 AND guest_capability_revoked_at IS NULL AND identity_status='active'
+         AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}`,
       [hashGuestCapability(capability)],
     )).rows[0];
     return row && verifyGuestCapability(capability, row.guest_capability_hash)
@@ -1546,8 +1558,9 @@ export class MusicDomainRepository {
     const capabilityValid = typeof capability === "string" && /^[A-Za-z0-9_-]{43}$/.test(capability);
     const capabilityHash = capabilityValid ? hashGuestCapability(capability) : null;
     const row = (await this.pool.query(
-      `SELECT id,allow_song_requests,guest_discoverable,guest_capability_hash FROM users
+      `SELECT id,allow_song_requests,guest_discoverable,guest_capability_hash FROM users u
        WHERE guest_url=$1 AND identity_status='active'
+         AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}
          AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$2 AND guest_capability_revoked_at IS NULL))`,
       [publicSlug, capabilityHash, capabilityValid],
     )).rows[0];
@@ -1563,6 +1576,7 @@ export class MusicDomainRepository {
       `SELECT DISTINCT u.guest_url AS "guestUrl",u.updated_at AS "updatedAt"
          FROM users u
         WHERE u.identity_status='active'
+          AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}
           AND u.guest_url IS NOT NULL
           AND u.guest_discoverable=true
           AND EXISTS (
