@@ -111,3 +111,7 @@ Spec preflight confirmed that PublicHome discards canonical nested People/Produc
 PublicHome now reads People and Products children only from the selected location's canonical nested projection, preserves visibility filtering, handles malformed nested entries, and displays canonical People names. Independent review found a captured-detail modal defect; the repair stores scoped child/list identities and resolves current eligible DTOs during render. Scope, eligibility, loading and errors close stale details; clearing invalid intent prevents restoration from reopening them.
 
 Final scoped rereview is clear. Fresh root verification passed all 42 component tests and application TypeScript (exit 0). The tests use real PublicHome rendering with mocked API hooks and observable modal doubles; they do not qualify actual modal internals or HTTP transport. The next package authors the two frozen Places/link browser specs and then executes the actual protected aggregate.
+
+## Empty public location checkpoint — 2026-10-10
+
+Public Places now renders every eligible location heading and existing navigation even when it contains no recommendations. The strict 53-location browser requirement remains intact. Independent review is clear; fresh root verification passed all 46 component tests and application TypeScript with no diagnostics. Existing 42 modal and boundary cases remain. These mocked-hook component checks do not establish API pagination or desktop/mobile browser qualification. The two frozen browser specs resume final corrections and review next.

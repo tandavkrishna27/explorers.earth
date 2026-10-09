@@ -1499,9 +1499,6 @@ const PublicHome = memo(() => {
                       {PublishedCities.map((city: any, idx: number) => {
                         const citySlug = (city.slug || toUrlSlug(city.List_Name || ""));
                         const placesList = city.recommended_places || [];
-                        const count = placesList.length;
-
-                        if (count === 0) return null;
 
                         return (
                           <div key={city.documentId || idx} className="flex flex-col gap-3">

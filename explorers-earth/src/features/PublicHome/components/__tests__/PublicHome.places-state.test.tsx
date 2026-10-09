@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useEffect } from "react";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -164,6 +164,56 @@ describe("PublicHome Places category states", () => {
     state.places = { data: undefined, loading: false, error: null, refetch: vi.fn().mockResolvedValue(undefined) };
     state.mapsApiLoaded = false;
     state.modalRenders = [];
+  });
+
+  it("renders an eligible empty location alongside a populated location and navigates through See All", async () => {
+    state.places.data = { recommendationLists: [list("tokyo", "Tokyo", [place("t-1", "Tokyo Tower")]), list("hyderabad", "Hyderabad", [])] };
+    renderPlaces();
+    const emptyHeading = await screen.findByRole("heading", { name: "Hyderabad" });
+    expect(emptyHeading).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Tokyo" })).toBeVisible();
+    expect(screen.getAllByTestId("place-card")).toHaveLength(1);
+    expect(screen.queryByText("No Places Yet")).not.toBeInTheDocument();
+    await click(within(emptyHeading.parentElement!.parentElement!).getByRole("button", { name: "See All ➔" }));
+    expect(await screen.findByText("No Recommendation Available.")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Hyderabad" })).toBeVisible();
+    expect(screen.queryByTestId("place-card")).not.toBeInTheDocument();
+    expect(screen.queryByText("No Places Yet")).not.toBeInTheDocument();
+  });
+
+  it("renders all 53 eligible projected location titles including the first populated and final empty location", async () => {
+    state.places.data = { recommendationLists: Array.from({ length: 53 }, (_, index) =>
+      list(`city-${index + 1}`, `City${String(index + 1).padStart(2, "0")}`, index === 0 ? [place("first-place", "First Place")] : [])) };
+    renderPlaces();
+    expect(await screen.findByRole("heading", { name: "City01" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "City53" })).toBeVisible();
+    expect(screen.getAllByRole("heading", { name: /^City\d{2}$/ })).toHaveLength(53);
+    for (let index = 1; index <= 53; index++) {
+      expect(screen.getByRole("heading", { name: `City${String(index).padStart(2, "0")}` })).toBeVisible();
+    }
+    expect(screen.getAllByRole("button", { name: "See All ➔" })).toHaveLength(53);
+    expect(screen.getAllByTestId("place-card")).toHaveLength(1);
+  });
+
+  it("renders a valid empty location detail with the existing recommendation empty view", async () => {
+    state.places.data = { recommendationLists: [list("hyderabad", "Hyderabad", [])] };
+    renderPlaces("/alice/places/hyderabad");
+    expect(await screen.findByRole("heading", { name: "Hyderabad" })).toBeVisible();
+    expect(screen.getByText("No Recommendation Available.")).toBeVisible();
+    expect(screen.queryByText("No Places Yet")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("place-card")).not.toBeInTheDocument();
+  });
+
+  it("does not expose private or unavailable location rows alongside an eligible empty location", async () => {
+    state.places.data = { recommendationLists: [list("hyderabad", "Hyderabad", []),
+      { ...list("private", "Private City", [place("secret", "Private Place")]), Visibility: false },
+      { ...list("invalid", "Unavailable City", []), recommended_places: null }] };
+    renderPlaces();
+    expect(await screen.findByRole("heading", { name: "Hyderabad" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Private City" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Unavailable City" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("place-card")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "See All ➔" })).toHaveLength(1);
   });
 
   it.each(["people", "products"])("invalidates the open %s modal when its child is withdrawn and does not resurrect it", async (kind) => {
