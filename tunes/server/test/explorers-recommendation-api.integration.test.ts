@@ -29,6 +29,58 @@ async function entity(kind='book') {return (await pool.query("INSERT INTO entiti
 async function recommendation(owner:{cookie:string},collection:any,entityId:string,revision=1) {
   const result=await command(owner,'post','/recommendations',{category:collection.category,entityId,collectionId:collection.id,expectedCollectionRevision:revision,userRating:8,publicationState:'draft'});expect(result.status).toBe(201);return result.body.recommendation;
 }
+
+async function parentCreateRevision(id:string) {
+  return Number((await pool.query('SELECT revision::text FROM collections WHERE id=$1',[id])).rows[0].revision);
+}
+async function parentCreateHttpState(accountIds:string[]) {
+  const collections=(await pool.query('SELECT id,account_id,category,revision::text,archived_at FROM collections WHERE account_id=ANY($1::uuid[]) ORDER BY id',[accountIds])).rows;
+  const links=(await pool.query('SELECT * FROM collection_location_links WHERE account_id=ANY($1::uuid[]) ORDER BY child_collection_id',[accountIds])).rows;
+  const categories=(await pool.query('SELECT * FROM account_category_content_state WHERE account_id=ANY($1::uuid[]) ORDER BY account_id,category',[accountIds])).rows;
+  const receipts=(await pool.query('SELECT * FROM application_command_receipts WHERE account_id=ANY($1::uuid[]) ORDER BY id',[accountIds])).rows;
+  return {collections,links,categories,receipts};
+}
+it('guarded parent create HTTP strictly validates pairs and preserves ordinary collection DTOs',async()=>{
+  const a=await persona(),parent=await list(a,'places');
+  const ordinaryInput={category:'products',title:'Ordinary',slug:`ordinary-${randomUUID()}`},key=randomUUID();
+  const ordinary=await command(a,'post','/collections',ordinaryInput,key);expect(ordinary.status).toBe(201);
+  expect(ordinary.body).toEqual({collection:{id:expect.any(String),accountId:a.accountId,...ordinaryInput,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null}});
+  const unchanged=await parentCreateHttpState([a.accountId]);
+  expect((await command(a,'post','/collections',ordinaryInput,key)).body).toEqual(ordinary.body);
+  expect(await parentCreateHttpState([a.accountId])).toEqual(unchanged);
+  const pair={category:'products',title:'Invalid',slug:`invalid-${randomUUID()}`,parentLocationCollectionId:parent.id,parentExpectedRevision:await parentCreateRevision(parent.id)};
+  const {parentExpectedRevision,...idOnly}=pair,{parentLocationCollectionId,...revisionOnly}=pair;
+  const invalid=[idOnly,revisionOnly,...[0,-1,1.5,Number.MAX_SAFE_INTEGER+1,'1',null].map(value=>({...pair,parentExpectedRevision:value})),...['places','books','movies','games','apps','guides'].map(category=>({...pair,category})),{...pair,unknownField:true},{...pair,parentLocationCollectionId:'invalid-id'}];
+  for(const input of invalid){const before=await parentCreateHttpState([a.accountId]);expect((await command(a,'post','/collections',input)).status).toBe(422);expect(await parentCreateHttpState([a.accountId])).toEqual(before);}
+});
+it('guarded parent create HTTP links Products and People and gives equal foreign missing refusals without orphans',async()=>{
+  const a=await persona(),b=await persona(),parent=await list(a,'places'),foreign=await list(b,'places'),archived=await list(a,'places'),wrong=await list(a,'books');
+  await pool.query('UPDATE collections SET archived_at=now() WHERE id=$1',[archived.id]);
+  expect((await pool.query('SELECT recommendation_id FROM collection_items WHERE collection_id=$1',[parent.id])).rowCount).toBe(0);
+  for(const category of ['products','people']){
+    const observed=await parentCreateRevision(parent.id),before=await parentCreateHttpState([a.accountId,b.accountId]);
+    const input={category,title:'Guarded HTTP child',slug:`guarded-${randomUUID()}`,parentLocationCollectionId:parent.id,parentExpectedRevision:observed},key=randomUUID();
+    const saved=await command(a,'post','/collections',input,key);expect(saved.status).toBe(201);
+    expect(saved.body.collection).toEqual({id:expect.any(String),accountId:a.accountId,category,title:input.title,slug:input.slug,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,parentLocation:{id:parent.id,revision:observed+1}});
+    expect(saved.body.collection.id).not.toBe(parent.id);expect(await parentCreateRevision(parent.id)).toBe(observed+1);
+    const after=await parentCreateHttpState([a.accountId,b.accountId]);
+    expect(after.collections).toHaveLength(before.collections.length+1);expect(after.links).toHaveLength(before.links.length+1);expect(after.receipts).toHaveLength(before.receipts.length+1);
+    expect(after.links.filter(row=>row.child_collection_id===saved.body.collection.id)).toHaveLength(1);
+    expect(after.links.find(row=>row.child_collection_id===saved.body.collection.id)).toMatchObject({account_id:a.accountId,location_collection_id:parent.id,child_category:category});
+    for(const changed of ['places',category]){const cursor=(state:typeof after)=>Number(state.categories.find(row=>row.account_id===a.accountId&&row.category===changed)?.revision??0);expect(cursor(after)).toBeGreaterThan(cursor(before));}
+    expect((await command(a,'post','/collections',input,key)).body).toEqual(saved.body);expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(after);
+    const refusalInput={...input,slug:`refused-${randomUUID()}`},states=await parentCreateHttpState([a.accountId,b.accountId]);
+    const denied=await command(a,'post','/collections',{...refusalInput,parentLocationCollectionId:foreign.id,parentExpectedRevision:await parentCreateRevision(foreign.id)});
+    expect(denied.status).toBe(404);expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(states);
+    const missing=await command(a,'post','/collections',{...refusalInput,parentLocationCollectionId:randomUUID(),parentExpectedRevision:1});
+    expect(missing.status).toBe(404);expect(missing.body).toEqual(denied.body);expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(states);
+    for(const [id,expected,status] of [[parent.id,observed,409],[archived.id,await parentCreateRevision(archived.id),404],[wrong.id,await parentCreateRevision(wrong.id),422]] as const){expect((await command(a,'post','/collections',{...refusalInput,parentLocationCollectionId:id,parentExpectedRevision:expected})).status).toBe(status);expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(states);}
+  }
+  const bare=await recommendation(a,{...parent,category:'places'},await entity('place'),await parentCreateRevision(parent.id));
+  const before=await parentCreateHttpState([a.accountId,b.accountId]);
+  expect((await command(a,'post','/collections',{category:'people',title:'Bare recommendation refused',slug:`bare-${randomUUID()}`,parentLocationCollectionId:bare.id,parentExpectedRevision:1})).status).toBe(404);
+  expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(before);
+});
 it('persists independent versioned notes and preserves omitted, clear and retry semantics',async()=>{
  const a=await persona(),b=await persona(),shared=await entity(),la=await list(a),lb=await list(b);
  const note={version:1,format:'quill-html',html:'<h2>हैलो café</h2><p><strong>😀 A</strong></p>'};
@@ -404,7 +456,7 @@ it('Places native client renames title and share slug, preserves aggregates, rel
  try {
   const oldSlug=`native-${randomUUID()}`,newSlug=`edited-${randomUUID()}`,location={locationEntityId:null,locationSnapshot:{version:1 as const,name:'Mumbai',address:'Mumbai, India',providerPlaceId:null,latitude:19.076,longitude:72.8777},instagramMediaUrl:null};
   const c=await PlacesClient.createCollection({title:'Native location',slug:oldSlug,description:'Retained description',placeLocation:location},randomUUID());
-  const r=await recommendation(a,c,await entity('place'));const child=await command(a,'post','/collections',{category:'products',title:'Linked',slug:`linked-${randomUUID()}`,parentLocationCollectionId:c.id});expect(child.status).toBe(201);
+  const r=await recommendation(a,c,await entity('place'));const linkedParent=await PlacesClient.observeCollection(c.id);const child=await command(a,'post','/collections',{category:'products',title:'Linked',slug:`linked-${randomUUID()}`,parentLocationCollectionId:c.id,parentExpectedRevision:linkedParent.resourceRevision});expect(child.status).toBe(201);
   const cover=(await pool.query("INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256) VALUES($1,'collection','ready','image/png',1,now(),decode(repeat('00',32),'hex')) RETURNING id",[a.accountId])).rows[0].id;
   const initial=await PlacesClient.observeCollection(c.id);expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:initial.resourceRevision,coverMediaId:cover,heading:'Retained heading'})).status).toBe(200);
   const observed=await PlacesClient.observeCollection(c.id),before=await slugState(a,c.id),links=(await pool.query('SELECT * FROM collection_items WHERE collection_id=$1',[c.id])).rows,key=randomUUID(),patch={title:'Edited location',slug:newSlug};

@@ -72,6 +72,19 @@ async function linkCount(accountId: string) {
   return (await pool.query("SELECT count(*)::int AS count FROM collection_location_links WHERE account_id=$1", [accountId])).rows[0].count as number;
 }
 
+/** Snapshot all owned command effects, including failed receipts and category cursors. */
+async function guardedCreateState(accountIds: string[]) {
+  const collections = (await pool.query("SELECT id,account_id,category,revision::text,archived_at FROM collections WHERE account_id=ANY($1::uuid[]) ORDER BY id", [accountIds])).rows;
+  const links = (await pool.query("SELECT * FROM collection_location_links WHERE account_id=ANY($1::uuid[]) ORDER BY child_collection_id", [accountIds])).rows;
+  const categories = (await pool.query("SELECT * FROM account_category_content_state WHERE account_id=ANY($1::uuid[]) ORDER BY account_id,category", [accountIds])).rows;
+  const receipts = (await pool.query("SELECT * FROM application_command_receipts WHERE account_id=ANY($1::uuid[]) ORDER BY id", [accountIds])).rows;
+  return {collections, links, categories, receipts};
+}
+
+function guardedCreateInput(category: "products" | "people", parentId: string, parentExpectedRevision: number) {
+  return {category, title: "Guarded child", slug: `guarded-${randomUUID()}`, parentLocationCollectionId: parentId, parentExpectedRevision};
+}
+
 async function attach(accountId: string, childId: string, locationId: string) {
   return repository.writeLocationMembership(accountId, {
     childCollectionId: childId, expectedChildRevision: await revision(childId),
@@ -220,13 +233,113 @@ describePg("Places link storage against PostgreSQL", () => {
   it("creates a child list already linked, and leaves no orphan when the parent is bad", async () => {
     const accountId = await account();
     const location = await list(accountId, "places");
-    const linked = await list(accountId, "people", {parentLocationCollectionId: location.id});
+    const linked = await list(accountId, "people", {parentLocationCollectionId: location.id, parentExpectedRevision: await revision(location.id)});
     expect((await readLocationLink(pool, linked.id, accountId))?.locationCollectionId).toBe(location.id);
 
     // A failed parent must leave no orphan child - the whole create rolls back.
     const before = (await pool.query("SELECT count(*)::int AS count FROM collections WHERE account_id=$1", [accountId])).rows[0].count;
-    await expect(list(accountId, "people", {parentLocationCollectionId: randomUUID()})).rejects.toMatchObject({status: 422});
+    await expect(list(accountId, "people", {parentLocationCollectionId: randomUUID(), parentExpectedRevision: 1})).rejects.toMatchObject({status: 404});
     expect((await pool.query("SELECT count(*)::int AS count FROM collections WHERE account_id=$1", [accountId])).rows[0].count).toBe(before);
+  });
+
+  it("guarded parent create preserves ordinary compatibility and rejects invalid revision pairs", async () => {
+    const owner = await account(), parent = await list(owner, "places");
+    const ordinaryInput = {category: "products" as const, title: "Ordinary", slug: `ordinary-${randomUUID()}`};
+    const ordinaryKey = key(), ordinary = await repository.createCollection(owner, ordinaryInput, ordinaryKey);
+    expect(ordinary).toEqual({id: expect.any(String), accountId: owner, ...ordinaryInput, visibility: "private", publicationState: "draft", revision: 1, description: null, heading: null, coverMediaId: null});
+    const afterOrdinary = await guardedCreateState([owner]);
+    expect(await repository.createCollection(owner, ordinaryInput, ordinaryKey)).toEqual(ordinary);
+    expect(await guardedCreateState([owner])).toEqual(afterOrdinary);
+    const paired = guardedCreateInput("products", parent.id, await revision(parent.id));
+    const {parentExpectedRevision, ...idOnly} = paired;
+    const {parentLocationCollectionId, ...revisionOnly} = paired;
+    const invalid = [idOnly, revisionOnly, ...[0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, "1", null].map(value => ({...paired, parentExpectedRevision: value})), ...["places", "books", "movies", "games", "apps", "guides"].map(category => ({...paired, category}))];
+    for (const input of invalid) {
+      const before = await guardedCreateState([owner]);
+      await expect(repository.createCollection(owner, input as never, key())).rejects.toMatchObject({status: 422});
+      expect(await guardedCreateState([owner])).toEqual(before);
+    }
+  });
+
+  it("guarded parent create links Products and People atomically and refuses parents without orphans", async () => {
+    const owner = await account(), stranger = await account();
+    const parent = await list(owner, "places"), foreign = await list(stranger, "places"), wrong = await list(owner, "books"), archived = await list(owner, "places");
+    await pool.query("UPDATE collections SET archived_at=now() WHERE id=$1", [archived.id]);
+    // Empty Places collections are valid parents; no recommendation is required.
+    expect((await pool.query("SELECT recommendation_id FROM collection_items WHERE collection_id=$1", [parent.id])).rowCount).toBe(0);
+    for (const category of ["products", "people"] as const) {
+      const observed = await revision(parent.id), before = await guardedCreateState([owner, stranger]);
+      const child = await repository.createCollection(owner, guardedCreateInput(category, parent.id, observed) as never, key());
+      expect(child).toMatchObject({id: expect.any(String), accountId: owner, category, revision: 1, parentLocation: {id: parent.id, revision: observed + 1}});
+      expect(child.id).not.toBe(parent.id);
+      expect(await revision(parent.id)).toBe(observed + 1);
+      expect(await readLocationLink(pool, child.id, owner)).toEqual({childCollectionId: child.id, childCategory: category, locationCollectionId: parent.id});
+      const after = await guardedCreateState([owner, stranger]);
+      expect(after.collections).toHaveLength(before.collections.length + 1);
+      expect(after.links).toHaveLength(before.links.length + 1);
+      expect(after.receipts).toHaveLength(before.receipts.length + 1);
+      for (const changed of ["places", category]) {
+        const cursor = (state: typeof after) => Number(state.categories.find(row => row.account_id === owner && row.category === changed)?.revision ?? 0);
+        expect(cursor(after)).toBeGreaterThan(cursor(before));
+      }
+    }
+    const entity = await repository.resolvePlaceEntity(owner, {kind: "manual", category: "places", details: {title: "Bare place"}}, key());
+    const bare = await repository.createRecommendation(owner, {category: "places", entityId: entity.id, collectionId: parent.id, expectedCollectionRevision: await revision(parent.id)}, key());
+    for (const category of ["products", "people"] as const) {
+      const cases = [[parent.id, (await revision(parent.id)) - 1, 409], [foreign.id, await revision(foreign.id), 404], [randomUUID(), 1, 404], [archived.id, await revision(archived.id), 404], [wrong.id, await revision(wrong.id), 422], [bare.id, 1, 404]] as const;
+      for (const [id, expected, status] of cases) {
+        const before = await guardedCreateState([owner, stranger]);
+        await expect(repository.createCollection(owner, guardedCreateInput(category, id, expected) as never, key())).rejects.toMatchObject({status});
+        expect(await guardedCreateState([owner, stranger])).toEqual(before);
+      }
+    }
+  });
+
+  it("guarded parent create replays its full receipt concurrently and after later parent mutation", async () => {
+    for (const category of ["products", "people"] as const) {
+      const owner = await account(), parent = await list(owner, "places"), other = await list(owner, "places");
+      const observed = await revision(parent.id), input = guardedCreateInput(category, parent.id, observed), commandKey = key(), before = await guardedCreateState([owner]);
+      const [first, concurrent] = await Promise.all([repository.createCollection(owner, input as never, commandKey), repository.createCollection(owner, input as never, commandKey)]);
+      expect(first).toMatchObject({accountId: owner, category, revision: 1, parentLocation: {id: parent.id, revision: observed + 1}});
+      expect(concurrent).toEqual(first);
+      const committed = await guardedCreateState([owner]);
+      expect(committed.collections).toHaveLength(before.collections.length + 1);
+      expect(committed.links).toHaveLength(before.links.length + 1);
+      expect(committed.receipts).toHaveLength(before.receipts.length + 1);
+      expect(await revision(parent.id)).toBe(observed + 1);
+      expect(committed.receipts.filter(row => row.operation === "createCollection" && row.response.id === first.id)).toHaveLength(1);
+      expect(committed.receipts.find(row => row.response.id === first.id)?.response).toEqual(first);
+      expect(await repository.createCollection(owner, input as never, commandKey)).toEqual(first);
+      expect(await guardedCreateState([owner])).toEqual(committed);
+      await repository.updateCollection(owner, parent.id, await revision(parent.id), {title: "Later mutation"}, key());
+      const later = await guardedCreateState([owner]);
+      expect(await repository.createCollection(owner, input as never, commandKey)).toEqual(first);
+      expect(await guardedCreateState([owner])).toEqual(later);
+      for (const changed of [{...input, title: "Changed"}, {...input, parentLocationCollectionId: other.id}, {...input, parentExpectedRevision: await revision(parent.id)}]) {
+        await expect(repository.createCollection(owner, changed as never, commandKey)).rejects.toMatchObject({status: 409});
+        expect(await guardedCreateState([owner])).toEqual(later);
+      }
+    }
+  });
+
+  it("guarded parent create with two keys at one expected revision commits once and refuses the stale contender", async () => {
+    for (const category of ["products", "people"] as const) {
+      const owner = await account(), parent = await list(owner, "places"), observed = await revision(parent.id);
+      const input = guardedCreateInput(category, parent.id, observed), keys = [key(), key()], before = await guardedCreateState([owner]);
+      const results = await Promise.allSettled(keys.map(commandKey => repository.createCollection(owner, input as never, commandKey)));
+      const accepted = results.filter(result => result.status === "fulfilled"), refused = results.filter(result => result.status === "rejected");
+      expect(accepted).toHaveLength(1); expect(refused).toHaveLength(1);
+      expect(refused[0]).toMatchObject({reason: {status: 409}});
+      expect(accepted[0]).toMatchObject({value: {revision: 1, parentLocation: {id: parent.id, revision: observed + 1}}});
+      const after = await guardedCreateState([owner]);
+      expect(after.collections).toHaveLength(before.collections.length + 1);
+      expect(after.links).toHaveLength(before.links.length + 1);
+      expect(after.receipts).toHaveLength(before.receipts.length + 1);
+      expect(await revision(parent.id)).toBe(observed + 1);
+      const loser = results.findIndex(result => result.status === "rejected");
+      await expect(repository.createCollection(owner, input as never, keys[loser])).rejects.toMatchObject({status: 409});
+      expect(await guardedCreateState([owner])).toEqual(after);
+    }
   });
 
   it("removes the link with either list and keeps the other", async () => {
