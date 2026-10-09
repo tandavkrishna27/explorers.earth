@@ -45,6 +45,23 @@ function c11CopyDumpFixture(): Buffer {
   ].join("\n"), "utf8");
 }
 
+type DerivedTrigger = { table: string; name: string; enabled: string; type: number; function?: string };
+
+function nativeMigrationTriggers(): DerivedTrigger[] {
+  return EXPECTED_MUSIC_MIGRATION_CHAIN.filter(id => Number(id.slice(0, 4)) >= 43 && Number(id.slice(0, 4)) <= 50)
+    .flatMap(id => {
+      const sql = readFileSync(resolve(`migrations/${id}.sql`), "utf8");
+      const declarations = [...sql.matchAll(/CREATE (?:CONSTRAINT )?TRIGGER ([a-z_]+) (AFTER|BEFORE) ([\s\S]*?) ON public\.([a-z_]+)\s+([\s\S]*?)EXECUTE FUNCTION public\.([a-z_]+)\(\);/g)];
+      return declarations.map(([, name, timing, events, table, body, fn]) => {
+        const type = (body.includes("FOR EACH ROW") ? 1 : 0) | (timing === "BEFORE" ? 2 : 0)
+          | (/\bINSERT\b/.test(events) ? 4 : 0) | (/\bDELETE\b/.test(events) ? 8 : 0)
+          | (/\bUPDATE\b/.test(events) ? 16 : 0);
+        return { table, name, enabled: "O", type,
+          ...(name.includes("_content_revision_") ? { function: fn } : {}) };
+      });
+    });
+}
+
 describe("Music E2E transactional state restore", () => {
   it("derives an immutable restore target only from the exact fixture container fingerprint", async () => {
     // Production break caught: label-only inspection followed by execution by
@@ -242,10 +259,48 @@ describe("Music E2E transactional state restore", () => {
     expectedTriggers.push({table:'movie_entity_details',name:'movie_media_facts_reverse_guard',enabled:'O',type:25});
     expectedTriggers.push({table:'entity_identifiers',name:'movie_media_identity_reverse_guard',enabled:'O',type:25});
     for(const table of ['recommendation_movie_media','movie_recommendation_context','recommendation_taxonomy']) for(const [event,type] of [['insert',4],['update',16],['delete',8]] as const) expectedTriggers.push({table,name:table+'_content_revision_'+event,enabled:'O',type,function:'explorers_content_revision_'+event});
+    expectedTriggers.push(...nativeMigrationTriggers());
     expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual(expectedTriggers.sort((a,b)=>a.table.localeCompare(b.table)||a.name.localeCompare(b.name)));
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_TABLES)).toBe(true);
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_MIGRATION_IDS)).toBe(true);
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS)).toBe(true);
+  });
+
+  it("binds every migrated revision function to bounded replay and keeps native integrity guards active", async () => {
+    const contract = await loadRestoreContract();
+    const build = contract.buildMusicFixtureRestoreOperation as (input: { containerId: string; dataDump: Buffer }) => { input: Buffer };
+    const marker = "SELECT 'native-replay-marker';\n";
+    const sql = build({ containerId: "a".repeat(64), dataDump: Buffer.from(marker) }).input.toString("utf8");
+    const native = nativeMigrationTriggers();
+    expect(native).toHaveLength(48);
+    const revisions = native.filter(entry => entry.function);
+    expect(revisions).toHaveLength(26);
+    expect(revisions.filter(entry => entry.table === "guide_section_photos").map(entry => entry.name).sort())
+      .toEqual(["guide_section_photos_content_revision_delete", "guide_section_photos_content_revision_insert"]);
+    const fingerprints = contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS as DerivedTrigger[];
+    const allRevisions = fingerprints.filter(entry => entry.function);
+    const expectedMappings = allRevisions.map(({ table, name, function: fn }) => `${table}|${name}|${fn}`).sort();
+    const mappingArrays = [...sql.matchAll(/actual_revision_functions IS DISTINCT FROM ARRAY\[(.*?)\]::text\[\]/g)];
+    expect(mappingArrays).toHaveLength(2);
+    for (const [, values] of mappingArrays) expect([...values.matchAll(/'([^']+)'/g)].map(match => match[1]))
+      .toEqual(expectedMappings);
+    for (const { table, name } of [...allRevisions, ...revisions]) {
+      const disable = `ALTER TABLE public."${table}" DISABLE TRIGGER ${name};`;
+      const enable = `ALTER TABLE public."${table}" ENABLE TRIGGER ${name};`;
+      expect(sql.split(disable)).toHaveLength(2);
+      expect(sql.split(enable)).toHaveLength(2);
+      expect(sql.indexOf(disable)).toBeLessThan(sql.indexOf("TRUNCATE TABLE"));
+      expect(sql.indexOf(marker)).toBeLessThan(sql.indexOf("SET CONSTRAINTS ALL IMMEDIATE;"));
+      expect(sql.indexOf("SET CONSTRAINTS ALL IMMEDIATE;")).toBeLessThan(sql.indexOf(enable));
+      expect(sql.indexOf(enable)).toBeLessThan(sql.lastIndexOf("DO $music_restore_authority$"));
+    }
+    const guards = native.filter(entry => !entry.function);
+    expect(guards).toHaveLength(22);
+    for (const { name } of guards) expect(sql).not.toContain(`DISABLE TRIGGER ${name};`);
+    const disabled = [...sql.matchAll(/DISABLE TRIGGER ([a-z_]+);/g)].map(match => match[1]).sort();
+    expect(disabled).toEqual([...allRevisions.map(entry => entry.name), "users_music_identity_insert",
+      "music_identity_tombstone_insert", "canonical_music_numeric_retirement_insert",
+      "music_publication_operation_immutability"].sort());
   });
 
   it("derives table and migration allowlists from the checked-in runtime manifest", async () => {

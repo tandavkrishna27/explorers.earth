@@ -52,11 +52,16 @@ export const MUSIC_FIXTURE_TABLES = Object.freeze(runtimeInventory.tables);
 export const MUSIC_FIXTURE_MIGRATION_IDS = Object.freeze(runtimeInventory.migrationIds);
 
 const revisionTriggers = Object.freeze([
-  ...['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_display_overrides','book_recommendation_context','recommendation_book_covers','recommendation_movie_media','movie_recommendation_context','recommendation_taxonomy','category_recommendation_pins','account_category_pin_state'].flatMap(table =>
+  ...['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_display_overrides','book_recommendation_context','recommendation_book_covers','recommendation_movie_media','movie_recommendation_context','recommendation_taxonomy','category_recommendation_pins','account_category_pin_state','recommendation_app_screenshots','product_recommendation_context','place_recommendation_context','recommendation_place_photos','place_collection_details','collection_location_links','guide_collection_details','guide_sections'].flatMap(table =>
     [['insert',4],['update',16],['delete',8]].map(([event,type]) => Object.freeze({
       table,name:`${table}_content_revision_${event}`,enabled:'O',type,
       function:`explorers_content_revision_${event}`,
     }))),
+  // Migration 0050 registers photos by immutable block membership: INSERT/DELETE only.
+  ...[['insert',4],['delete',8]].map(([event,type]) => Object.freeze({
+    table:'guide_section_photos',name:`guide_section_photos_content_revision_${event}`,enabled:'O',type,
+    function:`explorers_content_revision_${event}`,
+  })),
   Object.freeze({table:'creator_accounts',name:'creator_accounts_content_revision_lifecycle',enabled:'O',type:17,function:'explorers_content_revision_lifecycle'}),
 ]);
 export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
@@ -111,6 +116,29 @@ export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
   Object.freeze({table:'entities',name:'movie_media_entity_reverse_guard',enabled:'O',type:17}),
   Object.freeze({table:'movie_entity_details',name:'movie_media_facts_reverse_guard',enabled:'O',type:25}),
   Object.freeze({table:'entity_identifiers',name:'movie_media_identity_reverse_guard',enabled:'O',type:25}),
+  // Deferred integrity guards from migrations 0043–0050 stay active during replay.
+  Object.freeze({table:'app_entity_details',name:'app_entity_details_kind_guard',enabled:'O',type:21}),
+  Object.freeze({table:'entities',name:'entities_app_details_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'recommendation_app_screenshots',name:'recommendation_app_screenshots_guard',enabled:'O',type:21}),
+  Object.freeze({table:'media_assets',name:'media_assets_app_screenshot_guard',enabled:'O',type:17}),
+  Object.freeze({table:'recommendations',name:'recommendations_app_screenshot_guard',enabled:'O',type:17}),
+  Object.freeze({table:'product_entity_details',name:'product_entity_details_kind_guard',enabled:'O',type:21}),
+  Object.freeze({table:'entities',name:'entities_product_details_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'person_entity_details',name:'person_entity_details_guard',enabled:'O',type:21}),
+  Object.freeze({table:'entities',name:'entities_person_details_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'place_entity_details',name:'place_entity_details_guard',enabled:'O',type:21}),
+  Object.freeze({table:'entities',name:'entities_place_details_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'place_recommendation_context',name:'place_recommendation_context_kind_guard',enabled:'O',type:21}),
+  Object.freeze({table:'recommendations',name:'recommendations_place_context_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'recommendation_place_photos',name:'recommendation_place_photos_guard',enabled:'O',type:21}),
+  Object.freeze({table:'media_assets',name:'media_assets_place_photo_guard',enabled:'O',type:17}),
+  Object.freeze({table:'recommendations',name:'recommendations_place_photo_guard',enabled:'O',type:17}),
+  Object.freeze({table:'place_collection_details',name:'place_collection_details_guard',enabled:'O',type:21}),
+  Object.freeze({table:'entities',name:'entities_place_collection_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'guide_sections',name:'guide_section_media_registry',enabled:'O',type:21}),
+  Object.freeze({table:'guide_section_photos',name:'guide_section_photo_registry',enabled:'O',type:13}),
+  Object.freeze({table:'media_assets',name:'guide_section_photo_asset_guard',enabled:'O',type:17}),
+  Object.freeze({table:'entities',name:'guide_location_entity_guard',enabled:'O',type:17}),
   ...revisionTriggers,
 ].sort((a,b) => a.table.localeCompare(b.table)||a.name.localeCompare(b.name)));
 

@@ -24,6 +24,18 @@ let admin: pg.Pool | undefined;
 let fixture: pg.Pool | undefined;
 let containerId = "";
 let revisionAccount='';
+const nativeReplayTables = [
+  'recommendation_app_screenshots', 'product_recommendation_context', 'place_recommendation_context',
+  'recommendation_place_photos', 'place_collection_details', 'collection_location_links',
+  'guide_collection_details', 'guide_sections', 'guide_section_photos',
+] as const;
+
+async function nativeRows() {
+  return Promise.all(nativeReplayTables.map(async table => ({
+    table, rows: (await fixture!.query(`SELECT to_jsonb(row) AS value FROM public.${table} row ORDER BY to_jsonb(row)::text`)).rows,
+  })));
+}
+
 
 function databaseUrl(name: string) {
   const target = new URL(process.env.DATABASE_URL_TEST ?? "");
@@ -115,6 +127,31 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     const providerImage=(await fixture.query("INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256) VALUES($1,'recommendation','ready','image/png',8,now(),decode(repeat('00',32),'hex')) RETURNING id",[revisionAccount])).rows[0].id;
     await fixture.query("INSERT INTO media_objects(media_id,variant,storage_environment,object_key,mime_type,byte_size,content_sha256) VALUES($1,'original','local',$2,'image/png',8,decode(repeat('00',32),'hex'))",[providerImage,`local/${revisionAccount}/${providerImage}`]);
     await fixture.query("INSERT INTO recommendation_movie_media(recommendation_id,account_id,source_entity_id,source_external_kind,source_external_id,source_fetched_at,source_mapping_version,slot,slot_index,media_id) VALUES($1,$2,$3,'movie','42',1700000000000,1,'poster',0,$4),($1,$2,$3,'movie','42',1700000000000,1,'backdrop',1,$4)",[providerRec,revisionAccount,providerMovie,providerImage]);
+    // Populate every native replay exception, including the deferred guide photo registry.
+    const nativeRecommendations: Record<string, string> = {};
+    for (const [kind, category] of [['app', 'apps'], ['product', 'products'], ['place', 'places']]) {
+      const nativeEntity = (await fixture.query("INSERT INTO entities(kind,title,origin) VALUES($1,'Restore native catalog','manual') RETURNING id", [kind])).rows[0].id;
+      nativeRecommendations[category] = (await fixture.query('INSERT INTO recommendations(account_id,category,entity_id) VALUES($1,$2,$3) RETURNING id', [revisionAccount, category, nativeEntity])).rows[0].id;
+    }
+    await fixture.query('INSERT INTO recommendation_app_screenshots(recommendation_id,account_id,slot_index,media_id) VALUES($1,$2,0,$3)', [nativeRecommendations.apps, revisionAccount, providerImage]);
+    await fixture.query("INSERT INTO product_recommendation_context(recommendation_id,account_id,price,currency_code) VALUES($1,$2,0,'INR')", [nativeRecommendations.products, revisionAccount]);
+    await fixture.query('INSERT INTO place_recommendation_context(recommendation_id,account_id) VALUES($1,$2)', [nativeRecommendations.places, revisionAccount]);
+    await fixture.query('INSERT INTO recommendation_place_photos(recommendation_id,account_id,slot_index,media_id) VALUES($1,$2,0,$3)', [nativeRecommendations.places, revisionAccount, providerImage]);
+    const nativeCollections: Record<string, string> = {};
+    for (const category of ['places', 'products']) {
+      nativeCollections[category] = (await fixture.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,$2,'Restore native list',$3,0) RETURNING id", [revisionAccount, category, randomUUID()])).rows[0].id;
+    }
+    await fixture.query('INSERT INTO place_collection_details(collection_id,account_id) VALUES($1,$2)', [nativeCollections.places, revisionAccount]);
+    await fixture.query("INSERT INTO collection_location_links(child_collection_id,account_id,child_category,location_collection_id) VALUES($1,$2,'products',$3)", [nativeCollections.products, revisionAccount, nativeCollections.places]);
+    const guide = (await fixture.query("SELECT id FROM collections WHERE account_id=$1 AND category='guides'", [revisionAccount])).rows[0].id;
+    await fixture.query('INSERT INTO guide_collection_details(collection_id,account_id) VALUES($1,$2)', [guide, revisionAccount]);
+    const guideImage = (await fixture.query("INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256) VALUES($1,'guide','ready','image/png',1,now(),decode(repeat('00',32),'hex')) RETURNING id", [revisionAccount])).rows[0].id;
+    await fixture.query('BEGIN');
+    try {
+      const section = (await fixture.query("INSERT INTO guide_sections(collection_id,account_id,display_order,block_version,title,blocks) VALUES($1,$2,0,'guide-section-blocks/v1','Restore section',$3) RETURNING id", [guide, revisionAccount, {photos: [{mediaId: guideImage}]}])).rows[0].id;
+      await fixture.query('INSERT INTO guide_section_photos(section_id,account_id,media_id) VALUES($1,$2,$3)', [section, revisionAccount, guideImage]);
+      await fixture.query('COMMIT');
+    } catch (error) { await fixture.query('ROLLBACK'); throw error; }
     await fixture.query("UPDATE account_category_content_state SET revision=revision+123 WHERE account_id=$1",[revisionAccount]);
   });
 
@@ -158,7 +195,10 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     expect(overrides.map(row=>row.display_values)).toEqual(expect.arrayContaining([{title:null},{}]));
     const notes=(await fixture!.query('SELECT id,note FROM recommendations WHERE account_id=$1 ORDER BY id',[revisionAccount])).rows;
     const before=(await fixture!.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1 ORDER BY category',[revisionAccount])).rows;
-    expect(before).toHaveLength(3);expect(BigInt(before[0].revision)).toBeGreaterThan(100n);
+    expect(before.map(row => row.category)).toEqual(['apps','books','guides','movies','places','products']);
+    for (const row of before) expect(BigInt(row.revision)).toBeGreaterThan(100n);
+    const native = await nativeRows();
+    for (const entry of native) expect(entry.rows, entry.table).toHaveLength(1);
     const data=dump(true),snapshot=hash();
     expect((await fixture!.query('SELECT * FROM recommendation_book_covers ORDER BY recommendation_id,slot')).rows).toEqual(bookCovers);
     await fixture!.query("UPDATE collections SET heading='Before restore',revision=revision+1 WHERE account_id=$1",[revisionAccount]);
@@ -173,9 +213,33 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     expect((await fixture!.query('SELECT * FROM book_entity_details')).rows).toEqual(bookFacts);
     expect((await fixture!.query('SELECT * FROM book_recommendation_context')).rows).toEqual(bookContexts);
     expect((await fixture!.query('SELECT * FROM recommendation_book_covers ORDER BY recommendation_id,slot')).rows).toEqual(bookCovers);
+    expect(await nativeRows()).toEqual(native);
     await fixture!.query("UPDATE collections SET heading='After restore' WHERE account_id=$1 AND category='books'",[revisionAccount]);
     const next=(await fixture!.query("SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category='books'",[revisionAccount])).rows[0].revision;
     expect(BigInt(next)).toBeGreaterThan(BigInt(before.find(row=>row.category==='books')!.revision));
+    // Every new table resumes ordinary counter advancement after the exact replay.
+    for (const table of nativeReplayTables) {
+      const counters = async () => (await fixture!.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1 ORDER BY category', [revisionAccount])).rows;
+      const prior = await counters();
+      if (table === 'guide_section_photos') {
+        await fixture!.query('BEGIN');
+        try {
+          const photo = (await fixture!.query('DELETE FROM guide_section_photos WHERE account_id=$1 RETURNING *', [revisionAccount])).rows[0];
+          await fixture!.query('INSERT INTO guide_section_photos(section_id,account_id,media_id) VALUES($1,$2,$3)', [photo.section_id, photo.account_id, photo.media_id]);
+          await fixture!.query('COMMIT');
+        } catch (error) { await fixture!.query('ROLLBACK'); throw error; }
+      } else {
+        await fixture!.query(`UPDATE public.${table} SET account_id=account_id WHERE account_id=$1`, [revisionAccount]);
+      }
+      const after = await counters();
+      const categories = table === 'collection_location_links' ? ['places','products']
+        : [table === 'recommendation_app_screenshots' ? 'apps'
+          : table === 'product_recommendation_context' ? 'products'
+          : table.startsWith('guide_') ? 'guides' : 'places'];
+      for (const category of categories) expect(BigInt(after.find(row => row.category === category)!.revision), `${table}: ${category}`)
+        .toBeGreaterThan(BigInt(prior.find(row => row.category === category)!.revision));
+    }
+
   });
 
   it("rolls an injected mid-replay failure back to the pre-attempt mutated hash", async () => {
