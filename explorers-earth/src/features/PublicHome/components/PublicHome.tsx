@@ -335,7 +335,10 @@ const PublicHome = memo(() => {
     : normalizedRecommendationLists[0];
   const [activeTab, setActiveTab] = useState<"places" | "people" | "products">("places");
 
-  const linkedListsData = useMemo(() => ({ personLists: [], productLists: [] }), []);
+  const linkedListsData = useMemo(() => ({
+    personLists: Array.isArray(selectedCity?.person_lists) ? selectedCity.person_lists : [],
+    productLists: Array.isArray(selectedCity?.product_lists) ? selectedCity.product_lists : [],
+  }), [selectedCity?.person_lists, selectedCity?.product_lists]);
   const linkedListsError = undefined;
 
   // Reset activeTab when selectedCity changes
@@ -354,7 +357,7 @@ const PublicHome = memo(() => {
 
   const linkedPeople = useMemo(() => {
     const raw = linkedPersonLists.flatMap((l: any) =>
-      (l?.recommended_people || []).filter(Boolean).map((p: any) => ({
+      (Array.isArray(l?.recommended_people) ? l.recommended_people : []).filter(isNonNullObject).map((p: any) => ({
         ...p,
         _listName: l.List_Name,
         _listId: l.documentId,
@@ -366,7 +369,7 @@ const PublicHome = memo(() => {
 
   const linkedProducts = useMemo(() => {
     const raw = linkedProductLists.flatMap((l: any) =>
-      (l?.recommended_products || []).filter(Boolean).map((p: any) => ({
+      (Array.isArray(l?.recommended_products) ? l.recommended_products : []).filter(isNonNullObject).map((p: any) => ({
         ...p,
         _listName: l.List_Name,
         _listId: l.documentId,
@@ -395,8 +398,23 @@ const PublicHome = memo(() => {
     }
     setExpandedState({ ...value, scope: modalScope });
   };
-  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
-  const [selectedPerson, setSelectedPerson] = useState<any | null>(null);
+  const [productSelection, setProductSelection] = useState<{ scope: string; documentId: string; listId: string } | null>(null);
+  const [personSelection, setPersonSelection] = useState<{ scope: string; documentId: string; listId: string } | null>(null);
+  const linkedModalScope = `${modalScope}\u0000${selectedCity?.documentId ?? ""}`;
+  const canShowLinkedDetails = Boolean(accountData && selectedCity && shellData?.public_recommendations === "Yes")
+    && !shellLoading && !placesCategoryLoading && !accountError && !placesCategoryError;
+  const selectedProduct = canShowLinkedDetails && productSelection?.scope === linkedModalScope
+    ? linkedProducts.find((product: any) => product.documentId === productSelection.documentId && product._listId === productSelection.listId) ?? null
+    : null;
+  const selectedPerson = canShowLinkedDetails && personSelection?.scope === linkedModalScope
+    ? linkedPeople.find((person: any) => person.documentId === personSelection.documentId && person._listId === personSelection.listId) ?? null
+    : null;
+  // The render guard removes stale DTOs immediately; clearing intent prevents
+  // a withdrawn child or previously visited scope from reopening on restoration.
+  useEffect(() => {
+    if (productSelection && !selectedProduct) setProductSelection(null);
+    if (personSelection && !selectedPerson) setPersonSelection(null);
+  }, [productSelection, personSelection, selectedProduct, selectedPerson]);
 
   // Memoize expensive calculations to prevent unnecessary re-renders
   const PublishedCities = useMemo(() => {
@@ -1690,17 +1708,18 @@ const PublicHome = memo(() => {
                             </h1>
                           ) : (
                             linkedPeople.map((person: any, index: number) => {
+                              const personName = person.name || person.full_name || person.title;
                               const avatarSrc = person.media_details?.thumbnail?.url || person.media_details?.imageDetails?.[0]?.url || (person.avatar_path ? buildImageUrl(person.avatar_path) : null) || null;
                               return (
                                 <div
                                   key={person.documentId || `linked-person-${index}`}
                                   className="bg-[var(--category-card,rgba(255,255,255,0.05))] border border-[var(--category-control-border,rgba(255,255,255,0.05))] rounded-xl p-4 flex flex-col gap-3 hover:border-[var(--category-control-border,rgba(59,130,246,0.4))] transition-all cursor-pointer"
-                                  onClick={() => setSelectedPerson(person)}
+                                  onClick={() => setPersonSelection({ scope: linkedModalScope, documentId: person.documentId, listId: person._listId })}
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-violet-950/40 ring-2 ring-white/10">
                                       {avatarSrc ? (
-                                        <img src={avatarSrc} alt={person.name} className="w-full h-full object-cover" loading="lazy" />
+                                        <img src={avatarSrc} alt={personName} className="w-full h-full object-cover" loading="lazy" />
                                       ) : (
                                         <div className="w-full h-full flex items-center justify-center bg-violet-900/20">
                                           <Users size={16} className="text-violet-400/40" />
@@ -1708,7 +1727,7 @@ const PublicHome = memo(() => {
                                       )}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <p className="font-semibold text-sm text-[var(--category-text,#FFFFFF)] truncate">{person.name}</p>
+                                      <p className="font-semibold text-sm text-[var(--category-text,#FFFFFF)] truncate">{personName}</p>
                                       {person.headline && <p className="text-xs text-[var(--category-muted,#9CA3AF)] truncate">{person.headline}</p>}
                                     </div>
                                   </div>
@@ -1739,7 +1758,7 @@ const PublicHome = memo(() => {
                               <div
                                 key={product.documentId || `linked-product-${index}`}
                                 className="bg-[var(--category-card,rgba(255,255,255,0.05))] border border-[var(--category-control-border,rgba(255,255,255,0.05))] rounded-xl overflow-hidden hover:border-[var(--category-control-border,rgba(59,130,246,0.4))] transition-all cursor-pointer flex flex-col justify-between"
-                                onClick={() => setSelectedProduct(product)}
+                                onClick={() => setProductSelection({ scope: linkedModalScope, documentId: product.documentId, listId: product._listId })}
                               >
                                 <div className="h-32 bg-[var(--category-card,rgba(0,0,0,0.4))] flex items-center justify-center overflow-hidden">
                                   {product.logo_url ? (
@@ -1832,14 +1851,14 @@ const PublicHome = memo(() => {
                 <ProductDetailModal
                   open={!!selectedProduct}
                   product={selectedProduct}
-                  onClose={() => setSelectedProduct(null)}
+                  onClose={() => setProductSelection(null)}
                 />
 
                 {/* Person Detail Modal */}
                 <PersonDetailModal
                   open={!!selectedPerson}
                   person={selectedPerson}
-                  onClose={() => setSelectedPerson(null)}
+                  onClose={() => setPersonSelection(null)}
                 />
               </>
             ) : hasSettledEmptyPlacesCategory ? (

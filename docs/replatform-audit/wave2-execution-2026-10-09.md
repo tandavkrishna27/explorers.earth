@@ -105,3 +105,9 @@ The user has required Places taxonomy/pins, People sector browsing and Apps nigh
 The reviewed fixture/controller, Maps/REST simulation, cleanup, configurations and manifest append sixteen proposed Places/link identities while preserving the original ordered 118. Fresh root checks passed 16 focused contracts and all 74 coordinator tests, with zero skips. An exact tracked-helper admission defect found after staging was repaired and independently rereviewed before the passing rerun. No database or protected browser qualification has run for this package; the two browser specs remain to be authored.
 
 Spec preflight confirmed that PublicHome discards canonical nested People/Products lists, so a bounded rendering repair precedes the sixteen browser cases. The controlling plan now describes the actual public Places HTTP envelopes and offset/detail continuation rather than nonexistent generic cursor fields.
+
+## Public Places linked preview checkpoint — 2026-10-10
+
+PublicHome now reads People and Products children only from the selected location's canonical nested projection, preserves visibility filtering, handles malformed nested entries, and displays canonical People names. Independent review found a captured-detail modal defect; the repair stores scoped child/list identities and resolves current eligible DTOs during render. Scope, eligibility, loading and errors close stale details; clearing invalid intent prevents restoration from reopening them.
+
+Final scoped rereview is clear. Fresh root verification passed all 42 component tests and application TypeScript (exit 0). The tests use real PublicHome rendering with mocked API hooks and observable modal doubles; they do not qualify actual modal internals or HTTP transport. The next package authors the two frozen Places/link browser specs and then executes the actual protected aggregate.
