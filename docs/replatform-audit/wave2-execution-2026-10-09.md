@@ -8,6 +8,12 @@ The preceding clean implementation91aa9e66 protected94/94 local identities remai
 
 ## Current outcome
 
+### Owned database qualification: 959fe74d
+
+Clean `959fe74d01e0d63b1388876356d1ab102fa788db` passed the full supported owned suite: **249/249 tests, 22/22 files, zero skipped/todo**. All seven collection-cover identities and the three repaired snapshot capture/restore identities passed, including the later policy phases not reached in the preceding failed run. The [finalized producer receipt](receipts/wave2-owned-959fe74d-pass.json) reports native exit0, no child signal and `database-dropped-container-removed`; the owned container filter was independently empty after execution. This closes those local database failures for this exact source. The earlier 118-browser receipt remains qualified only for `7f536e55`, and broader category/browser parity and hosted ingress remain open.
+
+Next is the separately allocated Places retained UI repair: stable canonical ID self-exclusion in duplicate checks, enabled share-slug edit, and no provider photo refetch during immutable-location editing. Then the guarded fixture and two specs will implement the frozen 16 Places/link identities. The hosted ingress diagnosis confirms that the old Compose graph remains legacy-only and has a public-health boundary mismatch; it requires coordinated Wave3 graph work, not a waiver or an automatic production health proxy.
+
 ### Owned execution: ef9d96e0
 
 Clean `ef9d96e0b47dc6d8d049a6c3bf14cae94c5dc559` completed the owned 22-file suite: **243/249 passed**, six failed and zero skipped. All 242 previously registered tests passed, including the three formerly failing capture/restore cases and populated native replay coverage. The first cover case passed positive bytes for all three categories. The other six cover identities stopped at an assertion requiring no ETag on a 404 refusal. [Failure record](receipts/wave2-owned-ef9d96e0-failure.json) records the producer and cleanup limits.
