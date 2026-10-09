@@ -195,3 +195,11 @@ Read-only diagnosis found the link hook observing a Products/People child throug
 Ticket5.2 also requires a guarded parent revision pair for create-and-link. The current source lacks that field and parent lock/bump; the earlier brief described source inventory, not acceptance. That extension remains owed and is being prepared under coordinator ownership. The unreached foreign/missing creation boundary also differs from the required404/no-orphan contract. Neither expectation is waived.
 
 The dedicated Products/People child observation repair passed independent review. Fresh root verification passed73 focused and preservation cases across8 files, including all16 new link regressions, plus application TypeScript exit0. Generic Places observation and parent/downstream ownership guards remain unchanged; hook custody, cached retry observations and command keys are preserved. Protected browser acceptance remains unverified, and guarded parent create-and-link remains owed.
+
+## Guarded parent create RED admission correction — 2026-10-10
+
+At clean tests-only source4040715ccb4dc7405c8b46ebcdc5440ba6df763b, the owned producer executed23 files/303 tests:300 passed and3 failed. Both new HTTP cases and the updated native Places fixture reached current pair-validation mismatches (parent-only accepted201 against422; paired input rejected422 against201). The [safe RED diagnostic](receipts/wave2-owned-4040715c-parent-red-diagnostic.json) is not a passing UAT envelope.
+
+The projected307 count was incorrect: repository placeLinks.integration.test.ts was absent from the registry, so its four new and eighteen existing cases did not run. The earlier membership assumption is corrected. Admit that existing22-case file to both exact registry lists, verify the registry contract, then execute a fresh guarded RED before production changes. The expected24 files/325 tests remains conditional on actual discovery. Owned container absence and unchanged clean source were observed; a database-drop receipt was not retained by the passing-only producer.
+
+The two-list admission passed independent review and fresh root registry verification:18/18 contracts, pinned Node24.21.0, zero skips. All prior23 entries remain, with only the existing place-link integration file added. A new owned24 RED is required; no repository runtime result is inferred from admission.

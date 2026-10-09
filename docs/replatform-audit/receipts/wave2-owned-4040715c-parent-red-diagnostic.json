@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "sanitized-owned-database-red-diagnostic",
+  "commit": "4040715ccb4dc7405c8b46ebcdc5440ba6df763b",
+  "nativeExit": 1,
+  "files": {"total": 23, "passed": 22, "failed": 1},
+  "tests": {"total": 303, "passed": 300, "failed": 3},
+  "failedTitles": [
+    "guarded parent create HTTP strictly validates pairs and preserves ordinary collection DTOs",
+    "guarded parent create HTTP links Products and People and gives equal foreign missing refusals without orphans",
+    "Places native client renames title and share slug, preserves aggregates, reloads and enforces public gates"
+  ],
+  "observedClassifications": ["expected201-actual422", "expected422-actual201"],
+  "repositoryRegressionsExecuted": false,
+  "admissionGap": "server/test/explorers/placeLinks.integration.test.ts absent from owned registry",
+  "sourceCleanAndIntactObserved": true,
+  "ownedContainerAbsentObserved": true,
+  "evidenceLimits": "Not a passing UAT envelope. Database-drop receipt unavailable from the passing-only producer. Repository regressions remain unexecuted; registry admission and a fresh guarded run are required."
+}

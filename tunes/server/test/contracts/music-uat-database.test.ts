@@ -263,6 +263,7 @@ describe("owned Task-4 UAT database lane", () => {
       "server/test/canonical-music-identity.integration.test.ts",
       "server/test/canonical-music-public-lifecycle.integration.test.ts",
       "server/test/explorers/collectionCoverVisibility.integration.test.ts",
+      "server/test/explorers/placeLinks.integration.test.ts",
       "server/test/migrations/music-migration.integration.test.ts",
       "server/test/music-credential.integration.test.ts",
       "server/test/music-domain-repository.integration.test.ts",
