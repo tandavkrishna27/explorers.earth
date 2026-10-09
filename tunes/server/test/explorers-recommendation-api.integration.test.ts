@@ -382,10 +382,11 @@ it('top picks fence intervening membership/media mutations and reject wrong-cate
 
 // Places slug commands retain the existing guarded HTTP and PostgreSQL transaction.
 async function slugState(owner:{accountId:string},id:string) {
- const resource=(await pool.query('SELECT title,slug,revision::int,description,heading,cover_media_id FROM collections WHERE id=$1',[id])).rows[0];
+ const resource=(await pool.query('SELECT title,slug,revision::int,description,heading FROM collections WHERE id=$1',[id])).rows[0];
  const category=(await pool.query("SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category='places'",[owner.accountId])).rows[0].revision;
  const receipts=(await pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation='updateCollection'",[owner.accountId])).rows[0].n;
- return {resource,category,receipts};
+ const covers=(await pool.query("SELECT collection_id,account_id,slot,media_id,created_at FROM collection_media WHERE collection_id=$1 ORDER BY slot",[id])).rows;
+ return {resource,category,receipts,covers};
 }
 it('Places native client renames title and share slug, preserves aggregates, reloads and enforces public gates',async()=>{
  const a=await persona(),storage=new Map<string,string>();
@@ -409,9 +410,10 @@ it('Places native client renames title and share slug, preserves aggregates, rel
   const observed=await PlacesClient.observeCollection(c.id),before=await slugState(a,c.id),links=(await pool.query('SELECT * FROM collection_items WHERE collection_id=$1',[c.id])).rows,key=randomUUID(),patch={title:'Edited location',slug:newSlug};
   const saved=await PlacesClient.updateCollection(observed,patch,key);
   expect(saved).toMatchObject({id:c.id,...patch,revision:observed.resourceRevision+1});expect(wires).toEqual([{body:{...patch,expectedRevision:observed.resourceRevision},key}]);
+  const after=await slugState(a,c.id);expect(after.covers).toEqual(before.covers);expect(after.covers).toEqual([{collection_id:c.id,account_id:a.accountId,slot:'cover',media_id:cover,created_at:expect.any(Date)}]);
   const reloaded=await PlacesClient.observeCollection(c.id);expect(reloaded.detail).toMatchObject({...patch,placeLocation:location,description:'Retained description',coverMediaId:cover,heading:'Retained heading'});expect(reloaded.detail.linkedChildren).toEqual(observed.detail.linkedChildren);expect((await pool.query('SELECT * FROM collection_items WHERE collection_id=$1',[c.id])).rows).toEqual(links);
   expect((await request(composed.app).get(`/api/explorers/v1/collections/${c.id}`).set('cookie',a.cookie)).body.collection).toMatchObject({...patch,revision:saved.revision});
-  const handle=`p${randomUUID().replaceAll("-", "").slice(0,20)}`;await pool.query("UPDATE creator_accounts SET handle=$2,handle_key=$2,onboarding_status='complete',public_profile=true WHERE id=$1",[a.accountId,handle]);await pool.query("UPDATE account_category_settings SET is_public=true WHERE account_id=$1 AND category='places'",[a.accountId]);
+  const handle=`p${randomUUID().replaceAll("-", "").slice(0,20)}`;await pool.query("UPDATE creator_accounts SET handle=$2,display_name='Public owner',account_type='Creator',onboarding_status='complete',public_profile=true WHERE id=$1",[a.accountId,handle]);await pool.query("UPDATE account_category_settings SET is_public=true WHERE account_id=$1 AND category='places'",[a.accountId]);
   const publicRead=(slug:string)=>request(composed.app).get(`/api/explorers/v1/public/profiles/${handle}/collections/places/${slug}/recommendations`);
   expect((await publicRead(newSlug)).status).toBe(404);
   const publish=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:saved.revision,visibility:'public',publicationState:'published'});expect(publish.status).toBe(200);expect((await publicRead(newSlug)).status).toBe(200);expect((await publicRead(oldSlug)).status).toBe(404);
