@@ -56,7 +56,12 @@ vi.mock("../../../../components/SEO", () => ({ default: () => null }));
 vi.mock("../../../../components/ui/QRModal", () => ({ default: () => null }));
 vi.mock("../../../../components/ShareModal", () => ({ default: () => null }));
 vi.mock("../../../../components/CircularPlacesModal", () => ({ default: () => null }));
-vi.mock("../PlaceDetails/PlaceOverview", () => ({ default: () => null }));
+vi.mock("../PlaceDetails/PlaceOverview", () => ({
+  default: ({ publicPlace }: { publicPlace: Record<string, unknown> }) => <div role="dialog" aria-label="Place contact">
+    <span data-testid="contact-name">{String(publicPlace.Contact_Name ?? "")}</span>
+    <span data-testid="contact-number">{String(publicPlace.Contact_Number ?? "")}</span>
+  </div>,
+}));
 vi.mock("../../../Products/components/public/ProductDetailModal", () => ({
   default: ({ open, product, onClose }: { open: boolean; product: any; onClose: () => void }) => {
     state.modalRenders.push({ kind: "products", title: product?.title, open });
@@ -70,7 +75,7 @@ vi.mock("../../../People/components/public/PersonDetailModal", () => ({
   },
 }));
 vi.mock("../PublicPlaceCard", () => ({
-  default: ({ title }: { title: string }) => <article data-testid="place-card">{title}</article>,
+  default: ({ title, onAction }: { title: string; onAction?: () => void }) => <article data-testid="place-card" onClick={onAction}>{title}</article>,
 }));
 
 vi.mock("../../api/usePublicProfileDetail", () => ({ usePublicProfileDetail: () => state.places }));
@@ -164,6 +169,41 @@ describe("PublicHome Places category states", () => {
     state.places = { data: undefined, loading: false, error: null, refetch: vi.fn().mockResolvedValue(undefined) };
     state.mapsApiLoaded = false;
     state.modalRenders = [];
+  });
+
+  it.each([
+    { label: "chosen public canonical contact", contact: { contact_name: "Chosen Name", contact_number: "+919876543210", Contact_Name: "Stale Name", Contact_Number: "Stale Number" }, name: "Chosen Name", number: "+919876543210" },
+    { label: "private canonical null contact", contact: { contact_name: null, contact_number: null, Contact_Name: "Stale Name", Contact_Number: "Stale Number" }, name: "", number: "" },
+    { label: "malformed canonical contact", contact: { contact_name: 42, contact_number: { value: "secret" }, Contact_Name: "Stale Name", Contact_Number: "Stale Number" }, name: "", number: "" },
+    { label: "absent canonical legacy contact", contact: { Contact_Name: "Legacy Name", Contact_Number: "Legacy Number" }, name: "Legacy Name", number: "Legacy Number" },
+    { label: "malformed legacy number", contact: { Contact_Name: "Legacy Name", Contact_Number: { value: "invalid" } }, name: "Legacy Name", number: "" },
+    { label: "independently absent canonical number", contact: { contact_name: null, Contact_Name: "Stale Name", Contact_Number: "Legacy Number" }, name: "", number: "Legacy Number" },
+    { label: "independently absent canonical name", contact: { contact_number: null, Contact_Name: "Legacy Name", Contact_Number: "Stale Number" }, name: "Legacy Name", number: "" },
+  ])("adapts $label into the retained place overview", async ({ contact, name, number }) => {
+    state.places.data = { recommendationLists: [list("tokyo", "Tokyo", [{ ...place("contact-place", "Contact Place"), ...contact }])] };
+    renderPlaces("/alice/places/tokyo");
+    await click(await screen.findByTestId("place-card"));
+    expect(await screen.findByRole("dialog", { name: "Place contact" })).toBeVisible();
+    expect(screen.getByTestId("contact-name").textContent).toBe(name);
+    expect(screen.getByTestId("contact-number").textContent).toBe(number);
+  });
+
+  it("uses disclosed canonical person name for eligibility before opening the retained overview", async () => {
+    state.places.data = { recommendationLists: [list("tokyo", "Tokyo", [{ ...place("contact-person", "Unused Place"), Recommendation_Type: "person", contact_name: "Disclosed Person", contact_number: "+919876543210" }])] };
+    renderPlaces("/alice/places/tokyo");
+    const card = await screen.findByTestId("place-card");
+    expect(card).toHaveTextContent("Disclosed Person");
+    await click(card);
+    expect(await screen.findByTestId("contact-name")).toHaveTextContent("Disclosed Person");
+    expect(screen.getByTestId("contact-number")).toHaveTextContent("+919876543210");
+  });
+
+  it.each([null, 42, ""])("keeps a person with undisclosed or invalid canonical name %s ineligible despite a legacy name", async (contactName) => {
+    state.places.data = { recommendationLists: [list("tokyo", "Tokyo", [{ ...place("private-person", "Unused Place"), Recommendation_Type: "person", contact_name: contactName, contact_number: null, Contact_Name: "Private Person", Contact_Number: "Private Number" }])] };
+    renderPlaces("/alice/places/tokyo");
+    await waitFor(() => expect(screen.getByText("No Recommendation Available.")).toBeVisible());
+    expect(screen.queryByTestId("place-card")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("renders an eligible empty location alongside a populated location and navigates through See All", async () => {

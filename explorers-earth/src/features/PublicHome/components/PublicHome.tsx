@@ -120,10 +120,18 @@ const normalizePlaceCard = (value: unknown): CardDataItem | null => {
     return null;
   }
 
+  // Canonical presence is authoritative, including withheld or malformed values.
+  const contactName = Object.prototype.hasOwnProperty.call(value, "contact_name")
+    ? value.contact_name : value.Contact_Name;
+  const normalizedContactName = typeof contactName === "string" ? contactName : undefined;
+  const contactNumber = Object.prototype.hasOwnProperty.call(value, "contact_number")
+    ? value.contact_number : value.Contact_Number;
+  const normalizedContactNumber = typeof contactNumber === "string" ? contactNumber : undefined;
+
   const recommendationType = value.Recommendation_Type === "person" ? "person" : "place";
   const placeDetails = isNonNullObject(value.Place_Details) ? value.Place_Details : null;
   if (recommendationType === "person") {
-    if (!hasNonEmptyString(value.Contact_Name)) return null;
+    if (!hasNonEmptyString(normalizedContactName)) return null;
   } else if (!placeDetails || !hasNonEmptyString(placeDetails.Title)) {
     return null;
   }
@@ -137,7 +145,8 @@ const normalizePlaceCard = (value: unknown): CardDataItem | null => {
     ...value,
     documentId: value.documentId,
     Recommendation_Type: recommendationType,
-    Contact_Name: typeof value.Contact_Name === "string" ? value.Contact_Name : undefined,
+    Contact_Name: normalizedContactName,
+    Contact_Number: normalizedContactNumber,
     Media: value.Media
       .filter((media) => isNonNullObject(media) && typeof media.url === "string")
       .map((media) => ({ url: media.url as string })),
