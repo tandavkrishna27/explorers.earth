@@ -78,3 +78,35 @@ describe("canonical API session expiry", () => {
     expect(useAuthStore.getState().status).toBe("active-complete");
   });
 });
+
+// Real issued observations and native Places adapter; only HTTP is replaced.
+describe('Places collection share slug wire', () => {
+ const account='00000000-0000-4000-8000-000000000101',id='00000000-0000-4000-8000-000000000102';
+ const base={id,accountId:account,category:'places',title:'Location',slug:'original-location',visibility:'private',publicationState:'draft',revision:4,description:'Preserved',heading:null,coverMediaId:null};
+ beforeEach(()=>{vi.unstubAllGlobals();useAuthStore.getState().logout();signIn(account);history.replaceState({},'','/places');});
+ async function observe(category='places') {
+  const patches:RequestInit[]=[];
+  vi.stubGlobal('fetch',vi.fn(async(_url:string,options:RequestInit)=>{
+   if(options.method==='PATCH'){patches.push(options);const {expectedRevision,...patch}=JSON.parse(options.body as string);return new Response(JSON.stringify({collection:{...base,category,...patch,revision:expectedRevision+1}}),{status:200});}
+   return new Response(JSON.stringify({collection:{...base,category,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',...(category==='places'?{linkedChildren:[],placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null}}:category==='products'||category==='people'?{locationLink:null}:{})}}),{status:200});
+  }));
+  const {PlacesClient}=await import('../features/Favorites/api/placesClient');
+  return {PlacesClient,patches,observed:category==='places'?await PlacesClient.observeCollection(id):await explorersApiClient.getMyEditableCollection(id)};
+ }
+ it.each(['changed-location','original-location'])('accepts valid changed or unchanged slug %s with original observation and key',async slug=>{
+  const {PlacesClient,patches,observed}=await observe(),patch={title:'Edited location',slug};
+  const saved=await PlacesClient.updateCollection(observed,patch,'places-slug-key').catch(error=>{expect(error).toMatchObject({status:422,code:'INVALID_INPUT'});expect(patches).toHaveLength(0);throw error;});
+  expect(saved).toMatchObject({id,slug,title:patch.title,revision:5});expect(patches).toHaveLength(1);
+  expect(JSON.parse(patches[0].body as string)).toEqual({...patch,expectedRevision:4});expect(new Headers(patches[0].headers).get('Idempotency-Key')).toBe('places-slug-key');
+ });
+ it('rejects malformed slug before PATCH and preserves ordinary omitted-slug updates',async()=>{
+  const {PlacesClient,patches,observed}=await observe();
+  for(const slug of ['', 'UPPER','double--dash','-leading','trailing-','spaces here','x'.repeat(201)])await expect(PlacesClient.updateCollection(observed,{title:'Edited',slug} as any,'places-bad-slug')).rejects.toMatchObject({status:422,code:'INVALID_INPUT'});
+  expect(patches).toHaveLength(0);expect(await PlacesClient.updateCollection(observed,{title:'Ordinary'},'places-ordinary')).toMatchObject({slug:base.slug,title:'Ordinary',revision:5});expect(patches).toHaveLength(1);
+ });
+ it.each(['guides','movies','books','games','apps','products','people'])('rejects supplied slug for observed %s before PATCH',async category=>{
+  const {patches,observed}=await observe(category);
+  await expect(explorersApiClient.updateMyCollection(observed,{slug:'changed-slug'} as any,'other-slug-key')).rejects.toMatchObject({status:422,code:'INVALID_INPUT'});expect(patches).toHaveLength(0);
+  expect(await explorersApiClient.updateMyCollection(observed,{title:'Ordinary'},'other-ordinary-key')).toMatchObject({slug:base.slug,title:'Ordinary',revision:5});
+ });
+});

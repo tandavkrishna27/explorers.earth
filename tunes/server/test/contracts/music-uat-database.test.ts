@@ -276,6 +276,7 @@ describe("owned Task-4 UAT database lane", () => {
       "server/test/music-e2e-state-restore.integration.test.ts",
       "server/test/music-e2e-initial-capture.integration.test.ts",
       "server/test/music-e2e-identity-count-adapter.integration.test.ts",
+      "server/test/explorers-recommendation-api.integration.test.ts",
     ]);
     const restoreIntegration = readFileSync(resolve(
       repositoryRoot, "tunes/server/test/music-e2e-state-restore.integration.test.ts",

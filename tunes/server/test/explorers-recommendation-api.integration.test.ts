@@ -379,3 +379,72 @@ it('top picks fence intervening membership/media mutations and reject wrong-cate
   // Replays return the original bounded response even after selected membership vanished.
   expect((await pins(a,'put',input,key)).status).toBe(200);
 });
+
+// Places slug commands retain the existing guarded HTTP and PostgreSQL transaction.
+async function slugState(owner:{accountId:string},id:string) {
+ const resource=(await pool.query('SELECT title,slug,revision::int,description,heading,cover_media_id FROM collections WHERE id=$1',[id])).rows[0];
+ const category=(await pool.query("SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category='places'",[owner.accountId])).rows[0].revision;
+ const receipts=(await pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation='updateCollection'",[owner.accountId])).rows[0].n;
+ return {resource,category,receipts};
+}
+it('Places native client renames title and share slug, preserves aggregates, reloads and enforces public gates',async()=>{
+ const a=await persona(),storage=new Map<string,string>();
+ vi.stubGlobal('localStorage',{getItem:(k:string)=>storage.get(k)??null,setItem:(k:string,v:string)=>storage.set(k,v),removeItem:(k:string)=>storage.delete(k)});
+ const {default:store}=await import('../../../explorers-earth/src/store/store');
+ const {PlacesClient}=await import('../../../explorers-earth/src/features/Favorites/api/placesClient');
+ const generation=store.getState().beginVerification();store.getState().acceptVerified(generation,{id:a.accountId,userId:a.userId,username:'owner',email:'owner@example.invalid',onboardingStatus:'complete',revision:1});
+ const wires:{body:any,key:string}[]=[];let lose=false;
+ vi.stubGlobal('fetch',async(url:string,options:RequestInit)=>{
+  expect(options.credentials).toBe('include');expect(options.cache).toBe('no-store');
+  const method=(options.method??'GET').toLowerCase() as 'get'|'post'|'patch'|'delete';let req=request(composed.app)[method](url).set('cookie',a.cookie);
+  if(method!=='get'){const key=new Headers(options.headers).get('Idempotency-Key')!,body=JSON.parse(options.body as string);if(method==='patch')wires.push({body,key});req=req.set('origin',config.baseURL).set('Idempotency-Key',key).send(body);}
+  const result=await req;if(lose&&method==='patch'){lose=false;throw Error('lost after slug commit');}return new Response(JSON.stringify(result.body),{status:result.status});
+ });
+ try {
+  const oldSlug=`native-${randomUUID()}`,newSlug=`edited-${randomUUID()}`,location={locationEntityId:null,locationSnapshot:{version:1 as const,name:'Mumbai',address:'Mumbai, India',providerPlaceId:null,latitude:19.076,longitude:72.8777},instagramMediaUrl:null};
+  const c=await PlacesClient.createCollection({title:'Native location',slug:oldSlug,description:'Retained description',placeLocation:location},randomUUID());
+  const r=await recommendation(a,c,await entity('place'));const child=await command(a,'post','/collections',{category:'products',title:'Linked',slug:`linked-${randomUUID()}`,parentLocationCollectionId:c.id});expect(child.status).toBe(201);
+  const cover=(await pool.query("INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256) VALUES($1,'collection','ready','image/png',1,now(),decode(repeat('00',32),'hex')) RETURNING id",[a.accountId])).rows[0].id;
+  const initial=await PlacesClient.observeCollection(c.id);expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:initial.resourceRevision,coverMediaId:cover,heading:'Retained heading'})).status).toBe(200);
+  const observed=await PlacesClient.observeCollection(c.id),before=await slugState(a,c.id),links=(await pool.query('SELECT * FROM collection_items WHERE collection_id=$1',[c.id])).rows,key=randomUUID(),patch={title:'Edited location',slug:newSlug};
+  const saved=await PlacesClient.updateCollection(observed,patch,key);
+  expect(saved).toMatchObject({id:c.id,...patch,revision:observed.resourceRevision+1});expect(wires).toEqual([{body:{...patch,expectedRevision:observed.resourceRevision},key}]);
+  const reloaded=await PlacesClient.observeCollection(c.id);expect(reloaded.detail).toMatchObject({...patch,placeLocation:location,description:'Retained description',coverMediaId:cover,heading:'Retained heading'});expect(reloaded.detail.linkedChildren).toEqual(observed.detail.linkedChildren);expect((await pool.query('SELECT * FROM collection_items WHERE collection_id=$1',[c.id])).rows).toEqual(links);
+  expect((await request(composed.app).get(`/api/explorers/v1/collections/${c.id}`).set('cookie',a.cookie)).body.collection).toMatchObject({...patch,revision:saved.revision});
+  const handle=`p${randomUUID().replaceAll("-", "").slice(0,20)}`;await pool.query("UPDATE creator_accounts SET handle=$2,handle_key=$2,onboarding_status='complete',public_profile=true WHERE id=$1",[a.accountId,handle]);await pool.query("UPDATE account_category_settings SET is_public=true WHERE account_id=$1 AND category='places'",[a.accountId]);
+  const publicRead=(slug:string)=>request(composed.app).get(`/api/explorers/v1/public/profiles/${handle}/collections/places/${slug}/recommendations`);
+  expect((await publicRead(newSlug)).status).toBe(404);
+  const publish=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:saved.revision,visibility:'public',publicationState:'published'});expect(publish.status).toBe(200);expect((await publicRead(newSlug)).status).toBe(200);expect((await publicRead(oldSlug)).status).toBe(404);
+  await pool.query("UPDATE account_category_settings SET is_public=false WHERE account_id=$1 AND category='places'",[a.accountId]);expect((await publicRead(newSlug)).status).toBe(404);await pool.query("UPDATE account_category_settings SET is_public=true WHERE account_id=$1 AND category='places'",[a.accountId]);await pool.query('UPDATE creator_accounts SET public_profile=false WHERE id=$1',[a.accountId]);expect((await publicRead(newSlug)).status).toBe(404);
+  const retryObserved=await PlacesClient.observeCollection(c.id),retryKey=randomUUID(),retryPatch={slug:`lost-${randomUUID()}`},retryBefore=await slugState(a,c.id);lose=true;
+  await expect(PlacesClient.updateCollection(retryObserved,retryPatch,retryKey)).rejects.toMatchObject({status:503});const replay=await PlacesClient.updateCollection(retryObserved,retryPatch,retryKey);expect(replay.revision).toBe(retryObserved.resourceRevision+1);const retryAfter=await slugState(a,c.id);expect(retryAfter.resource.revision).toBe(retryBefore.resource.revision+1);expect(retryAfter.receipts).toBe(retryBefore.receipts+1);expect(wires.slice(-2)).toEqual([wires.at(-1),wires.at(-1)]);expect(r.id).toBeTruthy();expect(before.resource.slug).toBe(oldSlug);
+ }finally{vi.unstubAllGlobals();store.getState().logout();}
+});
+it('Places guarded PATCH replays exactly once, rejects changed body and stale revision, and permits unchanged slug',async()=>{
+ const a=await persona(),c=await list(a,'places'),key=randomUUID(),body={expectedRevision:1,title:'Renamed',slug:`renamed-${randomUUID()}`},first=await command(a,'patch',`/collections/${c.id}`,body,key);expect(first.status).toBe(200);const state=await slugState(a,c.id);
+ expect((await command(a,'patch',`/collections/${c.id}`,body,key)).body).toEqual(first.body);expect(await slugState(a,c.id)).toEqual(state);
+ expect((await command(a,'patch',`/collections/${c.id}`,{...body,slug:`different-${randomUUID()}`},key)).status).toBe(409);expect((await command(a,'patch',`/collections/${c.id}`,body)).status).toBe(409);expect(await slugState(a,c.id)).toEqual(state);
+ const unchanged=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:2,title:'Unchanged slug',slug:body.slug});expect(unchanged.status).toBe(200);expect(unchanged.body.collection).toMatchObject({slug:body.slug,revision:3});
+});
+it('Places unique slug collisions include archived rows and roll back all command state; other owners and categories are independent',async()=>{
+ const a=await persona(),b=await persona(),c=await list(a,'places'),occupied=await list(a,'places');
+ for(const archived of [false,true]){if(archived)await pool.query('UPDATE collections SET archived_at=now() WHERE id=$1',[occupied.id]);const before=await slugState(a,c.id);expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,title:'Must roll back',slug:occupied.slug})).status).toBe(409);expect(await slugState(a,c.id)).toEqual(before);}
+ const otherOwner=await list(b,'places'),otherCategory=await list(a,'books');
+ for(const slug of [otherOwner.slug,otherCategory.slug]){const current=await slugState(a,c.id),saved=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:current.resource.revision,slug});expect(saved.status).toBe(200);expect(saved.body.collection.slug).toBe(slug);}
+});
+it('Places foreign and archived targets deny edits; invalid cover rolls back slug, fields, resource/category revision and receipt',async()=>{
+ const a=await persona(),b=await persona(),c=await list(a,'places'),foreign=await list(b,'places');
+ const before=await slugState(a,c.id);expect((await command(b,'patch',`/collections/${c.id}`,{expectedRevision:1,slug:'foreign-denied'})).status).toBe(404);expect(await slugState(a,c.id)).toEqual(before);
+ const media=(await pool.query("INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256) VALUES($1,'collection','ready','image/png',1,now(),decode(repeat('00',32),'hex')) RETURNING id",[b.accountId])).rows[0].id;
+ expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,title:'Must roll back',slug:'rollback-location',coverMediaId:media})).status).toBe(422);expect(await slugState(a,c.id)).toEqual(before);
+ await pool.query('UPDATE collections SET archived_at=now() WHERE id=$1',[c.id]);const archived=await slugState(a,c.id);expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,slug:'archived-denied'})).status).toBe(404);expect(await slugState(a,c.id)).toEqual(archived);expect((await slugState(b,foreign.id)).resource.slug).toBe(foreign.slug);
+});
+it.each(['guides','movies','books','games','apps','products','people'])('guarded stored %s rejects slug without writes and ordinary omitted slug works',async category=>{
+ const a=await persona(),c=await list(a,category),before=(await pool.query('SELECT * FROM collections WHERE id=$1',[c.id])).rows[0],state=(await pool.query('SELECT * FROM account_category_content_state WHERE account_id=$1 AND category=$2',[a.accountId,category])).rows;
+ const receipts=()=>pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation='updateCollection'",[a.accountId]);const count=(await receipts()).rows[0].n;
+ expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,title:'Rejected',slug:'rejected-category'})).status).toBe(422);expect((await pool.query('SELECT * FROM collections WHERE id=$1',[c.id])).rows[0]).toEqual(before);expect((await pool.query('SELECT * FROM account_category_content_state WHERE account_id=$1 AND category=$2',[a.accountId,category])).rows).toEqual(state);expect((await receipts()).rows[0].n).toBe(count);
+ const {ExplorersRecommendationRepository}=await import('../repositories/explorersRecommendationRepository');
+ await expect(new ExplorersRecommendationRepository(pool).updateCollection(a.accountId,c.id,1,{slug:'trusted-category-bypass'} as any,randomUUID())).rejects.toMatchObject({status:422});
+ expect((await pool.query('SELECT * FROM collections WHERE id=$1',[c.id])).rows[0]).toEqual(before);expect((await receipts()).rows[0].n).toBe(count);
+ const ordinary=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,title:'Ordinary'});expect(ordinary.status).toBe(200);expect(ordinary.body.collection).toMatchObject({title:'Ordinary',slug:c.slug,revision:2});
+});

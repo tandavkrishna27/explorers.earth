@@ -47,6 +47,7 @@ export const MUSIC_UAT_DATABASE_TEST_FILES = Object.freeze([
   "server/test/music-e2e-state-restore.integration.test.ts",
   "server/test/music-e2e-initial-capture.integration.test.ts",
   "server/test/music-e2e-identity-count-adapter.integration.test.ts",
+  "server/test/explorers-recommendation-api.integration.test.ts",
 ] as const);
 
 import { createHash } from "node:crypto";
