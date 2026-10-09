@@ -57,6 +57,12 @@ export const PlacesClient={
  // made the whole read throw 422 before a request went out.
  async readCompleteOwner(signal?:AbortSignal):Promise<CompletePlacesOwnerContent>{const value=await explorersApiClient.getCompleteMyCategoryContent({category:'places',status:'active'},signal);complete(value);return value;},
  async observeCollection(id:string,signal?:AbortSignal){const value=await explorersApiClient.getMyEditableCollection(id,signal);collection(value);return value;},
+ async observeLocationChild(id:string,signal?:AbortSignal){
+  const value=await explorersApiClient.getMyEditableCollection(id,signal);
+  assertOwnerDetailObservation(value,'collection');
+  if(value.detail.category!=='products'&&value.detail.category!=='people')fail();
+  return value;
+ },
  async observeRecommendation(id:string,signal?:AbortSignal){const value=await explorersApiClient.getMyEditableRecommendation(id,signal);recommendation(value);return value;},
  prepareManualIntent(parent:CollectionObservation,draft:ManualPlaceDraft):ManualPlaceIntent{
   collection(parent);

@@ -27,6 +27,7 @@ export function usePlacesCommands() {
  const forget=(signature:string)=>{keys.current.delete(signature);collections.current.delete(signature);completeReads.current.delete(signature);recommendations.current.delete(signature);};
  const begin=(group:string,signature:string)=>{const previous=choices.current.get(group);if(previous&&previous!==signature){forget(previous);memberships.current.delete(previous);}choices.current.set(group,signature);};
  const observeCollection=async(signature:string,id:string,assert:()=>void,signal:AbortSignal)=>{let observed=collections.current.get(signature);if(!observed){observed=await PlacesClient.observeCollection(id,signal);assert();collections.current.set(signature,observed);}return observed;};
+ const observeLocationChild=async(signature:string,id:string,assert:()=>void,signal:AbortSignal)=>{let observed=collections.current.get(signature);if(!observed){observed=await PlacesClient.observeLocationChild(id,signal);assert();collections.current.set(signature,observed);}return observed;};
  const observeRecommendation=async(signature:string,id:string,assert:()=>void,signal:AbortSignal)=>{let observed=recommendations.current.get(signature);if(!observed){observed=await PlacesClient.observeRecommendation(id,signal);assert();recommendations.current.set(signature,observed);}return observed;};
  const observeComplete=async(signature:string,assert:()=>void,signal:AbortSignal)=>{let observed=completeReads.current.get(signature);if(!observed){observed=await PlacesClient.readCompleteOwner(signal);assert();completeReads.current.set(signature,observed);}return observed;};
  const key=(intent:string)=>{const existing=keys.current.get(intent);if(existing)return existing;const value=crypto.randomUUID();keys.current.set(intent,value);return value;};
@@ -71,7 +72,7 @@ export function usePlacesCommands() {
   setLocationLink:(locationId:string,childId:string,attached:boolean)=>run(async(assert,signal)=>{
    const signature=`location-link:${locationId}:${childId}:${attached}`;begin(`collection:${childId}`,signature);
    const location=await observeCollection(`${signature}:location`,locationId,assert,signal);assert();
-   const child=await observeCollection(signature,childId,assert,signal);assert();
+   const child=await observeLocationChild(signature,childId,assert,signal);assert();
    const result=await PlacesClient.setLocationLink(location,child,attached,key(signature),signal);assert();
    forget(signature);forget(`${signature}:location`);return result;
   }),
