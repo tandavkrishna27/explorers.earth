@@ -133,7 +133,29 @@ test('15 across lists, rejected 16th, staged unpin plus immediate reorder and ex
  const moved=page.waitForResponse(r=>r.request().method()==='PATCH'&&new URL(r.url()).pathname===`${base}/categories/books/top-picks/order`);await page.getByRole('button',{name:/^Move .* down$/}).first().click();expect((await moved).status()).toBe(200);expect((await pins()).items).toHaveLength(15);await expect(page.getByText('Manage Top Reads (14/15)',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Close Top Reads',exact:true}).click();await page.reload();expect((await pins()).items).toHaveLength(15);
  await page.getByRole('button',{name:'Manage Top Reads',exact:true}).filter({visible:true}).first().click();await page.getByRole('button',{name:`Unpin ${removedTitle}`,exact:true}).click();
- const saved=page.waitForResponse(r=>r.request().method()==='PUT'&&new URL(r.url()).pathname===`${base}/categories/books/top-picks`);await page.getByRole('button',{name:'Save Top Reads',exact:true}).click();expect((await saved).status()).toBe(200);await page.reload();expect((await pins()).items).toHaveLength(14);
+  // Fixed boolean failure coordinates only; preserve the original Save boundary.
+  let initialSaveReady=false,saveClickCompleted=false,saveRequestCount=0;
+  const saveResponseStatuses:number[]=[];
+  const isSaveRequest=(request:import('@playwright/test').Request)=>request.method()==='PUT'&&new URL(request.url()).origin===fixture.origin&&new URL(request.url()).pathname===`${base}/categories/books/top-picks`;
+  const observeSaveRequest=(request:import('@playwright/test').Request)=>{if(isSaveRequest(request))saveRequestCount++;};
+  const observeSaveResponse=(response:import('@playwright/test').Response)=>{if(isSaveRequest(response.request()))saveResponseStatuses.push(response.status());};
+  page.on('request',observeSaveRequest);page.on('response',observeSaveResponse);
+  try{
+   initialSaveReady=await page.getByRole('button',{name:'Save Top Reads',exact:true}).isEnabled().catch(()=>false);
+   const saved=page.waitForResponse(r=>r.request().method()==='PUT'&&new URL(r.url()).pathname===`${base}/categories/books/top-picks`);
+   // Observe a rejection immediately without altering the original awaited promise.
+   void saved.catch(()=>{});
+   await page.getByRole('button',{name:'Save Top Reads',exact:true}).click();saveClickCompleted=true;
+   expect((await saved).status()).toBe(200);
+  }catch(saveFailure){
+   expect(initialSaveReady).toBe(true);
+   expect(saveClickCompleted).toBe(true);
+   expect(saveRequestCount>0).toBe(true);
+   expect(saveResponseStatuses.length>0).toBe(true);
+   expect(saveResponseStatuses.every(status=>status===200)).toBe(true);
+   throw saveFailure;
+  }finally{page.off('request',observeSaveRequest);page.off('response',observeSaveResponse);}
+  await page.reload();expect((await pins()).items).toHaveLength(14);
  const current=await pins();const restored=await command(page.request,'put','/categories/books/top-picks',{expectedCategoryRevision:current.snapshot,expectedPinRevision:current.pinRevision,orderedPins:initial.items.map((pin:any)=>({recommendationId:pin.recommendationId,collectionId:pin.collectionId}))});expect(restored.status()).toBe(200);expect((await pins()).items).toHaveLength(15);
 });
 
