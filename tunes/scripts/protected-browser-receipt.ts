@@ -23,6 +23,7 @@ export async function createProtectedReceipt(root:string,laneName:string,options
  const startedAt=new Date().toISOString();let discovered:unknown[]|undefined,executed:unknown[]|undefined,playwright:string|undefined,child:{status:number|null;signal:string|null}|undefined;
  let artifactPolicy:{configFile:string;outputDir:string}|undefined;
  let diagnostics:unknown[]=[];
+ let topology:unknown;
  const decode=(path:string,execution:boolean)=>{
   if(!artifactPolicy)throw new Error('Protected artifact allocation missing');
   const report=JSON.parse(readFileSync(path,'utf8'));
@@ -33,6 +34,12 @@ export async function createProtectedReceipt(root:string,laneName:string,options
  };
  return {
   capability:options.capability,
+  topology(record:unknown){
+   if(laneName!=='music'||lstatSync(directory).isSymbolicLink()||realpathSync(directory)!==directory)throw new Error('Protected topology allocation mismatch');
+   const input=record as {authority:unknown};contract.validateMusicTopology(record,marker.provenance,input?.authority);
+   writeFileSync(join(directory,'topology.json'),JSON.stringify(record,null,2),{mode:0o600,flag:'wx'});
+   topology=record;
+  },
   arguments(args:string[],fixtureDirectory:string){
    if(artifactPolicy)throw new Error('Protected artifact allocation repeated');
    artifactPolicy={configFile:join(fixtureDirectory,'protected.playwright.config.mjs'),outputDir:join(fixtureDirectory,'browser-output')};
@@ -49,16 +56,38 @@ export async function createProtectedReceipt(root:string,laneName:string,options
   },
   executionEnvironment(env:NodeJS.ProcessEnv,fixtureDirectory:string){return {...env,PLAYWRIGHT_JSON_OUTPUT_NAME:join(fixtureDirectory,'protected-execution.json')};},
   execution(status:number|null,signal:string|null,fixtureDirectory:string){child={status,signal};executed=decode(join(fixtureDirectory,'protected-execution.json'),true);if(status!==0||signal)throw new Error('Protected browser execution child failed');},
+  failure(phase:'startup'|'discovery'|'execution'|'cleanup',cleanupFailures:string[],interrupted:boolean){
+   if(lstatSync(directory).isSymbolicLink()||lstatSync(parent).isSymbolicLink()||realpathSync(directory)!==directory||realpathSync(parent)!==parent)throw new Error('Protected failure directory ownership changed');
+   let sourceIntact=false;try{sourceIntact=JSON.stringify(contract.snapshotSource(root).provenance)===JSON.stringify(marker.provenance);}catch{}
+   const results=executed as {attempts:{status:string}[]}[]|undefined;
+   const attempts=results?.flatMap(result=>result.attempts);
+   const record={version:1,lane:laneName,provenance:marker.provenance,phase,interrupted,sourceIntact,
+    cleanup:{status:cleanupFailures.length?'failed':'passed',failures:[...new Set(cleanupFailures)]},
+    artifacts:{trace:'off',video:'off',screenshot:'off',cleanup:artifactPolicy&&(existsSync(artifactPolicy.configFile)||existsSync(artifactPolicy.outputDir))?'failed':'passed'},
+    counts:{discovered:discovered?.length??null,executed:results?.length??null,passed:attempts?.filter(attempt=>attempt.status==='passed').length??null,failed:attempts?.filter(attempt=>['failed','timedOut','interrupted'].includes(attempt.status)).length??null,skipped:attempts?.filter(attempt=>attempt.status==='skipped').length??null,attempts:attempts?.length??null}};
+   contract.validateLifecycleFailureRecord(lane,record,marker.provenance);
+   writeFileSync(join(directory,'lifecycle-failure.json'),JSON.stringify(record,null,2),{mode:0o600,flag:'wx'});
+  },
   finish(authority:{database:string;containerId:string;imageId:string},failures:string[],interrupted:boolean){
    if(!discovered||!executed||!child||interrupted||failures.length)throw new Error('Protected execution or owned cleanup did not qualify');
    const current=contract.snapshotSource(root).provenance;if(JSON.stringify(current)!==JSON.stringify(marker.provenance))throw new Error('Protected source changed during execution');
    if(!artifactPolicy||existsSync(artifactPolicy.configFile)||existsSync(artifactPolicy.outputDir)||lstatSync(directory).isSymbolicLink())throw new Error('Protected artifact ownership changed');
    if(child.status!==0||child.signal){const failure={version:1,lane:laneName,provenance:marker.provenance,results:executed,child,diagnostics,cleanup:{status:'passed'},artifacts:{trace:'off',video:'off',screenshot:'off',cleanup:'passed'}};contract.validateFailureRecord(lane,failure,marker.provenance,child);writeFileSync(join(directory,'failure.json'),JSON.stringify(failure,null,2),{mode:0o600,flag:'wx'});throw new Error('Protected execution failed after owned artifact cleanup');}
    const receipt={version:1,lane:laneName,provenance:marker.provenance,config:lane.config,spec:lane.spec,projects:lane.projects,discovery:discovered,results:executed,errors:[],cleanup:{status:'passed'},artifacts:{trace:'off',video:'off',screenshot:'off',cleanup:'passed'},authority:{owned:true,database:authority.database,containerId:authority.containerId,imageId:authority.imageId},child,startedAt,endedAt:new Date().toISOString(),playwright};
-   contract.validateLaneReceipt(lane,{status:0,signal:null,error:null,receipt},marker.provenance);
+   contract.validateLaneReceipt(lane,{status:0,signal:null,error:null,receipt,topology},marker.provenance);
    writeFileSync(join(directory,'receipt.json'),JSON.stringify(receipt,null,2),{mode:0o600,flag:'wx'});
   }
  };
+}
+export async function waitProtectedChild(child:ChildProcess|undefined,timeoutMs=10000){
+ if(!child||child.exitCode!==null||child.signalCode!==null)return;
+ await new Promise<void>((done,reject)=>{
+  const clean=()=>{clearTimeout(timer);child.off('exit',exited);child.off('error',errored);};
+  const exited=()=>{clean();done();};
+  const errored=()=>{clean();reject(new Error('Owned child exit failed'));};
+  const timer=setTimeout(()=>{clean();reject(new Error('Owned child natural exit timed out'));},timeoutMs);
+  child.once('exit',exited);child.once('error',errored);
+ });
 }
 export async function stopProtectedChild(child:ChildProcess|undefined){
  if(!child||child.exitCode!==null||child.signalCode!==null)return;

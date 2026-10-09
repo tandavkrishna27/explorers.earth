@@ -1,7 +1,9 @@
 import { execFileSync } from "node:child_process";
 import { chmodSync, mkdtempSync as nodeMkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { resolve, dirname } from "node:path";
+import { pathToFileURL } from 'node:url';
+import { build } from 'esbuild';
 import { afterAll, describe, expect, it, vi } from "vitest";
 import {
   fixtureUsesAttestedAnalyticsSchema,
@@ -12,6 +14,21 @@ import type { MusicDatabaseConnection } from "../config/music-database-config";
 import type { MusicIdentityRuntimeConfig } from "../config/music-identity-config";
 import { semanticWindowsSecurityInspection } from "./helpers/semantic-windows-security";
 import { productionEnvironmentFixture } from "./fixtures/music-production-environment";
+
+describe('packaged ordinary startup preserves owned admission isolation', () => {
+  it('loads bundled startup without UAT CLI and rejects invalid ordinary mode before runtime or allocation', async () => {
+    const tunesRoot = resolve(import.meta.dirname, '../..');
+    const output = nodeMkdtempSync(resolve(tunesRoot, 'node_modules/music-owned-build-'));
+    try {
+      const result = await build({ absWorkingDir: tunesRoot, entryPoints: ['server/config/music-startup.ts'], platform: 'node', packages: 'external', external: ['#auth-runtime'], bundle: true, splitting: true, format: 'esm', outdir: output, metafile: true });
+      expect(Object.keys(result.metafile!.inputs)).toContain('server/config/music-owned-browser-profile.ts');
+      const target = pathToFileURL(resolve(output, 'music-startup.js')).href;
+      const script = `const runtime=await import(${JSON.stringify(target)});try{await runtime.startMusicServer({MUSIC_MODE:'invalid'},{apiOnly:true});process.exitCode=2}catch(error){if(error.message!=='MUSIC_MODE must be live or fixture')throw error;console.log('ordinary-packaged-admission-rejected')}`;
+      const stdout = execFileSync(process.execPath, ['--input-type=module', '--eval', script], { cwd: tunesRoot, encoding: 'utf8', timeout: 30000, windowsHide: true, env: { ...process.env, NODE_ENV: 'test' } });
+      expect(stdout.trim()).toBe('ordinary-packaged-admission-rejected');
+    } finally { if (dirname(output) !== resolve(tunesRoot, 'node_modules')) throw new Error('Owned build cleanup escaped'); rmSync(output, { recursive: true, force: true }); }
+  });
+});
 
 const windowsEffectiveUserSid = process.platform === "win32"
   ? execFileSync("whoami.exe", ["/user", "/fo", "csv", "/nh"], { encoding: "utf8", windowsHide: true })
@@ -257,7 +274,7 @@ describe("discriminated Music startup bootstrap", () => {
     ["private DNS", {}, ["127.0.0.1"], true],
   ] as const)("rejects invalid live %s before importing or binding", async (_label, override, answers, reachesSecureReads) => {
     const loadRuntime = vi.fn(async () => controlledRuntime([]));
-    const resolveAddresses = vi.fn(async () => answers);
+    const resolveAddresses = vi.fn(async () => [...answers]);
     const failure = startMusicServer({ ...withSigningFile(productionEnvironmentFixture()), ...override }, {
       resolveAddresses,
       ...(reachesSecureReads ? { windowsSecurityInspection: semanticWindowsSecurityInspection } : {}),

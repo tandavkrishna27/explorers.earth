@@ -11,12 +11,17 @@ const { load } = require("js-yaml") as { load(source: string): any };
 const workflow = (name: string) => load(read(name));
 
 describe("replatform workflow authority", () => {
-  it("validates every main PR, including drafts, without duplicate integration pushes", () => {
+  it("validates every main PR and exact-source integration pushes only in required validation workflows", () => {
     const ci = workflow("ci");
     expect(ci.on.pull_request.branches).toContain("main");
     expect(ci.on.pull_request).not.toHaveProperty("paths");
     expect(ci.on.pull_request).not.toHaveProperty("paths-ignore");
-    for (const name of ["ci", "test", "music-c0-contracts", "tunes"]) {
+    for (const name of ["ci", "test"]) {
+      expect(workflow(name).on.push.branches).toEqual(["main", "develop", "codex/unified-replatform"]);
+      expect(workflow(name).on.push).not.toHaveProperty("paths");
+      expect(workflow(name).on.push).not.toHaveProperty("paths-ignore");
+    }
+    for (const name of ["music-c0-contracts", "tunes"]) {
       expect(workflow(name).on.push.branches).not.toContain("codex/unified-replatform");
     }
     expect(ci.on.push).not.toHaveProperty("paths");

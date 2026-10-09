@@ -40,7 +40,8 @@
     "music:evidence-manifest": "tsx scripts/music-evidence-manifest.ts",
     "music:public-canary": "tsx scripts/evaluate-music-public-canary.ts",
     "music:types:scoped": "tsc --project tsconfig.music-c0.json --pretty false --incremental false",
-    "music:types:baseline": "tsx scripts/music-typescript-baseline.ts --compare"
+    "music:types:baseline": "tsx scripts/music-typescript-baseline.ts --compare",
+    "explorers:test:music-browser": "tsx scripts/canonical-music-browser-fixture.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.36.3",

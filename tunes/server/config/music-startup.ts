@@ -8,6 +8,7 @@ import {
 } from "./music-identity-config";
 import { resolveMusicDatabaseConnection } from "./music-database-config";
 import type { MusicDatabaseConnection } from "./music-database-config";
+import { assertOwnedBrowserMusicProfile, activateOwnedBrowserMusicRuntime, assertActiveOwnedBrowserMusicRuntime, type ValidatedOwnedBrowserMusicProfile } from './music-owned-browser-profile';
 import {
   LOCAL_MUSIC_TARGET,
   assertValidatedLocalMusicProfile,
@@ -98,13 +99,25 @@ export async function createValidatedApp(
 export async function startMusicServer(
   environment: Environment,
   dependencies: MusicStartupDependencies = {},
+  ownedProfile?: ValidatedOwnedBrowserMusicProfile,
 ): Promise<{ app: Express; server: Server; config: MusicIdentityRuntimeConfig; shutdown: () => Promise<void> }> {
-  const config = await validateMusicStartupEnvironment(environment, dependencies);
-  const fixtureSkipsAnalyticsDdl = fixtureUsesAttestedAnalyticsSchema(environment);
+  let deactivateOwned: (() => void) | undefined;
+  let config: MusicIdentityRuntimeConfig;
+  if (ownedProfile) {
+    if (dependencies.apiOnly !== true || Object.keys(dependencies).some(key => key !== 'apiOnly')) throw new Error('Owned browser startup requires unmodified production composition');
+    await assertOwnedBrowserMusicProfile(ownedProfile, environment);
+    config = await resolveMusicIdentityRuntimeConfig(environment);
+    const connection = await resolveMusicDatabaseConnection(environment, 'runtime');
+    await verifyMusicRuntimeDatabaseConnection(connection, environment.MUSIC_DATABASE_MIGRATOR_USER ?? '');
+    await assertOwnedBrowserMusicProfile(ownedProfile, environment);
+    deactivateOwned = activateOwnedBrowserMusicRuntime(ownedProfile, environment, connection.connectionString);
+  } else config = await validateMusicStartupEnvironment(environment, dependencies);
   let earlyPool: { end: () => Promise<void> } | undefined;
   let appCreationStarted = false;
   let constructed: Awaited<ReturnType<MusicServerRuntime["createApp"]>>;
   try {
+    const fixtureSkipsAnalyticsDdl = fixtureUsesAttestedAnalyticsSchema(environment);
+    if (ownedProfile) await assertActiveOwnedBrowserMusicRuntime(ownedProfile, environment);
     if (dependencies.ensureAnalyticsSchema) await dependencies.ensureAnalyticsSchema();
     else {
       const { pool } = await import("../db");
@@ -114,7 +127,9 @@ export async function startMusicServer(
         ? environment.MUSIC_FIXTURE_ANALYTICS_SCHEMA_MARKER
         : EXPLORERS_ANALYTICS_SCHEMA_MARKER);
     }
+    if (ownedProfile) await assertActiveOwnedBrowserMusicRuntime(ownedProfile, environment);
     const runtime = await (dependencies.loadRuntime ?? loadProductionRuntime)();
+    if (ownedProfile) await assertActiveOwnedBrowserMusicRuntime(ownedProfile, environment);
     appCreationStarted = true;
     constructed = await runtime.createApp(config, undefined, dependencies.apiOnly === true);
     const { app, server } = constructed;
@@ -124,14 +139,16 @@ export async function startMusicServer(
     else runtime.serveStatic(app);
   } catch (error) {
     if (dependencies.apiOnly && !appCreationStarted) await earlyPool?.end().catch(() => undefined);
+    deactivateOwned?.();
     throw error;
   }
   const { app, server, shutdown } = constructed;
 
   try {
+    if (ownedProfile) await assertActiveOwnedBrowserMusicRuntime(ownedProfile, environment);
     const port = dependencies.port ?? Number.parseInt(environment.PORT ?? "5000", 10);
     if (!Number.isInteger(port) || port < 0 || port > 65_535) throw new Error("PORT must be a valid TCP port");
-    const host = dependencies.host ?? "0.0.0.0";
+    const host = ownedProfile ? '127.0.0.1' : dependencies.host ?? "0.0.0.0";
     await new Promise<void>((resolve, reject) => {
       const onError = (error: Error) => reject(error);
       server.once("error", onError);
@@ -142,9 +159,10 @@ export async function startMusicServer(
     });
   } catch (error) {
     await shutdown?.().catch(() => undefined);
+    deactivateOwned?.();
     throw error;
   }
-  return { app, server, config, shutdown: shutdown ?? (() => closeServer(server)) };
+  return { app, server, config, shutdown: async () => { try { await (shutdown ?? (() => closeServer(server)))(); } finally { deactivateOwned?.(); } } };
 }
 
 async function validateLocalStartupEnvironment(

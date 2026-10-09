@@ -823,6 +823,210 @@
           "repeat": 0
         }
       ]
+    },
+    {
+      "name": "music",
+      "runner": "tunes/scripts/canonical-music-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/music.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/music.spec.ts",
+      "projects": [
+        "music-desktop",
+        "music-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "canonical cookie ensure opens one owner workspace and survives reload"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "owner playlists songs queue playback and history preserve transactions"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "foreign playlist song and venue identifiers deny owner access"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "expired owner credential refresh safely replays one mutation"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "transport reconnect mints a new HTTP socket ticket"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "browser sign out revokes same session activity and preserves another session"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "owner publication replay and stale revisions preserve public state"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "guest request owner acceptance and player updates use separate authority"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "public unlisted and revoked sharing deny hidden data"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "newer public revisions survive delayed and out of order notifications"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "provider outage and retry preserve owner draft and bounded controls"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "origin expiry and guest request limits fail closed"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "canonical cookie ensure opens one owner workspace and survives reload"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "owner playlists songs queue playback and history preserve transactions"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "foreign playlist song and venue identifiers deny owner access"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "expired owner credential refresh safely replays one mutation"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "transport reconnect mints a new HTTP socket ticket"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "browser sign out revokes same session activity and preserves another session"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "owner publication replay and stale revisions preserve public state"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "guest request owner acceptance and player updates use separate authority"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "public unlisted and revoked sharing deny hidden data"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "newer public revisions survive delayed and out of order notifications"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "provider outage and retry preserve owner draft and bounded controls"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "origin expiry and guest request limits fail closed"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        }
+      ]
     }
   ],
   "limits": [
@@ -875,7 +1079,8 @@
     "books",
     "lifecycle",
     "movies",
-    "games"
+    "games",
+    "music"
   ],
   "scopeCompatibilityIdentifier": true
 }

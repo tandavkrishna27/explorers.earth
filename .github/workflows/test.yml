@@ -3,7 +3,7 @@ name: Backend validation
 on:
   pull_request: {}
   push:
-    branches: [main, develop]
+    branches: [main, develop, codex/unified-replatform]
   schedule:
     - cron: "41 2 * * *"
   workflow_dispatch:

@@ -10,9 +10,10 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
 import dotenv from 'dotenv';
 import { hasValidatedLocalMusicRuntime } from './config/music-local-profile';
+import { hasValidatedOwnedBrowserMusicRuntime } from './config/music-owned-browser-profile';
 
 // Load environment variables first
-if (!hasValidatedLocalMusicRuntime(process.env)) dotenv.config();
+if (!hasValidatedLocalMusicRuntime(process.env) && !hasValidatedOwnedBrowserMusicRuntime(process.env)) dotenv.config();
 
 let pool: any;
 type AppDatabase = NeonDatabase<typeof schema> | NodePgDatabase<typeof schema>;
