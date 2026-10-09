@@ -1,0 +1,510 @@
+{
+  "version": 1,
+  "lane": "lifecycle",
+  "provenance": {
+    "commit": "7dce39ffd22d24de6ce3b2474ffc2dde7920cf06",
+    "sourceHash": "e5bc1ac20ebd1f4e7e5c6a8be249b5a60ab88434de2f43eb307148f6c627ae68",
+    "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+    "dirty": false
+  },
+  "config": "explorers-earth/e2e/replatform/lifecycle.playwright.config.ts",
+  "spec": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+  "projects": [
+    "lifecycle-chromium"
+  ],
+  "discovery": [
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "active Settings requires trimmed feedback and retries one durable submission"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "foreign feedback and stale revision cannot delete an active owner"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "UI deactivation revokes both tabs and the old session"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "UI deletion is cancelled by a real Google recovery callback"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "recovery proof expires and cannot grant ordinary authority"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "concurrent recovery completes exactly once and rejects replay"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "wrong provider identity cannot recover a retained account"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "terminal maintenance preserves tombstone and denies recovery"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "foreign and absent origins cannot mutate lifecycle state"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "delayed old lifecycle response cannot navigate a new owner"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "held feedback cannot mutate navigate or log out verified replacement B"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "held feedback cannot mutate navigate or log out a fresh verified returning A session"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "held deletion completion preserves verified replacement B"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "held deletion completion preserves a fresh verified returning A session"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "held deactivation completion preserves verified replacement B"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "held deactivation completion preserves a fresh verified returning A session"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "held recovery completion preserves verified replacement B"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "titlePath": [
+        "held recovery completion preserves a fresh verified returning A session"
+      ],
+      "project": "lifecycle-chromium",
+      "repeat": 0
+    }
+  ],
+  "results": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "active Settings requires trimmed feedback and retries one durable submission"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "foreign feedback and stale revision cannot delete an active owner"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "UI deactivation revokes both tabs and the old session"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "UI deletion is cancelled by a real Google recovery callback"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "recovery proof expires and cannot grant ordinary authority"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "concurrent recovery completes exactly once and rejects replay"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "wrong provider identity cannot recover a retained account"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "terminal maintenance preserves tombstone and denies recovery"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "foreign and absent origins cannot mutate lifecycle state"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "delayed old lifecycle response cannot navigate a new owner"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "held feedback cannot mutate navigate or log out verified replacement B"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "held feedback cannot mutate navigate or log out a fresh verified returning A session"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "held deletion completion preserves verified replacement B"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "held deletion completion preserves a fresh verified returning A session"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "held deactivation completion preserves verified replacement B"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "held deactivation completion preserves a fresh verified returning A session"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "held recovery completion preserves verified replacement B"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+        "titlePath": [
+          "held recovery completion preserves a fresh verified returning A session"
+        ],
+        "project": "lifecycle-chromium",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "cleanup": {
+    "status": "passed"
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  },
+  "authority": {
+    "owned": true,
+    "database": "music_uat_8fe66c3ec69227ffabd5785da8e1f318",
+    "containerId": "fd11fd62552e940f1d837e55c303cad58280c2135fdf18c5928ac76db49c36b0",
+    "imageId": "sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81"
+  },
+  "child": {
+    "status": 0,
+    "signal": null
+  },
+  "startedAt": "2026-10-09T23:10:24.136Z",
+  "endedAt": "2026-10-09T23:11:20.159Z",
+  "playwright": "1.61.1"
+}
