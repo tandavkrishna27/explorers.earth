@@ -93,3 +93,10 @@ The Music package entry requires protected receipt custody; invoking it with ack
 Category rereview found that existing public media eligibility omits collection covers and Places/Products/People photos. The first category slice needs a bounded repository visibility repair with private-denial and independently public child tests before its cover-byte assertions can qualify. Preserve these cases and broader public requirements.
 
 Review and qualify Music first; serialize category/public fixture/spec integration and QA producer implementation; retain exact source/environment/cleanup evidence; inspect fresh hosted CI. Wave3 owns coordinated runtime/fixture cutover. No known-red candidate waiver or whole-ticket closure is granted by preparation/source work.
+
+## Places edit checkpoint — 2026-10-10
+
+Retained edit now allows share-slug changes, excludes only the same canonical collection from duplicate checks, and preserves the exact native location entity and snapshot before metadata writes. Editing makes no provider detail/photo request. Missing or mismatched native observations refuse all writes. Scoped independent rereview is clear; fresh root verification passed 29 focused component tests and application TypeScript (exit 0). These are component checks, not protected browser outcomes. Places/link fixture integration and the proposed sixteen identities are next.
+
+The user has required Places taxonomy/pins, People sector browsing and Apps nightly scraping within Wave 2. These are now closing requirements. Retained decisions and available taxonomy inputs are being reconciled into concrete designs; no invented production vocabulary or live-provider qualification is implied. The prior 118-browser and 249-database receipts remain valid only for their recorded source commits.
+

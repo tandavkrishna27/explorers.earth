@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { EarthLoader } from "../components/EarthLoader";
 import HeroSkeleton from "../components/ui/HeroSkeleton";
 import RecommendationCardSkeleton from "../components/ui/RecommendationCardSkeleton";
-import { useCreateLocation, locationSnapshot } from "../features/Favorites/hooks/useCreateLocation";
+import { useCreateLocation } from "../features/Favorites/hooks/useCreateLocation";
 import { usePlacesOwner } from "../features/Favorites/hooks/usePlacesOwner";
 import { usePlacesCommands } from "../features/Favorites/api/placesCommands";
 import { useMenuItems } from "../features/Favorites/hooks/useMenuItems";
@@ -21,8 +21,7 @@ import { KeyValuePair } from "../features/Favorites/components/RecommendForm";
 import SwitchButton from "../components/ui/SwitchButton";
 import useAuthStore from "../store/store";
 import { useCityStore } from "../store/useCityStore";
-import axios from "axios";
-import { GOOGLE_PLACES_API_BASE_URL, IMAGE_CONFIG } from "../config"; // Force HMR update for IMAGE_CONFIG
+import { IMAGE_CONFIG } from "../config";
 import { motion, AnimatePresence } from "framer-motion";
 import CircularPlacesModal from "../components/CircularPlacesModal";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -241,6 +240,18 @@ const Favorites = memo(() => {
     const id = input.variables.documentId;
     const data = input.variables.data;
     if (!id) throw new Error("A list id is required");
+    const changesLocationMetadata = data.List_Name_Details !== undefined || data.Instagram_Media_URL !== undefined;
+    // Capture the native details before the first metadata write. The legacy view
+    // cannot represent entity identity or distinguish a null snapshot/name.
+    const original = placesOwner.content?.lists.get(id);
+    if (changesLocationMetadata && (!original || original.kind !== "collection" ||
+      original.accountId !== accountId || original.generation !== sessionGeneration ||
+      original.resourceId !== id || original.detail.id !== id ||
+      original.detail.accountId !== accountId || original.detail.category !== "places" ||
+      original.detail.archived || original.detail.placeLocation === undefined)) {
+      throw new Error("Reload the original location before editing");
+    }
+    const originalLocation = original?.detail.placeLocation;
 
     if (data.Visibility !== undefined) {
       await commands.publishList(id, Boolean(data.Visibility));
@@ -257,17 +268,10 @@ const Favorites = memo(() => {
         ...(data.slug === undefined ? {} : { slug: String(data.slug) }),
       });
     }
-    if (data.List_Name_Details !== undefined || data.Instagram_Media_URL !== undefined) {
+    if (changesLocationMetadata) {
       const details = (data.List_Name_Details ?? {}) as { note?: unknown; place_id?: unknown; location?: { latitude?: unknown; longitude?: unknown } | null };
-      const existing = cities?.recommendationLists?.find((list) => list.documentId === id)?.List_Name_Details ?? null;
       await commands.setLocation(id, {
-        locationEntityId: null,
-        locationSnapshot: locationSnapshot({
-          placeId: details.place_id ?? existing?.place_id,
-          name: data.List_Name ?? existing?.name,
-          address: existing?.location?.address,
-          location: details.location ?? existing?.location ?? null,
-        }),
+        ...originalLocation!,
         instagramMediaUrl: typeof data.Instagram_Media_URL === "string" && data.Instagram_Media_URL ? data.Instagram_Media_URL : null,
       });
       // The list note is the collection's own description.
@@ -277,7 +281,7 @@ const Favorites = memo(() => {
     }
     // The call sites only read back what they already sent, so the echo is enough.
     return { data: { updateRecommendationList: { ...data, documentId: id } as Record<string, any> } };
-  }, [commands, cities]);
+  }, [commands, placesOwner.content, accountId, sessionGeneration]);
 
   const handleVisibilityToggle = () => {
     const origin = navigation.authority;
@@ -751,53 +755,18 @@ const Favorites = memo(() => {
     }
 
     try {
-      // Skip Google Places API call when editing since we're only updating social link and notes
-      let photoUrl = selectedCity?.List_Name_Details?.thumbnail || "";
-
-      // Only fetch place details if we have a placeId (for new locations)
-      if (values.placeId) {
-        const placeDetails = await axios.get(
-          `${GOOGLE_PLACES_API_BASE_URL}/${values.placeId
-          }?fields=id,displayName,primaryType,primaryTypeDisplayName,priceRange,rating,userRatingCount,photos&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-          }`
-        );
-
-        const photoReferences = placeDetails.data.photos.map(
-          (photo: { name: string }) => photo.name.split(`${values.placeId}/`)[1]
-        );
-
-        const response = await fetch(
-          `${GOOGLE_PLACES_API_BASE_URL}/${values.placeId}/${photoReferences[0]
-          }/media?maxWidthPx=400&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`,
-          { redirect: "follow" }
-        );
-        photoUrl = response.url;
-      }
-
-      // Preserve existing place_id from List_Name_Details or use new one if provided
-      let existingPlaceId = null;
-      if (selectedCity?.List_Name_Details) {
-        try {
-          const details = typeof selectedCity.List_Name_Details === 'string'
-            ? JSON.parse(selectedCity.List_Name_Details)
-            : selectedCity.List_Name_Details;
-          existingPlaceId = (details as any)?.place_id || null;
-        } catch (e) {
-          existingPlaceId = (selectedCity.List_Name_Details as any)?.place_id || null;
-        }
-      }
-      const placeIdToStore = values.placeId || existingPlaceId;
-
+      // Editing metadata preserves the selected location and its owned thumbnail.
+      const details = selectedCity?.List_Name_Details;
+      const storedDetails = typeof details === 'string' ? JSON.parse(details) : details;
       const response = await updateRecommendedList({
         variables: {
           documentId: selectedCity?.documentId,
           data: {
             Instagram_Media_URL: values.recommendationSocialLink,
-            List_Name: values.listName,
+            List_Name: selectedCity?.List_Name,
             List_Name_Details: {
+              ...storedDetails,
               note: values.note,
-              thumbnail: photoUrl,
-              place_id: placeIdToStore, // Preserve or update place_id
             },
             slug: values.placeUrl,
           },
@@ -1585,6 +1554,7 @@ const Favorites = memo(() => {
           initialValues={
             isEditing
               ? {
+                documentId: selectedCity?.documentId,
                 listName: selectedCity?.List_Name || "",
                 recommendationSocialLink:
                   selectedCity?.Instagram_Media_URL || "",
