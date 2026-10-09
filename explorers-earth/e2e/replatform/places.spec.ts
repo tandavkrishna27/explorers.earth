@@ -141,15 +141,29 @@ async function equalMissing(pathname:string,missing:string,persona:PlacesPersona
 test.beforeEach(async ({},info)=>{manifest=await control('reset',info) as PlacesManifest;});
 
 function recordPublicPages(page:Page,pathname:string,detail:boolean) {
-  type RecordedPage={offset:number;limit:number;ids:string[];terminal?:boolean};
+  type RecordedPage={offset:number;limit:number;ids:string[];terminal?:boolean;nextCursor?:string|null};
   const pending:Promise<RecordedPage|null>[]=[];
   const handler=(response:BrowserResponse)=>{
     const url=new URL(response.url());
     if(url.pathname!==`${base}${pathname}` || response.request().method()!=='GET' || response.status()!==200)return;
+    const query=new URL(response.request().url()).searchParams;
     pending.push(response.json().then(dto=>{
+      const cursors=query.getAll('cursor'),limits=query.getAll('limit');
+      const cursor=cursors[0]??'o0',rawLimit=limits[0]??'12';
+      if(cursors.length>1 || limits.length>1 || !/^o(0|[1-9][0-9]*)$/.test(cursor)
+        || !/^[1-9][0-9]*$/.test(rawLimit))throw new Error('Invalid pagination');
+      const offset=Number(cursor.slice(1)),limit=Number(rawLimit);
+      if(!Number.isSafeInteger(offset) || !Number.isSafeInteger(limit) || limit!==(detail?24:12))throw new Error('Invalid pagination');
+      if(!dto || !Array.isArray(dto.recommendationLists))throw new Error('Invalid page shape');
+      if(detail && (dto.recommendationLists.length!==1 || !dto.recommendationLists[0]))throw new Error('Invalid detail shape');
       const rows=detail?dto.recommendationLists[0].recommended_places:dto.recommendationLists;
-      return {offset:Number((url.searchParams.get('cursor')??'o0').slice(1)),limit:Number(url.searchParams.get('limit')??'12'),
-        ids:rows.map((row:Dto)=>row.documentId),...(detail?{terminal:dto.recommendationLists[0].recommended_places_next_cursor===null}:{})};
+      if(!Array.isArray(rows) || rows.some((row:Dto)=>!row || typeof row.documentId!=='string' || row.documentId.length===0))throw new Error('Invalid rows');
+      if(detail) {
+        const nextCursor=dto.recommendationLists[0].recommended_places_next_cursor;
+        if(nextCursor!==null && typeof nextCursor!=='string')throw new Error('Invalid next cursor');
+        return {offset,limit,ids:rows.map((row:Dto)=>row.documentId),terminal:nextCursor===null,nextCursor};
+      }
+      return {offset,limit,ids:rows.map((row:Dto)=>row.documentId)};
     }).catch(()=>null));
   };
   page.on('response',handler);
@@ -160,18 +174,30 @@ function recordPublicPages(page:Page,pathname:string,detail:boolean) {
       pages:results.filter((row):row is RecordedPage=>row!==null).sort((a,b)=>a.offset-b.offset)};
   };
 }
-function assertPublicPageShape(recording:{parseFailures:number;pages:{offset:number;limit:number;ids:string[];terminal?:boolean}[]},expected:number[][]) {
+function assertPublicPageShape(recording:Awaited<ReturnType<ReturnType<typeof recordPublicPages>>>,expected:number[][]) {
   // Receipt sanitization retains source coordinates, not expected/actual payloads.
   // Each fixed assertion below identifies a distinct safe failure classification.
-  const pages=recording.pages;
-  const duplicateConflicts=pages.filter((row,index)=>pages.slice(0,index).some(previous=>previous.offset===row.offset
-    && (previous.limit!==row.limit || previous.terminal!==row.terminal || JSON.stringify(previous.ids)!==JSON.stringify(row.ids)))).length;
-  const duplicateOffsets=pages.length-new Set(pages.map(row=>row.offset)).size;
   expect(recording.parseFailures).toBe(0);
+  const observations=recording.pages;
+  const firstByOffset=new Map<number,typeof observations[number]>();
+  let duplicateConflicts=0;
+  for(const row of observations) {
+    const previous=firstByOffset.get(row.offset);
+    if(previous) {
+      if(previous.limit!==row.limit || previous.terminal!==row.terminal || previous.nextCursor!==row.nextCursor
+        || JSON.stringify(previous.ids)!==JSON.stringify(row.ids))duplicateConflicts++;
+    } else firstByOffset.set(row.offset,row);
+  }
   expect(duplicateConflicts).toBe(0);
-  expect(duplicateOffsets).toBe(0);
+  expect(observations.filter(row=>!Number.isSafeInteger(row.offset) || row.offset<0).length).toBe(0);
+  expect(observations.filter(row=>!Number.isSafeInteger(row.limit) || row.limit<=0).length).toBe(0);
+  expect(observations.filter(row=>!expected.some(shape=>shape[0]===row.offset)).length).toBe(0);
+  if(expected[0].length===4) {
+    expect(observations.filter(row=>row.nextCursor!==(row.offset===0?'o24':row.offset===24?'o48':null)).length).toBe(0);
+  }
+  // Every physical observation passed admission before logical representatives are selected.
+  const pages=[...firstByOffset.values()].sort((a,b)=>a.offset-b.offset);
   expect(pages.length).toBe(expected.length);
-  expect(pages.filter(row=>!Number.isInteger(row.offset) || row.offset<0).length).toBe(0);
   expect(pages.filter((row,index)=>row.offset!==expected[index][0]).length).toBe(0);
   expect(pages.filter((row,index)=>row.limit!==expected[index][1]).length).toBe(0);
   expect(pages.filter((row,index)=>row.ids.length!==expected[index][2]).length).toBe(0);
