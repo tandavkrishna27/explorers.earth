@@ -283,6 +283,12 @@ describe("collection cover public visibility", () => {
     await denied(wrongEnvironment, etag, owner.cookie);
     expect(storage.getAttempts).toBe(beforeWrongEnvironment);
     const guide = await fixture("guides", owner);
-    await denied(guide.media, etag); await positive(guide.media, owner.cookie);
+    const guideEtag = await positive(guide.media);
+    const publicGuideOwner = await request(composed.app).get(guide.media.url).set("cookie", owner.cookie);
+    expect(publicGuideOwner.status).toBe(200); expect(publicGuideOwner.body).toEqual(png);
+    expect(publicGuideOwner.headers.etag).toBe(guideEtag);
+    expect(publicGuideOwner.headers["cache-control"]).toBe("public, max-age=300, must-revalidate");
+    await pool.query("UPDATE collections SET publication_state='draft',visibility='private' WHERE id=$1", [guide.list.id]);
+    await denied(guide.media, guideEtag); await positive(guide.media, owner.cookie);
   });
 });
