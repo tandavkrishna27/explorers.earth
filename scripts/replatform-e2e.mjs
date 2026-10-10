@@ -363,11 +363,13 @@ export function capturedChild(executable,args,cwd,env,capability,abortSignal){
  });
 }
 export function decodeAppsFixtureFailureLine(line){
- if(typeof line!=='string'||line.length>160||/[\r\n]/.test(line))return undefined;
- const match=/^Apps owned fixture failed: stage=([a-z-]+); category=([a-z-]+)$/.exec(line);
+ if(typeof line!=='string'||Buffer.byteLength(line,'utf8')>512||/[\r\n]/.test(line))return undefined;
+ const match=/^Apps owned fixture failed: stage=([a-z-]+); category=([a-z-]+)(?:; cleanupStep=([a-z-]+))?(?:; controlOperation=([a-z-]+); controlPhase=([a-z-]+); controlBoundary=([a-z-]+); controlCategory=([a-z-]+)(?:; controlBudgetMs=(5000|10000|12000))?)?$/.exec(line);
  const stages=['validation','preflight','receipt','create-directory','check-directory','prepare-secret','prepare-database','create-database','create-pool','migrate','current-database','seed-auth','initial-account','config','composition','create-sessions','start-api','baseline','create-control','descriptor','browser-context','vite','startup','discovery','execution','cleanup'];
  const categories=['refusal','spawn-error','nonzero','signal','output-overflow','deadline','ack-mismatch'];
- return match&&stages.includes(match[1])&&categories.includes(match[2])?line:undefined;
+ const cleanup=['request-seal','browser-stop','browser-close','discovery-stop','discovery-close','vite-stop','vite-close','producer-settlement','request-drain','control-close','storage-drain','api-close','artifact-remove','runtime-pool-close','database-budget','admin-pool-open','database-drop','admin-pool-close','database-dispose','root-check','root-remove','secret-clean','failure-receipt','finish-receipt'];
+ const operations=['initialize','reset','observe','control','close'],phases=['ownership','custody','remove-old-object','remove-upload-file','connect','transaction','seed-put','seed-get','upload-write','upload-read','sessions','canonical','response','settlement'],boundaries=['none','before-custody','after-custody','ancestor','target','before-mutation','after-mutation','final-custody'];
+ return match&&stages.includes(match[1])&&categories.includes(match[2])&&(!match[3]||match[1]==='cleanup'&&cleanup.includes(match[3]))&&(!match[4]||operations.includes(match[4])&&phases.includes(match[5])&&boundaries.includes(match[6])&&['deadline','refusal'].includes(match[7]))?line:undefined;
 }
 export async function main(args=process.argv.slice(2)){
  const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');assertEnvironment(process.env);const options=parseArguments(args);
