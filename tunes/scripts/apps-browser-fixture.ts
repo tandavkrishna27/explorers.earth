@@ -394,7 +394,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
             stage = 'descriptor';
             descriptor = await bounded(() => d.writeDescriptor(roots[0], value));
             stage = 'browser-context';
-            const args = await bounded(() => Promise.resolve(receipt!.arguments(['--config', 'e2e/replatform/apps.playwright.config.ts', '--retries=0'], candidate!)));
+            const args = await bounded(() => Promise.resolve(receipt!.arguments(['--config', 'e2e/replatform/apps.playwright.config.ts', '--retries=0', '--workers=1', '--forbid-only'], candidate!)));
             const fixturePath = paths.join(candidate, 'sessions.json');
             const context = { arguments: args, environment: { ...receipt.executionEnvironment({}, candidate), APPS_E2E_FIXTURE_PATH: fixturePath, REPLATFORM_E2E_FIXTURE_PATH: fixturePath, REPLATFORM_E2E_LANE: 'apps', PLAYWRIGHT_EXTERNAL_BASE_URL: origin } };
             stage = 'vite';

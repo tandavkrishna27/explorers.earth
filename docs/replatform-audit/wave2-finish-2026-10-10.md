@@ -368,6 +368,15 @@ database operations. Independent review accepted the source change and root
 fresh verification passed all 53 support tests. Native Apps qualification is
 still pending recovery and a clean exact committed source boundary.
 
+The same production audit found missing explicit Playwright `--forbid-only`
+policy in the Apps launch arguments. Both discovery and execution now receive
+the fixed `--workers=1` and `--forbid-only` arguments through their shared
+protected context. The strict receipt decoder is unchanged. A real factory
+regression reproduced the omission and verifies both child contexts. Independent
+review accepted the change; root fresh verification passed 209 focused Apps
+runner, support, composition and admission tests. These are source contracts,
+not native browser acceptance.
+
 ## Current hosted status
 
 PR119 still points to remote `622f689385058ef9186538a1d8e1f60fd23ab266`.

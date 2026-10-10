@@ -140,3 +140,9 @@ it('actual response write failure remains contained and notifies lifecycle',asyn
  s.callback({},{headersSent:false,writableEnded:false,destroyed:false,setHeader(){throw Error('response write');},end(){throw Error('response end');},destroy(){throw Error('response destroy');}});
  for(let i=0;i<20;i++)await Promise.resolve();expect(s.reports()).toBeGreaterThanOrEqual(1);
 });
+it('actual factory supplies required fixed workers and forbid-only policy to both browser children',async()=>{
+ const {createAppsBrowserFixture}=await load(),f=fake();const receipt=f.deps.createReceipt;let requested:string[]|undefined;
+ f.deps.createReceipt=async(...args:any[])=>{const value=await receipt(...args);value.arguments=async(input:string[])=>{requested=[...input];return input;};return value;};
+ await createAppsBrowserFixture(f.deps).run();expect(requested).toEqual(['--config','e2e/replatform/apps.playwright.config.ts','--retries=0','--workers=1','--forbid-only']);
+ expect(f.contexts).toHaveLength(2);for(const context of f.contexts){expect(context.arguments).toEqual(requested);expect(context.arguments.filter((arg:string)=>arg==='--forbid-only')).toHaveLength(1);expect(context.arguments.filter((arg:string)=>arg==='--workers=1')).toHaveLength(1);}
+});
