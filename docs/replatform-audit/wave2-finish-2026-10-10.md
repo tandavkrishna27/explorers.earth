@@ -23,6 +23,8 @@ focused local evidence and remaining acceptance. Wave 2 is **open**.
 | Apps private descriptor read | `554038d4`: independent review accepted; root fresh 44 resource-free tests and scoped fixture typing passed | Parent ACL custody and native lane integration still required; text reads grant no qualification authority |
 | Guides resource worker | `2bd7cc51`: independent source review accepted; root fresh combined 143 selected contract tests and scoped worker typing passed | Default native adapters were not executed; gateway, fixture entry, native scenarios and containment qualification remain open |
 | Apps lane registration | `254a2324`: independent R1 review accepted; root fresh 16 selected registration/predecessor contracts and scoped typing passed | Exact 142 source identities preserve the previous 134; actual fixture integration and native execution remain open |
+| Apps canonical fixture controller | `28b88677`: independent R1 review accepted; root fresh 43 resource-free contracts and scoped typing passed | Actual same-store composition is checked; native ACL, PostgreSQL and browser execution remain unqualified |
+| Guides planned pipe closure | `055ef6c4`: independent review accepted; root fresh 170 selected contracts and scoped typing passed | Positive process/database gates remain required; default Windows socket ordering and guarded import remain unqualified |
 
 Root's combined check of the certificate parser and staged database custody passed all 304 tests;
 scoped music-c0 typing passed after the descriptor snapshot correction.
@@ -52,6 +54,20 @@ The launcher now conveys a reserved parent-derived epoch; the parent preserves
 strictly validated controller cleanup metadata without granting disposal authority.
 Worker source is accepted in `2bd7cc51`. The earlier 66-case pass did not establish
 actual worker composition, and these source checks do not establish native execution.
+
+The source-only host preflight found planned worker termination and fixture
+completion could race with pipe EOF. The correction in `055ef6c4` accepts only
+clean EOF after validated terminal intent, keeps protocol/fatal checks active,
+and preserves positive process and database witnesses. Root's 170-case pass
+excludes the exact guarded import diagnostic. Default socket classification and
+long-held independent gate timing still need further evidence.
+
+Apps runner preflight found a separate canonical media boundary: local storage
+read/delete deadlines race original filesystem promises. An HTTP response can
+therefore precede physical completion. Opt-in storage settlement tracking is
+accepted in `e06c868d`; request-handler/auth/database settlement is a separate
+construction gap. Neither HTTP completion nor a passing helper test grants
+permission to remove active media or database custody.
 
 The Guides guarded import diagnostic currently cannot start on this Windows host:
 its outer spawn returns `EPERM` with no child frame. A harmless control using the
@@ -111,9 +127,10 @@ this source execution record.
   Root verification passed all 16 selected resource-free registration and
   predecessor contracts, with scoped types clean. The workflow now binds its
   protected receipt to the Node temporary root. Canonical reset/live observation
-  remains under review. Review identified late database lease/rollback ownership,
-  storage binding/physical settlement and unauthorized-body admission gaps;
-  bounded repairs are in progress. Actual profile fixture integration and native
+  is accepted in `28b88677`. Review corrected late database lease/rollback ownership,
+  storage binding/physical settlement and unauthorized-body admission gaps
+  with behavioral regressions. Every rejected controller close requires retained
+  database, storage and secret custody. Actual profile fixture integration and native
   Apps execution remain open; registration alone does not qualify that lane.
   This adds eight to the existing 134; later Guides adds another 16.
 - Included features: concrete written design review is pending. Actual People
@@ -140,6 +157,24 @@ and one exact legacy anonymous GraphQL query returned errors. This does not mean
 an empty People catalog. Valid source-authorized access or a taxonomy export is
 required. Approved Apps sources and its scheduled worker environment also remain
 required inputs; credentials should be supplied through protected configuration.
+
+## Latest accepted local qualification repairs
+
+- `a664dbac`: Guides now validates the six distinct ports and exact loopback API
+  origin before acquisition, and checks returned PostgreSQL authority against the
+  requested port. Root verification passed 255 selected resource-free contracts;
+  scoped types passed. This does not establish native containment.
+- `e06c868d`: opt-in local storage settlement retains the original read, write and
+  delete operations after caller deadlines. Apps binds that capability to its
+  actual composition. Root verification passed 67 contracts and scoped types;
+  independent review accepted the changes. Storage settlement does not establish
+  canonical request, authentication or database settlement.
+
+The next concrete source cards are the actual canonical handler construction
+ledger for Apps and the Guides fixture host. They are allocated to separate
+agents. Actual fixture dispatch, source registration and native qualification
+follow their independent reviews. Included feature decisions and source access
+remain open as recorded above; Wave 2 remains open.
 
 ## Hosted status boundary
 
