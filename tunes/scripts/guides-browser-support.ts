@@ -1,4 +1,5 @@
 import {createHash, timingSafeEqual} from 'node:crypto';
+import * as nativePath from 'node:path';
 import {z} from 'zod/v3';
 import {guideCollectionDetailsSchema, guideSectionBlocksSchema, guideActivityPhotoSchema, guideSectionDtoSchema, GUIDE_SECTION_LIMIT, GUIDE_SECTION_PAGE_LIMIT, type GuideDayPlace} from '../shared/explorersGuideContract';
 
@@ -259,3 +260,74 @@ export const guidesManifestSchema=z.object({expected:z.object({...manifestIdenti
 }).transform(value=>value.manifest);
 
 export type GuidesManifest=z.infer<typeof guidesManifestSchema>;
+
+// Lexical shape only; the resource owner must separately establish real custody.
+export function assertGuidesStoragePath(path:unknown, expectedTemporaryRoot:unknown):void {
+  const canonicalLocal=(value:unknown):value is string=>{
+    if(typeof value!=='string'||value.length<1||value.length>4096||value.includes('\0')||
+      !nativePath.isAbsolute(value)||nativePath.normalize(value)!==value) return false;
+    if(nativePath.sep==='\\') return /^[A-Za-z]:\\/.test(value)&&!value.includes('/')&&!value.slice(2).includes(':')&&
+      value.slice(3).split('\\').every(component=>!/[. ]$/.test(component));
+    return !value.includes('\\')&&!value.startsWith('//');
+  };
+  if(!canonicalLocal(path)||!canonicalLocal(expectedTemporaryRoot)) throw new Error('Invalid Guides storage path');
+  const privateRoot=nativePath.dirname(path);
+  if(nativePath.basename(path)!=='owned-media'||path!==nativePath.join(privateRoot,'owned-media')||
+    !/^explorers-profile-e2e-[A-Za-z0-9]+$/.test(nativePath.basename(privateRoot))||
+    nativePath.dirname(privateRoot)!==expectedTemporaryRoot||
+    privateRoot!==nativePath.join(expectedTemporaryRoot,nativePath.basename(privateRoot)))
+    throw new Error('Invalid Guides storage path');
+}
+
+const resetRowString=z.string().min(1).max(128);
+const resetObjectKey=z.string().min(1).max(1024);
+const resetPersona=z.object({userId:z.string().min(1).max(200).refine(value=>value.trim()===value),accountId:uuid}).strict();
+const resetTrackedMedia=z.object({id:uuid,accountId:uuid,purpose:z.enum(['collection','guide']),
+  variant:z.literal('original'),environment:z.literal('local'),key:resetObjectKey}).strict();
+const resetOwnership=z.object({runId,commit,
+  personas:z.object({ownerA:resetPersona,ownerB:resetPersona,ownerC:resetPersona}).strict(),
+  trackedMedia:z.array(resetTrackedMedia)}).strict();
+const resetSnapshot=z.object({runId,commit,
+  collections:z.array(z.object({id:uuid,accountId:uuid,category:resetRowString}).strict()),
+  analytics:z.array(z.object({id:uuid,accountId:uuid,category:resetRowString,
+    collectionId:uuid.nullable(),recommendationId:uuid.nullable()}).strict()),
+  media:z.array(z.object({id:uuid,accountId:uuid,purpose:resetRowString,status:resetRowString}).strict()),
+  objects:z.array(z.object({mediaId:uuid,accountId:uuid,variant:resetRowString,
+    environment:resetRowString,key:resetObjectKey}).strict()),
+}).strict();
+type GuidesResetReferences={analyticsIds:string[];media:z.infer<typeof resetTrackedMedia>[]};
+
+// These independently verified rows do not establish attachment or deletion authority.
+export function selectOwnedGuidesResetReferences(snapshot:unknown, ownership:unknown):GuidesResetReferences {
+  const rows=resetSnapshot.parse(snapshot), authority=resetOwnership.parse(ownership);
+  if(rows.runId!==authority.runId||rows.commit!==authority.commit) throw new Error('Invalid Guides reset authority');
+  const personas=Object.values(authority.personas);
+  const unique=(keys:string[])=>{
+    if(new Set(keys).size!==keys.length) throw new Error('Duplicate Guides reset identity');
+  };
+  unique(personas.map(persona=>persona.userId));unique(personas.map(persona=>persona.accountId));
+  unique(rows.collections.map(row=>row.id));unique(rows.analytics.map(row=>row.id));
+  unique(rows.media.map(row=>row.id));
+  const objectIdentity=(row:{mediaId:string;variant:string;environment:string})=>JSON.stringify([row.mediaId,row.variant,row.environment]);
+  unique(rows.objects.map(objectIdentity));unique(authority.trackedMedia.map(row=>row.id));
+  unique(authority.trackedMedia.map(row=>row.key));
+  const accounts=new Set(personas.map(persona=>persona.accountId));
+  for(const tracked of authority.trackedMedia){
+    if(!accounts.has(tracked.accountId)||tracked.key!==`local/${tracked.accountId}/${tracked.id}`)
+      throw new Error('Invalid Guides tracked media authority');
+  }
+  const collections=new Map(rows.collections.map(row=>[row.id,row]));
+  const assets=new Map(rows.media.map(row=>[row.id,row]));
+  const objects=new Map(rows.objects.map(row=>[objectIdentity(row),row]));
+  const analyticsIds=rows.analytics.filter(event=>{
+    const collection=event.collectionId===null?undefined:collections.get(event.collectionId);
+    return event.category==='guides'&&event.recommendationId===null&&accounts.has(event.accountId)&&
+      collection?.category==='guides'&&collection.accountId===event.accountId;
+  }).map(event=>event.id).sort();
+  const media=authority.trackedMedia.filter(tracked=>{
+    const asset=assets.get(tracked.id), object=objects.get(objectIdentity({mediaId:tracked.id,...tracked}));
+    return asset?.accountId===tracked.accountId&&asset.purpose===tracked.purpose&&asset.status==='ready'&&
+      object?.accountId===tracked.accountId&&object.key===tracked.key;
+  }).map(tracked=>({...tracked})).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
+  return {analyticsIds,media};
+}
