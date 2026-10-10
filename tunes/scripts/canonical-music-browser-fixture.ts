@@ -204,9 +204,9 @@ async function main() {
         let bytes = ''; await setup((async () => { for await (const chunk of request) { bytes += chunk; if (bytes.length > 4096) throw new Error('Owned control bounds'); } })(), 5000); continuing();
         const body = JSON.parse(bytes); if (typeof body.caseId !== 'string' || !/^music-(desktop|mobile):/.test(body.caseId)) throw new Error('Owned case identity denied');
         let value: unknown = {};
-        if (body.action === 'prepare') { if (activeCase || next >= owners.length) throw new Error('Owned scenario exhaustion'); const owner = owners[next++], second = owners[next++]; activeCase = { id: body.caseId, owner, second }; value = { owners: [owner, second], secondSession: await issueSession(owner) }; }
+        if (body.action === 'prepare') { if (activeCase) throw new Error('[music-cause:control-active-case]'); if (next >= owners.length) throw new Error('[music-cause:control-scenario-exhausted]'); const owner = owners[next++], second = owners[next++]; activeCase = { id: body.caseId, owner, second }; let secondSession: Owner; try { secondSession = await issueSession(owner); } catch { throw new Error('[music-cause:control-session-failed]'); } value = { owners: [owner, second], secondSession }; }
         else {
-          if (!activeCase || body.caseId !== activeCase.id) throw new Error('Owned case custody mismatch');
+          if (!activeCase || body.caseId !== activeCase.id) throw new Error('[music-cause:control-case-mismatch]');
           if (body.action === 'clock') { if (![0, 601000].includes(body.offsetMs)) throw new Error('Clock bounds'); await ipc(musicChild!, capability, 'clock', { offsetMs: body.offsetMs }); await ipc(canonicalChild!, capability, 'clock', { offsetMs: body.offsetMs }); }
           else if (body.action === 'provider') await ipc(musicChild!, capability, 'provider', { mode: body.mode });
           else if (body.action === 'reset') { await ipc(musicChild!, capability, 'clock', { offsetMs: 0 }); await ipc(canonicalChild!, capability, 'clock', { offsetMs: 0 }); await ipc(musicChild!, capability, 'provider', { mode: 'success' }); activeCase = undefined; }
@@ -227,8 +227,8 @@ async function main() {
         }
         continuing(); response.setHeader('content-type', 'application/json'); response.end(JSON.stringify(value));
       } catch (error) {
-        const cause = error instanceof Error ? error.message.match(/^\[music-cause:(child-unavailable|child-timeout|child-failed)\]$/)?.[1] : undefined;
-        response.writeHead(403, { 'content-type': 'application/json' }); response.end(JSON.stringify(cause ? { cause } : {}));
+        const cause = error instanceof Error ? error.message.match(/^\[music-cause:(child-unavailable|child-timeout|child-failed|control-active-case|control-scenario-exhausted|control-case-mismatch|control-session-failed)\]$/)?.[1] : undefined;
+        response.writeHead(403, { 'content-type': 'application/json' }); response.end(JSON.stringify({ cause: cause ?? 'control-other' }));
       }
     });
     controlServer.requestTimeout = 5000; controlServer.headersTimeout = 5000; controlServer.keepAliveTimeout = 1000;

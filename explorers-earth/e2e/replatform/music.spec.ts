@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 import { io, type Socket } from 'socket.io-client';
+import { observeMusicResponseBody } from '../../../tunes/scripts/music-browser-failure-observation';
 import { createMusicPublicationIdempotencyKey } from '../../../tunes/shared/musicPublicationContract';
 
 type Owner = { userId: string; accountId: string; handle: string; cookie: string };
@@ -17,11 +18,12 @@ let caseId: string;
 let scenario: Scenario;
 const sockets = new Set<Socket>();
 const contexts = new Set<BrowserContext>();
+const responseBodyPhases = new WeakMap<BrowserContext, 'body' | 'reload' | 'closing'>();
 const ownerConnections = new WeakMap<Page, number>();
 const song = (n: number) => ({ youtubeId: `fixture000${n}`.slice(-11), title: `Owned song ${n}`, artist: 'Owned artist', thumbnailUrl: 'https://music-fixture.test/thumb.png' });
 async function stage<T>(name: string, operation: () => Promise<T>): Promise<T> {
   try { return await operation(); } catch (error) {
-    const cause = error instanceof Error ? error.message.match(/^\[music-cause:(child-unavailable|child-timeout|child-failed)\]$/)?.[1] : undefined;
+    const cause = error instanceof Error ? error.message.match(/^\[music-cause:(child-unavailable|child-timeout|child-failed|control-active-case|control-scenario-exhausted|control-case-mismatch|control-session-failed|control-other)\]$/)?.[1] : undefined;
     throw new Error(`[music-stage:${name}]${cause ? ` [music-cause:${cause}]` : ''}`);
   }
 }
@@ -34,7 +36,7 @@ async function control(action: string, input: Record<string, unknown> = {}) {
   const response = await fetch(`${fixture.control.origin}/control`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-music-fixture-capability': fixture.control.capability }, body: JSON.stringify({ caseId, action, ...input }), signal: AbortSignal.timeout(15000) });
   if (!response.ok) {
     const value = await response.json().catch(() => ({}));
-    const cause = ['child-unavailable', 'child-timeout', 'child-failed'].includes(value?.cause) ? value.cause : undefined;
+    const cause = ['child-unavailable', 'child-timeout', 'child-failed', 'control-active-case', 'control-scenario-exhausted', 'control-case-mismatch', 'control-session-failed', 'control-other'].includes(value?.cause) ? value.cause : undefined;
     throw new Error(cause ? `[music-cause:${cause}]` : 'Owned Music control denied');
   }
   return response.json();
@@ -122,7 +124,7 @@ test.beforeEach(async ({ page }, info) => {
 });
 test.afterEach(async () => {
   for (const connection of sockets) connection.disconnect(); sockets.clear();
-  for (const context of contexts) await context.close(); contexts.clear();
+  for (const context of contexts) { responseBodyPhases.set(context, 'closing'); await context.close(); } contexts.clear();
   await control('reset');
 });
 
@@ -325,9 +327,10 @@ test('newer public revisions survive delayed and out of order notifications', as
   const published = await publication(page, 'public'); const observer = await socket({ publicSlug: published.publication.publicSlug });
   const before = await guestResource(published.publication.publicSlug);
   const context = await browser.newContext(); contexts.add(context); const publicPage = await context.newPage();
+  responseBodyPhases.set(context, 'body');
   const revisions: number[] = [], loaded: number[] = [];
   observer.on('music_public_change', value => revisions.push(value.revision));
-  publicPage.on('response', response => { if (response.status() === 200 && response.url().includes('/api/music/public-resource/v1/')) void response.json().then(value => loaded.push(value.revision)); });
+  publicPage.on('response', response => { if (response.status() === 200 && response.url().includes('/api/music/public-resource/v1/')) void observeMusicResponseBody(response.json(), () => responseBodyPhases.get(context)).then(value => loaded.push(value.revision)); });
   await publicPage.route('**/*', route => new URL(route.request().url()).origin === fixture.origin ? route.continue() : route.abort());
   let subscribed = false, socketAttempted = false;
   publicPage.on('websocket', connection => {
@@ -351,7 +354,7 @@ test('newer public revisions survive delayed and out of order notifications', as
   await expect.poll(() => revisions.slice(2).includes(before.body.revision)).toBe(true);
   expect((await guestResource(published.publication.publicSlug)).body.revision).toBe(newer.body.revision);
   expect(revisions.at(-1)).toBeGreaterThanOrEqual(newer.body.revision); expect(loaded.every((revision, index) => index === 0 || revision >= loaded[index - 1])).toBe(true);
-  await expect(publicPage.getByText('Owned song 2', { exact: true })).toBeVisible(); await publicPage.reload(); await expect.poll(() => loaded.at(-1)).toBe(newer.body.revision);
+  await expect(publicPage.getByText('Owned song 2', { exact: true })).toBeVisible(); responseBodyPhases.set(context, 'reload'); await publicPage.reload(); responseBodyPhases.set(context, 'body'); await expect.poll(() => loaded.at(-1)).toBe(newer.body.revision);
   await page.reload(); expect((await ownerRequest(page, 'GET', '/api/music/dashboard')).body.songs).toHaveLength(2);
 });
 
