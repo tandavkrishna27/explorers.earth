@@ -497,3 +497,15 @@ The narrow repair derives and validates size 56, validates returned length,
 and preserves the full rights mask with no fallback. Root fresh 28 contracts,
 scoped types 0, exact launcher transport compilation and independent review
 passed. Native adoption and resource recovery remain unclaimed at this point.
+
+At clean `e70ba5874a3d925c0d06e6d746b0f78b78eb2e5c`, the rights query
+passed and native adoption stopped at `helper-security` code 0, original child
+close 1, signal none. All three target ACLs remained unchanged. Its protected
+zero-byte adoption lease was retained. Exact read-only helper Record/hash
+comparison confirmed only Access changed; hash, physical key, ACL, Creation,
+Write, Change and Attributes remained equal. The helper-only post-hash baseline
+repair preserves all those invariants and every later full timestamp check.
+Actual read-only RED/GREEN, root fresh 28 contracts, scoped types 0, exact
+transport compilation and independent review passed. Separate review accepted
+only the exact retained lease reconciliation under newly captured identity;
+no historical restoration, ACL adoption or resource recovery is claimed here.
