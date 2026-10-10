@@ -701,3 +701,46 @@ test('Place links atomic diagnostic: existing lane metadata coexistence',()=>{
  for(const [fixture,property,card]of [[moviesFixture,'movies',moviesSnapshot()],[moviesPublicFixture,'moviesPublic',{version:1,stage:'setup'}],[mpFixture,'moviesPin',mpCard()],[booksFixture,'books',booksSnapshot()],[profileFixture,'profile',profileSnapshot()],[blFixture,'booksLostCreate',blSnapshot()]]){const x=fixture(),before=plaDecode(f),diagnostics=decodeProtectedFailureDiagnostics(x.report,x.lane,process.cwd());assert.deepEqual(diagnostics.filter(d=>Object.hasOwn(d,property)).map(d=>d[property]),[card]);assert.deepEqual(plaDecode(f),before);assert.equal(diagnostics.some(d=>Object.hasOwn(d,'placeLinksAtomic')),false);}
  for(const namespace of ['movies-diagnostic-v1','movies-public-diagnostic-v1','books-diagnostic-v1','profile-diagnostic-v1','books-lost-create-diagnostic-v1','movies-pin-diagnostic-v1']){const x=plaFixture();x.result.errors.push({message:'['+namespace+':malformed]'});assert.deepEqual(plaCards(x),[plaCard()]);}
 });
+
+// Literal Music observation vocabulary is independent of the production allowlists.
+function musicObservationFixture(lane=manifest().lanes.find(l=>l.name==='music')) {
+ const report=rawReport(lane,true),c=child(lane),identity=lane.identities[1];
+ c.status=1;c.receipt.results[1].status='unexpected';c.receipt.results[1].attempts[0].status='failed';
+ const result=report.suites[0].specs[1].tests[0].results[0]={status:'failed',retry:0,errors:[]};
+ const failure={version:1,lane:lane.name,provenance,results:c.receipt.results,child:{status:1,signal:null},cleanup:{status:'passed'},artifacts:c.receipt.artifacts};
+ return {lane,identity,report,c,result,failure};
+}
+test('Music first failure observation: finite body stages and observed causes roundtrip',()=>{
+ for(const stage of ['public-response-body-body','public-response-body-reload','public-response-body-closing','public-response-body-unknown'])for(const cause of ['public-read-target-closed','public-read-resource-gone','public-read-json-syntax','public-read-other']){
+  const f=musicObservationFixture();f.result.errors=[{message:`[music-stage:${stage}] [music-cause:${cause}]`}];
+  const before=structuredClone(f.report),diagnostics=decodeProtectedFailureDiagnostics(f.report,f.lane,process.cwd());
+  assert.deepEqual(diagnostics,[{identity:f.identity,kind:'error',matcher:'unknown',locations:[],stage,cause}]);
+  assert.deepEqual(f.report,before);assert.doesNotThrow(()=>validateFailureRecord(f.lane,{...f.failure,diagnostics},provenance,f.c));
+ }
+ for(const stage of ['control-prepare','control-reset'])for(const cause of ['control-active-case','control-scenario-exhausted','control-case-mismatch','control-session-failed','control-other','child-unavailable','child-timeout','child-failed']){
+  const f=musicObservationFixture();f.result.errors=[{message:`[music-stage:${stage}] [music-cause:${cause}]`}];
+  const diagnostics=decodeProtectedFailureDiagnostics(f.report,f.lane,process.cwd());
+  assert.deepEqual(diagnostics,[{identity:f.identity,kind:'error',matcher:'unknown',locations:[],stage,cause}]);
+  assert.doesNotThrow(()=>validateFailureRecord(f.lane,{...f.failure,diagnostics},provenance,f.c));
+ }
+});
+test('Music first failure observation: privacy error order and exact lane admission',()=>{
+ const f=musicObservationFixture(),stage='public-response-body-closing',cause='public-read-target-closed';
+ const first={message:'TimeoutError expect(received).toBe(expected) synthetic-private-cookie',stack:'synthetic-private-stack',location:{file:resolve(process.cwd(),f.identity.file),line:330,column:149}},second={message:`[music-stage:${stage}] [music-cause:${cause}] synthetic-private-ID https://private.invalid body`,stack:'synthetic-private-stack'};
+ f.result.errors=[first,second];const errors=f.result.errors,before=structuredClone(f.report),diagnostics=decodeProtectedFailureDiagnostics(f.report,f.lane,process.cwd());
+ assert.deepEqual(diagnostics,[{identity:f.identity,kind:'timeout',matcher:'toBe',locations:[{line:330,column:149}]},{identity:f.identity,kind:'error',matcher:'unknown',locations:[],stage,cause}]);
+ assert.equal(/synthetic-private|private\.invalid/.test(JSON.stringify(diagnostics)),false);
+ assert.deepEqual(f.report,before);assert.equal(f.result.errors,errors);assert.equal(errors[0],first);assert.equal(errors[1],second);
+ second.message='ordinary';assert.deepEqual(decodeProtectedFailureDiagnostics(f.report,f.lane,process.cwd()),diagnostics.map(({stage,cause,...generic})=>generic));
+ for(const lane of manifest().lanes.filter(l=>l.name!=='music')){
+  const x=musicObservationFixture(lane);x.result.errors=[{message:`[music-stage:${stage}] [music-cause:${cause}]`}];
+  const generic=[{identity:x.identity,kind:'error',matcher:'unknown',locations:[]}];
+  assert.deepEqual(decodeProtectedFailureDiagnostics(x.report,x.lane,process.cwd()),generic);
+  for(const extra of [{stage},{cause},{stage,cause}])assert.throws(()=>validateFailureRecord(x.lane,{...x.failure,diagnostics:[{...generic[0],...extra}]},provenance,x.c));
+ }
+ for(const [property,values]of [['stage',['public-response-body-private','public-response-body-body secret','public-response-body','',null,{}]],['cause',['public-read-secret','control-unknown','control-active-case secret','',null,{}]]])for(const value of values){
+  const x=musicObservationFixture(),diagnostic={identity:x.identity,kind:'error',matcher:'unknown',locations:[],[property]:value};
+  assert.throws(()=>validateFailureRecord(x.lane,{...x.failure,diagnostics:[diagnostic]},provenance,x.c));
+  x.result.errors=[{message:`[music-${property}:${value}]`}];assert.equal(Object.hasOwn(decodeProtectedFailureDiagnostics(x.report,x.lane,process.cwd())[0],property),false);
+ }
+});
