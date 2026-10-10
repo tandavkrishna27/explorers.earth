@@ -1558,9 +1558,12 @@ describe('private Guides resource controller orchestration against foreign-inter
     resourceError(await f.dispatch(handle,f.command(handle,'observe',CASES[1],1)),413,'overflow');
     f.tables.clear();for(const [name,list] of saved)f.tables.set(name,list);
     // Within row/text limits, total valid descriptions exceed the independent 8MiB ceiling.
+    const responseOverflowSaved=f.snapshotTables();
+    const restoredCollectionIds=f.rowset('collections').map(row=>row.id).sort();
     for(let i=0;i<140;i++)f.addGuide(resourceId(50000+i),RESOURCE_ACCOUNTS[0],20+i,{description:'x'.repeat(65536)});
     resourceError(await f.dispatch(handle,f.command(handle,'observe',CASES[1],1)),413,'overflow');
-    f.tables.clear();for(const [name,list] of saved)f.tables.set(name,list);
+    f.tables.clear();for(const [name,list] of responseOverflowSaved)f.tables.set(name,list);
+    expect(f.rowset('collections').map(row=>row.id).sort()).toEqual(restoredCollectionIds);
     expect((await f.dispatch(handle,f.command(handle,'observe',CASES[1],1))).status).toBe(200);
     await handle.close();
   });
