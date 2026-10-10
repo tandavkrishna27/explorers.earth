@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "lane": "place-links",
+  "provenance": {
+    "commit": "01509bdf9c10027d79bc46f41fa6e8a1a8f2721b",
+    "sourceHash": "99a89a896571525fcde6aca6b4d4a4ebe10402681ce08717bf76e920499e4688",
+    "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+    "dirty": false
+  },
+  "phase": "execution",
+  "interrupted": false,
+  "sourceIntact": true,
+  "cleanup": {
+    "status": "failed",
+    "failures": [
+      "receipt"
+    ]
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  },
+  "counts": {
+    "discovered": 8,
+    "executed": 8,
+    "passed": 7,
+    "failed": 1,
+    "skipped": 0,
+    "attempts": 8
+  }
+}
