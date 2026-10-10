@@ -1,0 +1,295 @@
+{
+  "version": "explorers-music-uat-database/v1",
+  "runId": "7ea6e0105637db9de931edd39986846d",
+  "commit": "43a2122b8d7c959a4eda60ff7054b7cc8299e71e",
+  "result": "passed",
+  "exitCode": 0,
+  "childSignal": null,
+  "cleanup": "database-dropped-container-removed",
+  "vitest": {
+    "finalized": true,
+    "success": true,
+    "nativeExit": 0,
+    "assertions": {
+      "selected": 325,
+      "passed": 325,
+      "failed": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "files": [
+      {
+        "file": "server/test/account-recovery.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 1,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/canonical-music-identity.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 11,
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/canonical-music-public-lifecycle.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 4,
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/explorers-lifecycle.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 28,
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/explorers-media.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 7,
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/explorers-profile.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 8,
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/explorers-recommendation-api.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 54,
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/explorers-recovery-callback.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 11,
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/explorers-recovery.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 5,
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/music-credential.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 10,
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/music-domain-repository.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 36,
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/music-e2e-identity-count-adapter.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 1,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/music-e2e-initial-capture.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 1,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/music-e2e-state-restore.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 3,
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/music-identity-projection.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 5,
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/music-publication-operation.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 16,
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/music-runtime-role.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 27,
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/musicLifecycle.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 22,
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/musicReconciler.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 13,
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/reconciliationRepository.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 6,
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/explorers/collectionCoverVisibility.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 7,
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/explorers/placeLinks.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 22,
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/load/music-load-postgres.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 1,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      },
+      {
+        "file": "server/test/migrations/music-migration.integration.test.ts",
+        "status": "passed",
+        "assertions": {
+          "selected": 26,
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "todo": 0
+        }
+      }
+    ],
+    "fileCounts": {
+      "selected": 24,
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "vitestSha256": "820b853b4e7b1ebd5f0ddc5e0920e3712b64a0413237a0197cab6867b0d1f3bb",
+  "database": "music_uat_7ea6e0105637db9de931edd39986846d"
+}
