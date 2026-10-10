@@ -199,8 +199,14 @@ required inputs; credentials should be supplied through protected configuration.
   and stale-revision probes are forwarded to canonical authorization rather than
   simulated. The gate is not yet attached to native composition.
 
-The next concrete source card binds the accepted Apps gate, request custody and
-session transport to the actual composition. Actual fixture dispatch, Guides
+- `38797491`: the actual Apps composition now binds the fixed admission gate,
+  canonical handler custody and awaited session transport to the same pool,
+  authority and personas. Root independent source review accepted it; 153 focused
+  contracts across five suites passed, with scoped typing clean. This is source
+  evidence, not native HTTP, PostgreSQL, filesystem or browser qualification.
+
+The next concrete source card completes and independently reviews the Apps native
+runner and its cleanup ordering. Actual fixture dispatch, Guides
 native specifications/configuration, source registration and native qualification
 follow. Included feature decisions and source access remain open as recorded
 above; Wave 2 remains open.
