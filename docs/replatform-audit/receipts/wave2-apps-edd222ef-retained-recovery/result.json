@@ -1,0 +1,15 @@
+{
+  "sourceCommit": "edd222efa377f7af7edcccd2d78dd3dbde555c60",
+  "runId": "039063c49a5a6bc8eb02ec6171b0f31c",
+  "status": "recovered",
+  "evidence": "native",
+  "qualification": false,
+  "exitCode": 0,
+  "postchecks": {
+    "rootAbsent": true,
+    "leaseAbsent": true,
+    "secretBytes": 0,
+    "containerIdAbsent": true,
+    "containerRunLabelAbsent": true
+  }
+}
