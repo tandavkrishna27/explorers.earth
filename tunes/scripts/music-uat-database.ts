@@ -1,9 +1,9 @@
 import { execFileSync, spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { lstatSync, realpathSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
 import { buildUatEvidenceEnvelope, MUSIC_UAT_DATABASE_TEST_FILES } from "./music-vitest-evidence";
 export { MUSIC_UAT_DATABASE_TEST_FILES } from "./music-vitest-evidence";
@@ -69,7 +69,7 @@ export interface UatDatabaseContainerInspect {
   Config?: { Image?: unknown; Env?: unknown; Labels?: Record<string, unknown> };
   State?: { Running?: unknown; Health?: { Status?: unknown } };
   HostConfig?: { PortBindings?: Record<string, unknown>; Tmpfs?: Record<string, unknown> };
-  Mounts?: Array<{ Type?: unknown; Destination?: unknown; RW?: unknown }>;
+  Mounts?: Array<{ Type?: unknown; Destination?: unknown; RW?: unknown; Source?: unknown }>;
 }
 
 interface UatDatabaseLifecycleOptions {
@@ -163,6 +163,15 @@ export function validateUatDatabaseInspect(
   authority: UatDatabaseAuthority,
   input: { contextHost: string; imageId: string; inspect: UatDatabaseContainerInspect },
 ): UatDatabaseAuthority & { imageId: string; contextHost: string } {
+  return validateDatabaseInspect(authority, input, POSTGRES_IMAGE, true);
+}
+
+function validateDatabaseInspect(
+  authority: UatDatabaseAuthority,
+  input: { contextHost: string; imageId: string; inspect: UatDatabaseContainerInspect },
+  configImage: string,
+  healthy: boolean,
+): UatDatabaseAuthority & { imageId: string; contextHost: string } {
   requireLocalDockerHost(input.contextHost);
   const expectedImageId = /^sha256:[a-f0-9]{64}$/.test(input.imageId) ? input.imageId : "";
   const labels = input.inspect.Config?.Labels ?? {};
@@ -191,11 +200,11 @@ export function validateUatDatabaseInspect(
     && !(input.inspect.Mounts ?? []).some((mount) => mount.Type === "volume");
   if (input.inspect.Id !== authority.containerId
       || input.inspect.Name !== `/explorers-music-uat-db-${authority.runId}`
-      || input.inspect.Config?.Image !== POSTGRES_IMAGE
+      || input.inspect.Config?.Image !== configImage
       || !expectedImageId || input.inspect.Image !== expectedImageId
       || !exactEnvironment || !exactLabels || !exactMount
-      || input.inspect.State?.Running !== true
-      || input.inspect.State?.Health?.Status !== "healthy"
+      || (healthy && (input.inspect.State?.Running !== true
+        || input.inspect.State?.Health?.Status !== "healthy"))
       || bindingKeys.length !== 1 || bindingKeys[0] !== "5432/tcp"
       || binding?.HostIp !== "127.0.0.1" || binding?.HostPort !== String(authority.port)
       || Object.keys(tmpfs).length !== 1 || !exactTmpfs(tmpfs[DATA_DESTINATION])) {
@@ -285,8 +294,32 @@ export async function startOwnedUatDatabase(
     "--host", contextHost, "image", "inspect", "--format", "{{.Id}}", POSTGRES_IMAGE,
   ]).trim();
   if (!/^sha256:[a-f0-9]{64}$/.test(imageId)) throw authorityError("PostgreSQL image ID is invalid");
+  const containerId = dockerRun(databaseCreationArguments(input, contextHost, POSTGRES_IMAGE)).trim();
+  if (!/^[a-f0-9]{64}$/.test(containerId)) throw authorityError("created container ID is invalid");
+  const authority: UatDatabaseAuthority = {
+    runId: input.runId, database: input.database, port: input.port, containerId, commit: input.commit,
+  };
+  try {
+    const inspect = options.healthyInspect
+      ? await options.healthyInspect(authority, contextHost)
+      : await defaultHealthyInspect(authority, contextHost, dockerRead);
+    validateUatDatabaseInspect(authority, { contextHost, imageId, inspect });
+    return { ...authority, imageId, contextHost, owned: true };
+  } catch (error) {
+    try { dockerRun(["--host", contextHost, "rm", "--force", "--volumes", containerId]); }
+    catch { throw authorityError("startup failed and exact owned-container cleanup also failed"); }
+    throw error;
+  }
+}
+
+function databaseCreationArguments(
+  input: { runId: string; database: string; commit: string; port: number; passwordFile: string },
+  contextHost: string,
+  image: string,
+): string[] {
+  const containerName = `explorers-music-uat-db-${input.runId}`;
   const passwordMount = `type=bind,src=${input.passwordFile},dst=${PASSWORD_DESTINATION},readonly`;
-  const containerId = dockerRun([
+  return [
     "--host", contextHost, "run", "--detach", "--rm", "--name", containerName,
     "--label", "com.explorers.music.fixture=true",
     "--label", `com.explorers.music.project=${FIXTURE_PROJECT}`,
@@ -307,22 +340,272 @@ export async function startOwnedUatDatabase(
     // A TCP probe cannot pass until the real listener is up.
     "--health-cmd", `pg_isready -U ${POSTGRES_USER} -d ${input.database} -h 127.0.0.1 -p 5432`,
     "--health-interval", "1s", "--health-timeout", "5s", "--health-retries", "30",
-    POSTGRES_IMAGE,
-  ]).trim();
-  if (!/^[a-f0-9]{64}$/.test(containerId)) throw authorityError("created container ID is invalid");
-  const authority: UatDatabaseAuthority = {
-    runId: input.runId, database: input.database, port: input.port, containerId, commit: input.commit,
-  };
+    image,
+  ];
+}
+
+interface StagedDockerResult {
+  status: number | null;
+  stdout: string;
+  timedOut: boolean;
+}
+
+interface StagedFileMetadata {
+  dev: bigint; ino: bigint; mode: bigint; uid: bigint; gid: bigint;
+  size: bigint; nlink: bigint; mtimeNs: bigint; ctimeNs: bigint;
+  isFile(): boolean; isDirectory(): boolean; isSymbolicLink(): boolean;
+}
+
+interface StagedDatabaseDependencies {
+  clock: { now(): number; setTimeout(callback: () => void, ms: number): unknown; clearTimeout(timer: unknown): void };
+  command(args: string[], timeoutMs: number): Promise<StagedDockerResult>;
+  healthyInspect(authority: UatDatabaseAuthority, contextHost: string): Promise<UatDatabaseContainerInspect>;
+  fileSystem: { realpath(path: string): string; lstat(path: string): StagedFileMetadata };
+}
+
+interface StagedDatabaseInput {
+  runId: string; database: string; commit: string; port: number; passwordFile: string;
+}
+
+interface StagedDatabaseIntent extends StagedDatabaseInput {
+  containerName: string; contextHost: string; imageId: string;
+}
+
+interface StagedDatabaseAcquisition {
+  intent: Readonly<StagedDatabaseIntent>;
+  create(): Promise<OwnedUatDatabaseAuthority>;
+  dispose(dropDatabase: (authority: OwnedUatDatabaseAuthority) => Promise<void>): Promise<void>;
+}
+
+// The adapter is deliberately complete: tests cannot accidentally combine a fake
+// witness with a production mutation. Production derives every witness itself.
+async function stagedDockerCommand(args: string[], timeoutMs: number): Promise<StagedDockerResult> {
+  const result = spawnSync(dockerExecutable(), args, {
+    encoding: "utf8", windowsHide: true, timeout: timeoutMs, maxBuffer: 1024 * 1024,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return { status: result.error ? null : result.status, stdout: result.stdout ?? "", timedOut: !!result.error };
+}
+
+function stagedCustody(
+  path: string,
+  fileSystem: StagedDatabaseDependencies["fileSystem"],
+): readonly string[] {
+  if (typeof path !== "string" || path.length > 512 || !win32.isAbsolute(path)
+      || !/^[A-Za-z]:\\/.test(path) || /[\x00-\x1f\x7f/,]/.test(path)
+      || path.slice(2).includes(":")
+      || path.slice(3).split("\\").some(segment => !segment || segment === "." || segment === "..")
+      || fileSystem.realpath(path) !== path) throw authorityError("secret custody is invalid");
+  const paths = [path];
+  let ancestor = win32.dirname(path);
+  while (true) {
+    paths.push(ancestor);
+    if (ancestor === win32.parse(path).root) break;
+    ancestor = win32.dirname(ancestor);
+  }
+  return paths.map((candidate, index) => {
+    if (fileSystem.realpath(candidate) !== candidate) throw authorityError("secret ancestor custody is invalid");
+    const stat = fileSystem.lstat(candidate);
+    if (stat.isSymbolicLink() || (index === 0 ? !stat.isFile() || stat.nlink !== 1n
+        || stat.size < 1n || stat.size > 512n : !stat.isDirectory())) {
+      throw authorityError("secret custody is invalid");
+    }
+    const identity = [stat.dev, stat.ino, stat.mode, stat.uid, stat.gid];
+    if (index === 0) identity.push(stat.size, stat.nlink, stat.mtimeNs, stat.ctimeNs);
+    return identity.map(value => String(value)).join(":");
+  });
+}
+
+export async function prepareOwnedUatDatabaseAcquisition(
+  input: StagedDatabaseInput,
+  dependencies?: StagedDatabaseDependencies,
+): Promise<StagedDatabaseAcquisition> {
   try {
-    const inspect = options.healthyInspect
-      ? await options.healthyInspect(authority, contextHost)
-      : await defaultHealthyInspect(authority, contextHost, dockerRead);
-    validateUatDatabaseInspect(authority, { contextHost, imageId, inspect });
-    return { ...authority, imageId, contextHost, owned: true };
-  } catch (error) {
-    try { dockerRun(["--host", contextHost, "rm", "--force", "--volumes", containerId]); }
-    catch { throw authorityError("startup failed and exact owned-container cleanup also failed"); }
-    throw error;
+    const descriptors = Object.getOwnPropertyDescriptors(input);
+    const keys = Reflect.ownKeys(descriptors);
+    if (keys.some(key => typeof key !== "string") || keys.sort().join(",") !== "commit,database,passwordFile,port,runId"
+        || keys.some(key => !descriptors[key as string]?.enumerable || !("value" in descriptors[key as string]!))) {
+      throw authorityError("acquisition input is invalid");
+    }
+    const runId: unknown = descriptors.runId!.value;
+    const database: unknown = descriptors.database!.value;
+    const commit: unknown = descriptors.commit!.value;
+    const port: unknown = descriptors.port!.value;
+    const passwordFile: unknown = descriptors.passwordFile!.value;
+    if (typeof runId !== "string" || typeof database !== "string" || typeof commit !== "string"
+        || typeof passwordFile !== "string" || typeof port !== "number") throw authorityError("acquisition input types are invalid");
+    const requested: StagedDatabaseInput = { runId, database, commit, port, passwordFile };
+    validateRequestedIdentity(requested);
+    if (dependencies && (typeof dependencies.command !== "function"
+        || typeof dependencies.healthyInspect !== "function"
+        || typeof dependencies.fileSystem?.realpath !== "function"
+        || typeof dependencies.fileSystem?.lstat !== "function"
+        || typeof dependencies.clock?.now !== "function" || typeof dependencies.clock?.setTimeout !== "function"
+        || typeof dependencies.clock?.clearTimeout !== "function")) throw authorityError("complete test adapter required");
+    const clock = dependencies?.clock ?? {
+      now: () => performance.now(),
+      setTimeout: (callback: () => void, ms: number) => setTimeout(callback, ms),
+      clearTimeout: (timer: unknown) => clearTimeout(timer as ReturnType<typeof setTimeout>),
+    };
+    const settlementExpired = authorityError("bounded settlement expired; custody retained");
+    const bounded = <T>(operation: Promise<T>, deadline: number): Promise<T> => {
+      const remaining = Math.floor(deadline - clock.now());
+      if (remaining <= 0) {
+        void operation.catch(() => undefined);
+        return Promise.reject(settlementExpired);
+      }
+      return new Promise<T>((resolveResult, rejectResult) => {
+        const timer = clock.setTimeout(() => rejectResult(settlementExpired), remaining);
+        operation.then(value => { clock.clearTimeout(timer); resolveResult(value); },
+          error => { clock.clearTimeout(timer); rejectResult(error); });
+      });
+    };
+    const command = dependencies?.command ?? stagedDockerCommand;
+    const fileSystem = dependencies?.fileSystem ?? {
+      realpath: (path: string) => realpathSync(path),
+      lstat: (path: string) => lstatSync(path, { bigint: true }),
+    };
+    const retainedCustody = stagedCustody(requested.passwordFile, fileSystem);
+    const checkCustody = () => {
+      const fresh = stagedCustody(requested.passwordFile, fileSystem);
+      if (fresh.length !== retainedCustody.length || fresh.some((value, index) => value !== retainedCustody[index])) {
+        throw authorityError("secret or ancestor custody changed");
+      }
+    };
+    const preparationDeadline = clock.now() + 60000;
+    const read = async (args: string[], deadline: number, mutation = false): Promise<string> => {
+      const remaining = Math.floor(deadline - clock.now());
+      if (remaining <= 0) throw authorityError("bounded Docker operation expired");
+      const timeout = Math.min(mutation ? 45000 : 15000, remaining);
+      const commandDeadline = Math.min(deadline, clock.now() + timeout);
+      const result = await bounded(command(args, timeout), commandDeadline);
+      if (clock.now() >= commandDeadline || result.status !== 0 || result.timedOut !== false
+          || typeof result.stdout !== "string" || Buffer.byteLength(result.stdout) > 1024 * 1024) {
+        throw authorityError("bounded Docker operation failed");
+      }
+      return result.stdout;
+    };
+    const contextName = (await read(["context", "show"], preparationDeadline)).trim();
+    if (!/^[A-Za-z0-9_.-]{1,64}$/.test(contextName)) throw authorityError("Docker context name is invalid");
+    const contextHost: unknown = JSON.parse(await read([
+      "context", "inspect", contextName, "--format", "{{json .Endpoints.docker.Host}}",
+    ], preparationDeadline));
+    if (typeof contextHost !== "string") throw authorityError("Docker context host is invalid");
+    requireLocalDockerHost(contextHost);
+    const imageId = (await read([
+      "--host", contextHost, "image", "inspect", "--format", "{{.Id}}", POSTGRES_IMAGE,
+    ], preparationDeadline)).trim();
+    if (!/^sha256:[a-f0-9]{64}$/.test(imageId)) throw authorityError("PostgreSQL image ID is invalid");
+    const containerName = `explorers-music-uat-db-${requested.runId}`;
+    const absence = async (filter: string, deadline: number) => {
+      const output = await read(["--host", contextHost, "container", "ls", "--all", "--no-trunc",
+        "--filter", filter, "--format", "{{.ID}}"], deadline);
+      if (output !== "" && output !== "\n" && output !== "\r\n") throw authorityError("container absence is unconfirmed");
+    };
+    await absence(`name=^/${containerName}$`, preparationDeadline);
+    checkCustody();
+    const intent = Object.freeze({ ...requested, containerName, contextHost, imageId });
+    let state: "prepared" | "creating" | "created" | "healthy" | "failed-known" | "uncertain" | "disposed" | "retained" = "prepared";
+    let authority: OwnedUatDatabaseAuthority | undefined;
+    let creation: Promise<OwnedUatDatabaseAuthority> | undefined;
+    let disposal: Promise<void> | undefined;
+    let disposalRequested = false;
+    let terminalRetention = false;
+    const validatePinned = (inspect: UatDatabaseContainerInspect, healthy: boolean) => {
+      if (!authority) throw authorityError("created ID is unknown");
+      checkCustody();
+      const mounts = (inspect.Mounts ?? []).filter(mount => mount.Destination === PASSWORD_DESTINATION);
+      if (mounts.length !== 1 || mounts[0]?.Source !== requested.passwordFile) throw authorityError("secret bind source custody changed");
+      validateDatabaseInspect(authority, { contextHost, imageId, inspect }, imageId, healthy);
+    };
+    const freshInspect = async (deadline: number, healthy: boolean) => {
+      if (!authority) throw authorityError("created ID is unknown");
+      const inspect = JSON.parse(await read(["--host", contextHost, "inspect", "--type", "container",
+        "--format", "{{json .}}", authority.containerId], deadline)) as UatDatabaseContainerInspect;
+      validatePinned(inspect, healthy);
+    };
+    return Object.freeze({
+      intent,
+      create() {
+        if (creation) return creation;
+        if (disposalRequested) {
+          creation = Promise.reject(authorityError("acquisition is disposed"));
+          return creation;
+        }
+        state = "creating";
+        creation = Promise.resolve().then(async () => {
+          const deadline = clock.now() + 120000;
+          try {
+            checkCustody();
+            const containerId = (await read(databaseCreationArguments(requested, contextHost, imageId), deadline, true)).trim();
+            if (!/^[a-f0-9]{64}$/.test(containerId)) throw authorityError("created container ID is invalid");
+            // Store exact custody before invoking or awaiting any health adapter.
+            authority = Object.freeze({ runId: requested.runId, database: requested.database, commit: requested.commit,
+              port: requested.port, containerId, imageId, contextHost, owned: true as const });
+            state = "created";
+            if (terminalRetention) throw authorityError("late creation retained");
+            let inspect: UatDatabaseContainerInspect;
+            if (dependencies) inspect = await bounded(dependencies.healthyInspect(authority, contextHost), deadline);
+            else {
+              while (true) {
+                inspect = JSON.parse(await read(["--host", contextHost, "inspect", "--type", "container",
+                  "--format", "{{json .}}", containerId], deadline)) as UatDatabaseContainerInspect;
+                if (inspect.State?.Running === true && inspect.State?.Health?.Status === "healthy") break;
+                if (inspect.State?.Running !== true || inspect.State?.Health?.Status === "unhealthy") throw authorityError("health failed");
+                if (deadline - clock.now() <= 250) throw authorityError("health expired");
+                await new Promise(resolveWait => setTimeout(resolveWait, 250));
+              }
+            }
+            if (clock.now() >= deadline || terminalRetention) throw authorityError("health expired");
+            validatePinned(inspect, true);
+            state = "healthy";
+            return authority;
+          } catch {
+            state = terminalRetention ? "retained" : authority ? "failed-known" : "uncertain";
+            throw authorityError("staged acquisition failed; custody retained");
+          }
+        });
+        return creation;
+      },
+      dispose(dropDatabase: (authority: OwnedUatDatabaseAuthority) => Promise<void>) {
+        if (disposal) return disposal;
+        disposalRequested = true;
+        disposal = (async () => {
+          const deadline = clock.now() + 120000;
+          // Settlement, rather than a timer or discovery name, grants cleanup custody.
+          if (creation) {
+            try { await bounded(creation.catch(() => undefined), deadline); }
+            catch { terminalRetention = true; state = "retained"; throw authorityError("unsettled creation retained"); }
+          }
+          if (state === "prepared") { state = "disposed"; return; }
+          if (!authority || state === "uncertain") {
+            state = "retained";
+            throw authorityError("uncertain creation retained");
+          }
+          let dropFailed = false;
+          try {
+            const wasHealthy = state === "healthy";
+            if (wasHealthy) {
+              await freshInspect(deadline, true);
+              try { await bounded(dropDatabase(authority), deadline); }
+              catch (error) { if (error === settlementExpired) throw error; dropFailed = true; }
+            }
+            await freshInspect(deadline, wasHealthy);
+            await read(["--host", contextHost, "rm", "--force", "--volumes", authority.containerId], deadline, true);
+            await absence(`id=${authority.containerId}`, deadline);
+            state = "disposed";
+          } catch {
+            terminalRetention = true;
+            state = "retained";
+            throw authorityError(dropFailed ? "DROP failed; exact cleanup failed; custody retained" : "exact cleanup failed; custody retained");
+          }
+          if (dropFailed) throw authorityError("DROP failed after exact removal");
+        })();
+        return disposal;
+      },
+    });
+  } catch {
+    throw authorityError("staged acquisition preparation refused");
   }
 }
 
