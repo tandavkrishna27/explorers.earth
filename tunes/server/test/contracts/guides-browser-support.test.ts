@@ -344,3 +344,119 @@ describe('private Guides run-bound initial manifest and known media bytes',()=>{
     for(const key of ['expected','fixtureBytes','capability','password','directory'])expect(output).not.toHaveProperty(key);
   });
 });
+
+// F0c private verified-row contract; synthetic literals carry no resource authority.
+const RESET_A='20000000-0000-4000-8000-000000000001';
+const RESET_B='20000000-0000-4000-8000-000000000002';
+const RESET_C='20000000-0000-4000-8000-000000000003';
+const RESET_FOREIGN='20000000-0000-4000-8000-000000000004';
+const RESET_COLLECTION='30000000-0000-4000-8000-000000000001';
+const RESET_EVENT='40000000-0000-4000-8000-000000000001';
+const RESET_MEDIA='50000000-0000-4000-8000-000000000001';
+const RESET_OTHER_MEDIA='50000000-0000-4000-8000-000000000002';
+function resetLiteral():any {
+  return {
+    snapshot:{runId,commit,collections:[{id:RESET_COLLECTION,accountId:RESET_A,category:'guides'}],
+      analytics:[{id:RESET_EVENT,accountId:RESET_A,category:'guides',collectionId:RESET_COLLECTION,recommendationId:null}],
+      media:[{id:RESET_MEDIA,accountId:RESET_A,purpose:'guide',status:'ready'}],
+      objects:[{mediaId:RESET_MEDIA,accountId:RESET_A,variant:'original',environment:'local',key:'local/20000000-0000-4000-8000-000000000001/50000000-0000-4000-8000-000000000001'}]},
+    ownership:{runId,commit,personas:{ownerA:{userId:'auth|reset-a',accountId:RESET_A},ownerB:{userId:'auth|reset-b',accountId:RESET_B},ownerC:{userId:'auth|reset-c',accountId:RESET_C}},
+      trackedMedia:[{id:RESET_MEDIA,accountId:RESET_A,purpose:'guide',variant:'original',environment:'local',key:'local/20000000-0000-4000-8000-000000000001/50000000-0000-4000-8000-000000000001'}]},
+  };
+}
+const RESET_EXPECTED={analyticsIds:['40000000-0000-4000-8000-000000000001'],media:[{id:'50000000-0000-4000-8000-000000000001',accountId:'20000000-0000-4000-8000-000000000001',purpose:'guide',variant:'original',environment:'local',key:'local/20000000-0000-4000-8000-000000000001/50000000-0000-4000-8000-000000000001'}]};
+
+describe('Guides pure custody and independent verified reset rows',()=>{
+  it('Guides pure custody: lexical native path acceptance is explicit and resource free',async()=>{
+    const s:any=await support();expect(s.assertGuidesStoragePath,'future pure path export setup').toBeTypeOf('function');
+    const {sep}=await import('node:path');
+    const root=sep==='\\'?'C:\\synthetic-temp':'/synthetic-temp';
+    for(const suffix of ['A1','OtherRun29']){const path=root+sep+'explorers-profile-e2e-'+suffix+sep+'owned-media';const before=path;expect(s.assertGuidesStoragePath(path,root)).toBeUndefined();expect(path).toBe(before);}
+    const otherRoot=sep==='\\'?'D:\\other-synthetic-temp':'/other-synthetic-temp';expect(s.assertGuidesStoragePath(otherRoot+sep+'explorers-profile-e2e-Z9'+sep+'owned-media',otherRoot)).toBeUndefined();
+    // Two correctly shaped run roots are valid; this signature cannot prove exact run identity.
+  });
+  it('Guides pure custody: lexical aliases traversal and foreign roots refuse',async()=>{
+    const s:any=await support();expect(s.assertGuidesStoragePath,'future pure path export setup').toBeTypeOf('function');
+    const {sep}=await import('node:path');const root=sep==='\\'?'C:\\synthetic-temp':'/synthetic-temp';
+    const privateRoot=root+sep+'explorers-profile-e2e-A1',valid=privateRoot+sep+'owned-media';
+    const invalid=[null,undefined,1,{},'', 'owned-media',valid.slice(1),root+sep+'explorers-profile-e2e-'+sep+'owned-media',
+      root+sep+'explorers-profile-e2e-A-1'+sep+'owned-media',root+'-sibling'+sep+'explorers-profile-e2e-A1'+sep+'owned-media',
+      privateRoot+sep+'wrong',valid+sep,privateRoot+sep+sep+'owned-media',privateRoot+sep+'.'+sep+'owned-media',
+      privateRoot+sep+'child'+sep+'..'+sep+'owned-media',valid+sep+'nested',root+sep+'nested'+sep+'explorers-profile-e2e-A1'+sep+'owned-media'];
+    if(sep==='\\')invalid.push('C:synthetic-temp\\explorers-profile-e2e-A1\\owned-media','\\\\server\\share\\explorers-profile-e2e-A1\\owned-media','\\\\?\\C:\\synthetic-temp\\explorers-profile-e2e-A1\\owned-media','\\\\.\\C:\\synthetic-temp\\explorers-profile-e2e-A1\\owned-media',valid+':stream',valid.replace('\\owned-media','/owned-media'));
+    else invalid.push('/other-temp/explorers-profile-e2e-A1/owned-media','C:\\synthetic-temp\\explorers-profile-e2e-A1\\owned-media');
+    for(const path of invalid){const before=clone(path);expect(()=>s.assertGuidesStoragePath(path,root),String(path)).toThrow();expect(path).toEqual(before);}
+    for(const badRoot of [null,undefined,1,'','relative',root+sep,root+sep+'.',root+sep+'child'+sep+'..'])expect(()=>s.assertGuidesStoragePath(valid,badRoot)).toThrow();
+    if(sep==='\\')for(const namespaceRoot of ['\\\\server\\share\\synthetic-temp','\\\\?\\C:\\synthetic-temp','\\\\.\\C:\\synthetic-temp'])expect(()=>s.assertGuidesStoragePath(namespaceRoot+'\\explorers-profile-e2e-A1\\owned-media',namespaceRoot),'matching namespace root and child').toThrow();
+  });
+  it('Guides pure reset: strict independent run persona and row shapes refuse ambiguity',async()=>{
+    const s:any=await support();expect(s.selectOwnedGuidesResetReferences,'future pure selector export setup').toBeTypeOf('function');const base=resetLiteral();
+    expect(s.selectOwnedGuidesResetReferences(base.snapshot,base.ownership)).toEqual(RESET_EXPECTED);
+    for(const scope of ['snapshot','ownership']){
+      for(const field of Object.keys(base[scope])){const x=clone(base);delete x[scope][field];expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();}
+      for(const field of ['runId','commit']){const x=clone(base);x[scope][field]='d'.repeat(field==='runId'?32:40);expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();}
+    }
+    for(const [field,values] of [['runId',['B'.repeat(32),'g'.repeat(32),'b'.repeat(31)]],['commit',['C'.repeat(40),'g'.repeat(40),'c'.repeat(39)]]] as const)for(const value of values){const x=clone(base);x.snapshot[field]=x.ownership[field]=value;expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();}
+    const paths=[['snapshot'],['ownership'],['ownership','personas'],['ownership','personas','ownerA'],['snapshot','collections',0],['snapshot','analytics',0],['snapshot','media',0],['snapshot','objects',0],['ownership','trackedMedia',0]];
+    for(const path of paths){for(const value of [undefined,true]){const x=clone(base);let target=x;for(const part of path)target=target[part];target.extra=value;expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();}const target=path.reduce((v:any,p)=>v[p],base);for(const field of Object.keys(target)){const x=clone(base);const row=path.reduce((v:any,p)=>v[p],x);delete row[field];expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();}}
+    for(const owner of ['ownerA','ownerB','ownerC']){const x=clone(base);delete x.ownership.personas[owner];expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();}
+    for(const field of ['userId','accountId']){const x=clone(base);x.ownership.personas.ownerB[field]=x.ownership.personas.ownerA[field];expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();}
+    for(const userId of ['', ' auth|reset-a','auth|reset-a ', 'x'.repeat(100000)]){const x=clone(base);x.ownership.personas.ownerA.userId=userId;expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();}
+    for(const list of ['collections','analytics','media','objects'])for(const conflict of [false,true]){const x=clone(base),row=clone(x.snapshot[list][0]);if(conflict)row.accountId=RESET_B;x.snapshot[list].push(row);expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();}
+    for(const list of ['collections','analytics','media','objects']){const x=clone(base);x.snapshot[list][0][list==='objects'?'mediaId':'id']='bad';expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();}
+    for(const list of ['collections','analytics','media','objects']){const x=clone(base);x.snapshot[list][0].accountId='bad';expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();const y=clone(base);y.snapshot[list]={};expect(()=>s.selectOwnedGuidesResetReferences(y.snapshot,y.ownership)).toThrow();}
+    const badLedger=clone(base);badLedger.ownership.trackedMedia={};expect(()=>s.selectOwnedGuidesResetReferences(badLedger.snapshot,badLedger.ownership)).toThrow();
+    const badPersona=clone(base);badPersona.ownership.personas.ownerB.accountId='bad';expect(()=>s.selectOwnedGuidesResetReferences(badPersona.snapshot,badPersona.ownership)).toThrow();
+    for(const field of ['category','purpose','status','variant','environment']){const list=field==='category'?'collections':field==='purpose'||field==='status'?'media':'objects';for(const value of ['',1,'x'.repeat(100000)]){const x=clone(base);x.snapshot[list][0][field]=value;expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();}}
+    for(const field of ['collectionId','recommendationId']){const x=clone(base);x.snapshot.analytics[0][field]='bad';expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();}
+    for(const category of ['',1,'x'.repeat(100000)]){const x=clone(base);x.snapshot.analytics[0].category=category;expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();}
+    const empty=clone(base);for(const list of ['collections','analytics','media','objects'])empty.snapshot[list]=[];empty.ownership.trackedMedia=[];expect(s.selectOwnedGuidesResetReferences(empty.snapshot,empty.ownership)).toEqual({analyticsIds:[],media:[]});
+    for(const value of [null,undefined,[],1]){expect(()=>s.selectOwnedGuidesResetReferences(value,base.ownership)).toThrow();expect(()=>s.selectOwnedGuidesResetReferences(base.snapshot,value)).toThrow();}
+  });
+  it('Guides pure reset: analytics require exact collection category and account ownership',async()=>{
+    const s:any=await support();expect(s.selectOwnedGuidesResetReferences,'future pure selector export setup').toBeTypeOf('function');
+    for(const accountId of [RESET_A,RESET_B,RESET_C]){const x=resetLiteral();x.snapshot.collections[0].accountId=x.snapshot.analytics[0].accountId=accountId;expect(s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership).analyticsIds).toEqual(['40000000-0000-4000-8000-000000000001']);}
+    const mutations=[(x:any)=>x.snapshot.analytics[0].category='books',(x:any)=>x.snapshot.collections[0].category='books',(x:any)=>x.snapshot.analytics[0].collectionId=null,(x:any)=>x.snapshot.analytics[0].collectionId=RESET_B,(x:any)=>x.snapshot.collections=[],(x:any)=>x.snapshot.analytics[0].recommendationId=RESET_B,(x:any)=>{x.snapshot.analytics[0].collectionId=null;x.snapshot.analytics[0].recommendationId=RESET_B;},(x:any)=>x.snapshot.analytics[0].accountId=RESET_B,(x:any)=>x.snapshot.collections[0].accountId=RESET_B,(x:any)=>{x.snapshot.collections[0].accountId=x.snapshot.analytics[0].accountId=RESET_FOREIGN;}];
+    for(const mutate of mutations){const x=resetLiteral();mutate(x);expect(s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership).analyticsIds).toEqual([]);}
+  });
+  it('Guides pure reset: media require whole trusted original local ready tuples',async()=>{
+    const s:any=await support();expect(s.selectOwnedGuidesResetReferences,'future pure selector export setup').toBeTypeOf('function');
+    for(const purpose of ['collection','guide']){const x=resetLiteral();x.snapshot.media[0].purpose=x.ownership.trackedMedia[0].purpose=purpose;expect(s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership).media).toEqual([{...RESET_EXPECTED.media[0],purpose}]);}
+    for(const accountId of [RESET_B,RESET_C]){const x=resetLiteral(),key=`local/${accountId}/${RESET_MEDIA}`;x.snapshot.media[0].accountId=x.snapshot.objects[0].accountId=x.ownership.trackedMedia[0].accountId=accountId;x.snapshot.objects[0].key=x.ownership.trackedMedia[0].key=key;expect(s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership).media).toEqual([{...RESET_EXPECTED.media[0],accountId,key}]);}
+    for(const [ledgerPurpose,assetPurpose] of [['guide','collection'],['collection','guide']]){const x=resetLiteral();x.ownership.trackedMedia[0].purpose=ledgerPurpose;x.snapshot.media[0].purpose=assetPurpose;expect(s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership).media).toEqual([]);}
+    const siblings=resetLiteral();siblings.snapshot.objects.push({mediaId:RESET_MEDIA,accountId:RESET_A,variant:'thumbnail',environment:'local',key:'local/thumbnail/unrelated'},{mediaId:RESET_MEDIA,accountId:RESET_A,variant:'original',environment:'production',key:'production/unrelated'});expect(s.selectOwnedGuidesResetReferences(siblings.snapshot,siblings.ownership).media).toEqual(RESET_EXPECTED.media);siblings.snapshot.objects.reverse();expect(s.selectOwnedGuidesResetReferences(siblings.snapshot,siblings.ownership).media).toEqual(RESET_EXPECTED.media);
+    const foreign=resetLiteral();foreign.snapshot.media[0].accountId=foreign.snapshot.objects[0].accountId=foreign.ownership.trackedMedia[0].accountId=RESET_FOREIGN;foreign.snapshot.objects[0].key=foreign.ownership.trackedMedia[0].key='local/20000000-0000-4000-8000-000000000004/50000000-0000-4000-8000-000000000001';expect(()=>s.selectOwnedGuidesResetReferences(foreign.snapshot,foreign.ownership),'otherwise consistent foreign ledger authority').toThrow();foreign.ownership.trackedMedia=[];expect(s.selectOwnedGuidesResetReferences(foreign.snapshot,foreign.ownership).media).toEqual([]);
+    for(const [list,patch] of [['media',{accountId:RESET_B}],['media',{purpose:'profile'}],['media',{status:'pending'}],['media',{status:'failed'}],['objects',{accountId:RESET_B}],['objects',{variant:'thumbnail'}],['objects',{environment:'production'}],['objects',{mediaId:RESET_OTHER_MEDIA}],['objects',{key:'local/20000000-0000-4000-8000-000000000001/50000000-0000-4000-8000-000000000002'}],['objects',{key:'local/../foreign'}]] as const){const x=resetLiteral();Object.assign(x.snapshot[list][0],patch);expect(s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership).media).toEqual([]);}
+    for(const list of ['media','objects']){const x=resetLiteral();x.snapshot[list]=[];expect(s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership).media).toEqual([]);}
+    const untracked=resetLiteral();untracked.ownership.trackedMedia=[];expect(s.selectOwnedGuidesResetReferences(untracked.snapshot,untracked.ownership).media).toEqual([]);
+    for(const patch of [{id:'bad'},{accountId:RESET_FOREIGN},{purpose:'profile'},{variant:'thumbnail'},{environment:'production'},{key:'local/../foreign'},{key:'local/20000000-0000-4000-8000-000000000001/50000000-0000-4000-8000-000000000002'}]){const x=resetLiteral();Object.assign(x.ownership.trackedMedia[0],patch);expect(()=>s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toThrow();}
+    const duplicate=resetLiteral();duplicate.ownership.trackedMedia.push(clone(duplicate.ownership.trackedMedia[0]));expect(()=>s.selectOwnedGuidesResetReferences(duplicate.snapshot,duplicate.ownership)).toThrow();
+    const mixed=resetLiteral();const second={id:RESET_OTHER_MEDIA,accountId:RESET_A,purpose:'guide',variant:'original',environment:'local',key:'local/20000000-0000-4000-8000-000000000001/50000000-0000-4000-8000-000000000002'};mixed.ownership.trackedMedia.push(second);mixed.snapshot.media.push({id:RESET_OTHER_MEDIA,accountId:RESET_A,purpose:'guide',status:'ready'});mixed.snapshot.objects.push({mediaId:RESET_OTHER_MEDIA,accountId:RESET_A,variant:'original',environment:'local',key:RESET_EXPECTED.media[0].key});mixed.snapshot.objects[0].key=second.key;expect(s.selectOwnedGuidesResetReferences(mixed.snapshot,mixed.ownership).media).toEqual([]);
+    const duplicateKey=clone(mixed);duplicateKey.ownership.trackedMedia[1].key=duplicateKey.ownership.trackedMedia[0].key;expect(()=>s.selectOwnedGuidesResetReferences(duplicateKey.snapshot,duplicateKey.ownership)).toThrow();
+  });
+  it('Guides pure reset: unrelated rows remain excluded while owned native rows survive',async()=>{
+    const s:any=await support();expect(s.selectOwnedGuidesResetReferences,'future pure selector export setup').toBeTypeOf('function');const x=resetLiteral();
+    x.snapshot.collections.push({id:RESET_B,accountId:RESET_FOREIGN,category:'guides'},{id:RESET_C,accountId:RESET_C,category:'guides'});
+    x.snapshot.analytics.push({id:RESET_B,accountId:RESET_FOREIGN,category:'guides',collectionId:RESET_B,recommendationId:null},{id:RESET_C,accountId:RESET_C,category:'guides',collectionId:RESET_C,recommendationId:null});
+    x.snapshot.media.push({id:RESET_OTHER_MEDIA,accountId:RESET_A,purpose:'guide',status:'ready'});
+    x.snapshot.objects.push({mediaId:RESET_OTHER_MEDIA,accountId:RESET_A,variant:'original',environment:'local',key:'local/20000000-0000-4000-8000-000000000001/50000000-0000-4000-8000-000000000002'});
+    expect(s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toEqual({analyticsIds:['20000000-0000-4000-8000-000000000003','40000000-0000-4000-8000-000000000001'],media:RESET_EXPECTED.media});
+    // Later native records need verified rows, not finite initial seed membership.
+    x.ownership.trackedMedia.push({id:RESET_OTHER_MEDIA,accountId:RESET_A,purpose:'guide',variant:'original',environment:'local',key:'local/20000000-0000-4000-8000-000000000001/50000000-0000-4000-8000-000000000002'});
+    expect(s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership).media).toEqual([RESET_EXPECTED.media[0],{id:'50000000-0000-4000-8000-000000000002',accountId:'20000000-0000-4000-8000-000000000001',purpose:'guide',variant:'original',environment:'local',key:'local/20000000-0000-4000-8000-000000000001/50000000-0000-4000-8000-000000000002'}]);
+  });
+  it('Guides pure reset: deterministic fresh output preserves inputs and existing generation semantics',async()=>{
+    const s:any=await support();expect(s.selectOwnedGuidesResetReferences,'future pure selector export setup').toBeTypeOf('function');const x=resetLiteral(),before=clone(x);
+    const first=s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership),second=s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership);
+    expect(first).toEqual(RESET_EXPECTED);expect(second).toEqual(RESET_EXPECTED);expect(x).toEqual(before);
+    expect(Object.keys(first).sort()).toEqual(['analyticsIds','media']);expect(Object.getPrototypeOf(first)).toBe(Object.prototype);expect(Array.isArray(first.analyticsIds)).toBe(true);expect(Array.isArray(first.media)).toBe(true);
+    expect(first).not.toBe(second);expect(first.analyticsIds).not.toBe(second.analyticsIds);expect(first.media).not.toBe(second.media);expect(first.media[0]).not.toBe(second.media[0]);expect(first.media[0]).not.toBe(x.ownership.trackedMedia[0]);expect(Object.getPrototypeOf(first.media[0])).toBe(Object.prototype);
+    first.analyticsIds.push(RESET_B);first.media[0].key='mutated';expect(second).toEqual(RESET_EXPECTED);expect(x).toEqual(before);
+    for(const list of ['collections','analytics','media','objects'])x.snapshot[list].reverse();x.ownership.trackedMedia.reverse();expect(s.selectOwnedGuidesResetReferences(x.snapshot,x.ownership)).toEqual(RESET_EXPECTED);
+    const ordered=resetLiteral();ordered.snapshot.analytics.unshift({id:RESET_C,accountId:RESET_A,category:'guides',collectionId:RESET_COLLECTION,recommendationId:null},{id:RESET_B,accountId:RESET_A,category:'guides',collectionId:RESET_COLLECTION,recommendationId:null});
+    const other={id:RESET_OTHER_MEDIA,accountId:RESET_A,purpose:'guide',variant:'original',environment:'local',key:'local/20000000-0000-4000-8000-000000000001/50000000-0000-4000-8000-000000000002'};ordered.ownership.trackedMedia.unshift(other);ordered.snapshot.media.unshift({id:RESET_OTHER_MEDIA,accountId:RESET_A,purpose:'guide',status:'ready'});ordered.snapshot.objects.unshift({mediaId:RESET_OTHER_MEDIA,accountId:RESET_A,variant:'original',environment:'local',key:other.key});
+    const expectedOrdered={analyticsIds:['20000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000003','40000000-0000-4000-8000-000000000001'],media:[RESET_EXPECTED.media[0],{id:'50000000-0000-4000-8000-000000000002',accountId:'20000000-0000-4000-8000-000000000001',purpose:'guide',variant:'original',environment:'local',key:'local/20000000-0000-4000-8000-000000000001/50000000-0000-4000-8000-000000000002'}]};expect(s.selectOwnedGuidesResetReferences(ordered.snapshot,ordered.ownership)).toEqual(expectedOrdered);for(const list of ['collections','analytics','media','objects'])ordered.snapshot[list].reverse();ordered.ownership.trackedMedia.reverse();expect(s.selectOwnedGuidesResetReferences(ordered.snapshot,ordered.ownership)).toEqual(expectedOrdered);
+    const invalid=clone(before);invalid.snapshot.extra=undefined;const invalidBefore=clone(invalid);expect(()=>s.selectOwnedGuidesResetReferences(invalid.snapshot,invalid.ownership)).toThrow();expect(invalid).toEqual(invalidBefore);
+    // Existing 43 tests retain control admission/generation assertions; no transitions live here.
+  });
+});
