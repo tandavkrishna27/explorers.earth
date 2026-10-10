@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 const placeLinksAtomicStates = new WeakMap<object, PlaceLinksAtomicState>();
 const placeLinksAtomicEmitted = new WeakSet<object>();
 const placeLinksAtomicTitle = 'Place links: retained create forms atomically create and link Products and People lists';
-const placeLinksAtomicBoundaries = ['unavailable','setup','iteration-entry','navigation','open-form','fill-name','fill-description','fill-slug','baseline-reads','route-install','fresh-register','fresh-click','fresh-response','stale-register','held-click','delivered','held-checks','stale-advance','stale-release','stale-response','conflict-visible','stale-preservation','retained-fields','stale-retry-register','stale-retry-click','stale-retry-response','replay-prerequisites','lost-release','uncertain-visible','replay-preservation','replay-advance','replay-register','replay-click','replay-response','accepted-checks','destination','parent-check','reload','saved-checks','relation-check','linked-count','negative-baseline','negative-requests','negative-checks','provider-check'];
+const placeLinksAtomicBoundaries = ['unavailable','setup','iteration-entry','navigation','open-form','fill-name','fill-description','fill-slug','baseline-reads','route-install','fresh-register','fresh-click','fresh-response','stale-register','held-click','delivered','held-checks','stale-advance','stale-release','stale-response','conflict-visible','stale-preservation','retained-fields','stale-retry-register','stale-retry-click','stale-retry-response','replay-prerequisites','lost-release','uncertain-visible','replay-preservation','replay-advance','replay-register','replay-click','replay-click-probe','replay-click-hidden-enabled','replay-click-hidden-disabled','replay-click-visible-disabled','replay-click-visible-self','replay-click-visible-blocked','replay-click-visible-outside','replay-click-visible-unavailable','replay-click-unavailable','replay-click-post','replay-click-receipt','replay-response','accepted-checks','destination','parent-check','reload','saved-checks','relation-check','linked-count','negative-baseline','negative-requests','negative-checks','provider-check'];
 type PlaceLinksAtomicBody = {category:string; phase:string; boundary:string; body:string; elapsed:string; remaining:string};
 type PlaceLinksAtomicState = {live:PlaceLinksAtomicBody; firstCaught?:PlaceLinksAtomicBody; cleanup:string; sealed:boolean; origin?:number; lastElapsed?:number; budget?:number; unavailable?:boolean};
 function placeLinksAtomicIdentity(info:TestInfo):boolean {
@@ -338,7 +338,13 @@ const before=await editable('collections',parent.id),content=await complete(cate
       };
       page.on('request',read);
       const routePath=`**${base}/collections`;let first=true;
+      // BEGIN PLACE LINKS REPLAY DECLARATION PROBE
+let placeLinksReplayClickProbe=false;
+// END PLACE LINKS REPLAY DECLARATION PROBE
       const handler=async (route:import('@playwright/test').Route)=>{
+// BEGIN PLACE LINKS REPLAY REQUEST PROBE
+if(placeLinksReplayClickProbe && route.request().method()==='POST' && new URL(route.request().url()).pathname===`${base}/collections`)setPlaceLinksAtomicBoundary(info,category,phase,'replay-click-post');
+// END PLACE LINKS REPLAY REQUEST PROBE
         if(route.request().method()!=='POST' || !first)return route.continue();first=false;
         originalBody=route.request().postData()!;originalKey=route.request().headers()['idempotency-key'];
         expect(Boolean(originalKey)).toBe(true);
@@ -408,6 +414,28 @@ const committedContent=await complete(category),committedObserve=await control('
 const later=await patchCollection(parent.id,{description:`Later ${category} receipt control`});expect(later.revision).toBe(before.revision+2);
             setPlaceLinksAtomicBoundary(info,category,phase,'replay-register');
 const replay=createResponse();setPlaceLinksAtomicBoundary(info,category,phase,'replay-click');
+// BEGIN PLACE LINKS REPLAY CLICK PROBE
+if(category==='products' && info.project.name==='place-links-desktop') {
+  placeLinksReplayClickProbe=true;
+  setPlaceLinksAtomicBoundary(info,category,phase,'replay-click-probe');
+  void replay.then(response=>{try{if(response.status()===201)setPlaceLinksAtomicBoundary(info,category,phase,'replay-click-receipt');}catch{}},()=>{});
+  let readiness='replay-click-unavailable';
+  try {readiness=await submit.evaluate(element=>{
+    try {
+      const rect=element.getBoundingClientRect(),style=getComputedStyle(element);
+      const visible=rect.width>0 && rect.height>0 && style.visibility!=='hidden' && style.visibility!=='collapse' && style.display!=='none';
+      const enabled=!element.matches(':disabled') && element.getAttribute('aria-disabled')!=='true';
+      if(!visible)return enabled?'replay-click-hidden-enabled':'replay-click-hidden-disabled';
+      if(!enabled)return 'replay-click-visible-disabled';
+      const left=Math.max(0,rect.left),right=Math.min(innerWidth,rect.right),top=Math.max(0,rect.top),bottom=Math.min(innerHeight,rect.bottom);
+      if(right<=left || bottom<=top)return 'replay-click-visible-outside';
+      const hit=document.elementFromPoint((left+right)/2,(top+bottom)/2);
+      return hit===null?'replay-click-visible-unavailable':element===hit || element.contains(hit)?'replay-click-visible-self':'replay-click-visible-blocked';
+    } catch {return 'replay-click-unavailable';}
+  });}catch{}
+  setPlaceLinksAtomicBoundary(info,category,phase,readiness);
+}
+// END PLACE LINKS REPLAY CLICK PROBE
 await submit.click();setPlaceLinksAtomicBoundary(info,category,phase,'replay-response');
 accepted=await replay;
             setPlaceLinksAtomicBoundary(info,category,phase,'accepted-checks');
