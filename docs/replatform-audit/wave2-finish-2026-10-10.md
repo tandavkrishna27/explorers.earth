@@ -20,6 +20,7 @@ focused local evidence and remaining acceptance. Wave 2 is **open**.
 | Guides Windows parent source | Independent R1 source review accepted; root fresh 66 selected contract tests and scoped typing passed | Guarded import was not run and remains unqualified; no actual Job/PG/FS or browser-lane proof |
 | Apps manual native specification | `6869ae83`: four native case definitions independently reviewed; root scoped frontend typing passed | Fixture and registration integration pending; zero Apps native identities executed; nightly scraping is separate |
 | Candidate prebuilt smoke contracts | `6869ae83`: independent R1 review accepted; root fresh 92 resource-free contracts passed and scoped music-c0 typing passed | Actual native entry refuses before allocation; OCI, image, transport, boot and custody prerequisites remain open |
+| Apps private descriptor read | `554038d4`: independent review accepted; root fresh 44 resource-free tests and scoped fixture typing passed | Parent ACL custody and native lane integration still required; text reads grant no qualification authority |
 
 Root's combined check of the certificate parser and staged database custody passed all 304 tests;
 scoped music-c0 typing passed after the descriptor snapshot correction.
@@ -97,6 +98,21 @@ successful second-attempt cleanup does not establish first-attempt cleanup.
 No focused pass substitutes for integrated-source acceptance. No merge,
 deployment, publishing or production scheduler operation has been authorized by
 this source execution record.
+
+### Work currently in progress
+
+- Guides resource worker: the parent ABI defects are repaired; worker contract
+  implementation is underway. Fixture gateway, 16 identities and actual process
+  containment remain to integrate and qualify.
+- Apps manual qualification: specification and descriptor reader are accepted.
+  Canonical reset/live observation and exact eight-identity registration are
+  underway. This adds eight to the existing 134; later Guides adds another 16.
+- Included features: concrete written design review is pending. Actual People
+  taxonomy access, catalog mapping disposition and nightly source/host settings
+  remain needed. Legacy direct URL Open Graph scraping is a discovered candidate
+  approach, not evidence of an approved nightly worker.
+- QA producer: reviewed parser/custody/simulation contracts exist. Actual trusted
+  verification, image acquisition and executed prebuilt smoke remain open.
 
 ## Included feature inputs
 
