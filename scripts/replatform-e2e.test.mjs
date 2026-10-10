@@ -8,6 +8,58 @@ import {tmpdir} from 'node:os';
 import {join,basename,dirname,resolve} from 'node:path';
 import {validateLockedInstall,childNodeEnvironment,parseArguments,assertEnvironment,validateManifest,validateLaneReceipt,validateMusicTopology,qualifyLanes,capturedChild,decodeProtectedReport,snapshotSource,protectedBrowserConfiguration,validateFailureRecord,validateLifecycleFailureRecord,decodeProtectedFailureDiagnostics} from './replatform-e2e.mjs';
 const ack='TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
+
+// Synthetic canonical encoder is deliberately independent of the production decoder.
+const moviesEnums={iteration:['none','first','second'],stage:['setup','edit-navigation','edit-form','save-start','save-returned','list-route-reached','saved-note-confirmed','keep-draft-start','keep-draft-returned','archive'],owner:['unavailable','disabled','no-account','pending','accepted','rejected'],phase:['unavailable','initial-category','detail-fanout','final-category','mapping','complete'],cause:['none','aborted','unauthenticated','scope-changed','revision-conflict','missing-detail','conflict','read-limit','snapshot-expired','invalid-owner-content','unavailable','other'],view:['unavailable','active','inactive'],list:['unavailable','loading','error','missing','ready-empty','ready-nonempty'],visibility:['unavailable','public','draft'],signal:['unavailable','present','absent'],guard:['unavailable','fresh','consumed'],prompt:['unavailable','open','closed'],button:['unavailable','absent','multiple','hidden','disabled','visible-enabled'],budgetAtStage:['unavailable','remaining','exhausted'],budgetAtFailure:['unavailable','remaining','exhausted'],sample:['unavailable','captured']};
+const moviesSnapshot=()=>({version:1,...Object.fromEntries(Object.entries(moviesEnums).map(([key,values])=>[key,values[0]]))});
+const moviesMarker=snapshot=>`[movies-diagnostic-v1:${Object.keys(moviesEnums).map(key=>snapshot[key]).join('|')}]`;
+const moviesFixture=()=>{
+ const lane=manifest().lanes.find(l=>l.name==='movies'),identity=lane.identities.find(i=>i.project==='movies-mobile'&&i.titlePath.at(-1)==='owner manual form all fields snapshot repeat edits and archive reload'),index=lane.identities.indexOf(identity),report=rawReport(lane,true),c=child(lane);
+ c.status=1;c.receipt.results[index].status='unexpected';c.receipt.results[index].attempts[0].status='failed';report.suites[0].specs[index].tests[0].results[0]={status:'failed',retry:0,errors:[{message:moviesMarker(moviesSnapshot())}]};
+ const failure={version:1,lane:lane.name,provenance,results:c.receipt.results,child:{status:1,signal:null},cleanup:{status:'passed'},artifacts:c.receipt.artifacts};
+ return {lane,identity,index,report,c,failure,result:report.suites[0].specs[index].tests[0].results[0]};
+};
+const moviesMetadata=(report,lane)=>decodeProtectedFailureDiagnostics(report,lane,process.cwd()).filter(d=>Object.hasOwn(d,'movies'));
+test('Movies bounded diagnostic: all finite enum members roundtrip and independently validate',()=>{
+ for(const [key,values] of Object.entries(moviesEnums))for(const value of values){const f=moviesFixture(),snapshot={...moviesSnapshot(),[key]:value};f.result.errors[0].message=moviesMarker(snapshot);const diagnostics=decodeProtectedFailureDiagnostics(f.report,f.lane,process.cwd());assert.equal(diagnostics.filter(d=>d.movies).length,1);assert.deepEqual(diagnostics.find(d=>d.movies).movies,snapshot);assert.doesNotThrow(()=>validateFailureRecord(f.lane,{...f.failure,diagnostics},provenance,f.c));}
+});
+test('Movies bounded diagnostic: exact nested shape rejects every missing field and unsafe value',()=>{
+ const f=moviesFixture(),diagnostic={identity:f.identity,kind:'error',matcher:'unknown',locations:[],movies:moviesSnapshot()};
+ const validate=snapshot=>validateFailureRecord(f.lane,{...f.failure,diagnostics:[{...diagnostic,movies:snapshot}]},provenance,f.c);
+ assert.doesNotThrow(()=>validate(moviesSnapshot()));
+ for(const key of Object.keys(moviesSnapshot())){const missing=moviesSnapshot();delete missing[key];assert.throws(()=>validate(missing));for(const value of ['',null,true,3,[],{},'secret'])assert.throws(()=>validate({...moviesSnapshot(),[key]:value}));}
+ for(const value of [null,[],{},true,3,'secret',{...moviesSnapshot(),version:2},{...moviesSnapshot(),extra:'synthetic'}])assert.throws(()=>validate(value));
+});
+test('Movies bounded diagnostic: anchored bounded grammar omits malformed and duplicate markers',()=>{
+ const marker=moviesMarker(moviesSnapshot());
+ for(const message of [`prefix ${marker}`,`${marker} suffix`,` ${marker}`,`${marker}\n`,marker.replace('|','\n'),`${marker}${marker}`,marker.replace('|','||'),marker.replace('|none',''),marker.replace('setup','secret'),`[movies-diagnostic-v1:${'x'.repeat(1025)}]`,'cookie session authorization capability body URL IDs DOM']){const f=moviesFixture();f.result.errors[0].message=message;assert.equal(moviesMetadata(f.report,f.lane).length,0);}
+ const f=moviesFixture();f.result.errors.push({...f.result.errors[0]});assert.equal(moviesMetadata(f.report,f.lane).length,0);
+});
+test('Movies bounded diagnostic: exact identity result status repeat retry and lane are mandatory',()=>{
+ for(const status of ['failed','timedOut','interrupted']){const f=moviesFixture();f.result.status=status;assert.equal(moviesMetadata(f.report,f.lane).length,1);}
+ for(const status of ['passed','skipped']){const f=moviesFixture();f.result.status=status;assert.equal(moviesMetadata(f.report,f.lane).length,0);}
+ {const f=moviesFixture();f.result.retry=1;assert.equal(moviesMetadata(f.report,f.lane).length,0);}
+ {const f=moviesFixture();f.report.suites[0].specs[f.index].tests[0].results=[];assert.equal(moviesMetadata(f.report,f.lane).length,0);}
+ for(const lane of manifest().lanes){const report=rawReport(lane,true);for(const spec of report.suites[0].specs)for(const t of spec.tests)t.results[0]={status:'failed',retry:0,errors:[{message:moviesMarker(moviesSnapshot())}]};const metadata=moviesMetadata(report,lane);assert.equal(metadata.length,lane.name==='movies'?1:0);}
+ const f=moviesFixture(),d={identity:f.identity,kind:'error',matcher:'unknown',locations:[],movies:moviesSnapshot()};
+ for(const identity of [{...f.identity,repeat:1},{...f.identity,project:'movies-desktop'},{...f.identity,titlePath:['other']},{...f.identity,file:'other.spec.ts'}])assert.throws(()=>validateFailureRecord(f.lane,{...f.failure,diagnostics:[{...d,identity}]},provenance,f.c));
+ for(const identity of f.lane.identities.filter(i=>i!==f.identity))assert.throws(()=>validateFailureRecord(f.lane,{...f.failure,diagnostics:[{...d,identity}]},provenance,f.c));
+ for(const lane of manifest().lanes.filter(l=>l.name!=='movies')){const c=child(lane);c.status=1;c.receipt.results[0].status='unexpected';c.receipt.results[0].attempts[0].status='failed';const failure={...f.failure,lane:lane.name,results:c.receipt.results,diagnostics:[{...d,identity:lane.identities[0]}]};assert.throws(()=>validateFailureRecord(lane,failure,provenance,c));}
+});
+test('Movies bounded diagnostic: independent validator binds one snapshot to its actual failing attempt',()=>{
+ {const f=moviesFixture(),diagnostic={identity:f.identity,kind:'error',matcher:'unknown',locations:[],movies:moviesSnapshot()};assert.doesNotThrow(()=>validateFailureRecord(f.lane,{...f.failure,diagnostics:[diagnostic]},provenance,f.c));const retry=structuredClone(f.failure);retry.results[f.index].attempts[0].retry=1;assert.throws(()=>validateFailureRecord(f.lane,{...retry,diagnostics:[diagnostic]},provenance,f.c));const multiple=structuredClone(f.failure);multiple.results[f.index].attempts.push({retry:0,status:'failed'});assert.throws(()=>validateFailureRecord(f.lane,{...multiple,diagnostics:[diagnostic]},provenance,f.c));}
+ for(const status of ['failed','timedOut','interrupted']){const f=moviesFixture(),diagnostic={identity:f.identity,kind:'error',matcher:'unknown',locations:[],movies:moviesSnapshot()};f.failure.results[f.index].attempts[0].status=status;assert.doesNotThrow(()=>validateFailureRecord(f.lane,{...f.failure,diagnostics:[diagnostic]},provenance,f.c));assert.throws(()=>validateFailureRecord(f.lane,{...f.failure,diagnostics:[diagnostic,structuredClone(diagnostic)]},provenance,f.c));}
+ for(const mode of ['passed','unexecuted']){const f=moviesFixture(),diagnostic={identity:f.identity,kind:'error',matcher:'unknown',locations:[],movies:moviesSnapshot()};f.failure.results[f.index].status=mode==='passed'?'expected':'skipped';f.failure.results[f.index].attempts=mode==='passed'?[{retry:0,status:'passed'}]:[];const other=f.failure.results.find(r=>r!==f.failure.results[f.index]);other.status='unexpected';other.attempts=[{retry:0,status:'failed'}];assert.throws(()=>validateFailureRecord(f.lane,{...f.failure,diagnostics:[diagnostic]},provenance,f.c));}
+});
+test('Movies bounded diagnostic: raw sentinels never survive generic or marker decoding',()=>{
+ const f=moviesFixture(),secret='cookie session authorization capability body https://private.invalid IDs DOM';f.result.errors.unshift({message:`TimeoutError ${secret}`,stack:secret,slot:{secret}});f.result.errors[1].stack=secret;
+ const diagnostics=decodeProtectedFailureDiagnostics(f.report,f.lane,process.cwd());assert.equal(diagnostics.filter(d=>d.movies).length,1);assert.equal(diagnostics[0].kind,'timeout');assert.doesNotMatch(JSON.stringify(diagnostics),/cookie|session|authorization|capability|body|private\.invalid|IDs|DOM/);
+});
+test('Movies bounded diagnostic: frozen manifest config title inventory and ambient gate remain protected',()=>{
+ const m=manifest();assert.equal(m.lanes.reduce((n,l)=>n+l.identities.length,0),134);const lane=m.lanes.find(l=>l.name==='movies');assert.equal(lane.identities.length,24);assert.equal(new Set(lane.identities.map(i=>JSON.stringify(i.titlePath))).size,12);assert.ok(lane.identities.every(i=>i.repeat===0));assert.throws(()=>assertEnvironment({MOVIES_E2E_OWNER_DIAGNOSTIC:'1'}));
+ const config=readFileSync(new URL('../explorers-earth/e2e/replatform/movies.playwright.config.ts',import.meta.url),'utf8');assert.match(config,/120[_,]?000/);assert.match(config,/15[_,]?000/);assert.match(config,/retries:\s*0/);
+ const protectedConfig=protectedBrowserConfiguration({use:{trace:'on',video:'on',screenshot:'on'},projects:[{name:'movies-mobile',use:{trace:'on'}}]},process.cwd(),lane.config,join(process.cwd(),'.synthetic-output'));assert.deepEqual([protectedConfig.use.trace,protectedConfig.use.video,protectedConfig.use.screenshot],['off','off','off']);assert.deepEqual([protectedConfig.projects[0].use.trace,protectedConfig.projects[0].use.video,protectedConfig.projects[0].use.screenshot],['off','off','off']);
+});
 test('Windows child environment has one PATH key and survives exact environment custody roundtrip',()=>{
  const clean=childNodeEnvironment({...process.env,Path:'controlled-path',PATH:'controlled-path'},'win32');
  assert.deepEqual(Object.keys(clean).filter(key=>key.toUpperCase()==='PATH'),['PATH']);
