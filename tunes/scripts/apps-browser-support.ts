@@ -119,13 +119,16 @@ function validateOptions(o:AppsControlOptions) {
  if(dirname(resolve(o.disposableDirectory))!==resolve(o.expectedTemporaryRoot)||!/^explorers-profile-e2e-[A-Za-z0-9]+$/.test(basename(o.disposableDirectory))||resolve(o.storageDirectory)!==join(resolve(o.disposableDirectory),'owned-media')||resolve(o.fixtureFilesRoot)!==join(resolve(o.disposableDirectory),'apps-fixture-files'))throw fail('custody');
  return api;
 }
-function nativeDependencies(o:AppsControlOptions,guard:()=>void):AppsControlDependencies {
+export type AppsControllerDiagnostic=Readonly<{operation:'initialize'|'reset'|'observe'|'control'|'close';phase:'ownership'|'custody'|'remove-old-object'|'remove-upload-file'|'connect'|'transaction'|'seed-put'|'seed-get'|'upload-write'|'upload-read'|'sessions'|'canonical'|'response'|'settlement';boundary:'none'|'before-custody'|'after-custody'|'ancestor'|'target'|'before-mutation'|'after-mutation'|'final-custody';category:'deadline'|'refusal';budgetMs?:5000|10000|12000}>;
+const controllerDiagnostics=new WeakMap<object,()=>AppsControllerDiagnostic|undefined>();
+export function extractAppsControlDiagnostic(value:unknown):AppsControllerDiagnostic|undefined {return (typeof value==='object'&&value!==null||typeof value==='function')?controllerDiagnostics.get(value as object)?.():undefined;}
+function nativeDependencies(o:AppsControlOptions,guard:(boundary?:AppsControllerDiagnostic['boundary'])=>void):AppsControlDependencies {
  guard();assertComposition(o);
  const helper=resolve(import.meta.dirname,'music-local-private-files.ps1');
  function inspectPrivate(path:string,directory:boolean) {
-  guard();
+  guard('ancestor');
   let current=resolve(path);for(;;){const st=lstatSync(current);if(st.isSymbolicLink()||realpathSync(current).toLowerCase()!==current.toLowerCase())throw fail('custody');if(current===parse(current).root)break;current=dirname(current);}
-  const st=lstatSync(path);if(directory?!st.isDirectory():!st.isFile())throw fail('custody');
+  guard('target');const st=lstatSync(path);if(directory?!st.isDirectory():!st.isFile())throw fail('custody');
   if(process.platform==='win32'&&inspectAppsPrivateDescendant(path)){guard();return;}
   if(process.platform==='win32'){
    const ps='C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
@@ -137,7 +140,7 @@ function nativeDependencies(o:AppsControlOptions,guard:()=>void):AppsControlDepe
    if(JSON.parse(result).ok!==true)throw fail('custody');
   }else if(typeof process.getuid!=='function'||st.uid!==process.getuid()||(st.mode&0o077)!==0)throw fail('custody');
  }
- const assertCustody=async()=>{guard();assertComposition(o);if(resolve(o.expectedTemporaryRoot)!==resolve(tmpdir()))throw fail('custody');inspectPrivate(o.disposableDirectory,true);inspectPrivate(o.fixtureFilesRoot,true);inspectPrivate(o.storageDirectory,true);if(realpathSync(o.storageDirectory)!==assertComposition(o))throw fail('custody');guard();};
+ const assertCustody=async()=>{guard('before-custody');assertComposition(o);if(resolve(o.expectedTemporaryRoot)!==resolve(tmpdir()))throw fail('custody');inspectPrivate(o.disposableDirectory,true);inspectPrivate(o.fixtureFilesRoot,true);inspectPrivate(o.storageDirectory,true);if(realpathSync(o.storageDirectory)!==assertComposition(o))throw fail('custody');guard('after-custody');};
  function file(path:string){if(dirname(resolve(path))!==resolve(o.fixtureFilesRoot)||!/^apps-upload-[12]\.png$/.test(basename(path)))throw fail('custody');}
  async function objectPath(key:string,create=false){
   await assertCustody();guard();assertObjectKey(key,'local');const parts=key.split('/');if(parts.length!==3||parts[0]!=='local'||!uuid.safeParse(parts[1]).success||!uuid.safeParse(parts[2]).success)throw fail('storage custody');
@@ -147,12 +150,12 @@ function nativeDependencies(o:AppsControlOptions,guard:()=>void):AppsControlDepe
  }
  return {
   uuid:randomUUID,capability:()=>randomBytes(32).toString('hex'),
-  files:{assertCustody,write:async(path,bytes)=>{file(path);await assertCustody();guard();if(bytes.length>5242880)throw fail('custody');guard();writeFileSync(path,bytes,{mode:0o600,flag:'wx'});inspectPrivate(path,false);},read:async path=>{
+  files:{assertCustody,write:async(path,bytes)=>{file(path);await assertCustody();guard();if(bytes.length>5242880)throw fail('custody');guard('before-mutation');writeFileSync(path,bytes,{mode:0o600,flag:'wx'});inspectPrivate(path,false);},read:async path=>{
    file(path);await assertCustody();guard();inspectPrivate(path,false);const before=lstatSync(path);if(before.size<8||before.size>5242880)throw fail('custody');const fd=openSync(path,'r');try{const st=fstatSync(fd);if(st.dev!==before.dev||st.ino!==before.ino||st.size!==before.size||!st.isFile())throw fail('custody');const data=Buffer.alloc(st.size+1);let count=0;while(count<data.length){const n=readSync(fd,data,count,data.length-count,null);if(!n)break;count+=n;}if(count!==st.size)throw fail('custody');return data.subarray(0,count);}finally{closeSync(fd);}
-  },remove:async path=>{file(path);await assertCustody();guard();try{inspectPrivate(path,false);guard();unlinkSync(path);guard();}catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}}},
+  },remove:async path=>{file(path);await assertCustody();guard();try{inspectPrivate(path,false);guard('before-mutation');unlinkSync(path);guard('after-mutation');}catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}}},
   // These promises settle with physical FS work. Production storage deadline
   // wrappers are deliberately excluded from this fixture's custody ledger.
-  storage:{put:async(key,bytes)=>{if(bytes.length<8||bytes.length>5242880)throw fail('storage');const path=await objectPath(key,true);guard();guard();await writeFile(path,bytes,{flag:'wx',mode:0o600});guard();inspectPrivate(path,false);await assertCustody();guard();},get:async key=>{const path=await objectPath(key);guard();inspectPrivate(path,false);const size=lstatSync(path).size;if(size<8||size>5242880)throw fail('storage');const bytes=await readFile(path);guard();await assertCustody();guard();inspectPrivate(path,false);if(bytes.length<8||bytes.length>5242880)throw fail('storage');return bytes;},delete:async key=>{try{const path=await objectPath(key);guard();try{inspectPrivate(path,false);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}guard();await rm(path,{force:true});guard();await assertCustody();guard();}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}}},
+  storage:{put:async(key,bytes)=>{if(bytes.length<8||bytes.length>5242880)throw fail('storage');const path=await objectPath(key,true);guard();guard('before-mutation');await writeFile(path,bytes,{flag:'wx',mode:0o600});guard('after-mutation');inspectPrivate(path,false);await assertCustody();guard();},get:async key=>{const path=await objectPath(key);guard();inspectPrivate(path,false);const size=lstatSync(path).size;if(size<8||size>5242880)throw fail('storage');const bytes=await readFile(path);guard();await assertCustody();guard();inspectPrivate(path,false);if(bytes.length<8||bytes.length>5242880)throw fail('storage');return bytes;},delete:async key=>{try{const path=await objectPath(key);guard();try{inspectPrivate(path,false);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}guard('before-mutation');await rm(path,{force:true});guard('after-mutation');guard('final-custody');await assertCustody();guard('after-custody');}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}}},
   session:async person=>{const context=await o.composed.auth.$context,session=await context.internalAdapter.createSession(person.userId,false);const signature=createHmac('sha256',o.config.secret).update(session.token).digest('base64');return {...person,cookie:`${context.authCookies.sessionToken.name}=${session.token}.${signature}`};},
   canonical:async(person,path,method='GET',body)=>{
    if(!(/^\/api\/auth\/get-session$|^\/api\/explorers\/v1\/(me|account)$|^\/api\/explorers\/v1\/(collections|recommendations)\/[a-f0-9-]{36}\/editable\?status=all$/.test(path))||method==='PATCH'&&path!=='/api/explorers/v1/account')throw fail('canonical');
@@ -168,41 +171,45 @@ function validateDependencies(d:AppsControlDependencies) {
 }
 export async function createAppsControl(options:AppsControlOptions,dependencies?:AppsControlDependencies,nativeMutationGuard?:()=>void) {
  let poisoned=false;
- const activeDeadlines=new Map<symbol,number>();
- const guard=()=>{if([...activeDeadlines.values()].some(deadline=>performance.now()>=deadline))poisoned=true;if(poisoned||typeof nativeMutationGuard!=='function')throw fail('settlement unknown');nativeMutationGuard();};
+ let operation:AppsControllerDiagnostic['operation']='initialize',phase:AppsControllerDiagnostic['phase']='ownership',boundary:AppsControllerDiagnostic['boundary']='none',diagnostic:AppsControllerDiagnostic|undefined;
+ function record(category:AppsControllerDiagnostic['category'],snapshot:Omit<AppsControllerDiagnostic,'category'>={operation,phase,boundary}){if(!diagnostic)diagnostic=Object.freeze({...snapshot,category});}
+
+ const activeDeadlines=new Map<symbol,{deadline:number;snapshot:Omit<AppsControllerDiagnostic,'category'>}>();
+ const guard=(next?:AppsControllerDiagnostic['boundary'])=>{if(next)boundary=next;for(const entry of activeDeadlines.values())if(performance.now()>=entry.deadline){poisoned=true;record('deadline',{...entry.snapshot,boundary});}if(poisoned||typeof nativeMutationGuard!=='function'){record('refusal');throw fail('settlement unknown');}try{nativeMutationGuard();}catch{record('refusal');throw fail('settlement unknown');}};
  let webHost:string,d:AppsControlDependencies;
  try{validateOptions(options);webHost=new URL(options.origin).host;d=dependencies===undefined?nativeDependencies(options,guard):dependencies;validateDependencies(d);}catch{throw fail('initialization');}
  const provenance=dependencies===undefined?'native' as const:'synthetic' as const;
  let closed=false,busy=false,active:AppsIdentity|undefined;
  const pending=new Set<Promise<unknown>>(),operations=new Set<Promise<unknown>>(),keys=new Set<string>(),files=new Set<string>();
  let capability:string;try{capability=d.capability();sha.parse(capability);}catch{throw fail('initialization');}
- async function finite<T>(work:Promise<T>,phase:string,ms=12000,track=true):Promise<T>{const token=Symbol(),deadline=performance.now()+ms;activeDeadlines.set(token,deadline);if(track){pending.add(work);void work.finally(()=>pending.delete(work)).catch(()=>undefined);}let timer:ReturnType<typeof setTimeout>|undefined;try{return await Promise.race([work,new Promise<never>((_,reject)=>{timer=setTimeout(()=>{poisoned=true;reject(fail(`${phase} settlement unknown`));},ms);})]);}finally{if(performance.now()>=deadline)poisoned=true;activeDeadlines.delete(token);if(timer)clearTimeout(timer);}}
+ async function finite<T>(work:Promise<T>,settlementPhase:string,ms=12000,track=true):Promise<T>{const token=Symbol(),deadline=performance.now()+ms;const snapshot:Omit<AppsControllerDiagnostic,'category'>=settlementPhase==='control'?{operation:'control',phase:'response',boundary:'none',budgetMs:ms as 5000|10000|12000}:{operation,phase,boundary,budgetMs:ms as 5000|10000|12000};activeDeadlines.set(token,{deadline,snapshot});if(track){pending.add(work);void work.finally(()=>pending.delete(work)).catch(()=>undefined);}let timer:ReturnType<typeof setTimeout>|undefined;try{return await Promise.race([work,new Promise<never>((_,reject)=>{timer=setTimeout(()=>{poisoned=true;record('deadline',{...snapshot,boundary});reject(fail(`${settlementPhase} settlement unknown`));},ms);})]);}catch(error){record('refusal',snapshot);throw error;}finally{if(performance.now()>=deadline){poisoned=true;record('deadline',{...snapshot,boundary});}activeDeadlines.delete(token);if(timer)clearTimeout(timer);}}
  const q=async(db:Pool|PoolClient,text:string,values:unknown[]=[])=>finite(db.query(text,values),'database');
  const personas={} as Record<'ownerA'|'ownerB',Persona>;
  async function ownership(db:Pool|PoolClient,initial=false){
+  phase='ownership';boundary='none';
   if((await q(db,'SELECT current_database() AS database')).rows[0]?.database!==options.ownedAuthority.database)throw fail('ownership');
   const rows=(await q(db,'SELECT user_id,account_id FROM initial_account_bindings WHERE user_id=ANY($1::text[])',[Object.values(options.personas).map(p=>p.userId)])).rows;
   if(rows.length!==2)throw fail('ownership');
   for(const name of ['ownerA','ownerB'] as const){const p=options.personas[name],row=rows.find(r=>r.user_id===p.userId);if(!row||!uuid.safeParse(row.account_id).success||!initial&&row.account_id!==personas[name].accountId)throw fail('ownership');if(initial)personas[name]=personaSchema.parse({...p,accountId:row.account_id});}
   if(personas.ownerA.accountId===personas.ownerB.accountId)throw fail('ownership');
  }
- try{await ownership(options.pool,true);await finite(d.files.assertCustody(),'custody');}catch{throw fail('initialization');}
+ try{await ownership(options.pool,true);phase='custody';await finite(d.files.assertCustody(),'custody');}catch{throw fail('initialization');}
  const accountIds=Object.values(personas).map(p=>p.accountId);
- async function refreshed(){for(const name of ['ownerA','ownerB'] as const){const old=personas[name],fresh=personaSchema.parse(await finite(d.session(old),'session'));if(fresh.userId!==old.userId||fresh.accountId!==old.accountId||fresh.handle!==old.handle)throw fail('session');const session=await finite(d.canonical(fresh,'/api/auth/get-session'),'session');const me=await finite(d.canonical(fresh,'/api/explorers/v1/me'),'session');if(session.user?.id!==old.userId||me.account?.id!==old.accountId||me.account?.handle!==old.handle||me.account?.onboardingStatus!=='complete')throw fail('session');personas[name]=fresh;}}
+ async function refreshed(){phase='sessions';for(const name of ['ownerA','ownerB'] as const){const old=personas[name],fresh=personaSchema.parse(await finite(d.session(old),'session'));if(fresh.userId!==old.userId||fresh.accountId!==old.accountId||fresh.handle!==old.handle)throw fail('session');const session=await finite(d.canonical(fresh,'/api/auth/get-session'),'session');const me=await finite(d.canonical(fresh,'/api/explorers/v1/me'),'session');if(session.user?.id!==old.userId||me.account?.id!==old.accountId||me.account?.handle!==old.handle||me.account?.onboardingStatus!=='complete')throw fail('session');personas[name]=fresh;}}
  function identity(value:AppsIdentity){const parsed=identitySchema.parse(value);if(parsed.runId!==options.runId||parsed.commit!==options.commit)throw fail('identity');return parsed;}
  function assertAvailable(){if(closed||busy||poisoned)throw fail('unavailable');if(provenance==='native')assertComposition(options);}
  function storageKey(key:string,accountId:string,id:string){if(key!==`local/${accountId}/${id}`||!accountIds.includes(accountId)||!uuid.safeParse(id).success)throw fail('storage custody');}
- async function removeKeys(targets:Iterable<string>){const failures:string[]=[];for(const key of targets){try{await finite(d.storage.delete(key),'storage',5000);keys.delete(key);}catch{failures.push('storage');if(poisoned)break;}}if(failures.length)throw fail('cleanup storage');}
- async function removeFiles(){const failures:string[]=[];for(const path of files){try{await finite(d.files.remove(path),'files',5000);files.delete(path);}catch{failures.push('files');if(poisoned)break;}}if(failures.length)throw fail('cleanup files');}
+ async function removeKeys(targets:Iterable<string>){phase='remove-old-object';boundary='none';const failures:string[]=[];for(const key of targets){try{await finite(d.storage.delete(key),'storage',5000);keys.delete(key);}catch{failures.push('storage');if(poisoned)break;}}if(failures.length)throw fail('cleanup storage');}
+ async function removeFiles(){phase='remove-upload-file';boundary='none';const failures:string[]=[];for(const path of files){try{await finite(d.files.remove(path),'files',5000);files.delete(path);}catch{failures.push('files');if(poisoned)break;}}if(failures.length)throw fail('cleanup files');}
  async function reset(value:AppsIdentity):Promise<AppsManifest>{
-  assertAvailable();const id=identity(value);busy=true;active=undefined;
+  assertAvailable();const id=identity(value);operation='reset';boundary='none';busy=true;active=undefined;
   const freshKeys:string[]=[],oldKeys:string[]=[];let committed=false,rolledBack=false,rollbackStarted=false,rollbackFailed=false,abandonedConnect=false,client:PoolClient|undefined;
   async function rollback(db:PoolClient){rollbackStarted=true;const physical=db.query('ROLLBACK');void physical.then(()=>{rolledBack=true;},()=>{rollbackFailed=true;});await finite(physical,'database');}
   try{
-   await ownership(options.pool);await finite(d.files.assertCustody(),'custody');await removeFiles();
+   await ownership(options.pool);phase='custody';await finite(d.files.assertCustody(),'custody');await removeFiles();
    const plan=buildAppsSeedPlan(id.caseId),result:AppsManifest={...id,personas:{ownerA:{...personas.ownerA},ownerB:{...personas.ownerB}},collections:[],recommendations:[],memberships:[],media:[],uploadFiles:[]};
-   const acquisition=options.pool.connect().then(leased=>{if(abandonedConnect)leased.release(fail('connect settlement'));return leased;});
-   try{client=await finite(acquisition,'database');}catch{abandonedConnect=true;throw fail('connect');}await q(client,'BEGIN');await q(client,"SET LOCAL statement_timeout='10000ms'");await ownership(client);
+   phase='connect';const acquisition=options.pool.connect().then(leased=>{if(abandonedConnect)leased.release(fail('connect settlement'));return leased;});
+   try{client=await finite(acquisition,'database');}catch{abandonedConnect=true;throw fail('connect');}phase='transaction';await q(client,'BEGIN');await q(client,"SET LOCAL statement_timeout='10000ms'");await ownership(client);phase='transaction';
    const content=(await q(client,"SELECT id,account_id,entity_id FROM recommendations WHERE account_id=ANY($1::uuid[]) AND category='apps' LIMIT 65",[accountIds])).rows;
    const ownedMedia=(await q(client,"SELECT id,account_id FROM media_assets WHERE account_id=ANY($1::uuid[]) AND purpose='recommendation' LIMIT 25",[accountIds])).rows;
    if(content.length>64||ownedMedia.length>24)throw fail('reset bounds');
@@ -229,19 +236,19 @@ export async function createAppsControl(options:AppsControlOptions,dependencies?
     await q(client,"INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order) VALUES($1,$2,$3,'apps',$4)",[collectionId,rid,personas.ownerA.accountId,id.caseId===APPS_CASES[3]?i%8:0]);
     result.recommendations.push({id:rid,entityId:eid,collectionId,title:r.title,developer:a.developer!});result.memberships.push({recommendationId:rid,collectionId});
    }
-   for(const m of plan.media){const mid=uuid.parse(d.uuid()),accountId=personas[m.owner].accountId,key=`local/${accountId}/${mid}`,hash=createHash('sha256').update(m.bytes).digest();storageKey(key,accountId,mid);keys.add(key);freshKeys.push(key);await finite(d.storage.put(key,m.bytes),'storage',5000);const actual=await finite(d.storage.get(key),'storage',5000);if(actual.length!==m.bytes.length||!createHash('sha256').update(actual).digest().equals(hash))throw fail('storage');
+   for(const m of plan.media){const mid=uuid.parse(d.uuid()),accountId=personas[m.owner].accountId,key=`local/${accountId}/${mid}`,hash=createHash('sha256').update(m.bytes).digest();storageKey(key,accountId,mid);keys.add(key);freshKeys.push(key);phase='seed-put';await finite(d.storage.put(key,m.bytes),'storage',5000);phase='seed-get';const actual=await finite(d.storage.get(key),'storage',5000);if(actual.length!==m.bytes.length||!createHash('sha256').update(actual).digest().equals(hash))throw fail('storage');
     await q(client,"INSERT INTO media_assets(id,account_id,purpose,status,mime_type,byte_size,content_sha256,ready_at) VALUES($1,$2,'recommendation','ready','image/png',$3,$4,now())",[mid,accountId,m.bytes.length,hash]);
     await q(client,"INSERT INTO media_objects(media_id,variant,storage_environment,object_key,mime_type,byte_size,content_sha256) VALUES($1,'original','local',$2,'image/png',$3,$4)",[mid,key,m.bytes.length,hash]);
     for(const ri of m.recommendationIndexes)await q(client,'INSERT INTO recommendation_app_screenshots(recommendation_id,account_id,slot_index,media_id) VALUES($1,$2,0,$3)',[result.recommendations[ri].id,accountId,mid]);
     result.media.push({id:mid,owner:m.owner,length:actual.length,sha256:hash.toString('hex')});
    }
-   await q(client,'COMMIT');committed=true;await removeKeys(oldKeys);
-   for(const [i,bytes] of plan.uploads.entries()){const name=`apps-upload-${i+1}.png`,path=join(options.fixtureFilesRoot,name);files.add(path);await finite(d.files.write(path,bytes),'files',5000);const actual=await finite(d.files.read(path),'files',5000);if(actual.length!==bytes.length||!actual.equals(bytes))throw fail('custody');result.uploadFiles.push({path,name,length:actual.length,sha256:createHash('sha256').update(actual).digest('hex')});}
-   await refreshed();result.personas={ownerA:{...personas.ownerA},ownerB:{...personas.ownerB}};
+   phase='transaction';await q(client,'COMMIT');committed=true;await removeKeys(oldKeys);
+   for(const [i,bytes] of plan.uploads.entries()){const name=`apps-upload-${i+1}.png`,path=join(options.fixtureFilesRoot,name);files.add(path);phase='upload-write';await finite(d.files.write(path,bytes),'files',5000);phase='upload-read';const actual=await finite(d.files.read(path),'files',5000);if(actual.length!==bytes.length||!actual.equals(bytes))throw fail('custody');result.uploadFiles.push({path,name,length:actual.length,sha256:createHash('sha256').update(actual).digest('hex')});}
+   phase='sessions';await refreshed();result.personas={ownerA:{...personas.ownerA},ownerB:{...personas.ownerB}};
    const parsed=manifestSchema.parse(result);for(const arr of [parsed.collections.map(c=>c.id),parsed.recommendations.map(r=>r.id),parsed.recommendations.map(r=>r.entityId),parsed.recommendations.map(r=>r.title),parsed.media.map(m=>m.id)])if(new Set(arr).size!==arr.length)throw fail('seed uniqueness');
    active=id;return parsed;
   }catch(error){
-   active=undefined;
+   record('refusal');active=undefined;
    if(client&&!committed&&!poisoned){try{await rollback(client);}catch{poisoned=true;}}
    if(!committed&&!poisoned)try{await removeKeys(freshKeys);}catch{poisoned=true;}
    // A failed reset is terminal; it cannot mint a new success after partial native work.
@@ -257,8 +264,8 @@ export async function createAppsControl(options:AppsControlOptions,dependencies?
    }busy=false;
   }
  }
- async function observe(value:AppsIdentity):Promise<AppsObservation>{assertAvailable();const id=identity(value);if(!active||JSON.stringify(id)!==JSON.stringify(active))throw fail('identity');busy=true;try{
-  await ownership(options.pool);await finite(d.files.assertCustody(),'custody');
+ async function observe(value:AppsIdentity):Promise<AppsObservation>{assertAvailable();const id=identity(value);if(!active||JSON.stringify(id)!==JSON.stringify(active))throw fail('identity');operation='observe';boundary='none';busy=true;try{
+  await ownership(options.pool);phase='custody';await finite(d.files.assertCustody(),'custody');
   const cs=(await q(options.pool,"SELECT id,account_id FROM collections WHERE account_id=ANY($1::uuid[]) AND category='apps' ORDER BY account_id,display_order,id LIMIT 5",[accountIds])).rows;
   const rs=(await q(options.pool,"SELECT id,account_id FROM recommendations WHERE account_id=ANY($1::uuid[]) AND category='apps' ORDER BY account_id,created_at,id LIMIT 21",[accountIds])).rows;
   const ms=(await q(options.pool,"SELECT ci.collection_id,ci.recommendation_id,ci.display_order,c.revision::text AS collection_revision,c.archived_at IS NOT NULL AS collection_archived,r.archived_at IS NOT NULL AS recommendation_archived FROM collection_items ci JOIN collections c ON c.id=ci.collection_id AND c.account_id=ci.account_id AND c.category=ci.category JOIN recommendations r ON r.id=ci.recommendation_id AND r.account_id=ci.account_id AND r.category=ci.category WHERE ci.account_id=ANY($1::uuid[]) AND ci.category='apps' ORDER BY ci.collection_id,ci.display_order,ci.recommendation_id LIMIT 21",[accountIds])).rows;
@@ -266,13 +273,13 @@ export async function createAppsControl(options:AppsControlOptions,dependencies?
   const objects=(await q(options.pool,"SELECT mo.media_id,ma.account_id,mo.object_key,mo.storage_environment,mo.byte_size,mo.content_sha256 FROM media_objects mo JOIN media_assets ma ON ma.id=mo.media_id WHERE ma.account_id=ANY($1::uuid[]) AND ma.purpose='recommendation' AND mo.variant='original' LIMIT 25",[accountIds])).rows;
   if(cs.length>4||rs.length>20||ms.length>20||media.length>24||objects.length>24)throw fail('observe bounds');
   const person=(accountId:string)=>{const p=Object.values(personas).find(p=>p.accountId===accountId);if(!p)throw fail('ownership');return p;};
-  const result:AppsObservation={...id,collections:[],recommendations:[],memberships:[],media:[]};
+  phase='canonical';const result:AppsObservation={...id,collections:[],recommendations:[],memberships:[],media:[]};
   for(const row of cs){const p=person(row.account_id),dto=editableOwnerCollectionSchema.parse((await finite(d.canonical(p,`/api/explorers/v1/collections/${uuid.parse(row.id)}/editable?status=all`),'canonical')).collection);if(dto.id!==row.id||dto.accountId!==p.accountId||dto.category!=='apps')throw fail('observe');result.collections.push(dto);}
   for(const row of rs){const p=person(row.account_id),dto=editableOwnerRecommendationSchema.parse((await finite(d.canonical(p,`/api/explorers/v1/recommendations/${uuid.parse(row.id)}/editable?status=all`),'canonical')).recommendation);if(dto.id!==row.id||dto.accountId!==p.accountId||dto.category!=='apps')throw fail('observe');result.recommendations.push(dto);}
   for(const row of ms){if(!result.collections.some(c=>c.id===row.collection_id)||!result.recommendations.some(r=>r.id===row.recommendation_id))throw fail('observe');result.memberships.push(ownerMembershipDtoSchema.parse({collectionId:row.collection_id,recommendationId:row.recommendation_id,collectionRevision:Number(row.collection_revision),displayOrder:row.display_order,collectionArchived:row.collection_archived,recommendationArchived:row.recommendation_archived}));}
   for(const row of media){person(row.account_id);if(!Buffer.isBuffer(row.content_sha256)||row.content_sha256.length!==32)throw fail('observe');if(row.status==='ready'){const matching=objects.filter(o=>o.media_id===row.id);if(matching.length!==1)throw fail('observe');const object=matching[0];storageKey(object.object_key,row.account_id,row.id);if(object.account_id!==row.account_id||object.storage_environment!=='local'||Number(object.byte_size)!==Number(row.byte_size)||!Buffer.isBuffer(object.content_sha256)||!object.content_sha256.equals(row.content_sha256))throw fail('observe');}result.media.push({id:row.id,accountId:row.account_id,purpose:row.purpose,status:row.status,length:Number(row.byte_size),sha256:row.content_sha256.toString('hex')});}
   return observationSchema.parse(result);
- }catch{throw fail('observe');}finally{busy=false;}}
+ }catch{record('refusal');throw fail('observe');}finally{busy=false;}}
  function tracked<T>(operation:Promise<T>){operations.add(operation);void operation.finally(()=>operations.delete(operation)).catch(()=>undefined);return operation;}
  const resetTracked=(value:AppsIdentity)=>tracked(reset(value)),observeTracked=(value:AppsIdentity)=>tracked(observe(value));
  async function handle(req:IncomingMessage,res:ServerResponse):Promise<boolean>{
@@ -283,12 +290,12 @@ export async function createAppsControl(options:AppsControlOptions,dependencies?
    const {action,...id}=parsed,result=action==='reset'?await resetTracked(id):await observeTracked(id),json=JSON.stringify(result);if(Buffer.byteLength(json)>4*1024*1024)throw fail('control');res.statusCode=200;res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(json);
   }catch{res.statusCode=403;res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end('{"error":"owned Apps control denied"}');}return true;
  }
- async function close(){closed=true;active=undefined;const failures:string[]=[];
+ async function close(){operation='close';phase='settlement';boundary='none';closed=true;active=undefined;const failures:string[]=[];
   // The drain itself is not native work and must not enter the set it drains.
   if(operations.size||pending.size)try{await finite(Promise.allSettled([...operations,...pending]),'cleanup settlement',10000,false);}catch{failures.push('settlement');}
   if(busy||operations.size||pending.size||poisoned)failures.push('settlement');
   if(!pending.size&&!busy){try{await removeKeys([...keys]);}catch{failures.push('storage');}try{await removeFiles();}catch{failures.push('files');}}
   if(failures.length){poisoned=true;throw fail(`cleanup ${[...new Set(failures)].join(',')}`);}
  }
- return {capability,provenance,reset:resetTracked,observe:observeTracked,handle,close};
+ const controller={capability,provenance,reset:resetTracked,observe:observeTracked,handle,close,getDiagnostic:()=>diagnostic};if(provenance==='native')controllerDiagnostics.set(controller,()=>diagnostic);return controller;
 }

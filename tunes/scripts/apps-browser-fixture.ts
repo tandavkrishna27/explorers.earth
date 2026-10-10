@@ -3,7 +3,7 @@ import { randomBytes, randomUUID, createHash, createHmac } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { z } from 'zod/v3';
-import type { AppsControlOptions } from './apps-browser-support';
+import {extractAppsControlDiagnostic,type AppsControllerDiagnostic,type AppsControlOptions} from './apps-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment } from './lifecycle-browser-guards';
 import {registerAppsPrivateDirectory,inspectAppsPrivateDescendant} from './apps-private-custody';
 type Acquisition = Awaited<ReturnType<typeof import('./music-uat-database').prepareOwnedUatDatabaseAcquisition>>;
@@ -183,6 +183,7 @@ type Diagnostic = Readonly<{
     stage: DiagnosticStage;
     category: DiagnosticCategory;
     cleanupStep?: CleanupStep;
+    control?: AppsControllerDiagnostic;
 }>;
 const diagnostics = new WeakMap<object, Diagnostic>();
 /** Only runner-branded errors expose finite sanitized diagnostics; foreign getters are never read. */
@@ -199,7 +200,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
 } {
     let stage: DiagnosticStage = 'validation', category: DiagnosticCategory = 'refusal', captured: Diagnostic | undefined;
     let cleanupStep: CleanupStep | undefined;
-    const snapshot = (): Diagnostic => Object.freeze({stage,category,...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{})});
+    const snapshot = (control?:unknown): Diagnostic => {const detail=extractAppsControlDiagnostic(control);return Object.freeze({stage,category,...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{})});};
     const recordCategory = (value: DiagnosticCategory) => { if (category === 'refusal')
         category = value; };
     let nativeFailure:(()=>void)|undefined;
@@ -430,7 +431,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
             }
         }
         catch (value) {
-            captured ??= snapshot();
+            captured ??= snapshot(control);
             error = value;
             failurePhase = phase;
             failures.push(phase === 'startup' ? 'control' : 'browser');
@@ -446,13 +447,13 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
                 if (child) {
                     cleanupStep = `${name}-stop`;
                     try { await bounded(() => child.stop()); }
-                    catch { captured ??= snapshot(); producerFailure = true; }
+                    catch { captured ??= snapshot(control); producerFailure = true; }
                     try {
                         cleanupStep = `${name}-close`;
                         const result = await bounded(() => child.closed);
-                        if (result.stdioClosed !== true) { captured ??= snapshot(); producerFailure = true; }
+                        if (result.stdioClosed !== true) { captured ??= snapshot(control); producerFailure = true; }
                     }
-                    catch { captured ??= snapshot(); producerFailure = true; }
+                    catch { captured ??= snapshot(control); producerFailure = true; }
                 }
             if (producerFailure) throw new Refusal();
             cleanupStep = 'producer-settlement';
@@ -502,7 +503,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
         catch (value) {
             error ??= value;
             failurePhase ??= 'cleanup';
-            captured ??= snapshot();
+            captured ??= snapshot(control);
             failures.push('private-directory');
         }
         if (cleanupSettled && !originals.size && !uncertain)
