@@ -1,8 +1,45 @@
 import {assertFixtureOrigin} from './proxy-fixture-authority.mjs';
 import { readFileSync } from 'node:fs';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type TestInfo } from '@playwright/test';
 import sharp from 'sharp';
 
+// BEGIN PROFILE DIAGNOSTIC CONTRACT
+type ProfileDiagnosticCategory = 'none' | 'books' | 'movies' | 'games';
+type ProfileDiagnosticStage = 'setup' | 'collection-create' | 'settings-open' | 'visibility-open' | 'control-enabled' | 'initial-unchecked' | 'publish-click' | 'publish-poll' | 'published-checked' | 'hide-click' | 'hide-poll' | 'hidden-unchecked' | 'legacy-check';
+type ProfileDiagnosticSnapshot = { version: 1; category: ProfileDiagnosticCategory; stage: ProfileDiagnosticStage; publishPoll: 'incomplete' | 'completed'; hidePoll: 'incomplete' | 'completed' };
+const profileDiagnosticStates = new WeakMap<TestInfo, ProfileDiagnosticSnapshot>();
+const profileDiagnosticSeen = new WeakSet<TestInfo>();
+function profileDiagnosticIdentity(info: TestInfo): boolean {
+  const title = 'canonical navigation: native Books Movies and Games publish and hide through verified owner preferences';
+  const file = info.file.replaceAll('\\', '/');
+  return file.endsWith('/explorers-earth/e2e/replatform/profile.spec.ts')
+    && info.title === title && info.project.name === 'chromium-pr-safe' && info.repeatEachIndex === 0 && info.retry === 0
+    && (info.titlePath.length === 1 && info.titlePath[0] === title
+      || info.titlePath.length === 2 && info.titlePath[0] === 'replatform/profile.spec.ts' && info.titlePath[1] === title);
+}
+function setProfileDiagnosticState(info: TestInfo, category: ProfileDiagnosticCategory, stage: ProfileDiagnosticStage, publishPoll: 'incomplete' | 'completed', hidePoll: 'incomplete' | 'completed'): void {
+  if (profileDiagnosticIdentity(info)) profileDiagnosticStates.set(info, { version: 1, category, stage, publishPoll, hidePoll });
+}
+function retainProfileDiagnostic(info: TestInfo, snapshot: ProfileDiagnosticSnapshot): void {
+  try {
+    if (info.errors.some(error => typeof error.message === 'string' && error.message.includes('[profile-diagnostic-v1:'))) return;
+    info.errors.push({ message: `[profile-diagnostic-v1:${snapshot.category}|${snapshot.stage}|${snapshot.publishPoll}|${snapshot.hidePoll}]` });
+  } catch {}
+}
+function captureProfileDiagnostic(info: TestInfo): void {
+  try {
+    if (!profileDiagnosticIdentity(info) || !['failed', 'timedOut', 'interrupted'].includes(info.status ?? '') || profileDiagnosticSeen.has(info)) return;
+    const snapshot = profileDiagnosticStates.get(info);
+    if (!snapshot) return;
+    profileDiagnosticSeen.add(info);
+    retainProfileDiagnostic(info, snapshot);
+  } catch {}
+}
+// END PROFILE DIAGNOSTIC CONTRACT
+
+test.afterEach(({}, info) => {
+  captureProfileDiagnostic(info);
+});
 type Persona = { userId: string; cookie: string; handle: string };
 type Fixture = { origin: string; personas: { ownerA: Persona; ownerB: Persona } };
 const fixturePath = process.env.PROFILE_E2E_FIXTURE_PATH;
@@ -260,24 +297,39 @@ async function createNavigationList(page: Page, category: 'books' | 'movies' | '
   return collection as { id: string; revision: number };
 }
 
-test('canonical navigation: native Books Movies and Games publish and hide through verified owner preferences', async ({ page }) => {
+test('canonical navigation: native Books Movies and Games publish and hide through verified owner preferences', async ({ page }, info) => {
+  setProfileDiagnosticState(info, 'none', 'setup', 'incomplete', 'incomplete');
   const legacy = await prepareNavigation(page);
-  for (const category of ['books', 'movies', 'games'] as const) await createNavigationList(page, category);
+  for (const category of ['books', 'movies', 'games'] as const) {
+    setProfileDiagnosticState(info, category, 'collection-create', 'incomplete', 'incomplete');
+    await createNavigationList(page, category);
+  }
+  setProfileDiagnosticState(info, 'none', 'settings-open', 'incomplete', 'incomplete');
   await openNavigation(page);
+  setProfileDiagnosticState(info, 'none', 'visibility-open', 'incomplete', 'incomplete');
   await page.getByRole('button', { name: /Public Visibility/i }).click();
   const labels = { books: 'Books Tab', movies: 'Movies & Shows Tab', games: 'Games Tab' };
   for (const category of ['books', 'movies', 'games'] as const) {
     const control = page.getByRole('region', { name: 'Public visibility settings' })
       .getByRole('checkbox', { name: labels[category], exact: true });
+    setProfileDiagnosticState(info, category, 'control-enabled', 'incomplete', 'incomplete');
     await expect(control).toBeEnabled();
+    setProfileDiagnosticState(info, category, 'initial-unchecked', 'incomplete', 'incomplete');
     await expect(control).not.toBeChecked();
+    setProfileDiagnosticState(info, category, 'publish-click', 'incomplete', 'incomplete');
     await control.click({ force: true });
+    setProfileDiagnosticState(info, category, 'publish-poll', 'incomplete', 'incomplete');
     await expect.poll(async () => (await navigationAccount(page)).categories.find(row => row.category === category)?.isPublic).toBe(true);
+    setProfileDiagnosticState(info, category, 'published-checked', 'completed', 'incomplete');
     await expect(control).toBeChecked();
+    setProfileDiagnosticState(info, category, 'hide-click', 'completed', 'incomplete');
     await control.click({ force: true });
+    setProfileDiagnosticState(info, category, 'hide-poll', 'completed', 'incomplete');
     await expect.poll(async () => (await navigationAccount(page)).categories.find(row => row.category === category)?.isPublic).toBe(false);
+    setProfileDiagnosticState(info, category, 'hidden-unchecked', 'completed', 'completed');
     await expect(control).not.toBeChecked();
   }
+  setProfileDiagnosticState(info, 'none', 'legacy-check', 'incomplete', 'incomplete');
   expect(legacy).toEqual([]);
 });
 
