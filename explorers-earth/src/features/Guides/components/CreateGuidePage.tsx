@@ -9,6 +9,7 @@ import CreateGuideStep3 from "./CreateGuideStep3";
 import { useGuidesOwner } from "../hooks/useGuidesOwner";
 import { GuidesClient } from "../api/guidesClient";
 import { createGuide } from "../api/guideCreation";
+import { guideWizardDetails } from "../api/guideWizardDetails";
 import { explorersApiClient } from "../../../lib/explorersApiClient";
 import {
   blocksToHtml,
@@ -493,20 +494,7 @@ const CreateGuidePage = ({
             })()
           : {};
 
-      const details = {
-        guideType: null,
-        multiCity: formData.locationMode === "multi",
-        numberOfDays: formData.numberOfDays || null,
-        estimatedBudget: null,
-        budgetCurrency: null,
-        budgetType: null,
-        bestTimeToVisit: formData.bestTimeToVisit ?? [],
-        categories: formData.categories ?? [],
-        tags: [],
-        tipsNotes: null,
-        place: placeSnapshot,
-        locationEntityId: null,
-      } as never;
+      const details = guideWizardDetails(formData, placeSnapshot);
 
       let resultDocumentId: string;
 
@@ -522,7 +510,8 @@ const CreateGuidePage = ({
           ...(plainDescription === null ? {} : {description: plainDescription}),
         }, crypto.randomUUID());
         let current = await GuidesClient.observeWholeGuide(guideId);
-        current = await GuidesClient.writeDetails(GuidesClient.prepareIntent(current), details);
+        current = await GuidesClient.writeDetails(GuidesClient.prepareIntent(current),
+          guideWizardDetails(formData, placeSnapshot, current.aggregate.details));
 
         // The cover is uploaded and only then attached, so a failed upload leaves the
         // existing cover in place. The Strapi path deleted the old file first, which is
