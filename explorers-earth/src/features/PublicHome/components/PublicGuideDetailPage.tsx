@@ -1,3 +1,4 @@
+import { convertPublicGuideSection } from "../utils/publicGuidePhotoViewModel";
 import { memo, useState, useMemo, useEffect, useRef, useCallback, type CSSProperties } from "react";
 import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -57,6 +58,7 @@ const normalizeRenderableGuide = (value: unknown) => {
       seenSectionIds.add(documentId);
       return true;
     })
+    .flatMap((section) => { const converted = convertPublicGuideSection(section); return converted.ok ? [converted.section] : []; })
     .sort((a, b) => {
       const sequence = (section: Record<string, unknown>) => {
         if (typeof section.Sequence === "number" && Number.isFinite(section.Sequence)) {

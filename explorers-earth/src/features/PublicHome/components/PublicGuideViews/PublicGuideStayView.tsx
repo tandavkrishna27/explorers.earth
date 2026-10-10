@@ -1,3 +1,4 @@
+import { selectGuidePlaceThumbnail } from "../../utils/publicGuidePhotoViewModel";
 import { memo, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { parseStay } from "../../../Guides/utils/guideDataParser";
@@ -16,27 +17,6 @@ const PublicGuideStayView = memo(({ sections, guide: _guide, selectedDay: extern
     visible: false,
     place: null,
   });
-  // Helper function to get S3 image from guide data by place_id
-  const getS3ImageForPlace = useMemo(() => {
-    const imageMap: Record<string, string | null> = {};
-
-    // Iterate through all sections to find activity photos (accommodations may also be in activities)
-    sections.forEach((section) => {
-      if (section.Recommendation_Activity?.activities) {
-        section.Recommendation_Activity.activities.forEach((activity: any) => {
-          if (activity.place_id && activity.photos && activity.photos.length > 0) {
-            // Use first photo from S3
-            const firstPhoto = activity.photos[0];
-            if (firstPhoto.url) {
-              imageMap[activity.place_id] = firstPhoto.url;
-            }
-          }
-        });
-      }
-    });
-
-    return imageMap;
-  }, [sections]);
 
   // Get all sections with stay data
   const daysWithStay = useMemo(() => {
@@ -108,19 +88,7 @@ const PublicGuideStayView = memo(({ sections, guide: _guide, selectedDay: extern
     });
   }, [daysWithStay]);
 
-  // Get image URL for a place - prioritize S3 images from guide data
-  const getPlaceImage = (place: any): string => {
-    if (!place?.place_id) return "https://placehold.co/800x600/1a1a1a/666666?text=Accommodation";
-
-    // First check S3 images from guide data
-    const s3Image = getS3ImageForPlace[place.place_id];
-    if (s3Image) {
-      return s3Image;
-    }
-
-    // Fallback to placeholder
-    return "https://placehold.co/800x600/1a1a1a/666666?text=Accommodation";
-  };
+  const getPlaceImage = (place: unknown): string => selectGuidePlaceThumbnail(place, sections)?.url ?? "https://placehold.co/800x600/1a1a1a/666666?text=Accommodation";
 
 
   if (allAccommodations.length === 0) {
