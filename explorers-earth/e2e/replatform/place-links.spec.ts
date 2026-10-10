@@ -195,31 +195,104 @@ test('Place links: existing Products and People lists attach detach and survive 
   transport.assertExpected();expect(transport.observations.length).toBe(0);
 });
 
-test('Place links: retained create forms atomically create and link Products and People lists',async ({page})=>{
+test('Place links: retained create forms atomically create and link Products and People lists',async ({page},info)=>{
   const transport=await appPage(page,manifest.personas.ownerA);const parent=aLists()[0];
+  const errorBody=(value:Dto,code:string)=>{
+    same(Object.keys(value),['error']);same(Object.keys(value.error).sort(),['code','message','requestId']);
+    expect(value.error.code).toBe(code);expect(typeof value.error.message).toBe('string');
+    expect(typeof value.error.requestId==='string' && value.error.requestId.length>0).toBe(true);
+    return {error:{code:value.error.code,message:value.error.message}};
+  };
+  const createResponse=()=>page.waitForResponse(r=>new URL(r.url()).pathname===`${base}/collections` && r.request().method()==='POST');
   for(const category of ['products','people'] as const) {
-    const product=category==='products',title=`Created Linked ${product?'Products':'People'}`,slug=`created-linked-${category}`;
-    await page.goto(`/recommendations/places/${parent.id}/add-${category}`);
-    await page.getByRole('button',{name:product?/^Create a New Product List/:/^Create a New People List/}).click();
-    const container=page.getByRole('heading',{name:product?'Create New Product List':'Create New People List',exact:true}).locator('../..');
-    const form=container.locator('form');
-    await form.getByPlaceholder(product?'e.g. Paris Essentials, Travel Gear':'e.g. Local Creators, Inspiring Founders').fill(title);
-    await form.getByPlaceholder(product?"Describe what's in this product collection":'Describe the people in this collection').fill('Created through retained form');
-    await form.getByPlaceholder('my-list-url').fill(slug);
-    const created=page.waitForResponse(r=>new URL(r.url()).pathname===`${base}/collections` && r.request().method()==='POST');
-    await form.getByRole('button',{name:product?'Create & Add Products':'Create & Add People',exact:true}).click();
-    const response=await created;expect(response.status()).toBe(201);const body=response.request().postDataJSON();
-    same([body.category,body.title,body.slug,body.description,body.parentLocationCollectionId],[category,title,slug,'Created through retained form',parent.id]);
-    expect(Object.hasOwn(body,'parentExpectedRevision')).toBe(false);
-    const id=(await response.json()).collection.id;await expect(page).toHaveURL(new RegExp(`/recommendations/${category}/${id}/add$`));
-    await page.reload();const saved=await editable('collections',id);
-    same([saved.title,saved.slug,saved.description],[title,slug,'Created through retained form']);await assertRelation(parent.id,id,true);
-    // Foreign-parent refusal is a canonical API negative; successful creation above is UI.
-    const b=manifest.personas.ownerB,before=(await complete(category,b)).collections.map(c=>c.id);
-    const invalid={category,title:'Foreign parent create',slug:`foreign-parent-${category}`,description:null,visibility:'private',publicationState:'draft',parentLocationCollectionId:parent.id};
+    const product=category==='products';
+    for(const phase of ['fresh','stale','lost-ack'] as const) {
+      const title=`Created Linked ${product?'Products':'People'} ${phase}`,slug=`created-linked-${category}-${phase}`,description='Created through retained form';
+      await page.goto(`/recommendations/places/${parent.id}/add-${category}`);
+      await page.getByRole('button',{name:product?/^Create a New Product List/:/^Create a New People List/}).click();
+      const form=page.getByRole('heading',{name:product?'Create New Product List':'Create New People List',exact:true}).locator('../..').locator('form');
+      const nameField=form.getByPlaceholder(product?'e.g. Paris Essentials, Travel Gear':'e.g. Local Creators, Inspiring Founders');
+      const descriptionField=form.getByPlaceholder(product?"Describe what's in this product collection":'Describe the people in this collection');
+      await nameField.fill(title);await descriptionField.fill(description);await form.getByPlaceholder('my-list-url').fill(slug);
+      const submit=form.getByRole('button',{name:product?'Create & Add Products':'Create & Add People',exact:true});
+      const before=await editable('collections',parent.id),content=await complete(category),observation=await control('observe',info);
+      let release!:()=>void,held!:()=>void,originalBody='',originalKey='',receipt:Dto|undefined,committedParent:Dto|undefined;
+      const delivered=new Promise<void>(resolve=>held=resolve),gate=new Promise<void>(resolve=>release=resolve);
+      let parentReads=0;const read=(request:import('@playwright/test').Request)=>{
+        if(request.method()==='GET' && new URL(request.url()).pathname===`${base}/collections/${parent.id}/editable`)parentReads++;
+      };
+      page.on('request',read);
+      const routePath=`**${base}/collections`;let first=true;
+      const handler=async (route:import('@playwright/test').Route)=>{
+        if(route.request().method()!=='POST' || !first)return route.continue();first=false;
+        originalBody=route.request().postData()!;originalKey=route.request().headers()['idempotency-key'];
+        expect(Boolean(originalKey)).toBe(true);
+        if(phase==='lost-ack') {
+          const committed=await route.fetch();expect(committed.status()).toBe(201);receipt=await committed.json();
+          committedParent=await editable('collections',parent.id);held();await gate;await route.abort('failed');
+        } else {held();await gate;await route.continue();}
+      };
+      if(phase!=='fresh')await page.route(routePath,handler);
+      let accepted:import('@playwright/test').Response;
+      try {
+        if(phase==='fresh') {
+          const created=createResponse();await submit.click();accepted=await created;
+        } else {
+          const refused=phase==='stale'?createResponse():undefined;
+          await submit.click();await delivered;
+          const initial=JSON.parse(originalBody);expect(initial.parentExpectedRevision).toBe(before.revision);
+          same([initial.category,initial.title,initial.slug,initial.description,initial.parentLocationCollectionId],[category,title,slug,description,parent.id]);
+          const readsBefore=parentReads;expect(readsBefore).toBe(1);
+          if(phase==='stale') {
+            const advanced=await patchCollection(parent.id,{description:`Concurrent ${category} stale revision`});expect(advanced.revision).toBe(before.revision+1);
+            release();const conflict=await refused!;expect(conflict.status()).toBe(409);errorBody(await conflict.json(),'CONFLICT');
+            expect(conflict.request().postData()).toBe(originalBody);expect(conflict.request().headers()['idempotency-key']).toBe(originalKey);
+            await expect(form.getByRole('button',{name:'Refresh location and retry',exact:true})).toBeVisible();
+            same(await complete(category),content);same((await control('observe',info)).relations,observation.relations);
+            same((await control('observe',info)).collections.filter((row:Dto)=>row.id!==parent.id),observation.collections.filter((row:Dto)=>row.id!==parent.id));
+            same(await editable('collections',parent.id),advanced);
+            await expect(nameField).toHaveValue(title);await expect(descriptionField).toHaveValue(description);await expect(form.getByPlaceholder('my-list-url')).toHaveValue(slug);
+            expect(new URL(page.url()).pathname).toBe(`/recommendations/places/${parent.id}/add-${category}`);expect(parentReads).toBe(readsBefore);
+            const created=createResponse();await form.getByRole('button',{name:'Refresh location and retry',exact:true}).click();accepted=await created;
+            expect(accepted.request().headers()['idempotency-key']).not.toBe(originalKey);expect(accepted.request().postDataJSON().parentExpectedRevision).toBe(advanced.revision);expect(parentReads).toBe(readsBefore+1);
+          } else {
+            expect(receipt!.collection.parentLocation).toEqual({id:parent.id,revision:before.revision+1});expect(committedParent!.revision).toBe(before.revision+1);
+            await assertRelation(parent.id,receipt!.collection.id,true);
+            release();await expect(form.getByRole('status')).toContainText('The create outcome is uncertain');
+            await expect(nameField).toHaveValue(title);await expect(descriptionField).toHaveValue(description);await expect(form.getByPlaceholder('my-list-url')).toHaveValue(slug);
+            await expect(form.getByRole('button',{name:'Refresh location and retry',exact:true})).toHaveCount(0);
+            expect(new URL(page.url()).pathname).toBe(`/recommendations/places/${parent.id}/add-${category}`);
+            const committedContent=await complete(category),committedObserve=await control('observe',info);
+            expect(committedContent.collections.length).toBe(content.collections.length+1);
+            expect(committedContent.collections.filter(row=>row.id===receipt!.collection.id)).toHaveLength(1);
+            same(committedContent.recommendations,content.recommendations);same(committedContent.memberships,content.memberships);
+            const later=await patchCollection(parent.id,{description:`Later ${category} receipt control`});expect(later.revision).toBe(before.revision+2);
+            const replay=createResponse();await submit.click();accepted=await replay;
+            expect(accepted.request().postData()).toBe(originalBody);expect(accepted.request().headers()['idempotency-key']).toBe(originalKey);
+            same(await accepted.json(),receipt);same(await complete(category),committedContent);same((await control('observe',info)).relations,committedObserve.relations);
+            same((await control('observe',info)).collections.filter((row:Dto)=>row.id!==parent.id),committedObserve.collections.filter((row:Dto)=>row.id!==parent.id));
+            same(await editable('collections',parent.id),later);expect(parentReads).toBe(readsBefore);
+          }
+        }
+        expect(accepted.status()).toBe(201);const body=accepted.request().postDataJSON(),result=await accepted.json();
+        same([body.category,body.title,body.slug,body.description,body.parentLocationCollectionId],[category,title,slug,description,parent.id]);
+        expect(Number.isSafeInteger(body.parentExpectedRevision)).toBe(true);
+        expect(body.parentExpectedRevision).toBe(phase==='stale'?before.revision+1:before.revision);
+        same(result.collection.parentLocation,{id:parent.id,revision:body.parentExpectedRevision+1});
+        const id=result.collection.id;
+        await expect(page).toHaveURL(url=>url.origin===fixture.origin && url.pathname===`/recommendations/${category}/${id}/add` && JSON.stringify([...url.searchParams.keys()])===JSON.stringify(['redirectBack']) && JSON.stringify(url.searchParams.getAll('redirectBack'))===JSON.stringify(['/recommendations']) && url.hash==='');
+        expect((await editable('collections',parent.id)).revision).toBe(body.parentExpectedRevision+(phase==='lost-ack'?2:1));
+        await page.reload();const saved=await editable('collections',id);same([saved.title,saved.slug,saved.description],[title,slug,description]);await assertRelation(parent.id,id,true);
+        expect((await editable('collections',parent.id)).linkedChildren.filter((link:Dto)=>link.childCollectionId===id && link.locationCollectionId===parent.id)).toHaveLength(1);
+      } finally {release?.();page.off('request',read);if(phase!=='fresh')await page.unroute(routePath,handler);}
+    }
+    const b=manifest.personas.ownerB,before=(await complete(category,b)).collections.map(c=>c.id),currentParent=await editable('collections',parent.id),beforeNegative=await control('observe',info);
+    const invalid={category,title:'Foreign parent create',slug:`foreign-parent-${category}`,description:null,visibility:'private',publicationState:'draft',parentLocationCollectionId:parent.id,parentExpectedRevision:currentParent.revision};
     const foreign=await api('/collections',b,'POST',invalid),missing=await api('/collections',b,'POST',{...invalid,parentLocationCollectionId:randomUUID()});
-    expect(foreign.status).toBe(404);expect(missing.status).toBe(404);same(normalized(await foreign.json()),normalized(await missing.json()));
+    expect(foreign.status).toBe(404);expect(missing.status).toBe(404);same(errorBody(await foreign.json(),'NOT_FOUND'),errorBody(await missing.json(),'NOT_FOUND'));
     same((await complete(category,b)).collections.map(c=>c.id),before);
+    same((await control('observe',info)).collections,beforeNegative.collections);same((await control('observe',info)).relations,beforeNegative.relations);
+    same(await editable('collections',parent.id),currentParent);
   }
   transport.assertExpected();expect(transport.observations.length).toBe(0);
 });
