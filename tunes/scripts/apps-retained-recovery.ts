@@ -20,6 +20,8 @@ type Custody={verify():Promise<void>;removeChildren():Promise<void>;removeRoot()
 type Lease={release():Promise<void>};
 type Dependencies={platform:string;argv:string[];environment:Record<string,string|undefined>;root:string;temporaryRoot:string;clock:{now():number;setTimeout(fn:()=>void,ms:number):unknown;clearTimeout(timer:unknown):void};preflight():Promise<void>;inspect(run:Run):Promise<unknown>;capture(run:Run):Promise<Custody>;lease(custody:Custody):Promise<Lease>;openAdmin(run:Run):Promise<Admin>;stop(run:Run):Promise<void>;remove(run:Run):Promise<void>;absent(run:Run):Promise<boolean>};
 const KEYS=['platform','argv','environment','root','temporaryRoot','clock','preflight','inspect','capture','lease','openAdmin','stop','remove','absent'];
+type FailureStage='validate'|'preflight'|'inspect'|'capture'|'lease'|'admin'|'witness'|'drop'|'db-absence'|'admin-close'|'stop'|'container-absence'|'children'|'root'|'secret'|'lease-release';
+const failureStages=new WeakMap<object,FailureStage>();
 class Refusal extends Error{constructor(){super('APPS_RETAINED_RECOVERY_FAILED');}}
 function requireValue(value:unknown):asserts value{if(!value)throw new Refusal();}
 function database(run:Run){return `music_uat_${run.runId}`;}
@@ -33,7 +35,7 @@ function validateInspect(value:unknown,run:Run,root:string,running=true){
  requireValue(Array.isArray(c.Env)&&c.Env.every((v:unknown)=>typeof v==='string'));
  const env=new Map<string,string>();for(const item of c.Env){const at=item.indexOf('=');requireValue(at>0&&!env.has(item.slice(0,at)));env.set(item.slice(0,at),item.slice(at+1));}
  requireValue(env.get('POSTGRES_USER')==='music_migrator'&&env.get('POSTGRES_DB')===database(run)&&env.get('POSTGRES_PASSWORD_FILE')==='/run/secrets/music-uat-database-password');
- requireValue([...env.keys()].every(key=>['PATH','GOSU_VERSION','LANG','PG_MAJOR','PG_VERSION','PG_SHA256','PGDATA','POSTGRES_USER','POSTGRES_DB','POSTGRES_PASSWORD_FILE'].includes(key)));
+ requireValue([...env.keys()].every(key=>['PATH','GOSU_VERSION','LANG','PG_MAJOR','PG_VERSION','PG_SHA256','DOCKER_PG_LLVM_DEPS','PGDATA','POSTGRES_USER','POSTGRES_DB','POSTGRES_PASSWORD_FILE'].includes(key)));
  const defaults=pinned.Config.Env as unknown[];requireValue(defaults.every(v=>typeof v==='string'&&!/^POSTGRES_/.test(v)));
  requireValue(JSON.stringify([...c.Env].sort())===JSON.stringify([...defaults,`POSTGRES_USER=music_migrator`,`POSTGRES_DB=${database(run)}`,'POSTGRES_PASSWORD_FILE=/run/secrets/music-uat-database-password'].sort()));
  requireValue(JSON.stringify(c.Entrypoint)==='["docker-entrypoint.sh"]'&&JSON.stringify(c.Cmd)==='["postgres"]');
@@ -52,8 +54,8 @@ function validateInspect(value:unknown,run:Run,root:string,running=true){
 }
 /** No resource allocation during construction/import. Complete injected adapters are synthetic. */
 export function createAppsRetainedRecovery(dependencies?:Dependencies){
- const synthetic=dependencies!==undefined,d=synthetic?dependencies!:nativeDependencies();let retained:Promise<{runId:string;status:'recovered';evidence:'native'|'synthetic';qualification:false}>|undefined;
- return{run(){return retained??=execute().catch(()=>{throw new Refusal();});}};
+ const synthetic=dependencies!==undefined,d=synthetic?dependencies!:nativeDependencies();let stage:FailureStage='validate';let retained:Promise<{runId:string;status:'recovered';evidence:'native'|'synthetic';qualification:false}>|undefined;
+ return{run(){return retained??=execute().catch(()=>{const failure=new Refusal();failureStages.set(failure,stage);throw failure;});}};
  async function execute(){
   requireValue(d&&Object.keys(d).sort().join(',')===KEYS.sort().join(',')&&d.clock&&['now','setTimeout','clearTimeout'].every(k=>typeof (d.clock as any)[k]==='function')&&KEYS.filter(k=>!['platform','argv','environment','root','temporaryRoot','clock'].includes(k)).every(k=>typeof (d as any)[k]==='function'));
   requireValue(d.platform==='win32'&&Array.isArray(d.argv)&&d.argv.length===4&&d.argv[0]==='--recover-run'&&d.argv[2]==='--ack'&&d.argv[3]===ACK);
@@ -62,22 +64,22 @@ export function createAppsRetainedRecovery(dependencies?:Dependencies){
   requireValue([d.root,d.temporaryRoot].every(file=>path.win32.isAbsolute(file)&&path.win32.resolve(file)===file&&!file.startsWith('\\\\')&&!/[\x00-\x1f\x7f]/.test(file)));
   const originals=new Set<Promise<unknown>>(),deadline=d.clock.now()+600000;
   async function bounded<T>(operation:()=>Promise<T>,budget=15000,destructive=false){const remaining=Math.floor(deadline-d.clock.now());requireValue(remaining>0&&(!destructive||remaining>=budget));const original=Promise.resolve().then(operation);originals.add(original);original.then(()=>originals.delete(original),()=>originals.delete(original));let timer:unknown;try{return await Promise.race([original,new Promise<never>((_,reject)=>{timer=d.clock.setTimeout(()=>reject(new Refusal()),Math.min(remaining,budget));})]);}finally{d.clock.clearTimeout(timer);}}
-  await bounded(()=>d.preflight(),60000);const address=validateInspect(await bounded(()=>d.inspect(run)),run,d.root);
-  const custody=await bounded(()=>d.capture(run),60000);await bounded(()=>custody.verify(),60000);
-  const lease=await bounded(()=>d.lease(custody),15000,true);await bounded(()=>custody.verify(),60000);
-  const admin=await bounded(()=>d.openAdmin(run));
-  async function witness(){
+  stage='preflight';await bounded(()=>d.preflight(),60000);stage='inspect';const address=validateInspect(await bounded(()=>d.inspect(run)),run,d.root);
+  stage='capture';const custody=await bounded(()=>d.capture(run),60000);stage='capture';await bounded(()=>custody.verify(),60000);
+  stage='lease';const lease=await bounded(()=>d.lease(custody),15000,true);stage='capture';await bounded(()=>custody.verify(),60000);
+  stage='admin';const admin=await bounded(()=>d.openAdmin(run));
+  async function witness(){stage='witness';
    const result=await bounded(()=>admin.query("SELECT current_user AS role,current_database() AS maintenance,current_setting('server_version_num')::int AS version,current_setting('max_prepared_transactions')::int AS maxprepared,(SELECT rolsuper FROM pg_roles WHERE rolname=current_user) AS superuser,(SELECT count(*)::int FROM pg_stat_activity WHERE backend_type='client backend' AND pid<>pg_backend_pid()) AS clients,(SELECT count(*)::int FROM pg_prepared_xacts) AS prepared,inet_server_addr()::text AS \"serverAddress\",inet_server_port() AS \"serverPort\""));
    const row=result.rows[0];requireValue(result.rows.length===1&&row.role==='music_migrator'&&row.maintenance==='postgres'&&row.superuser===true&&Number.isInteger(row.version)&&Number(row.version)>=150000&&Number(row.version)<160000&&row.maxprepared===0&&row.clients===0&&row.prepared===0&&row.serverPort===5432&&row.serverAddress===address);
    const oid=await bounded(()=>admin.query('SELECT oid::int AS oid FROM pg_database WHERE datname=$1',[database(run)]));requireValue(oid.rows.length===1&&Number.isSafeInteger(oid.rows[0].oid)&&Number(oid.rows[0].oid)>0);return oid.rows[0].oid;
   }
-  const oid=await witness();requireValue(validateInspect(await bounded(()=>d.inspect(run)),run,d.root)===address);await bounded(()=>custody.verify(),60000);requireValue(await witness()===oid);
-  requireValue(originals.size===0);await bounded(()=>admin.query(`DROP DATABASE "${database(run)}"`),15000,true);
-  const absent=await bounded(()=>admin.query('SELECT 1 FROM pg_database WHERE datname=$1',[database(run)]));requireValue(absent.rows.length===0);
-  await bounded(()=>admin.end(),15000,true);
-  requireValue(validateInspect(await bounded(()=>d.inspect(run)),run,d.root)===address);await bounded(()=>custody.verify(),60000);await bounded(()=>d.stop(run),45000,true);
-  if(!await bounded(()=>d.absent(run))){validateInspect(await bounded(()=>d.inspect(run)),run,d.root,false);await bounded(()=>d.remove(run),15000,true);requireValue(await bounded(()=>d.absent(run)));}
-  requireValue(originals.size===0);await bounded(()=>custody.verify(),60000);await bounded(()=>custody.removeChildren(),60000,true);await bounded(()=>custody.removeRoot(),15000,true);await bounded(()=>custody.eraseSecret(),15000,true);await bounded(()=>lease.release(),15000,true);
+  const oid=await witness();stage='inspect';requireValue(validateInspect(await bounded(()=>d.inspect(run)),run,d.root)===address);stage='capture';await bounded(()=>custody.verify(),60000);requireValue(await witness()===oid);
+  requireValue(originals.size===0);stage='drop';await bounded(()=>admin.query(`DROP DATABASE "${database(run)}"`),15000,true);
+  stage='db-absence';const absent=await bounded(()=>admin.query('SELECT 1 FROM pg_database WHERE datname=$1',[database(run)]));requireValue(absent.rows.length===0);
+  stage='admin-close';await bounded(()=>admin.end(),15000,true);
+  stage='inspect';requireValue(validateInspect(await bounded(()=>d.inspect(run)),run,d.root)===address);stage='capture';await bounded(()=>custody.verify(),60000);stage='stop';await bounded(()=>d.stop(run),45000,true);
+  stage='container-absence';if(!await bounded(()=>d.absent(run))){validateInspect(await bounded(()=>d.inspect(run)),run,d.root,false);await bounded(()=>d.remove(run),15000,true);requireValue(await bounded(()=>d.absent(run)));}
+  requireValue(originals.size===0);stage='capture';await bounded(()=>custody.verify(),60000);stage='children';await bounded(()=>custody.removeChildren(),60000,true);stage='root';await bounded(()=>custody.removeRoot(),15000,true);stage='secret';await bounded(()=>custody.eraseSecret(),15000,true);stage='lease-release';await bounded(()=>lease.release(),15000,true);
   return{runId:run.runId,status:'recovered' as const,evidence:synthetic?'synthetic' as const:'native' as const,qualification:false as const};
  }
 }
@@ -131,4 +133,4 @@ function nativeDependencies():Dependencies{
  };
 }
 // Direct failure terminates this process only; it does not attest descendant settlement or authorize retained-resource disposal.
-if(process.argv[1]&&pathToFileURL(path.resolve(process.argv[1])).href===import.meta.url)void createAppsRetainedRecovery().run().then(result=>{process.stdout.write(JSON.stringify(result)+'\n');},()=>{try{writeSync(2,'APPS_RETAINED_RECOVERY_FAILED\n');}finally{process.exit(1);}});
+if(process.argv[1]&&pathToFileURL(path.resolve(process.argv[1])).href===import.meta.url)void createAppsRetainedRecovery().run().then(result=>{process.stdout.write(JSON.stringify(result)+'\n');},failure=>{try{writeSync(2,'APPS_RETAINED_RECOVERY_FAILED '+(failureStages.get(failure)??'unknown')+'\n');}finally{process.exit(1);}});

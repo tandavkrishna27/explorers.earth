@@ -408,6 +408,29 @@ and retains targets; it grants no descendant-settlement or cleanup evidence.
 Execution still requires fresh live witnesses. No native recovery is claimed by
 these source checks.
 
+The first actual recovery command at `c3ceb5cf` exited 1 with its fixed failure
+diagnostic. Afterwards the first fixture root remained, its recovery lease was
+absent, and its container was running and healthy. Failed evidence is retained
+under `receipts/apps-retained-recovery-c3ceb5cf`. Read-only inspection found that
+the pinned image and container share the default `DOCKER_PG_LLVM_DEPS`, omitted
+from the new environment-name validator. This is a deterministic rejection;
+the original command did not emit its failure stage, so prior preflight
+completion is not claimed. Exact immutable image environment equality remains
+required. A narrow repair and finite stage diagnostics precede any retry.
+
+The image-default repair and private finite first-failure stages passed 80
+recovery contracts and independent source review. No retry has occurred.
+Further actual read-only checks found both mounted secret files and their shared
+fixture-token parent have the current user as owner but unprotected Windows ACLs
+with two additional allow rules. The existing fixed inspector rejects them.
+Original fixture-secret creation applies Unix modes without a protected Windows
+DACL; that explains the policy mismatch. The shared parent contains 260 entries,
+all matching the fixture token namespace, with no directories, reparse points or
+foreign owners. It is not run-exclusive. Recovery remains held until separately
+reviewed exact-path ACL adoption preserves sibling files and content, verifies
+fresh physical custody, and passes the unchanged inspector. No ACL or secret
+content mutation has been performed, and no historical privacy is claimed.
+
 ## Current hosted status
 
 PR119 still points to remote `622f689385058ef9186538a1d8e1f60fd23ab266`.
