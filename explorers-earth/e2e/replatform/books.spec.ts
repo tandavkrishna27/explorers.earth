@@ -1,6 +1,6 @@
 import {assertFixtureOrigin} from './proxy-fixture-authority.mjs';
 import {readFileSync} from 'node:fs';
-import {test,expect,type Page,type BrowserContext,type APIRequestContext} from '@playwright/test';
+import {test,expect,type Page,type BrowserContext,type APIRequestContext,type TestInfo} from '@playwright/test';
 type Persona={userId:string;cookie:string;handle:string};
 const fixture=JSON.parse(readFileSync(process.env.BOOKS_E2E_FIXTURE_PATH!,'utf8')) as {origin:string;personas:{ownerA:Persona;ownerB:Persona}};
 assertFixtureOrigin(fixture);
@@ -44,14 +44,71 @@ async function completeBooksContinuation(page:Page,expectedURL:string,title:stri
 }
 // END BOOKS CONTINUATION CONTRACT
 
+// BEGIN BOOKS DIAGNOSTIC CONTRACT
+type BooksDiagnosticStage='setup'|'create-start'|'collection-created'|'list-route-reached'|'no-publish-confirmed'|'add-start'|'add-returned'|'search-filled'|'downstream';
+type BooksDiagnosticSnapshot={version:1;stage:BooksDiagnosticStage;ownerState:string;button:string;route:string;sample:string};
+const booksDiagnosticStages=new WeakMap<TestInfo,BooksDiagnosticStage>();
+const booksDiagnosticSeen=new WeakSet<TestInfo>();
+function booksDiagnosticIdentity(info:TestInfo){
+ const file=info.file.replaceAll('\\','/');
+ // Worker TestInfo includes the config-relative file suite; the pure harness supplies only the registered title.
+ const titlePath=(info.titlePath.length===1&&info.titlePath[0]===info.title)||(info.titlePath.length===2&&info.titlePath[0].replaceAll('\\','/')==='books.spec.ts'&&info.titlePath[1]===info.title);
+ return file.endsWith('/explorers-earth/e2e/replatform/books.spec.ts')&&info.title==='owner form create, Add with all fields, publication, repeat edits and archive reload'&&titlePath&&info.project.name==='books-desktop'&&info.repeatEachIndex===0&&info.retry===0;
+}
+function setBooksDiagnosticStage(info:TestInfo,stage:BooksDiagnosticStage){if(booksDiagnosticIdentity(info))booksDiagnosticStages.set(info,stage);}
+function projectBooksDiagnostic(){
+ const roots=document.querySelectorAll('[data-books-owner-state]');
+ const value=roots.length===1?roots[0].getAttribute('data-books-owner-state'):null;
+ const ownerState=roots.length===0?'absent':roots.length>1?'multiple':['loading','error','missing','ready-empty','ready-nonempty'].includes(value??'')?value!:'unavailable';
+ const buttons=Array.from(document.querySelectorAll('button')).filter(b=>b.textContent?.trim()==='Add Book');
+ let button='absent';
+ if(buttons.length>1)button='multiple';
+ else if(buttons.length===1){const b=buttons[0],style=getComputedStyle(b),rect=b.getBoundingClientRect();button=style.display==='none'||style.visibility==='hidden'||style.visibility==='collapse'||b.getClientRects().length===0||rect.width<=0||rect.height<=0?'hidden':b.disabled?'disabled':'visible-enabled';}
+ const path=location.pathname;
+ const route=path==='/recommendations/books'?'books-home':/^\/recommendations\/books\/[^/]+$/.test(path)?'books-list':/^\/recommendations\/books\/[^/]+\/add$/.test(path)?'books-add':/^\/recommendations\/books\/[^/]+\/edit\/[^/]+$/.test(path)?'books-edit':'other';
+ return {ownerState,button,route,sample:'captured'};
+}
+function canonicalBooksDiagnostic(stage:BooksDiagnosticStage,projection:unknown):BooksDiagnosticSnapshot{
+ const unavailable:BooksDiagnosticSnapshot={version:1,stage,ownerState:'unavailable',button:'unavailable',route:'unavailable',sample:'unavailable'};
+ if(!projection||typeof projection!=='object'||![Object.prototype,null].includes(Object.getPrototypeOf(projection)))return unavailable;
+ const enums={ownerState:['unavailable','absent','multiple','loading','error','missing','ready-empty','ready-nonempty'],button:['unavailable','absent','multiple','hidden','disabled','visible-enabled'],route:['unavailable','books-home','books-list','books-add','books-edit','other'],sample:['unavailable','captured']};
+ const keys=Object.keys(enums) as (keyof typeof enums)[],d=Object.getOwnPropertyDescriptors(projection);
+ if(Reflect.ownKeys(projection).length!==4||keys.some(k=>!d[k]||!('value' in d[k])||!enums[k].includes(d[k].value)))return unavailable;
+ if(d.sample.value==='unavailable'&&keys.filter(k=>k!=='sample').some(k=>d[k].value!=='unavailable'))return unavailable;
+ return {version:1,stage,ownerState:d.ownerState.value,button:d.button.value,route:d.route.value,sample:d.sample.value};
+}
+function retainBooksDiagnostic(info:TestInfo,snapshot:BooksDiagnosticSnapshot){
+ try{const message='[books-diagnostic-v1:'+snapshot.stage+'|'+snapshot.ownerState+'|'+snapshot.button+'|'+snapshot.route+'|'+snapshot.sample+']';if(!info.errors.some(e=>e.message?.includes('[books-diagnostic-v1:')))info.errors.push({message});}catch{}
+}
+async function captureBooksDiagnostic(page:Page,info:TestInfo){
+ if(!booksDiagnosticIdentity(info)||!booksDiagnosticStages.has(info)||!['failed','timedOut','interrupted'].includes(info.status??'')||booksDiagnosticSeen.has(info))return;
+ booksDiagnosticSeen.add(info);const stage=booksDiagnosticStages.get(info)!;let projection:unknown;let timer:ReturnType<typeof setTimeout>|undefined;
+ try{if(!page.isClosed())projection=await Promise.race([page.evaluate(projectBooksDiagnostic),new Promise(resolve=>{timer=setTimeout(()=>resolve(undefined),1000);})]);}catch{}finally{if(timer!==undefined)clearTimeout(timer);}
+ retainBooksDiagnostic(info,canonicalBooksDiagnostic(stage,projection));
+}
+// END BOOKS DIAGNOSTIC CONTRACT
+
+test.afterEach(async({page},info)=>{await captureBooksDiagnostic(page,info);});
+
 test('owner form create, Add with all fields, publication, repeat edits and archive reload',async({page},info)=>{
+ setBooksDiagnosticStage(info,'setup');
  const owner=fixture.personas.ownerA;await signIn(page,owner);const forbidden=monitor(page);await setCategory(page.request,false);
  await page.goto('/recommendations/books');await page.getByRole('button',{name:'New List',exact:true}).filter({visible:true}).first().click();
  const title=`Browser ${info.project.name}`;await page.locator('input[name="List_Name"]').fill(title);await page.locator('textarea[name="list_description"]').fill('Browser list description');
  const created=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname===`${base}/collections`);
+ setBooksDiagnosticStage(info,'create-start');
  await page.getByRole('button',{name:'Create List',exact:true}).click();const list=(await (await created).json()).collection;expect(list.visibility).toBe('private');expect(list.publicationState).toBe('draft');
- await expect(page).toHaveURL(new RegExp(`/recommendations/books/${list.id}$`));await expect(page.getByText('Yes, Publish',{exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Add Book',exact:true}).click();await page.getByPlaceholder('Search by title, author, or ISBN...').fill('fixture');
+ setBooksDiagnosticStage(info,'collection-created');
+ await expect(page).toHaveURL(new RegExp(`/recommendations/books/${list.id}$`));
+ setBooksDiagnosticStage(info,'list-route-reached');
+ await expect(page.getByText('Yes, Publish',{exact:true})).toHaveCount(0);
+ setBooksDiagnosticStage(info,'no-publish-confirmed');
+ setBooksDiagnosticStage(info,'add-start');
+ await page.getByRole('button',{name:'Add Book',exact:true}).click();
+ setBooksDiagnosticStage(info,'add-returned');
+ await page.getByPlaceholder('Search by title, author, or ISBN...').fill('fixture');
+ setBooksDiagnosticStage(info,'search-filled');
+ setBooksDiagnosticStage(info,'downstream');
  await page.getByRole('button').filter({hasText:'Fixture success'}).click();await page.locator('.ql-editor').fill('Browser rich note 😀');await page.getByRole('button',{name:'Rate 8 out of 10'}).click();
  await page.getByPlaceholder('Name (e.g. Amazon)').fill('Personal link');await page.getByPlaceholder('https://...').fill('https://example.com/book');await page.getByRole('button',{name:'Add link'}).click();
  await page.locator('input[type=file]').setInputFiles({name:'snapshot.png',mimeType:'image/png',buffer:png});

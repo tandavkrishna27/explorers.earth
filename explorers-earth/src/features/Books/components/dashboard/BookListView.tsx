@@ -493,10 +493,10 @@ const BookListView = () => {
     }
   };
 
-  if(error && !list) return <div role="alert">{error.message} <button onClick={() => void refetch()}>Retry</button></div>;
+  if(error && !list) return <div role="alert" data-books-owner-state="error">{error.message} <button onClick={() => void refetch()}>Retry</button></div>;
   if (loading && !list) {
     return (
-      <div className="p-6 space-y-4 max-w-3xl mx-auto">
+      <div className="p-6 space-y-4 max-w-3xl mx-auto" data-books-owner-state="loading">
         <div className="h-6 w-40 bg-white/5 animate-pulse rounded" />
         <div className="h-4 w-24 bg-white/5 animate-pulse rounded" />
         {[1,2,3,4,5].map(i => (
@@ -507,7 +507,7 @@ const BookListView = () => {
   }
 
   return (
-    <div className="px-4 pt-8 pb-24 md:p-6 md:pb-6 max-w-3xl mx-auto">
+    <div className="px-4 pt-8 pb-24 md:p-6 md:pb-6 max-w-3xl mx-auto" data-books-owner-state={!list ? 'missing' : books.length === 0 ? 'ready-empty' : 'ready-nonempty'}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         {/* Left: Back and Title info */}
