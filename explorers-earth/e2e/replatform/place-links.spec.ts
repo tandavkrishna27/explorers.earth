@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 const placeLinksAtomicStates = new WeakMap<object, PlaceLinksAtomicState>();
 const placeLinksAtomicEmitted = new WeakSet<object>();
 const placeLinksAtomicTitle = 'Place links: retained create forms atomically create and link Products and People lists';
-const placeLinksAtomicBoundaries = ['unavailable','setup','iteration-entry','navigation','open-form','fill-name','fill-description','fill-slug','baseline-reads','route-install','fresh-register','fresh-click','fresh-response','stale-register','held-click','delivered','held-checks','stale-advance','stale-release','stale-response','conflict-visible','stale-preservation','retained-fields','stale-retry-register','stale-retry-click','stale-retry-response','replay-prerequisites','lost-release','uncertain-visible','replay-preservation','replay-advance','replay-register','replay-click','replay-click-probe','replay-click-hidden-enabled','replay-click-hidden-disabled','replay-click-visible-disabled','replay-click-visible-self','replay-click-visible-blocked','replay-click-visible-outside','replay-click-visible-unavailable','replay-click-unavailable','replay-click-post','replay-click-receipt','replay-response','accepted-checks','destination','parent-check','reload','saved-checks','relation-check','linked-count','negative-baseline','negative-requests','negative-checks','provider-check'];
+const placeLinksAtomicBoundaries = ['unavailable','setup','iteration-entry','navigation','open-form','fill-name','fill-description','fill-slug','baseline-reads','route-install','fresh-register','fresh-click','fresh-response','stale-register','held-click','delivered','held-checks','stale-advance','stale-release','stale-response','conflict-visible','stale-preservation','retained-fields','stale-retry-register','stale-retry-click','stale-retry-response','replay-prerequisites','lost-release','uncertain-visible','replay-preservation','replay-advance','replay-register','replay-click','replay-click-probe','replay-click-hidden-enabled','replay-click-hidden-disabled','replay-click-visible-disabled','replay-click-visible-self','replay-click-visible-blocked','replay-click-blocked-toast-hovered','replay-click-blocked-toast-unhovered','replay-click-blocked-header','replay-click-visible-outside','replay-click-visible-unavailable','replay-click-unavailable','replay-click-post','replay-click-receipt','replay-response','accepted-checks','destination','parent-check','reload','saved-checks','relation-check','linked-count','negative-baseline','negative-requests','negative-checks','provider-check'];
 type PlaceLinksAtomicBody = {category:string; phase:string; boundary:string; body:string; elapsed:string; remaining:string};
 type PlaceLinksAtomicState = {live:PlaceLinksAtomicBody; firstCaught?:PlaceLinksAtomicBody; cleanup:string; sealed:boolean; origin?:number; lastElapsed?:number; budget?:number; unavailable?:boolean};
 function placeLinksAtomicIdentity(info:TestInfo):boolean {
@@ -430,7 +430,12 @@ if(category==='products' && info.project.name==='place-links-desktop') {
       const left=Math.max(0,rect.left),right=Math.min(innerWidth,rect.right),top=Math.max(0,rect.top),bottom=Math.min(innerHeight,rect.bottom);
       if(right<=left || bottom<=top)return 'replay-click-visible-outside';
       const hit=document.elementFromPoint((left+right)/2,(top+bottom)/2);
-      return hit===null?'replay-click-visible-unavailable':element===hit || element.contains(hit)?'replay-click-visible-self':'replay-click-visible-blocked';
+      if(hit===null)return 'replay-click-visible-unavailable';
+      if(element===hit || element.contains(hit))return 'replay-click-visible-self';
+      const toaster=hit.closest('[data-sonner-toaster]');
+      if(toaster)return toaster.matches(':hover')?'replay-click-blocked-toast-hovered':'replay-click-blocked-toast-unhovered';
+      if(hit.closest('.dashboard-header'))return 'replay-click-blocked-header';
+      return 'replay-click-visible-blocked';
     } catch {return 'replay-click-unavailable';}
   });}catch{}
   setPlaceLinksAtomicBoundary(info,category,phase,readiness);
