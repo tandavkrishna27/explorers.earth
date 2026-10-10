@@ -471,3 +471,17 @@ handling prevents sibling propagation; sibling metadata/security must remain
 unchanged. C# never deletes the lease; Node may unlink only after its owned
 child positively closes and fresh identity/private inspection succeeds.
 These are source/compile receipts, not native ACL adoption or recovery proof.
+
+Native adoption at clean `6a65321e6870007856a9b4896c99a6540a30a0e2`
+exited 1 in approximately 0.815 seconds with the fixed adopt-stage refusal.
+Fresh read-only checks found the adoption lease absent and all three target
+ACLs unchanged: current owner, unprotected, five allow rules. Both original
+containers remained running and healthy. No recovery command followed.
+Read-only production-mask CreateFile checks succeeded and positively closed
+for the parent and both secrets, disproving the proposed sharing conflict.
+The next diagnostic revision adds finite privately owned C# scope/operation
+and numeric API failure metadata, tied to the original child close event.
+Root fresh verification passed 28 contracts; scoped types had zero diagnostics.
+Exact EncodedCommand/first-stdin-line transport compiled without Run, ACL or
+lease operations; original PowerShell close was code 0, signal none. Independent
+review accepted the diagnostic-only revision. No adoption success is claimed.
