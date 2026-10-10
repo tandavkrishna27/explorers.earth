@@ -1,4 +1,5 @@
 import {describe, expect, it} from 'vitest';
+import {updateAccountRequestSchema} from '../../../shared/explorersContract';
 import {guideCollectionDetailsSchema, guideSectionBlocksSchema} from '../../../shared/explorersGuideContract';
 
 // Independent title oracle: do not construct request identity from helper exports.
@@ -25,6 +26,11 @@ const variants = [
 ] as const;
 const support = () => import('../../../scripts/guides-browser-support');
 const clone = <T>(value:T):T => structuredClone(value);
+function defined<T>(value:T|undefined|null):T {
+  expect(value).toBeDefined();expect(value).not.toBeNull();
+  if(value===undefined||value===null)throw new Error('Required fixture value missing');
+  return value;
+}
 const runId='b'.repeat(32), commit='c'.repeat(40);
 const request = (caseId:string=CASES[0], project:string=PROJECTS[0], action='reset', generation=0) => ({
   remote:'127.0.0.1', host:'127.0.0.1:51000', expectedHost:'127.0.0.1:51000',
@@ -85,12 +91,13 @@ describe('private Guides fixture boundary: inventory, finite seed plans and pure
       expect(plan.mediaRoles.some((role:any)=>role.key===binding.roleKey)).toBe(true);
       expect(['timeline.morning','stay.accommodations','activities.activities']).toContain(binding.block);
       expect(Number.isSafeInteger(binding.entryIndex) && binding.entryIndex>=0).toBe(true);
-      const section=plan.sections.find((row:any)=>row.key===binding.sectionKey);
-      const guide=plan.guides.find((row:any)=>row.key===section.guideKey);
-      const role=plan.mediaRoles.find((row:any)=>row.key===binding.roleKey);
+      const section=defined(plan.sections.find((row:any)=>row.key===binding.sectionKey));
+      const guide=defined(plan.guides.find((row:any)=>row.key===section.guideKey));
+      const role=defined(plan.mediaRoles.find((row:any)=>row.key===binding.roleKey));
       expect(guide.owner).toBe(role.owner);
-      const [block,field]=binding.block.split('.');
-      expect(section.blocks[block][field][binding.entryIndex]).toBeDefined();
+      const entries=binding.block==='timeline.morning'?section.blocks.timeline.morning:
+        binding.block==='stay.accommodations'?section.blocks.stay.accommodations:section.blocks.activities.activities;
+      expect(entries[binding.entryIndex]).toBeDefined();
     }
     expect(plan.mediaRoles.map((r:any)=>r.key)).toEqual(expected.roles);
     expect(new Set(plan.mediaRoles.map((r:any)=>r.key)).size).toBe(expected.roles.length);
@@ -110,7 +117,7 @@ describe('private Guides fixture boundary: inventory, finite seed plans and pure
     const s=await support(); const plans=CASES.map(c=>s.buildGuidesSeedPlan(c));
     expect(plans[2].guides.filter((g:any)=>g.owner==='ownerA')).toHaveLength(2);
     expect(plans[3].guides.filter((g:any)=>g.owner==='ownerA').map((g:any)=>g.archived)).toEqual([false,true]);
-    const rich=plans[1]; const details=rich.guides.find((g:any)=>g.owner==='ownerA').details;
+    const rich=plans[1]; const details=defined(rich.guides.find((g:any)=>g.owner==='ownerA')).details;
     expect(JSON.stringify(details)).toMatch(/[^\u0000-\u007f]/);
     expect(details.estimatedBudget).toBe('1234.50'); expect(details.budgetCurrency).toBe('INR');
     const blocks=rich.sections[0].blocks;
@@ -122,9 +129,9 @@ describe('private Guides fixture boundary: inventory, finite seed plans and pure
     expect(ownerA.filter((g:any)=>g.visibility==='private')).toHaveLength(1);
     expect(ownerA.every((g:any)=>!g.archived)).toBe(true);
     expect(eligible.map((g:any)=>g.key)).toEqual(ownerA.slice(0,53).map((g:any)=>g.key));
-    expect(eligible[0].key).toBe(traversal.traversal.selectedGuideKey);
+    expect(eligible[0].key).toBe(defined(traversal.traversal).selectedGuideKey);
     expect(traversal.sections.filter((row:any)=>row.guideKey===eligible[0].key)).toHaveLength(53);
-    const foreign=traversal.guides.find((g:any)=>g.owner==='ownerB');
+    const foreign=defined(traversal.guides.find((g:any)=>g.owner==='ownerB'));
     expect(foreign.title).toBe(eligible[0].title);
     expect(foreign).toMatchObject({visibility:'public',publicationState:'published',archived:false});
     expect(plans[4].traversal).toEqual({guideCount:53,sectionCount:53,selectedGuideKey:plans[4].guides[0].key,
@@ -141,7 +148,7 @@ describe('private Guides fixture boundary: inventory, finite seed plans and pure
     const withdrawalOwn=plans[7].guides.filter((g:any)=>g.owner==='ownerA');
     expect(shared.map((b:any)=>bindingGuide(plans[7],b).key).sort()).toEqual(withdrawalOwn.map((g:any)=>g.key).sort());
     expect(bindingGuide(plans[7],plans[7].photoBindings.find((b:any)=>b.roleKey==='sole-withdrawal')).key).toBe(withdrawalOwn[0].key);
-    const photoSection=plans[6].sections.find((section:any)=>plans[6].guides.find((g:any)=>g.key===section.guideKey).owner==='ownerA');
+    const photoSection=defined(plans[6].sections.find((section:any)=>defined(plans[6].guides.find((g:any)=>g.key===section.guideKey)).owner==='ownerA'));
     expect(plans[6].photoBindings.every((b:any)=>b.sectionKey===photoSection.key)).toBe(true);
   });
   it.each(CASES.flatMap(caseId=>PROJECTS.map(project=>({caseId,project}))))('admits reset and observe for $caseId / $project without mutating trusted state',async({caseId,project})=>{
@@ -598,7 +605,7 @@ function resourceFixture(){
   };
   const accounts=RESOURCE_OWNERS.map((owner,i)=>({id:RESOURCE_ACCOUNTS[i],user_id:personas[owner].userId,
     handle:personas[owner].handle,revision:String([7,13,29][i]),status:'active',public_profile:true,
-    account_type:'Creator',onboarding_status:'complete'}));
+    display_name:'Guides '+owner,account_type:'Creator',onboarding_status:'complete'}));
   tables.set('creator_accounts',accounts);
   tables.set('initial_account_bindings',accounts.map(row=>({user_id:row.user_id,account_id:row.id})));
   tables.set('user_security_state',accounts.map(row=>({user_id:row.user_id,blocked_at:null})));
@@ -889,15 +896,22 @@ function resourceFixture(){
     if(method==='PATCH'){
       expect(headers.get('Origin')).toBe(config.baseURL);
       const body=resourceRecord(JSON.parse(resourceText(init?.body)));
+      const parsed=updateAccountRequestSchema.safeParse(body);
+      if(!parsed.success)return new Response('{}',{status:400});
       expect(body.expectedRevision).toBe(Number(account.revision));expect(body.handle).toBe(personas[owner].handle);
       expect(body.accountType).toBe('Creator');expect(body.onboardingStatus).toBe('complete');
       expect(headers.get('Idempotency-Key')).toMatch(/^[a-f0-9-]{36}$/);
-      account.revision=String(Number(account.revision)+2);
+      const nextAccount={...account};
+      for(const [field,column] of [['displayName','display_name'],['handle','handle'],['accountType','account_type'],['onboardingStatus','onboarding_status']] as const)
+        if(Object.prototype.hasOwnProperty.call(parsed.data,field))nextAccount[column]=parsed.data[field];
+      if(nextAccount.onboarding_status==='complete'&&(nextAccount.display_name==null||nextAccount.handle==null||nextAccount.account_type==null))
+        return new Response('{}',{status:400});
+      Object.assign(account,nextAccount);account.revision=String(Number(account.revision)+2);
     }
     const id=(token?controls.sessionAccount:controls.meAccount)??resourceText(account.id);
     const revision=(token?controls.sessionRevision:controls.meRevision)??Number(account.revision);
     return new Response(JSON.stringify({account:{id,revision,handle:account.handle,status:account.status,
-      publicProfile:account.public_profile,accountType:'Creator',onboardingStatus:'complete'}}),
+      publicProfile:account.public_profile,displayName:account.display_name,accountType:account.account_type,onboardingStatus:account.onboarding_status}}),
       {status:controls.fetchStatus,headers:{'Content-Type':'application/json'}});
   };
   const server=new EventEmitter() as EventEmitter & {
@@ -1765,5 +1779,63 @@ describe('private Guides resource controller orchestration against foreign-inter
       expect(retained.events.some(e=>e.kind==='forbidden-pool-end')).toBe(false);
       expect(retained.events.some(e=>e.kind==='mkdir'&&resourceRecord(resourceRecord(e.data).options??{}).recursive===true)).toBe(false);
     }finally{vi.useRealTimers();}
+  });
+});
+
+
+describe('private Guides resource production review regressions',()=>{
+  it('Guides resource regression: fresh canonical onboarding requires fixture display names',async()=>{
+    const start=await resourceStartExport(),f=resourceFixture();
+    for(const row of f.rowset('creator_accounts'))Object.assign(row,{display_name:null,account_type:null,handle:null,onboarding_status:'incomplete'});
+    const outcome=await start(f.options,f.dependencies).then(handle=>({handle}),()=>({handle:undefined}));
+    const failures:string[]=[];
+    const check=(label:string,assertion:()=>void)=>{try{assertion();}catch{failures.push(label);}};
+    check('startup succeeds',()=>expect(outcome.handle).toBeDefined());
+    for(const owner of RESOURCE_OWNERS){
+      const index=RESOURCE_OWNERS.indexOf(owner),row=f.rowset('creator_accounts')[index];
+      check(owner+' stored name',()=>expect(row.display_name).toBe('Guides '+owner));
+      check(owner+' completed account',()=>expect(row).toMatchObject({handle:f.options.personas[owner].handle,account_type:'Creator',onboarding_status:'complete'}));
+    }
+    const firstMe=f.events.findIndex(e=>e.kind==='fetch'&&resourceRecord(e.data).method==='GET');
+    check('database precedes fresh me',()=>expect(f.events.findIndex(e=>/current_database/.test(e.sql??''))).toBeLessThan(firstMe));
+    const bindingIndex=f.events.findIndex(e=>/initial_account_bindings/.test(e.sql??''));
+    check('fresh me precedes binding',()=>expect(bindingIndex).toBeGreaterThan(firstMe));
+    check('binding precedes canonical patch',()=>expect(f.events.findIndex(e=>e.kind==='fetch'&&resourceRecord(e.data).method==='PATCH')).toBeGreaterThan(bindingIndex));
+    await outcome.handle?.close();
+    expect(failures,'bounded fresh onboarding witnesses').toEqual([]);
+  });
+
+  it('Guides resource regression: complete postcommit allocated media tuples precede publication',async()=>{
+    const start=await resourceStartExport(),failures:string[]=[];
+    const check=(label:string,assertion:()=>void)=>{try{assertion();}catch{failures.push(label);}};
+    for(const variant of ['display-only','asset-status','asset-purpose','asset-deleted','object-deleted'] as const){
+      const f=resourceFixture(),handle=await start(f.options,f.dependencies),gate=resourceDeferred<void>();
+      f.controls.queryGate={match:/^\s*COMMIT/i,gate};
+      const operation=f.dispatch(handle,f.command(handle,'reset',CASES[5]));
+      await resourceUntil(()=>f.events.some(e=>/^\s*COMMIT/i.test(e.sql??'')));
+      const attached=new Set(f.rowset('collection_media').map(row=>row.media_id));
+      const asset=defined(f.rowset('media_assets').find(row=>row.account_id===RESOURCE_ACCOUNTS[0]&&!attached.has(row.id)));
+      const object=defined(f.rowset('media_objects').find(row=>row.media_id===asset.id));
+      // All witnesses remain valid stored rows; the unattached replacement has no registry pair.
+      if(variant==='display-only')object.variant='display';
+      if(variant==='asset-status')asset.status='pending_delete';
+      if(variant==='asset-purpose')asset.purpose='guide';
+      if(variant==='asset-deleted')asset.deleted_at=new Date(RESOURCE_TIME);
+      if(variant==='object-deleted')object.deleted_at=new Date(RESOURCE_TIME);
+      const committedKeys=[...f.files.keys()];
+      gate.resolve();const reply=await operation;
+      check(variant+' terminal failure',()=>resourceError(reply,500,'resource-failure'));
+      check(variant+' no manifest',()=>expect(reply.body).not.toHaveProperty('manifest'));
+      check(variant+' no compensation',()=>expect(f.events.filter(e=>e.kind==='delete')).toEqual([]));
+      check(variant+' bytes retained',()=>{expect(committedKeys).toHaveLength(3);for(const key of committedKeys)expect(f.files.has(key)).toBe(true);expect(f.files.size).toBe(3);});
+      const currentGeneration=reply.status===200?1:0;
+      const observed=await f.dispatch(handle,f.command(handle,'observe',CASES[5],currentGeneration));
+      check(variant+' observe unavailable',()=>resourceError(observed,409,'unavailable'));
+      const offset=f.events.length,retry=await f.dispatch(handle,f.command(handle,'reset',CASES[5],currentGeneration));
+      check(variant+' no retry',()=>resourceError(retry,409,'unavailable'));
+      check(variant+' no retry effects',()=>expect(f.events.slice(offset).filter(resourceMutation)).toEqual([]));
+      await handle.close().catch(()=>undefined);
+    }
+    expect(failures,'all five independent stored tuple witnesses executed').toEqual([]);
   });
 });
