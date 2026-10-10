@@ -246,6 +246,22 @@ the official selected Apps lane is supported; it must run only after acceptance,
 clean committed source closure and a source freeze. It qualifies the eight current
 manual-flow identities, not nightly scraping or complete Wave 2.
 
+## Apps source-closure repair
+
+The official Apps attempt at clean `c262515d` refused before allocation with
+`Unreviewed relative executed dependency`. No receipt directory was created and
+no database or browser lane ran. Source-only tracing identified two missing
+explicit registrations: `apps-browser-fixture.ts` from the profile entry and
+`apps-canonical-admission.ts` through the canonical API composition.
+
+Both now require tracked-file admission and participate in the reviewed import
+closure. The actual snapshot regression failed before the repair; all 13 selected
+Apps registration contracts then passed. Independent review accepted the repair
+and reproduced 13 passes. Tests retain rejection of either untracked file and
+injected dependencies, and prove each reviewed file changes the source hash.
+This is source registration evidence; native qualification still requires a new
+clean committed run.
+
 ## Hosted status boundary
 
 PR119 still points to remote `622f689385058ef9186538a1d8e1f60fd23ab266`.

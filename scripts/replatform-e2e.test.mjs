@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdtempSync,mkdirSync,copyFileSync,rmSync,readdirSync,existsSync} from 'node:fs';
-import {pathToFileURL} from 'node:url';
+import {pathToFileURL,fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {join,basename,dirname,resolve} from 'node:path';
@@ -834,12 +834,19 @@ test('Apps registration: protected package selector workflow and legacy retireme
  assert.throws(()=>parseAt(runnerTemp)([...receiptArgs.slice(0,5),join(defaultTemp,'replatform-e2e-12345678-apps'),...receiptArgs.slice(6)]),/fresh direct temporary/);
  const job=workflow.slice(workflow.indexOf('  apps-native:'));assert.match(job,/inputs\.lane == 'all' \|\| inputs\.lane == 'apps-native'/);assert.match(job,/run: npm run platform:test:e2e -- --milestone delivered-auth-profile-books --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15 --receipt "\$RUNNER_TEMP\/replatform-e2e-\$\{GITHUB_RUN_ID\}-\$\{GITHUB_RUN_ATTEMPT\}-apps" --lane apps/);assert.match(job,/apps\/receipt\.json/);assert.match(job,/apps\/failure\.json/);assert.match(job,/if: always\(\)/);
 });
+test('Apps registration: committed runner imports participate in the actual source closure',()=>{
+ const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+ const snapshot=snapshotSource(root);
+ assert.ok(snapshot.hashes['tunes/scripts/apps-browser-fixture.ts']);
+ assert.ok(snapshot.hashes['tunes/scripts/apps-canonical-admission.ts']);
+});
 test('Apps registration: source closure requires tracked Apps runtime helper and transitive private authority',()=>{
  const source=readFileSync(new URL('./replatform-e2e.mjs',import.meta.url),'utf8');assert.match(source,/const appsHelper='tunes\/scripts\/apps-browser-support\.ts'/);assert.match(source,/git\(\['ls-files','--error-unmatch',appsHelper\]\)/);assert.match(source,/reviewed=new Set\(\[.*appsHelper/);assert.match(source,/queue=\[.*appsHelper/);assert.match(source,/music-local-private-files\.ps1/);assert.doesNotMatch(source,/overlay=new Set\(\[.*apps-browser-support/);
 });test('Apps registration: actual source snapshot refuses untracked helper and ignored relative dependency with no real Git or FS',()=>{
  const appsHelper='tunes/scripts/apps-browser-support.ts';const authority=['music-uat-database','music-fixture-secret','music-vitest-evidence','music-output-redaction','music-qualification-postgres'].map(name=>`tunes/scripts/${name}.ts`).concat(['tunes/scripts/music-local-private-files.ps1','tunes/scripts/windows-write-through.ps1']);
- function execute({helperTracked=true,ignoredImport=false}={}){
-  const tracked=[...authority,'tunes/scripts/places-browser-support.ts','tunes/migrations/001.sql',...(helperTracked?[appsHelper]:[])];const virtualRoot=resolve('synthetic-custody-root');let commands=0;
+ const appsRunner='tunes/scripts/apps-browser-fixture.ts',appsAdmission='tunes/scripts/apps-canonical-admission.ts';
+ function execute({helperTracked=true,runnerTracked=true,admissionTracked=true,ignoredImport=false,mutation=''}={}){
+  const tracked=[...authority,'tunes/scripts/places-browser-support.ts','tunes/migrations/001.sql','tunes/server/auth/canonicalApp.ts',...(helperTracked?[appsHelper]:[]),...(runnerTracked?[appsRunner]:[]),...(admissionTracked?[appsAdmission]:[])];const virtualRoot=resolve('synthetic-custody-root');let commands=0;
   const fakeGit=(exe,args)=>{
    assert.equal(exe,'git');commands++;
    if(args[0]==='rev-parse')return 'a'.repeat(40);
@@ -850,10 +857,18 @@ test('Apps registration: source closure requires tracked Apps runtime helper and
    return tracked.filter(file=>args.slice(1).some(root=>file===root||file.startsWith(root+'/'))).join('\n');
   };
   const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);const digest=value=>createHash('sha256').update(canonical(value)).digest('hex');
-  const fakeRead=(file,encoding)=>{const text=ignoredImport&&file===join(virtualRoot,appsHelper)?"import './apps-ignored.ts';":'';return encoding==='utf8'?text:Buffer.from(text);};
+  const fakeRead=(file,encoding)=>{const relativePath=file.slice(virtualRoot.length+1).replaceAll('\\','/');const imports={
+   'tunes/scripts/profile-browser-fixture.ts':"import './apps-browser-fixture.ts';",
+   [appsRunner]:"import './apps-browser-support.ts';",
+   [appsHelper]:"import '../server/auth/canonicalApp.ts';",
+   'tunes/server/auth/canonicalApp.ts':"import '../../scripts/apps-canonical-admission.ts';"
+  };const text=(imports[relativePath]??'')+(ignoredImport&&relativePath===appsHelper?"\nimport './apps-ignored.ts';":'')+(mutation===relativePath?'\n// changed reviewed source':'');return encoding==='utf8'?text:Buffer.from(text);};
   const evaluate=Function('execFileSync','readFileSync','readdirSync','existsSync','lstatSync','join','dirname','resolve','relative','createHash','MANIFEST','fail','equal','digest',`return (${snapshotSource.toString()})`);
   const actual=evaluate(fakeGit,fakeRead,()=>['001.sql'],()=>true,()=>({isFile:()=>true,isSymbolicLink:()=>false}),join,dirname,resolve,(...args)=>{const from=args[0],to=args[1];return to.slice(from.length+1).replaceAll('\\','/');},createHash,'explorers-earth/e2e/replatform/suite-manifest.json',message=>{throw Error(message);},(a,b)=>canonical(a)===canonical(b),digest);
   return {snapshot:()=>actual(virtualRoot),commands:()=>commands};
  }
  const clean=execute();const result=clean.snapshot();assert.ok(result.hashes[appsHelper]);assert.ok(clean.commands()>0);assert.throws(()=>execute({helperTracked:false}).snapshot(),/not tracked/);assert.throws(()=>execute({ignoredImport:true}).snapshot(),/Unreviewed relative executed dependency/);
+ for(const file of [appsRunner,appsAdmission]){assert.ok(result.hashes[file]);assert.notEqual(execute({mutation:file}).snapshot().provenance.sourceHash,result.provenance.sourceHash);}
+ assert.throws(()=>execute({runnerTracked:false}).snapshot(),/not tracked/);
+ assert.throws(()=>execute({admissionTracked:false}).snapshot(),/not tracked/);
 });
