@@ -198,7 +198,44 @@ public static class Wire {
  static async Task<byte[]> Read(Stream input,int size,bool header){byte[] data=new byte[size];int offset=0;long end=Environment.TickCount64+(header?21900000:5000);while(offset<size){int left=(int)(end-Environment.TickCount64);if(left<=0)throw new NativeFailure("protocol");var pending=input.ReadAsync(data,offset,size-offset);if(await Task.WhenAny(pending,Task.Delay(left))!=pending)throw new NativeFailure("protocol");int n=await pending;if(n==0){if(header&&offset==0)return null;throw new NativeFailure("protocol");}if(offset==0)end=Math.Min(end,Environment.TickCount64+5000);offset+=n;}return data;}
  static int Budget(JsonElement payload,int ceiling){int value=payload.GetProperty("remainingMs").GetInt32();if(value<1||value>ceiling)throw new NativeFailure("protocol");return value;}
  static bool Hex(string value,int count){return value!=null&&value.Length==count&&value.All(c=>c>='0'&&c<='9'||c>='a'&&c<='f');}
- public static string ReplyTailRegression(){
+ static Dictionary<string,string> PrivateEnvironment(JsonElement configuredEnvironment,JsonElement payload,bool worker){
+  int epoch=0;
+  if(worker){
+   JsonElement value=payload.GetProperty("epoch");
+   if(value.ValueKind!=JsonValueKind.Number||!value.TryGetInt32(out epoch)||epoch<1||epoch>16||value.GetRawText()!=epoch.ToString(System.Globalization.CultureInfo.InvariantCulture))throw new NativeFailure("protocol");
+  }
+  string pipe=payload.GetProperty("pipe").GetString(),token=payload.GetProperty("token").GetString();
+  if(!Hex(token,64)||pipe==null||!pipe.StartsWith("\\\\.\\pipe\\explorers-guides-")||pipe.Length>256)throw new NativeFailure("protocol");
+  var environment=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+  foreach(var item in configuredEnvironment.EnumerateObject()){
+   string value=item.Value.GetString();
+   if(item.Name.Length>128||value==null||value.Length>4096||item.Name.Contains("=")||item.Name.Any(c=>c<' ')||value.Contains('\0')||!environment.TryAdd(item.Name,value))throw new NativeFailure("protocol");
+  }
+  foreach(string key in new[]{"GUIDES_PRIVATE_PIPE","GUIDES_PRIVATE_TOKEN","GUIDES_PRIVATE_EPOCH"})if(environment.ContainsKey(key))throw new NativeFailure("protocol");
+  environment.Add("GUIDES_PRIVATE_PIPE",pipe);environment.Add("GUIDES_PRIVATE_TOKEN",token);
+  environment.Add("GUIDES_PRIVATE_EPOCH",epoch.ToString(System.Globalization.CultureInfo.InvariantCulture));
+  return environment;
+ }
+ public static string EpochEnvironmentRegression(){
+  string token=new string('a',64),pipe="\\\\.\\pipe\\explorers-guides-test";
+  using(var empty=JsonDocument.Parse("{}")){
+   Func<object,bool,Dictionary<string,string>> build=(epoch,worker)=>{
+    object payload=worker?(object)new{epoch,pipe,token}:new{pipe,token};
+    using(var document=JsonDocument.Parse(JsonSerializer.Serialize(payload)))return PrivateEnvironment(empty.RootElement,document.RootElement,worker);
+   };
+   string fixture=build(0,false)["GUIDES_PRIVATE_EPOCH"];
+   string[] workers=Enumerable.Range(1,16).Select(epoch=>build(epoch,true)["GUIDES_PRIVATE_EPOCH"]).ToArray();
+   int reservedOverridesRefused=0,invalidEpochsRefused=0;
+   foreach(string key in new[]{"GUIDES_PRIVATE_PIPE","GUIDES_PRIVATE_TOKEN","guides_private_epoch"}){
+    using(var configured=JsonDocument.Parse(JsonSerializer.Serialize(new Dictionary<string,string>{{key,"caller"}})))
+    using(var payload=JsonDocument.Parse(JsonSerializer.Serialize(new{epoch=1,pipe,token})))
+     try{PrivateEnvironment(configured.RootElement,payload.RootElement,true);}catch(NativeFailure){reservedOverridesRefused++;}
+   }
+   foreach(object epoch in new object[]{0,17,-1,"01",1.5})try{build(epoch,true);}catch(NativeFailure){invalidEpochsRefused++;}
+   if(fixture!="0"||reservedOverridesRefused!=3||invalidEpochsRefused!=5)throw new Exception("epoch contract failed");
+   return JsonSerializer.Serialize(new{fixture,workers,reservedOverridesRefused,invalidEpochsRefused,productionConstructors=ProductionNative.ConstructionCount,productionEntries=ProductionNative.EntryCount});
+  }
+ } public static string ReplyTailRegression(){
   var slot=new OrdinarySlot();long owner=slot.Begin();bool overlapRefused=false;
   try{slot.Begin();}catch(NativeFailure){overlapRefused=true;}
   var tail=new TaskCompletionSource<bool>();bool exitAdmitted=false,successorAdmitted=false,tailPending=false;
@@ -243,7 +280,7 @@ public static class Wire {
    if(type=="exit"){Exact(payload,"remainingMs");int exitBudget=Budget(payload,5000);runner.Exit(Environment.TickCount64+exitBudget);Send(id,"exit-ack",new{handlesClosed=true});exiting=true;continue;}
    if(type!="launch-fixture"&&type!="launch-worker"&&type!="terminate-worker"&&type!="finish-job")throw new NativeFailure("protocol");
    long commandOwner=operationSlot.Begin();ordinary=Task.Run(async()=>{await serial.WaitAsync();string replyType=null;object replyPayload=null;try{
-    if(type=="launch-fixture"||type=="launch-worker"){bool worker=type=="launch-worker";Exact(payload,worker?new[]{"epoch","pipe","token"}:new[]{"pipe","token"});string slot=worker?payload.GetProperty("epoch").GetInt32().ToString():"fixture";if(worker&&(int.Parse(slot)<1||int.Parse(slot)>16))throw new NativeFailure("protocol");string pipe=payload.GetProperty("pipe").GetString(),token=payload.GetProperty("token").GetString();if(!Hex(token,64)||pipe==null||!pipe.StartsWith("\\\\.\\pipe\\explorers-guides-")||pipe.Length>256)throw new NativeFailure("protocol");var env=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);foreach(var item in configure.GetProperty("environment").EnumerateObject()){string value=item.Value.GetString();if(item.Name.Length>128||value==null||value.Length>4096||item.Name.Contains("=")||item.Name.Any(c=>c<' ')||value.Contains('\0')||!env.TryAdd(item.Name,value))throw new NativeFailure("protocol");}env.Add("GUIDES_PRIVATE_PIPE",pipe);env.Add("GUIDES_PRIVATE_TOKEN",token);var args=new List<string>{"--import",configure.GetProperty("loaderPath").GetString(),configure.GetProperty(worker?"workerEntrypoint":"fixtureEntrypoint").GetString()};if(!worker)args.AddRange(configure.GetProperty("receiptArguments").EnumerateArray().Select(x=>x.GetString()));runner.Launch(new Launch{Executable=configure.GetProperty("nodeExecutable").GetString(),Arguments=args.ToArray(),Cwd=root,Environment=env,Slot=slot},Environment.TickCount64+10000);replyType="launched";replyPayload=new{slot=worker?(object)int.Parse(slot):slot};}
+    if(type=="launch-fixture"||type=="launch-worker"){bool worker=type=="launch-worker";Exact(payload,worker?new[]{"epoch","pipe","token"}:new[]{"pipe","token"});string slot=worker?payload.GetProperty("epoch").GetInt32().ToString():"fixture";if(worker&&(int.Parse(slot)<1||int.Parse(slot)>16))throw new NativeFailure("protocol");string pipe=payload.GetProperty("pipe").GetString(),token=payload.GetProperty("token").GetString();if(!Hex(token,64)||pipe==null||!pipe.StartsWith("\\\\.\\pipe\\explorers-guides-")||pipe.Length>256)throw new NativeFailure("protocol");var env=PrivateEnvironment(configure.GetProperty("environment"),payload,worker);var args=new List<string>{"--import",configure.GetProperty("loaderPath").GetString(),configure.GetProperty(worker?"workerEntrypoint":"fixtureEntrypoint").GetString()};if(!worker)args.AddRange(configure.GetProperty("receiptArguments").EnumerateArray().Select(x=>x.GetString()));runner.Launch(new Launch{Executable=configure.GetProperty("nodeExecutable").GetString(),Arguments=args.ToArray(),Cwd=root,Environment=env,Slot=slot},Environment.TickCount64+10000);replyType="launched";replyPayload=new{slot=worker?(object)int.Parse(slot):slot};}
     if(type=="terminate-worker"){Exact(payload,"epoch","remainingMs");int epoch=payload.GetProperty("epoch").GetInt32();runner.Retire(epoch,Environment.TickCount64+Budget(payload,10000));replyType="terminated";replyPayload=new{epoch,processSignaled=true};}
     if(type=="finish-job"){Exact(payload,"remainingMs");replyPayload=runner.Finish(Environment.TickCount64+Budget(payload,15000),false);replyType="job-empty";}
    }catch(OperationCanceledException){replyType="cancelled";replyPayload=new{commandId=id};}

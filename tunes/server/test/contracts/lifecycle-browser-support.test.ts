@@ -285,14 +285,14 @@ function guidesScripted(options: Record<string, any> = {}) {
             }
             if(frame.type==='start-worker-result')soon(()=>fixture.emit('observe',{epoch:frame.payload.epoch,identity:identities[frame.payload.epoch-1]}));
             if(frame.type==='observe') {
-                if(options.lostObserve)return; if(options.fatalObserve){p.emit('fatal',{phase:'observe',code:'failed',cleanup:null},frame.id);return;}
+                if(options.lostObserve)return; if(options.fatalCleanup){p.emit('fatal',{phase:'observe',code:'unsettled',cleanup:options.fatalCleanup},frame.id);return;} if(options.fatalObserve){p.emit('fatal',{phase:'observe',code:'failed',cleanup:null},frame.id);return;}
                 if(options.busyRetire) { fixture.emit('retire-worker',{epoch,identity:identities[epoch-1],nativeComplete:true,producersClosed:true,controlIdle:true});return; }
                 p.emit('observed',{epoch,observation:{version:1,action:'observe',runId:GUIDES_TEST_RUN,commit:GUIDES_TEST_COMMIT,...identities[epoch-1],generation:options.badObservation?2:1,personas:{},guides:[],sections:[],media:[],objects:[],attachments:[]}},frame.id);
             }
             if(frame.type==='observe-result')soon(()=>fixture.emit('retire-worker',{epoch:frame.payload.epoch,identity:identities[frame.payload.epoch-1],nativeComplete:true,producersClosed:true,controlIdle:true}));
             if(frame.type==='retired')soon(()=>next(frame.payload.epoch+1));
         });
-        p.hello(options.badRole&&role==='worker'?'fixture':role,epoch,token);connections.push(p);connectionWaiters.shift()?.(connections.shift()!);if(role==='fixture')fixture=p;
+        p.hello(options.badRole&&role==='worker'?'fixture':role,options.badEpoch&&role==='worker'?epoch+1:epoch,token);connections.push(p);connectionWaiters.shift()?.(connections.shift()!);if(role==='fixture')fixture=p;
         return p;
     }
     const launcher=stream(frame=>{
@@ -455,4 +455,28 @@ describe('Guides R1 review regressions', () => {
         const result=definitions(`$n=[GuidesJob.ScriptedNative]::new(); $r=[GuidesJob.JobRunner]::new($n); $null=$r.Launch([GuidesJob.Launch]@{Slot='fixture'},[Environment]::TickCount64+1000); $null=$r.Finish([Environment]::TickCount64+1000,$true); $n.RecordDrainFailure('${stage}'); $n.RecordDrainFailure('${stage === 'protocol' ? 'release' : 'protocol'}'); $failure=$null; try{$r.Exit()}catch{$failure=$_.Exception.InnerException.Stage}; [Console]::Out.WriteLine((@{stage=$failure;empty=$r.Empty;closed=$r.Closed;failed=$r.Failed;constructors=[GuidesJob.ProductionNative]::ConstructionCount;entries=[GuidesJob.ProductionNative]::EntryCount}|ConvertTo-Json -Compress))`);
         expect(result).toEqual({stage,empty:true,closed:false,failed:true,constructors:0,entries:0});
     },30000);
+});
+
+describe('Guides coordinated worker bootstrap ABI', () => {
+    it('refuses a child hello epoch different from the exact parent pending launch',async()=>{
+        const {createGuidesParentSupervisor}=await import('../../../scripts/guides-parent-supervision');const fake=guidesScripted({badEpoch:true}),supervisor=createGuidesParentSupervisor(fake.input,fake.dependencies);
+        await expect(supervisor.run()).rejects.toThrow();await supervisor.dispose();expect(fake.frames.filter(frame=>frame.type==='launch-worker')).toHaveLength(1);expect(fake.frames.some(frame=>frame.type==='start-worker-result')).toBe(false);
+    },1000);
+    it('conveys only parent-derived canonical fixture and worker epochs through the real launcher environment builder', () => {
+        const script=fileURLToPath(new URL('../../../scripts/guides-windows-job.ps1',import.meta.url));
+        const literal=`$ErrorActionPreference='Stop'\n. '${script.replaceAll("'", "''")}' -DefinitionsOnly\n[Console]::Out.WriteLine([GuidesJob.Wire]::EpochEnvironmentRegression())`;
+        const result=JSON.parse(execFileSync('C:/Users/TK/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe',['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(literal,'utf16le').toString('base64')],{encoding:'utf8',shell:false,windowsHide:true,timeout:30000,maxBuffer:1024*1024,stdio:['ignore','pipe','pipe']}).trim());
+        expect(result).toEqual({fixture:'0',workers:Array.from({length:16},(_,i)=>String(i+1)),reservedOverridesRefused:3,invalidEpochsRefused:5,productionConstructors:0,productionEntries:0});
+    },30000);
+    it.each([['listener','drain','authority','custody','storage'],['listener','custody'],['storage'],[]].map(failures=>({failures})))('preserves the actual ordered controller cleanup metadata: %j',async ({failures})=>{
+        const {createGuidesParentSupervisor}=await import('../../../scripts/guides-parent-supervision');
+        const cleanup={code:'GUIDES_CONTROL_CLEANUP_FAILED',unsettled:true,failures};const fake=guidesScripted({fatalCleanup:cleanup}),supervisor=createGuidesParentSupervisor(fake.input,fake.dependencies);
+        let error:any;try{await supervisor.run();}catch(caught){error=caught;}
+        expect(error).toBeDefined();expect(error.cleanup).toEqual(cleanup);expect(Object.isFrozen(error.cleanup)).toBe(true);expect(Object.isFrozen(error.cleanup.failures)).toBe(true);
+        expect((await supervisor.dispose()).disposed).toBe(false);expect(fake.frames.some(frame=>frame.type==='terminate-worker')).toBe(false);expect(fake.frames.filter(frame=>frame.type==='launch-worker')).toHaveLength(1);
+    },1000);
+    it.each([['control'],['storage','listener'],['drain','drain'],['unknown']].map(failures=>({failures})))('refuses malformed helper labels without retaining them as controller metadata: %j',async ({failures})=>{
+        const {createGuidesParentSupervisor}=await import('../../../scripts/guides-parent-supervision');const fake=guidesScripted({fatalCleanup:{code:'GUIDES_CONTROL_CLEANUP_FAILED',unsettled:true,failures}}),supervisor=createGuidesParentSupervisor(fake.input,fake.dependencies);
+        let error:any;try{await supervisor.run();}catch(caught){error=caught;}expect(error).toBeDefined();expect(error.cleanup).toBeUndefined();expect((await supervisor.dispose()).disposed).toBe(false);expect(fake.frames.filter(frame=>frame.type==='launch-worker')).toHaveLength(1);
+    },1000);
 });

@@ -41,7 +41,11 @@ const FIXTURE_BASE64 = {
 type SupervisorEvidence = Readonly<{ completedEpochs: number; activeProcesses: 0; fixtureExitCode: 0; launcherExitCode: 0; handlesClosed: true; databaseOid: number }>;
 type DisposalEvidence = Readonly<{ disposed: boolean; failures: readonly Label[] }>;
 type Frame = { v: 1; seq: number; id: string; type: string; payload: Record<string, unknown> };
-class Failure extends Error { constructor(readonly label: Label) { super(label); } }
+const CONTROLLER_CLEANUP_LABELS = ['listener', 'drain', 'authority', 'custody', 'storage'] as const;
+type ControllerCleanup = Readonly<{ code: 'GUIDES_CONTROL_CLEANUP_FAILED'; unsettled: boolean; failures: readonly typeof CONTROLLER_CLEANUP_LABELS[number][] }>;
+class Failure extends Error {
+ constructor(readonly label: Label, readonly cleanup?: ControllerCleanup) { super(label); }
+}
 function exact(value: unknown, keys: readonly string[]): asserts value is Record<string, unknown> {
  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).sort().join(',') !== [...keys].sort().join(',')) throw new Failure('service-children');
 }
@@ -89,11 +93,20 @@ class Channel {
    if (frame.type === 'fatal') {
     exact(frame.payload, ['phase', 'code', 'cleanup']);
     if (!['bootstrap', 'reset', 'observe', 'execution', 'retirement'].includes(String(frame.payload.phase)) || !['failed', 'timeout', 'protocol', 'unsettled'].includes(String(frame.payload.code))) throw new Failure('control');
+    let cleanup: ControllerCleanup | undefined;
     if (frame.payload.cleanup !== null) {
      exact(frame.payload.cleanup, ['code', 'unsettled', 'failures']);
-     if (frame.payload.cleanup.code !== 'GUIDES_CONTROL_CLEANUP_FAILED' || typeof frame.payload.cleanup.unsettled !== 'boolean' || !Array.isArray(frame.payload.cleanup.failures) || frame.payload.cleanup.failures.some(label => !LABELS.includes(label))) throw new Failure('control');
+     const value = frame.payload.cleanup;
+     if (value.code !== 'GUIDES_CONTROL_CLEANUP_FAILED' || typeof value.unsettled !== 'boolean' || !Array.isArray(value.failures)) throw new Failure('control');
+     let previous = -1;
+     for (const label of value.failures) {
+      const index = CONTROLLER_CLEANUP_LABELS.indexOf(label);
+      if (index <= previous) throw new Failure('control');
+      previous = index;
+     }
+     cleanup = Object.freeze({ code: 'GUIDES_CONTROL_CLEANUP_FAILED', unsettled: value.unsettled, failures: Object.freeze([...value.failures]) });
     }
-    throw new Failure('control');
+    throw new Failure('control', cleanup);
    }
    const reply = this.replies.get(frame.id);
    if (reply) { this.replies.delete(frame.id); if (reply.cancelled && frame.type !== 'cancelled') throw new Failure('service-children'); if (frame.type === 'cancelled') { exact(frame.payload, ['commandId']); if (!reply.cancelled || frame.payload.commandId !== frame.id) throw new Failure('service-children'); reply.reject(new Failure('service-children')); } else if (frame.type !== reply.expected) { reply.reject(new Failure('service-children')); throw new Failure('service-children'); } else reply.resolve(frame); if (frame.type === 'exit-ack') return; continue; }
@@ -279,7 +292,7 @@ export function createGuidesParentSupervisor(input: SupervisorInput, dependencie
     if (command.type === 'complete') { exact(command.payload, ['browserExitCode']); if (command.payload.browserExitCode !== 0 || completed.size !== 16 || worker || active) throw new Failure('browser'); fixture.stop(); const finish = await request('finish-job', { remainingMs: remaining(15000) }, 'job-empty', 15000); jobEmpty(finish, true); exitAttempted = true; const exit = await request('exit', { remainingMs: remaining(5000) }, 'exit-ack', 5000); exact(exit.payload, ['handlesClosed']); if (exit.payload.handlesClosed !== true) throw new Failure('service-children'); handles = true; const actual = await bounded(d.clock, Math.min(laneDeadline, d.clock.now() + 5000), () => launcher!.exited(), 'service-children'); if (actual.code !== 0 || actual.closed !== true) throw new Failure('service-children'); launcherClosed = true; check(); return Object.freeze({ completedEpochs: 16, activeProcesses: 0, fixtureExitCode: 0, launcherExitCode: 0, handlesClosed: true, databaseOid: databaseOid! }); }
     throw new Failure(command.type === 'fatal' ? 'control' : 'service-children');
    }
-  } catch (error) { fail(error instanceof Failure ? error.label : 'service-children'); abort('failure'); throw new Failure(first!); } })(); return runPromise;
+  } catch (error) { fail(error instanceof Failure ? error.label : 'service-children'); abort('failure'); throw new Failure(first!, error instanceof Failure ? error.cleanup : undefined); } })(); return runPromise;
  }
  function dispose(): Promise<DisposalEvidence> {
   if (disposalPromise) return disposalPromise; disposed = true; if (!recoveryDeadline) recoveryDeadline = d.clock.now() + 300000;
