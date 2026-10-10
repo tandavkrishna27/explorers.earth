@@ -130,7 +130,7 @@ const CreateLinkedProductListForm = ({
       if (status === 'uncertain') unresolvedInputs.current.add(signature);
       const locallyInvalid = getGuardedParentCreateFailure(error)?.kind === 'local-rejection' && !unresolvedInputs.current.has(signature);
       const text = locallyInvalid ? 'The list details are invalid. Check your entries before retrying.' : status === 'conflict' ? 'The location command conflicted. Refresh the location and retry.' : status === 'uncertain' || status === 'blocked' ? 'The create outcome is uncertain and needs checking. A retry uses the original command while available.' : 'Failed to create list. Please try again.';
-      setMessage(text); toast.error(text);
+      setMessage(text); if (locallyInvalid || (status !== 'uncertain' && status !== 'blocked')) toast.error(text);
     }
   };
   const cancel = () => { closed.current = true; takeCustody(); commands.cancelLinkedCreate(); onCancel(); };
