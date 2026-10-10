@@ -245,3 +245,11 @@ Diagnostic tests are committed at `83ecbfd6`; observational production source is
 The optional fixed-slot observer reports finite owner/read/view states without changing requests, cancellation, prompt decisions, clicks, assertions or timeouts. Only the exact mobile manual-owner identity can retain one failure-only strict marker. It preserves the original error and contains capture failures. Deadline values remain unavailable because pinned public TestInfo supplies no reliable original start timestamp. A visible enabled button does not prove actionability; imported error families do not prove transport or schema causes.
 
 The prior 73-pass/one-failure run remains failed and unexplained. One fresh canonical protected observation is next; it is not a guessed behavioral repair or a retry waiver. No new browser acceptance, hosted qualification or Wave 2 completion is claimed.
+
+## Protected observation stopped earlier at Books — 2026-10-10
+
+Canonical protected qualification on clean `99db82b8edda2f503d173a3cbcc2864f7d6fe280` stopped at Books: auth 6 and profile 6 passed; Books executed 20 with 19 passed and one desktop timeout, zero skips/retries. Total 31 passed, one failed, 32 executed. The remaining 102 identities, including all Movies and place-links cases, were not reached. Thus this run provides no new observation of the earlier Movies failure.
+
+The failed identity is `owner form create, Add with all fields, publication, repeat edits and archive reload`, books-desktop repeat 0, with safe timeout location `books.spec.ts:54:62` at the Add Book/search boundary. Cause is unproven; a fresh read-only first-failure diagnosis is underway. [Four actual source-bound records](receipts/wave2-99db82b8-aggregate/qualification.json) are retained byte-for-byte after official manifest/lane/failure validation. Previous failed records remain failed.
+
+All actual cleanup fields passed. Root observed no owned database container, zero protected markers and clean unchanged source hash `f88c955534b6b431b4f69c62def37b531b165ee89f232047fc369e57106990d8`, manifest hash `6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039`. The source freeze was released after terminal settlement and cleanup inspection. No full browser acceptance or Wave 2 closure follows.
