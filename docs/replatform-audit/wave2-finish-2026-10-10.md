@@ -398,6 +398,16 @@ Places pins need the proposed per-list semantics and staging limits resolved.
 Nightly Apps scraping still needs approved sources/domains/fields, worker host,
 credential custody, schedule and operating bounds. All remain included in Wave 2.
 
+The new exact two-run recovery module is independently accepted at source level.
+Root fresh verification passed 63 recovery contracts; scoped compiler checks
+reported zero diagnostics. Actual native-adapter regressions reproduced and
+repaired root-path normalization, Windows executable hardlink handling, and
+direct CLI failure termination. Owned secret, helper and lease files retain
+their strict single-link checks. The CLI failure boundary exits its own process
+and retains targets; it grants no descendant-settlement or cleanup evidence.
+Execution still requires fresh live witnesses. No native recovery is claimed by
+these source checks.
+
 ## Current hosted status
 
 PR119 still points to remote `622f689385058ef9186538a1d8e1f60fd23ab266`.
