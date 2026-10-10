@@ -1,3 +1,108 @@
+import {resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
+// BEGIN PLACE LINKS ATOMIC DIAGNOSTIC CONTRACT
+const placeLinksAtomicStates = new WeakMap<object, PlaceLinksAtomicState>();
+const placeLinksAtomicEmitted = new WeakSet<object>();
+const placeLinksAtomicTitle = 'Place links: retained create forms atomically create and link Products and People lists';
+const placeLinksAtomicBoundaries = ['unavailable','setup','iteration-entry','navigation','open-form','fill-name','fill-description','fill-slug','baseline-reads','route-install','fresh-register','fresh-click','fresh-response','stale-register','held-click','delivered','held-checks','stale-advance','stale-release','stale-response','conflict-visible','stale-preservation','retained-fields','stale-retry-register','stale-retry-click','stale-retry-response','replay-prerequisites','lost-release','uncertain-visible','replay-preservation','replay-advance','replay-register','replay-click','replay-response','accepted-checks','destination','parent-check','reload','saved-checks','relation-check','linked-count','negative-baseline','negative-requests','negative-checks','provider-check'];
+type PlaceLinksAtomicBody = {category:string; phase:string; boundary:string; body:string; elapsed:string; remaining:string};
+type PlaceLinksAtomicState = {live:PlaceLinksAtomicBody; firstCaught?:PlaceLinksAtomicBody; cleanup:string; sealed:boolean; origin?:number; lastElapsed?:number; budget?:number; unavailable?:boolean};
+function placeLinksAtomicIdentity(info:TestInfo):boolean {
+  return resolve(info.file)===resolve(fileURLToPath(import.meta.url)) && info.title===placeLinksAtomicTitle
+    && Array.isArray(info.titlePath) && info.titlePath.length===2 && info.titlePath[0]==='place-links.spec.ts' && info.titlePath[1]===placeLinksAtomicTitle
+    && info.project.name==='place-links-desktop' && info.repeatEachIndex===0 && info.retry===0;
+}
+function placeLinksAtomicDisable(info:TestInfo):void {
+  try { placeLinksAtomicEmitted.add(info); } catch {}
+  try { placeLinksAtomicStates.delete(info); } catch {}
+}
+function placeLinksAtomicTake(info:TestInfo):PlaceLinksAtomicState|undefined {
+  const state=placeLinksAtomicStates.get(info);
+  if(!state || placeLinksAtomicEmitted.has(info))return undefined;
+  placeLinksAtomicStates.delete(info);
+  return state;
+}
+function placeLinksAtomicTiming(state:PlaceLinksAtomicState):{elapsed:string;remaining:string} {
+  const now=performance.now(),elapsed=now-state.origin!;
+  if(state.unavailable || !Number.isFinite(now) || !Number.isFinite(elapsed) || elapsed<0 || elapsed<state.lastElapsed!) {
+    state.unavailable=true;
+    return {elapsed:'unavailable',remaining:'unavailable'};
+  }
+  state.lastElapsed=elapsed;
+  const remaining=Math.max(0,state.budget!-elapsed)/1000,seconds=elapsed/1000;
+  return {elapsed:seconds<1?'under-one':seconds<10?'one-to-ten':seconds<30?'ten-to-thirty':seconds<60?'thirty-to-sixty':seconds<90?'sixty-to-ninety':seconds<120?'ninety-to-one-twenty':'one-twenty-plus',
+    remaining:remaining===0?'zero':remaining<1?'under-one':remaining<10?'one-to-ten':remaining<30?'ten-to-thirty':remaining<60?'thirty-to-sixty':'sixty-plus'};
+}
+function placeLinksAtomicCoherent(body:PlaceLinksAtomicBody,cleanup:string):boolean {
+  const outside=['unavailable','setup','provider-check'].includes(body.boundary),negative=['negative-baseline','negative-requests','negative-checks'].includes(body.boundary);
+  if(!placeLinksAtomicBoundaries.includes(body.boundary) || !['products','people','unavailable'].includes(body.category) || !['fresh','stale','lost-ack','unavailable'].includes(body.phase) || !['unknown','completed','caught'].includes(body.body) || !['not-entered','release','listener-off','unroute','completed'].includes(cleanup))return false;
+  if(outside)return body.category==='unavailable' && body.phase==='unavailable' && body.body==='unknown' && cleanup==='not-entered';
+  if(negative)return body.category!=='unavailable' && body.phase==='unavailable' && body.body==='unknown' && cleanup==='not-entered';
+  if(body.category==='unavailable' || body.phase==='unavailable')return false;
+  if(body.boundary==='iteration-entry' && (body.body!=='unknown' || cleanup!=='not-entered'))return false;
+  if(body.body!=='unknown' && placeLinksAtomicBoundaries.indexOf(body.boundary)<10)return false;
+  return true;
+}
+function beginPlaceLinksAtomicDiagnostic(info:TestInfo):void {
+  try {
+    if(placeLinksAtomicStates.get(info) || placeLinksAtomicEmitted.has(info) || !placeLinksAtomicIdentity(info))return;
+    const budget=info.timeout,origin=performance.now();
+    const unavailable=!Number.isFinite(budget) || budget<=0 || !Number.isFinite(origin) || origin<0;
+    const state:PlaceLinksAtomicState={live:{category:'unavailable',phase:'unavailable',boundary:'unavailable',body:'unknown',elapsed:'unavailable',remaining:'unavailable'},cleanup:'not-entered',sealed:false,origin,lastElapsed:0,budget,unavailable};
+    placeLinksAtomicStates.set(info,state);
+  } catch { placeLinksAtomicDisable(info); }
+}
+function setPlaceLinksAtomicBoundary(info:TestInfo,category:string,phase:string,boundary:string):void {
+  try {
+    const state=placeLinksAtomicTake(info);if(!state)return;
+    if(state.sealed){placeLinksAtomicStates.set(info,state);return;}
+    const reset=['unavailable','setup','iteration-entry','negative-baseline','negative-requests','negative-checks','provider-check'].includes(boundary);
+    const cleanup=reset?'not-entered':state.cleanup;
+    const live={category,phase,boundary,body:'unknown',...placeLinksAtomicTiming(state)};
+    if(!placeLinksAtomicCoherent(live,cleanup)){placeLinksAtomicDisable(info);return;}
+    placeLinksAtomicStates.set(info,{...state,live,cleanup});
+  } catch { placeLinksAtomicDisable(info); }
+}
+function recordPlaceLinksAtomicBody(info:TestInfo,outcome:string):void {
+  try {
+    const state=placeLinksAtomicTake(info);if(!state)return;
+    if(state.sealed){placeLinksAtomicStates.set(info,state);return;}
+    const live={...state.live,body:outcome,...placeLinksAtomicTiming(state)};
+    if(!['completed','caught'].includes(outcome) || !placeLinksAtomicCoherent(live,state.cleanup)){placeLinksAtomicDisable(info);return;}
+    placeLinksAtomicStates.set(info,{...state,live,firstCaught:state.firstCaught ?? (outcome==='caught'?live:undefined)});
+  } catch { placeLinksAtomicDisable(info); }
+}
+function setPlaceLinksAtomicCleanup(info:TestInfo,cleanup:string):void {
+  try {
+    const state=placeLinksAtomicTake(info);if(!state)return;
+    if(state.sealed){placeLinksAtomicStates.set(info,state);return;}
+    if(!placeLinksAtomicCoherent(state.live,cleanup)){placeLinksAtomicDisable(info);return;}
+    placeLinksAtomicStates.set(info,{...state,cleanup});
+  } catch { placeLinksAtomicDisable(info); }
+}
+function finalizePlaceLinksAtomicDiagnostic(info:TestInfo):void {
+  try {
+    const state=placeLinksAtomicTake(info);if(!state)return;
+    const live=state.firstCaught ?? state.live;
+    if(!placeLinksAtomicCoherent(live,state.cleanup) || live.body==='completed' && state.cleanup==='not-entered'){placeLinksAtomicDisable(info);return;}
+    placeLinksAtomicStates.set(info,{live,cleanup:state.cleanup,sealed:true});
+  } catch { placeLinksAtomicDisable(info); }
+}
+function capturePlaceLinksAtomicDiagnostic(info:TestInfo):void {
+  try {
+    const state=placeLinksAtomicStates.get(info);
+    if(!state || !state.sealed || placeLinksAtomicEmitted.has(info))return;
+    placeLinksAtomicStates.delete(info);
+    placeLinksAtomicEmitted.add(info);
+    if(!placeLinksAtomicIdentity(info) || !['failed','timedOut','interrupted'].includes(info.status!))return;
+    const errors=info.errors;
+    if(!Array.isArray(errors))return;
+    const body=state.live;
+    errors.push({message:'[place-links-atomic-diagnostic-v1:'+ [body.category,body.phase,body.boundary,body.body,state.cleanup,body.elapsed,body.remaining].join('|')+']'});
+  } catch { placeLinksAtomicDisable(info); }
+}
+
+// END PLACE LINKS ATOMIC DIAGNOSTIC CONTRACT
 import {readFileSync} from 'node:fs';
 import {createHash, randomUUID} from 'node:crypto';
 import {test, expect, type Browser, type Page, type TestInfo} from '@playwright/test';
@@ -196,7 +301,10 @@ test('Place links: existing Products and People lists attach detach and survive 
 });
 
 test('Place links: retained create forms atomically create and link Products and People lists',async ({page},info)=>{
-  const transport=await appPage(page,manifest.personas.ownerA);const parent=aLists()[0];
+beginPlaceLinksAtomicDiagnostic(info);try {
+
+  setPlaceLinksAtomicBoundary(info,'unavailable','unavailable','setup');
+const transport=await appPage(page,manifest.personas.ownerA);const parent=aLists()[0];
   const errorBody=(value:Dto,code:string)=>{
     same(Object.keys(value),['error']);same(Object.keys(value.error).sort(),['code','message','requestId']);
     expect(value.error.code).toBe(code);expect(typeof value.error.message).toBe('string');
@@ -207,15 +315,22 @@ test('Place links: retained create forms atomically create and link Products and
   for(const category of ['products','people'] as const) {
     const product=category==='products';
     for(const phase of ['fresh','stale','lost-ack'] as const) {
-      const title=`Created Linked ${product?'Products':'People'} ${phase}`,slug=`created-linked-${category}-${phase}`,description='Created through retained form';
-      await page.goto(`/recommendations/places/${parent.id}/add-${category}`);
-      await page.getByRole('button',{name:product?/^Create a New Product List/:/^Create a New People List/}).click();
+      setPlaceLinksAtomicBoundary(info,category,phase,'iteration-entry');
+const title=`Created Linked ${product?'Products':'People'} ${phase}`,slug=`created-linked-${category}-${phase}`,description='Created through retained form';
+      setPlaceLinksAtomicBoundary(info,category,phase,'navigation');
+await page.goto(`/recommendations/places/${parent.id}/add-${category}`);
+      setPlaceLinksAtomicBoundary(info,category,phase,'open-form');
+await page.getByRole('button',{name:product?/^Create a New Product List/:/^Create a New People List/}).click();
       const form=page.getByRole('heading',{name:product?'Create New Product List':'Create New People List',exact:true}).locator('../..').locator('form');
       const nameField=form.getByPlaceholder(product?'e.g. Paris Essentials, Travel Gear':'e.g. Local Creators, Inspiring Founders');
       const descriptionField=form.getByPlaceholder(product?"Describe what's in this product collection":'Describe the people in this collection');
-      await nameField.fill(title);await descriptionField.fill(description);await form.getByPlaceholder('my-list-url').fill(slug);
+      setPlaceLinksAtomicBoundary(info,category,phase,'fill-name');
+await nameField.fill(title);setPlaceLinksAtomicBoundary(info,category,phase,'fill-description');
+await descriptionField.fill(description);setPlaceLinksAtomicBoundary(info,category,phase,'fill-slug');
+await form.getByPlaceholder('my-list-url').fill(slug);
       const submit=form.getByRole('button',{name:product?'Create & Add Products':'Create & Add People',exact:true});
-      const before=await editable('collections',parent.id),content=await complete(category),observation=await control('observe',info);
+      setPlaceLinksAtomicBoundary(info,category,phase,'baseline-reads');
+const before=await editable('collections',parent.id),content=await complete(category),observation=await control('observe',info);
       let release!:()=>void,held!:()=>void,originalBody='',originalKey='',receipt:Dto|undefined,committedParent:Dto|undefined;
       const delivered=new Promise<void>(resolve=>held=resolve),gate=new Promise<void>(resolve=>release=resolve);
       let parentReads=0;const read=(request:import('@playwright/test').Request)=>{
@@ -232,69 +347,113 @@ test('Place links: retained create forms atomically create and link Products and
           committedParent=await editable('collections',parent.id);held();await gate;await route.abort('failed');
         } else {held();await gate;await route.continue();}
       };
-      if(phase!=='fresh')await page.route(routePath,handler);
+      setPlaceLinksAtomicBoundary(info,category,phase,'route-install');
+if(phase!=='fresh')await page.route(routePath,handler);
       let accepted:import('@playwright/test').Response;
       try {
         if(phase==='fresh') {
-          const created=createResponse();await submit.click();accepted=await created;
+          setPlaceLinksAtomicBoundary(info,category,phase,'fresh-register');
+const created=createResponse();setPlaceLinksAtomicBoundary(info,category,phase,'fresh-click');
+await submit.click();setPlaceLinksAtomicBoundary(info,category,phase,'fresh-response');
+accepted=await created;
         } else {
-          const refused=phase==='stale'?createResponse():undefined;
-          await submit.click();await delivered;
-          const initial=JSON.parse(originalBody);expect(initial.parentExpectedRevision).toBe(before.revision);
+          setPlaceLinksAtomicBoundary(info,category,phase,'stale-register');
+const refused=phase==='stale'?createResponse():undefined;
+          setPlaceLinksAtomicBoundary(info,category,phase,'held-click');
+await submit.click();setPlaceLinksAtomicBoundary(info,category,phase,'delivered');
+await delivered;
+          setPlaceLinksAtomicBoundary(info,category,phase,'held-checks');
+const initial=JSON.parse(originalBody);expect(initial.parentExpectedRevision).toBe(before.revision);
           same([initial.category,initial.title,initial.slug,initial.description,initial.parentLocationCollectionId],[category,title,slug,description,parent.id]);
           const readsBefore=parentReads;expect(readsBefore).toBe(1);
           if(phase==='stale') {
-            const advanced=await patchCollection(parent.id,{description:`Concurrent ${category} stale revision`});expect(advanced.revision).toBe(before.revision+1);
-            release();const conflict=await refused!;expect(conflict.status()).toBe(409);errorBody(await conflict.json(),'CONFLICT');
+            setPlaceLinksAtomicBoundary(info,category,phase,'stale-advance');
+const advanced=await patchCollection(parent.id,{description:`Concurrent ${category} stale revision`});expect(advanced.revision).toBe(before.revision+1);
+            setPlaceLinksAtomicBoundary(info,category,phase,'stale-release');
+release();setPlaceLinksAtomicBoundary(info,category,phase,'stale-response');
+const conflict=await refused!;expect(conflict.status()).toBe(409);errorBody(await conflict.json(),'CONFLICT');
             expect(conflict.request().postData()).toBe(originalBody);expect(conflict.request().headers()['idempotency-key']).toBe(originalKey);
-            await expect(form.getByRole('button',{name:'Refresh location and retry',exact:true})).toBeVisible();
-            same(await complete(category),content);same((await control('observe',info)).relations,observation.relations);
+            setPlaceLinksAtomicBoundary(info,category,phase,'conflict-visible');
+await expect(form.getByRole('button',{name:'Refresh location and retry',exact:true})).toBeVisible();
+            setPlaceLinksAtomicBoundary(info,category,phase,'stale-preservation');
+same(await complete(category),content);same((await control('observe',info)).relations,observation.relations);
             same((await control('observe',info)).collections.filter((row:Dto)=>row.id!==parent.id),observation.collections.filter((row:Dto)=>row.id!==parent.id));
             same(await editable('collections',parent.id),advanced);
-            await expect(nameField).toHaveValue(title);await expect(descriptionField).toHaveValue(description);await expect(form.getByPlaceholder('my-list-url')).toHaveValue(slug);
+            setPlaceLinksAtomicBoundary(info,category,phase,'retained-fields');
+await expect(nameField).toHaveValue(title);await expect(descriptionField).toHaveValue(description);await expect(form.getByPlaceholder('my-list-url')).toHaveValue(slug);
             expect(new URL(page.url()).pathname).toBe(`/recommendations/places/${parent.id}/add-${category}`);expect(parentReads).toBe(readsBefore);
-            const created=createResponse();await form.getByRole('button',{name:'Refresh location and retry',exact:true}).click();accepted=await created;
-            expect(accepted.request().headers()['idempotency-key']).not.toBe(originalKey);expect(accepted.request().postDataJSON().parentExpectedRevision).toBe(advanced.revision);expect(parentReads).toBe(readsBefore+1);
+            setPlaceLinksAtomicBoundary(info,category,phase,'stale-retry-register');
+const created=createResponse();setPlaceLinksAtomicBoundary(info,category,phase,'stale-retry-click');
+await form.getByRole('button',{name:'Refresh location and retry',exact:true}).click();setPlaceLinksAtomicBoundary(info,category,phase,'stale-retry-response');
+accepted=await created;
+            setPlaceLinksAtomicBoundary(info,category,phase,'accepted-checks');
+expect(accepted.request().headers()['idempotency-key']).not.toBe(originalKey);expect(accepted.request().postDataJSON().parentExpectedRevision).toBe(advanced.revision);expect(parentReads).toBe(readsBefore+1);
           } else {
-            expect(receipt!.collection.parentLocation).toEqual({id:parent.id,revision:before.revision+1});expect(committedParent!.revision).toBe(before.revision+1);
+            setPlaceLinksAtomicBoundary(info,category,phase,'replay-prerequisites');
+expect(receipt!.collection.parentLocation).toEqual({id:parent.id,revision:before.revision+1});expect(committedParent!.revision).toBe(before.revision+1);
             await assertRelation(parent.id,receipt!.collection.id,true);
-            release();await expect(form.getByRole('status')).toContainText('The create outcome is uncertain');
-            await expect(nameField).toHaveValue(title);await expect(descriptionField).toHaveValue(description);await expect(form.getByPlaceholder('my-list-url')).toHaveValue(slug);
+            setPlaceLinksAtomicBoundary(info,category,phase,'lost-release');
+release();setPlaceLinksAtomicBoundary(info,category,phase,'uncertain-visible');
+await expect(form.getByRole('status')).toContainText('The create outcome is uncertain');
+            setPlaceLinksAtomicBoundary(info,category,phase,'retained-fields');
+await expect(nameField).toHaveValue(title);await expect(descriptionField).toHaveValue(description);await expect(form.getByPlaceholder('my-list-url')).toHaveValue(slug);
             await expect(form.getByRole('button',{name:'Refresh location and retry',exact:true})).toHaveCount(0);
             expect(new URL(page.url()).pathname).toBe(`/recommendations/places/${parent.id}/add-${category}`);
-            const committedContent=await complete(category),committedObserve=await control('observe',info);
+            setPlaceLinksAtomicBoundary(info,category,phase,'replay-preservation');
+const committedContent=await complete(category),committedObserve=await control('observe',info);
             expect(committedContent.collections.length).toBe(content.collections.length+1);
             expect(committedContent.collections.filter(row=>row.id===receipt!.collection.id)).toHaveLength(1);
             same(committedContent.recommendations,content.recommendations);same(committedContent.memberships,content.memberships);
-            const later=await patchCollection(parent.id,{description:`Later ${category} receipt control`});expect(later.revision).toBe(before.revision+2);
-            const replay=createResponse();await submit.click();accepted=await replay;
-            expect(accepted.request().postData()).toBe(originalBody);expect(accepted.request().headers()['idempotency-key']).toBe(originalKey);
-            same(await accepted.json(),receipt);same(await complete(category),committedContent);same((await control('observe',info)).relations,committedObserve.relations);
+            setPlaceLinksAtomicBoundary(info,category,phase,'replay-advance');
+const later=await patchCollection(parent.id,{description:`Later ${category} receipt control`});expect(later.revision).toBe(before.revision+2);
+            setPlaceLinksAtomicBoundary(info,category,phase,'replay-register');
+const replay=createResponse();setPlaceLinksAtomicBoundary(info,category,phase,'replay-click');
+await submit.click();setPlaceLinksAtomicBoundary(info,category,phase,'replay-response');
+accepted=await replay;
+            setPlaceLinksAtomicBoundary(info,category,phase,'accepted-checks');
+expect(accepted.request().postData()).toBe(originalBody);expect(accepted.request().headers()['idempotency-key']).toBe(originalKey);
+            setPlaceLinksAtomicBoundary(info,category,phase,'replay-preservation');
+same(await accepted.json(),receipt);same(await complete(category),committedContent);same((await control('observe',info)).relations,committedObserve.relations);
             same((await control('observe',info)).collections.filter((row:Dto)=>row.id!==parent.id),committedObserve.collections.filter((row:Dto)=>row.id!==parent.id));
             same(await editable('collections',parent.id),later);expect(parentReads).toBe(readsBefore);
           }
         }
-        expect(accepted.status()).toBe(201);const body=accepted.request().postDataJSON(),result=await accepted.json();
+        setPlaceLinksAtomicBoundary(info,category,phase,'accepted-checks');
+expect(accepted.status()).toBe(201);const body=accepted.request().postDataJSON(),result=await accepted.json();
         same([body.category,body.title,body.slug,body.description,body.parentLocationCollectionId],[category,title,slug,description,parent.id]);
         expect(Number.isSafeInteger(body.parentExpectedRevision)).toBe(true);
         expect(body.parentExpectedRevision).toBe(phase==='stale'?before.revision+1:before.revision);
         same(result.collection.parentLocation,{id:parent.id,revision:body.parentExpectedRevision+1});
         const id=result.collection.id;
-        await expect(page).toHaveURL(url=>url.origin===fixture.origin && url.pathname===`/recommendations/${category}/${id}/add` && JSON.stringify([...url.searchParams.keys()])===JSON.stringify(['redirectBack']) && JSON.stringify(url.searchParams.getAll('redirectBack'))===JSON.stringify(['/recommendations']) && url.hash==='');
-        expect((await editable('collections',parent.id)).revision).toBe(body.parentExpectedRevision+(phase==='lost-ack'?2:1));
-        await page.reload();const saved=await editable('collections',id);same([saved.title,saved.slug,saved.description],[title,slug,description]);await assertRelation(parent.id,id,true);
-        expect((await editable('collections',parent.id)).linkedChildren.filter((link:Dto)=>link.childCollectionId===id && link.locationCollectionId===parent.id)).toHaveLength(1);
-      } finally {release?.();page.off('request',read);if(phase!=='fresh')await page.unroute(routePath,handler);}
+        setPlaceLinksAtomicBoundary(info,category,phase,'destination');
+await expect(page).toHaveURL(url=>url.origin===fixture.origin && url.pathname===`/recommendations/${category}/${id}/add` && JSON.stringify([...url.searchParams.keys()])===JSON.stringify(['redirectBack']) && JSON.stringify(url.searchParams.getAll('redirectBack'))===JSON.stringify(['/recommendations']) && url.hash==='');
+        setPlaceLinksAtomicBoundary(info,category,phase,'parent-check');
+expect((await editable('collections',parent.id)).revision).toBe(body.parentExpectedRevision+(phase==='lost-ack'?2:1));
+        setPlaceLinksAtomicBoundary(info,category,phase,'reload');
+await page.reload();setPlaceLinksAtomicBoundary(info,category,phase,'saved-checks');
+const saved=await editable('collections',id);same([saved.title,saved.slug,saved.description],[title,slug,description]);setPlaceLinksAtomicBoundary(info,category,phase,'relation-check');
+await assertRelation(parent.id,id,true);
+        setPlaceLinksAtomicBoundary(info,category,phase,'linked-count');
+expect((await editable('collections',parent.id)).linkedChildren.filter((link:Dto)=>link.childCollectionId===id && link.locationCollectionId===parent.id)).toHaveLength(1);
+      recordPlaceLinksAtomicBody(info,'completed');
+} catch(nativeError){recordPlaceLinksAtomicBody(info,'caught');throw nativeError;} finally {setPlaceLinksAtomicCleanup(info,'release');release?.();setPlaceLinksAtomicCleanup(info,'listener-off');page.off('request',read);if(phase!=='fresh'){setPlaceLinksAtomicCleanup(info,'unroute');await page.unroute(routePath,handler);}setPlaceLinksAtomicCleanup(info,'completed');
+}
     }
-    const b=manifest.personas.ownerB,before=(await complete(category,b)).collections.map(c=>c.id),currentParent=await editable('collections',parent.id),beforeNegative=await control('observe',info);
+    setPlaceLinksAtomicBoundary(info,category,'unavailable','negative-baseline');
+const b=manifest.personas.ownerB,before=(await complete(category,b)).collections.map(c=>c.id),currentParent=await editable('collections',parent.id),beforeNegative=await control('observe',info);
     const invalid={category,title:'Foreign parent create',slug:`foreign-parent-${category}`,description:null,visibility:'private',publicationState:'draft',parentLocationCollectionId:parent.id,parentExpectedRevision:currentParent.revision};
-    const foreign=await api('/collections',b,'POST',invalid),missing=await api('/collections',b,'POST',{...invalid,parentLocationCollectionId:randomUUID()});
-    expect(foreign.status).toBe(404);expect(missing.status).toBe(404);same(errorBody(await foreign.json(),'NOT_FOUND'),errorBody(await missing.json(),'NOT_FOUND'));
+    setPlaceLinksAtomicBoundary(info,category,'unavailable','negative-requests');
+const foreign=await api('/collections',b,'POST',invalid),missing=await api('/collections',b,'POST',{...invalid,parentLocationCollectionId:randomUUID()});
+    setPlaceLinksAtomicBoundary(info,category,'unavailable','negative-checks');
+expect(foreign.status).toBe(404);expect(missing.status).toBe(404);same(errorBody(await foreign.json(),'NOT_FOUND'),errorBody(await missing.json(),'NOT_FOUND'));
     same((await complete(category,b)).collections.map(c=>c.id),before);
     same((await control('observe',info)).collections,beforeNegative.collections);same((await control('observe',info)).relations,beforeNegative.relations);
     same(await editable('collections',parent.id),currentParent);
   }
-  transport.assertExpected();expect(transport.observations.length).toBe(0);
+  setPlaceLinksAtomicBoundary(info,'unavailable','unavailable','provider-check');
+transport.assertExpected();expect(transport.observations.length).toBe(0);
+
+} finally {finalizePlaceLinksAtomicDiagnostic(info);}
 });
 
 test('Place links: public children obey parent child category and account visibility',async ({page,browser},info)=>{
@@ -411,3 +570,5 @@ test('Place links: stale and foreign link commands preserve both lists',async ({
   same(membershipValues((await complete('products')).memberships),membershipValues(content.memberships));same((await complete('products')).recommendations,content.recommendations);
   transport.assertExpected();expect(transport.observations.length).toBe(0);
 });
+
+test.afterEach(({},info)=>{capturePlaceLinksAtomicDiagnostic(info);});
