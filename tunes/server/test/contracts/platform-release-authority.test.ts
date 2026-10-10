@@ -125,7 +125,7 @@ it('Candidate CI preflight: strict selectors context and dependencies precede tr
     expect(shapes.getters()).toBe(0); expect(f.calls).toHaveLength(0);
   }
   for (const value of ['', ' ', 'x y', 'x\n', '\tx']) { const f = fixture(); await rejects(observe(f, selectors(), context(), value), 'AUTHENTICATION_UNAVAILABLE'); expect(f.calls).toHaveLength(0); }
-  for (const delta of [{ token: 1 }, { transport: null }]) { const f = fixture(); await rejects(fn(selectors(), context(), { token, transport: f.transport, ...delta } as { token: string; transport: typeof fetch }), 'DEPENDENCIES_INVALID'); expect(f.calls).toHaveLength(0); }
+  for (const delta of [{ token: 1 }, { transport: null }]) { const f = fixture(); await rejects(fn(selectors(), context(), { token, transport: f.transport, ...delta } as unknown as { token: string; transport: typeof fetch }), 'DEPENDENCIES_INVALID'); expect(f.calls).toHaveLength(0); }
   await rejects(fn(null, null, null as unknown as { token: string; transport: typeof fetch }), 'SELECTOR_INVALID');
   await rejects(fn(selectors(), null, null as unknown as { token: string; transport: typeof fetch }), 'CONTEXT_INVALID');
   expect(await observe(fixture(), Object.assign(Object.create(null), selectors()), Object.assign(Object.create(null), context()), 'x')).toEqual(expectedObservation());
@@ -176,18 +176,18 @@ it('Candidate CI preflight: repository workflow and push source binding reject d
     if (typeof schema.value[key] === 'number') for (const id of [0, -1, 1.5, 9007199254740992, '101'])
       await rejects(observe(fixture((url, value) => url.href === schema.endpoint ? { ...value, [key]: id } : value)), 'API_RESPONSE_INVALID');
   }
-  for (const delta of [{ id: 1 }, { full_name: 'attacker/fork' }]) {
+  for (const delta of [{ id: 1 }, { full_name: 'attacker/fork' }] as Row[]) {
     await rejects(observe(fixture((url, value) => url.href === base ? { ...value, ...delta } : value)), 'REPOSITORY_IDENTITY_MISMATCH');
     for (const key of ['repository', 'head_repository']) {
       await rejects(observe(fixture((url, value) => url.pathname.endsWith('/runs/101') ? { ...value, [key]: { ...repository(), ...delta } } : value)), 'REPOSITORY_IDENTITY_MISMATCH');
-      for (const invalid of [null, {}, { ...repository(), id: '1171328761' }, { ...repository(), full_name: 1 }])
+      for (const invalid of [null, {}, { ...repository(), id: '1171328761' }, { ...repository(), full_name: 1 }] as Json[])
         await rejects(observe(fixture((url, value) => url.pathname.endsWith('/runs/101') ? { ...value, [key]: invalid } : value)), 'API_RESPONSE_INVALID');
     }
   }
-  for (const delta of [{ id: 1 }, { path: '.github/workflows/wrong.yml' }, { state: 'disabled_manually' }])
+  for (const delta of [{ id: 1 }, { path: '.github/workflows/wrong.yml' }, { state: 'disabled_manually' }] as Row[])
     await rejects(observe(fixture((url, value) => url.pathname.includes('/workflows/') ? { ...value, ...delta } : value)), 'WORKFLOW_IDENTITY_MISMATCH');
   for (const delta of [{ id: 999 }, { workflow_id: 1 }, { path: '.github/workflows/wrong.yml' }, { head_sha: 'b'.repeat(40) },
-    { head_branch: 'main' }, ...['workflow_dispatch', 'pull_request', 'schedule', 'nightly'].map(event => ({ event }))])
+    { head_branch: 'main' }, ...['workflow_dispatch', 'pull_request', 'schedule', 'nightly'].map(event => ({ event }))] as Row[])
     await rejects(observe(fixture((url, value) => url.pathname.endsWith('/runs/101') ? { ...value, ...delta } : value)), 'RUN_BINDING_MISMATCH');
   for (const delta of [...['queued', 'in_progress', 'pending'].map(status => ({ status })),
     ...['failure', 'skipped', 'cancelled', 'neutral', 'timed_out', null].map(conclusion => ({ conclusion }))])
@@ -266,12 +266,12 @@ it('Candidate CI preflight: final run reobservation rejects changed authority', 
   moduleReady();
   for (const index of [0, 1]) for (const delta of [{ id: 999 }, { workflow_id: 1 }, { path: 'different' }, { head_sha: 'b'.repeat(40) },
     { head_branch: 'main' }, { event: 'workflow_dispatch' }, { status: 'in_progress' }, { conclusion: 'failure' }, { conclusion: null }, { run_attempt: 3 },
-    ...['repository', 'head_repository'].flatMap(key => [{ [key]: { ...repository(), id: 1 } }, { [key]: { ...repository(), full_name: 'attacker/fork' } }])]) {
+    ...['repository', 'head_repository'].flatMap(key => [{ [key]: { ...repository(), id: 1 } }, { [key]: { ...repository(), full_name: 'attacker/fork' } }])] as Row[]) {
     const f = fixture((url, value, occurrence) => url.pathname.endsWith('/runs/' + (101 + index)) && occurrence === 1 ? { ...value, ...delta } : value);
     await rejects(observe(f), 'RUN_CHANGED');
     expect(f.calls.map(call => call.url)).toEqual(paths().slice(0, index === 0 ? 5 : 9));
   }
-  for (const invalid of [{ run_attempt: null }, { repository: {} }, { conclusion: 1 }])
+  for (const invalid of [{ run_attempt: null }, { repository: {} }, { conclusion: 1 }] as Row[])
     await rejects(observe(fixture((url, value, occurrence) => url.pathname.endsWith('/runs/101') && occurrence === 1 ? { ...value, ...invalid } : value)), 'API_RESPONSE_INVALID');
   expect(await observe(fixture((_url, value, occurrence) => ({ ...value, updated_at: occurrence ? 'later' : 'earlier' })))).toEqual(expectedObservation());
   const blocked = fixture((url, value) => url.pathname.endsWith('/jobs') ? { total_count: 0, jobs: [] } : value);
@@ -361,7 +361,7 @@ it('Candidate CI preflight: bounded transport bodies deadlines and cleanup sanit
     const serialAssertion = observe(serial).then(output => expect(output).toEqual(expectedObservation()));
     await vi.advanceTimersByTimeAsync(81000); await serialAssertion;
     expect(serial.maxActive()).toBe(1); expect(serial.calls).toHaveLength(9);
-    expect(removals.every(spy => spy.mock.calls.some(call => call[0] === 'abort'))).toBe(true);
+    expect(removals.every(spy => spy.mock.calls.some((call: unknown[]) => call[0] === 'abort'))).toBe(true);
   } finally { for (const spy of removals) spy.mockRestore(); timeout.mockRestore(); vi.useRealTimers(); }
 });
 
