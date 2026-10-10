@@ -14,6 +14,7 @@ const RUNS=Object.freeze([
  Object.freeze({runId:'b1b0579261e7d0ffd2c3410bc77b5d5d',commit:'420e13c6895d0ae70d4c997b7244167db0079bce',containerId:'06f3d43b95e1b58c3cf417371735845dfc05a318ac12be4516a87172ae5a82af',port:57181,secretName:'current-b7e028133a9ddbaa592f51dac56e5b9b'}),
  Object.freeze({runId:'956d55c6591e17c3fa056d49d11c37b7',commit:'aa735d7e1ad0640f30f8f22a928a2e41675f6cd5',containerId:'e62389a614340f604cfd0c7c639bb009682e9ca58be4d1de697a4c68dca982e3',port:59450,secretName:'current-6c19df9181633a022588752c25ca1674'}),
  Object.freeze({runId:'18aa5a94ef2987a1a41c5efff13203d5',commit:'476f95c46aadc9c823eacadea2177c21c99ff808',containerId:'4e1f7d73771c70566ed917b4182cc4e0ac4226490a27be47698a878cbc30b999',port:60447,secretName:'current-a395fe8b9b8ece45e040769fbc10deee'}),
+ Object.freeze({runId:'260554db707fba544c6c33653de9309e',commit:'78a96006c69f5e96b15101ff593500e065af25da',containerId:'7ee950915c48941d248b7b94d3c8bc43e68eec082a58588a5cfd1f90980acf37',port:58740,secretName:'current-01055c0914e5f05d11438b10f6430c0b'}),
 ]);
 type Run=typeof RUNS[number];
 type Admin={query(sql:string,values?:unknown[]):Promise<{rows:Record<string,unknown>[]}>;end():Promise<void>};
@@ -67,11 +68,12 @@ export function createAppsRetainedRecovery(dependencies?:Dependencies){
   const selected=RUNS.find(item=>item.runId===d.argv[1]);requireValue(selected);const run:Run=selected;
   requireValue(!Object.entries(d.environment).some(([key,value])=>value!==undefined&&(/^(?:DOCKER_|MUSIC_C10_STANDALONE_POSTGRES_|(?:APPS|REPLATFORM)_E2E_)/i.test(key)||['DATABASE_URL','DATABASE_URL_TEST','NODE_OPTIONS','NODE_CHANNEL_FD','NODE_PATH'].includes(key)||key==='NODE_ENV'&&value==='production')));
   requireValue([d.root,d.temporaryRoot].every(file=>path.win32.isAbsolute(file)&&path.win32.resolve(file)===file&&!file.startsWith('\\\\')&&!/[\x00-\x1f\x7f]/.test(file)));
-  const originals=new Set<Promise<unknown>>(),deadline=d.clock.now()+600000;
+  const fourth=run.runId==='260554db707fba544c6c33653de9309e';
+  const originals=new Set<Promise<unknown>>(),deadline=d.clock.now()+(fourth?1200000:600000);
   async function bounded<T>(operation:()=>Promise<T>,budget=15000,destructive=false){const remaining=Math.floor(deadline-d.clock.now());requireValue(remaining>0&&(!destructive||remaining>=budget));const original=Promise.resolve().then(operation);originals.add(original);original.then(()=>originals.delete(original),()=>originals.delete(original));let timer:unknown;try{return await Promise.race([original,new Promise<never>((_,reject)=>{timer=d.clock.setTimeout(()=>reject(new Refusal()),Math.min(remaining,budget));})]);}finally{d.clock.clearTimeout(timer);}}
   stage='preflight';await bounded(()=>d.preflight(),60000);stage='inspect';const address=validateInspect(await bounded(()=>d.inspect(run)),run,d.root);
   stage='capture';const custody=await bounded(()=>d.capture(run),60000);stage='capture';await bounded(()=>custody.verify(),60000);
-  stage='lease';const lease=await bounded(()=>d.lease(custody),15000,true);stage='capture';await bounded(()=>custody.verify(),60000);
+  stage='lease';const lease=await bounded(()=>d.lease(custody),fourth?60000:15000,true);stage='capture';await bounded(()=>custody.verify(),60000);
   stage='admin';const admin=await bounded(()=>d.openAdmin(run));
   async function witness(){stage='witness';
    const result=await bounded(()=>admin.query("SELECT current_user AS role,current_database() AS maintenance,current_setting('server_version_num')::int AS version,current_setting('max_prepared_transactions')::int AS maxprepared,(SELECT rolsuper FROM pg_roles WHERE rolname=current_user) AS superuser,(SELECT count(*)::int FROM pg_stat_activity WHERE backend_type='client backend' AND pid<>pg_backend_pid()) AS clients,(SELECT count(*)::int FROM pg_prepared_xacts) AS prepared,host(inet_server_addr()) AS \"serverAddress\",inet_server_port() AS \"serverPort\""));
@@ -84,7 +86,7 @@ export function createAppsRetainedRecovery(dependencies?:Dependencies){
   stage='admin-close';await bounded(()=>admin.end(),15000,true);
   stage='inspect';requireValue(validateInspect(await bounded(()=>d.inspect(run)),run,d.root)===address);stage='capture';await bounded(()=>custody.verify(),60000);stage='stop';await bounded(()=>d.stop(run),45000,true);
   stage='container-absence';if(!await bounded(()=>d.absent(run))){validateInspect(await bounded(()=>d.inspect(run)),run,d.root,false);await bounded(()=>d.remove(run),15000,true);requireValue(await bounded(()=>d.absent(run)));}
-  requireValue(originals.size===0);stage='capture';await bounded(()=>custody.verify(),60000);stage='children';await bounded(()=>custody.removeChildren(),60000,true);stage='root';await bounded(()=>custody.removeRoot(),15000,true);stage='secret';await bounded(()=>custody.eraseSecret(),15000,true);stage='lease-release';await bounded(()=>lease.release(),15000,true);
+  requireValue(originals.size===0);stage='capture';await bounded(()=>custody.verify(),60000);stage='children';await bounded(()=>custody.removeChildren(),fourth?600000:60000,true);stage='root';await bounded(()=>custody.removeRoot(),15000,true);stage='secret';await bounded(()=>custody.eraseSecret(),15000,true);stage='lease-release';await bounded(()=>lease.release(),15000,true);
   return{runId:run.runId,status:'recovered' as const,evidence:synthetic?'synthetic' as const:'native' as const,qualification:false as const};
  }
 }
@@ -96,14 +98,15 @@ export function createAppsAbsentRetainedFinalizer(dependencies?:Dependencies){
  return{run(){return retained??=execute().catch(()=>{const failure=new Refusal();failureStages.set(failure,stage);throw failure;});}};
  async function execute(){
   requireValue(d&&Object.keys(d).sort().join(',')===KEYS.sort().join(',')&&d.clock&&['now','setTimeout','clearTimeout'].every(k=>typeof (d.clock as any)[k]==='function')&&KEYS.filter(k=>!['platform','argv','environment','root','temporaryRoot','clock'].includes(k)).every(k=>typeof (d as any)[k]==='function'));
-  const selected=RUNS.find(item=>item.runId===d.argv?.[1]);requireValue(selected);const run:Run=selected;const acknowledgment=run===RUNS[0]?'APPS_B1_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[1]?'APPS_956_ABSENT_RETAINED_FINALIZATION_V1':'APPS_18AA_ABSENT_RETAINED_FINALIZATION_V1';requireValue(d.platform==='win32'&&Array.isArray(d.argv)&&d.argv.length===4&&d.argv[0]==='--finish-absent-retained-run'&&d.argv[1]===run.runId&&d.argv[2]==='--ack'&&d.argv[3]===acknowledgment);
+  const selected=RUNS.find(item=>item.runId===d.argv?.[1]);requireValue(selected);const run:Run=selected;const acknowledgment=run===RUNS[0]?'APPS_B1_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[1]?'APPS_956_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[2]?'APPS_18AA_ABSENT_RETAINED_FINALIZATION_V1':'APPS_2605_ABSENT_RETAINED_FINALIZATION_V1';requireValue(d.platform==='win32'&&Array.isArray(d.argv)&&d.argv.length===4&&d.argv[0]==='--finish-absent-retained-run'&&d.argv[1]===run.runId&&d.argv[2]==='--ack'&&d.argv[3]===acknowledgment);
   requireValue(!Object.entries(d.environment).some(([key,value])=>value!==undefined&&(/^(?:DOCKER_|MUSIC_C10_STANDALONE_POSTGRES_|(?:APPS|REPLATFORM)_E2E_)/i.test(key)||['DATABASE_URL','DATABASE_URL_TEST','NODE_OPTIONS','NODE_CHANNEL_FD','NODE_PATH'].includes(key)||key==='NODE_ENV'&&value==='production')));
   requireValue([d.root,d.temporaryRoot].every(file=>path.win32.isAbsolute(file)&&path.win32.resolve(file)===file&&!file.startsWith('\\\\')&&!/[\x00-\x1f\x7f]/.test(file)));
-  const originals=new Set<Promise<unknown>>(),deadline=d.clock.now()+300000;
+  const fourth=run.runId==='260554db707fba544c6c33653de9309e';
+  const originals=new Set<Promise<unknown>>(),deadline=d.clock.now()+(fourth?1200000:300000);
   async function bounded<T>(operation:()=>Promise<T>,budget=60000){requireValue(deadline-d.clock.now()>=budget);const original=Promise.resolve().then(operation);originals.add(original);original.then(()=>originals.delete(original),()=>originals.delete(original));let timer:unknown;try{return await Promise.race([original,new Promise<never>((_,reject)=>{timer=d.clock.setTimeout(()=>reject(new Refusal()),budget);})]);}finally{d.clock.clearTimeout(timer);}}
   async function absent(){stage='container-absence';requireValue(await bounded(()=>d.absent(run),30000));requireValue(originals.size===0);}
-  stage='preflight';await bounded(()=>d.preflight());await absent();stage='capture';const custody=await bounded(()=>d.capture(run));await absent();stage='capture';await bounded(()=>custody.verify());stage='lease';const lease=await bounded(()=>d.lease(custody));
-  for(const [next,operation] of [['children',()=>custody.removeChildren()],['root',()=>custody.removeRoot()],['secret',()=>custody.eraseSecret()],['lease-release',()=>lease.release()]] as const){await absent();stage=next;await bounded(operation);requireValue(originals.size===0);}
+  stage='preflight';await bounded(()=>d.preflight());await absent();stage='capture';const custody=await bounded(()=>d.capture(run));await absent();stage='capture';await bounded(()=>custody.verify());stage='lease';const lease=await bounded(()=>d.lease(custody),fourth?90000:60000);
+  for(const [next,operation] of [['children',()=>custody.removeChildren()],['root',()=>custody.removeRoot()],['secret',()=>custody.eraseSecret()],['lease-release',()=>lease.release()]] as const){await absent();stage=next;await bounded(operation,fourth&&next==='children'?600000:60000);requireValue(originals.size===0);}
   return{runId:run.runId,status:'finalized_existing_files' as const,evidence:synthetic?'synthetic' as const:'native' as const,qualification:false as const};
  }
 }
@@ -112,7 +115,7 @@ function nativeDependencies(existingLeaseMode=false):Dependencies{
  const ps='C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',docker='C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe',helper=path.join(root,'tunes/scripts/music-local-private-files.ps1');
  const states=new WeakMap<Custody,{run:Run;directory:string;verify():Promise<void>;beforeRemoval():Promise<void>;remaining:Set<string>;identities:Map<string,string>;lease?:string}>();
  const fs=()=>import('node:fs/promises');let unknown=false;
- const guarded=existingLeaseMode||(process.argv.length===6&&process.argv[2]==='--recover-run'&&process.argv[3]==='18aa5a94ef2987a1a41c5efff13203d5'&&process.argv[4]==='--ack'&&process.argv[5]==='APPS_EXACT_RETAINED_RECOVERY_V1');
+ const guarded=existingLeaseMode||(process.argv.length===6&&process.argv[2]==='--recover-run'&&['18aa5a94ef2987a1a41c5efff13203d5','260554db707fba544c6c33653de9309e'].includes(process.argv[3])&&process.argv[4]==='--ack'&&process.argv[5]==='APPS_EXACT_RETAINED_RECOVERY_V1');
  const environment=()=>Object.fromEntries(['SystemRoot','WINDIR','PATH','TEMP','TMP','USERPROFILE','LOCALAPPDATA','APPDATA'].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]!]]));
  async function command(executable:string,args:string[],budget:number,input?:string,maxBytes=1048576,diagnoseStop=false){
   if(guarded)requireValue(!unknown);const {spawn}=await import('node:child_process');if(guarded)requireValue(!unknown);
@@ -140,25 +143,42 @@ function nativeDependencies(existingLeaseMode=false):Dependencies{
   async capture(run){
    if(existingLeaseMode)requireValue(RUNS.some(candidate=>candidate.runId===run.runId&&candidate.containerId===run.containerId&&candidate.secretName===run.secretName)&&await absent(run));
    const f=await fs(),directory=path.join(temporaryRoot,`explorers-profile-e2e-${run.runId}`),children=['apps-fixture-files','owned-media'];
-   const ownedFiles=run.runId==='18aa5a94ef2987a1a41c5efff13203d5'?[{name:'sessions.json',size:793n},{name:'protected.playwright.config.mjs',size:597n}]:[];
+   const fourth=run.runId==='260554db707fba544c6c33653de9309e';
+   // Exact metadata inventory from the terminal, independently inspected run.
+   // No artifact content is read and no recursive removal is authorized.
+   const cases:readonly (readonly [string,bigint])[]=fourth?[
+    ['apps-Apps-manual-category--2140e-in-and-limit-survive-reload-apps-desktop',3869n],
+    ['apps-Apps-manual-category--2140e-in-and-limit-survive-reload-apps-mobile',3240n],
+    ['apps-Apps-manual-Keep-Draf-81066-rawal-preserve-public-state-apps-desktop',6449n],
+    ['apps-Apps-manual-Keep-Draf-81066-rawal-preserve-public-state-apps-mobile',5850n],
+    ['apps-Apps-manual-list-and--be8a4-ate-edit-archive-and-reload-apps-desktop',38415n],
+    ['apps-Apps-manual-list-and--be8a4-ate-edit-archive-and-reload-apps-mobile',37816n],
+    ['apps-Apps-manual-ordered-o-697af-sibility-enforce-real-bytes-apps-desktop',38120n],
+    ['apps-Apps-manual-ordered-o-697af-sibility-enforce-real-bytes-apps-mobile',37557n],
+   ]:[];
+   const ownedFiles=run.runId==='18aa5a94ef2987a1a41c5efff13203d5'||fourth?[{name:'sessions.json',size:793n},{name:'protected.playwright.config.mjs',size:597n}]:[];
+   if(fourth)ownedFiles.push({name:'protected-discovery.json',size:9017n},{name:'protected-execution.json',size:50191n},{name:'browser-output/.last-run.json',size:439n},...cases.map(([name,size])=>({name:`browser-output/${name}/error-context.md`,size})));
+   const directoryNames=fourth?[...children,'browser-output',...cases.map(([name])=>`browser-output/${name}`),'owned-media/local','owned-media/local/9c767fef-2a78-4642-b1ce-1020363fbca8','owned-media/local/b3a8f2b1-846d-43ab-ba1a-e33543c21e9c']:children;
+   const directories=[directory,...directoryNames.map(name=>path.join(directory,name))];
    const files=new Map(ownedFiles.map(entry=>[path.join(directory,entry.name),entry.size]));
-   const remaining=new Set<string>([directory,...children.map(name=>path.join(directory,name)),...files.keys(),secret(root,run)]),identities=new Map<string,string>();
-   requireValue(JSON.stringify((await f.readdir(directory)).sort())===JSON.stringify([...children,...ownedFiles.map(entry=>entry.name)].sort()));
+   const remaining=new Set<string>([...directories,...files.keys(),secret(root,run)]),identities=new Map<string,string>();
+   async function exactDirectory(file:string){const expected=[...remaining].filter(entry=>path.dirname(entry)===file).map(entry=>path.basename(entry)).sort();requireValue(JSON.stringify((await f.readdir(file)).sort())===JSON.stringify(expected));}
+   await exactDirectory(directory);
    const privacy=ownedFiles.length?await import('./apps-private-custody'):undefined;
    if(privacy)for(const target of[directory,...children.map(name=>path.join(directory,name))]){await privatePath(target);await physical(target,true);privacy.registerAppsPrivateDirectory(target);}
-   async function scopedPrivate(file:string){if(files.has(file)&&path.basename(file)==='protected.playwright.config.mjs'){requireValue(privacy);if(privacy.inspectAppsPrivateDescendant(file))return;}await privatePath(file);}
+   async function scopedPrivate(file:string){const descendant=fourth&&(files.has(file)||directories.includes(file))&&file!==directory&&!children.some(name=>file===path.join(directory,name))&&file!==path.join(directory,'sessions.json');if(descendant||files.has(file)&&path.basename(file)==='protected.playwright.config.mjs'){requireValue(privacy);if(privacy.inspectAppsPrivateDescendant(file))return;}await privatePath(file);}
    const isFile=(file:string)=>file===secret(root,run)||file===state?.lease||files.has(file);
-   for(const file of remaining){const regular=file===secret(root,run)||files.has(file);await scopedPrivate(file);identities.set(file,await identity(file,!regular));if(files.has(file))requireValue((await physical(file,false)).size===files.get(file));else if(!regular&&file!==directory)requireValue((await f.readdir(file)).length===0);for(let parent=path.dirname(file);;parent=path.dirname(parent)){if(!identities.has(parent))identities.set(parent,await identity(parent,true));if(parent===path.dirname(parent))break;}}
+   for(const file of remaining){const regular=file===secret(root,run)||files.has(file);await scopedPrivate(file);identities.set(file,await identity(file,!regular));if(files.has(file))requireValue((await physical(file,false)).size===files.get(file));else if(!regular)await exactDirectory(file);for(let parent=path.dirname(file);;parent=path.dirname(parent)){if(!identities.has(parent))identities.set(parent,await identity(parent,true));if(parent===path.dirname(parent))break;}}
    await privatePath(path.dirname(secret(root,run)));
    const verify=async()=>{
     requireValue(!unknown);if(existingLeaseMode)requireValue(await absent(run));requireValue(!unknown);for(const [file,old] of identities)requireValue(await identity(file,!isFile(file))===old);
     for(const file of remaining)await scopedPrivate(file);await privatePath(path.dirname(secret(root,run)));
-    if(remaining.has(directory)){const expected=[...remaining].filter(file=>path.dirname(file)===directory).map(file=>path.basename(file)).sort();requireValue(JSON.stringify((await f.readdir(directory)).sort())===JSON.stringify(expected));}
-    for(const file of remaining)if(file!==directory&&!isFile(file))requireValue((await f.readdir(file)).length===0);if(guarded)requireValue(!unknown);
+    for(const file of remaining)if(!isFile(file))await exactDirectory(file);if(guarded)requireValue(!unknown);
    };
    async function beforeRemoval(){if(ownedFiles.length&&!existingLeaseMode)requireValue(await absent(run));await verify();if(guarded)requireValue(!unknown);}
    const state={run,directory,verify,beforeRemoval,remaining,identities,lease:undefined as string|undefined};
-   const custody:Custody={verify,async removeChildren(){for(const entry of ownedFiles){const file=path.join(directory,entry.name);await beforeRemoval();if(guarded)requireValue(!unknown);await f.unlink(file);remaining.delete(file);identities.delete(file);}for(const name of children){const file=path.join(directory,name);await beforeRemoval();if(guarded)requireValue(!unknown);await f.rmdir(file);remaining.delete(file);identities.delete(file);}},async removeRoot(){await beforeRemoval();requireValue((await f.readdir(directory)).length===0);if(guarded)requireValue(!unknown);await f.rmdir(directory);remaining.delete(directory);identities.delete(directory);},async eraseSecret(){await beforeRemoval();const {cleanupFixtureMusicTokenSecret}=await import('./music-fixture-secret');const before=await physical(secret(root,run),false);if(guarded)requireValue(!unknown);cleanupFixtureMusicTokenSecret(root,secret(root,run));const after=await physical(secret(root,run),false);requireValue(after.size===0n&&after.dev===before.dev&&after.ino===before.ino);identities.set(secret(root,run),await identity(secret(root,run),false));}};
+   const removalDirectories=fourth?directories.filter(file=>file!==directory).sort((a,b)=>b.split(path.sep).length-a.split(path.sep).length):children.map(name=>path.join(directory,name));
+   const custody:Custody={verify,async removeChildren(){for(const entry of ownedFiles){const file=path.join(directory,entry.name);await beforeRemoval();if(guarded)requireValue(!unknown);await f.unlink(file);remaining.delete(file);identities.delete(file);}for(const file of removalDirectories){await beforeRemoval();if(guarded)requireValue(!unknown);await f.rmdir(file);remaining.delete(file);identities.delete(file);}},async removeRoot(){await beforeRemoval();requireValue((await f.readdir(directory)).length===0);if(guarded)requireValue(!unknown);await f.rmdir(directory);remaining.delete(directory);identities.delete(directory);},async eraseSecret(){await beforeRemoval();const {cleanupFixtureMusicTokenSecret}=await import('./music-fixture-secret');const before=await physical(secret(root,run),false);if(guarded)requireValue(!unknown);cleanupFixtureMusicTokenSecret(root,secret(root,run));const after=await physical(secret(root,run),false);requireValue(after.size===0n&&after.dev===before.dev&&after.ino===before.ino);identities.set(secret(root,run),await identity(secret(root,run),false));}};
    states.set(custody,state);return custody;
   },
   async lease(custody){const state=states.get(custody);requireValue(state);await state.verify();const file=path.join(path.dirname(secret(root,state.run)),'.apps-retained-recovery-'+state.run.runId+'.lock');if(existingLeaseMode){await privatePath(file);requireValue((await physical(file,false)).size===36n);}else{const text=randomUUID();requireValue(await command(ps,['-NoLogo','-NoProfile','-NonInteractive','-File',helper,'create-file',file],10000,text,4096)==='{"ok":true}');}state.lease=file;state.identities.set(file,await identity(file,false));state.remaining.add(file);await privatePath(file);const f=await fs(),handle=await f.open(file,'r');if(existingLeaseMode){const held=await handle.stat({bigint:true}),fresh=await physical(file,false);requireValue(held.dev===fresh.dev&&held.ino===fresh.ino&&held.nlink===1n&&held.size===36n);await state.verify();}return{async release(){await state.beforeRemoval();const stat=await handle.stat({bigint:true}),expected=await physical(file,false);requireValue(stat.dev===expected.dev&&stat.ino===expected.ino);if(guarded)requireValue(!unknown);await handle.close();await state.beforeRemoval();if(guarded)requireValue(!unknown);await f.unlink(file);state.remaining.delete(file);state.identities.delete(file);}};},
