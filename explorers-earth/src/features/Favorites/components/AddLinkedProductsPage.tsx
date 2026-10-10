@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -8,6 +8,7 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import { toast } from "sonner";
 import useAuthStore from "../../../store/store";
+import { getGuardedParentCreateFailure } from "../../../lib/explorersApiClient";
 import { generateSlug } from "../../Products/utils/productHelpers";
 import { getCurrentDomain } from "../../../utils/getCurrentDomain";
 // Ticket 5.2. Linking runs on the native owner API: the location and its linked lists
@@ -15,7 +16,7 @@ import { getCurrentDomain } from "../../../utils/getCurrentDomain";
 import { usePlacesOwner } from "../hooks/usePlacesOwner";
 import { usePlacesCommands } from "../api/placesCommands";
 import { useProductsOwner } from "../../Products/hooks/useProductsOwner";
-import { useProductsCommands } from "../../Products/api/query";
+import { useProductsCommands, useProductsCallerCustody } from "../../Products/api/query";
 
 // ── Fetch location + its linked product lists ─────────────────
 // The location and its linked lists come from the owner reads; the two Strapi
@@ -98,6 +99,41 @@ const CreateLinkedProductListForm = ({
 }) => {
   const commands = useProductsCommands();
   const loading = commands.loading;
+  const takeCustody = useProductsCallerCustody();
+  const currentParent = useRef(locationId); currentParent.current = locationId;
+  const closed = useRef(false);
+  const previousInput = useRef<ReturnType<typeof inputFor>>();
+  const unresolvedInputs = useRef(new Set<string>());
+  const [message, setMessage] = useState('');
+  const inputFor = (values: { List_Name: string; slug: string; list_description: string }) => ({ title: values.List_Name, slug: values.slug || generateSlug(values.List_Name), description: values.list_description || null, parentLocationCollectionId: locationId });
+  const submit = async (values: { List_Name: string; slug: string; list_description: string }, recovery = false) => {
+    const valid = takeCustody(), parent = locationId, input = inputFor(values);
+    const owns = () => !closed.current && currentParent.current === parent && valid();
+    const previous = previousInput.current;
+    const supersedesPending = previous !== undefined && JSON.stringify(previous) !== JSON.stringify(input) && commands.getLinkedCreateStatus(previous) === 'pending';
+    try {
+      const work = recovery ? commands.retryLinkedCreate(input) : commands.createList(input);
+      if (commands.getLinkedCreateStatus(input) === 'pending') previousInput.current = input;
+      if (owns() && supersedesPending && commands.getLinkedCreateStatus(previous!) === 'blocked') {
+        const notice = 'An earlier create may have completed. Check your lists before creating it again.';
+        unresolvedInputs.current.add(JSON.stringify(previous));
+        setMessage(notice); toast.warning(notice, { duration: Infinity });
+      }
+      const created = await work;
+      if (!owns()) return;
+      toast.success("Products list created and linked to location!");
+      onCreated(created.id);
+    } catch (error) {
+      if (!owns()) return;
+      const status = commands.getLinkedCreateStatus(input);
+      const signature = JSON.stringify(input);
+      if (status === 'uncertain') unresolvedInputs.current.add(signature);
+      const locallyInvalid = getGuardedParentCreateFailure(error)?.kind === 'local-rejection' && !unresolvedInputs.current.has(signature);
+      const text = locallyInvalid ? 'The list details are invalid. Check your entries before retrying.' : status === 'conflict' ? 'The location command conflicted. Refresh the location and retry.' : status === 'uncertain' || status === 'blocked' ? 'The create outcome is uncertain and needs checking. A retry uses the original command while available.' : 'Failed to create list. Please try again.';
+      setMessage(text); toast.error(text);
+    }
+  };
+  const cancel = () => { closed.current = true; takeCustody(); commands.cancelLinkedCreate(); onCancel(); };
 
   const formik = useFormik({
     initialValues: { List_Name: "", list_description: "", slug: "" },
@@ -105,21 +141,7 @@ const CreateLinkedProductListForm = ({
       List_Name: Yup.string().required("List name is required").max(100),
       slug: Yup.string().required("List URL is required").max(100),
     }),
-    onSubmit: async (values) => {
-      try {
-        // The list and its link are one command, so a failed parent leaves no orphan list.
-        const created = await commands.createList({
-          title: values.List_Name,
-          slug: values.slug || generateSlug(values.List_Name),
-          description: values.list_description || null,
-          parentLocationCollectionId: locationId,
-        });
-        toast.success("Products list created and linked to location!");
-        onCreated(created.id);
-      } catch {
-        toast.error("Failed to create list. Please try again.");
-      }
-    },
+    onSubmit: values => submit(values),
   });
 
   return (
@@ -130,7 +152,7 @@ const CreateLinkedProductListForm = ({
     >
       <div className="flex items-center justify-between mb-5">
         <h3 className="text-base font-bold text-dashboard">Create New Product List</h3>
-        <button onClick={onCancel} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-dashboard-muted hover:text-dashboard transition-colors">
+        <button onClick={cancel} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-dashboard-muted hover:text-dashboard transition-colors">
           <X size={14} />
         </button>
       </div>
@@ -182,8 +204,10 @@ const CreateLinkedProductListForm = ({
             <p className="text-xs text-red-400 mt-1">{formik.errors.slug}</p>
           )}
         </div>
+        {message && <p role="status" className="text-sm text-dashboard-muted">{message}</p>}
+        {commands.getLinkedCreateStatus(inputFor(formik.values)) === 'conflict' && <button type="button" disabled={loading} onClick={() => submit(formik.values, true)}>Refresh location and retry</button>}
         <div className="flex justify-end gap-3 pt-2">
-          <button type="button" onClick={onCancel} className="px-5 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-dashboard transition-colors">
+          <button type="button" onClick={cancel} className="px-5 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-dashboard transition-colors">
             Cancel
           </button>
           <button type="submit" disabled={loading} className="px-5 py-2.5 rounded-lg bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all flex items-center gap-2 disabled:opacity-60">
