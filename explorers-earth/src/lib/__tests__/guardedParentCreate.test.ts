@@ -45,7 +45,7 @@ it('rejects raw parent fields and ambiguous caller revisions before posting',asy
  const parent=await observe();await create({...input(),parentLocationCollectionId:parentId},'matching',undefined,parent);expect(wire()).toMatchObject({parentExpectedRevision:4});
 });
 it('rejects fabricated cloned and wrong-kind parent observations before posting',async()=>{
- const parent=await observe();for(const invalid of [{kind:'collection',resourceId:parentId,resourceRevision:4},{...parent},structuredClone(parent)]){await failure(create(input(),'fake-key',undefined,invalid as CollectionObservation),409,'local-rejection');expect(posts).toHaveLength(0);}authority(parent);
+ const parent=await observe();for(const invalid of [{kind:'collection',resourceId:parentId,resourceRevision:4},{...parent},structuredClone(parent),null,false,0,'']){await failure(create(input(),'fake-key',undefined,invalid as CollectionObservation),409,'local-rejection');expect(posts).toHaveLength(0);}authority(parent);
  transport('people',true);const recommendation=await api.explorersApiClient.getMyEditableRecommendation(parentId);await failure(create(input(),'wrong-kind',undefined,recommendation as unknown as CollectionObservation),409,'local-rejection');expect(posts).toHaveLength(0);
 });
 it('rejects wrong-category expired and obsolete owner authority before posting',async()=>{

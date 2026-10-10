@@ -13,7 +13,7 @@ import { ownerCollectionPageSchema, ownerRecommendationPageSchema, ownerCollecti
   type OwnerCollectionsRequest, type OwnerRecommendationsRequest, type OwnerCollectionDto, type OwnerRecommendationDto } from '../../../tunes/shared/explorersOwnerContentContract';
 import {ownerTopPicksRequestSchema,ownerTopPickPageSchema,type OwnerTopPicksRequest} from '../../../tunes/shared/explorersOwnerContentContract';
 import { z } from 'zod/v3';
-import { createCollectionSchema,updateCollectionSchema,createRecommendationSchema,updateRecommendationSchema,reorderCollectionSchema,collectionCoreDtoSchema,recommendationCoreDtoSchema,apiErrorSchema,contentIdSchema,type CreateCollectionInput,type UpdateCollectionInput,type CreateRecommendationInput,type UpdateRecommendationInput } from '../../../tunes/shared/explorersContract';
+import { createCollectionSchema,createCollectionResultSchema,type CreateCollectionResult,updateCollectionSchema,createRecommendationSchema,updateRecommendationSchema,reorderCollectionSchema,collectionCoreDtoSchema,recommendationCoreDtoSchema,apiErrorSchema,contentIdSchema,type CreateCollectionInput,type UpdateCollectionInput,type CreateRecommendationInput,type UpdateRecommendationInput } from '../../../tunes/shared/explorersContract';
 import { editableOwnerCollectionSchema,editableOwnerRecommendationSchema,type EditableOwnerCollection,type EditableOwnerRecommendation } from '../../../tunes/shared/explorersOwnerContentContract';
 import { resolveManualEntitySchema,entityCoreDtoSchema,type ResolveManualEntityInput } from '../../../tunes/shared/explorersContract';
 import {bookCandidateRequestSchema,bookCandidatesSchema,bookEntityDtoSchema,resolveProviderBookSchema,resolveManualBookSchema,replaceRecommendationEntitySchema} from '../../../tunes/shared/explorersBookContract';
@@ -80,6 +80,17 @@ async function allOwnerContent<T extends {id:string;accountId:string}>(input:Rec
 
 export class ExplorersApiError extends Error {
   constructor(readonly status: number, readonly code: string, message: string) { super(message); }
+}
+
+export type GuardedParentCreateFailure = Readonly<
+ | {kind:'server-refusal';status:number;code:string}
+ | {kind:'uncertain'} | {kind:'local-rejection'} | {kind:'custody-lost'}>;
+const validatedServerErrors=new WeakSet<object>();
+const guardedParentCreateFailures=new WeakMap<object,GuardedParentCreateFailure>();
+// Provenance survives consumption solely to recognize old custody; it grants no authority.
+const guardedParentAuthorities=new WeakSet<object>();
+export function getGuardedParentCreateFailure(error:unknown):GuardedParentCreateFailure|undefined {
+ return error!==null&&(typeof error==='object'||typeof error==='function')?guardedParentCreateFailures.get(error):undefined;
 }
 
 type DeepReadonly<T> = T extends readonly (infer U)[] ? readonly DeepReadonly<U>[] : T extends object ? {readonly [K in keyof T]:DeepReadonly<T[K]>} : T;
@@ -330,7 +341,8 @@ async function contentCommand<T extends {id:string}>(path:string,method:string,i
   if(!response.ok) {
    const failure=apiErrorSchema.safeParse(raw);if(!failure.success)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid command error');
    if([401,403,404,409].includes(response.status))revoke();
-   throw new ExplorersApiError(response.status,failure.data.error.code,failure.data.error.message);
+   const error=new ExplorersApiError(response.status,failure.data.error.code,failure.data.error.message);
+   validatedServerErrors.add(error);throw error;
   }
   revoke();
   const result=z.object({[name]:schema}).strict().safeParse(raw);if(!result.success)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid command response');
@@ -502,8 +514,45 @@ export const explorersApiClient = {
   },
   getMyEditableCollection:(id:string,signal?:AbortSignal)=>editableDetail('collection',id,signal),
   getMyEditableRecommendation:(id:string,signal?:AbortSignal)=>editableDetail('recommendation',id,signal),
-  async createMyCollection(input:CreateCollectionInput,key:string,signal?:AbortSignal) {
-   const body=commandInput(createCollectionSchema,input);return contentCommand('/collections','POST',body,key,'collection',collectionCoreDtoSchema,signal,undefined,undefined,1);
+  async createMyCollection(input:CreateCollectionInput,key:string,signal?:AbortSignal,parentObservation?:CollectionObservation):Promise<DeepReadonly<CreateCollectionResult>> {
+   const initial=useAuthStore.getState(),parent=parentObservation;
+   if(parent!==undefined&&issuedDetails.has(parent))guardedParentAuthorities.add(parent);
+   const current=()=>{const now=useAuthStore.getState();return !signal?.aborted&&now.isAuthenticated&&now.accountId===initial.accountId&&now.generation===initial.generation;};
+   // Only genuinely issued authority can establish an obsolete owner scope.
+   const lost=()=>!current()||!!(parent!==undefined&&guardedParentAuthorities.has(parent)&&(parent.accountId!==initial.accountId||parent.generation!==initial.generation));
+   let dispatched=false;
+   try {
+    if(parent!==undefined&&lost())throw new ExplorersApiError(409,'CONFLICT','Content command cancelled or owner changed');
+    let enriched=input;
+    if(parent!==undefined){
+     assertOwnerDetailObservation(parent,'collection');
+     if(parent.detail.category!=='places'||!['products','people'].includes(input?.category)||input?.parentExpectedRevision!==undefined||input?.parentLocationCollectionId!==undefined&&input.parentLocationCollectionId!==parent.resourceId)
+      throw new ExplorersApiError(422,'INVALID_INPUT','Invalid guarded parent create');
+     enriched={...input,parentLocationCollectionId:parent.resourceId,parentExpectedRevision:parent.resourceRevision};
+    } else if(input?.parentLocationCollectionId!==undefined||input?.parentExpectedRevision!==undefined){
+     throw new ExplorersApiError(422,'INVALID_INPUT','Issued parent authority is required');
+    }
+    const body=commandInput(createCollectionSchema,enriched);commandInput(commandKeySchema,key);
+    dispatched=true;
+    const result=await contentCommand('/collections','POST',body,key,'collection',createCollectionResultSchema,signal,undefined,undefined,1);
+    if(parent!==undefined&&lost())throw new ExplorersApiError(409,'CONFLICT','Content command cancelled or owner changed');
+    if(parent!==undefined?(!result.parentLocation||result.parentLocation.id!==parent.resourceId||result.parentLocation.revision!==parent.resourceRevision+1||result.id===parent.resourceId):result.parentLocation!==undefined)
+     throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid created collection parent receipt');
+    if(parent!==undefined)issuedDetails.delete(parent);
+    return result;
+   } catch(error){
+    if(parent===undefined)throw error;
+    let failure:GuardedParentCreateFailure;
+    if(lost()){
+     issuedDetails.delete(parent);
+     error=new ExplorersApiError(409,'CONFLICT','Content command cancelled or owner changed');failure={kind:'custody-lost'};
+    } else if(!dispatched)failure={kind:'local-rejection'};
+    else if(error instanceof ExplorersApiError&&validatedServerErrors.has(error)&&[401,403,404,409,422].includes(error.status)){
+     issuedDetails.delete(parent);failure={kind:'server-refusal',status:error.status,code:error.code};
+    } else failure={kind:'uncertain'};
+    if(error!==null&&(typeof error==='object'||typeof error==='function'))guardedParentCreateFailures.set(error,Object.freeze(failure));
+    throw error;
+   }
   },
   async updateMyCollection(observed:CollectionObservation,patch:Omit<UpdateCollectionInput,'expectedRevision'>,key:string,signal?:AbortSignal) {
    assertOwnerDetailObservation(observed,'collection');const editable=commandInput(updateCollectionSchema.innerType().omit({expectedRevision:true}).strict(),patch);
