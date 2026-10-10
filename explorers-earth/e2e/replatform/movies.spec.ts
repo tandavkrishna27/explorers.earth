@@ -5,6 +5,51 @@ import {readFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {test,expect,type Page,type BrowserContext,type APIRequestContext,type TestInfo} from '@playwright/test';
 import {canonicalMoviesBrowserSnapshot,moviesProducerEnums} from '../../src/features/Movies/api/moviesOwnerDiagnostic';
+// BEGIN MOVIES PIN DIAGNOSTIC CONTRACT
+const moviesPinStages=['setup','overflow-check','navigation','manager-open','manager-visible','unpin-click','persisted-fifteen-check','reorder-waiter-register','reorder-click','reorder-response','persisted-fifteen-after-order','save-click','persisted-fourteen','restore'] as const;
+type MoviesPinState={stage:typeof moviesPinStages[number];request:'unavailable'|'none'|'one'|'multiple';transport:'unavailable'|'unseen'|'pending'|'response'|'failed'|'ambiguous';status:'unavailable'|'informational'|'success'|'redirect'|'client-error'|'server-error'|'other';requestRef?:unknown;inert:boolean;frozen:boolean;sealed:boolean;page?:Page;listeners:{event:'request'|'response'|'requestfailed';callback:(value:any)=>void;attempted:boolean}[]};
+const moviesPinDiagnosticStates=new WeakMap<TestInfo,MoviesPinState>();
+const moviesPinDiagnosticSeen=new WeakSet<TestInfo>();
+function moviesPinDiagnosticIdentity(info:TestInfo):boolean{
+ try{const title='category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection',path=info.titlePath;return info.title===title&&info.project.name==='movies-mobile'&&info.repeatEachIndex===0&&info.retry===0&&resolve(info.file)===fileURLToPath(import.meta.url)&&Array.isArray(path)&&path.length===2&&path[0]==='movies.spec.ts'&&path[1]===title;}catch{return false;}
+}
+function beginMoviesPinDiagnostic(page:Page,info:TestInfo):void{
+ try{
+  if(!moviesPinDiagnosticIdentity(info)||moviesPinDiagnosticStates.has(info))return;
+  const state:MoviesPinState={stage:'setup',request:'unavailable',transport:'unavailable',status:'unavailable',inert:false,frozen:false,sealed:false,page,listeners:[]};moviesPinDiagnosticStates.set(info,state);
+  const unavailable=()=>{state.request='unavailable';state.transport='unavailable';state.status='unavailable';state.requestRef=undefined;};
+  const request=(value:any)=>{try{if(state.inert||state.request==='unavailable'||state.request==='multiple')return;if(value.method()!=='PATCH'||new URL(value.url()).pathname!=='/api/explorers/v1/categories/movies/top-picks/order')return;if(state.request==='none'){state.request='one';state.transport='pending';state.requestRef=value;}else if(state.requestRef!==value){state.request='multiple';state.transport='ambiguous';state.status='unavailable';state.requestRef=undefined;}}catch{unavailable();}};
+  const response=(value:any)=>{try{if(state.inert||state.request!=='one')return;if(value.request()!==state.requestRef)return;if(state.transport==='ambiguous')return;const status=value.status();if(typeof status!=='number'||!Number.isFinite(status)){unavailable();return;}if(state.transport==='failed'){state.transport='ambiguous';state.status='unavailable';return;}if(state.transport==='response')return;state.transport='response';state.status=status>=100&&status<200?'informational':status>=200&&status<300?'success':status>=300&&status<400?'redirect':status>=400&&status<500?'client-error':status>=500&&status<600?'server-error':'other';}catch{unavailable();}};
+  const failed=(value:any)=>{try{if(state.inert||state.request!=='one'||value!==state.requestRef||state.transport==='ambiguous')return;if(state.transport==='response'){state.transport='ambiguous';state.status='unavailable';}else state.transport='failed';}catch{unavailable();}};
+  state.listeners=[{event:'request',callback:request,attempted:false},{event:'response',callback:response,attempted:false},{event:'requestfailed',callback:failed,attempted:false}];
+  try{for(const listener of state.listeners){listener.attempted=true;page.on(listener.event,listener.callback);}state.request='none';state.transport='unseen';}catch{unavailable();}
+ }catch{}
+}
+function setMoviesPinDiagnosticStage(info:TestInfo,stage:typeof moviesPinStages[number]):void{
+ try{const state=moviesPinDiagnosticStates.get(info);if(state&&!state.sealed&&moviesPinDiagnosticIdentity(info)&&moviesPinStages.includes(stage))state.stage=stage;}catch{}
+}
+function freezeMoviesPinDiagnostic(info:TestInfo):void{
+ try{
+  const state=moviesPinDiagnosticStates.get(info);if(!state||state.frozen)return;
+  state.frozen=true;state.inert=true;state.requestRef=undefined;
+  try{if(state.page?.isClosed()!==false){state.request='unavailable';state.transport='unavailable';state.status='unavailable';}}catch{state.request='unavailable';state.transport='unavailable';state.status='unavailable';}
+  const page=state.page;state.page=undefined;const listeners=state.listeners;state.listeners=[];
+  for(const listener of listeners)if(listener.attempted){try{page?.off(listener.event,listener.callback);}catch{}}
+ }catch{}
+}
+function finalizeMoviesPinDiagnostic(info:TestInfo):void{
+ try{freezeMoviesPinDiagnostic(info);const state=moviesPinDiagnosticStates.get(info);if(state?.frozen)state.sealed=true;}catch{}
+}
+function captureMoviesPinDiagnostic(info:TestInfo):void{
+ try{
+  const state=moviesPinDiagnosticStates.get(info);if(!state?.frozen||!state.sealed||!moviesPinDiagnosticIdentity(info)||moviesPinDiagnosticSeen.has(info))return;
+  const status=info.status;if(!['failed','timedOut','interrupted'].includes(status??''))return;
+  const errors=info.errors;if(errors.some(error=>typeof error.message==='string'&&error.message.includes('[movies-pin-diagnostic-v1:')))return;
+  const cells=status==='interrupted'?[state.stage,'unavailable','unavailable','unavailable']:[state.stage,state.request,state.transport,state.status],message='[movies-pin-diagnostic-v1:'+cells.join('|')+']';if(Buffer.byteLength(message,'utf8')>512)return;
+  errors.push({message});moviesPinDiagnosticSeen.add(info);
+ }catch{}
+}
+// END MOVIES PIN DIAGNOSTIC CONTRACT
 // BEGIN MOVIES PUBLIC DIAGNOSTIC CONTRACT
 type MoviesPublicStage='setup'|'category-navigation'|'category-request'|'category-status'|'category-json'|'list-count'|'hero-count'|'later-pin'|'list-navigation'|'list-continuation'|'modal-open'|'modal-note'|'modal-zero'|'modal-close'|'later-list-navigation'|'later-list-visible'|'page-legacy-check'|'contexts-create'|'pages-create'|'contexts-monitor'|'dual-navigation'|'left-visible'|'right-visible'|'left-cookie-empty'|'right-cookie-empty'|'switch-other'|'other-visible'|'prior-owner-absent'|'right-still-visible'|'switch-back'|'restored-visible'|'other-owner-absent'|'left-legacy-check'|'right-legacy-check'|'contexts-close'|'screenshot';
 const moviesPublicDiagnosticStates=new WeakMap<TestInfo,MoviesPublicStage>();
@@ -176,8 +221,50 @@ test('foreign owner denial and original edit observation preserve an unsaved sta
  await signIn(page);const list=await createList(page.request,'Stale'),r=await provider(page.request,list),other=await browser.newContext({baseURL:fixture.origin});await cookies(other,fixture.personas.ownerB);try{expect((await other.request.get(`${base}/recommendations/${r.id}/editable`)).status()).toBe(404);expect((await command(other.request,'patch',`/recommendations/${r.id}`,{expectedRevision:r.revision,userRating:1})).status()).toBe(404);await page.goto(`/recommendations/movies/${list.id}/edit/${r.id}`);await page.locator('.ql-editor').fill('Unsaved stale Movie draft');const observation=await editable(page.request,'recommendations',r.id);expect((await command(page.request,'patch',`/recommendations/${r.id}`,{expectedRevision:observation.revision,userRating:7})).status()).toBe(200);const conflict=page.waitForResponse(res=>res.request().method()==='PATCH'&&new URL(res.url()).pathname===`${base}/recommendations/${r.id}`);await page.getByRole('button',{name:'Save Changes',exact:true}).click();expect((await conflict).status()).toBe(409);await expect(page.locator('.ql-editor')).toContainText('Unsaved stale Movie draft');}finally{await other.close();}
 });
 
-test('category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection',async({page})=>{
- await signIn(page,fixture.personas.ownerB);const response=await page.request.get(`${base}/categories/movies/top-picks?limit=100`);expect(response.status()).toBe(200);const original=await response.json();expect(original.items).toHaveLength(15);const memberships=await page.request.get(`${base}/categories/movies/memberships?limit=100`);expect(memberships.status()).toBe(200);const extra=(await memberships.json()).items.find((m:any)=>!original.items.some((p:any)=>p.recommendationId===m.recommendationId));expect(extra).toBeTruthy();const overflow=await command(page.request,'put','/categories/movies/top-picks',{expectedCategoryRevision:original.snapshot,expectedPinRevision:original.pinRevision,orderedPins:[...original.items.map((p:any)=>({recommendationId:p.recommendationId,collectionId:p.collectionId})),{recommendationId:extra.recommendationId,collectionId:extra.collectionId}]});expect(overflow.status()).toBe(422);await page.goto('/recommendations/movies');await page.getByRole('button').filter({hasText:'Manage Top Picks'}).filter({visible:true}).first().click();await expect(page.getByRole('button',{name:'Save Top Picks',exact:true})).toBeVisible();const row=page.locator('li').filter({hasText:'ownerB seed movie 0-0'}).first();await row.locator('button').filter({has:page.locator('svg.lucide-minus')}).click();expect((await (await page.request.get(`${base}/categories/movies/top-picks?limit=100`)).json()).items).toHaveLength(15);const reordered=page.waitForResponse(r=>r.request().method()==='PATCH'&&new URL(r.url()).pathname===`${base}/categories/movies/top-picks/order`);await page.locator('li button').filter({has:page.locator('svg.lucide-chevron-down')}).filter({visible:true}).first().click();expect((await reordered).status()).toBe(200);expect((await (await page.request.get(`${base}/categories/movies/top-picks?limit=100`)).json()).items).toHaveLength(15);await page.getByRole('button',{name:'Save Top Picks',exact:true}).click();await expect.poll(async()=>((await (await page.request.get(`${base}/categories/movies/top-picks?limit=100`)).json()).items.length)).toBe(14);const current=await (await page.request.get(`${base}/categories/movies/top-picks?limit=100`)).json();expect((await command(page.request,'put','/categories/movies/top-picks',{expectedCategoryRevision:current.snapshot,expectedPinRevision:current.pinRevision,orderedPins:original.items.map((p:any)=>({recommendationId:p.recommendationId,collectionId:p.collectionId}))})).status()).toBe(200);
+test('category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection',async({page},info)=>{
+beginMoviesPinDiagnostic(page, info);
+try {
+setMoviesPinDiagnosticStage(info, "setup");
+await signIn(page,fixture.personas.ownerB);
+const response=await page.request.get(`${base}/categories/movies/top-picks?limit=100`);
+expect(response.status()).toBe(200);
+const original=await response.json();
+expect(original.items).toHaveLength(15);
+const memberships=await page.request.get(`${base}/categories/movies/memberships?limit=100`);
+expect(memberships.status()).toBe(200);
+const extra=(await memberships.json()).items.find((m:any)=>!original.items.some((p:any)=>p.recommendationId===m.recommendationId));
+expect(extra).toBeTruthy();
+setMoviesPinDiagnosticStage(info, "overflow-check");
+const overflow=await command(page.request,'put','/categories/movies/top-picks',{expectedCategoryRevision:original.snapshot,expectedPinRevision:original.pinRevision,orderedPins:[...original.items.map((p:any)=>({recommendationId:p.recommendationId,collectionId:p.collectionId})),{recommendationId:extra.recommendationId,collectionId:extra.collectionId}]});
+expect(overflow.status()).toBe(422);
+setMoviesPinDiagnosticStage(info, "navigation");
+await page.goto('/recommendations/movies');
+setMoviesPinDiagnosticStage(info, "manager-open");
+await page.getByRole('button').filter({hasText:'Manage Top Picks'}).filter({visible:true}).first().click();
+setMoviesPinDiagnosticStage(info, "manager-visible");
+await expect(page.getByRole('button',{name:'Save Top Picks',exact:true})).toBeVisible();
+const row=page.locator('li').filter({hasText:'ownerB seed movie 0-0'}).first();
+setMoviesPinDiagnosticStage(info, "unpin-click");
+await row.locator('button').filter({has:page.locator('svg.lucide-minus')}).click();
+setMoviesPinDiagnosticStage(info, "persisted-fifteen-check");
+expect((await (await page.request.get(`${base}/categories/movies/top-picks?limit=100`)).json()).items).toHaveLength(15);
+setMoviesPinDiagnosticStage(info, "reorder-waiter-register");
+const reordered=page.waitForResponse(r=>r.request().method()==='PATCH'&&new URL(r.url()).pathname===`${base}/categories/movies/top-picks/order`);
+setMoviesPinDiagnosticStage(info, "reorder-click");
+await page.locator('li button').filter({has:page.locator('svg.lucide-chevron-down')}).filter({visible:true}).first().click();
+setMoviesPinDiagnosticStage(info, "reorder-response");
+expect((await reordered).status()).toBe(200);
+freezeMoviesPinDiagnostic(info);
+setMoviesPinDiagnosticStage(info, "persisted-fifteen-after-order");
+expect((await (await page.request.get(`${base}/categories/movies/top-picks?limit=100`)).json()).items).toHaveLength(15);
+setMoviesPinDiagnosticStage(info, "save-click");
+await page.getByRole('button',{name:'Save Top Picks',exact:true}).click();
+setMoviesPinDiagnosticStage(info, "persisted-fourteen");
+await expect.poll(async()=>((await (await page.request.get(`${base}/categories/movies/top-picks?limit=100`)).json()).items.length)).toBe(14);
+setMoviesPinDiagnosticStage(info, "restore");
+const current=await (await page.request.get(`${base}/categories/movies/top-picks?limit=100`)).json();
+expect((await command(page.request,'put','/categories/movies/top-picks',{expectedCategoryRevision:current.snapshot,expectedPinRevision:current.pinRevision,orderedPins:original.items.map((p:any)=>({recommendationId:p.recommendationId,collectionId:p.collectionId}))})).status()).toBe(200);
+} finally { finalizeMoviesPinDiagnostic(info); }
 });
 
 test('delayed real canonical search continuation cannot append after query replacement',async({page})=>{
@@ -195,3 +282,5 @@ test('provider source replacement retires old copied assets while retaining a up
 test('public signed continuations deny malformed cross-scope and changed-limit tokens',async({page})=>{
  const owner=fixture.personas.ownerB,path=`${base}/profiles/${owner.handle}/recommendations/movies/genres/action`,first=await page.request.get(path+'?limit=24');expect(first.status()).toBe(200);const data=await first.json();expect(data.nextCursor).toBeTruthy();for(const suffix of ['?limit=12&cursor='+encodeURIComponent(data.nextCursor),'?limit=24&cursor=bad'])expect((await page.request.get(path+suffix)).status()).toBe(400);expect((await page.request.get(path.replace('/genres/action','/genres/drama')+'?limit=24&cursor='+encodeURIComponent(data.nextCursor))).status()).toBe(400);await page.goto(`/${owner.handle}/movies/genre/action`);await expect(page.getByText('ownerB seed movie 0-0',{exact:true})).toBeVisible();
 });
+
+test.afterEach(({}, info) => { captureMoviesPinDiagnostic(info); });
