@@ -15,9 +15,21 @@ focused local evidence and remaining acceptance. Wave 2 is **open**.
 | QA CI observer | `87e25dab`: restored source independently reviewed; root 58 focused tests passed and scoped music-c0 typing passed | Exact-head CI observation is explicitly unqualified; publishing and release authority remain closed |
 | QA certificate-output parser | `96e19b8c`: independently accepted; 231 focused tests passed | Pure parsing remains unqualified and does not execute cryptographic verification |
 | Guides staged database custody | `4e98ab18`: independently accepted; 55 new and 18 unchanged legacy tests passed | Synthetic contract evidence only; actual Guides database/process lifecycle still needs qualification |
+| QA detached artifact custody | `21850315`: independently accepted; root fresh 103 focused tests passed | ZIP, raw file and canonical hashes are checked separately; release and cryptographic authority remain false |
 
 Root's final combined check of the latter two files passed all 304 tests;
 scoped music-c0 typing passed after the descriptor snapshot correction.
+
+The subsequent detached-custody typing check reported only an error in the
+concurrent Guides supervisor draft. That draft is still under implementation;
+integrated typing and native qualification remain pending.
+
+An Apps/Places source audit identified missing typed screenshot/photo relations
+in public media eligibility, attached-media deletion reference counts and aged
+cleanup selection. Existing deferred database guards appear to prevent deleting
+attached bytes; the query omissions can instead cause cleanup failures. Actual
+PostgreSQL regression cases are being added before the query repair. No real
+database RED/GREEN result is claimed yet.
 
 The first mount observation failed before returning authority. A read-only
 reproduction found that Docker's absent-container response includes `[]` on
