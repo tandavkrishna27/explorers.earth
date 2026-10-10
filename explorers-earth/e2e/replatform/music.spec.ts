@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 import { io, type Socket } from 'socket.io-client';
+import { ownMusicResponses, musicCleanup, withMusicCleanup } from './music-response-owner';
 import { observeMusicResponseBody } from '../../../tunes/scripts/music-browser-failure-observation';
 import { createMusicPublicationIdempotencyKey } from '../../../tunes/shared/musicPublicationContract';
 
@@ -123,9 +124,13 @@ test.beforeEach(async ({ page }, info) => {
   await install(page, scenario.owners[0]);
 });
 test.afterEach(async () => {
-  for (const connection of sockets) connection.disconnect(); sockets.clear();
-  for (const context of contexts) { responseBodyPhases.set(context, 'closing'); await context.close(); } contexts.clear();
-  await control('reset');
+  try {
+    await musicCleanup([
+      ...[...sockets].map(connection => () => connection.disconnect()),
+      ...[...contexts].map(context => async () => { responseBodyPhases.set(context, 'closing'); await context.close(); }),
+      () => control('reset'),
+    ]);
+  } finally { sockets.clear(); contexts.clear(); }
 });
 
 test('canonical cookie ensure opens one owner workspace and survives reload', async ({ page }) => {
@@ -328,34 +333,61 @@ test('newer public revisions survive delayed and out of order notifications', as
   const before = await guestResource(published.publication.publicSlug);
   const context = await browser.newContext(); contexts.add(context); const publicPage = await context.newPage();
   responseBodyPhases.set(context, 'body');
-  const revisions: number[] = [], loaded: number[] = [];
-  observer.on('music_public_change', value => revisions.push(value.revision));
-  publicPage.on('response', response => { if (response.status() === 200 && response.url().includes('/api/music/public-resource/v1/')) void observeMusicResponseBody(response.json(), () => responseBodyPhases.get(context)).then(value => loaded.push(value.revision)); });
-  await publicPage.route('**/*', route => new URL(route.request().url()).origin === fixture.origin ? route.continue() : route.abort());
-  let subscribed = false, socketAttempted = false;
-  publicPage.on('websocket', connection => {
-    const target = new URL(connection.url());
-    socketAttempted ||= target.host === new URL(fixture.origin).host && target.pathname.replace(/\/$/, '') === '/__localtunes/ws';
-    connection.on('framereceived', frame => { if (String(frame.payload).includes('"role":"public"') && String(frame.payload).includes('connection_status')) subscribed = true; });
-  });
-  const publicResponse = publicPage.waitForResponse(response => response.url().includes('/api/music/public-resource/v1/') && response.request().method() === 'GET');
-  await stage('public-route-load', () => publicPage.goto(`${fixture.origin}/music/share/${published.publication.publicSlug}`));
-  await stage('public-http-response', async () => expect((await publicResponse).status()).toBe(200));
-  await stage('public-schema-ready', () => expect(publicPage.getByRole('heading', { name: 'Music', exact: true })).toBeVisible());
-  await stage('public-socket-attempt', () => expect.poll(() => socketAttempted).toBe(true));
-  await stage('public-subscription-ready', () => expect.poll(() => subscribed).toBe(true));
-  const firstChange = event(observer, 'music_public_change'); await ownerRequest(page, 'POST', '/api/playlist/songs', song(1)); await firstChange;
-  const secondChange = event(observer, 'music_public_change'); await ownerRequest(page, 'POST', '/api/playlist/songs', song(2)); await secondChange;
-  const newer = await guestResource(published.publication.publicSlug); expect(newer.body.revision).toBeGreaterThan(before.body.revision);
-  await expect.poll(() => loaded.includes(newer.body.revision)).toBe(true); expect(revisions.length).toBeGreaterThanOrEqual(2);
-  const queue = publicPage.getByRole('button', { name: 'Queue', exact: true }); if (await queue.getAttribute('aria-expanded') !== 'true') await queue.click();
-  await expect(publicPage.getByText('Owned song 2', { exact: true })).toBeVisible();
-  await control('notify', { revision: before.body.revision }); await control('notify', { revision: newer.body.revision }); await new Promise(resolve => setTimeout(resolve, 500));
-  await expect.poll(() => revisions.slice(2).includes(before.body.revision)).toBe(true);
-  expect((await guestResource(published.publication.publicSlug)).body.revision).toBe(newer.body.revision);
-  expect(revisions.at(-1)).toBeGreaterThanOrEqual(newer.body.revision); expect(loaded.every((revision, index) => index === 0 || revision >= loaded[index - 1])).toBe(true);
-  await expect(publicPage.getByText('Owned song 2', { exact: true })).toBeVisible(); responseBodyPhases.set(context, 'reload'); await publicPage.reload(); responseBodyPhases.set(context, 'body'); await expect.poll(() => loaded.at(-1)).toBe(newer.body.revision);
-  await page.reload(); expect((await ownerRequest(page, 'GET', '/api/music/dashboard')).body.songs).toHaveLength(2);
+  const revisions: number[] = [];
+  const publicResourceUrl = `${fixture.origin}/__localtunes/api/music/public-resource/v1/${encodeURIComponent(published.publication.publicSlug)}`;
+  const matchesPublicResponse = (response: import('@playwright/test').Response) => response.url() === publicResourceUrl && response.request().method() === 'GET';
+  const observeBody = (operation: Promise<any>) => observeMusicResponseBody(operation, () => responseBodyPhases.get(context));
+  const reloadRequests = new Set<import('@playwright/test').Request>();
+  const captureReloadRequest = (request: import('@playwright/test').Request) => { if (request.url() === publicResourceUrl && request.method() === 'GET') reloadRequests.add(request); };
+  let reads = ownMusicResponses(publicPage, response => response.status() === 200 && matchesPublicResponse(response), observeBody);
+  await withMusicCleanup(async () => {
+    observer.on('music_public_change', value => revisions.push(value.revision));
+    await publicPage.route('**/*', route => new URL(route.request().url()).origin === fixture.origin ? route.continue() : route.abort());
+    let subscribed = false, socketAttempted = false;
+    publicPage.on('websocket', connection => {
+      const target = new URL(connection.url());
+      socketAttempted ||= target.host === new URL(fixture.origin).host && target.pathname.replace(/\/$/, '') === '/__localtunes/ws';
+      connection.on('framereceived', frame => { if (String(frame.payload).includes('"role":"public"') && String(frame.payload).includes('connection_status')) subscribed = true; });
+    });
+    const publicResponse = publicPage.waitForResponse(matchesPublicResponse).then(response => ({response}), error => ({error}));
+    await stage('public-route-load', () => publicPage.goto(`${fixture.origin}/music/share/${published.publication.publicSlug}`));
+    await stage('public-http-response', async () => { const initial = await publicResponse; if ('error' in initial) throw initial.error; expect(initial.response.status()).toBe(200); });
+    await stage('public-schema-ready', () => expect(publicPage.getByRole('heading', { name: 'Music', exact: true })).toBeVisible());
+    await stage('public-socket-attempt', () => expect.poll(() => socketAttempted).toBe(true));
+    await stage('public-subscription-ready', () => expect.poll(() => { reads.assertHealthy(); return subscribed; }).toBe(true));
+    const firstChange = event(observer, 'music_public_change'); await ownerRequest(page, 'POST', '/api/playlist/songs', song(1)); await firstChange;
+    const secondChange = event(observer, 'music_public_change'); await ownerRequest(page, 'POST', '/api/playlist/songs', song(2)); await secondChange;
+    const newer = await guestResource(published.publication.publicSlug); expect(newer.body.revision).toBeGreaterThan(before.body.revision);
+    await expect.poll(() => reads.valuesAfter(0).some(value => value.revision === newer.body.revision)).toBe(true); expect(revisions.length).toBeGreaterThanOrEqual(2);
+    const queue = publicPage.getByRole('button', { name: 'Queue', exact: true }); if (await queue.getAttribute('aria-expanded') !== 'true') await queue.click();
+    await expect(publicPage.getByText('Owned song 2', { exact: true })).toBeVisible();
+    await control('notify', { revision: before.body.revision }); await control('notify', { revision: newer.body.revision }); await new Promise(resolve => setTimeout(resolve, 500));
+    await expect.poll(() => { reads.assertHealthy(); return revisions.slice(2).includes(before.body.revision); }).toBe(true);
+    expect((await guestResource(published.publication.publicSlug)).body.revision).toBe(newer.body.revision);
+    expect(revisions.at(-1)).toBeGreaterThanOrEqual(newer.body.revision); reads.assertHealthy();
+    await expect(publicPage.getByText('Owned song 2', { exact: true })).toBeVisible();
+    await reads.stop();
+    reads = ownMusicResponses(publicPage, response => response.status() === 200 && matchesPublicResponse(response), observeBody);
+    const reloadFence = reads.fence();
+    // Arm the fresh GET waiter before navigation; retain any rejection immediately.
+    publicPage.on('request', captureReloadRequest);
+    const reloadResponse = publicPage.waitForResponse(response => reloadRequests.has(response.request()) && matchesPublicResponse(response)).then(response => ({response}), error => ({error}));
+    responseBodyPhases.set(context, 'reload');
+    await publicPage.reload();
+    const fresh = await reloadResponse; if ('error' in fresh) throw fresh.error;
+    expect(fresh.response.status()).toBe(200);
+    publicPage.off('request', captureReloadRequest);
+    const snapshot = await reads.read(fresh.response); expect(snapshot.revision).toBe(newer.body.revision);
+    expect(reads.valuesAfter(reloadFence).some(value => value === snapshot)).toBe(true);
+    responseBodyPhases.set(context, 'body');
+    const refreshedQueue = publicPage.getByRole('button', { name: 'Queue', exact: true }); if (await refreshedQueue.getAttribute('aria-expanded') !== 'true') await refreshedQueue.click();
+    await expect(publicPage.getByText('Owned song 2', { exact: true })).toBeVisible(); reads.assertHealthy();
+    await page.reload(); expect((await ownerRequest(page, 'GET', '/api/music/dashboard')).body.songs).toHaveLength(2);
+  }, () => musicCleanup([
+    () => publicPage.off('request', captureReloadRequest),
+    () => reads.stop(),
+    async () => { responseBodyPhases.set(context, 'closing'); await context.close(); contexts.delete(context); },
+  ]));
 });
 
 test('provider outage and retry preserve owner draft and bounded controls', async ({ page }) => {
