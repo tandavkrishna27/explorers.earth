@@ -69,6 +69,7 @@ function bounded<T>(clock: Clock, deadline: number, operation: () => Promise<T>,
   Promise.resolve(result).then(resolve, reject).finally(() => clock.clearTimeout(timer));
  });
 }
+class CleanEof extends Error {}
 class Channel {
  private bytes = Buffer.alloc(0); private incoming = 0; private outgoing = 0; private pending = false;
  private started = false; private allowed = false; private fatal: Error | undefined;
@@ -76,16 +77,23 @@ class Channel {
  private replies = new Map<string, { expected: string; cancelled?: boolean; resolve(frame: Frame): void; reject(error: unknown): void }>();
  private logBytes = { stdout: 0, stderr: 0 };
  private stopped = false;
+  private terminal = false;
+  private cleanEofSeen = false;
+  private completion: { promise: Promise<void>; accept(): void } | undefined;
+  private requireIdle(): void { if (!this.started || this.fatal || this.terminal || this.cleanEofSeen || this.pending || this.replies.size || this.queued.length || this.waiter) throw this.fatal ?? new Failure('service-children'); }
+  beginWorkerRetirement(): void { this.requireIdle(); if (this.role !== 'worker') throw new Failure('control'); this.terminal = true; }
+  acceptFixtureCompletion(): void { this.requireIdle(); if (this.role !== 'fixture' || !this.completion) throw new Failure('control'); this.terminal = true; this.completion.accept(); }
  constructor(readonly stream: Stream, private clock: Clock, private id: () => string, private max: number, private role: 'fixture' | 'worker' | 'launcher' = 'launcher') {}
- resume(): void { this.allowed = true; }
+  resume(): void { if (this.terminal) throw new Failure('service-children'); this.allowed = true; }
  stop(): void { this.stopped = true; }
  cancel(): void {
   this.stopped = true; this.fatal = new Failure('service-children');
+   this.completion?.accept();
   for (const reply of this.replies.values()) reply.reject(this.fatal);
   this.replies.clear(); this.waiter?.reject(this.fatal); this.waiter = undefined;
  }
  cancelOrdinary(): void { for (const reply of this.replies.values()) { reply.cancelled = true; reply.reject(new Failure('service-children')); } }
- activate(deadline: number, onFailure: () => void): void {
+ activate(deadline: number, onFailure: (error: Error) => void): void {
   if (this.started) throw new Failure('service-children'); this.started = true;
   void (async () => { try { while (true) {
    const frame = await this.decode(deadline); if (this.stopped) return;
@@ -110,22 +118,24 @@ class Channel {
    }
    const reply = this.replies.get(frame.id);
    if (reply) { this.replies.delete(frame.id); if (reply.cancelled && frame.type !== 'cancelled') throw new Failure('service-children'); if (frame.type === 'cancelled') { exact(frame.payload, ['commandId']); if (!reply.cancelled || frame.payload.commandId !== frame.id) throw new Failure('service-children'); reply.reject(new Failure('service-children')); } else if (frame.type !== reply.expected) { reply.reject(new Failure('service-children')); throw new Failure('service-children'); } else reply.resolve(frame); if (frame.type === 'exit-ack') return; continue; }
-   if (!this.allowed || this.queued.length || this.role === 'worker' && frame.type !== 'ready') throw new Failure('service-children'); this.allowed = false;
+    if (this.terminal || !this.allowed || this.queued.length || this.role === 'worker' && frame.type !== 'ready') throw new Failure('service-children'); this.allowed = false;
+    if (this.role === 'fixture' && frame.type === 'complete') { let accept!: () => void; const promise = new Promise<void>(resolve => { accept = resolve; }); this.completion = { promise, accept }; }
    if (this.waiter) { const waiter = this.waiter; this.waiter = undefined; waiter.resolve(frame); } else this.queued.push(frame);
    if (this.role === 'fixture' && frame.type === 'ready') this.allowed = true;
-  } } catch (error) { if (this.stopped) return; this.fatal = error instanceof Error ? error : new Failure('service-children'); for (const reply of this.replies.values()) reply.reject(this.fatal); this.replies.clear(); this.waiter?.reject(this.fatal); this.waiter = undefined; onFailure(); } })();
+    if (this.completion) await this.completion.promise;
+   } } catch (error) { if (this.stopped) return; if (error instanceof CleanEof && this.terminal && !this.pending && !this.replies.size && !this.waiter && !this.queued.length && !this.fatal) { this.cleanEofSeen = true; return; } this.fatal = error instanceof CleanEof ? new Failure('service-children') : error instanceof Error ? error : new Failure('service-children'); for (const reply of this.replies.values()) reply.reject(this.fatal); this.replies.clear(); this.waiter?.reject(this.fatal); this.waiter = undefined; onFailure(this.fatal); } })();
  }
  async raw(deadline: number): Promise<unknown> {
   let end = this.bytes.length ? Math.min(deadline, this.clock.now() + 5000) : deadline;
   while (true) { if (this.bytes.length >= 4) { const size = this.bytes.readUInt32BE(); if (size < 1 || size > this.max) throw new Failure('service-children'); if (this.bytes.length >= size + 4) { const body = this.bytes.subarray(4, size + 4); this.bytes = this.bytes.subarray(size + 4); return parseJson(new TextDecoder('utf-8', { fatal: true }).decode(body)); } }
-   const chunk = await bounded(this.clock, end, () => this.stream.read(), 'service-children'); if (!chunk || this.bytes.length + chunk.length > this.max + 4) throw new Failure('service-children'); if (!this.bytes.length) end = Math.min(deadline, this.clock.now() + 5000); this.bytes = Buffer.concat([this.bytes, chunk]);
+    const chunk = await bounded(this.clock, end, () => this.stream.read(), 'service-children'); if (chunk === null) { if (this.bytes.length) throw new Failure('service-children'); throw new CleanEof(); } if (!chunk.length || this.bytes.length + chunk.length > this.max + 4) throw new Failure('service-children'); if (!this.bytes.length) end = Math.min(deadline, this.clock.now() + 5000); this.bytes = Buffer.concat([this.bytes, chunk]);
   }
  }
  private async decode(deadline: number): Promise<Frame> { const frame = await this.raw(deadline); exact(frame, ['v', 'seq', 'id', 'type', 'payload']); if (frame.v !== 1 || frame.seq !== ++this.incoming || this.incoming > 4096 || typeof frame.type !== 'string') throw new Failure('service-children'); hex(frame.id, 32); if (!frame.payload || typeof frame.payload !== 'object' || Array.isArray(frame.payload)) throw new Failure('service-children'); if (frame.type !== 'ready' && frame.type !== 'observed' && frame.type !== 'start-worker-result' && frame.type !== 'observe-result' && Buffer.byteLength(JSON.stringify(frame)) > 65536) throw new Failure('service-children'); return frame as Frame; }
- async receive(deadline: number): Promise<Frame> { if (!this.started) return this.decode(deadline); if (this.fatal) throw this.fatal; if (this.queued.length) return this.queued.shift()!; if (this.waiter) throw new Failure('service-children'); this.allowed = true; return bounded(this.clock, deadline, () => new Promise<Frame>((resolve, reject) => { this.waiter = { resolve, reject }; }), 'service-children'); }
- async send(type: string, payload: Record<string, unknown>, deadline: number, id = this.id()): Promise<string> { hex(id, 32); if (++this.outgoing > 4096) throw new Failure('service-children'); const body = Buffer.from(JSON.stringify({ v: 1, seq: this.outgoing, id, type, payload })); if (body.length > this.max) throw new Failure('service-children'); const head = Buffer.alloc(4); head.writeUInt32BE(body.length); await bounded(this.clock, Math.min(deadline, this.clock.now() + 5000), () => this.stream.write(Buffer.concat([head, body])), 'service-children'); return id; }
+ async receive(deadline: number): Promise<Frame> { if (this.terminal) throw this.fatal ?? new Failure('service-children'); if (!this.started) return this.decode(deadline); if (this.fatal) throw this.fatal; if (this.queued.length) return this.queued.shift()!; if (this.waiter) throw new Failure('service-children'); this.allowed = true; return bounded(this.clock, deadline, () => new Promise<Frame>((resolve, reject) => { this.waiter = { resolve, reject }; }), 'service-children'); }
+ async send(type: string, payload: Record<string, unknown>, deadline: number, id = this.id()): Promise<string> { if (this.terminal) throw this.fatal ?? new Failure('service-children'); hex(id, 32); if (++this.outgoing > 4096) throw new Failure('service-children'); const body = Buffer.from(JSON.stringify({ v: 1, seq: this.outgoing, id, type, payload })); if (body.length > this.max) throw new Failure('service-children'); const head = Buffer.alloc(4); head.writeUInt32BE(body.length); await bounded(this.clock, Math.min(deadline, this.clock.now() + 5000), () => this.stream.write(Buffer.concat([head, body])), 'service-children'); return id; }
  async request(type: string, payload: Record<string, unknown>, expected: string, deadline: number): Promise<Frame> {
-  if (this.pending) throw new Failure('control');
+  if (this.terminal) throw this.fatal ?? new Failure('service-children'); if (this.pending) throw new Failure('control');
   this.pending = true;
   const id = this.id();
   const result = new Promise<Frame>((resolve, reject) => {
@@ -145,7 +155,7 @@ class Channel {
 function socketStream(socket: Socket): Stream {
  const chunks: Buffer[] = []; let ended = false, failure: Error | undefined; let waiter: (() => void) | undefined; let queued = 0;
  socket.on('data', chunk => { queued += chunk.length; if (queued > 9 * 1024 * 1024 + 4) { failure = new Failure('service-children'); socket.destroy(); } else chunks.push(chunk); waiter?.(); });
- socket.on('error', error => { failure = error; waiter?.(); }); socket.on('end', () => { ended = true; waiter?.(); }); socket.on('close', () => { ended = true; waiter?.(); });
+  socket.on('error', error => { failure = error; waiter?.(); }); socket.on('end', () => { ended = true; waiter?.(); }); socket.on('close', () => { if (!ended && !failure) failure = new Failure('service-children'); ended = true; waiter?.(); });
  return { async read() { while (!chunks.length && !ended && !failure) await new Promise<void>(resolve => { waiter = resolve; }); waiter = undefined; if (failure) throw failure; const chunk = chunks.shift(); if (chunk) queued -= chunk.length; return chunk ?? null; }, write(bytes) { return new Promise((resolve, reject) => socket.write(bytes, error => error ? reject(error) : resolve())); }, close() { socket.destroy(); return Promise.resolve(); } };
 }
 function production(input: SupervisorInput): SupervisorDependencies {
@@ -203,11 +213,11 @@ export function createGuidesParentSupervisor(input: SupervisorInput, dependencie
  for (const secret of [input.authSecret, input.databasePassword]) if (typeof secret !== 'string' || secret.length < 1 || secret.length > 256 || /[\x00-\x1f]/.test(secret)) throw new Failure('receipt');
  for (const port of [input.harnessPort, input.apiPort, input.controlPort]) integer(port, 1024, 65535);
  if (dependencies && ['clock', 'randomHex', 'listen', 'launch', 'witness', 'drop', 'disposeCustody'].some(key => !(key in dependencies))) throw new Failure('receipt');
- const d = dependencies ?? production(input); const failures = new Set<Label>(); let first: Label | undefined; let disposed = false; let runPromise: Promise<SupervisorEvidence> | undefined, disposalPromise: Promise<DisposalEvidence> | undefined;
+ const d = dependencies ?? production(input); const failures = new Set<Label>(); let first: Label | undefined; let channelFailure: Failure | undefined; let disposed = false; let runPromise: Promise<SupervisorEvidence> | undefined, disposalPromise: Promise<DisposalEvidence> | undefined;
  let laneDeadline = 0, recoveryDeadline = 0, databaseOid: number | undefined; let launcher: Launcher | undefined, channel: Channel | undefined, listener: Listener | undefined, authority: OwnedUatDatabaseAuthority | undefined;
  let fixture: Channel | undefined, worker: Channel | undefined; let containment = false, handles = false, launcherClosed = false, exitAttempted = false; const peers: Channel[] = []; let priority: Promise<void> | undefined;
  const fail = (label: Label) => { first ??= label; failures.add(label); };
- const check = () => { if (first || disposed) throw new Failure(first ?? 'service-children'); if (d.clock.now() >= laneDeadline) { fail('service-children'); throw new Failure('service-children'); } };
+ const check = () => { if (first || disposed) throw channelFailure ?? new Failure(first ?? 'service-children'); if (d.clock.now() >= laneDeadline) { fail('service-children'); throw new Failure('service-children'); } };
  const remaining = (ceiling: number, deadline = laneDeadline) => { const ms = Math.min(ceiling, Math.floor(deadline - d.clock.now())); if (ms < 1 || !Number.isFinite(ms)) throw new Failure('service-children'); return ms; };
  const id = () => { const value = d.randomHex(16); hex(value, 32); return value; };
  const accountBindings = new Map<string, string>(); const sessionCookies = new Set<string>();
@@ -235,7 +245,7 @@ export function createGuidesParentSupervisor(input: SupervisorInput, dependencie
  const request = async (type: string, payload: Record<string, unknown>, expected: string, ceiling: number, recovering = false) => { if (!channel) throw new Failure('service-children'); if (!recovering) check(); const deadline = Math.min(recovering ? recoveryDeadline : laneDeadline, d.clock.now() + ceiling); const result = await channel.request(type, payload, expected, deadline); if (!recovering) check(); return result; };
  const jobEmpty = (result: Frame, success: boolean) => { exact(result.payload, ['activeProcesses', 'fixtureSignaled', 'fixtureExitCode', 'workersSignaled']); integer(result.payload.fixtureExitCode, 0, 0xffffffff); if (result.payload.activeProcesses !== 0 || result.payload.fixtureSignaled !== true || result.payload.workersSignaled !== true || success && result.payload.fixtureExitCode !== 0) throw new Failure('service-children'); containment = true; };
  const witness = async (deadline: number) => { if (!authority) throw new Failure('owned-database'); const ms = remaining(15000, deadline); const result = await bounded(d.clock, d.clock.now() + ms, () => d.witness(authority!, ms), 'runtime-pool'); exact(result, ['maintenanceDatabase', 'databaseOid', 'privileged', 'maxPreparedTransactions', 'preparedTransactions', 'clientSessions', 'fresh']); if (result.maintenanceDatabase !== 'postgres' || databaseOid !== undefined && result.databaseOid !== databaseOid || result.privileged !== true || result.maxPreparedTransactions !== 0 || result.preparedTransactions !== 0 || result.clientSessions !== 0 || result.fresh !== true) throw new Failure('runtime-pool'); integer(result.databaseOid, 1, 0xffffffff); databaseOid ??= result.databaseOid; };
- const authenticate = async (role: 'fixture' | 'worker', epoch: number, token: string, deadline: number) => { if (!listener) throw new Failure('service-children'); check(); const stream = await bounded(d.clock, deadline, () => listener!.next(), 'service-children'); const peer = new Channel(stream, d.clock, id, 9 * 1024 * 1024, role); peers.push(peer); const hello = await peer.raw(deadline); exact(hello, ['v', 'type', 'role', 'epoch', 'token']); hex(hello.token, 64); if (hello.v !== 1 || hello.type !== 'hello' || hello.role !== role || hello.epoch !== epoch || !timingSafeEqual(Buffer.from(hello.token), Buffer.from(token))) throw new Failure('service-children'); check(); peer.activate(laneDeadline, () => abort('failure')); return peer; };
+ const authenticate = async (role: 'fixture' | 'worker', epoch: number, token: string, deadline: number) => { if (!listener) throw new Failure('service-children'); check(); const stream = await bounded(d.clock, deadline, () => listener!.next(), 'service-children'); const peer = new Channel(stream, d.clock, id, 9 * 1024 * 1024, role); peers.push(peer); const hello = await peer.raw(deadline); exact(hello, ['v', 'type', 'role', 'epoch', 'token']); hex(hello.token, 64); if (hello.v !== 1 || hello.type !== 'hello' || hello.role !== role || hello.epoch !== epoch || !timingSafeEqual(Buffer.from(hello.token), Buffer.from(token))) throw new Failure('service-children'); check(); peer.activate(laneDeadline, error => { if (!first && error instanceof Failure) { channelFailure = error; fail(error.label); } abort('failure'); }); return peer; };
  const initialize = async (peer: Channel, payload: Record<string, unknown>, deadline: number) => {
   check();
   const ack = await peer.request('init', { ...payload, remainingLaneMs: remaining(21600000) }, 'init-ack', deadline);
@@ -268,7 +278,7 @@ export function createGuidesParentSupervisor(input: SupervisorInput, dependencie
    authority = await bounded(d.clock, Math.min(laneDeadline, d.clock.now() + 60000), () => input.acquisition.create(), 'owned-database'); check();
    const pipe = `\\\\.\\pipe\\explorers-guides-${input.runId}-${id()}`;
    listener = await bounded(d.clock, Math.min(laneDeadline, d.clock.now() + 10000), () => d.listen(pipe), 'service-children'); check();
-   launcher = d.launch(input.powershellExecutable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', input.jobScript], input.configure.cwd); channel = new Channel(launcher.stream, d.clock, id, 65536); channel.activate(laneDeadline, () => abort('failure'));
+   launcher = d.launch(input.powershellExecutable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', input.jobScript], input.configure.cwd); channel = new Channel(launcher.stream, d.clock, id, 65536); channel.activate(laneDeadline, error => { if (!first && error instanceof Failure) { channelFailure = error; fail(error.label); } abort('failure'); });
    const configured = await request('configure', { ...input.configure }, 'configured', 10000); exact(configured.payload, []);
    const fixtureToken = d.randomHex(32); hex(fixtureToken, 64); const launched = await request('launch-fixture', { pipe, token: fixtureToken }, 'launched', 10000); exact(launched.payload, ['slot']); if (launched.payload.slot !== 'fixture') throw new Failure('service-children');
    fixture = await authenticate('fixture', 0, fixtureToken, Math.min(laneDeadline, d.clock.now() + 60000));
@@ -288,11 +298,11 @@ export function createGuidesParentSupervisor(input: SupervisorInput, dependencie
      sameIdentity({ caseId: observation.caseId, project: observation.project, repeat: observation.repeat }, active);
      for (const key of ['guides', 'sections', 'media', 'objects', 'attachments']) if (!Array.isArray(observation[key])) throw new Failure('control');
      check(); observed = true; fixture.resume(); await fixture.send('observe-result', result.payload, end, command.id); continue; }
-    if (command.type === 'retire-worker') { exact(command.payload, ['epoch', 'identity', 'nativeComplete', 'producersClosed', 'controlIdle']); if (!worker || !active || !observed || command.payload.epoch !== epoch || command.payload.nativeComplete !== true || command.payload.producersClosed !== true || command.payload.controlIdle !== true) throw new Failure('control'); sameIdentity(command.payload.identity, active); const end = Math.min(laneDeadline, d.clock.now() + 30000); const result = await request('terminate-worker', { epoch, remainingMs: remaining(10000, end) }, 'terminated', 10000); exact(result.payload, ['epoch', 'processSignaled']); if (result.payload.epoch !== epoch || result.payload.processSignaled !== true) throw new Failure('service-children'); await witness(end); check(); worker.stop(); await worker.stream.close(); worker = undefined; completed.add(JSON.stringify(active)); active = undefined; fixture.resume(); await fixture.send('retired', { epoch }, end, command.id); continue; }
-    if (command.type === 'complete') { exact(command.payload, ['browserExitCode']); if (command.payload.browserExitCode !== 0 || completed.size !== 16 || worker || active) throw new Failure('browser'); fixture.stop(); const finish = await request('finish-job', { remainingMs: remaining(15000) }, 'job-empty', 15000); jobEmpty(finish, true); exitAttempted = true; const exit = await request('exit', { remainingMs: remaining(5000) }, 'exit-ack', 5000); exact(exit.payload, ['handlesClosed']); if (exit.payload.handlesClosed !== true) throw new Failure('service-children'); handles = true; const actual = await bounded(d.clock, Math.min(laneDeadline, d.clock.now() + 5000), () => launcher!.exited(), 'service-children'); if (actual.code !== 0 || actual.closed !== true) throw new Failure('service-children'); launcherClosed = true; check(); return Object.freeze({ completedEpochs: 16, activeProcesses: 0, fixtureExitCode: 0, launcherExitCode: 0, handlesClosed: true, databaseOid: databaseOid! }); }
+    if (command.type === 'retire-worker') { exact(command.payload, ['epoch', 'identity', 'nativeComplete', 'producersClosed', 'controlIdle']); if (!worker || !active || !observed || command.payload.epoch !== epoch || command.payload.nativeComplete !== true || command.payload.producersClosed !== true || command.payload.controlIdle !== true) throw new Failure('control'); sameIdentity(command.payload.identity, active); const end = Math.min(laneDeadline, d.clock.now() + 30000); check(); worker.beginWorkerRetirement(); const result = await request('terminate-worker', { epoch, remainingMs: remaining(10000, end) }, 'terminated', 10000); exact(result.payload, ['epoch', 'processSignaled']); if (result.payload.epoch !== epoch || result.payload.processSignaled !== true) throw new Failure('service-children'); check(); await witness(end); check(); worker.stop(); await worker.stream.close(); worker = undefined; completed.add(JSON.stringify(active)); active = undefined; fixture.resume(); await fixture.send('retired', { epoch }, end, command.id); continue; }
+    if (command.type === 'complete') { exact(command.payload, ['browserExitCode']); if (command.payload.browserExitCode !== 0 || completed.size !== 16 || worker || active) throw new Failure('browser'); check(); fixture.acceptFixtureCompletion(); const finish = await request('finish-job', { remainingMs: remaining(15000) }, 'job-empty', 15000); jobEmpty(finish, true); exitAttempted = true; const exit = await request('exit', { remainingMs: remaining(5000) }, 'exit-ack', 5000); exact(exit.payload, ['handlesClosed']); if (exit.payload.handlesClosed !== true) throw new Failure('service-children'); handles = true; const actual = await bounded(d.clock, Math.min(laneDeadline, d.clock.now() + 5000), () => launcher!.exited(), 'service-children'); if (actual.code !== 0 || actual.closed !== true) throw new Failure('service-children'); launcherClosed = true; check(); fixture.stop(); return Object.freeze({ completedEpochs: 16, activeProcesses: 0, fixtureExitCode: 0, launcherExitCode: 0, handlesClosed: true, databaseOid: databaseOid! }); }
     throw new Failure(command.type === 'fatal' ? 'control' : 'service-children');
    }
-  } catch (error) { fail(error instanceof Failure ? error.label : 'service-children'); abort('failure'); throw new Failure(first!, error instanceof Failure ? error.cleanup : undefined); } })(); return runPromise;
+  } catch (error) { fail(error instanceof Failure ? error.label : 'service-children'); abort('failure'); throw new Failure(first!, channelFailure?.cleanup ?? (error instanceof Failure ? error.cleanup : undefined)); } })(); return runPromise;
  }
  function dispose(): Promise<DisposalEvidence> {
   if (disposalPromise) return disposalPromise; disposed = true; if (!recoveryDeadline) recoveryDeadline = d.clock.now() + 300000;

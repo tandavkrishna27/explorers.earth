@@ -236,6 +236,7 @@ function guidesScripted(options: Record<string, any> = {}) {
     const events: string[] = [], frames: ScriptFrame[] = [], timers = new Map<number, {callback: () => void; ms: number}>();
     let timerId = 0, random = 0, now = 0, fixture: ReturnType<typeof stream>, held: ScriptFrame | undefined;
     const connections: ReturnType<typeof stream>[] = [], connectionWaiters: ((value: ReturnType<typeof stream>) => void)[] = [];
+    const workers = new Map<number, ReturnType<typeof stream>>();
     const authority = { runId: GUIDES_TEST_RUN, commit: GUIDES_TEST_COMMIT, database: 'owned', port: 53000, owned: true as const, containerId: 'd'.repeat(64), imageId: 'sha256:' + 'e'.repeat(64), contextHost: 'npipe://owned' };
     const identities = GUIDES_CASES.flatMap(caseId => GUIDES_PROJECTS.map(project => ({caseId, project, repeat: 0 as const})));
     const personas = {ownerA: {userId: 'auth|owner-a', handle: 'guide-owner-a'}, ownerB: {userId: 'auth|owner-b', handle: 'guide-owner-b'}, ownerC: {userId: 'auth|owner-c', handle: 'guide-owner-c'}};
@@ -259,13 +260,13 @@ function guidesScripted(options: Record<string, any> = {}) {
             emit(type: string, payload: any, id = 'f'.repeat(32)) { events.push(`emit:${type}`); push(wire({v:1,seq:++sequence,id,type,payload})); },
             hello(role: string, epoch: number, token: string) { push(wire({v:1,type:'hello',role,epoch,token: options.badHello && role==='worker'?'0'.repeat(64):token})); },
             async read(): Promise<Buffer|null> { if(bytes.length)return bytes.shift()!;if(closed)return null;return new Promise(resolve=>waiters.push(resolve)); },
-            async write(value: Buffer) { const frame=JSON.parse(value.subarray(4).toString()) as ScriptFrame;frames.push(frame);events.push(frame.type);onWrite(frame); },
+            async write(value: Buffer) { const frame=JSON.parse(value.subarray(4).toString()) as ScriptFrame;frames.push(frame);events.push(frame.type);onWrite(frame); if(options.completeEof&&frame.type==='retired'&&frame.payload.epoch===16)for(let turn=0;turn<12;turn++)await Promise.resolve(); },
             async close() { closed=true;while(waiters.length)waiters.shift()!(null);events.push('stream-close'); },
         };
     }
     const soon = (callback: () => void) => queueMicrotask(() => queueMicrotask(callback));
     function next(epoch: number) {
-        if(epoch===17)fixture.emit('complete',{browserExitCode:0});
+        if(epoch===17){fixture.emit('complete',{browserExitCode:options.badComplete?1:0});if(options.completeTail)tail(fixture,options.completeTail);if(options.completeEof)fixture.push(null);}
         else fixture.emit('start-worker',{epoch,identity:identities[epoch-1]});
     }
     function peer(role: 'fixture'|'worker', epoch: number, token: string) {
@@ -286,15 +287,24 @@ function guidesScripted(options: Record<string, any> = {}) {
             }
             if(frame.type==='start-worker-result')soon(()=>fixture.emit('observe',{epoch:frame.payload.epoch,identity:identities[frame.payload.epoch-1]}));
             if(frame.type==='observe') {
+                if(options.earlyWorkerEof){p.push(null);return;}
                 if(options.lostObserve)return; if(options.fatalCleanup){p.emit('fatal',{phase:'observe',code:'unsettled',cleanup:options.fatalCleanup},frame.id);return;} if(options.fatalObserve){p.emit('fatal',{phase:'observe',code:'failed',cleanup:null},frame.id);return;}
                 if(options.busyRetire) { fixture.emit('retire-worker',{epoch,identity:identities[epoch-1],nativeComplete:true,producersClosed:true,controlIdle:true});return; }
                 p.emit('observed',{epoch,observation:{version:1,action:'observe',runId:GUIDES_TEST_RUN,commit:GUIDES_TEST_COMMIT,...identities[epoch-1],generation:options.badObservation?2:1,personas:{},guides:[],sections:[],media:[],objects:[],attachments:[]}},frame.id);
             }
             if(frame.type==='observe-result')soon(()=>fixture.emit('retire-worker',{epoch:frame.payload.epoch,identity:identities[frame.payload.epoch-1],nativeComplete:true,producersClosed:true,controlIdle:true}));
-            if(frame.type==='retired')soon(()=>next(frame.payload.epoch+1));
+            if(frame.type==='retired'){if((options.completeEof||options.completeTail)&&frame.payload.epoch===16)next(17);else soon(()=>next(frame.payload.epoch+1));}
         });
         p.hello(options.badRole&&role==='worker'?'fixture':role,options.badEpoch&&role==='worker'?epoch+1:epoch,token);connections.push(p);connectionWaiters.shift()?.(connections.shift()!);if(role==='fixture')fixture=p;
+        if(role==='worker')workers.set(epoch,p);
         return p;
+    }
+    function tail(p: ReturnType<typeof stream>, kind: string) {
+        if(kind==='fatal')p.emit('fatal',{phase:'retirement',code:'unsettled',cleanup:{code:'GUIDES_CONTROL_CLEANUP_FAILED',unsettled:true,failures:['listener','drain']}});
+        else if(kind==='extra')p.emit('unexpected',{});
+        else if(kind==='utf8')p.push(Buffer.from([0,0,0,1,255]));
+        else p.push(kind==='body'?Buffer.from([0,0,0,10,123]):Buffer.alloc(Number(kind),1));
+        p.push(null);
     }
     const launcher=stream(frame=>{
         if(frame.type==='configure') {
@@ -311,7 +321,7 @@ function guidesScripted(options: Record<string, any> = {}) {
         }
         if(frame.type==='launch-fixture') { peer('fixture',0,frame.payload.token);launcher.emit('launched',{slot:'fixture'},frame.id); }
         if(frame.type==='launch-worker') { if(options.pendingLaunch){held=frame;return;}peer('worker',frame.payload.epoch,frame.payload.token);launcher.emit('launched',{slot:frame.payload.epoch},frame.id); }
-        if(frame.type==='terminate-worker') { events.push(`worker-exit:${frame.payload.epoch}`);launcher.emit('terminated',{epoch:frame.payload.epoch,processSignaled:!options.unconfirmedExit},frame.id); }
+        if(frame.type==='terminate-worker') { if(options.workerTail)tail(workers.get(frame.payload.epoch)!,options.workerTail);if(options.workerEof)workers.get(frame.payload.epoch)!.push(null);events.push(`worker-exit:${frame.payload.epoch}`);launcher.emit('terminated',{epoch:frame.payload.epoch,processSignaled:!options.unconfirmedExit},frame.id); }
         if(frame.type==='finish-job')launcher.emit('job-empty',{activeProcesses:0,fixtureSignaled:true,fixtureExitCode:options.nonzeroFixture?7:0,workersSignaled:true},frame.id);
         if(frame.type==='abort-job') { if(held)launcher.emit(options.lateSuccess?'launched':'cancelled',options.lateSuccess?{slot:1}:{commandId:held.id},held.id);launcher.emit('job-empty',{activeProcesses:0,fixtureSignaled:true,fixtureExitCode:7,workersSignaled:true},frame.id); }
         if(frame.type==='exit')launcher.emit('exit-ack',{handlesClosed:!options.badExitAck},frame.id);
@@ -329,6 +339,30 @@ function guidesScripted(options: Record<string, any> = {}) {
 
 describe('Guides scripted parent behavior',()=>{
     const load=()=>import('../../../scripts/guides-parent-supervision');
+    it.each([{workerEof:true},{completeEof:true}])('accepts planned clean transport EOF only with positive terminal gates %j',async options=>{
+        const {createGuidesParentSupervisor}=await load(),fake=guidesScripted(options);
+        expect((await createGuidesParentSupervisor(fake.input,fake.dependencies).run()).completedEpochs).toBe(16);
+        expect(fake.events).toContain('actual-exit');
+    });
+    it.each(['1','2','3','body','utf8','extra','fatal'])('rejects planned worker termination with trailing %s',async workerTail=>{
+        const {createGuidesParentSupervisor}=await load(),fake=guidesScripted({workerTail});
+        await expect(createGuidesParentSupervisor(fake.input,fake.dependencies).run()).rejects.toThrow();
+        expect(fake.frames.some(frame=>frame.type==='launch-worker'&&frame.payload.epoch===2)).toBe(false);
+    });
+    it.each(['1','2','3','body','utf8','extra','fatal'])('rejects accepted fixture completion with trailing %s',async completeTail=>{
+        const {createGuidesParentSupervisor}=await load(),fake=guidesScripted({completeTail});
+        await expect(createGuidesParentSupervisor(fake.input,fake.dependencies).run()).rejects.toThrow();
+    });
+    it.each(['worker','fixture'])('preserves terminal %s fatal cleanup rather than upgrading EOF',async role=>{
+        const {createGuidesParentSupervisor}=await load(),fake=guidesScripted(role==='worker'?{workerTail:'fatal'}:{completeTail:'fatal'});
+        let error:any;try{await createGuidesParentSupervisor(fake.input,fake.dependencies).run();}catch(caught){error=caught;}
+        expect(error).toBeDefined();expect(error.cleanup).toEqual({code:'GUIDES_CONTROL_CLEANUP_FAILED',unsettled:true,failures:['listener','drain']});
+        expect(Object.isFrozen(error.cleanup)).toBe(true);expect(Object.isFrozen(error.cleanup.failures)).toBe(true);
+    });
+    it.each([{earlyWorkerEof:true},{workerEof:true,unconfirmedExit:true},{workerEof:true,witnessAfterExit:true},{workerEof:true,pgError:true},{completeEof:true,badComplete:true},{completeEof:true,nonzeroFixture:true},{completeEof:true,badExitAck:true},{completeEof:true,badActualExit:true},{completeEof:true,lostClose:true}])('does not upgrade EOF with failed independent gates %j',async options=>{
+        const {createGuidesParentSupervisor}=await load(),fake=guidesScripted(options);
+        await expect(createGuidesParentSupervisor(fake.input,fake.dependencies).run()).rejects.toThrow();
+    });
     it('completes exactly sixteen unique epochs with one reset domain and checked ordered retirement/disposal',async()=>{
         const {createGuidesParentSupervisor}=await load(),fake=guidesScripted();
         const supervisor=createGuidesParentSupervisor(fake.input,fake.dependencies);
