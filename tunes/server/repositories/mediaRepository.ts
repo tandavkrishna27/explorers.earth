@@ -71,7 +71,7 @@ export class MediaRepository {
       JOIN creator_accounts a ON a.id=c.account_id
       JOIN account_category_settings s ON s.account_id=c.account_id AND s.category=c.category
       WHERE cm.media_id=$1 AND cm.slot='cover' AND m.purpose='collection'
-        AND c.category IN ('places','products','people','guides')
+        AND c.category IN ('apps','places','products','people','guides')
         AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile
         AND s.is_public AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'
       UNION ALL
@@ -86,13 +86,21 @@ export class MediaRepository {
         AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile
         AND s.is_public AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'
       UNION ALL
-      SELECT 1 FROM (SELECT recommendation_id,account_id,media_id,NULL::uuid AS source_entity_id,NULL::text AS required_category FROM recommendation_media UNION ALL SELECT recommendation_id,account_id,media_id,NULL::uuid,'books'::text FROM recommendation_book_covers UNION ALL SELECT recommendation_id,account_id,media_id,source_entity_id,'movies'::text FROM recommendation_movie_media) rm
+      SELECT 1 FROM (
+        SELECT recommendation_id,account_id,media_id,NULL::uuid AS source_entity_id,NULL::text AS required_category FROM recommendation_media
+        UNION ALL SELECT recommendation_id,account_id,media_id,NULL::uuid,'books'::text FROM recommendation_book_covers
+        UNION ALL SELECT recommendation_id,account_id,media_id,source_entity_id,'movies'::text FROM recommendation_movie_media
+        UNION ALL SELECT recommendation_id,account_id,media_id,NULL::uuid,'apps'::text FROM recommendation_app_screenshots
+        UNION ALL SELECT recommendation_id,account_id,media_id,NULL::uuid,'places'::text FROM recommendation_place_photos
+      ) rm
       JOIN recommendations r ON r.id=rm.recommendation_id AND r.account_id=rm.account_id
       JOIN collection_items ci ON ci.recommendation_id=r.id AND ci.account_id=r.account_id AND ci.category=r.category
       JOIN collections c ON c.id=ci.collection_id AND c.account_id=ci.account_id AND c.category=ci.category
       JOIN creator_accounts a ON a.id=r.account_id
       JOIN account_category_settings s ON s.account_id=r.account_id AND s.category=r.category
-      WHERE rm.media_id=$1 AND r.category IN('books','movies','games') AND (rm.required_category IS NULL OR rm.required_category=r.category) AND (rm.source_entity_id IS NULL OR rm.source_entity_id=r.entity_id) AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile
+      WHERE rm.media_id=$1 AND r.category IN('books','movies','games','apps','places')
+        AND ((rm.required_category IS NULL AND r.category IN('books','movies','games')) OR rm.required_category=r.category)
+        AND (rm.source_entity_id IS NULL OR rm.source_entity_id=r.entity_id) AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile
         AND s.is_public AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'
         AND r.archived_at IS NULL AND r.publication_state='published'
     ) AS visible`, [id]);
@@ -109,7 +117,9 @@ export class MediaRepository {
         + (SELECT count(*) FROM profile_feed_items WHERE media_id=$1 AND account_id=$2)
         + (SELECT count(*) FROM collection_media WHERE media_id=$1 AND account_id=$2)
         + (SELECT count(*) FROM guide_section_photos WHERE media_id=$1 AND account_id=$2)
-        + (SELECT count(*) FROM recommendation_media WHERE media_id=$1 AND account_id=$2) + (SELECT count(*) FROM recommendation_book_covers WHERE media_id=$1 AND account_id=$2) + (SELECT count(*) FROM recommendation_movie_media WHERE media_id=$1 AND account_id=$2))::text AS count`, [id, accountId]);
+        + (SELECT count(*) FROM recommendation_media WHERE media_id=$1 AND account_id=$2) + (SELECT count(*) FROM recommendation_book_covers WHERE media_id=$1 AND account_id=$2) + (SELECT count(*) FROM recommendation_movie_media WHERE media_id=$1 AND account_id=$2)
+        + (SELECT count(*) FROM recommendation_app_screenshots WHERE media_id=$1 AND account_id=$2)
+        + (SELECT count(*) FROM recommendation_place_photos WHERE media_id=$1 AND account_id=$2))::text AS count`, [id, accountId]);
       if (Number(refs.rows[0]?.count) > 0) { await client.query("ROLLBACK"); return undefined; }
       const changed = await client.query("UPDATE media_assets SET status='pending_delete',delete_requested_at=now(),updated_at=now() WHERE id=$1 AND account_id=$2 AND status='ready' RETURNING id", [id, accountId]);
       if (!changed.rows[0]) { await client.query("ROLLBACK"); return undefined; }
@@ -148,7 +158,9 @@ export class MediaRepository {
           AND NOT EXISTS (SELECT 1 FROM guide_section_photos WHERE media_id=m.id)
           AND NOT EXISTS (SELECT 1 FROM recommendation_media WHERE media_id=m.id)
           AND NOT EXISTS (SELECT 1 FROM recommendation_book_covers WHERE media_id=m.id)
-          AND NOT EXISTS (SELECT 1 FROM recommendation_movie_media WHERE media_id=m.id)))
+          AND NOT EXISTS (SELECT 1 FROM recommendation_movie_media WHERE media_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM recommendation_app_screenshots WHERE media_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM recommendation_place_photos WHERE media_id=m.id)))
       ORDER BY m.created_at,m.id LIMIT $3`, [accountId, environment, limit]);
     return result.rows;
   }
