@@ -582,3 +582,14 @@ notice. This strongly supports the output-contamination mechanism; original
 stop output was not retained. Future calls must use --timeout and preserve the
 exact ID guard. Original b1 stop cause remains unknown. No Apps browser or new
 hosted CI qualification is claimed.
+
+### Second retained fixture finalized
+
+The supported --timeout flag and exact 956 finalizer extension passed root
+fresh 124 resource-free contracts, scoped types with zero errors and independent
+source review. At clean `fec7838ae173a53e678fe2e3c824af051c3beb72`, native
+956 filesystem finalization positively closed with exit 0 and
+`finalized_existing_files`, native evidence, qualification false. Fresh
+postchecks confirmed root absent, recovery lease absent, secret file size zero
+and exact run-label container absence. Both retained runs are finalized. No
+browser or hosted CI qualification follows from filesystem finalization.
