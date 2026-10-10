@@ -3,6 +3,7 @@ import {movieDisplayFieldsSchema,movieDetailsSchema,emptyMovieDetails,resolveMan
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type { CollectionCoreDto, RecommendationCoreDto, TopPickCategory, CategoryTopPicksInput, CategoryTopPicksResult,DisplayOverrides } from '../../shared/explorersContract';
+import {createCollectionResultSchema,type CreateCollectionResult} from '../../shared/explorersContract';
 import { lockContentCategories } from '../db/explorers-content-lock';
 import type { RichNote } from '../../shared/explorersRichNoteContract';
 import {emptyBookDetails,bookDisplayFieldsSchema,bookEntityDetailsSchema,type BookCandidate,type BookEntityDetails,type BookRecommendationContext} from '../../shared/explorersBookContract';
@@ -77,7 +78,7 @@ export class ExplorersRecommendationRepository {
       // Account -> category -> aggregate. Replay returns above without mutation.
       // Existing resource scope is derived under the account lock, never supplied
       // by the caller; the callback still checks ownership/archive/revision.
-      const commandInput=input as {category?:ContentCategory;id?:string};
+      const commandInput=input as {category?:ContentCategory;id?:string;parentLocationCollectionId?:string};
       let category=commandInput.category;
       if(!category) {
         const recommendation=operation==='updateRecommendation'||operation==='archiveRecommendation'||operation==='replaceRecommendationEntity';
@@ -86,7 +87,7 @@ export class ExplorersRecommendationRepository {
           : 'SELECT category FROM collections WHERE id=$1 AND account_id=$2',[commandInput.id,accountId]);
         category=scope.rows[0]?.category;
       }
-      if(category) await lockContentCategories(db,accountId,[category]);
+      if(category) await lockContentCategories(db,accountId,operation==='createCollection'&&commandInput.parentLocationCollectionId!==undefined?[category,'places']:[category]);
       const result=await work(db);
       await db.query(`INSERT INTO application_command_receipts(account_id,operation,idempotency_key_hash,request_hash,response)
         VALUES($1,$2,$3,$4,$5)`,[accountId,operation,keyHash,requestHash,JSON.stringify(result)]);
@@ -225,9 +226,15 @@ export class ExplorersRecommendationRepository {
       return inserted.rows[0] as {id:string;kind:CatalogKind;title:string};
     });
   }
-  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;parentLocationCollectionId?:string},key:string):Promise<CollectionRecord> {
+  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;parentLocationCollectionId?:string;parentExpectedRevision?:number},key:string):Promise<CreateCollectionResult> {
+    const linked=input.parentLocationCollectionId!==undefined;
+    if(linked!==(input.parentExpectedRevision!==undefined))throw new RecommendationFailure(422,'Parent identity and revision are required together');
+    if(linked&&(!Number.isSafeInteger(input.parentExpectedRevision)||(input.parentExpectedRevision??0)<1))throw new RecommendationFailure(422,'Invalid revision');
+    if(linked&&!linkableChildCategorySchema.safeParse(input.category).success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
     const normalized={...input,visibility:input.visibility??'private',publicationState:input.publicationState??'draft'};
     return this.command(accountId,'createCollection',normalized,key,async db=>{
+      const parent=linked?await this.lockCollection(db,accountId,input.parentLocationCollectionId!,input.parentExpectedRevision!):undefined;
+      if(parent&&parent.category!=='places')throw new RecommendationFailure(422,'A location list is required');
       const result=await db.query(`INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order)
         SELECT $1,$2,$3,$4,$5,$6,coalesce(max(display_order)+1,0) FROM collections WHERE account_id=$1 AND category=$2 RETURNING *`,
         [accountId,input.category,input.title,input.slug,normalized.visibility,normalized.publicationState]);
@@ -239,12 +246,18 @@ export class ExplorersRecommendationRepository {
       if(input.category==='places')await writePlaceCollectionDetails(db,result.rows[0].id,accountId,input.placeLocation??emptyPlaceCollectionDetails());
       // Ticket 5.2. Creating a list from a location links it in the same transaction, so a
       // failed parent leaves no orphan child - the whole create rolls back.
+      let parentLocation:CreateCollectionResult['parentLocation'];
       if(input.parentLocationCollectionId!==undefined){
         const child=linkableChildCategorySchema.safeParse(input.category);
         if(!child.success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
         await writeLocationLink(db,{childCollectionId:result.rows[0].id,accountId,childCategory:child.data,locationCollectionId:input.parentLocationCollectionId});
+        const changed=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 AND account_id=$2 RETURNING id,revision',[parent!.id,accountId]);
+        parentLocation={id:changed.rows[0].id,revision:Number(changed.rows[0].revision)};
       }
-      return this.collectionRecord(db,{...result.rows[0],description:input.description??null,heading:input.heading??null});
+      const created=createCollectionResultSchema.parse({...await this.collectionRecord(db,{...result.rows[0],description:input.description??null,heading:input.heading??null}),...(parentLocation?{parentLocation}:{})});
+      if(created.accountId!==accountId||created.category!==input.category||created.revision!==1||created.id.toLowerCase()===input.parentLocationCollectionId?.toLowerCase()||
+        (linked?(created.parentLocation?.id.toLowerCase()!==input.parentLocationCollectionId!.toLowerCase()||created.parentLocation?.revision!==input.parentExpectedRevision!+1):created.parentLocation!==undefined))throw new RecommendationFailure(422,'Invalid create result');
+      return created;
     });
   }
   private async lockCollection(db:PoolClient,accountId:string,id:string,revision:number) {

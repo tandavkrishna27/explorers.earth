@@ -59,7 +59,7 @@ it('guarded parent create HTTP links Products and People and gives equal foreign
   expect((await pool.query('SELECT recommendation_id FROM collection_items WHERE collection_id=$1',[parent.id])).rowCount).toBe(0);
   for(const category of ['products','people']){
     const observed=await parentCreateRevision(parent.id),before=await parentCreateHttpState([a.accountId,b.accountId]);
-    const input={category,title:'Guarded HTTP child',slug:`guarded-${randomUUID()}`,parentLocationCollectionId:parent.id,parentExpectedRevision:observed},key=randomUUID();
+    const input={category,title:'Guarded HTTP child',slug:`guarded-${randomUUID()}`,parentLocationCollectionId:category==='products'?parent.id.toUpperCase():parent.id,parentExpectedRevision:observed},key=randomUUID();
     const saved=await command(a,'post','/collections',input,key);expect(saved.status).toBe(201);
     expect(saved.body.collection).toEqual({id:expect.any(String),accountId:a.accountId,category,title:input.title,slug:input.slug,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,parentLocation:{id:parent.id,revision:observed+1}});
     expect(saved.body.collection.id).not.toBe(parent.id);expect(await parentCreateRevision(parent.id)).toBe(observed+1);
@@ -69,6 +69,11 @@ it('guarded parent create HTTP links Products and People and gives equal foreign
     expect(after.links.find(row=>row.child_collection_id===saved.body.collection.id)).toMatchObject({account_id:a.accountId,location_collection_id:parent.id,child_category:category});
     for(const changed of ['places',category]){const cursor=(state:typeof after)=>Number(state.categories.find(row=>row.account_id===a.accountId&&row.category===changed)?.revision??0);expect(cursor(after)).toBeGreaterThan(cursor(before));}
     expect((await command(a,'post','/collections',input,key)).body).toEqual(saved.body);expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(after);
+    if(category==='products'){
+      expect(input.parentLocationCollectionId).not.toBe(parent.id);
+      expect((await command(a,'post','/collections',{...input,parentLocationCollectionId:parent.id},key)).status).toBe(409);
+      expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(after);
+    }
     const refusalInput={...input,slug:`refused-${randomUUID()}`},states=await parentCreateHttpState([a.accountId,b.accountId]);
     const denied=await command(a,'post','/collections',{...refusalInput,parentLocationCollectionId:foreign.id,parentExpectedRevision:await parentCreateRevision(foreign.id)});
     expect(denied.status).toBe(404);expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(states);

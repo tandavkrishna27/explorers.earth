@@ -84,7 +84,8 @@ export const createCollectionSchema = z.object({category:contentCategorySchema,t
   placeLocation:placeCollectionDetailsSchema.optional(),
   // Ticket 5.2. Creating a Products or People list from a location links it atomically,
   // so a failed parent leaves no orphan child.
-  parentLocationCollectionId:contentIdSchema.optional()}).strict()
+  parentLocationCollectionId:contentIdSchema.optional(),parentExpectedRevision:contentRevision.optional()}).strict()
+  .refine(v=>(v.parentLocationCollectionId===undefined)===(v.parentExpectedRevision===undefined),'Parent identity and revision are required together')
   .refine(v=>v.placeLocation===undefined||v.category==='places','A location aggregate requires the places category')
   .refine(v=>v.parentLocationCollectionId===undefined||v.category==='products'||v.category==='people','Only Products and People lists link to a location');
 // Slug syntax is shared; admission is restricted by issued/stored Places category.
@@ -105,6 +106,9 @@ export const reorderCollectionSchema = z.object({expectedRevision:contentRevisio
 export const collectionCoreDtoSchema = z.object({id:contentIdSchema,accountId:contentIdSchema,category:contentCategorySchema,
   title:contentTitle,slug:contentSlug,visibility:contentVisibility,publicationState,revision:contentRevision,
   description:collectionPlainText,heading:collectionHeading,coverMediaId:contentIdSchema.nullable()}).strict();
+export const createCollectionResultSchema = collectionCoreDtoSchema.extend({
+  parentLocation:z.object({id:contentIdSchema,revision:contentRevision}).strict().optional()}).strict();
+export type CreateCollectionResult = z.infer<typeof createCollectionResultSchema>;
 export const recommendationCoreDtoSchema = z.object({id:contentIdSchema,accountId:contentIdSchema,entityId:contentIdSchema,
   category:recommendationCategorySchema,userRating,publicationState,revision:contentRevision,mediaIds:recommendationMediaIds}).strict();
 export type CreateCollectionInput = z.input<typeof createCollectionSchema>;

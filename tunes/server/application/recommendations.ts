@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 import { z } from 'zod/v3';
-import { collectionCoreDtoSchema, recommendationCoreDtoSchema, createCollectionSchema, updateCollectionSchema,
+import { collectionCoreDtoSchema, createCollectionResultSchema, recommendationCoreDtoSchema, createCollectionSchema, updateCollectionSchema,
   createRecommendationSchema, updateRecommendationSchema, reorderCollectionSchema, contentRevisionSchema,
   contentIdSchema, commandKeySchema, topPickCategorySchema, categoryTopPicksInputSchema, categoryTopPicksResultSchema, type RequestContext } from '../../shared/explorersContract';
 import type { Actor } from './actor';
@@ -66,7 +66,14 @@ export class RecommendationService {
       actor.accountId,parseContent(topPickCategorySchema,category),parseContent(categoryTopPicksInputSchema,input),this.key(context),replace)));
   }
   async createCollection(actor:Actor,input:unknown,context:RequestContext) {
-    return this.authorized(actor,'collections:write',async()=>collectionCoreDtoSchema.parse(await this.repository.createCollection(actor.accountId,parseContent(createCollectionSchema,input),this.key(context))));
+    return this.authorized(actor,'collections:write',async()=>{
+      const command=parseContent(createCollectionSchema,input);
+      const result=createCollectionResultSchema.parse(await this.repository.createCollection(actor.accountId,command,this.key(context)));
+      if(result.accountId!==actor.accountId||result.category!==command.category||result.revision!==1||result.id.toLowerCase()===command.parentLocationCollectionId?.toLowerCase()||
+        (command.parentLocationCollectionId===undefined?result.parentLocation!==undefined:
+          result.parentLocation?.id.toLowerCase()!==command.parentLocationCollectionId.toLowerCase()||result.parentLocation.revision!==command.parentExpectedRevision!+1))throw new RecommendationFailure(422,'Invalid create result');
+      return result;
+    });
   }
   async updateCollection(actor:Actor,id:string,input:unknown,context:RequestContext) {
     return this.authorized(actor,'collections:write',async()=>{

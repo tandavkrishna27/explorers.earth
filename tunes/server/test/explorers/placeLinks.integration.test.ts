@@ -269,7 +269,8 @@ describePg("Places link storage against PostgreSQL", () => {
     expect((await pool.query("SELECT recommendation_id FROM collection_items WHERE collection_id=$1", [parent.id])).rowCount).toBe(0);
     for (const category of ["products", "people"] as const) {
       const observed = await revision(parent.id), before = await guardedCreateState([owner, stranger]);
-      const child = await repository.createCollection(owner, guardedCreateInput(category, parent.id, observed) as never, key());
+      const input = guardedCreateInput(category, category === "products" ? parent.id.toUpperCase() : parent.id, observed), commandKey = key();
+      const child = await repository.createCollection(owner, input as never, commandKey);
       expect(child).toMatchObject({id: expect.any(String), accountId: owner, category, revision: 1, parentLocation: {id: parent.id, revision: observed + 1}});
       expect(child.id).not.toBe(parent.id);
       expect(await revision(parent.id)).toBe(observed + 1);
@@ -282,6 +283,8 @@ describePg("Places link storage against PostgreSQL", () => {
         const cursor = (state: typeof after) => Number(state.categories.find(row => row.account_id === owner && row.category === changed)?.revision ?? 0);
         expect(cursor(after)).toBeGreaterThan(cursor(before));
       }
+      expect(await repository.createCollection(owner, input as never, commandKey)).toEqual(child);
+      expect(await guardedCreateState([owner, stranger])).toEqual(after);
     }
     const entity = await repository.resolvePlaceEntity(owner, {kind: "manual", category: "places", details: {title: "Bare place"}}, key());
     const bare = await repository.createRecommendation(owner, {category: "places", entityId: entity.id, collectionId: parent.id, expectedCollectionRevision: await revision(parent.id)}, key());
@@ -298,7 +301,7 @@ describePg("Places link storage against PostgreSQL", () => {
   it("guarded parent create replays its full receipt concurrently and after later parent mutation", async () => {
     for (const category of ["products", "people"] as const) {
       const owner = await account(), parent = await list(owner, "places"), other = await list(owner, "places");
-      const observed = await revision(parent.id), input = guardedCreateInput(category, parent.id, observed), commandKey = key(), before = await guardedCreateState([owner]);
+      const observed = await revision(parent.id), input = guardedCreateInput(category, category === "products" ? parent.id.toUpperCase() : parent.id, observed), commandKey = key(), before = await guardedCreateState([owner]);
       const [first, concurrent] = await Promise.all([repository.createCollection(owner, input as never, commandKey), repository.createCollection(owner, input as never, commandKey)]);
       expect(first).toMatchObject({accountId: owner, category, revision: 1, parentLocation: {id: parent.id, revision: observed + 1}});
       expect(concurrent).toEqual(first);
@@ -325,7 +328,7 @@ describePg("Places link storage against PostgreSQL", () => {
   it("guarded parent create with two keys at one expected revision commits once and refuses the stale contender", async () => {
     for (const category of ["products", "people"] as const) {
       const owner = await account(), parent = await list(owner, "places"), observed = await revision(parent.id);
-      const input = guardedCreateInput(category, parent.id, observed), keys = [key(), key()], before = await guardedCreateState([owner]);
+      const input = guardedCreateInput(category, category === "products" ? parent.id.toUpperCase() : parent.id, observed), keys = [key(), key()], before = await guardedCreateState([owner]);
       const results = await Promise.allSettled(keys.map(commandKey => repository.createCollection(owner, input as never, commandKey)));
       const accepted = results.filter(result => result.status === "fulfilled"), refused = results.filter(result => result.status === "rejected");
       expect(accepted).toHaveLength(1); expect(refused).toHaveLength(1);
