@@ -1,8 +1,34 @@
+import {resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {assertFixtureOrigin} from './proxy-fixture-authority.mjs';
 import {readFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {test,expect,type Page,type BrowserContext,type APIRequestContext,type TestInfo} from '@playwright/test';
 import {canonicalMoviesBrowserSnapshot,moviesProducerEnums} from '../../src/features/Movies/api/moviesOwnerDiagnostic';
+// BEGIN MOVIES PUBLIC DIAGNOSTIC CONTRACT
+type MoviesPublicStage='setup'|'category-navigation'|'category-request'|'category-status'|'category-json'|'list-count'|'hero-count'|'later-pin'|'list-navigation'|'list-continuation'|'modal-open'|'modal-note'|'modal-zero'|'modal-close'|'later-list-navigation'|'later-list-visible'|'page-legacy-check'|'contexts-create'|'pages-create'|'contexts-monitor'|'dual-navigation'|'left-visible'|'right-visible'|'left-cookie-empty'|'right-cookie-empty'|'switch-other'|'other-visible'|'prior-owner-absent'|'right-still-visible'|'switch-back'|'restored-visible'|'other-owner-absent'|'left-legacy-check'|'right-legacy-check'|'contexts-close'|'screenshot';
+const moviesPublicDiagnosticStates=new WeakMap<TestInfo,MoviesPublicStage>();
+const moviesPublicDiagnosticSeen=new WeakSet<TestInfo>();
+function moviesPublicDiagnosticIdentity(info:TestInfo):boolean{
+ const title='anonymous category later list complete hero and modal preserve zero fields';
+ if(info.title!==title||info.project.name!=='movies-mobile'||info.repeatEachIndex!==0||info.retry!==0||resolve(info.file)!==fileURLToPath(import.meta.url))return false;
+ const path=info.titlePath();return Array.isArray(path)&&((path.length===1&&path[0]===title)||(path.length===2&&path[0]==='movies.spec.ts'&&path[1]===title));
+}
+function setMoviesPublicDiagnosticStage(info:TestInfo,stage:MoviesPublicStage):void{
+ if(moviesPublicDiagnosticIdentity(info))moviesPublicDiagnosticStates.set(info,stage);
+}
+function captureMoviesPublicDiagnostic(info:TestInfo):void{
+ try{
+  const stage=moviesPublicDiagnosticStates.get(info);
+  if(!stage||!moviesPublicDiagnosticIdentity(info)||!['failed','timedOut','interrupted'].includes(info.status??'')||moviesPublicDiagnosticSeen.has(info))return;
+  if(info.errors.some(error=>typeof error.message==='string'&&error.message.includes('movies-public-diagnostic-v1:')))return;
+  info.errors.push({message:'[movies-public-diagnostic-v1:'+stage+']'});moviesPublicDiagnosticSeen.add(info);
+ }catch{}
+}
+// END MOVIES PUBLIC DIAGNOSTIC CONTRACT
+
+test.afterEach(({},info)=>{captureMoviesPublicDiagnostic(info);});
+
 const diagnosticTitle='owner manual form all fields snapshot repeat edits and archive reload';
 type DiagnosticStage='setup'|'edit-navigation'|'edit-form'|'save-start'|'save-returned'|'list-route-reached'|'saved-note-confirmed'|'keep-draft-start'|'keep-draft-returned'|'archive';
 const diagnosticStages=new WeakMap<TestInfo,{iteration:'none'|'first'|'second';stage:DiagnosticStage}>();
@@ -87,12 +113,50 @@ test('canonical both-kind provider search resolves typed facts and copies origin
 });
 
 test('anonymous category later list complete hero and modal preserve zero fields',async({page,browser},info)=>{
- const owner=fixture.personas.ownerB,bad=monitor(page);await page.goto(`/${owner.handle}/movies`);const result=await page.request.get(`${base}/profiles/${owner.handle}/recommendations/movies`);expect(result.status()).toBe(200);const data=await result.json();expect(data.movieLists).toHaveLength(12);expect(data.topPicks).toHaveLength(15);expect(data.topPicks.some((r:any)=>r.title==='ownerB seed movie 13-0')).toBe(true);
- await page.goto(`/${owner.handle}/movies/seed-list-0`);await continueUntil(page,'Load more movies','ownerB seed movie 0-29');await page.getByText('ownerB seed movie 0-29',{exact:true}).click();await expect(page.getByText('Seed rich note 😀')).toBeVisible();await expect(page.getByText('0m',{exact:true})).toBeVisible();await page.keyboard.press('Escape');await page.goto(`/${owner.handle}/movies/seed-list-13`);await expect(page.getByText('ownerB seed movie 13-0',{exact:true})).toBeVisible();expect(bad).toEqual([]);
- const contexts=[await browser.newContext(),await browser.newContext()];try{const left=await contexts[0].newPage(),right=await contexts[1].newPage();const leftBad=monitor(left),rightBad=monitor(right);await Promise.all([left.goto(`/${owner.handle}/movies`),right.goto(`/${owner.handle}/movies`)]);await expect(left.getByText('ownerB seed movie 0-0',{exact:true}).first()).toBeVisible();await expect(right.getByText('ownerB seed movie 0-0',{exact:true}).first()).toBeVisible();expect(await contexts[0].cookies()).toEqual([]);expect(await contexts[1].cookies()).toEqual([]);
- const other=fixture.personas.ownerA;await left.evaluate(path=>{history.pushState(null,'',path);dispatchEvent(new PopStateEvent('popstate'));},`/${other.handle}/movies`);await expect(left.getByText('ownerA seed movie 0-0',{exact:true}).first()).toBeVisible();await expect(left.getByText('ownerB seed movie 0-0',{exact:true})).toHaveCount(0);await expect(right.getByText('ownerB seed movie 0-0',{exact:true}).first()).toBeVisible();
- await left.evaluate(path=>{history.pushState(null,'',path);dispatchEvent(new PopStateEvent('popstate'));},`/${owner.handle}/movies`);await expect(left.getByText('ownerB seed movie 0-0',{exact:true}).first()).toBeVisible();await expect(left.getByText('ownerA seed movie 0-0',{exact:true})).toHaveCount(0);expect(leftBad).toEqual([]);expect(rightBad).toEqual([]);
- }finally{await Promise.all(contexts.map(c=>c.close()));}
+ setMoviesPublicDiagnosticStage(info,'setup');
+ const owner=fixture.personas.ownerB,bad=monitor(page);setMoviesPublicDiagnosticStage(info,'category-navigation');
+ await page.goto(`/${owner.handle}/movies`);setMoviesPublicDiagnosticStage(info,'category-request');
+ const result=await page.request.get(`${base}/profiles/${owner.handle}/recommendations/movies`);setMoviesPublicDiagnosticStage(info,'category-status');
+ expect(result.status()).toBe(200);setMoviesPublicDiagnosticStage(info,'category-json');
+ const data=await result.json();setMoviesPublicDiagnosticStage(info,'list-count');
+ expect(data.movieLists).toHaveLength(12);setMoviesPublicDiagnosticStage(info,'hero-count');
+ expect(data.topPicks).toHaveLength(15);setMoviesPublicDiagnosticStage(info,'later-pin');
+ expect(data.topPicks.some((r:any)=>r.title==='ownerB seed movie 13-0')).toBe(true);
+ setMoviesPublicDiagnosticStage(info,'list-navigation');
+ await page.goto(`/${owner.handle}/movies/seed-list-0`);setMoviesPublicDiagnosticStage(info,'list-continuation');
+ await continueUntil(page,'Load more movies','ownerB seed movie 0-29');setMoviesPublicDiagnosticStage(info,'modal-open');
+ await page.getByText('ownerB seed movie 0-29',{exact:true}).click();setMoviesPublicDiagnosticStage(info,'modal-note');
+ await expect(page.getByText('Seed rich note 😀')).toBeVisible();setMoviesPublicDiagnosticStage(info,'modal-zero');
+ await expect(page.getByText('0m',{exact:true})).toBeVisible();setMoviesPublicDiagnosticStage(info,'modal-close');
+ await page.keyboard.press('Escape');setMoviesPublicDiagnosticStage(info,'later-list-navigation');
+ await page.goto(`/${owner.handle}/movies/seed-list-13`);setMoviesPublicDiagnosticStage(info,'later-list-visible');
+ await expect(page.getByText('ownerB seed movie 13-0',{exact:true})).toBeVisible();setMoviesPublicDiagnosticStage(info,'page-legacy-check');
+ expect(bad).toEqual([]);
+ setMoviesPublicDiagnosticStage(info,'contexts-create');
+ const contexts=[await browser.newContext(),await browser.newContext()];let publicBodyCompleted=false;
+ try{setMoviesPublicDiagnosticStage(info,'pages-create');
+ const left=await contexts[0].newPage(),right=await contexts[1].newPage();setMoviesPublicDiagnosticStage(info,'contexts-monitor');
+ const leftBad=monitor(left),rightBad=monitor(right);setMoviesPublicDiagnosticStage(info,'dual-navigation');
+ await Promise.all([left.goto(`/${owner.handle}/movies`),right.goto(`/${owner.handle}/movies`)]);setMoviesPublicDiagnosticStage(info,'left-visible');
+ await expect(left.getByText('ownerB seed movie 0-0',{exact:true}).first()).toBeVisible();setMoviesPublicDiagnosticStage(info,'right-visible');
+ await expect(right.getByText('ownerB seed movie 0-0',{exact:true}).first()).toBeVisible();setMoviesPublicDiagnosticStage(info,'left-cookie-empty');
+ expect(await contexts[0].cookies()).toEqual([]);setMoviesPublicDiagnosticStage(info,'right-cookie-empty');
+ expect(await contexts[1].cookies()).toEqual([]);
+ const other=fixture.personas.ownerA;setMoviesPublicDiagnosticStage(info,'switch-other');
+ await left.evaluate(path=>{history.pushState(null,'',path);dispatchEvent(new PopStateEvent('popstate'));},`/${other.handle}/movies`);setMoviesPublicDiagnosticStage(info,'other-visible');
+ await expect(left.getByText('ownerA seed movie 0-0',{exact:true}).first()).toBeVisible();setMoviesPublicDiagnosticStage(info,'prior-owner-absent');
+ await expect(left.getByText('ownerB seed movie 0-0',{exact:true})).toHaveCount(0);setMoviesPublicDiagnosticStage(info,'right-still-visible');
+ await expect(right.getByText('ownerB seed movie 0-0',{exact:true}).first()).toBeVisible();
+ setMoviesPublicDiagnosticStage(info,'switch-back');
+ await left.evaluate(path=>{history.pushState(null,'',path);dispatchEvent(new PopStateEvent('popstate'));},`/${owner.handle}/movies`);setMoviesPublicDiagnosticStage(info,'restored-visible');
+ await expect(left.getByText('ownerB seed movie 0-0',{exact:true}).first()).toBeVisible();setMoviesPublicDiagnosticStage(info,'other-owner-absent');
+ await expect(left.getByText('ownerA seed movie 0-0',{exact:true})).toHaveCount(0);setMoviesPublicDiagnosticStage(info,'left-legacy-check');
+ expect(leftBad).toEqual([]);setMoviesPublicDiagnosticStage(info,'right-legacy-check');
+ expect(rightBad).toEqual([]);
+ publicBodyCompleted=true;
+ }finally{if(publicBodyCompleted)setMoviesPublicDiagnosticStage(info,"contexts-close");
+ await Promise.all(contexts.map(c=>c.close()));}
+ setMoviesPublicDiagnosticStage(info,'screenshot');
  await page.screenshot({path:info.outputPath('movies-public.png'),fullPage:true});
 });
 
