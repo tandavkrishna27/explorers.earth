@@ -464,3 +464,1303 @@ describe('Guides pure custody and independent verified reset rows',()=>{
     // Existing 43 tests retain control admission/generation assertions; no transitions live here.
   });
 });
+
+// Resource orchestration witnesses use only private in-memory foreign-interface fakes.
+// They do not establish PostgreSQL constraints, native settlement, signed-session
+// acceptance, byte transport, or filesystem identity on a real host.
+import {vi} from 'vitest';
+import {EventEmitter} from 'node:events';
+import {createHash, createHmac} from 'node:crypto';
+import {dirname, join, parse as parsePath, sep} from 'node:path';
+import type {Pool, PoolClient, QueryResult} from 'pg';
+import type {createServer, IncomingMessage, ServerResponse, RequestListener} from 'node:http';
+import type * as FsPromises from 'node:fs/promises';
+import type {LocalObjectStorage, OwnedStoragePut} from '../../services/objectStorage';
+import type {createCanonicalApp} from '../../auth/canonicalApp';
+import type {ExplorersAuthConfig} from '../../auth/betterAuth';
+import type {OwnedUatDatabaseAuthority} from '../../../scripts/music-uat-database';
+import type * as GuideRepository from '../../repositories/guideRepository';
+import type {GuideCollectionDetails, GuideSectionBlocks} from '../../../shared/explorersGuideContract';
+
+type ResourceOwner='ownerA'|'ownerB'|'ownerC';
+type ResourceThree<T>={ownerA:T;ownerB:T;ownerC:T};
+type ResourceOptions={
+  pool:Pool;composed:ReturnType<typeof createCanonicalApp>;config:ExplorersAuthConfig;
+  runId:string;commit:string;authority:OwnedUatDatabaseAuthority;
+  personas:ResourceThree<{userId:string;cookie:string;handle:string}>;
+  expectedTemporaryRoot:string;disposableDirectory:string;
+  storage:{directory:string;instance:Pick<LocalObjectStorage,'environment'|'putOwned'|'get'|'delete'>};
+  port:number;apiOrigin:string;
+};
+type ResourceDependencies={
+  fs:Pick<typeof FsPromises,'lstat'|'realpath'|'mkdir'>;
+  createServer:typeof createServer;fetch:typeof globalThis.fetch;
+  guideRepository:Pick<typeof GuideRepository,'writeGuideDetails'|'createGuideSection'|'attachGuideCover'|'readGuideDetails'>;
+};
+type ResourceHandle={version:1;url:string;capability:string;runId:string;commit:string;close:()=>Promise<void>};
+type ResourceStart=(options:ResourceOptions,dependencies?:ResourceDependencies)=>Promise<ResourceHandle>;
+type ResourceRow=Record<string,unknown>;
+type ResourceEvent={kind:string;sql?:string;values?:readonly unknown[];data?:unknown};
+type ResourceReply={status:number;headers:Record<string,string>;body:ResourceRow;chunks:string[]};
+type ResourceDeferred<T>={promise:Promise<T>;resolve:(value:T)=>void;reject:(error:unknown)=>void};
+function resourceDeferred<T>():ResourceDeferred<T>{
+  let resolve!:(value:T)=>void,reject!:(error:unknown)=>void;
+  const promise=new Promise<T>((ok,no)=>{resolve=ok;reject=no;});
+  // Native rejection stays observed even when an operation loses a deadline race.
+  void promise.catch(()=>undefined);return {promise,resolve,reject};
+}
+const RESOURCE_OWNERS:ResourceOwner[]=['ownerA','ownerB','ownerC'];
+const resourceId=(n:number)=>'70000000-0000-4000-8000-'+String(n).padStart(12,'0');
+const RESOURCE_ACCOUNTS=[resourceId(1),resourceId(2),resourceId(3)];
+const RESOURCE_TIME='2026-10-10T00:00:00.000Z';
+const RESOURCE_SURFACES=['profile_media','profile_feed_items','collection_media','recommendation_media',
+  'guide_section_photos','recommendation_book_covers','recommendation_movie_media'] as const;
+function isResourceRecord(value:unknown):value is ResourceRow{
+  return value!==null&&typeof value==='object'&&!Array.isArray(value);
+}
+function resourceRecord(value:unknown):ResourceRow{
+  if(!isResourceRecord(value))throw new Error('Expected private JSON record');return value;
+}
+function resourceBuffer(value:unknown):Buffer{
+  if(!Buffer.isBuffer(value))throw new Error('Expected Buffer');return value;
+}
+function resourceRows(value:unknown):ResourceRow[]{
+  if(!Array.isArray(value))throw new Error('Expected private JSON array');
+  return value.map(resourceRecord);
+}
+function resourceText(value:unknown):string{
+  if(typeof value!=='string')throw new Error('Expected string');return value;
+}
+function resourceNumber(value:unknown):number{
+  if(typeof value!=='number')throw new Error('Expected number');return value;
+}
+async function resourceStartExport():Promise<ResourceStart>{
+  const module=await support(),candidate:unknown=Reflect.get(module,'startGuidesControl');
+  expect(candidate,'future resource controller export setup').toBeTypeOf('function');
+  // Only the missing/new external runtime entry is cast; fake internals stay typed.
+  return candidate as ResourceStart;
+}
+function resourceLeaves(value:unknown):unknown[]{
+  return Array.isArray(value)?value.flatMap(resourceLeaves):[value];
+}
+function resourceError(reply:ResourceReply,status:number,error:string){
+  expect(reply.status).toBe(status);expect(reply.body).toEqual({version:1,error});
+  expect(reply.headers['cache-control']).toBe('no-store');
+  expect(reply.headers['content-type']).toMatch(/^application\/json(?:;|$)/);
+  expect(reply.chunks).toHaveLength(1);
+}
+function resourceCleanup(error:unknown,unsettled:boolean,failures:string[]){
+  expect(error).toBeInstanceOf(Error);
+  expect(resourceRecord(error).name).toBe('GuidesControlCleanupError');
+  expect(resourceRecord(error).message).toBe('Guides control cleanup failed');
+  const record=resourceRecord(error);
+  expect(record.code).toBe('GUIDES_CONTROL_CLEANUP_FAILED');expect(record.unsettled).toBe(unsettled);
+  expect(record.failures).toEqual(failures);
+  for(const key of ['code','unsettled','failures'])expect(Object.prototype.propertyIsEnumerable.call(error,key)).toBe(true);
+}
+async function resourceTurns(count=40){for(let i=0;i<count;i++)await Promise.resolve();}
+async function resourceUntil(condition:()=>boolean){
+  for(let i=0;i<2000&&!condition();i++)await Promise.resolve();
+  expect(condition(),'controlled operation reached its witness barrier').toBe(true);
+}
+const resourceMutation=(event:ResourceEvent)=>event.kind==='query'&&/^\s*(insert|update|delete)\b/i.test(event.sql??'');
+function resourceObserveTransaction(trace:ResourceEvent[],ending:'COMMIT'|'ROLLBACK'){
+  const starts=trace.flatMap((event,index)=>event.kind==='query'&&/^\s*BEGIN\b/i.test(event.sql??'')?[index]:[]);
+  const ends=trace.flatMap((event,index)=>event.kind==='query'&&new RegExp('^\\s*'+ending+'\\b','i').test(event.sql??'')?[index]:[]);
+  expect(starts,'one observation transaction').toHaveLength(1);expect(ends).toHaveLength(1);
+  const begin=starts[0],end=ends[0];expect(begin).toBeLessThan(end);
+  expect(trace.some(event=>event.kind==='query'&&new RegExp('^\\s*'+(ending==='COMMIT'?'ROLLBACK':'COMMIT')+'\\b','i').test(event.sql??''))).toBe(false);
+  const firstRead=trace.findIndex((event,index)=>index>begin&&event.kind==='query'&&/^\s*(SELECT|WITH)\b/i.test(event.sql??''));
+  expect(firstRead).toBeGreaterThan(begin);
+  const setup=trace.slice(begin,firstRead).filter(event=>event.kind==='query').map(event=>event.sql).join('\n');
+  expect(setup,'repeatable-read isolation is independent of read-only').toMatch(/\bREPEATABLE\s+READ\b/i);
+  expect(setup,'read-only access is independent of isolation').toMatch(/\bREAD\s+ONLY\b/i);
+  for(const [index,event] of trace.entries())if(event.kind==='query'||event.kind==='repository-read-details'){
+    expect(index,'every live SQL/repository read belongs to the sole transaction').toBeGreaterThanOrEqual(begin);
+    expect(index).toBeLessThanOrEqual(end);
+  }
+}
+
+function resourceFixture(){
+  const events:ResourceEvent[]=[],tables=new Map<string,ResourceRow[]>(),details=new Map<string,GuideCollectionDetails>();
+  const files=new Map<string,Buffer>(),nodes=new Map<string,{kind:'directory'|'file'|'link';dev:number;ino:number;canonical:string}>();
+  let next=1000,nodeId=1,transaction:Map<string,ResourceRow[]>|undefined;
+  let listener:RequestListener|undefined;
+  const controlHost='127.0.0.1:51000',apiOrigin='http://127.0.0.1:51001';
+  const temporaryRoot=sep==='\\'?'C:\\guides-fake-temp':'/guides-fake-temp';
+  const disposableDirectory=join(temporaryRoot,'explorers-profile-e2e-Guides123'),directory=join(disposableDirectory,'owned-media');
+  const config:ExplorersAuthConfig={baseURL:apiOrigin,googleCallbackURL:apiOrigin+'/api/auth/callback/google',
+    trustedOrigins:[apiOrigin],secret:'private-guide-fake-secret-'.repeat(3),googleClientId:'fake-id',googleClientSecret:'fake-secret'};
+  const personas:ResourceThree<{userId:string;cookie:string;handle:string}>={
+    ownerA:{userId:'auth|guide-a',cookie:'initial=a',handle:'guide-owner-a'},
+    ownerB:{userId:'auth|guide-b',cookie:'initial=b',handle:'guide-owner-b'},
+    ownerC:{userId:'auth|guide-c',cookie:'initial=c',handle:'guide-owner-c'},
+  };
+  const accounts=RESOURCE_OWNERS.map((owner,i)=>({id:RESOURCE_ACCOUNTS[i],user_id:personas[owner].userId,
+    handle:personas[owner].handle,revision:String([7,13,29][i]),status:'active',public_profile:true,
+    account_type:'Creator',onboarding_status:'complete'}));
+  tables.set('creator_accounts',accounts);
+  tables.set('initial_account_bindings',accounts.map(row=>({user_id:row.user_id,account_id:row.id})));
+  tables.set('user_security_state',accounts.map(row=>({user_id:row.user_id,blocked_at:null})));
+  tables.set('account_category_settings',accounts.map(row=>({account_id:row.id,category:'guides',is_public:true})));
+  tables.set('account_category_content_state',accounts.map((row,i)=>({account_id:row.id,category:'guides',revision:String([47,59,71][i])})));
+  for(const name of ['collections','guide_sections','guide_collection_details','analytics_events','analytics_event_receipts',
+    'media_assets','media_objects',...RESOURCE_SURFACES])tables.set(name,[]);
+  function ancestors(path:string):string[]{
+    const result=[path];while(result[0]!==parsePath(result[0]).root)result.unshift(dirname(result[0]));return result;
+  }
+  function directoryNode(path:string){nodes.set(path,{kind:'directory',dev:1,ino:nodeId++,canonical:path});}
+  for(const path of ancestors(disposableDirectory))directoryNode(path);
+  const controls={
+    database:'music_uat_'+runId,connectGate:undefined as ResourceDeferred<void>|undefined,
+    queryGate:undefined as {match:RegExp;gate:ResourceDeferred<void>}|undefined,
+    queryFailure:undefined as RegExp|undefined,
+    fetchGate:undefined as {match:RegExp;gate:ResourceDeferred<void>}|undefined,
+    fetchFailure:undefined as RegExp|undefined,fetchStatus:200,
+    meAccount:undefined as string|undefined,meRevision:undefined as number|undefined,
+    sessionAccount:undefined as string|undefined,sessionRevision:undefined as number|undefined,
+    sessionFailure:false,listenGate:undefined as ResourceDeferred<void>|undefined,listenFailure:false,
+    listenerCloseFailure:false,putGate:undefined as ResourceDeferred<void>|undefined,
+    putFailure:false,putNativeFailure:false,putCompletionFailure:false,
+    getFailure:false,getCorrupt:false,getTruncated:false,deleteFailure:false,
+    repositoryFailure:undefined as 'details'|'section'|'cover'|undefined,
+    fsGate:undefined as {match:string;gate:ResourceDeferred<void>}|undefined,
+    fsFailure:undefined as string|undefined,
+  };
+  const rowset=(name:string)=>{const found=tables.get(name);if(!found)throw new Error('Unknown fake table '+name);return found;};
+  function snapshotTables(){
+    // PostgreSQL bytea is Buffer, unlike structuredClone(Buffer)'s Uint8Array.
+    return new Map([...tables].map(([name,rows])=>[name,rows.map(row=>({...clone(row),
+      ...(Buffer.isBuffer(row.content_sha256)?{content_sha256:Buffer.from(row.content_sha256)}:{})}))]));
+  }
+  const owned=(row:ResourceRow)=>RESOURCE_ACCOUNTS.includes(resourceText(row.account_id));
+  function categoryRevision(accountId:string):number{
+    const row=rowset('account_category_content_state').find(r=>r.account_id===accountId);
+    return row?Number(row.revision):0;
+  }
+  function bump(accountId:string){
+    const row=rowset('account_category_content_state').find(r=>r.account_id===accountId);
+    if(row)row.revision=String(Number(row.revision)+3);
+  }
+  function scoped(sql:string,values:readonly unknown[],rows:ResourceRow[]):ResourceRow[]{
+    let result=rows;
+    const aliases=new Map([...sql.matchAll(/\b(?:FROM|JOIN)\s+(\w+)(?:\s+(?:AS\s+)?(?!WHERE\b|ON\b|JOIN\b|ORDER\b|LIMIT\b|FOR\b|LEFT\b|INNER\b)(\w+))?/gi)]
+      .map(match=>[match[2]??match[1],match[1]]));
+    for(const match of sql.matchAll(/\b(?:(\w+)\.)?(id|account_id|user_id|collection_id|section_id|media_id|event_id|category|purpose)\s*=\s*(?:ANY\s*\(\s*)?\$(\d+)/gi)){
+      const wanted=resourceLeaves(values[Number(match[3])-1]),table=aliases.get(match[1]);
+      if(wanted.length&&wanted[0]!==undefined)result=result.filter(row=>{
+        const column=match[2].toLowerCase();
+        const value=column!=='id'?row[column]:table==='collections'?(row.collection_id??row.guide_id??row.id):
+          table==='guide_sections'?(row.section_id??row.id):table==='media_assets'?(row.media_id??row.id):row.id;
+        return wanted.includes(value);
+      });
+    }
+    if(/\bcategory\s*=\s*'guides'/i.test(sql))result=result.filter(row=>!('category' in row)||row.category==='guides');
+    for(const match of sql.matchAll(/\b(category|purpose)\s+IN\s*\(([^)]*)\)/gi)){
+      const allowed=[...match[2].matchAll(/'([^']+)'/g)].map(item=>item[1]);
+      if(allowed.length)result=result.filter(row=>allowed.includes(resourceText(row[match[1].toLowerCase()])));
+    }
+    // A requested cap may be literal or parameterized; never silently invent a cap.
+    const limit=sql.match(/\bLIMIT\s+(\d+|\$\d+)/i);
+    if(limit){const n=limit[1].startsWith('$')?Number(values[Number(limit[1].slice(1))-1]):Number(limit[1]);result=result.slice(0,n);}
+    return result;
+  }
+  function projected(sql:string,rows:ResourceRow[]):ResourceRow[]{
+    return rows.map(row=>{
+      const result={...row};
+      for(const match of sql.matchAll(/(?:\b\w+\.)?(\w+)(?:::\w+)?\s+AS\s+"?(\w+)"?/gi))
+        if(match[1] in row)result[match[2]]=row[match[1]];
+      for(const match of sql.matchAll(/encode\s*\(\s*(?:\w+\.)?content_sha256\s*,\s*'hex'\s*\)\s+AS\s+"?(\w+)"?/gi))
+        result[match[1]]=row.content_sha256===null?null:resourceBuffer(row.content_sha256).toString('hex');
+      return result;
+    });
+  }
+  function joinedAccounts(sql:string):ResourceRow[]{
+    return rowset('initial_account_bindings').flatMap(binding=>{
+      const account=rowset('creator_accounts').find(a=>a.id===binding.account_id);
+      if(!account)return [];
+      const security=rowset('user_security_state').find(s=>s.user_id===binding.user_id);
+      if(/JOIN\s+user_security_state/i.test(sql)&&!security&&!/LEFT\s+JOIN\s+user_security_state/i.test(sql))return [];
+      const setting=rowset('account_category_settings').find(s=>s.account_id===account.id&&s.category==='guides');
+      return [{...account,...binding,...security,account_id:account.id,account_revision:account.revision,
+        guides_public:setting?.is_public,is_public:setting?.is_public,
+        guides_content_revision:String(categoryRevision(resourceText(account.id)))}];
+    });
+  }
+  function insert(sql:string,values:readonly unknown[]):ResourceRow[]{
+    const match=sql.match(/INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([\s\S]*?)\)\s*(?:RETURNING|ON\s+CONFLICT|;?\s*$)/i);
+    if(!match)throw new Error('Fake requires explicit INSERT columns and VALUES, not an injected seed');
+    const name=match[1],columns=match[2].split(',').map(s=>s.trim());
+    const tokens=match[3].split(/,(?![^()]*\))/).map(s=>s.trim());
+    const row:ResourceRow={};
+    for(let i=0;i<columns.length;i++){
+      const token=tokens[i]??'NULL',param=token.match(/^\$(\d+)/);
+      let value:unknown=param?values[Number(param[1])-1]:/^'.*'$/.test(token)?token.slice(1,-1):
+        /^null$/i.test(token)?null:/^(true|false)$/i.test(token)?token.toLowerCase()==='true':
+        /^(now|clock_timestamp)\(/i.test(token)?new Date(RESOURCE_TIME):Number(token);
+      if(/::jsonb/.test(token)&&typeof value==='string')value=JSON.parse(value);
+      row[columns[i]]=value;
+    }
+    if(name==='collections'){
+      Object.assign(row,{id:row.id??resourceId(next++),revision:'31',description:row.description??null,
+        pin_order:row.pin_order??null,archived_at:row.archived_at??null});
+      bump(resourceText(row.account_id));
+    }
+    if(name==='media_assets')Object.assign(row,{id:row.id??resourceId(next++),width_px:row.width_px??8,height_px:row.height_px??8,
+      original_filename:row.original_filename??null,alternative_text:row.alternative_text??null,caption:row.caption??null,
+      ready_at:row.ready_at??new Date(RESOURCE_TIME),deleted_at:row.deleted_at??null});
+    if(name==='media_objects')Object.assign(row,{storage_version_id:row.storage_version_id??null,deleted_at:row.deleted_at??null});
+    if(name==='media_assets'||name==='media_objects'){
+      row.byte_size=String(row.byte_size);
+      if(typeof row.content_sha256==='string')row.content_sha256=Buffer.from(row.content_sha256,'hex');
+    }
+    rowset(name).push(row);return [row];
+  }
+  async function query(sql:string,values:readonly unknown[]=[]):Promise<QueryResult<ResourceRow>>{
+    events.push({kind:'query',sql,values:clone(values)});
+    if(controls.queryGate?.match.test(sql))await controls.queryGate.gate.promise;
+    if(controls.queryFailure?.test(sql))throw new Error('private SQL failure with secrets');
+    let rows:ResourceRow[]=[];
+    const primary=sql.match(/\bFROM\s+(\w+)/i)?.[1];
+    if(/^\s*BEGIN\b/i.test(sql)){expect(transaction,'one transaction, no nested reserve/markReady').toBeUndefined();transaction=snapshotTables();}
+    else if(/^\s*COMMIT\b/i.test(sql)){expect(transaction).toBeDefined();transaction=undefined;}
+    else if(/^\s*ROLLBACK\b/i.test(sql)){if(transaction){tables.clear();for(const [name,list] of transaction)tables.set(name,list);transaction=undefined;}}
+    else if(/^\s*SET\b/i.test(sql)){/* settings are asserted by the test, not simulated */}
+    else if(/current_database\s*\(/i.test(sql)){
+      rows=[{current_database:controls.database,database:controls.database}];
+      const alias=sql.match(/current_database\s*\(\)\s+AS\s+"?(\w+)/i);if(alias)rows[0][alias[1]]=controls.database;
+    }
+    else if(/^\s*INSERT\b/i.test(sql))rows=insert(sql,values);
+    else if(/^\s*UPDATE\s+analytics_event_receipts\b/i.test(sql)){
+      for(const row of scoped(sql,values,rowset('analytics_event_receipts'))){row.event_id=null;row.retired_at=row.retired_at??new Date(RESOURCE_TIME);}
+    }
+    else if(/^\s*UPDATE\b/i.test(sql)){
+      const table=sql.match(/UPDATE\s+(\w+)/i)?.[1];if(!table)throw new Error('Unknown update');
+      if(table==='user_security_state')throw new Error('Forbidden lifecycle repair');
+      rows=scoped(sql,values,rowset(table));
+      for(const row of rows){
+        for(const match of sql.matchAll(/\b(\w+)\s*=\s*(\$\d+|'[^']*'|true|false|NULL)(?=::|\s*[,W]|\s*$)/gi)){
+          if(match[1]==='account_id'||match[1]==='id'||match[1]==='user_id')continue;
+          const token=match[2];row[match[1]]=token.startsWith('$')?values[Number(token.slice(1))-1]:
+            token.startsWith("'")?token.slice(1,-1):/^null$/i.test(token)?null:token.toLowerCase()==='true';
+        }
+      }
+    }
+    else if(/^\s*DELETE\b/i.test(sql)){
+      const table=sql.match(/DELETE\s+FROM\s+(\w+)/i)?.[1];if(!table)throw new Error('Unknown delete');
+      if(table==='analytics_event_receipts'||table==='user_security_state'||table==='creator_accounts')throw new Error('Forbidden custody deletion');
+      rows=scoped(sql,values,rowset(table));tables.set(table,rowset(table).filter(row=>!rows.includes(row)));
+      if(table==='collections'){
+        const ids=rows.map(row=>row.id);
+        const sectionIds=rowset('guide_sections').filter(row=>ids.includes(row.collection_id)).map(row=>row.id);
+        tables.set('guide_sections',rowset('guide_sections').filter(row=>!ids.includes(row.collection_id)));
+        tables.set('collection_media',rowset('collection_media').filter(row=>!ids.includes(row.collection_id)));
+        tables.set('guide_section_photos',rowset('guide_section_photos').filter(row=>!sectionIds.includes(row.section_id)));
+        for(const id of ids)details.delete(resourceText(id));
+      }
+    }
+    else if(primary==='initial_account_bindings'||primary==='creator_accounts'&&/JOIN\s+(initial_account_bindings|account_category_settings|account_category_content_state|user_security_state)/i.test(sql))rows=scoped(sql,values,joinedAccounts(sql));
+    else if(primary==='user_security_state')rows=scoped(sql,values,rowset('user_security_state'));
+    else if(primary==='account_category_content_state'){
+      rows=scoped(sql,values,rowset('account_category_content_state'));
+      if(/coalesce/i.test(sql)&&rows.length===0)rows=[{revision:'0'}];
+    }
+    else if(primary==='account_category_settings')rows=scoped(sql,values,rowset('account_category_settings'));
+    else if(primary==='creator_accounts')rows=scoped(sql,values,rowset('creator_accounts'));
+    else {
+      const sources=[...sql.matchAll(/\b(?:FROM|JOIN)\s+(\w+)/gi)].map(m=>m[1]);
+      const surface=sources.find(name=>(RESOURCE_SURFACES as readonly string[]).includes(name));
+      const source=surface??sources.find(name=>tables.has(name));
+      if(!source)throw new Error('Unrecognized query in explicit resource fake: '+sql);
+      const surfaceSources=[...new Set(sources.filter(name=>(RESOURCE_SURFACES as readonly string[]).includes(name)))];
+      rows=(surface?surfaceSources.flatMap(name=>rowset(name)):rowset(source)).map(row=>({...row}));
+      if(source==='media_objects'){
+        expect(sql,'object account authority comes from joined asset, not object row').toMatch(/JOIN\s+media_assets/i);
+        rows=rows.flatMap(row=>{
+          const asset=rowset('media_assets').find(a=>a.id===row.media_id);
+          // Honor the required inner join: missing assets are not selected rows.
+          return asset?[{...row,id:row.media_id,account_id:asset.account_id,purpose:asset.purpose}]:[];
+        });
+      }
+      if(surface)rows=rows.flatMap(row=>{
+        const photo='section_id' in row,section=photo?rowset('guide_sections').find(s=>s.id===row.section_id&&s.account_id===row.account_id):undefined;
+        if(photo&&/JOIN\s+guide_sections\b/i.test(sql)&&!section)return [];
+        const collectionId=photo?section?.collection_id:row.collection_id;
+        const collection=rowset('collections').find(c=>c.id===collectionId&&c.account_id===row.account_id);
+        if(/JOIN\s+collections\b/i.test(sql)&&!collection)return [];
+        return [{...row,...(collection?{category:collection.category}:{}),
+          ...(photo?{collection_id:collectionId,guide_id:collectionId,slot:'section-photo'}:
+            source==='collection_media'?{guide_id:collectionId,slot:'cover'}:{})}];
+      });
+      if(source==='guide_sections'&&/JOIN\s+collections\b/i.test(sql))rows=rows.flatMap(row=>{
+        const parent=rowset('collections').find(c=>c.id===row.collection_id&&c.account_id===row.account_id);
+        return parent?[{...row,category:parent.category}]:[];
+      });
+      if(source==='collections')rows=rows.map(row=>({...row,category_content_revision:String(
+        RESOURCE_ACCOUNTS.includes(resourceText(row.account_id))?categoryRevision(resourceText(row.account_id)):99)}));
+      rows=scoped(sql,values,rows);
+      if(/count\s*\(\s*\*\s*\)/i.test(sql))rows=[{count:String(rows.length)}];
+      if(/SELECT\s+EXISTS/i.test(sql)){
+        const alias=sql.match(/\)\s+AS\s+"?(\w+)"?\s*;?\s*$/i)?.[1]??'exists',exists=rows.length>0;
+        rows=[{[alias]:exists}];
+      }
+    }
+    rows=projected(sql,rows);return {command:sql.trim().split(/\s+/)[0],rowCount:rows.length,oid:0,fields:[],rows};
+  }
+  const client={query,release:(error?:Error|boolean)=>events.push({kind:'release',data:!!error})};
+  // Cast only the narrow implemented foreign interfaces, never fake state or expected DTOs.
+  const db=client as unknown as PoolClient;
+  const pool={query,connect:async()=>{
+    events.push({kind:'connect'});if(controls.connectGate)await controls.connectGate.promise;return db;
+  },end:async()=>{events.push({kind:'forbidden-pool-end'});throw new Error('Parent owns pool');}} as unknown as Pool;
+  async function fsBarrier(path:string){
+    if(controls.fsGate?.match===path)await controls.fsGate.gate.promise;
+    if(controls.fsFailure===path)throw new Error('private custody failure');
+  }
+  const fs={
+    lstat:async(path:unknown)=>{
+      const name=String(path);events.push({kind:'lstat',data:name});await fsBarrier(name);
+      const node=nodes.get(name);if(!node)throw Object.assign(new Error('absent'),{code:'ENOENT'});
+      return {dev:node.dev,ino:node.ino,isDirectory:()=>node.kind==='directory',isFile:()=>node.kind==='file',
+        isSymbolicLink:()=>node.kind==='link'};
+    },
+    realpath:async(path:unknown)=>{const name=String(path);events.push({kind:'realpath',data:name});await fsBarrier(name);
+      const node=nodes.get(name);if(!node)throw Object.assign(new Error('absent'),{code:'ENOENT'});return node.canonical;},
+    mkdir:async(path:unknown,options?:{recursive?:boolean})=>{
+      const name=String(path);events.push({kind:'mkdir',data:{path:name,options}});await fsBarrier(name);
+      expect(options?.recursive??false,'controller makes directories one component at a time').toBe(false);
+      if(nodes.has(name))throw Object.assign(new Error('exists'),{code:'EEXIST'});
+      expect(nodes.get(dirname(name))?.kind).toBe('directory');directoryNode(name);
+    },
+  } as unknown as ResourceDependencies['fs'];
+  const storage:ResourceOptions['storage']['instance']={
+    environment:'local',
+    putOwned:(key,bytes,deadlineMs):OwnedStoragePut=>{
+      events.push({kind:'put',data:{key,bytes:Buffer.from(bytes),deadlineMs}});
+      expect(deadlineMs).toBe(5000);
+      const nativeResult=(async()=>{
+        if(controls.putGate)await controls.putGate.promise;
+        files.set(key,Buffer.from(bytes));nodes.set(join(directory,...key.split('/')),{kind:'file',dev:1,ino:nodeId++,canonical:join(directory,...key.split('/'))});
+        if(controls.putNativeFailure)throw new Error('partial private write');
+      })();
+      void nativeResult.catch(()=>undefined);
+      const completion=controls.putFailure||controls.putCompletionFailure?Promise.reject(new Error('put completion refused')):nativeResult;
+      void completion.catch(()=>undefined);
+      return {nativeResult,completion,settlement:nativeResult.then(()=>undefined,()=>undefined)};
+    },
+    get:async(key)=>{
+      events.push({kind:'get',data:key});if(controls.getFailure)throw new Error('private get timeout');
+      const found=files.get(key);if(!found)throw new Error('Missing fake bytes');
+      const result=Buffer.from(found);
+      if(controls.getCorrupt)result[0]^=1;
+      if(controls.getTruncated)return result.subarray(0,result.length-1);
+      return result;
+    },
+    delete:async(key)=>{
+      events.push({kind:'delete',data:key});if(controls.deleteFailure)throw new Error('private delete timeout');
+      files.delete(key);nodes.delete(join(directory,...key.split('/')));
+    },
+  };
+  const sessionUsers=new Map<string,string>();
+  const context={internalAdapter:{createSession:async(userId:string,remember:boolean)=>{
+    events.push({kind:'session',data:{userId,remember}});expect(remember).toBe(false);
+    if(controls.sessionFailure)throw new Error('private signing failure');
+    const token='fresh-'+resourceId(next++);sessionUsers.set(token,userId);return {token};
+  }},authCookies:{sessionToken:{name:'guides.session_token'}}};
+  const composed={auth:{$context:Promise.resolve(context)}} as unknown as ReturnType<typeof createCanonicalApp>;
+  const fetchFake:typeof globalThis.fetch=async(input,init)=>{
+    const url=typeof input==='string'?input:input instanceof URL?input.href:input.url;
+    const method=init?.method??'GET',headers=new Headers(init?.headers),cookie=headers.get('Cookie')??'';
+    events.push({kind:'fetch',data:{url,method,cookie,headers:Object.fromEntries(headers),body:init?.body,signal:init?.signal,redirect:init?.redirect}});
+    expect(url.startsWith(apiOrigin+'/api/explorers/v1/')).toBe(true);
+    expect(init?.redirect).toBe('error');expect(init?.signal).toBeInstanceOf(AbortSignal);
+    if(controls.fetchGate?.match.test(url+' '+method))await controls.fetchGate.gate.promise;
+    if(controls.fetchFailure?.test(url+' '+method))throw new Error('private canonical wrapper rejected');
+    const token=cookie.startsWith('guides.session_token=')?cookie.slice('guides.session_token='.length).split('.')[0]:undefined;
+    let owner=RESOURCE_OWNERS.find(name=>personas[name].cookie===cookie);
+    if(token)owner=RESOURCE_OWNERS.find(name=>personas[name].userId===sessionUsers.get(token));
+    if(!owner)throw new Error('Unexpected private fake cookie');
+    const index=RESOURCE_OWNERS.indexOf(owner),account=rowset('creator_accounts').find(a=>a.id===RESOURCE_ACCOUNTS[index]);
+    if(!account)throw new Error('Missing account');
+    if(token){
+      const expected=createHmac('sha256',config.secret).update(token).digest('base64');
+      expect(cookie).toBe('guides.session_token='+token+'.'+expected);
+    }
+    if(method==='PATCH'){
+      expect(headers.get('Origin')).toBe(config.baseURL);
+      const body=resourceRecord(JSON.parse(resourceText(init?.body)));
+      expect(body.expectedRevision).toBe(Number(account.revision));expect(body.handle).toBe(personas[owner].handle);
+      expect(body.accountType).toBe('Creator');expect(body.onboardingStatus).toBe('complete');
+      expect(headers.get('Idempotency-Key')).toMatch(/^[a-f0-9-]{36}$/);
+      account.revision=String(Number(account.revision)+2);
+    }
+    const id=(token?controls.sessionAccount:controls.meAccount)??resourceText(account.id);
+    const revision=(token?controls.sessionRevision:controls.meRevision)??Number(account.revision);
+    return new Response(JSON.stringify({account:{id,revision,handle:account.handle,status:account.status,
+      publicProfile:account.public_profile,accountType:'Creator',onboardingStatus:'complete'}}),
+      {status:controls.fetchStatus,headers:{'Content-Type':'application/json'}});
+  };
+  const server=new EventEmitter() as EventEmitter & {
+    headersTimeout:number;requestTimeout:number;keepAliveTimeout:number;
+    listen:(...args:unknown[])=>unknown;close:(callback?:(error?:Error)=>void)=>unknown;
+    closeIdleConnections:()=>void;closeAllConnections:()=>void;address:()=>{address:string;family:string;port:number};
+    listening:boolean;
+  };
+  Object.assign(server,{headersTimeout:0,requestTimeout:0,keepAliveTimeout:0,listening:false});
+  server.listen=(...args)=>{
+    events.push({kind:'listen',data:args.filter(a=>typeof a!=='function')});
+    const callback=args.find(a=>typeof a==='function');
+    void (async()=>{
+      if(controls.listenGate)await controls.listenGate.promise;
+      if(controls.listenFailure){server.emit('error',new Error('private listener failure'));return;}
+      server.listening=true;server.emit('listening');if(typeof callback==='function')callback();
+    })();return server;
+  };
+  server.close=callback=>{
+    events.push({kind:'listener-close'});server.listening=false;
+    const error=controls.listenerCloseFailure?new Error('private listener close failure'):undefined;
+    queueMicrotask(()=>{callback?.(error);server.emit('close');});return server;
+  };
+  server.closeIdleConnections=()=>events.push({kind:'idle-close'});
+  server.closeAllConnections=()=>events.push({kind:'connections-close'});
+  server.address=()=>({address:'127.0.0.1',family:'IPv4',port:51000});
+  const createServerFake=((...args:unknown[])=>{
+    events.push({kind:'create-server',data:args.find(arg=>typeof arg==='object')});
+    const found=args.find(arg=>typeof arg==='function');
+    if(typeof found!=='function')throw new Error('Controller must supply real request listener');
+    listener=found as RequestListener;return server;
+  }) as unknown as typeof createServer;
+  function revisionWrite(kind:string,clientArg:PoolClient,collectionId:string,accountId:string,revision:number){
+    expect(clientArg).toBe(db);
+    const prior=events[events.length-1];
+    expect(prior.kind,'every repository write rereads current category revision').toBe('query');
+    expect(prior.sql).toMatch(/account_category_content_state/);
+    expect(resourceLeaves(prior.values)).toContain(accountId);
+    expect(revision).toBe(categoryRevision(accountId));
+    events.push({kind:'repository-'+kind,data:{collectionId,accountId,revision}});
+    if(controls.repositoryFailure===kind)throw new Error('private repository write failed');
+  }
+  const guideRepository:ResourceDependencies['guideRepository']={
+    writeGuideDetails:async(clientArg,collectionId,accountId,revision,value)=>{
+      revisionWrite('details',clientArg,collectionId,accountId,revision);
+      details.set(collectionId,clone(value));bump(accountId);
+    },
+    createGuideSection:async(clientArg,collectionId,accountId,revision,input)=>{
+      revisionWrite('section',clientArg,collectionId,accountId,revision);
+      const id=resourceId(next++);events.push({kind:'returned-section-id',data:id});
+      const blocks=clone(input.blocks),row={id,collection_id:collectionId,account_id:accountId,title:input.title,
+        description:input.description,display_order:input.position??rowset('guide_sections').filter(r=>r.collection_id===collectionId).length,
+        blocks,block_version:'guide-section-blocks/v1',archived_at:null,created_at:new Date(RESOURCE_TIME),updated_at:new Date(RESOURCE_TIME)};
+      rowset('guide_sections').push(row);
+      const ids=new Set([...blocks.timeline.morning,...blocks.timeline.afternoon,...blocks.timeline.evening,
+        ...blocks.stay.accommodations,...blocks.activities.activities].flatMap(p=>p.photos.map(photo=>photo.mediaId)));
+      for(const mediaId of ids)rowset('guide_section_photos').push({section_id:id,account_id:accountId,media_id:mediaId});
+      bump(accountId);return id;
+    },
+    attachGuideCover:async(clientArg,collectionId,accountId,revision,mediaId)=>{
+      revisionWrite('cover',clientArg,collectionId,accountId,revision);
+      rowset('collection_media').push({collection_id:collectionId,account_id:accountId,media_id:mediaId,slot:'cover'});
+      bump(accountId);return null;
+    },
+    readGuideDetails:async(clientArg,collectionId,accountId)=>{
+      expect(clientArg).toBe(db);events.push({kind:'repository-read-details',data:{collectionId,accountId}});
+      return details.has(collectionId)?clone(details.get(collectionId)!):null;
+    },
+  };
+  const options:ResourceOptions={pool,composed,config,runId,commit,
+    authority:{runId,commit,owned:true,database:'music_uat_'+runId,port:56000,
+      containerId:'d'.repeat(64),imageId:'sha256:'+'e'.repeat(64),contextHost:'npipe:////./pipe/docker_engine'},
+    personas,expectedTemporaryRoot:temporaryRoot,disposableDirectory,storage:{directory,instance:storage},port:51000,apiOrigin};
+  const dependencies:ResourceDependencies={fs,createServer:createServerFake,fetch:fetchFake,guideRepository};
+  function command(handle:ResourceHandle,action='reset',caseId:string=CASES[0],generation=0){
+    return {version:1,action,runId,commit,caseId,project:PROJECTS[0],repeat:0,generation};
+  }
+  async function dispatch(handle:ResourceHandle,body:unknown,patch:{
+    remote?:string;host?:string;capability?:string|string[];method?:string;url?:string;raw?:Buffer;bodyGate?:ResourceDeferred<void>;
+  }={}):Promise<ResourceReply>{
+    if(!listener)throw new Error('No controller listener');
+    const done=resourceDeferred<ResourceReply>(),headers:Record<string,string>={},chunks:string[]=[];
+    const raw=patch.raw??Buffer.from(JSON.stringify(body));
+    const requestEmitter=new EventEmitter();
+    const incoming=Object.assign(requestEmitter,{
+      method:patch.method??'POST',url:patch.url??'/control',
+      headers:{host:patch.host??controlHost,'x-guides-capability':patch.capability??handle.capability},
+      rawHeaders:['Host',patch.host??controlHost,'x-guides-capability',
+        typeof patch.capability==='string'?patch.capability:handle.capability],
+      socket:{remoteAddress:patch.remote??'127.0.0.1',destroy:()=>events.push({kind:'request-destroy'})},
+      destroy:()=>events.push({kind:'request-destroy'}),
+      async *[Symbol.asyncIterator](){
+        if(patch.bodyGate){events.push({kind:'body-barrier'});await patch.bodyGate.promise;}
+        yield raw;
+      },
+    });
+    const response={
+      statusCode:200,writableEnded:false,headersSent:false,
+      setHeader:(key:string,value:string|number|readonly string[])=>{headers[key.toLowerCase()]=String(value);},
+      getHeader:(key:string)=>headers[key.toLowerCase()],
+      writeHead:(status:number,values?:Record<string,string>)=>{
+        response.statusCode=status;if(values)for(const [key,value] of Object.entries(values))headers[key.toLowerCase()]=value;return response;
+      },
+      write:(chunk:unknown)=>{chunks.push(Buffer.isBuffer(chunk)?chunk.toString():String(chunk));return true;},
+      end:(chunk?:unknown)=>{
+        if(chunk!==undefined)chunks.push(Buffer.isBuffer(chunk)?chunk.toString():String(chunk));
+        expect(response.writableEnded,'exactly one response end').toBe(false);response.writableEnded=true;
+        const text=chunks.join('');events.push({kind:'response',data:{status:response.statusCode,text}});
+        try{done.resolve({status:response.statusCode,headers,body:resourceRecord(JSON.parse(text)),chunks});}
+        catch(error){done.reject(error);}
+        return response;
+      },
+      on:()=>response,once:()=>response,
+    };
+    listener(incoming as unknown as IncomingMessage,response as unknown as ServerResponse);
+    return done.promise;
+  }
+  function addMedia(id:string,accountId=RESOURCE_ACCOUNTS[0],purpose='guide',status='ready'){
+    const known=KNOWN_GUIDES_BYTES['old-cover'],key='local/'+accountId+'/'+id;
+    rowset('media_assets').push({id,account_id:accountId,purpose,status,mime_type:'image/png',byte_size:String(74),
+      content_sha256:Buffer.from(known.sha256,'hex'),original_filename:null,width_px:8,height_px:8,alternative_text:null,caption:null,
+      ready_at:status==='ready'?new Date(RESOURCE_TIME):null,deleted_at:null});
+    rowset('media_objects').push({media_id:id,account_id:accountId,variant:'original',storage_environment:'local',
+      object_key:key,mime_type:'image/png',byte_size:'74',content_sha256:Buffer.from(known.sha256,'hex'),storage_version_id:null,deleted_at:null});
+    files.set(key,Buffer.from(known.base64,'base64'));
+    for(const path of ancestors(join(directory,'local',accountId)))if(!nodes.has(path))directoryNode(path);
+    nodes.set(join(directory,...key.split('/')),{kind:'file',dev:1,ino:nodeId++,canonical:join(directory,...key.split('/'))});
+    return key;
+  }
+  function addGuide(id:string,accountId=RESOURCE_ACCOUNTS[0],displayOrder=0,extra:ResourceRow={}){
+    const row={id,account_id:accountId,category:'guides',title:'Native guide',description:null,slug:'native-'+id.slice(-4),
+      display_order:displayOrder,revision:'97',visibility:'private',publication_state:'draft',pin_order:null,archived_at:null,...extra};
+    rowset('collections').push(row);return row;
+  }
+  return {options,dependencies,controls,events,tables,rowset,details,files,nodes,server,db,command,dispatch,
+    addMedia,addGuide,categoryRevision,owned,directoryNode,snapshotTables};
+}
+
+describe('private Guides resource controller orchestration against foreign-interface fakes',()=>{
+  it('Guides resource custody: lazy entry and strict private options refuse before effects',async()=>{
+    const start=await resourceStartExport();
+    // A fresh import must not load the default resource adapters or initiate work.
+    const imports:string[]=[];
+    vi.resetModules();
+    vi.doMock('node:http',()=>{imports.push('http');throw new Error('eager resource import');});
+    vi.doMock('node:fs/promises',()=>{imports.push('fs');throw new Error('eager resource import');});
+    vi.doMock('../../repositories/guideRepository',()=>{imports.push('repository');throw new Error('eager resource import');});
+    try{
+      await support();expect(imports).toEqual([]);
+      const invalidDefault=resourceFixture();
+      await expect(start({...invalidDefault.options,runId:'BAD'})).rejects.toBeInstanceOf(Error);
+      expect(imports).toEqual([]);expect(invalidDefault.events).toEqual([]);
+    }finally{
+      vi.doUnmock('node:http');vi.doUnmock('node:fs/promises');vi.doUnmock('../../repositories/guideRepository');
+      vi.resetModules();
+    }
+    const malformed:((f:ReturnType<typeof resourceFixture>)=>void)[]=[
+      f=>{f.options.runId='F'.repeat(32);},f=>{f.options.commit='f'.repeat(39);},
+      f=>{Object.assign(f.options,{untrusted:true});},
+      f=>{f.options.authority.runId='a'.repeat(32);},f=>{f.options.authority.commit='a'.repeat(40);},
+      f=>{Object.assign(f.options.authority,{owned:false});},f=>{f.options.authority.database='foreign';},
+      f=>{f.options.authority.port=55999;},f=>{f.options.authority.port=61000;},
+      f=>{f.options.authority.containerId='D'.repeat(64);},f=>{f.options.authority.imageId='sha256:'+'e'.repeat(63);},
+      f=>{f.options.authority.contextHost='bad\nhost';},f=>{f.options.authority.contextHost='a'.repeat(1025);},
+      f=>{Object.assign(f.options.authority,{extra:undefined});},
+      f=>{f.options.apiOrigin='http://localhost:51001';},f=>{f.options.apiOrigin='http://127.0.0.1:51001/';},
+      f=>{f.options.apiOrigin='http://127.0.0.1:51000';},f=>{f.options.apiOrigin='http://u:p@127.0.0.1:51001';},
+      f=>{f.options.port=1023;},f=>{f.options.port=65536;},f=>{f.options.port=51000.5;},
+      f=>{f.options.storage.directory=join(f.options.disposableDirectory,'other');},
+      f=>{f.options.disposableDirectory=join(f.options.expectedTemporaryRoot,'foreign');},
+      f=>{Object.assign(f.options.storage.instance,{environment:'prod'});},
+      f=>{Reflect.deleteProperty(f.options.storage.instance,'putOwned');},
+      f=>{Object.assign(f.options.storage,{extra:true});},
+      f=>{f.options.personas.ownerA.userId=' auth|guide-a';},
+      f=>{f.options.personas.ownerA.cookie='bad\r\ncookie';},
+      f=>{f.options.personas.ownerA.cookie='a'.repeat(8193);},
+      f=>{f.options.personas.ownerA.handle='h'.repeat(201);},
+      f=>{f.options.personas.ownerB.userId=f.options.personas.ownerA.userId;},
+      f=>{f.options.personas.ownerB.handle=f.options.personas.ownerA.handle;},
+      f=>{Object.assign(f.options.personas.ownerA,{accountId:RESOURCE_ACCOUNTS[0]});},
+      f=>{Object.assign(f.options.personas,{ownerD:{userId:'x',cookie:'x',handle:'x'}});},
+    ];
+    for(const change of malformed){
+      const f=resourceFixture();change(f);
+      await expect(start(f.options,f.dependencies)).rejects.toBeInstanceOf(Error);
+      expect(f.events,'strict data refusal precedes every IO').toEqual([]);
+    }
+    for(const missing of ['fs','createServer','fetch','guideRepository']){
+      const f=resourceFixture();Reflect.deleteProperty(f.dependencies,missing);
+      await expect(start(f.options,f.dependencies)).rejects.toBeInstanceOf(Error);expect(f.events).toEqual([]);
+    }
+    for(const missing of ['writeGuideDetails','createGuideSection','attachGuideCover','readGuideDetails']){
+      const f=resourceFixture();Reflect.deleteProperty(f.dependencies.guideRepository,missing);
+      await expect(start(f.options,f.dependencies)).rejects.toBeInstanceOf(Error);expect(f.events).toEqual([]);
+    }
+    const trusted=resourceFixture(),handle=await start(trusted.options,trusted.dependencies);
+    expect(handle).toMatchObject({version:1,url:'http://127.0.0.1:51000/control',runId,commit});
+    expect(handle.capability).toMatch(/^[a-f0-9]{64}$/);
+    expect(Object.keys(handle).sort()).toEqual(['capability','close','commit','runId','url','version']);
+    // The supplied root/instance capability is trusted; its private root is uninspectable.
+    await handle.close();expect(trusted.events.some(e=>e.kind==='forbidden-pool-end')).toBe(false);
+  });
+
+  it('Guides resource startup: verified bindings and failed startup drain prevent late work',async()=>{
+    const start=await resourceStartExport();vi.useFakeTimers();
+    try{
+      const f=resourceFixture(),handle=await start(f.options,f.dependencies);
+      const firstFetch=f.events.findIndex(e=>e.kind==='fetch');
+      const dbCheck=f.events.findIndex(e=>/current_database/.test(e.sql??''));
+      expect(dbCheck).toBeGreaterThanOrEqual(0);expect(dbCheck).toBeLessThan(firstFetch);
+      const fetches=f.events.filter(e=>e.kind==='fetch').map(e=>resourceRecord(e.data));
+      expect(fetches.map(e=>e.method)).toEqual(['GET','PATCH','GET','PATCH','GET','PATCH']);
+      const idempotency=fetches.filter(e=>e.method==='PATCH').map(e=>resourceRecord(e.headers)['idempotency-key']);
+      expect(new Set(idempotency).size).toBe(3);
+      for(let i=0;i<3;i++){
+        const getIndex=f.events.findIndex(e=>e.kind==='fetch'&&resourceRecord(e.data).cookie===f.options.personas[RESOURCE_OWNERS[i]].cookie);
+        const patchIndex=f.events.findIndex((e,index)=>index>getIndex&&e.kind==='fetch'&&resourceRecord(e.data).method==='PATCH');
+        const binding=f.events.findIndex((e,index)=>index>getIndex&&index<patchIndex&&/initial_account_bindings/.test(e.sql??''));
+        expect(binding).toBeGreaterThan(getIndex);
+        expect(resourceLeaves(f.events[binding].values)).toContain(f.options.personas[RESOURCE_OWNERS[i]].userId);
+      }
+      expect(f.events.find(e=>e.kind==='create-server')?.data).toMatchObject({maxHeaderSize:8192});
+      expect(f.server.headersTimeout).toBe(10000);expect(f.server.requestTimeout).toBe(15000);expect(f.server.keepAliveTimeout).toBe(1000);
+      const listen=f.events.find(e=>e.kind==='listen')?.data;
+      expect(JSON.stringify(listen)).toContain('127.0.0.1');expect(JSON.stringify(listen)).toContain('51000');
+      const transportBad=[{remote:'::1'},{host:'localhost:51000'},{capability:'F'.repeat(64)},
+        {capability:[handle.capability,handle.capability]},{method:'GET'},{url:'/control?extra=1'},
+        {raw:Buffer.alloc(4097,32)}];
+      for(const patch of transportBad)resourceError(await f.dispatch(handle,f.command(handle),patch),403,'denied');
+      expect(f.events.filter(resourceMutation)).toEqual([]);
+      await handle.close();
+      for(const bad of ['database','binding','duplicate','revision','redirect'] as const){
+        const x=resourceFixture();
+        if(bad==='database')x.controls.database='foreign_db';
+        if(bad==='binding')x.rowset('initial_account_bindings')[0].account_id=resourceId(900);
+        if(bad==='duplicate')x.controls.meAccount=RESOURCE_ACCOUNTS[0];
+        if(bad==='revision')x.controls.meRevision=0;
+        if(bad==='redirect')x.controls.fetchStatus=302;
+        const outcome=start(x.options,x.dependencies).then(()=>({ok:true,error:undefined}),error=>({ok:false,error}));
+        await resourceTurns();await vi.advanceTimersByTimeAsync(305000);
+        expect((await outcome).ok).toBe(false);expect(x.events.some(e=>e.kind==='listen')).toBe(false);
+        if(bad==='database')expect(x.events.some(e=>e.kind==='fetch')).toBe(false);
+        if(bad==='binding')expect(x.events.some(e=>e.kind==='fetch'&&resourceRecord(e.data).method==='PATCH')).toBe(false);
+      }
+      // Admission timeout, then late connect: no query/mutation may start afterward.
+      const late=resourceFixture(),acquisition=resourceDeferred<void>();late.controls.connectGate=acquisition;
+      const lateResult=start(late.options,late.dependencies).then(()=>undefined,error=>error);
+      await resourceUntil(()=>late.events.some(e=>e.kind==='connect'));
+      await vi.advanceTimersByTimeAsync(180000);await vi.advanceTimersByTimeAsync(125000);
+      resourceCleanup(await lateResult,true,['drain']);
+      acquisition.resolve();await resourceTurns();
+      expect(late.events.filter(e=>e.kind==='query'||e.kind==='fetch'||e.kind==='listen')).toEqual([]);
+      expect(late.events.some(e=>e.kind==='release')).toBe(true);
+      // A started onboarding request stays unresolved through cleanup, even after its wrapper rejects.
+      for(const endpoint of ['/me GET','/account PATCH']){
+        const x=resourceFixture(),gate=resourceDeferred<void>();
+        x.controls.fetchGate={match:new RegExp(endpoint),gate};
+        const result=start(x.options,x.dependencies).then(()=>undefined,error=>error);
+        await resourceUntil(()=>x.events.some(e=>e.kind==='fetch'&&new RegExp(endpoint).test(
+          resourceText(resourceRecord(e.data).url)+' '+resourceText(resourceRecord(e.data).method))));
+        const launched=x.events.filter(e=>e.kind==='fetch').length;
+        const signal=resourceRecord(x.events.filter(e=>e.kind==='fetch').at(-1)!.data).signal;
+        await vi.advanceTimersByTimeAsync(10000);
+        expect(signal).toBeInstanceOf(AbortSignal);
+        expect(signal instanceof AbortSignal&&signal.aborted,'literal canonical fetch deadline').toBe(true);
+        gate.reject(new Error('aborted wrapper, server settlement unknown'));
+        await vi.advanceTimersByTimeAsync(180000);await vi.advanceTimersByTimeAsync(125000);
+        resourceCleanup(await result,true,['drain']);
+        expect(x.events.filter(e=>e.kind==='fetch')).toHaveLength(launched);
+        expect(x.events.some(e=>e.kind==='create-server'||e.kind==='listen')).toBe(false);
+      }
+      // Startup/listen deadline followed by late listen completion never returns a handle.
+      const listening=resourceFixture(),listenGate=resourceDeferred<void>();listening.controls.listenGate=listenGate;
+      const listenerResult=start(listening.options,listening.dependencies).then(()=>undefined,error=>error);
+      await resourceUntil(()=>listening.events.some(e=>e.kind==='listen'));
+      await vi.advanceTimersByTimeAsync(180000);await vi.advanceTimersByTimeAsync(125000);
+      resourceCleanup(await listenerResult,true,['drain']);
+      listenGate.resolve();await resourceTurns();
+      expect(listening.events.some(e=>e.kind==='listener-close')).toBe(true);
+      const failed=resourceFixture();failed.controls.listenFailure=true;
+      const failedResult=start(failed.options,failed.dependencies).then(()=>undefined,error=>error);
+      await resourceTurns();await vi.advanceTimersByTimeAsync(305000);
+      expect(await failedResult).toBeInstanceOf(Error);
+      expect(failed.events.filter(e=>e.kind==='fetch')).toHaveLength(6);
+      expect(failed.events.some(e=>e.kind==='listener-close')).toBe(true);
+    }finally{vi.useRealTimers();}
+  });
+
+  it('Guides resource reset: exact transactional scope and revision reads preserve receipt tombstones',async()=>{
+    const start=await resourceStartExport(),f=resourceFixture(),handle=await start(f.options,f.dependencies);
+    const guideId=resourceId(700),foreign=resourceId(701),other=resourceId(702),eventId=resourceId(710);
+    f.addGuide(guideId);f.addGuide(foreign,resourceId(999));f.addGuide(other,RESOURCE_ACCOUNTS[0],0,{category:'places'});
+    f.rowset('analytics_events').push(
+      {id:eventId,account_id:RESOURCE_ACCOUNTS[0],category:'guides',collection_id:guideId,recommendation_id:null},
+      {id:resourceId(711),account_id:RESOURCE_ACCOUNTS[0],category:'guides',collection_id:guideId,recommendation_id:resourceId(888)},
+      {id:resourceId(712),account_id:resourceId(999),category:'guides',collection_id:foreign,recommendation_id:null},
+      {id:resourceId(713),account_id:RESOURCE_ACCOUNTS[0],category:'places',collection_id:other,recommendation_id:null});
+    f.rowset('analytics_event_receipts').push({id:resourceId(720),account_id:RESOURCE_ACCOUNTS[0],event_id:eventId,retired_at:null},
+      {id:resourceId(721),account_id:RESOURCE_ACCOUNTS[0],event_id:resourceId(713),retired_at:null});
+    const offset=f.events.length,reply=await f.dispatch(handle,f.command(handle,'reset',CASES[6]));
+    expect(reply.status).toBe(200);
+    const trace=f.events.slice(offset),queries=trace.filter(e=>e.kind==='query');
+    expect(queries.filter(e=>/^\s*BEGIN\b/i.test(e.sql??''))).toHaveLength(1);
+    expect(queries.filter(e=>/^\s*COMMIT\b/i.test(e.sql??''))).toHaveLength(1);
+    expect(queries.some(e=>/statement_timeout/i.test(e.sql??'')&&JSON.stringify([e.sql,e.values]).includes('10000'))).toBe(true);
+    expect(queries.some(e=>/lock_timeout/i.test(e.sql??'')&&JSON.stringify([e.sql,e.values]).includes('5000'))).toBe(true);
+    const firstMutation=trace.findIndex(resourceMutation);
+    for(const table of ['initial_account_bindings','creator_accounts','user_security_state']){
+      const index=trace.findIndex(e=>e.kind==='query'&&new RegExp(table).test(e.sql??''));
+      expect(index).toBeGreaterThanOrEqual(0);expect(index).toBeLessThan(firstMutation);
+    }
+    const security=queries.find(e=>/user_security_state/.test(e.sql??''));
+    expect(security?.sql).toMatch(/blocked_at/);
+    expect(resourceLeaves(security?.values)).toEqual(expect.arrayContaining(RESOURCE_OWNERS.map(o=>f.options.personas[o].userId)));
+    const tombstone=trace.findIndex(e=>/^\s*UPDATE\s+analytics_event_receipts/i.test(e.sql??''));
+    const deletion=trace.findIndex(e=>/^\s*DELETE\s+FROM\s+analytics_events/i.test(e.sql??''));
+    expect(tombstone).toBeGreaterThan(firstMutation-1);expect(tombstone).toBeLessThan(deletion);
+    expect(trace[tombstone].sql).toMatch(/event_id\s*=\s*NULL/i);
+    expect(trace[tombstone].sql).toMatch(/retired_at\s*=\s*coalesce/i);
+    expect(resourceLeaves(trace[tombstone].values)).toContain(eventId);
+    expect(resourceLeaves(trace[tombstone].values)).toEqual(expect.arrayContaining(RESOURCE_ACCOUNTS));
+    for(const excluded of [resourceId(711),resourceId(712),resourceId(713)])
+      expect(resourceLeaves(trace[tombstone].values)).not.toContain(excluded);
+    expect(queries.some(e=>/DELETE\s+FROM\s+analytics_event_receipts/i.test(e.sql??''))).toBe(false);
+    expect(f.rowset('analytics_event_receipts')).toHaveLength(2);
+    expect(f.rowset('analytics_event_receipts')[0]).toMatchObject({event_id:null});
+    expect(f.rowset('analytics_event_receipts')[0].retired_at).not.toBeNull();
+    expect(f.rowset('analytics_event_receipts')[1]).toMatchObject({event_id:resourceId(713),retired_at:null});
+    expect(f.rowset('collections').map(row=>row.id)).toEqual(expect.arrayContaining([foreign,other]));
+    const manifest=resourceRecord(reply.body.manifest),sections=resourceRows(manifest.sections);
+    expect(sections.map(row=>row.id)).toEqual(trace.filter(e=>e.kind==='returned-section-id').map(e=>e.data));
+    expect(resourceRows(manifest.guides).every(row=>resourceNumber(row.collectionRevision)>1)).toBe(true);
+    expect(resourceRows(manifest.media)).toHaveLength(2);
+    expect(resourceRows(manifest.media).map(row=>row.key).sort()).toEqual(['direct-stay','direct-timeline']);
+    for(const put of trace.filter(e=>e.kind==='put'))expect(resourceRecord(put.data).bytes).toEqual(Buffer.from(KNOWN_GUIDES_BYTES['old-cover'].base64,'base64'));
+    const photoIds=f.rowset('guide_section_photos').map(row=>row.section_id);
+    expect(photoIds).toEqual(expect.arrayContaining(sections.filter(row=>row.accountId===RESOURCE_ACCOUNTS[0]).map(row=>row.id)));
+    await handle.close();
+    for(const blocked of ['blocked','missing','suspended','pending_deletion','deleted','binding'] as const){
+      const x=resourceFixture(),h=await start(x.options,x.dependencies);
+      if(blocked==='blocked')x.rowset('user_security_state')[0].blocked_at=new Date(RESOURCE_TIME);
+      if(blocked==='missing')x.tables.set('user_security_state',x.rowset('user_security_state').slice(1));
+      if(['suspended','pending_deletion','deleted'].includes(blocked))x.rowset('creator_accounts')[0].status=blocked;
+      if(blocked==='binding')x.rowset('initial_account_bindings')[0].account_id=resourceId(999);
+      const preserved=clone(x.rowset('user_security_state')),before=x.events.length;
+      resourceError(await x.dispatch(h,x.command(h,'reset',CASES[6])),500,'resource-failure');
+      expect(x.events.slice(before).filter(resourceMutation)).toEqual([]);
+      expect(x.events.slice(before).some(e=>e.kind==='put'||e.kind.startsWith('repository-'))).toBe(false);
+      expect(x.rowset('user_security_state')).toEqual(preserved);
+      await h.close();
+    }
+    // Reset overflow is an admitted operation failure: no partial destructive
+    // scope, known rollback, unchanged generation and a fresh same-generation retry.
+    for(const [table,cap] of [['collections',256],['guide_sections',1024],['media_assets',256],['media_objects',768],
+      ['guide_section_photos',2048],['analytics_events',4096]] as const){
+      const x=resourceFixture(),h=await start(x.options,x.dependencies),parent=resourceId(910);
+      const active=await x.dispatch(h,x.command(h,'reset',CASES[0],0));expect(active.status).toBe(200);
+      expect(active.body.generation).toBe(1);
+      x.addGuide(parent);x.addMedia(resourceId(911));
+      const preserved=x.snapshotTables();
+      const emptyBlocks=guideSectionBlocksSchema.parse({version:'guide-section-blocks/v1',
+        timeline:{morning:[],afternoon:[],evening:[]},transport:{segments:[]},stay:{accommodations:[]},
+        activities:{activities:[]},budget:{morning:[],afternoon:[],evening:[]},mapDetails:null,
+        packingList:{items:[]},preTasks:{items:[]},tags:[]});
+      const template:ResourceRow=x.rowset(table)[0]??{account_id:RESOURCE_ACCOUNTS[0],category:'guides',
+        collection_id:parent,recommendation_id:null,title:'Scoped section',description:null,display_order:0,
+        block_version:'guide-section-blocks/v1',blocks:emptyBlocks,archived_at:null,
+        created_at:new Date(RESOURCE_TIME),updated_at:new Date(RESOURCE_TIME),
+        section_id:resourceId(912),media_id:resourceId(911)};
+      if(table==='guide_section_photos'){
+        // Deliberately corrupted duplicate registry response, not a valid DB
+        // snapshot. Every pair still joins an actual selected section/asset.
+        x.rowset('guide_sections').push({id:resourceId(912),account_id:RESOURCE_ACCOUNTS[0],collection_id:parent,
+          title:'Scoped section',description:null,display_order:0,block_version:'guide-section-blocks/v1',
+          blocks:emptyBlocks,archived_at:null,created_at:new Date(RESOURCE_TIME),updated_at:new Date(RESOURCE_TIME)});
+      }
+      // The defensive769-object count is also a corrupted duplicate-PK
+      // response:256 selected assets × three variants permits at most768 valid
+      // rows. Keep all media IDs joined; count refusal must precede mapping.
+      const rows=x.rowset(table);rows.length=0;
+      for(let i=0;i<=cap;i++)rows.push({...template,id:resourceId(70000+i)});
+      const offset=x.events.length;
+      resourceError(await x.dispatch(h,x.command(h,'reset',CASES[0],1)),500,'resource-failure');
+      const trace=x.events.slice(offset);
+      expect(trace.some(resourceMutation)).toBe(false);expect(trace.some(e=>e.kind==='put'||e.kind.startsWith('repository-'))).toBe(false);
+      expect(trace.some(e=>/ROLLBACK/i.test(e.sql??''))).toBe(true);
+      const selection=trace.find(e=>e.kind==='query'&&new RegExp('\\b'+table+'\\b').test(e.sql??''));
+      expect(JSON.stringify([selection?.sql,selection?.values]),'reset selects at most cap+1').toContain(String(cap+1));
+      resourceError(await x.dispatch(h,x.command(h,'observe',CASES[0],1)),409,'unavailable');
+      x.tables.clear();for(const [name,list] of preserved)x.tables.set(name,list);
+      const retry=await x.dispatch(h,x.command(h,'reset',CASES[0],1));
+      expect(retry.status).toBe(200);expect(retry.body.generation).toBe(2);
+      await h.close();
+    }
+  });
+
+  it('Guides resource reset: verified private sessions and complete bytes precede publication',async()=>{
+    const start=await resourceStartExport(),f=resourceFixture(),handle=await start(f.options,f.dependencies);
+    const supplied=clone(f.options.personas),reply=await f.dispatch(handle,f.command(handle,'reset',CASES[5]));
+    expect(reply.status).toBe(200);
+    expect(Object.keys(reply.body).sort()).toEqual(['action','caseId','commit','generation','manifest','project','repeat','runId','sessions','version']);
+    expect(reply.body).toMatchObject({version:1,action:'reset',runId,commit,caseId:CASES[5],project:PROJECTS[0],repeat:0,generation:1});
+    const manifest=resourceRecord(reply.body.manifest),sessions=resourceRecord(reply.body.sessions);
+    for(const key of ['version','runId','commit','caseId','project','repeat','generation'])expect(manifest[key]).toEqual(reply.body[key]);
+    expect(Object.keys(sessions)).toEqual(RESOURCE_OWNERS);
+    for(const owner of RESOURCE_OWNERS){
+      const cookie=resourceText(resourceRecord(sessions[owner]).cookie);
+      expect(Object.keys(resourceRecord(sessions[owner]))).toEqual(['cookie']);
+      expect(cookie).toMatch(/^guides\.session_token=fresh-[a-f0-9-]+\./);
+      expect(cookie).not.toBe(supplied[owner].cookie);
+      const persona=resourceRecord(resourceRecord(manifest.personas)[owner]);
+      expect(persona.accountId).toBe(RESOURCE_ACCOUNTS[RESOURCE_OWNERS.indexOf(owner)]);
+      expect(persona.accountRevision).toBe(Number(f.rowset('creator_accounts')[RESOURCE_OWNERS.indexOf(owner)].revision));
+    }
+    expect(f.options.personas).toEqual(supplied);
+    expect(JSON.stringify(manifest)).not.toContain('cookie');expect(JSON.stringify(manifest)).not.toContain(handle.capability);
+    const commitIndex=f.events.findIndex(e=>/^\s*COMMIT/i.test(e.sql??''));
+    const puts=f.events.filter(e=>e.kind==='put');
+    expect(puts).toHaveLength(3);
+    expect(puts.map(e=>createHash('sha256').update(resourceBuffer(resourceRecord(e.data).bytes)).digest('hex')).sort())
+      .toEqual([KNOWN_GUIDES_BYTES['old-cover'].sha256,KNOWN_GUIDES_BYTES['old-cover'].sha256,KNOWN_GUIDES_BYTES['replacement-cover'].sha256].sort());
+    expect(f.events.filter(e=>e.kind==='get')).toHaveLength(3);
+    expect(f.events.findIndex(e=>e.kind==='get')).toBeGreaterThan(commitIndex);
+    expect(f.events.findIndex(e=>e.kind==='session')).toBeGreaterThan(commitIndex);
+    const responseIndex=f.events.findIndex(e=>e.kind==='response');
+    expect(responseIndex).toBeGreaterThan(f.events.map(e=>e.kind).lastIndexOf('fetch'));
+    await handle.close();
+    for(const failure of ['bytes','length','read','wrong-account','zero-revision','wrong-revision','session',
+      'mime','metadata-length','metadata-hash'] as const){
+      const x=resourceFixture(),h=await start(x.options,x.dependencies);
+      if(failure==='bytes')x.controls.getCorrupt=true;
+      if(failure==='length')x.controls.getTruncated=true;
+      if(failure==='read')x.controls.getFailure=true;
+      if(failure==='wrong-account')x.controls.sessionAccount=resourceId(999);
+      if(failure==='zero-revision')x.controls.sessionRevision=0;
+      if(failure==='wrong-revision')x.controls.sessionRevision=777;
+      if(failure==='session')x.controls.sessionFailure=true;
+      const metadata=failure==='mime'||failure==='metadata-length'||failure==='metadata-hash';
+      const commitGate=resourceDeferred<void>();
+      if(metadata)x.controls.queryGate={match:/^\s*COMMIT/i,gate:commitGate};
+      const operation=x.dispatch(h,x.command(h,'reset',CASES[5]));
+      if(metadata){
+        await resourceUntil(()=>x.events.some(e=>/^\s*COMMIT/i.test(e.sql??'')));
+        const row=x.rowset('media_assets')[0];
+        if(failure==='mime')row.mime_type='image/jpeg';
+        if(failure==='metadata-length')row.byte_size='75';
+        if(failure==='metadata-hash')row.content_sha256=Buffer.alloc(32,0);
+        commitGate.resolve();
+      }
+      resourceError(await operation,500,'resource-failure');
+      resourceError(await x.dispatch(h,x.command(h,'observe',CASES[5],0)),409,'unavailable');
+      resourceError(await x.dispatch(h,x.command(h,'reset',CASES[5],0)),409,'unavailable');
+      expect(x.events.filter(e=>e.kind==='delete'),'postcommit bytes never rollback compensated').toEqual([]);
+      await h.close().catch(()=>undefined);
+    }
+  });
+
+  it('Guides resource observe: canonical live rows and overflow refusal preserve complete ordered scope',async()=>{
+    const start=await resourceStartExport(),f=resourceFixture(),handle=await start(f.options,f.dependencies);
+    expect((await f.dispatch(handle,f.command(handle,'reset',CASES[1]))).status).toBe(200);
+    // Replace persisted seed identities with independent literal IDs; observe
+    // must read these current rows instead of reusing a cached reset manifest.
+    for(const [accountId,guideId,sectionId,revision] of [
+      [RESOURCE_ACCOUNTS[0],resourceId(840),resourceId(842),'41'],
+      [RESOURCE_ACCOUNTS[1],resourceId(841),resourceId(843),'43'],
+    ] as const){
+      const guide=f.rowset('collections').find(row=>row.account_id===accountId)!;
+      const previous=resourceText(guide.id),detail=f.details.get(previous)!;
+      guide.id=guideId;guide.revision=revision;f.details.delete(previous);f.details.set(guideId,detail);
+      const section=f.rowset('guide_sections').find(row=>row.collection_id===previous)!;
+      section.id=sectionId;section.collection_id=guideId;
+    }
+    for(const [index,revision,status,publicProfile,guidesPublic] of [
+      [0,'101','active',true,false],[1,'103','suspended',false,true],[2,'107','pending_deletion',false,false],
+    ] as const){
+      Object.assign(f.rowset('creator_accounts')[index],{revision,status,public_profile:publicProfile});
+      f.rowset('account_category_settings')[index].is_public=guidesPublic;
+    }
+    f.rowset('account_category_content_state')[0].revision='211';
+    f.rowset('account_category_content_state')[1].revision='223';
+    f.tables.set('account_category_content_state',f.rowset('account_category_content_state').slice(0,2));
+    const seedIds=[resourceId(840),resourceId(841)],idA=resourceId(850),idB=resourceId(851),idC=resourceId(852);
+    f.addGuide(idB,RESOURCE_ACCOUNTS[1],8,{archived_at:new Date(RESOURCE_TIME),publication_state:'published'});
+    f.addGuide(idA,RESOURCE_ACCOUNTS[0],8,{title:'Native changed',description:'persisted',visibility:'private'});
+    f.addGuide(idC,RESOURCE_ACCOUNTS[0],7,{description:null});
+    const blocks:GuideSectionBlocks=guideSectionBlocksSchema.parse({
+      version:'guide-section-blocks/v1',timeline:{morning:[],afternoon:[],evening:[]},transport:{segments:[]},
+      stay:{accommodations:[]},activities:{activities:[]},budget:{morning:[],afternoon:[],evening:[]},
+      mapDetails:{center:{lat:0,lng:0},zoom:12},packingList:{items:[]},preTasks:{items:[]},tags:[' canonical ']});
+    const sectionId=resourceId(860);
+    f.rowset('guide_sections').push({id:sectionId,collection_id:idA,account_id:RESOURCE_ACCOUNTS[0],
+      title:'  Native section  ',description:'  canonical description  ',display_order:7,
+      block_version:'guide-section-blocks/v1',blocks:{...blocks,tags:[' canonical ']},archived_at:new Date(RESOURCE_TIME),
+      created_at:new Date(RESOURCE_TIME),updated_at:new Date(RESOURCE_TIME)});
+    const canonicalDetails:GuideCollectionDetails=guideCollectionDetailsSchema.parse({
+      guideType:'itinerary',multiCity:false,numberOfDays:1,estimatedBudget:'12.00',budgetCurrency:'INR',budgetType:'per-person',
+      bestTimeToVisit:[' October '],categories:['culture'],tags:[' canonical '],tipsNotes:null,
+      place:{name:' Kolkata ',address:' India ',placeId:'native_city',rating:4.5,ratingsCount:1,lat:0,lng:0},locationEntityId:null});
+    f.details.set(idA,canonicalDetails);
+    const mediaId=resourceId(870),pendingId=resourceId(871),coverId=resourceId(872);
+    f.addMedia(mediaId);f.addMedia(pendingId,RESOURCE_ACCOUNTS[1],'collection','uploading');f.addMedia(coverId,RESOURCE_ACCOUNTS[0],'collection');
+    Object.assign(f.rowset('media_assets').find(row=>row.id===pendingId)!,
+      {content_sha256:null,width_px:null,height_px:null,original_filename:'pending.png',alternative_text:null,caption:null});
+    f.rowset('collection_media').push({collection_id:idC,account_id:RESOURCE_ACCOUNTS[0],media_id:coverId,slot:'cover'});
+    const photo={mediaId,fileName:'native.png',width:8,height:8,aspectRatio:'1:1'};
+    const storedBlocks=guideSectionBlocksSchema.parse({...blocks,timeline:{morning:[{
+      localId:'native-morning',placeId:'native_place',name:'  Native café  ',formattedAddress:' India ',
+      geometry:{location:{lat:0,lng:0}},types:['point_of_interest'],tips:' Water ',photos:[photo,photo],
+      priceLevel:1,priceRange:'₹100',customBudget:'tea',budgetAmount:'100.00',budgetCurrency:'INR',source:'manual',verified:false,
+    }],afternoon:[],evening:[]}});
+    storedBlocks.timeline.morning[0].name='  Native café  ';
+    f.rowset('guide_sections').find(row=>row.id===sectionId)!.blocks={...storedBlocks,tags:[' canonical ']};
+    f.rowset('guide_section_photos').push({section_id:sectionId,account_id:RESOURCE_ACCOUNTS[0],media_id:mediaId});
+    const original=f.rowset('media_objects').find(row=>row.media_id===mediaId)!;
+    f.rowset('media_objects').push({...original,variant:'thumbnail',storage_environment:'qa',object_key:'qa/native-thumbnail'},
+      {...original,variant:'display',storage_environment:'prod',object_key:'prod/native-display'});
+    // Negative sentinels: valid foreign Guides, an owned Places collection,
+    // other-purpose/foreign assets, and attachments outside selected Guides.
+    const foreignAccount=resourceId(999),foreignGuide=resourceId(880),otherGuide=resourceId(882);
+    f.addGuide(foreignGuide,foreignAccount);f.addGuide(otherGuide,RESOURCE_ACCOUNTS[0],9,{category:'places'});
+    f.rowset('guide_sections').push({id:resourceId(881),collection_id:foreignGuide,account_id:foreignAccount,
+      title:'Foreign section',description:null,display_order:0,block_version:'guide-section-blocks/v1',blocks,
+      archived_at:null,created_at:new Date(RESOURCE_TIME),updated_at:new Date(RESOURCE_TIME)});
+    f.addMedia(resourceId(884),foreignAccount,'guide');f.addMedia(resourceId(885),RESOURCE_ACCOUNTS[0],'profile');
+    const foreignBlocks=guideSectionBlocksSchema.parse(storedBlocks);
+    foreignBlocks.timeline.morning[0].photos=[{mediaId:resourceId(884),fileName:'foreign.png',width:8,height:8,aspectRatio:'1:1'}];
+    f.rowset('guide_sections').find(row=>row.id===resourceId(881))!.blocks=foreignBlocks;
+    f.rowset('guide_section_photos').push({section_id:resourceId(881),account_id:foreignAccount,media_id:resourceId(884)});
+    f.rowset('collection_media').push({collection_id:otherGuide,account_id:RESOURCE_ACCOUNTS[0],media_id:coverId,slot:'cover'});
+    f.rowset('profile_media').push({account_id:RESOURCE_ACCOUNTS[0],media_id:resourceId(885),slot:'profile'});
+    for(const table of ['collections','guide_sections','media_assets','media_objects'])f.rowset(table).reverse();
+    const before=f.events.length,reply=await f.dispatch(handle,f.command(handle,'observe',CASES[1],1));
+    expect(reply.status).toBe(200);
+    expect(Object.keys(reply.body).sort()).toEqual(['action','attachments','caseId','commit','generation','guides','media','objects','personas','project','repeat','runId','sections','version']);
+    expect(reply.body).toMatchObject({action:'observe',generation:1,runId,commit,caseId:CASES[1]});
+    expect(Object.keys(resourceRecord(reply.body.personas))).toEqual(RESOURCE_OWNERS);
+    const guides=resourceRows(reply.body.guides),sections=resourceRows(reply.body.sections),media=resourceRows(reply.body.media),objects=resourceRows(reply.body.objects);
+    for(const row of guides)expect(Object.keys(row).sort()).toEqual([
+      'accountId','archivedAt','category','categoryContentRevision','description','details','displayOrder','id',
+      'pinOrder','publicationState','revision','slug','title','visibility'].sort());
+    for(const row of sections)expect(Object.keys(row).sort()).toEqual([
+      'accountId','archivedAt','blocks','collectionId','createdAt','description','displayOrder','id','title','updatedAt'].sort());
+    for(const row of media)expect(Object.keys(row).sort()).toEqual([
+      'accountId','alternativeText','byteLength','caption','deletedAt','height','id','mimeType','originalFilename',
+      'purpose','readyAt','sha256','status','width'].sort());
+    for(const row of objects)expect(Object.keys(row).sort()).toEqual([
+      'accountId','byteLength','deletedAt','environment','key','mediaId','mimeType','sha256','storageVersionId','variant'].sort());
+    for(const row of Object.values(resourceRecord(reply.body.personas)))expect(Object.keys(resourceRecord(row)).sort()).toEqual([
+      'accountId','accountRevision','guidesContentRevision','guidesPublic','handle','publicProfile','status','userId'].sort());
+    const ordinal=(a:string,b:string)=>a<b?-1:a>b?1:0;
+    const sortRows=(rows:ResourceRow[],fields:string[])=>[...rows].sort((a,b)=>{
+      for(const field of fields){const x=a[field]??'',y=b[field]??'';const result=typeof x==='number'&&typeof y==='number'?x-y:ordinal(String(x),String(y));if(result)return result;}return 0;
+    });
+    expect(guides).toEqual(sortRows(guides,['accountId','displayOrder','id']));
+    expect(sections).toEqual(sortRows(sections,['accountId','collectionId','displayOrder','id']));
+    expect(media).toEqual(sortRows(media,['accountId','id']));
+    expect(objects).toEqual(sortRows(objects,['accountId','mediaId','variant','environment']));
+    const attachments=resourceRows(reply.body.attachments);
+    expect(attachments).toEqual(sortRows(attachments,['accountId','guideId','slot','sectionId','mediaId']));
+    expect(guides.map(row=>row.id)).toEqual([resourceId(840),idC,idA,resourceId(841),idB]);
+    expect(sections.map(row=>row.id)).toEqual([resourceId(842),sectionId,resourceId(843)]);
+    expect(media.map(row=>row.id)).toEqual([mediaId,coverId,pendingId]);
+    expect(objects.map(row=>[row.mediaId,row.variant,row.environment])).toEqual([
+      [mediaId,'display','prod'],[mediaId,'original','local'],[mediaId,'thumbnail','qa'],
+      [coverId,'original','local'],[pendingId,'original','local'],
+    ]);
+    expect(attachments).toEqual([
+      {slot:'section-photo',guideId:idA,sectionId,accountId:RESOURCE_ACCOUNTS[0],mediaId},
+      {slot:'cover',guideId:idC,accountId:RESOURCE_ACCOUNTS[0],mediaId:coverId},
+    ]);
+    expect(reply.body.personas).toEqual({
+      ownerA:{userId:'auth|guide-a',accountId:RESOURCE_ACCOUNTS[0],handle:'guide-owner-a',accountRevision:101,
+        status:'active',publicProfile:true,guidesPublic:false,guidesContentRevision:211},
+      ownerB:{userId:'auth|guide-b',accountId:RESOURCE_ACCOUNTS[1],handle:'guide-owner-b',accountRevision:103,
+        status:'suspended',publicProfile:false,guidesPublic:true,guidesContentRevision:223},
+      ownerC:{userId:'auth|guide-c',accountId:RESOURCE_ACCOUNTS[2],handle:'guide-owner-c',accountRevision:107,
+        status:'pending_deletion',publicProfile:false,guidesPublic:false,guidesContentRevision:0},
+    });
+    expect(guides.find(row=>row.id===idA)).toEqual({
+      id:idA,accountId:RESOURCE_ACCOUNTS[0],category:'guides',title:'Native changed',description:'persisted',
+      slug:'native-0850',displayOrder:8,revision:97,categoryContentRevision:211,visibility:'private',
+      publicationState:'draft',pinOrder:null,archivedAt:null,details:canonicalDetails,
+    });
+    expect(sections.find(row=>row.id===sectionId)).toEqual({
+      id:sectionId,collectionId:idA,accountId:RESOURCE_ACCOUNTS[0],title:'Native section',
+      description:'canonical description',displayOrder:7,blocks:guideSectionBlocksSchema.parse({...storedBlocks,tags:['canonical']}),
+      archivedAt:RESOURCE_TIME,createdAt:RESOURCE_TIME,updatedAt:RESOURCE_TIME,
+    });
+    expect(media.find(row=>row.id===mediaId)).toEqual({
+      id:mediaId,accountId:RESOURCE_ACCOUNTS[0],purpose:'guide',status:'ready',mimeType:'image/png',byteLength:74,
+      sha256:'efd697c3369b86b0b540c0bded797ca813a3984c1a95d7d16644744e252840a2',
+      originalFilename:null,width:8,height:8,alternativeText:null,caption:null,readyAt:RESOURCE_TIME,deletedAt:null,
+    });
+    expect(media.find(row=>row.id===pendingId)).toEqual({
+      id:pendingId,accountId:RESOURCE_ACCOUNTS[1],purpose:'collection',status:'uploading',mimeType:'image/png',byteLength:74,
+      sha256:null,originalFilename:'pending.png',width:null,height:null,alternativeText:null,caption:null,readyAt:null,deletedAt:null,
+    });
+    expect(objects.find(row=>row.mediaId===mediaId&&row.variant==='original')).toEqual({
+      mediaId,accountId:RESOURCE_ACCOUNTS[0],variant:'original',environment:'local',
+      key:'local/'+RESOURCE_ACCOUNTS[0]+'/'+mediaId,mimeType:'image/png',byteLength:74,
+      sha256:'efd697c3369b86b0b540c0bded797ca813a3984c1a95d7d16644744e252840a2',storageVersionId:null,deletedAt:null,
+    });
+    expect(attachments.filter(row=>row.sectionId===sectionId)).toEqual([
+      {slot:'section-photo',guideId:idA,sectionId,accountId:RESOURCE_ACCOUNTS[0],mediaId},
+    ]);
+    const observedNative=resourceRecord(resourceRows(resourceRecord(
+      resourceRecord(sections.find(row=>row.id===sectionId)!.blocks).timeline).morning)[0]);
+    expect(observedNative.name).toBe('Native café');expect(resourceRows(observedNative.photos)).toHaveLength(2);
+    expect(guides.map(row=>row.id)).toEqual(expect.arrayContaining([...seedIds,idA,idB,idC]));
+    expect(guides.find(row=>row.id===idA)).toMatchObject({title:'Native changed',visibility:'private',publicationState:'draft',details:canonicalDetails});
+    expect(guides.find(row=>row.id===idC)?.details).toBeNull();
+    expect(guides.find(row=>row.id===idB)?.archivedAt).toBe(RESOURCE_TIME);
+    expect(sections.find(row=>row.id===sectionId)).toMatchObject({title:'Native section',description:'canonical description',archivedAt:RESOURCE_TIME,blocks:{tags:['canonical']}});
+    expect(media.find(row=>row.id===pendingId)?.status).toBe('uploading');
+    expect(objects.filter(row=>row.mediaId===mediaId).map(row=>[row.variant,row.environment])).toEqual([['display','prod'],['original','local'],['thumbnail','qa']]);
+    expect(reply.body).not.toHaveProperty('expectedPublic');expect(reply.body).not.toHaveProperty('sessions');
+    const readTrace=f.events.slice(before);
+    resourceObserveTransaction(readTrace,'COMMIT');
+    expect(readTrace.some(resourceMutation)).toBe(false);
+    expect(readTrace.some(e=>e.kind==='repository-read-details'&&resourceRecord(e.data).collectionId===idA)).toBe(true);
+    for(const mutation of [
+      ()=>f.rowset('media_objects').push({...original,storage_environment:'prod'}),
+      ()=>{f.rowset('collections').find(row=>row.id===idA)!.revision='9007199254740992';},
+      ()=>{f.rowset('collections').find(row=>row.id===idA)!.revision='1.5';},
+      ()=>{f.rowset('collections').find(row=>row.id===idA)!.revision='NaN';},
+      ()=>{f.rowset('guide_sections').find(row=>row.id===sectionId)!.block_version='guide-section-blocks/v2';},
+      ()=>f.rowset('guide_section_photos').push({section_id:sectionId,account_id:RESOURCE_ACCOUNTS[0],media_id:mediaId}),
+    ]){
+      const saved=f.snapshotTables();mutation();const offset=f.events.length;
+      resourceError(await f.dispatch(handle,f.command(handle,'observe',CASES[1],1)),500,'resource-failure');
+      resourceObserveTransaction(f.events.slice(offset),'ROLLBACK');
+      f.tables.clear();for(const [table,rows] of saved)f.tables.set(table,rows);
+      expect((await f.dispatch(handle,f.command(handle,'observe',CASES[1],1))).status).toBe(200);
+    }
+    for(const [table,cap] of [['collections',256],['guide_sections',1024],['media_assets',256],['media_objects',768],
+      ['guide_section_photos',2048]] as const){
+      const saved=f.snapshotTables(),rows=f.rowset(table);
+      const template=table==='collections'?rows.find(row=>row.id===idA)!:
+        table==='guide_sections'?rows.find(row=>row.id===sectionId)!:
+        table==='media_assets'?rows.find(row=>row.id===mediaId)!:
+        table==='media_objects'?rows.find(row=>row.media_id===mediaId&&row.variant==='original')!:
+        rows.find(row=>row.section_id===sectionId)!;
+      // Objects769 and registry2049 deliberately duplicate linked primary keys.
+      // These are corrupted query responses, not valid relational snapshots;
+      // cap+1 refusal precedes mapping/duplicate validation under root's ruling.
+      rows.length=0;
+      for(let i=0;i<=cap;i++)rows.push({...template,id:resourceId(20000+i)});
+      const offset=f.events.length;
+      resourceError(await f.dispatch(handle,f.command(handle,'observe',CASES[1],1)),413,'overflow');
+      resourceObserveTransaction(f.events.slice(offset),'ROLLBACK');
+      const select=f.events.slice(offset).find(e=>e.kind==='query'&&new RegExp('\\b'+table+'\\b').test(e.sql??''));
+      expect(JSON.stringify([select?.sql,select?.values]),'cap+1 fetch bound').toContain(String(cap+1));
+      f.tables.clear();for(const [name,list] of saved)f.tables.set(name,list);
+      expect((await f.dispatch(handle,f.command(handle,'observe',CASES[1],1))).status).toBe(200);
+    }
+    const saved=f.snapshotTables(),section=f.rowset('guide_sections').find(row=>row.id===sectionId)!;
+    for(let i=0;i<201;i++)f.rowset('guide_sections').push({...section,id:resourceId(40000+i),collection_id:idC,display_order:i});
+    resourceError(await f.dispatch(handle,f.command(handle,'observe',CASES[1],1)),413,'overflow');
+    f.tables.clear();for(const [name,list] of saved)f.tables.set(name,list);
+    // Within row/text limits, total valid descriptions exceed the independent 8MiB ceiling.
+    for(let i=0;i<140;i++)f.addGuide(resourceId(50000+i),RESOURCE_ACCOUNTS[0],20+i,{description:'x'.repeat(65536)});
+    resourceError(await f.dispatch(handle,f.command(handle,'observe',CASES[1],1)),413,'overflow');
+    f.tables.clear();for(const [name,list] of saved)f.tables.set(name,list);
+    expect((await f.dispatch(handle,f.command(handle,'observe',CASES[1],1))).status).toBe(200);
+    await handle.close();
+  });
+
+  it('Guides resource ledger: only allocated whole tuples authorize cleanup',async()=>{
+    const start=await resourceStartExport();
+    for(const retained of ['untracked','foreign','sibling','changed',...RESOURCE_SURFACES]){
+      const f=resourceFixture(),handle=await start(f.options,f.dependencies);
+      const first=await f.dispatch(handle,f.command(handle,'reset',CASES[5]));expect(first.status).toBe(200);
+      const tracked=resourceRows(resourceRecord(first.body.manifest).media)[0],trackedId=resourceText(tracked.id),trackedKey=resourceText(tracked.keyPath);
+      const nativeKey=f.addMedia(resourceId(880)),foreignKey=f.addMedia(resourceId(881),resourceId(999));
+      if(retained==='foreign')f.rowset('media_assets').find(row=>row.id===trackedId)!.account_id=resourceId(999);
+      if(retained==='sibling')f.rowset('media_objects').push({...f.rowset('media_objects').find(row=>row.media_id===trackedId),variant:'thumbnail'});
+      if(retained==='changed')f.rowset('media_assets').find(row=>row.id===trackedId)!.status='pending_delete';
+      if((RESOURCE_SURFACES as readonly string[]).includes(retained))
+        f.rowset(retained).push({id:resourceId(890),account_id:RESOURCE_ACCOUNTS[0],media_id:trackedId,
+          collection_id:resourceId(891),section_id:resourceId(892),recommendation_id:resourceId(893)});
+      const offset=f.events.length,second=await f.dispatch(handle,f.command(handle,'reset',CASES[0],1));
+      expect(second.status).toBe(200);
+      const deleted=f.events.slice(offset).filter(e=>e.kind==='delete').map(e=>e.data);
+      expect(deleted).not.toContain(nativeKey);expect(deleted).not.toContain(foreignKey);
+      if(retained!=='untracked'){expect(deleted).not.toContain(trackedKey);expect(f.files.has(trackedKey)).toBe(true);}
+      else {expect(deleted).toContain(trackedKey);expect(f.files.has(trackedKey)).toBe(false);}
+      const mediaQueries=f.events.slice(offset).filter(e=>e.kind==='query'&&/media_assets|media_objects/.test(e.sql??''));
+      expect(mediaQueries.some(e=>/FOR\s+UPDATE/i.test(e.sql??''))).toBe(true);
+      for(const table of RESOURCE_SURFACES)expect(f.events.slice(offset).some(e=>new RegExp(table).test(e.sql??''))).toBe(true);
+      expect(f.files.has(nativeKey)).toBe(true);expect(f.files.has(foreignKey)).toBe(true);
+      const closeOffset=f.events.length;await handle.close();
+      expect(f.events.slice(closeOffset).filter(e=>e.kind==='delete').map(e=>e.data)).not.toEqual(expect.arrayContaining([nativeKey,foreignKey]));
+      expect(f.events.some(e=>e.kind==='forbidden-pool-end')).toBe(false);
+    }
+  });
+
+  it('Guides resource failure: rollback settlement and uncertain commit fence retry',async()=>{
+    const start=await resourceStartExport();vi.useFakeTimers();
+    try{
+      const f=resourceFixture(),h=await start(f.options,f.dependencies);
+      f.controls.repositoryFailure='section';
+      resourceError(await f.dispatch(h,f.command(h,'reset',CASES[6])),500,'resource-failure');
+      const rollback=f.events.findIndex(e=>/^\s*ROLLBACK/i.test(e.sql??''));
+      expect(rollback).toBeGreaterThan(f.events.findIndex(e=>e.kind==='put'));
+      expect(f.events.findIndex(e=>e.kind==='delete')).toBeGreaterThan(rollback);
+      const newKeys=f.events.filter(e=>e.kind==='put').map(e=>resourceRecord(e.data).key);
+      expect(f.events.filter(e=>e.kind==='delete').map(e=>e.data).sort()).toEqual([...newKeys].sort());
+      resourceError(await f.dispatch(h,f.command(h,'observe',CASES[6],0)),409,'unavailable');
+      f.controls.repositoryFailure=undefined;
+      const retry=await f.dispatch(h,f.command(h,'reset',CASES[6],0));expect(retry.status).toBe(200);expect(retry.body.generation).toBe(1);
+      await h.close();
+      for(const failure of ['rollback','commit','compensation','old-delete'] as const){
+        const x=resourceFixture(),handle=await start(x.options,x.dependencies);
+        let generation=0;
+        if(failure==='commit'||failure==='old-delete'){
+          expect((await x.dispatch(handle,x.command(handle,'reset',CASES[5]))).status).toBe(200);generation=1;
+        }
+        if(failure==='rollback'){x.controls.repositoryFailure='section';x.controls.queryFailure=/^\s*ROLLBACK/i;}
+        if(failure==='commit')x.controls.queryFailure=/^\s*COMMIT/i;
+        if(failure==='compensation'){x.controls.repositoryFailure='section';x.controls.deleteFailure=true;}
+        if(failure==='old-delete')x.controls.deleteFailure=true;
+        const before=x.events.length,result=x.dispatch(handle,x.command(handle,'reset',CASES[6],generation));
+        await resourceTurns();await vi.advanceTimersByTimeAsync(305000);
+        resourceError(await result,500,'resource-failure');
+        resourceError(await x.dispatch(handle,x.command(handle,'reset',CASES[6],generation)),409,'unavailable');
+        const trace=x.events.slice(before);
+        if(failure==='commit'){
+          expect(trace.filter(e=>e.kind==='delete')).toEqual([]);
+          expect(trace.some(e=>e.kind==='release'&&e.data===true)).toBe(true);
+          expect(trace.some(e=>/ROLLBACK/.test(e.sql??''))).toBe(false);
+          for(const put of x.events.filter(e=>e.kind==='put'))expect(x.files.has(resourceText(resourceRecord(put.data).key))).toBe(true);
+        }
+        await handle.close().catch(()=>undefined);
+      }
+      // Completion failure cannot compensate while the native write is pending.
+      const pending=resourceFixture(),handle=await start(pending.options,pending.dependencies),putGate=resourceDeferred<void>();
+      pending.controls.putGate=putGate;pending.controls.putCompletionFailure=true;
+      const operation=pending.dispatch(handle,pending.command(handle,'reset',CASES[6]));
+      await resourceUntil(()=>pending.events.some(e=>e.kind==='put'));
+      await resourceTurns();expect(pending.events.some(e=>e.kind==='delete')).toBe(false);
+      putGate.resolve();await resourceTurns();
+      resourceError(await operation,500,'resource-failure');
+      expect(pending.events.some(e=>e.kind==='delete')).toBe(true);
+      pending.controls.putGate=undefined;pending.controls.putCompletionFailure=false;
+      expect((await pending.dispatch(handle,pending.command(handle,'reset',CASES[6]))).body.generation).toBe(1);
+      await handle.close();
+    }finally{vi.useRealTimers();}
+  });
+
+  it('Guides resource lifecycle: admission generations and close share deterministic custody',async()=>{
+    const start=await resourceStartExport(),f=resourceFixture(),handle=await start(f.options,f.dependencies);
+    resourceError(await f.dispatch(handle,f.command(handle,'observe')),409,'unavailable');
+    const gate=resourceDeferred<void>();f.controls.queryGate={match:/^\s*BEGIN/i,gate};
+    const first=f.dispatch(handle,f.command(handle,'reset',CASES[1]));
+    await resourceUntil(()=>f.events.some(e=>/^\s*BEGIN/i.test(e.sql??'')));
+    resourceError(await f.dispatch(handle,f.command(handle,'reset',CASES[1])),409,'unavailable');
+    resourceError(await f.dispatch(handle,f.command(handle,'observe',CASES[1])),409,'unavailable');
+    gate.resolve();f.controls.queryGate=undefined;expect((await first).body.generation).toBe(1);
+    resourceError(await f.dispatch(handle,f.command(handle,'reset',CASES[1],0)),409,'unavailable');
+    resourceError(await f.dispatch(handle,{...f.command(handle,'reset',CASES[1],1),extra:true}),403,'denied');
+    expect((await f.dispatch(handle,f.command(handle,'observe',CASES[1],1))).status).toBe(200);
+    // An earlier body reader must recheck generation after another reset publishes.
+    const bodyGate=resourceDeferred<void>(),slow=f.dispatch(handle,f.command(handle,'reset',CASES[1],1),{bodyGate});
+    await resourceUntil(()=>f.events.some(e=>e.kind==='body-barrier'));
+    const second=await f.dispatch(handle,f.command(handle,'reset',CASES[1],1));expect(second.body.generation).toBe(2);
+    const before=f.events.filter(resourceMutation).length;bodyGate.resolve();
+    resourceError(await slow,409,'unavailable');expect(f.events.filter(resourceMutation)).toHaveLength(before);
+    const close1=handle.close(),close2=handle.close();expect(close1).toBe(close2);await close1;
+    resourceError(await f.dispatch(handle,f.command(handle,'reset',CASES[1],2)),409,'unavailable');
+    resourceError(await f.dispatch(handle,f.command(handle,'reset',CASES[1],2),{capability:''}),403,'denied');
+    const x=resourceFixture(),h=await start(x.options,x.dependencies),commitGate=resourceDeferred<void>();
+    x.controls.queryGate={match:/^\s*COMMIT/i,gate:commitGate};
+    const op=x.dispatch(h,x.command(h,'reset',CASES[1]));
+    await resourceUntil(()=>x.events.some(e=>/^\s*COMMIT/i.test(e.sql??'')));
+    const close=h.close();expect(h.close()).toBe(close);commitGate.resolve();
+    const late=await op;expect(late.status).not.toBe(200);expect(late.body).not.toHaveProperty('manifest');await close;
+    expect(x.events.filter(e=>e.kind==='response').some(e=>resourceRecord(e.data).status===200)).toBe(false);
+    for(const failedAttempt of [false,true]){
+      const capped=resourceFixture(),control=await start(capped.options,capped.dependencies);
+      if(failedAttempt)capped.controls.repositoryFailure='section';
+      for(let i=0;i<64;i++){
+        const result=await capped.dispatch(control,capped.command(control,'reset',CASES[5],failedAttempt?0:i));
+        expect(result.status).toBe(failedAttempt?500:200);
+        if(!failedAttempt){
+          expect(result.body.generation).toBe(i+1);
+          // Retain every committed allocation through a non-Guides attachment.
+          for(const media of resourceRows(resourceRecord(result.body.manifest).media))
+            capped.rowset('recommendation_book_covers').push({account_id:media.accountId,media_id:media.id,recommendation_id:resourceId(60000+i)});
+        }
+      }
+      const offset=capped.events.length;
+      resourceError(await capped.dispatch(control,capped.command(control,'reset',CASES[5],failedAttempt?0:64)),409,'unavailable');
+      expect(capped.events.slice(offset).filter(resourceMutation)).toEqual([]);
+      expect(capped.events.filter(e=>e.kind==='put').length).toBeLessThanOrEqual(192);
+      if(!failedAttempt){
+        expect(capped.events.filter(e=>e.kind==='put')).toHaveLength(192);
+        expect(capped.files.size).toBe(192);
+        expect((await capped.dispatch(control,capped.command(control,'observe',CASES[5],64))).status).toBe(200);
+      }
+      // The defensive 256-entry ledger guard cannot be reached through this ABI:
+      // 64 accepted attempts allocate at most three keys each; no enrollment seam.
+      await control.close();
+    }
+    const listener=resourceFixture(),control=await start(listener.options,listener.dependencies);listener.controls.listenerCloseFailure=true;
+    const failedClose=control.close();expect(control.close()).toBe(failedClose);
+    resourceCleanup(await failedClose.then(()=>undefined,error=>error),false,['listener']);
+    expect(control.close()).toBe(failedClose);
+  },20000);
+
+  it('Guides resource custody: directory identity and unsettled IO refuse cleanup success',async()=>{
+    const start=await resourceStartExport();vi.useFakeTimers();
+    try{
+      for(const corruption of ['link','file','alias'] as const){
+        const f=resourceFixture(),node=f.nodes.get(f.options.disposableDirectory)!;
+        if(corruption==='alias')node.canonical=join(f.options.expectedTemporaryRoot,'aliased-root');else node.kind=corruption;
+        await expect(start(f.options,f.dependencies)).rejects.toBeInstanceOf(Error);
+        expect(f.events.some(e=>e.kind==='put'||e.kind==='listen')).toBe(false);
+      }
+      for(const boundary of ['put','get','delete'] as const){
+        const f=resourceFixture(),h=await start(f.options,f.dependencies);
+        if(boundary==='delete'){
+          expect((await f.dispatch(h,f.command(h,'reset',CASES[5]))).status).toBe(200);
+          f.nodes.get(f.options.storage.directory)!.ino+=1;
+          resourceError(await f.dispatch(h,f.command(h,'reset',CASES[0],1)),500,'resource-failure');
+        }else if(boundary==='put'){
+          f.nodes.get(f.options.disposableDirectory)!.ino+=1;
+          resourceError(await f.dispatch(h,f.command(h,'reset',CASES[5])),500,'resource-failure');
+        }else{
+          // Change identity during COMMIT so postcommit readback sees replacement.
+          const commit=resourceDeferred<void>();f.controls.queryGate={match:/^\s*COMMIT/i,gate:commit};
+          const op=f.dispatch(h,f.command(h,'reset',CASES[5]));
+          await resourceUntil(()=>f.events.some(e=>/^\s*COMMIT/i.test(e.sql??'')));
+          f.nodes.get(f.options.storage.directory)!.ino+=1;commit.resolve();
+          resourceError(await op,500,'resource-failure');
+        }
+        expect(f.events.filter(e=>e.kind===boundary)).toEqual([]);
+        await h.close().catch(()=>undefined);
+      }
+      const f=resourceFixture(),handle=await start(f.options,f.dependencies),gate=resourceDeferred<void>();
+      f.controls.putGate=gate;f.controls.putCompletionFailure=true;
+      const operation=f.dispatch(handle,f.command(handle,'reset',CASES[6]));
+      await resourceUntil(()=>f.events.some(e=>e.kind==='put'));
+      const close=handle.close();expect(handle.close()).toBe(close);
+      const closeOutcome=close.then(()=>undefined,error=>error);
+      await vi.advanceTimersByTimeAsync(125000);
+      resourceCleanup(await closeOutcome,true,['drain']);
+      expect(handle.close()).toBe(close);expect(f.events.filter(e=>e.kind==='delete')).toEqual([]);
+      gate.resolve();await resourceTurns();await vi.advanceTimersByTimeAsync(180000);
+      const late=await operation;expect(late.status).not.toBe(200);
+      expect(f.events.filter(e=>e.kind==='response').some(e=>resourceRecord(e.data).status===200)).toBe(false);
+      expect(f.events.filter(e=>e.kind==='delete')).toEqual([]);
+      // Native work can finish after close rejection; neither late completion nor a
+      // wrapper timeout retroactively grants successful cleanup or active publication.
+      expect(await handle.close().then(()=>undefined,error=>error)).toBe(await closeOutcome);
+      const retained=resourceFixture(),h=await start(retained.options,retained.dependencies);
+      const nativeKey=retained.addMedia(resourceId(990));
+      const seeded=await retained.dispatch(h,retained.command(h,'reset',CASES[5]));expect(seeded.status).toBe(200);
+      const committed=resourceRows(resourceRecord(seeded.body.manifest).media).map(row=>resourceText(row.keyPath));
+      const offset=retained.events.length;await h.close();
+      expect(retained.events.slice(offset).filter(e=>e.kind==='delete')).toEqual([]);
+      for(const key of [nativeKey,...committed])expect(retained.files.has(key)).toBe(true);
+      expect(retained.events.some(e=>e.kind==='forbidden-pool-end')).toBe(false);
+      expect(retained.events.some(e=>e.kind==='mkdir'&&resourceRecord(resourceRecord(e.data).options??{}).recursive===true)).toBe(false);
+    }finally{vi.useRealTimers();}
+  });
+});
