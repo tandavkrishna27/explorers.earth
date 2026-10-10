@@ -169,12 +169,41 @@ required inputs; credentials should be supplied through protected configuration.
   actual composition. Root verification passed 67 contracts and scoped types;
   independent review accepted the changes. Storage settlement does not establish
   canonical request, authentication or database settlement.
+- `9a0398ba`: the Guides wizard maps Itinerary to its canonical type and preserves
+  refreshed monetary and other metadata that the form cannot collect. Root passed
+  seven focused tests and helper/test typing. Full component typing remains
+  limited by missing type definitions. Theme and legacy budget-tier semantics
+  remain unresolved; no monetary authoring or native browser pass is claimed.
+- `e0dd93fd`: a fixture-only exact GET session transport awaits actual authentication,
+  response reads, backpressure, finish and cancellation. Independent review and
+  root verification passed ten focused tests and scoped typing. The installed
+  auth transport starts its response pump and cancellation without awaiting them;
+  its returned promise cannot establish those operations have settled. The new
+  adapter is not yet integrated and does not establish native HTTP or database
+  qualification.
+- `00f75529`: canonical construction retains original handler promises, callback
+  frames and request completion, and checks the installed route dispatch structure
+  before reporting a drain result. Independent review accepted the complete repair;
+  root passed 36 focused contracts and scoped typing. Installed auth stays explicitly
+  unknown until the separate session adapter is integrated.
+- `d1f1f156`: the Guides epoch host checks protected ownership before starting
+  services and gives discovery/execution the same exact descriptor environment.
+  Root source review and verification passed 57 focused contracts and scoped typing;
+  the prior 255 selected lifecycle contracts also passed (the guarded import remains
+  excluded). Native configs, dispatch, file/runtime trust and actual containment
+  remain unqualified.
 
-The next concrete source cards are the actual canonical handler construction
-ledger for Apps and the Guides fixture host. They are allocated to separate
-agents. Actual fixture dispatch, source registration and native qualification
-follow their independent reviews. Included feature decisions and source access
-remain open as recorded above; Wave 2 remains open.
+- `0ed1914f`: the fixed Apps admission gate covers the eight current browser cases
+  using live binding and typed relation checks. Independent review accepted it;
+  root passed 41 focused tests and scoped typing. Required foreign/withdrawal media
+  and stale-revision probes are forwarded to canonical authorization rather than
+  simulated. The gate is not yet attached to native composition.
+
+The next concrete source card binds the accepted Apps gate, request custody and
+session transport to the actual composition. Actual fixture dispatch, Guides
+native specifications/configuration, source registration and native qualification
+follow. Included feature decisions and source access remain open as recorded
+above; Wave 2 remains open.
 
 ## Hosted status boundary
 
