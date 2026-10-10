@@ -441,6 +441,15 @@ strict ancestor check before repair. Independent source review accepted the
 result; root fresh verification passed 298 focused Apps and recovery contracts,
 including 102 runner cases. Native creation and ACL adoption remain unqualified.
 
+On 2026-10-11 the same creator/validator mismatch was confirmed in the Guides
+driver. Its Windows adapter now uses protected creation and checks the actual
+token parent before staging root or storage resources. The shared ancestor gets
+physical custody checks only; POSIX creation is unchanged. Independent review
+accepted the repair and root fresh verification passed 36 driver contracts.
+Native Guides execution, its complete spec and additive 158 registration remain
+pending. The ACL adoption source is under independent review; no permission
+mutation or second recovery command has occurred.
+
 ## Current hosted status
 
 PR119 still points to remote `622f689385058ef9186538a1d8e1f60fd23ab266`.

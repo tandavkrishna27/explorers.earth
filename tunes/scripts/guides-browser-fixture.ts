@@ -95,8 +95,22 @@ function nativeDependencies():Dependencies{
   },
   async prepare(){
    if(!receipt||!commit)throw new Refusal();runId=randomBytes(16).toString('hex');const directory=path.join(temporary,`explorers-profile-e2e-${runId}`),storage=path.join(directory,'owned-media');const local=await import('./music-local-state');
+   const tokenDirectory=path.join(root,'.artifacts','music-token-secrets');
+   if(process.platform==='win32'){
+    await physical(tokenDirectory,true);
+    await rememberAncestors(path.join(tokenDirectory,'current-preflight'));
+    await local.assertLocalPrivatePath(tokenDirectory);
+    await verifyCustody();
+   }
    for(const target of[directory,storage]){await rememberAncestors(target);unknown=true;await local.createLocalPrivateDirectory(target);await local.assertLocalPrivatePath(target);created.push(await row(target===directory?'root':'storage',target));unknown=false;}
-   unknown=true;const secrets=await import('./music-fixture-secret');secret=secrets.prepareFixtureMusicTokenSecret(root);await local.assertLocalPrivatePath(secret);await rememberAncestors(secret);created.push(await row('secret',secret));unknown=false;
+   unknown=true;
+   if(process.platform==='win32'){
+    secret=path.join(tokenDirectory,`current-${randomBytes(16).toString('hex')}`);
+    await verifyCustody();await local.assertLocalPrivatePath(tokenDirectory);
+    await local.createLocalPrivateFile(secret,randomBytes(32).toString('base64url'));
+    await verifyCustody();await local.assertLocalPrivatePath(tokenDirectory);
+   }else{const secrets=await import('./music-fixture-secret');secret=secrets.prepareFixtureMusicTokenSecret(root);}
+   await local.assertLocalPrivatePath(secret);await rememberAncestors(secret);created.push(await row('secret',secret));unknown=false;
    const {readSecureMusicSecretFile}=await import('../server/config/secure-music-secret-file');const password=await readSecureMusicSecretFile(secret,{mode:'fixture'});
    const custody=[...created,...ancestors];await verifyCustody();
    const {prepareOwnedUatDatabaseAcquisition}=await import('./music-uat-database');const acquisition=await prepareOwnedUatDatabaseAcquisition({runId,commit,database:`music_uat_${runId}`,port:57001,passwordFile:secret});
