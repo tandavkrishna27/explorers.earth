@@ -1,4 +1,6 @@
 import {createCanonicalHandlerCustody} from './canonicalHandlerCustody';
+import {createCanonicalSessionNodeHandler} from './canonicalSessionNodeHandler';
+import {createAppsCanonicalAdmission,type AppsCanonicalAdmissionOptions} from '../../scripts/apps-canonical-admission';
 import {MovieMediaImportService} from '../application/movieMediaImport';
 import {MovieImageFetcher} from '../services/movieImageFetch';
 import {MovieCatalog} from '../services/movieCatalog';
@@ -46,9 +48,11 @@ function errorResponse(res: Response, status: number, code: ApiError["error"]["c
 function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   options: { mediaStorage?: ObjectStorage; bookCatalog?:BookCatalog; bookCoverFetcher?:BookCoverFetcher;movieCatalog?:MovieCatalog;movieImageFetcher?:MovieImageFetcher;
     /** ADR-008. Present whenever this app is the Music credential issuer. */
-    musicToken?: MusicTokenConfiguration } = {}, custodyMode=false) {
+    musicToken?: MusicTokenConfiguration } = {}, custodyMode=false,appsInput?:Omit<AppsCanonicalAdmissionOptions,'pool'>) {
+  const admission=appsInput?createAppsCanonicalAdmission({pool,...appsInput}):undefined;
   const actualApp = express(), instrument=custodyMode?createCanonicalHandlerCustody(actualApp):undefined;
   const app = instrument?.registration ?? actualApp;
+  if(admission)app.use(admission.beforeDispatch);
   const auth = createExplorersAuth(pool, config);
 
   // Better Auth must consume the original request stream before Express body parsers.
@@ -56,6 +60,7 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   // Installed better-call setResponse starts a detached response pump. Its
   // returned promise alone cannot authorize physical auth stream teardown.
   instrument?.markUncovered(authHandler);
+  if(admission)app.get('/api/auth/get-session',createCanonicalSessionNodeHandler(auth,config.baseURL));
   app.use("/api/auth", (request, response, next) => {
     if (!["GET", "HEAD", "OPTIONS"].includes(request.method)
         && request.get("origin") !== config.baseURL) {
@@ -67,6 +72,7 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   app.all("/api/auth/*splat", authHandler);
   app.use(cookieParser());
   app.use(contentBodyParser());
+  if(admission)app.use(admission.afterJsonParser);
   app.get("/health/live", (_request, response) => response.status(200).json({ status: "live" }));
   setupExplorersAccountRoutes(app, pool, auth, config);
   // ADR-006 and ADR-008: canonical Music owner provisioning and credential issue.
@@ -96,7 +102,7 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   setupExplorersCatalogRoutes(app,pool,auth,config,books,movies);
   setupExplorersPublicContentRoutes(app, pool, config.secret,instrument?.routerFactory);
   setupExplorersLifecycleRoutes(app, pool, auth, config);
-  setupExplorersMediaRoutes(app, pool, auth, config, new MediaService(pool, options.mediaStorage));
+  setupExplorersMediaRoutes(app, pool, auth, config, new MediaService(pool, options.mediaStorage),admission?.beforeMediaCommand);
   // Privacy changes must be visible on the very next public request, including across app replicas.
   const publicProfiles = new PublicProfileService(new PostgresPublicProfileGateway(pool,config.secret), { ttlMs: 0 });
   setupExplorersPublicProfileRoutes(app, { shell: publicProfiles.shell.bind(publicProfiles),
@@ -152,8 +158,15 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   });
 
   instrument?.completeRegistration();
-  return {composed:{app:actualApp,auth},custody:instrument?.custody};
+  return {composed:{app:actualApp,auth},custody:instrument?.custody,admission};
 }
 
 export function createCanonicalApp(pool:Pool,config:ExplorersAuthConfig,options:Parameters<typeof constructCanonicalApp>[2]={}) {return constructCanonicalApp(pool,config,options).composed;} 
 export function createCanonicalAppWithCustody(pool:Pool,config:ExplorersAuthConfig,options:Parameters<typeof constructCanonicalApp>[2]={}) {const result=constructCanonicalApp(pool,config,options,true);return {composed:result.composed,custody:result.custody!};}
+export type CanonicalAppsFixtureInput={mediaStorage:ObjectStorage;runAuthority:AppsCanonicalAdmissionOptions['runAuthority'];personasWithActualAccountIds:AppsCanonicalAdmissionOptions['personas']};
+/** Fixed Apps construction; no caller middleware, route or policy hooks. */
+export function createCanonicalAppsFixtureApp(pool:Pool,config:ExplorersAuthConfig,input:CanonicalAppsFixtureInput){
+ if(!input||Object.keys(input).sort().join(',')!=='mediaStorage,personasWithActualAccountIds,runAuthority'||!input.mediaStorage)throw Error('Canonical Apps fixture configuration denied');
+ const result=constructCanonicalApp(pool,config,{mediaStorage:input.mediaStorage},true,{runAuthority:input.runAuthority,personas:input.personasWithActualAccountIds});
+ return {composed:result.composed,custody:result.custody!,admission:result.admission!};
+}

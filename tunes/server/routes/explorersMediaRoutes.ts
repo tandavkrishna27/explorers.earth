@@ -15,7 +15,7 @@ const PUBLIC_MEDIA_MAX_AGE = 300;
 const failure = (status: number, code: string, message: string) => ({ status, body: { error: { code, message, requestId: randomUUID() } } });
 
 export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: ExplorersAuth, config: ExplorersAuthConfig,
-  service = new MediaService(pool)): void {
+  service = new MediaService(pool),beforeMediaCommand?:express.RequestHandler): void {
   app.post("/api/explorers/v1/media", async (request, response, next) => {
     if (request.get("origin") !== config.baseURL) {
       const result = failure(403, "FORBIDDEN", "Origin is not trusted");
@@ -23,7 +23,7 @@ export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: Explor
     }
     try { request.explorersActor = await requireActor(request, auth, pool); next(); }
     catch (error) { sendActorError(request, response, error); }
-  }, express.raw({ type: () => true, limit: "10mb" }), async (request, response) => {
+  }, express.raw({ type: () => true, limit: "10mb" }), ...(beforeMediaCommand?[beforeMediaCommand]:[]), async (request, response) => {
     try {
       const actor = request.explorersActor!;
       const media = await service.createMedia(actor, { purpose: request.get("x-media-purpose") as MediaUploadInput["purpose"],

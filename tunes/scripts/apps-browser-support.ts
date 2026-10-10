@@ -65,20 +65,37 @@ export interface AppsControlDependencies {
 const fail=(phase:string)=>new Error(`Apps fixture ${phase} failed`);
 const storagePrototype=LocalObjectStorage.prototype;
 const storageMethods=Object.getOwnPropertyDescriptors(storagePrototype);
-type CompositionBinding={pool:Pool;config:ExplorersAuthConfig;configSnapshot:string;storage:LocalObjectStorage;settlement:LocalStorageSettlementCapability;root:string;app:unknown;auth:unknown;composedPrototype:unknown;objects:{value:object;prototype:unknown;descriptors:PropertyDescriptorMap}[]};
+type FixedAppsInput=Omit<import('../server/auth/canonicalApp').CanonicalAppsFixtureInput,'mediaStorage'>;
+type RequestBinding={authority:OwnedUatDatabaseAuthority;authoritySnapshot:string;personas:FixedAppsInput['personasWithActualAccountIds'];poolPrototype:unknown;poolMethods:unknown[];custody:ReturnType<typeof import('../server/auth/canonicalApp').createCanonicalAppsFixtureApp>['custody'];admission:ReturnType<typeof import('../server/auth/canonicalApp').createCanonicalAppsFixtureApp>['admission'];sealed:boolean};
+type CompositionBinding={pool:Pool;config:ExplorersAuthConfig;configSnapshot:string;storage:LocalObjectStorage;settlement:LocalStorageSettlementCapability;root:string;app:unknown;auth:unknown;composedPrototype:unknown;objects:{value:object;prototype:unknown;descriptors:PropertyDescriptorMap}[];requests?:RequestBinding};
 const compositionBindings=new WeakMap<object,CompositionBinding>();
 /** Explicit construction only: no connection, listener or filesystem allocation. */
-export async function createAppsFixtureComposition(pool:Pool,config:ExplorersAuthConfig,storageDirectory:string){
+export async function createAppsFixtureComposition(pool:Pool,config:ExplorersAuthConfig,storageDirectory:string,fixedInput?:FixedAppsInput){
  if(!isAbsolute(storageDirectory)||storageDirectory.length>1024)throw fail('composition');
- const {createCanonicalApp}=await import('../server/auth/canonicalApp');
- const root=resolve(storageDirectory),{storage,settlement}=createLocalObjectStorageWithSettlement(root),composed=createCanonicalApp(pool,config,{mediaStorage:storage});
- compositionBindings.set(composed,{pool,config,configSnapshot:JSON.stringify(config),storage,settlement,root,app:composed.app,auth:composed.auth,composedPrototype:Object.getPrototypeOf(composed),objects:[composed,composed.app,composed.auth].map(value=>({value,prototype:Object.getPrototypeOf(value),descriptors:Object.getOwnPropertyDescriptors(value)}))});
+ if(fixedInput)exactKeys(fixedInput,['runAuthority','personasWithActualAccountIds']);
+ const canonical=await import('../server/auth/canonicalApp');
+ const root=resolve(storageDirectory),{storage,settlement}=createLocalObjectStorageWithSettlement(root),fixed=fixedInput?canonical.createCanonicalAppsFixtureApp(pool,config,{mediaStorage:storage,...fixedInput}):undefined,composed=fixed?.composed??canonical.createCanonicalApp(pool,config,{mediaStorage:storage});
+ const requests=fixed?{authority:fixedInput!.runAuthority,authoritySnapshot:JSON.stringify(fixedInput!.runAuthority),personas:structuredClone(fixedInput!.personasWithActualAccountIds),poolPrototype:Object.getPrototypeOf(pool),poolMethods:[pool.query,pool.connect,pool.end],custody:fixed.custody,admission:fixed.admission,sealed:false}:undefined;
+ compositionBindings.set(composed,{pool,config,configSnapshot:JSON.stringify(config),storage,settlement,root,app:composed.app,auth:composed.auth,composedPrototype:Object.getPrototypeOf(composed),objects:[composed,composed.app,composed.auth].map(value=>({value,prototype:Object.getPrototypeOf(value),descriptors:Object.getOwnPropertyDescriptors(value)})),requests});
  return {composed,storage};
 }
 /** Physical media FS only; grants no request, auth, PG or disposal authority. */
 export async function drainAppsFixtureStorage(options:AppsControlOptions,milliseconds:number){
  try{validateOptions(options);assertComposition(options);const binding=compositionBindings.get(options.composed)!;return await binding.settlement.sealAndDrain(milliseconds);}catch{throw fail('storage drain');}
 }
+function requestBinding(options:AppsControlOptions){
+ validateOptions(options);assertComposition(options);const binding=compositionBindings.get(options.composed)!.requests;
+ if(!binding||binding.authority!==options.ownedAuthority||binding.authoritySnapshot!==JSON.stringify(options.ownedAuthority))throw fail('request authority');
+ if(Object.getPrototypeOf(options.pool)!==binding.poolPrototype||[options.pool.query,options.pool.connect,options.pool.end].some((method,index)=>method!==binding.poolMethods[index]))throw fail('request authority');
+ for(const name of ['ownerA','ownerB'] as const){const fixed=binding.personas[name],person=options.personas[name];if(fixed.userId!==person.userId||fixed.handle!==person.handle)throw fail('request authority');}
+ return binding;
+}
+/** Begins the original canonical record. Dataset admission runs inside the fixed app. */
+export function admitAppsFixtureRequest(options:AppsControlOptions,request:IncomingMessage,response:ServerResponse){try{const binding=requestBinding(options);if(binding.sealed)return false;return binding.custody.admit(request,response);}catch{throw fail('request admission');}}
+/** Synchronous outer admission latch; no timed drain or release of original work. */
+export function sealAppsFixtureRequests(options:AppsControlOptions){try{const binding=requestBinding(options);binding.sealed=true;binding.admission.seal();}catch{throw fail('request seal');}}
+/** Only exact settled is positive request evidence; all other states retain custody. */
+export async function drainAppsFixtureRequests(options:AppsControlOptions,milliseconds:number){try{if(!Number.isSafeInteger(milliseconds)||milliseconds<1||milliseconds>15000)throw fail('request budget');const binding=requestBinding(options);binding.sealed=true;binding.admission.seal();return await binding.custody.sealAndDrain(milliseconds);}catch{throw fail('request drain');}}
 function assertComposition(o:AppsControlOptions){
  const binding=compositionBindings.get(o.composed);
  if(!binding||binding.pool!==o.pool||binding.config!==o.config||binding.configSnapshot!==JSON.stringify(o.config)||binding.storage!==o.storage||binding.root!==resolve(o.storageDirectory)||Object.getPrototypeOf(o.storage)!==storagePrototype||Object.getPrototypeOf(o.composed)!==binding.composedPrototype||o.composed.app!==binding.app||o.composed.auth!==binding.auth)throw fail('composition');
