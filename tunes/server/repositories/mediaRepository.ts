@@ -71,7 +71,18 @@ export class MediaRepository {
       JOIN creator_accounts a ON a.id=c.account_id
       JOIN account_category_settings s ON s.account_id=c.account_id AND s.category=c.category
       WHERE cm.media_id=$1 AND cm.slot='cover' AND m.purpose='collection'
-        AND c.category IN ('places','products','people')
+        AND c.category IN ('places','products','people','guides')
+        AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile
+        AND s.is_public AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'
+      UNION ALL
+      SELECT 1 FROM guide_section_photos p
+      JOIN media_assets m ON m.id=p.media_id AND m.account_id=p.account_id
+      JOIN guide_sections gs ON gs.id=p.section_id AND gs.account_id=p.account_id
+      JOIN collections c ON c.id=gs.collection_id AND c.account_id=gs.account_id AND c.category=gs.category
+      JOIN creator_accounts a ON a.id=c.account_id
+      JOIN account_category_settings s ON s.account_id=c.account_id AND s.category=c.category
+      WHERE p.media_id=$1 AND c.category='guides' AND m.purpose='guide' AND m.status='ready'
+        AND gs.archived_at IS NULL
         AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile
         AND s.is_public AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'
       UNION ALL
@@ -97,6 +108,7 @@ export class MediaRepository {
       const refs = await client.query<{ count: string }>(`SELECT ((SELECT count(*) FROM profile_media WHERE media_id=$1 AND account_id=$2)
         + (SELECT count(*) FROM profile_feed_items WHERE media_id=$1 AND account_id=$2)
         + (SELECT count(*) FROM collection_media WHERE media_id=$1 AND account_id=$2)
+        + (SELECT count(*) FROM guide_section_photos WHERE media_id=$1 AND account_id=$2)
         + (SELECT count(*) FROM recommendation_media WHERE media_id=$1 AND account_id=$2) + (SELECT count(*) FROM recommendation_book_covers WHERE media_id=$1 AND account_id=$2) + (SELECT count(*) FROM recommendation_movie_media WHERE media_id=$1 AND account_id=$2))::text AS count`, [id, accountId]);
       if (Number(refs.rows[0]?.count) > 0) { await client.query("ROLLBACK"); return undefined; }
       const changed = await client.query("UPDATE media_assets SET status='pending_delete',delete_requested_at=now(),updated_at=now() WHERE id=$1 AND account_id=$2 AND status='ready' RETURNING id", [id, accountId]);
@@ -133,6 +145,7 @@ export class MediaRepository {
           AND NOT EXISTS (SELECT 1 FROM profile_media WHERE media_id=m.id)
           AND NOT EXISTS (SELECT 1 FROM profile_feed_items WHERE media_id=m.id)
           AND NOT EXISTS (SELECT 1 FROM collection_media WHERE media_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM guide_section_photos WHERE media_id=m.id)
           AND NOT EXISTS (SELECT 1 FROM recommendation_media WHERE media_id=m.id)
           AND NOT EXISTS (SELECT 1 FROM recommendation_book_covers WHERE media_id=m.id)
           AND NOT EXISTS (SELECT 1 FROM recommendation_movie_media WHERE media_id=m.id)))

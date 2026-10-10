@@ -195,7 +195,7 @@ export const GuidesClient = {
   const scope = intents.get(intent);
   if (!scope) fail();
   currentIntent(scope, signal);
-  const media = await explorersApiClient.createMedia(file, 'guide', signal);
+  const media = await explorersApiClient.createMedia(file, 'collection', signal);
   currentIntent(scope, signal);
   const result = await explorersApiClient.attachMyGuideCover(intent.collectionId, {revision: intent.revision, mediaId: media.id}, intent.commandKey, signal);
   currentIntent(scope, signal);
