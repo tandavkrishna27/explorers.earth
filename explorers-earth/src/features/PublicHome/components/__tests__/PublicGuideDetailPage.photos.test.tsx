@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PublicGuideDetailPage from '../PublicGuideDetailPage';
@@ -23,21 +23,42 @@ function inspect(sections: any[], ids: string[]) {
     expect(item[block][key][0]).toMatchObject({ id: `${item.documentId}-${suffix}`, place_id: 'shared-provider', geometry: { location: { lat: 15, lng: 74 } }, photos: [{ documentId: media, url: `/api/explorers/v1/media/${media}/content`, fileName: `${item.documentId}-${suffix}`, width: 800, height: 600, aspectRatio: '4:3' }] });
   }
 }
-function visitChildren() { fireEvent.click(screen.getByText('Stay')); fireEvent.click(screen.getByRole('button', { name: 'Map View' })); }
+async function freshChild(kind: keyof typeof state.seen, previousCount: number) {
+  await waitFor(() => {
+    expect(state.seen[kind].length).toBeGreaterThan(previousCount);
+    if (kind === 'map') expect(screen.getByRole('button', { name: 'close fixture map' })).toBeTruthy();
+    else expect(screen.getByText(`${kind} child`)).toBeTruthy();
+  });
+}
+async function visitChildren() {
+  const stayCount = state.seen.stay.length;
+  fireEvent.click(screen.getByText('Stay'));
+  await freshChild('stay', stayCount);
+  const mapCount = state.seen.map.length;
+  fireEvent.click(screen.getByRole('button', { name: 'Map View' }));
+  await freshChild('map', mapCount);
+}
 afterEach(() => { state.seen = { journey: [], stay: [], map: [] }; state.data = {}; vi.clearAllMocks(); });
 describe('PublicGuideDetailPage photo boundary', () => {
-  it('hydrates first and accumulated continuation sections before all public views receive them', () => {
+  it('hydrates first and accumulated continuation sections before all public views receive them', async () => {
     const first = freeze(payload([section('first', 2)]));
     const duplicate = { ...section('first', 99), Title: 'conflicting duplicate title' };
     duplicate.Timeline.morning[0].photos[0].fileName = 'conflicting duplicate photo';
     const next = freeze({ guides: [{ ...payload([duplicate, section('continued', 1)]).guides[0], Title: 'conflicting continuation root title', slug: 'conflicting-root-slug' }] });
     const original = JSON.stringify([first, next]);
+    const initialJourneyCount = state.seen.journey.length;
     state.data = first; const view = render(tree());
+    await freshChild('journey', initialJourneyCount);
     // Visit every actual child boundary before checking to avoid an early RED masking unvisited wiring.
-    visitChildren();
+    await visitChildren();
     const firstProps = { journey: state.seen.journey.at(-1), stay: state.seen.stay.at(-1), map: state.seen.map.at(-1) };
+    const returnJourneyCount = state.seen.journey.length;
     fireEvent.click(screen.getByRole('button', { name: 'close fixture map' })); fireEvent.click(screen.getByText('Journey'));
-    state.data = mergePublicPage(first as any, next as any, 'guides', true); view.rerender(tree()); visitChildren();
+    await freshChild('journey', returnJourneyCount);
+    const continuedJourneyCount = state.seen.journey.length;
+    state.data = mergePublicPage(first as any, next as any, 'guides', true); view.rerender(tree());
+    await freshChild('journey', continuedJourneyCount);
+    await visitChildren();
     expect(state.data.guides[0].Title).toBe('Fixture guide'); expect(state.data.guides[0].slug).toBe('fixture'); expect(state.data.guides[0].guide_sections).toHaveLength(2);
     const retained = state.data.guides[0].guide_sections.find((item: any) => item.documentId === 'first');
     expect(retained.Sequence).toBe(2); expect(retained.Title).toBe('first'); expect(retained.Timeline.morning[0].photos[0].fileName).toBe('first-morning');
@@ -49,9 +70,12 @@ describe('PublicGuideDetailPage photo boundary', () => {
     }
     expect(JSON.stringify([first, next])).toBe(original);
   });
-  it('omits invalid canonical sections without crashing or rendering their legacy URLs', () => {
+  it('omits invalid canonical sections without crashing or rendering their legacy URLs', async () => {
     const invalid = section('invalid', 1); invalid.Timeline.morning[0].photos = [{ ...invalid.Timeline.morning[0].photos[0], mediaId: 'invalid', url: '/legacy-rescue' } as any];
-    state.data = freeze(payload([invalid, section('valid', 2)])); render(tree()); visitChildren();
+    const initialJourneyCount = state.seen.journey.length;
+    state.data = freeze(payload([invalid, section('valid', 2)])); render(tree());
+    await freshChild('journey', initialJourneyCount);
+    await visitChildren();
     for (const kind of ['journey', 'stay', 'map'] as const) { expect(state.seen[kind].at(-1).map((value: any) => value.documentId)).toEqual(['valid']); expect(JSON.stringify(state.seen[kind].at(-1))).not.toContain('/legacy-rescue'); }
   });
 });
