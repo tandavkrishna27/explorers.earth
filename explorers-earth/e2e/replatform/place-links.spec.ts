@@ -571,4 +571,4 @@ test('Place links: stale and foreign link commands preserve both lists',async ({
   transport.assertExpected();expect(transport.observations.length).toBe(0);
 });
 
-test.afterEach(({},info)=>{capturePlaceLinksAtomicDiagnostic(info);});
+test.afterEach(({},info)=>{finalizePlaceLinksAtomicDiagnostic(info);capturePlaceLinksAtomicDiagnostic(info);});

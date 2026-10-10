@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "lane": "music",
+  "provenance": {
+    "commit": "f72e6e3656bc7baac2ea67b80603702a44c3f0f5",
+    "sourceHash": "b18a981dff29d10874966f532d55ffc23c7c039e75b1529a073f6a1213f081d9",
+    "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+    "dirty": false
+  },
+  "authority": {
+    "database": "music_uat_f7a8de97ca30c114dd7e4cd638a072cb",
+    "containerId": "6180bd815b15e0e60e170bf8695e09a69ba808550065b7aa97a089dc760ddb58",
+    "imageId": "sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81"
+  },
+  "runtime": {
+    "role": "music_browser_f7a8de97ca30",
+    "migratorRole": "music_migrator",
+    "verified": true
+  },
+  "schema": {
+    "ready": true,
+    "currentId": "0052_canonical_music_numeric_retirement",
+    "currentChecksum": "f50407d97feffa09f3123dddea9c34c15d884328a74262992c951259ca1bc4cc"
+  },
+  "transport": {
+    "browserOrigin": "http://127.0.0.1:52735",
+    "canonicalOrigin": "http://127.0.0.1:54923",
+    "musicOrigin": "http://127.0.0.1:55927",
+    "logicalMusicOrigin": "https://music-fixture.test",
+    "socketPath": "/__localtunes/ws"
+  },
+  "children": [
+    {
+      "kind": "canonical",
+      "pid": 43304,
+      "startedAt": "2026-10-10T09:13:36.123Z",
+      "stoppedAt": "2026-10-10T09:17:23.042Z",
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "kind": "music",
+      "pid": 41156,
+      "startedAt": "2026-10-10T09:13:00.149Z",
+      "stoppedAt": "2026-10-10T09:17:23.076Z",
+      "exitCode": 0,
+      "signal": null
+    }
+  ],
+  "seams": {
+    "session": "better-auth-internal-adapter",
+    "provider": "guarded-youtube-transport",
+    "clock": "virtual-date-now-601000ms"
+  },
+  "cleanup": {
+    "status": "passed"
+  }
+}
