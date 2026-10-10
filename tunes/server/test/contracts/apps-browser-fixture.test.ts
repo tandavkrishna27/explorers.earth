@@ -4,6 +4,23 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import {existsSync,readFileSync} from 'node:fs';
 import ts from 'typescript';
 const source=path.resolve(import.meta.dirname,'../../../scripts/apps-browser-fixture.ts');
+it.each(['exactUnlink','emptyDirectory'])('actual %s refuses deletion after held inspection expires',async name=>{
+ let expired=false,deletes=0;const target='owned';
+ const operation=defaultFunction(name,{load:async()=>({lstat:async()=>({}),unlink:async()=>{deletes++;},rmdir:async()=>{deletes++;},readdir:async()=>[]}),retained:new Map([[target,{}]]),inspect:async()=>{expired=true;},same:async()=>{},nativeGuard:()=>{if(expired)throw Error('deadline');},Refusal:class extends Error{}});
+ await expect(operation(target)).rejects.toThrow();expect(deletes).toBe(0);
+});
+it.each(['exactUnlink','emptyDirectory'])('actual %s fences expiry after identity validation',async name=>{
+ let expired=false,deletes=0;const operation=defaultFunction(name,{load:async()=>({lstat:async()=>({}),unlink:async()=>{deletes++;},rmdir:async()=>{deletes++;},readdir:async()=>[]}),retained:new Map([['owned',{}]]),inspect:async()=>{},same:async()=>{expired=true;},nativeGuard:()=>{if(expired)throw Error('deadline');},Refusal:class extends Error{}});await expect(operation('owned')).rejects.toThrow();expect(deletes).toBe(0);
+});
+it('already issued deletion remains an effect but expiry prevents every later deletion',async()=>{
+ let expired=false,deletes=0;const operation=defaultFunction('exactUnlink',{load:async()=>({lstat:async()=>({}),unlink:async()=>{deletes++;expired=true;}}),retained:new Map([['one',{}],['two',{}]]),inspect:async()=>{},same:async()=>{},nativeGuard:()=>{if(expired)throw Error('deadline');},Refusal:class extends Error{}});await expect(operation('one')).rejects.toThrow();await expect(operation('two')).rejects.toThrow();expect(deletes).toBe(1);
+});
+it.each(['callback','clear','guard'])('actual native clock permanently fences %s expiry without fabricating cancellation',mode=>{
+ const ast=ts.createSourceFile('runner.ts',readFileSync(source,'utf8'),ts.ScriptTarget.Latest,true);const functions:ts.FunctionDeclaration[]=[];const visit=(node:ts.Node)=>{if(ts.isFunctionDeclaration(node)&&['nativeClock','nativeGuard'].includes(node.name?.text??''))functions.push(node);ts.forEachChild(node,visit);};visit(ast);
+ const code=ts.transpileModule(functions.map(fn=>ts.createPrinter().printNode(ts.EmitHint.Unspecified,fn,ast)).join('\n'),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;let now=0,callback=()=>{};
+ const actual=new Function('performance','setTimeout','clearTimeout','Refusal',`let nativeUnknown=false;const activeDeadlines=new Map();${code};return {clock:nativeClock(),guard:nativeGuard,unknown:()=>nativeUnknown};`)({now:()=>now},(fn:()=>void)=>{callback=fn;return 1;},()=>{},class extends Error{});
+ const timer=actual.clock.setTimeout(()=>{},10);now=10;if(mode==='callback')callback();if(mode==='clear')actual.clock.clearTimeout(timer);expect(()=>actual.guard()).toThrow();expect(actual.unknown()).toBe(true);now=0;actual.clock.clearTimeout(timer);expect(()=>actual.guard()).toThrow();
+});
 it.each(['wrapped-close','stop'])('attempts every producer stop after browser %s failure and retains custody',async failure=>{
  const {createAppsBrowserFixture}=await load(),f=fake();
  f.deps.launchBrowser=async()=>({ready:Promise.resolve(),closed:failure==='wrapped-close'?Promise.reject(Error('capture')):Promise.resolve({code:0,signal:null,stdioClosed:true}),stop:async()=>{f.events.push('browser-stop');if(failure==='stop')throw Error('stop');}});
@@ -42,6 +59,19 @@ it.each(['private-parent','alias','changed-ancestor'])('actual Windows secret re
  await expect(method()).rejects.toThrow();expect(creates).toBe(0);
 });
 const load=async()=>{expect(existsSync(source),'actual allocated runner source exists').toBe(true);return import('../../../scripts/apps-browser-fixture');};
+it.each([undefined,{stage:'baseline',category:'refusal'},{stage:'cleanup',category:'deadline',cleanupStep:'artifact-remove'}])('actual profile failure formatter emits only optional branded cleanup step %j',async diagnostic=>{
+ const file=path.resolve(import.meta.dirname,'../../../scripts/profile-browser-fixture.ts'),ast=ts.createSourceFile(file,readFileSync(file,'utf8'),ts.ScriptTarget.Latest,true);const branch=ast.statements.find(node=>ts.isIfStatement(node)&&node.expression.getText(ast)==="suite === 'apps'") as ts.IfStatement;
+ const statement=(branch.thenStatement as ts.Block).statements.find(ts.isTryStatement)!;const body=statement.catchClause!.block;const code=ts.transpileModule(ts.createPrinter().printNode(ts.EmitHint.Unspecified,body,ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ const messages:string[]=[],process={exitCode:0,stderr:{write:(line:string)=>messages.push(line)}};
+ new Function('process','extractAppsFixtureDiagnostic','error',code)(process,()=>diagnostic,Object.freeze({}));
+ expect(process.exitCode).toBe(1);expect(messages).toEqual([diagnostic?`Apps owned fixture failed: stage=${diagnostic.stage}; category=${diagnostic.category}${'cleanupStep' in diagnostic?`; cleanupStep=${diagnostic.cleanupStep}`:''}\n`:'Apps owned fixture failed\n']);
+});
+const cleanupSteps=[['requests-drain','request-drain'],['control-close','control-close'],['storage-drain','storage-drain'],['api-close','api-close'],['artifacts-remove','artifact-remove'],['pool-end','runtime-pool-close'],['admin-pool','admin-pool-open'],['drop','database-drop'],['admin-end','admin-pool-close'],['database-stop','database-dispose'],['root-remove','root-remove'],['secret-clean','secret-clean']] as const;
+it.each(['refusal','deadline'])('captures the original finish receipt %s',async category=>{const {createAppsBrowserFixture,extractAppsFixtureDiagnostic}=await load(),f=fake(category==='deadline'?{hold:'finish'}:{fail:'finish'});const run=createAppsBrowserFixture(f.deps).run();run.catch(()=>{});if(category==='deadline'){for(let i=0;i<3000&&!f.events.includes('finish');i++)await Promise.resolve();expect(f.events).toContain('finish');f.expire();}const error=await run.catch(value=>value);expect(extractAppsFixtureDiagnostic(error)).toEqual({stage:'cleanup',category,cleanupStep:'finish-receipt'});});
+it.each(['browser-stop','discovery-stop','vite-stop'] as const)('keeps first producer diagnostic %s while attempting every producer',async fail=>{const {createAppsBrowserFixture,extractAppsFixtureDiagnostic}=await load(),f=fake({fail});const run=createAppsBrowserFixture(f.deps).run();run.catch(()=>{});if(fail==='vite-stop'){for(let i=0;i<3000&&!f.events.includes(fail);i++)await Promise.resolve();for(let i=0;i<20;i++)await Promise.resolve();f.expire();}const error=await run.catch(value=>value);expect(extractAppsFixtureDiagnostic(error)).toEqual({stage:'cleanup',category:'refusal',cleanupStep:fail});for(const name of ['browser-stop','discovery-stop','vite-stop'])expect(f.events).toContain(name);expect(f.events).not.toContain('artifacts-remove');});
+it('late original artifact settlement cannot change captured timeout or authorize dependent cleanup',async()=>{const {createAppsBrowserFixture,extractAppsFixtureDiagnostic}=await load(),f=fake();let release!:()=>void;f.deps.removeArtifacts=async()=>{f.events.push('artifacts-remove');await new Promise<void>(resolve=>{release=resolve;});};const run=createAppsBrowserFixture(f.deps).run();run.catch(()=>{});for(let i=0;i<3000&&!release;i++)await Promise.resolve();expect(release).toBeTypeOf('function');f.expire();const error=await run.catch(value=>value),diagnostic=extractAppsFixtureDiagnostic(error);expect(diagnostic).toEqual({stage:'cleanup',category:'deadline',cleanupStep:'artifact-remove'});release();for(let i=0;i<30;i++)await Promise.resolve();expect(extractAppsFixtureDiagnostic(error)).toBe(diagnostic);for(const event of ['pool-end','drop','database-stop','root-remove','secret-clean','finish'])expect(f.events).not.toContain(event);});
+it.each(cleanupSteps)('captures first cleanup refusal at %s without rejected values',async(fail,cleanupStep)=>{const {createAppsBrowserFixture,extractAppsFixtureDiagnostic}=await load(),f=fake({fail});const error=await createAppsBrowserFixture(f.deps).run().catch(value=>value);expect(extractAppsFixtureDiagnostic(error)).toEqual({stage:'cleanup',category:'refusal',cleanupStep});expect(Object.isFrozen(extractAppsFixtureDiagnostic(error))).toBe(true);expect(f.events).not.toContain('finish');});
+it.each(cleanupSteps)('captures cleanup timeout at %s and retains downstream authority',async(hold,cleanupStep)=>{const {createAppsBrowserFixture,extractAppsFixtureDiagnostic}=await load(),f=fake({hold});const run=createAppsBrowserFixture(f.deps).run();run.catch(()=>{});for(let i=0;i<3000&&!f.events.includes(hold);i++)await Promise.resolve();expect(f.events).toContain(hold);f.expire();const error=await run.catch(value=>value);expect(extractAppsFixtureDiagnostic(error)).toEqual({stage:'cleanup',category:'deadline',cleanupStep});expect(f.events).not.toContain('finish');});
 function fake(options:any={}){
  const events:string[]=[],contexts:any[]=[];const forever=new Promise<any>(()=>{});let now=0;const timers=new Map<any,()=>void>();let id=0;
  const step=(name:string,value:any)=>async(...args:any[])=>{events.push(name);if(options.fail===name)throw Error('synthetic failure');if(options.hold===name)return forever;return typeof value==='function'?value(...args):value;};
@@ -91,6 +121,7 @@ it.each(['changed identity','growth','invalid UTF8'])('refuses bounded opened re
 it.each(['requests-drain','control-close','storage-drain','artifacts-remove'])('known browser failure plus rejected %s still retains dependent custody',async fail=>{const {createAppsBrowserFixture}=await load(),f=fake({fail});f.deps.launchBrowser=async()=>({ready:Promise.resolve(),closed:Promise.resolve({code:1,signal:null,stdioClosed:true}),stop:async()=>{}});await expect(createAppsBrowserFixture(f.deps).run()).rejects.toThrow();expect(f.events).not.toContain('database-stop');expect(f.events).not.toContain('secret-clean');expect(f.events).not.toContain('finish');});
 // Execute an actual fixed default adapter body with every import/effect closed.
 function defaultMethod(name:string,bindings:Record<string,unknown>){
+ bindings={nativeGuard:()=>{},...bindings};
  const original=readFileSync(source,'utf8'),ast=ts.createSourceFile('runner.ts',original,ts.ScriptTarget.Latest,true);let method:ts.MethodDeclaration|undefined;
  const fn=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='defaultDependencies')!;
  const find=(node:ts.Node)=>{if(ts.isMethodDeclaration(node)&&node.name.getText(ast)===name)method=node;else ts.forEachChild(node,find);};find(fn);if(!method)throw Error('actual fixed adapter missing');
@@ -118,6 +149,7 @@ it.each(['preflight','receipt','directory','directory-check','secret','prepare-d
  const diagnostic=(await load()).extractAppsFixtureDiagnostic(error);expect(diagnostic).toEqual({stage:stages[fail],category:'refusal'});expect(Object.isFrozen(diagnostic)).toBe(true);expect(JSON.stringify(diagnostic)).not.toMatch(/synthetic|Temp|secret-file|sessionA/);
 });
 function defaultFunction(name:string,bindings:Record<string,unknown>){
+ bindings={nativeGuard:()=>{},...bindings};
  const original=readFileSync(source,'utf8'),ast=ts.createSourceFile('runner.ts',original,ts.ScriptTarget.Latest,true);let found:ts.FunctionDeclaration|undefined;
  const fn=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='defaultDependencies')!;
  const find=(node:ts.Node)=>{if(ts.isFunctionDeclaration(node)&&node.name?.text===name)found=node;else ts.forEachChild(node,find);};find(fn);if(!found)throw Error('actual fixed helper missing');

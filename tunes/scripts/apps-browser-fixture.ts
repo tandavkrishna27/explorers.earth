@@ -178,9 +178,11 @@ type Dependencies = {
 const keys = ['platform', 'argv', 'environment', 'temporaryRoot', 'clock', 'randomHex', 'installSignals', 'preflight', 'createReceipt', 'createDirectory', 'assertDirectory', 'prepareSecret', 'prepareDatabase', 'createPool', 'migrate', 'seedAuth', 'ensureInitialAccount', 'createConfig', 'createSessions', 'createComposition', 'startApi', 'canonicalMe', 'createControl', 'writeDescriptor', 'launchVite', 'launchDiscovery', 'openReport', 'launchBrowser', 'sealRequests', 'drainRequests', 'drainStorage', 'removeArtifacts', 'createAdminPool', 'cleanupSecret', 'removeRoot'];
 type DiagnosticStage = 'validation' | 'preflight' | 'receipt' | 'create-directory' | 'check-directory' | 'prepare-secret' | 'prepare-database' | 'create-database' | 'create-pool' | 'migrate' | 'current-database' | 'seed-auth' | 'initial-account' | 'config' | 'composition' | 'create-sessions' | 'start-api' | 'baseline' | 'create-control' | 'descriptor' | 'browser-context' | 'vite' | 'startup' | 'discovery' | 'execution' | 'cleanup';
 type DiagnosticCategory = 'refusal' | 'spawn-error' | 'nonzero' | 'signal' | 'output-overflow' | 'deadline' | 'ack-mismatch';
+type CleanupStep = 'request-seal' | 'browser-stop' | 'browser-close' | 'discovery-stop' | 'discovery-close' | 'vite-stop' | 'vite-close' | 'producer-settlement' | 'request-drain' | 'control-close' | 'storage-drain' | 'api-close' | 'artifact-remove' | 'runtime-pool-close' | 'database-budget' | 'admin-pool-open' | 'database-drop' | 'admin-pool-close' | 'database-dispose' | 'root-check' | 'root-remove' | 'secret-clean' | 'failure-receipt' | 'finish-receipt';
 type Diagnostic = Readonly<{
     stage: DiagnosticStage;
     category: DiagnosticCategory;
+    cleanupStep?: CleanupStep;
 }>;
 const diagnostics = new WeakMap<object, Diagnostic>();
 /** Only runner-branded errors expose finite sanitized diagnostics; foreign getters are never read. */
@@ -196,6 +198,8 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
     run(): Promise<void>;
 } {
     let stage: DiagnosticStage = 'validation', category: DiagnosticCategory = 'refusal', captured: Diagnostic | undefined;
+    let cleanupStep: CleanupStep | undefined;
+    const snapshot = (): Diagnostic => Object.freeze({stage,category,...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{})});
     const recordCategory = (value: DiagnosticCategory) => { if (category === 'refusal')
         category = value; };
     let nativeFailure:(()=>void)|undefined;
@@ -204,7 +208,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
     return { run() {
             return promise ??= Promise.resolve().then(execute).catch(() => {
                 const error = new Refusal();
-                diagnostics.set(error, captured ?? Object.freeze({ stage, category }));
+                diagnostics.set(error, captured ?? snapshot());
                 throw error;
             });
         } };
@@ -426,7 +430,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
             }
         }
         catch (value) {
-            captured ??= Object.freeze({ stage, category });
+            captured ??= snapshot();
             error = value;
             failurePhase = phase;
             failures.push(phase === 'startup' ? 'control' : 'browser');
@@ -436,61 +440,69 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
         stopping = true;
         deadline = d.clock.now() + 300000;
         try {
-            if (options)
-                d.sealRequests(options);
+            if (options) { cleanupStep = 'request-seal'; d.sealRequests(options); }
             let producerFailure = false;
-            for (const child of [browser, discovery, vite])
+            for (const [name, child] of [['browser',browser],['discovery',discovery],['vite',vite]] as const)
                 if (child) {
+                    cleanupStep = `${name}-stop`;
                     try { await bounded(() => child.stop()); }
-                    catch { producerFailure = true; }
+                    catch { captured ??= snapshot(); producerFailure = true; }
                     try {
+                        cleanupStep = `${name}-close`;
                         const result = await bounded(() => child.closed);
-                        if (result.stdioClosed !== true) producerFailure = true;
+                        if (result.stdioClosed !== true) { captured ??= snapshot(); producerFailure = true; }
                     }
-                    catch { producerFailure = true; }
+                    catch { captured ??= snapshot(); producerFailure = true; }
                 }
             if (producerFailure) throw new Refusal();
+            cleanupStep = 'producer-settlement';
             if (originals.size || uncertain || error && !knownFailure && !(interrupted && setupComplete))
                 throw new Refusal();
             if (options) {
+                cleanupStep = 'request-drain';
                 const request = await bounded(() => d.drainRequests(options!, 15000));
                 if (request.status !== 'settled' || request.sealed !== true || request.requests !== 0 || request.frames !== 0 || request.unknown !== false || request.uncertain !== false)
                     throw new Refusal();
-                if (control)
-                    await bounded(() => control!.close());
+                if (control) { cleanupStep = 'control-close'; await bounded(() => control!.close()); }
+                cleanupStep = 'storage-drain';
                 const storage = await bounded(() => d.drainStorage(options!, 15000));
                 if (storage.status !== 'settled' || storage.sealed !== true || storage.pending !== 0 || storage.overflow !== false)
                     throw new Refusal();
-                if (api)
-                    await bounded(() => api!.close());
+                if (api) { cleanupStep = 'api-close'; await bounded(() => api!.close()); }
+                cleanupStep = 'artifact-remove';
                 await bounded(() => d.removeArtifacts(options!, roots, descriptor));
             }
-            if (pool)
-                await bounded(() => pool!.end());
+            if (pool) { cleanupStep = 'runtime-pool-close'; await bounded(() => pool!.end()); }
             if (authority && secret && acquisition) {
+                cleanupStep = 'database-budget';
                 if (deadline - d.clock.now() < 155000)
                     throw new Refusal();
+                cleanupStep = 'admin-pool-open';
                 const admin = await bounded(() => d.createAdminPool(authority!, secret!));
+                cleanupStep = 'database-drop';
                 await bounded(() => admin.query({ text: `DROP DATABASE ${authority!.database}` }));
+                cleanupStep = 'admin-pool-close';
                 await bounded(() => admin.end());
+                cleanupStep = 'database-dispose';
                 await bounded(() => acquisition!.dispose(async () => { }), 125000, true);
             }
             if (roots.length) {
                 if (roots.length !== 3 || !options)
                     throw new Refusal();
+                cleanupStep = 'root-check';
                 await bounded(() => d.assertDirectory(roots[0]));
+                cleanupStep = 'root-remove';
                 await bounded(() => d.removeRoot(roots[0]));
             }
             else if (candidate)
                 throw new Refusal();
-            if (secret)
-                await bounded(() => d.cleanupSecret(secret!));
+            if (secret) { cleanupStep = 'secret-clean'; await bounded(() => d.cleanupSecret(secret!)); }
             cleanupSettled = true;
         }
         catch (value) {
             error ??= value;
             failurePhase ??= 'cleanup';
-            captured ??= Object.freeze({ stage, category });
+            captured ??= snapshot();
             failures.push('private-directory');
         }
         if (cleanupSettled && !originals.size && !uncertain)
@@ -503,6 +515,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
         if (error || failures.length) {
             if (receipt) {
                 try {
+                    cleanupStep = 'failure-receipt';
                     await bounded(() => Promise.resolve(receipt!.failure(failurePhase ?? phase, Array.from(new Set(failures)), interrupted)));
                 }
                 catch { }
@@ -511,6 +524,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
         }
         if (!receipt || !authority)
             throw new Refusal();
+        cleanupStep = 'finish-receipt';
         await bounded(() => Promise.resolve(receipt!.finish(authority!, [], interrupted)));
     }
 }
@@ -529,6 +543,22 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         directory: boolean;
     }>(), nativeChildren = new Set<Child>();
     let nativeUnknown = false;
+    const activeDeadlines = new Map<unknown, number>();
+    function nativeGuard() {
+        if ([...activeDeadlines.values()].some(deadline => performance.now() >= deadline)) nativeUnknown = true;
+        if (nativeUnknown) throw new Refusal();
+    }
+    function nativeClock(): Clock {
+        return { now: () => performance.now(), setTimeout(fn, ms) {
+            const deadline = performance.now() + ms;
+            const timer = setTimeout(() => { nativeUnknown = true; fn(); }, ms);
+            activeDeadlines.set(timer, deadline); return timer;
+        }, clearTimeout(timer) {
+            const deadline = activeDeadlines.get(timer);
+            if (deadline !== undefined && performance.now() >= deadline) nativeUnknown = true;
+            activeDeadlines.delete(timer); clearTimeout(timer as ReturnType<typeof setTimeout>);
+        } };
+    }
     const env = () => Object.fromEntries(['SystemRoot', 'WINDIR', 'PATH'].flatMap(key => process.env[key] === undefined ? [] : [[key, process.env[key]!]]).concat([['TEMP', temporaryRoot], ['TMP', temporaryRoot]]));
     async function canonical(target: string) { const fs = await import('node:fs/promises'); if (!path.isAbsolute(target) || path.resolve(target) !== target || target.length > 1024 || target.startsWith('\\\\') || /[\x00-\x1f\x7f]/.test(target) || process.platform === 'win32' && target.slice(path.parse(target).root.length).includes(':'))
         throw new Refusal(); for (let current = target;; current = path.dirname(current)) {
@@ -582,6 +612,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         return handle;
     }
     async function fixedPowerShell(args: string[], input?: string) {
+        nativeGuard();
         if (input !== undefined && (Buffer.byteLength(input) < 1 || Buffer.byteLength(input) > 65536))
         throw new Refusal();
         let child: Awaited<ReturnType<typeof fixedChild>>;
@@ -603,7 +634,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
                 recordCategory('nonzero');
                 throw new Refusal();
             }
-            return child.output().trim();
+            nativeGuard(); return child.output().trim();
         }
         finally {
         clearTimeout(timer!);
@@ -638,7 +669,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         }
     }
     }
-    async function inspect(target: string) { await canonical(target); try { if(inspectAppsPrivateDescendant(target))return; await privateOperation('inspect', target); } catch(error) { nativeUnknown=true; throw error; } }
+    async function inspect(target: string) { nativeGuard(); await canonical(target); nativeGuard(); try { const accepted=inspectAppsPrivateDescendant(target); nativeGuard(); if(accepted)return; await privateOperation('inspect', target); nativeGuard(); } catch(error) { nativeUnknown=true; throw error; } }
     let actualSupport: typeof import('./apps-browser-support') | undefined;
     const configurations = new WeakMap<object, any>(), nativeAccounts = new WeakMap<object, string[]>(), handlerDrains = new WeakMap<object, (ms: number) => Promise<boolean>>();
     async function support() { return actualSupport ??= await import('./apps-browser-support'); }
@@ -683,26 +714,28 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         child.closed.catch(() => { nativeUnknown = true; });
         return child;
     }
-    async function exactUnlink(target: string, optional = false) { const fs = await import('node:fs/promises'); try {
+    async function exactUnlink(target: string, optional = false) { nativeGuard(); const fs = await import('node:fs/promises'); nativeGuard(); try {
         await fs.lstat(target);
+        nativeGuard();
     }
     catch (error) {
         if (optional && (error as any).code === 'ENOENT')
             return;
         throw error;
     } if (!retained.has(target))
-        throw new Refusal(); await inspect(target); await same(target, false); await fs.unlink(target); retained.delete(target); }
-    async function emptyDirectory(target: string, optional = false) { const fs = await import('node:fs/promises'); try {
+        throw new Refusal(); await inspect(target); nativeGuard(); await same(target, false); nativeGuard(); await fs.unlink(target); nativeGuard(); retained.delete(target); }
+    async function emptyDirectory(target: string, optional = false) { nativeGuard(); const fs = await import('node:fs/promises'); nativeGuard(); try {
         await fs.lstat(target);
+        nativeGuard();
     }
     catch (error) {
         if (optional && (error as any).code === 'ENOENT')
             return;
         throw error;
     } if (!retained.has(target))
-        throw new Refusal(); await inspect(target); await same(target, true); if ((await fs.readdir(target)).length)
-        throw new Refusal(); await fs.rmdir(target); retained.delete(target); }
-    return { platform: process.platform, argv: process.argv.slice(2), environment: process.env, temporaryRoot, clock: { now: () => performance.now(), setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: value => clearTimeout(value as ReturnType<typeof setTimeout>) }, randomHex: n => randomBytes(n).toString('hex'), installSignals(callback) { process.on('SIGINT', callback); process.on('SIGTERM', callback); return () => { process.removeListener('SIGINT', callback); process.removeListener('SIGTERM', callback); }; },
+        throw new Refusal(); await inspect(target); nativeGuard(); await same(target, true); nativeGuard(); const names = await fs.readdir(target); nativeGuard(); if (names.length)
+        throw new Refusal(); await fs.rmdir(target); nativeGuard(); retained.delete(target); }
+    return { platform: process.platform, argv: process.argv.slice(2), environment: process.env, temporaryRoot, clock: nativeClock(), randomHex: n => randomBytes(n).toString('hex'), installSignals(callback) { process.on('SIGINT', callback); process.on('SIGTERM', callback); return () => { process.removeListener('SIGINT', callback); process.removeListener('SIGTERM', callback); }; },
         async preflight() {
             const fs = await import('node:fs/promises');
             for (const file of [process.execPath, helper, cli, viteCli, path.join(frontend, 'e2e/replatform/apps.playwright.config.ts'), path.join(frontend, 'e2e/replatform/profile.vite.config.ts'), path.join(frontend, 'e2e/replatform/apps.spec.ts')]) {
@@ -779,7 +812,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
             nativeUnknown = true;
             throw new Refusal();
         } },
-        async prepareDatabase(input) { const { prepareOwnedUatDatabaseAcquisition } = await import('./music-uat-database'); return prepareOwnedUatDatabaseAcquisition({ runId: input.runId, database: `music_uat_${input.runId}`, commit: input.commit, port: input.port, passwordFile: input.secret.path }); }, async createPool(authority, secret) { const { readSecureMusicSecretFile } = await import('../server/config/secure-music-secret-file'); const password = await readSecureMusicSecretFile(secret.path, { mode: 'fixture' }); const { default: pg } = await import('pg'); return new pg.Pool({ host: '127.0.0.1', user: 'music_migrator', password, database: authority.database, port: authority.port, max: 4, connectionTimeoutMillis: 3000, statement_timeout: 10000, options: '-c lock_timeout=5000' }) as unknown as Pool; },
+        async prepareDatabase(input) { nativeGuard(); const { prepareOwnedUatDatabaseAcquisition } = await import('./music-uat-database'); nativeGuard(); const acquisition=await prepareOwnedUatDatabaseAcquisition({ runId: input.runId, database: `music_uat_${input.runId}`, commit: input.commit, port: input.port, passwordFile: input.secret.path }); nativeGuard(); return {...acquisition,async create(){nativeGuard();const result=await acquisition.create();nativeGuard();return result;},async dispose(drop){nativeGuard();await acquisition.dispose(async authority=>{nativeGuard();await drop(authority);nativeGuard();});nativeGuard();}}; }, async createPool(authority, secret) { const { readSecureMusicSecretFile } = await import('../server/config/secure-music-secret-file'); const password = await readSecureMusicSecretFile(secret.path, { mode: 'fixture' }); const { default: pg } = await import('pg'); return new pg.Pool({ host: '127.0.0.1', user: 'music_migrator', password, database: authority.database, port: authority.port, max: 4, connectionTimeoutMillis: 3000, statement_timeout: 10000, options: '-c lock_timeout=5000' }) as unknown as Pool; },
         async migrate(pool) { const { migrateMusicDatabase } = await import('../server/db/migrate'); await migrateMusicDatabase(pool as any); },
         async seedAuth(pool, runId) { const result = {} as {
             ownerA: Persona;
@@ -831,7 +864,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         } },
         async canonicalMe(_composition, origin, person, read) { const response = await fetch(`${origin}/api/explorers/v1/me`, { headers: { Cookie: person.cookie }, redirect: 'error', signal: AbortSignal.timeout(10000) }); if (response.status !== 200)
             throw new Refusal(); const bytes = await read(response, 65536); const value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); const { accountDtoSchema } = await import('../shared/explorersContract'); return accountDtoSchema.parse(value.account); },
-        async createControl(options) { return (await support()).createAppsControl(options as unknown as AppsControlOptions); },
+        async createControl(options) { return (await support()).createAppsControl(options as unknown as AppsControlOptions,undefined,nativeGuard); },
         async writeDescriptor(directory, value) { await same(directory.path, true); await inspect(directory.path); const target = path.join(directory.path, 'sessions.json'), text = JSON.stringify(value); if (Buffer.byteLength(text) > 65536)
             throw new Refusal(); try {
             await privateOperation('create-file', target, text);
@@ -920,6 +953,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
             return result;
         },
         async removeArtifacts(options, roots, descriptor) {
+            nativeGuard();
             if (nativeUnknown || nativeChildren.size)
                 throw new Refusal();
             for (const directory of roots)
@@ -932,6 +966,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
             if (result.rows.length > 128)
                 throw new Refusal();
             const targets = new Set<string>();
+            nativeGuard();
             for (const row of result.rows) {
                 if (!accounts.includes(row.account_id) || !uuid.safeParse(row.id).success || row.purpose !== 'recommendation' || row.variant !== 'original' || row.storage_environment !== 'local' || row.object_key !== `local/${row.account_id}/${row.id}`)
                     throw new Refusal();
@@ -975,12 +1010,13 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
             }
             await same(options.disposableDirectory, true);
             await inspect(options.disposableDirectory);
-            if ((await fs.readdir(options.disposableDirectory)).length)
+            const remainingNames=await fs.readdir(options.disposableDirectory); nativeGuard();
+            if (remainingNames.length)
                 throw new Refusal();
         },
         async createAdminPool(authority, secret) { if (nativeUnknown || nativeChildren.size)
-            throw new Refusal(); const { readSecureMusicSecretFile } = await import('../server/config/secure-music-secret-file'); const password = await readSecureMusicSecretFile(secret.path, { mode: 'fixture' }); const { default: pg } = await import('pg'); return new pg.Pool({ host: '127.0.0.1', port: authority.port, user: 'music_migrator', password, database: 'postgres', max: 1, connectionTimeoutMillis: 3000, statement_timeout: 10000, options: '-c lock_timeout=5000' }) as unknown as Pool; }, async cleanupSecret(secret) { if (nativeUnknown || nativeChildren.size)
-            throw new Refusal(); const { cleanupFixtureMusicTokenSecret } = await import('./music-fixture-secret'); cleanupFixtureMusicTokenSecret(root, secret.path); },
+            throw new Refusal(); nativeGuard(); const { readSecureMusicSecretFile } = await import('../server/config/secure-music-secret-file'); nativeGuard(); const password = await readSecureMusicSecretFile(secret.path, { mode: 'fixture' }); nativeGuard(); const { default: pg } = await import('pg'); nativeGuard(); const admin=new pg.Pool({ host: '127.0.0.1', port: authority.port, user: 'music_migrator', password, database: 'postgres', max: 1, connectionTimeoutMillis: 3000, statement_timeout: 10000, options: '-c lock_timeout=5000' }); return {async query(input){nativeGuard();const result=await admin.query(input as any);nativeGuard();return result;},async end(){nativeGuard();await admin.end();nativeGuard();}} as Pool; }, async cleanupSecret(secret) { if (nativeUnknown || nativeChildren.size)
+            throw new Refusal(); nativeGuard(); const { cleanupFixtureMusicTokenSecret } = await import('./music-fixture-secret'); nativeGuard(); cleanupFixtureMusicTokenSecret(root, secret.path); nativeGuard(); },
         async removeRoot(directory) { if (nativeUnknown || nativeChildren.size)
             throw new Refusal(); await same(directory.path, true); await emptyDirectory(directory.path); },
     };

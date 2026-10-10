@@ -119,13 +119,14 @@ function validateOptions(o:AppsControlOptions) {
  if(dirname(resolve(o.disposableDirectory))!==resolve(o.expectedTemporaryRoot)||!/^explorers-profile-e2e-[A-Za-z0-9]+$/.test(basename(o.disposableDirectory))||resolve(o.storageDirectory)!==join(resolve(o.disposableDirectory),'owned-media')||resolve(o.fixtureFilesRoot)!==join(resolve(o.disposableDirectory),'apps-fixture-files'))throw fail('custody');
  return api;
 }
-function nativeDependencies(o:AppsControlOptions):AppsControlDependencies {
- assertComposition(o);
+function nativeDependencies(o:AppsControlOptions,guard:()=>void):AppsControlDependencies {
+ guard();assertComposition(o);
  const helper=resolve(import.meta.dirname,'music-local-private-files.ps1');
  function inspectPrivate(path:string,directory:boolean) {
+  guard();
   let current=resolve(path);for(;;){const st=lstatSync(current);if(st.isSymbolicLink()||realpathSync(current).toLowerCase()!==current.toLowerCase())throw fail('custody');if(current===parse(current).root)break;current=dirname(current);}
   const st=lstatSync(path);if(directory?!st.isDirectory():!st.isFile())throw fail('custody');
-  if(process.platform==='win32'&&inspectAppsPrivateDescendant(path))return;
+  if(process.platform==='win32'&&inspectAppsPrivateDescendant(path)){guard();return;}
   if(process.platform==='win32'){
    const ps='C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
    if(lstatSync(ps).isSymbolicLink()||realpathSync(ps).toLowerCase()!==ps.toLowerCase()||!lstatSync(ps).isFile()||lstatSync(helper).isSymbolicLink()||!lstatSync(helper).isFile()||realpathSync(helper).toLowerCase()!==helper.toLowerCase())throw fail('custody');
@@ -136,22 +137,22 @@ function nativeDependencies(o:AppsControlOptions):AppsControlDependencies {
    if(JSON.parse(result).ok!==true)throw fail('custody');
   }else if(typeof process.getuid!=='function'||st.uid!==process.getuid()||(st.mode&0o077)!==0)throw fail('custody');
  }
- const assertCustody=async()=>{assertComposition(o);if(resolve(o.expectedTemporaryRoot)!==resolve(tmpdir()))throw fail('custody');inspectPrivate(o.disposableDirectory,true);inspectPrivate(o.fixtureFilesRoot,true);inspectPrivate(o.storageDirectory,true);if(realpathSync(o.storageDirectory)!==assertComposition(o))throw fail('custody');};
+ const assertCustody=async()=>{guard();assertComposition(o);if(resolve(o.expectedTemporaryRoot)!==resolve(tmpdir()))throw fail('custody');inspectPrivate(o.disposableDirectory,true);inspectPrivate(o.fixtureFilesRoot,true);inspectPrivate(o.storageDirectory,true);if(realpathSync(o.storageDirectory)!==assertComposition(o))throw fail('custody');guard();};
  function file(path:string){if(dirname(resolve(path))!==resolve(o.fixtureFilesRoot)||!/^apps-upload-[12]\.png$/.test(basename(path)))throw fail('custody');}
  async function objectPath(key:string,create=false){
-  await assertCustody();assertObjectKey(key,'local');const parts=key.split('/');if(parts.length!==3||parts[0]!=='local'||!uuid.safeParse(parts[1]).success||!uuid.safeParse(parts[2]).success)throw fail('storage custody');
+  await assertCustody();guard();assertObjectKey(key,'local');const parts=key.split('/');if(parts.length!==3||parts[0]!=='local'||!uuid.safeParse(parts[1]).success||!uuid.safeParse(parts[2]).success)throw fail('storage custody');
   const root=assertComposition(o),path=resolve(root,...parts);if(!path.startsWith(root+sep))throw fail('storage custody');
-  const ancestors=[join(root,'local'),dirname(path)];for(const ancestor of ancestors){try{inspectPrivate(ancestor,true);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;if(create){await mkdir(ancestor,{mode:0o700});inspectPrivate(ancestor,true);}else throw error;}}
+  const ancestors=[join(root,'local'),dirname(path)];for(const ancestor of ancestors){try{inspectPrivate(ancestor,true);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;if(create){guard();await mkdir(ancestor,{mode:0o700});guard();inspectPrivate(ancestor,true);}else throw error;}}
   return path;
  }
  return {
   uuid:randomUUID,capability:()=>randomBytes(32).toString('hex'),
-  files:{assertCustody,write:async(path,bytes)=>{file(path);await assertCustody();if(bytes.length>5242880)throw fail('custody');writeFileSync(path,bytes,{mode:0o600,flag:'wx'});inspectPrivate(path,false);},read:async path=>{
-   file(path);await assertCustody();inspectPrivate(path,false);const before=lstatSync(path);if(before.size<8||before.size>5242880)throw fail('custody');const fd=openSync(path,'r');try{const st=fstatSync(fd);if(st.dev!==before.dev||st.ino!==before.ino||st.size!==before.size||!st.isFile())throw fail('custody');const data=Buffer.alloc(st.size+1);let count=0;while(count<data.length){const n=readSync(fd,data,count,data.length-count,null);if(!n)break;count+=n;}if(count!==st.size)throw fail('custody');return data.subarray(0,count);}finally{closeSync(fd);}
-  },remove:async path=>{file(path);await assertCustody();try{inspectPrivate(path,false);unlinkSync(path);}catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}}},
+  files:{assertCustody,write:async(path,bytes)=>{file(path);await assertCustody();guard();if(bytes.length>5242880)throw fail('custody');guard();writeFileSync(path,bytes,{mode:0o600,flag:'wx'});inspectPrivate(path,false);},read:async path=>{
+   file(path);await assertCustody();guard();inspectPrivate(path,false);const before=lstatSync(path);if(before.size<8||before.size>5242880)throw fail('custody');const fd=openSync(path,'r');try{const st=fstatSync(fd);if(st.dev!==before.dev||st.ino!==before.ino||st.size!==before.size||!st.isFile())throw fail('custody');const data=Buffer.alloc(st.size+1);let count=0;while(count<data.length){const n=readSync(fd,data,count,data.length-count,null);if(!n)break;count+=n;}if(count!==st.size)throw fail('custody');return data.subarray(0,count);}finally{closeSync(fd);}
+  },remove:async path=>{file(path);await assertCustody();guard();try{inspectPrivate(path,false);guard();unlinkSync(path);guard();}catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}}},
   // These promises settle with physical FS work. Production storage deadline
   // wrappers are deliberately excluded from this fixture's custody ledger.
-  storage:{put:async(key,bytes)=>{if(bytes.length<8||bytes.length>5242880)throw fail('storage');const path=await objectPath(key,true);await writeFile(path,bytes,{flag:'wx',mode:0o600});inspectPrivate(path,false);await assertCustody();},get:async key=>{const path=await objectPath(key);inspectPrivate(path,false);const size=lstatSync(path).size;if(size<8||size>5242880)throw fail('storage');const bytes=await readFile(path);await assertCustody();inspectPrivate(path,false);if(bytes.length<8||bytes.length>5242880)throw fail('storage');return bytes;},delete:async key=>{try{const path=await objectPath(key);try{inspectPrivate(path,false);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}await rm(path,{force:true});await assertCustody();}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}}},
+  storage:{put:async(key,bytes)=>{if(bytes.length<8||bytes.length>5242880)throw fail('storage');const path=await objectPath(key,true);guard();guard();await writeFile(path,bytes,{flag:'wx',mode:0o600});guard();inspectPrivate(path,false);await assertCustody();guard();},get:async key=>{const path=await objectPath(key);guard();inspectPrivate(path,false);const size=lstatSync(path).size;if(size<8||size>5242880)throw fail('storage');const bytes=await readFile(path);guard();await assertCustody();guard();inspectPrivate(path,false);if(bytes.length<8||bytes.length>5242880)throw fail('storage');return bytes;},delete:async key=>{try{const path=await objectPath(key);guard();try{inspectPrivate(path,false);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}guard();await rm(path,{force:true});guard();await assertCustody();guard();}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}}},
   session:async person=>{const context=await o.composed.auth.$context,session=await context.internalAdapter.createSession(person.userId,false);const signature=createHmac('sha256',o.config.secret).update(session.token).digest('base64');return {...person,cookie:`${context.authCookies.sessionToken.name}=${session.token}.${signature}`};},
   canonical:async(person,path,method='GET',body)=>{
    if(!(/^\/api\/auth\/get-session$|^\/api\/explorers\/v1\/(me|account)$|^\/api\/explorers\/v1\/(collections|recommendations)\/[a-f0-9-]{36}\/editable\?status=all$/.test(path))||method==='PATCH'&&path!=='/api/explorers/v1/account')throw fail('canonical');
@@ -165,14 +166,17 @@ function validateDependencies(d:AppsControlDependencies) {
  for(const name of ['uuid','capability','session','canonical'] as const)if(typeof d[name]!=='function')throw fail('adapter');
  for(const [name,keys] of [['files',['assertCustody','write','read','remove']],['storage',['put','get','delete']]] as const){exactKeys(d[name],[...keys]);for(const key of keys)if(typeof (d[name] as any)[key]!=='function')throw fail('adapter');}
 }
-export async function createAppsControl(options:AppsControlOptions,dependencies?:AppsControlDependencies) {
+export async function createAppsControl(options:AppsControlOptions,dependencies?:AppsControlDependencies,nativeMutationGuard?:()=>void) {
+ let poisoned=false;
+ const activeDeadlines=new Map<symbol,number>();
+ const guard=()=>{if([...activeDeadlines.values()].some(deadline=>performance.now()>=deadline))poisoned=true;if(poisoned||typeof nativeMutationGuard!=='function')throw fail('settlement unknown');nativeMutationGuard();};
  let webHost:string,d:AppsControlDependencies;
- try{validateOptions(options);webHost=new URL(options.origin).host;d=dependencies===undefined?nativeDependencies(options):dependencies;validateDependencies(d);}catch{throw fail('initialization');}
+ try{validateOptions(options);webHost=new URL(options.origin).host;d=dependencies===undefined?nativeDependencies(options,guard):dependencies;validateDependencies(d);}catch{throw fail('initialization');}
  const provenance=dependencies===undefined?'native' as const:'synthetic' as const;
- let closed=false,busy=false,poisoned=false,active:AppsIdentity|undefined;
+ let closed=false,busy=false,active:AppsIdentity|undefined;
  const pending=new Set<Promise<unknown>>(),operations=new Set<Promise<unknown>>(),keys=new Set<string>(),files=new Set<string>();
  let capability:string;try{capability=d.capability();sha.parse(capability);}catch{throw fail('initialization');}
- async function finite<T>(work:Promise<T>,phase:string,ms=12000,track=true):Promise<T>{if(track){pending.add(work);void work.finally(()=>pending.delete(work)).catch(()=>undefined);}let timer:ReturnType<typeof setTimeout>|undefined;try{return await Promise.race([work,new Promise<never>((_,reject)=>{timer=setTimeout(()=>{poisoned=true;reject(fail(`${phase} settlement unknown`));},ms);})]);}finally{if(timer)clearTimeout(timer);}}
+ async function finite<T>(work:Promise<T>,phase:string,ms=12000,track=true):Promise<T>{const token=Symbol(),deadline=performance.now()+ms;activeDeadlines.set(token,deadline);if(track){pending.add(work);void work.finally(()=>pending.delete(work)).catch(()=>undefined);}let timer:ReturnType<typeof setTimeout>|undefined;try{return await Promise.race([work,new Promise<never>((_,reject)=>{timer=setTimeout(()=>{poisoned=true;reject(fail(`${phase} settlement unknown`));},ms);})]);}finally{if(performance.now()>=deadline)poisoned=true;activeDeadlines.delete(token);if(timer)clearTimeout(timer);}}
  const q=async(db:Pool|PoolClient,text:string,values:unknown[]=[])=>finite(db.query(text,values),'database');
  const personas={} as Record<'ownerA'|'ownerB',Persona>;
  async function ownership(db:Pool|PoolClient,initial=false){

@@ -31,7 +31,7 @@ if (suite === 'apps') {
   catch (error) {
     process.exitCode = 1;
     const diagnostic = extractAppsFixtureDiagnostic(error);
-    process.stderr.write(diagnostic ? `Apps owned fixture failed: stage=${diagnostic.stage}; category=${diagnostic.category}\n` : 'Apps owned fixture failed\n');
+    process.stderr.write(diagnostic ? `Apps owned fixture failed: stage=${diagnostic.stage}; category=${diagnostic.category}${diagnostic.cleanupStep ? `; cleanupStep=${diagnostic.cleanupStep}` : ''}\n` : 'Apps owned fixture failed\n');
   }
 } else {
 const root = resolve(import.meta.dirname, '../..');
