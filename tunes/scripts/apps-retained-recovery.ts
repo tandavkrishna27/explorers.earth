@@ -15,6 +15,7 @@ const RUNS=Object.freeze([
  Object.freeze({runId:'956d55c6591e17c3fa056d49d11c37b7',commit:'aa735d7e1ad0640f30f8f22a928a2e41675f6cd5',containerId:'e62389a614340f604cfd0c7c639bb009682e9ca58be4d1de697a4c68dca982e3',port:59450,secretName:'current-6c19df9181633a022588752c25ca1674'}),
  Object.freeze({runId:'18aa5a94ef2987a1a41c5efff13203d5',commit:'476f95c46aadc9c823eacadea2177c21c99ff808',containerId:'4e1f7d73771c70566ed917b4182cc4e0ac4226490a27be47698a878cbc30b999',port:60447,secretName:'current-a395fe8b9b8ece45e040769fbc10deee'}),
  Object.freeze({runId:'260554db707fba544c6c33653de9309e',commit:'78a96006c69f5e96b15101ff593500e065af25da',containerId:'7ee950915c48941d248b7b94d3c8bc43e68eec082a58588a5cfd1f90980acf37',port:58740,secretName:'current-01055c0914e5f05d11438b10f6430c0b'}),
+ Object.freeze({runId:'15d78356f0b72af0106e295a62e7e313',commit:'886e583429328d885e82008683f04ddef16db434',containerId:'f90119b89bd65f44211d10de1b5e4e24c01fac634b5e32d09e5f2e4eb838b53c',port:60147,secretName:'current-18111cc5ff80789c1389f0e55a0acccc'}),
 ]);
 type Run=typeof RUNS[number];
 type Admin={query(sql:string,values?:unknown[]):Promise<{rows:Record<string,unknown>[]}>;end():Promise<void>};
@@ -68,7 +69,7 @@ export function createAppsRetainedRecovery(dependencies?:Dependencies){
   const selected=RUNS.find(item=>item.runId===d.argv[1]);requireValue(selected);const run:Run=selected;
   requireValue(!Object.entries(d.environment).some(([key,value])=>value!==undefined&&(/^(?:DOCKER_|MUSIC_C10_STANDALONE_POSTGRES_|(?:APPS|REPLATFORM)_E2E_)/i.test(key)||['DATABASE_URL','DATABASE_URL_TEST','NODE_OPTIONS','NODE_CHANNEL_FD','NODE_PATH'].includes(key)||key==='NODE_ENV'&&value==='production')));
   requireValue([d.root,d.temporaryRoot].every(file=>path.win32.isAbsolute(file)&&path.win32.resolve(file)===file&&!file.startsWith('\\\\')&&!/[\x00-\x1f\x7f]/.test(file)));
-  const fourth=run.runId==='260554db707fba544c6c33653de9309e';
+  const fifth=run.runId==='15d78356f0b72af0106e295a62e7e313',fourth=run.runId==='260554db707fba544c6c33653de9309e'||fifth;
   const originals=new Set<Promise<unknown>>(),deadline=d.clock.now()+(fourth?1200000:600000);
   async function bounded<T>(operation:()=>Promise<T>,budget=15000,destructive=false){const remaining=Math.floor(deadline-d.clock.now());requireValue(remaining>0&&(!destructive||remaining>=budget));const original=Promise.resolve().then(operation);originals.add(original);original.then(()=>originals.delete(original),()=>originals.delete(original));let timer:unknown;try{return await Promise.race([original,new Promise<never>((_,reject)=>{timer=d.clock.setTimeout(()=>reject(new Refusal()),Math.min(remaining,budget));})]);}finally{d.clock.clearTimeout(timer);}}
   stage='preflight';await bounded(()=>d.preflight(),60000);stage='inspect';const address=validateInspect(await bounded(()=>d.inspect(run)),run,d.root);
@@ -98,10 +99,10 @@ export function createAppsAbsentRetainedFinalizer(dependencies?:Dependencies){
  return{run(){return retained??=execute().catch(()=>{const failure=new Refusal();failureStages.set(failure,stage);throw failure;});}};
  async function execute(){
   requireValue(d&&Object.keys(d).sort().join(',')===KEYS.sort().join(',')&&d.clock&&['now','setTimeout','clearTimeout'].every(k=>typeof (d.clock as any)[k]==='function')&&KEYS.filter(k=>!['platform','argv','environment','root','temporaryRoot','clock'].includes(k)).every(k=>typeof (d as any)[k]==='function'));
-  const selected=RUNS.find(item=>item.runId===d.argv?.[1]);requireValue(selected);const run:Run=selected;const acknowledgment=run===RUNS[0]?'APPS_B1_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[1]?'APPS_956_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[2]?'APPS_18AA_ABSENT_RETAINED_FINALIZATION_V1':'APPS_2605_ABSENT_RETAINED_FINALIZATION_V1';requireValue(d.platform==='win32'&&Array.isArray(d.argv)&&d.argv.length===4&&d.argv[0]==='--finish-absent-retained-run'&&d.argv[1]===run.runId&&d.argv[2]==='--ack'&&d.argv[3]===acknowledgment);
+  const selected=RUNS.find(item=>item.runId===d.argv?.[1]);requireValue(selected);const run:Run=selected;const acknowledgment=run===RUNS[0]?'APPS_B1_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[1]?'APPS_956_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[2]?'APPS_18AA_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[3]?'APPS_2605_ABSENT_RETAINED_FINALIZATION_V1':'APPS_15D7_ABSENT_RETAINED_FINALIZATION_V1';requireValue(d.platform==='win32'&&Array.isArray(d.argv)&&d.argv.length===4&&d.argv[0]==='--finish-absent-retained-run'&&d.argv[1]===run.runId&&d.argv[2]==='--ack'&&d.argv[3]===acknowledgment);
   requireValue(!Object.entries(d.environment).some(([key,value])=>value!==undefined&&(/^(?:DOCKER_|MUSIC_C10_STANDALONE_POSTGRES_|(?:APPS|REPLATFORM)_E2E_)/i.test(key)||['DATABASE_URL','DATABASE_URL_TEST','NODE_OPTIONS','NODE_CHANNEL_FD','NODE_PATH'].includes(key)||key==='NODE_ENV'&&value==='production')));
   requireValue([d.root,d.temporaryRoot].every(file=>path.win32.isAbsolute(file)&&path.win32.resolve(file)===file&&!file.startsWith('\\\\')&&!/[\x00-\x1f\x7f]/.test(file)));
-  const fourth=run.runId==='260554db707fba544c6c33653de9309e';
+  const fifth=run.runId==='15d78356f0b72af0106e295a62e7e313',fourth=run.runId==='260554db707fba544c6c33653de9309e'||fifth;
   const originals=new Set<Promise<unknown>>(),deadline=d.clock.now()+(fourth?1200000:300000);
   async function bounded<T>(operation:()=>Promise<T>,budget=60000){requireValue(deadline-d.clock.now()>=budget);const original=Promise.resolve().then(operation);originals.add(original);original.then(()=>originals.delete(original),()=>originals.delete(original));let timer:unknown;try{return await Promise.race([original,new Promise<never>((_,reject)=>{timer=d.clock.setTimeout(()=>reject(new Refusal()),budget);})]);}finally{d.clock.clearTimeout(timer);}}
   async function absent(){stage='container-absence';requireValue(await bounded(()=>d.absent(run),30000));requireValue(originals.size===0);}
@@ -115,7 +116,7 @@ function nativeDependencies(existingLeaseMode=false):Dependencies{
  const ps='C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',docker='C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe',helper=path.join(root,'tunes/scripts/music-local-private-files.ps1');
  const states=new WeakMap<Custody,{run:Run;directory:string;verify():Promise<void>;beforeRemoval():Promise<void>;remaining:Set<string>;identities:Map<string,string>;lease?:string}>();
  const fs=()=>import('node:fs/promises');let unknown=false;
- const guarded=existingLeaseMode||(process.argv.length===6&&process.argv[2]==='--recover-run'&&['18aa5a94ef2987a1a41c5efff13203d5','260554db707fba544c6c33653de9309e'].includes(process.argv[3])&&process.argv[4]==='--ack'&&process.argv[5]==='APPS_EXACT_RETAINED_RECOVERY_V1');
+ const guarded=existingLeaseMode||(process.argv.length===6&&process.argv[2]==='--recover-run'&&['18aa5a94ef2987a1a41c5efff13203d5','260554db707fba544c6c33653de9309e','15d78356f0b72af0106e295a62e7e313'].includes(process.argv[3])&&process.argv[4]==='--ack'&&process.argv[5]==='APPS_EXACT_RETAINED_RECOVERY_V1');
  const environment=()=>Object.fromEntries(['SystemRoot','WINDIR','PATH','TEMP','TMP','USERPROFILE','LOCALAPPDATA','APPDATA'].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]!]]));
  async function command(executable:string,args:string[],budget:number,input?:string,maxBytes=1048576,diagnoseStop=false){
   if(guarded)requireValue(!unknown);const {spawn}=await import('node:child_process');if(guarded)requireValue(!unknown);
@@ -143,10 +144,14 @@ function nativeDependencies(existingLeaseMode=false):Dependencies{
   async capture(run){
    if(existingLeaseMode)requireValue(RUNS.some(candidate=>candidate.runId===run.runId&&candidate.containerId===run.containerId&&candidate.secretName===run.secretName)&&await absent(run));
    const f=await fs(),directory=path.join(temporaryRoot,`explorers-profile-e2e-${run.runId}`),children=['apps-fixture-files','owned-media'];
-   const fourth=run.runId==='260554db707fba544c6c33653de9309e';
+   const fifth=run.runId==='15d78356f0b72af0106e295a62e7e313',fourth=run.runId==='260554db707fba544c6c33653de9309e'||fifth;
    // Exact metadata inventory from the terminal, independently inspected run.
    // No artifact content is read and no recursive removal is authorized.
-   const cases:readonly (readonly [string,bigint])[]=fourth?[
+   const cases:readonly (readonly [string,bigint])[]=fifth?[
+    ['apps-Apps-manual-category--2140e-in-and-limit-survive-reload-apps-mobile',38502n],
+    ['apps-Apps-manual-list-and--be8a4-ate-edit-archive-and-reload-apps-desktop',36961n],
+    ['apps-Apps-manual-list-and--be8a4-ate-edit-archive-and-reload-apps-mobile',36277n],
+   ]:fourth?[
     ['apps-Apps-manual-category--2140e-in-and-limit-survive-reload-apps-desktop',3869n],
     ['apps-Apps-manual-category--2140e-in-and-limit-survive-reload-apps-mobile',3240n],
     ['apps-Apps-manual-Keep-Draf-81066-rawal-preserve-public-state-apps-desktop',6449n],
@@ -157,8 +162,8 @@ function nativeDependencies(existingLeaseMode=false):Dependencies{
     ['apps-Apps-manual-ordered-o-697af-sibility-enforce-real-bytes-apps-mobile',37557n],
    ]:[];
    const ownedFiles=run.runId==='18aa5a94ef2987a1a41c5efff13203d5'||fourth?[{name:'sessions.json',size:793n},{name:'protected.playwright.config.mjs',size:597n}]:[];
-   if(fourth)ownedFiles.push({name:'protected-discovery.json',size:9017n},{name:'protected-execution.json',size:50191n},{name:'browser-output/.last-run.json',size:439n},...cases.map(([name,size])=>({name:`browser-output/${name}/error-context.md`,size})));
-   const directoryNames=fourth?[...children,'browser-output',...cases.map(([name])=>`browser-output/${name}`),'owned-media/local','owned-media/local/9c767fef-2a78-4642-b1ce-1020363fbca8','owned-media/local/b3a8f2b1-846d-43ab-ba1a-e33543c21e9c']:children;
+   if(fourth)ownedFiles.push({name:'protected-discovery.json',size:fifth?9027n:9017n},{name:'protected-execution.json',size:fifth?60576n:50191n},{name:'browser-output/.last-run.json',size:fifth?194n:439n},...cases.map(([name,size])=>({name:`browser-output/${name}/error-context.md`,size})));
+   const directoryNames=fourth?[...children,'browser-output',...cases.map(([name])=>`browser-output/${name}`),'owned-media/local',fifth?'owned-media/local/7932d49d-d1ac-487b-81cf-769fe0b3cc75':'owned-media/local/9c767fef-2a78-4642-b1ce-1020363fbca8',fifth?'owned-media/local/b72ebf82-bb6d-4ad6-88c4-1e239d52d541':'owned-media/local/b3a8f2b1-846d-43ab-ba1a-e33543c21e9c']:children;
    const directories=[directory,...directoryNames.map(name=>path.join(directory,name))];
    const files=new Map(ownedFiles.map(entry=>[path.join(directory,entry.name),entry.size]));
    const remaining=new Set<string>([...directories,...files.keys(),secret(root,run)]),identities=new Map<string,string>();

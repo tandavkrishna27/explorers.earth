@@ -9,6 +9,7 @@ import {
  ownerCollectionPageSchema,ownerRecommendationPageSchema,ownerMembershipPageSchema,ownerTopPickPageSchema,ownerMembershipDtoSchema,
 } from '../../../tunes/shared/explorersOwnerContentContract';
 import {recommendationCoreDtoSchema,collectionCoreDtoSchema} from '../../../tunes/shared/explorersContract';
+import {richNoteSchema} from '../../../tunes/shared/explorersRichNoteContract';
 
 // Source-only Apps lane. The coordinator must supply this fixed reset contract and
 // register the eight project/title identities before this file is runnable.
@@ -119,6 +120,8 @@ async function start(page:Page,info:TestInfo){
  await page.goto('/recommendations/apps');return manifest;
 }
 function visibleButton(page:Page,name:string|RegExp){return page.getByRole('button',{name,exact:typeof name==='string'}).and(page.locator('button:visible'));}
+function renderedNoteText(html:string){const template=document.createElement('template');template.innerHTML=html;return (template.content.textContent??'').replace(/\s+/g,' ').trim();}
+async function mobileManagerButton(page:Page){const active=page.locator('[data-public-category-artwork="true"]');if(await active.count()===0)return undefined;await expect(active).toHaveCount(1);return active.getByRole('button',{name:/^Manage Top Picks/});}
 function appRow(page:Page,title:string){return page.locator('div.group').filter({has:page.getByText(title,{exact:true})});}
 async function edit(page:Page,listId:string,id:string,title:string){
  await page.goto(`/recommendations/apps/${listId}`);const row=appRow(page,title);await expect(row).toHaveCount(1);
@@ -196,7 +199,7 @@ async function liveMedia(request:APIRequestContext,info:TestInfo,id:string,accou
 test(titles[0],async({page},info)=>{
  const m=await start(page,info),owner=m.personas.ownerA.accountId;expect((await complete(page.request,owner)).collections).toHaveLength(0);
  const listId=await createList(page,'Native Apps CRUD','native-apps-crud');await page.goto(`/recommendations/apps/${listId}`);await page.getByRole('button',{name:'Add App',exact:true}).click();await invalidThenValid(page,'Native Complete App','crud');const id=await save(page);await page.getByRole('button',{name:'Keep Draft',exact:true}).click();await expect(page.getByRole('button',{name:'Keep Draft',exact:true})).toHaveCount(0);
- const created=await recommendation(page.request,id);expect(created.effectiveAppDetails).toMatchObject({appUrl:'https://apps.example.invalid/app-crud',developer:'Native Apps Developer',logoUrl:null,downloadUrl:'https://apps.example.invalid/download-crud',description:'Native typed description',priceTier:'Paid',platforms:['Web','Linux']});expect(created.userRating).toBe(8);expect(JSON.stringify(created.note)).toContain('Native Apps thoughts');
+ const created=await recommendation(page.request,id);expect(created.effectiveAppDetails).toMatchObject({appUrl:'https://apps.example.invalid/app-crud',developer:'Native Apps Developer',logoUrl:null,downloadUrl:'https://apps.example.invalid/download-crud',description:'Native typed description',priceTier:'Paid',platforms:['Web','Linux']});expect(created.userRating).toBe(8);const persistedNote=richNoteSchema.parse(created.note);expect(await page.evaluate(renderedNoteText,persistedNote.html)).toBe('Native Apps thoughts');
  await edit(page,listId,id,'Native Complete App');await expect(page.getByLabel('App URL',{exact:true})).toBeDisabled();await page.getByLabel('App title',{exact:true}).fill('Native Edited App');await page.getByLabel('Developer',{exact:true}).fill('Edited Developer');expect(await save(page)).toBe(id);await page.reload();
  const edited=await recommendation(page.request,id);expect(edited.entityId).toBe(created.entityId);expect(edited.displayTitle).toBe('Native Edited App');expect(edited.effectiveAppDetails?.developer).toBe('Edited Developer');
  const row=appRow(page,'Native Edited App');await row.getByRole('button').last().click();page.once('dialog',async dialog=>{expect(dialog.message()).toBe('Delete "Native Edited App"?');await dialog.accept();});const detached=acknowledgement(page,`/collections/${listId}/memberships/${id}`,'DELETE',body=>typeof body.expectedCollectionRevision==='number'&&typeof body.expectedRecommendationRevision==='number');await row.getByRole('button',{name:'Delete',exact:true}).click();const detachBody=await browserBody(await detached,200);expect(detachBody.membership.attached===false&&detachBody.membership.collection.id===listId&&detachBody.membership.recommendation.id===id).toBe(true);await expect(row).toHaveCount(0);await page.reload();
@@ -259,7 +262,7 @@ test(titles[2],async({page},info)=>{
 
 test(titles[3],async({page},info)=>{
  const m=await start(page,info);expect(m.recommendations).toHaveLength(16);const guest=await anonymous(page);
- async function manager(){await visibleButton(page,/^Manage Top Picks/).click();return page.getByRole('heading',{name:/^Manage Top Picks \(/}).locator('../..');}
+ async function manager(){const activeButton=info.project.name==='apps-mobile'?await mobileManagerButton(page):undefined;await (activeButton??visibleButton(page,/^Manage Top Picks/)).click();return page.getByRole('heading',{name:/^Manage Top Picks \(/}).locator('../..');}
  async function savePins(modal:Locator,items:Manifest['recommendations']){const expected=items.map(x=>({recommendationId:x.id,collectionId:x.collectionId}));const ack=acknowledgement(page,'/categories/apps/top-picks','PUT',body=>JSON.stringify(body.orderedPins)===JSON.stringify(expected)&&typeof body.expectedCategoryRevision==='string'&&(body.expectedPinRevision===null||typeof body.expectedPinRevision==='number'));await modal.getByRole('button',{name:'Save Top Picks',exact:true}).click();await browserBody(await ack,200);await expect(page.getByRole('heading',{name:/^Manage Top Picks \(/})).toHaveCount(0);await page.reload();}
  try{
   let modal=await manager();for(const item of m.recommendations.slice(0,15))await modal.getByRole('button',{name:item.title,exact:true}).click();await expect(modal.getByRole('button',{name:m.recommendations[15].title,exact:true})).toBeDisabled();expect((await complete(page.request,m.personas.ownerA.accountId)).pins).toHaveLength(0);await savePins(modal,m.recommendations.slice(0,15));
