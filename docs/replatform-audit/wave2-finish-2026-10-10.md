@@ -485,3 +485,15 @@ Root fresh verification passed 28 contracts; scoped types had zero diagnostics.
 Exact EncodedCommand/first-stdin-line transport compiled without Run, ACL or
 lease operations; original PowerShell close was code 0, signal none. Independent
 review accepted the diagnostic-only revision. No adoption success is claimed.
+
+At clean `b8614966b489905478042b28b86c1d8e8ba6298d`, the bounded
+native diagnostic positively closed its PowerShell child with code 1, signal
+none, and reported `directory-rights`, numeric status 3221225476 (0xC0000004).
+Fresh ACL and absent-lease checks again confirmed no adoption. A read-only
+same-handle comparison reproduced the old 256-byte query failure and verified
+the documented marshaled 56-byte PUBLIC_OBJECT_BASIC_INFORMATION query:
+status 0, returned length 56, required rights present, positive handle close.
+The narrow repair derives and validates size 56, validates returned length,
+and preserves the full rights mask with no fallback. Root fresh 28 contracts,
+scoped types 0, exact launcher transport compilation and independent review
+passed. Native adoption and resource recovery remain unclaimed at this point.
