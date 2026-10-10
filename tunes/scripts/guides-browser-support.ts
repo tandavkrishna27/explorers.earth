@@ -397,6 +397,9 @@ const liveMediaSchema=z.object({id:controlUuid,accountId:controlUuid,purpose:z.e
 const liveObjectSchema=z.object({mediaId:controlUuid,accountId:controlUuid,variant:z.enum(['original','thumbnail','display']),
   environment:z.enum(['local','qa','prod']),key:controlText(1024),mimeType:controlText(128),byteLength:controlNat,
   sha256:controlHash,storageVersionId:controlText().nullable(),deletedAt:controlTime.nullable()}).strict();
+/** The Node harness validates the same live row types as the actual producer. */
+export const guidesObservationRowSchemas=Object.freeze({persona:livePersonaSchema,guide:liveGuideSchema,
+  section:liveSectionSchema,media:liveMediaSchema,object:liveObjectSchema,attachment:manifestAttachment});
 class ControlOverflow extends Error {}
 function controlInteger(value:unknown,positive=false):number {
   if(typeof value==='string'&&/^(0|[1-9][0-9]*)$/.test(value)){

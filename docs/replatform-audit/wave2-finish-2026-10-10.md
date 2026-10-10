@@ -211,6 +211,22 @@ native specifications/configuration, source registration and native qualificatio
 follow. Included feature decisions and source access remain open as recorded
 above; Wave 2 remains open.
 
+## Guides browser infrastructure review
+
+The Node harness client and private Vite/Playwright configurations are source-ready.
+Independent root review found two concrete capacity races: concurrent context
+creation admitted more than 64 contexts, and the operation-limit check could reject
+an already scheduled producer without retaining its promise. Deterministic tests
+reproduced both; synchronous admission now reserves capacity before effects and
+retains unresolved originals. Root fresh verification passed 42 contained frontend
+tests and scoped typing. The shared producer row-schema export also passed the 61
+existing helper contracts. These counts establish source contracts only.
+
+The native Guides specification, parent entry integration, identity registration,
+actual authentication bootstrap and native qualification remain unfinished. Theme,
+legacy budget tiers and the provider-dependent activity-photo flow still need
+their concrete product/input rulings; no fabricated native case closes them.
+
 ## Hosted status boundary
 
 PR119 still points to remote `622f689385058ef9186538a1d8e1f60fd23ab266`.
