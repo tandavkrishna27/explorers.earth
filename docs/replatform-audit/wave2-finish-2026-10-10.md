@@ -16,20 +16,25 @@ focused local evidence and remaining acceptance. Wave 2 is **open**.
 | QA certificate-output parser | `96e19b8c`: independently accepted; 231 focused tests passed | Pure parsing remains unqualified and does not execute cryptographic verification |
 | Guides staged database custody | `4e98ab18`: independently accepted; 55 new and 18 unchanged legacy tests passed | Synthetic contract evidence only; actual Guides database/process lifecycle still needs qualification |
 | QA detached artifact custody | `21850315`: independently accepted; root fresh 103 focused tests passed | ZIP, raw file and canonical hashes are checked separately; release and cryptographic authority remain false |
+| Apps/Places typed media | `236fb2f3`: ten actual PostgreSQL and canonical HTTP cases passed, zero skips; cleanup passed | Selected local SQL/API coverage, not native browser, S3, aggregate or hosted qualification |
 
-Root's final combined check of the latter two files passed all 304 tests;
+Root's combined check of the certificate parser and staged database custody passed all 304 tests;
 scoped music-c0 typing passed after the descriptor snapshot correction.
 
 The subsequent detached-custody typing check reported only an error in the
-concurrent Guides supervisor draft. That draft is still under implementation;
-integrated typing and native qualification remain pending.
+concurrent Guides supervisor draft. After that draft was held separately, clean
+finishing-source music-c0 typing passed. Guides is still under implementation;
+integrated Guides typing and native qualification remain pending.
 
-An Apps/Places source audit identified missing typed screenshot/photo relations
-in public media eligibility, attached-media deletion reference counts and aged
-cleanup selection. Existing deferred database guards appear to prevent deleting
-attached bytes; the query omissions can instead cause cleanup failures. Actual
-PostgreSQL regression cases are being added before the query repair. No real
-database RED/GREEN result is claimed yet.
+Actual PostgreSQL regressions confirmed missing Apps/Places screenshot/photo
+relations in public media eligibility, attached-media deletion reference counts
+and aged cleanup selection. Ten cases first produced eight failures and two
+schema-safety passes on `47fc10ad`. The direct deletion cases reached the existing
+ready-owned image guards: the omissions caused COMMIT failure rather than deletion
+of attached bytes. The minimal query repair then passed the same ten cases on
+`236fb2f3`. Generic recommendation media remains restricted to its existing
+Books/Movies/Games public entitlement. Safe RED/GREEN results are retained under
+the receipts directory; raw logs and private authority metadata are excluded.
 
 The first mount observation failed before returning authority. A read-only
 reproduction found that Docker's absent-container response includes `[]` on
