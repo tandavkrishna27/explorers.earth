@@ -509,3 +509,20 @@ Actual read-only RED/GREEN, root fresh 28 contracts, scoped types 0, exact
 transport compilation and independent review passed. Separate review accepted
 only the exact retained lease reconciliation under newly captured identity;
 no historical restoration, ACL adoption or resource recovery is claimed here.
+
+The exact e70 lease was separately reconciled with newly captured physical
+identity and strict private ACL using the independently reviewed one-off tool.
+At clean `ad56feea042fddea9e726857a43b6414fd53495f`, adoption applied all
+three intended protected ACLs but failed its inspector completion assertion;
+original C# child closed 1, signal none. A new protected zero-byte lease remained.
+Actual read-only reproduction showed its pipe healthy and nested inspector
+positively exiting 1 with SystemRoot-only environment. Adding only TEMP/TMP
+made the identical inspector positively exit 0. The old Time call overwrote
+the diagnostic label before this assertion. The narrow repair preserves the
+three-key environment and restores the inspect label. Further read-only final-
+path testing reproduced the inspector's own helper Access update; helper-only
+baseline refresh after each positively completed fixed inspector preserved all
+other metadata and made full verification pass. Root fresh 30 contracts,
+scoped types 0, exact transport compilation and independent review passed.
+Review separately accepted fresh exact reconciliation of the ad56 retained
+lease. Completed adoption and database recovery remain unclaimed here.
