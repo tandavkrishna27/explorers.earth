@@ -183,7 +183,7 @@ async function gallery(page:Page,handle:string,list:{slug:string},title:string,d
 async function hero(page:Page,handle:string,items:{title:string}[]){
  await page.goto(`/${handle}/apps`);await page.reload();
  if(test.info().project.name==='apps-mobile'){
-  const active=page.locator('[data-public-category-artwork="true"]');await expect(active).toHaveCount(1);const hero=active.locator('../..');const cards=hero.locator('img');await expect(cards).toHaveCount(items.length);expect(await cards.evaluateAll(nodes=>nodes.map(node=>node.getAttribute('alt')))).toEqual(items.map(x=>x.title));
+  const active=page.locator('[data-public-category-artwork="true"]:visible');await expect(active).toHaveCount(1);const hero=active.locator('../..');const cards=hero.locator('img');await expect(cards).toHaveCount(items.length);expect(await cards.evaluateAll(nodes=>nodes.map(node=>node.getAttribute('alt')))).toEqual(items.map(x=>x.title));
   // The complete native card order is the stable witness despite real automatic
   // rotation. Capture active image/title together without assuming index zero.
   const selected=await active.evaluate(node=>({image:node.querySelector('img')?.getAttribute('alt'),title:Array.from(node.querySelectorAll('h2')).at(-1)?.textContent}));expect(selected.image===selected.title&&items.some(x=>x.title===selected.title)).toBe(true);
