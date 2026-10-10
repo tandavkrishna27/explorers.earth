@@ -48,6 +48,19 @@ export async function createProtectedReceipt(root:string,laneName:string,options
    const selected=args.filter((arg,index)=>!arg.startsWith('--config=')&&arg!=='--config'&&args[index-1]!=='--config');
    return [...selected,'--config',artifactPolicy.configFile,'--trace=off','--output',artifactPolicy.outputDir];
   },
+  decodeExecution(report:unknown,code:number|null,signal:string|null){
+   if(!artifactPolicy)throw new Error('Protected artifact allocation missing');
+   const decoded=contract.decodeProtectedReport(report,lane,root,true,artifactPolicy);
+   const failureDiagnostics=contract.decodeProtectedFailureDiagnostics(report,lane,root);
+   if(playwright&&decoded.playwright!==playwright)throw new Error('Protected browser tool version changed');
+   playwright=decoded.playwright;executed=decoded.results;diagnostics=failureDiagnostics;child={status:code,signal};
+  },
+  decodeDiscovery(report:unknown){
+   if(!artifactPolicy)throw new Error('Protected artifact allocation missing');
+   const decoded=contract.decodeProtectedReport(report,lane,root,false,artifactPolicy);
+   if(playwright&&decoded.playwright!==playwright)throw new Error('Protected browser tool version changed');
+   playwright=decoded.playwright;discovered=decoded.results;
+  },
   discovery(frontend:string,args:string[],env:NodeJS.ProcessEnv,fixtureDirectory:string){
    const path=join(fixtureDirectory,'protected-discovery.json');
    const result=spawnSync(process.execPath,[join(frontend,'node_modules/@playwright/test/cli.js'),'test',...args,'--list','--reporter=json'],{cwd:frontend,env:{...env,PLAYWRIGHT_JSON_OUTPUT_NAME:path},windowsHide:true,encoding:'utf8',maxBuffer:8*1024*1024});

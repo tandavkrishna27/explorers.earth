@@ -227,6 +227,25 @@ actual authentication bootstrap and native qualification remain unfinished. Them
 legacy budget tiers and the provider-dependent activity-photo flow still need
 their concrete product/input rulings; no fabricated native case closes them.
 
+## Apps runner integration accepted at source level
+
+The Apps early profile dispatch passed three root regression tests and independent
+review, including scoped typing. It awaits the fixed runner before legacy resource
+allocation; failure produces a fixed sanitized error without legacy fallback.
+Independent re-review accepted the runner after five concrete repairs:
+interruption state, unexpected Vite closure, byte caps applied before reads,
+staged database acquisition with positive drop/connection closure before removal,
+and cleanup of known browser failures after positive settlement. Root fresh
+verification passed 62 runner, receipt and dispatch tests; scoped typing was clean.
+Two repair areas have recorded RED-first evidence; the other regression tests
+were added during implementation and observed GREEN.
+
+The additive parsed-report receipt methods use the existing decoder and schema.
+Actual native Apps qualification remains unproven. Read-only preparation confirms
+the official selected Apps lane is supported; it must run only after acceptance,
+clean committed source closure and a source freeze. It qualifies the eight current
+manual-flow identities, not nightly scraping or complete Wave 2.
+
 ## Hosted status boundary
 
 PR119 still points to remote `622f689385058ef9186538a1d8e1f60fd23ab266`.

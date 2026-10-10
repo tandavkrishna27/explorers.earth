@@ -21,12 +21,17 @@ import { startPlacesControl, assertPlacesStorageDirectory } from './places-brows
 import { startLifecycleControl } from './lifecycle-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment, assertLifecycleResults, assertOwnedCleanup } from './lifecycle-browser-guards';
 import { extractProtectedReceiptArguments, createProtectedReceipt } from './protected-browser-receipt';
+import { createAppsBrowserFixture } from './apps-browser-fixture';
 
-const root = resolve(import.meta.dirname, '../..');
-const frontend = resolve(root, 'explorers-earth');
 const receiptArguments = extractProtectedReceiptArguments(process.argv.slice(2));
 const suite = parseBrowserSuite(receiptArguments.args);
 assertBrowserEnvironment(process.env);
+if (suite === 'apps') {
+  try { await createAppsBrowserFixture().run(); }
+  catch { process.exitCode = 1; process.stderr.write('Apps owned fixture failed\n'); }
+} else {
+const root = resolve(import.meta.dirname, '../..');
+const frontend = resolve(root, 'explorers-earth');
 const protectedReceipt = await createProtectedReceipt(root, suite, receiptArguments);
 const runId = randomBytes(16).toString('hex');
 const database = `music_uat_${runId}`;
@@ -244,4 +249,5 @@ try {
   if (lifecycleReceipt && artifacts) { lifecycleReceipt.cleanup = failures.length ? { failed: failures } : 'owned database dropped; attested container removed; pools/control/children closed; secret removed'; writeFileSync(join(artifacts, 'receipt.json'), JSON.stringify(lifecycleReceipt, null, 2)); process.stdout.write(`Lifecycle receipt: ${join(artifacts, 'receipt.json')}\n`); }
   if (interrupted) process.exitCode = 130;
   if (process.connected) process.disconnect();
+}
 }
