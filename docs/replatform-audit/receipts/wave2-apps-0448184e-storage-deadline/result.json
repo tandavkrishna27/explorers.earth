@@ -1,0 +1,19 @@
+{
+  "sourceCommit": "0448184e58ca447ebdd63ecb29b9863bdced8138",
+  "runId": "48e12e0faa356e85186ddc490cad74fd",
+  "qualification": false,
+  "originalExitCode": 1,
+  "diagnostic": {
+    "stage": "execution",
+    "category": "refusal",
+    "controlOperation": "reset",
+    "controlPhase": "seed-put",
+    "controlBoundary": "after-custody",
+    "controlCategory": "deadline",
+    "controlBudgetMs": 5000
+  },
+  "sourceIntact": true,
+  "guardedOwnerClosed": true,
+  "freshOwnerAndChildAbsent": true,
+  "exactRetainedRecovery": "pending"
+}

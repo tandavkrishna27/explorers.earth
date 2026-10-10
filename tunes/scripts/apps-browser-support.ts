@@ -169,6 +169,7 @@ function validateDependencies(d:AppsControlDependencies) {
  for(const name of ['uuid','capability','session','canonical'] as const)if(typeof d[name]!=='function')throw fail('adapter');
  for(const [name,keys] of [['files',['assertCustody','write','read','remove']],['storage',['put','get','delete']]] as const){exactKeys(d[name],[...keys]);for(const key of keys)if(typeof (d[name] as any)[key]!=='function')throw fail('adapter');}
 }
+const APPS_STORAGE_BUDGET_MS=12000;
 export async function createAppsControl(options:AppsControlOptions,dependencies?:AppsControlDependencies,nativeMutationGuard?:()=>void) {
  let poisoned=false;
  let operation:AppsControllerDiagnostic['operation']='initialize',phase:AppsControllerDiagnostic['phase']='ownership',boundary:AppsControllerDiagnostic['boundary']='none',diagnostic:AppsControllerDiagnostic|undefined;
@@ -199,7 +200,7 @@ export async function createAppsControl(options:AppsControlOptions,dependencies?
  function identity(value:AppsIdentity){const parsed=identitySchema.parse(value);if(parsed.runId!==options.runId||parsed.commit!==options.commit)throw fail('identity');return parsed;}
  function assertAvailable(){if(closed||busy||poisoned)throw fail('unavailable');if(provenance==='native')assertComposition(options);}
  function storageKey(key:string,accountId:string,id:string){if(key!==`local/${accountId}/${id}`||!accountIds.includes(accountId)||!uuid.safeParse(id).success)throw fail('storage custody');}
- async function removeKeys(targets:Iterable<string>){phase='remove-old-object';boundary='none';const failures:string[]=[];for(const key of targets){try{await finite(d.storage.delete(key),'storage',5000);keys.delete(key);}catch{failures.push('storage');if(poisoned)break;}}if(failures.length)throw fail('cleanup storage');}
+ async function removeKeys(targets:Iterable<string>){phase='remove-old-object';boundary='none';const failures:string[]=[];for(const key of targets){try{await finite(d.storage.delete(key),'storage',APPS_STORAGE_BUDGET_MS);keys.delete(key);}catch{failures.push('storage');if(poisoned)break;}}if(failures.length)throw fail('cleanup storage');}
  async function removeFiles(){phase='remove-upload-file';boundary='none';const failures:string[]=[];for(const path of files){try{await finite(d.files.remove(path),'files',5000);files.delete(path);}catch{failures.push('files');if(poisoned)break;}}if(failures.length)throw fail('cleanup files');}
  async function reset(value:AppsIdentity):Promise<AppsManifest>{
   assertAvailable();const id=identity(value);operation='reset';boundary='none';busy=true;active=undefined;
@@ -236,7 +237,7 @@ export async function createAppsControl(options:AppsControlOptions,dependencies?
     await q(client,"INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order) VALUES($1,$2,$3,'apps',$4)",[collectionId,rid,personas.ownerA.accountId,id.caseId===APPS_CASES[3]?i%8:0]);
     result.recommendations.push({id:rid,entityId:eid,collectionId,title:r.title,developer:a.developer!});result.memberships.push({recommendationId:rid,collectionId});
    }
-   for(const m of plan.media){const mid=uuid.parse(d.uuid()),accountId=personas[m.owner].accountId,key=`local/${accountId}/${mid}`,hash=createHash('sha256').update(m.bytes).digest();storageKey(key,accountId,mid);keys.add(key);freshKeys.push(key);phase='seed-put';await finite(d.storage.put(key,m.bytes),'storage',5000);phase='seed-get';const actual=await finite(d.storage.get(key),'storage',5000);if(actual.length!==m.bytes.length||!createHash('sha256').update(actual).digest().equals(hash))throw fail('storage');
+   for(const m of plan.media){const mid=uuid.parse(d.uuid()),accountId=personas[m.owner].accountId,key=`local/${accountId}/${mid}`,hash=createHash('sha256').update(m.bytes).digest();storageKey(key,accountId,mid);keys.add(key);freshKeys.push(key);phase='seed-put';await finite(d.storage.put(key,m.bytes),'storage',APPS_STORAGE_BUDGET_MS);phase='seed-get';const actual=await finite(d.storage.get(key),'storage',APPS_STORAGE_BUDGET_MS);if(actual.length!==m.bytes.length||!createHash('sha256').update(actual).digest().equals(hash))throw fail('storage');
     await q(client,"INSERT INTO media_assets(id,account_id,purpose,status,mime_type,byte_size,content_sha256,ready_at) VALUES($1,$2,'recommendation','ready','image/png',$3,$4,now())",[mid,accountId,m.bytes.length,hash]);
     await q(client,"INSERT INTO media_objects(media_id,variant,storage_environment,object_key,mime_type,byte_size,content_sha256) VALUES($1,'original','local',$2,'image/png',$3,$4)",[mid,key,m.bytes.length,hash]);
     for(const ri of m.recommendationIndexes)await q(client,'INSERT INTO recommendation_app_screenshots(recommendation_id,account_id,slot_index,media_id) VALUES($1,$2,0,$3)',[result.recommendations[ri].id,accountId,mid]);
