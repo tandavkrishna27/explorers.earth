@@ -22,7 +22,7 @@ type SupervisorInput = Readonly<{
  runId: string; commit: string; acquisition: Acquisition; inventory: readonly Identity[];
  configure: Readonly<{ nodeExecutable: string; loaderPath: string; fixtureEntrypoint: string; workerEntrypoint: string; cwd: string; environment: Readonly<Record<string, string>>; receiptArguments: readonly string[] }>;
  powershellExecutable: string; jobScript: string; disposableDirectory: string; storageDirectory: string;
- origin: string; apiOrigin: string; harnessPort: number; apiPort: number; controlPort: number;
+ origin: string; apiOrigin: string; harnessPort: number; apiPort: number; controlPort: number; frontendPort: number;
  personas: Readonly<Record<'ownerA' | 'ownerB' | 'ownerC', { userId: string; handle: string }>>;
  databasePassword: string; authSecret: string; custody: readonly FileIdentity[];
 }>;
@@ -50,6 +50,14 @@ function exact(value: unknown, keys: readonly string[]): asserts value is Record
  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).sort().join(',') !== [...keys].sort().join(',')) throw new Failure('service-children');
 }
 function integer(value: unknown, min: number, max: number): asserts value is number { if (!Number.isSafeInteger(value) || (value as number) < min || (value as number) > max) throw new Failure('service-children'); }
+function loopbackPort(value: unknown): number {
+ if (typeof value !== 'string') throw new Failure('service-children');
+ const match = /^http:\/\/127\.0\.0\.1:([1-9][0-9]{0,4})$/.exec(value);
+ if (!match) throw new Failure('service-children');
+ const port = Number(match[1]); integer(port, 1024, 65535);
+ if (value !== `http://127.0.0.1:${port}`) throw new Failure('service-children');
+ return port;
+}
 function hex(value: unknown, length: number): asserts value is string { if (typeof value !== 'string' || !new RegExp(`^[a-f0-9]{${length}}$`).test(value)) throw new Failure('service-children'); }
 function sameIdentity(a: unknown, b: Identity): void { exact(a, ['caseId', 'project', 'repeat']); if (a.caseId !== b.caseId || a.project !== b.project || a.repeat !== 0) throw new Failure('control'); }
 // Validate duplicate keys at every depth before JSON.parse can discard them.
@@ -211,7 +219,13 @@ export function createGuidesParentSupervisor(input: SupervisorInput, dependencie
  for (const item of input.custody.filter(item => item.kind === 'ancestor')) if (!Object.values(targets).some(target => target.startsWith(item.path.endsWith('\\') ? item.path : item.path + '\\'))) throw new Failure('private-directory');
  for (const file of [input.powershellExecutable, input.jobScript, input.configure.nodeExecutable, input.configure.loaderPath, input.configure.fixtureEntrypoint, input.configure.workerEntrypoint, input.configure.cwd]) if (typeof file !== 'string' || !path.win32.isAbsolute(file) || file.length > 4096 || /[\x00-\x1f]/.test(file)) throw new Failure('receipt');
  for (const secret of [input.authSecret, input.databasePassword]) if (typeof secret !== 'string' || secret.length < 1 || secret.length > 256 || /[\x00-\x1f]/.test(secret)) throw new Failure('receipt');
- for (const port of [input.harnessPort, input.apiPort, input.controlPort]) integer(port, 1024, 65535);
+ for (const port of [input.harnessPort, input.apiPort, input.controlPort, input.frontendPort]) integer(port, 1024, 65535);
+ const gatewayPort = loopbackPort(input.origin); loopbackPort(input.apiOrigin);
+ if (input.apiOrigin !== `http://127.0.0.1:${input.apiPort}`) throw new Failure('service-children');
+ const intendedPgPort = input.acquisition.intent.port; integer(intendedPgPort, 56000, 60999);
+ const servicePorts = [gatewayPort, input.frontendPort, input.harnessPort, input.apiPort, input.controlPort];
+ const validatePgPort = (port: number) => { integer(port, 56000, 60999); if (port !== intendedPgPort || new Set([...servicePorts, port]).size !== 6) throw new Failure('owned-database'); };
+ validatePgPort(intendedPgPort);
  if (dependencies && ['clock', 'randomHex', 'listen', 'launch', 'witness', 'drop', 'disposeCustody'].some(key => !(key in dependencies))) throw new Failure('receipt');
  const d = dependencies ?? production(input); const failures = new Set<Label>(); let first: Label | undefined; let channelFailure: Failure | undefined; let disposed = false; let runPromise: Promise<SupervisorEvidence> | undefined, disposalPromise: Promise<DisposalEvidence> | undefined;
  let laneDeadline = 0, recoveryDeadline = 0, databaseOid: number | undefined; let launcher: Launcher | undefined, channel: Channel | undefined, listener: Listener | undefined, authority: OwnedUatDatabaseAuthority | undefined;
@@ -275,14 +289,14 @@ export function createGuidesParentSupervisor(input: SupervisorInput, dependencie
     const cwd = lstatSync(input.configure.cwd);
     if (!cwd.isDirectory() || cwd.isSymbolicLink() || realpathSync(input.configure.cwd) !== input.configure.cwd) throw new Failure('receipt');
    }
-   authority = await bounded(d.clock, Math.min(laneDeadline, d.clock.now() + 60000), () => input.acquisition.create(), 'owned-database'); check();
+   authority = await bounded(d.clock, Math.min(laneDeadline, d.clock.now() + 60000), () => input.acquisition.create(), 'owned-database'); check(); validatePgPort(authority.port);
    const pipe = `\\\\.\\pipe\\explorers-guides-${input.runId}-${id()}`;
    listener = await bounded(d.clock, Math.min(laneDeadline, d.clock.now() + 10000), () => d.listen(pipe), 'service-children'); check();
    launcher = d.launch(input.powershellExecutable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', input.jobScript], input.configure.cwd); channel = new Channel(launcher.stream, d.clock, id, 65536); channel.activate(laneDeadline, error => { if (!first && error instanceof Failure) { channelFailure = error; fail(error.label); } abort('failure'); });
    const configured = await request('configure', { ...input.configure }, 'configured', 10000); exact(configured.payload, []);
    const fixtureToken = d.randomHex(32); hex(fixtureToken, 64); const launched = await request('launch-fixture', { pipe, token: fixtureToken }, 'launched', 10000); exact(launched.payload, ['slot']); if (launched.payload.slot !== 'fixture') throw new Failure('service-children');
    fixture = await authenticate('fixture', 0, fixtureToken, Math.min(laneDeadline, d.clock.now() + 60000));
-   const fixtureReady = await initialize(fixture, { runId: input.runId, commit: input.commit, authority, disposableDirectory: input.disposableDirectory, storageDirectory: input.storageDirectory, origin: input.origin, apiOrigin: input.apiOrigin, harnessPort: input.harnessPort, personas: input.personas, harnessCapability: d.randomHex(32) }, Math.min(laneDeadline, d.clock.now() + 60000)); exact(fixtureReady.payload, ['harnessOrigin']); if (fixtureReady.payload.harnessOrigin !== `http://127.0.0.1:${input.harnessPort}`) throw new Failure('vite');
+   const fixtureReady = await initialize(fixture, { runId: input.runId, commit: input.commit, authority, disposableDirectory: input.disposableDirectory, storageDirectory: input.storageDirectory, origin: input.origin, apiOrigin: input.apiOrigin, harnessPort: input.harnessPort, frontendPort: input.frontendPort, personas: input.personas, harnessCapability: d.randomHex(32) }, Math.min(laneDeadline, d.clock.now() + 60000)); exact(fixtureReady.payload, ['harnessOrigin']); if (fixtureReady.payload.harnessOrigin !== `http://127.0.0.1:${input.harnessPort}`) throw new Failure('vite');
    const completed = new Set<string>(); let epoch = 0, active: Identity | undefined, observed = false;
    while (true) { check(); const command = await fixture.receive(laneDeadline); check();
     if (command.type === 'start-worker') { exact(command.payload, ['epoch', 'identity']); if (worker || active || epoch === 16 || command.payload.epoch !== epoch + 1) throw new Failure('control'); const identity = input.inventory.find(item => { const value = command.payload.identity as Identity; return value?.caseId === item.caseId && value?.project === item.project && value?.repeat === 0; }); if (!identity || completed.has(JSON.stringify(identity))) throw new Failure('control'); sameIdentity(command.payload.identity, identity); const end = Math.min(laneDeadline, d.clock.now() + 630000); await witness(end); check(); epoch++; active = identity; observed = false; const token = d.randomHex(32); hex(token, 64);

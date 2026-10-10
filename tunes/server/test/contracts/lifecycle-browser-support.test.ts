@@ -118,7 +118,7 @@ describe('Guides parent job contract', () => {
             inventory: GUIDES_CASES.flatMap(caseId => GUIDES_PROJECTS.map(project => ({ caseId, project, repeat: 0 as const }))),
             configure: { nodeExecutable: 'C:\\node.exe', loaderPath: 'C:\\loader.mjs', fixtureEntrypoint: 'C:\\fixture.ts', workerEntrypoint: 'C:\\worker.ts', cwd: 'C:\\repo', environment: {}, receiptArguments: [] },
             powershellExecutable: 'C:\\pwsh.exe', jobScript: 'C:\\job.ps1', disposableDirectory: 'C:\\owned', storageDirectory: 'C:\\owned\\storage',
-            origin: 'http://127.0.0.1:53001', apiOrigin: 'http://127.0.0.1:53002', harnessPort: 53003, apiPort: 53004, controlPort: 53005,
+            origin: 'http://127.0.0.1:53001', apiOrigin: 'http://127.0.0.1:53004', harnessPort: 53003, apiPort: 53004, controlPort: 53005, frontendPort: 53006,
             personas: { ownerA: { userId: 'A', handle: 'a' }, ownerB: { userId: 'B', handle: 'b' }, ownerC: { userId: 'C', handle: 'c' } }, databasePassword: 'private', authSecret: 'private', custody: [{kind: 'ancestor' as const, path: 'C:\\', dev: '1', ino: '1'}, {kind: 'root' as const, path: 'C:\\owned', dev: '1', ino: '2'}, {kind: 'storage' as const, path: 'C:\\owned\\storage', dev: '1', ino: '3'}, {kind: 'secret' as const, path: 'C:\\private-secret', dev: '1', ino: '4'}] };
     }
     function adapters(events: string[]) {
@@ -128,7 +128,7 @@ describe('Guides parent job contract', () => {
     }
     it('retains intent without effects, disposes once before run and refuses acquisition afterward', async () => {
         const { createGuidesParentSupervisor } = await import('../../../scripts/guides-parent-supervision');
-        const events: string[] = []; const acquisition = { intent: { runId: 'a'.repeat(32), commit: 'b'.repeat(40), database: 'owned', port: 53000, passwordFile: 'C:\\private-secret' }, create: async () => { events.push('create'); throw new Error('refused'); }, dispose: async () => { events.push('dispose'); } };
+        const events: string[] = []; const acquisition = { intent: { runId: 'a'.repeat(32), commit: 'b'.repeat(40), database: 'owned', port: 57001, passwordFile: 'C:\\private-secret' }, create: async () => { events.push('create'); throw new Error('refused'); }, dispose: async () => { events.push('dispose'); } };
         const supervisor = createGuidesParentSupervisor(rootInput(acquisition), adapters(events));
         expect(events).toEqual([]); const first = supervisor.dispose(); expect(supervisor.dispose()).toBe(first);
         expect(await first).toEqual({ disposed: true, failures: [] });
@@ -137,14 +137,14 @@ describe('Guides parent job contract', () => {
     it('returns the same run promise, latches abort during acquisition and admits no launcher afterward', async () => {
         const { createGuidesParentSupervisor } = await import('../../../scripts/guides-parent-supervision');
         const events: string[] = []; let resolve!: (value: any) => void; const pending = new Promise<any>(r => { resolve = r; });
-        const acquisition = { intent: { runId: 'a'.repeat(32), commit: 'b'.repeat(40), database: 'owned', port: 53000, passwordFile: 'C:\\private-secret' }, create: () => { events.push('create'); return pending; }, dispose: async () => { events.push('dispose'); } };
+        const acquisition = { intent: { runId: 'a'.repeat(32), commit: 'b'.repeat(40), database: 'owned', port: 57001, passwordFile: 'C:\\private-secret' }, create: () => { events.push('create'); return pending; }, dispose: async () => { events.push('dispose'); } };
         const supervisor = createGuidesParentSupervisor(rootInput(acquisition), adapters(events)); const running = supervisor.run(); expect(supervisor.run()).toBe(running);
-        supervisor.abort('interrupt'); resolve({ runId: 'a'.repeat(32), commit: 'b'.repeat(40), database: 'owned', port: 53000, passwordFile: 'C:\\private-secret', owned: true, containerId: 'd'.repeat(64), imageId: 'sha256:' + 'e'.repeat(64), contextHost: 'npipe://owned' });
+        supervisor.abort('interrupt'); resolve({ runId: 'a'.repeat(32), commit: 'b'.repeat(40), database: 'owned', port: 57001, passwordFile: 'C:\\private-secret', owned: true, containerId: 'd'.repeat(64), imageId: 'sha256:' + 'e'.repeat(64), contextHost: 'npipe://owned' });
         await expect(running).rejects.toThrow(); const result = await supervisor.dispose(); expect(result.disposed).toBe(false); expect(result.failures).toContain('service-children'); expect(events).not.toContain('listen'); expect(events).not.toContain('launch');
     });
     it('refuses invented identities and custody outside the retained disposable root before effects', async () => {
         const { createGuidesParentSupervisor } = await import('../../../scripts/guides-parent-supervision');
-        const events: string[] = []; const acquisition = { intent: { runId: 'a'.repeat(32), commit: 'b'.repeat(40), database: 'owned', port: 53000, passwordFile: 'C:\\private-secret' }, create: async () => { throw new Error('refused'); }, dispose: async () => {} };
+        const events: string[] = []; const acquisition = { intent: { runId: 'a'.repeat(32), commit: 'b'.repeat(40), database: 'owned', port: 57001, passwordFile: 'C:\\private-secret' }, create: async () => { throw new Error('refused'); }, dispose: async () => {} };
         const input = rootInput(acquisition);
         expect(() => createGuidesParentSupervisor({ ...input, inventory: input.inventory.map((item, i) => i ? item : { ...item, caseId: 'invented' }) }, adapters(events))).toThrow();
         expect(() => createGuidesParentSupervisor({ ...input, custody: [{ kind: 'root' as const, path: 'C:\\', dev: '1', ino: '2' }] }, adapters(events))).toThrow();
@@ -237,17 +237,19 @@ function guidesScripted(options: Record<string, any> = {}) {
     let timerId = 0, random = 0, now = 0, fixture: ReturnType<typeof stream>, held: ScriptFrame | undefined;
     const connections: ReturnType<typeof stream>[] = [], connectionWaiters: ((value: ReturnType<typeof stream>) => void)[] = [];
     const workers = new Map<number, ReturnType<typeof stream>>();
-    const authority = { runId: GUIDES_TEST_RUN, commit: GUIDES_TEST_COMMIT, database: 'owned', port: 53000, owned: true as const, containerId: 'd'.repeat(64), imageId: 'sha256:' + 'e'.repeat(64), contextHost: 'npipe://owned' };
+    const authority = { runId: GUIDES_TEST_RUN, commit: GUIDES_TEST_COMMIT, database: 'owned', port: 57001, owned: true as const, containerId: 'd'.repeat(64), imageId: 'sha256:' + 'e'.repeat(64), contextHost: 'npipe://owned' };
+    const createdAuthority = options.returnedPort === undefined ? authority : {...authority,port:options.returnedPort as number};
+    const witnesses: number[] = [];
     const identities = GUIDES_CASES.flatMap(caseId => GUIDES_PROJECTS.map(project => ({caseId, project, repeat: 0 as const})));
     const personas = {ownerA: {userId: 'auth|owner-a', handle: 'guide-owner-a'}, ownerB: {userId: 'auth|owner-b', handle: 'guide-owner-b'}, ownerC: {userId: 'auth|owner-c', handle: 'guide-owner-c'}};
     const acquisition = {
-        intent: Object.freeze({runId: GUIDES_TEST_RUN, commit: GUIDES_TEST_COMMIT, database: 'owned', port: 53000, passwordFile: 'C:\\private-secret'}),
-        create: async () => { events.push('create'); if (options.uncertain) throw Error('uncertain creation'); return authority; },
-        dispose: async (drop: (value: typeof authority) => Promise<void>) => { events.push('database-dispose'); if (options.uncertain) throw Error('uncertain retained'); await drop(authority); },
+        intent: Object.freeze({runId: GUIDES_TEST_RUN, commit: GUIDES_TEST_COMMIT, database: 'owned', port: 57001 as number, passwordFile: 'C:\\private-secret'}),
+        create: async () => { events.push('create'); if (options.uncertain) throw Error('uncertain creation'); return createdAuthority; },
+        dispose: async (drop: (value: typeof authority) => Promise<void>) => { events.push('database-dispose'); if (options.uncertain) throw Error('uncertain retained'); await drop(createdAuthority); },
     };
     const input = {runId: GUIDES_TEST_RUN, commit: GUIDES_TEST_COMMIT, acquisition, inventory: identities,
         configure: {nodeExecutable: 'C:\\node.exe', loaderPath: 'C:\\loader.mjs', fixtureEntrypoint: 'C:\\fixture.ts', workerEntrypoint: 'C:\\worker.ts', cwd: 'C:\\repo', environment: {}, receiptArguments: []},
-        powershellExecutable: 'C:\\pwsh.exe', jobScript: 'C:\\job.ps1', disposableDirectory: 'C:\\owned', storageDirectory: 'C:\\owned\\storage', origin: 'http://127.0.0.1:53001', apiOrigin: 'http://127.0.0.1:53002', harnessPort: 53003, apiPort: 53004, controlPort: 53005,
+        powershellExecutable: 'C:\\pwsh.exe', jobScript: 'C:\\job.ps1', disposableDirectory: 'C:\\owned', storageDirectory: 'C:\\owned\\storage', origin: 'http://127.0.0.1:53001', apiOrigin: 'http://127.0.0.1:53004', harnessPort: 53003, apiPort: 53004, controlPort: 53005, frontendPort: 53006,
         personas, databasePassword: 'private', authSecret: 'private', custody: [{kind: 'ancestor' as const,path:'C:\\',dev:'1',ino:'1'},{kind:'root' as const,path:'C:\\owned',dev:'1',ino:'2'},{kind:'storage' as const,path:'C:\\owned\\storage',dev:'1',ino:'3'},{kind:'secret' as const,path:'C:\\private-secret',dev:'1',ino:'4'}],
     };
     function wire(value: unknown) { const body = Buffer.from(typeof value === 'string' ? value : JSON.stringify(value)); const header = Buffer.alloc(4); header.writeUInt32BE(body.length); return Buffer.concat([header,body]); }
@@ -331,14 +333,58 @@ function guidesScripted(options: Record<string, any> = {}) {
         randomHex:(bytes:number)=>(++random).toString(16).padStart(bytes*2,'0'),
         async listen(_pipe:string){events.push('listen');return {async next(){if(connections.length)return connections.shift()!;return new Promise<ReturnType<typeof stream>>(resolve=>connectionWaiters.push(resolve));},async close(){events.push('listener-close');}};},
         launch(){events.push('launcher');return {stream:launcher,async exited(){events.push('actual-exit');return {code:options.badActualExit?1:0,closed:!options.lostClose};}};},
-        async witness(){events.push('pg-witness');if(options.pgError)throw Error('query failed');return {...{maintenanceDatabase:'postgres' as const,databaseOid:42,privileged:true as const,maxPreparedTransactions:0 as const,preparedTransactions:0 as const,clientSessions:0 as const,fresh:true as const},...(options.witnessAfterExit && events.some(event=>event.startsWith('worker-exit:')) ? {clientSessions:1} : options.witness)};},
+        async witness(value: typeof authority){witnesses.push(value.port);events.push('pg-witness');if(options.pgError)throw Error('query failed');return {...{maintenanceDatabase:'postgres' as const,databaseOid:42,privileged:true as const,maxPreparedTransactions:0 as const,preparedTransactions:0 as const,clientSessions:0 as const,fresh:true as const},...(options.witnessAfterExit && events.some(event=>event.startsWith('worker-exit:')) ? {clientSessions:1} : options.witness)};},
         async drop(){events.push('drop');},async disposeCustody(){events.push('storage-remove','root-remove','secret-remove');if(options.custodyFailure)throw Error('custody mismatch');},
     };
-    return {input,dependencies,events,frames,timers,setNow(value:number){now=value;},held:()=>held,expire(ms:number){const selected=[...timers.values()].filter(timer=>timer.ms<=ms);selected.forEach(timer=>timer.callback());}};
+    return {input,dependencies,events,frames,timers,witnesses,setNow(value:number){now=value;},held:()=>held,expire(ms:number){const selected=[...timers.values()].filter(timer=>timer.ms<=ms);selected.forEach(timer=>timer.callback());}};
 }
 
 describe('Guides scripted parent behavior',()=>{
     const load=()=>import('../../../scripts/guides-parent-supervision');
+    it.each(['missing frontend','frontend zero','PG outside range','API mismatch','nonloopback origin'])('refuses port ABI %s before effects',async fault=>{
+        const {createGuidesParentSupervisor}=await load(),fake=guidesScripted();
+        if(fault==='missing frontend')delete (fake.input as any).frontendPort;
+        if(fault==='frontend zero')fake.input.frontendPort=0;
+        if(fault==='PG outside range')fake.input.acquisition.intent={...fake.input.acquisition.intent,port:53000};
+        if(fault==='API mismatch')fake.input.apiOrigin='http://127.0.0.1:53002';
+        if(fault==='nonloopback origin')fake.input.origin='http://localhost:53001';
+        expect(()=>createGuidesParentSupervisor(fake.input,fake.dependencies)).toThrow();expect(fake.events).toEqual([]);
+    });
+    const portSlots=['gateway','frontend','harness','api','control','PG'] as const;
+    const duplicatePairs=portSlots.flatMap((left,index)=>portSlots.slice(index+1).map(right=>({left,right})));
+    it.each(duplicatePairs)('refuses port ABI duplicate $left/$right before acquisition',async ({left,right})=>{
+        const {createGuidesParentSupervisor}=await load(),fake=guidesScripted();
+        const values={gateway:57002,frontend:57003,harness:57004,api:57005,control:57006,PG:57001};values[right]=values[left];
+        Object.assign(fake.input,{origin:`http://127.0.0.1:${values.gateway}`,apiOrigin:`http://127.0.0.1:${values.api}`,frontendPort:values.frontend,harnessPort:values.harness,apiPort:values.api,controlPort:values.control});
+        fake.input.acquisition.intent={...fake.input.acquisition.intent,port:values.PG};
+        expect(()=>createGuidesParentSupervisor(fake.input,fake.dependencies)).toThrow();expect(fake.events).toEqual([]);
+    });
+    const malformedOrigins=['http://localhost:53001','http://[::1]:53001','https://127.0.0.1:53001','http://127.0.0.1:53001/','http://127.0.0.1:53001/api','http://127.0.0.1:53001?x=1','http://127.0.0.1:53001#x','http://user@127.0.0.1:53001','http://127.0.0.1','http://127.0.0.1:80','http://127.0.0.1:053001',' http://127.0.0.1:53001','http://127.0.0.1:53001\n','http://127.0.0.1:1023','http://127.0.0.1:65536','not a URL'];
+    it.each(malformedOrigins.flatMap(value=>['origin','apiOrigin'].map(field=>({value,field}))))('refuses port ABI malformed $field $value',async ({value,field})=>{
+        const {createGuidesParentSupervisor}=await load(),fake=guidesScripted();(fake.input as any)[field]=value;
+        expect(()=>createGuidesParentSupervisor(fake.input,fake.dependencies)).toThrow();expect(fake.events).toEqual([]);
+    });
+    it.each([1023,65536,1.5,NaN,Infinity,'53006'].flatMap(value=>['frontendPort','harnessPort','apiPort','controlPort'].map(field=>({value,field}))))('refuses port ABI invalid $field $value',async ({value,field})=>{
+        const {createGuidesParentSupervisor}=await load(),fake=guidesScripted();(fake.input as any)[field]=value;
+        expect(()=>createGuidesParentSupervisor(fake.input,fake.dependencies)).toThrow();expect(fake.events).toEqual([]);
+    });
+    it.each([55999,61000,57001.5,NaN,Infinity])('refuses port ABI invalid PG intent %s',async port=>{
+        const {createGuidesParentSupervisor}=await load(),fake=guidesScripted();fake.input.acquisition.intent={...fake.input.acquisition.intent,port};
+        expect(()=>createGuidesParentSupervisor(fake.input,fake.dependencies)).toThrow();expect(fake.events).toEqual([]);
+    });
+    it.each([57002,53001,53006])('retains port ABI returned authority %s but refuses listener and launcher',async returnedPort=>{
+        const {createGuidesParentSupervisor}=await load(),fake=guidesScripted({returnedPort}),supervisor=createGuidesParentSupervisor(fake.input,fake.dependencies);
+        await expect(supervisor.run()).rejects.toThrow();expect(fake.events).toEqual(['create']);
+        await supervisor.dispose();expect(fake.witnesses).toEqual([returnedPort]);expect(fake.events).toContain('database-dispose');expect(fake.events).not.toContain('listen');expect(fake.events).not.toContain('launcher');
+    });
+    it('sends port ABI frontend only to fixture and preserves exact worker init',async()=>{
+        const {createGuidesParentSupervisor}=await load(),fake=guidesScripted();await createGuidesParentSupervisor(fake.input,fake.dependencies).run();
+        const fixtureInit=fake.frames.find(frame=>frame.type==='init'&&!('epoch'in frame.payload))!.payload;
+        expect(Object.keys(fixtureInit).sort()).toEqual(['runId','commit','authority','disposableDirectory','storageDirectory','origin','apiOrigin','harnessPort','frontendPort','personas','harnessCapability','remainingLaneMs'].sort());
+        expect(fixtureInit).toMatchObject({frontendPort:53006,apiOrigin:'http://127.0.0.1:53004',origin:'http://127.0.0.1:53001'});
+        const workers=fake.frames.filter(frame=>frame.type==='init'&&'epoch'in frame.payload);expect(workers).toHaveLength(16);
+        for(const frame of workers)expect(Object.keys(frame.payload).sort()).toEqual(['runId','commit','epoch','identity','authority','disposableDirectory','storageDirectory','origin','personas','databasePassword','authSecret','apiPort','controlPort','initializeDatabase','remainingLaneMs'].sort());
+    });
     it.each([{workerEof:true},{completeEof:true}])('accepts planned clean transport EOF only with positive terminal gates %j',async options=>{
         const {createGuidesParentSupervisor}=await load(),fake=guidesScripted(options);
         expect((await createGuidesParentSupervisor(fake.input,fake.dependencies).run()).completedEpochs).toBe(16);
@@ -478,7 +524,7 @@ describe('Guides R1 review regressions', () => {
             supervisor=createGuidesParentSupervisor(fake.input);
             await expect(supervisor.run()).rejects.toThrow();await supervisor.dispose();
             expect(configurations).toHaveLength(1);
-            expect(configurations[0]).toMatchObject({user:'music_migrator',database:'postgres',host:'127.0.0.1',port:53000,password:'private',connectionTimeoutMillis:3000,statement_timeout:3000});
+            expect(configurations[0]).toMatchObject({user:'music_migrator',database:'postgres',host:'127.0.0.1',port:57001,password:'private',connectionTimeoutMillis:3000,statement_timeout:3000});
             expect(effects).toEqual(['guarded-connect','guarded-end']);expect(fake.events).not.toContain('launcher');
         } finally {vi.doUnmock('node:fs');vi.doUnmock('pg');vi.resetModules();}
     },1000);
