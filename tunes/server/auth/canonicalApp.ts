@@ -1,3 +1,4 @@
+import {createCanonicalHandlerCustody} from './canonicalHandlerCustody';
 import {MovieMediaImportService} from '../application/movieMediaImport';
 import {MovieImageFetcher} from '../services/movieImageFetch';
 import {MovieCatalog} from '../services/movieCatalog';
@@ -42,15 +43,19 @@ function errorResponse(res: Response, status: number, code: ApiError["error"]["c
   res.status(status).json({ error: { code, message, requestId: randomUUID() } } satisfies ApiError);
 }
 
-export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
+function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   options: { mediaStorage?: ObjectStorage; bookCatalog?:BookCatalog; bookCoverFetcher?:BookCoverFetcher;movieCatalog?:MovieCatalog;movieImageFetcher?:MovieImageFetcher;
     /** ADR-008. Present whenever this app is the Music credential issuer. */
-    musicToken?: MusicTokenConfiguration } = {}): { app: Express; auth: ReturnType<typeof createExplorersAuth> } {
-  const app = express();
+    musicToken?: MusicTokenConfiguration } = {}, custodyMode=false) {
+  const actualApp = express(), instrument=custodyMode?createCanonicalHandlerCustody(actualApp):undefined;
+  const app = instrument?.registration ?? actualApp;
   const auth = createExplorersAuth(pool, config);
 
   // Better Auth must consume the original request stream before Express body parsers.
   const authHandler = toNodeHandler(auth);
+  // Installed better-call setResponse starts a detached response pump. Its
+  // returned promise alone cannot authorize physical auth stream teardown.
+  instrument?.markUncovered(authHandler);
   app.use("/api/auth", (request, response, next) => {
     if (!["GET", "HEAD", "OPTIONS"].includes(request.method)
         && request.get("origin") !== config.baseURL) {
@@ -87,9 +92,9 @@ export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   setupCanonicalAnalyticsRoutes(app,pool,auth);
   const books=options.bookCatalog??new BookCatalog({apiKey:process.env.GOOGLE_BOOKS_API_KEY,secret:config.secret});
   const movies=options.movieCatalog??new MovieCatalog({accessToken:process.env.TMDB_ACCESS_TOKEN,apiKey:process.env.TMDB_API_KEY,authorize:a=>authorizeOperation(pool,a,'entities:resolve',a.accountId)});
-  setupExplorersRecommendationRoutes(app, pool, auth, config,books,new BookCoverImportService(pool,new MediaService(pool,options.mediaStorage),options.bookCoverFetcher),movies,new MovieMediaImportService(pool,new MediaService(pool,options.mediaStorage),options.movieImageFetcher));
+  setupExplorersRecommendationRoutes(app, pool, auth, config,books,new BookCoverImportService(pool,new MediaService(pool,options.mediaStorage),options.bookCoverFetcher),movies,new MovieMediaImportService(pool,new MediaService(pool,options.mediaStorage),options.movieImageFetcher),instrument?.routerFactory);
   setupExplorersCatalogRoutes(app,pool,auth,config,books,movies);
-  setupExplorersPublicContentRoutes(app, pool, config.secret);
+  setupExplorersPublicContentRoutes(app, pool, config.secret,instrument?.routerFactory);
   setupExplorersLifecycleRoutes(app, pool, auth, config);
   setupExplorersMediaRoutes(app, pool, auth, config, new MediaService(pool, options.mediaStorage));
   // Privacy changes must be visible on the very next public request, including across app replicas.
@@ -146,5 +151,9 @@ export function createCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
     }
   });
 
-  return { app, auth };
+  instrument?.completeRegistration();
+  return {composed:{app:actualApp,auth},custody:instrument?.custody};
 }
+
+export function createCanonicalApp(pool:Pool,config:ExplorersAuthConfig,options:Parameters<typeof constructCanonicalApp>[2]={}) {return constructCanonicalApp(pool,config,options).composed;} 
+export function createCanonicalAppWithCustody(pool:Pool,config:ExplorersAuthConfig,options:Parameters<typeof constructCanonicalApp>[2]={}) {const result=constructCanonicalApp(pool,config,options,true);return {composed:result.composed,custody:result.custody!};}

@@ -20,11 +20,11 @@ import type { RequestContext } from '../../shared/explorersContract';
 import {SearchFailure} from '../application/searchQuery';
 import {BookProviderFailure,BookCatalog} from '../services/bookCatalog';
 
-export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:ExplorersAuth,config:ExplorersAuthConfig,books?:BookCatalog,coverImporter=new BookCoverImportService(pool,new MediaService(pool)),movies?:MovieCatalog,movieImporter=new MovieMediaImportService(pool,new MediaService(pool))) {
+export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:ExplorersAuth,config:ExplorersAuthConfig,books?:BookCatalog,coverImporter=new BookCoverImportService(pool,new MediaService(pool)),movies?:MovieCatalog,movieImporter=new MovieMediaImportService(pool,new MediaService(pool)),routerFactory:typeof Router=Router) {
   const service=new RecommendationService(pool),catalog=new CatalogService(pool,books,movies);
   const ownerContent=new OwnerContentService(pool,config.secret);
   const guides=new GuideService(pool);
-  const routes=Router({caseSensitive:true,strict:true});
+  const routes=routerFactory({caseSensitive:true,strict:true});
   const unsupported=(_request:Request,response:Response)=>response.set('Cache-Control','no-store').status(405).json({error:{code:'INVALID_INPUT',message:'Method is not supported',requestId:randomUUID()}});
   const mutation=(work:(actor:Actor,id:string,body:unknown,context:RequestContext)=>Promise<unknown>,name:string,status=200)=>async(request:Request,response:Response)=>{
     response.set('Cache-Control','no-store');

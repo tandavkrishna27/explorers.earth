@@ -4,8 +4,8 @@ import type { Pool } from 'pg';
 import { PublicContentFailure, PublicContentService } from '../application/publicContent';
 import {SearchFailure} from '../application/searchQuery';
 import {readUnsubscribeToken,suppressEmail} from '../application/emailSuppression';
-export function setupExplorersPublicContentRoutes(app:Express,pool:Pool,secret:string):void {
-  const router=Router({caseSensitive:true,strict:true}),service=new PublicContentService(pool,secret);
+export function setupExplorersPublicContentRoutes(app:Express,pool:Pool,secret:string,routerFactory:typeof Router=Router):void {
+  const router=routerFactory({caseSensitive:true,strict:true}),service=new PublicContentService(pool,secret);
   router.use('/api/explorers/v1/public/recommendations',(_req,res,next)=>{res.setHeader('Cache-Control','no-store');next();},rateLimit({windowMs:60_000,limit:120,standardHeaders:'draft-7',legacyHeaders:false}));
   router.get('/api/explorers/v1/public/recommendations/search',async(req,res)=>{
    try{
