@@ -22,9 +22,17 @@ function deferred<T>() { let resolve!: (value: T) => void; const promise = new P
 const fill = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
 describe('native manual Apps', () => {
+ it('gives rating an exact label independent of option text and preserves its selected value', async () => {
+  mount(); const rating=screen.getByRole('combobox', {name:'Your rating'});
+  expect(rating.getAttribute('aria-label')).toBe('Your rating');
+  fireEvent.change(rating,{target:{value:'8'}});
+  fill('App title','Rated app');fill('App URL','https://example.com/rated');
+  fireEvent.click(screen.getByRole('button',{name:'Save app'}));await screen.findByText('Saved list');
+  expect(vi.mocked(AppsClient.prepareManualIntent).mock.calls[0][1].userRating).toBe(8);
+ });
  beforeEach(() => {
   vi.clearAllMocks(); fixture.loading = false; fixture.error = undefined; fixture.content.view.lists = []; fixture.content.details.clear();
-  useAuthStore.getState().login({ id: 'u1', documentId: 'u1', username: 'owner', token: 'fixture' }); useAuthStore.setState({ accountId: 'a1' });
+  useAuthStore.getState().login({ id: 'u1', documentId: 'u1', username: 'owner', email: 'owner@example.test', blocked: false, token: 'fixture' }); useAuthStore.setState({ accountId: 'a1' });
   vi.mocked(AppsClient.observeCollection).mockResolvedValue({ detail: { id: 'list-1' } } as never);
   vi.mocked(AppsClient.prepareManualIntent).mockImplementation((parent, draft) => ({ parent, draft, entityKey: 'entity-key', recommendationKey: 'recommendation-key' }) as never);
   vi.mocked(AppsClient.createManual).mockResolvedValue({ id: 'app-1' } as never);
@@ -133,7 +141,7 @@ describe('manual Apps edit', () => {
   fixture.content.details.set('app-a', { detail: { id: 'app-a', revision: 1, category: 'apps', appScreenshots: { screenshotMediaIds: ['media-7'] } } });
   fixture.content = { ...fixture.content }; fixture.loading = false; fixture.error = undefined;
  }
- beforeEach(() => { vi.clearAllMocks(); fixture.content = { view: { lists: [] }, details: new Map(), observation: {} }; fixture.loading = false; fixture.error = undefined; useAuthStore.getState().login({ id: 'u1', documentId: 'u1', username: 'owner', token: 'fixture' }); useAuthStore.setState({ accountId: 'a1' }); });
+ beforeEach(() => { vi.clearAllMocks(); fixture.content = { view: { lists: [] }, details: new Map(), observation: {} }; fixture.loading = false; fixture.error = undefined; useAuthStore.getState().login({ id: 'u1', documentId: 'u1', username: 'owner', email: 'owner@example.test', blocked: false, token: 'fixture' }); useAuthStore.setState({ accountId: 'a1' }); });
  afterEach(() => { cleanup(); useAuthStore.getState().logout(); });
 
  it('hydrates the typed fields and the saved screenshots, and locks the shared app URL', async () => {

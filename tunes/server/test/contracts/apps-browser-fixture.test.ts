@@ -4,6 +4,18 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import {existsSync,readFileSync} from 'node:fs';
 import ts from 'typescript';
 const source=path.resolve(import.meta.dirname,'../../../scripts/apps-browser-fixture.ts');
+it.each(['wrapped-close','stop'])('attempts every producer stop after browser %s failure and retains custody',async failure=>{
+ const {createAppsBrowserFixture}=await load(),f=fake();
+ f.deps.launchBrowser=async()=>({ready:Promise.resolve(),closed:failure==='wrapped-close'?Promise.reject(Error('capture')):Promise.resolve({code:0,signal:null,stdioClosed:true}),stop:async()=>{f.events.push('browser-stop');if(failure==='stop')throw Error('stop');}});
+ await expect(createAppsBrowserFixture(f.deps).run()).rejects.toThrow();expect(f.events).toContain('browser-stop');expect(f.events).toContain('vite-stop');
+ for(const event of ['requests-drain','control-close','storage-drain','artifacts-remove','drop','database-stop','root-remove','secret-clean','finish'])expect(f.events).not.toContain(event);
+});
+it('attempts remaining producer stops after held original browser stop times out without destructive cleanup',async()=>{
+ const {createAppsBrowserFixture}=await load(),f=fake();f.deps.clock.now=()=>0;
+ f.deps.launchBrowser=async()=>({ready:Promise.resolve(),closed:Promise.resolve({code:0,signal:null,stdioClosed:true}),stop:()=>{f.events.push('browser-stop');return new Promise<void>(()=>{});}});
+ const run=createAppsBrowserFixture(f.deps).run();run.catch(()=>{});for(let i=0;i<2000&&!f.events.includes('browser-stop');i++)await Promise.resolve();expect(f.events).toContain('browser-stop');f.expire();await expect(run).rejects.toThrow();expect(f.events).toContain('vite-stop');
+ for(const event of ['requests-drain','control-close','storage-drain','artifacts-remove','drop','database-stop','root-remove','secret-clean','finish'])expect(f.events).not.toContain(event);
+});
 it('actual owning module URL default root is normalized before strict canonical validation',()=>{const ast=ts.createSourceFile(source,readFileSync(source,'utf8'),ts.ScriptTarget.Latest,true),fn=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name?.text==='defaultDependencies') as ts.FunctionDeclaration;const declaration=ts.createPrinter().printNode(ts.EmitHint.Unspecified,fn.body!.statements[0],ast).replaceAll('import.meta.url',JSON.stringify(pathToFileURL(source).href));const js=ts.transpileModule(declaration+'\nreturn root;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;const root=new Function('path','fileURLToPath','tmpdir',js)(path,fileURLToPath,()=> 'fixed-temp');expect(fileURLToPath(new URL('../../',pathToFileURL(source).href))).toMatch(/[\\/]$/);expect(root).toBe(path.resolve(root));expect(readFileSync(source,'utf8')).toContain('path.resolve(target) !== target');});
 it('actual Windows secret creator uses protected helper stdin and retained parent identity',async()=>{
  const events:any[]=[];let unknown=false;

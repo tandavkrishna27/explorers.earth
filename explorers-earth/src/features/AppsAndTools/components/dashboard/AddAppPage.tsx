@@ -188,7 +188,7 @@ export default function AddAppPage() {
     </fieldset>
 
     <label className="block">Your rating
-     <select value={rating ?? ''} onChange={event => setRating(event.target.value ? Number(event.target.value) : null)} disabled={saving} className="block bg-dashboard-muted p-2">
+     <select aria-label="Your rating" value={rating ?? ''} onChange={event => setRating(event.target.value ? Number(event.target.value) : null)} disabled={saving} className="block bg-dashboard-muted p-2">
       <option value="">No rating</option>
       {Array.from({ length: 10 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}
      </select>

@@ -699,3 +699,13 @@ explicitly, suppress progress and normalize process errors to the fixed refusal;
 privacy/ownership rules remain unchanged.
 
 Containment follow-up: independent review accepted the unchanged privacy rules. Root fresh verification passed all 16 focused contracts and an explicit six-file ES2022 scoped type check with zero diagnostics. Both process output streams are piped, PowerShell progress is suppressed, and process errors become a fixed refusal without reading foreign error getters. Native Apps qualification remains pending.
+
+### Apps browser execution at 78a96006: eight failures diagnosed
+
+Clean source 78a96006c69f5e96b15101ff593500e065af25da passed startup and exact Apps discovery and executed all eight identities. The protected report records expected 0, unexpected 8, flaky 0 and skipped 0. Lifecycle failure is execution, interrupted false and sourceIntact true. No Apps qualification is claimed.
+
+Independent source/report review established three defects, repeated in desktop and mobile: exact Your rating label includes select option text (four failures); the denied-media route removes ETag before Express JSON response regenerates it (two); zero-pin Manage Top Picks is a clickable div rather than the button required by the test (two). UI semantics and actual Express response integration fixes are assigned independently; selectors will retain their intended meaning.
+
+Cleanup failed with browser/private-directory categories and retained artifacts. Playwright failure output contains error-context.md; the harness requires empty case output directories, so capture rejection prevents the later Vite stop. The original root process remained pending. An initial identity guard refused before action because an assumed root parent ID was wrong. Fresh exact held-process, owner SID, executable, parent chain, receipt and completed failure-journal guards then closed only Vite 57280, followed by Apps owner 44328 after renewed guards. Original parent session positively returned exit 1 with stage execution/category refusal. Fresh checks found all known run process IDs absent. Termination does not grant filesystem/database cleanup authority. Retained run 260554db707fba544c6c33653de9309e requires reviewed exact recovery before another native attempt.
+
+Root verification of the three diagnosed fixes: contained frontend two-suite run 16 PASS, actual Express denial and fixture lifecycle two-suite run 112 PASS. Explicit selected frontend four roots and backend four roots each have zero scoped type diagnostics. Independent lifecycle review accepted bounded all-producer stop/close attempts and unchanged destructive-cleanup refusal. Exact current fourth-run recovery is being authored; no new native qualification or hosted CI has run.

@@ -92,7 +92,10 @@ export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: Explor
       return response.status(200).end(request.method === "HEAD" ? undefined : object.bytes);
     } catch {
       response.removeHeader("ETag"); response.removeHeader("Content-Type"); response.removeHeader("Content-Length");
-      const result = failure(404, "NOT_FOUND", "Media unavailable"); return response.status(result.status).json(result.body);
+      const result = failure(404, "NOT_FOUND", "Media unavailable");
+      // End the denial directly: Express send/json would mint a new ETag after
+      // the authorized object's validator was removed.
+      return response.status(result.status).type("json").end(JSON.stringify(result.body));
     }
   };
   app.get("/api/explorers/v1/media/:id/content", content);

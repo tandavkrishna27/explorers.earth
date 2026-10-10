@@ -10,8 +10,9 @@ vi.mock("react-router-dom", async (importOriginal) => {
 });
 
 const createFn = vi.hoisted(() => vi.fn(async () => ({ id: 'app-1' })));
+const ownerFixture = vi.hoisted(() => ({ lists: [] as unknown[] }));
 vi.mock('../../../api/appsClient', () => ({ AppsClient: { createCollection: createFn } }));
-vi.mock('../../../hooks/useAppsOwner', () => ({ useAppsOwner: () => ({ data: { appLists: [] }, loading: false, refetch: vi.fn() }), invalidateApps: vi.fn() }));
+vi.mock('../../../hooks/useAppsOwner', () => ({ useAppsOwner: () => ({ data: { appLists: ownerFixture.lists }, loading: false, refetch: vi.fn() }), invalidateApps: vi.fn() }));
 import AppsHome from "../AppsHome";
 
 describe("AppsHome create-list navigation (BUG-3)", () => {
@@ -19,6 +20,16 @@ describe("AppsHome create-list navigation (BUG-3)", () => {
     loginSurface();
     navigateSpy.mockClear();
     createFn.mockClear();
+    ownerFixture.lists=[];
+  });
+
+  it('opens the zero-pin manager through a native keyboard-accessible button', async () => {
+    ownerFixture.lists=[{documentId:'list-1',List_Name:'Tools',slug:'tools',recommended_apps:[{documentId:'app-1',title:'Focus Timer',is_pinned:false,platforms:[],screenshots:[]}]}];
+    const h=surfaceHarness(<AppsHome />, {initial:{documentId:'acc-1',public_apps:'No'}});await h.ready();
+    const button=screen.getByRole('button',{name:/^Manage Top Picks \(0\/1\)/});
+    expect(button.tagName).toBe('BUTTON');expect(button.getAttribute('type')).toBe('button');
+    button.focus();await userEvent.keyboard('{Enter}');
+    expect(await screen.findByRole('heading',{name:'Manage Top Picks (0/15)'})).toBeInTheDocument();
   });
 
   it("navigates into the newly created list with justCreatedList state", async () => {

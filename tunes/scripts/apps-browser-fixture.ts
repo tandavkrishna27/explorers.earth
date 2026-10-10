@@ -438,13 +438,18 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
         try {
             if (options)
                 d.sealRequests(options);
+            let producerFailure = false;
             for (const child of [browser, discovery, vite])
                 if (child) {
-                    await bounded(() => child.stop());
-                    const result = await bounded(() => child.closed);
-                    if (result.stdioClosed !== true)
-                throw new Refusal();
+                    try { await bounded(() => child.stop()); }
+                    catch { producerFailure = true; }
+                    try {
+                        const result = await bounded(() => child.closed);
+                        if (result.stdioClosed !== true) producerFailure = true;
+                    }
+                    catch { producerFailure = true; }
                 }
+            if (producerFailure) throw new Refusal();
             if (originals.size || uncertain || error && !knownFailure && !(interrupted && setupComplete))
                 throw new Refusal();
             if (options) {
