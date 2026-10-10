@@ -2,6 +2,7 @@ import {test,expect,type Page,type BrowserContext,type APIRequestContext} from '
 import {readFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {assertFixtureOrigin} from './proxy-fixture-authority.mjs';
+import {readAppsDescriptor} from './apps-descriptor-reader.mjs';
 
 /**
  * The shared replatform lane fixture mandated by epic-04:95. Every existing lane rolled
@@ -40,7 +41,13 @@ export const lane=required('REPLATFORM_E2E_LANE');
 if(!/^[a-z][a-z0-9-]{2,30}$/.test(lane))throw Error('Invalid replatform lane name');
 
 const descriptor=((): Descriptor => {
- const value=JSON.parse(readFileSync(required('REPLATFORM_E2E_FIXTURE_PATH'),'utf8')) as Descriptor;
+ const value=(():Descriptor=>{
+  if(lane==='apps'){
+   try{return JSON.parse(readAppsDescriptor(required('REPLATFORM_E2E_FIXTURE_PATH'))) as Descriptor;}
+   catch{throw Error('APPS_DESCRIPTOR_CUSTODY_INVALID');}
+  }
+  return JSON.parse(readFileSync(required('REPLATFORM_E2E_FIXTURE_PATH'),'utf8')) as Descriptor;
+ })();
  assertFixtureOrigin(value);
  if(value.origin!==process.env.PLAYWRIGHT_EXTERNAL_BASE_URL)throw Error(`${lane} fixture origin mismatch`);
  for(const name of ['ownerA','ownerB']){
