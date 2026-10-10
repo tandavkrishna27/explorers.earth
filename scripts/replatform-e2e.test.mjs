@@ -840,6 +840,13 @@ test('Apps registration: committed runner imports participate in the actual sour
  assert.ok(snapshot.hashes['tunes/scripts/apps-browser-fixture.ts']);
  assert.ok(snapshot.hashes['tunes/scripts/apps-canonical-admission.ts']);
 });
+test('Apps startup diagnostic: exact finite line admits no arbitrary child content',async()=>{
+ const contract=await import('./replatform-e2e.mjs');
+ assert.equal(typeof contract.decodeAppsFixtureFailureLine,'function');
+ const line='Apps owned fixture failed: stage=migrate; category=refusal';
+ assert.equal(contract.decodeAppsFixtureFailureLine(line),line);
+ for(const unsafe of [line+' cookie',line+'\n',line.replace('migrate','unknown-stage'),line.replace('refusal','unknown-category'),line.replace('migrate','https://private.invalid'),'Apps owned fixture failed'])assert.equal(contract.decodeAppsFixtureFailureLine(unsafe),undefined);
+});
 test('Apps registration: source closure requires tracked Apps runtime helper and transitive private authority',()=>{
  const source=readFileSync(new URL('./replatform-e2e.mjs',import.meta.url),'utf8');assert.match(source,/const appsHelper='tunes\/scripts\/apps-browser-support\.ts'/);assert.match(source,/git\(\['ls-files','--error-unmatch',appsHelper\]\)/);assert.match(source,/reviewed=new Set\(\[.*appsHelper/);assert.match(source,/queue=\[.*appsHelper/);assert.match(source,/music-local-private-files\.ps1/);assert.doesNotMatch(source,/overlay=new Set\(\[.*apps-browser-support/);
 });test('Apps registration: actual source snapshot refuses untracked helper and ignored relative dependency with no real Git or FS',()=>{

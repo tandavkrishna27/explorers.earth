@@ -360,6 +360,13 @@ export function capturedChild(executable,args,cwd,env,capability,abortSignal){
  child.stdout.on('data',chunk=>append('out',chunk));child.stderr.on('data',chunk=>append('err',chunk));child.once('error',()=>error='Child could not start');child.once('close',(status,signal)=>{process.removeListener('SIGINT',onInterrupt);process.removeListener('SIGTERM',onTerminate);abortSignal?.removeEventListener('abort',onTerminate);done({status,signal:requestedSignal??signal,error,stdout,stderr});});
  });
 }
+export function decodeAppsFixtureFailureLine(line){
+ if(typeof line!=='string'||line.length>160||/[\r\n]/.test(line))return undefined;
+ const match=/^Apps owned fixture failed: stage=([a-z-]+); category=([a-z-]+)$/.exec(line);
+ const stages=['validation','preflight','receipt','create-directory','check-directory','prepare-secret','prepare-database','create-database','create-pool','migrate','current-database','seed-auth','initial-account','config','composition','create-sessions','start-api','baseline','create-control','descriptor','browser-context','vite','startup','discovery','execution','cleanup'];
+ const categories=['refusal','spawn-error','nonzero','signal','output-overflow','deadline','ack-mismatch'];
+ return match&&stages.includes(match[1])&&categories.includes(match[2])?line:undefined;
+}
 export async function main(args=process.argv.slice(2)){
  const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');assertEnvironment(process.env);const options=parseArguments(args);
  if(process.versions.node!=='24.21.0')fail('Protected qualification requires Node24.21.0');
@@ -381,7 +388,7 @@ export async function main(args=process.argv.slice(2)){
    const selector=['auth','lifecycle','places','place-links','apps'].includes(lane.name)?['--suite',lane.name]:[];
    const childArgs=['--import',pathToFileURL(join(root,'tunes/node_modules/tsx/dist/loader.mjs')).href,join(root,lane.runner),...selector,...suffix];
    const child=await capturedChild(process.execPath,childArgs,root,{...process.env},capability);const childRecord={lane:lane.name,status:child.status,signal:child.signal,error:child.error};children.push(childRecord);
-   if(child.status!==0){const diagnostics=child.stderr.split(/\r?\n/).filter(line=>/^(?:Error(?: \[[A-Z_]+\])?:|[^\n]*: ERROR:|(?:Profile|Books|Movies) E2E fixture failed:)/.test(line)).slice(0,3).map(line=>line.replaceAll(capability,'<owned-capability>').replace(/postgres(?:ql)?:\/\/\S+|(?:Bearer\s+)\S+|[A-Za-z0-9_-]{32,}/g,'<redacted>'));for(const line of diagnostics)process.stderr.write(`${lane.name}: ${line}\n`);}
+   if(child.status!==0){const diagnostics=child.stderr.split(/\r?\n/).filter(line=>Boolean(decodeAppsFixtureFailureLine(line))||/^(?:Error(?: \[[A-Z_]+\])?:|[^\n]*: ERROR:|(?:Profile|Books|Movies) E2E fixture failed:)/.test(line)).slice(0,3).map(line=>line.replaceAll(capability,'<owned-capability>').replace(/postgres(?:ql)?:\/\/\S+|(?:Bearer\s+)\S+|[A-Za-z0-9_-]{32,}/g,'<redacted>'));for(const line of diagnostics)process.stderr.write(`${lane.name}: ${line}\n`);}
    const receiptPath=join(directory,'receipt.json');if(existsSync(receiptPath))child.receipt=JSON.parse(readFileSync(receiptPath,'utf8'));
    const lifecycleFailurePath=join(directory,'lifecycle-failure.json');if(existsSync(lifecycleFailurePath)){if(child.status===0)fail('Lifecycle failure cannot qualify a successful child');childRecord.lifecycleFailure=validateLifecycleFailureRecord(lane,JSON.parse(readFileSync(lifecycleFailurePath,'utf8')),source.provenance);}
    const failurePath=join(directory,'failure.json');if(existsSync(failurePath))childRecord.failure=validateFailureRecord(lane,JSON.parse(readFileSync(failurePath,'utf8')),source.provenance,child);

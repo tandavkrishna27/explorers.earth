@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "lane": "apps",
+  "provenance": {
+    "commit": "420e13c6895d0ae70d4c997b7244167db0079bce",
+    "sourceHash": "dad3cd930070c9c54d3fae39af564c6a3bb319ab84bd58b631d1c8ad8129585d",
+    "manifestHash": "fe94a6013b2f83bf96e3799929a4b8d61e8ae245328afe1abc3f3cc0c38eb14a",
+    "dirty": false
+  },
+  "phase": "startup",
+  "interrupted": false,
+  "sourceIntact": true,
+  "cleanup": {
+    "status": "failed",
+    "failures": [
+      "control",
+      "private-directory"
+    ]
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  },
+  "counts": {
+    "discovered": null,
+    "executed": null,
+    "passed": null,
+    "failed": null,
+    "skipped": null,
+    "attempts": null
+  }
+}

@@ -73,3 +73,37 @@ it('interrupts during positive cleanup without publishing success and restores h
  const drain=f.deps.drainRequests;f.deps.drainRequests=async(...args:any[])=>{signal();signal();return drain(...args);};const receipt=f.deps.createReceipt;f.deps.createReceipt=async(...args:any[])=>{const value=await receipt(...args);value.failure=(_phase:any,_labels:any,interrupted:boolean)=>{flag=interrupted;};return value;};
  await expect(createAppsBrowserFixture(f.deps).run()).rejects.toThrow();expect(flag).toBe(true);expect(restored).toBe(true);expect(f.events).toContain('secret-clean');expect(f.events).not.toContain('finish');
 });
+
+it.each(['preflight','receipt','directory','directory-check','secret','prepare-database','database','pool','migrate','query','seed-auth','initial-account','config','composition','sessions','api','me','control','descriptor','receipt-args','vite'])('captures fixed startup stage %s without raw rejected data',async fail=>{
+ const {createAppsBrowserFixture}=await load(),f=fake({fail});const error=await createAppsBrowserFixture(f.deps).run().catch(value=>value);
+ const stages:any={preflight:'preflight',receipt:'receipt',directory:'create-directory',secret:'prepare-secret','prepare-database':'prepare-database',database:'create-database',migrate:'migrate',sessions:'create-sessions','directory-check':'check-directory',pool:'create-pool',query:'current-database','seed-auth':'seed-auth','initial-account':'initial-account',config:'config',composition:'composition',api:'start-api',me:'baseline',control:'create-control',descriptor:'descriptor','receipt-args':'browser-context',vite:'vite'};
+ const diagnostic=(await load()).extractAppsFixtureDiagnostic(error);expect(diagnostic).toEqual({stage:stages[fail],category:'refusal'});expect(Object.isFrozen(diagnostic)).toBe(true);expect(JSON.stringify(diagnostic)).not.toMatch(/synthetic|Temp|secret-file|sessionA/);
+});
+function defaultFunction(name:string,bindings:Record<string,unknown>){
+ const original=readFileSync(source,'utf8'),ast=ts.createSourceFile('runner.ts',original,ts.ScriptTarget.Latest,true);let found:ts.FunctionDeclaration|undefined;
+ const fn=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='defaultDependencies')!;
+ const find=(node:ts.Node)=>{if(ts.isFunctionDeclaration(node)&&node.name?.text===name)found=node;else ts.forEachChild(node,find);};find(fn);if(!found)throw Error('actual fixed helper missing');
+ const body=ts.createPrinter().printNode(ts.EmitHint.Unspecified,found,ast);
+ const code=ts.transpileModule(`${body}\nreturn ${name};`.replaceAll('await import(', 'await load('),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ return new Function(...Object.keys(bindings),code)(...Object.values(bindings));
+}
+it.each(['spawn-error','nonzero','signal','deadline'])('actual fixed PowerShell records only %s category',async fault=>{
+ const categories:string[]=[];let timer:(()=>void)|undefined,stopped=false;
+ const child={closed:fault==='deadline'?new Promise(()=>{}):Promise.resolve({code:fault==='nonzero'?1:0,signal:fault==='signal'?'SIGTERM':null,stdioClosed:true}),output:()=> 'raw-sensitive-output',stop:async()=>{stopped=true;}};
+ const operation=defaultFunction('fixedPowerShell',{Refusal:class extends Error{},Buffer,ps:'fixed-ps',env:()=>({}),root:'fixed-root',nativeUnknown:false,recordCategory:(value:string)=>categories.push(value),fixedChild:async()=>{if(fault==='spawn-error')throw Error('private path/body');return child;},setTimeout:(fn:()=>void)=>{timer=fn;return 1;},clearTimeout:()=>{}});
+ const run=operation([]);run.catch(()=>{});if(fault==='deadline'){for(let i=0;i<10&&!timer;i++)await Promise.resolve();timer!();}await expect(run).rejects.toThrow();expect(categories).toEqual([fault]);if(fault==='deadline')expect(stopped).toBe(true);
+});
+it('actual fixed helper rejects bad acknowledgement with only fixed category',async()=>{
+ const categories:string[]=[];const operation=defaultFunction('privateOperation',{process:{platform:'win32'},fixedPowerShell:async()=> 'private-body-secret',helper:'fixed-helper',recordCategory:(value:string)=>categories.push(value),Refusal:class extends Error{}});
+ await expect(operation('create-directory','private-path')).rejects.toThrow();expect(categories).toEqual(['ack-mismatch']);
+});
+it('diagnostic extractor rejects foreign objects without invoking getters',async()=>{
+ const {extractAppsFixtureDiagnostic}=await load();const foreign=Object.create(null);Object.defineProperty(foreign,'diagnostic',{get(){throw Error('must never invoke');}});
+ expect(extractAppsFixtureDiagnostic(foreign)).toBeUndefined();expect(extractAppsFixtureDiagnostic(null)).toBeUndefined();expect(extractAppsFixtureDiagnostic('raw')).toBeUndefined();
+});
+it('actual fixed captured child classifies overflow while retaining physical close promise',async()=>{
+ const {EventEmitter}=await import('node:events'),categories:string[]=[];let killed=false;
+ const child:any=new EventEmitter();child.stdout=new EventEmitter();child.stderr={resume(){}};child.stdin=new EventEmitter();child.stdin.end=()=>{};child.kill=()=>{killed=true;};child.exitCode=null;child.signalCode=null;
+ const children=new Set();const operation=defaultFunction('fixedChild',{Buffer,Refusal:class extends Error{},nativeUnknown:false,nativeChildren:children,recordCategory:(value:string)=>categories.push(value),load:async(name:string)=>{expect(name).toBe('node:child_process');return{spawn:()=>child};}});
+ const handle=await operation('fixed',[],{},'fixed',undefined,true);child.stdout.emit('data',Buffer.alloc(4097));expect(killed).toBe(true);expect(categories).toEqual(['output-overflow']);expect(children.size).toBe(1);let closed=false;handle.closed.then(()=>{closed=true;});await Promise.resolve();expect(closed).toBe(false);child.emit('close',1,null);await handle.closed;expect(children.size).toBe(0);
+});

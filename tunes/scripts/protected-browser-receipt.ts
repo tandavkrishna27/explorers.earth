@@ -1,8 +1,10 @@
 import {spawnSync,type ChildProcess} from 'node:child_process';
-import {readFileSync,writeFileSync,lstatSync,realpathSync,existsSync} from 'node:fs';
+import {readFileSync,writeFileSync,lstatSync,realpathSync,existsSync,openSync,fstatSync,readSync,closeSync,constants,type BigIntStats} from 'node:fs';
 import {join,resolve,dirname,basename,relative,isAbsolute} from 'node:path';
 import {tmpdir} from 'node:os';
 import {pathToFileURL} from 'node:url';
+
+export const supportsProtectedReceiptAdoption=true;
 
 export function extractProtectedReceiptArguments(args:string[]){
  const position=args.indexOf('--receipt-directory');
@@ -22,6 +24,7 @@ export async function createProtectedReceipt(root:string,laneName:string,options
  if(JSON.stringify(contract.snapshotSource(root).provenance)!==JSON.stringify(marker.provenance))throw new Error('Protected receipt source changed');
  const startedAt=new Date().toISOString();let discovered:unknown[]|undefined,executed:unknown[]|undefined,playwright:string|undefined,child:{status:number|null;signal:string|null}|undefined;
  let artifactPolicy:{configFile:string;outputDir:string}|undefined;
+ const configurationSource=(outputDir:string)=>`import base from ${JSON.stringify(pathToFileURL(join(root,lane.config)).href)};\nimport {protectedBrowserConfiguration} from ${JSON.stringify(pathToFileURL(join(root,'scripts/replatform-e2e.mjs')).href)};\nexport default protectedBrowserConfiguration(base,${JSON.stringify(root)},${JSON.stringify(lane.config)},${JSON.stringify(outputDir)});\n`;
  let diagnostics:unknown[]=[];
  let topology:unknown;
  const decode=(path:string,execution:boolean)=>{
@@ -43,10 +46,50 @@ export async function createProtectedReceipt(root:string,laneName:string,options
   arguments(args:string[],fixtureDirectory:string){
    if(artifactPolicy)throw new Error('Protected artifact allocation repeated');
    artifactPolicy={configFile:join(fixtureDirectory,'protected.playwright.config.mjs'),outputDir:join(fixtureDirectory,'browser-output')};
-   const source=`import base from ${JSON.stringify(pathToFileURL(join(root,lane.config)).href)};\nimport {protectedBrowserConfiguration} from ${JSON.stringify(pathToFileURL(join(root,'scripts/replatform-e2e.mjs')).href)};\nexport default protectedBrowserConfiguration(base,${JSON.stringify(root)},${JSON.stringify(lane.config)},${JSON.stringify(artifactPolicy.outputDir)});\n`;
+   const source=configurationSource(artifactPolicy.outputDir);
    writeFileSync(artifactPolicy.configFile,source,{mode:0o600,flag:'wx'});
    const selected=args.filter((arg,index)=>!arg.startsWith('--config=')&&arg!=='--config'&&args[index-1]!=='--config');
    return [...selected,'--config',artifactPolicy.configFile,'--trace=off','--output',artifactPolicy.outputDir];
+  },
+  adoptArguments(fixtureDirectory:string){
+   const refuse=()=>{throw new Error('Protected Guides artifact adoption refused');};
+   if(laneName!=='guides'||artifactPolicy||typeof fixtureDirectory!=='string'||!isAbsolute(fixtureDirectory)||resolve(fixtureDirectory)!==fixtureDirectory||fixtureDirectory.length>4096||fixtureDirectory.startsWith('\\\\')||/[\x00-\x1f\x7f]/.test(fixtureDirectory)||dirname(fixtureDirectory)!==resolve(tmpdir())||!/^explorers-profile-e2e-[a-f0-9]{32}$/.test(basename(fixtureDirectory)))refuse();
+   const policy={configFile:join(fixtureDirectory,'protected.playwright.config.mjs'),outputDir:join(fixtureDirectory,'browser-output')};
+   const identity=(stat:BigIntStats,file:boolean)=>[stat.dev,stat.ino,stat.mode,stat.uid,...(file?[stat.size,stat.mtimeNs,stat.ctimeNs,stat.nlink]:[])].map(String).join(':');
+   const retained=new Map<string,{identity:string;file:boolean}>();
+   const capture=(target:string,file=false)=>{
+    const stat=lstatSync(target,{bigint:true});
+    if(stat.isSymbolicLink()||realpathSync(target)!==target||(file?!stat.isFile()||stat.nlink!==1n:!stat.isDirectory()))refuse();
+    retained.set(target,{identity:identity(stat,file),file});return stat;
+   };
+   // This proves config association only. The coordinator retains disposal custody.
+   for(const target of [root,fixtureDirectory,directory])for(let current=target;;current=dirname(current)){
+    capture(current);if(current===dirname(current))break;
+   }
+   if(existsSync(policy.outputDir))capture(policy.outputDir);
+   const before=capture(policy.configFile,true),expected=Buffer.from(configurationSource(policy.outputDir),'utf8');
+   const limit=16384;
+   if(expected.length>limit||before.size!==BigInt(expected.length)||before.size>BigInt(limit))refuse();
+   if(JSON.stringify(contract.snapshotSource(root).provenance)!==JSON.stringify(marker.provenance))refuse();
+   const handle=openSync(policy.configFile,constants.O_RDONLY|constants.O_NOFOLLOW);
+   try{
+    const opened=fstatSync(handle,{bigint:true});
+    if(!opened.isFile()||identity(opened,true)!==identity(before,true))refuse();
+    const bytes=Buffer.alloc(limit+1);let length=0;
+    for(let reads=0;reads<18;reads++){
+     const count=readSync(handle,bytes,length,Math.min(1024,bytes.length-length),length);
+     if(!Number.isInteger(count)||count<0||count>Math.min(1024,bytes.length-length))refuse();
+     length+=count;if(length>limit)refuse();if(count===0)break;if(reads===17)refuse();
+    }
+    if(length!==expected.length||!bytes.subarray(0,length).equals(expected)||identity(fstatSync(handle,{bigint:true}),true)!==identity(before,true))refuse();
+    for(const [target,record] of retained){
+     const stat=lstatSync(target,{bigint:true});
+     if(stat.isSymbolicLink()||realpathSync(target)!==target||(record.file?!stat.isFile():!stat.isDirectory())||identity(stat,record.file)!==record.identity)refuse();
+    }
+    if(!retained.has(policy.outputDir)&&existsSync(policy.outputDir))refuse();
+    if(JSON.stringify(contract.snapshotSource(root).provenance)!==JSON.stringify(marker.provenance))refuse();
+   }finally{closeSync(handle);}
+   artifactPolicy=policy;
   },
   decodeExecution(report:unknown,code:number|null,signal:string|null){
    if(!artifactPolicy)throw new Error('Protected artifact allocation missing');

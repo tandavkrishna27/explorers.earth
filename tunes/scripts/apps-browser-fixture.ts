@@ -175,6 +175,17 @@ type Dependencies = {
     removeRoot(root: RetainedDirectory): Promise<void>;
 };
 const keys = ['platform', 'argv', 'environment', 'temporaryRoot', 'clock', 'randomHex', 'installSignals', 'preflight', 'createReceipt', 'createDirectory', 'assertDirectory', 'prepareSecret', 'prepareDatabase', 'createPool', 'migrate', 'seedAuth', 'ensureInitialAccount', 'createConfig', 'createSessions', 'createComposition', 'startApi', 'canonicalMe', 'createControl', 'writeDescriptor', 'launchVite', 'launchDiscovery', 'openReport', 'launchBrowser', 'sealRequests', 'drainRequests', 'drainStorage', 'removeArtifacts', 'createAdminPool', 'cleanupSecret', 'removeRoot'];
+type DiagnosticStage = 'validation' | 'preflight' | 'receipt' | 'create-directory' | 'check-directory' | 'prepare-secret' | 'prepare-database' | 'create-database' | 'create-pool' | 'migrate' | 'current-database' | 'seed-auth' | 'initial-account' | 'config' | 'composition' | 'create-sessions' | 'start-api' | 'baseline' | 'create-control' | 'descriptor' | 'browser-context' | 'vite' | 'startup' | 'discovery' | 'execution' | 'cleanup';
+type DiagnosticCategory = 'refusal' | 'spawn-error' | 'nonzero' | 'signal' | 'output-overflow' | 'deadline' | 'ack-mismatch';
+type Diagnostic = Readonly<{
+    stage: DiagnosticStage;
+    category: DiagnosticCategory;
+}>;
+const diagnostics = new WeakMap<object, Diagnostic>();
+/** Only runner-branded errors expose finite sanitized diagnostics; foreign getters are never read. */
+export function extractAppsFixtureDiagnostic(error: unknown): Diagnostic | undefined {
+    return typeof error === 'object' && error !== null ? diagnostics.get(error) : undefined;
+}
 class Refusal extends Error {
     constructor() { super('Apps owned fixture failed'); }
 }
@@ -183,9 +194,18 @@ const uuid = z.string().uuid(), baseline = z.object({ id: uuid, revision: z.numb
 export function createAppsBrowserFixture(dependencies?: Dependencies): {
     run(): Promise<void>;
 } {
-    const d = dependencies === undefined ? defaultDependencies() : dependencies;
+    let stage: DiagnosticStage = 'validation', category: DiagnosticCategory = 'refusal', captured: Diagnostic | undefined;
+    const recordCategory = (value: DiagnosticCategory) => { if (category === 'refusal')
+        category = value; };
+    const d = dependencies === undefined ? defaultDependencies(recordCategory) : dependencies;
     let promise: Promise<void> | undefined;
-    return { run() { return promise ??= Promise.resolve().then(execute); } };
+    return { run() {
+            return promise ??= Promise.resolve().then(execute).catch(() => {
+                const error = new Refusal();
+                diagnostics.set(error, captured ?? Object.freeze({ stage, category }));
+                throw error;
+            });
+        } };
     async function execute() {
         if (!d || Object.keys(d).sort().join(',') !== [...keys].sort().join(',') || keys.filter(key => !['platform', 'argv', 'environment', 'temporaryRoot', 'clock'].includes(key)).some(key => typeof Reflect.get(d, key) !== 'function') || !d.clock || ['now', 'setTimeout', 'clearTimeout'].some(key => typeof Reflect.get(d.clock, key) !== 'function'))
             throw new Refusal();
@@ -203,17 +223,17 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
         let phase: 'startup' | 'discovery' | 'execution' | 'cleanup' = 'startup', failurePhase: 'startup' | 'discovery' | 'execution' | 'cleanup' | undefined;
         async function bounded<T>(work: () => Promise<T>, limit = 15000, margin = false): Promise<T> { const ms = Math.min(limit, Math.floor(deadline - d.clock.now())); if (ms < 1 || margin && ms < limit)
             throw new Refusal(); let timer: unknown; const original = Promise.resolve().then(work); originals.add(original); original.then(() => originals.delete(original), () => originals.delete(original)); try {
-            return await Promise.race([original, ...(phase === 'cleanup' ? [] : [lifecycleFailed]), new Promise<never>((_, reject) => { timer = d.clock.setTimeout(() => { uncertain = true; reject(new Refusal()); }, ms); })]);
+            return await Promise.race([original, ...(phase === 'cleanup' ? [] : [lifecycleFailed]), new Promise<never>((_, reject) => { timer = d.clock.setTimeout(() => { recordCategory('deadline'); uncertain = true; reject(new Refusal()); }, ms); })]);
         }
         finally {
             d.clock.clearTimeout(timer);
         } }
         let acquisition: Acquisition | undefined;
         let receipt: Receipt | undefined, secret: {
-            path: string;
-        } | undefined, authority: Authority | undefined, pool: Pool | undefined, options: Options | undefined, api: {
-            close(): Promise<void>;
-        } | undefined, control: Awaited<ReturnType<Dependencies['createControl']>> | undefined, vite: Child | undefined, browser: Child | undefined, discovery: Child | undefined, descriptor: unknown;
+        path: string;
+    } | undefined, authority: Authority | undefined, pool: Pool | undefined, options: Options | undefined, api: {
+        close(): Promise<void>;
+    } | undefined, control: Awaited<ReturnType<Dependencies['createControl']>> | undefined, vite: Child | undefined, browser: Child | undefined, discovery: Child | undefined, descriptor: unknown;
         const roots: RetainedDirectory[] = [];
         let candidate: string | undefined, error: unknown;
         let rejectLifecycle!: (error: unknown) => void;
@@ -289,9 +309,11 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
             }
         }
         try {
+            stage = 'preflight';
             const input = await bounded(() => d.preflight());
             if (!/^[a-f0-9]{40}$/.test(input.commit) || !Number.isInteger(input.pgPort) || input.pgPort < 56000 || input.pgPort > 60999 || [input.apiPort, input.webPort].some(n => !Number.isInteger(n) || n < 1024 || n > 65535) || new Set([input.pgPort, input.apiPort, input.webPort]).size !== 3)
                 throw new Refusal();
+            stage = 'receipt';
             receipt = await bounded(() => d.createReceipt(d.argv));
             const runId = d.randomHex(16);
             if (!/^[a-f0-9]{32}$/.test(runId))
@@ -300,61 +322,80 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
             if (candidate.length > 1024)
                 throw new Refusal();
             for (const target of [candidate, paths.join(candidate, 'owned-media'), paths.join(candidate, 'apps-fixture-files')]) {
+                stage = 'create-directory';
                 await bounded(() => d.createDirectory(target).then(value => { if (value.path !== target)
                     throw new Refusal(); roots.push(value); return value; }));
+                stage = 'check-directory';
                 await bounded(() => d.assertDirectory(roots.at(-1)!));
             }
+            stage = 'prepare-secret';
             await bounded(() => d.prepareSecret().then(value => { secret = value; return value; }));
+            stage = 'prepare-database';
             await bounded(() => d.prepareDatabase({ runId, commit: input.commit, port: input.pgPort, secret: secret! }).then(value => { acquisition = value; return value; }), 65000, true);
             const intent = acquisition!.intent;
             if (intent.runId !== runId || intent.commit !== input.commit || intent.database !== `music_uat_${runId}` || intent.port !== input.pgPort || intent.passwordFile !== secret!.path)
                 throw new Refusal();
+            stage = 'create-database';
             await bounded(() => acquisition!.create().then(value => { authority = value; return value; }), 125000, true);
             if (authority!.runId !== runId || authority!.commit !== input.commit || authority!.database !== `music_uat_${runId}` || authority!.port !== input.pgPort || authority!.owned !== true)
                 throw new Refusal();
+            stage = 'create-pool';
             await bounded(() => d.createPool(authority!, secret!).then(value => { pool = value; return value; }));
+            stage = 'migrate';
             await bounded(() => d.migrate(pool!), 600000);
+            stage = 'current-database';
             const database = await bounded(() => pool!.query({ text: 'SELECT current_database() AS database' }));
             if (database.rows.length !== 1 || database.rows[0].database !== authority!.database)
                 throw new Refusal();
+            stage = 'seed-auth';
             const persons = await bounded(() => d.seedAuth(pool!, runId));
             if (Object.keys(persons).sort().join(',') !== 'ownerA,ownerB' || persons.ownerA.userId === persons.ownerB.userId)
                 throw new Refusal();
             const accounts = new Set<string>();
             for (const person of Object.values(persons)) {
+                stage = 'initial-account';
                 const account = await bounded(() => d.ensureInitialAccount(pool!, person.userId));
                 if (!uuid.safeParse(account.accountId).success || account.accountId === person.userId || accounts.has(account.accountId))
                     throw new Refusal();
                 accounts.add(account.accountId);
                 person.accountId = account.accountId;
             }
+            stage = 'config';
             const origin = `http://127.0.0.1:${input.webPort}`, apiOrigin = `http://127.0.0.1:${input.apiPort}`, config = await bounded(() => d.createConfig(origin));
             const fixedPersons = Object.fromEntries(Object.entries(persons).map(([key, person]) => [key, { userId: person.userId, handle: person.handle, accountId: person.accountId! }])) as typeof persons;
             const initialPersons = Object.fromEntries(Object.entries(persons).map(([key, person]) => [key, { userId: person.userId, handle: person.handle, cookie: person.cookie }])) as typeof persons;
+            stage = 'composition';
             const composition = await bounded(() => d.createComposition(pool!, config, roots[1].path, { runAuthority: authority!, personasWithActualAccountIds: fixedPersons }));
+            stage = 'create-sessions';
             await bounded(() => d.createSessions(composition, config, initialPersons));
             options = { pool: pool!, config, runId, commit: input.commit, origin, apiOrigin, personas: initialPersons, storage: composition.storage, composed: composition.composed, storageDirectory: roots[1].path, fixtureFilesRoot: roots[2].path, expectedTemporaryRoot: d.temporaryRoot, disposableDirectory: candidate, ownedAuthority: authority! };
+            stage = 'start-api';
             await bounded(() => d.startApi(options!, () => control).then(value => { api = value; return value; }));
             for (const [name, person] of Object.entries(persons)) {
                 const nativePerson = initialPersons[name as keyof typeof initialPersons];
+                stage = 'baseline';
                 const me = baseline.parse(await bounded(() => d.canonicalMe(composition, apiOrigin, nativePerson, readResponse)));
                 const result = await bounded(() => pool!.query({ text: 'SELECT b.user_id,b.account_id,a.revision,a.display_name FROM initial_account_bindings b JOIN creator_accounts a ON a.id=b.account_id WHERE b.user_id=$1', values: [person.userId] }));
                 const row = result.rows[0];
                 if (result.rows.length !== 1 || row.user_id !== person.userId || row.account_id !== person.accountId || me.id !== person.accountId || String(row.revision) !== String(me.revision) || row.display_name !== me.displayName)
                     throw new Refusal();
             }
+            stage = 'create-control';
             await bounded(() => d.createControl(options!).then(value => { control = value; return value; }));
             if (!/^[a-f0-9]{64}$/.test(control!.capability))
                 throw new Refusal();
             const value = { origin, controlCapability: control!.capability, personas: initialPersons, version: 1, runId, commit: input.commit, fixtureFilesRoot: options.fixtureFilesRoot };
             if (Buffer.byteLength(JSON.stringify(value)) > 65536)
                 throw new Refusal();
-            for (const root of roots)
+            stage='check-directory'; for (const root of roots)
                 await bounded(() => d.assertDirectory(root));
+            stage = 'descriptor';
             descriptor = await bounded(() => d.writeDescriptor(roots[0], value));
+            stage = 'browser-context';
             const args = await bounded(() => Promise.resolve(receipt!.arguments(['--config', 'e2e/replatform/apps.playwright.config.ts', '--retries=0'], candidate!)));
             const fixturePath = paths.join(candidate, 'sessions.json');
             const context = { arguments: args, environment: { ...receipt.executionEnvironment({}, candidate), APPS_E2E_FIXTURE_PATH: fixturePath, REPLATFORM_E2E_FIXTURE_PATH: fixturePath, REPLATFORM_E2E_LANE: 'apps', PLAYWRIGHT_EXTERNAL_BASE_URL: origin } };
+            stage = 'vite';
             setupComplete = true;
             await bounded(() => d.launchVite(options!, readResponse).then(value => { vite = value; return value; }));
             vite!.closed.then(result => { if (!stopping) {
@@ -363,12 +404,14 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
             } }, () => { uncertain = true; rejectLifecycle(new Refusal()); });
             await bounded(() => vite!.ready, 60000);
             phase = 'discovery';
+            stage = 'discovery';
             await bounded(() => d.launchDiscovery(context, options!).then(value => { discovery = value; return value; }));
             const listed = await bounded(() => discovery!.closed, 60000);
             if (listed.code !== 0 || listed.signal !== null || listed.stdioClosed !== true)
                 throw new Refusal();
             receipt.decodeDiscovery(await report(false));
             phase = 'execution';
+            stage = 'execution';
             await bounded(() => d.launchBrowser(context, options!).then(value => { browser = value; return value; }));
             const result = await bounded(() => browser!.closed, 21000000);
             if (result.stdioClosed !== true)
@@ -380,11 +423,13 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
             }
         }
         catch (value) {
+            captured ??= Object.freeze({ stage, category });
             error = value;
             failurePhase = phase;
             failures.push(phase === 'startup' ? 'control' : 'browser');
         }
         phase = 'cleanup';
+        stage = 'cleanup';
         stopping = true;
         deadline = d.clock.now() + 300000;
         try {
@@ -395,7 +440,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
                     await bounded(() => child.stop());
                     const result = await bounded(() => child.closed);
                     if (result.stdioClosed !== true)
-                        throw new Refusal();
+                throw new Refusal();
                 }
             if (originals.size || uncertain || error && !knownFailure && !(interrupted && setupComplete))
                 throw new Refusal();
@@ -437,6 +482,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
         catch (value) {
             error ??= value;
             failurePhase ??= 'cleanup';
+            captured ??= Object.freeze({ stage, category });
             failures.push('private-directory');
         }
         if (cleanupSettled && !originals.size && !uncertain)
@@ -460,7 +506,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
         await bounded(() => Promise.resolve(receipt!.finish(authority!, [], interrupted)));
     }
 }
-function defaultDependencies(): Dependencies {
+function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void): Dependencies {
     const root = fileURLToPath(new URL('../../', import.meta.url)), frontend = path.join(root, 'explorers-earth'), temporaryRoot = tmpdir();
     const ps = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', helper = path.join(root, 'tunes/scripts/music-local-private-files.ps1'), cli = path.join(frontend, 'node_modules/@playwright/test/cli.js'), viteCli = path.join(frontend, 'node_modules/vite/bin/vite.js');
     const retained = new Map<string, {
@@ -496,18 +542,28 @@ function defaultDependencies(): Dependencies {
         const child = spawn(executable, args, { cwd, env: environment, shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
         let output = '', overflow = false;
         const closed = new Promise<{
-            code: number | null;
-            signal: string | null;
-            stdioClosed: boolean;
-        }>((resolve, reject) => { child.once('error', () => { nativeUnknown = true; reject(new Refusal()); }); child.stdout.on('data', (bytes: Buffer) => { onStdout?.(bytes); if (capture) {
-            if (Buffer.byteLength(output) + bytes.length > 4096) {
-                overflow = true;
-                nativeUnknown = true;
-                child.kill();
-            }
-            else
-                output += bytes.toString('utf8');
-        } }); child.stderr.resume(); child.once('close', (code, signal) => { resolve({ code: overflow ? null : code, signal, stdioClosed: true }); }); });
+        code: number | null;
+        signal: string | null;
+        stdioClosed: boolean;
+    }>((resolve, reject) => {
+            child.once('error', () => { if (capture)
+                recordCategory('spawn-error'); nativeUnknown = true; reject(new Refusal()); });
+            child.stdout.on('data', (bytes: Buffer) => {
+                onStdout?.(bytes);
+                if (capture) {
+                    if (Buffer.byteLength(output) + bytes.length > 4096) {
+                        overflow = true;
+                        recordCategory('output-overflow');
+                        nativeUnknown = true;
+                        child.kill();
+                    }
+                    else
+                        output += bytes.toString('utf8');
+                }
+            });
+            child.stderr.resume();
+            child.once('close', (code, signal) => { resolve({ code: overflow ? null : code, signal, stdioClosed: true }); });
+        });
         closed.catch(() => undefined);
         const handle = { ready: Promise.resolve(), closed, async stop() { if (child.exitCode === null && child.signalCode === null)
                 child.kill(); await closed; }, output: () => output };
@@ -517,22 +573,43 @@ function defaultDependencies(): Dependencies {
         child.stdin.end(input);
         return handle;
     }
-    async function fixedPowerShell(args: string[], input?: string) { if (input !== undefined && (Buffer.byteLength(input) < 1 || Buffer.byteLength(input) > 65536))
-        throw new Refusal(); const child = await fixedChild(ps, args, env(), root, input, true); let timer: ReturnType<typeof setTimeout>; try {
-        const result = await Promise.race([child.closed, new Promise<never>((_, reject) => { timer = setTimeout(() => { nativeUnknown = true; void child.stop().catch(() => undefined); reject(new Refusal()); }, 10000); })]);
-        if (result.code !== 0 || result.signal !== null || !result.stdioClosed)
+    async function fixedPowerShell(args: string[], input?: string) {
+        if (input !== undefined && (Buffer.byteLength(input) < 1 || Buffer.byteLength(input) > 65536))
+        throw new Refusal();
+        let child: Awaited<ReturnType<typeof fixedChild>>;
+        try {
+            child = await fixedChild(ps, args, env(), root, input, true);
+        }
+        catch {
+            recordCategory('spawn-error');
             throw new Refusal();
-        return child.output().trim();
-    }
-    finally {
+        }
+        let timer: ReturnType<typeof setTimeout>;
+        try {
+            const result = await Promise.race([child.closed, new Promise<never>((_, reject) => { timer = setTimeout(() => { recordCategory('deadline'); nativeUnknown = true; void child.stop().catch(() => undefined); reject(new Refusal()); }, 10000); })]);
+            if (result.signal !== null) {
+                recordCategory('signal');
+                throw new Refusal();
+            }
+            if (result.code !== 0 || !result.stdioClosed) {
+                recordCategory('nonzero');
+                throw new Refusal();
+            }
+            return child.output().trim();
+        }
+        finally {
         clearTimeout(timer!);
-    } }
-    async function privateOperation(operation: 'create-directory' | 'create-file' | 'inspect', target: string, input?: string) { if (process.platform === 'win32') {
-        const text = await fixedPowerShell(['-NoLogo', '-NoProfile', '-NonInteractive', '-File', helper, operation, target], input);
-        if (text !== '{"ok":true}')
-            throw new Refusal();
     }
-    else {
+    }
+    async function privateOperation(operation: 'create-directory' | 'create-file' | 'inspect', target: string, input?: string) {
+        if (process.platform === 'win32') {
+            const text = await fixedPowerShell(['-NoLogo', '-NoProfile', '-NonInteractive', '-File', helper, operation, target], input);
+            if (text !== '{"ok":true}') {
+                recordCategory('ack-mismatch');
+                throw new Refusal();
+            }
+        }
+        else {
         const fs = await import('node:fs/promises');
         if (operation === 'create-directory')
             await fs.mkdir(target, { mode: 0o700 });
@@ -551,7 +628,8 @@ function defaultDependencies(): Dependencies {
             if (typeof process.getuid !== 'function' || stat.uid !== process.getuid() || stat.mode & 0o077)
                 throw new Refusal();
         }
-    } }
+    }
+    }
     async function inspect(target: string) { await canonical(target); await privateOperation('inspect', target); }
     let actualSupport: typeof import('./apps-browser-support') | undefined;
     const configurations = new WeakMap<object, any>(), nativeAccounts = new WeakMap<object, string[]>(), handlerDrains = new WeakMap<object, (ms: number) => Promise<boolean>>();

@@ -21,14 +21,18 @@ import { startPlacesControl, assertPlacesStorageDirectory } from './places-brows
 import { startLifecycleControl } from './lifecycle-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment, assertLifecycleResults, assertOwnedCleanup } from './lifecycle-browser-guards';
 import { extractProtectedReceiptArguments, createProtectedReceipt } from './protected-browser-receipt';
-import { createAppsBrowserFixture } from './apps-browser-fixture';
+import { createAppsBrowserFixture, extractAppsFixtureDiagnostic } from './apps-browser-fixture';
 
 const receiptArguments = extractProtectedReceiptArguments(process.argv.slice(2));
 const suite = parseBrowserSuite(receiptArguments.args);
 assertBrowserEnvironment(process.env);
 if (suite === 'apps') {
   try { await createAppsBrowserFixture().run(); }
-  catch { process.exitCode = 1; process.stderr.write('Apps owned fixture failed\n'); }
+  catch (error) {
+    process.exitCode = 1;
+    const diagnostic = extractAppsFixtureDiagnostic(error);
+    process.stderr.write(diagnostic ? `Apps owned fixture failed: stage=${diagnostic.stage}; category=${diagnostic.category}\n` : 'Apps owned fixture failed\n');
+  }
 } else {
 const root = resolve(import.meta.dirname, '../..');
 const frontend = resolve(root, 'explorers-earth');

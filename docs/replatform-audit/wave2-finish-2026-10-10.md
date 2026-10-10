@@ -271,6 +271,43 @@ regression reproduced that decoded corruption, then passed after escaping the
 literal; all 63 runner, receipt and dispatch contracts passed. This diagnosis
 does not claim a browser qualification pass.
 
+The official attempt at `420e13c6` reached database setup but failed startup;
+its retained protected failure reports unchanged source, no discovered/executed
+identities and failed cleanup. Records are retained under
+`receipts/apps-420e13c6-startup`. An initial resource lookup used the wrong label;
+correct inspection found the run-owned temporary directory and running container.
+Both are preserved. Read-only database counts show completed migrations, two
+users, two initial creator accounts/bindings and zero sessions.
+
+The active local Docker context resolves to
+`npipe:////./pipe/dockerDesktopLinuxEngine`. Owned database acquisition accepts
+that exact local endpoint, while the Apps composition admission gate omitted it.
+An actual gate construction regression reproduced rejection. Adding only that
+already reviewed endpoint passed 45 gate tests, including remote/unreviewed
+endpoint refusal, and independent review accepted the repair. This source-level
+cause aligns with the observed setup boundary; a new native run remains required.
+
+Bounded startup diagnostics now preserve the first failing operation and expose
+only privately branded fixed stage/category enums. Independent review reproduced
+85 runner tests. The profile/root display wiring passed four dispatch and one
+finite-line decoder tests; raw errors and secret-bearing output remain excluded.
+
+Guides receipt adoption is accepted at source level: Guides-only adoption reads
+the existing host config through a bounded handle, checks exact bytes, canonical
+paths, identities and source provenance, closes the handle, then binds the policy.
+It creates no config and grants no cleanup authority. Root fresh verification
+passed 22 adoption and existing Apps receipt tests. This does not qualify Guides
+native execution; its complete spec and registration are still required.
+
+The new Guides root driver is independently accepted as a bounded source card.
+Root fresh verification passed 31 resource-free contracts; independent scoped
+typing passed. Its native preflight refuses staging until the complete spec and
+158-identity registration exist. Actual adapters capture bounded reports before
+exclusive parent disposal, and require real acquired authority and positive
+disposal before receipt finish. Held original operations retain custody. This
+is not native Windows/PG/browser evidence. Profile dispatch and complete Guides
+spec/registration remain separate unfinished integrations.
+
 ## Hosted status boundary
 
 PR119 still points to remote `622f689385058ef9186538a1d8e1f60fd23ab266`.
