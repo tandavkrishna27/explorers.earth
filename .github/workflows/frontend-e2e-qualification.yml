@@ -51,7 +51,7 @@ jobs:
           - { lane: account-lifecycle, command: "npx playwright test --config=playwright.lifecycle.config.ts" }
           - { lane: profile-tabs, command: "npx playwright test --config=playwright.profile-tabs.config.ts" }
           - lane: general-pages
-            command: "npx playwright test --config=playwright.general-e2e.config.ts e2e/analytics.spec.ts e2e/apps.spec.ts e2e/books.spec.ts e2e/categories.spec.ts e2e/games.spec.ts e2e/guides.spec.ts e2e/locations.spec.ts e2e/marketing-pages.spec.ts e2e/movies.spec.ts e2e/people.spec.ts e2e/products.spec.ts"
+            command: "npx playwright test --config=playwright.general-e2e.config.ts e2e/analytics.spec.ts e2e/books.spec.ts e2e/categories.spec.ts e2e/games.spec.ts e2e/guides.spec.ts e2e/locations.spec.ts e2e/marketing-pages.spec.ts e2e/movies.spec.ts e2e/people.spec.ts e2e/products.spec.ts"
           - lane: remaining-contained-contracts
             command: "npx playwright test e2e/music.spec.ts e2e/music-accessibility.spec.ts e2e/music-auth-triggers.spec.ts e2e/music-fixture-fullstack.spec.ts e2e/music-fullstack.spec.ts e2e/music-harness-contract.spec.ts e2e/profile-editor-polish.spec.ts e2e/profile-presentation-visual.spec.ts e2e/profile-theme.spec.ts e2e/public-scroll.spec.ts e2e/reactivation-lifecycle.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual --project=chromium-music-owner-mobile --retries=0"
     steps:
@@ -163,5 +163,53 @@ jobs:
             .artifacts/**/results/
             explorers-earth/.artifacts/**/results/
             explorers-earth/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Protected manual Apps qualification; no provider fetch or release gate is implied.
+  apps-native:
+    name: protected Apps manual qualification
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == 'apps-native' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            explorers-earth/package-lock.json
+            tunes/package-lock.json
+            tunes/auth-runtime/package-lock.json
+      - name: Install locked qualification dependencies
+        run: |
+          npm ci
+          npm ci --prefix explorers-earth
+          npm ci --prefix tunes --legacy-peer-deps
+          npm ci --prefix tunes/auth-runtime
+      - name: Install owned Chromium
+        working-directory: explorers-earth
+        run: npx playwright install --with-deps chromium
+      - name: Supply fixture PostgreSQL image
+        run: docker pull postgres:15-alpine
+      - name: Run protected Apps selection
+        run: npm run platform:test:e2e -- --milestone delivered-auth-profile-books --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15 --receipt "$RUNNER_TEMP/replatform-e2e-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-apps" --lane apps
+        env:
+          CI: true
+          TMPDIR: ${{ runner.temp }}
+      - name: Upload sanitized protected Apps evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: apps-native-protected
+          path: |
+            ${{ runner.temp }}/replatform-e2e-${{ github.run_id }}-${{ github.run_attempt }}-apps/qualification.json
+            ${{ runner.temp }}/replatform-e2e-${{ github.run_id }}-${{ github.run_attempt }}-apps/apps/receipt.json
+            ${{ runner.temp }}/replatform-e2e-${{ github.run_id }}-${{ github.run_attempt }}-apps/apps/failure.json
           if-no-files-found: ignore
           retention-days: 14

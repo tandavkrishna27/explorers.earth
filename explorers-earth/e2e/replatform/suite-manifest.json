@@ -1179,6 +1179,82 @@
           "repeat": 0
         }
       ]
+    },
+    {
+      "name": "apps",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/apps.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/apps.spec.ts",
+      "projects": [
+        "apps-desktop",
+        "apps-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: list and complete typed recommendation create edit archive and reload"
+          ],
+          "project": "apps-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: ordered owned screenshots replacement and visibility enforce real bytes"
+          ],
+          "project": "apps-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: Keep Draft Publish and ancestor withdrawal preserve public state"
+          ],
+          "project": "apps-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: category top picks save reorder unpin and limit survive reload"
+          ],
+          "project": "apps-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: list and complete typed recommendation create edit archive and reload"
+          ],
+          "project": "apps-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: ordered owned screenshots replacement and visibility enforce real bytes"
+          ],
+          "project": "apps-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: Keep Draft Publish and ancestor withdrawal preserve public state"
+          ],
+          "project": "apps-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: category top picks save reorder unpin and limit survive reload"
+          ],
+          "project": "apps-mobile",
+          "repeat": 0
+        }
+      ]
     }
   ],
   "limits": [
@@ -1187,7 +1263,8 @@
     "Books has desktop and mobile Chromium projects",
     "Lifecycle is one Chromium desktop project; provider simulation is not deployed Google acceptance",
     "The stable delivered-auth-profile-books CLI scope is a compatibility identifier; actual scope includes Movies desktop/mobile Chromium in its separate exact24-identity lane, not live TMDB or deployed QA qualification.",
-    "Places and place-links append16 proposed local identities; Maps selection and Google REST are simulated with no provider photo import. Linked arrays are bounded12, Places traversal53 is distinct from all-category parity."
+    "Places and place-links append16 proposed local identities; Maps selection and Google REST are simulated with no provider photo import. Linked arrays are bounded12, Places traversal53 is distinct from all-category parity.",
+    "Apps adds eight manual desktop/mobile Chromium identities; native source integration and protected execution remain unqualified; no nightly provider fetch, scheduler or complete public pagination evidence."
   ],
   "pending": [
     {
@@ -1229,6 +1306,11 @@
       "ticket": "5.1/5.2",
       "obligation": "Places/link16 proposed inventory awaits independent source review and actual protected execution; provider photo/gallery closure, taxonomy/pins and hosted acceptance remain pending",
       "status": "pending"
+    },
+    {
+      "ticket": "5.3/5.4",
+      "obligation": "Apps manual8 awaits integrated owned fixture and protected native execution; provider enrichment, taxonomy and complete public pagination remain independently pending",
+      "status": "pending"
     }
   ],
   "scopeContents": [
@@ -1240,7 +1322,8 @@
     "games",
     "music",
     "places",
-    "place-links"
+    "place-links",
+    "apps"
   ],
   "scopeCompatibilityIdentifier": true
 }

@@ -43,7 +43,8 @@
     "music:types:baseline": "tsx scripts/music-typescript-baseline.ts --compare",
     "explorers:test:music-browser": "tsx scripts/canonical-music-browser-fixture.ts",
     "explorers:test:places-browser": "tsx scripts/profile-browser-fixture.ts --suite places",
-    "explorers:test:place-links-browser": "tsx scripts/profile-browser-fixture.ts --suite place-links"
+    "explorers:test:place-links-browser": "tsx scripts/profile-browser-fixture.ts --suite place-links",
+    "explorers:test:apps-browser": "tsx scripts/profile-browser-fixture.ts --suite apps"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.36.3",
