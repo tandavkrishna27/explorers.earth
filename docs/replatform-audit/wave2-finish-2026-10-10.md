@@ -308,7 +308,46 @@ disposal before receipt finish. Held original operations retain custody. This
 is not native Windows/PG/browser evidence. Profile dispatch and complete Guides
 spec/registration remain separate unfinished integrations.
 
-## Hosted status boundary
+## Latest Apps boundary and finish sequence
+
+The clean official attempt at `aa735d7e` passed composition and created two
+sessions, then exited with `Apps fixture request admission failed`. No lane or
+lifecycle receipt was produced. Its protected qualification record is retained
+under `receipts/apps-aa735d7e-admission`; this is failed evidence.
+
+Source review found the same local Docker endpoint omission in the support
+authority validator, plus an uncaught admission call outside the HTTP wrapper's
+tracked promise. This explains why the child bypassed controlled failure
+reporting. The tests had replaced the server adapter wholesale. The repaired
+support now matches the exact three reviewed local endpoints; actual registered
+composition regressions cover admission and request/storage drain. Root fresh
+verification passed 70 support/composition tests. Actual callback regressions
+reproduced the admission throw and three unhandled response-write failures before
+repair. Independent review accepted the callback repair and reproduced 92 runner
+tests with clean scoped typing. Unknown settlement still forbids cleanup.
+
+Both failed fixtures remain retained. Their original process-local custody
+records cannot be recreated by container labels. Existing cleanup APIs cannot
+safely resume the staged acquisition; no forced removal or cleanup waiver is
+authorized by these records. The reviewed recovery design is recorded in the
+ignored `wave2-apps-retained-recovery-card.md`. Further native retries are held
+until positive physical recovery evidence covers its missing gates.
+
+Finish sequence:
+
+1. Resolve the two retained fixture recovery gates, then rerun Apps at clean
+   exact committed source and require real browser and cleanup receipts.
+2. Resolve Guides Theme/budget, section reorder and activity-photo behavior;
+   finish the real spec and profile/158 registration, then qualify the native lane.
+3. Implement and qualify the included Places taxonomy/pins, People sectors and
+   Apps suggestions/nightly worker after concrete design approval and authorized
+   taxonomy/provider/host inputs. Inclusion remains required, not deferred.
+4. Reconcile all Wave 2 acceptance evidence and remaining public/category gates
+   before declaring closure. Wave 3 runtime/fixture cutover follows closure.
+
+Wave 2 remains OPEN. No new push, hosted CI, merge or deployment occurred.
+
+## Current hosted status
 
 PR119 still points to remote `622f689385058ef9186538a1d8e1f60fd23ab266`.
 Read-only PR inspection on 2026-10-10 confirms its head branch is

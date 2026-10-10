@@ -107,3 +107,36 @@ it('actual fixed captured child classifies overflow while retaining physical clo
  const children=new Set();const operation=defaultFunction('fixedChild',{Buffer,Refusal:class extends Error{},nativeUnknown:false,nativeChildren:children,recordCategory:(value:string)=>categories.push(value),load:async(name:string)=>{expect(name).toBe('node:child_process');return{spawn:()=>child};}});
  const handle=await operation('fixed',[],{},'fixed',undefined,true);child.stdout.emit('data',Buffer.alloc(4097));expect(killed).toBe(true);expect(categories).toEqual(['output-overflow']);expect(children.size).toBe(1);let closed=false;handle.closed.then(()=>{closed=true;});await Promise.resolve();expect(closed).toBe(false);child.emit('close',1,null);await handle.closed;expect(children.size).toBe(0);
 });
+async function defaultApi(binding:any,getControl:()=>any=()=>undefined,notify?:()=>void,providedOptions?:any){
+ const {EventEmitter}=await import('node:events');let callback!:(req:any,res:any)=>void,reports=0;const server:any=new EventEmitter();server.listen=(_port:any,_host:any,ready:()=>void)=>ready();server.close=(ready:()=>void)=>ready();
+ const handlers=new Map();const operation=defaultMethod('startApi',{load:async(name:string)=>{expect(name).toBe('node:http');return{createServer:(fn:any)=>{callback=fn;return server;}};},support:async()=>binding,handlerDrains:handlers,Refusal:class extends Error{},nativeUnknown:false,reportFailure:()=>{reports++;notify?.();},URL,setTimeout,clearTimeout});
+ const options=providedOptions??{composed:{app:()=>{}},apiOrigin:'http://127.0.0.1:54001'};const api=await operation(options,getControl);
+ return{callback,server,options,api,drain:()=>handlers.get(options.composed)(100),reports:()=>reports};
+}
+it('actual native callback contains admission throw before dispatch and signals controlled lifecycle',async()=>{
+ let sealed=false,dispatched=false;const s=await defaultApi({admitAppsFixtureRequest(){throw Error('private failure');},sealAppsFixtureRequests(){sealed=true;}});s.options.composed.app=()=>{dispatched=true;};
+ const res={headersSent:false,writableEnded:false,destroyed:false,statusCode:0,setHeader(){},end(){}};expect(()=>s.callback({},res)).not.toThrow();for(let i=0;i<10&&!s.reports();i++)await Promise.resolve();expect(s.reports()).toBe(1);expect(sealed).toBe(true);expect(dispatched).toBe(false);
+});
+it.each(['headersSent','destroyed','writableEnded'])('actual rejected handler never writes after %s and never leaks derived rejection',async state=>{
+ let writes=0;const s=await defaultApi({admitAppsFixtureRequest:()=>true,sealAppsFixtureRequests(){}},()=>({handle:async()=>{throw Error('private');}}));
+ const res:any={headersSent:false,writableEnded:false,destroyed:false,setHeader(){writes++;throw Error('write escaped');},end(){writes++;throw Error('end escaped');},destroy(){}};res[state]=true;expect(()=>s.callback({},res)).not.toThrow();for(let i=0;i<10&&!s.reports();i++)await Promise.resolve();expect(writes).toBe(0);expect(s.reports()).toBe(1);
+});
+it('actual wrapper retains entire handler original beyond finished response',async()=>{
+ let settle!:(value:boolean)=>void;const pending=new Promise<boolean>(resolve=>{settle=resolve;});const s=await defaultApi({admitAppsFixtureRequest:()=>true,sealAppsFixtureRequests(){}},()=>({handle:()=>pending}));s.callback({},{headersSent:true,writableEnded:true,destroyed:true});let drained=false;const drain=s.drain().then((value:boolean)=>{drained=value;});await Promise.resolve();expect(drained).toBe(false);settle(true);await drain;expect(drained).toBe(true);
+});
+it('actual private default failure bridge rejects factory with branded baseline diagnostic and retains original',async()=>{
+ const f=fake();let notify!:()=>void,api:any;
+ f.deps.startApi=async(options:any,getControl:any)=>{api=await defaultApi({admitAppsFixtureRequest(){throw Error('private admission');},sealAppsFixtureRequests(){}},getControl,()=>notify(),options);return api.api;};
+ f.deps.canonicalMe=async()=>{api.callback({},{headersSent:false,writableEnded:false,destroyed:false,setHeader(){},end(){}});return new Promise(()=>{});};
+ const ast=ts.createSourceFile('runner.ts',readFileSync(source,'utf8'),ts.ScriptTarget.Latest,true),printer=ts.createPrinter();
+ const body=ast.statements.filter(node=>ts.isFunctionDeclaration(node)&&['createAppsBrowserFixture','extractAppsFixtureDiagnostic'].includes(node.name!.text)).map(node=>printer.printNode(ts.EmitHint.Unspecified,node,ast)).join('\n');
+ const code=ts.transpileModule(body,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText.replaceAll('export function','function');
+ const closed=new Function('defaultDependencies','keys','Refusal','path','parseBrowserSuite','assertBrowserEnvironment','baseline','uuid','diagnostics',code+'\nreturn {createAppsBrowserFixture,extractAppsFixtureDiagnostic};')((_category:any,reportFailure:()=>void)=>{notify=reportFailure;return f.deps;},Object.keys(f.deps),class extends Error{},path,()=> 'apps',()=>{}, {parse:(value:any)=>value},{safeParse:()=>({success:true})},new WeakMap());
+ const error=await closed.createAppsBrowserFixture().run().catch((value:any)=>value);
+ expect(closed.extractAppsFixtureDiagnostic(error)).toEqual({stage:'baseline',category:'refusal'});expect(api.reports()).toBe(1);for(const event of ['control-close','artifacts-remove','pool-end','database-stop','root-remove','secret-clean','finish'])expect(f.events).not.toContain(event);expect(f.events).toContain('failure-receipt');
+});
+it('actual response write failure remains contained and notifies lifecycle',async()=>{
+ const s=await defaultApi({admitAppsFixtureRequest:()=>true,sealAppsFixtureRequests(){}},()=>({handle:async()=>{throw Error('handler failed');}}));
+ s.callback({},{headersSent:false,writableEnded:false,destroyed:false,setHeader(){throw Error('response write');},end(){throw Error('response end');},destroy(){throw Error('response destroy');}});
+ for(let i=0;i<20;i++)await Promise.resolve();expect(s.reports()).toBeGreaterThanOrEqual(1);
+});

@@ -197,7 +197,8 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
     let stage: DiagnosticStage = 'validation', category: DiagnosticCategory = 'refusal', captured: Diagnostic | undefined;
     const recordCategory = (value: DiagnosticCategory) => { if (category === 'refusal')
         category = value; };
-    const d = dependencies === undefined ? defaultDependencies(recordCategory) : dependencies;
+    let nativeFailure:(()=>void)|undefined;
+    const d = dependencies === undefined ? defaultDependencies(recordCategory,()=>nativeFailure?.()) : dependencies;
     let promise: Promise<void> | undefined;
     return { run() {
             return promise ??= Promise.resolve().then(execute).catch(() => {
@@ -239,6 +240,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
         let rejectLifecycle!: (error: unknown) => void;
         const lifecycleFailed = new Promise<never>((_, reject) => { rejectLifecycle = reject; });
         lifecycleFailed.catch(() => undefined);
+        nativeFailure=()=>{uncertain=true;rejectLifecycle(new Refusal());};
         const restoreSignals = d.installSignals(() => { interrupted = true; if (options) {
             try {
                 d.sealRequests(options);
@@ -506,7 +508,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
         await bounded(() => Promise.resolve(receipt!.finish(authority!, [], interrupted)));
     }
 }
-function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void): Dependencies {
+function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void, reportFailure:()=>void): Dependencies {
     const root = fileURLToPath(new URL('../../', import.meta.url)), frontend = path.join(root, 'explorers-earth'), temporaryRoot = tmpdir();
     const ps = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', helper = path.join(root, 'tunes/scripts/music-local-private-files.ps1'), cli = path.join(frontend, 'node_modules/@playwright/test/cli.js'), viteCli = path.join(frontend, 'node_modules/vite/bin/vite.js');
     const retained = new Map<string, {
@@ -753,27 +755,38 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         async ensureInitialAccount(pool, userId) { const { ensureInitialAccount } = await import('../server/auth/initialAccount'); return ensureInitialAccount(pool as any, userId); },
         async createConfig(origin) { const { resolveExplorersAuthConfig } = await import('../server/auth/betterAuth'); return resolveExplorersAuthConfig({ EXPLORERS_PUBLIC_ORIGIN: origin, EXPLORERS_AUTH_SECRET: randomBytes(32).toString('hex'), GOOGLE_CLIENT_ID: 'apps-fixture-google', GOOGLE_CLIENT_SECRET: 'apps-fixture-secret' }); },
         async createComposition(pool, config, directory, binding) { const pair = await (await support()).createAppsFixtureComposition(pool as any, config, directory, binding as any); configurations.set(pair.composed, config); nativeAccounts.set(pair.composed, Object.values(binding.personasWithActualAccountIds).map(person => person.accountId!)); return pair; },
-        async startApi(options, getControl) { const { createServer } = await import('node:http'); const binding = await support(); const handlers = new Set<Promise<unknown>>(), sockets = new Set<import('node:net').Socket>(); handlerDrains.set(options.composed, async (ms) => { if (!handlers.size)
-            return true; let timer: ReturnType<typeof setTimeout>; try {
-            return await Promise.race([Promise.all([...handlers]).then(() => handlers.size === 0), new Promise<boolean>(resolve => { timer = setTimeout(() => resolve(false), ms); })]);
-        }
-        catch {
-            return false;
-        }
-        finally {
-            clearTimeout(timer!);
-        } }); const server = createServer((req, res) => { if (!binding.admitAppsFixtureRequest(options as unknown as AppsControlOptions, req, res)) {
-            res.statusCode = 503;
-            res.setHeader('Cache-Control', 'no-store');
-            res.end();
-            return;
-        } const original = (async () => { const control = getControl(); if (control && await control.handle(req, res))
-            return; options.composed.app(req, res); })(); handlers.add(original); original.then(() => handlers.delete(original), () => { handlers.delete(original); nativeUnknown = true; res.statusCode = 500; res.setHeader('Cache-Control', 'no-store'); res.end(); }); }); server.on('connection', socket => { sockets.add(socket); socket.once('close', () => sockets.delete(socket)); if (sockets.size > 128) {
-            nativeUnknown = true;
-            socket.destroy();
-        } }); server.on('error', () => { nativeUnknown = true; }); await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(Number(new URL(options.apiOrigin).port), '127.0.0.1', resolve); }); return { async close() { if (handlers.size)
-                throw new Refusal(); for (const socket of sockets)
-                socket.destroy(); await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); } }; },
+        async startApi(options,getControl){
+            const {createServer}=await import('node:http');const binding=await support();
+            const handlers=new Set<Promise<unknown>>(),sockets=new Set<import('node:net').Socket>();
+            const fail=()=>{
+                nativeUnknown=true;
+                try{binding.sealAppsFixtureRequests(options as unknown as AppsControlOptions);}catch{}
+                try{reportFailure();}catch{}
+            };
+            const respond=(res:import('node:http').ServerResponse,status:number)=>{
+                if(res.headersSent||res.writableEnded||res.destroyed)return;
+                try{res.statusCode=status;res.setHeader('Cache-Control','no-store');res.end();}
+                catch{fail();try{res.destroy();}catch{}}
+            };
+            handlerDrains.set(options.composed,async(ms)=>{
+                if(!handlers.size)return true;let timer:ReturnType<typeof setTimeout>;
+                try{return await Promise.race([Promise.all([...handlers]).then(()=>handlers.size===0),new Promise<boolean>(resolve=>{timer=setTimeout(()=>resolve(false),ms);})]);}
+                catch{return false;}finally{clearTimeout(timer!);}
+            });
+            const server=createServer((req,res)=>{
+                const original=(async()=>{
+                    if(!binding.admitAppsFixtureRequest(options as unknown as AppsControlOptions,req,res)){respond(res,503);return;}
+                    const control=getControl();if(control&&await control.handle(req,res))return;
+                    options.composed.app(req,res);
+                })();
+                handlers.add(original);
+                void original.then(()=>handlers.delete(original),()=>{handlers.delete(original);fail();respond(res,500);}).catch(()=>{fail();});
+            });
+            server.on('connection',socket=>{sockets.add(socket);socket.once('close',()=>sockets.delete(socket));if(sockets.size>128){fail();socket.destroy();}});
+            server.on('error',fail);
+            await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(Number(new URL(options.apiOrigin).port),'127.0.0.1',resolve);});
+            return{async close(){if(handlers.size)throw new Refusal();for(const socket of sockets)socket.destroy();await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}};
+        },
         async createSessions(composition, config, personas) { const context = await composition.composed.auth.$context; for (const person of Object.values(personas)) {
             const session = await context.internalAdapter.createSession(person.userId, false);
             person.cookie = `${context.authCookies.sessionToken.name}=${session.token}.${createHmac('sha256', config.secret).update(session.token).digest('base64')}`;

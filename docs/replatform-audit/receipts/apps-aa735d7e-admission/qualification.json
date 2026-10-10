@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "scope": "delivered-auth-profile-books",
+  "scopeContents": [
+    "apps"
+  ],
+  "scopeCompatibilityIdentifier": true,
+  "selectedLane": {
+    "name": "apps",
+    "status": "failed"
+  },
+  "deliveredSlice": "incomplete",
+  "overallMilestone": "incomplete",
+  "fullParity": "incomplete",
+  "releaseEligible": false,
+  "provenance": {
+    "commit": "aa735d7e1ad0640f30f8f22a928a2e41675f6cd5",
+    "sourceHash": "365f4d75682a9d791c85a5b32c49c53b6513f011dac8e2282d1e823396df0833",
+    "manifestHash": "fe94a6013b2f83bf96e3799929a4b8d61e8ae245328afe1abc3f3cc0c38eb14a",
+    "dirty": false
+  },
+  "children": [
+    {
+      "lane": "apps",
+      "status": 1,
+      "signal": null,
+      "error": null
+    }
+  ],
+  "error": "Protected lane or qualification contract failed",
+  "pending": [
+    {
+      "ticket": "2.4",
+      "obligation": "Configured deployed Google callback and consent evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.4",
+      "obligation": "Analytics acceptance",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.5",
+      "obligation": "Unified QA deployment, image/schema and trusted producer evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "4/5",
+      "obligation": "Remaining canonical category producer families and their own acceptance evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "6.1-6.3",
+      "obligation": "Music mapped-owner HTTP/socket and feature parity",
+      "status": "pending"
+    },
+    {
+      "ticket": "7.1/7.2",
+      "obligation": "Cross-category consumers and all nine categories",
+      "status": "pending"
+    },
+    {
+      "ticket": "8.1-8.4",
+      "obligation": "Removal, rename, exact QA digest promotion and deployment",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.1/5.2",
+      "obligation": "Places/link16 proposed inventory awaits independent source review and actual protected execution; provider photo/gallery closure, taxonomy/pins and hosted acceptance remain pending",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.3/5.4",
+      "obligation": "Apps manual8 awaits integrated owned fixture and protected native execution; provider enrichment, taxonomy and complete public pagination remain independently pending",
+      "status": "pending"
+    }
+  ]
+}

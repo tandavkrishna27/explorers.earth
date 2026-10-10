@@ -111,7 +111,7 @@ function validateOptions(o:AppsControlOptions) {
  const api=loopback(o.apiOrigin);loopback(o.origin);if(o.apiOrigin===o.origin||o.config.baseURL!==o.origin)throw fail('authority');
  identitySchema.parse({version:1,runId:o.runId,commit:o.commit,caseId:APPS_CASES[0],project:'apps-desktop',repeat:0});
  const a=o.ownedAuthority;exactKeys(a,['owned','runId','commit','database','port','containerId','imageId','contextHost']);
- if(a.owned!==true||a.runId!==o.runId||a.commit!==o.commit||a.database!==`music_uat_${o.runId}`||!sha.safeParse(a.containerId).success||!/^sha256:[a-f0-9]{64}$/.test(a.imageId)||!Number.isSafeInteger(a.port)||a.port<1024||a.port>65535||!['npipe:////./pipe/docker_engine','unix:///var/run/docker.sock'].includes(a.contextHost))throw fail('authority');
+ if(a.owned!==true||a.runId!==o.runId||a.commit!==o.commit||a.database!==`music_uat_${o.runId}`||!sha.safeParse(a.containerId).success||!/^sha256:[a-f0-9]{64}$/.test(a.imageId)||!Number.isSafeInteger(a.port)||a.port<1024||a.port>65535||!['npipe:////./pipe/docker_engine','npipe:////./pipe/dockerDesktopLinuxEngine','unix:///var/run/docker.sock'].includes(a.contextHost))throw fail('authority');
  exactKeys(o.personas,['ownerA','ownerB']);for(const p of Object.values(o.personas)){exactKeys(p,['userId','handle','cookie']);personaSchema.omit({accountId:true}).parse(p);}
  if(o.personas.ownerA.userId===o.personas.ownerB.userId||o.personas.ownerA.handle===o.personas.ownerB.handle||o.storage.environment!=='local')throw fail('authority');
  for(const p of [o.expectedTemporaryRoot,o.disposableDirectory,o.storageDirectory,o.fixtureFilesRoot])if(!isAbsolute(p)||p.length>1024)throw fail('custody');
