@@ -460,3 +460,14 @@ Its known `platform-fixture` ingress and dependent `music-required` failures are
 not waived. Older hosted checks do not qualify newer local commits. Their
 coordinated runtime/fixture cutover belongs to Wave 3 and remains a release
 blocker. This record contains no new hosted CI qualification claim.
+
+The exact two-secret Windows ACL adoption module passed 18 focused contracts
+and independent source review. Its exact C# compiled under pinned Windows
+PowerShell 5.1 without invoking adoption. The short fixed launcher supplies
+reviewed C# on its first stdin line; later lines carry parent liveness only.
+System ancestors retain unchanged security/physical snapshots. Only the token
+parent and two fixed secrets receive protected DACLs. MAXIMUM_ALLOWED parent
+handling prevents sibling propagation; sibling metadata/security must remain
+unchanged. C# never deletes the lease; Node may unlink only after its owned
+child positively closes and fresh identity/private inspection succeeds.
+These are source/compile receipts, not native ACL adoption or recovery proof.
