@@ -12,7 +12,7 @@ const moviesPublicDiagnosticSeen=new WeakSet<TestInfo>();
 function moviesPublicDiagnosticIdentity(info:TestInfo):boolean{
  const title='anonymous category later list complete hero and modal preserve zero fields';
  if(info.title!==title||info.project.name!=='movies-mobile'||info.repeatEachIndex!==0||info.retry!==0||resolve(info.file)!==fileURLToPath(import.meta.url))return false;
- const path=info.titlePath();return Array.isArray(path)&&((path.length===1&&path[0]===title)||(path.length===2&&path[0]==='movies.spec.ts'&&path[1]===title));
+ const path=info.titlePath;return Array.isArray(path)&&((path.length===1&&path[0]===title)||(path.length===2&&path[0]==='movies.spec.ts'&&path[1]===title));
 }
 function setMoviesPublicDiagnosticStage(info:TestInfo,stage:MoviesPublicStage):void{
  if(moviesPublicDiagnosticIdentity(info))moviesPublicDiagnosticStates.set(info,stage);
