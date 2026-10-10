@@ -261,3 +261,11 @@ Regression source `13a7d2cf3dd4ffa385fba7c4469d401fb0a49bb1` ran the registered 
 Independent regression review corrected the public-authenticated cache expectation before this run: cookies do not make otherwise public bytes private. The eight new backend titles, seven retained cover titles and four client titles remain intact. Owned registry admission preserved all 24 prior files and passed eighteen DB-free contracts.
 
 The two-file production repair uses collection purpose for Guides covers, adds strict public cover/section-photo eligibility, and counts every extant section reference for deletion and orphan cleanup regardless of visibility/archive. Independent production review cleared specification and quality. Fresh root resource-free checks passed 55/55 client cases, application TypeScript and syntax; five regression/registry hashes remained frozen. Fresh owned 25-file/333-case qualification is next; no backend GREEN or Guides browser acceptance is claimed yet.
+
+## Guides media owned qualification passed — 2026-10-10
+
+Clean source `e675571798f0fc675d59ea9c4381672f342f7c28` passed the registered owned producer: 25/25 files and 333/333 cases, zero failures/skips/todos. Root independently parsed the official finalized envelope and validated the exact registered manifest. The [actual passing receipt](receipts/wave2-owned-e6755717-pass.json) is retained byte-for-byte; its Vitest digest is `a25bd0da57cff6388ca0e954c7cc4d5cd26244a9c276dfc00150b03e7d49fb4e`.
+
+The producer reported database-dropped-container-removed. Root separately observed no owned container, the run token erased, zero private Guides storage directories and unchanged clean source hash `865e146f12c74d9fe5f491dae988e8e753100c88c3dd1cb5ed53cbe718c888ba`. The freeze was released after terminal settlement, validation and cleanup inspection.
+
+This qualifies the backend media repair at that exact source. The 55 resource-free client cases remain their separately recorded evidence. Guides public photo hydration, native browser acceptance, Books/Movies failure observation, remaining categories, added taxonomy/pins/sectors/nightly enrichment, QA producers and hosted fixture blockers remain open.
