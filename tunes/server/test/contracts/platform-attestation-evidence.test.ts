@@ -2,6 +2,7 @@ import {describe,it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {acquireProjectAttestation,inspectUnqualifiedOfficialAttestationFixture as inspectFixture} from '../../deployment/platform-attestation-evidence';
+import * as attestationModule from '../../deployment/platform-attestation-evidence';
 const path='./fixtures/platform-attestation/';
 const raw=()=>readFileSync(new URL(path+'gh-2.87.3-verified-fixture.json',import.meta.url));
 const artifact=()=>readFileSync(new URL(path+'github_provenance_demo-0.0.12-py3-none-any.whl',import.meta.url));
@@ -79,3 +80,63 @@ describe('unqualified pinned official verifier fixture schema',()=>{
  it.each(['stdout','artifact'])('rejects nonbyte %s without invoking caller getters',which=>{let reads=0;const fake={get length(){reads++;throw new Error('SECRET');}};expect(()=>inspectFixture(which==='stdout'?fake as any:raw(),which==='artifact'?fake as any:artifact())).toThrowError('ATTESTATION_INPUT_LIMIT');expect(reads).toBe(0);});
 });
 it('production denies forged selectors, policies, executor, secrets and executable claims without reading them',async()=>{let reads=0;const forged={get evidence(){reads++;throw new Error('SECRET');},get executor(){reads++;throw new Error('SPAWN');},get path(){reads++;throw new Error('WRITABLE_EXECUTABLE');}};await expect((acquireProjectAttestation as any)(forged,raw(),artifact())).rejects.toMatchObject({code:'PRODUCER_UNAVAILABLE'});expect(reads).toBe(0);});
+
+// Derived from the retained shape only: every project claim and signature here is synthetic.
+const binding={repository:'tandavkrishna27/explorers.earth',repositoryId:'1171328761',ref:'refs/heads/codex/unified-replatform',sourceCommit:'a'.repeat(40),signerWorkflowPath:'.github/workflows/platform-candidate.yml',signerDigest:'b'.repeat(40),producerRunId:'12345',producerRunAttempt:'2',subjectName:'custody-envelope.json',subjectSha256:'c'.repeat(64)};
+const invocation='https://github.com/tandavkrishna27/explorers.earth/actions/runs/12345/attempts/2';
+function synthetic(fn:(e:any,entries:any[])=>void=()=>{}):Buffer {
+ const entries=parsed(),e=entries[0],c=e.verificationResult.signature.certificate;
+ const repo='https://github.com/'+binding.repository,signer=repo+'/'+binding.signerWorkflowPath+'@'+binding.ref;
+ Object.assign(c,{issuer:'https://token.actions.githubusercontent.com',subjectAlternativeName:signer,buildSignerURI:signer,buildConfigURI:signer,buildSignerDigest:binding.signerDigest,buildConfigDigest:binding.signerDigest,sourceRepositoryDigest:binding.sourceCommit,githubWorkflowSHA:binding.sourceCommit,sourceRepositoryURI:repo,sourceRepositoryIdentifier:binding.repositoryId,sourceRepositoryRef:binding.ref,githubWorkflowRef:binding.ref,githubWorkflowRepository:binding.repository,runInvocationURI:invocation});
+ const s=e.verificationResult.statement,d=s.predicate.buildDefinition;
+ s.subject=[{name:binding.subjectName,digest:{sha256:binding.subjectSha256}}];
+ Object.assign(d.externalParameters.workflow,{path:binding.signerWorkflowPath,ref:binding.ref,repository:repo});
+ d.internalParameters.github.repository_id=binding.repositoryId;
+ d.resolvedDependencies=[{uri:'git+'+repo+'@'+binding.ref,digest:{gitCommit:binding.sourceCommit}}];
+ s.predicate.runDetails.metadata.invocationId=invocation;
+ e.attestation.bundle.dsseEnvelope.payload=Buffer.from(JSON.stringify(s)).toString('base64');
+ fn(e,entries);return Buffer.from(JSON.stringify(entries));
+}
+const inspectOutput=(b:Buffer,expected:any=binding)=>(attestationModule as any).inspectUnqualifiedVerifiedAttestationOutput(b,expected);
+describe('synthetic project verifier output parsing never grants authority',()=>{
+ it.each(['\n','\r','\r\n','\u2028','\u2029'])('rejects invocation trailing line terminator %#',suffix=>expect(()=>inspectOutput(synthetic(e=>{e.verificationResult.signature.certificate.runInvocationURI=invocation+suffix;}))).toThrowError('ATTESTATION_RUN_ATTEMPT_BINDING_UNAVAILABLE'));
+ it.each(['\n','\r','\r\n','\u2028','\u2029'].flatMap(suffix=>['sourceCommit','signerDigest','subjectSha256','producerRunId','producerRunAttempt'].map(key=>({suffix,key}))))('rejects canonical expected field trailing terminator %#',({suffix,key})=>expect(()=>inspectOutput(synthetic(),{...binding,[key]:binding[key as keyof typeof binding]+suffix})).toThrowError('ATTESTATION_EXPECTED_BINDING_INVALID'));
+ it.each(['\n','\r','\r\n','\u2028','\u2029'].flatMap(suffix=>['sourceRepositoryIdentifier','buildSignerDigest','buildConfigDigest','sourceRepositoryDigest','githubWorkflowSHA'].map(key=>({suffix,key}))))('rejects canonical certificate field trailing terminator %#',({suffix,key})=>expect(()=>inspectOutput(synthetic(e=>{e.verificationResult.signature.certificate[key]+=suffix;}))).toThrowError('ATTESTATION_OUTPUT_SCHEMA_INVALID'));
+ it('requires the pure output inspector',()=>expect((attestationModule as any).inspectUnqualifiedVerifiedAttestationOutput).toBeTypeOf('function'));
+ it('compares distinct source and signer digests and returns only frozen unqualified identifiers',()=>{const result=inspectOutput(synthetic());expect(result).toEqual({status:'VERIFIER_OUTPUT_STRUCTURALLY_VALID_UNQUALIFIED',releaseQualified:false,cryptographicallyVerified:false,runId:'12345',runAttempt:'2',subjectSha256:'c'.repeat(64)});expect(Object.isFrozen(result)).toBe(true);});
+ it.each([undefined,null,42,'','https://github.com/tandavkrishna27/explorers.earth/actions/runs/012345/attempts/2','https://github.com/tandavkrishna27/explorers.earth/actions/runs/12345/attempts/02','https://github.com/tandavkrishna27/explorers.earth/actions/runs/9007199254740992/attempts/2',invocation+'?token=SECRET',invocation+'#x',invocation+'/extra',invocation.replace('github.com','evil.invalid'),invocation.replace('https://','https://evil@'),invocation.replace('/12345/','/%31%32%33%34%35/'),invocation.replace('explorers.earth','other')])('refuses absent or nonliteral certificate invocation %s',value=>expect(()=>inspectOutput(synthetic(e=>{e.verificationResult.signature.certificate.runInvocationURI=value;}))).toThrowError('ATTESTATION_RUN_ATTEMPT_BINDING_UNAVAILABLE'));
+ it.each([invocation.replace('/12345/','/12346/'),invocation.replace('/attempts/2','/attempts/3')])('refuses certificate run disagreement %s',value=>expect(()=>inspectOutput(synthetic(e=>{e.verificationResult.signature.certificate.runInvocationURI=value;}))).toThrowError('ATTESTATION_RUN_ATTEMPT_BINDING_MISMATCH'));
+ it.each(['issuer','subjectAlternativeName','buildSignerURI','buildConfigURI','buildSignerDigest','buildConfigDigest','sourceRepositoryDigest','githubWorkflowSHA','sourceRepositoryURI','sourceRepositoryIdentifier','sourceRepositoryRef','githubWorkflowRef','githubWorkflowRepository','runnerEnvironment','buildTrigger','githubWorkflowTrigger'])('rejects wrong certificate %s',key=>expect(()=>inspectOutput(synthetic(e=>{e.verificationResult.signature.certificate[key]='SECRET';}))).toThrowError('ATTESTATION_OUTPUT_SCHEMA_INVALID'));
+ it.each([
+  (e:any,entries:any[])=>entries.push(e),
+  (e:any)=>e.verificationResult.statement.subject.push(e.verificationResult.statement.subject[0]),
+  (e:any)=>e.verificationResult.statement.subject[0].name='wrong',
+  (e:any)=>e.verificationResult.statement.subject[0].digest.sha256='d'.repeat(64),
+  (e:any)=>e.attestation.bundle.dsseEnvelope.signatures.push(e.attestation.bundle.dsseEnvelope.signatures[0]),
+  (e:any)=>e.attestation.bundle.dsseEnvelope.payload=Buffer.from('{}').toString('base64'),
+  (e:any)=>e.attestation.bundle.dsseEnvelope.signatures[0].sig='Zh==',
+  (e:any)=>{let v:any={};e.extra=v;for(let i=0;i<17;i++){v.next={};v=v.next;}},
+  (e:any)=>{e.extra={};for(let i=0;i<2049;i++)e.extra['n'+i]=0;},
+  (e:any)=>e.extra='x'.repeat(65537),
+  (e:any)=>e.extra=Array(9).fill(0),
+ ])('rejects inconsistent or unbounded output %#',fn=>expect(()=>inspectOutput(synthetic(fn))).toThrowError('ATTESTATION_OUTPUT_SCHEMA_INVALID'));
+ it.each([Buffer.from([255]),Buffer.from('{'),Buffer.from('[]')])('rejects invalid bytes %#',b=>expect(()=>inspectOutput(b)).toThrowError('ATTESTATION_OUTPUT_SCHEMA_INVALID'));
+ it('caps bytes',()=>expect(()=>inspectOutput(Buffer.alloc(1024*1024+1))).toThrowError('ATTESTATION_OUTPUT_INPUT_LIMIT'));
+ it('does not read nonbyte stdout getters',()=>{let reads=0;const fake={get length(){reads++;throw new Error('SECRET');}};expect(()=>inspectOutput(fake as any)).toThrowError('ATTESTATION_OUTPUT_INPUT_LIMIT');expect(reads).toBe(0);});
+ it.each(['certificate','signature'])('refuses missing %s despite correct predicate invocation',key=>expect(()=>inspectOutput(synthetic(e=>{if(key==='certificate')delete e.verificationResult.signature.certificate;else delete e.verificationResult.signature;}))).toThrowError('ATTESTATION_RUN_ATTEMPT_BINDING_UNAVAILABLE'));
+ it.each([
+  (s:any)=>s.predicate.buildDefinition.externalParameters.workflow.path='.github/workflows/evil.yml',
+  (s:any)=>s.predicate.buildDefinition.externalParameters.workflow.ref='refs/heads/main',
+  (s:any)=>s.predicate.buildDefinition.externalParameters.workflow.repository='https://github.com/evil/repo',
+  (s:any)=>s.predicate.buildDefinition.internalParameters.github.repository_id='1',
+  (s:any)=>s.predicate.buildDefinition.internalParameters.github.event_name='push',
+  (s:any)=>s.predicate.buildDefinition.resolvedDependencies[0].digest.gitCommit='d'.repeat(40),
+  (s:any)=>s.predicate.runDetails.metadata.invocationId=invocation.replace('/attempts/2','/attempts/3'),
+  (s:any)=>s.predicate.runDetails.builder.id='https://github.com/actions/runner/self-hosted',
+ ])('rejects matching DSSE with contradictory predicate %#',fn=>expect(()=>inspectOutput(synthetic(e=>{fn(e.verificationResult.statement);e.attestation.bundle.dsseEnvelope.payload=Buffer.from(JSON.stringify(e.verificationResult.statement)).toString('base64');}))).toThrowError('ATTESTATION_OUTPUT_SCHEMA_INVALID'));
+ it('rejects symbol comparison keys',()=>expect(()=>inspectOutput(synthetic(),{...binding,[Symbol('secret')]:true})).toThrowError('ATTESTATION_EXPECTED_BINDING_INVALID'));
+ it.each(Object.keys(binding))('rejects expected getters before reading bytes: %s',key=>{let reads=0;const expected={...binding};Object.defineProperty(expected,key,{enumerable:true,get(){reads++;throw new Error('SECRET');}});expect(()=>inspectOutput(synthetic(),expected)).toThrowError('ATTESTATION_EXPECTED_BINDING_INVALID');expect(reads).toBe(0);});
+ it.each([{...binding,extra:true},{...binding,repository:'evil/repo'},{...binding,repositoryId:'1'},{...binding,ref:'refs/heads/main'},{...binding,signerWorkflowPath:'.github/workflows/evil.yml'},{...binding,sourceCommit:'A'.repeat(40)},{...binding,signerDigest:'a'.repeat(64)},{...binding,producerRunId:'01'},{...binding,producerRunAttempt:'9007199254740992'},{...binding,subjectSha256:'C'.repeat(64)}])('rejects invalid expected comparison %#',expected=>expect(()=>inspectOutput(synthetic(),expected)).toThrowError('ATTESTATION_EXPECTED_BINDING_INVALID'));
+ it('rejects inherited and nonenumerable comparisons',()=>{const inherited=Object.create(binding);expect(()=>inspectOutput(synthetic(),inherited)).toThrowError('ATTESTATION_EXPECTED_BINDING_INVALID');const hidden={...binding};Object.defineProperty(hidden,'repository',{value:binding.repository,enumerable:false});expect(()=>inspectOutput(synthetic(),hidden)).toThrowError('ATTESTATION_EXPECTED_BINDING_INVALID');});
+ it('perfect forged proof cannot qualify and errors reveal no input or cause',()=>{const result=inspectOutput(synthetic(e=>{e.releaseQualified=true;e.cryptographicallyVerified=true;e.attestation.bundle.dsseEnvelope.signatures[0].sig=Buffer.from('forged').toString('base64');}));expect(result.releaseQualified).toBe(false);expect(result.cryptographicallyVerified).toBe(false);try{inspectOutput(Buffer.from('SECRET'));throw new Error('accepted');}catch(error:any){expect(error.message).toBe('ATTESTATION_OUTPUT_SCHEMA_INVALID');expect(Object.getOwnPropertyNames(error).sort()).toEqual(['code','message','stack']);expect(error.cause).toBeUndefined();}});
+});

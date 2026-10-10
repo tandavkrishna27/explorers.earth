@@ -7,6 +7,78 @@ function fail(code='ATTESTATION_SCHEMA_INVALID'):never { throw new AttestationEv
 /** No producer, protected executable chain or descendant containment is qualified. Do not read caller proofs or secrets. */
 export async function acquireProjectAttestation():Promise<never> { return fail('PRODUCER_UNAVAILABLE'); }
 
+export interface AttestationExpectedBinding {
+ readonly repository:string;readonly repositoryId:string;readonly ref:string;readonly sourceCommit:string;
+ readonly signerWorkflowPath:string;readonly signerDigest:string;readonly producerRunId:string;
+ readonly producerRunAttempt:string;readonly subjectName:string;readonly subjectSha256:string;
+}
+export interface UnqualifiedVerifiedAttestationOutputInspection {
+ readonly status:'VERIFIER_OUTPUT_STRUCTURALLY_VALID_UNQUALIFIED';readonly releaseQualified:false;
+ readonly cryptographicallyVerified:false;readonly runId:string;readonly runAttempt:string;readonly subjectSha256:string;
+}
+const PROJECT=Object.freeze({repository:'tandavkrishna27/explorers.earth',repositoryId:'1171328761',ref:'refs/heads/codex/unified-replatform',signerWorkflowPath:'.github/workflows/platform-candidate.yml'});
+const EXPECTED_KEYS=['repository','repositoryId','ref','sourceCommit','signerWorkflowPath','signerDigest','producerRunId','producerRunAttempt','subjectName','subjectSha256'] as const;
+function positiveDecimal(value:string):boolean {return /^[1-9][0-9]*$/.test(value)&&Number.isSafeInteger(Number(value));}
+function snapshotExpected(value:AttestationExpectedBinding):AttestationExpectedBinding {
+ try {
+  if(value===null||typeof value!=='object'||Array.isArray(value))fail('ATTESTATION_EXPECTED_BINDING_INVALID');
+  const descriptors=Object.getOwnPropertyDescriptors(value),keys=Reflect.ownKeys(descriptors);
+  if(keys.length!==EXPECTED_KEYS.length)fail('ATTESTATION_EXPECTED_BINDING_INVALID');
+  const snapshot:Record<string,string>=Object.create(null);
+  for(const key of EXPECTED_KEYS){const d=descriptors[key];if(!d||!d.enumerable||!Object.hasOwn(d,'value')||typeof d.value!=='string')fail('ATTESTATION_EXPECTED_BINDING_INVALID');snapshot[key]=d.value;}
+  for(const key of ['repository','repositoryId','ref','signerWorkflowPath'] as const)if(snapshot[key]!==PROJECT[key])fail('ATTESTATION_EXPECTED_BINDING_INVALID');
+  if(!positiveDecimal(snapshot.repositoryId)||!positiveDecimal(snapshot.producerRunId)||!positiveDecimal(snapshot.producerRunAttempt)||! /^[a-f0-9]{40}$/.test(snapshot.sourceCommit)||! /^[a-f0-9]{40}$/.test(snapshot.signerDigest)||! /^[a-f0-9]{64}$/.test(snapshot.subjectSha256)||snapshot.subjectName.length===0||snapshot.subjectName.length>65536)fail('ATTESTATION_EXPECTED_BINDING_INVALID');
+  return Object.freeze(snapshot) as unknown as AttestationExpectedBinding;
+ }catch{ return fail('ATTESTATION_EXPECTED_BINDING_INVALID'); }
+}
+/** Pure inspection of alleged verifier output. No trusted execution or cryptographic verification occurs. */
+export function inspectUnqualifiedVerifiedAttestationOutput(stdout:Buffer,expected:AttestationExpectedBinding):UnqualifiedVerifiedAttestationOutputInspection {
+ const binding=snapshotExpected(expected);
+ if(!Buffer.isBuffer(stdout)||stdout.length>1024*1024)fail('ATTESTATION_OUTPUT_INPUT_LIMIT');
+ try {
+  const entry=record(singleton(parse(Buffer.from(stdout)))),result=record(entry.verificationResult);
+  // Identity is exclusively the certificate invocation, never the predicate or caller claims.
+  const signature=result.signature;
+  if(signature===null||typeof signature!=='object'||Array.isArray(signature))fail('ATTESTATION_RUN_ATTEMPT_BINDING_UNAVAILABLE');
+  const certificate=(signature as RecordValue).certificate;
+  if(certificate===null||typeof certificate!=='object'||Array.isArray(certificate))fail('ATTESTATION_RUN_ATTEMPT_BINDING_UNAVAILABLE');
+  const cert=record(certificate),invocation=cert.runInvocationURI;
+  const prefix='https://github.com/'+binding.repository+'/actions/runs/';
+  if(typeof invocation!=='string'||!invocation.startsWith(prefix))fail('ATTESTATION_RUN_ATTEMPT_BINDING_UNAVAILABLE');
+  const match=/^([1-9][0-9]*)\/attempts\/([1-9][0-9]*)$/.exec(invocation.slice(prefix.length));
+  if(!match||!positiveDecimal(match[1])||!positiveDecimal(match[2]))fail('ATTESTATION_RUN_ATTEMPT_BINDING_UNAVAILABLE');
+  const runId=match[1],runAttempt=match[2];
+  if(runId!==binding.producerRunId||runAttempt!==binding.producerRunAttempt)fail('ATTESTATION_RUN_ATTEMPT_BINDING_MISMATCH');
+  const repoURI='https://github.com/'+binding.repository,signer=repoURI+'/'+binding.signerWorkflowPath+'@'+binding.ref;
+  equal(cert.issuer,'https://token.actions.githubusercontent.com');
+  for(const key of ['subjectAlternativeName','buildSignerURI','buildConfigURI'])equal(cert[key],signer);
+  for(const key of ['buildSignerDigest','buildConfigDigest'])equal(cert[key],binding.signerDigest);
+  for(const key of ['sourceRepositoryDigest','githubWorkflowSHA'])equal(cert[key],binding.sourceCommit);
+  equal(cert.sourceRepositoryURI,repoURI);identifier(cert.sourceRepositoryIdentifier,binding.repositoryId);
+  equal(cert.sourceRepositoryRef,binding.ref);equal(cert.githubWorkflowRef,binding.ref);equal(cert.githubWorkflowRepository,binding.repository);
+  equal(cert.runnerEnvironment,'github-hosted');equal(cert.buildTrigger,'workflow_dispatch');equal(cert.githubWorkflowTrigger,'workflow_dispatch');
+  const statement=record(result.statement);equal(statement._type,'https://in-toto.io/Statement/v1');equal(statement.predicateType,'https://slsa.dev/provenance/v1');
+  const subject=record(singleton(statement.subject)),digest=record(subject.digest);
+  equal(subject.name,binding.subjectName);if(Object.keys(digest).length!==1)fail();equal(digest.sha256,binding.subjectSha256);
+  const predicate=record(statement.predicate),definition=record(predicate.buildDefinition);
+  equal(definition.buildType,'https://slsa-framework.github.io/github-actions-buildtypes/workflow/v1');
+  const workflow=record(at(definition.externalParameters,'workflow'));
+  equal(workflow.path,binding.signerWorkflowPath);equal(workflow.ref,binding.ref);equal(workflow.repository,repoURI);
+  const github=record(at(definition.internalParameters,'github'));equal(github.event_name,'workflow_dispatch');identifier(github.repository_id,binding.repositoryId);
+  const dependency=record(singleton(definition.resolvedDependencies));equal(at(dependency.digest,'gitCommit'),binding.sourceCommit);equal(dependency.uri,'git+'+repoURI+'@'+binding.ref);
+  const run=record(predicate.runDetails);equal(at(run.builder,'id'),'https://github.com/actions/runner/github-hosted');equal(at(run.metadata,'invocationId'),invocation);
+  const bundle=record(at(entry.attestation,'bundle'));equal(bundle.mediaType,'application/vnd.dev.sigstore.bundle.v0.3+json');
+  base64(at(at(bundle.verificationMaterial,'certificate'),'rawBytes'));
+  const envelope=record(bundle.dsseEnvelope);equal(envelope.payloadType,'application/vnd.in-toto+json');
+  if(!isDeepStrictEqual(parse(base64(envelope.payload)),statement))fail();
+  base64(record(singleton(envelope.signatures)).sig);
+  return Object.freeze({status:'VERIFIER_OUTPUT_STRUCTURALLY_VALID_UNQUALIFIED',releaseQualified:false,cryptographicallyVerified:false,runId,runAttempt,subjectSha256:binding.subjectSha256});
+ }catch(error){
+  if(error instanceof AttestationEvidenceError&&['ATTESTATION_RUN_ATTEMPT_BINDING_UNAVAILABLE','ATTESTATION_RUN_ATTEMPT_BINDING_MISMATCH'].includes(error.code))return fail(error.code);
+  return fail('ATTESTATION_OUTPUT_SCHEMA_INVALID');
+ }
+}
+
 // Historical official test-fixture policy only. These identifiers are never defaults for this project's authority.
 const FIXTURE=Object.freeze({
  repo:'actions/attest-demo',repoId:'763287532',owner:'actions',ownerId:'44036562',ref:'refs/heads/main',
