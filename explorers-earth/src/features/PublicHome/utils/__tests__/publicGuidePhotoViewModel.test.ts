@@ -35,6 +35,7 @@ describe('public guide photo conversion and selection', () => {
     expect(convertPublicGuideSection(section(block))).toEqual({ ok: false });
     if (block === '{') {
       // Additional finite assertions inside the existing row, not additional test cases.
+      expect(convertPublicGuideSection(section({ morning: [{ ...legacy(), source: ['google'] }] }))).toEqual({ ok: false });
       for (const invalid of [null, undefined, 42, 'section', []]) expect(convertPublicGuideSection(invalid)).toEqual({ ok: false });
       for (const entry of [
         { ...legacy(), id: undefined }, { ...legacy(), id: ' ' },
@@ -71,6 +72,13 @@ describe('public guide photo conversion and selection', () => {
     }
   });
   it('keeps absent legacy blocks and empty photos distinct from invalid supplied data', () => {
+    for (const source of ['google', 'ai-unverified', 'manual'] as const) {
+      expect(converted(section({ morning: [{ ...legacy(), source }] })).Timeline.morning[0].source).toBe(source);
+    }
+    const invalidSource = section({ morning: [{ ...legacy(), source: { toString: null } }] });
+    let invalidSourceResult: unknown;
+    expect(() => { invalidSourceResult = convertPublicGuideSection(invalidSource); }).not.toThrow();
+    expect(invalidSourceResult).toEqual({ ok: false });
     const input = { documentId: 'absent', Timeline: null, Stay: '', Recommendation_Activity: undefined };
     expect(converted(input)).toMatchObject({ Timeline: { morning: [], afternoon: [], evening: [] }, Stay: { accommodations: [] }, Recommendation_Activity: { activities: [] } });
     const empty = { ...legacy(), photos: undefined }; expect(converted(section({ morning: [empty] })).Timeline.morning[0].photos).toEqual([]);
