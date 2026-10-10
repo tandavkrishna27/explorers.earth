@@ -564,3 +564,21 @@ Native finalization at clean commit
 postchecks confirmed fixture root absent, recovery lease absent, secret file
 size zero and exact run-label container absence. The second retained fixture
 956 remains untouched. This receipt does not qualify Apps browser tests or CI.
+
+### Second retained recovery: stop output mismatch
+
+At clean `5ea53a2f7cc494cc0cc17a961847bf509d098f27`, 956 recovery positively
+closed its owning process with exit 1 at stop: output-mismatch, Docker child
+exit 0, signal none, trimmed output 119 bytes, fullHexId false, expectedMatch
+false. Earlier stages passed database DROP, database absence and positive admin
+close. Fresh Docker queries by exact full ID and exact run label both positively
+closed with no matching container. Files, secret and 36-byte recovery lease were
+retained; whole recovery must not be retried.
+
+A read-only probe of the installed Docker CLI using `stop --time 10 --help`
+reproduced a 54-byte deprecation notice on stdout. Notice plus newline plus a
+64-byte ID totals exactly 119 bytes. `stop --timeout 10 --help` produced no such
+notice. This strongly supports the output-contamination mechanism; original
+stop output was not retained. Future calls must use --timeout and preserve the
+exact ID guard. Original b1 stop cause remains unknown. No Apps browser or new
+hosted CI qualification is claimed.
