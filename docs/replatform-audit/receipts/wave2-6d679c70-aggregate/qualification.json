@@ -1,0 +1,436 @@
+{
+  "version": 1,
+  "scope": "delivered-auth-profile-books",
+  "scopeContents": [
+    "auth",
+    "profile",
+    "books",
+    "lifecycle",
+    "movies",
+    "games",
+    "music",
+    "places",
+    "place-links"
+  ],
+  "scopeCompatibilityIdentifier": true,
+  "deliveredSlice": "failed",
+  "overallMilestone": "incomplete",
+  "fullParity": "incomplete",
+  "releaseEligible": false,
+  "provenance": {
+    "commit": "6d679c7078b93c76db180a97be73568d8be495b8",
+    "sourceHash": "da967de46d19c76a3cf52caf3d835c6885ff767bbd9876aba8fcd6ed147027fa",
+    "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+    "dirty": false
+  },
+  "children": [
+    {
+      "lane": "auth",
+      "status": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "lane": "profile",
+      "status": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "lane": "books",
+      "status": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "lane": "lifecycle",
+      "status": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "lane": "movies",
+      "status": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "lane": "games",
+      "status": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "lane": "music",
+      "status": 0,
+      "signal": null,
+      "error": null,
+      "topology": {
+        "version": 1,
+        "lane": "music",
+        "provenance": {
+          "commit": "6d679c7078b93c76db180a97be73568d8be495b8",
+          "sourceHash": "da967de46d19c76a3cf52caf3d835c6885ff767bbd9876aba8fcd6ed147027fa",
+          "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+          "dirty": false
+        },
+        "authority": {
+          "database": "music_uat_e203466d4f959aa9a3cc464c896a166e",
+          "containerId": "9cb75961544fd31330e59490d8fd06d010feb7c8c0fedaab335c601c0c7f47af",
+          "imageId": "sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81"
+        },
+        "runtime": {
+          "role": "music_browser_e203466d4f95",
+          "migratorRole": "music_migrator",
+          "verified": true
+        },
+        "schema": {
+          "ready": true,
+          "currentId": "0052_canonical_music_numeric_retirement",
+          "currentChecksum": "f50407d97feffa09f3123dddea9c34c15d884328a74262992c951259ca1bc4cc"
+        },
+        "transport": {
+          "browserOrigin": "http://127.0.0.1:52678",
+          "canonicalOrigin": "http://127.0.0.1:54013",
+          "musicOrigin": "http://127.0.0.1:55510",
+          "logicalMusicOrigin": "https://music-fixture.test",
+          "socketPath": "/__localtunes/ws"
+        },
+        "children": [
+          {
+            "kind": "canonical",
+            "pid": 47380,
+            "startedAt": "2026-10-10T06:49:24.388Z",
+            "stoppedAt": "2026-10-10T06:53:09.552Z",
+            "exitCode": 0,
+            "signal": null
+          },
+          {
+            "kind": "music",
+            "pid": 50516,
+            "startedAt": "2026-10-10T06:48:45.885Z",
+            "stoppedAt": "2026-10-10T06:53:09.586Z",
+            "exitCode": 0,
+            "signal": null
+          }
+        ],
+        "seams": {
+          "session": "better-auth-internal-adapter",
+          "provider": "guarded-youtube-transport",
+          "clock": "virtual-date-now-601000ms"
+        },
+        "cleanup": {
+          "status": "passed"
+        }
+      }
+    },
+    {
+      "lane": "places",
+      "status": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "lane": "place-links",
+      "status": 1,
+      "signal": null,
+      "error": null,
+      "lifecycleFailure": {
+        "version": 1,
+        "lane": "place-links",
+        "provenance": {
+          "commit": "6d679c7078b93c76db180a97be73568d8be495b8",
+          "sourceHash": "da967de46d19c76a3cf52caf3d835c6885ff767bbd9876aba8fcd6ed147027fa",
+          "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+          "dirty": false
+        },
+        "phase": "execution",
+        "interrupted": false,
+        "sourceIntact": true,
+        "cleanup": {
+          "status": "failed",
+          "failures": [
+            "receipt"
+          ]
+        },
+        "artifacts": {
+          "trace": "off",
+          "video": "off",
+          "screenshot": "off",
+          "cleanup": "passed"
+        },
+        "counts": {
+          "discovered": 8,
+          "executed": 8,
+          "passed": 7,
+          "failed": 1,
+          "skipped": 0,
+          "attempts": 8
+        }
+      },
+      "failure": {
+        "version": 1,
+        "lane": "place-links",
+        "provenance": {
+          "commit": "6d679c7078b93c76db180a97be73568d8be495b8",
+          "sourceHash": "da967de46d19c76a3cf52caf3d835c6885ff767bbd9876aba8fcd6ed147027fa",
+          "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+          "dirty": false
+        },
+        "results": [
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+              "titlePath": [
+                "Place links: existing Products and People lists attach detach and survive reload"
+              ],
+              "project": "place-links-desktop",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "expected",
+            "attempts": [
+              {
+                "status": "passed",
+                "retry": 0
+              }
+            ]
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+              "titlePath": [
+                "Place links: retained create forms atomically create and link Products and People lists"
+              ],
+              "project": "place-links-desktop",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "unexpected",
+            "attempts": [
+              {
+                "status": "timedOut",
+                "retry": 0
+              }
+            ]
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+              "titlePath": [
+                "Place links: public children obey parent child category and account visibility"
+              ],
+              "project": "place-links-desktop",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "expected",
+            "attempts": [
+              {
+                "status": "passed",
+                "retry": 0
+              }
+            ]
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+              "titlePath": [
+                "Place links: stale and foreign link commands preserve both lists"
+              ],
+              "project": "place-links-desktop",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "expected",
+            "attempts": [
+              {
+                "status": "passed",
+                "retry": 0
+              }
+            ]
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+              "titlePath": [
+                "Place links: existing Products and People lists attach detach and survive reload"
+              ],
+              "project": "place-links-mobile",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "expected",
+            "attempts": [
+              {
+                "status": "passed",
+                "retry": 0
+              }
+            ]
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+              "titlePath": [
+                "Place links: retained create forms atomically create and link Products and People lists"
+              ],
+              "project": "place-links-mobile",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "expected",
+            "attempts": [
+              {
+                "status": "passed",
+                "retry": 0
+              }
+            ]
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+              "titlePath": [
+                "Place links: public children obey parent child category and account visibility"
+              ],
+              "project": "place-links-mobile",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "expected",
+            "attempts": [
+              {
+                "status": "passed",
+                "retry": 0
+              }
+            ]
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+              "titlePath": [
+                "Place links: stale and foreign link commands preserve both lists"
+              ],
+              "project": "place-links-mobile",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "expected",
+            "attempts": [
+              {
+                "status": "passed",
+                "retry": 0
+              }
+            ]
+          }
+        ],
+        "child": {
+          "status": 1,
+          "signal": null
+        },
+        "diagnostics": [
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+              "titlePath": [
+                "Place links: retained create forms atomically create and link Products and People lists"
+              ],
+              "project": "place-links-desktop",
+              "repeat": 0
+            },
+            "kind": "timeout",
+            "matcher": "unknown",
+            "locations": []
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+              "titlePath": [
+                "Place links: retained create forms atomically create and link Products and People lists"
+              ],
+              "project": "place-links-desktop",
+              "repeat": 0
+            },
+            "kind": "timeout",
+            "matcher": "unknown",
+            "locations": [
+              {
+                "line": 206,
+                "column": 33
+              }
+            ]
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+              "titlePath": [
+                "Place links: retained create forms atomically create and link Products and People lists"
+              ],
+              "project": "place-links-desktop",
+              "repeat": 0
+            },
+            "kind": "assertion",
+            "matcher": "unknown",
+            "locations": [
+              {
+                "line": 287,
+                "column": 85
+              }
+            ]
+          }
+        ],
+        "cleanup": {
+          "status": "passed"
+        },
+        "artifacts": {
+          "trace": "off",
+          "video": "off",
+          "screenshot": "off",
+          "cleanup": "passed"
+        }
+      }
+    }
+  ],
+  "error": "Protected lane or qualification contract failed",
+  "pending": [
+    {
+      "ticket": "2.4",
+      "obligation": "Configured deployed Google callback and consent evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.4",
+      "obligation": "Analytics acceptance",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.5",
+      "obligation": "Unified QA deployment, image/schema and trusted producer evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "4/5",
+      "obligation": "Remaining canonical category producer families and their own acceptance evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "6.1-6.3",
+      "obligation": "Music mapped-owner HTTP/socket and feature parity",
+      "status": "pending"
+    },
+    {
+      "ticket": "7.1/7.2",
+      "obligation": "Cross-category consumers and all nine categories",
+      "status": "pending"
+    },
+    {
+      "ticket": "8.1-8.4",
+      "obligation": "Removal, rename, exact QA digest promotion and deployment",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.1/5.2",
+      "obligation": "Places/link16 proposed inventory awaits independent source review and actual protected execution; provider photo/gallery closure, taxonomy/pins and hosted acceptance remain pending",
+      "status": "pending"
+    }
+  ]
+}
