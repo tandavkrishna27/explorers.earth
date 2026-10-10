@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { createMoviesOwnerDiagnostic, type MoviesOwnerObserver } from '../../api/moviesOwnerDiagnostic';
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { useMoviesOwner, changeMovieList, archiveMovieList, archiveMovie, toggleMoviePin } from "../../api/explorersAdapter";
 import { AnimatePresence } from "framer-motion";
@@ -168,7 +169,19 @@ const MovieListView = () => {
     listName: string;
   } | null>(null);
 
-  const { content, data, loading, error, refetch } = useMoviesOwner(listId, Boolean(listId));
+  const diagnosticRef = useRef<ReturnType<typeof createMoviesOwnerDiagnostic>>(undefined);
+  const attemptObserverRef = useRef<MoviesOwnerObserver | undefined>(undefined);
+  useEffect(() => {
+    diagnosticRef.current = createMoviesOwnerDiagnostic(globalThis);
+    return () => { diagnosticRef.current?.deactivate(); diagnosticRef.current = undefined; attemptObserverRef.current = undefined; };
+  }, []);
+  const observeOwner = useCallback<MoviesOwnerObserver>(event => {
+    if ('owner' in event && ['pending','disabled','no-account'].includes(event.owner)) {
+      attemptObserverRef.current = diagnosticRef.current?.beginAttempt();
+    }
+    attemptObserverRef.current?.(event);
+  }, []);
+  const { content, data, loading, error, refetch } = useMoviesOwner(listId, Boolean(listId), observeOwner);
 
   const [isUpdating,setIsUpdating]=useState(false),[deletingList,setDeletingList]=useState(false);
   const togglePin=async({variables}:{variables:{documentId:string;is_pinned:boolean;pin_order?:number|null};refetchQueries?:unknown[]})=>toggleMoviePin(variables.documentId,variables.is_pinned);
@@ -206,6 +219,18 @@ const MovieListView = () => {
     // Key on the stable list documentId, not the every-render-rebuilt list object.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, location.pathname, list?.documentId, movies.length, navigate]);
+
+  // Visibility means public AND published in the existing view model; draft
+  // records the existing !Visibility branch, not a separate publication state.
+  useEffect(() => {
+    diagnosticRef.current?.commit({
+      list: loading && !list ? 'loading' : error && !list ? 'error' : !list ? 'missing' : movies.length ? 'ready-nonempty' : 'ready-empty',
+      visibility: !list ? 'unavailable' : list.Visibility ? 'public' : 'draft',
+      signal: location.state?.justAddedRecommendation || location.state?.justCreatedList ? 'present' : 'absent',
+      guard: promptShownRef.current ? 'consumed' : 'fresh',
+      prompt: list && listVisibilityPrompt?.isOpen ? 'open' : 'closed',
+    });
+  });
 
   // Public share URL
   const shareUrl = list ? `${VITE_BASE_URL}/${list.account?.username || ""}/movies/${list.slug}` : "";

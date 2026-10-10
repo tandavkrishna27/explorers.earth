@@ -1,8 +1,50 @@
 import {assertFixtureOrigin} from './proxy-fixture-authority.mjs';
 import {readFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
-import {test,expect,type Page,type BrowserContext,type APIRequestContext} from '@playwright/test';
-test.afterEach(async({page},info)=>{if(process.env.MOVIES_E2E_OWNER_DIAGNOSTIC!=='1')return;const records=await page.evaluate(()=>((globalThis as any).__moviesOwnerDiagnosis??[])).catch(()=>[]);console.log('MOVIES_OWNER_DIAGNOSTIC '+JSON.stringify({project:info.project.name,line:info.line,status:info.status,records}));});
+import {test,expect,type Page,type BrowserContext,type APIRequestContext,type TestInfo} from '@playwright/test';
+import {canonicalMoviesBrowserSnapshot,moviesProducerEnums} from '../../src/features/Movies/api/moviesOwnerDiagnostic';
+const diagnosticTitle='owner manual form all fields snapshot repeat edits and archive reload';
+type DiagnosticStage='setup'|'edit-navigation'|'edit-form'|'save-start'|'save-returned'|'list-route-reached'|'saved-note-confirmed'|'keep-draft-start'|'keep-draft-returned'|'archive';
+const diagnosticStages=new WeakMap<TestInfo,{iteration:'none'|'first'|'second';stage:DiagnosticStage}>();
+const diagnosticEnabled=(info:TestInfo)=>info.title===diagnosticTitle&&info.project.name==='movies-mobile'&&info.repeatEachIndex===0&&info.retry===0;
+function diagnosticStage(info:TestInfo,stage:DiagnosticStage,iteration?:'first'|'second'){
+ const previous=diagnosticStages.get(info);if(previous)diagnosticStages.set(info,{...previous,stage,...(iteration?{iteration}:{})});
+}
+test.afterEach(async({page},info)=>{
+ const state=diagnosticStages.get(info);if(!state||!diagnosticEnabled(info)||!['failed','timedOut','interrupted'].includes(info.status??''))return;
+ let snapshot=canonicalMoviesBrowserSnapshot(undefined);
+ let timer:ReturnType<typeof setTimeout>|undefined;
+ try {
+  const projection=await Promise.race([
+   page.evaluate(enums=>{
+    // Build a fixed projection locally: no raw slot or DOM crosses this boundary.
+    const empty={owner:'unavailable',phase:'unavailable',cause:'none',view:'unavailable',list:'unavailable',visibility:'unavailable',signal:'unavailable',guard:'unavailable',prompt:'unavailable',button:'unavailable',sample:'unavailable'};
+    try {
+     const slot=(globalThis as unknown as {__moviesOwnerDiagnostic?:unknown}).__moviesOwnerDiagnostic;
+     if(!slot||typeof slot!=='object'||Array.isArray(slot)||Object.getPrototypeOf(slot)!==Object.prototype)return empty;
+     const gate=Object.getOwnPropertyDescriptors(slot);
+     if(Reflect.ownKeys(slot).length!==2||gate.version?.value!==1||!gate.snapshot||!('value' in gate.snapshot))return empty;
+     const producer=gate.snapshot.value;
+     if(!producer||typeof producer!=='object'||Array.isArray(producer)||Object.getPrototypeOf(producer)!==Object.prototype)return empty;
+     const descriptors=Object.getOwnPropertyDescriptors(producer),keys=Object.keys(enums);
+     if(Reflect.ownKeys(producer).length!==keys.length||keys.some(key=>!descriptors[key]||!('value' in descriptors[key])||!(enums as Record<string,readonly string[]>)[key].includes(descriptors[key].value)))return empty;
+     const buttons=Array.from(document.querySelectorAll('button')).filter(button=>button.textContent?.trim()==='Keep Draft');
+     let button='absent';
+     if(buttons.length>1)button='multiple';
+     else if(buttons.length===1){const element=buttons[0],style=getComputedStyle(element),rect=element.getBoundingClientRect();const visible=style.visibility!=='hidden'&&style.visibility!=='collapse'&&style.display!=='none'&&rect.width>0&&rect.height>0;button=!visible?'hidden':element.disabled||element.getAttribute('aria-disabled')==='true'?'disabled':'visible-enabled';}
+     return {...Object.fromEntries(keys.map(key=>[key,descriptors[key].value])),button,sample:'captured'};
+    }catch{return empty;}
+   },moviesProducerEnums),
+   new Promise<undefined>(resolve=>{timer=setTimeout(()=>resolve(undefined),1000);}),
+  ]);
+  snapshot=canonicalMoviesBrowserSnapshot(projection);
+ }catch{/* closed page, failed evaluation or cap expiry is unavailable */}
+ finally{if(timer)clearTimeout(timer);}
+ // Public TestInfo has no original start time: both deadline observations stay unavailable.
+ const receipt={version:1,iteration:state.iteration,stage:state.stage,...snapshot,budgetAtStage:'unavailable',budgetAtFailure:'unavailable'};
+ const keys=['iteration','stage','owner','phase','cause','view','list','visibility','signal','guard','prompt','button','budgetAtStage','budgetAtFailure','sample'] as const;
+ try{info.errors.push({message:`[movies-diagnostic-v1:${keys.map(key=>receipt[key]).join('|')}]`});}catch{/* retain original errors unchanged */}
+});
 type Persona={userId:string;cookie:string;handle:string};
 const fixture=JSON.parse(readFileSync(process.env.MOVIES_E2E_FIXTURE_PATH!,'utf8')) as {origin:string;personas:{ownerA:Persona;ownerB:Persona}};
 assertFixtureOrigin(fixture);if(fixture.origin!==process.env.PLAYWRIGHT_EXTERNAL_BASE_URL)throw Error('Movie fixture origin mismatch');
@@ -20,13 +62,24 @@ async function continueUntil(page:Page,label:string,title:string){const target=p
 async function ownerForm(page:Page,list:any){await page.goto(`/recommendations/movies/${list.id}/add`);await expect(page.getByPlaceholder('Search "Interstellar", "Breaking Bad"...')).toBeVisible();}
 
 test('owner manual form all fields snapshot repeat edits and archive reload',async({page},info)=>{
+ if(diagnosticEnabled(info)){
+  diagnosticStages.set(info,{iteration:'none',stage:'setup'});
+  await page.addInitScript(()=>{(globalThis as unknown as {__moviesOwnerDiagnostic:unknown}).__moviesOwnerDiagnostic={version:1,snapshot:{owner:'unavailable',phase:'unavailable',cause:'none',view:'unavailable',list:'unavailable',visibility:'unavailable',signal:'unavailable',guard:'unavailable',prompt:'unavailable'}};});
+ }
+ try{
  await signIn(page);const bad=monitor(page);await page.goto('/recommendations/movies');await page.getByRole('button',{name:'New List',exact:true}).filter({visible:true}).first().click();
  await page.locator('input[name="List_Name"]').fill(`Manual ${info.project.name}`);await page.locator('textarea[name="list_description"]').fill('UAT list description');const created=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname===`${base}/collections`);await page.getByRole('button',{name:'Create List',exact:true}).click();const list=(await (await created).json()).collection;
  await page.getByRole('button',{name:'Add Movie or Show',exact:true}).click();await page.getByRole('button',{name:'Add manually',exact:true}).click();await page.getByPlaceholder('Movie title').first().fill('Manual round-trip');await page.getByPlaceholder('Movie title').nth(1).fill('Original manual');await page.getByPlaceholder('e.g. 2008').fill('2020');await page.getByPlaceholder('e.g. Vince Gilligan').fill('Manual director');await page.getByPlaceholder('e.g. 62').fill('0');await page.getByPlaceholder('Brief description...').fill('Manual overview');await page.locator('.ql-editor').fill('Manual note 😀');await page.locator('input[type=file]').setInputFiles({name:'snapshot.png',mimeType:'image/png',buffer:png});
  const added=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname===`${base}/recommendations`);await page.getByRole('button',{name:'Add to List',exact:true}).click();const r=(await (await added).json()).recommendation;await expect(page).toHaveURL(new RegExp(`/recommendations/movies/${list.id}$`));
  let detail=await editable(page.request,'recommendations',r.id);expect(detail.mediaIds).toHaveLength(1);expect(detail.providerMedia).toBeNull();expect(detail.effectiveMovieDetails.runtimeMinutes).toBe(0);expect(detail.note.html.replaceAll('&nbsp;',' ')).toContain('Manual note 😀');
- for(const note of ['First edit','Second edit']){await page.goto(`/recommendations/movies/${list.id}/edit/${r.id}`);await page.locator('.ql-editor').fill(note);await page.getByRole('button',{name:'Save Changes',exact:true}).click();await expect(page).toHaveURL(new RegExp(`/recommendations/movies/${list.id}$`));detail=await editable(page.request,'recommendations',r.id);expect(detail.note.html.replaceAll('&nbsp;',' ')).toContain(note);await page.getByRole('button',{name:'Keep Draft',exact:true}).click();}
+ let editIteration=0;
+ for(const note of ['First edit','Second edit']){diagnosticStage(info,'edit-navigation',editIteration++===0?'first':'second');await page.goto(`/recommendations/movies/${list.id}/edit/${r.id}`);diagnosticStage(info,'edit-form');await page.locator('.ql-editor').fill(note);diagnosticStage(info,'save-start');await page.getByRole('button',{name:'Save Changes',exact:true}).click();diagnosticStage(info,'save-returned');await expect(page).toHaveURL(new RegExp(`/recommendations/movies/${list.id}$`));diagnosticStage(info,'list-route-reached');detail=await editable(page.request,'recommendations',r.id);expect(detail.note.html.replaceAll('&nbsp;',' ')).toContain(note);diagnosticStage(info,'saved-note-confirmed');diagnosticStage(info,'keep-draft-start');await page.getByRole('button',{name:'Keep Draft',exact:true}).click();diagnosticStage(info,'keep-draft-returned');}
+ diagnosticStage(info,'archive');
  await page.locator('button').filter({has:page.locator('svg.lucide-ellipsis')}).first().click();const archived=page.waitForResponse(res=>res.request().method()==='DELETE'&&new URL(res.url()).pathname===`${base}/recommendations/${r.id}`);page.once('dialog',dialog=>{expect(dialog.message()).toBe('Archive this recommendation from all lists?');void dialog.accept();});await page.getByRole('button',{name:'Archive recommendation',exact:true}).click();expect((await archived).status()).toBe(200);await page.reload();await expect(page.getByText('No movies added yet.',{exact:true})).toBeVisible();expect(bad).toEqual([]);await page.screenshot({path:info.outputPath('movies-owner.png'),fullPage:true});
+ }catch(error){
+  // No public whole-test deadline origin is available at this failure boundary.
+  throw error;
+ }
 });
 
 test('canonical both-kind provider search resolves typed facts and copies original cast slots',async({page})=>{

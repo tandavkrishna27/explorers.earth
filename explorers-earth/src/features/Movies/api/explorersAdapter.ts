@@ -1,3 +1,4 @@
+import type { MoviesOwnerObserver } from './moviesOwnerDiagnostic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useAuthStore from '../../../store/store';
 import { explorersApiClient } from '../../../lib/explorersApiClient';
@@ -6,7 +7,7 @@ import type { MovieList } from '../types';
 
 const invalidations = new EventTarget();
 export const invalidateMovies = () => invalidations.dispatchEvent(new Event('change'));
-export function useMoviesOwner(listId?: string, enabled = true) {
+export function useMoviesOwner(listId?: string, enabled = true, observer?: MoviesOwnerObserver) {
  const generation=useAuthStore(state=>state.generation), accountId=useAuthStore(state=>state.accountId);
  const [receivedContent,setContent]=useState<MoviesOwnerContent>();
  const [receivedScope,setReceivedScope]=useState('');
@@ -14,11 +15,13 @@ export function useMoviesOwner(listId?: string, enabled = true) {
  const content=receivedScope===scopeKey?receivedContent:undefined;
  const [loading,setLoading]=useState(enabled),[error,setError]=useState<Error>();
  const [revision,setRevision]=useState(0);const active=useRef(0);
+ const observerRef=useRef(observer);observerRef.current=observer;
  const refetch=useCallback(()=>setRevision(value=>value+1),[]);
  useEffect(()=>{invalidations.addEventListener('change',refetch);return()=>invalidations.removeEventListener('change',refetch);},[refetch]);
  useEffect(()=>{const controller=new AbortController(),attempt=++active.current;setContent(undefined);setError(undefined);
-  if(!enabled||!accountId){setLoading(false);return()=>controller.abort();}
-  setLoading(true);void readMoviesOwnerContent(controller.signal).then(value=>{if(!controller.signal.aborted&&active.current===attempt){setReceivedScope(scopeKey);setContent(value);}}).catch(value=>{if(!controller.signal.aborted&&active.current===attempt)setError(value instanceof Error?value:new Error('Movies could not be loaded'));}).finally(()=>{if(!controller.signal.aborted&&active.current===attempt)setLoading(false);});
+  const observe:MoviesOwnerObserver=event=>{const current=useAuthStore.getState();if(controller.signal.aborted||active.current!==attempt||current.generation!==generation||current.accountId!==accountId)return;try{observerRef.current?.(event);}catch{/* observational */}};
+  if(!enabled||!accountId){observe({owner:!enabled?'disabled':'no-account'});setLoading(false);return()=>controller.abort();}
+  setLoading(true);observe({owner:'pending'});void readMoviesOwnerContent(controller.signal,observe).then(value=>{if(!controller.signal.aborted&&active.current===attempt){setReceivedScope(scopeKey);setContent(value);observe({owner:'accepted'});}}).catch(value=>{if(!controller.signal.aborted&&active.current===attempt){setError(value instanceof Error?value:new Error('Movies could not be loaded'));observe({owner:'rejected'});}}).finally(()=>{if(!controller.signal.aborted&&active.current===attempt)setLoading(false);});
   return()=>controller.abort();
  },[generation,accountId,enabled,revision,scopeKey]);
  const data=useMemo(()=>content?{movieLists:content.lists.filter(list=>!listId||list.documentId===listId) as MovieList[]}:undefined,[content,listId]);
