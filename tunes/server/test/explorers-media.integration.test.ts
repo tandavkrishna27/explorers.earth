@@ -128,6 +128,16 @@ describe("private local media", () => {
       expect((await f.repository.find(f.id))?.status).toBe("ready");
     }, 30_000);
 
+    it(`typed Apps/Places media ${category}: attached deletion refuses cleanly for private draft archived parents`, async () => {
+      const f = await fixture(); const attachment = await f.attach();
+      await pool.query("UPDATE collections SET visibility='private',publication_state='draft',archived_at=now() WHERE id=$1", [attachment.collection]);
+      await pool.query("UPDATE recommendations SET publication_state='draft',archived_at=now() WHERE id=$1", [attachment.recommendation]);
+      // This assertion must execute first: public serving and abandoned selection have
+      // separate regressions, and must not hide a deferred COMMIT failure from markDelete.
+      expect(await f.repository.markDelete(f.id, f.owner.accountId)).toBeUndefined();
+      expect((await pool.query("SELECT status FROM media_assets WHERE id=$1", [f.id])).rows[0].status).toBe("ready");
+    }, 30_000);
+
     it(`typed Apps/Places media ${category}: aged attachments survive cleanup until the last real relation detaches`, async () => {
       const f = await fixture(); const first = await f.attach(); const second = await f.attach();
       await pool.query("UPDATE media_assets SET created_at=now()-interval '25 hours' WHERE id=$1", [f.id]);
