@@ -680,3 +680,22 @@ Third recovery includes only the exact 18aa tuple, two empty directories and
 the 793-byte sessions/597-byte config files, renewed absence/custody checks
 before every physical cleanup step, secret last and lease last. These source
 checks do not attest native recovery or browser qualification.
+
+### Third retained run recovered at 7ac63235
+
+At clean `7ac63235c7392fc26504e5f6d5da7a67efcf42e3`, native fixed 18aa
+recovery positively closed with exit 0, status recovered, evidence native and
+qualification false. This exercised actual inherited config custody, the
+repeated PostgreSQL witness/DROP/absence/positive connection close, supported
+Docker stop and absence checks, exact file/directory disposal, secret erasure
+and lease release. Fresh postchecks confirmed root absent, lease absent, secret
+size zero and exact run-label container absence. All known retained attempts
+are now finalized/recovered; this is not browser qualification.
+
+The actual metadata reader emitted PowerShell first-use progress to parent
+stderr because execFileSync omitted explicit stdio. The recorded output was
+module-loading progress. Before the next browser attempt, capture both streams
+explicitly, suppress progress and normalize process errors to the fixed refusal;
+privacy/ownership rules remain unchanged.
+
+Containment follow-up: independent review accepted the unchanged privacy rules. Root fresh verification passed all 16 focused contracts and an explicit six-file ES2022 scoped type check with zero diagnostics. Both process output streams are piped, PowerShell progress is suppressed, and process errors become a fixed refusal without reading foreign error getters. Native Apps qualification remains pending.
