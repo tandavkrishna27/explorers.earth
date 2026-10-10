@@ -52,6 +52,46 @@ it('retries uncertainty with the original command and blocks expired recovery',a
  for(const row of rows)for(const failure of ['network','malformed'])for(const next of ['success','conflict','expired']){reset();await mount(row);respond=()=>{if(failure==='network')throw Error('Lost acknowledgement');return new Response('{',{status:200});};await submit(row);await waitFor(()=>expect(posts).toHaveLength(1));await waitFor(()=>expect(screen.getByRole('button',{name:row.submit})).toBeEnabled());retained(row);const count=detailReads.length,firstBody=posts[0].body,firstKey=key(),clock=next==='expired'?vi.spyOn(Date,'now').mockReturnValue(Date.now()+600001):undefined;try{respond=next==='conflict'?()=>refusal():category=>reply(receipt(category));await submit(row);if(next==='success'){await waitFor(()=>destination(row));expect(posts).toHaveLength(2);expect(posts[1].body).toBe(firstBody);expect(key(1)).toBe(firstKey);}else{if(next==='conflict')await waitFor(()=>expect(posts).toHaveLength(2));await act(async()=>{await new Promise(resolve=>setTimeout(resolve,0));});retained(row);expect(screen.queryByRole('button',{name:/Refresh location and retry/i})).not.toBeInTheDocument();await submit(row);expect(posts).toHaveLength(next==='expired'?1:2);expect(detailReads).toHaveLength(count);expect(toast.success).not.toHaveBeenCalled();}}finally{clock?.mockRestore();}}
 });
 async function custodyMatrix(row:Row){
+ // A rejected start of retained local B must not replace custody of real pending A.
+ reset();
+ const edgeMount=await mount(row),edgeA=deferred<Response>(),edgeC=deferred<Response>(),edgeReadBaseline=detailReads.length;
+ const edgeReceipt=(title:string,slug:string)=>reply({collection:{...receipt(row.category).collection,title,slug}});
+ try {
+  fireEvent.change(screen.getByPlaceholderText('my-list-url'),{target:{value:'bad slug'}});
+  await submit(row);await waitFor(()=>expect(toast.error).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(toast.error).mock.calls[0][0]).toMatch(/invalid|validation/i);
+  expect(posts).toHaveLength(0);expect(detailReads).toHaveLength(edgeReadBaseline+1);
+  fireEvent.change(screen.getByPlaceholderText(row.title),{target:{value:'Valid A'}});
+  await waitFor(()=>expect(screen.getByPlaceholderText('my-list-url')).toHaveValue('valid-a'));
+  respond=()=>edgeA.promise;await submit(row);await waitFor(()=>expect(posts).toHaveLength(1));
+  const activeA=posts[0];expect(JSON.parse(activeA.body as string)).toMatchObject({title:'Valid A',slug:'valid-a',parentLocationCollectionId:parent,parentExpectedRevision:4});
+  expect(detailReads).toHaveLength(edgeReadBaseline+2);expect(activeA.signal?.aborted).toBe(false);
+  fireEvent.change(screen.getByPlaceholderText(row.title),{target:{value:'Entered draft'}});
+  await waitFor(()=>expect(screen.getByPlaceholderText('my-list-url')).toHaveValue('entered-draft'));
+  fireEvent.change(screen.getByPlaceholderText('my-list-url'),{target:{value:'bad slug'}});
+  await submit(row);await waitFor(()=>expect(toast.error).toHaveBeenCalledTimes(2));
+  expect(vi.mocked(toast.error).mock.calls[1][0]).toMatch(/invalid|validation/i);
+  expect(posts).toHaveLength(1);expect(detailReads).toHaveLength(edgeReadBaseline+2);
+  expect(activeA.signal?.aborted).toBe(false);expect(toast.warning).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByPlaceholderText(row.title),{target:{value:'Valid C'}});
+  await waitFor(()=>expect(screen.getByPlaceholderText('my-list-url')).toHaveValue('valid-c'));
+  respond=()=>edgeC.promise;await submit(row);await waitFor(()=>expect(posts).toHaveLength(2));
+  expect(activeA.signal?.aborted).toBe(true);expect(key(1)).not.toBe(key());
+  expect(JSON.parse(posts[1].body as string)).toEqual({category:row.category,title:'Valid C',slug:'valid-c',description:'Preserved description',visibility:'private',publicationState:'draft',heading:null,coverMediaId:null,parentLocationCollectionId:parent,parentExpectedRevision:4});
+  expect(detailReads).toHaveLength(edgeReadBaseline+3);
+  expect(toast.warning).toHaveBeenCalledExactlyOnceWith('An earlier create may have completed. Check your lists before creating it again.',{duration:Infinity});
+  expect(toast.success).not.toHaveBeenCalled();expect(screen.getByTestId('route').textContent).not.toContain('/'+child+'/add');
+  edgeC.resolve(edgeReceipt('Valid C','valid-c'));await waitFor(()=>destination(row));
+  expect(toast.success).toHaveBeenCalledTimes(1);expect(toast.error).toHaveBeenCalledTimes(2);
+  const acceptedRoute=screen.getByTestId('route').textContent;
+  edgeA.resolve(edgeReceipt('Valid A','valid-a'));await act(async()=>{await edgeA.promise;await new Promise(resolve=>setTimeout(resolve,0));});
+  destination(row);expect(screen.getByTestId('route').textContent).toBe(acceptedRoute);
+  expect(toast.warning).toHaveBeenCalledExactlyOnceWith('An earlier create may have completed. Check your lists before creating it again.',{duration:Infinity});
+  expect(toast.success).toHaveBeenCalledTimes(1);expect(toast.error).toHaveBeenCalledTimes(2);
+ } finally {
+  edgeA.resolve(edgeReceipt('Valid A','valid-a'));edgeC.resolve(edgeReceipt('Valid C','valid-c'));
+  await act(async()=>{await Promise.all([edgeA.promise,edgeC.promise]);await new Promise(resolve=>setTimeout(resolve,0));});edgeMount.unmount();
+ }
  for(const loss of ['distinct','account','generation','route','cancel','unmount','duplicate'])for(const completion of ['success','refusal'])for(const phase of ['fetch','body']){reset();const mounted=await mount(row),gate=deferred<Response>(),text=deferred<string>(),replacementGate=deferred<Response>();respond=()=>{const response=reply(completion==='success'?receipt(row.category):{error:{code:'CONFLICT',message:'Refused',requestId:other}},completion==='success'?200:409);response.text=()=>text.promise;return phase==='fetch'?gate.promise.then(()=>response):response;};await submit(row);try{await waitFor(()=>expect(posts).toHaveLength(1));const first=posts[0];await act(async()=>{if(loss==='account')signIn(other);if(loss==='generation')signIn();if(loss==='route')navigate('/away');if(loss==='cancel'){animation.holdExit=true;fireEvent.click(screen.getByRole('button',{name:'Cancel'}));}if(loss==='unmount')mounted.unmount();});if(loss==='route')await act(async()=>navigate(`/recommendations/places/${parent}/add-${row.category}`));if(loss==='duplicate')await submit(row);if(loss==='distinct'){const beforeReplacementRead=detailReads.length;fireEvent.change(screen.getByPlaceholderText(row.title),{target:{value:'Replacement'}});await waitFor(()=>expect(screen.getByPlaceholderText('my-list-url')).toHaveValue('replacement'));respond=()=>replacementGate.promise;await submit(row);await waitFor(()=>expect(posts).toHaveLength(2));expect(key(1)).not.toBe(key());expect(JSON.parse(posts[1].body as string)).toEqual({category:row.category,title:'Replacement',slug:'replacement',description:'Preserved description',visibility:'private',publicationState:'draft',heading:null,coverMediaId:null,parentLocationCollectionId:parent,parentExpectedRevision:4});expect(detailReads.length).toBeGreaterThan(beforeReplacementRead);expect(toast.warning).toHaveBeenCalledExactlyOnceWith('An earlier create may have completed. Check your lists before creating it again.',{duration:Infinity});expect(screen.getByTestId('route').textContent).not.toContain('/'+child+'/add');replacementGate.resolve(reply({collection:{...receipt(row.category).collection,title:'Replacement',slug:'replacement'}}));await waitFor(()=>destination(row));expect(toast.warning).toHaveBeenCalledTimes(1);expect(toast.success).toHaveBeenCalledTimes(1);expect(toast.error).not.toHaveBeenCalled();}
  if(loss==='cancel')expect(screen.getByPlaceholderText(row.title)).toBeInTheDocument();if(loss==='duplicate'){expect(toast.warning).not.toHaveBeenCalled();expect(posts).toHaveLength(1);expect(first.signal?.aborted).toBe(false);}else expect(first.signal?.aborted).toBe(true);
  const successes=vi.mocked(toast.success).mock.calls.length,errors=vi.mocked(toast.error).mock.calls.length,replacementRoute=loss==='distinct'?screen.getByTestId('route').textContent:null;gate.resolve(reply({}));text.resolve(JSON.stringify(completion==='success'?receipt(row.category):{error:{code:'CONFLICT',message:'Refused',requestId:other}}));await act(async()=>{await gate.promise;await text.promise;await new Promise(resolve=>setTimeout(resolve,0));});if(loss==='duplicate'&&completion==='success'){await waitFor(()=>destination(row));expect(toast.success).toHaveBeenCalledTimes(1);}else if(loss==='duplicate'){await waitFor(()=>expect(toast.error).toHaveBeenCalledTimes(1));expect(toast.success).not.toHaveBeenCalled();}else if(loss!=='duplicate'){expect(screen.queryByRole('button',{name:/Refresh location and retry/i})).not.toBeInTheDocument();expect(toast.success).toHaveBeenCalledTimes(successes);expect(toast.error).toHaveBeenCalledTimes(errors);if(loss==='distinct'){expect(toast.warning).toHaveBeenCalledExactlyOnceWith('An earlier create may have completed. Check your lists before creating it again.',{duration:Infinity});destination(row);expect(screen.getByTestId('route').textContent).toBe(replacementRoute);expect(toast.success).toHaveBeenCalledTimes(1);expect(toast.error).not.toHaveBeenCalled();}else if(loss!=='unmount')expect(screen.getByTestId('route').textContent).not.toContain(`/${child}/add`);}
