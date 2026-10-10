@@ -18,6 +18,8 @@ focused local evidence and remaining acceptance. Wave 2 is **open**.
 | QA detached artifact custody | `21850315`: independently accepted; root fresh 103 focused tests passed | ZIP, raw file and canonical hashes are checked separately; release and cryptographic authority remain false |
 | Apps/Places typed media | `236fb2f3`: ten actual PostgreSQL and canonical HTTP cases passed, zero skips; cleanup passed | Selected local SQL/API coverage, not native browser, S3, aggregate or hosted qualification |
 | Guides Windows parent source | Independent R1 source review accepted; root fresh 66 selected contract tests and scoped typing passed | Guarded import was not run and remains unqualified; no actual Job/PG/FS or browser-lane proof |
+| Apps manual native specification | `6869ae83`: four native case definitions independently reviewed; root scoped frontend typing passed | Fixture and registration integration pending; zero Apps native identities executed; nightly scraping is separate |
+| Candidate prebuilt smoke contracts | `6869ae83`: independent R1 review accepted; root fresh 92 resource-free contracts passed and scoped music-c0 typing passed | Actual native entry refuses before allocation; OCI, image, transport, boot and custody prerequisites remain open |
 
 Root's combined check of the certificate parser and staged database custody passed all 304 tests;
 scoped music-c0 typing passed after the descriptor snapshot correction.
@@ -36,6 +38,13 @@ regressions first failed, then passed after the corrections. Root's fresh
 66-case run includes the original 62 selected cases. The C# cases compile and
 exercise injected contract seams with zero production-native entries; they do
 not establish actual process containment.
+
+Resource-worker integration subsequently exposed two additional parent ABI
+defects: worker authentication requires an epoch that the launcher does not
+convey, and controller cleanup failures use labels different from lane labels.
+The worker stopped without source edits rather than fabricate either input.
+A coordinated parent/launcher correction is in progress. The earlier 66-case
+pass did not establish actual worker composition.
 
 The Guides guarded import diagnostic currently cannot start on this Windows host:
 its outer spawn returns `EPERM` with no child frame. A harmless control using the
