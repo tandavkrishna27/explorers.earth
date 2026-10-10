@@ -526,3 +526,20 @@ other metadata and made full verification pass. Root fresh 30 contracts,
 scoped types 0, exact transport compilation and independent review passed.
 Review separately accepted fresh exact reconciliation of the ad56 retained
 lease. Completed adoption and database recovery remain unclaimed here.
+
+Native ACL adoption completed successfully at clean
+`7420a6870be42f0efb582d4b821f7743380f2a6b`: native adopted, qualification
+false, owning process exit 0 in approximately 2.35 seconds. Its success requires
+all sibling security/metadata checks, positive inspector closures and exact
+lease identity/cleanup; the adoption lease was freshly absent afterward.
+First b1 database recovery at that same source exited 1 at witness before DROP.
+Both containers stayed healthy; its private recovery lease (UUID, 36 bytes)
+remained. Fresh read-only PG role/maintenance/version/client/prepared/OID checks
+passed. An owning read-only TCP connection positively closed after proving all
+other witness checks true, old text address mismatch due to /32, and host()
+address equality. The SQL repair uses host(inet_server_addr()) and preserves
+strict bridge equality. Query-aware tests now reproduce the old mismatch;
+root fresh 83 contracts, scoped types 0 and independent review passed.
+The exact b1 retained lease reconciliation tool was independently reviewed
+with fresh identity/private ACL/36-byte/positive-close checks. No database
+recovery success or browser qualification is claimed by these receipts.
