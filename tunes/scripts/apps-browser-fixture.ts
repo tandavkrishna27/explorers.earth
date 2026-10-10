@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { z } from 'zod/v3';
 import type { AppsControlOptions } from './apps-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment } from './lifecycle-browser-guards';
+import {registerAppsPrivateDirectory,inspectAppsPrivateDescendant} from './apps-private-custody';
 type Acquisition = Awaited<ReturnType<typeof import('./music-uat-database').prepareOwnedUatDatabaseAcquisition>>;
 type ReportHandle = {
     stat(): Promise<{
@@ -632,7 +633,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         }
     }
     }
-    async function inspect(target: string) { await canonical(target); await privateOperation('inspect', target); }
+    async function inspect(target: string) { await canonical(target); try { if(inspectAppsPrivateDescendant(target))return; await privateOperation('inspect', target); } catch(error) { nativeUnknown=true; throw error; } }
     let actualSupport: typeof import('./apps-browser-support') | undefined;
     const configurations = new WeakMap<object, any>(), nativeAccounts = new WeakMap<object, string[]>(), handlerDrains = new WeakMap<object, (ms: number) => Promise<boolean>>();
     async function support() { return actualSupport ??= await import('./apps-browser-support'); }
@@ -726,13 +727,18 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         },
         async createReceipt(argv) { const { extractProtectedReceiptArguments, createProtectedReceipt } = await import('./protected-browser-receipt'); const receipt = await createProtectedReceipt(root, 'apps', extractProtectedReceiptArguments(argv)); if (!receipt)
             throw new Refusal(); return { ...receipt, async arguments(args: string[], directory: string) { const result = receipt.arguments(args, directory); const target = path.join(directory, 'protected.playwright.config.mjs'); await inspect(target); await remember(target, false); return result; } } as Receipt; },
-        async createDirectory(target) { await canonical(path.dirname(target)); try {
+        async createDirectory(target) { try {
+            await canonical(path.dirname(target));
             await privateOperation('create-directory', target);
+            await canonical(target);
+            await privateOperation('inspect', target);
+            if(process.platform==='win32')registerAppsPrivateDirectory(target);
+            return await remember(target, true);
         }
         catch {
             nativeUnknown = true;
             throw new Refusal();
-        } await inspect(target); return remember(target, true); },
+        } },
         async assertDirectory(directory) { await same(directory.path, true); await inspect(directory.path); },
         async prepareSecret() { try {
             if (process.platform !== 'win32') {

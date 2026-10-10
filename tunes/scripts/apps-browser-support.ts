@@ -13,6 +13,7 @@ import {mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {sep} from 'node:path';
 import type {OwnedUatDatabaseAuthority} from './music-uat-database';
 import {z} from 'zod/v3';
+import {inspectAppsPrivateDescendant} from './apps-private-custody';
 import {appEntityDetailsSchema,type AppEntityDetails} from '../shared/explorersAppContract';
 import {editableOwnerCollectionSchema,editableOwnerRecommendationSchema,ownerMembershipDtoSchema} from '../shared/explorersOwnerContentContract';
 // This module allocates no DB, listener, process, directory or HTTP request on import.
@@ -124,6 +125,7 @@ function nativeDependencies(o:AppsControlOptions):AppsControlDependencies {
  function inspectPrivate(path:string,directory:boolean) {
   let current=resolve(path);for(;;){const st=lstatSync(current);if(st.isSymbolicLink()||realpathSync(current).toLowerCase()!==current.toLowerCase())throw fail('custody');if(current===parse(current).root)break;current=dirname(current);}
   const st=lstatSync(path);if(directory?!st.isDirectory():!st.isFile())throw fail('custody');
+  if(process.platform==='win32'&&inspectAppsPrivateDescendant(path))return;
   if(process.platform==='win32'){
    const ps='C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
    if(lstatSync(ps).isSymbolicLink()||realpathSync(ps).toLowerCase()!==ps.toLowerCase()||!lstatSync(ps).isFile()||lstatSync(helper).isSymbolicLink()||!lstatSync(helper).isFile()||realpathSync(helper).toLowerCase()!==helper.toLowerCase())throw fail('custody');

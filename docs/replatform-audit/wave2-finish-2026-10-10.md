@@ -613,3 +613,70 @@ The failed attempt retained the exact empty fixture root
 children. No secret/database was allocated. The correction must normalize the
 module-derived root and preserve canonical path validation. Existing synthetic
 tests supplying an already normalized root did not reproduce this failure.
+
+### Apps qualification at 476f95c4: generated config Windows ACL failure
+
+Root normalization passed the actual module initializer regression (old source
+RED 1 failure, corrected source 103 passing contracts), fresh scoped types and
+independent source review. The exact empty 521 root was finalized using a
+separately reviewed fixed-path script with fresh private identity and positive
+closure checks; owning process exit 0 and fresh root absence confirmed.
+
+The next official Apps attempt at clean
+`476f95c46aadc9c823eacadea2177c21c99ff808` reached a healthy disposable
+database, API/control sessions and descriptor/config creation, then failed at
+browser-context, category nonzero. Vite and Playwright did not start;
+discovery/execution counts remain null. Its retained API handles kept the owner
+alive after its failure receipt. Fresh identity checks pinned the exact owner
+PID, executable, creation time, parent and Apps receipt arguments before
+terminating only that failed owner. The parent then captured its original
+child close and returned the finite diagnostic, owning runner exit 1. A
+read-only descendant check confirmed the prior owner and its esbuild/conhost
+children absent. Termination does not itself grant fixture cleanup authority.
+
+Actual generated config metadata: current owner, protected ACL false, three
+rules all inherited. The pinned private-file helper inspection positively
+closed with exit 1 and ok false. Receipt arguments create this file using
+writeFileSync mode 0600; Apps then requires protected private-file inspection.
+This confirms the Windows creation/inspection mismatch. Sessions and fixture
+root remain protected/private. Retained run 18aa5a94ef2987a1a41c5efff13203d5
+requires separately reviewed recovery; no native browser success is claimed.
+
+The complete source audit found the same mismatch downstream: Playwright
+reports/output/.last-run, reset images, seeded media and canonical local storage
+use ordinary creation and inherit the private fixture-root ACL. Independent
+review supports correcting the Apps-only descendant custody contract rather
+than patching each producer. Explicitly protected roots and secrets remain
+strict; inherited descendants must stay within their captured canonical private
+root and have the exact three approved permissions, correct owner/inheritance,
+stable physical identity and security descriptors, with no foreign, deny or
+duplicate rules. Existing report/media/account inventories remain required.
+No implementation or qualification success is implied by this design decision.
+
+### Scoped custody correction and third recovery source verification
+
+The Apps-specific shared registry now binds the strictly inspected protected
+fixture root and its two protected child roots. Descendant checks validate the
+current complete physical/ACL chain around a positively closed bounded metadata
+reader. Only root/ancestor history persists: fixture reset legitimately
+recreates upload files, while owner inventories/handles retain lifecycle
+identity authority. Roots, secrets and outside paths still use the pinned strict
+helper. No production storage or Playwright writers were changed.
+
+Independent review found and blocked an inspection-before-registration ordering
+bug. The actual directory-creation regression failed before the correction and
+passes root followed by both children after strict owner inspection precedes
+registration. Registration failure sets unknown and never records a directory.
+The new helper is explicitly tracked in protected source scanning and hashing;
+unknown relative dependencies remain refused. All 142 existing identities remain.
+
+Root fresh verification: nine resource-free suites, 398 tests passed; two exact
+source-closure tests passed. Six explicitly selected implementation/test files
+were added to the ES2022 scoped compiler program and had zero scoped diagnostics.
+An earlier author filtered type check excluded scripts/tests and was retracted;
+the corrected explicit-root check is the evidence. Independent source reviews
+accepted custody integration and the fixed third-run recovery extension.
+Third recovery includes only the exact 18aa tuple, two empty directories and
+the 793-byte sessions/597-byte config files, renewed absence/custody checks
+before every physical cleanup step, secret last and lease last. These source
+checks do not attest native recovery or browser qualification.

@@ -848,12 +848,13 @@ test('Apps startup diagnostic: exact finite line admits no arbitrary child conte
  for(const unsafe of [line+' cookie',line+'\n',line.replace('migrate','unknown-stage'),line.replace('refusal','unknown-category'),line.replace('migrate','https://private.invalid'),'Apps owned fixture failed'])assert.equal(contract.decodeAppsFixtureFailureLine(unsafe),undefined);
 });
 test('Apps registration: source closure requires tracked Apps runtime helper and transitive private authority',()=>{
+ const custodySource=readFileSync(new URL('./replatform-e2e.mjs',import.meta.url),'utf8');assert.match(custodySource,/const appsCustody='tunes\/scripts\/apps-private-custody\.ts'/);assert.match(custodySource,/git\(\['ls-files','--error-unmatch',appsCustody\]\)/);assert.match(custodySource,/const paths=.*appsCustody/);assert.match(custodySource,/reviewed=new Set\(\[.*appsCustody/);assert.match(custodySource,/queue=\[.*appsCustody/);assert.doesNotMatch(custodySource,/overlay=new Set\(\[.*apps-private-custody/);
  const source=readFileSync(new URL('./replatform-e2e.mjs',import.meta.url),'utf8');assert.match(source,/const appsHelper='tunes\/scripts\/apps-browser-support\.ts'/);assert.match(source,/git\(\['ls-files','--error-unmatch',appsHelper\]\)/);assert.match(source,/reviewed=new Set\(\[.*appsHelper/);assert.match(source,/queue=\[.*appsHelper/);assert.match(source,/music-local-private-files\.ps1/);assert.doesNotMatch(source,/overlay=new Set\(\[.*apps-browser-support/);
 });test('Apps registration: actual source snapshot refuses untracked helper and ignored relative dependency with no real Git or FS',()=>{
  const appsHelper='tunes/scripts/apps-browser-support.ts';const authority=['music-uat-database','music-fixture-secret','music-vitest-evidence','music-output-redaction','music-qualification-postgres'].map(name=>`tunes/scripts/${name}.ts`).concat(['tunes/scripts/music-local-private-files.ps1','tunes/scripts/windows-write-through.ps1']);
- const appsRunner='tunes/scripts/apps-browser-fixture.ts',appsAdmission='tunes/scripts/apps-canonical-admission.ts';
- function execute({helperTracked=true,runnerTracked=true,admissionTracked=true,ignoredImport=false,mutation=''}={}){
-  const tracked=[...authority,'tunes/scripts/places-browser-support.ts','tunes/migrations/001.sql','tunes/server/auth/canonicalApp.ts',...(helperTracked?[appsHelper]:[]),...(runnerTracked?[appsRunner]:[]),...(admissionTracked?[appsAdmission]:[])];const virtualRoot=resolve('synthetic-custody-root');let commands=0;
+ const appsRunner='tunes/scripts/apps-browser-fixture.ts',appsAdmission='tunes/scripts/apps-canonical-admission.ts',appsCustody='tunes/scripts/apps-private-custody.ts';
+ function execute({helperTracked=true,runnerTracked=true,admissionTracked=true,custodyTracked=true,ignoredImport=false,mutation=''}={}){
+  const tracked=[...authority,'tunes/scripts/places-browser-support.ts','tunes/migrations/001.sql','tunes/server/auth/canonicalApp.ts',...(helperTracked?[appsHelper]:[]),...(runnerTracked?[appsRunner]:[]),...(admissionTracked?[appsAdmission]:[]),...(custodyTracked?[appsCustody]:[])];const virtualRoot=resolve('synthetic-custody-root');let commands=0;
   const fakeGit=(exe,args)=>{
    assert.equal(exe,'git');commands++;
    if(args[0]==='rev-parse')return 'a'.repeat(40);
@@ -866,7 +867,7 @@ test('Apps registration: source closure requires tracked Apps runtime helper and
   const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);const digest=value=>createHash('sha256').update(canonical(value)).digest('hex');
   const fakeRead=(file,encoding)=>{const relativePath=file.slice(virtualRoot.length+1).replaceAll('\\','/');const imports={
    'tunes/scripts/profile-browser-fixture.ts':"import './apps-browser-fixture.ts';",
-   [appsRunner]:"import './apps-browser-support.ts';",
+   [appsRunner]:"import './apps-browser-support.ts'; import './apps-private-custody.ts';",
    [appsHelper]:"import '../server/auth/canonicalApp.ts';",
    'tunes/server/auth/canonicalApp.ts':"import '../../scripts/apps-canonical-admission.ts';"
   };const text=(imports[relativePath]??'')+(ignoredImport&&relativePath===appsHelper?"\nimport './apps-ignored.ts';":'')+(mutation===relativePath?'\n// changed reviewed source':'');return encoding==='utf8'?text:Buffer.from(text);};
@@ -875,7 +876,8 @@ test('Apps registration: source closure requires tracked Apps runtime helper and
   return {snapshot:()=>actual(virtualRoot),commands:()=>commands};
  }
  const clean=execute();const result=clean.snapshot();assert.ok(result.hashes[appsHelper]);assert.ok(clean.commands()>0);assert.throws(()=>execute({helperTracked:false}).snapshot(),/not tracked/);assert.throws(()=>execute({ignoredImport:true}).snapshot(),/Unreviewed relative executed dependency/);
- for(const file of [appsRunner,appsAdmission]){assert.ok(result.hashes[file]);assert.notEqual(execute({mutation:file}).snapshot().provenance.sourceHash,result.provenance.sourceHash);}
+ assert.ok(result.hashes[appsCustody]);assert.throws(()=>execute({custodyTracked:false}).snapshot(),/not tracked/);
+ for(const file of [appsRunner,appsAdmission,appsCustody]){assert.ok(result.hashes[file]);assert.notEqual(execute({mutation:file}).snapshot().provenance.sourceHash,result.provenance.sourceHash);}
  assert.throws(()=>execute({runnerTracked:false}).snapshot(),/not tracked/);
  assert.throws(()=>execute({admissionTracked:false}).snapshot(),/not tracked/);
 });
