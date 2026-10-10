@@ -337,8 +337,9 @@ Finish sequence:
 
 1. Resolve the two retained fixture recovery gates, then rerun Apps at clean
    exact committed source and require real browser and cleanup receipts.
-2. Resolve Guides Theme/budget, section reorder and activity-photo behavior;
-   finish the real spec and profile/158 registration, then qualify the native lane.
+2. Finish the Guides section reorder and activity-photo execution seams using
+   the specified category, money and owned-media contracts; finish the real spec
+   and profile/158 registration, then qualify the native lane.
 3. Implement and qualify the included Places taxonomy/pins, People sectors and
    Apps suggestions/nightly worker after concrete design approval and authorized
    taxonomy/provider/host inputs. Inclusion remains required, not deferred.
