@@ -17,6 +17,7 @@ focused local evidence and remaining acceptance. Wave 2 is **open**.
 | Guides staged database custody | `4e98ab18`: independently accepted; 55 new and 18 unchanged legacy tests passed | Synthetic contract evidence only; actual Guides database/process lifecycle still needs qualification |
 | QA detached artifact custody | `21850315`: independently accepted; root fresh 103 focused tests passed | ZIP, raw file and canonical hashes are checked separately; release and cryptographic authority remain false |
 | Apps/Places typed media | `236fb2f3`: ten actual PostgreSQL and canonical HTTP cases passed, zero skips; cleanup passed | Selected local SQL/API coverage, not native browser, S3, aggregate or hosted qualification |
+| Guides Windows parent source | Independent R1 source review accepted; root fresh 66 selected contract tests and scoped typing passed | Guarded import was not run and remains unqualified; no actual Job/PG/FS or browser-lane proof |
 
 Root's combined check of the certificate parser and staged database custody passed all 304 tests;
 scoped music-c0 typing passed after the descriptor snapshot correction.
@@ -24,7 +25,27 @@ scoped music-c0 typing passed after the descriptor snapshot correction.
 The subsequent detached-custody typing check reported only an error in the
 concurrent Guides supervisor draft. After that draft was held separately, clean
 finishing-source music-c0 typing passed. Guides is still under implementation;
-integrated Guides typing and native qualification remain pending.
+subsequent parent-only source typing passed. Full worker/fixture integration and
+native qualification remain pending.
+
+Independent review found and corrected three defects in the parent draft: its
+maintenance login did not match the owned fixture role, terminal replies could
+precede release of ordinary operation ownership, and log/pipe failures after
+job-empty could be lost before successful exit acknowledgment. Four targeted
+regressions first failed, then passed after the corrections. Root's fresh
+66-case run includes the original 62 selected cases. The C# cases compile and
+exercise injected contract seams with zero production-native entries; they do
+not establish actual process containment.
+
+The Guides guarded import diagnostic currently cannot start on this Windows host:
+its outer spawn returns `EPERM` with no child frame. A harmless control using the
+same pinned Node executable starts successfully. Windows Defender detection and
+removal events correlate with the guarded inline command and classify it as
+`Trojan:Win32/SuspExec.SE`; the recorded command path is truncated. This supports
+host security enforcement as the cause of that diagnostic's launch failure,
+and establishes neither malware nor a false positive. Further attempts have
+stopped. That import gate remains unqualified pending an approved environment;
+scripted protocol tests do not substitute for it.
 
 Actual PostgreSQL regressions confirmed missing Apps/Places screenshot/photo
 relations in public media eligibility, attached-media deletion reference counts
@@ -85,6 +106,9 @@ required inputs; credentials should be supplied through protected configuration.
 ## Hosted status boundary
 
 PR119 still points to remote `622f689385058ef9186538a1d8e1f60fd23ab266`.
+Read-only PR inspection on 2026-10-10 confirms its head branch is
+`codex/unified-replatform` and its base branch is `main`. All 29 checks are
+terminal: 23 succeeded, two failed and four skipped.
 Its known `platform-fixture` ingress and dependent `music-required` failures are
 not waived. Older hosted checks do not qualify newer local commits. Their
 coordinated runtime/fixture cutover belongs to Wave 3 and remains a release
