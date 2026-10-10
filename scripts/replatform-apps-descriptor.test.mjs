@@ -85,13 +85,13 @@ test('rejects partial/accessor/extra fake adapters before any fallback',()=>{
 test('attempts a failed close only once and refuses to return descriptor text',()=>{
   const h=harness();let closes=0;h.fs.closeSync=()=>{closes++;throw Error('private-value');};rejected(h);assert.equal(closes,1);
 });
-function fixtureRead(lane, reader, legacy) {
+function fixtureRead(lane, reader, legacy, requiredInput=name=>{assert.equal(name,'REPLATFORM_E2E_FIXTURE_PATH');return path;}) {
   const source=readFileSync(new URL('../explorers-earth/e2e/replatform/fixtures.ts',import.meta.url),'utf8');
   const start=source.indexOf(' const value=',source.indexOf('const descriptor='));const end=source.indexOf('\n assertFixtureOrigin(value);',start);
   assert.ok(start>=0&&end>start);
   const expression=source.slice(start+' const value='.length,end).trim().replace(/;$/,'').replaceAll('():Descriptor=>','()=>').replaceAll(' as Descriptor','');
   // Execute only the actual descriptor read/parse expression, stripping its two TS annotations.
-  return Function('lane','readAppsDescriptor','required','readFileSync',`return ${expression}`)(lane,reader,name=>{assert.equal(name,'REPLATFORM_E2E_FIXTURE_PATH');return path;},legacy);
+  return Function('lane','readAppsDescriptor','required','readFileSync',`return ${expression}`)(lane,reader,requiredInput,legacy);
 }
 test('Apps descriptor read and parse uses bounded reader without legacy FS fallback',()=>{
   let calls=0;const value=fixtureRead('apps',target=>{assert.equal(target,path);calls++;return '{"version":1}';},()=>assert.fail('legacy read'));
@@ -102,6 +102,7 @@ test('actual Apps fixture parse sanitizes malformed private JSON text',()=>{
 });
 test('actual Apps fixture parse sanitizes reader and required-input errors',()=>{
   assert.throws(()=>fixtureRead('apps',()=>{throw Error('private-value '+path);},()=>assert.fail('legacy read')),/^Error: APPS_DESCRIPTOR_CUSTODY_INVALID$/);
+  assert.throws(()=>fixtureRead('apps',()=>assert.fail('reader after missing input'),()=>assert.fail('legacy read'),()=>{throw Error('private-value '+path);}),/^Error: APPS_DESCRIPTOR_CUSTODY_INVALID$/);
 });
 test('all other lanes retain original UTF8 read and parse behavior',()=>{
   for(const lane of ['books','movies','places','guides']){
