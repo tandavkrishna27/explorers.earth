@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { validateCandidateArchive, acquireCandidateArchive } from '../../deployment/platform-artifact-evidence';
+import { validateCandidateArchive, acquireCandidateArchive, inspectUnqualifiedCustodyArchive } from '../../deployment/platform-artifact-evidence';
 const read = (name='stored') => readFileSync(new URL('./fixtures/platform-artifact/'+name+'.zip',import.meta.url));
 const hash=(bytes:Buffer)=>'sha256:'+createHash('sha256').update(bytes).digest('hex');
 const changed=(mutate:(b:Buffer,e:number,c:number)=>void)=>{const b=Buffer.from(read());const e=b.length-22;mutate(b,e,b.readUInt32LE(e+16));return b;};
@@ -50,3 +50,8 @@ it('bounds non-cooperative parser iteration and does not await stalled cleanup',
 it('rejects NUL raw filenames rather than normalizing them',async()=>{const b=changed((b,e,c)=>{b[30]=0;b[c+46]=0;});await expect(validateCandidateArchive(b,hash(b))).rejects.toMatchObject({code:'ARCHIVE_INVALID'});});
 it('rejects DOS special device attributes',async()=>{const b=changed((b,e,c)=>b.writeUInt32LE(64,c+38));await expect(validateCandidateArchive(b,hash(b))).rejects.toMatchObject({code:'ARCHIVE_INVALID'});});
 it('rejects malformed digest selector without runtime error leakage',async()=>{await expect(validateCandidateArchive(read(),Symbol('private') as any)).rejects.toMatchObject({code:'ARCHIVE_DIGEST_MISMATCH'});});
+
+it('keeps detached profiles fixed and denies the legacy multi-file archive',async()=>{
+ const b=read();
+ for(const kind of ['envelope','manifest','evidence','caller-profile'] as const) await expect(inspectUnqualifiedCustodyArchive(b,hash(b),kind as any)).rejects.toMatchObject({code:'ARCHIVE_INVALID'});
+});

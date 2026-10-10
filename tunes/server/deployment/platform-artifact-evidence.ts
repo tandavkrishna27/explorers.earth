@@ -18,6 +18,17 @@ export interface StructuralArchive { readonly releaseQualified: false; readonly 
 /** No producer, signature, download or release authority is implied by matching these structural bytes. */
 export async function acquireCandidateArchive(): Promise<never> { return fail('PRODUCER_UNAVAILABLE'); }
 export async function validateCandidateArchive(input: Buffer, expectedDigest: string): Promise<StructuralArchive> {
+  const result = await inspectArchive(input, expectedDigest, ALLOWED_FILES, ['release-manifest.json']);
+  return Object.freeze({releaseQualified:false as const,status:'ARTIFACT_STRUCTURALLY_VALID_UNQUALIFIED' as const,archiveDigest:result.archiveDigest,files:result.files});
+}
+export type CustodyArchiveKind = 'envelope' | 'manifest' | 'evidence';
+export interface UnqualifiedCustodyArchive { readonly status:'CUSTODY_ARCHIVE_STRUCTURALLY_VALID_UNQUALIFIED'; readonly releaseQualified:false; readonly archiveDigest:string; readonly files:Readonly<Record<string,string>>; readonly rawFileDigests:Readonly<Record<string,string>>; }
+export async function inspectUnqualifiedCustodyArchive(input:Buffer, expectedDigest:string, kind:CustodyArchiveKind):Promise<UnqualifiedCustodyArchive> {
+  const names = kind==='envelope'?['custody-envelope.json']:kind==='manifest'?['release-manifest.json']:kind==='evidence'?['qualification.json','api-smoke-amd64.json','web-smoke-amd64.json']:fail();
+  const result=await inspectArchive(input,expectedDigest,names,names);
+  return Object.freeze({status:'CUSTODY_ARCHIVE_STRUCTURALLY_VALID_UNQUALIFIED' as const,releaseQualified:false as const,...result});
+}
+async function inspectArchive(input:Buffer,expectedDigest:string,allowed:readonly string[],required:readonly string[]) {
   if (!Buffer.isBuffer(input) || input.length > MAX_BYTES) fail('ARCHIVE_LIMIT');
   // Snapshot first, then qualify these exact bytes, including buffers backed by shared memory.
   const bytes = Buffer.from(input);
@@ -37,13 +48,13 @@ export async function validateCandidateArchive(input: Buffer, expectedDigest: st
   try {
     zip = await bounded(parser.fromBufferPromise(bytes,{strictFileNames:true,decodeStrings:true,validateEntrySizes:true}));
     if (zip.entryCount!==count) fail();
-    iterator=zip.eachEntry(); const files:Record<string,string>=Object.create(null); const ranges:{start:number;end:number}[]=[];
+    iterator=zip.eachEntry(); const files:Record<string,string>=Object.create(null); const rawFileDigests:Record<string,string>=Object.create(null); const ranges:{start:number;end:number}[]=[];
     let expanded=0, records=0, seen=0;
     while (true) {
       const item=await bounded(iterator.next()); if(item.done) break;
       const entry=item.value; seen++; if(seen>count) fail();
       const name=entry.fileName;
-      if(!ALLOWED_FILES.includes(name) || Object.hasOwn(files,name) || !entry.fileNameRaw.equals(Buffer.from(name,'ascii')) || entry.fileNameLength!==name.length) fail();
+      if(!allowed.includes(name) || Object.hasOwn(files,name) || !entry.fileNameRaw.equals(Buffer.from(name,'ascii')) || entry.fileNameLength!==name.length) fail();
       const fields=[entry.compressedSize,entry.uncompressedSize,entry.relativeOffsetOfLocalHeader];
       if(!fields.every(n=>Number.isSafeInteger(n)&&n>=0) || entry.extraFieldLength!==0 || entry.fileCommentLength!==0 || entry.extraFields.length!==0 || ![10,20].includes(entry.versionNeededToExtract) || (entry.generalPurposeBitFlag&~0x0800)!==0 || ![0,8].includes(entry.compressionMethod)) fail();
       const unixType=(entry.externalFileAttributes>>>16)&0xf000;
@@ -61,15 +72,17 @@ export async function validateCandidateArchive(input: Buffer, expectedDigest: st
       activeStream.on('error',()=>{});
       const chunks:Buffer[]=[]; let actual=0, checksum=0;
       const dataIterator=activeStream[Symbol.asyncIterator]();
-      while(true) { const part=await bounded(dataIterator.next()); if(part.done) break; const chunk=Buffer.isBuffer(part.value)?part.value:Buffer.from(part.value); actual+=chunk.length; if(actual>cap || expanded+actual>MAX_EXPANDED) fail('ARCHIVE_LIMIT'); checksum=crc32(chunk,checksum); chunks.push(chunk); }
+      while(true) { const part=await bounded(dataIterator.next()); if(part.done) break; const chunk=Buffer.from(part.value); actual+=chunk.length; if(actual>cap || expanded+actual>MAX_EXPANDED) fail('ARCHIVE_LIMIT'); checksum=crc32(chunk,checksum); chunks.push(chunk); }
       activeStream=undefined;
       if(actual!==entry.uncompressedSize || checksum!==entry.crc32) fail();
       expanded+=actual;
-      try { files[name]=new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks,actual)); } catch { fail(); }
+      const raw=Buffer.concat(chunks,actual);
+      rawFileDigests[name]='sha256:'+createHash('sha256').update(raw).digest('hex');
+      try { files[name]=new TextDecoder('utf-8',{fatal:true}).decode(raw); } catch { fail(); }
     }
-    if(seen!==count || records!==centralSize || !Object.hasOwn(files,'release-manifest.json')) fail();
+    if(seen!==count || records!==centralSize || required.some(name=>!Object.hasOwn(files,name))) fail();
     ranges.sort((a,b)=>a.start-b.start); let cursor=0; for(const range of ranges){ if(range.start!==cursor) fail(); cursor=range.end; } if(cursor!==centralOffset) fail();
-    return Object.freeze({releaseQualified:false as const,status:'ARTIFACT_STRUCTURALLY_VALID_UNQUALIFIED' as const,archiveDigest:expectedDigest,files:Object.freeze(files)});
+    return Object.freeze({archiveDigest:expectedDigest,files:Object.freeze(files),rawFileDigests:Object.freeze(rawFileDigests)});
   } catch(error) { if(error instanceof ArtifactEvidenceError) throw error; return fail(signal.aborted?'ARCHIVE_TIMEOUT':'ARCHIVE_INVALID'); }
   finally { signal.removeEventListener('abort',onAbort); try { activeStream?.destroy(); } catch {} try { void iterator?.return?.().catch(()=>{}); } catch {} try { zip?.close(); } catch {} }
 }
