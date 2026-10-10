@@ -18,9 +18,11 @@ focused local evidence and remaining acceptance. Wave 2 is **open**.
 | QA detached artifact custody | `21850315`: independently accepted; root fresh 103 focused tests passed | ZIP, raw file and canonical hashes are checked separately; release and cryptographic authority remain false |
 | Apps/Places typed media | `236fb2f3`: ten actual PostgreSQL and canonical HTTP cases passed, zero skips; cleanup passed | Selected local SQL/API coverage, not native browser, S3, aggregate or hosted qualification |
 | Guides Windows parent source | Independent R1 source review accepted; root fresh 66 selected contract tests and scoped typing passed | Guarded import was not run and remains unqualified; no actual Job/PG/FS or browser-lane proof |
-| Apps manual native specification | `6869ae83`: four native case definitions independently reviewed; root scoped frontend typing passed | Fixture and registration integration pending; zero Apps native identities executed; nightly scraping is separate |
+| Apps manual native specification | `6869ae83`: four native case definitions independently reviewed; root scoped frontend typing passed | Fixture integration pending; zero Apps native identities executed; nightly scraping is separate |
 | Candidate prebuilt smoke contracts | `6869ae83`: independent R1 review accepted; root fresh 92 resource-free contracts passed and scoped music-c0 typing passed | Actual native entry refuses before allocation; OCI, image, transport, boot and custody prerequisites remain open |
 | Apps private descriptor read | `554038d4`: independent review accepted; root fresh 44 resource-free tests and scoped fixture typing passed | Parent ACL custody and native lane integration still required; text reads grant no qualification authority |
+| Guides resource worker | `2bd7cc51`: independent source review accepted; root fresh combined 143 selected contract tests and scoped worker typing passed | Default native adapters were not executed; gateway, fixture entry, native scenarios and containment qualification remain open |
+| Apps lane registration | `254a2324`: independent R1 review accepted; root fresh 16 selected registration/predecessor contracts and scoped typing passed | Exact 142 source identities preserve the previous 134; actual fixture integration and native execution remain open |
 
 Root's combined check of the certificate parser and staged database custody passed all 304 tests;
 scoped music-c0 typing passed after the descriptor snapshot correction.
@@ -48,7 +50,7 @@ A coordinated parent/launcher correction was independently accepted and committe
 as `10bb08de`. Root's fresh 76 selected contract cases and scoped typing passed.
 The launcher now conveys a reserved parent-derived epoch; the parent preserves
 strictly validated controller cleanup metadata without granting disposal authority.
-Worker implementation has resumed. The earlier 66-case pass did not establish
+Worker source is accepted in `2bd7cc51`. The earlier 66-case pass did not establish
 actual worker composition, and these source checks do not establish native execution.
 
 The Guides guarded import diagnostic currently cannot start on this Windows host:
@@ -101,12 +103,19 @@ this source execution record.
 
 ### Work currently in progress
 
-- Guides resource worker: the parent ABI defects are repaired; worker contract
-  implementation is underway. Fixture gateway, 16 identities and actual process
+- Guides resource worker: the parent ABI defects and worker source are accepted.
+  Fixture gateway, 16 identities and actual process
   containment remain to integrate and qualify.
 - Apps manual qualification: specification and descriptor reader are accepted.
-  Canonical reset/live observation and exact eight-identity registration are
-  underway. This adds eight to the existing 134; later Guides adds another 16.
+  Exact eight-identity registration is accepted and committed as `254a2324`.
+  Root verification passed all 16 selected resource-free registration and
+  predecessor contracts, with scoped types clean. The workflow now binds its
+  protected receipt to the Node temporary root. Canonical reset/live observation
+  remains under review. Review identified late database lease/rollback ownership,
+  storage binding/physical settlement and unauthorized-body admission gaps;
+  bounded repairs are in progress. Actual profile fixture integration and native
+  Apps execution remain open; registration alone does not qualify that lane.
+  This adds eight to the existing 134; later Guides adds another 16.
 - Included features: concrete written design review is pending. Actual People
   taxonomy access, catalog mapping disposition and nightly source/host settings
   remain needed. Legacy direct URL Open Graph scraping is a discovered candidate
