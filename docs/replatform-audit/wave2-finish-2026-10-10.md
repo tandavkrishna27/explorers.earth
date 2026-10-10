@@ -431,6 +431,16 @@ reviewed exact-path ACL adoption preserves sibling files and content, verifies
 fresh physical custody, and passes the unchanged inspector. No ACL or secret
 content mutation has been performed, and no historical privacy is claimed.
 
+The future Apps Windows secret adapter now uses the unchanged pinned helper's
+protected exclusive file creation, with 32 random bytes encoded and supplied
+only through stdin. Its actual token parent and new secret must pass private ACL
+inspection. The shared `.artifacts` ancestor retains canonical and physical
+identity checks without global permission changes. POSIX creation is preserved.
+Behavioral native-adapter regressions reproduced the legacy fallback and overly
+strict ancestor check before repair. Independent source review accepted the
+result; root fresh verification passed 298 focused Apps and recovery contracts,
+including 102 runner cases. Native creation and ACL adoption remain unqualified.
+
 ## Current hosted status
 
 PR119 still points to remote `622f689385058ef9186538a1d8e1f60fd23ab266`.

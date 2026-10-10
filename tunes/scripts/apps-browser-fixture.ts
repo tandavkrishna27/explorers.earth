@@ -734,8 +734,35 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
             throw new Refusal();
         } await inspect(target); return remember(target, true); },
         async assertDirectory(directory) { await same(directory.path, true); await inspect(directory.path); },
-        async prepareSecret() { const { prepareFixtureMusicTokenSecret } = await import('./music-fixture-secret'); try {
-            return { path: prepareFixtureMusicTokenSecret(root) };
+        async prepareSecret() { try {
+            if (process.platform !== 'win32') {
+                const { prepareFixtureMusicTokenSecret } = await import('./music-fixture-secret');
+                return { path: prepareFixtureMusicTokenSecret(root) };
+            }
+            const artifactDirectory = path.join(root, '.artifacts');
+            const tokenDirectory = path.join(artifactDirectory, 'music-token-secrets');
+            await canonical(root);
+            for (const directory of [artifactDirectory, tokenDirectory]) {
+                const fs = await canonical(path.dirname(directory));
+                let absent = false;
+                try { if (!(await fs.lstat(directory)).isDirectory()) throw new Refusal(); }
+                catch (error) { if ((error as {code?:string}).code !== 'ENOENT') throw error; absent = true; }
+                if (absent) await privateOperation('create-directory', directory);
+                await canonical(directory);
+                if (directory === tokenDirectory) await inspect(directory);
+                await remember(directory, true);
+            }
+            const target = path.join(tokenDirectory, `current-${randomBytes(16).toString('hex')}`);
+            await same(artifactDirectory, true);
+            await same(tokenDirectory, true);
+            await inspect(tokenDirectory);
+            await privateOperation('create-file', target, randomBytes(32).toString('base64url'));
+            await same(artifactDirectory, true);
+            await same(tokenDirectory, true);
+            await inspect(tokenDirectory);
+            await inspect(target);
+            await remember(target, false);
+            return { path: target };
         }
         catch {
             nativeUnknown = true;

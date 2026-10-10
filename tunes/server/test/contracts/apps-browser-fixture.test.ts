@@ -3,6 +3,30 @@ import path from 'node:path';
 import {existsSync,readFileSync} from 'node:fs';
 import ts from 'typescript';
 const source=path.resolve(import.meta.dirname,'../../../scripts/apps-browser-fixture.ts');
+it('actual Windows secret creator uses protected helper stdin and retained parent identity',async()=>{
+ const events:any[]=[];let unknown=false;
+ const method=defaultMethod('prepareSecret',{process:{platform:'win32'},root:'fixed-root',path,randomBytes:(size:number)=>Buffer.alloc(size,7),nativeUnknown:false,Refusal:class extends Error{},canonical:async()=>({lstat:async()=>({isDirectory:()=>true})}),inspect:async(target:string)=>events.push(['inspect',target]),remember:async(target:string)=>events.push(['remember',target]),same:async(target:string)=>events.push(['same',target]),privateOperation:async(...args:any[])=>events.push(args),load:async()=>{unknown=true;return{prepareFixtureMusicTokenSecret:()=> 'legacy'};}});
+ const result=await method();expect(unknown).toBe(false);expect(result.path).toBe(path.join('fixed-root','.artifacts','music-token-secrets','current-'+ '07'.repeat(16)));
+ const creation=events.find(event=>event[0]==='create-file');expect(creation).toEqual(['create-file',result.path,Buffer.alloc(32,7).toString('base64url')]);expect(events.filter(event=>event[0]==='same').length).toBeGreaterThanOrEqual(2);
+});
+it.each(['collision','partial','custody'])('actual Windows secret creator retains and refuses %s without retry',async failure=>{
+ let creates=0,reads=0;const events:string[]=[];
+ const method=defaultMethod('prepareSecret',{process:{platform:'win32'},root:'fixed-root',path,randomBytes:(size:number)=>Buffer.alloc(size,7),nativeUnknown:false,Refusal:class extends Error{},canonical:async()=>({lstat:async()=>({isDirectory:()=>true})}),inspect:async(target:string)=>{events.push(target);if(failure==='custody'&&target.includes('current-'))throw Error('private');},remember:async()=>{},same:async()=>{},privateOperation:async(operation:string)=>{if(operation==='create-file'){creates++;if(failure!=='custody')throw Error('private');}},load:async()=>{reads++;throw Error('native fallback');}});
+ await expect(method()).rejects.toThrow();expect(creates).toBe(1);expect(reads).toBe(0);
+});
+it('actual POSIX secret creator preserves existing owning primitive',async()=>{
+ const method=defaultMethod('prepareSecret',{process:{platform:'linux'},root:'fixed-root',nativeUnknown:false,Refusal:class extends Error{},load:async(name:string)=>{expect(name).toBe('./music-fixture-secret');return{prepareFixtureMusicTokenSecret:(root:string)=>{expect(root).toBe('fixed-root');return 'owned-posix';}};}});
+ expect(await method()).toEqual({path:'owned-posix'});
+});
+it('actual Windows secret allows canonical broader artifacts ancestor but requires private token parent',async()=>{
+ const inspected:string[]=[];const method=defaultMethod('prepareSecret',{process:{platform:'win32'},root:'fixed-root',path,randomBytes:(size:number)=>Buffer.alloc(size,7),nativeUnknown:false,Refusal:class extends Error{},canonical:async()=>({lstat:async()=>({isDirectory:()=>true})}),inspect:async(target:string)=>{inspected.push(target);if(target===path.join('fixed-root','.artifacts'))throw Error('broader ancestor');},remember:async()=>{},same:async()=>{},privateOperation:async()=>{},load:async()=>{throw Error('fallback');}});
+ await expect(method()).resolves.toHaveProperty('path');expect(inspected).not.toContain(path.join('fixed-root','.artifacts'));expect(inspected).toContain(path.join('fixed-root','.artifacts','music-token-secrets'));
+});
+it.each(['private-parent','alias','changed-ancestor'])('actual Windows secret refuses %s before secret allocation',async failure=>{
+ let creates=0;const artifact=path.join('fixed-root','.artifacts'),token=path.join(artifact,'music-token-secrets');
+ const method=defaultMethod('prepareSecret',{process:{platform:'win32'},root:'fixed-root',path,randomBytes:(size:number)=>Buffer.alloc(size,7),nativeUnknown:false,Refusal:class extends Error{},canonical:async(target:string)=>{if(failure==='alias'&&target===artifact)throw Error('alias');return{lstat:async()=>({isDirectory:()=>true})};},inspect:async(target:string)=>{if(failure==='private-parent'&&target===token)throw Error('ACL');},remember:async()=>{},same:async(target:string)=>{if(failure==='changed-ancestor'&&target===artifact)throw Error('identity');},privateOperation:async(operation:string)=>{if(operation==='create-file')creates++;},load:async()=>{throw Error('fallback');}});
+ await expect(method()).rejects.toThrow();expect(creates).toBe(0);
+});
 const load=async()=>{expect(existsSync(source),'actual allocated runner source exists').toBe(true);return import('../../../scripts/apps-browser-fixture');};
 function fake(options:any={}){
  const events:string[]=[],contexts:any[]=[];const forever=new Promise<any>(()=>{});let now=0;const timers=new Map<any,()=>void>();let id=0;
