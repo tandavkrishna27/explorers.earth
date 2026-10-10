@@ -43,8 +43,12 @@ Resource-worker integration subsequently exposed two additional parent ABI
 defects: worker authentication requires an epoch that the launcher does not
 convey, and controller cleanup failures use labels different from lane labels.
 The worker stopped without source edits rather than fabricate either input.
-A coordinated parent/launcher correction is in progress. The earlier 66-case
-pass did not establish actual worker composition.
+A coordinated parent/launcher correction was independently accepted and committed
+as `10bb08de`. Root's fresh 76 selected contract cases and scoped typing passed.
+The launcher now conveys a reserved parent-derived epoch; the parent preserves
+strictly validated controller cleanup metadata without granting disposal authority.
+Worker implementation has resumed. The earlier 66-case pass did not establish
+actual worker composition, and these source checks do not establish native execution.
 
 The Guides guarded import diagnostic currently cannot start on this Windows host:
 its outer spawn returns `EPERM` with no child frame. A harmless control using the
