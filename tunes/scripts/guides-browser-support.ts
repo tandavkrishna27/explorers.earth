@@ -1,6 +1,6 @@
-import {timingSafeEqual} from 'node:crypto';
+import {createHash, timingSafeEqual} from 'node:crypto';
 import {z} from 'zod/v3';
-import {guideCollectionDetailsSchema, guideSectionBlocksSchema, type GuideDayPlace} from '../shared/explorersGuideContract';
+import {guideCollectionDetailsSchema, guideSectionBlocksSchema, guideActivityPhotoSchema, guideSectionDtoSchema, GUIDE_SECTION_LIMIT, GUIDE_SECTION_PAGE_LIMIT, type GuideDayPlace} from '../shared/explorersGuideContract';
 
 export const GUIDES_CASES = [
   'Guides: complete non-ASCII wizard metadata and creator categories survive reload',
@@ -115,3 +115,147 @@ export function validateGuidesControl(input:unknown) {
     value.active.repeat!==value.body.repeat)) throw new Error('Inactive Guides identity');
   return value.body;
 }
+
+// Private, in-memory custody envelope for the initial materialized seed snapshot.
+const manifestRevision=z.number().int().positive().safe();
+const uuid=z.string().uuid();
+const personaBinding=z.object({userId:z.string().min(1),accountId:uuid,handle:z.string().min(1)}).strict();
+const personaBindings=z.object({ownerA:personaBinding,ownerB:personaBinding,ownerC:personaBinding}).strict();
+const runtimePersona=personaBinding.extend({accountRevision:manifestRevision}).strict();
+const manifestIdentity={version:z.literal(1),runId,commit,caseId:z.enum(GUIDES_CASES),project:z.enum(GUIDES_PROJECTS),repeat:z.literal(0),generation:manifestRevision};
+const manifestGuide=z.object({key:z.string().min(1),id:uuid,accountId:uuid,category:z.literal('guides'),
+  title:guideSectionDtoSchema.shape.title,slug:z.string().min(1),displayOrder:z.number().int().nonnegative().safe(),
+  collectionRevision:manifestRevision,categoryContentRevision:manifestRevision,visibility:z.enum(['public','private']),
+  publicationState:z.enum(['draft','published']),archived:z.boolean(),details:guideCollectionDetailsSchema}).strict();
+const manifestSection=z.object({key:z.string().min(1),id:uuid,collectionId:uuid,accountId:uuid,
+  title:guideSectionDtoSchema.shape.title,description:guideSectionDtoSchema.shape.description,
+  displayOrder:z.number().int().nonnegative().max(GUIDE_SECTION_LIMIT-1),archived:z.boolean(),blocks:guideSectionBlocksSchema}).strict();
+const knownGuideFixtures={
+  'old-cover':{byteLength:74,sha256:'efd697c3369b86b0b540c0bded797ca813a3984c1a95d7d16644744e252840a2',mimeType:'image/png'},
+  'replacement-cover':{byteLength:78,sha256:'737a59b1d4ed37b6cd836d483eff2ad8b0183d5a8078e355e7bb30a91c746f82',mimeType:'image/png'},
+  'activity-import':{byteLength:633,sha256:'040d3d472c846ce1e2ea09b361b3224c5723a591f305797217e20b98778d9f1c',mimeType:'image/jpeg'},
+} as const;
+const fixtureId=z.enum(['old-cover','replacement-cover','activity-import']);
+const manifestMedia=z.object({key:z.string().min(1),id:uuid,accountId:uuid,purpose:z.enum(['collection','guide']),
+  status:z.literal('ready'),variant:z.literal('original'),environment:z.literal('local'),keyPath:z.string(),
+  mimeType:z.enum(['image/png','image/jpeg']),byteLength:z.number().int().positive().max(5242880),
+  sha256:z.string().regex(/^[a-f0-9]{64}$/),contentUrl:z.string(),fixtureId}).strict();
+const attachmentFields={guideId:uuid,accountId:uuid,mediaId:uuid};
+const manifestAttachment=z.discriminatedUnion('slot',[
+  z.object({slot:z.literal('cover'),...attachmentFields}).strict(),
+  z.object({slot:z.literal('section-photo'),...attachmentFields,sectionId:uuid}).strict(),
+]);
+const traversalSchema=z.object({guideCount:z.literal(53),sectionCount:z.literal(53),
+  publicDetail:z.object({limit:z.literal(12),lengths:z.array(z.number()),offsets:z.array(z.number()),cursors:z.array(z.string().nullable())}).strict(),
+  publicCategory:z.object({limit:z.literal(24),lengths:z.array(z.number())}).strict(),
+  ownerSections:z.object({limit:z.literal(GUIDE_SECTION_PAGE_LIMIT),lengths:z.array(z.number()),
+    requests:z.tuple([z.object({}).strict(),z.object({after:z.literal(19)}).strict(),z.object({after:z.literal(39)}).strict()]),
+    cursors:z.array(z.number().nullable()),wireCursors:z.array(z.string().nullable())}).strict(),
+}).strict();
+const manifestSchema=z.object({...manifestIdentity,
+  personas:z.object({ownerA:runtimePersona,ownerB:runtimePersona,ownerC:runtimePersona}).strict(),
+  guides:z.array(manifestGuide),sections:z.array(manifestSection),media:z.array(manifestMedia),attachments:z.array(manifestAttachment),
+  expectedPublic:z.object({eligibleGuideIds:z.array(uuid),selectedGuideId:uuid.nullable(),orderedSectionIds:z.array(uuid),
+    roleMediaIds:z.record(uuid.nullable()),traversal:traversalSchema.nullable()}).strict(),
+}).strict();
+
+export const guidesManifestSchema=z.object({expected:z.object({...manifestIdentity,personas:personaBindings}).strict(),
+  manifest:manifestSchema,
+  fixtureBytes:z.object({'old-cover':z.instanceof(Uint8Array).optional(),'replacement-cover':z.instanceof(Uint8Array).optional(),'activity-import':z.instanceof(Uint8Array).optional()}).strict(),
+}).strict().superRefine(({expected,manifest:m,fixtureBytes},ctx)=>{
+  const issue=(path:(string|number)[],message:string)=>ctx.addIssue({code:'custom',path,message});
+  const equal=(actual:unknown,wanted:unknown,path:(string|number)[])=>{
+    // Object key order is immaterial; array order is part of the fixture contract.
+    const canonical=(v:unknown):unknown=>Array.isArray(v)?v.map(canonical):v!==null&&typeof v==='object'?
+      Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b)).map(([k,x])=>[k,canonical(x)])):v;
+    if(JSON.stringify(canonical(actual))!==JSON.stringify(canonical(wanted)))issue(path,'Initial snapshot mismatch');
+  };
+  for(const key of Object.keys(manifestIdentity) as (keyof typeof manifestIdentity)[])equal(m[key],expected[key],['manifest',key]);
+  const owners=['ownerA','ownerB','ownerC'] as const;
+  for(const owner of owners){const {accountRevision,...binding}=m.personas[owner];equal(binding,expected.personas[owner],['manifest','personas',owner]);}
+  for(const field of ['userId','accountId','handle'] as const)if(new Set(owners.map(o=>expected.personas[o][field])).size!==3)issue(['expected','personas'],'Duplicate persona binding');
+  const plan=buildGuidesSeedPlan(expected.caseId);
+  const unique=(rows:{key:string,id:string}[],kind:string)=>{
+    for(const field of ['key','id'] as const)if(new Set(rows.map(r=>r[field])).size!==rows.length)issue(['manifest',kind],'Duplicate '+field);
+  };
+  unique(m.guides,'guides');unique(m.sections,'sections');unique(m.media,'media');
+  equal(m.guides.map(g=>g.key).sort(),plan.guides.map(g=>g.key).sort(),['manifest','guides']);
+  equal(m.sections.map(s=>s.key).sort(),plan.sections.map(s=>s.key).sort(),['manifest','sections']);
+  const guidesByKey=new Map(m.guides.map(g=>[g.key,g]));
+  for(const [i,g] of m.guides.entries()){
+    const seed=plan.guides.find(row=>row.key===g.key);if(!seed)continue;
+    const {owner,...properties}=seed;
+    const {id,accountId,category,collectionRevision,categoryContentRevision,...actual}=g;
+    equal(actual,properties,['manifest','guides',i]);equal(accountId,expected.personas[owner].accountId,['manifest','guides',i,'accountId']);
+    if(m.sections.filter(s=>s.collectionId===id).length>GUIDE_SECTION_LIMIT)issue(['manifest','sections'],'Too many sections');
+  }
+  for(const owner of owners){const rows=m.guides.filter(g=>g.accountId===expected.personas[owner].accountId);
+    if(new Set(rows.map(g=>g.displayOrder)).size!==rows.length)issue(['manifest','guides'],'Duplicate account guide order');
+    if(new Set(rows.map(g=>g.categoryContentRevision)).size>1)issue(['manifest','guides'],'Inconsistent category revision');
+  }
+  const roles=plan.mediaRoles.filter(r=>r.key!=='activity-import');
+  equal(m.media.map(r=>r.key).sort(),roles.map(r=>r.key).sort(),['manifest','media']);
+  const mediaByRole=new Map(m.media.map(r=>[r.key,r]));
+  const needed=new Set(plan.mediaRoles.map(r=>r.key==='replacement-cover'?'replacement-cover':r.key==='activity-import'?'activity-import':'old-cover'));
+  equal(Object.keys(fixtureBytes).sort(),[...needed].sort(),['fixtureBytes']);
+  for(const id of needed){const bytes=fixtureBytes[id as keyof typeof fixtureBytes],known=knownGuideFixtures[id as keyof typeof knownGuideFixtures];
+    if(!bytes||bytes.byteLength!==known.byteLength||createHash('sha256').update(bytes).digest('hex')!==known.sha256)issue(['fixtureBytes',id],'Known fixture bytes mismatch');
+  }
+  for(const [i,row] of m.media.entries()){
+    const role=roles.find(r=>r.key===row.key);if(!role)continue;
+    const id=role.key==='replacement-cover'?'replacement-cover':'old-cover';
+    equal(row.fixtureId,id,['manifest','media',i,'fixtureId']);
+    for(const field of ['byteLength','sha256','mimeType'] as const)equal(row[field],knownGuideFixtures[id][field],['manifest','media',i,field]);
+    equal(row.purpose,role.purpose,['manifest','media',i,'purpose']);equal(row.accountId,expected.personas[role.owner].accountId,['manifest','media',i,'accountId']);
+    equal(row.keyPath,`local/${row.accountId}/${row.id}`,['manifest','media',i,'keyPath']);equal(row.contentUrl,`/api/explorers/v1/media/${row.id}/content`,['manifest','media',i,'contentUrl']);
+  }
+  const wantedAttachments:z.infer<typeof manifestAttachment>[]=[];
+  for(const [i,s] of m.sections.entries()){
+    const seed=plan.sections.find(row=>row.key===s.key);if(!seed)continue;
+    const parent=guidesByKey.get(seed.guideKey);if(!parent){issue(['manifest','sections',i,'collectionId'],'Missing parent');continue;}
+    equal(s.collectionId,parent.id,['manifest','sections',i,'collectionId']);equal(s.accountId,parent.accountId,['manifest','sections',i,'accountId']);
+    const {guideKey,blocks:seedBlocks,...properties}=seed;
+    const {id,collectionId,accountId,blocks:actualBlocks,...actual}=s;
+    equal(actual,properties,['manifest','sections',i]);
+    if(new Set(m.sections.filter(row=>row.collectionId===s.collectionId).map(row=>row.displayOrder)).size!==m.sections.filter(row=>row.collectionId===s.collectionId).length)issue(['manifest','sections',i,'displayOrder'],'Duplicate parent section order');
+    const expectedBlocks=structuredClone(seedBlocks);
+    for(const binding of plan.photoBindings.filter(b=>b.sectionKey===s.key)){
+      const asset=mediaByRole.get(binding.roleKey);if(!asset)continue;
+      const photoResult=guideActivityPhotoSchema.safeParse({mediaId:asset.id,fileName:`${binding.roleKey}.png`,width:8,height:8,aspectRatio:'1:1'});
+      if(!photoResult.success){
+        const [block,field]=binding.block.split('.');
+        for(const sharedIssue of photoResult.error.issues)ctx.addIssue({...sharedIssue,path:['manifest','sections',i,'blocks',block,field,binding.entryIndex,'photos',0,...sharedIssue.path]});
+        continue;
+      }
+      const photo=photoResult.data;
+      if(binding.block==='timeline.morning')expectedBlocks.timeline.morning[binding.entryIndex].photos=[photo];
+      else expectedBlocks.stay.accommodations[binding.entryIndex].photos=[photo];
+    }
+    // Legal repetition of an identical photo does not create another attachment.
+    const normalizedBlocks=structuredClone(actualBlocks);
+    const entries=[...normalizedBlocks.timeline.morning,...normalizedBlocks.timeline.afternoon,...normalizedBlocks.timeline.evening,...normalizedBlocks.stay.accommodations,...normalizedBlocks.activities.activities];
+    const ids=new Set<string>();
+    for(const entry of entries){entry.photos=entry.photos.filter((photo,j,all)=>all.findIndex(p=>JSON.stringify(p)===JSON.stringify(photo))===j);for(const photo of entry.photos)ids.add(photo.mediaId);}
+    equal(normalizedBlocks,expectedBlocks,['manifest','sections',i,'blocks']);
+    for(const mediaId of ids){const asset=m.media.find(row=>row.id===mediaId);
+      if(!asset||asset.accountId!==s.accountId||asset.purpose!=='guide')issue(['manifest','sections',i,'blocks'],'Invalid photo ownership');
+      wantedAttachments.push({slot:'section-photo',guideId:s.collectionId,sectionId:s.id,accountId:s.accountId,mediaId});
+    }
+  }
+  for(const roleKey of ['old-cover','independent-cover']){const asset=mediaByRole.get(roleKey);if(!asset)continue;
+    const guide=guidesByKey.get(roleKey==='old-cover'?'ownerA-guide-0':'ownerB-guide-0');
+    if(guide)wantedAttachments.push({slot:'cover',guideId:guide.id,accountId:guide.accountId,mediaId:asset.id});
+  }
+  const attachmentOrder=(a:z.infer<typeof manifestAttachment>)=>`${a.slot}/${a.guideId}/${'sectionId' in a?a.sectionId:''}/${a.mediaId}`;
+  equal([...m.attachments].sort((a,b)=>attachmentOrder(a).localeCompare(attachmentOrder(b))),wantedAttachments.sort((a,b)=>attachmentOrder(a).localeCompare(attachmentOrder(b))),['manifest','attachments']);
+  const eligible=plan.guides.filter(g=>g.owner==='ownerA'&&g.visibility==='public'&&g.publicationState==='published'&&!g.archived).map(g=>guidesByKey.get(g.key)?.id);
+  const selected=plan.traversal?guidesByKey.get(plan.traversal.selectedGuideKey)?.id:null;
+  equal(m.expectedPublic.eligibleGuideIds,eligible,['manifest','expectedPublic','eligibleGuideIds']);
+  equal(m.expectedPublic.selectedGuideId,selected,['manifest','expectedPublic','selectedGuideId']);
+  equal(m.expectedPublic.orderedSectionIds,plan.traversal?plan.sections.filter(s=>s.guideKey===plan.traversal!.selectedGuideKey).map(s=>m.sections.find(row=>row.key===s.key)?.id):[],['manifest','expectedPublic','orderedSectionIds']);
+  equal(m.expectedPublic.roleMediaIds,Object.fromEntries(plan.mediaRoles.map(r=>[r.key,r.key==='activity-import'?null:mediaByRole.get(r.key)?.id])),['manifest','expectedPublic','roleMediaIds']);
+  equal(m.expectedPublic.traversal,plan.traversal?{guideCount:53,sectionCount:53,publicDetail:plan.traversal.publicDetail,publicCategory:plan.traversal.publicCategory,
+    ownerSections:{limit:GUIDE_SECTION_PAGE_LIMIT,lengths:[20,20,13],requests:[{},{after:19},{after:39}],cursors:[19,39,null],wireCursors:['19','39',null]}}:null,['manifest','expectedPublic','traversal']);
+}).transform(value=>value.manifest);
+
+export type GuidesManifest=z.infer<typeof guidesManifestSchema>;
