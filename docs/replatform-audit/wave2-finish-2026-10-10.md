@@ -347,6 +347,27 @@ Finish sequence:
 
 Wave 2 remains OPEN. No new push, hosted CI, merge or deployment occurred.
 
+## Apps recovery and control preflight update
+
+Independent audits of the two original failed source checkpoints establish that
+neither run reached control, descriptor, Vite, discovery, browser or private
+media work. The first failed at composition; the second failed synchronously
+before the first canonical request handler. Their observed original Node process
+closure covers in-process producers. Fresh PostgreSQL quiescence, exact container
+and mount validation, and protected filesystem identities are still required.
+Fresh explicitly authorized recovery of these two named runs does not recreate
+their lost original custody or provide qualification evidence. Its implementation
+and independent review remain in progress; no resources have been removed.
+
+Production preflight also found a private Apps control Host mismatch: the Vite
+proxy preserves the web Host, while the controller expected the distinct API
+Host. The controller now requires the single fixed validated web Host at both
+checks. The actual controller regression reproduced 403 before repair and 200
+after repair; API and foreign Hosts remain refused before body consumption or
+database operations. Independent review accepted the source change and root
+fresh verification passed all 53 support tests. Native Apps qualification is
+still pending recovery and a clean exact committed source boundary.
+
 ## Current hosted status
 
 PR119 still points to remote `622f689385058ef9186538a1d8e1f60fd23ab266`.

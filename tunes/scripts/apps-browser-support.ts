@@ -164,8 +164,8 @@ function validateDependencies(d:AppsControlDependencies) {
  for(const [name,keys] of [['files',['assertCustody','write','read','remove']],['storage',['put','get','delete']]] as const){exactKeys(d[name],[...keys]);for(const key of keys)if(typeof (d[name] as any)[key]!=='function')throw fail('adapter');}
 }
 export async function createAppsControl(options:AppsControlOptions,dependencies?:AppsControlDependencies) {
- let api:URL,d:AppsControlDependencies;
- try{api=validateOptions(options);d=dependencies===undefined?nativeDependencies(options):dependencies;validateDependencies(d);}catch{throw fail('initialization');}
+ let webHost:string,d:AppsControlDependencies;
+ try{validateOptions(options);webHost=new URL(options.origin).host;d=dependencies===undefined?nativeDependencies(options):dependencies;validateDependencies(d);}catch{throw fail('initialization');}
  const provenance=dependencies===undefined?'native' as const:'synthetic' as const;
  let closed=false,busy=false,poisoned=false,active:AppsIdentity|undefined;
  const pending=new Set<Promise<unknown>>(),operations=new Set<Promise<unknown>>(),keys=new Set<string>(),files=new Set<string>();
@@ -271,9 +271,9 @@ export async function createAppsControl(options:AppsControlOptions,dependencies?
  const resetTracked=(value:AppsIdentity)=>tracked(reset(value)),observeTracked=(value:AppsIdentity)=>tracked(observe(value));
  async function handle(req:IncomingMessage,res:ServerResponse):Promise<boolean>{
   if(req.url!=='/api/__apps-fixture/control')return false;
-  try{assertAvailable();const presented=String(req.headers['x-apps-fixture-capability']??'');if(req.method!=='POST'||req.headers['content-type']?.split(';')[0]!=='application/json'||req.socket.remoteAddress!=='127.0.0.1'||req.headers.host!==api.host||req.headers.origin!==options.origin||!sha.safeParse(presented).success||!timingSafeEqual(Buffer.from(presented),Buffer.from(capability)))throw fail('control');let size=0;const chunks:Buffer[]=[];
+  try{assertAvailable();const presented=String(req.headers['x-apps-fixture-capability']??'');if(req.method!=='POST'||req.headers['content-type']?.split(';')[0]!=='application/json'||req.socket.remoteAddress!=='127.0.0.1'||req.headers.host!==webHost||req.headers.origin!==options.origin||!sha.safeParse(presented).success||!timingSafeEqual(Buffer.from(presented),Buffer.from(capability)))throw fail('control');let size=0;const chunks:Buffer[]=[];
    const body=await finite((async()=>{for await(const chunk of req){size+=chunk.length;if(size>4096)throw fail('control');chunks.push(Buffer.from(chunk));}return JSON.parse(Buffer.concat(chunks).toString('utf8'));})(),'control',10000);
-   const parsed=validateAppsControl({remote:req.socket.remoteAddress??'',host:String(req.headers.host??''),origin:String(req.headers.origin??''),expectedHost:api.host,expectedOrigin:options.origin,capability:String(req.headers['x-apps-fixture-capability']??''),expectedCapability:capability,runId:options.runId,commit:options.commit,body,active});
+   const parsed=validateAppsControl({remote:req.socket.remoteAddress??'',host:String(req.headers.host??''),origin:String(req.headers.origin??''),expectedHost:webHost,expectedOrigin:options.origin,capability:String(req.headers['x-apps-fixture-capability']??''),expectedCapability:capability,runId:options.runId,commit:options.commit,body,active});
    const {action,...id}=parsed,result=action==='reset'?await resetTracked(id):await observeTracked(id),json=JSON.stringify(result);if(Buffer.byteLength(json)>4*1024*1024)throw fail('control');res.statusCode=200;res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(json);
   }catch{res.statusCode=403;res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end('{"error":"owned Apps control denied"}');}return true;
  }

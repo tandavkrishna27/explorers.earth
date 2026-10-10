@@ -110,7 +110,7 @@ describe('Apps native fixture source contracts',()=>{
  it('dispatches only the exact private route and refuses malformed or ambient authority',async()=>{
   const f=fake(),c=await createAppsControl(f.opts,f.deps);
   async function call(body:any,headers:any={},url='/api/__apps-fixture/control'){
-   const req=Readable.from([Buffer.from(typeof body==='string'?body:JSON.stringify(body))]) as any;req.url=url;req.method='POST';req.headers={'content-type':'application/json',host:'127.0.0.1:55101',origin:'http://127.0.0.1:55102','x-apps-fixture-capability':capability,...headers};req.socket={remoteAddress:'127.0.0.1'};
+   const req=Readable.from([Buffer.from(typeof body==='string'?body:JSON.stringify(body))]) as any;req.url=url;req.method='POST';req.headers={'content-type':'application/json',host:'127.0.0.1:55102',origin:'http://127.0.0.1:55102','x-apps-fixture-capability':capability,...headers};req.socket={remoteAddress:'127.0.0.1'};
    const response:any={statusCode:0,headers:{},setHeader(k:string,v:string){this.headers[k]=v;},end(value:string){this.body=value;}};
    const handled=await c.handle(req,response);return {handled,...response};
   }
@@ -120,4 +120,17 @@ describe('Apps native fixture source contracts',()=>{
   const accepted=await call({action:'reset',...envelope()});expect(accepted.statusCode).toBe(200);expect(JSON.parse(accepted.body).repeat).toBe(0);expect(accepted.headers['Cache-Control']).toBe('no-store');
   const observed=await call({action:'observe',...envelope()});expect(observed.statusCode).toBe(200);expect(JSON.parse(observed.body).collections).toEqual([]);
  });
+});
+
+it('actual controller accepts only fixed proxied web Host for reset and observe',async()=>{
+ const f=fake(),controller=await createAppsControl(f.opts,f.deps);
+ async function call(host:string,action:'reset'|'observe'){
+  let consumed=false;const req=Readable.from((async function*(){consumed=true;yield Buffer.from(JSON.stringify({action,...envelope()}));})()) as any;
+  req.url='/api/__apps-fixture/control';req.method='POST';req.socket={remoteAddress:'127.0.0.1'};req.headers={'content-type':'application/json',host,origin:f.opts.origin,'x-apps-fixture-capability':capability};
+  const res:any={statusCode:0,setHeader(){},end(value:string){this.body=value;}};await controller.handle(req,res);return{...res,consumed};
+ }
+ const reset=await call(new URL(f.opts.origin).host,'reset');expect(reset.statusCode).toBe(200);expect(JSON.parse(reset.body).caseId).toBe(envelope().caseId);
+ const observed=await call(new URL(f.opts.origin).host,'observe');expect(observed.statusCode).toBe(200);expect(JSON.parse(observed.body).project).toBe(envelope().project);
+ const calls=f.state.calls.length;for(const host of [new URL(f.opts.apiOrigin).host,'127.0.0.1:55103','foreign.invalid:55102']){const result=await call(host,'reset');expect(result.statusCode).toBe(403);expect(result.consumed).toBe(false);expect(f.state.calls).toHaveLength(calls);}
+ await controller.close();
 });
