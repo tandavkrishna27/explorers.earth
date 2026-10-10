@@ -462,7 +462,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
 }
 function defaultDependencies(): Dependencies {
     const root = fileURLToPath(new URL('../../', import.meta.url)), frontend = path.join(root, 'explorers-earth'), temporaryRoot = tmpdir();
-    const ps = 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe', helper = path.join(root, 'tunes/scripts/music-local-private-files.ps1'), cli = path.join(frontend, 'node_modules/@playwright/test/cli.js'), viteCli = path.join(frontend, 'node_modules/vite/bin/vite.js');
+    const ps = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', helper = path.join(root, 'tunes/scripts/music-local-private-files.ps1'), cli = path.join(frontend, 'node_modules/@playwright/test/cli.js'), viteCli = path.join(frontend, 'node_modules/vite/bin/vite.js');
     const retained = new Map<string, {
         dev: bigint;
         ino: bigint;

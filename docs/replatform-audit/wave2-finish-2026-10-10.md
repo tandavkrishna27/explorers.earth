@@ -262,6 +262,15 @@ injected dependencies, and prove each reviewed file changes the source hash.
 This is source registration evidence; native qualification still requires a new
 clean committed run.
 
+The next clean official attempt at `7c5c4f67` passed source validation but its
+Apps child exited before receipt creation. Actual TypeScript AST inspection
+found that the fixed PowerShell string used unescaped backslashes: separators
+were removed and `\v` became a vertical tab. Its canonical-path preflight therefore
+refused before launching PowerShell or allocating private resources. The new
+regression reproduced that decoded corruption, then passed after escaping the
+literal; all 63 runner, receipt and dispatch contracts passed. This diagnosis
+does not claim a browser qualification pass.
+
 ## Hosted status boundary
 
 PR119 still points to remote `622f689385058ef9186538a1d8e1f60fd23ab266`.

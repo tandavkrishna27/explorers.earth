@@ -16,6 +16,13 @@ function fake(options:any={}){
  return{deps,events,contexts,expire(){now=21600001;for(const fn of [...timers.values()])fn();}};
 }
 describe('Apps actual runner complete resource-free seam',()=>{
+ it('pins the actual native PowerShell literal without JavaScript escape corruption',()=>{
+  const parsed=ts.createSourceFile(source,readFileSync(source,'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+  let actual:string|undefined;
+  const visit=(node:ts.Node)=>{if(ts.isVariableDeclaration(node)&&ts.isIdentifier(node.name)&&node.name.text==='ps'&&node.initializer&&ts.isStringLiteral(node.initializer))actual=node.initializer.text;ts.forEachChild(node,visit);};
+  visit(parsed);
+  expect(actual).toBe('C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe'.replaceAll('/', '\\'));
+ });
  it('constructs without effects and retains same run promise',async()=>{const {createAppsBrowserFixture}=await load(),f=fake(),runner=createAppsBrowserFixture(f.deps);expect(f.events).toEqual([]);const run=runner.run();expect(runner.run()).toBe(run);await run;expect(f.events.at(-1)).toBe('finish');});
  it('orders real binding preparation before composition and baseline before helper',async()=>{const {createAppsBrowserFixture}=await load(),f=fake();await createAppsBrowserFixture(f.deps).run();for(const [a,b]of [['receipt','directory'],['directory','secret'],['seed-auth','initial-account'],['initial-account','composition'],['composition','api'],['me','control'],['control','descriptor'],['descriptor','discovery']])expect(f.events.indexOf(a)).toBeLessThan(f.events.indexOf(b));});
  it('shares exact minted environment and descriptor between both actual child adapters',async()=>{const {createAppsBrowserFixture}=await load(),f=fake();await createAppsBrowserFixture(f.deps).run();expect(f.contexts).toHaveLength(2);expect(f.contexts[0]).toBe(f.contexts[1]);expect(f.contexts[0].environment).toMatchObject({APPS_E2E_FIXTURE_PATH:'C:\\Temp\\explorers-profile-e2e-'+ 'a'.repeat(32)+'\\sessions.json',REPLATFORM_E2E_LANE:'apps',PLAYWRIGHT_EXTERNAL_BASE_URL:'http://127.0.0.1:52001'});expect(JSON.stringify(f.contexts[0].environment)).not.toContain('f'.repeat(64));});
