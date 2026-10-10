@@ -80,6 +80,14 @@ export class ExplorersRecommendationRepository {
       // by the caller; the callback still checks ownership/archive/revision.
       const commandInput=input as {category?:ContentCategory;id?:string;parentLocationCollectionId?:string};
       let category=commandInput.category;
+      if(operation==='attachGameMembership'||operation==='detachGameMembership'){
+        // Preserve the historical Games receipt fingerprint while deriving the
+        // actual membership lock domain from the owned collection.
+        const scope=await db.query('SELECT category FROM collections WHERE id=$1 AND account_id=$2',[(input as {collectionId:string}).collectionId,accountId]);
+        category=scope.rows[0]?.category;
+        if(!category)throw new RecommendationFailure(404,'Collection unavailable');
+        if(category!=='games'&&category!=='apps')throw new RecommendationFailure(422,'Apps or Games membership required');
+      }
       if(!category) {
         const recommendation=operation==='updateRecommendation'||operation==='archiveRecommendation'||operation==='replaceRecommendationEntity';
         const scope=await db.query(recommendation
@@ -341,15 +349,16 @@ export class ExplorersRecommendationRepository {
     return this.command(accountId,attached?'attachGameMembership':'detachGameMembership',{category:'games',collectionId,recommendationId,...input},key,async db=>{
       const collection=await this.lockCollection(db,accountId,collectionId,input.expectedCollectionRevision);
       const recommendation=await this.lockRecommendation(db,accountId,recommendationId,input.expectedRecommendationRevision);
-      if(collection.category!=='games'||recommendation.category!=='games')throw new RecommendationFailure(422,'Games membership required');
+      const category=collection.category;
+      if((category!=='games'&&category!=='apps')||recommendation.category!==category)throw new RecommendationFailure(422,'Apps or Games membership required');
       const existing=await db.query('SELECT 1 FROM collection_items WHERE collection_id=$1 AND recommendation_id=$2',[collectionId,recommendationId]);
       if(attached){
         if(existing.rowCount)throw new RecommendationFailure(409,'Membership already exists');
-        await db.query("INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order) SELECT $1,$2,$3,'games',coalesce(max(display_order)+1,0) FROM collection_items WHERE collection_id=$1",[collectionId,recommendationId,accountId]);
+        await db.query("INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order) SELECT $1,$2,$3,$4,coalesce(max(display_order)+1,0) FROM collection_items WHERE collection_id=$1",[collectionId,recommendationId,accountId,category]);
       }else{
         if(!existing.rowCount)throw new RecommendationFailure(404,'Membership unavailable');
-        const pins=await db.query("DELETE FROM category_recommendation_pins WHERE account_id=$1 AND category='games' AND collection_id=$2 AND recommendation_id=$3 RETURNING position",[accountId,collectionId,recommendationId]);
-        if(pins.rowCount)await db.query("UPDATE account_category_pin_state SET revision=revision+1 WHERE account_id=$1 AND category='games'",[accountId]);
+        const pins=await db.query("DELETE FROM category_recommendation_pins WHERE account_id=$1 AND category=$4 AND collection_id=$2 AND recommendation_id=$3 RETURNING position",[accountId,collectionId,recommendationId,category]);
+        if(pins.rowCount)await db.query("UPDATE account_category_pin_state SET revision=revision+1 WHERE account_id=$1 AND category=$2",[accountId,category]);
         await db.query('DELETE FROM collection_items WHERE collection_id=$1 AND recommendation_id=$2',[collectionId,recommendationId]);
         await db.query('WITH ranks AS (SELECT recommendation_id,row_number() OVER(ORDER BY display_order,recommendation_id)-1 AS position FROM collection_items WHERE collection_id=$1) UPDATE collection_items ci SET display_order=ranks.position FROM ranks WHERE ci.collection_id=$1 AND ci.recommendation_id=ranks.recommendation_id',[collectionId]);
       }

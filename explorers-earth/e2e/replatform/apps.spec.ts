@@ -121,7 +121,7 @@ async function start(page:Page,info:TestInfo){
 }
 function visibleButton(page:Page,name:string|RegExp){return page.getByRole('button',{name,exact:typeof name==='string'}).and(page.locator('button:visible'));}
 function renderedNoteText(html:string){const template=document.createElement('template');template.innerHTML=html;return (template.content.textContent??'').replace(/\s+/g,' ').trim();}
-async function mobileManagerButton(page:Page){const active=page.locator('[data-public-category-artwork="true"]');if(await active.count()===0)return undefined;await expect(active).toHaveCount(1);return active.getByRole('button',{name:/^Manage Top Picks/});}
+async function mobileManagerButton(page:Page){const active=page.locator('[data-public-category-artwork="true"]').getByRole('button',{name:/^Manage Top Picks/});const empty=page.getByRole('button',{name:/^Manage Top Picks \(0\//});const button=active.or(empty);await expect(button).toHaveCount(1);return button;}
 function appRow(page:Page,title:string){return page.locator('div.group').filter({has:page.getByText(title,{exact:true})});}
 async function edit(page:Page,listId:string,id:string,title:string){
  await page.goto(`/recommendations/apps/${listId}`);const row=appRow(page,title);await expect(row).toHaveCount(1);
@@ -262,7 +262,7 @@ test(titles[2],async({page},info)=>{
 
 test(titles[3],async({page},info)=>{
  const m=await start(page,info);expect(m.recommendations).toHaveLength(16);const guest=await anonymous(page);
- async function manager(){const activeButton=info.project.name==='apps-mobile'?await mobileManagerButton(page):undefined;await (activeButton??visibleButton(page,/^Manage Top Picks/)).click();return page.getByRole('heading',{name:/^Manage Top Picks \(/}).locator('../..');}
+  async function manager(){const button=info.project.name==='apps-mobile'?await mobileManagerButton(page):visibleButton(page,/^Manage Top Picks/);await button.click();return page.getByRole('heading',{name:/^Manage Top Picks \(/}).locator('../..');}
  async function savePins(modal:Locator,items:Manifest['recommendations']){const expected=items.map(x=>({recommendationId:x.id,collectionId:x.collectionId}));const ack=acknowledgement(page,'/categories/apps/top-picks','PUT',body=>JSON.stringify(body.orderedPins)===JSON.stringify(expected)&&typeof body.expectedCategoryRevision==='string'&&(body.expectedPinRevision===null||typeof body.expectedPinRevision==='number'));await modal.getByRole('button',{name:'Save Top Picks',exact:true}).click();await browserBody(await ack,200);await expect(page.getByRole('heading',{name:/^Manage Top Picks \(/})).toHaveCount(0);await page.reload();}
  try{
   let modal=await manager();for(const item of m.recommendations.slice(0,15))await modal.getByRole('button',{name:item.title,exact:true}).click();await expect(modal.getByRole('button',{name:m.recommendations[15].title,exact:true})).toBeDisabled();expect((await complete(page.request,m.personas.ownerA.accountId)).pins).toHaveLength(0);await savePins(modal,m.recommendations.slice(0,15));

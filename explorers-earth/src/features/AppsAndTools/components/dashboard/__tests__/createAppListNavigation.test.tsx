@@ -18,7 +18,7 @@ const ownerFixture = vi.hoisted(() => ({ lists: [] as unknown[] }));
 vi.mock('../../../api/appsClient', () => ({ AppsClient: { createCollection: createFn } }));
 vi.mock('../../../hooks/useAppsOwner', () => ({ useAppsOwner: () => ({ data: { appLists: ownerFixture.lists }, loading: false, refetch: vi.fn() }), invalidateApps: vi.fn() }));
 import AppsHome from "../AppsHome";
-function specOracle(name:string){const file=path.resolve('e2e/replatform/apps.spec.ts');const ast=ts.createSourceFile(file,readFileSync(file,'utf8'),ts.ScriptTarget.Latest,true);const node=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name?.text===name);if(!node)throw Error('Missing Apps oracle');const source=ts.createPrinter().printNode(ts.EmitHint.Unspecified,node,ast);return new Function('expect',ts.transpileModule(source+'\nreturn '+name,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText)((locator:{count():Promise<number>})=>({toHaveCount:async(n:number)=>expect(await locator.count()).toBe(n)}));}
+function specOracle(name:string){const file=path.resolve('e2e/replatform/apps.spec.ts');const ast=ts.createSourceFile(file,readFileSync(file,'utf8'),ts.ScriptTarget.Latest,true);const node=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name?.text===name);if(!node)throw Error('Missing Apps oracle');const source=ts.createPrinter().printNode(ts.EmitHint.Unspecified,node,ast);return new Function('expect',ts.transpileModule(source+'\nreturn '+name,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText)((locator:{count():Promise<number>})=>({toHaveCount:async(n:number)=>waitFor(async()=>expect(await locator.count()).toBe(n),{timeout:100})}));}
 
 describe("AppsHome create-list navigation (BUG-3)", () => {
   beforeEach(() => {
@@ -48,11 +48,17 @@ describe("AppsHome create-list navigation (BUG-3)", () => {
     const {container}=render(<AppTopPicksMobileHero apps={apps as never} onAppClick={()=>{}} showManageButton onManageClick={onManage}/>);
     expect(within(container).getAllByRole('button',{name:'Manage Top Picks'})).toHaveLength(15);
     const selector='[data-public-category-artwork="true"]';
-    const page={locator:(argument:string)=>{expect(argument).toBe(selector);return{count:async()=>container.querySelectorAll(argument).length,getByRole:(role:string,options:{name:RegExp})=>{expect(role).toBe('button');return within(container.querySelector(argument) as HTMLElement).getByRole('button',options);}};},getByRole:()=>{throw Error('Unscoped mobile button');}};
-    const selected=await specOracle('mobileManagerButton')(page);await userEvent.click(selected);expect(onManage).toHaveBeenCalledTimes(1);
-    const first=container.querySelector(selector)!;first.parentElement!.children[1].setAttribute('data-public-category-artwork','true');
+    type DOMLocator={nodes():HTMLElement[];count():Promise<number>;or(other:DOMLocator):DOMLocator;click():Promise<void>};
+    const locator=(nodes:()=>HTMLElement[]):DOMLocator=>({nodes,count:async()=>nodes().length,or:other=>locator(()=>[...new Set([...nodes(),...other.nodes()])]),click:async()=>{expect(nodes()).toHaveLength(1);await userEvent.click(nodes()[0]);}});
+    const page={locator:(argument:string)=>{expect(argument).toBe(selector);return{count:async()=>container.querySelectorAll(argument).length,getByRole:(role:string,options:{name:RegExp})=>{expect(role).toBe('button');expect(options.name.source).toBe(/^Manage Top Picks/.source);return locator(()=>Array.from(container.querySelectorAll(argument)).flatMap(card=>within(card as HTMLElement).queryAllByRole('button',options)));}};},getByRole:(role:string,options:{name:RegExp})=>{expect(role).toBe('button');expect(options.name.source).toBe(/^Manage Top Picks \(0\//.source);return locator(()=>within(container).queryAllByRole('button',options));}};
+    const first=container.querySelector(selector)!;first.removeAttribute('data-public-category-artwork');
+    setTimeout(()=>first.setAttribute('data-public-category-artwork','true'),0);
+    const selected=await specOracle('mobileManagerButton')(page);await selected.click();expect(onManage).toHaveBeenCalledTimes(1);
+    first.parentElement!.children[1].setAttribute('data-public-category-artwork','true');
     await expect(specOracle('mobileManagerButton')(page)).rejects.toThrow();expect(onManage).toHaveBeenCalledTimes(1);
-    container.querySelectorAll(selector).forEach(card=>card.removeAttribute('data-public-category-artwork'));expect(await specOracle('mobileManagerButton')(page)).toBeUndefined();
+    container.querySelectorAll(selector).forEach(card=>card.removeAttribute('data-public-category-artwork'));
+    const empty=document.createElement('button');empty.textContent='Manage Top Picks (0/15)';empty.onclick=()=>onManage();container.append(empty);
+    await (await specOracle('mobileManagerButton')(page)).click();expect(onManage).toHaveBeenCalledTimes(2);
   });
 
   it("navigates into the newly created list with justCreatedList state", async () => {
