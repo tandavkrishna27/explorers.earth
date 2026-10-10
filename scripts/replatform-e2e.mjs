@@ -126,7 +126,7 @@ const moviesDiagnosticEnums={
  view:['unavailable','active','inactive'],list:['unavailable','loading','error','missing','ready-empty','ready-nonempty'],visibility:['unavailable','public','draft'],signal:['unavailable','present','absent'],guard:['unavailable','fresh','consumed'],prompt:['unavailable','open','closed'],button:['unavailable','absent','multiple','hidden','disabled','visible-enabled'],budgetAtStage:['unavailable','remaining','exhausted'],budgetAtFailure:['unavailable','remaining','exhausted'],sample:['unavailable','captured']};
 const moviesDiagnosticIdentity={file:'explorers-earth/e2e/replatform/movies.spec.ts',titlePath:['owner manual form all fields snapshot repeat edits and archive reload'],project:'movies-mobile',repeat:0};
 const moviesFailedStatus=status=>['failed','timedOut','interrupted'].includes(status);
-const moviesIdentityAllowed=(lane,identity)=>lane.name==='movies'&&equal(identity,moviesDiagnosticIdentity)&&lane.identities.some(expected=>equal(expected,identity));
+const moviesIdentityAllowed=(lane,identity)=>lane.name==='movies'&&[moviesDiagnosticIdentity,{...moviesDiagnosticIdentity,project:'movies-desktop'}].some(expected=>equal(expected,identity))&&lane.identities.some(expected=>equal(expected,identity));
 function decodeMoviesMarker(message){
  if(typeof message!=='string'||Buffer.byteLength(message,'utf8')>1024||!/^\[movies-diagnostic-v1:[a-z|-]+\]$/.test(message)||message.includes('\n')||message.includes('\r'))return undefined;
  const cells=message.slice('[movies-diagnostic-v1:'.length,-1).split('|'),keys=Object.keys(moviesDiagnosticEnums);

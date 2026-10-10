@@ -32,7 +32,7 @@ test.afterEach(({},info)=>{captureMoviesPublicDiagnostic(info);});
 const diagnosticTitle='owner manual form all fields snapshot repeat edits and archive reload';
 type DiagnosticStage='setup'|'edit-navigation'|'edit-form'|'save-start'|'save-returned'|'list-route-reached'|'saved-note-confirmed'|'keep-draft-start'|'keep-draft-returned'|'archive';
 const diagnosticStages=new WeakMap<TestInfo,{iteration:'none'|'first'|'second';stage:DiagnosticStage}>();
-const diagnosticEnabled=(info:TestInfo)=>info.title===diagnosticTitle&&info.project.name==='movies-mobile'&&info.repeatEachIndex===0&&info.retry===0;
+const diagnosticEnabled=(info:TestInfo)=>info.title===diagnosticTitle&&(info.project.name==='movies-mobile'||info.project.name==='movies-desktop')&&info.repeatEachIndex===0&&info.retry===0&&resolve(info.file)===fileURLToPath(import.meta.url);
 function diagnosticStage(info:TestInfo,stage:DiagnosticStage,iteration?:'first'|'second'){
  const previous=diagnosticStages.get(info);if(previous)diagnosticStages.set(info,{...previous,stage,...(iteration?{iteration}:{})});
 }
