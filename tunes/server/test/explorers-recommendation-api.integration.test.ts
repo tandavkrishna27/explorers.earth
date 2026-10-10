@@ -5,6 +5,7 @@ import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import actualQuill from '../../shared/test-fixtures/quill-note-v1.json';
 import { createCanonicalApp } from '../auth/canonicalApp';
 import { resolveExplorersAuthConfig } from '../auth/betterAuth';
+import { apiErrorSchema, contentIdSchema } from '../../shared/explorersContract';
 
 const config=resolveExplorersAuthConfig({EXPLORERS_PUBLIC_ORIGIN:'http://127.0.0.1:51474',EXPLORERS_AUTH_SECRET:'integration-secret-'.repeat(4),GOOGLE_CLIENT_ID:'fixture-google-id',GOOGLE_CLIENT_SECRET:'fixture-google-secret'});
 let pool:pg.Pool, composed:ReturnType<typeof createCanonicalApp>;
@@ -78,7 +79,14 @@ it('guarded parent create HTTP links Products and People and gives equal foreign
     const denied=await command(a,'post','/collections',{...refusalInput,parentLocationCollectionId:foreign.id,parentExpectedRevision:await parentCreateRevision(foreign.id)});
     expect(denied.status).toBe(404);expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(states);
     const missing=await command(a,'post','/collections',{...refusalInput,parentLocationCollectionId:randomUUID(),parentExpectedRevision:1});
-    expect(missing.status).toBe(404);expect(missing.body).toEqual(denied.body);expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(states);
+    expect(missing.status).toBe(404);
+    const {requestId:deniedRequestId,...deniedSemantic}=apiErrorSchema.parse(denied.body).error;
+    const {requestId:missingRequestId,...missingSemantic}=apiErrorSchema.parse(missing.body).error;
+    expect(contentIdSchema.safeParse(deniedRequestId).success).toBe(true);
+    expect(contentIdSchema.safeParse(missingRequestId).success).toBe(true);
+    expect(deniedSemantic).toEqual({code:'NOT_FOUND',message:'Collection unavailable'});
+    expect(missingSemantic).toEqual(deniedSemantic);
+    expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(states);
     for(const [id,expected,status] of [[parent.id,observed,409],[archived.id,await parentCreateRevision(archived.id),404],[wrong.id,await parentCreateRevision(wrong.id),422]] as const){expect((await command(a,'post','/collections',{...refusalInput,parentLocationCollectionId:id,parentExpectedRevision:expected})).status).toBe(status);expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(states);}
   }
   const bare=await recommendation(a,{...parent,category:'places'},await entity('place'),await parentCreateRevision(parent.id));
