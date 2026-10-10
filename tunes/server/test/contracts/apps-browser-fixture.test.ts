@@ -1,8 +1,10 @@
 import {describe,it,expect} from 'vitest';
 import path from 'node:path';
+import {fileURLToPath,pathToFileURL} from 'node:url';
 import {existsSync,readFileSync} from 'node:fs';
 import ts from 'typescript';
 const source=path.resolve(import.meta.dirname,'../../../scripts/apps-browser-fixture.ts');
+it('actual owning module URL default root is normalized before strict canonical validation',()=>{const ast=ts.createSourceFile(source,readFileSync(source,'utf8'),ts.ScriptTarget.Latest,true),fn=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name?.text==='defaultDependencies') as ts.FunctionDeclaration;const declaration=ts.createPrinter().printNode(ts.EmitHint.Unspecified,fn.body!.statements[0],ast).replaceAll('import.meta.url',JSON.stringify(pathToFileURL(source).href));const js=ts.transpileModule(declaration+'\nreturn root;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;const root=new Function('path','fileURLToPath','tmpdir',js)(path,fileURLToPath,()=> 'fixed-temp');expect(fileURLToPath(new URL('../../',pathToFileURL(source).href))).toMatch(/[\\/]$/);expect(root).toBe(path.resolve(root));expect(readFileSync(source,'utf8')).toContain('path.resolve(target) !== target');});
 it('actual Windows secret creator uses protected helper stdin and retained parent identity',async()=>{
  const events:any[]=[];let unknown=false;
  const method=defaultMethod('prepareSecret',{process:{platform:'win32'},root:'fixed-root',path,randomBytes:(size:number)=>Buffer.alloc(size,7),nativeUnknown:false,Refusal:class extends Error{},canonical:async()=>({lstat:async()=>({isDirectory:()=>true})}),inspect:async(target:string)=>events.push(['inspect',target]),remember:async(target:string)=>events.push(['remember',target]),same:async(target:string)=>events.push(['same',target]),privateOperation:async(...args:any[])=>events.push(args),load:async()=>{unknown=true;return{prepareFixtureMusicTokenSecret:()=> 'legacy'};}});

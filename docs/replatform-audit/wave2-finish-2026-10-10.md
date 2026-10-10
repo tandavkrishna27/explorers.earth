@@ -593,3 +593,23 @@ source review. At clean `fec7838ae173a53e678fe2e3c824af051c3beb72`, native
 postchecks confirmed root absent, recovery lease absent, secret file size zero
 and exact run-label container absence. Both retained runs are finalized. No
 browser or hosted CI qualification follows from filesystem finalization.
+
+### Apps qualification at 43ac76f6: pre-secret root normalization failure
+
+The official selected Apps runner at clean
+`43ac76f678a2111ff2aabd7dc31b7c65d5c32c2d` positively closed with exit 1;
+Apps child exit 1, signal null. Stage prepare-secret refused before secret or
+database allocation, API or browser startup. Discovery/execution counts are
+null. Receipt: the local temporary directory
+`replatform-e2e-apps-43ac76f6-20261011/qualification.json`.
+
+Actual pinned-Node read-only evaluation confirmed the owning module's
+fileURLToPath(new URL('../../', moduleURL)) yields a trailing separator;
+path.resolve(root) === root is false. The first Windows prepareSecret canonical
+check therefore deterministically rejects it. Current permission inspection of
+the adopted token parent passed; this failure occurs before reaching it.
+The failed attempt retained the exact empty fixture root
+`explorers-profile-e2e-52145da3e0fac82b47c4253263d4e996` with two empty private
+children. No secret/database was allocated. The correction must normalize the
+module-derived root and preserve canonical path validation. Existing synthetic
+tests supplying an already normalized root did not reproduce this failure.
