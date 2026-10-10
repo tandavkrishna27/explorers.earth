@@ -18,7 +18,48 @@ export interface ObjectStorage {
   get(key: string): Promise<Buffer>;
   delete(key: string, versionId?: string | null): Promise<void>;
 }
-function ownedPut(deadlineMs: number, work: (signal: AbortSignal) => Promise<string | undefined | void>): OwnedStoragePut {
+/** Opt-in physical custody; ordinary stores and S3 have no fixture ledger. */
+export const LOCAL_STORAGE_SETTLEMENT_MAX_OPERATIONS = 4096;
+type LocalOperation = 'put' | 'putOwned' | 'get' | 'delete';
+type LocalOutcome = {sequence:number;operation:LocalOperation;key:string;status:'pending'|'fulfilled'|'rejected';publicFailure:boolean};
+export type LocalStorageSettlementEvidence = Readonly<{status:'settled'|'failed-but-settled'|'unsettled';sealed:boolean;pending:number;overflow:boolean;outcomes:readonly Readonly<LocalOutcome>[]} >;
+export interface LocalStorageSettlementCapability {
+  snapshot():LocalStorageSettlementEvidence;
+  sealAndDrain(milliseconds:number):Promise<LocalStorageSettlementEvidence>;
+}
+type LocalLedger = {sealed:boolean;failed:boolean;overflow:boolean;pending:Set<Promise<void>>;outcomes:LocalOutcome[]};
+const localLedgers = new WeakMap<LocalObjectStorage,LocalLedger>();
+function assertLocalAdmission(storage:LocalObjectStorage){const ledger=localLedgers.get(storage);if(ledger&&(ledger.sealed||ledger.overflow)){ledger.failed=true;throw new Error('Local storage admission refused');}}
+function physicalLocalWork<T>(storage:LocalObjectStorage,operation:LocalOperation,key:string,work:()=>Promise<T>){
+  const ledger=localLedgers.get(storage);
+  if(!ledger)return {result:work(),publicFailure:()=>undefined};
+  if(ledger.sealed||ledger.overflow){ledger.failed=true;throw new Error('Local storage admission refused');}
+  if(ledger.outcomes.length>=LOCAL_STORAGE_SETTLEMENT_MAX_OPERATIONS){ledger.failed=true;ledger.overflow=true;throw new Error('Local storage admission refused');}
+  const outcome:LocalOutcome={sequence:ledger.outcomes.length+1,operation,key,status:'pending',publicFailure:false};ledger.outcomes.push(outcome);
+  let fulfill!:(value:T)=>void,reject!:(error:unknown)=>void;
+  const result=new Promise<T>((yes,no)=>{fulfill=yes;reject=no;});
+  const settlement=result.then(()=>{outcome.status='fulfilled';ledger.pending.delete(settlement);},()=>{outcome.status='rejected';ledger.failed=true;ledger.pending.delete(settlement);});
+  ledger.pending.add(settlement);
+  // Ownership is recorded before even mkdir/read/rm may begin. The completion
+  // race never removes this original physical operation from the ledger.
+  try{work().then(fulfill,reject);}catch(error){reject(error);}
+  return {result,publicFailure:()=>{outcome.publicFailure=true;ledger.failed=true;}};
+}
+function evidence(ledger:LocalLedger):LocalStorageSettlementEvidence {
+  return Object.freeze({status:!ledger.sealed||ledger.pending.size?'unsettled':ledger.failed?'failed-but-settled':'settled',sealed:ledger.sealed,pending:ledger.pending.size,overflow:ledger.overflow,outcomes:Object.freeze(ledger.outcomes.map(outcome=>Object.freeze({...outcome})))});
+}
+export function createLocalObjectStorageWithSettlement(root:string):{storage:LocalObjectStorage;settlement:LocalStorageSettlementCapability} {
+  const storage=new LocalObjectStorage(root),ledger:LocalLedger={sealed:false,failed:false,overflow:false,pending:new Set(),outcomes:[]};
+  localLedgers.set(storage,ledger);
+  const settlement:LocalStorageSettlementCapability=Object.freeze({snapshot:()=>evidence(ledger),sealAndDrain:async(milliseconds:number)=>{
+    if(!Number.isSafeInteger(milliseconds)||milliseconds<1||milliseconds>21600000)throw new Error('Invalid local settlement budget');
+    ledger.sealed=true;let timer:ReturnType<typeof setTimeout>|undefined;
+    try{await Promise.race([Promise.all([...ledger.pending]),new Promise<void>(done=>{timer=setTimeout(()=>{ledger.failed=true;done();},milliseconds);})]);}finally{if(timer)clearTimeout(timer);}
+    return evidence(ledger);
+  }});
+  return {storage,settlement};
+}
+function ownedPut(deadlineMs: number, work: (signal: AbortSignal) => Promise<string | undefined | void>,onTimeout:()=>void=()=>undefined): OwnedStoragePut {
   if (!Number.isSafeInteger(deadlineMs) || deadlineMs < 1 || deadlineMs > 5000) throw new Error("Invalid owned storage deadline");
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout>;
@@ -26,14 +67,14 @@ function ownedPut(deadlineMs: number, work: (signal: AbortSignal) => Promise<str
   const nativeResult = work(controller.signal);
   const settlement = nativeResult.then(() => undefined, () => undefined);
   const deadline = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => { controller.abort(); reject(new Error("Storage deadline exceeded")); }, deadlineMs);
+    timer = setTimeout(() => { onTimeout();controller.abort(); reject(new Error("Storage deadline exceeded")); }, deadlineMs);
   });
   const completion = Promise.race([nativeResult, deadline]).finally(() => clearTimeout(timer!));
   return { completion, settlement, nativeResult };
 }
-async function storageDeadline<T>(milliseconds:number,work:(signal:AbortSignal)=>Promise<T>):Promise<T>{
+async function storageDeadline<T>(milliseconds:number,work:(signal:AbortSignal)=>Promise<T>,onTimeout:()=>void=()=>undefined):Promise<T>{
  const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
- const deadline=new Promise<never>((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new Error('Storage deadline exceeded'));},milliseconds);});
+ const deadline=new Promise<never>((_,reject)=>{timer=setTimeout(()=>{onTimeout();controller.abort();reject(new Error('Storage deadline exceeded'));},milliseconds);});
  try{return await Promise.race([work(controller.signal),deadline]);}finally{clearTimeout(timer!);}
 }
 
@@ -55,20 +96,27 @@ export class LocalObjectStorage implements ObjectStorage {
     return path;
   }
   async put(key: string, bytes: Buffer): Promise<void> {
+    assertLocalAdmission(this);
     const path = this.path(key);
-    await mkdir(resolve(path, ".."), { recursive: true, mode: 0o700 });
-    await writeFile(path, bytes, { flag: "wx", mode: 0o600, signal: AbortSignal.timeout(120_000) });
+    await physicalLocalWork(this,'put',key,async()=>{
+      await mkdir(resolve(path, ".."), { recursive: true, mode: 0o700 });
+      await writeFile(path, bytes, { flag: "wx", mode: 0o600, signal: AbortSignal.timeout(120_000) });
+    }).result;
   }
   putOwned(key: string, bytes: Buffer, deadlineMs: number): OwnedStoragePut {
+    assertLocalAdmission(this);
     const path = this.path(key);
-    return ownedPut(deadlineMs, async signal => {
+    let publicFailure:()=>void=()=>undefined;
+    return ownedPut(deadlineMs, signal => {
+      const operation=physicalLocalWork(this,'putOwned',key,async()=>{
       await mkdir(resolve(path, ".."), { recursive: true, mode: 0o700 });
       if (signal.aborted) throw new Error("Storage deadline exceeded");
       await writeFile(path, bytes, { flag: "wx", mode: 0o600, signal });
-    });
+      });publicFailure=operation.publicFailure;return operation.result;
+    },()=>publicFailure());
   }
-  async get(key: string): Promise<Buffer> { return storageDeadline(120000,signal=>readFile(this.path(key),{signal})); }
-  async delete(key: string): Promise<void> { await storageDeadline(120000,()=>rm(this.path(key), { force: true })); }
+  async get(key: string): Promise<Buffer> {assertLocalAdmission(this);const path=this.path(key);let publicFailure:()=>void=()=>undefined;return storageDeadline(120000,signal=>{const operation=physicalLocalWork(this,'get',key,()=>readFile(path,{signal}));publicFailure=operation.publicFailure;return operation.result;},()=>publicFailure());}
+  async delete(key: string): Promise<void> {assertLocalAdmission(this);const path=this.path(key);let publicFailure:()=>void=()=>undefined;await storageDeadline(120000,()=>{const operation=physicalLocalWork(this,'delete',key,()=>rm(path,{force:true}));publicFailure=operation.publicFailure;return operation.result;},()=>publicFailure());}
 }
 
 /** The bucket remains private. The server is the only byte-delivery authority. */

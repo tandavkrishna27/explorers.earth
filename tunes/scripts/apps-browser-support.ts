@@ -8,7 +8,7 @@ import type {IncomingMessage,ServerResponse} from 'node:http';
 import type {Pool,PoolClient} from 'pg';
 import type {createCanonicalApp} from '../server/auth/canonicalApp';
 import type {ExplorersAuthConfig} from '../server/auth/betterAuth';
-import {LocalObjectStorage,assertObjectKey} from '../server/services/objectStorage';
+import {LocalObjectStorage,assertObjectKey,createLocalObjectStorageWithSettlement,type LocalStorageSettlementCapability} from '../server/services/objectStorage';
 import {mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {sep} from 'node:path';
 import type {OwnedUatDatabaseAuthority} from './music-uat-database';
@@ -65,15 +65,19 @@ export interface AppsControlDependencies {
 const fail=(phase:string)=>new Error(`Apps fixture ${phase} failed`);
 const storagePrototype=LocalObjectStorage.prototype;
 const storageMethods=Object.getOwnPropertyDescriptors(storagePrototype);
-type CompositionBinding={pool:Pool;config:ExplorersAuthConfig;configSnapshot:string;storage:LocalObjectStorage;root:string;app:unknown;auth:unknown;composedPrototype:unknown;objects:{value:object;prototype:unknown;descriptors:PropertyDescriptorMap}[]};
+type CompositionBinding={pool:Pool;config:ExplorersAuthConfig;configSnapshot:string;storage:LocalObjectStorage;settlement:LocalStorageSettlementCapability;root:string;app:unknown;auth:unknown;composedPrototype:unknown;objects:{value:object;prototype:unknown;descriptors:PropertyDescriptorMap}[]};
 const compositionBindings=new WeakMap<object,CompositionBinding>();
 /** Explicit construction only: no connection, listener or filesystem allocation. */
 export async function createAppsFixtureComposition(pool:Pool,config:ExplorersAuthConfig,storageDirectory:string){
  if(!isAbsolute(storageDirectory)||storageDirectory.length>1024)throw fail('composition');
  const {createCanonicalApp}=await import('../server/auth/canonicalApp');
- const root=resolve(storageDirectory),storage=new LocalObjectStorage(root),composed=createCanonicalApp(pool,config,{mediaStorage:storage});
- compositionBindings.set(composed,{pool,config,configSnapshot:JSON.stringify(config),storage,root,app:composed.app,auth:composed.auth,composedPrototype:Object.getPrototypeOf(composed),objects:[composed,composed.app,composed.auth].map(value=>({value,prototype:Object.getPrototypeOf(value),descriptors:Object.getOwnPropertyDescriptors(value)}))});
+ const root=resolve(storageDirectory),{storage,settlement}=createLocalObjectStorageWithSettlement(root),composed=createCanonicalApp(pool,config,{mediaStorage:storage});
+ compositionBindings.set(composed,{pool,config,configSnapshot:JSON.stringify(config),storage,settlement,root,app:composed.app,auth:composed.auth,composedPrototype:Object.getPrototypeOf(composed),objects:[composed,composed.app,composed.auth].map(value=>({value,prototype:Object.getPrototypeOf(value),descriptors:Object.getOwnPropertyDescriptors(value)}))});
  return {composed,storage};
+}
+/** Physical media FS only; grants no request, auth, PG or disposal authority. */
+export async function drainAppsFixtureStorage(options:AppsControlOptions,milliseconds:number){
+ try{validateOptions(options);assertComposition(options);const binding=compositionBindings.get(options.composed)!;return await binding.settlement.sealAndDrain(milliseconds);}catch{throw fail('storage drain');}
 }
 function assertComposition(o:AppsControlOptions){
  const binding=compositionBindings.get(o.composed);
