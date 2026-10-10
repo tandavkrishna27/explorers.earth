@@ -22,6 +22,10 @@ type Dependencies={platform:string;argv:string[];environment:Record<string,strin
 const KEYS=['platform','argv','environment','root','temporaryRoot','clock','preflight','inspect','capture','lease','openAdmin','stop','remove','absent'];
 type FailureStage='validate'|'preflight'|'inspect'|'capture'|'lease'|'admin'|'witness'|'drop'|'db-absence'|'admin-close'|'stop'|'container-absence'|'children'|'root'|'secret'|'lease-release';
 const failureStages=new WeakMap<object,FailureStage>();
+type StopCategory='timeout'|'spawn-error'|'stdin-error'|'overflow'|'signal'|'nonzero'|'output-mismatch';
+type StopDiagnostic=Readonly<{category:StopCategory;child:string;signal:'unknown'|'none'|'SIGTERM'|'SIGKILL'|'other';bytes?:number;fullHexId?:boolean;expectedMatch?:boolean}>;
+const stopDiagnostics=new WeakMap<object,StopDiagnostic>();
+function stopDiagnosticLine(failure:object){const d=stopDiagnostics.get(failure);return d?' stop='+d.category+' child='+d.child+' signal='+d.signal+(d.bytes===undefined?'':' bytes='+d.bytes+' fullHexId='+d.fullHexId+' expectedMatch='+d.expectedMatch):'';}
 class Refusal extends Error{constructor(){super('APPS_RETAINED_RECOVERY_FAILED');}}
 function requireValue(value:unknown):asserts value{if(!value)throw new Refusal();}
 function database(run:Run){return `music_uat_${run.runId}`;}
@@ -55,7 +59,7 @@ function validateInspect(value:unknown,run:Run,root:string,running=true){
 /** No resource allocation during construction/import. Complete injected adapters are synthetic. */
 export function createAppsRetainedRecovery(dependencies?:Dependencies){
  const synthetic=dependencies!==undefined,d=synthetic?dependencies!:nativeDependencies();let stage:FailureStage='validate';let retained:Promise<{runId:string;status:'recovered';evidence:'native'|'synthetic';qualification:false}>|undefined;
- return{run(){return retained??=execute().catch(()=>{const failure=new Refusal();failureStages.set(failure,stage);throw failure;});}};
+ return{run(){return retained??=execute().catch(original=>{const failure=new Refusal();failureStages.set(failure,stage);if(stage==='stop'&&original&&typeof original==='object'){const diagnostic=stopDiagnostics.get(original);if(diagnostic)stopDiagnostics.set(failure,diagnostic);}throw failure;});}};
  async function execute(){
   requireValue(d&&Object.keys(d).sort().join(',')===KEYS.sort().join(',')&&d.clock&&['now','setTimeout','clearTimeout'].every(k=>typeof (d.clock as any)[k]==='function')&&KEYS.filter(k=>!['platform','argv','environment','root','temporaryRoot','clock'].includes(k)).every(k=>typeof (d as any)[k]==='function'));
   requireValue(d.platform==='win32'&&Array.isArray(d.argv)&&d.argv.length===4&&d.argv[0]==='--recover-run'&&d.argv[2]==='--ack'&&d.argv[3]===ACK);
@@ -108,13 +112,15 @@ function nativeDependencies(existingLeaseMode=false):Dependencies{
  const states=new WeakMap<Custody,{run:Run;directory:string;verify():Promise<void>;remaining:Set<string>;identities:Map<string,string>;lease?:string}>();
  const fs=()=>import('node:fs/promises');let unknown=false;
  const environment=()=>Object.fromEntries(['SystemRoot','WINDIR','PATH','TEMP','TMP','USERPROFILE','LOCALAPPDATA','APPDATA'].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]!]]));
- async function command(executable:string,args:string[],budget:number,input?:string,maxBytes=1048576){
+ async function command(executable:string,args:string[],budget:number,input?:string,maxBytes=1048576,diagnoseStop=false){
   const {spawn}=await import('node:child_process');
   return await new Promise<string>((resolve,reject)=>{
-   const child=spawn(executable,args,{shell:false,windowsHide:true,cwd:root,env:environment(),stdio:['pipe','pipe','pipe']});let output='',bad=false;
-   const timer=setTimeout(()=>{unknown=true;bad=true;try{child.kill();}catch{}reject(new Refusal());},budget);
-   child.once('error',()=>{unknown=true;bad=true;reject(new Refusal());});child.stdout.on('data',(bytes:Buffer)=>{if(Buffer.byteLength(output)+bytes.length>maxBytes){unknown=true;bad=true;try{child.kill();}catch{}}else output+=bytes.toString('utf8');});child.stderr.resume();child.stdin.on('error',()=>{unknown=true;bad=true;});child.stdin.end(input);
-   child.once('close',(code,signal)=>{clearTimeout(timer);if(bad||code!==0||signal!==null){unknown=true;reject(new Refusal());}else resolve(output.trim());});
+   let first:Refusal|undefined,category:StopCategory|undefined;
+   function failure(kind:StopCategory,closedCode?:unknown,closedSignal?:unknown,closeObserved=false){first??=new Refusal();category??=kind;if(diagnoseStop){const closed=Number.isInteger(closedCode)&&Number(closedCode)>=0&&Number(closedCode)<=2147483647;stopDiagnostics.set(first,Object.freeze({category,child:closed?String(closedCode):'unknown',signal:closeObserved?(closedSignal===null?'none':closedSignal==='SIGTERM'?'SIGTERM':closedSignal==='SIGKILL'?'SIGKILL':'other'):'unknown'}));}return first;}
+   let child:ReturnType<typeof spawn>;try{child=spawn(executable,args,{shell:false,windowsHide:true,cwd:root,env:environment(),stdio:['pipe','pipe','pipe']});}catch{unknown=true;reject(failure('spawn-error'));return;}let output='',bad=false;
+   const timer=setTimeout(()=>{unknown=true;bad=true;const error=failure('timeout');try{child.kill();}catch{}reject(error);},budget);
+   child.once('error',()=>{unknown=true;bad=true;reject(failure('spawn-error'));});child.stdout!.on('data',(bytes:Buffer)=>{if(Buffer.byteLength(output)+bytes.length>maxBytes){unknown=true;bad=true;failure('overflow');try{child.kill();}catch{}}else output+=bytes.toString('utf8');});child.stderr!.resume();child.stdin!.on('error',()=>{unknown=true;bad=true;failure('stdin-error');});child.stdin!.end(input);
+   child.once('close',(code,signal)=>{clearTimeout(timer);if(bad||code!==0||signal!==null){unknown=true;reject(failure(signal!==null?'signal':'nonzero',code,signal,true));}else resolve(output.trim());});
   });
  }
  async function privatePath(file:string){requireValue(await command(ps,['-NoLogo','-NoProfile','-NonInteractive','-File',helper,'inspect',file],10000,undefined,4096)==='{"ok":true}');}
@@ -147,10 +153,10 @@ function nativeDependencies(existingLeaseMode=false):Dependencies{
   },
   async lease(custody){const state=states.get(custody);requireValue(state);await state.verify();const file=path.join(path.dirname(secret(root,state.run)),'.apps-retained-recovery-'+state.run.runId+'.lock');if(existingLeaseMode){await privatePath(file);requireValue((await physical(file,false)).size===36n);}else{const text=randomUUID();requireValue(await command(ps,['-NoLogo','-NoProfile','-NonInteractive','-File',helper,'create-file',file],10000,text,4096)==='{"ok":true}');}state.lease=file;state.identities.set(file,await identity(file,false));state.remaining.add(file);await privatePath(file);const f=await fs(),handle=await f.open(file,'r');if(existingLeaseMode){const held=await handle.stat({bigint:true}),fresh=await physical(file,false);requireValue(held.dev===fresh.dev&&held.ino===fresh.ino&&held.nlink===1n&&held.size===36n);await state.verify();}return{async release(){await state.verify();const stat=await handle.stat({bigint:true}),expected=await physical(file,false);requireValue(stat.dev===expected.dev&&stat.ino===expected.ino);if(existingLeaseMode)requireValue(!unknown);await handle.close();await state.verify();if(existingLeaseMode)requireValue(!unknown);await f.unlink(file);state.remaining.delete(file);state.identities.delete(file);}};},
   async openAdmin(run){const {readSecureMusicSecretFile}=await import('../server/config/secure-music-secret-file');await privatePath(secret(root,run));const password=await readSecureMusicSecretFile(secret(root,run),{mode:'fixture',maxBytes:512});const {default:pg}=await import('pg');const client=new pg.Client({host:'127.0.0.1',port:run.port,user:'music_migrator',database:'postgres',password,connectionTimeoutMillis:3000,statement_timeout:10000,query_timeout:12000,application_name:'apps_exact_retained_recovery'});await client.connect();return{async query(text,values){return await client.query({text,values});},async end(){await client.end();}};},
-  async stop(run){requireValue(await command(docker,args(['stop','--time','10',run.containerId]),45000)===run.containerId);},
+  async stop(run){const output=await command(docker,args(['stop','--time','10',run.containerId]),45000,undefined,1048576,true);if(output!==run.containerId){const failure=new Refusal();stopDiagnostics.set(failure,Object.freeze({category:'output-mismatch',child:'0',signal:'none',bytes:Buffer.byteLength(output),fullHexId:/^[a-f0-9]{64}$/.test(output),expectedMatch:false}));throw failure;}},
   async remove(run){requireValue(await command(docker,args(['rm',run.containerId]),15000)===run.containerId);},
   async absent(run){return await absent(run);},
  };
 }
 // Direct failure terminates this process only; it does not attest descendant settlement or authorize retained-resource disposal.
-if(process.argv[1]&&pathToFileURL(path.resolve(process.argv[1])).href===import.meta.url)void (process.argv[2]==='--finish-absent-retained-run'?createAppsAbsentRetainedFinalizer():createAppsRetainedRecovery()).run().then(result=>{process.stdout.write(JSON.stringify(result)+'\n');},failure=>{try{writeSync(2,'APPS_RETAINED_RECOVERY_FAILED '+(failureStages.get(failure)??'unknown')+'\n');}finally{process.exit(1);}});
+if(process.argv[1]&&pathToFileURL(path.resolve(process.argv[1])).href===import.meta.url)void (process.argv[2]==='--finish-absent-retained-run'?createAppsAbsentRetainedFinalizer():createAppsRetainedRecovery()).run().then(result=>{process.stdout.write(JSON.stringify(result)+'\n');},failure=>{try{const stage=failureStages.get(failure)??'unknown';writeSync(2,'APPS_RETAINED_RECOVERY_FAILED '+stage+(stage==='stop'?stopDiagnosticLine(failure):'')+'\n');}finally{process.exit(1);}});

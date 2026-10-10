@@ -543,3 +543,24 @@ root fresh 83 contracts, scoped types 0 and independent review passed.
 The exact b1 retained lease reconciliation tool was independently reviewed
 with fresh identity/private ACL/36-byte/positive-close checks. No database
 recovery success or browser qualification is claimed by these receipts.
+
+### October 11: first retained fixture finalized
+
+At `c06d2c65475f3017aa386b802708f5ce702ea3ba`, b1 recovery passed database
+DROP, database absence and positive admin connection close, then failed at
+stop. Fresh Docker queries by full container ID and exact run label confirmed
+absence. The original stop diagnostic was discarded; its precise cause remains
+unknown. Files, secret and the 36-byte recovery lease were retained.
+
+The b1-only absent-container filesystem finalizer was independently reviewed.
+Root verification passed 107 resource-free contracts and scoped types with zero
+errors. Timeout checks follow awaited prerequisites before each filesystem
+mutation. The four held verification regressions cover the late verification
+defect across cleanup methods; they do not individually hold every later await.
+
+Native finalization at clean commit
+`d756e23bf132a1a6de18aa7a9d20b7e214e1a6ba` positively exited 0 with
+`finalized_existing_files`, native evidence and qualification false. Fresh
+postchecks confirmed fixture root absent, recovery lease absent, secret file
+size zero and exact run-label container absence. The second retained fixture
+956 remains untouched. This receipt does not qualify Apps browser tests or CI.
