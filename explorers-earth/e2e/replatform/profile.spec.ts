@@ -37,6 +37,35 @@ function captureProfileDiagnostic(info: TestInfo): void {
 }
 // END PROFILE DIAGNOSTIC CONTRACT
 
+// BEGIN PROFILE ONBOARDING DIAGNOSTIC
+function profileOnboardingProjection(doc: Document = document) {
+  const present = (name: string) => doc.querySelector(`[name="${name}"]`);
+  const step = present('accountName') ? 'account' : present('mobile_number') ? 'contact' : present('address') ? 'address' : 'other';
+  const phoneNode = doc.querySelector('input[placeholder="Enter your mobile number"]');
+  const phone = !phoneNode ? 'absent' : phoneNode.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) ? 'visible' : 'hidden';
+  const errors = [['accountName', 'account-name'], ['username', 'username'], ['bio', 'bio'], ['accountType', 'account-type']].filter(([name]) => {
+    const container = present(name)?.closest('div.flex.flex-col.gap-2');
+    return container?.querySelector('span.text-xs.font-poppins.text-red-400, p.text-xs.font-poppins.text-red-500');
+  });
+  const fieldError = errors.length > 1 ? 'multiple' : errors.length === 1 ? errors[0][1] : 'none';
+  const footerNode = doc.querySelector('.ob-footer button');
+  const footer = !footerNode ? 'absent' : footerNode.matches(':disabled') ? 'disabled' : 'enabled';
+  return { version: 1, step, phone, fieldError, footer };
+}
+async function captureProfileOnboarding(page: Page, info: TestInfo): Promise<void> {
+  const titles = ['canonical onboarding and profile round-trip at 1365px', 'canonical onboarding and profile round-trip at 390px'];
+  if (!info.file.replaceAll('\\', '/').endsWith('/explorers-earth/e2e/replatform/profile.spec.ts') || !titles.includes(info.title)
+    || info.project.name !== 'chromium-pr-safe' || info.repeatEachIndex !== 0 || info.retry !== 0
+    || !(info.titlePath.length === 1 && info.titlePath[0] === info.title || info.titlePath.length === 2 && info.titlePath[0] === 'replatform/profile.spec.ts' && info.titlePath[1] === info.title)) return;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const unavailable = { version: 1, step: 'unavailable', phone: 'unavailable', fieldError: 'unavailable', footer: 'unavailable' };
+  try {
+    const snapshot = await Promise.race([page.evaluate(profileOnboardingProjection), new Promise<typeof unavailable>(resolve => { timer = setTimeout(() => resolve(unavailable), 900); })]).catch(() => unavailable);
+    info.errors.push({ message: `[profile-onboarding-v1:${snapshot.step}|${snapshot.phone}|${snapshot.fieldError}|${snapshot.footer}]` });
+  } catch {} finally { if (timer !== undefined) clearTimeout(timer); }
+}
+// END PROFILE ONBOARDING DIAGNOSTIC
+
 test.afterEach(({}, info) => {
   captureProfileDiagnostic(info);
 });
@@ -84,7 +113,12 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
     await page.locator('[name="bio"]').fill('A real local API profile');
     await page.getByRole('radio').first().check();
     await page.locator('.ob-footer button').click();
-    await expect(page.getByRole('textbox', { name: 'Enter your mobile number' })).toBeVisible();
+    try {
+      await expect(page.getByRole('textbox', { name: 'Enter your mobile number' })).toBeVisible();
+    } catch (error) {
+      await captureProfileOnboarding(page, test.info());
+      throw error;
+    }
     await page.getByRole('textbox', { name: 'Enter your mobile number' }).fill('9876543210');
     await page.locator('.ob-footer button').click();
     await expect(page.locator('.ob-footer button')).toBeVisible();
