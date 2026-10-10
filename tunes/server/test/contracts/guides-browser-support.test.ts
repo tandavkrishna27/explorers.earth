@@ -387,6 +387,10 @@ describe('Guides pure custody and independent verified reset rows',()=>{
     else invalid.push('/other-temp/explorers-profile-e2e-A1/owned-media','C:\\synthetic-temp\\explorers-profile-e2e-A1\\owned-media');
     for(const path of invalid){const before=clone(path);expect(()=>s.assertGuidesStoragePath(path,root),String(path)).toThrow();expect(path).toEqual(before);}
     for(const badRoot of [null,undefined,1,'','relative',root+sep,root+sep+'.',root+sep+'child'+sep+'..'])expect(()=>s.assertGuidesStoragePath(valid,badRoot)).toThrow();
+    if(sep==='\\')for(const aliasRoot of ['C:\\synthetic-temp.','C:\\synthetic-temp ','C:\\synthetic-parent.\\synthetic-temp','C:\\synthetic-parent \\synthetic-temp']){
+      const aliasChild=aliasRoot+'\\explorers-profile-e2e-A1\\owned-media';
+      expect(()=>s.assertGuidesStoragePath(aliasChild,aliasRoot),'matching component alias root and child: '+aliasRoot).toThrow();
+    }
     if(sep==='\\')for(const namespaceRoot of ['\\\\server\\share\\synthetic-temp','\\\\?\\C:\\synthetic-temp','\\\\.\\C:\\synthetic-temp'])expect(()=>s.assertGuidesStoragePath(namespaceRoot+'\\explorers-profile-e2e-A1\\owned-media',namespaceRoot),'matching namespace root and child').toThrow();
   });
   it('Guides pure reset: strict independent run persona and row shapes refuse ambiguity',async()=>{
