@@ -377,6 +377,26 @@ review accepted the change; root fresh verification passed 209 focused Apps
 runner, support, composition and admission tests. These are source contracts,
 not native browser acceptance.
 
+## Revised remaining engineering sequence
+
+The current registration preserves 142 identities. Guides adds exactly eight
+cases in two projects, producing 158 identities. Its next source allocations are
+the native Guides spec, early profile dispatch with its contracts, and the
+serialized manifest/registration bundle. Existing driver and receipt adoption
+remain reusable. Free-text categories, money fields and owned-media policy are
+already specified and need no new inclusion decision. Section reorder currently
+has no UI control; an explicitly labeled canonical API assertion can cover that
+portion unless the UI is separately implemented. Activity-photo import still
+fetches Google media, so native import needs a reviewed local import seam or
+authorized provider input; seeded rendering alone cannot prove import.
+
+Places has a default-locale export (25 roots and 310 children), but canonical
+mapping and publication metadata remain unresolved. People catalog access is
+still missing; access errors cannot establish an empty catalog. Individual
+Places pins need the proposed per-list semantics and staging limits resolved.
+Nightly Apps scraping still needs approved sources/domains/fields, worker host,
+credential custody, schedule and operating bounds. All remain included in Wave 2.
+
 ## Current hosted status
 
 PR119 still points to remote `622f689385058ef9186538a1d8e1f60fd23ab266`.
