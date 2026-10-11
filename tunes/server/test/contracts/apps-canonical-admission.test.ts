@@ -1,5 +1,5 @@
 import {describe,it,expect,vi} from 'vitest';
-import {createAppsCanonicalAdmission,isAppsCanonicalReadTransport} from '../../../scripts/apps-canonical-admission';
+import {createAppsCanonicalAdmission,isAppsCanonicalReadTransport,extractAppsCanonicalRequestLabel} from '../../../scripts/apps-canonical-admission';
 import express from 'express';
 import {EventEmitter} from 'node:events';
 import {createCanonicalHandlerCustody} from '../../auth/canonicalHandlerCustody';
@@ -45,3 +45,5 @@ it.each([p+'/profiles/native-owner-a',p+'/profiles/native-owner-b/recommendation
 it('transport proof refuses fields and getter substitutions without reading them',async()=>{const s=setup(),req=request('GET',p+'/profiles/native-owner-a');await dispatch(s,req);let reads=0;Object.defineProperty(req,'method',{get(){reads++;throw Error('foreign');}});expect(isAppsCanonicalReadTransport(s.gate,req)).toBe(false);expect(isAppsCanonicalReadTransport({get beforeDispatch(){reads++;throw Error('foreign');}},req)).toBe(false);expect(isAppsCanonicalReadTransport(s.gate,{readOnly:true})).toBe(false);expect(reads).toBe(0);});
 
 it.each([p+'/collections?category=apps',p+'/collections/'+c+'/editable',p+'/recommendations?category=apps',p+'/recommendations/'+r+'/editable',p+'/categories/apps/content-snapshot',p+'/categories/apps/content-snapshot/validate?snapshotToken=abcdefghijklmnop',p+'/categories/apps/memberships',p+'/categories/apps/top-picks'])('audited owner GET proof follows live Apps admission %s',async path=>{const s=setup(),req=request('GET',path);const result=await dispatch(s,req);expect(result.next).toHaveBeenCalledOnce();expect(isAppsCanonicalReadTransport(s.gate,req)).toBe(true);});
+
+it('stored diagnostic identity is independent of current request getters',async()=>{const s=setup(),req=request('GET',p+'/me');await dispatch(s,req);let reads=0;Object.defineProperty(req,'originalUrl',{get(){reads++;throw Error('private getter');}});Object.defineProperty(req,'method',{get(){reads++;throw Error('private getter');}});expect(extractAppsCanonicalRequestLabel(s.gate,req)).toEqual({route:'me',method:'GET'});expect(extractAppsCanonicalRequestLabel({get label(){reads++;throw Error('foreign');}},req)).toBeUndefined();expect(reads).toBe(0);});

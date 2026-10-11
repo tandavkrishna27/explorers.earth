@@ -13,7 +13,7 @@ import {mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {sep} from 'node:path';
 import type {OwnedUatDatabaseAuthority} from './music-uat-database';
 import {z} from 'zod/v3';
-import {extractCanonicalCustodySnapshot,extractCanonicalCustodyDiagnostic,type CanonicalCustodyReason} from '../server/auth/canonicalHandlerCustody';
+import {extractCanonicalCustodySnapshot,extractCanonicalCustodyDiagnostic,type CanonicalCustodyReason,type CanonicalCustodyCensus} from '../server/auth/canonicalHandlerCustody';
 import {inspectAppsPrivateDescendant} from './apps-private-custody';
 import {appEntityDetailsSchema,type AppEntityDetails} from '../shared/explorersAppContract';
 import {editableOwnerCollectionSchema,editableOwnerRecommendationSchema,ownerMembershipDtoSchema} from '../shared/explorersOwnerContentContract';
@@ -98,11 +98,11 @@ export function admitAppsFixtureRequest(options:AppsControlOptions,request:Incom
 /** Synchronous outer admission latch; no timed drain or release of original work. */
 export function sealAppsFixtureRequests(options:AppsControlOptions){try{const binding=requestBinding(options);binding.sealed=true;binding.admission.seal();}catch{throw fail('request seal');}}
 /** Only exact settled is positive request evidence; all other states retain custody. */
-export type AppsRequestDrainDiagnostic=Readonly<{status:'settled'|'failed-but-settled'|'unsettled';sealed:boolean;requests:number;frames:number;unknown:boolean;uncertain:boolean;reason?:CanonicalCustodyReason;provedReadTransportCancellations?:number}>;
+export type AppsRequestDrainDiagnostic=Readonly<{status:'settled'|'failed-but-settled'|'unsettled';sealed:boolean;requests:number;frames:number;unknown:boolean;uncertain:boolean;reason?:CanonicalCustodyReason;provedReadTransportCancellations?:number;census?:CanonicalCustodyCensus;censusCode?:string}>;
 const requestDrainDiagnostics=new WeakMap<object,AppsRequestDrainDiagnostic>();
 export function extractAppsRequestDrainSnapshot(options:unknown):AppsRequestDrainDiagnostic|undefined{if(options===null||(typeof options!=='object'&&typeof options!=='function'))return undefined;const binding=requestSnapshotBindings.get(options as object);return binding?extractCanonicalCustodySnapshot(binding.custody):undefined;}
 export function extractAppsRequestDrainDiagnostic(options:unknown):AppsRequestDrainDiagnostic|undefined{return options!==null&&(typeof options==='object'||typeof options==='function')?requestDrainDiagnostics.get(options as object):undefined;}
-export async function drainAppsFixtureRequests(options:AppsControlOptions,milliseconds:number){try{if(!Number.isSafeInteger(milliseconds)||milliseconds<1||milliseconds>15000)throw fail('request budget');const binding=requestBinding(options);binding.sealed=true;binding.admission.seal();const result=await binding.custody.sealAndDrain(milliseconds);if(!requestDrainDiagnostics.has(options)){const detail=extractCanonicalCustodyDiagnostic(binding.custody);requestDrainDiagnostics.set(options,Object.freeze({...result,...(detail?{reason:detail.reason}:{})}));}return result;}catch{throw fail('request drain');}}
+export async function drainAppsFixtureRequests(options:AppsControlOptions,milliseconds:number){try{if(!Number.isSafeInteger(milliseconds)||milliseconds<1||milliseconds>15000)throw fail('request budget');const binding=requestBinding(options);binding.sealed=true;binding.admission.seal();const result=await binding.custody.sealAndDrain(milliseconds);if(!requestDrainDiagnostics.has(options)){const detail=extractCanonicalCustodyDiagnostic(binding.custody);requestDrainDiagnostics.set(options,Object.freeze({...extractCanonicalCustodySnapshot(binding.custody),...result,...(detail?{reason:detail.reason}:{})}));}return result;}catch{throw fail('request drain');}}
 function assertComposition(o:AppsControlOptions){
  const binding=compositionBindings.get(o.composed);
  if(!binding||binding.pool!==o.pool||binding.config!==o.config||binding.configSnapshot!==JSON.stringify(o.config)||binding.storage!==o.storage||binding.root!==resolve(o.storageDirectory)||Object.getPrototypeOf(o.storage)!==storagePrototype||Object.getPrototypeOf(o.composed)!==binding.composedPrototype||o.composed.app!==binding.app||o.composed.auth!==binding.auth)throw fail('composition');
