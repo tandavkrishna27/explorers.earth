@@ -1,9 +1,52 @@
 import {describe,it,expect} from 'vitest';
+import {EventEmitter} from 'node:events';
 import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {existsSync,readFileSync} from 'node:fs';
 import ts from 'typescript';
 const source=path.resolve(import.meta.dirname,'../../../scripts/apps-browser-fixture.ts');
+it.each([false,true])('Vite diagnostic actual fixedChild drains owned stderr and settles close despite observer throw=%s',async throws=>{
+ const child:any=new EventEmitter();child.stdout=new EventEmitter();child.stderr=new EventEmitter();child.stderr.resume=()=>{throw Error('discarded stderr');};child.stdin=new EventEmitter();child.stdin.end=()=>{};child.exitCode=0;child.signalCode=null;let bytes=0,seen:any,errors=0;
+ const fixed=defaultFunction('fixedChild',{load:async(name:string)=>{expect(name).toBe('node:child_process');return{spawn:()=>child};},nativeChildren:new Set(),recordCategory:()=>{},latchUnknown:()=>{},Refusal:class extends Error{}});
+ const handle=await fixed('node',[],{},'owned',undefined,false,undefined,(value:Buffer)=>{bytes+=value.length;if(throws)throw Error('PRIVATE');},(value:any)=>{seen=value;if(throws)throw Error('PRIVATE');},()=>{errors++;if(throws)throw Error('PRIVATE');});
+ child.stderr.emit('data',Buffer.from('PRIVATE'));child.emit('close',0,null);await expect(handle.closed).resolves.toEqual({code:0,signal:null,stdioClosed:true});expect(bytes).toBe(7);expect(seen).toEqual({code:0,signal:null,stdioClosed:true});expect(errors).toBe(0);
+});
+it('Vite diagnostic actual fixedChild observes spawn error without masking closed rejection',async()=>{
+ const child:any=new EventEmitter();child.stdout=new EventEmitter();child.stderr=new EventEmitter();child.stderr.resume=()=>{};child.stdin=new EventEmitter();child.stdin.end=()=>{};let observed=0,unknown=0;
+ const fixed=defaultFunction('fixedChild',{load:async()=>({spawn:()=>child}),nativeChildren:new Set(),recordCategory:()=>{},latchUnknown:()=>unknown++,Refusal:class extends Error{}}),handle=await fixed('node',[],{},'owned',undefined,false,undefined,undefined,undefined,()=>{observed++;throw Error('PRIVATE');});
+ child.emit('error',Error('PRIVATE'));await expect(handle.closed).rejects.toThrow();expect(observed).toBe(1);expect(unknown).toBe(1);
+});
+it.each([0,1,null])('Vite diagnostic actual close preserves bounded code %s',async code=>{
+ let stdout:any,stderr:any,close:any,reader:any,resolve!:(v:any)=>void;const closed=new Promise<any>(r=>resolve=r);
+ const method=defaultMethod('launchVite',{registerViteDiagnostic:(r:any)=>reader=r,Refusal:class extends Error{},fixedChild:async(...args:any[])=>{stdout=args[6];stderr=args[7];close=args[8];return{ready:Promise.resolve(),closed};},process:{execPath:'node'},viteCli:'vite',frontend:'cwd',env:()=>({}),performance:{now:()=>0},fetch:()=>{throw Error('unexpected probe');},AbortSignal,setTimeout});
+ const child=await method({origin:'http://127.0.0.1:52001',apiOrigin:'http://127.0.0.1:54001'},async()=>Buffer.alloc(0));stderr(Buffer.from('Cannot find module PRIVATE'));const result={code,signal:null,stdioClosed:true};close(result);resolve(result);await expect(child.ready).rejects.toThrow();const first=reader();expect(first).toEqual({origin:'closed-before-ready',childCode:code,childSignal:'none',stdioClosed:true,advertised:false,httpReady:false,probeOutcome:'none',stderr:'module-not-found',stderrBytes:26,stderrOverflow:false});stderr(Buffer.from('port already in use'));expect(reader()).toBe(first);expect(Object.isFrozen(first)).toBe(true);expect(JSON.stringify(first)).not.toMatch(/PRIVATE|52001/);
+});
+it.each(['budget','overflow','launch','probe','body','transport','timeout','stderr-overflow'])('Vite diagnostic actual adapter keeps first %s boundary passive',async mode=>{
+ let stdout:any,stderr:any,close:any,reader:any,resolve!:(v:any)=>void,probes=0,unknown=0,now=0;const closed=new Promise<any>(r=>resolve=r);
+ const method=defaultMethod('launchVite',{registerViteDiagnostic:(r:any)=>reader=r,latchUnknown:()=>unknown++,Refusal:class extends Error{},fixedChild:async(...args:any[])=>{stdout=args[6];stderr=args[7];close=args[8];if(mode==='launch')throw Error('PRIVATE');return{ready:Promise.resolve(),closed};},process:{execPath:'node'},viteCli:'vite',frontend:'cwd',env:()=>({}),performance:{now:()=>now},fetch:async()=>{probes++;now=60000;if(mode==='transport'||mode==='timeout')throw Error('PRIVATE');return{status:503};},AbortSignal:{timeout:()=>({aborted:mode==='timeout'})},setTimeout:()=>{throw Error('new timer');}});
+ const pending=method({origin:'http://127.0.0.1:52001',apiOrigin:'http://127.0.0.1:54001'},async()=>{if(mode==='body')throw Error('PRIVATE');return Buffer.alloc(0);});
+ if(mode==='launch'){await expect(pending).rejects.toThrow();expect(reader().origin).toBe('launch');return;}
+ const child=await pending;child.ready.catch(()=>{});
+ if(mode==='overflow'){stdout(Buffer.alloc(4097));stdout(Buffer.from('Local: http://127.0.0.1:52001/\n'));await Promise.resolve();expect(probes).toBe(0);}if(mode==='stderr-overflow'){stderr(Buffer.from('Cannot fi'));stderr(Buffer.from('nd module PRIVATE'));stderr(Buffer.alloc(5000));}
+ if(['probe','body','transport','timeout'].includes(mode)){stdout(Buffer.from('Local: http://127.0.0.1:52001/\n'));await expect(child.ready).rejects.toThrow();}
+ const first=reader();expect(first.origin).toBe(mode==='overflow'?'output-overflow':['probe','body','transport','timeout'].includes(mode)?'probe-budget':'advertisement-budget');expect(first.advertised).toBe(['probe','body','transport','timeout'].includes(mode));expect(first.probeOutcome).toBe(mode==='probe'?'non200':mode==='body'?'body-refused':mode==='transport'?'unknown':mode==='timeout'?'transport-timeout':'none');
+ if(mode==='stderr-overflow')expect(first).toMatchObject({stderr:'module-not-found',stderrBytes:4096,stderrOverflow:true});
+ const result={code:1,signal:'SIGTERM',stdioClosed:true};close(result);resolve(result);await expect(child.ready).rejects.toThrow();expect(reader()).toBe(first);expect(unknown).toBe(mode==='overflow'?1:0);expect(probes).toBe(['probe','body','transport','timeout'].includes(mode)?1:0);expect(JSON.stringify(first)).not.toMatch(/PRIVATE|52001/);
+});
+it('Vite diagnostic classifies only fixed stderr codes across chunks',async()=>{
+ for(const [text,expected]of [['Port 1 is already in use','port-in-use'],['failed to load config from PRIVATE','config-load'],['Cannot find package PRIVATE','module-not-found'],['error when starting dev server PRIVATE','unknown']]){
+  let stderr:any,close:any,reader:any,resolve!:(v:any)=>void;const closed=new Promise<any>(r=>resolve=r),method=defaultMethod('launchVite',{registerViteDiagnostic:(r:any)=>reader=r,Refusal:class extends Error{},fixedChild:async(...args:any[])=>{stderr=args[7];close=args[8];return{closed};},process:{execPath:'node'},viteCli:'vite',frontend:'cwd',env:()=>({})});
+  const child=await method({origin:'http://127.0.0.1:52001',apiOrigin:'http://127.0.0.1:54001'},async()=>Buffer.alloc(0));for(const char of text)stderr(Buffer.from(char));const result={code:1,signal:null,stdioClosed:true};close(result);resolve(result);await expect(child.ready).rejects.toThrow();expect(reader().stderr).toBe(expected);expect(reader().stderrBytes).toBe(Buffer.byteLength(text));
+ }
+});
+it('Vite diagnostic missing advertisement freezes at actual existing outer guard and keeps cleanup refusal',async()=>{
+ const f=fake();let register:any,close:any,resolve!:(v:any)=>void;const closed=new Promise<any>(r=>resolve=r);
+ const method=defaultMethod('launchVite',{registerViteDiagnostic:(r:any)=>register(r),Refusal:class extends Error{},fixedChild:async(...args:any[])=>{close=args[8];return{closed,stop:async()=>{f.events.push('vite-stop');const value={code:0,signal:'SIGTERM',stdioClosed:true};close(value);resolve(value);}};},process:{execPath:'node'},viteCli:'vite',frontend:'cwd',env:()=>({})});
+ f.deps.launchVite=async(options:any,read:any)=>{f.events.push('vite');return method(options,read);};
+ const ast=ts.createSourceFile(source,readFileSync(source,'utf8'),ts.ScriptTarget.Latest,true),printer=ts.createPrinter(),body=ast.statements.filter(n=>ts.isFunctionDeclaration(n)&&['createAppsBrowserFixture','extractAppsFixtureDiagnostic'].includes(n.name!.text)).map(n=>printer.printNode(ts.EmitHint.Unspecified,n,ast)).join('\n'),code=ts.transpileModule(body,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText.replaceAll('export function','function');
+ const actual=new Function('defaultDependencies','keys','Refusal','path','parseBrowserSuite','assertBrowserEnvironment','baseline','uuid','diagnostics','extractAppsControlDiagnostic','extractAppsRequestDrainDiagnostic',code+'\nreturn {createAppsBrowserFixture,extractAppsFixtureDiagnostic};')((...args:any[])=>{register=args[6];return f.deps;},Object.keys(f.deps),class extends Error{},path,()=> 'apps',()=>{},{parse:(v:any)=>v},{safeParse:()=>({success:true})},new WeakMap(),()=>undefined,()=>undefined);
+ const run=actual.createAppsBrowserFixture().run();run.catch(()=>{});for(let i=0;i<1000&&!f.events.includes('vite');i++)await Promise.resolve();expect(f.events).toContain('vite');for(let i=0;i<10;i++)await Promise.resolve();f.expire();const error=await run.catch((v:any)=>v),diagnostic=actual.extractAppsFixtureDiagnostic(error);expect(diagnostic).toMatchObject({stage:'vite',category:'deadline',vite:{origin:'advertisement-budget',childCode:null,childSignal:'none',stdioClosed:false,advertised:false,probeOutcome:'none'}});expect(f.events).toContain('vite-stop');for(const event of ['root-remove','secret-clean','finish'])expect(f.events).not.toContain(event);
+});
 it.each(['exactUnlink','emptyDirectory'])('actual %s refuses deletion after held inspection expires',async name=>{
  let expired=false,deletes=0;const target='owned';
  const operation=defaultFunction(name,{load:async()=>({lstat:async()=>({}),unlink:async()=>{deletes++;},rmdir:async()=>{deletes++;},readdir:async()=>[]}),retained:new Map([[target,{}]]),inspect:async()=>{expired=true;},same:async()=>{},nativeGuard:()=>{if(expired)throw Error('deadline');},Refusal:class extends Error{}});
@@ -130,7 +173,7 @@ it.each(['changed identity','growth','invalid UTF8'])('refuses bounded opened re
 it.each(['requests-drain','control-close','storage-drain','artifacts-remove'])('known browser failure plus rejected %s still retains dependent custody',async fail=>{const {createAppsBrowserFixture}=await load(),f=fake({fail});f.deps.launchBrowser=async()=>({ready:Promise.resolve(),closed:Promise.resolve({code:1,signal:null,stdioClosed:true}),stop:async()=>{}});await expect(createAppsBrowserFixture(f.deps).run()).rejects.toThrow();expect(f.events).not.toContain('database-stop');expect(f.events).not.toContain('secret-clean');expect(f.events).not.toContain('finish');});
 // Execute an actual fixed default adapter body with every import/effect closed.
 function defaultMethod(name:string,bindings:Record<string,unknown>){
- bindings={handlerCounts:new WeakMap(),readRequestDrainPending:()=>undefined,nativeGuard:()=>{},latchUnknown:()=>{},reportDrain:()=>{},readContext:()=>({stage:'execution'}),...bindings};
+ bindings={registerViteDiagnostic:()=>{},handlerCounts:new WeakMap(),readRequestDrainPending:()=>undefined,nativeGuard:()=>{},latchUnknown:()=>{},reportDrain:()=>{},readContext:()=>({stage:'execution'}),...bindings};
  const original=readFileSync(source,'utf8'),ast=ts.createSourceFile('runner.ts',original,ts.ScriptTarget.Latest,true);let method:ts.MethodDeclaration|undefined;
  const fn=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='defaultDependencies')!;
  const find=(node:ts.Node)=>{if(ts.isMethodDeclaration(node)&&node.name.getText(ast)===name)method=node;else ts.forEachChild(node,find);};find(fn);if(!method)throw Error('actual fixed adapter missing');
@@ -158,7 +201,7 @@ it.each(['preflight','receipt','directory','directory-check','secret','prepare-d
  const diagnostic=(await load()).extractAppsFixtureDiagnostic(error);expect(diagnostic).toEqual({stage:stages[fail],category:'refusal'});expect(Object.isFrozen(diagnostic)).toBe(true);expect(JSON.stringify(diagnostic)).not.toMatch(/synthetic|Temp|secret-file|sessionA/);
 });
 function defaultFunction(name:string,bindings:Record<string,unknown>){
- bindings={handlerCounts:new WeakMap(),readRequestDrainPending:()=>undefined,nativeGuard:()=>{},latchUnknown:()=>{},reportDrain:()=>{},readContext:()=>({stage:'execution'}),...bindings};
+ bindings={registerViteDiagnostic:()=>{},handlerCounts:new WeakMap(),readRequestDrainPending:()=>undefined,nativeGuard:()=>{},latchUnknown:()=>{},reportDrain:()=>{},readContext:()=>({stage:'execution'}),...bindings};
  const original=readFileSync(source,'utf8'),ast=ts.createSourceFile('runner.ts',original,ts.ScriptTarget.Latest,true);let found:ts.FunctionDeclaration|undefined;
  const fn=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='defaultDependencies')!;
  const find=(node:ts.Node)=>{if(ts.isFunctionDeclaration(node)&&node.name?.text===name)found=node;else ts.forEachChild(node,find);};find(fn);if(!found)throw Error('actual fixed helper missing');

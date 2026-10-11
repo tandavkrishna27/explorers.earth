@@ -184,12 +184,19 @@ export type RequestDrainBoundary='native-unknown-before'|'ledger-missing'|'handl
 type NativeContext=Readonly<{stage:DiagnosticStage;cleanupStep?:CleanupStep}>;
 export type RequestDrainPending=Readonly<{phase:'handler-wait'|'canonical-wait';handlers:number;evidence?:AppsRequestDrainDiagnostic}>;
 type NativeUnknownDetail=Readonly<NativeContext&{origin:NativeUnknownOrigin;budgetMs?:number}>;
+export type AppsViteDiagnostic=Readonly<{
+    origin:'launch'|'closed-before-ready'|'advertisement-budget'|'probe-budget'|'output-overflow';
+    childCode:number|null;childSignal:'none'|'SIGTERM'|'SIGKILL'|'other';stdioClosed:boolean;
+    advertised:boolean;httpReady:boolean;probeOutcome:'none'|'http200'|'non200'|'transport-refused'|'transport-timeout'|'redirect-refused'|'body-refused'|'unknown';
+    stderr:'port-in-use'|'config-load'|'module-not-found'|'unknown';stderrBytes:number;stderrOverflow:boolean;
+}>;
 type Diagnostic = Readonly<{
     stage: DiagnosticStage;
     category: DiagnosticCategory;
     cleanupStep?: CleanupStep;
     nativeUnknownOrigin?:NativeUnknownDetail;requestDrainBoundary?:RequestDrainBoundary;requestDrain?:AppsRequestDrainDiagnostic;requestDrainPending?:RequestDrainPending;
     control?: AppsControllerDiagnostic;
+    vite?:AppsViteDiagnostic;
 }>;
 const diagnostics = new WeakMap<object, Diagnostic>();
 /** Only runner-branded errors expose finite sanitized diagnostics; foreign getters are never read. */
@@ -213,11 +220,14 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
     const readContext=():NativeContext=>Object.freeze({stage,...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{})});
     const recordUnknown=(origin:NativeUnknownOrigin,context:NativeContext,budgetMs?:number)=>{if(!nativeUnknownOrigin){nativeUnknownOrigin=Object.freeze({...context,origin,...(Number.isSafeInteger(budgetMs)&&budgetMs!>=1&&budgetMs!<=21600000?{budgetMs}:{})});if(['clock-callback','clock-late-clear','guard-expiry','powershell-deadline'].includes(origin))recordCategory('deadline');}};
     const recordDrain=(boundary:RequestDrainBoundary)=>{requestDrainBoundary??=boundary;};
-    const snapshot = (control?:unknown,options?:unknown): Diagnostic => {const detail=extractAppsControlDiagnostic(control),requestDrain=extractAppsRequestDrainDiagnostic(options),requestDrainPending=deadlinePending??(stage==='cleanup'&&cleanupStep==='request-drain'?safeDrainPending():undefined);return Object.freeze({stage,category,...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{}),...(nativeUnknownOrigin?{nativeUnknownOrigin}:{}),...(requestDrainBoundary?{requestDrainBoundary}:{}),...(requestDrain?{requestDrain}:{}),...(requestDrainPending?{requestDrainPending}:{})});};
+    let readViteDiagnostic:(()=>AppsViteDiagnostic|undefined)|undefined;
+    const registerViteDiagnostic=(reader:()=>AppsViteDiagnostic|undefined)=>{readViteDiagnostic=reader;};
+    const safeViteDiagnostic=()=>{if(stage!=='vite')return undefined;try{return readViteDiagnostic?.();}catch{return undefined;}};
+    const snapshot = (control?:unknown,options?:unknown): Diagnostic => {const vite=safeViteDiagnostic(),detail=extractAppsControlDiagnostic(control),requestDrain=extractAppsRequestDrainDiagnostic(options),requestDrainPending=deadlinePending??(stage==='cleanup'&&cleanupStep==='request-drain'?safeDrainPending():undefined);return Object.freeze({stage,category,...(vite?{vite}:{}),...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{}),...(nativeUnknownOrigin?{nativeUnknownOrigin}:{}),...(requestDrainBoundary?{requestDrainBoundary}:{}),...(requestDrain?{requestDrain}:{}),...(requestDrainPending?{requestDrainPending}:{})});};
     const recordCategory = (value: DiagnosticCategory) => { if (category === 'refusal')
         category = value; };
     let nativeFailure:(()=>void)|undefined;
-    const d = dependencies === undefined ? defaultDependencies(recordCategory,()=>nativeFailure?.(),recordUnknown,readContext,recordDrain,registerDrainPending) : dependencies;
+    const d = dependencies === undefined ? defaultDependencies(recordCategory,()=>nativeFailure?.(),recordUnknown,readContext,recordDrain,registerDrainPending,registerViteDiagnostic) : dependencies;
     let promise: Promise<void> | undefined;
     return { run() {
             return promise ??= Promise.resolve().then(execute).catch(() => {
@@ -542,7 +552,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
         await bounded(() => Promise.resolve(receipt!.finish(authority!, [], interrupted)));
     }
 }
-function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void, reportFailure:()=>void,reportUnknown:(origin:NativeUnknownOrigin,context:NativeContext,budgetMs?:number)=>void,readContext:()=>NativeContext,reportDrain:(boundary:RequestDrainBoundary)=>void,registerDrainPending:(reader:()=>RequestDrainPending|undefined)=>void): Dependencies {
+function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void, reportFailure:()=>void,reportUnknown:(origin:NativeUnknownOrigin,context:NativeContext,budgetMs?:number)=>void,readContext:()=>NativeContext,reportDrain:(boundary:RequestDrainBoundary)=>void,registerDrainPending:(reader:()=>RequestDrainPending|undefined)=>void,registerViteDiagnostic:(reader:()=>AppsViteDiagnostic|undefined)=>void=()=>{}): Dependencies {
     const root = path.resolve(fileURLToPath(new URL('../../', import.meta.url))), frontend = path.join(root, 'explorers-earth'), temporaryRoot = tmpdir();
     const ps = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', helper = path.join(root, 'tunes/scripts/music-local-private-files.ps1'), cli = path.join(frontend, 'node_modules/@playwright/test/cli.js'), viteCli = path.join(frontend, 'node_modules/vite/bin/vite.js');
     const retained = new Map<string, {
@@ -588,7 +598,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
     async function same(target: string, directory?: boolean) { const old = retained.get(target); if (!old)
         throw new Refusal(); const fs = await canonical(target), stat = await fs.lstat(target, { bigint: true }); if (stat.dev !== old.dev || stat.ino !== old.ino || stat.uid !== old.uid || stat.mode !== old.mode || old.directory !== (directory ?? old.directory) || (old.directory ? !stat.isDirectory() : !stat.isFile() || stat.size !== old.size || stat.mtimeNs !== old.mtimeNs || stat.ctimeNs !== old.ctimeNs || stat.nlink !== old.nlink))
         throw new Refusal(); return fs; }
-    async function fixedChild(executable: string, args: string[], environment: Record<string, string>, cwd: string, input?: string, capture = false, onStdout?: (bytes: Buffer) => void): Promise<Child & {
+    async function fixedChild(executable: string, args: string[], environment: Record<string, string>, cwd: string, input?: string, capture = false, onStdout?: (bytes: Buffer) => void,onStderr?: (bytes:Buffer)=>void,onClose?:(value:{code:number|null;signal:string|null;stdioClosed:boolean})=>void,onError?:()=>void): Promise<Child & {
         output(): string;
     }> {
         const { spawn } = await import('node:child_process');
@@ -599,10 +609,10 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         signal: string | null;
         stdioClosed: boolean;
     }>((resolve, reject) => {
-            child.once('error', () => { if (capture)
+            child.once('error', () => { try{onError?.();}catch{} if (capture)
                 recordCategory('spawn-error'); latchUnknown('child-error'); reject(new Refusal()); });
             child.stdout.on('data', (bytes: Buffer) => {
-                onStdout?.(bytes);
+                try{onStdout?.(bytes);}catch{}
                 if (capture) {
                     if (Buffer.byteLength(output) + bytes.length > 4096) {
                         overflow = true;
@@ -614,8 +624,8 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
                         output += bytes.toString('utf8');
                 }
             });
-            child.stderr.resume();
-            child.once('close', (code, signal) => { resolve({ code: overflow ? null : code, signal, stdioClosed: true }); });
+            if(onStderr)child.stderr.on('data',(bytes:Buffer)=>{try{onStderr(bytes);}catch{}});else child.stderr.resume();
+            child.once('close', (code, signal) => { const value={code:overflow?null:code,signal,stdioClosed:true};try{onClose?.(value);}catch{}resolve(value); });
         });
         closed.catch(() => undefined);
         const handle = { ready: Promise.resolve(), closed, async stop() { if (child.exitCode === null && child.signalCode === null)
@@ -893,31 +903,43 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
             throw new Refusal();
         } await inspect(target); return remember(target, false); },
         async launchVite(options, read) {
-            let advertised!: () => void;
-            let text = '', witness = false;
-            const advertisement = new Promise<void>(resolve => { advertised = resolve; });
-            const child = await fixedChild(process.execPath, [viteCli, '--config', 'e2e/replatform/profile.vite.config.ts'], { ...env(), PROFILE_E2E_WEB_PORT: new URL(options.origin).port, PROFILE_E2E_API_PORT: new URL(options.apiOrigin).port, PROFILE_E2E_LOCAL_AUTHORITY: 'owned-disposable-pg15' }, frontend, undefined, false, bytes => { if (witness)
-                return; text += bytes.toString('utf8'); if (Buffer.byteLength(text) > 4096) {
-                latchUnknown('vite-output-overflow');
-                return;
-            } const plain = text.replace(/\x1b\[[0-9;]*m/g, ''); if (plain.split(/\r?\n/).some(line => line.includes('Local:') && line.trimEnd().endsWith(options.origin + '/'))) {
-                witness = true;
-                advertised();
-            } });
-            child.ready = Promise.race([child.closed.then(() => { throw new Refusal(); }), (async () => { await advertisement; const end = performance.now() + 60000; while (true) {
-                    try {
-                        const response = await fetch(options.origin, { redirect: 'error', signal: AbortSignal.timeout(1000) });
-                        await read(response, 4096);
-                        if (response.status === 200)
-                            return;
-                    }
-                    catch { }
-                    if (performance.now() >= end)
-                        throw new Refusal();
-                    await new Promise(resolve => setTimeout(resolve, 250));
-                } })()]);
-            child.ready.catch(() => undefined);
-            return child;
+            let advertised!:()=>void,text='',witness=false,outputOverflow=false,httpReady=false,probeOutcome:AppsViteDiagnostic['probeOutcome']='none';
+            let childCode:number|null=null,childSignal:AppsViteDiagnostic['childSignal']='none',stdioClosed=false;
+            let stderr:AppsViteDiagnostic['stderr']='unknown',stderrBytes=0,stderrOverflow=false,stderrText='';
+            let first:AppsViteDiagnostic|undefined;
+            const capture=(origin:AppsViteDiagnostic['origin'])=>first??=Object.freeze({origin,childCode,childSignal,stdioClosed,advertised:witness,httpReady,probeOutcome,stderr,stderrBytes,stderrOverflow});
+            // This reader freezes only at the existing fixture failure boundary. It adds no clock or wait.
+            registerViteDiagnostic(()=>httpReady&&!first?undefined:capture(witness?'probe-budget':'advertisement-budget'));
+            const advertisement=new Promise<void>(resolve=>{advertised=resolve;});
+            let child:Awaited<ReturnType<typeof fixedChild>>;
+            try{child=await fixedChild(process.execPath,[viteCli,'--config','e2e/replatform/profile.vite.config.ts'],{...env(),PROFILE_E2E_WEB_PORT:new URL(options.origin).port,PROFILE_E2E_API_PORT:new URL(options.apiOrigin).port,PROFILE_E2E_LOCAL_AUTHORITY:'owned-disposable-pg15'},frontend,undefined,false,bytes=>{
+                if(witness||outputOverflow)return;
+                if(Buffer.byteLength(text)+bytes.length>4096){outputOverflow=true;capture('output-overflow');latchUnknown('vite-output-overflow');return;}
+                text+=bytes.toString('utf8');const plain=text.replace(/\x1b\[[0-9;]*m/g,'');
+                if(plain.split(/\r?\n/).some(line=>line.includes('Local:')&&line.trimEnd().endsWith(options.origin+'/'))){witness=true;advertised();}
+            },bytes=>{
+                if(first)return;const remaining=4096-stderrBytes;stderrOverflow||=bytes.length>remaining;const bounded=bytes.subarray(0,remaining);stderrBytes+=bounded.length;
+                stderrText+=bounded.toString('utf8');if(stderr==='unknown'){
+                    if(/port[^\r\n]{0,80}already in use|EADDRINUSE/i.test(stderrText))stderr='port-in-use';
+                    else if(/failed to load config/i.test(stderrText))stderr='config-load';
+                    else if(/cannot find (?:module|package)|ERR_MODULE_NOT_FOUND|MODULE_NOT_FOUND/i.test(stderrText))stderr='module-not-found';
+                }
+            },result=>{
+                if(httpReady||first)return;childCode=Number.isSafeInteger(result.code)&&result.code!>=-2147483648&&result.code!<=2147483647?result.code:null;
+                childSignal=result.signal===null?'none':result.signal==='SIGTERM'||result.signal==='SIGKILL'?result.signal:'other';stdioClosed=result.stdioClosed===true;capture('closed-before-ready');
+            },()=>{if(!httpReady)capture('launch');});}catch{capture('launch');throw new Refusal();}
+            child.ready=Promise.race([child.closed.then(()=>{if(!httpReady)capture('closed-before-ready');throw new Refusal();}),(async()=>{
+                await advertisement;const end=performance.now()+60000;while(true){
+                    let probeSignal:AbortSignal|undefined,bodyRefused=false;
+                    try{
+                        probeSignal=AbortSignal.timeout(1000);const response=await fetch(options.origin,{redirect:'error',signal:probeSignal});
+                        try{await read(response,4096);}catch{bodyRefused=true;probeOutcome='body-refused';throw new Refusal();}
+                        if(response.status===200){probeOutcome='http200';httpReady=true;return;}probeOutcome='non200';
+                    }catch{if(!bodyRefused)probeOutcome=probeSignal?.aborted?'transport-timeout':'unknown';}
+                    if(performance.now()>=end){capture('probe-budget');throw new Refusal();}
+                    await new Promise(resolve=>setTimeout(resolve,250));
+                }
+            })()]);child.ready.catch(()=>undefined);return child;
         }, launchDiscovery: (context, options) => nativeChild(context, options, true),
         async openReport(directory, execution) { const file = path.join(directory.path, execution ? 'protected-execution.json' : 'protected-discovery.json'); const fs = await same(file, false); await inspect(file); const { constants } = await import('node:fs'); const handle = await fs.open(file, constants.O_RDONLY | constants.O_NOFOLLOW); const identity = (stat: import('node:fs').BigIntStats) => [stat.dev, stat.ino, stat.mode, stat.uid, stat.size, stat.mtimeNs, stat.ctimeNs, stat.nlink].map(String).join(':'); const original = retained.get(file)!; const expected = [original.dev, original.ino, original.mode, original.uid, original.size, original.mtimeNs, original.ctimeNs, original.nlink].map(String).join(':'); return { async stat() { const stat = await handle.stat({ bigint: true }); if (identity(stat) !== expected || !stat.isFile())
                 throw new Refusal(); return { identity: identity(stat), size: Number(stat.size), regular: stat.isFile() }; }, async read(buffer, offset, length, position) { return (await handle.read(buffer, offset, length, position)).bytesRead; }, async verify() { await same(file, false); await inspect(file); }, async close() { await handle.close(); } }; },
