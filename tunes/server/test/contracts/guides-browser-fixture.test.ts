@@ -1,8 +1,44 @@
 import {describe,it,expect} from 'vitest';
 import {createGuidesBrowserFixture,runGuidesFixtureEntry} from '../../../scripts/guides-browser-fixture';
-import {readFileSync} from 'node:fs';
+import {readFileSync,realpathSync} from 'node:fs';
+import {fileURLToPath,pathToFileURL} from 'node:url';
 import path from 'node:path';
 import ts from 'typescript';
+// Execute native helpers without preflight, preparation, or resource allocation.
+function actualNative(bindings:Record<string,unknown>){
+ const source=readFileSync(path.resolve(import.meta.dirname,'../../../scripts/guides-browser-fixture.ts'),'utf8'),ast=ts.createSourceFile('driver.ts',source,ts.ScriptTarget.Latest,true);
+ const native=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='nativeDependencies') as ts.FunctionDeclaration;
+ const selected=native.body!.statements.filter(node=>ts.isFunctionDeclaration(node)&&['physical','row','exact','boundedJson'].includes(node.name!.text)||ts.isVariableStatement(node)&&node.declarationList.declarations.some(declaration=>declaration.name.getText(ast)==='root'));
+ const body=selected.map(node=>ts.createPrinter().printNode(ts.EmitHint.Unspecified,node,ast)).join('\n').replaceAll('import.meta','closedMeta');
+ return new Function(...Object.keys(bindings),ts.transpileModule(`${body}\nreturn {root,physical,row,exact,boundedJson};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText)(...Object.values(bindings));
+}
+it('actual native configure root is canonical at the checkout path',()=>{
+ const native=actualNative({path,fileURLToPath,URL,tmpdir:()=>'',closedMeta:{url:pathToFileURL(path.resolve(import.meta.dirname,'../../../scripts/guides-browser-fixture.ts')).href}});
+ expect(native.root).toBe(realpathSync(path.resolve(import.meta.dirname,'../../../..')));
+});
+it('actual native custody preserves unsafe inode identity for supervisor cleanup',async()=>{
+ const inode=9007199254740993n;
+ const stats=(bigint:boolean,file=false)=>({dev:bigint?7n:7,ino:bigint?inode:Number(inode),nlink:bigint?1n:1,isDirectory:()=>!file,isFile:()=>file,isSymbolicLink:()=>false});
+ const file=path.resolve(import.meta.dirname,'unsafe-secret');
+ const native=actualNative({path,fileURLToPath,URL,tmpdir:()=>'',closedMeta:{url:pathToFileURL(path.resolve(import.meta.dirname,'../../../scripts/guides-browser-fixture.ts')).href},Refusal:class extends Error{},fs:async()=>({lstat:async(candidate:string,options?:{bigint:boolean})=>stats(options?.bigint===true,candidate===file),realpath:async(candidate:string)=>candidate})});
+ expect(await native.row('secret',file)).toEqual({kind:'secret',path:file,dev:'7',ino:'9007199254740993'});
+ await expect(native.exact({kind:'secret',path:file,dev:'7',ino:'9007199254740992'})).rejects.toThrow();
+});
+it.each(['symlink','noncanonical','relative'])('actual native physical custody refuses %s paths',async scenario=>{
+ const file=path.resolve(import.meta.dirname,'unsafe-secret');
+ const native=actualNative({path,fileURLToPath,URL,tmpdir:()=>'',closedMeta:{url:pathToFileURL(file).href},Refusal:class extends Error{},fs:async()=>({lstat:async(candidate:string)=>({isDirectory:()=>candidate!==file,isFile:()=>candidate===file,isSymbolicLink:()=>scenario==='symlink'}),realpath:async(candidate:string)=>scenario==='noncanonical'?candidate+'-changed':candidate})});
+ await expect(native.row('secret',scenario==='relative'?'relative-secret':file)).rejects.toThrow();
+});
+it('actual native bounded report reads lossless bigint metadata and rejects changes or oversize',async()=>{
+ const file=path.resolve(import.meta.dirname,'protected-report.json'),bytes=Buffer.from('{}');let changed=false,mutateOnRead=false,oversize=false,closed=0;
+ const stat=(candidate:string)=>({dev:7n,ino:9007199254740993n,nlink:1n,size:oversize?9n:2n,mtimeMs:1n,ctimeMs:changed?2n:1n,isDirectory:()=>candidate!==file,isFile:()=>candidate===file,isSymbolicLink:()=>false});
+ const native=actualNative({path,fileURLToPath,URL,tmpdir:()=>'',closedMeta:{url:pathToFileURL(file).href},Buffer,TextDecoder,strictJson:JSON.parse,Refusal:class extends Error{},fs:async()=>({lstat:async(candidate:string)=>stat(candidate),realpath:async(candidate:string)=>candidate,open:async()=>({stat:async()=>stat(file),read:async(target:Buffer,offset:number,_length:number,position:number)=>{if(position)return{bytesRead:0};bytes.copy(target,offset);if(mutateOnRead)changed=true;return{bytesRead:2};},close:async()=>{closed++;}})})});
+ expect(await native.boundedJson(file,8)).toEqual({});expect(closed).toBe(1);
+ oversize=true;await expect(native.boundedJson(file,8)).rejects.toThrow();expect(closed).toBe(1);
+ oversize=false;mutateOnRead=true;
+ await expect(native.boundedJson(file,8)).rejects.toThrow();
+ expect(closed).toBe(2);
+});
 it.each(['success','collision','partial','identity'])('actual Windows prepare protected secret path %s',async scenario=>{
  let allocations=0,checks=0;const writes:any[]=[];
  const method=actualPrepare({receipt:{},commit:'b'.repeat(40),path,root:'fixed-root',temporary:'fixed-temp',randomBytes:(n:number)=>Buffer.alloc(n,7),process:{platform:'win32'},physical:async()=>({isDirectory:()=>true}),row:async(kind:string,file:string)=>({kind,path:file,dev:'1',ino:'2'}),exact:async()=>{},rememberAncestors:async()=>{},verifyCustody:async()=>{checks++;if(scenario==='identity'&&checks===2)throw Error('identity');},created:[],unknown:false,runId:'',secret:undefined,Refusal:class extends Error{},load:async(name:string)=>{if(name==='./music-local-state')return{assertLocalPrivatePath:async()=>{},createLocalPrivateDirectory:async()=>{allocations++;},createLocalPrivateFile:async(...args:any[])=>{writes.push(args);if(scenario==='collision'||scenario==='partial')throw Error('helper');}};if(name==='../server/config/secure-music-secret-file')return{readSecureMusicSecretFile:async()=>{throw Error('stop after secret');}};throw Error('closed import');}});
