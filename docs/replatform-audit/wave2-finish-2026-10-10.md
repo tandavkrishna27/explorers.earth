@@ -859,3 +859,7 @@ Guides complete section hydration repair accepted independently. toGuide now ret
 ### Guides full form preservation review
 Accepted independent fix-round review. Root ten Guides contract suites passed 195 tests; full form frontend/backend selected dependency closures, case2 spec closure and music-c0 TypeScript all exited 0. Preserve local identity, manual budgets and original transport; route changes retain valid stay/activity endpoints and reject dangling endpoints. This is source validation, not native Guides qualification.
 
+
+### Guides competing edits case source
+Independent review accepted case2 original native stale save, retained draft, explicit reload/retry, exact revision and aggregate scope, and labeled wrong-owner/missing canonical authorization probes. Root195 contract tests and selected spec TypeScript passed. Exact authored inventory is cases2 and3; full lane registration and native qualification remain open.
+

@@ -48,7 +48,7 @@ async function nativeArchiveGuide(page:Page,id:string,title:string,revision:numb
  const ack=acknowledgement(page,`/collections/${id}`,body=>body.expectedRevision===revision);await heading.locator('..').getByRole('button',{name:'Delete Guide',exact:true}).click();const archived=z.object({id:z.string().uuid(),archived:z.literal(true)}).strict().parse((await browserBody(await ack)).collection);expect(archived.id).toBe(id);await expect(heading).toHaveCount(0);
 }
 
-// This source card intentionally authors only frozen case 3. The complete lane
+// These source cards author their frozen cases only. The complete lane
 // receives registration after all eight independent source cards are accepted.
 test(GUIDES_CASES[3],async({browser},info)=>{
  const harness=createGuidesHarnessClient();expect(info.repeatEachIndex).toBe(0);expect(GUIDES_PROJECTS).toContain(info.project.name);
@@ -144,4 +144,56 @@ async function settleGuidesBootstrap(page:Page,budget=15000){
 }
 async function navigateGuides(page:Page,path:string){await settleGuidesBootstrap(page);const state=guidesBootstraps.get(page)!;state.floor=state.records.size;await page.goto(path);await settleGuidesBootstrap(page);}
 async function reloadGuides(page:Page){await settleGuidesBootstrap(page);const state=guidesBootstraps.get(page)!;state.floor=state.records.size;await page.reload();await settleGuidesBootstrap(page);}
+
+type SectionCommand={revision:number;title:string;description:string|null;blocks:GuideAggregateDto['sections'][number]['blocks']};
+function sectionAcknowledgement(page:Page,guideId:string,sectionId:string,command:SectionCommand){
+ const work=page.waitForResponse(response=>{
+  const url=new URL(response.url());if(url.origin!==origin||url.pathname!==`${base}/collections/${guideId}/guide/sections/${sectionId}`||response.request().method()!=='PATCH')return false;
+  try{expect(response.request().postDataJSON()).toEqual(command);return true;}catch{return false;}
+ });void work.catch(()=>undefined);return work;
+}
+async function guideErrorEvidence(response:Response|APIResponse,status:number,code:string,message:string){
+ expect(response.status()).toBe(status);const bytes=await response.body();expect(bytes.length).toBeLessThanOrEqual(65536);
+ if('finished' in response)expect(await response.finished()).toBeNull();
+ const value=JSON.parse(bytes.toString('utf8'));expect(Object.keys(value)).toEqual(['error']);expect(Object.keys(value.error).sort()).toEqual(['code','message','requestId']);
+ expect(value.error.code).toBe(code);expect(value.error.message).toBe(message);expect(typeof value.error.requestId).toBe('string');expect(value.error.requestId.length).toBeGreaterThan(0);
+ return {code:value.error.code as string,message:value.error.message as string};
+}
+async function openNativeTip(page:Page,placeName:string,text:string){
+ await page.getByText('Tips',{exact:true}).click();const row=page.getByRole('heading',{level:4,name:placeName,exact:true}).locator('..');await expect(row).toHaveCount(1);await row.getByRole('button',{name:'Edit tip',exact:true}).click();
+ const modal=page.getByRole('heading',{level:2,name:'Edit Tip',exact:true}).locator('../../..');await expect(modal).toBeVisible();await modal.getByRole('textbox').fill(text);return modal;
+}
+function tipCommand(current:GuideAggregateDto,sectionId:string,text:string):SectionCommand{
+ const section=current.sections.find(s=>s.id===sectionId)!;expect(section).toBeDefined();const blocks=structuredClone(section.blocks);blocks.timeline.morning[0].tips=text;
+ return {revision:current.revision,title:section.title,description:section.description,blocks};
+}
+
+test(GUIDES_CASES[2],async({browser},info)=>{
+ const harness=createGuidesHarnessClient();expect(info.repeatEachIndex).toBe(0);expect(GUIDES_PROJECTS).toContain(info.project.name);
+ const manifest=await harness.start({caseId:GUIDES_CASES[2],project:info.project.name as typeof GUIDES_PROJECTS[number],repeat: 0});let first:BrowserContext|undefined,second:BrowserContext|undefined,completed=false;
+ try{
+  const viewport=info.project.name==='guides-mobile'?{viewport:{width:390,height:844},isMobile:true,hasTouch:true}:{viewport:{width:1365,height:900}};
+  first=await harness.createContext(browser,'ownerA',viewport);second=await harness.createContext(browser,'ownerA',viewport);
+  const page=await harness.trackProducer(()=>first!.newPage()),other=await harness.trackProducer(()=>second!.newPage());trackGuidesBootstrap(page,manifest.personas.ownerA);trackGuidesBootstrap(other,manifest.personas.ownerA);
+  await harness.trackProducer(async()=>{
+   const guide=manifest.guides.find(g=>g.key==='ownerA-guide-0')!,sibling=manifest.guides.find(g=>g.key==='ownerA-guide-1')!,foreign=manifest.guides.find(g=>g.key==='ownerB-guide-0')!;expect(guide).toBeDefined();expect(sibling).toBeDefined();expect(foreign).toBeDefined();
+   await navigateGuides(page,`/recommendations/guides/${guide.id}`);await navigateGuides(other,`/recommendations/guides/${guide.id}`);const initial=await aggregate(first!.request,guide.id);expect(initial.sections).toHaveLength(1);const section=initial.sections[0],draft='सुबह café — retained stale draft',winner='दूसरा लेखक — café';
+   const modal=await openNativeTip(page,section.blocks.timeline.morning[0].name,draft),otherModal=await openNativeTip(other,section.blocks.timeline.morning[0].name,winner);
+   const winnerAck=sectionAcknowledgement(other,guide.id,section.id,tipCommand(initial,section.id,winner));await otherModal.getByRole('button',{name:'Save Changes',exact:true}).click();const changed=guideAggregateDtoSchema.parse((await browserBody(await winnerAck)).guide);await expect(other.getByRole('heading',{name:'Edit Tip',exact:true})).toHaveCount(0);expect(changed.revision).toBeGreaterThan(initial.revision);
+   expect(changed).toEqual({...initial,revision:changed.revision,sections:[{...section,blocks:tipCommand(initial,section.id,winner).blocks,updatedAt:changed.sections[0].updatedAt}]});await expect(other.getByRole('heading',{level:1,name:guide.title,exact:true})).toBeVisible();await expect(other.getByRole('button',{name:'+ Add Day/Stop',exact:true})).toBeVisible();
+   const beforeConflict:Observation=await harness.observe(),staleAck=sectionAcknowledgement(page,guide.id,section.id,tipCommand(initial,section.id,draft));await modal.getByRole('button',{name:'Save Changes',exact:true}).click();await guideErrorEvidence(await staleAck,409,'CONFLICT','Guide changed; reload and retry');
+   await expect(modal).toBeVisible();await expect(modal.getByRole('textbox')).toHaveValue(draft);await expect(page.getByText('Guide changed; reload and retry',{exact:true})).toBeVisible();expect(await aggregate(first!.request,guide.id)).toEqual(changed);expect(await harness.observe()).toEqual(beforeConflict);
+   // Explicit user recovery: cancel the retained draft, reload, reopen, and submit
+   // the same original intent against the newly observed aggregate.
+   await modal.getByRole('button',{name:'Cancel',exact:true}).click();await reloadGuides(page);const recovered=await openNativeTip(page,section.blocks.timeline.morning[0].name,draft),fresh=await aggregate(first!.request,guide.id);expect(fresh).toEqual(changed);
+   const retryAck=sectionAcknowledgement(page,guide.id,section.id,tipCommand(fresh,section.id,draft));await recovered.getByRole('button',{name:'Save Changes',exact:true}).click();const saved=guideAggregateDtoSchema.parse((await browserBody(await retryAck)).guide);expect(saved).toEqual({...fresh,revision:saved.revision,sections:[{...fresh.sections[0],blocks:tipCommand(fresh,section.id,draft).blocks,updatedAt:saved.sections[0].updatedAt}]});expect(saved.revision).toBeGreaterThan(fresh.revision);await expect(page.getByRole('heading',{name:'Edit Tip',exact:true})).toHaveCount(0);await expect(page.getByRole('heading',{level:1,name:guide.title,exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'+ Add Day/Stop',exact:true})).toBeVisible();await reloadGuides(page);expect(await aggregate(first!.request,guide.id)).toEqual(saved);
+   // Canonical authorization probes have no corresponding native UI: wrong
+   // guide section, foreign guide owner, and missing section are indistinguishable.
+   const unchanged:Observation=await harness.observe(),command=tipCommand(saved,section.id,draft),siblingSection=manifest.sections.find(s=>s.collectionId===sibling.id)!;
+   for(const [id,sectionId] of [[guide.id,siblingSection.id],[foreign.id,section.id],[guide.id,randomUUID()]])await consume(await first!.request.patch(`${base}/collections/${id}/guide/sections/${sectionId}`,{headers:{Origin:origin,'Idempotency-Key':randomUUID()},data:command}),r=>guideErrorEvidence(r,404,'NOT_FOUND','Resource unavailable'));
+   expect(await harness.observe()).toEqual(unchanged);
+  });
+  await settleGuidesBootstrap(page);await settleGuidesBootstrap(other);await harness.closeContext(first);first=undefined;await harness.closeContext(second);second=undefined;await harness.retire();completed=true;
+ }finally{if(!completed){const closed=await Promise.allSettled([first,second].filter((c):c is BrowserContext=>!!c).map(c=>harness.closeContext(c)));await harness.fail();if(closed.some(r=>r.status==='rejected'))throw Error('Guides source case containment failed');}}
+});
 
