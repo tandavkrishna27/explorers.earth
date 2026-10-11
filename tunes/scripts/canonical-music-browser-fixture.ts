@@ -16,6 +16,7 @@ import { checkMusicDatabaseReadiness, type MusicDatabaseReadiness } from '../ser
 import { createExplorersAuth, resolveExplorersAuthConfig } from '../server/auth/betterAuth';
 import { ensureInitialAccount } from '../server/auth/initialAccount';
 import { extractProtectedReceiptArguments, createProtectedReceipt, stopProtectedChild, waitProtectedChild } from './protected-browser-receipt';
+import { createMusicBoundaryDiagnostic, musicBoundaryError, watchMusicViteReadiness } from './music-boundary-diagnostic';
 
 const root = resolve(import.meta.dirname, '../..'), tunes = join(root, 'tunes'), frontend = join(root, 'explorers-earth');
 const pinnedNode = process.execPath;
@@ -23,10 +24,10 @@ type Owner = { userId: string; accountId: string; handle: string; cookie: string
 const databaseDeadline = 35000;
 function bounded<T>(operation: Promise<T>, milliseconds: number, signal?: AbortSignal): Promise<T> {
   return new Promise((done, reject) => {
-    const abort = () => finish(() => reject(new Error('Owned operation interrupted')));
-    const timer = setTimeout(() => finish(() => reject(new Error('Owned operation deadline exceeded'))), milliseconds);
+    const abort = () => finish(() => reject(musicBoundaryError('interrupted')));
+    const timer = setTimeout(() => finish(() => reject(musicBoundaryError('timeout'))), milliseconds);
     const finish = (complete: () => void) => { clearTimeout(timer); signal?.removeEventListener('abort', abort); complete(); };
-    operation.then(value => finish(() => done(value)), () => finish(() => reject(new Error('Owned operation failed'))));
+    operation.then(value => finish(() => done(value)), () => finish(() => reject(musicBoundaryError('operation-failed'))));
     if (signal?.aborted) abort(); else signal?.addEventListener('abort', abort, { once: true });
   });
 }
@@ -48,6 +49,9 @@ async function closePool(pool: pg.Pool | undefined, clients: Set<pg.PoolClient>)
   }
 }
 async function privateChild(kind: 'music' | 'canonical') {
+  let shutdown: (() => Promise<void>) | undefined;
+  let step: 'private-initialization' | 'music-profile' | 'music-production-start' | 'canonical-production-start' = 'private-initialization';
+  try {
   if (!process.send || !process.connected || process.argv.length !== 4) throw new Error('Private child custody missing');
   const initialization = await new Promise<any>(done => process.once('message', done));
   if (initialization?.action !== 'initialize' || !/^[a-f0-9]{64}$/.test(initialization.capability)) throw new Error('Private child initialization rejected');
@@ -66,14 +70,15 @@ async function privateChild(kind: 'music' | 'canonical') {
     if (provider === 'oversized') return new Response(JSON.stringify({ items: [], overflow: 'x'.repeat(140000) }));
     return Response.json({ items: [{ id: { videoId: 'fixture0001' }, snippet: { title: 'Owned provider result', channelTitle: 'Owned provider', thumbnails: { default: { url: 'https://music-fixture.test/thumb.png' } } } }] });
   };
-  let shutdown: (() => Promise<void>) | undefined;
-  try {
     if (kind === 'music') {
+      step = 'music-profile';
       const { validateOwnedBrowserMusicProfile } = await import('../server/config/music-owned-browser-profile');
       const profile = await validateOwnedBrowserMusicProfile(process.env, initialization.markerPath, initialization.capability);
+      step = 'music-production-start';
       const { startMusicServer } = await import('../server/config/music-startup');
       shutdown = (await startMusicServer(process.env, { apiOnly: true }, profile)).shutdown;
     } else {
+      step = 'canonical-production-start';
       const { startCanonicalServer } = await import('../server/auth/canonicalStartup');
       shutdown = (await startCanonicalServer(process.env, { host: '127.0.0.1' })).shutdown;
     }
@@ -89,7 +94,7 @@ async function privateChild(kind: 'music' | 'canonical') {
       } catch { process.send!({ action: 'failed', requestId: message.requestId }); }
     });
     process.once('disconnect', () => { void shutdown?.().finally(() => process.exit(0)); });
-  } catch { await shutdown?.().catch(() => undefined); process.send?.({ action: 'startup-failed', kind }); process.exitCode = 1; process.disconnect(); }
+  } catch { await shutdown?.().catch(() => undefined); process.send?.({ action: 'startup-failed', kind, step }); process.exitCode = 1; if (process.connected) process.disconnect(); }
 }
 async function freePort(min: number, max: number) {
   for (let attempt = 0; attempt < 150; attempt++) {
@@ -123,19 +128,41 @@ async function boundedStop(child: ChildProcess | undefined) {
   }
 }
 type ChildOutcome = { kind: 'music' | 'canonical'; pid: number; startedAt: string; stoppedAt?: string; exitCode?: number | null; signal?: NodeJS.Signals | null };
-async function launch(kind: 'music' | 'canonical', environment: NodeJS.ProcessEnv, markerPath: string, capability: string, registry: ChildProcess[], outcomes: ChildOutcome[]) {
+async function launch(kind: 'music' | 'canonical', environment: NodeJS.ProcessEnv, markerPath: string, capability: string, registry: ChildProcess[], outcomes: ChildOutcome[], diagnostic: ReturnType<typeof createMusicBoundaryDiagnostic>) {
   const child = spawn(pinnedNode, ['--import', 'tsx', resolve(import.meta.filename), '--private-child', kind], { cwd: tunes, windowsHide: true, stdio: ['ignore', 'ignore', 'ignore', 'ipc'], env: environment });
   registry.push(child);
   const outcome: ChildOutcome = { kind, pid: child.pid ?? 0, startedAt: new Date().toISOString() }; outcomes.push(outcome);
   child.once('exit', (exitCode, signal) => Object.assign(outcome, { stoppedAt: new Date().toISOString(), exitCode, signal }));
   await new Promise<void>((done, reject) => {
-    const timer = setTimeout(() => reject(new Error(`Owned ${kind} startup timed out`)), 60000);
-    child.once('error', () => { clearTimeout(timer); reject(new Error(`Owned ${kind} spawn failed`)); });
-    child.once('exit', () => { clearTimeout(timer); reject(new Error(`Owned ${kind} exited before readiness`)); });
-    child.on('message', (message: any) => { if (message?.action === 'ready') { clearTimeout(timer); done(); } else if (message?.action === 'startup-failed') { clearTimeout(timer); reject(new Error(`Owned ${kind} production startup failed`)); } });
-    child.send!({ action: 'initialize', markerPath, capability }, error => { if (error) { clearTimeout(timer); reject(new Error(`Owned ${kind} IPC initialization failed`)); } });
+    let settled = false;
+    const fail = (error: Error) => { if (settled) return; settled = true; clearTimeout(timer); diagnostic.capture(error); reject(error); };
+    const timer = setTimeout(() => fail(musicBoundaryError('timeout')), 60000);
+    child.once('error', () => fail(musicBoundaryError('spawn-failed')));
+    child.once('exit', (status, signal) => fail(musicBoundaryError(signal ? 'child-signal' : status !== null && status !== 0 ? 'child-nonzero' : 'child-exit')));
+    child.on('message', (message: any) => { if (settled) return; if (message?.action === 'ready') { settled = true; clearTimeout(timer); done(); } else if (message?.action === 'startup-failed') {
+      clearTimeout(timer);
+      if (message.kind === kind && message.step === 'private-initialization') diagnostic.enter('startup', 'private-initialization');
+      else if (message.kind === kind && kind === 'music' && message.step === 'music-profile') diagnostic.enter('startup', 'music-profile');
+      else if (message.kind === kind && kind === 'music' && message.step === 'music-production-start') diagnostic.enter('startup', 'music-production-start');
+      else if (message.kind === kind && kind === 'canonical' && message.step === 'canonical-production-start') diagnostic.enter('startup', 'canonical-production-start');
+      fail(musicBoundaryError('startup-refused'));
+    } });
+    child.send!({ action: 'initialize', markerPath, capability }, error => { if (error) fail(musicBoundaryError('ipc-failed')); });
   });
   return child;
+}
+async function awaitVite(vite: ChildProcess, browserOrigin: string, continuing: () => void, diagnostic: ReturnType<typeof createMusicBoundaryDiagnostic>) {
+  await watchMusicViteReadiness(vite, async assertHealthy => {
+    for (let attempt = 0; ; attempt++) {
+      assertHealthy(); continuing(); assertHealthy();
+      let ready = false;
+      try { ready = (await fetch(browserOrigin, { signal: AbortSignal.timeout(1000) })).ok; } catch { }
+      assertHealthy();
+      if (ready) break;
+      if (attempt === 120) throw musicBoundaryError(vite.signalCode ? 'child-signal' : vite.exitCode !== null ? vite.exitCode !== 0 ? 'child-nonzero' : 'child-exit' : 'timeout');
+      await new Promise(done => setTimeout(done, 250));
+    }
+  }, diagnostic);
 }
 async function main() {
   const args = extractProtectedReceiptArguments(process.argv.slice(2));
@@ -153,49 +180,69 @@ async function main() {
   const secretFiles: string[] = [], children: ChildProcess[] = [], failures: string[] = [];
   const outcomes: ChildOutcome[] = [];
   const databaseClients = new Set<pg.PoolClient>(), controlConnections = new Set<NetworkSocket>(), cancellation = new AbortController();
+  const diagnostic = createMusicBoundaryDiagnostic();
   let schema: MusicDatabaseReadiness | undefined, topologyTransport: Record<string, string> | undefined, verifiedRuntimeRole: string | undefined;
   let phase: 'startup' | 'discovery' | 'execution' | 'cleanup' = 'startup', qualificationFailed = false, browserSucceeded = false;
   let authority: OwnedUatDatabaseAuthority | undefined, migrator: pg.Pool | undefined, runtime: pg.Pool | undefined, controlServer: ReturnType<typeof createHttpServer> | undefined, vite: ChildProcess | undefined, browser: ChildProcess | undefined, interrupted = false;
   const secret = (name: string) => { const file = join(disposable, name); privateWrite(file, randomBytes(32).toString('base64url')); secretFiles.push(file); return file; };
   const stop = () => { interrupted = true; cancellation.abort(); browser?.kill(); for (const child of children) child.kill(); vite?.kill(); for (const connection of controlConnections) connection.destroy(); for (const client of [...databaseClients]) { try { client.release(true); } catch { } } };
-  const continuing = () => { if (interrupted) throw new Error('Owned Music qualification interrupted'); unchanged(); };
+  const continuing = () => { if (interrupted) throw musicBoundaryError('interrupted'); unchanged(); };
   const setup = <T>(operation: Promise<T>, milliseconds = databaseDeadline) => bounded(operation, milliseconds, cancellation.signal);
   process.once('SIGINT', stop); process.once('SIGTERM', stop);
   try {
     continuing();
+    diagnostic.enter('startup', 'private-directory');
     if (process.platform === 'win32') execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', join(tunes, 'scripts/music-local-private-files.ps1'), 'create-directory', disposable], { windowsHide: true, stdio: 'ignore' });
     else mkdirSync(disposable, { mode: 0o700 });
+    diagnostic.complete(); diagnostic.enter('startup', 'ports');
     const pgPort = await freePort(56000, 60999), canonicalPort = await freePort(54000, 54999), musicPort = await freePort(55000, 55999), webPort = await freePort(52000, 52999), controlPort = await freePort(51000, 51999);
     const browserOrigin = `http://127.0.0.1:${webPort}`, controlOrigin = `http://127.0.0.1:${controlPort}`;
+    diagnostic.complete(); diagnostic.enter('startup', 'secrets');
     const migratorPasswordFile = secret('migrator-password'), runtimePasswordFile = secret('runtime-password'), tokenSecretFile = secret('token-secret'), capabilityFile = join(disposable, 'capability'); privateWrite(capabilityFile, capability);
     const migratorPassword = await readSecureMusicSecretFile(migratorPasswordFile, { mode: 'live' }), runtimePassword = await readSecureMusicSecretFile(runtimePasswordFile, { mode: 'live' });
+    diagnostic.complete(); diagnostic.enter('startup', 'database-start');
     continuing(); authority = await startOwnedUatDatabase({ runId, database: `music_uat_${runId}`, commit, port: pgPort, passwordFile: migratorPasswordFile }); continuing();
+    diagnostic.complete(); diagnostic.enter('startup', 'migrator-pool');
     const migratorUrl = `postgresql://music_migrator:${migratorPassword}@127.0.0.1:${pgPort}/${authority.database}`;
-    migrator = ownedPool(migratorUrl, databaseClients); await setup(migrateMusicDatabase(migrator), 120000); continuing();
+    migrator = ownedPool(migratorUrl, databaseClients); diagnostic.complete(); diagnostic.enter('startup', 'migration'); await setup(migrateMusicDatabase(migrator), 120000); continuing();
+    diagnostic.complete(); diagnostic.enter('startup', 'runtime-login');
     const runtimeRole = `music_browser_${runId.slice(0, 12)}`;
     await setup(provisionMusicRuntimeLogin(migrator, { loginRole: runtimeRole, password: runtimePassword }, { ownershipComment: `music-browser:${runId}:${commit}` })); continuing();
+    diagnostic.complete(); diagnostic.enter('startup', 'runtime-pool');
     runtime = ownedPool(`postgresql://${runtimeRole}:${runtimePassword}@127.0.0.1:${pgPort}/${authority.database}`, databaseClients);
+    diagnostic.complete(); diagnostic.enter('startup', 'runtime-verification');
     await setup(verifyMusicRuntimeLogin(migrator, runtime, { loginRole: runtimeRole })); continuing();
-    schema = await setup(checkMusicDatabaseReadiness(runtime)); if (!schema.ready) throw new Error('Owned runtime schema is not ready'); verifiedRuntimeRole = runtimeRole; continuing();
+    diagnostic.complete(); diagnostic.enter('startup', 'schema-readiness');
+    schema = await setup(checkMusicDatabaseReadiness(runtime)); if (!schema.ready) throw musicBoundaryError('readiness-refused'); verifiedRuntimeRole = runtimeRole; continuing();
+    diagnostic.complete(); diagnostic.enter('startup', 'auth-config');
     topologyTransport = { browserOrigin, canonicalOrigin: `http://127.0.0.1:${canonicalPort}`, musicOrigin: `http://127.0.0.1:${musicPort}`, logicalMusicOrigin: 'https://music-fixture.test', socketPath: '/__localtunes/ws' };
     const authSecret = randomBytes(32).toString('base64url');
     const authConfig = resolveExplorersAuthConfig({ EXPLORERS_PUBLIC_ORIGIN: browserOrigin, EXPLORERS_AUTH_SECRET: authSecret, GOOGLE_CLIENT_ID: 'owned-google-fixture', GOOGLE_CLIENT_SECRET: 'owned-google-fixture-only' });
-    const auth = createExplorersAuth(runtime, authConfig), authContext = await setup(auth.$context); continuing();
+    const auth = createExplorersAuth(runtime, authConfig); diagnostic.complete(); diagnostic.enter('startup', 'auth-context'); const authContext = await setup(auth.$context); continuing(); diagnostic.complete();
     async function issueSession(owner: Omit<Owner, 'cookie'>): Promise<Owner> { continuing(); const session = await setup(authContext.internalAdapter.createSession(owner.userId, false)); continuing(); const signature = createHmac('sha256', authSecret).update(session.token).digest('base64'); return { ...owner, cookie: `${authContext.authCookies.sessionToken.name}=${session.token}.${signature}` }; }
     const owners: Owner[] = [];
     for (let n = 0; n < 48; n++) {
       continuing();
       const userId = `music-browser-${randomUUID()}`, handle = `music${runId.slice(0, 8)}${n}`;
+      diagnostic.enter('startup', 'owner-user');
       await setup(migrator.query('INSERT INTO auth_user(id,name,email) VALUES($1,$2,$3)', [userId, `Owned Music ${n}`, `${userId}@example.invalid`])); continuing();
+      diagnostic.complete(); diagnostic.enter('startup', 'owner-account');
       await setup(migrator.query("INSERT INTO auth_account(id,account_id,provider_id,user_id,updated_at) VALUES($1,$2,'google',$3,now())", [randomUUID(), `google-${userId}`, userId])); continuing();
+      diagnostic.complete(); diagnostic.enter('startup', 'owner-initial-account');
       const { accountId } = await setup(ensureInitialAccount(runtime, userId)); continuing();
+      diagnostic.complete(); diagnostic.enter('startup', 'owner-profile');
       await setup(migrator.query("UPDATE creator_accounts SET handle=$2,display_name=$3,account_type='Creator',onboarding_status='complete',public_profile=true WHERE id=$1", [accountId, handle, `Owned Music ${n}`])); continuing();
+      diagnostic.complete(); diagnostic.enter('startup', 'owner-session');
       owners.push(await issueSession({ userId, accountId, handle }));
+      diagnostic.complete();
     }
+    diagnostic.enter('startup', 'environment');
     const environment: NodeJS.ProcessEnv = { ...contract.childNodeEnvironment(process.env), NODE_ENV: 'test', TZ: 'UTC', PORT: String(musicPort), EXPLORERS_PUBLIC_ORIGIN: browserOrigin, EXPLORERS_AUTH_SECRET: authSecret, GOOGLE_CLIENT_ID: authConfig.googleClientId, GOOGLE_CLIENT_SECRET: authConfig.googleClientSecret, MUSIC_MODE: 'fixture', MUSIC_DATABASE_HOST: '127.0.0.1', MUSIC_DATABASE_PORT: String(pgPort), MUSIC_DATABASE_NAME: authority.database, MUSIC_DATABASE_USER: runtimeRole, MUSIC_DATABASE_MIGRATOR_USER: 'music_migrator', MUSIC_DATABASE_PASSWORD_FILE: runtimePasswordFile, MUSIC_TOKEN_CURRENT_KID: `owned-${runId}`, MUSIC_TOKEN_CURRENT_SECRET_FILE: tokenSecretFile, MUSIC_TOKEN_LIFETIME_SECONDS: '600', MUSIC_TOKEN_CLOCK_SKEW_SECONDS: '0', MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: 'fixture-publication-v1', MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY: 'fHVy90h-cc6NG5lHj0Q_P8Gpg_HBwSp0reMX9lu19zI', MUSIC_PUBLIC_ID_HMAC_KEY: 'VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ', SESSION_SECRET: randomBytes(32).toString('base64url'), COOKIE_SECRET: randomBytes(32).toString('base64url'), STRAPI_JWT_SECRET: randomBytes(32).toString('base64url'), ALLOWED_ORIGINS: browserOrigin, STRAPI_URL: controlOrigin, MUSIC_FIXTURE_STRAPI_ORIGIN: controlOrigin, STRAPI_ACCESS_TOKEN: 'fixture-read-only-token', STRAPI_LIFECYCLE_PROOF_TOKEN: 'fixture-read-only-token', TRUST_PROXY_HOPS: '0', YOUTUBE_API_KEY: 'fixture-provider-key', MUSIC_PROVISIONING_KILL_SWITCH: 'true', MUSIC_PROVISIONING_COHORT: 'disabled', MUSIC_NEW_ENTRY_KILL_SWITCH: 'true', MUSIC_RECONCILIATION_ENABLED: 'false', MUSIC_RECONCILIATION_MAX_ROWS: '0', MUSIC_RECONCILIATION_APPLY_ENABLED: 'false', MUSIC_WORKSPACE_KILL_SWITCH: 'false', MUSIC_FEATURE_OWNER_WORKSPACE_ALLOWLIST: owners.map(value => value.accountId).join(','), MUSIC_FEATURE_GUEST_WORKSPACE_ALLOWLIST: owners.map(value => value.accountId).join(','), MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: '0', MUSIC_FEATURE_GUEST_WORKSPACE_PERCENT: '0', MUSIC_FEATURE_PLAYLIST_IMPORTS_ALLOWLIST: '', MUSIC_FEATURE_PLAYLIST_IMPORTS_PERCENT: '0', MUSIC_FEATURE_COHORT_VERSION: `owned-browser-${runId}`, MUSIC_FEATURE_COHORT_SALT: runId, MUSIC_FIXTURE_SKIP_ANALYTICS_SCHEMA_DDL: 'true', MUSIC_FIXTURE_ANALYTICS_SCHEMA_MARKER: 'explorers-analytics-receipts-v1' };
     const markerPath = join(disposable, 'startup-marker.json');
+    diagnostic.complete(); diagnostic.enter('startup', 'startup-marker');
     privateWrite(markerPath, { version: 1, root, runId, commit, provenance: createHash('sha256').update(JSON.stringify(provenance)).digest('hex'), authority: { database: authority.database, port: authority.port, containerId: authority.containerId, imageId: authority.imageId }, runtimeRole, runtimePasswordFile, migratorPasswordFile, tokenSecretFile, capabilityFile, browserOrigin, canonicalPort, musicPort, accounts: owners.map(value => value.accountId), environment });
     let next = 0, activeCase: { id: string; owner: Owner; second: Owner } | undefined;
+    diagnostic.complete(); diagnostic.enter('startup', 'control-server');
     let musicChild: ChildProcess | undefined, canonicalChild: ChildProcess | undefined;
     controlServer = createHttpServer(async (request, response) => {
       try {
@@ -234,18 +281,27 @@ async function main() {
     controlServer.requestTimeout = 5000; controlServer.headersTimeout = 5000; controlServer.keepAliveTimeout = 1000;
     controlServer.on('connection', connection => { controlConnections.add(connection); connection.setTimeout(5000, () => connection.destroy()); connection.once('close', () => controlConnections.delete(connection)); });
     await setup(new Promise<void>((done, reject) => { controlServer!.once('error', reject); controlServer!.listen(controlPort, '127.0.0.1', done); }), 5000); continuing();
-    continuing(); musicChild = await launch('music', environment, markerPath, capability, children, outcomes); continuing();
-    canonicalChild = await launch('canonical', { ...environment, PORT: String(canonicalPort) }, markerPath, capability, children, outcomes); continuing();
+    diagnostic.complete(); diagnostic.enter('startup', 'music-launch');
+    continuing(); musicChild = await launch('music', environment, markerPath, capability, children, outcomes, diagnostic); continuing();
+    diagnostic.complete(); diagnostic.enter('startup', 'canonical-launch');
+    canonicalChild = await launch('canonical', { ...environment, PORT: String(canonicalPort) }, markerPath, capability, children, outcomes, diagnostic); continuing();
+    diagnostic.complete(); diagnostic.enter('startup', 'session-file');
     const fixturePath = join(disposable, 'sessions.json'); privateWrite(fixturePath, { origin: browserOrigin, musicOrigin: `http://127.0.0.1:${musicPort}`, control: { origin: controlOrigin, capability }, sessionSeam: 'better-auth-internal-adapter' });
+    diagnostic.complete(); diagnostic.enter('startup', 'vite-launch');
     vite = spawn(pinnedNode, [join(frontend, 'node_modules/vite/bin/vite.js'), '--config', 'e2e/replatform/music.vite.config.ts'], { cwd: frontend, windowsHide: true, stdio: 'ignore', env: { ...process.env, PATH: environment.PATH, MUSIC_E2E_LOCAL_AUTHORITY: 'owned-disposable-pg15', MUSIC_E2E_WEB_PORT: String(webPort), MUSIC_E2E_CANONICAL_PORT: String(canonicalPort), MUSIC_E2E_MUSIC_PORT: String(musicPort) } });
-    for (let attempt = 0; ; attempt++) { continuing(); try { if ((await fetch(browserOrigin, { signal: AbortSignal.timeout(1000) })).ok) break; } catch { } if (attempt === 120) throw new Error('Owned Music web startup failed'); await new Promise(done => setTimeout(done, 250)); }
+    diagnostic.complete(); diagnostic.enter('startup', 'vite-readiness');
+    await awaitVite(vite, browserOrigin, continuing, diagnostic);
+    diagnostic.complete();
     const browserEnvironment = { ...process.env, PATH: environment.PATH, MUSIC_E2E_FIXTURE_PATH: fixturePath, PLAYWRIGHT_EXTERNAL_BASE_URL: browserOrigin };
     const browserArguments = receipt.arguments(['--config', 'e2e/replatform/music.playwright.config.ts', '--workers=1', '--retries=0', '--forbid-only'], disposable);
-    continuing(); phase = 'discovery'; receipt.discovery(frontend, browserArguments, browserEnvironment, disposable); continuing(); phase = 'execution';
+    continuing(); phase = 'discovery'; diagnostic.enter('discovery', 'browser-discovery'); receipt.discovery(frontend, browserArguments, browserEnvironment, disposable); continuing(); diagnostic.complete(); phase = 'execution'; diagnostic.enter('execution', 'browser-launch');
     browser = spawn(pinnedNode, [join(frontend, 'node_modules/@playwright/test/cli.js'), 'test', ...browserArguments, '--reporter=json,line'], { cwd: frontend, windowsHide: true, stdio: 'ignore', env: receipt.executionEnvironment(browserEnvironment, disposable) });
-    const result = await new Promise<{status: number | null; signal: NodeJS.Signals | null}>((done, reject) => { const deadline = setTimeout(() => { browser!.kill(); reject(new Error('Owned browser deadline exceeded')); }, 60 * 60 * 1000); browser!.once('error', () => { clearTimeout(deadline); reject(new Error('Owned browser launch failed')); }); browser!.once('exit', (status, signal) => { clearTimeout(deadline); done({status, signal}); }); });
-    receipt.execution(result.status, result.signal, disposable); browserSucceeded = result.status === 0 && result.signal === null; unchanged();
-  } catch { qualificationFailed = true; }
+    diagnostic.complete(); diagnostic.enter('execution', 'browser-exit');
+    const result = await new Promise<{status: number | null; signal: NodeJS.Signals | null}>((done, reject) => { const deadline = setTimeout(() => { browser!.kill(); reject(musicBoundaryError('timeout')); }, 60 * 60 * 1000); browser!.once('error', () => { clearTimeout(deadline); reject(musicBoundaryError('spawn-failed')); }); browser!.once('exit', (status, signal) => { clearTimeout(deadline); done({status, signal}); }); });
+    if (result.status !== 0 || result.signal !== null) diagnostic.capture(musicBoundaryError(result.signal ? 'child-signal' : result.status !== null && result.status !== 0 ? 'child-nonzero' : 'child-exit'));
+    diagnostic.complete(); diagnostic.enter('execution', 'browser-receipt');
+    receipt.execution(result.status, result.signal, disposable); browserSucceeded = result.status === 0 && result.signal === null; unchanged(); diagnostic.complete();
+  } catch (error) { diagnostic.capture(error); qualificationFailed = true; }
   finally {
     try { await boundedStop(browser); } catch { failures.push('browser'); }
     try { await boundedStop(vite); } catch { failures.push('vite'); }
@@ -257,11 +313,11 @@ async function main() {
     process.off('SIGINT', stop); process.off('SIGTERM', stop);
   }
   if (failures.length) phase = 'cleanup';
-  try { if (authority && !failures.length && !interrupted && phase === 'execution') {
+  try { diagnostic.enter('cleanup', 'receipt-finish'); if (authority && !failures.length && !interrupted && phase === 'execution') {
     if (!qualificationFailed && browserSucceeded && schema?.ready && verifiedRuntimeRole && topologyTransport) receipt.topology({ version: 1, lane: 'music', provenance, authority: { database: authority.database, containerId: authority.containerId, imageId: authority.imageId }, runtime: { role: verifiedRuntimeRole, migratorRole: 'music_migrator', verified: true }, schema, transport: topologyTransport, children: ['canonical', 'music'].map(kind => outcomes.find(item => item.kind === kind)), seams: { session: 'better-auth-internal-adapter', provider: 'guarded-youtube-transport', clock: 'virtual-date-now-601000ms' }, cleanup: { status: 'passed' } });
     receipt.finish(authority, failures, interrupted);
-  } else qualificationFailed = true; } catch { qualificationFailed = true; }
-  if (qualificationFailed || failures.length || interrupted) { receipt.failure(phase, [...new Set(failures)], interrupted); process.stderr.write('Owned Music qualification failed; sanitized evidence retained\n'); process.exitCode = 1; }
+  } else qualificationFailed = true; } catch (error) { diagnostic.capture(error); qualificationFailed = true; }
+  if (qualificationFailed || failures.length || interrupted) { const line = diagnostic.line(); if (line) process.stderr.write(`${line}\n`); receipt.failure(phase, [...new Set(failures)], interrupted); process.stderr.write('Owned Music qualification failed; sanitized evidence retained\n'); process.exitCode = 1; }
 }
 if (process.argv[2] === '--private-child') {
   const kind = process.argv[3]; if (kind !== 'music' && kind !== 'canonical') throw new Error('Unknown private child'); await privateChild(kind);

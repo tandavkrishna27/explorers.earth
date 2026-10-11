@@ -339,6 +339,8 @@ export function snapshotSource(root){
  git(['ls-files','--error-unmatch',appsAdmission]);
  const appsCustody='tunes/scripts/apps-private-custody.ts';
  git(['ls-files','--error-unmatch',appsCustody]);
+ const musicDiagnostic='tunes/scripts/music-boundary-diagnostic.ts';
+ git(['ls-files','--error-unmatch',musicDiagnostic]);
  // Exact tracked Guides graph derived from static and literal dynamic AST imports;
  // include the separately executed Windows Job script in the same source authority.
  const guidesSources=['guides-browser-fixture.ts','guides-browser-support.ts','guides-fixture-host.ts','guides-parent-supervision.ts','guides-provider-fixture.ts','guides-resource-worker.ts','music-local-state.ts','guides-windows-job.ps1'].map(name=>`tunes/scripts/${name}`);
@@ -349,7 +351,7 @@ export function snapshotSource(root){
  const dependencies=new Set([...paths,...authority,...frontendRoot,...guidesSources]);
  // Follow relative source imports from the runner/helper roots, including additions
  // ignored by Git. Every resolved dependency must be tracked or an explicit overlay.
- const reviewed=new Set([...tracked,...frontendRoot,...authority,placesHelper,appsHelper,appsRunner,appsAdmission,appsCustody,...guidesSources]);
+ const reviewed=new Set([...tracked,...frontendRoot,...authority,placesHelper,appsHelper,appsRunner,appsAdmission,appsCustody,musicDiagnostic,...guidesSources]);
  const overlay=new Set(['tunes/scripts/profile-browser-fixture.ts','tunes/scripts/books-browser-fixture.ts','tunes/scripts/movies-browser-fixture.ts','tunes/scripts/games-browser-fixture.ts','tunes/scripts/canonical-music-browser-fixture.ts','tunes/scripts/protected-browser-receipt.ts','tunes/scripts/lifecycle-browser-support.ts','tunes/scripts/lifecycle-browser-guards.ts']);
  const queue=[...authority,...overlay,appsHelper,appsRunner,appsAdmission,appsCustody,...guidesSources];const scanned=new Set();
  while(queue.length){const path=queue.pop();if(scanned.has(path)||! /\.(?:[cm]?js|tsx?)$/.test(path))continue;scanned.add(path);
@@ -375,6 +377,25 @@ export function capturedChild(executable,args,cwd,env,capability,abortSignal){
  const append=(stream,chunk)=>{if(overflow)return;const next=(stream==='out'?stdout:stderr)+chunk;if(Buffer.byteLength(next)>8*1024*1024){overflow=true;error='Child output overflow';cancel('SIGTERM');return;}if(stream==='out')stdout=next;else stderr=next;};
  child.stdout.on('data',chunk=>append('out',chunk));child.stderr.on('data',chunk=>append('err',chunk));child.once('error',()=>error='Child could not start');child.once('close',(status,signal)=>{process.removeListener('SIGINT',onInterrupt);process.removeListener('SIGTERM',onTerminate);abortSignal?.removeEventListener('abort',onTerminate);done({status,signal:requestedSignal??signal,error,stdout,stderr});});
  });
+}
+const musicBoundaryStartupSteps=['initialization','private-directory','private-initialization','ports','secrets','database-start','migrator-pool','migration','runtime-login','runtime-pool','runtime-verification','schema-readiness','auth-config','auth-context','owner-user','owner-account','owner-initial-account','owner-profile','owner-session','environment','startup-marker','control-server','music-launch','music-profile','music-production-start','canonical-launch','canonical-production-start','session-file','vite-launch','vite-readiness'];
+const musicBoundaryPhaseSteps={startup:musicBoundaryStartupSteps,discovery:['browser-discovery'],execution:['browser-launch','browser-exit','browser-receipt'],cleanup:['receipt-finish']};
+const musicBoundaryCauses=['unknown','timeout','interrupted','operation-failed','spawn-failed','child-nonzero','child-exit','child-signal','startup-refused','ipc-failed','readiness-refused'];
+export function decodeMusicBoundaryFailureLine(line){
+ if(typeof line!=='string'||Buffer.byteLength(line,'utf8')>512||/[\r\n]/.test(line))return undefined;
+ const match=/^Music boundary failed: phase=([a-z-]+) step=([a-z-]+) cause=([a-z-]+) completed=([a-z-]+)$/.exec(line);
+ if(!match||!Object.hasOwn(musicBoundaryPhaseSteps,match[1])||!musicBoundaryPhaseSteps[match[1]].includes(match[2])||!musicBoundaryCauses.includes(match[3])||!['none',...Object.values(musicBoundaryPhaseSteps).flat()].includes(match[4]))return undefined;
+ return {phase:match[1],step:match[2],cause:match[3],completed:match[4]};
+}
+export function retainMusicBoundaryFailure(record,child){
+ if(record.lane!=='music'||child.status===0)return undefined;
+ // Count every prefix occurrence, including malformed and embedded duplicates.
+ const stderr=child.stderr;if(typeof stderr!=='string'||stderr.split('Music boundary failed:').length!==2)return undefined;
+ const lines=stderr.split('\n');const index=lines.findIndex(line=>line.startsWith('Music boundary failed:'));
+ if(index<0||index===lines.length-1)return undefined;
+ const diagnostic=decodeMusicBoundaryFailureLine(lines[index]);if(!diagnostic)return undefined;
+ record.musicBoundaryFailure=diagnostic;
+ return `Music boundary failed: phase=${diagnostic.phase} step=${diagnostic.step} cause=${diagnostic.cause} completed=${diagnostic.completed}`;
 }
 /** Version 1 enum census: route0..18, method0..8, flags0..63,
  * nineteen sticky reason bits; global count counts unique reasons, not events. */
@@ -418,7 +439,8 @@ export async function main(args=process.argv.slice(2)){
    const selector=['auth','lifecycle','places','place-links','apps','guides'].includes(lane.name)?['--suite',lane.name]:[];
    const childArgs=['--import',pathToFileURL(join(root,'tunes/node_modules/tsx/dist/loader.mjs')).href,join(root,lane.runner),...selector,...suffix];
    const child=await capturedChild(process.execPath,childArgs,root,{...process.env},capability);const childRecord={lane:lane.name,status:child.status,signal:child.signal,error:child.error};children.push(childRecord);
-   if(child.status!==0){const diagnostics=child.stderr.split(/\r?\n/).filter(line=>Boolean(decodeAppsFixtureFailureLine(line))||/^(?:Error(?: \[[A-Z_]+\])?:|[^\n]*: ERROR:|(?:Profile|Books|Movies) E2E fixture failed:)/.test(line)).slice(0,3).map(line=>line.replaceAll(capability,'<owned-capability>').replace(/postgres(?:ql)?:\/\/\S+|(?:Bearer\s+)\S+|[A-Za-z0-9_-]{32,}/g,'<redacted>'));for(const line of diagnostics)process.stderr.write(`${lane.name}: ${line}\n`);}
+   const musicDiagnostic=retainMusicBoundaryFailure(childRecord,child);if(musicDiagnostic)process.stderr.write(`${lane.name}: ${musicDiagnostic}\n`);
+   if(lane.name!=='music'&&child.status!==0){const diagnostics=child.stderr.split(/\r?\n/).filter(line=>Boolean(decodeAppsFixtureFailureLine(line))||/^(?:Error(?: \[[A-Z_]+\])?:|[^\n]*: ERROR:|(?:Profile|Books|Movies) E2E fixture failed:)/.test(line)).slice(0,3).map(line=>line.replaceAll(capability,'<owned-capability>').replace(/postgres(?:ql)?:\/\/\S+|(?:Bearer\s+)\S+|[A-Za-z0-9_-]{32,}/g,'<redacted>'));for(const line of diagnostics)process.stderr.write(`${lane.name}: ${line}\n`);}
    const receiptPath=join(directory,'receipt.json');if(existsSync(receiptPath))child.receipt=JSON.parse(readFileSync(receiptPath,'utf8'));
    const lifecycleFailurePath=join(directory,'lifecycle-failure.json');if(existsSync(lifecycleFailurePath)){if(child.status===0)fail('Lifecycle failure cannot qualify a successful child');childRecord.lifecycleFailure=validateLifecycleFailureRecord(lane,JSON.parse(readFileSync(lifecycleFailurePath,'utf8')),source.provenance);}
    const failurePath=join(directory,'failure.json');if(existsSync(failurePath))childRecord.failure=validateFailureRecord(lane,JSON.parse(readFileSync(failurePath,'utf8')),source.provenance,child);
