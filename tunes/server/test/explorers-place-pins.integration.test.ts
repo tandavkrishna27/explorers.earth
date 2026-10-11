@@ -202,7 +202,7 @@ const databaseClock=async()=>((await admin.query('SELECT clock_timestamp() now')
   expect(await live(f)).toEqual(ids.map((id,position)=>({id,position})));expect((await versions(f,f.otherList)).collection).toBe(otherBefore.collection);await terminal(f,next.draftId,'committed');
  });
  it('replays the original staged commit after a lost response and retained draft removal',async()=>{
-  const f=await seed(3),P={...policy,policyId:'disposable-lost-commit-response-fixture',policyVersion:1,draftExpiryMs:60000,stagingRetentionMs:100,receiptRetentionMs:180000};
+  const f=await seed(3),P={...policy,policyId:'disposable-lost-commit-response-fixture',policyVersion:1,draftExpiryMs:1000,stagingRetentionMs:1500,receiptRetentionMs:180000};
   const replaceRequest:PlacePinsRequest={operation:'replacePlacePins',collectionId:f.list,body:{...await fences(f),orderedRecommendationIds:f.ids}},replaceKey=randomUUID();
   await command(f,replaceRequest,replaceKey,P);const beforeVersions=await versions(f),otherBefore=await versions(f,f.otherList),ids=[...f.ids].reverse();
   const beginRequest:PlacePinsRequest={operation:'beginPlacePinsDraft',collectionId:f.list,body:await fences(f)},beginKey=randomUUID(),draft=await command(f,beginRequest,beginKey,P);
