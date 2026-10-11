@@ -56,3 +56,14 @@ it('rejects case-equivalent UUID aliases in identities and references',()=>{
  expect(placesTaxonomyAssignmentSchema.safeParse({categoryTermId:id(1),subcategoryTermId:upper}).success).toBe(false);
  expect(taxonomyImportSchema.safeParse({...x,sourceMappings:[{...x.sourceMappings[0],termId:upper}]}).success).toBe(false);
 });
+
+import {createRecommendationSchema,updateRecommendationSchema} from '../../../shared/explorersContract';
+it('actual command inputs preserve omission and reject wrong category or incomplete selection',()=>{
+ const base={category:'places',entityId:id(90),collectionId:id(91),expectedCollectionRevision:1};
+ expect(createRecommendationSchema.parse(base)).not.toHaveProperty('placesTaxonomy');
+ expect(createRecommendationSchema.parse({...base,placesTaxonomy:{categoryTermId:null,subcategoryTermId:null}}).placesTaxonomy).toEqual({categoryTermId:null,subcategoryTermId:null});
+ expect(createRecommendationSchema.safeParse({...base,peopleSectorTermId:null}).success).toBe(false);
+ expect(createRecommendationSchema.safeParse({...base,category:'people',placesTaxonomy:{categoryTermId:null,subcategoryTermId:null}}).success).toBe(false);
+ expect(updateRecommendationSchema.parse({expectedRevision:1,peopleSectorTermId:null}).peopleSectorTermId).toBeNull();
+ expect(updateRecommendationSchema.safeParse({expectedRevision:1,placesTaxonomy:{categoryTermId:id(1)}}).success).toBe(false);
+});

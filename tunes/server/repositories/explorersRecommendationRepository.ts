@@ -1,3 +1,5 @@
+import {replaceTaxonomyAssignment} from './taxonomyAssignmentRepository';
+import type {TaxonomyAssignmentInput} from '../../shared/explorersTaxonomyContract';
 import {insertMovieDetails,readMovieEntity,writeMovieContext,readMovieContext,checkMovieContext,writeMovieTerms} from './movieCatalogRepository';
 import {movieDisplayFieldsSchema,movieDetailsSchema,emptyMovieDetails,resolveManualMovieSchema,type MovieContext} from '../../shared/explorersMovieContract';
 import { createHash } from 'node:crypto';
@@ -64,9 +66,20 @@ export class ExplorersRecommendationRepository {
   private async command<T>(accountId:string,operation:string,input:unknown,key:string,work:(db:PoolClient)=>Promise<T>):Promise<T> {
     if(!/^[A-Za-z0-9._~-]{8,200}$/.test(key)) throw new RecommendationFailure(422,'Idempotency key required');
     return this.transaction(async db=>{
+      // Catalog mutex precedes account locks, including existing assignment lifecycle commands.
+      const recommendationOperation=['updateRecommendation','archiveRecommendation','replaceRecommendationEntity'].includes(operation);
+      const addressed=input as {category?:ContentCategory;id?:string};
+      const observed=recommendationOperation?(await db.query('SELECT category FROM recommendations WHERE id=$1 AND account_id=$2',[addressed.id,accountId])).rows[0]:undefined;
+      if(recommendationOperation&&!observed)throw new RecommendationFailure(404,'Recommendation unavailable');
+      const taxonomyCategory=observed?.category??(operation==='createRecommendation'?addressed.category:undefined);
+      if(taxonomyCategory==='places'||taxonomyCategory==='people')await db.query('SELECT lock_explorers_taxonomy_catalog($1)',[taxonomyCategory]);
       // Matches lifecycle lock order; a suspended/deleted account cannot start content writes.
       const account=await db.query('SELECT status FROM creator_accounts WHERE id=$1 FOR UPDATE',[accountId]);
       if(account.rows[0]?.status!=='active') throw new RecommendationFailure(404,'Account unavailable');
+      if(recommendationOperation){
+        const current=(await db.query('SELECT category FROM recommendations WHERE id=$1 AND account_id=$2',[addressed.id,accountId])).rows[0];
+        if(!current||current.category!==observed.category)throw new RecommendationFailure(404,'Recommendation unavailable');
+      }
       const keyHash=hash(key),requestHash=hash(canonical(input));
       const prior=await db.query(`SELECT request_hash,response,status,replay_until>clock_timestamp() AS replayable
         FROM application_command_receipts WHERE account_id=$1 AND operation=$2 AND idempotency_key_hash=$3 FOR UPDATE`,[accountId,operation,keyHash]);
@@ -275,8 +288,9 @@ export class ExplorersRecommendationRepository {
     if(Number(result.rows[0].revision)!==revision) throw new RecommendationFailure(409,'Stale collection revision');
     return result.rows[0];
   }
-  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[];appScreenshots?:AppScreenshots;productOffer?:ProductOffer;placeContext?:PlaceRecommendationContext;placePhotos?:PlacePhotos},key:string):Promise<RecommendationRecord> {
+  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[];appScreenshots?:AppScreenshots;productOffer?:ProductOffer;placeContext?:PlaceRecommendationContext;placePhotos?:PlacePhotos}&TaxonomyAssignmentInput,key:string):Promise<RecommendationRecord> {
     return this.command(accountId,'createRecommendation',input,key,async db=>{
+      if(input.category!=='places'&&input.placesTaxonomy!==undefined||input.category!=='people'&&input.peopleSectorTermId!==undefined)throw new RecommendationFailure(422,'Category taxonomy mismatch');
       const list=await this.lockCollection(db,accountId,input.collectionId,input.expectedCollectionRevision);
       if(list.category!==input.category) throw new RecommendationFailure(422,'Collection category mismatch');
       const result=await db.query(`INSERT INTO recommendations(account_id,entity_id,category,user_rating,publication_state,note)
@@ -304,6 +318,7 @@ export class ExplorersRecommendationRepository {
       }
       if(input.placePhotos!==undefined) await writePlacePhotos(db,result.rows[0].id,accountId,input.placePhotos.photoMediaIds);
       if(input.category==='movies'&&(await db.query('SELECT 1 FROM movie_entity_details WHERE entity_id=$1',[input.entityId])).rows[0]){await writeMovieContext(db,result.rows[0].id,accountId,input.entityId,input.movieContext??{region:'US',selectedProviderIds:null});await writeMovieTerms(db,result.rows[0].id,accountId,input.entityId,input.movieTermIds);}
+      await replaceTaxonomyAssignment(db,result.rows[0].id,accountId,input.category,input);
       await this.replaceMedia(db,accountId,result.rows[0].id,input.mediaIds??[]);
       return this.recommendationRecord(db,result.rows[0]);
     });
@@ -437,7 +452,7 @@ export class ExplorersRecommendationRepository {
       return this.collectionRecord(db,{...result.rows[0],description:input.description===undefined?result.rows[0].description:input.description,heading:input.heading===undefined?result.rows[0].heading:input.heading});
     });
   }
-  async updateRecommendation(accountId:string,id:string,expectedRevision:number,input:{userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[];appScreenshots?:AppScreenshots;productOffer?:ProductOffer;placeContext?:PlaceRecommendationContext;placePhotos?:PlacePhotos},key:string):Promise<RecommendationRecord> {
+  async updateRecommendation(accountId:string,id:string,expectedRevision:number,input:{userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[];appScreenshots?:AppScreenshots;productOffer?:ProductOffer;placeContext?:PlaceRecommendationContext;placePhotos?:PlacePhotos}&TaxonomyAssignmentInput,key:string):Promise<RecommendationRecord> {
     if(input.userRating!==undefined&&input.userRating!==null&&(!Number.isInteger(input.userRating)||input.userRating<1||input.userRating>10))
       throw new RecommendationFailure(422,'Invalid rating');
     return this.command(accountId,'updateRecommendation',{id,expectedRevision,input},key,async db=>{
@@ -454,6 +469,7 @@ export class ExplorersRecommendationRepository {
       if(input.productOffer!==undefined) await writeProductOffer(db,id,accountId,input.productOffer);
       if(input.placeContext!==undefined) await writePlaceContext(db,id,accountId,input.placeContext);
       if(input.placePhotos!==undefined) await writePlacePhotos(db,id,accountId,input.placePhotos.photoMediaIds);
+      await replaceTaxonomyAssignment(db,id,accountId,locked.category,input);
       if(input.mediaIds!==undefined) await this.replaceMedia(db,accountId,id,input.mediaIds);
       return this.recommendationRecord(db,result.rows[0]);
     });

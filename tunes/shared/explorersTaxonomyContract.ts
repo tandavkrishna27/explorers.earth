@@ -56,3 +56,10 @@ export const placesTaxonomyAssignmentSchema=z.object({categoryTermId:identity.nu
 export const peopleSectorAssignmentSchema=identity.nullable();
 export type TaxonomyImport=z.infer<typeof taxonomyImportSchema>;
 export type TaxonomyTerm=z.infer<typeof taxonomyTermSchema>;
+
+export type PlacesTaxonomyAssignment=z.infer<typeof placesTaxonomyAssignmentSchema>;
+export type TaxonomyAssignmentInput={placesTaxonomy?:PlacesTaxonomyAssignment;peopleSectorTermId?:string|null};
+export const taxonomySelectionReadSchema=z.object({id:identity,slug,label:text(200).nullable(),unavailable:z.boolean()}).strict();
+const catalogRead={catalogState:z.enum(['CONFIGURED','UNCONFIGURED']),catalogVersion:z.number().int().nonnegative().safe(),defaultLocale:locale.nullable()};
+export const placesTaxonomyReadSchema=z.object({...catalogRead,category:taxonomySelectionReadSchema.nullable(),subcategory:taxonomySelectionReadSchema.nullable(),selectionUnavailable:z.boolean()}).strict();
+export const peopleSectorReadSchema=z.object({...catalogRead,sector:taxonomySelectionReadSchema.nullable(),selectionUnavailable:z.boolean()}).strict();
