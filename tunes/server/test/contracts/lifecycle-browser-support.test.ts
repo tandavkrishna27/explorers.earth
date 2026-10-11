@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createHmac } from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import { existsSync } from 'node:fs';
 import { GUIDES_CASES, GUIDES_PROJECTS, buildGuidesSeedPlan } from '../../../scripts/guides-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment, validateLifecycleControl, assertLifecycleResults, assertProviderCode, assertOwnedCleanup, classifyLifecycleRequest, LIFECYCLE_CASES, LIFECYCLE_FONT_QUERIES } from '../../../scripts/lifecycle-browser-guards';
@@ -152,47 +153,12 @@ describe('Guides parent job contract', () => {
     });
     it('imports the real parent through pinned tsImport with zero application effects and only the locked compiler allowance', () => {
         const root = fileURLToPath(new URL('../../../../', import.meta.url)).replace(/[\\/]$/, '');
-        const source = `
-import assert from 'node:assert/strict';
-import cp from 'node:child_process';
-import fs from 'node:fs';
-import fsp from 'node:fs/promises';
-import net from 'node:net';
-import tls from 'node:tls';
-import dgram from 'node:dgram';
-import http from 'node:http';
-import https from 'node:https';
-import {createRequire,syncBuiltinESMExports} from 'node:module';
-import {pathToFileURL} from 'node:url';
-import path from 'node:path';
-const root=${JSON.stringify(root)};
-const require=createRequire(path.join(root,'tunes/package.json'));
-const compiler=fs.realpathSync(path.join(root,'tunes/node_modules/tsx/node_modules/@esbuild/win32-x64/esbuild.exe'));
-assert.equal(require('./node_modules/tsx/node_modules/esbuild/package.json').version,'0.25.12');
-assert.equal(require('./node_modules/tsx/package.json').version,'4.21.0');
-let resourceCalls=0,toolCalls=0;
-const deny=()=>{resourceCalls++;throw Error('application import effect');};
-const spawn=cp.spawn;
-cp.spawn=(exe,args,options)=>{if(fs.realpathSync(exe)===compiler&&JSON.stringify(args)===JSON.stringify(['--service=0.25.12','--ping'])&&options?.shell!==true){toolCalls++;return spawn(exe,args,options);}return deny();};
-for(const key of ['spawnSync','exec','execSync','execFile','execFileSync','fork'])cp[key]=deny;
-for(const object of [fs,fsp])for(const key of ['mkdir','mkdirSync','mkdtemp','mkdtempSync','writeFile','writeFileSync','appendFile','appendFileSync','rename','renameSync','rm','rmSync','rmdir','rmdirSync','unlink','unlinkSync','truncate','truncateSync','chmod','chmodSync','chown','chownSync','link','linkSync','symlink','symlinkSync','copyFile','copyFileSync','write','writeSync','createWriteStream'])if(key in object)object[key]=deny;
-for(const [object,key] of [[fs,'open'],[fs,'openSync'],[fsp,'open']]){const open=object[key];object[key]=(...args)=>{const flags=args[1];if(flags!==undefined&&flags!=='r'&&flags!=='rs'&&flags!==0)return deny();return open.apply(object,args);};}
-net.Server.prototype.listen=deny;net.connect=deny;net.createConnection=deny;tls.connect=deny;dgram.Socket.prototype.bind=deny;dgram.Socket.prototype.send=deny;http.request=deny;http.get=deny;https.request=deny;https.get=deny;globalThis.fetch=deny;
-const pg=require('pg');for(const type of [pg.Pool,pg.Client]){type.prototype.connect=deny;type.prototype.query=deny;}
-syncBuiltinESMExports();
-const apiURL=pathToFileURL(path.join(root,'tunes/node_modules/tsx/dist/esm/api/index.mjs')).href;
-const parentURL=pathToFileURL(path.join(root,'scripts/replatform-e2e.mjs')).href;
-const {tsImport}=await import(apiURL);assert.equal(typeof tsImport,'function');
-await tsImport('data:text/javascript,export default 1',{parentURL,tsconfig:false});
-const targetURL=pathToFileURL(path.join(root,'tunes/scripts/guides-parent-supervision.ts')).href;
-const module=await tsImport(targetURL,{parentURL,tsconfig:false});assert.deepEqual(Object.keys(module),['createGuidesParentSupervisor']);assert.equal(typeof module.createGuidesParentSupervisor,'function');assert.equal(resourceCalls,0);assert.ok(toolCalls<=1);
-console.log(JSON.stringify({ok:true,target:'supervision',resourceCalls:0}));
-`;
+        const probe = fileURLToPath(new URL('./fixtures/guides-parent-import-probe.mjs', import.meta.url));
         const environment = { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH, TEMP: process.env.TEMP, TMP: process.env.TMP, NODE_ENV: 'test' };
         let result: string;
-        try { result = execFileSync('C:/Users/TK/AppData/Local/Temp/explorers-wave1-tools/node-v24.21.0-win-x64/node.exe', ['--input-type=module', '--eval', source], { cwd: root, encoding: 'utf8', shell: false, windowsHide: true, timeout: 20000, maxBuffer: 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'], env: { ...environment, TSX_DISABLE_CACHE: '1' } }); }
-        catch (error) { const failure = error as { code?: string; status?: number; stderr?: Buffer }; throw new Error(`Import probe cwd=${root} sourceBytes=${Buffer.byteLength(source)} code=${failure.code} status=${failure.status} stderr=${String(failure.stderr ?? '').slice(0, 4096)}`); }
-        expect(result.trim()).toBe('{"ok":true,"target":"supervision","resourceCalls":0}');
+        try { result = execFileSync('C:/Users/TK/AppData/Local/Temp/explorers-wave1-tools/node-v24.21.0-win-x64/node.exe', [probe], { cwd: root, encoding: 'utf8', shell: false, windowsHide: true, timeout: 20000, maxBuffer: 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'], env: { ...environment, TSX_DISABLE_CACHE: '1' } }); }
+        catch (error) { const failure = error as { code?: string; status?: number; stderr?: Buffer }; throw new Error(`Import probe cwd=${root} probeBytes=${readFileSync(probe).length} code=${failure.code} status=${failure.status} stderr=${String(failure.stderr ?? '').slice(0, 4096)}`); }
+        expect(result.trim()).toBe('{"ok":true,"target":"supervision","applicationResourceCalls":0,"toolIpcDenied":1}');
     }, 30000);
 });
 
@@ -292,8 +258,9 @@ function guidesScripted(options: Record<string, any> = {}) {
                 if(options.earlyWorkerEof){p.push(null);return;}
                 if(options.lostObserve)return; if(options.fatalCleanup){p.emit('fatal',{phase:'observe',code:'unsettled',cleanup:options.fatalCleanup},frame.id);return;} if(options.fatalObserve){p.emit('fatal',{phase:'observe',code:'failed',cleanup:null},frame.id);return;}
                 if(options.busyRetire) { fixture.emit('retire-worker',{epoch,identity:identities[epoch-1],nativeComplete:true,producersClosed:true,controlIdle:true});return; }
-                p.emit('observed',{epoch,observation:{version:1,action:'observe',runId:GUIDES_TEST_RUN,commit:GUIDES_TEST_COMMIT,...identities[epoch-1],generation:options.badObservation?2:1,personas:{},guides:[],sections:[],media:[],objects:[],attachments:[]}},frame.id);
+                p.emit('observed',{epoch,observation:{version:1,action:'observe',runId:GUIDES_TEST_RUN,commit:GUIDES_TEST_COMMIT,...identities[epoch-1],generation:options.badObservation?2:1,personas:{},guides:[],sections:[],media:[],objects:[],attachments:[],provider:{version:1,epoch,counts:{search:0,details:0,price:0,photos:0,jpeg:0},error:null}}},frame.id);
             }
+            if(frame.type==='retire-provider'){const count=identities[epoch-1].caseId===GUIDES_CASES[6]?1:0;p.emit('provider-retired',{epoch,provider:{version:1,epoch,counts:{search:count,details:count,price:count,photos:count,jpeg:count},error:null}},frame.id);}
             if(frame.type==='observe-result')soon(()=>fixture.emit('retire-worker',{epoch:frame.payload.epoch,identity:identities[frame.payload.epoch-1],nativeComplete:true,producersClosed:true,controlIdle:true}));
             if(frame.type==='retired'){if((options.completeEof||options.completeTail)&&frame.payload.epoch===16)next(17);else soon(()=>next(frame.payload.epoch+1));}
         });
@@ -478,7 +445,13 @@ describe('Guides scripted parent behavior',()=>{
     },1000);    it('passes declining lane budgets without restarting the absolute deadline',async()=>{
         const {createGuidesParentSupervisor}=await load(),fake=guidesScripted({advanceClock:true}),supervisor=createGuidesParentSupervisor(fake.input,fake.dependencies);
         await supervisor.run();const budgets=fake.frames.filter(frame=>'remainingLaneMs'in frame.payload).map(frame=>frame.payload.remainingLaneMs);
-        expect(budgets).toHaveLength(33);expect(budgets[0]).toBe(21600000);for(let i=1;i<budgets.length;i++)expect(budgets[i]).toBeLessThanOrEqual(budgets[i-1]);expect(budgets.at(-1)).toBeLessThan(budgets[0]);
+        const retirementFrames=fake.frames.filter(frame=>frame.type==='retire-provider');expect(retirementFrames).toHaveLength(16);
+        expect(retirementFrames.map(frame=>frame.payload.epoch)).toEqual(Array.from({length:16},(_,i)=>i+1));
+        for(const frame of retirementFrames){const retirement=fake.frames.indexOf(frame),termination=fake.frames.findIndex(next=>next.type==='terminate-worker'&&next.payload.epoch===frame.payload.epoch);expect(retirement).toBeLessThan(termination);}
+        expect(budgets).toHaveLength(33+retirementFrames.length);
+        const laneBudgets=fake.frames.filter(frame=>frame.type==='init'||frame.type==='observe').map(frame=>frame.payload.remainingLaneMs);
+        expect(laneBudgets).toHaveLength(33);expect(laneBudgets[0]).toBe(21600000);for(let i=1;i<laneBudgets.length;i++)expect(laneBudgets[i]).toBeLessThanOrEqual(laneBudgets[i-1]);expect(laneBudgets.at(-1)).toBeLessThan(laneBudgets[0]);
+        for(const frame of retirementFrames){const observation=fake.frames.find(next=>next.type==='observe'&&next.payload.epoch===frame.payload.epoch);expect(observation).toBeDefined();if(!observation)throw Error('Original observation frame absent');expect(frame.payload.remainingLaneMs).toBeLessThanOrEqual(30000);expect(frame.payload.remainingLaneMs).toBeLessThanOrEqual(observation.payload.remainingLaneMs);}
         expect(fake.frames.filter(frame=>frame.type==='terminate-worker').every(frame=>frame.payload.remainingMs<=10000)).toBe(true);await supervisor.dispose();
     },1000);    it.each(['lostReady','lostObserve'])('does not retire or admit a successor when the fully received %s result is unavailable',async fault=>{
         const {createGuidesParentSupervisor}=await load(),fake=guidesScripted({[fault]:true}),supervisor=createGuidesParentSupervisor(fake.input,fake.dependencies);
@@ -585,7 +558,7 @@ function guidesWorkerFake(options: Record<string, any> = {}) {
     const observation:any={version:1,action:'observe',runId:init.runId,commit:init.commit,...init.identity,generation:1,
         personas:Object.fromEntries(Object.entries(data.manifest.personas).map(([owner,p]:[string,any])=>[owner,{...p,status:'active',publicProfile:false,guidesPublic:false,guidesContentRevision:0}])),guides:[],sections:[],media:[],objects:[],attachments:[]};
     options.changeObservation?.(observation);
-    let releaseHelper!:(value:any)=>void, rejectListener!:(error:unknown)=>void;
+    let releaseHelper!:(value:any)=>void, rejectListener!:(error:unknown)=>void, provider:any;
     let session=0;const context={authCookies:{sessionToken:{name:'better-auth.session_token'}},internalAdapter:{createSession:async(userId:string)=>{events.push(`session:${userId}`);return {token:`bootstrap-${session++}`};}}};
     const pool={query:async(sql:string,values:any[]=[])=>{events.push(sql.startsWith('INSERT')?'insert':sql.includes('current_database')?'database':'baseline');
         if(sql.includes('current_database'))return {rows:[{database:options.wrongDatabase?'foreign':init.authority.database}]};
@@ -601,13 +574,13 @@ function guidesWorkerFake(options: Record<string, any> = {}) {
                 if(frame.type==='hello'){if(options.rawInit)push(options.rawInit(wire,init));else feed('init',init);}
                 if(frame.type==='init-ack'){if(options.holdBegin)return;if(options.noBegin)push(null);else feed(options.badBegin?'reset':'begin',{});}
                 if(frame.type==='ready'){if(options.holdObserve)return;const command={epoch,identity:init.identity,remainingLaneMs:21600000};options.changeObserve?.(command);feed('observe',command,'2'.repeat(32));}
-                if(frame.type==='observed')push(null);},close:async()=>{events.push('pipe-close');}};},
+                if(frame.type==='observed'&&!options.holdAfterObserved)push(null);},close:async()=>{events.push('pipe-close');}};},
         createPool:async(configuration:any)=>{events.push('pool');expect(configuration).toMatchObject({user:'music_migrator',host:'127.0.0.1',port:56001,database:init.authority.database,password:init.databasePassword});return pool;},
         migrate:async(received:any)=>{expect(received).toBe(pool);events.push('migrate');},
         resolveConfig:async(environment:any)=>{events.push('config');expect(environment).toEqual({EXPLORERS_PUBLIC_ORIGIN:init.origin,EXPLORERS_AUTH_SECRET:secret,GOOGLE_CLIENT_ID:'profile-fixture-google',GOOGLE_CLIENT_SECRET:'profile-fixture-secret'});return {baseURL:init.origin,secret};},
         createStorage:async(directory:string)=>{events.push('storage');expect(directory).toBe(init.storageDirectory);return storage;},
         compose:async(received:any,config:any,settings:any)=>{events.push('compose');expect(received).toBe(pool);expect(settings).toEqual({mediaStorage:storage});return composed;},
-        listen:async(received:any,port:number,host:string)=>{events.push('listen');expect(received).toBe(composed);expect([port,host]).toEqual([54111,'127.0.0.1']);return {failed:new Promise<never>((_,reject)=>{rejectListener=reject;})};},
+        listen:async(received:any,port:number,host:string,ownedProvider:any)=>{provider=ownedProvider;events.push('listen');expect(received).toBe(composed);expect([port,host]).toEqual([54111,'127.0.0.1']);return {failed:new Promise<never>((_,reject)=>{rejectListener=reject;})};},
         startControl:async(settings:any)=>{events.push('helper');expect(settings).toMatchObject({pool,composed,runId:init.runId,commit:init.commit,authority:init.authority,expectedTemporaryRoot:'C:\\private',disposableDirectory:init.disposableDirectory,storage:{directory:init.storageDirectory,instance:storage},port:51111,apiOrigin:'http://127.0.0.1:54111'});
             expect(Object.keys(settings).sort()).toEqual(['pool','composed','config','runId','commit','authority','personas','expectedTemporaryRoot','disposableDirectory','storage','port','apiOrigin'].sort());
             if(options.helperError)throw options.helperError;if(options.holdHelper)return await new Promise(resolve=>{releaseHelper=resolve;});return helper;},
@@ -622,12 +595,39 @@ function guidesWorkerFake(options: Record<string, any> = {}) {
             if(options.holdReset&&command.action==='reset')return await new Promise(()=>{});
             return {status:200,headers:{get:()=>null},body:null,text:async()=>JSON.stringify(command.action==='reset'?reset:observation)};},
     };
-    return {deps,events,sent,init,reset,feed,push,wire,releaseHelper:()=>releaseHelper(helper),failListener:()=>rejectListener(Error('private listener failure')),setNow:(value:number)=>{now=value;},expire:(minimum:number)=>{for(const [key,timer]of [...timers])if(timer.ms===minimum){timers.delete(key);timer.callback();}},timers};
+    return {deps,events,sent,init,reset,feed,push,wire,get provider(){return provider;},releaseHelper:()=>releaseHelper(helper),failListener:()=>rejectListener(Error('private listener failure')),setNow:(value:number)=>{now=value;},expire:(minimum:number)=>{for(const [key,timer]of [...timers])if(timer.ms===minimum){timers.delete(key);timer.callback();}},timers};
 }
 
 describe('Guides actual resource worker',()=>{
     const load=()=>import('../../../scripts/guides-resource-worker');
     it('provides the sole import-safe worker entry',async()=>{expect(existsSync(new URL('../../../scripts/guides-resource-worker.ts',import.meta.url))).toBe(true);const module=await load();expect(Object.keys(module)).toEqual(['runGuidesResourceWorker']);});
+    it('resumes original execution only after observed send then joins five provider finishes and socket closes before its private retirement frame',async()=>{
+        const {runGuidesResourceWorker}=await load(),fake=guidesWorkerFake({caseId:GUIDES_CASES[6],holdObserve:true,holdAfterObserved:true});
+        const rejected=expect(runGuidesResourceWorker(fake.deps)).rejects.toThrow();
+        for(let turn=0;turn<500&&!fake.sent.some(f=>f.type==='ready');turn++)await Promise.resolve();expect(fake.provider).toBeDefined();
+        fake.feed('observe',{epoch:1,identity:fake.init.identity,remainingLaneMs:21600000},'2'.repeat(32));
+        for(let turn=0;turn<500&&!fake.sent.some(f=>f.type==='observed');turn++)await Promise.resolve();
+        for(let turn=0;turn<40;turn++)await Promise.resolve();
+        expect(fake.sent.find(f=>f.type==='observed').payload.observation.provider.counts).toEqual({search:0,details:0,price:0,photos:0,jpeg:0});
+        const sockets:any[]=[];
+        for(const suffix of ['search','places/guides-fixture-museum/details','places/guides-fixture-museum/price','places/guides-fixture-museum/photos','photos/guides-fixture-photo.jpg']){
+            const socket:any=Object.assign(new EventEmitter(),{remoteAddress:'127.0.0.1',destroyed:false,destroy(){socket.destroyed=true;fake.events.push('provider-socket-close');socket.emit('close');}});sockets.push(socket);
+            const request:any=Object.assign(new EventEmitter(),{method:'GET',url:'/__guides_provider__/v1/'+suffix,headers:{host:'127.0.0.1:53111'},rawHeaders:['Host','127.0.0.1:53111'],socket,complete:false,aborted:false,destroyed:false,resume(){},destroy(){request.destroyed=true;request.emit('close');}});
+            const response:any=Object.assign(new EventEmitter(),{statusCode:0,writableFinished:false,destroyed:false,setHeader(){},end(){response.writableFinished=true;response.emit('finish');},destroy(){response.destroyed=true;response.emit('close');}});
+            expect(fake.provider.handle(request,response)).toBe(true);request.complete=true;request.emit('end');expect(response.statusCode).toBe(200);
+        }
+        fake.feed('retire-provider',{epoch:1,identity:fake.init.identity,remainingLaneMs:21600000},'3'.repeat(32));
+        for(let turn=0;turn<500&&!fake.sent.some(f=>f.type==='provider-retired');turn++)await Promise.resolve();
+        expect(fake.sent.find(f=>f.type==='provider-retired')).toMatchObject({id:'3'.repeat(32),payload:{epoch:1,provider:{version:1,epoch:1,counts:{search:1,details:1,price:1,photos:1,jpeg:1},error:null}}});
+        expect(sockets.every(socket=>socket.destroyed)).toBe(true);expect(fake.events.lastIndexOf('provider-socket-close')).toBeLessThan(fake.events.indexOf('provider-retired'));
+        fake.failListener();await rejected;expect(fake.events).not.toContain('helper-close');
+    });
+    it('rejects a partial case6 private retirement and preserves the original safe provider error',async()=>{
+        const {runGuidesResourceWorker}=await load(),fake=guidesWorkerFake({caseId:GUIDES_CASES[6],holdObserve:true});const rejected=expect(runGuidesResourceWorker(fake.deps)).rejects.toThrow();
+        for(let turn=0;turn<500&&!fake.sent.some(f=>f.type==='ready');turn++)await Promise.resolve();
+        fake.feed('retire-provider',{epoch:1,identity:fake.init.identity,remainingLaneMs:21600000},'3'.repeat(32));await rejected;
+        expect(fake.sent.some(f=>f.type==='provider-retired')).toBe(false);expect(fake.sent.find(f=>f.type==='fatal')?.payload).toEqual({phase:'retirement',code:'protocol',cleanup:null});
+    });
     it('authenticates init ack and begin before effects, reads baseline before helper, resets once and observes generation1',async()=>{
         const {runGuidesResourceWorker}=await load(),fake=guidesWorkerFake();await expect(runGuidesResourceWorker(fake.deps)).rejects.toThrow();
         expect(fake.sent[0]).toEqual({v:1,type:'hello',role:'worker',epoch:1,token:'f'.repeat(64)});expect(fake.sent.find(f=>f.type==='init-ack')).toMatchObject({seq:1,id:'c'.repeat(32),payload:{}});

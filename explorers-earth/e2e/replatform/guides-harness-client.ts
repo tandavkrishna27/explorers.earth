@@ -2,8 +2,8 @@ import * as fs from 'node:fs';
 import path from 'node:path';
 import { request } from 'node:http';
 import { TextDecoder } from 'node:util';
-import type { Browser, BrowserContext } from '@playwright/test';
-import { GUIDES_CASES, GUIDES_PROJECTS, buildGuidesSeedPlan, guidesManifestSchema, guidesObservationRowSchemas, type GuidesManifest } from '../../../tunes/scripts/guides-browser-support';
+import type { Browser, BrowserContext, Request as BrowserRequest } from '@playwright/test';
+import { GUIDES_CASES, GUIDES_PROJECTS, buildGuidesSeedPlan, guidesManifestSchema, guidesProviderObservationSchema, guidesObservationRowSchemas, type GuidesManifest } from '../../../tunes/scripts/guides-browser-support';
 const owners = ['ownerA', 'ownerB', 'ownerC'] as const;
 const LIMIT = 65536, RESPONSE_LIMIT = 9 * 1024 * 1024;
 type Identity = {
@@ -327,6 +327,8 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
         observed: boolean;
     } | undefined;
     const operations = new Set<Promise<unknown>>(), contexts = new Map<BrowserContext, 'open' | 'closed'>(), cookies = new Set<string>(), completed = new Set<string>();
+    const providerRequests = new Set<BrowserRequest>();
+    const providerPaths = new Set(['/__guides_provider__/v1/search', '/__guides_provider__/v1/places/guides-fixture-museum/details', '/__guides_provider__/v1/places/guides-fixture-museum/price', '/__guides_provider__/v1/places/guides-fixture-museum/photos', '/__guides_provider__/v1/photos/guides-fixture-photo.jpg']);
     let contextReservations = 0;
     const remainingMs = () => Math.max(0, Math.floor(deadline - d.clock.now()));
     const check = () => {
@@ -435,8 +437,11 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             if (result.v !== 1 || result.epoch !== active.epoch)
                 denied();
             const o = result.observation;
-            exact(o, ['version', 'action', 'runId', 'commit', 'caseId', 'project', 'repeat', 'generation', 'personas', 'guides', 'sections', 'media', 'objects', 'attachments']);
+            exact(o, ['version', 'action', 'runId', 'commit', 'caseId', 'project', 'repeat', 'generation', 'personas', 'guides', 'sections', 'media', 'objects', 'attachments', 'provider']);
             if (o.version !== 1 || o.action !== 'observe' || o.runId !== descriptor.runId || o.commit !== descriptor.commit || o.caseId !== active.identity.caseId || o.project !== active.identity.project || o.repeat !== 0 || o.generation !== 1)
+                denied();
+            const provider = guidesProviderObservationSchema.parse(o.provider);
+            if (provider.epoch !== active.epoch || provider.error !== null || active.identity.caseId !== GUIDES_CASES[6] && Object.values(provider.counts).some(count => count !== 0))
                 denied();
             exact(o.personas, [...owners]);
             for (const owner of owners) {
@@ -514,7 +519,22 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             check();
             const cookie = selected.sessions[owner].cookie, index = cookie.indexOf('=');
             await context.addCookies([{ name: cookie.slice(0, index), value: cookie.slice(index + 1), url: descriptor.origin, httpOnly: true, sameSite: 'Lax' }]);
-            await context.route('**/*', route => { const url = new URL(route.request().url()); return url.origin === descriptor.origin || ['data:', 'blob:'].includes(url.protocol) ? route.continue() : route.abort(); });
+            const ownedProviderRequest = (request: BrowserRequest) => {
+                const url = new URL(request.url());
+                return url.origin === descriptor.origin && providerPaths.has(url.pathname) && request.url() === `${descriptor.origin}${url.pathname}` && request.method() === 'GET' && request.postData() === null && request.redirectedFrom() === null && active === selected && selected.identity.caseId === GUIDES_CASES[6] && !busy && !failed;
+            };
+            context.on('request', request => {
+                if (!new URL(request.url()).pathname.startsWith('/__guides_provider__')) return;
+                if (!ownedProviderRequest(request) || providerRequests.size >= 5) { failed = true; return; }
+                providerRequests.add(request);
+            });
+            context.on('requestfinished', request => { providerRequests.delete(request); });
+            context.on('requestfailed', request => { if (providerRequests.delete(request)) failed = true; });
+            await context.route('**/*', route => {
+                const request = route.request(), url = new URL(request.url());
+                if (url.pathname.startsWith('/__guides_provider__')) return ownedProviderRequest(request) ? route.continue() : route.abort();
+                return url.origin === descriptor.origin || ['data:', 'blob:'].includes(url.protocol) ? route.continue() : route.abort();
+            });
             for (const [url, validate] of [['/api/auth/get-session', (v: any) => v.user?.id === selected.manifest.personas[owner].userId], ['/api/explorers/v1/me', (v: any) => v.account?.id === selected.manifest.personas[owner].accountId && v.account?.handle === selected.manifest.personas[owner].handle]] as const) {
                 const response = await context.request.get(url);
                 try {
@@ -544,7 +564,7 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             for (const [context, state] of contexts)
                 if (state === 'open')
                     await closeContext(context);
-            if (operations.size || failed)
+            if (operations.size || providerRequests.size || failed)
                 denied();
             const result = await command('retire', active.identity, active.epoch);
             exact(result, ['v', 'epoch', 'retired']);
@@ -583,5 +603,5 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             if (busy || !active || typeof operation !== 'function')
                 denied();
             return bounded(operation, 900000);
-        }, snapshot: () => Object.freeze({ pending: operations.size, openContexts: [...contexts.values()].filter(v => v === 'open').length, failed, epoch: lastEpoch }) });
+        }, snapshot: () => Object.freeze({ pending: operations.size + providerRequests.size, openContexts: [...contexts.values()].filter(v => v === 'open').length, failed, epoch: lastEpoch }) });
 }

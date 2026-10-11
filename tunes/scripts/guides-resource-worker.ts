@@ -10,6 +10,7 @@ import type { startGuidesControl } from './guides-browser-support';
 import { GUIDES_CASES, GUIDES_PROJECTS, guidesManifestSchema, buildGuidesSeedPlan } from './guides-browser-support';
 import { guideCollectionDetailsSchema, guideSectionDtoSchema, guideSectionBlocksSchema } from '../shared/explorersGuideContract';
 import { accountDtoSchema } from '../shared/explorersContract';
+import { createGuidesProviderFixture, GuidesProviderFixtureError } from './guides-provider-fixture';
 
 type Clock = { now(): number; setTimeout(callback: () => void, ms: number): unknown; clearTimeout(timer: unknown): void };
 type Stream = { read(): Promise<Buffer | null>; write(bytes: Buffer): Promise<void>; close(): Promise<void> };
@@ -23,12 +24,12 @@ type Dependencies = {
   resolveConfig(environment: Record<string, string>): Promise<ExplorersAuthConfig>;
   createStorage(directory: string): Promise<Storage>;
   compose(pool: Pool, config: ExplorersAuthConfig, options: { mediaStorage: Storage }): Promise<Composed>;
-  listen(composed: Composed, port: number, host: '127.0.0.1'): Promise<{ failed: Promise<never> }>;
+  listen(composed: Composed, port: number, host: '127.0.0.1', provider: ReturnType<typeof createGuidesProviderFixture>): Promise<{ failed: Promise<never> }>;
   startControl(options: Parameters<typeof startGuidesControl>[0]): ReturnType<typeof startGuidesControl>;
   fetch: typeof globalThis.fetch;
 };
 type Frame = { v: 1; seq: number; id: string; type: string; payload: Record<string, unknown> };
-type Phase = 'bootstrap' | 'reset' | 'observe' | 'execution';
+type Phase = 'bootstrap' | 'reset' | 'observe' | 'execution' | 'retirement';
 type Code = 'failed' | 'timeout' | 'protocol' | 'unsettled';
 const owners = ['ownerA', 'ownerB', 'ownerC'] as const;
 const cleanupLabels = ['listener', 'drain', 'authority', 'custody', 'storage'] as const;
@@ -100,10 +101,13 @@ function defaultDependencies(): Dependencies {
     async resolveConfig(environment) { return (await import('../server/auth/betterAuth')).resolveExplorersAuthConfig(environment); },
     async createStorage(directory) { const { LocalObjectStorage } = await import('../server/services/objectStorage'); return new LocalObjectStorage(directory); },
     async compose(pool, config, options) { return (await import('../server/auth/canonicalApp')).createCanonicalApp(pool, config, options); },
-    async listen(composed, port, host) {
+    async listen(composed, port, host, provider) {
+      const { createServer } = await import('node:http');
       let rejectFailure!: (error: unknown) => void;
       const failed = new Promise<never>((_, reject) => { rejectFailure = reject; }); failed.catch(() => undefined);
-      await new Promise<void>((resolve, reject) => { const server = composed.app.listen(port, host, resolve);
+      await new Promise<void>((resolve, reject) => { const server = createServer((request, response) => {
+        if (!provider.handle(request, response)) composed.app(request, response);
+      }).listen(port, host, resolve);
         server.on('error', error => { rejectFailure(error); reject(error); }); server.on('close', () => rejectFailure(new Failure('failed'))); });
       return { failed };
     },
@@ -116,6 +120,7 @@ function defaultDependencies(): Dependencies {
 export async function runGuidesResourceWorker(dependencies?: Dependencies): Promise<void> {
   const d = dependencies ?? defaultDependencies();
   exact(d, ['platform', 'argv', 'environment', 'clock', 'randomHex', 'connectPipe', 'createPool', 'migrate', 'resolveConfig', 'createStorage', 'compose', 'listen', 'startControl', 'fetch']);
+  exact(d.clock, ['now', 'setTimeout', 'clearTimeout']);
   for (const key of ['randomHex', 'connectPipe', 'createPool', 'migrate', 'resolveConfig', 'createStorage', 'compose', 'listen', 'startControl', 'fetch'] as const) if (typeof d[key] !== 'function') throw new Failure('protocol');
   if (!d.clock || ['now', 'setTimeout', 'clearTimeout'].some(key => typeof Reflect.get(d.clock, key) !== 'function') || d.platform !== 'win32' || !Array.isArray(d.argv) || d.argv.length || !d.environment || typeof d.environment !== 'object') throw new Failure('protocol');
   const pipe = d.environment.GUIDES_PRIVATE_PIPE, token = d.environment.GUIDES_PRIVATE_TOKEN, rawEpoch = d.environment.GUIDES_PRIVATE_EPOCH;
@@ -126,7 +131,7 @@ export async function runGuidesResourceWorker(dependencies?: Dependencies): Prom
   let laneDeadline = d.clock.now() + 60000, incoming = 0, outgoing = 0, bytes = Buffer.alloc(0), active = false, busy = false, pendingEffects = 0;
   let rejectTerminal!: (error: unknown) => void;
   const failed = new Promise<never>((_, reject) => { rejectTerminal = reject; }); failed.catch(() => undefined);
-  const fail = (error: unknown) => { if (!terminal) { terminal = true; failure = error instanceof Failure ? error.code === 'timeout' && pendingEffects ? new Failure('unsettled') : error : new Failure('failed'); rejectTerminal(failure); } };
+  const fail = (error: unknown) => { if (!terminal) { terminal = true; if (error instanceof GuidesProviderFixtureError) error = new Failure(error.code); failure = error instanceof Failure ? error.code === 'timeout' && pendingEffects ? new Failure('unsettled') : error : new Failure('failed'); rejectTerminal(failure); } };
   const check = () => { if (terminal) throw failure!; if (d.clock.now() >= laneDeadline) { fail(new Failure('timeout')); throw failure!; } };
   const bounded = <T>(deadline: number, operation: () => Promise<T>, unsettled = false, ignoreLatch = false): Promise<T> => {
     const ms = Math.floor(deadline - d.clock.now()); if (ms < 1) return Promise.reject(new Failure(unsettled ? 'unsettled' : 'timeout'));
@@ -147,6 +152,7 @@ export async function runGuidesResourceWorker(dependencies?: Dependencies): Prom
     }
   };
   let lastId = d.randomHex(16), cleanup: Cleanup | null = null, laneTimer: unknown;
+  let provider: ReturnType<typeof createGuidesProviderFixture> | undefined;
   const inheritDeadline = (remaining: number) => { laneDeadline = Math.min(laneDeadline, d.clock.now() + remaining); d.clock.clearTimeout(laneTimer); laneTimer = d.clock.setTimeout(() => fail(new Failure('timeout')), Math.max(1, laneDeadline - d.clock.now())); };
   try {
     stream = await bounded(laneDeadline, () => d.connectPipe(pipe));
@@ -157,8 +163,12 @@ export async function runGuidesResourceWorker(dependencies?: Dependencies): Prom
     const begin = await receive(Math.min(laneDeadline, d.clock.now() + 60000)); lastId = begin.id; if (begin.type !== 'begin') throw new Failure('protocol'); exact(begin.payload, []);
     // Consume commands concurrently: a repeated begin or busy observe latches
     // failure immediately, even while an initiated effect is still outstanding.
-    let observe: ((frame: Frame) => void) | undefined;
-    void (async () => { try { while (true) { const frame = await receive(); if (!active || busy || frame.type !== 'observe' || !observe) throw new Failure('protocol'); busy = true; observe(frame); } } catch (error) { fail(error); } })();
+    let observe: ((frame: Frame) => void) | undefined, retireProvider: ((frame: Frame) => void) | undefined, retiring = false;
+    void (async () => { try { while (!retiring) { const frame = await receive(); if (!active || busy) throw new Failure('protocol'); busy = true;
+      if (frame.type === 'observe' && observe) observe(frame);
+      else if (frame.type === 'retire-provider' && retireProvider) { retiring = true; retireProvider(frame); }
+      else throw new Failure('protocol');
+    } } catch (error) { fail(error); } })();
     const startDeadline = Math.min(laneDeadline, d.clock.now() + 630000);
     const step = <T>(operation: () => Promise<T>, deadline = startDeadline, unsettled = true) => Promise.race([bounded(Math.min(deadline, laneDeadline), () => {
       pendingEffects++; let work: Promise<T>;
@@ -182,7 +192,8 @@ export async function runGuidesResourceWorker(dependencies?: Dependencies): Prom
     const storage = await step(() => d.createStorage(init.storageDirectory), startupDeadline);
     if (storage.environment !== 'local' || ['putOwned', 'get', 'delete'].some(key => typeof Reflect.get(storage, key) !== 'function')) throw new Failure('protocol');
     const composed = await step(() => d.compose(pool, config, { mediaStorage: storage }), startupDeadline);
-    const listener = await step(() => d.listen(composed, init.apiPort, '127.0.0.1'), startupDeadline);
+    provider = createGuidesProviderFixture({ runId: init.runId, commit: init.commit, epoch, identity: init.identity, origin: init.origin }, { clock: d.clock, phase: () => phase, deadline: () => laneDeadline });
+    const listener = await step(() => d.listen(composed, init.apiPort, '127.0.0.1', provider!), startupDeadline);
     if (!listener || !(listener.failed instanceof Promise)) throw new Failure('protocol');
     listener.failed.catch(error => fail(error));
     const apiOrigin = `http://127.0.0.1:${init.apiPort}`;
@@ -232,19 +243,30 @@ export async function runGuidesResourceWorker(dependencies?: Dependencies): Prom
     observe = frame => { void (async () => {
       phase = 'observe'; lastId = frame.id; exact(frame.payload, ['epoch', 'identity', 'remainingLaneMs']); if (frame.payload.epoch !== epoch || JSON.stringify(identitySchema.parse(frame.payload.identity)) !== JSON.stringify(init.identity)) throw new Failure('protocol');
       const remaining = z.number().int().min(1).max(21600000).parse(frame.payload.remainingLaneMs); inheritDeadline(remaining);
+      const providerObservation = await step(() => provider!.observe(laneDeadline), laneDeadline);
       const result = await control('observe', Math.min(laneDeadline, d.clock.now() + 310000)); exact(result, ['version', 'action', 'runId', 'commit', 'caseId', 'project', 'repeat', 'generation', 'personas', 'guides', 'sections', 'media', 'objects', 'attachments']); matchResult(result, 'observe');
-      validateObservation(result, bindings); check(); await send('observed', { epoch, observation: result }, frame.id); check(); busy = false;
+      validateObservation(result, bindings); check(); await send('observed', { epoch, observation: { ...result, provider: providerObservation } }, frame.id); check(); phase = 'execution'; provider!.resume(); busy = false;
+    })().catch(error => fail(error)); };
+    retireProvider = frame => { void (async () => {
+      phase = 'retirement'; active = false; lastId = frame.id; exact(frame.payload, ['epoch', 'identity', 'remainingLaneMs']);
+      if (frame.payload.epoch !== epoch || JSON.stringify(identitySchema.parse(frame.payload.identity)) !== JSON.stringify(init.identity)) throw new Failure('protocol');
+      inheritDeadline(z.number().int().min(1).max(21600000).parse(frame.payload.remainingLaneMs));
+      const observation = await step(() => provider!.retire(laneDeadline), laneDeadline); check();
+      await send('provider-retired', { epoch, provider: observation }, frame.id); check(); busy = false;
     })().catch(error => fail(error)); };
     check(); phase = 'execution'; active = true; await send('ready', { epoch, apiOrigin, reset }, begin.id); await failed;
   } catch (error) {
+    if (error instanceof GuidesProviderFixtureError) error = new Failure(error.code);
     if (error instanceof z.ZodError || error instanceof SyntaxError) error = new Failure('protocol');
     try { cleanup = cleanupMetadata(error); } catch { error = new Failure('protocol'); }
     fail(error); const code = cleanup?.unsettled ? 'unsettled' : error instanceof Failure ? error.code : 'failed';
     d.clock.clearTimeout(laneTimer);
-    if (stream) await send('fatal', { phase, code, cleanup }, lastId, true).catch(() => undefined);
+    let finalCode = code;
+    if (provider) { try { await provider.abort(laneDeadline); } catch { finalCode = 'unsettled'; } }
+    if (stream) await send('fatal', { phase, code: finalCode, cleanup }, lastId, true).catch(() => undefined);
     // No helper.close, Pool.end, descendant creation or deletion here. Physical
     // settlement and disposal belong to the retained root process/PG witnesses.
-    throw new Failure(code);
+    throw new Failure(finalCode);
   }
 }
 

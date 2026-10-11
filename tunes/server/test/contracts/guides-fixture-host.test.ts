@@ -65,7 +65,7 @@ function fakeHost(options:Record<string,any>={}) {
   const stream={async read():Promise<Buffer|null>{if(chunks.length)return chunks.shift()!;return new Promise(resolve=>{waiting=resolve;});},async write(bytes:Buffer){const isFrame=bytes.length>=4&&bytes.readUInt32BE()===bytes.length-4;const frame=JSON.parse(bytes.subarray(isFrame?4:0).toString());frames.push(frame);events.push(`parent:${frame.type}`);
     if(frame.type==='init-ack') { if(options.beforeBegin)push(null);else emit('begin',{},frame.id); }
     if(frame.type==='fatal'&&options.holdFatal)await new Promise<void>(()=>{});if(frame.type==='start-worker'){if(options.holdStart)return;const identity=frame.payload.identity,material=syntheticGuidesManifest(buildGuidesSeedPlan(identity.caseId),identity.project);const reset={version:1,action:'reset',runId:GUIDES_TEST_RUN,commit:GUIDES_TEST_COMMIT,...identity,generation:1,manifest:material.manifest,sessions:Object.fromEntries(Object.keys(personas).map(key=>[key,{cookie:`better-auth.session_token=epoch${frame.payload.epoch}-${key}.c2lnbmF0dXJl` }]))};options.changeReset?.(reset);emit('start-worker-result',{epoch:frame.payload.epoch,apiOrigin:options.wrongApi?'http://127.0.0.1:53099':init.apiOrigin,reset},frame.id);}
-    if(frame.type==='observe')emit('observe-result',{epoch:frame.payload.epoch,observation:{version:1,action:'observe',runId:GUIDES_TEST_RUN,commit:GUIDES_TEST_COMMIT,...frame.payload.identity,generation:1,personas:{},guides:[],sections:[],media:[],objects:[],attachments:[]}},frame.id);
+    if(frame.type==='observe')emit('observe-result',{epoch:frame.payload.epoch,observation:{version:1,action:'observe',runId:GUIDES_TEST_RUN,commit:GUIDES_TEST_COMMIT,...frame.payload.identity,generation:1,personas:{},guides:[],sections:[],media:[],objects:[],attachments:[],provider:{version:1,epoch:frame.payload.epoch,counts:{search:0,details:0,price:0,photos:0,jpeg:0},error:null}}},frame.id);
     if(frame.type==='retire-worker'&&!options.lostRetire)emit('retired',{epoch:frame.payload.epoch},frame.id);
   },async close(){events.push('pipe-close');push(null);}};
   const root=fileURLToPath(new URL('../../../../',import.meta.url));const file='explorers-earth/e2e/replatform/guides.spec.ts';
@@ -98,6 +98,24 @@ describe('Guides actual fixture host behavior',()=>{
 describe('Guides actual host admission and failures',()=>{
  const load=()=>import('../../../scripts/guides-fixture-host');
  const selected={caseId:GUIDES_CASES[0],project:GUIDES_PROJECTS[0],repeat:0};
+ it('keeps reserved provider traffic on the original active worker target and denies frontend fallback',async()=>{
+  const {createGuidesFixtureHost}=await load();let inspected=false;
+  const imported={caseId:GUIDES_CASES[6],project:GUIDES_PROJECTS[0],repeat:0};
+  const fake=fakeHost({drive:async({call,gateway,socket}:any)=>{
+   const response=()=>({statusCode:0,setHeader(){},end(){},destroy(){}});
+   const request=()=>({method:'GET',url:'/__guides_provider__/v1/search',headers:{host:'127.0.0.1:53001'},rawHeaders:['Host','127.0.0.1:53001'],socket:socket('provider')});
+   const closed=response();await gateway()(request(),closed);expect(closed.statusCode).toBe(503);expect(fake.requests).toHaveLength(0);
+   await call({v:1,action:'start',...imported});await gateway()(request(),response());expect(fake.requests.map(r=>r.target)).toEqual(['http://127.0.0.1:53004']);inspected=true;
+  }});await expect(createGuidesFixtureHost(fake.deps).run()).rejects.toThrow();expect(inspected).toBe(true);
+ });
+ it.each(['duplicate','body','method','path'])('rejects original provider %s before proxy header normalization',async fault=>{
+  const {createGuidesFixtureHost}=await load();let inspected=false;const imported={caseId:GUIDES_CASES[6],project:GUIDES_PROJECTS[0],repeat:0};
+  const fake=fakeHost({drive:async({call,gateway,socket}:any)=>{
+   await call({v:1,action:'start',...imported});const req:any={method:'GET',url:'/__guides_provider__/v1/search',headers:{host:'127.0.0.1:53001'},rawHeaders:['Host','127.0.0.1:53001'],socket:socket('provider')};
+   if(fault==='duplicate')req.rawHeaders.push('host','127.0.0.1:53001');if(fault==='body'){req.headers['content-length']='1';req.rawHeaders.push('Content-Length','1');}if(fault==='method')req.method='POST';if(fault==='path')req.url+='?query=private';
+   const response={statusCode:0,setHeader(){},end(){},destroy(){}};await gateway()(req,response);expect(response.statusCode).toBe(403);expect(fake.requests).toHaveLength(0);inspected=true;
+  }});await expect(createGuidesFixtureHost(fake.deps).run()).rejects.toThrow();expect(inspected).toBe(true);
+ });
  it('captures API target once and destroys epoch sockets before retirement while retaining frontend sockets',async()=>{
   const {createGuidesFixtureHost}=await load();let inspected=false;
   const fake=fakeHost({drive:async({call,gateway,events,socket}:any)=>{

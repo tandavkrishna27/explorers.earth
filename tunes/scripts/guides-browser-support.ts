@@ -415,6 +415,10 @@ const liveObjectSchema=z.object({mediaId:controlUuid,accountId:controlUuid,varia
   environment:z.enum(['local','qa','prod']),key:controlText(1024),mimeType:controlText(128),byteLength:controlNat,
   sha256:controlHash,storageVersionId:controlText().nullable(),deletedAt:controlTime.nullable()}).strict();
 /** The Node harness validates the same live row types as the actual producer. */
+export const guidesProviderObservationSchema=z.object({version:z.literal(1),epoch:z.number().int().min(1).max(16),
+  counts:z.object({search:z.number().int().min(0).max(1),details:z.number().int().min(0).max(1),
+    price:z.number().int().min(0).max(1),photos:z.number().int().min(0).max(1),jpeg:z.number().int().min(0).max(1)}).strict(),
+  error:z.enum(['protocol','timeout','unsettled']).nullable()}).strict();
 export const guidesObservationRowSchemas=Object.freeze({persona:livePersonaSchema,guide:liveGuideSchema,
   section:liveSectionSchema,media:liveMediaSchema,object:liveObjectSchema,attachment:manifestAttachment});
 class ControlOverflow extends Error {}
