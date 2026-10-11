@@ -63,4 +63,3 @@ The six initial design corrections are addressed at card level. CI/local smoke/s
 
 ## Controlling schema floor amendment — 2026-10-11
 The user-approved Places/People taxonomy storage adds forward migration0053_explorers_taxonomy_catalogs. Candidate/source/image schema inventories and new executed readiness/smoke/restore evidence must bind the current complete53-migration chain. Earlier references to current0052 inventory are superseded for new candidates, while historical0052 receipts and compatibility tests remain unchanged. Four new global catalog/mapping/receipt tables, five functions and seven triggers are required in exact inventories; runtime may read catalogs/mappings and execute only lock_explorers_taxonomy_catalog(text), with no receipt or global mutation authority. Source/synthetic tests do not establish migration, role, packaging or native qualification. Publishing and deployment execution remain separate authorization gates.
-
