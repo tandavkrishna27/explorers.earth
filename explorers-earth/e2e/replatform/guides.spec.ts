@@ -1,8 +1,9 @@
+import {createCollectionSchema,createCollectionResultSchema} from '../../../tunes/shared/explorersContract';
 import {randomUUID} from 'node:crypto';
 import {test,expect,type APIRequestContext,type APIResponse,type Page,type Response,type BrowserContext,type Request} from '@playwright/test';
 import {z} from 'zod/v3';
 import {GUIDES_CASES,GUIDES_PROJECTS,guidesObservationRowSchemas} from '../../../tunes/scripts/guides-browser-support';
-import {guideAggregateDtoSchema,type GuideAggregateDto} from '../../../tunes/shared/explorersGuideContract';
+import {guideAggregateDtoSchema,writeGuideDetailsSchema,type GuideAggregateDto} from '../../../tunes/shared/explorersGuideContract';
 import {ownerCollectionPageSchema,ownerSnapshotSchema,ownerMembershipPageSchema,ownerRecommendationPageSchema} from '../../../tunes/shared/explorersOwnerContentContract';
 import {createGuidesHarnessClient,validateGuidesEnvironment} from './guides-harness-client';
 
@@ -313,4 +314,43 @@ test(GUIDES_CASES[4],async({browser},info)=>{
    expect(await harness.observe()).toEqual(baseline);
   });await settleGuidesBootstrap(page);await harness.closeContext(owner);owner=undefined;await harness.closeContext(guest);guest=undefined;await harness.retire();completed=true;
  }finally{if(!completed){const closed=await Promise.allSettled([owner,guest].filter((c):c is BrowserContext=>!!c).map(c=>harness.closeContext(c)));await harness.fail();if(closed.some(r=>r.status==='rejected'))throw Error('Guides source case containment failed');}}
+});
+
+function assertCreationPersistedScope(before:Observation,after:Observation,collection:import('../../../tunes/shared/explorersContract').CreateCollectionResult,guide:GuideAggregateDto){
+ expect(before.guides.some(g=>g.id===collection.id)).toBe(false);expect(after.guides.map(g=>g.id).sort()).toEqual([...before.guides.map(g=>g.id),collection.id].sort());
+ const row=after.guides.find(g=>g.id===collection.id)!;expect(row).toEqual({id:collection.id,accountId:collection.accountId,category:'guides',title:collection.title,description:collection.description,slug:collection.slug,displayOrder:before.guides.filter(g=>g.accountId===collection.accountId).reduce((max,g)=>Math.max(max,g.displayOrder+1),0),revision:collection.revision,categoryContentRevision:guide.revision,visibility:collection.visibility,publicationState:collection.publicationState,pinOrder:null,archivedAt:null,details:guide.details});
+ expect(guide.collectionId).toBe(collection.id);expect(guide.coverMediaId).toBeNull();expect(guide.sections).toEqual([]);expect(guide.sectionCount).toBe(0);expect(guide.nextCursor).toBeNull();
+ for(const old of before.guides)expect(after.guides.find(g=>g.id===old.id)).toEqual({...old,categoryContentRevision:old.accountId===collection.accountId?guide.revision:old.categoryContentRevision});
+ for(const [key,old] of Object.entries(before.personas))expect(after.personas[key]).toEqual({...old,guidesContentRevision:old.accountId===collection.accountId?guide.revision:old.guidesContentRevision});
+ for(const key of ['sections','media','objects','attachments'] as const)expect(after[key]).toEqual(before[key]);
+}
+async function originalCreationBody(response:Response,status:number){expect(response.status()).toBe(status);const bytes=await response.body();expect(bytes.length).toBeLessThanOrEqual(65536);expect(await response.finished()).toBeNull();return JSON.parse(bytes.toString('utf8'));}
+test(GUIDES_CASES[0],async({browser},info)=>{
+ const harness=createGuidesHarnessClient();expect(info.repeatEachIndex).toBe(0);expect(GUIDES_PROJECTS).toContain(info.project.name);
+ const manifest=await harness.start({caseId:GUIDES_CASES[0],project:info.project.name as typeof GUIDES_PROJECTS[number],repeat: 0});let owner:BrowserContext|undefined,completed=false;
+ try{
+  owner=await harness.createContext(browser,'ownerA',info.project.name==='guides-mobile'?{viewport:{width:390,height:844},isMobile:true,hasTouch:true}:{viewport:{width:1365,height:900}});
+  const page=await harness.trackProducer(()=>owner!.newPage());trackGuidesBootstrap(page,manifest.personas.ownerA);
+  await harness.trackProducer(async()=>{
+   const before:Observation=await harness.observe(),title='कोलकाता की यात्रा café',description='सुबह नदी और संस्कृति café',categories=['संस्कृति','भोजन','कला','नदी'];
+   await navigateGuides(page,'/recommendations/guides');await page.getByRole('button',{name:'+ Add Guide',exact:true}).click();
+   await page.getByRole('combobox').selectOption('Itinerary');await page.getByPlaceholder('Search for a location',{exact:true}).fill('कोलकाता');await page.getByRole('button',{name:'Use entered location',exact:true}).click();await page.getByRole('button',{name:'Next',exact:true}).click();
+   await page.getByRole('button',{name:'3 Days',exact:true}).click();await page.getByPlaceholder('Select budget type...',{exact:true}).click();await page.getByRole('button',{name:'Budget',exact:true}).click();
+   for(const category of categories){const input=page.getByPlaceholder(/^(Search and select categories|Add more categories)\.\.\.$/);await input.fill(category);await page.getByRole('button',{name:`Add “${category}”`,exact:true}).click();await expect(page.getByRole('button',{name:`Remove ${category}`,exact:true})).toBeVisible();}
+   const month=page.getByPlaceholder('Search and select months...',{exact:true});await month.click();await month.fill('October');await page.getByRole('button',{name:'October',exact:true}).click();await page.getByRole('button',{name:'Next',exact:true}).click();
+   await page.getByPlaceholder('Enter guide title',{exact:true}).fill(title);await page.locator('[contenteditable="true"]').fill(description);
+   const keys=new Set<string>();const original=(method:string,path:(path:string)=>boolean)=>{const work=page.waitForResponse(r=>new URL(r.url()).origin===origin&&r.request().method()===method&&path(new URL(r.url()).pathname));void work.catch(()=>undefined);return work;};
+   const createdResponse=original('POST',path=>path===`${base}/collections`),readResponse=original('GET',path=>path.startsWith(`${base}/collections/`)&&path.endsWith('/guide')&&!before.guides.some(g=>path===`${base}/collections/${g.id}/guide`)),detailsResponse=original('PUT',path=>path.startsWith(`${base}/collections/`)&&path.endsWith('/guide'));
+   await page.getByRole('button',{name:'Create Guide',exact:true}).click();
+   const response=await createdResponse;assertOriginalGuideCommandKey(response,keys);const command=createCollectionSchema.parse(response.request().postDataJSON());expect(command).toEqual({category:'guides',title,slug:command.slug,description,visibility:'private',publicationState:'draft',heading:null,coverMediaId:null});
+   const collection=createCollectionResultSchema.parse((await originalCreationBody(response,201)).collection);expect(collection.accountId).toBe(manifest.personas.ownerA.accountId);expect(collection).toMatchObject({category:'guides',title,description,slug:command.slug,visibility:'private',publicationState:'draft',coverMediaId:null});expect(before.guides.some(g=>g.id===collection.id)).toBe(false);
+   const initialResponse=await readResponse;expect(new URL(initialResponse.url()).pathname).toBe(`${base}/collections/${collection.id}/guide`);const initial=guideAggregateDtoSchema.parse((await browserBody(initialResponse)).guide);expect(initial.collectionId).toBe(collection.id);expect(initial.revision).toBe(before.personas.ownerA.guidesContentRevision+1);
+   const write=await detailsResponse;expect(new URL(write.url()).pathname).toBe(`${base}/collections/${collection.id}/guide`);assertOriginalGuideCommandKey(write,keys);const detailsCommand=writeGuideDetailsSchema.parse(write.request().postDataJSON());expect(detailsCommand.revision).toBe(initial.revision);
+   const details={guideType:'itinerary',multiCity:false,numberOfDays:3,estimatedBudget:null,budgetCurrency:null,budgetType:null,bestTimeToVisit:['October'],categories,tags:[],tipsNotes:null,place:{name:'कोलकाता',address:'कोलकाता',placeId:null,rating:null,ratingsCount:null,lat:null,lng:null},locationEntityId:null};expect(detailsCommand.details).toEqual(details);
+   const guide=guideAggregateDtoSchema.parse((await browserBody(write)).guide);expect(guide.collectionId).toBe(collection.id);expect(guide.revision).toBe(initial.revision+1);expect(guide.details).toEqual(details);
+   await expect(page.getByRole('heading',{level:1,name:title,exact:true})).toBeVisible();await expect(page.getByText(description,{exact:true})).toBeVisible();const after:Observation=await harness.observe();assertCreationPersistedScope(before,after,collection,guide);
+   const reloaded=original('GET',path=>path===`${base}/collections/${collection.id}/guide`);await reloadGuides(page);expect(guideAggregateDtoSchema.parse((await browserBody(await reloaded)).guide)).toEqual(guide);await expect(page.getByRole('heading',{level:1,name:title,exact:true})).toBeVisible();await expect(page.getByText(description,{exact:true})).toBeVisible();expect(await harness.observe()).toEqual(after);
+   await page.getByRole('button',{name:'Edit Guide',exact:true}).click();await expect(page.getByPlaceholder('Search for a location',{exact:true})).toHaveValue('कोलकाता');await expect(page.getByRole('combobox')).toHaveValue('Itinerary');await page.getByRole('button',{name:'Next',exact:true}).click();for(const category of categories)await expect(page.getByRole('button',{name:`Remove ${category}`,exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Remove October',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'3 Days',exact:true})).toHaveClass(/bg-dashboard-accent/);await page.getByPlaceholder('Select budget type...',{exact:true}).click();await page.getByRole('button',{name:'Budget',exact:true}).click();await page.getByRole('button',{name:'Next',exact:true}).click();await expect(page.getByPlaceholder('Enter guide title',{exact:true})).toHaveValue(title);await expect(page.locator('[contenteditable="true"]')).toHaveText(description);expect(await harness.observe()).toEqual(after);
+  });await settleGuidesBootstrap(page);await harness.closeContext(owner);owner=undefined;await harness.retire();completed=true;
+ }finally{if(!completed){const closed=await Promise.allSettled([owner].filter((c):c is BrowserContext=>!!c).map(c=>harness.closeContext(c)));await harness.fail();if(closed.some(r=>r.status==='rejected'))throw Error('Guides creation containment failed');}}
 });
