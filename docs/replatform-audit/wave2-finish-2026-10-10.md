@@ -799,3 +799,6 @@ The generic request-drain refusal cannot distinguish prior native uncertainty fr
 ### Request-drain diagnostic checkpoint (2026-10-11)
 Independent reviews accepted the finite formatter/decoder, first native-origin driver telemetry, and private canonical/support first-reason witnesses. Fresh root verification: six contract suites / 578 tests passed; six selected resource-free runner tests passed; runner scoped types and explicit recovery roots passed; diff check passed. These receipts qualify diagnostic contracts only. Apps remains unqualified after the 54a12111 native run passed eight browser cases but refused request-drain cleanup. No cleanup gate or budget was changed in this checkpoint. The exact af123 retained fixture must be recovered before the next clean-head native run.
 
+
+Exact af123 native recovery at 1c6fdbf2 exited 0 with status recovered and qualification false. Fresh metadata checks confirmed retained root absent, full container ID absent, exact UAT-run label absent, lease absent, and retained secret length zero. Recovery is disposal evidence only; next Apps qualification still pending.
+
