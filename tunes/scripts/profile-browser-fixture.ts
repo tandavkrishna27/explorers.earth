@@ -22,6 +22,7 @@ import { startLifecycleControl } from './lifecycle-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment, assertLifecycleResults, assertOwnedCleanup } from './lifecycle-browser-guards';
 import { extractProtectedReceiptArguments, createProtectedReceipt } from './protected-browser-receipt';
 import { createAppsBrowserFixture, extractAppsFixtureDiagnostic } from './apps-browser-fixture';
+import { createGuidesBrowserFixture } from './guides-browser-fixture';
 
 const receiptArguments = extractProtectedReceiptArguments(process.argv.slice(2));
 const suite = parseBrowserSuite(receiptArguments.args);
@@ -33,6 +34,12 @@ if (suite === 'apps') {
     const diagnostic = extractAppsFixtureDiagnostic(error);
     const native=diagnostic?.nativeUnknownOrigin,pending=diagnostic?.requestDrainPending,request=pending?.evidence??diagnostic?.requestDrain;
     process.stderr.write(diagnostic ? `Apps owned fixture failed: stage=${diagnostic.stage}; category=${diagnostic.category}${diagnostic.cleanupStep ? `; cleanupStep=${diagnostic.cleanupStep}` : ''}${diagnostic.control ? `; controlOperation=${diagnostic.control.operation}; controlPhase=${diagnostic.control.phase}; controlBoundary=${diagnostic.control.boundary}; controlCategory=${diagnostic.control.category}${diagnostic.control.budgetMs===undefined?'':`; controlBudgetMs=${diagnostic.control.budgetMs}`}` : ''}${native?`; nativeUnknownOrigin=${native.origin}; nativeUnknownStage=${native.stage}${native.cleanupStep?`; nativeUnknownStep=${native.cleanupStep}`:''}${native.budgetMs===undefined?'':`; nativeUnknownBudgetMs=${native.budgetMs}`}`:''}${diagnostic.requestDrainBoundary?`; requestDrainBoundary=${diagnostic.requestDrainBoundary}`:''}${pending?`; requestDrainPhase=${pending.phase}; requestDrainHandlers=${pending.handlers}`:''}${request?`; requestDrainStatus=${request.status}; requestDrainSealed=${request.sealed}; requestDrainRequests=${request.requests}; requestDrainFrames=${request.frames}; requestDrainUnknown=${request.unknown}; requestDrainUncertain=${request.uncertain}${request.reason?`; requestDrainReason=${request.reason}`:''}${request.provedReadTransportCancellations===undefined?'':`; requestDrainReadCancellations=${request.provedReadTransportCancellations}`}${request.censusCode===undefined?'':`; requestDrainCensus=${request.censusCode}`}`:''}\n` : 'Apps owned fixture failed\n');
+  }
+} else if (suite === 'guides') {
+  try { await createGuidesBrowserFixture().run(); }
+  catch {
+    process.exitCode = 1;
+    process.stderr.write('Guides owned fixture failed\n');
   }
 } else {
 const root = resolve(import.meta.dirname, '../..');
