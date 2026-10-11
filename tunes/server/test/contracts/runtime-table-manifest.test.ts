@@ -59,6 +59,15 @@ describe("runtime table manifest", () => {
     expect(inventory.rawSqlTables).not.toContain("set");
   });
 
+  it("retains global taxonomy authority outside the account lifecycle manifest", () => {
+    const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "fixtures/db/music-runtime-table-manifest.json"), "utf8"));
+    for (const table of ["taxonomy_catalogs", "taxonomy_source_mappings", "taxonomy_legacy_slug_mappings", "taxonomy_import_receipts"]) {
+      expect(manifest.migrationChain.controlTables).toContain(table);
+      expect(manifest.tables.map((entry: { name: string }) => entry.name)).not.toContain(table);
+      expect(inventoryRuntimeTables(repositoryRoot).applicationTables).toContain(table);
+    }
+  });
+
   it("validates the committed manifest against generated repository references", () => {
     const inventory = inventoryRuntimeTables(repositoryRoot);
     const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "fixtures/db/music-runtime-table-manifest.json"), "utf8"));

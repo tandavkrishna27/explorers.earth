@@ -141,7 +141,7 @@ describe("Music E2E transactional state restore", () => {
       "movie_entity_details", "movie_entity_provider_genres", "movie_provider_genre_terms", "movie_recommendation_context", "music_credential_revocation_operations", "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
       "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens", "music_request_quota",
       "music_schema_migrations", "page_contents", "person_entity_details", "place_collection_details", "place_entity_details", "place_recommendation_context", "playback_states", "played_songs", "playlist_songs",
-      "playlists", "product_entity_details", "product_recommendation_context", "profile_feed_items", "profile_media", "recommendation_app_screenshots", "recommendation_book_covers", "recommendation_display_overrides", "recommendation_media", "recommendation_movie_media", "recommendation_place_photos", "recommendation_taxonomy", "recommendations", "seo_settings", "session", "songs", "system_settings", "taxonomy_term_translations", "taxonomy_terms", "team_members", "user_activity",
+      "playlists", "product_entity_details", "product_recommendation_context", "profile_feed_items", "profile_media", "recommendation_app_screenshots", "recommendation_book_covers", "recommendation_display_overrides", "recommendation_media", "recommendation_movie_media", "recommendation_place_photos", "recommendation_taxonomy", "recommendations", "seo_settings", "session", "songs", "system_settings", "taxonomy_catalogs", "taxonomy_import_receipts", "taxonomy_legacy_slug_mappings", "taxonomy_source_mappings", "taxonomy_term_translations", "taxonomy_terms", "team_members", "user_activity",
       "user_profiles", "user_security_state", "user_sessions", "users", "widgets", "youtube_api_calls", "youtube_api_usage",
       "youtube_music", "youtube_music_playlists", "youtube_playlists", "youtube_tokens",
     ]);
@@ -181,7 +181,7 @@ describe("Music E2E transactional state restore", () => {
       "0049_explorers_collection_location_links",
       "0050_explorers_guide_sections",
       "0051_explorers_launch_controls",
-      "0052_canonical_music_numeric_retirement",
+      "0052_canonical_music_numeric_retirement", "0053_explorers_taxonomy_catalogs",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
@@ -247,6 +247,13 @@ describe("Music E2E transactional state restore", () => {
     expectedTriggers.push({table:'movie_entity_provider_genres',name:'movie_genre_parent_lock',enabled:'O',type:31});
     expectedTriggers.push({table:'movie_entity_provider_genres',name:'movie_genres_constraint',enabled:'O',type:29});
     expectedTriggers.push({table:'movie_entity_details',name:'movie_genres_details_constraint',enabled:'O',type:21});
+    expectedTriggers.push({table:'recommendation_taxonomy',name:'recommendation_taxonomy_catalog_lock',enabled:'O',type:31});
+    expectedTriggers.push({table:'taxonomy_terms',name:'explorers_taxonomy_terms_shape',enabled:'O',type:29});
+    expectedTriggers.push({table:'recommendation_taxonomy',name:'explorers_taxonomy_assignments_shape',enabled:'O',type:29});
+    expectedTriggers.push({table:'taxonomy_catalogs',name:'explorers_taxonomy_catalog_labels',enabled:'O',type:29});
+    expectedTriggers.push({table:'taxonomy_term_translations',name:'explorers_taxonomy_translation_labels',enabled:'O',type:29});
+    expectedTriggers.push({table:'taxonomy_legacy_slug_mappings',name:'explorers_taxonomy_legacy_routes',enabled:'O',type:29});
+    expectedTriggers.push({table:'taxonomy_import_receipts',name:'taxonomy_import_receipt_immutable',enabled:'O',type:27});
     expectedTriggers.push({table:'taxonomy_terms',name:'taxonomy_tree_lock',enabled:'O',type:23});
     expectedTriggers.push({table:'taxonomy_terms',name:'taxonomy_tree_constraint',enabled:'O',type:21});
     expectedTriggers.push({table:'movie_recommendation_context',name:'movie_context_constraint',enabled:'O',type:23});

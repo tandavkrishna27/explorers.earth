@@ -96,6 +96,25 @@
       }
     },
     {
+      "method": "GET",
+      "path": "/api/auth/get-session",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
       "method": "USE",
       "path": "/api/auth",
       "source": "tunes/server/auth/canonicalApp.ts",
@@ -3634,9 +3653,42 @@
       }
     },
     {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/auth/canonicalHandlerCustody.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/auth/canonicalStartup.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/deployment/platform-native-attestation.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/deployment/platform-native-attestation.ts",
       "decision": "internal-service",
       "allowed": {
         "internalService": true,
@@ -3758,6 +3810,17 @@
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/musicPublicChangeListener.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/objectStorage.ts",
       "decision": "internal-service",
       "allowed": {
         "internalService": true,

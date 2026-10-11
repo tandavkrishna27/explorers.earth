@@ -379,7 +379,7 @@ it('Candidate CI preflight: caller mutation and offline APIs confer no release a
     const unused = fixture(); await rejects(observe(unused, forged), 'SELECTOR_INVALID'); expect(unused.calls).toHaveLength(0);
   }
   const digest = 'sha256:' + 'b'.repeat(64);
-  const manifest: Row = { version: 1, sourceCommit: source, schemaVersion: 52, producerRunId: '123', producerRepository: 'tandavkrishna27/explorers.earth',
+  const manifest: Row = { version: 1, sourceCommit: source, schemaVersion: 53, producerRunId: '123', producerRepository: 'tandavkrishna27/explorers.earth',
     producerWorkflow: '.github/workflows/platform-candidate.yml', testEvidenceRef: 'artifact:123/qualification',
     images: { api: { repository: 'ghcr.io/tandavkrishna27/explorers-api', digest, platforms: { 'linux/amd64': { digest, smokeEvidenceRef: 'artifact:123/api-smoke' } } },
       web: { repository: 'ghcr.io/tandavkrishna27/explorers-web', digest, platforms: { 'linux/amd64': { digest, smokeEvidenceRef: 'artifact:123/web-smoke' } } } } };
@@ -390,7 +390,7 @@ it('Candidate CI preflight: caller mutation and offline APIs confer no release a
     storage: { bucket: 'shared-private-bucket', region: 'ap-south-1', prefix: 'qa/', boundary: 'application-shared-principal' },
     google: { clientIdRef: 'GOOGLE_CLIENT_ID', clientSecretRef: 'GOOGLE_CLIENT_SECRET', callback: 'https://qa.example.test/api/auth/callback/google' },
     appSecretRef: 'qa_APP_SECRET', publicConfig: { origin: 'https://qa.example.test', apiPath: '/api', socketPath: '/socket.io' } };
-  expect(parseRelease(manifest).schemaVersion).toBe(52);
+  expect(parseRelease(manifest).schemaVersion).toBe(53);
   expect(() => verifyRelease(manifest, ready, { success: true, trusted: true, observation: output } as never)).toThrow('TRUSTED_AUTHORITY_UNAVAILABLE');
   expect(await runReleaseCli(['inspect', '--manifest', 'synthetic.json'], async () => JSON.stringify(manifest))).toEqual({ exitCode: 0, stdout: 'STRUCTURALLY_VALID_UNQUALIFIED\n', stderr: '' });
   for (const environment of ['qa', 'production']) {

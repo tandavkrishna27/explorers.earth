@@ -61,6 +61,17 @@ describe('canonical runtime provisioning atomic provenance', () => {
     expect(database.statements.filter((sql) => sql === 'BEGIN')).toHaveLength(1);
     expect(database.released()).toBe(1);
   });
+  it('restores taxonomy read and lock boundaries after blanket runtime grants', async () => {
+    const database = transactionDatabase();
+    await provisionMusicRuntimeLogin(database.pool, input);
+    const statements = database.statements;
+    const revoke = 'REVOKE ALL ON taxonomy_catalogs,taxonomy_source_mappings,taxonomy_legacy_slug_mappings,taxonomy_import_receipts FROM music_runtime';
+    expect(statements).toContain(revoke);
+    expect(statements).toContain('GRANT SELECT ON taxonomy_catalogs,taxonomy_source_mappings,taxonomy_legacy_slug_mappings TO music_runtime');
+    expect(statements).toContain('REVOKE ALL ON FUNCTION lock_explorers_taxonomy_catalog(text),lock_recommendation_taxonomy_catalog(),validate_explorers_taxonomy_catalogs(),guard_explorers_taxonomy_catalogs(),guard_taxonomy_import_receipt_immutable() FROM music_runtime');
+    expect(statements).toContain('GRANT EXECUTE ON FUNCTION lock_explorers_taxonomy_catalog(text) TO music_runtime');
+    expect(statements.findIndex(sql => sql.startsWith('GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES'))).toBeLessThan(statements.indexOf(revoke));
+  });
   it.each(['comment', 'before-commit'] as const)('rolls back role and provenance on %s interruption', async (interrupt) => {
     const database = transactionDatabase(interrupt);
     await expect(provisionMusicRuntimeLogin(database.pool, input, { ownershipComment: comment })).rejects.toThrow();

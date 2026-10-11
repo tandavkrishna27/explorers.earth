@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0052_canonical_music_numeric_retirement",
+    "expectedId": "0053_explorers_taxonomy_catalogs",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -55,7 +55,8 @@
       "0049_explorers_collection_location_links.sql",
       "0050_explorers_guide_sections.sql",
       "0051_explorers_launch_controls.sql",
-      "0052_canonical_music_numeric_retirement.sql"
+      "0052_canonical_music_numeric_retirement.sql",
+      "0053_explorers_taxonomy_catalogs.sql"
     ],
     "controlTables": [
       "music_schema_migrations",
@@ -67,7 +68,11 @@
       "music_reactivation_tokens",
       "music_owner_operations",
       "explorers_analytics_receipts",
-      "canonical_music_numeric_retirements"
+      "canonical_music_numeric_retirements",
+      "taxonomy_catalogs",
+      "taxonomy_source_mappings",
+      "taxonomy_legacy_slug_mappings",
+      "taxonomy_import_receipts"
     ]
   },
   "generatedFrom": [

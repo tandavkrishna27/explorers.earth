@@ -84,6 +84,10 @@ const expectedRuntimeTables = [
   "session",
   "songs",
   "system_settings",
+  "taxonomy_catalogs",
+  "taxonomy_import_receipts",
+  "taxonomy_legacy_slug_mappings",
+  "taxonomy_source_mappings",
   "taxonomy_term_translations",
   "taxonomy_terms",
   "team_members",
@@ -150,6 +154,7 @@ const expectedRuntimeFunctions = [
   "guard_book_entity_details()",
   "guard_book_recommendation_context()",
   "guard_canonical_music_numeric_retirement()",
+  "guard_explorers_taxonomy_catalogs()",
   "guard_guide_location_entity()",
   "guard_guide_section_media()",
   "guard_movie_context()",
@@ -167,11 +172,14 @@ const expectedRuntimeFunctions = [
   "guard_recommendation_media()",
   "guard_recommendation_place_photo()",
   "guard_recommendation_taxonomy()",
+  "guard_taxonomy_import_receipt_immutable()",
   "guard_taxonomy_tree()",
+  "lock_explorers_taxonomy_catalog(text)",
   "lock_movie_genre_parent()",
   "lock_movie_media_parent()",
   "lock_music_identity_pair(text,text)",
   "lock_music_numeric_user_id(integer)",
+  "lock_recommendation_taxonomy_catalog()",
   "lock_recommendation_taxonomy_parent()",
   "lock_taxonomy_tree()",
   "music_compact_publication_operations(integer)",
@@ -187,6 +195,7 @@ const expectedRuntimeFunctions = [
   "reject_unauthorized_music_identity_delete()",
   "retain_music_identity_tombstone_on_delete()",
   "stamp_explorers_session_version()",
+  "validate_explorers_taxonomy_catalogs()",
   "validate_movie_context(uuid,text,bigint[])",
   "validate_movie_media(uuid)",
 ] as const;
@@ -653,6 +662,10 @@ export async function provisionMusicRuntimeLogin(
       ON entities,collections,recommendations,account_category_pin_state FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON entity_identifiers,book_entity_details,app_entity_details,product_entity_details,person_entity_details,place_entity_details,movie_entity_details,movie_entity_provider_genres FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON taxonomy_catalogs,taxonomy_source_mappings,taxonomy_legacy_slug_mappings,taxonomy_import_receipts FROM ${capabilityRole}`);
+    await client.query(`GRANT SELECT ON taxonomy_catalogs,taxonomy_source_mappings,taxonomy_legacy_slug_mappings TO ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON FUNCTION lock_explorers_taxonomy_catalog(text),lock_recommendation_taxonomy_catalog(),validate_explorers_taxonomy_catalogs(),guard_explorers_taxonomy_catalogs(),guard_taxonomy_import_receipt_immutable() FROM ${capabilityRole}`);
+    await client.query(`GRANT EXECUTE ON FUNCTION lock_explorers_taxonomy_catalog(text) TO ${capabilityRole}`);
     await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON taxonomy_terms,taxonomy_term_translations,movie_provider_genre_terms FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION guard_movie_details(),guard_movie_genres(),lock_movie_genre_parent(),guard_movie_media(),lock_movie_media_parent(),validate_movie_media(uuid),guard_taxonomy_tree(),lock_taxonomy_tree(),validate_movie_context(uuid,text,bigint[]),guard_movie_context(),guard_recommendation_taxonomy(),lock_recommendation_taxonomy_parent() FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context(),guard_recommendation_book_cover(),guard_app_entity_details(),guard_recommendation_app_screenshot(),guard_product_entity_details(),guard_person_entity_details(),guard_place_entity_details(),guard_place_context_kind(),guard_recommendation_place_photo(),guard_place_collection_details(),guard_guide_section_media(),guard_guide_location_entity() FROM ${capabilityRole}`);
@@ -773,6 +786,10 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "DELETE FROM music_publication_operations WHERE false",
     "UPDATE music_owner_operations SET status_code=status_code WHERE false",
     "SELECT * FROM music_publication_operation_archive LIMIT 0",
+    "SELECT * FROM taxonomy_import_receipts LIMIT 0",
+    "DELETE FROM taxonomy_catalogs WHERE false",
+    "DELETE FROM taxonomy_source_mappings WHERE false",
+    "DELETE FROM taxonomy_legacy_slug_mappings WHERE false",
     "INSERT INTO music_publication_operation_archive(music_user_id,idempotency_key_hash,request_fingerprint,request_mode,completed_at,expires_at) VALUES (1,repeat('0',64),repeat('0',64),'public',clock_timestamp()-interval '24 hours',clock_timestamp())",
     "UPDATE music_publication_operation_archive SET request_mode=request_mode WHERE false",
     "DELETE FROM music_publication_operation_archive WHERE false",
@@ -817,7 +834,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
   if (!sameRuntimeInventory(tableRows.map((row) => row.object_name), expectedRuntimeTables)
       || tableRows.some((row) => row.object_owner !== approvedOwnerRole)
       || tableRows.some((row) => {
-    const expected = row.object_name === "music_schema_migrations" || row.object_name === "account_category_content_state" || ["taxonomy_terms","taxonomy_term_translations","movie_provider_genre_terms"].includes(row.object_name)
+    const expected = row.object_name === "music_schema_migrations" || row.object_name === "account_category_content_state" || ["taxonomy_terms","taxonomy_term_translations","movie_provider_genre_terms","taxonomy_catalogs","taxonomy_source_mappings","taxonomy_legacy_slug_mappings"].includes(row.object_name)
       ? [true, false, false, false]
       : ["analytics_events","analytics_event_receipts"].includes(row.object_name)
         ? [true,true,false,false]
@@ -827,7 +844,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
         ? [true, true, false, false]
       : row.object_name === "collection_location_links" || row.object_name === "guide_section_photos"
         ? [true, true, false, true]
-      : row.object_name === "music_publication_operation_archive"
+      : ["music_publication_operation_archive","taxonomy_import_receipts"].includes(row.object_name)
         ? [false, false, false, false]
       : row.object_name === "canonical_music_numeric_retirements"
         ? [true, true, false, false]
@@ -885,7 +902,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       || functionRows.some((row) => row.object_owner !== approvedOwnerRole || row.can_execute
         !== (row.function_signature !== "provision_music_runtime_login(name,text)"
           && !/^explorers_content_revision_(insert|update|delete|lifecycle)\(\)$/.test(row.function_signature)
-          && !["guard_movie_details()","guard_movie_genres()","lock_movie_genre_parent()","guard_movie_media()","lock_movie_media_parent()","validate_movie_media(uuid)","guard_taxonomy_tree()","lock_taxonomy_tree()","validate_movie_context(uuid,text,bigint[])","guard_movie_context()","guard_recommendation_taxonomy()","lock_recommendation_taxonomy_parent()"].includes(row.function_signature)
+          && !["lock_recommendation_taxonomy_catalog()","validate_explorers_taxonomy_catalogs()","guard_explorers_taxonomy_catalogs()","guard_taxonomy_import_receipt_immutable()","guard_movie_details()","guard_movie_genres()","lock_movie_genre_parent()","guard_movie_media()","lock_movie_media_parent()","validate_movie_media(uuid)","guard_taxonomy_tree()","lock_taxonomy_tree()","validate_movie_context(uuid,text,bigint[])","guard_movie_context()","guard_recommendation_taxonomy()","lock_recommendation_taxonomy_parent()"].includes(row.function_signature)
           && !/^guard_book_(entity_details|recommendation_context)\(\)$/.test(row.function_signature) && row.function_signature!=="guard_recommendation_book_cover()"
           && !/^guard_(app_entity_details|recommendation_app_screenshot|product_entity_details|person_entity_details|place_entity_details|place_context_kind|recommendation_place_photo|place_collection_details|guide_section_media|guide_location_entity)\(\)$/.test(row.function_signature)))) {
     throw new Error("runtime database privilege matrix is unsafe");
