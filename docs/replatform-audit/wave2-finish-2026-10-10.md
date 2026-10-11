@@ -879,3 +879,7 @@ Canonical segment endpoints use local IDs; the retained Transport UI incorrectly
 ### Guides retained editors case source
 Case1 now covers seven native retained editor writes with complete original command acknowledgements, unique keys, persisted scope and reload. Conditional Journey Route has an explicitly labeled canonical fixture prerequisite; it does not claim native provider selection. Independent review identified first editor selector requiring Timeline view; actual readiness ordering regression RED1/GREEN1 and rereview accepted the one-line fix. Root fresh selected spec/editor imported TypeScript exited0; focused Guides run reported11files/75testsPASS. Authored inventory is exact cases1,2,3; full16-case native qualification remains open.
 
+
+### QA native attestation observer source
+The bounded protected CLI adapter and synthetic contracts passed independent review after fixing a partial-staging reader descriptor leak. Root fresh focused adapter/parser run reported3files/518testsPASS and selected full imported TypeScript exited0. The observer remains releaseQualified:false; production acquisition and release verification remain closed. Exact published CLI bytes use the reviewed official HTTPS archive digest, not independent Sigstore binary/source proof. Actual archive compatibility/provisioning, registry authentication and real project verification remain operational gates; no archive download or real verifier execution occurred.
+
