@@ -265,6 +265,15 @@ async function liveMedia(request:APIRequestContext,info:TestInfo,id:string,accou
  const row=(await observe(request,info)).media.find(x=>x.id===id);expect(row).toBeDefined();expect(row?.accountId===accountId&&row?.purpose==='recommendation'&&row?.status==='ready'&&row?.length===file.length&&row?.sha256===file.sha256).toBe(true);
 }
 
+// Auth settlement alone does not prove the owner list read rendered. A missing
+// row can also mean loading, so require the actual loaded empty-list controls.
+async function expectEmptyCrudList(page:Page){
+ await expect(page.getByRole('heading',{name:'Native Apps CRUD',level:1,exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Add App',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'manage',exact:true})).toBeVisible();
+ await expect(page.getByText('No apps added yet.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Add your first recommendation to this list.',{exact:true})).toBeVisible();
+}
 test(titles[0],async({page},info)=>{
  const m=await start(page,info),owner=m.personas.ownerA.accountId;expect((await complete(page.request,owner)).collections).toHaveLength(0);
  const listId=await createList(page,'Native Apps CRUD','native-apps-crud');await navigateApps(page,`/recommendations/apps/${listId}`);await page.getByRole('button',{name:'Add App',exact:true}).click();await invalidThenValid(page,'Native Complete App','crud');const id=await save(page);await page.getByRole('button',{name:'Keep Draft',exact:true}).click();await expect(page.getByRole('button',{name:'Keep Draft',exact:true})).toHaveCount(0);
@@ -272,9 +281,11 @@ test(titles[0],async({page},info)=>{
  await edit(page,listId,id,'Native Complete App');await expect(page.getByLabel('App URL',{exact:true})).toBeDisabled();await page.getByLabel('App title',{exact:true}).fill('Native Edited App');await page.getByLabel('Developer',{exact:true}).fill('Edited Developer');expect(await save(page)).toBe(id);await reloadApps(page);
  const edited=await recommendation(page.request,id);expect(edited.entityId).toBe(created.entityId);expect(edited.displayTitle).toBe('Native Edited App');expect(edited.effectiveAppDetails?.developer).toBe('Edited Developer');
  const row=appRow(page,'Native Edited App');await row.getByRole('button').last().click();page.once('dialog',async dialog=>{expect(dialog.message()).toBe('Delete "Native Edited App"?');await dialog.accept();});const detached=acknowledgement(page,`/collections/${listId}/memberships/${id}`,'DELETE',body=>typeof body.expectedCollectionRevision==='number'&&typeof body.expectedRecommendationRevision==='number');await row.getByRole('button',{name:'Delete',exact:true}).click();const detachBody=await browserBody(await detached,200);expect(detachBody.membership.attached===false&&detachBody.membership.collection.id===listId&&detachBody.membership.recommendation.id===id).toBe(true);await expect(row).toHaveCount(0);await reloadApps(page);
+ await expectEmptyCrudList(page);
  const after=await complete(page.request,owner);expect(after.memberships.some(x=>x.recommendationId===id&&x.collectionId===listId)).toBe(false);expect(after.recommendations.find(x=>x.id===id)?.archived).toBe(false);
  // Canonical recommendation archive is explicit API behavior; native Delete above detached only.
  const detachedDetail=await recommendation(page.request,id);await status(await command(page.request,'delete',`/recommendations/${id}`,{expectedRevision:detachedDetail.revision}),200);expect((await recommendation(page.request,id)).archived).toBe(true);
+ await reloadApps(page);await expectEmptyCrudList(page);
  await page.getByRole('button',{name:'manage',exact:true}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();const modal=page.getByRole('heading',{name:'Delete List?',exact:true}).locator('..');const deleted=acknowledgement(page,`/collections/${listId}`,'DELETE',body=>typeof body.expectedRevision==='number');await modal.getByRole('button',{name:'Delete',exact:true}).click();const deleteBody=await browserBody(await deleted,200);expect(deleteBody.collection.id).toBe(listId);await expect(page).toHaveURL(`${origin}/recommendations/apps`);await expect(modal).toHaveCount(0);await reloadApps(page);expect((await complete(page.request,owner)).collections.find(x=>x.id===listId)?.archived).toBe(true);
  await observe(page.request,info);
 });
