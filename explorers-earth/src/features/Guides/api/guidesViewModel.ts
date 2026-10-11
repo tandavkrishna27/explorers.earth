@@ -217,13 +217,7 @@ export function toGuide(collection: OwnerCollectionDto, aggregate: GuideAggregat
   Guide_Section_Details: aggregate.sections.map((section) => ({
    documentId: section.id, Title: section.title, Sequence: section.displayOrder + 1,
   })),
-  guide_sections: aggregate.sections.map((section) => {
-   const mapped = toGuideSection(section);
-   return {
-    documentId: section.id, Timeline: mapped.Timeline, Stay: mapped.Stay,
-    Recommendation_Activity: mapped.Recommendation_Activity, Budget: mapped.Budget,
-   };
-  }),
+  guide_sections: aggregate.sections.map(toGuideSection),
   account: {documentId: collection.accountId},
   // is_pinned is derived, never stored twice: a pin IS a pin order.
   is_pinned: pinOrder !== null,
