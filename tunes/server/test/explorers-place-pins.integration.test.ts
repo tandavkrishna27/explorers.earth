@@ -1031,10 +1031,19 @@ const databaseClock=async()=>((await admin.query('SELECT clock_timestamp() now')
   const {f,foreign,records,ids}=await historicalSqlFixture(category),wrong=(await admin.query("INSERT INTO entities(kind,title,origin) VALUES('movie','Bare wrong kind','manual') RETURNING id")).rows[0].id;
   await rejectRawSql([f,foreign],records,async db=>{await db.query('UPDATE recommendations SET entity_id=$2 WHERE id=$1',[ids[0],wrong]);},['23514'],[wrong]);
  });
- it.each(['foreign operation owner','deactivate operation kind','pending operation state','future deletion date','NULL deletion date'] as const)('lifecycle purge rejects %s and preserves complete state',async variant=>{
-  const {target:f,foreign,records}=await fullOwnedSqlFixture();await admin.query("UPDATE creator_accounts SET status='pending_deletion',deletion_requested_at=$2 WHERE id=$1",[f.account,variant==='NULL deletion date'?null:variant==='future deletion date'?'2999-01-01T00:00:00.000Z':fixtureTime]);
+ it.each(['foreign operation owner','deactivate operation kind','pending operation state','future deletion date'] as const)('lifecycle purge rejects %s and preserves complete state',async variant=>{
+  const {target:f,foreign,records}=await fullOwnedSqlFixture();await admin.query("UPDATE creator_accounts SET status='pending_deletion',deletion_requested_at=$2 WHERE id=$1",[f.account,variant==='future deletion date'?'2999-01-01T00:00:00.000Z':fixtureTime]);
   const operation=await lifecycleSqlOperation(variant==='foreign operation owner'?foreign.account:f.account,variant==='deactivate operation kind'?'deactivate':'delete',variant==='pending operation state'?'pending':'running');
   await rejectRawSql([f,foreign],records,async db=>{await db.query('SELECT purge_explorers_account_content($1,$2)',[f.account,operation]);},['42501']);
+ });
+ it('lifecycle schema rejects pending deletion with NULL date and preserves complete state',async()=>{
+  // Canonical 0022 rejects this state before purge eligibility can be reached.
+  const {target:f,foreign,records}=await fullOwnedSqlFixture(),before=await completeSqlSnapshot([f,foreign],records);
+  const result=await rawSqlTransaction(async db=>{
+   await db.query("UPDATE creator_accounts SET status='pending_deletion',deletion_requested_at=NULL WHERE id=$1",[f.account]);
+  },{privileged:true});
+  expect(result.committed).toBe(false);expect(result.error).toBeDefined();expect(result.code).toBe('23514');
+  expect(await completeSqlSnapshot([f,foreign],records)).toEqual(before);
  });
  it('raw pinned recommendation deletion rejects and rolls cleanup back',async()=>{
   // RESTRICT is immediate; cleanup triggers must roll back with its failure.
