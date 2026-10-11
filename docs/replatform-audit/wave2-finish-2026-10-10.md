@@ -863,3 +863,7 @@ Accepted independent fix-round review. Root ten Guides contract suites passed 19
 ### Guides competing edits case source
 Independent review accepted case2 original native stale save, retained draft, explicit reload/retry, exact revision and aggregate scope, and labeled wrong-owner/missing canonical authorization probes. Root195 contract tests and selected spec TypeScript passed. Exact authored inventory is cases2 and3; full lane registration and native qualification remain open.
 
+
+### Approval and next source work
+User approval received for proposed included feature semantics and Guides entered-location/local fixture provider approach. Actual People vocabulary, approved scrape sources and intended nightly worker host remain unsupplied; approval is not evidence of real provider execution. Guides case1 implementation and bounded transport identity repair are proceeding separately. QA attestation adapter source proceeds under audited closed configuration, genuine pinned executable provenance and original child custody; publishing/deployment remain unauthorized and no native qualification is inferred.
+
