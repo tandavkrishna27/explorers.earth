@@ -1,10 +1,14 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
 const port = Number(process.env.GUIDES_E2E_FRONTEND_PORT), origin = process.env.GUIDES_E2E_ORIGIN ?? '';
 const match = /^http:\/\/127\.0\.0\.1:([1-9][0-9]{0,4})$/.exec(origin);
 if (!Number.isSafeInteger(port) || port < 1024 || port > 65535 || String(port) !== process.env.GUIDES_E2E_FRONTEND_PORT || !match || Number(match[1]) < 1024 || Number(match[1]) > 65535 || origin !== `http://127.0.0.1:${Number(match[1])}` || Number(match[1]) === port)
     throw Error('Guides frontend requires owned gateway ports');
-export default defineConfig({ envDir: false, envPrefix: 'GUIDES_NEVER_EXPOSE_PRIVATE_', plugins: [react()], define: {
+export default defineConfig({ envDir: false, envPrefix: 'GUIDES_NEVER_EXPOSE_PRIVATE_', plugins: [react()], resolve: { alias: [{
+        find: /^\.\.\/\.\.\/\.\.\/lib\/browserPlacesProvider$/,
+        replacement: fileURLToPath(new URL('../setup/guides-browser-provider.ts', import.meta.url)),
+    }] }, define: {
         'import.meta.env.VITE_API_URL': JSON.stringify(`${origin}/graphql`),
         'import.meta.env.VITE_REST_API_URL': JSON.stringify(`${origin}/api`),
         'import.meta.env.VITE_BASE_URL': JSON.stringify(origin),
