@@ -34,4 +34,3 @@ The fixed Apps composition now passes its private admission identity into custod
 Apps-only session construction enables installed deferred GET refresh with cookie cache disabled; normal auth configuration stays unchanged. Installed runtime adapter-bound tests prove near-refresh GET0writes and expired GET0deletion, ordinary update/delete controls, signed-cookie/defaultGET behavior and held original finalizer. This supports the eight audited READ ONLY owner scopes. Authentication endpoints, /me, media GET/HEAD, control, uploads and mutations remain excluded.
 
 Independent auth and custody reviews accepted after fixing callback-error forwarding and altered-promise settlement. Fresh root verification:10 focused contract suites740PASS; six selected runner testsPASS; tsconfig.music-c0 and scoped runner typechecks0. Native exact-head Apps qualification remains pending.
-
