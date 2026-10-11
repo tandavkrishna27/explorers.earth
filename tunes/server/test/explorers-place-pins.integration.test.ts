@@ -3,7 +3,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {beforeAll,afterAll,describe,it,expect} from 'vitest';
 import {ExplorersPlacePinsRepository} from '../repositories/explorersPlacePinsRepository';
 import {ExplorersRecommendationRepository} from '../repositories/explorersRecommendationRepository';
-import {createPlacePinsSequenceHasher,hashPlacePinsChunk} from '../application/placePinsBoundary';
+import {createPlacePinsSequenceHasher,hashPlacePinsChunk,hashPlacePinsRequest} from '../application/placePinsBoundary';
 import type {PlacePinsRequest} from '../../shared/explorersPlacePinsContract';
 import {lockContentCategories} from '../db/explorers-content-lock';
 import {verifyMusicRuntimeLogin} from '../db/music-runtime-role';
@@ -98,6 +98,81 @@ async function waitBlockedBy(pid:number){const deadline=performance.now()+5000;
  while(performance.now()<deadline){if((await admin.query('SELECT 1 FROM pg_stat_activity WHERE $1=ANY(pg_blocking_pids(pid)) LIMIT 1',[pid])).rowCount)return;await new Promise(resolve=>setTimeout(resolve,10));}throw new Error('Expected actual PostgreSQL barrier');}
 async function waitDatabaseCondition(sql:string,args:unknown[]){const deadline=performance.now()+2000;
  while(performance.now()<deadline){if((await admin.query(sql,args)).rows[0]?.ready)return;await new Promise(resolve=>setTimeout(resolve,10));}throw new Error('Expected bounded database clock condition');}
+// Read-only adapter: SQL, arguments, results and release all pass through unchanged.
+function observingRepository(){
+ const observations:{sql:string;args:unknown[];rows:any[];rowCount:number|null}[]=[];let releases=0;
+ const pool={connect:async()=>{const db=await runtime.connect();return {query:async(sql:string,args:unknown[]=[])=>{
+  const result=await db.query(sql,args);observations.push({sql,args,rows:result.rows,rowCount:result.rowCount});return result;
+ },release:()=>{releases++;db.release();}};}} as unknown as pg.Pool;
+ return {repository:new ExplorersPlacePinsRepository(pool),observations,releases:()=>releases};
+}
+const databaseClock=async()=>((await admin.query('SELECT clock_timestamp() now')).rows[0].now as Date).getTime();
+ it.each(['bytes','work'] as const)('rolls back late cumulative staged processing %s exhaustion after promotion and result reads',async(kind)=>{
+  const f=await seed(3);await replace(f);const ids=[...f.ids].reverse(),draftIdLength=randomUUID();
+  const shape=(id:string,index:number,members:string[]):PlacePinsRequest=>({operation:'appendPlacePinsChunk',collectionId:f.list,draftId:id,chunkIndex:index,body:{recommendationIds:members,chunkHash:hashPlacePinsChunk(index,members)}});
+  const B0=Buffer.byteLength(JSON.stringify(shape(draftIdLength,0,ids.slice(0,2)))),B1=Buffer.byteLength(JSON.stringify(shape(draftIdLength,1,ids.slice(2)))),S=B0+B1+3*64;
+  expect(B0).toBeLessThanOrEqual(512);expect(B1).toBeLessThanOrEqual(512);expect(S).toBeGreaterThanOrEqual(512);
+  // 24 controlled queries + 2 stream loops + 23 explicit charges = 49;
+  // terminal admission takes bytes S+1152 -> S+1344 and work 49 -> 54.
+  const P={...policy,policyId:`disposable-late-${kind}`,transportChunkBytes:512,transportChunkIds:8,replacementBytes:512,replacementIds:8,ownerStagingBytes:S,commitProcessingBytes:kind==='bytes'?S+1152:200000,commitWorkUnits:kind==='work'?53:10000};
+  const adapter=observingRepository(),execute=(request:PlacePinsRequest,key:string,p=P)=>adapter.repository.execute(f.account,request,{requestId:randomUUID(),idempotencyKey:key},Buffer.byteLength(JSON.stringify(request)),p);
+  const start:PlacePinsRequest={operation:'beginPlacePinsDraft',collectionId:f.list,body:await fences(f)},startKey=randomUUID(),draft:any=await execute(start,startKey);
+  const first=shape(draft.draftId,0,ids.slice(0,2)),second=shape(draft.draftId,1,ids.slice(2)),firstKey=randomUUID(),secondKey=randomUUID();
+  expect(Buffer.byteLength(JSON.stringify(first))).toBe(B0);expect(Buffer.byteLength(JSON.stringify(second))).toBe(B1);
+  await execute(first,firstKey);await execute(second,secondKey);
+  expect(adapter.observations.filter(o=>o.sql.startsWith('INSERT INTO place_pin_draft_chunks'))).toHaveLength(2);
+  const before=await snapshot(f,[draft.draftId]);expect(before.drafts[0]).toMatchObject({policy_snapshot:P,accepted_bytes:String(S),item_count:'3',chunk_count:'2'});
+  const setup=()=>Promise.all([receipt(f,start,startKey),receipt(f,first,firstKey),receipt(f,second,secondKey)]),saved=await setup();
+  const request=commitRequest(f,draft.draftId,ids),key=randomUUID(),Q={...policy,policyId:'disposable-late-generous-caller',policyVersion:2};
+  for(const caller of [P,Q]){
+   const offset=adapter.observations.length,releases=adapter.releases();await expect(execute(request,key,caller)).rejects.toMatchObject({status:413});
+   const sql=adapter.observations.slice(offset).map(o=>o.sql),controlled=sql.filter(s=>s!=='BEGIN'&&s!=='ROLLBACK'&&!s.startsWith('SELECT set_config('));
+   expect(controlled).toHaveLength(24);expect(sql.filter(s=>s.startsWith('INSERT INTO collection_place_pins'))).toHaveLength(1);
+   expect(controlled.slice(-3).map(s=>s.replace(/\s+/g,' '))).toEqual([
+    expect.stringContaining('SELECT revision FROM collections'),expect.stringContaining('SELECT count(*)'),expect.stringContaining('FROM account_category_content_state')]);
+   expect(sql.some(s=>s.startsWith('UPDATE place_pin_drafts SET state='))).toBe(false);expect(sql.some(s=>s.startsWith('DELETE FROM place_pin_draft_chunks'))).toBe(false);
+   expect(sql.some(s=>s.startsWith('INSERT INTO application_command_receipts'))).toBe(false);expect(sql.filter(s=>s==='ROLLBACK')).toHaveLength(1);expect(adapter.releases()).toBe(releases+1);
+   expect(await snapshot(f,[draft.draftId])).toEqual(before);expect(await setup()).toEqual(saved);expect(await receipt(f,request,key)).toEqual([]);
+  }
+  const control=await seed(3);await replace(control);const controlBefore=await versions(control),other=await versions(control,control.otherList),reverse=[...control.ids].reverse();
+  const generous={...P,policyId:`disposable-late-${kind}-control`,commitProcessingBytes:200000,commitWorkUnits:10000};
+  const opened=await command(control,{operation:'beginPlacePinsDraft',collectionId:control.list,body:await fences(control)},randomUUID(),generous);
+  for(const [index,members] of [reverse.slice(0,2),reverse.slice(2)].entries())await command(control,{operation:'appendPlacePinsChunk',collectionId:control.list,draftId:opened.draftId,chunkIndex:index,body:{recommendationIds:members,chunkHash:hashPlacePinsChunk(index,members)}},randomUUID(),generous);
+  expect(await command(control,commitRequest(control,opened.draftId,reverse),randomUUID(),generous)).toMatchObject({changed:true,pinCount:3});
+  expect(await live(control)).toEqual(reverse.map((id,position)=>({id,position})));expect(await versions(control)).toEqual({collection:controlBefore.collection+1,category:controlBefore.category+1n});expect((await versions(control,control.otherList)).collection).toBe(other.collection);
+ });
+ it.each(['committed','aborted','expired'] as const)('preserves original draft policy and independent receipts through %s terminalization',async(state)=>{
+  const f=await seed(3);await replace(f);const ids=[...f.ids].reverse(),content=await snapshot(f),before=await versions(f);
+  const P={...policy,policyId:`disposable-original-${state}`,transportChunkBytes:512,transportChunkIds:8,replacementBytes:512,replacementIds:8,draftExpiryMs:1000,stagingRetentionMs:1500,receiptRetentionMs:20000};
+  const Q={...policy,policyId:`disposable-caller-${state}`,policyVersion:2,transportChunkBytes:8192,transportChunkIds:64,replacementBytes:8192,replacementIds:64,ownerStagingBytes:200000};
+  const shared=randomUUID(),start:PlacePinsRequest={operation:'beginPlacePinsDraft',collectionId:f.list,body:await fences(f)};
+  const records:{request:PlacePinsRequest;key:ReturnType<typeof randomUUID>;context:{requestId:string;idempotencyKey:string};response:any;rows:any[];lower:number;upper:number}[]=[];
+  const write=async(request:PlacePinsRequest,key:ReturnType<typeof randomUUID>,caller=Q)=>{const context={requestId:randomUUID(),idempotencyKey:key},lower=await databaseClock(),response=await repo.execute(f.account,request,context,Buffer.byteLength(JSON.stringify(request)),caller),upper=await databaseClock(),rows=await receipt(f,request,key);expect(rows).toHaveLength(1);
+   const until=(rows[0].replay_until as Date).getTime();expect(until).toBeGreaterThanOrEqual(lower+P.receiptRetentionMs-1);expect(until).toBeLessThanOrEqual(upper+P.receiptRetentionMs+1);expect(until).toBeLessThan(lower+Q.receiptRetentionMs);
+   expect(rows[0]).toMatchObject({status:'completed',request_hash:Buffer.from(hashPlacePinsRequest(request),'hex'),idempotency_key_hash:createHash('sha256').update(key).digest(),response});records.push({request,key,context,response,rows,lower,upper});return response as any;};
+  const draft=await write(start,shared,P),original=(await snapshot(f,[draft.draftId])).drafts[0];
+  expect(original).toMatchObject({policy_snapshot:P,policy_id:P.policyId,policy_version:1,expected_collection_revision:String(start.body.expectedCollectionRevision),expected_category_content_revision:start.body.expectedCategoryContentRevision});expect(original.expires_at.toISOString()).toBe(draft.expiresAt);
+  const first:PlacePinsRequest={...appendRequest(f,draft.draftId,ids.slice(0,2))},second:PlacePinsRequest={operation:'appendPlacePinsChunk',collectionId:f.list,draftId:draft.draftId,chunkIndex:1,body:{recommendationIds:ids.slice(2),chunkHash:hashPlacePinsChunk(1,ids.slice(2))}};
+  const rejected=appendRequest(f,draft.draftId,[ids[0]]),rejectedKey=randomUUID(),initial=await snapshot(f,[draft.draftId]);
+  expect(P.transportChunkBytes).toBeLessThan(513);expect(Q.transportChunkBytes).toBeGreaterThan(513);
+  await expect(repo.execute(f.account,rejected,{requestId:randomUUID(),idempotencyKey:rejectedKey},513,Q)).rejects.toMatchObject({status:413});expect(await snapshot(f,[draft.draftId])).toEqual(initial);expect(await receipt(f,rejected,rejectedKey)).toEqual([]);
+  await write(first,shared);await write(second,randomUUID());
+  const staged=await snapshot(f,[draft.draftId]);for(const field of ['policy_snapshot','policy_id','policy_version','expected_collection_revision','expected_category_content_revision','expires_at','created_at'])expect(staged.drafts[0][field]).toEqual(original[field]);
+  expect(await databaseClock()).toBeLessThan(original.expires_at.getTime());
+  if(state==='committed'){const result=await write(commitRequest(f,draft.draftId,ids),shared);expect(result).toMatchObject({changed:true,pinCount:3});expect(await versions(f)).toEqual({collection:before.collection+1,category:before.category+1n});expect(await live(f)).toEqual(ids.map((id,position)=>({id,position})));}
+  else if(state==='aborted')expect(await write({operation:'abortPlacePinsDraft',collectionId:f.list,draftId:draft.draftId,body:{}},shared)).toMatchObject({changed:true});
+  else{await waitDatabaseCondition('SELECT expires_at<=clock_timestamp() ready FROM place_pin_drafts WHERE id=$1',[draft.draftId]);const key=randomUUID();await expect(command(f,rejected,key,Q)).rejects.toMatchObject({status:409});expect(await receipt(f,rejected,key)).toEqual([]);await repo.cleanupExpired(Q);}
+  await terminal(f,draft.draftId,state);const finished=await snapshot(f,[draft.draftId]);
+  for(const field of ['policy_snapshot','policy_id','policy_version','expected_collection_revision','expected_category_content_revision','expires_at','created_at'])expect(finished.drafts[0][field]).toEqual(original[field]);
+  if(state!=='committed'){expect(finished.pins).toEqual(content.pins);expect(finished.collections).toEqual(content.collections);expect(finished.categories).toEqual(content.categories);}else{expect(finished.collections.find(r=>r.id===f.otherList)).toEqual(content.collections.find(r=>r.id===f.otherList));}
+  const replay=async(expected:Awaited<ReturnType<typeof snapshot>>)=>{for(const record of records){expect(await repo.execute(f.account,record.request,record.context,Buffer.byteLength(JSON.stringify(record.request)),Q)).toEqual(record.response);expect(await receipt(f,record.request,record.key)).toEqual(record.rows);}expect(await snapshot(f,[draft.draftId])).toEqual(expected);};
+  await replay(finished);
+  const altered=appendRequest(f,draft.draftId,[ids[1]]);await expect(command(f,altered,shared,Q)).rejects.toMatchObject({status:409});expect(await snapshot(f,[draft.draftId])).toEqual(finished);
+  const fresh=randomUUID();await expect(command(f,first,fresh,Q)).rejects.toMatchObject({status:409});expect(await receipt(f,first,fresh)).toEqual([]);await replay(finished);
+  expect(new Set(records.map(r=>`${r.request.operation}:${r.rows[0].idempotency_key_hash.toString('hex')}`)).size).toBe(records.length);
+  await waitDatabaseCondition(`SELECT d.terminal_at+interval '1500 milliseconds'<=clock_timestamp() AND NOT EXISTS(SELECT 1 FROM application_command_receipts r WHERE r.account_id=d.account_id AND r.replay_until<=clock_timestamp()) ready FROM place_pin_drafts d WHERE d.id=$1`,[draft.draftId]);
+  await repo.cleanupExpired(Q);const removed=await snapshot(f,[draft.draftId]);expect(removed.drafts).toEqual([]);expect(removed.pins).toEqual(finished.pins);expect(removed.collections).toEqual(finished.collections);expect(removed.categories).toEqual(finished.categories);await replay(removed);
+ });
  it('supports >15, ordered replacement, no-op, replay and zero clear with exact deltas',async()=>{
   const f=await seed(20),before=await versions(f),key=randomUUID(),body={...await fences(f),orderedRecommendationIds:f.ids};
   const request={operation:'replacePlacePins' as const,collectionId:f.list,body};
@@ -125,6 +200,50 @@ async function waitDatabaseCondition(sql:string,args:unknown[]){const deadline=p
   const after=await versions(f),next=await begin(f);await append(f,next.draftId,0,ids);const noop=await commit(f,next.draftId,ids);
   expect(noop).toMatchObject({changed:false,pinCount:3});expect(await versions(f)).toEqual(after);await resultVersions(f,noop);
   expect(await live(f)).toEqual(ids.map((id,position)=>({id,position})));expect((await versions(f,f.otherList)).collection).toBe(otherBefore.collection);await terminal(f,next.draftId,'committed');
+ });
+ it('replays the original staged commit after a lost response and retained draft removal',async()=>{
+  const f=await seed(3),P={...policy,policyId:'disposable-lost-commit-response-fixture',policyVersion:1,draftExpiryMs:60000,stagingRetentionMs:100,receiptRetentionMs:180000};
+  const replaceRequest:PlacePinsRequest={operation:'replacePlacePins',collectionId:f.list,body:{...await fences(f),orderedRecommendationIds:f.ids}},replaceKey=randomUUID();
+  await command(f,replaceRequest,replaceKey,P);const beforeVersions=await versions(f),otherBefore=await versions(f,f.otherList),ids=[...f.ids].reverse();
+  const beginRequest:PlacePinsRequest={operation:'beginPlacePinsDraft',collectionId:f.list,body:await fences(f)},beginKey=randomUUID(),draft=await command(f,beginRequest,beginKey,P);
+  const first:PlacePinsRequest={operation:'appendPlacePinsChunk',collectionId:f.list,draftId:draft.draftId,chunkIndex:0,body:{recommendationIds:ids.slice(0,2),chunkHash:hashPlacePinsChunk(0,ids.slice(0,2))}},firstKey=randomUUID();
+  const second:PlacePinsRequest={operation:'appendPlacePinsChunk',collectionId:f.list,draftId:draft.draftId,chunkIndex:1,body:{recommendationIds:ids.slice(2),chunkHash:hashPlacePinsChunk(1,ids.slice(2))}},secondKey=randomUUID();
+  await command(f,first,firstKey,P);await command(f,second,secondKey,P);
+  const setup=()=>Promise.all([receipt(f,replaceRequest,replaceKey),receipt(f,beginRequest,beginKey),receipt(f,first,firstKey),receipt(f,second,secondKey)]);
+  const setupReceipts=await setup(),staged=await snapshot(f,[draft.draftId]);expect(setupReceipts.every(rows=>rows.length===1)).toBe(true);
+  expect(staged.drafts).toHaveLength(1);expect(staged.drafts[0]).toMatchObject({state:'open',item_count:'3',chunk_count:'2',policy_snapshot:P});expect(staged.chunks).toHaveLength(2);expect(staged.items).toHaveLength(3);
+  const request=commitRequest(f,draft.draftId,ids),key=randomUUID(),context={requestId:randomUUID(),idempotencyKey:key},lostResponse=new Error('Fixture lost commit response');
+  let fired=false,completedFinalBatches=0,released=false;const observed:string[]=[];
+  // Forward the actual final simple-protocol COMMIT before losing its response.
+  const pool={connect:async()=>{const db=await runtime.connect();return {query:async(sql:string,args?:unknown[])=>{
+   const final=sql.includes('DO $places_deadline$')&&sql.includes('SET CONSTRAINTS ALL IMMEDIATE')&&sql.includes('DO $places_completion$')&&/COMMIT;\s*$/.test(sql);
+   const result=await db.query(sql,args);observed.push(sql);
+   if(final){completedFinalBatches++;if(!fired){fired=true;throw lostResponse;}}return result;
+  },release:()=>{db.release();released=true;}};}} as unknown as pg.Pool;
+  expect(await receipt(f,request,key)).toEqual([]);
+  await expect(new ExplorersPlacePinsRepository(pool).execute(f.account,request,context,Buffer.byteLength(JSON.stringify(request)),P)).rejects.toBe(lostResponse);
+  expect(fired).toBe(true);expect(completedFinalBatches).toBe(1);expect(observed.at(-1)).toBe('ROLLBACK');expect(released).toBe(true);
+  const committed=await snapshot(f,[draft.draftId]),originalReceipt=await receipt(f,request,key);await terminal(f,draft.draftId,'committed');
+  expect(originalReceipt).toHaveLength(1);expect(originalReceipt[0]).toMatchObject({status:'completed',request_hash:Buffer.from(hashPlacePinsRequest(request),'hex')});
+  const original=originalReceipt[0].response;expect(original).toMatchObject({changed:true,pinCount:3});expect(committed.drafts[0].terminal_result).toEqual(original);await resultVersions(f,original);
+  expect(await versions(f)).toEqual({collection:beforeVersions.collection+1,category:beforeVersions.category+1n});expect((await versions(f,f.otherList)).collection).toBe(otherBefore.collection);
+  expect(await live(f)).toEqual(ids.map((id,position)=>({id,position})));expect(committed.pins.filter(row=>row.collection_id===f.otherList)).toEqual(staged.pins.filter(row=>row.collection_id===f.otherList));expect(await setup()).toEqual(setupReceipts);
+  expect(committed.drafts[0].expected_collection_revision).toBe(String(beginRequest.body.expectedCollectionRevision));expect(committed.drafts[0].expected_category_content_revision).toBe(beginRequest.body.expectedCategoryContentRevision);
+  expect(Number(committed.drafts[0].expected_collection_revision)).toBeLessThan(original.collectionRevision);expect(BigInt(committed.drafts[0].expected_category_content_revision)).toBeLessThan(BigInt(original.categoryContentRevision));
+  const replay=()=>repo.execute(f.account,request,context,Buffer.byteLength(JSON.stringify(request)),P);
+  expect(await replay()).toEqual(original);expect(await snapshot(f,[draft.draftId])).toEqual(committed);expect(await receipt(f,request,key)).toEqual(originalReceipt);expect(await setup()).toEqual(setupReceipts);
+  const changed={...request,body:{...request.body,totalCount:request.body.totalCount+1}};
+  await expect(repo.execute(f.account,changed,context,Buffer.byteLength(JSON.stringify(changed)),P)).rejects.toMatchObject({status:409});
+  expect(await snapshot(f,[draft.draftId])).toEqual(committed);expect(await receipt(f,request,key)).toEqual(originalReceipt);expect(await setup()).toEqual(setupReceipts);
+  await waitDatabaseCondition(`SELECT d.terminal_at+(d.policy_snapshot->>'stagingRetentionMs')::bigint*interval '1 millisecond'<=clock_timestamp() AND r.replay_until>clock_timestamp() ready
+   FROM place_pin_drafts d JOIN application_command_receipts r ON r.account_id=d.account_id AND r.operation=$2 AND r.idempotency_key_hash=$3 WHERE d.id=$1`,[draft.draftId,request.operation,createHash('sha256').update(key).digest()]);
+  await repo.cleanupExpired(P);
+  const removed=await snapshot(f,[draft.draftId]);expect(removed).toEqual({...committed,drafts:[],chunks:[],items:[]});
+  // Query original child identity explicitly after the parent is physically absent.
+  expect((await admin.query('SELECT 1 FROM place_pin_drafts WHERE id=$1',[draft.draftId])).rowCount).toBe(0);
+  expect((await admin.query('SELECT 1 FROM place_pin_draft_chunks WHERE draft_id=$1',[draft.draftId])).rowCount).toBe(0);expect((await admin.query('SELECT 1 FROM place_pin_draft_items WHERE draft_id=$1',[draft.draftId])).rowCount).toBe(0);
+  expect(await receipt(f,request,key)).toEqual(originalReceipt);expect(await setup()).toEqual(setupReceipts);
+  expect(await replay()).toEqual(original);expect(await snapshot(f,[draft.draftId])).toEqual(removed);expect(await receipt(f,request,key)).toEqual(originalReceipt);expect(await setup()).toEqual(setupReceipts);
  });
  it('rejects wrong staged total count without changing live staging or receipts',async()=>{
   const f=await seed();await replace(f);const ids=[...f.ids].reverse(),draft=await begin(f);await append(f,draft.draftId,0,ids);
@@ -332,19 +451,26 @@ async function waitDatabaseCondition(sql:string,args:unknown[]){const deadline=p
  });
  it('expires staging using the original policy, retains private terminal identities, then retires receipts without key reuse',async()=>{
   const f=await seed();const expiryPolicy={...policy,draftExpiryMs:100,stagingRetentionMs:200,receiptRetentionMs:400,cleanupBatchSize:100,cleanupWorkUnits:1000};
+  const Q={...policy,policyId:'disposable-expiry-caller',policyVersion:2,cleanupBatchSize:100,cleanupWorkUnits:1000};
   const key=randomUUID(),request={operation:'beginPlacePinsDraft' as const,collectionId:f.list,body:await fences(f)};
   const draft=await command(f,request,key,expiryPolicy),before=await versions(f);
+  const original=await snapshot(f,[draft.draftId]),originalReceipts=await receipt(f,request,key);
+  expect(original.drafts[0]).toMatchObject({policy_snapshot:expiryPolicy});expect(original.drafts[0].expires_at.toISOString()).toBe(draft.expiresAt);
   await waitDatabaseCondition('SELECT expires_at<=clock_timestamp() ready FROM place_pin_drafts WHERE id=$1',[draft.draftId]);
-  await expect(append(f,draft.draftId,0,f.ids)).rejects.toMatchObject({status:409});
-  await repo.cleanupExpired(expiryPolicy);expect(await versions(f)).toEqual(before);
+  await expect(command(f,appendRequest(f,draft.draftId,f.ids),randomUUID(),Q)).rejects.toMatchObject({status:409});
+  await repo.cleanupExpired(Q);expect(await versions(f)).toEqual(before);
   expect((await admin.query('SELECT state,accepted_bytes FROM place_pin_drafts WHERE id=$1',[draft.draftId])).rows[0]).toEqual({state:'expired',accepted_bytes:'0'});
-  expect(await command(f,request,key,expiryPolicy)).toEqual(draft);
+  expect(await command(f,request,key,Q)).toEqual(draft);expect(await receipt(f,request,key)).toEqual(originalReceipts);
   await waitDatabaseCondition('SELECT terminal_at+interval \'200 milliseconds\'<=clock_timestamp() ready FROM place_pin_drafts WHERE id=$1',[draft.draftId]);
-  await repo.cleanupExpired(expiryPolicy);expect((await admin.query('SELECT 1 FROM place_pin_drafts WHERE id=$1',[draft.draftId])).rowCount).toBe(0);
+  await repo.cleanupExpired(Q);expect((await admin.query('SELECT 1 FROM place_pin_drafts WHERE id=$1',[draft.draftId])).rowCount).toBe(0);
+  const deleted=await snapshot(f,[draft.draftId]);
   await waitDatabaseCondition('SELECT replay_until<=clock_timestamp() ready FROM application_command_receipts WHERE account_id=$1 AND operation=\'beginPlacePinsDraft\'',[f.account]);
-  await repo.cleanupExpired(expiryPolicy);
+  await expect(command(f,request,key,Q)).rejects.toMatchObject({status:409});expect(await receipt(f,request,key)).toEqual(originalReceipts);expect(await snapshot(f,[draft.draftId])).toEqual(deleted);
+  await repo.cleanupExpired(Q);
   expect((await admin.query('SELECT status,response FROM application_command_receipts WHERE account_id=$1 AND operation=\'beginPlacePinsDraft\'',[f.account])).rows[0]).toEqual({status:'retired',response:null});
-  await expect(command(f,request,key,expiryPolicy)).rejects.toMatchObject({status:409});
+  const retired=await receipt(f,request,key);await expect(command(f,request,key,Q)).rejects.toMatchObject({status:409});
+  await expect(command(f,{...request,body:{...request.body,expectedCollectionRevision:request.body.expectedCollectionRevision+1}},key,Q)).rejects.toMatchObject({status:409});
+  expect(await receipt(f,request,key)).toEqual(retired);expect(await snapshot(f,[draft.draftId])).toEqual(deleted);
  });
  it('keeps immediate foreign-key failure cleanup and category invalidation atomic',async()=>{
   const f=await seed(),foreign=await seed();await replace(f);const before=await versions(f);
@@ -431,25 +557,83 @@ async function waitDatabaseCondition(sql:string,args:unknown[]){const deadline=p
  });
  it('continues cleanup within owners, bypasses retained terminal drafts, and does not skip later owners',async()=>{
   const fixtures=await Promise.all([seed(1),seed(1)]);fixtures.sort((a,b)=>a.account.localeCompare(b.account));
-  const short={...policy,ownerDraftQuota:10,draftExpiryMs:100,stagingRetentionMs:10000,receiptRetentionMs:20000,cleanupBatchSize:2,cleanupWorkUnits:2};
-  const drafts:{f:Fixture;draftId:string}[]=[];
+  const short={...policy,policyId:'disposable-cleanup-short',ownerDraftQuota:10,draftExpiryMs:100,stagingRetentionMs:200,receiptRetentionMs:20000,cleanupBatchSize:2,cleanupWorkUnits:2};
+  const long={...short,policyId:'disposable-cleanup-long',stagingRetentionMs:10000},Q={...policy,policyId:'disposable-cleanup-caller',cleanupBatchSize:2,cleanupWorkUnits:2};
+  const targets:{f:Fixture;draftId:string;kind:'long'|'short'|'open';bytes:number;saved:any}[]=[],receipts:{f:Fixture;request:PlacePinsRequest;key:string;rows:any[]}[]=[];
+  const save=async(f:Fixture,request:PlacePinsRequest,p=short)=>{const key=randomUUID(),result=await command(f,request,key,p);receipts.push({f,request,key,rows:await receipt(f,request,key)});return result;};
   for(const f of fixtures){
-   const retained=await command(f,{operation:'beginPlacePinsDraft',collectionId:f.list,body:await fences(f)},randomUUID(),short);
-   await command(f,{operation:'abortPlacePinsDraft',collectionId:f.list,draftId:retained.draftId,body:{}},randomUUID(),short);
-   for(let i=0;i<3;i++){const open=await command(f,{operation:'beginPlacePinsDraft',collectionId:f.list,body:await fences(f)},randomUUID(),short);drafts.push({f,draftId:open.draftId});}
+   await replace(f);await replace({...f,list:f.otherList});
+   for(const [index,kind] of (['long','short','open','open','open'] as const).entries()){
+    const target={...f,list:index%2?f.otherList:f.list},p=kind==='long'?long:short;
+    const opened=await save(target,{operation:'beginPlacePinsDraft',collectionId:target.list,body:await fences(target)},p),request=appendRequest(target,opened.draftId,target.ids);
+    const bytes=Buffer.byteLength(JSON.stringify(request))+64;await save(target,request,p);
+    if(kind!=='open')await save(target,{operation:'abortPlacePinsDraft',collectionId:target.list,draftId:opened.draftId,body:{}},p);
+    const saved=await snapshot(f,[opened.draftId]);expect(saved.drafts[0]).toMatchObject({policy_snapshot:p,accepted_bytes:kind==='open'?String(bytes):'0'});
+    targets.push({f:target,draftId:opened.draftId,kind,bytes,saved});
+   }
   }
-  await waitDatabaseCondition('SELECT bool_and(expires_at<=clock_timestamp()) ready FROM place_pin_drafts WHERE account_id=ANY($1::uuid[]) AND state=\'open\'',[fixtures.map(f=>f.account)]);
-  let after='00000000-0000-0000-0000-000000000000',resume:Parameters<ExplorersPlacePinsRepository['cleanupExpired']>[2];
-  // Other fixtures in this suite may also be eligible. Calls remain bounded,
-  // and continuation must advance until both target owners are drained.
-  for(let calls=0;calls<100;calls++){
-   const result=await repo.cleanupExpired(short,after,resume);
-   if(result.nextAccountId)after=result.nextAccountId;resume=result.continuation??undefined;
-   if((await admin.query("SELECT count(*)::text count FROM place_pin_drafts WHERE account_id=ANY($1::uuid[]) AND state='open'",[fixtures.map(f=>f.account)])).rows[0].count==='0')break;
-   if(!result.nextAccountId&&!resume)after='00000000-0000-0000-0000-000000000000';
-  }
-  for(const target of drafts)expect((await admin.query('SELECT state FROM place_pin_drafts WHERE id=$1',[target.draftId])).rows[0].state).toBe('expired');
-  for(const f of fixtures)expect((await admin.query("SELECT count(*)::text count FROM place_pin_drafts WHERE account_id=$1 AND state='aborted'",[f.account])).rows[0].count).toBe('1');
+  const accounts=fixtures.map(f=>f.account),allIds=targets.map(t=>t.draftId),before=await Promise.all(fixtures.map(f=>snapshot(f))),adapter=observingRepository();
+  await waitDatabaseCondition(`SELECT bool_and(CASE WHEN policy_id=$2 AND state='aborted' THEN terminal_at+interval '10000 milliseconds'>clock_timestamp() WHEN state='open' THEN expires_at<=clock_timestamp() ELSE terminal_at+interval '200 milliseconds'<=clock_timestamp() END) ready FROM place_pin_drafts WHERE id=ANY($1::uuid[])`,[allIds,long.policyId]);
+  const zero='00000000-0000-0000-0000-000000000000',visited=new Set<string>();let after=zero,resume:Parameters<ExplorersPlacePinsRepository['cleanupExpired']>[2];
+  const expirations=new Map<string,{locked:number;updated:number;childrenDeleted:number;completed:number}>(),retirements=new Map<string,{locked:number;deleted:number;completed:number}>();
+  const ownerBytes=async()=> (await admin.query('SELECT account_id,coalesce(sum(accepted_bytes),0)::text bytes FROM place_pin_drafts WHERE account_id=ANY($1::uuid[]) GROUP BY account_id ORDER BY account_id',[accounts])).rows;
+  const unchanged=async()=>{for(const [i,f] of fixtures.entries()){const current=await snapshot(f);expect(current.pins).toEqual(before[i].pins);expect(current.collections).toEqual(before[i].collections);expect(current.categories).toEqual(before[i].categories);}for(const record of receipts){expect(record.rows[0].replay_until.getTime()).toBeGreaterThan(await databaseClock());expect(await receipt(record.f,record.request,record.key)).toEqual(record.rows);}};
+  const drain=async(phase:'terminalize'|'retire')=>{
+   for(let calls=0;calls<200;calls++){
+    const offset=adapter.observations.length,charges=await ownerBytes(),result=await adapter.repository.cleanupExpired(Q,after,resume),events=adapter.observations.slice(offset);
+    const owners=events.find(o=>o.sql.startsWith('SELECT account_id FROM ('));expect(owners).toBeDefined();expect(owners!.args).toEqual([after,2,resume?.accountId??null]);
+    const ownerIds=owners!.rows.map(r=>r.account_id);expect(ownerIds).toEqual([...ownerIds].sort());
+    const pages=events.filter(o=>o.sql.startsWith('SELECT id,collection_id FROM place_pin_drafts'));
+    for(const page of pages){expect(page.args[3]).toBe(1);const cursor=`${page.args[1]}:${page.args[2]}`,tuples=page.rows.map(r=>`${r.collection_id}:${r.id}`);expect(tuples).toEqual([...tuples].sort());for(const tuple of tuples)expect(tuple>cursor).toBe(true);
+     const expected=resume?.accountId===page.args[0]?resume:undefined;expect(page.args.slice(1,3)).toEqual([expected?.afterCollectionId??zero,expected?.afterDraftId??zero]);
+     for(const row of page.rows){visited.add(`${page.args[0]}:${row.collection_id}:${row.id}`);expect(events.some(o=>o.sql.startsWith('SELECT *,expires_at<=')&&o.args[0]===row.id)).toBe(true);}
+    }
+    const later=events.find(o=>o.sql.startsWith('SELECT EXISTS(SELECT 1 FROM place_pin_drafts')&&o.sql.includes('AND (collection_id,id)>'));
+    if(result.continuation){expect(later).toBeDefined();if(later!.rows[0].pending){const last=pages.at(-1)?.rows.at(-1);expect(result.continuation).toEqual({accountId:later!.args[0],afterCollectionId:last.collection_id,afterDraftId:last.id});}else expect(result.continuation).toEqual({accountId:later!.args[0],afterCollectionId:zero,afterDraftId:zero});}
+    if(result.nextAccountId){const pending=events.find(o=>o.sql.startsWith('SELECT EXISTS(SELECT 1 FROM place_pin_drafts')&&!o.sql.includes('AND (collection_id,id)>')&&o.args[0]===result.nextAccountId);expect(pending?.rows[0].pending).toBe(false);}
+    // Only successful real statements from a completed cleanup call prove a
+    // target transition. Later original-policy retirement may occur in either phase.
+    for(const [index,event] of events.entries()){
+     if(!event.sql.startsWith('SELECT *,expires_at<=')||event.rowCount!==1)continue;
+     const target=targets.find(t=>t.draftId===event.args[0]);if(!target)continue;const row=event.rows[0];
+     expect(row).toMatchObject({id:target.draftId,account_id:target.f.account,collection_id:target.f.list,policy_snapshot:target.kind==='long'?long:short});
+     for(const field of ['policy_id','policy_version','policy_snapshot','expected_collection_revision','expected_category_content_revision','created_at','expires_at'])expect(row[field]).toEqual(target.saved.drafts[0][field]);
+     if(row.state==='open'){
+      expect(target.kind).toBe('open');expect(expirations.has(target.draftId)).toBe(false);
+      expect(row).toMatchObject({expired:true,accepted_bytes:String(target.bytes),item_count:'1',chunk_count:'1'});
+      const updated=events.findIndex((o,i)=>i>index&&o.sql.startsWith('UPDATE place_pin_drafts SET state=')&&o.args[0]===target.draftId);
+      expect(updated).toBeGreaterThan(index);expect(events[updated].args).toEqual([target.draftId,'expired','null']);expect(events[updated].rowCount).toBe(1);
+      const childrenDeleted=events.findIndex((o,i)=>i>updated&&o.sql.startsWith('DELETE FROM place_pin_draft_chunks WHERE draft_id=')&&o.args[0]===target.draftId);
+      expect(childrenDeleted).toBeGreaterThan(updated);expect(events[childrenDeleted].args).toEqual([target.draftId]);expect(events[childrenDeleted].rowCount).toBe(1);
+      const completed=events.findIndex((o,i)=>i>childrenDeleted&&o.sql.startsWith('DO $places_deadline$')&&/COMMIT;\s*$/.test(o.sql));expect(completed).toBeGreaterThan(childrenDeleted);
+      expirations.set(target.draftId,{locked:offset+index,updated:offset+updated,childrenDeleted:offset+childrenDeleted,completed:offset+completed});
+     }else{
+      expect(target.kind).not.toBe('long');expect(row).toMatchObject({state:target.kind==='open'?'expired':'aborted',accepted_bytes:'0',item_count:'0',chunk_count:'0',retireable:true});
+      if(target.kind==='open'){const expiry=expirations.get(target.draftId);expect(expiry).toBeDefined();expect(offset+index).toBeGreaterThan(expiry!.completed);}
+      const deleted=events.findIndex((o,i)=>i>index&&o.sql.startsWith('DELETE FROM place_pin_drafts WHERE id=')&&o.args[0]===target.draftId);
+      expect(deleted).toBeGreaterThan(index);expect(events[deleted].args).toEqual([target.draftId]);expect(events[deleted].rowCount).toBe(1);
+      const completed=events.findIndex((o,i)=>i>deleted&&o.sql.startsWith('DO $places_deadline$')&&/COMMIT;\s*$/.test(o.sql));expect(completed).toBeGreaterThan(deleted);
+      expect(retirements.has(target.draftId)).toBe(false);retirements.set(target.draftId,{locked:offset+index,deleted:offset+deleted,completed:offset+completed});
+     }
+    }
+    const affected=events.filter(o=>o.sql.startsWith('UPDATE place_pin_drafts SET state=')).map(o=>o.args[0]),afterCharges=await ownerBytes();
+    for(const charge of charges){const decrement=targets.filter(t=>t.f.account===charge.account_id&&affected.includes(t.draftId)).reduce((sum,t)=>sum+t.bytes,0);expect(Number(afterCharges.find(r=>r.account_id===charge.account_id)?.bytes??0)).toBe(Number(charge.bytes)-decrement);}
+    await unchanged();if(result.nextAccountId)after=result.nextAccountId;resume=result.continuation??undefined;if(!result.nextAccountId&&!resume)after=zero;
+    const current=await snapshot(fixtures[0],allIds),eligible=current.drafts.filter(r=>targets.find(t=>t.draftId===r.id)?.kind!=='long'&&(phase==='retire'||r.state==='open'||r.state==='aborted'));
+    if(!eligible.length)return;
+   }throw new Error(`Bounded cleanup ${phase} failed to drain target tuples`);
+  };
+  await drain('terminalize');
+  for(const target of targets){const current=await snapshot(target.f,[target.draftId]);expect(current.chunks).toEqual([]);expect(current.items).toEqual([]);
+   if(target.kind==='short'){expect(current.drafts).toEqual([]);expect(retirements.has(target.draftId)).toBe(true);}else if(target.kind==='long')expect(current).toEqual(target.saved);else{
+    expect(expirations.has(target.draftId)).toBe(true);
+    if(current.drafts.length){expect(current.drafts).toHaveLength(1);expect(current.drafts[0]).toMatchObject({state:'expired',accepted_bytes:'0',item_count:'0',chunk_count:'0',policy_snapshot:short});expect(retirements.has(target.draftId)).toBe(false);}
+    else expect(retirements.has(target.draftId)).toBe(true);
+   }}
+  await waitDatabaseCondition(`SELECT coalesce(bool_and(terminal_at+interval '200 milliseconds'<=clock_timestamp()),true) ready FROM place_pin_drafts WHERE id=ANY($1::uuid[])`,[targets.filter(t=>t.kind==='open').map(t=>t.draftId)]);
+  after=zero;resume=undefined;await drain('retire');await unchanged();
+  for(const target of targets){expect(visited.has(`${target.f.account}:${target.f.list}:${target.draftId}`)).toBe(target.kind!=='long');const current=await snapshot(target.f,[target.draftId]);if(target.kind==='long')expect(current).toEqual(target.saved);else{expect(current.drafts).toEqual([]);expect(retirements.has(target.draftId)).toBe(true);if(target.kind==='open')expect(expirations.has(target.draftId)).toBe(true);}}
+  for(const f of fixtures)for(const list of [f.list,f.otherList])expect([...visited].some(tuple=>tuple.startsWith(`${f.account}:${list}:`))).toBe(true);
  });
  it('preserves historical archived Books parent increments during recommendation archive',async()=>{
   const recommendations=new ExplorersRecommendationRepository(runtime);

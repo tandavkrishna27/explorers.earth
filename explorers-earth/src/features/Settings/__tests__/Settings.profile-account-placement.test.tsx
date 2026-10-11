@@ -118,6 +118,93 @@ vi.mock("../components/LanguageSelector", () => ({
 
 import Settings from "../Settings";
 
+describe("native Games interaction dispatch probe", () => {
+  it.each(["input", "visual-label", "keyboard"] as const)("dispatches the actual Games control via %s", async method => {
+    const user = userEvent.setup();
+    const h = surfaceHarness(<I18nextProvider i18n={translations}><Settings /></I18nextProvider>, { initial: { ...initialAccount(), public_games: "No" } });
+    await h.ready();
+    await user.click(screen.getByRole("button", { name: /Public Visibility/i }));
+    const control = screen.getByRole("checkbox", { name: "Games Tab", exact: true });
+    expect(control).not.toBeChecked(); expect(control).toBeEnabled();
+    const change = vi.fn(); control.addEventListener("change", change);
+    if (method === "keyboard") { control.focus(); await user.keyboard("[Space]"); }
+    else await user.click(method === "input" ? control : control.nextElementSibling!);
+    await waitFor(() => expect(h.saved.public_games).toBe("Yes"));
+    expect(change).toHaveBeenCalledTimes(1);
+    expect(control).toBeChecked(); expect(h.writes).toHaveLength(1);
+    control.removeEventListener("change", change);
+  });
+
+  it("separates a delivered Games change from a held pretransport read and a queued write", async () => {
+    const h = surfaceHarness(<I18nextProvider i18n={translations}><Settings /></I18nextProvider>, { initial: { ...initialAccount(), public_games: "No" } });
+    await h.ready();
+    fireEvent.click(screen.getByRole("button", { name: /Public Visibility/i }));
+    const games = screen.getByRole("checkbox", { name: "Games Tab", exact: true });
+    const books = screen.getByRole("checkbox", { name: "Books Tab", exact: true });
+    const read = vi.mocked(explorersApiClient.getMyProfile);
+    const original = read.getMockImplementation()!;
+    let release!: () => void;
+    const gate = new Promise<void>(done => { release = done; });
+    read.mockImplementationOnce(async () => { await gate; return original(); });
+    const change = vi.fn(); games.addEventListener("change", change);
+    fireEvent.click(books);
+    await act(async () => { await Promise.resolve(); });
+    fireEvent.click(games);
+    await act(async () => { await Promise.resolve(); });
+    expect(change).toHaveBeenCalledTimes(1);
+    expect(h.navigation.pending.map(operation => operation.category)).toEqual(["public_books", "public_games"]);
+    expect(games).toBeDisabled(); expect(games).not.toBeChecked();
+    expect(h.writes).toHaveLength(0);
+    await act(async () => { release(); await gate; });
+    await waitFor(() => expect(h.writes).toHaveLength(2));
+    await waitFor(() => expect(games).toBeChecked());
+    expect(h.navigation.pending).toHaveLength(0);
+    games.removeEventListener("change", change);
+  });
+
+  it("produces no PATCH for a delivered Games change whose authoritative read is already public", async () => {
+    const h = surfaceHarness(<I18nextProvider i18n={translations}><Settings /></I18nextProvider>, { initial: { ...initialAccount(), public_games: "No" } });
+    await h.ready();
+    fireEvent.click(screen.getByRole("button", { name: /Public Visibility/i }));
+    const games = screen.getByRole("checkbox", { name: "Games Tab", exact: true });
+    expect(games).not.toBeChecked();
+    h.saved = { ...h.saved, public_games: "Yes" };
+    const change = vi.fn(); games.addEventListener("change", change);
+    fireEvent.click(games);
+    await waitFor(() => expect(games).toBeChecked());
+    expect(change).toHaveBeenCalledTimes(1);
+    expect(h.navigation.pending).toHaveLength(0);
+    expect(h.writes).toHaveLength(0);
+    games.removeEventListener("change", change);
+  });
+
+  it("blocks a delivered Games change after session generation invalidates a held read", async () => {
+    const h = surfaceHarness(<I18nextProvider i18n={translations}><Settings /></I18nextProvider>, { initial: { ...initialAccount(), public_games: "No" } });
+    await h.ready();
+    fireEvent.click(screen.getByRole("button", { name: /Public Visibility/i }));
+    const games = screen.getByRole("checkbox", { name: "Games Tab", exact: true });
+    const generation = useAuthStore.getState().generation;
+    const read = vi.mocked(explorersApiClient.getMyProfile);
+    const original = read.getMockImplementation()!;
+    let release!: () => void;
+    const gate = new Promise<void>(done => { release = done; });
+    read.mockImplementationOnce(async () => { await gate; return original(); });
+    const change = vi.fn(); games.addEventListener("change", change);
+    fireEvent.click(games);
+    await act(async () => { await Promise.resolve(); });
+    expect(change).toHaveBeenCalledTimes(1);
+    expect(h.navigation.pending).toHaveLength(1);
+    expect(h.writes).toHaveLength(0);
+    act(() => useAuthStore.getState().logout());
+    expect(useAuthStore.getState().generation === generation).toBe(false);
+    await act(async () => { release(); await gate; });
+    expect(h.navigation.authority).toBeUndefined();
+    expect(h.navigation.pending).toHaveLength(0);
+    expect(h.writes).toHaveLength(0);
+    games.removeEventListener("change", change);
+  });
+});
+
 describe("Settings moved profile data placement", async () => {
   it("provides visible keyboard focus on Music visibility and the pin's visible switch", async () => {
     const user = userEvent.setup(); await render(<Settings />);

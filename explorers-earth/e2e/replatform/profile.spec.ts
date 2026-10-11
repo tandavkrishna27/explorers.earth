@@ -40,6 +40,65 @@ function captureProfileDiagnostic(info: TestInfo): void {
 // BEGIN PROFILE NATIVE BOUNDARY DIAGNOSTIC
 type NativeBoundary = { category: 'books' | 'movies' | 'games'; action: 'publish' | 'hide'; request: 'absent' | 'present' | 'uncertain'; response: 'none' | '2xx' | '409' | 'other' | 'transport' | 'uncertain' };
 const nativeBoundaryObservers = new WeakMap<TestInfo, ReturnType<typeof observeNativeBoundary>>();
+type NativeInteraction = { category: NativeBoundary['category']; action: NativeBoundary['action']; beforeChecked: boolean; afterChecked: boolean; beforePending: boolean; afterPending: boolean; centerTargetsInput: boolean; centerTargetsLabel: boolean; changeReceived: boolean };
+const nativeInteractions = new WeakMap<TestInfo, NativeInteraction>();
+// BEGIN PROFILE INTERACTION LIFECYCLE
+const nativeInteractionHandles = new WeakMap<TestInfo, { input: Awaited<ReturnType<ReturnType<Page['getByRole']>['elementHandle']>>; observer: import('@playwright/test').JSHandle }>();
+async function disposeNativeInteraction(info: TestInfo, discardIncomplete = false) {
+  const active = nativeInteractionHandles.get(info);
+  nativeInteractionHandles.delete(info);
+  if (!active) return;
+  if (discardIncomplete) nativeInteractions.delete(info);
+  try { await active.observer.evaluate(observer => observer.dispose()); } catch {}
+  try { await active.observer.dispose(); } catch {}
+  try { await active.input?.dispose(); } catch {}
+}
+async function observeNativeInteraction(control: ReturnType<Page['getByRole']>, info: TestInfo, category: NativeBoundary['category'], action: NativeBoundary['action'], phase: 'before' | 'after') {
+  try {
+    if (phase === 'before') {
+      await disposeNativeInteraction(info, true);
+      nativeInteractions.delete(info);
+      const input = await control.elementHandle();
+      if (!input) return;
+      let observer: import('@playwright/test').JSHandle | undefined;
+      try {
+        observer = await input.evaluateHandle(node => {
+          const input = node as HTMLInputElement;
+          let changeReceived = false;
+          const change = () => { changeReceived = true; };
+          input.addEventListener('change', change);
+          return {
+            dispose: () => input.removeEventListener('change', change),
+            snapshot: () => {
+              const bounds = input.getBoundingClientRect();
+              const target = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+              const label = input.closest('label');
+              return { connected: input.isConnected, checked: input.checked, pending: input.closest('[aria-busy="true"]') !== null,
+                centerTargetsInput: target === input, centerTargetsLabel: !!target && !!label && label.contains(target), changeReceived };
+            },
+          };
+        });
+        nativeInteractionHandles.set(info, { input, observer });
+      } catch {
+        try { await observer?.dispose(); } catch {}
+        try { await input.dispose(); } catch {}
+        return;
+      }
+    }
+    const active = nativeInteractionHandles.get(info);
+    if (!active) return;
+    const observation = await active.observer.evaluate(observer => observer.snapshot());
+    if (!observation.connected) { nativeInteractions.delete(info); return; }
+    if (phase === 'before') nativeInteractions.set(info, { category, action, beforeChecked: observation.checked, afterChecked: observation.checked,
+      beforePending: observation.pending, afterPending: observation.pending, centerTargetsInput: observation.centerTargetsInput, centerTargetsLabel: observation.centerTargetsLabel, changeReceived: false });
+    else {
+      const current = nativeInteractions.get(info);
+      if (current) Object.assign(current, { afterChecked: observation.checked, afterPending: observation.pending, changeReceived: observation.changeReceived });
+    }
+  } catch { nativeInteractions.delete(info); await disposeNativeInteraction(info, true); }
+  finally { if (phase === 'after') await disposeNativeInteraction(info); }
+}
+// END PROFILE INTERACTION LIFECYCLE
 function observeNativeBoundary(page: Page, origin: string) {
   let current: NativeBoundary | undefined;
   let sealed = false;
@@ -74,6 +133,10 @@ function observeNativeBoundary(page: Page, origin: string) {
       if (finished) return;
       finished = true;
       seal();
+      const interaction = nativeInteractions.get(info);
+      if (interaction && profileDiagnosticIdentity(info) && ['failed', 'timedOut', 'interrupted'].includes(info.status ?? '')) {
+        try { info.errors.push({ message: `[profile-native-interaction-v1:${interaction.category}|${interaction.action}|${interaction.beforeChecked}|${interaction.afterChecked}|${interaction.beforePending}|${interaction.afterPending}|${interaction.centerTargetsInput}|${interaction.centerTargetsLabel}|${interaction.changeReceived}]` }); } catch {}
+      }
       const progress = profileDiagnosticStates.get(info);
       const stages = current?.action === 'publish' ? ['publish-click', 'publish-poll', 'published-checked'] : ['hide-click', 'hide-poll', 'hidden-unchecked'];
       if (current && progress?.category === current.category && stages.includes(progress.stage)
@@ -404,14 +467,18 @@ test('canonical navigation: native Books Movies and Games publish and hide throu
     await expect(control).not.toBeChecked();
     setProfileDiagnosticState(info, category, 'publish-click', 'incomplete', 'incomplete');
     nativeBoundary.begin(category, 'publish');
+    await observeNativeInteraction(control, info, category, 'publish', 'before');
     await control.click({ force: true });
+    await observeNativeInteraction(control, info, category, 'publish', 'after');
     setProfileDiagnosticState(info, category, 'publish-poll', 'incomplete', 'incomplete');
     await expect.poll(async () => (await navigationAccount(page)).categories.find(row => row.category === category)?.isPublic).toBe(true);
     setProfileDiagnosticState(info, category, 'published-checked', 'completed', 'incomplete');
     await expect(control).toBeChecked();
     setProfileDiagnosticState(info, category, 'hide-click', 'completed', 'incomplete');
     nativeBoundary.begin(category, 'hide');
+    await observeNativeInteraction(control, info, category, 'hide', 'before');
     await control.click({ force: true });
+    await observeNativeInteraction(control, info, category, 'hide', 'after');
     setProfileDiagnosticState(info, category, 'hide-poll', 'completed', 'incomplete');
     await expect.poll(async () => (await navigationAccount(page)).categories.find(row => row.category === category)?.isPublic).toBe(false);
     setProfileDiagnosticState(info, category, 'hidden-unchecked', 'completed', 'completed');
@@ -419,7 +486,7 @@ test('canonical navigation: native Books Movies and Games publish and hide throu
   }
   setProfileDiagnosticState(info, 'none', 'legacy-check', 'incomplete', 'incomplete');
   expect(legacy).toEqual([]);
-  } finally { nativeBoundary.seal(); }
+  } finally { nativeBoundary.seal(); await disposeNativeInteraction(info, true); }
 });
 
 test('canonical navigation: external account preference refresh preserves all nine saved rows', async ({ page }) => {
