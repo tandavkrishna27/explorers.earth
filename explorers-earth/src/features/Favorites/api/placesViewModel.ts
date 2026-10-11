@@ -2,6 +2,8 @@ import type {EditableOwnerRecommendation,EditableOwnerCollection,OwnerMembership
 import {placeEntityDetailsSchema,placeRecommendationContextSchema,emptyPlaceDetails,legacyListNameDetails} from '../../../../../tunes/shared/explorersPlaceContract';
 import type {CompletePlacesOwnerContent} from './placesClient';
 import {ExplorersApiError,type RecommendationObservation,type CollectionObservation,assertCompleteMyCategoryContent} from '../../../lib/explorersApiClient';
+import {placesTaxonomyReadSchema,type taxonomySelectionReadSchema} from '../../../../../tunes/shared/explorersTaxonomyContract';
+import type {z} from 'zod/v3';
 
 // Ticket 5.1. Pure canonical-DTO to feature-shape mapping, in its own module so the
 // mapping the ticket asks for ("without dropping data used by cards and maps") can be
@@ -44,7 +46,9 @@ export type RecommendedPlaceView={
  user_recommendation_note:string;user_rating:number|null;google_rating:number|null;
  is_pinned:boolean;pin_order:number|null;display_order:number;
  recommendation_list:{documentId:string;List_Name:string;slug:string}|null;
- recommendation_category:null;recommendation_sub_category:null;
+ placesTaxonomy:z.infer<typeof placesTaxonomyReadSchema>;
+ recommendation_category:(z.infer<typeof taxonomySelectionReadSchema>&{documentId:string;Category_Name:string|null})|null;
+ recommendation_sub_category:(z.infer<typeof taxonomySelectionReadSchema>&{documentId:string;sub_category:string|null})|null;
 };
 export type RecommendationListView={
  documentId:string;List_Name:string;slug:string;Visibility:boolean;display_order:number;
@@ -75,6 +79,7 @@ export function placeViewModel(detail:Readonly<EditableOwnerRecommendation>,memb
  const context=placeRecommendationContextSchema.safeParse(detail.placeContext);
  if(!context.success)throw new ExplorersApiError(409,'CONFLICT','Place recommendation context is unavailable');
  const own=context.data;
+ const taxonomy=placesTaxonomyReadSchema.parse(detail.placesTaxonomy);
  if(own.recommendationType!==(detail.entity.kind==='person'?'person':own.recommendationType))throw new ExplorersApiError(409,'CONFLICT','Place recommendation type conflicts with its entity');
  // The typed place entity, when there is one. A core entity of kind place carries no
  // provider identity, and the internal entity id is never substituted for it.
@@ -120,9 +125,9 @@ export function placeViewModel(detail:Readonly<EditableOwnerRecommendation>,memb
   pin_order:selectedPin?.position??null,
   display_order:membership.displayOrder,
   recommendation_list:null,
-  // Taxonomy is deferred to its own ticket: the vocabulary is Strapi content and 5.1
-  // forbids inventing production values.
-  recommendation_category:null,recommendation_sub_category:null,
+  placesTaxonomy:taxonomy,
+  recommendation_category:taxonomy.category?{...taxonomy.category,documentId:taxonomy.category.id,Category_Name:taxonomy.category.label}:null,
+  recommendation_sub_category:taxonomy.subcategory?{...taxonomy.subcategory,documentId:taxonomy.subcategory.id,sub_category:taxonomy.subcategory.label}:null,
  };
 }
 

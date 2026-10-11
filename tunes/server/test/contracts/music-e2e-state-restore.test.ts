@@ -136,11 +136,11 @@ describe("Music E2E transactional state restore", () => {
     expect(contract.MUSIC_FIXTURE_TABLES).toEqual([
       "account_category_content_state", "account_category_pin_state", "account_category_settings", "account_lifecycle_operations", "account_memberships", "account_music_identity", "account_presentation", "account_recovery_proofs",
       "activity_logs", "analytics_event_receipts", "analytics_events", "analytics_snapshots", "api_tokens", "app_entity_details", "application_command_receipts", "auth_account", "auth_session", "auth_user",
-      "auth_verification", "book_entity_details", "book_recommendation_context", "canonical_music_numeric_retirements", "category_recommendation_pins", "collection_items", "collection_location_links", "collection_media", "collections", "creator_accounts", "deletion_feedback", "email_logs", "email_suppressions", "email_templates", "entities", "entity_identifiers",
+      "auth_verification", "book_entity_details", "book_recommendation_context", "canonical_music_numeric_retirements", "category_recommendation_pins", "collection_items", "collection_location_links", "collection_media", "collection_place_pins", "collections", "creator_accounts", "deletion_feedback", "email_logs", "email_suppressions", "email_templates", "entities", "entity_identifiers",
       "explorers_analytics_receipts", "guest_interactions", "guide_collection_details", "guide_section_photos", "guide_sections", "initial_account_bindings", "media_assets", "media_objects",
       "movie_entity_details", "movie_entity_provider_genres", "movie_provider_genre_terms", "movie_recommendation_context", "music_credential_revocation_operations", "music_identity_lifecycle_operations", "music_identity_tombstones", "music_owner_operations",
       "music_publication_operation_archive", "music_publication_operations", "music_reactivation_tokens", "music_request_quota",
-      "music_schema_migrations", "page_contents", "person_entity_details", "place_collection_details", "place_entity_details", "place_recommendation_context", "playback_states", "played_songs", "playlist_songs",
+      "music_schema_migrations", "page_contents", "person_entity_details", "place_collection_details", "place_entity_details", "place_pin_draft_chunks", "place_pin_draft_items", "place_pin_drafts", "place_recommendation_context", "places_chunk_validation_dirty", "places_collection_mutation_state", "places_pin_validation_dirty", "playback_states", "played_songs", "playlist_songs",
       "playlists", "product_entity_details", "product_recommendation_context", "profile_feed_items", "profile_media", "recommendation_app_screenshots", "recommendation_book_covers", "recommendation_display_overrides", "recommendation_media", "recommendation_movie_media", "recommendation_place_photos", "recommendation_taxonomy", "recommendations", "seo_settings", "session", "songs", "system_settings", "taxonomy_catalogs", "taxonomy_import_receipts", "taxonomy_legacy_slug_mappings", "taxonomy_source_mappings", "taxonomy_term_translations", "taxonomy_terms", "team_members", "user_activity",
       "user_profiles", "user_security_state", "user_sessions", "users", "widgets", "youtube_api_calls", "youtube_api_usage",
       "youtube_music", "youtube_music_playlists", "youtube_playlists", "youtube_tokens",
@@ -181,7 +181,7 @@ describe("Music E2E transactional state restore", () => {
       "0049_explorers_collection_location_links",
       "0050_explorers_guide_sections",
       "0051_explorers_launch_controls",
-      "0052_canonical_music_numeric_retirement", "0053_explorers_taxonomy_catalogs",
+      "0052_canonical_music_numeric_retirement", "0053_explorers_taxonomy_catalogs", "0054_explorers_place_individual_pins",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },
@@ -267,6 +267,10 @@ describe("Music E2E transactional state restore", () => {
     expectedTriggers.push({table:'entity_identifiers',name:'movie_media_identity_reverse_guard',enabled:'O',type:25});
     for(const table of ['recommendation_movie_media','movie_recommendation_context','recommendation_taxonomy']) for(const [event,type] of [['insert',4],['update',16],['delete',8]] as const) expectedTriggers.push({table,name:table+'_content_revision_'+event,enabled:'O',type,function:'explorers_content_revision_'+event});
     expectedTriggers.push(...nativeMigrationTriggers());
+    const placesSql = readFileSync(resolve("migrations/0054_explorers_place_individual_pins.sql"), "utf8");
+    const placesTriggers = [...placesSql.matchAll(/CREATE (?:CONSTRAINT )?TRIGGER ([a-z_]+) (AFTER|BEFORE) ([\s\S]*?) ON public\.([a-z_]+)\s+([\s\S]*?)EXECUTE FUNCTION public\.([a-z_]+)\(\);/g)].map(([,name,timing,events,table,body,fn]) => ({ table, name, enabled: "O", type: (body.includes("FOR EACH ROW") ? 1 : 0) | (timing === "BEFORE" ? 2 : 0) | (/\bINSERT\b/.test(events) ? 4 : 0) | (/\bDELETE\b/.test(events) ? 8 : 0) | (/\bUPDATE\b/.test(events) ? 16 : 0), ...(name === "collection_place_pins_revision" ? { function: fn } : {}) }));
+    expect(placesTriggers).toHaveLength(17);
+    expectedTriggers.push(...placesTriggers);
     expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual(expectedTriggers.sort((a,b)=>a.table.localeCompare(b.table)||a.name.localeCompare(b.name)));
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_TABLES)).toBe(true);
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_MIGRATION_IDS)).toBe(true);
@@ -279,6 +283,9 @@ describe("Music E2E transactional state restore", () => {
     const marker = "SELECT 'native-replay-marker';\n";
     const sql = build({ containerId: "a".repeat(64), dataDump: Buffer.from(marker) }).input.toString("utf8");
     const native = nativeMigrationTriggers();
+    expect(sql).toContain("ALTER TABLE public.\"collection_place_pins\" DISABLE TRIGGER collection_place_pins_revision;");
+    expect(sql).toContain("ALTER TABLE public.\"collection_place_pins\" ENABLE TRIGGER collection_place_pins_revision;");
+    for (const name of ["places_pin_validation_final", "places_chunk_validation_final", "place_pin_drafts_immutable", "place_pin_draft_chunks_immutable", "place_pin_draft_items_immutable"]) expect(sql).not.toContain(`DISABLE TRIGGER ${name};`);
     expect(native).toHaveLength(48);
     const revisions = native.filter(entry => entry.function);
     expect(revisions).toHaveLength(26);

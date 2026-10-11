@@ -22,7 +22,7 @@ vi.mock("@apollo/client", () => ({
   useQuery: () => ({ data: undefined, loading: false, refetch: vi.fn() }),
 }));
 
-vi.mock("react-router-dom", () => ({ useNavigate: () => mocks.navigate }));
+vi.mock("react-router-dom", () => ({ useNavigate: () => mocks.navigate, useLocation: () => ({pathname: "/list-1/recommendations"}) }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k: string) => k }) }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn(), warning: vi.fn() }) }));
 

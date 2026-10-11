@@ -5,6 +5,7 @@ import {resolveManualPlaceSchema,placeRecommendationContextSchema,placeCollectio
 import {resolveManualPersonSchema} from '../../../../../tunes/shared/explorersPersonContract';
 import type {RichNote} from '../../../../../tunes/shared/explorersRichNoteContract';
 import useAuthStore from '../../../store/store';
+import {placesTaxonomyAssignmentSchema,type PlacesTaxonomyAssignment} from '../../../../../tunes/shared/explorersTaxonomyContract';
 
 // Ticket 5.1. Places lives in the Favorites feature because it is the original
 // "recommendations" category - its visibility flag is still public_recommendations.
@@ -20,6 +21,7 @@ export type ManualPlaceDraft={
  title:string;details:Partial<PlaceEntityDetails>;
  context:PlaceRecommendationContext;
  note:RichNote|null;userRating:number|null;mediaIds:string[];photoMediaIds:string[];
+ placesTaxonomy?:PlacesTaxonomyAssignment;
 };
 export type ManualPlaceIntent=Readonly<{entityKey:string;recommendationKey:string;parent:CollectionObservation;draft:Readonly<ManualPlaceDraft>}>;
 export type PlaceMembershipIntent=Readonly<{parent:CollectionObservation;item:RecommendationObservation;attached:boolean;commandKey:string}>;
@@ -39,6 +41,7 @@ function recommendation(value:RecommendationObservation){assertOwnerDetailObserv
 function complete(value:CompleteMyCategoryContent):asserts value is CompletePlacesOwnerContent{assertCompleteMyCategoryContent(value);if(value.category!=='places')fail();}
 
 export const PlacesClient={
+ readTaxonomyCatalog(signal?:AbortSignal){return explorersApiClient.getCompleteTaxonomyCatalog({category:'places'},signal);},
  prepareMembershipIntent(parent:CollectionObservation,item:RecommendationObservation,attached:boolean):PlaceMembershipIntent{
   collection(parent);recommendation(item);if(parent.accountId!==item.accountId||parent.generation!==item.generation||typeof attached!=='boolean')fail();
   const intent=freeze({parent,item,attached,commandKey:key()}),state=useAuthStore.getState();
@@ -66,6 +69,7 @@ export const PlacesClient={
  async observeRecommendation(id:string,signal?:AbortSignal){const value=await explorersApiClient.getMyEditableRecommendation(id,signal);recommendation(value);return value;},
  prepareManualIntent(parent:CollectionObservation,draft:ManualPlaceDraft):ManualPlaceIntent{
   collection(parent);
+  const taxonomy=draft.placesTaxonomy===undefined?{}:{placesTaxonomy:placesTaxonomyAssignmentSchema.parse(draft.placesTaxonomy)};
   // Only the title is required: every place column is nullable, and a half-known
   // coordinate pair is refused by the contract rather than stored.
   const details=resolveManualPlaceSchema.parse({kind:'manual',category:'places',details:{title:draft.title,...draft.details}}).details;
@@ -75,7 +79,7 @@ export const PlacesClient={
   const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
    .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',placeContext:context,placePhotos:{photoMediaIds:draft.photoMediaIds}});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{
-   ...draft,title:details.title,details,context,note:normalized.note,userRating:normalized.userRating,
+   ...draft,...taxonomy,title:details.title,details,context,note:normalized.note,userRating:normalized.userRating,
    mediaIds:[...normalized.mediaIds],photoMediaIds:[...draft.photoMediaIds],
   }});
   const state=useAuthStore.getState();intents.set(intent,{accountId:state.accountId,generation:state.generation,route:route()});return intent;
@@ -87,7 +91,7 @@ export const PlacesClient={
    :await explorersApiClient.resolvePlaceEntity({kind:'manual',category:'places',details:{...intent.draft.details,title:intent.draft.title}},intent.entityKey,signal);
   current(scope,signal);collection(intent.parent);
   const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,
-   mediaIds:[...intent.draft.mediaIds],publicationState:'draft',placeContext:intent.draft.context,placePhotos:{photoMediaIds:[...intent.draft.photoMediaIds]}},intent.recommendationKey,signal);
+   mediaIds:[...intent.draft.mediaIds],publicationState:'draft',placeContext:intent.draft.context,placePhotos:{photoMediaIds:[...intent.draft.photoMediaIds]},...(intent.draft.placesTaxonomy===undefined?{}:{placesTaxonomy:intent.draft.placesTaxonomy})},intent.recommendationKey,signal);
   current(scope,signal);return result;
  },
  /**
@@ -98,10 +102,13 @@ export const PlacesClient={
   */
  prepareManualPersonIntent(parent:CollectionObservation,draft:ManualPlaceDraft):ManualPlaceIntent{
   collection(parent);
+  const taxonomy=draft.placesTaxonomy===undefined?{}:{placesTaxonomy:placesTaxonomyAssignmentSchema.parse(draft.placesTaxonomy)};
   const details=resolveManualPersonSchema.parse({kind:'manual',category:'people',details:{title:draft.title}}).details;
   const context=placeRecommendationContextSchema.parse({...emptyPlaceContext(),...draft.context,recommendationType:'person'});
-  const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{...draft,title:details.title,details:{},context,
-   mediaIds:[...draft.mediaIds],photoMediaIds:[...draft.photoMediaIds]}});
+  const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
+   .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',placeContext:context,placePhotos:{photoMediaIds:draft.photoMediaIds}});
+  const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{...draft,...taxonomy,title:details.title,details:{},context,note:normalized.note,userRating:normalized.userRating,
+   mediaIds:[...normalized.mediaIds],photoMediaIds:[...draft.photoMediaIds]}});
   personIntents.add(intent);
   const state=useAuthStore.getState();intents.set(intent,{accountId:state.accountId,generation:state.generation,route:route()});return intent;
  },

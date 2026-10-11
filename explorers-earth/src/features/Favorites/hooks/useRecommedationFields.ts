@@ -64,11 +64,12 @@ export const useRecommendationFields = ({
   const editInitialValues = useMemo(() => ({
     title: fetchedPlace?.recommendedPlace?.Place_Details?.Title || "",
     address: fetchedPlace?.recommendedPlace?.Place_Details?.Place_Address || "",
-    recommendation: "",
-    // Taxonomy is deferred to its own ticket, so a place carries no category or
-    // subcategory and the form offers none.
-    subcategory: "",
-    category: "",
+    recommendation: fetchedPlace?.recommendedPlace.person_profile_url || "",
+    subcategory: fetchedPlace?.recommendedPlace.placesTaxonomy.subcategory?.id || "",
+    category: fetchedPlace?.recommendedPlace.placesTaxonomy.category?.id || "",
+    categoryLabel: fetchedPlace?.recommendedPlace.placesTaxonomy.category?.label,
+    subcategoryLabel: fetchedPlace?.recommendedPlace.placesTaxonomy.subcategory?.label,
+    taxonomyUnavailable: fetchedPlace?.recommendedPlace.placesTaxonomy.selectionUnavailable,
     contactName: fetchedPlace?.recommendedPlace?.Contact_Name || "",
     contactNumber: fetchedPlace?.recommendedPlace?.Contact_Number || "",
     socialLink:
@@ -89,7 +90,7 @@ export const useRecommendationFields = ({
 
   // validation schema for recommended Place - memoized to update when language changes
   const validationSchema = useMemo(() => Yup.object({
-    subcategory: Yup.string().required(t("dashboard.recommendations.addRecommendationForm.validationMessages.categoryRequired")),
+    subcategory: Yup.string(),
     recommendationLink: Yup.string(),
     reason: Yup.string(),
     // Address is required for places, optional for persons
@@ -150,13 +151,6 @@ export const useRecommendationFields = ({
         placeholder: recommendationType === "person"
           ? "Enter phone number (optional)"
           : t("dashboard.recommendations.addRecommendationForm.taggableFieldsPlaceholders.contactNumber"),
-      },
-      {
-        name: "subcategory",
-        label: "Category",
-        type: "dropdown",
-        placeholder: t("dashboard.recommendations.addRecommendationForm.taggableFieldsPlaceholders.category"),
-        isRequired: true,
       },
       {
         name: "socialLink",

@@ -3,6 +3,7 @@ import { KeyValuePair } from "../components/RecommendForm";
 import axios from "axios";
 import { Places } from "../../Profile/types/types";
 import useAuthStore from "../../../store/store";
+import {ExplorersApiError,type RecommendationObservation} from "../../../lib/explorersApiClient";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -12,6 +13,7 @@ import { usePlacesCommands } from "../api/placesCommands";
 import { usePlacesOwner } from "./usePlacesOwner";
 import { richNoteFromEditor } from "../../../../../tunes/shared/explorersRichNoteContract";
 import { emptyPlaceContext, type PlaceEntityDetails, type PlaceRecommendationContext } from "../../../../../tunes/shared/explorersPlaceContract";
+import {placesTaxonomyAssignmentSchema} from '../../../../../tunes/shared/explorersTaxonomyContract';
 
 /**
  * Ticket 5.1. Adding and editing a place recommendation, on the native owner API.
@@ -34,9 +36,7 @@ import { emptyPlaceContext, type PlaceEntityDetails, type PlaceRecommendationCon
  *  - The claimable-place directory write is gone: 5.1 derives claim lookup from the
  *    canonical place rows and forbids a second, asynchronously stale directory.
  *
- * Narrowed, and recorded in the ticket: category and subcategory are not written. The
- * vocabulary is Strapi content, 5.1 defers it to its own ticket and forbids inventing
- * production values, so the form no longer blocks a save on a subcategory it cannot store.
+ * Places taxonomy is optional, canonical and separate from provider facts.
  */
 export const toNumberOrNull = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) ? v : null;
@@ -111,6 +111,7 @@ interface AddRecommendation {
     imageDetails?: { id: string; documentId: string }[];
   };
   fetchedPlace?: any;
+  editObservation?: RecommendationObservation;
 }
 
 /** numeric(10,7) is the stored precision; a provider double is rounded to it. */
@@ -185,7 +186,7 @@ export function recommendationContext(values: KeyValuePair, options: {
     contactVisibility: options.existing?.contactVisibility ?? "private",
     placeSocialUrl: person ? null : text(values.socialLink),
     placeWebsiteUrl: person ? text(values.socialLink) : null,
-    creatorSocialUrl: text(values.recommendationLink) ?? text(values.recommendation),
+    creatorSocialUrl: text(values.recommendationLink) ?? (person ? text(values.recommendation) : options.existing?.creatorSocialUrl ?? null),
     legacyPlaceNote: options.existing?.legacyPlaceNote ?? null,
     personProfileUrl: person ? text(values.recommendation) ?? text(values.recommendationLink) : null,
     personAddress: person ? text(values.address) : null,
@@ -206,11 +207,20 @@ export const useAddRecommendation = ({
   setIsLoading,
   userInputRef,
   recommendationType = "place",
-  fetchedPlace,
+  fetchedPlace: fetchedPlaceResult,
+  editObservation,
 }: AddRecommendation) => {
+  const fetchedPlace=fetchedPlaceResult?.recommendedPlace ?? fetchedPlaceResult;
   const { selectedCity, setSelectedCity } = useCityStore();
   const navigate = useNavigate();
+  const [editConflict,setEditConflict]=useState(false);
   const commands = usePlacesCommands();
+  const generation = useAuthStore(state=>state.generation);
+  const accountId = useAuthStore(state=>state.accountId);
+  const editAttempt = useRef<{scope:string; observation:RecommendationObservation; signature:string; files:File[]; uploadedIds:string[]; patch:Parameters<typeof commands.updatePlace>[1]|null}|null>(null);
+  const scope = JSON.stringify([generation,accountId,placeId,listId,fetchedListId]);
+  if(editAttempt.current && (editAttempt.current.scope!==scope || editAttempt.current.observation!==editObservation))editAttempt.current=null;
+  const retireDraftIntent = ()=>{editAttempt.current=null;commands.retireDraftIntent();};
   const owner = usePlacesOwner(fetchedListId || listId, Boolean(fetchedListId || listId));
 
   const [uploadedUserMedia, setUploadedUserMedia] = useState<{ file: File; fileName: string }[]>([]);
@@ -224,6 +234,7 @@ export const useAddRecommendation = ({
   const { user } = useAuthStore();
 
   const handleDeleteUserImage = (_fileName: string, index: number) => {
+    retireDraftIntent();
     setUploadedUserMedia((prev) => prev.filter((_, i) => i !== index));
     setPreviewUrl((prev) => prev.filter((_, i) => i !== index));
     toast.success(t("toast.success.mediaRemovedSuccessfully"));
@@ -414,6 +425,7 @@ export const useAddRecommendation = ({
       const source = determineRecommendationSource(new URLSearchParams(window.location.search));
       const title = provider?.displayName?.text || values.title || "Untitled";
       const draft = {
+        ...(values.placesTaxonomy===undefined?{}:{placesTaxonomy:placesTaxonomyAssignmentSchema.parse(values.placesTaxonomy)}),
         title,
         details: recommendationType === "person" ? {} : placeFacts({ address: values.address, geoCoords: values.geoCoords, places, provider }),
         context: recommendationContext(values, { recommendationType, source }),
@@ -480,13 +492,22 @@ export const useAddRecommendation = ({
 
       const provider = isCustom && googlePlaceRefId ? await fetchProviderFacts(googlePlaceRefId) : null;
 
-      // Upload the creator's newly added media. Previously attached media is kept by id.
-      const uploadedIds: string[] = [];
-      for (const { file, fileName } of uploadedUserMedia) {
-        const named = new File([file], fileName || file.name, { type: file.type });
-        const uploaded = await commands.upload(named, "recommendation");
-        uploadedIds.push(uploaded.id);
+      if(!editObservation)throw new ExplorersApiError(409,"CONFLICT","Refresh the original owner detail before saving");
+      const signature=JSON.stringify(values);
+      let attempt=editAttempt.current;
+      const files=uploadedUserMedia.map(item=>item.file);
+      if(!attempt || attempt.signature!==signature || attempt.files.length!==files.length || files.some((file,index)=>file!==attempt!.files[index])){
+        attempt={scope,observation:editObservation,signature,files,uploadedIds:[],patch:null};
+        editAttempt.current=attempt;
       }
+      // Keep successful uploads and the exact patch across response loss or failure.
+      for(let index=attempt.uploadedIds.length;index<uploadedUserMedia.length;index++){
+        const {file,fileName}=uploadedUserMedia[index];
+        const uploaded=await commands.upload(new File([file],fileName||file.name,{type:file.type}),"recommendation");
+        if(editAttempt.current!==attempt)throw new Error("Edit media attempt retired");
+        attempt.uploadedIds.push(uploaded.id);
+      }
+      const uploadedIds=attempt.uploadedIds;
       const existingMediaIds = Array.isArray(fetchedPlace?.media_details?.imageDetails)
         ? fetchedPlace.media_details.imageDetails.map((item: { id: string }) => item.id).filter(Boolean)
         : [];
@@ -499,7 +520,9 @@ export const useAddRecommendation = ({
         }
         : null;
 
-      await commands.updatePlace(placeId, {
+      if(!editObservation)throw new ExplorersApiError(409,"CONFLICT","Refresh the original owner detail before saving");
+      if(!attempt.patch)attempt.patch={
+        ...(values.placesTaxonomy===undefined?{}:{placesTaxonomy:placesTaxonomyAssignmentSchema.parse(values.placesTaxonomy)}),
         note: richNoteFromEditor(typeof values.reason === "string" ? values.reason : ""),
         userRating: toNumberOrNull(values.userRating),
         mediaIds: [...existingMediaIds, ...uploadedIds],
@@ -510,7 +533,8 @@ export const useAddRecommendation = ({
         }),
         // The title is this owner's presentation of a shared place, so it is an override.
         displayOverrides: { title: typeof values.title === "string" && values.title ? values.title : null },
-      });
+      };
+      await commands.updatePlace(placeId, attempt.patch, editObservation);
 
       // Correcting the place's own facts repoints this recommendation at a corrected
       // place; it never rewrites the place everyone else recommends.
@@ -524,10 +548,12 @@ export const useAddRecommendation = ({
         }
       }
 
+      editAttempt.current=null;
       toast.success("Recommendation Updated Successfully!!!");
       setIsLoading(false);
       navigate("/recommendations");
     } catch (error: any) {
+      if(error instanceof ExplorersApiError && error.status===409)setEditConflict(true);
       console.error("Error updating place details:", error);
       const errorMessage = error?.message || "Failed to update recommendation. Please try again.";
       toast.error(errorMessage);
@@ -564,6 +590,7 @@ export const useAddRecommendation = ({
       const fileExtension = file.name.substring(file.name.lastIndexOf("."));
       return { file, fileName: `user---${user?.username || "user"}${fileExtension}` };
     });
+    retireDraftIntent();
     setUploadedUserMedia(prev => [...prev, ...newFileItems]);
     return newFiles;
   };
@@ -601,6 +628,8 @@ export const useAddRecommendation = ({
   };
 
   return {
+    editConflict, clearEditConflict:()=>{retireDraftIntent();setEditConflict(false);},
+    retireDraftIntent,
     handleFileChange,
     handleUploadMedia,
     handleSubmit,

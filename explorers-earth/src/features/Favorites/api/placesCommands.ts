@@ -2,7 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {useLocation} from 'react-router-dom';
 import useAuthStore from '../../../store/store';
 import type {CollectionObservation,RecommendationObservation} from '../../../lib/explorersApiClient';
-import {PlacesClient,type CompletePlacesOwnerContent,type PlaceMembershipIntent,type ManualPlaceDraft} from './placesClient';
+import {PlacesClient,type CompletePlacesOwnerContent,type PlaceMembershipIntent,type ManualPlaceDraft,type ManualPlaceIntent} from './placesClient';
 import type {PlaceCollectionDetails,PlaceEntityDetails} from '../../../../../tunes/shared/explorersPlaceContract';
 import {invalidatePlaces} from '../hooks/usePlacesOwner';
 
@@ -18,13 +18,16 @@ export function usePlacesCommands() {
  const scope=JSON.stringify([generation,accountId,location.pathname]);
  const current=useRef(scope);current.current=scope;
  const mounted=useRef(true),operation=useRef(0),controllers=useRef(new Set<AbortController>());
+ const observationKeys=useRef(new WeakMap<RecommendationObservation,string>());
+ const observationKey=(observed:RecommendationObservation)=>{let value=observationKeys.current.get(observed);if(!value){value=crypto.randomUUID();observationKeys.current.set(observed,value);}return value;};
+ const creates=useRef(new Map<string,ManualPlaceIntent>());
  const keys=useRef(new Map<string,string>()),memberships=useRef(new Map<string,PlaceMembershipIntent>());
  const collections=useRef(new Map<string,CollectionObservation>()),completeReads=useRef(new Map<string,CompletePlacesOwnerContent>());
  const recommendations=useRef(new Map<string,RecommendationObservation>()),choices=useRef(new Map<string,string>());
  const [pending,setPending]=useState(0);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;controllers.current.forEach(controller=>controller.abort());};},[]);
- useEffect(()=>{controllers.current.forEach(controller=>controller.abort());keys.current.clear();memberships.current.clear();collections.current.clear();completeReads.current.clear();recommendations.current.clear();choices.current.clear();setPending(0);},[scope]);
- const forget=(signature:string)=>{keys.current.delete(signature);collections.current.delete(signature);completeReads.current.delete(signature);recommendations.current.delete(signature);};
+ useEffect(()=>{controllers.current.forEach(controller=>controller.abort());keys.current.clear();creates.current.clear();observationKeys.current=new WeakMap();memberships.current.clear();collections.current.clear();completeReads.current.clear();recommendations.current.clear();choices.current.clear();setPending(0);},[scope]);
+ const forget=(signature:string)=>{keys.current.delete(signature);creates.current.delete(signature);collections.current.delete(signature);completeReads.current.delete(signature);recommendations.current.delete(signature);};
  const begin=(group:string,signature:string)=>{const previous=choices.current.get(group);if(previous&&previous!==signature){forget(previous);memberships.current.delete(previous);}choices.current.set(group,signature);};
  const observeCollection=async(signature:string,id:string,assert:()=>void,signal:AbortSignal)=>{let observed=collections.current.get(signature);if(!observed){observed=await PlacesClient.observeCollection(id,signal);assert();collections.current.set(signature,observed);}return observed;};
  const observeLocationChild=async(signature:string,id:string,assert:()=>void,signal:AbortSignal)=>{let observed=collections.current.get(signature);if(!observed){observed=await PlacesClient.observeLocationChild(id,signal);assert();collections.current.set(signature,observed);}return observed;};
@@ -38,6 +41,7 @@ export function usePlacesCommands() {
   finally{controllers.current.delete(controller);if(mounted.current&&current.current===captured)setPending(value=>Math.max(0,value-1));}
  };
  return {loading:pending>0,
+  retireDraftIntent:()=>{for(const signature of [...keys.current.keys(),...creates.current.keys()])if(signature.startsWith('create-place:')||signature.startsWith('create-person:')||signature.startsWith('update-place:'))forget(signature);},
   // A location list is created with its location in one command, so a list never exists
   // without the location it was created for.
   createList:(input:Parameters<typeof PlacesClient.createCollection>[0])=>run(async(assert,signal)=>{const signature=`create:${JSON.stringify(input)}`;begin('create',signature);assert();const result=await PlacesClient.createCollection(input,key(signature),signal);assert();forget(signature);return result;}),
@@ -57,14 +61,14 @@ export function usePlacesCommands() {
   createPlace:(collectionId:string,draft:ManualPlaceDraft)=>run(async(assert,signal)=>{
    const signature=`create-place:${collectionId}:${JSON.stringify(draft)}`;begin(`collection:${collectionId}`,signature);
    const parent=await observeCollection(signature,collectionId,assert,signal);assert();
-   const intent=PlacesClient.prepareManualIntent(parent,draft);assert();
+   let intent=creates.current.get(signature);if(!intent){intent=PlacesClient.prepareManualIntent(parent,draft);creates.current.set(signature,intent);}assert();
    const result=await PlacesClient.createManual(intent,signal);assert();forget(signature);return result;
   }),
   // The legacy Recommendation_Type 'person' inside a Places list.
   createPerson:(collectionId:string,draft:ManualPlaceDraft)=>run(async(assert,signal)=>{
    const signature=`create-person:${collectionId}:${JSON.stringify(draft)}`;begin(`collection:${collectionId}`,signature);
    const parent=await observeCollection(signature,collectionId,assert,signal);assert();
-   const intent=PlacesClient.prepareManualPersonIntent(parent,draft);assert();
+   let intent=creates.current.get(signature);if(!intent){intent=PlacesClient.prepareManualPersonIntent(parent,draft);creates.current.set(signature,intent);}assert();
    const result=await PlacesClient.createManual(intent,signal);assert();forget(signature);return result;
   }),
   // Ticket 5.2. Linking a Products or People list to a location, and unlinking it.
@@ -83,7 +87,7 @@ export function usePlacesCommands() {
    const observed=await observeRecommendation(signature,id,assert,signal);assert();
    const result=await PlacesClient.correctFacts(observed,title,details,key(`${signature}:entity`),key(signature),signal);assert();forget(signature);return result;
   }),
-  updatePlace:(id:string,patch:Parameters<typeof PlacesClient.updateRecommendation>[1])=>run(async(assert,signal)=>{const signature=`update-place:${id}:${JSON.stringify(patch)}`;begin(`recommendation:${id}`,signature);const observed=await observeRecommendation(signature,id,assert,signal);assert();const result=await PlacesClient.updateRecommendation(observed,patch,key(signature),signal);assert();forget(signature);return result;}),
+  updatePlace:(id:string,patch:Parameters<typeof PlacesClient.updateRecommendation>[1],original?:RecommendationObservation)=>run(async(assert,signal)=>{const signature=`update-place:${id}:${original ? observationKey(original) : "command"}:${JSON.stringify(patch)}`;begin(`recommendation:${id}`,signature);const observed=original??await observeRecommendation(signature,id,assert,signal);if(observed.resourceId!==id)throw new Error("Places edit observation identity changed");assert();const result=await PlacesClient.updateRecommendation(observed,patch,key(signature),signal);assert();forget(signature);return result;}),
   archivePlace:(id:string)=>run(async(assert,signal)=>{const signature=`archive-place:${id}`;begin(`recommendation:${id}`,signature);const observed=await observeRecommendation(signature,id,assert,signal);assert();const result=await PlacesClient.archiveRecommendation(observed,key(signature),signal);assert();forget(signature);return result;}),
   publishPlace:(id:string,published:boolean)=>run(async(assert,signal)=>{const signature=`recommendation-publication:${id}:${published}`;begin(`recommendation:${id}`,signature);const observed=await observeRecommendation(signature,id,assert,signal);assert();const result=await PlacesClient.updateRecommendation(observed,{publicationState:published?'published':'draft'},key(signature),signal);assert();forget(signature);return result;}),
   reorderList:(id:string,orderedRecommendationIds:string[])=>run(async(assert,signal)=>{const signature=`reorder:${id}:${JSON.stringify(orderedRecommendationIds)}`;begin(`collection:${id}`,signature);const observed=await observeComplete(signature,assert,signal);assert();const result=await PlacesClient.reorderCollection(observed,id,orderedRecommendationIds,key(signature),signal);assert();forget(signature);return result;}),

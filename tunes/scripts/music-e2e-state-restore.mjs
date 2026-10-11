@@ -52,6 +52,7 @@ export const MUSIC_FIXTURE_TABLES = Object.freeze(runtimeInventory.tables);
 export const MUSIC_FIXTURE_MIGRATION_IDS = Object.freeze(runtimeInventory.migrationIds);
 
 const revisionTriggers = Object.freeze([
+  Object.freeze({table:'collection_place_pins',name:'collection_place_pins_revision',enabled:'O',type:29,function:'explorers_place_pins_revision'}),
   ...['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_display_overrides','book_recommendation_context','recommendation_book_covers','recommendation_movie_media','movie_recommendation_context','recommendation_taxonomy','category_recommendation_pins','account_category_pin_state','recommendation_app_screenshots','product_recommendation_context','place_recommendation_context','recommendation_place_photos','place_collection_details','collection_location_links','guide_collection_details','guide_sections'].flatMap(table =>
     [['insert',4],['update',16],['delete',8]].map(([event,type]) => Object.freeze({
       table,name:`${table}_content_revision_${event}`,enabled:'O',type,
@@ -146,6 +147,23 @@ export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
   Object.freeze({table:'guide_section_photos',name:'guide_section_photo_registry',enabled:'O',type:13}),
   Object.freeze({table:'media_assets',name:'guide_section_photo_asset_guard',enabled:'O',type:17}),
   Object.freeze({table:'entities',name:'guide_location_entity_guard',enabled:'O',type:17}),
+  // Places0054 integrity and transaction-owned validation queues remain active.
+  Object.freeze({table:'collection_place_pins',name:'collection_place_pins_dirty',enabled:'O',type:29}),
+  Object.freeze({table:'collections',name:'places_collection_cleanup',enabled:'O',type:27}),
+  Object.freeze({table:'recommendations',name:'places_recommendation_cleanup',enabled:'O',type:27}),
+  Object.freeze({table:'collection_items',name:'places_membership_cleanup',enabled:'O',type:27}),
+  Object.freeze({table:'entities',name:'places_entity_cleanup',enabled:'O',type:27}),
+  Object.freeze({table:'collections',name:'places_collection_pins_dirty',enabled:'O',type:29}),
+  Object.freeze({table:'recommendations',name:'places_recommendation_pins_dirty',enabled:'O',type:29}),
+  Object.freeze({table:'collection_items',name:'places_membership_pins_dirty',enabled:'O',type:29}),
+  Object.freeze({table:'entities',name:'places_entity_pins_dirty',enabled:'O',type:25}),
+  Object.freeze({table:'places_pin_validation_dirty',name:'places_pin_validation_final',enabled:'O',type:5}),
+  Object.freeze({table:'place_pin_drafts',name:'place_pin_drafts_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'place_pin_draft_chunks',name:'place_pin_draft_chunks_immutable',enabled:'O',type:31}),
+  Object.freeze({table:'place_pin_draft_items',name:'place_pin_draft_items_immutable',enabled:'O',type:31}),
+  Object.freeze({table:'place_pin_draft_chunks',name:'place_pin_draft_chunks_dirty',enabled:'O',type:5}),
+  Object.freeze({table:'place_pin_draft_items',name:'place_pin_draft_items_dirty',enabled:'O',type:29}),
+  Object.freeze({table:'places_chunk_validation_dirty',name:'places_chunk_validation_final',enabled:'O',type:5}),
   ...revisionTriggers,
 ].sort((a,b) => a.table.localeCompare(b.table)||a.name.localeCompare(b.name)));
 
@@ -227,7 +245,7 @@ BEGIN
     JOIN pg_catalog.pg_namespace function_namespace ON function_namespace.oid=procedure.pronamespace
     WHERE namespace.nspname='public' AND NOT trigger.tgisinternal
       AND function_namespace.nspname='public' AND procedure.pronargs=0
-      AND trigger.tgname LIKE '%_content_revision_%';
+      AND (trigger.tgname LIKE '%_content_revision_%' OR trigger.tgname='collection_place_pins_revision');
   IF actual_revision_functions IS DISTINCT FROM ${expectedRevisionFunctionsSql} THEN
     RAISE EXCEPTION USING ERRCODE='P0001', MESSAGE='fixture restore revision function authority mismatch';
   END IF;

@@ -25,7 +25,7 @@ const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
 describe("Music migration authority contracts", () => {
   it("retains the append-only database-owned publication clock before durable reactivation and archive authority", () => {
-    expect(EXPECTED_MUSIC_MIGRATION_ID).toBe("0053_explorers_taxonomy_catalogs");
+    expect(EXPECTED_MUSIC_MIGRATION_ID).toBe("0054_explorers_place_individual_pins");
     const migration = loadMusicMigrations().find(({ id }) => id === "0013_publication_operation_database_clock");
     expect(migration?.id).toBe("0013_publication_operation_database_clock");
     expect(migration?.sql).toMatch(/CREATE OR REPLACE FUNCTION enforce_music_publication_operation_immutability/i);
@@ -72,7 +72,7 @@ describe("Music migration authority contracts", () => {
       "0031_explorers_content_revision",
       "0032_explorers_owner_page_indexes",
       "0033_explorers_recommendation_display_overrides",
-      "0034_explorers_books_provider_context", "0035_explorers_book_cover_import", "0036_explorers_analytics_events", "0037_explorers_movies_provider_context", "0038_explorers_movie_media", "0039_music_venue_account_ownership", "0040_canonical_music_venue_provisioning", "0041_canonical_music_venue_release", "0042_canonical_music_venue_release_function", "0043_explorers_apps_provider_context", "0044_explorers_products_offer_context", "0045_explorers_people_catalog", "0046_explorers_places_catalog", "0047_explorers_place_photo_media", "0048_explorers_place_location_aggregate", "0049_explorers_collection_location_links", "0050_explorers_guide_sections", "0051_explorers_launch_controls", "0052_canonical_music_numeric_retirement", "0053_explorers_taxonomy_catalogs",
+      "0034_explorers_books_provider_context", "0035_explorers_book_cover_import", "0036_explorers_analytics_events", "0037_explorers_movies_provider_context", "0038_explorers_movie_media", "0039_music_venue_account_ownership", "0040_canonical_music_venue_provisioning", "0041_canonical_music_venue_release", "0042_canonical_music_venue_release_function", "0043_explorers_apps_provider_context", "0044_explorers_products_offer_context", "0045_explorers_people_catalog", "0046_explorers_places_catalog", "0047_explorers_place_photo_media", "0048_explorers_place_location_aggregate", "0049_explorers_collection_location_links", "0050_explorers_guide_sections", "0051_explorers_launch_controls", "0052_canonical_music_numeric_retirement", "0053_explorers_taxonomy_catalogs", "0054_explorers_place_individual_pins",
     ]);
     expect(EXPECTED_MUSIC_MIGRATION_ID).toBe(migrations.at(-1)?.id);
     expect(migrations.every(({ checksum }) => /^[a-f0-9]{64}$/.test(checksum))).toBe(true);
@@ -206,15 +206,28 @@ describe("Music migration authority contracts", () => {
       "0031_explorers_content_revision",
       "0032_explorers_owner_page_indexes",
       "0033_explorers_recommendation_display_overrides",
-      "0034_explorers_books_provider_context", "0035_explorers_book_cover_import", "0036_explorers_analytics_events", "0037_explorers_movies_provider_context", "0038_explorers_movie_media", "0039_music_venue_account_ownership", "0040_canonical_music_venue_provisioning", "0041_canonical_music_venue_release", "0042_canonical_music_venue_release_function", "0043_explorers_apps_provider_context", "0044_explorers_products_offer_context", "0045_explorers_people_catalog", "0046_explorers_places_catalog", "0047_explorers_place_photo_media", "0048_explorers_place_location_aggregate", "0049_explorers_collection_location_links", "0050_explorers_guide_sections", "0051_explorers_launch_controls", "0052_canonical_music_numeric_retirement", "0053_explorers_taxonomy_catalogs",
+      "0034_explorers_books_provider_context", "0035_explorers_book_cover_import", "0036_explorers_analytics_events", "0037_explorers_movies_provider_context", "0038_explorers_movie_media", "0039_music_venue_account_ownership", "0040_canonical_music_venue_provisioning", "0041_canonical_music_venue_release", "0042_canonical_music_venue_release_function", "0043_explorers_apps_provider_context", "0044_explorers_products_offer_context", "0045_explorers_people_catalog", "0046_explorers_places_catalog", "0047_explorers_place_photo_media", "0048_explorers_place_location_aggregate", "0049_explorers_collection_location_links", "0050_explorers_guide_sections", "0051_explorers_launch_controls", "0052_canonical_music_numeric_retirement", "0053_explorers_taxonomy_catalogs", "0054_explorers_place_individual_pins",
     ]);
-    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52]);
+    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53]);
+    expect(musicMigrationMarkerRank("0053_explorers_taxonomy_catalogs")).toBe(52);
+    expect(musicMigrationMarkerRank("0054_explorers_place_individual_pins")).toBe(53);
     expect(musicMigrationMarkerRank("9999_unknown")).toBeUndefined();
   });
 
   it("declares every manifested runtime table and the durable identity tombstone", () => {
     const manifest = JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")) as { tables: Array<{ name: string }> };
-    expect(manifest.tables).toHaveLength(85);
+    expect(manifest.tables).toHaveLength(89);
+    const placesTables = ["places_collection_mutation_state", "places_pin_validation_dirty", "places_chunk_validation_dirty", "collection_place_pins", "place_pin_drafts", "place_pin_draft_chunks", "place_pin_draft_items"];
+    const placesSql = read("tunes/migrations/0054_explorers_place_individual_pins.sql");
+    expect([...placesSql.matchAll(/CREATE TABLE public\.([a-z_]+)/g)].map((match) => match[1])).toEqual(placesTables);
+    for (const name of placesTables.slice(3)) expect(manifest.tables).toContainEqual(expect.objectContaining({ name, managedBy: "unmanaged-raw-sql" }));
+    const controls = JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")).migrationChain.controlTables;
+    for (const name of placesTables.slice(0, 3)) expect(controls).toContain(name);
+    expect(JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")).controlTablePolicies).toEqual([
+      { name: "places_collection_mutation_state", managedBy: "unmanaged-raw-sql", family: "security-audit", lifecycle: "cascade-on-collection-deletion" },
+      { name: "places_pin_validation_dirty", managedBy: "unmanaged-raw-sql", family: "security-audit", lifecycle: "transaction-final-validation-delete" },
+      { name: "places_chunk_validation_dirty", managedBy: "unmanaged-raw-sql", family: "security-audit", lifecycle: "transaction-final-validation-delete" },
+    ]);
     expect((JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")) as { migrationChain: { controlTables: string[] } })
       .migrationChain.controlTables).toContain("music_credential_revocation_operations");
     expect((JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")) as { migrationChain: { controlTables: string[] } })

@@ -30,6 +30,7 @@ const expectedRuntimeTables = [
   "collection_items",
   "collection_location_links",
   "collection_media",
+  "collection_place_pins",
   "collections",
   "creator_accounts",
   "deletion_feedback",
@@ -63,7 +64,13 @@ const expectedRuntimeTables = [
   "person_entity_details",
   "place_collection_details",
   "place_entity_details",
+  "place_pin_draft_chunks",
+  "place_pin_draft_items",
+  "place_pin_drafts",
   "place_recommendation_context",
+  "places_chunk_validation_dirty",
+  "places_collection_mutation_state",
+  "places_pin_validation_dirty",
   "playback_states",
   "played_songs",
   "playlist_songs",
@@ -148,6 +155,15 @@ const expectedRuntimeFunctions = [
   "explorers_content_revision_insert()",
   "explorers_content_revision_lifecycle()",
   "explorers_content_revision_update()",
+  "explorers_place_chunk_dirty()",
+  "explorers_place_chunk_validate()",
+  "explorers_place_draft_immutable()",
+  "explorers_place_pins_cleanup()",
+  "explorers_place_pins_dirty()",
+  "explorers_place_pins_revision()",
+  "explorers_place_pins_validate()",
+  "explorers_places_category_mutation(uuid)",
+  "explorers_places_collection_claim(uuid)",
   "finalize_canonical_music_venue_deletion(integer,text,text)",
   "finalize_music_identity_deletion(integer,text,text)",
   "guard_app_entity_details()",
@@ -644,6 +660,11 @@ export async function provisionMusicRuntimeLogin(
       ON canonical_music_numeric_retirements FROM ${capabilityRole}`);
     await client.query(`GRANT USAGE,SELECT,UPDATE ON ALL SEQUENCES IN SCHEMA public TO ${capabilityRole}`);
     await client.query(`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON places_collection_mutation_state FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON places_pin_validation_dirty,places_chunk_validation_dirty FROM ${capabilityRole}`);
+    await client.query(`REVOKE UPDATE,TRUNCATE,REFERENCES,TRIGGER ON place_pin_draft_chunks,place_pin_draft_items FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON FUNCTION explorers_places_category_mutation(uuid),explorers_places_collection_claim(uuid),
+      explorers_place_pins_revision(),explorers_place_pins_cleanup(),explorers_place_pins_validate(),explorers_place_draft_immutable(),explorers_place_chunk_validate(),explorers_place_pins_dirty(),explorers_place_chunk_dirty() FROM ${capabilityRole}`);
     await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON account_category_content_state FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL PRIVILEGES ON FUNCTION explorers_content_revision_insert(),
@@ -781,6 +802,22 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "SELECT explorers_content_revision_update()",
     "SELECT explorers_content_revision_delete()",
     "SELECT explorers_content_revision_lifecycle()",
+    "SELECT explorers_places_category_mutation(NULL::uuid)",
+    "SELECT explorers_places_collection_claim(NULL::uuid)",
+    "UPDATE places_collection_mutation_state SET last_mutation_xid=pg_current_xact_id() WHERE false",
+    "INSERT INTO places_collection_mutation_state DEFAULT VALUES",
+    "DELETE FROM places_collection_mutation_state WHERE false",
+    "SELECT * FROM places_collection_mutation_state LIMIT 0",
+    "SELECT * FROM places_pin_validation_dirty LIMIT 0",
+    "SELECT * FROM places_chunk_validation_dirty LIMIT 0",
+    "INSERT INTO places_pin_validation_dirty DEFAULT VALUES",
+    "INSERT INTO places_chunk_validation_dirty DEFAULT VALUES",
+    "UPDATE places_pin_validation_dirty SET validation_xid=pg_current_xact_id() WHERE false",
+    "UPDATE places_chunk_validation_dirty SET validation_xid=pg_current_xact_id() WHERE false",
+    "DELETE FROM places_pin_validation_dirty WHERE false",
+    "DELETE FROM places_chunk_validation_dirty WHERE false",
+    "UPDATE place_pin_draft_chunks SET hash=hash WHERE false",
+    "UPDATE place_pin_draft_items SET recommendation_id=recommendation_id WHERE false",
     "UPDATE music_credential_revocation_operations SET reason=reason WHERE false",
     "DELETE FROM music_credential_revocation_operations WHERE false",
     "DELETE FROM music_publication_operations WHERE false",
@@ -843,8 +880,9 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       : row.object_name === "entity_identifiers" || row.object_name === "book_entity_details" || row.object_name === "app_entity_details" || row.object_name === "product_entity_details" || row.object_name === "person_entity_details" || row.object_name === "place_entity_details" || ["movie_entity_details","movie_entity_provider_genres"].includes(row.object_name)
         ? [true, true, false, false]
       : row.object_name === "collection_location_links" || row.object_name === "guide_section_photos"
+          || row.object_name === "place_pin_draft_chunks" || row.object_name === "place_pin_draft_items"
         ? [true, true, false, true]
-      : ["music_publication_operation_archive","taxonomy_import_receipts"].includes(row.object_name)
+      : ["music_publication_operation_archive","taxonomy_import_receipts","places_collection_mutation_state","places_pin_validation_dirty","places_chunk_validation_dirty"].includes(row.object_name)
         ? [false, false, false, false]
       : row.object_name === "canonical_music_numeric_retirements"
         ? [true, true, false, false]
@@ -902,6 +940,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       || functionRows.some((row) => row.object_owner !== approvedOwnerRole || row.can_execute
         !== (row.function_signature !== "provision_music_runtime_login(name,text)"
           && !/^explorers_content_revision_(insert|update|delete|lifecycle)\(\)$/.test(row.function_signature)
+          && !row.function_signature.startsWith("explorers_place")
           && !["lock_recommendation_taxonomy_catalog()","validate_explorers_taxonomy_catalogs()","guard_explorers_taxonomy_catalogs()","guard_taxonomy_import_receipt_immutable()","guard_movie_details()","guard_movie_genres()","lock_movie_genre_parent()","guard_movie_media()","lock_movie_media_parent()","validate_movie_media(uuid)","guard_taxonomy_tree()","lock_taxonomy_tree()","validate_movie_context(uuid,text,bigint[])","guard_movie_context()","guard_recommendation_taxonomy()","lock_recommendation_taxonomy_parent()"].includes(row.function_signature)
           && !/^guard_book_(entity_details|recommendation_context)\(\)$/.test(row.function_signature) && row.function_signature!=="guard_recommendation_book_cover()"
           && !/^guard_(app_entity_details|recommendation_app_screenshot|product_entity_details|person_entity_details|place_entity_details|place_context_kind|recommendation_place_photo|place_collection_details|guide_section_media|guide_location_entity)\(\)$/.test(row.function_signature)))) {

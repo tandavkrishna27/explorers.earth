@@ -49,7 +49,7 @@ function observeNativeBoundary(page: Page, origin: string) {
     if (sealed || !current) return;
     try {
       const target = new URL(event.url());
-      if (event.method() !== 'PATCH' || target.origin !== origin || target.pathname !== '/api/explorers/v1/me/profile' || target.search || target.hash) return;
+      if (event.method() !== 'PATCH' || target.origin !== origin || target.pathname !== '/api/explorers/v1/account' || target.search || target.hash) return;
       if (current.request !== 'absent') { current.request = 'uncertain'; current.response = 'uncertain'; }
       else current.request = 'present';
       admitted.set(event, current);

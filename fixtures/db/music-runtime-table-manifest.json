@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0053_explorers_taxonomy_catalogs",
+    "expectedId": "0054_explorers_place_individual_pins",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -56,7 +56,8 @@
       "0050_explorers_guide_sections.sql",
       "0051_explorers_launch_controls.sql",
       "0052_canonical_music_numeric_retirement.sql",
-      "0053_explorers_taxonomy_catalogs.sql"
+      "0053_explorers_taxonomy_catalogs.sql",
+      "0054_explorers_place_individual_pins.sql"
     ],
     "controlTables": [
       "music_schema_migrations",
@@ -72,7 +73,10 @@
       "taxonomy_catalogs",
       "taxonomy_source_mappings",
       "taxonomy_legacy_slug_mappings",
-      "taxonomy_import_receipts"
+      "taxonomy_import_receipts",
+      "places_collection_mutation_state",
+      "places_pin_validation_dirty",
+      "places_chunk_validation_dirty"
     ]
   },
   "generatedFrom": [
@@ -233,6 +237,12 @@
       "lifecycle": "detach-on-deletion"
     },
     {
+      "name": "collection_place_pins",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
       "name": "collections",
       "managedBy": "drizzle",
       "family": "user-content",
@@ -375,6 +385,24 @@
       "managedBy": "drizzle",
       "family": "user-content",
       "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "place_pin_draft_chunks",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "place_pin_draft_items",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "place_pin_drafts",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
     },
     {
       "name": "place_recommendation_context",
@@ -595,5 +623,25 @@
   ],
   "systemReferences": [
     "pg_stat_activity"
+  ],
+  "controlTablePolicies": [
+    {
+      "name": "places_collection_mutation_state",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "cascade-on-collection-deletion"
+    },
+    {
+      "name": "places_pin_validation_dirty",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "transaction-final-validation-delete"
+    },
+    {
+      "name": "places_chunk_validation_dirty",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "transaction-final-validation-delete"
+    }
   ]
 }

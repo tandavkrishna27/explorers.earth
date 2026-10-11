@@ -14,12 +14,23 @@ const context=(over:Record<string,unknown>={})=>({...emptyPlaceContext(),contact
 const detail=(over:Record<string,unknown>={})=>({id:id(1),entityId:id(1),category:'places',
  entity:{id:id(1),kind:'place',title:'Blue Tokai',origin:'provider',providerPlaceId:'ChIJ_example',details:facts()},
  displayTitle:'Blue Tokai',userRating:9,note:{version:1,format:'quill-html',html:'<p>Best filter coffee</p>'},
- mediaIds:[upload],effectivePlaceDetails:facts(),placeContext:context(),placePhotos:{photoMediaIds:[photo]},...over} as never);
+ mediaIds:[upload],effectivePlaceDetails:facts(),placeContext:context(),placePhotos:{photoMediaIds:[photo]},placesTaxonomy:{catalogState:'UNCONFIGURED',catalogVersion:0,defaultLocale:null,category:null,subcategory:null,selectionUnavailable:false},...over} as never);
 const membership=(over:Record<string,unknown>={})=>({recommendationId:id(1),collectionId:id(2),displayOrder:0,...over} as never);
 const snapshot={version:1,name:'Bengaluru',address:'Bengaluru, Karnataka, India',providerPlaceId:'ChIJ_city',latitude:12.9715987,longitude:77.5945627};
 const collection=(over:Record<string,unknown>={})=>({id:id(2),accountId:id(3),category:'places',title:'Bengaluru',description:'My personal guide',
  slug:'bengaluru',visibility:'public',publicationState:'published',displayOrder:0,heading:'Top picks',coverMediaId:id(9),revision:1,archived:false,
  categoryRevision:'1',placeLocation:{locationEntityId:id(4),locationSnapshot:snapshot,instagramMediaUrl:'https://example.com/reel'},...over} as never);
+
+it('preserves canonical taxonomy metadata and unavailable selection without invented labels',()=>{
+ const taxonomy={catalogState:'CONFIGURED',catalogVersion:7,defaultLocale:'fr',category:{id:id(3),slug:'stable-root',label:'Synthetic root',unavailable:false},subcategory:{id:id(4),slug:'stable-child',label:null,unavailable:true},selectionUnavailable:true};
+ const row=placeViewModel(detail({placesTaxonomy:taxonomy}),membership());
+ expect(row.placesTaxonomy).toEqual(taxonomy);
+ expect(row.recommendation_category).toEqual({...taxonomy.category,documentId:id(3),Category_Name:'Synthetic root'});
+ expect(row.recommendation_sub_category).toEqual({...taxonomy.subcategory,documentId:id(4),sub_category:null});
+});
+it('rejects missing Places taxonomy instead of silently losing an assignment',()=>{
+ expect(()=>placeViewModel(detail({placesTaxonomy:undefined}),membership())).toThrow();
+});
 
 it('maps every consumed Place_Details key, with photos as owned media routes',()=>{
  const row=placeViewModel(detail(),membership(),{recommendationId:id(1),collectionId:id(2),position:0});

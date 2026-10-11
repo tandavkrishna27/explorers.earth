@@ -16,11 +16,14 @@ import { AddIcon } from "../../../assets/icons/AddIcon";
 import { toast } from "sonner";
 import { usePeopleOwner } from "../../People/hooks/usePeopleOwner";
 import { useProductsOwner } from "../../Products/hooks/useProductsOwner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import DeleteIcon from "../../../assets/icons/DeleteIcon";
 import Modal from "../../../components/ui/Modal";
 import { usePlacesOwner } from "../hooks/usePlacesOwner";
 import { usePlacesCommands } from "../api/placesCommands";
+import { PlacesClient } from "../api/placesClient";
+import type { CompleteTaxonomyCatalog } from "../../../lib/explorersApiClient";
+import useAuthStore from "../../../store/store";
 import { EarthLoader } from "../../../components/EarthLoader";
 import RecommendationCardSkeleton from "../../../components/ui/RecommendationCardSkeleton";
 import PlaceOverview from "../../PublicHome/components/PlaceDetails/PlaceOverview";
@@ -111,6 +114,8 @@ type CardDataItem = {
   user_rating?: number | null;
   google_rating?: number | null;
   documentId: string;
+  recommendation_category?: {id: string; label: string | null; unavailable: boolean} | null;
+  recommendation_sub_category?: {id: string; label: string | null; unavailable: boolean} | null;
 };
 
 const KebabDropdown: FC<{
@@ -436,47 +441,33 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     };
   }, [showTopPlaces]);
 
-  // Taxonomy is deferred to its own ticket: the category vocabulary is Strapi content and
-  // 5.1 forbids inventing production values, so there is nothing to group by. An empty
-  // vocabulary hides the filter bar rather than showing terms this app made up.
-  const categories: string[] = useMemo(() => [], []);
-
-  // Function to get translated category name
-  const getTranslatedCategoryName = (categoryName: string): string => {
-    // Debug logging to see exact category names
-    console.log('Category name from DB:', categoryName);
-
-    const categoryMap: { [key: string]: string } = {
-      "Food & Drinks": "dashboard.recommendations.categories.foodDrinks",
-      Lodging: "dashboard.recommendations.categories.lodging",
-      "Health & Wellness":
-        "dashboard.recommendations.categories.healthWellness",
-      Shopping: "dashboard.recommendations.categories.shopping",
-      Entertainment: "dashboard.recommendations.categories.entertainment",
-      Transportation: "dashboard.recommendations.categories.transportation",
-      Services: "dashboard.recommendations.categories.services",
-      Tourism: "dashboard.recommendations.categories.tourism",
-      "Natural Features":
-        "dashboard.recommendations.categories.naturalFeatures",
-      "Food and Drink": "dashboard.recommendations.categories.foodDrinks",
-      "Health and Wellness":
-        "dashboard.recommendations.categories.healthWellness",
-      "Natural Feature": "dashboard.recommendations.categories.naturalFeatures",
-    };
-
-
-    const translationKey = categoryMap[categoryName];
-    if (translationKey) {
-      return t(translationKey);
+  const location = useLocation();
+  const accountId = useAuthStore(state => state.accountId);
+  const generation = useAuthStore(state => state.generation);
+  const taxonomyScope = JSON.stringify([accountId, generation, location.pathname, selectedCity?.documentId]);
+  const [catalogResult, setCatalogResult] = useState<{scope: string; catalog?: CompleteTaxonomyCatalog; error?: boolean}>();
+  const [catalogRetry, setCatalogRetry] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    setCatalogResult(undefined);
+    setSelectedCategory("");
+    if (accountId && selectedCity?.documentId) {
+      void PlacesClient.readTaxonomyCatalog(controller.signal).then(catalog => {
+        if (!controller.signal.aborted) setCatalogResult({scope: taxonomyScope, catalog});
+      }).catch(() => {
+        if (!controller.signal.aborted) setCatalogResult({scope: taxonomyScope, error: true});
+      });
     }
-
-
-    // Fallback to original category name
-    return categoryName;
+    return () => controller.abort();
+  }, [taxonomyScope, catalogRetry, accountId, selectedCity?.documentId]);
+  const currentCatalog = catalogResult?.scope === taxonomyScope ? catalogResult : undefined;
+  const categories = useMemo(() => currentCatalog?.catalog?.items.filter(term => term.parentId === null) ?? [], [currentCatalog]);
+  // Filter the complete hydrated list before applying the existing reveal window.
+  const allFilteredPlaces = useMemo(() => ownerPlaces.filter(place => !selectedCategory || place.recommendation_category?.id === selectedCategory).slice(0, revealed), [ownerPlaces, selectedCategory, revealed]);
+  const categoryLabel = (selection: NonNullable<CardDataItem['recommendation_category']>) => {
+    const available = currentCatalog?.catalog?.items.find(term => term.id === selection.id);
+    return selection.unavailable ? `${selection.label ? selection.label + ' — ' : ''}Category unavailable (${selection.id})` : available?.label ?? selection.label ?? `Category unavailable (${selection.id})`;
   };
-
-  // With no category vocabulary there is nothing to filter by, so every place is shown.
-  const allFilteredPlaces = placesData?.recommendedPlaces;
 
   // Calculate center coordinates for TopPlaces component
   const selectedCityCoordinates = useMemo(() => {
@@ -540,7 +531,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     if (
       selectedCategory &&
       categories.length > 0 &&
-      !categories.includes(selectedCategory)
+      !categories.some(term => term.id === selectedCategory)
     ) {
       setSelectedCategory("");
     }
@@ -794,6 +785,13 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
         </div>
       )}
 
+      {activeTab === "places" && accountId && selectedCity?.documentId && (
+        <div role="status" className="text-sm text-white/70">
+          {!currentCatalog ? "Loading categories…" : currentCatalog.error ? <>
+            Categories could not be loaded. <button type="button" onClick={() => setCatalogRetry(value => value + 1)}>Retry loading categories</button>
+          </> : currentCatalog.catalog?.state === "UNCONFIGURED" ? "Category catalog is not configured." : !categories.length ? "No categories are configured." : null}
+        </div>
+      )}
       {/* Categories filters only visible on Places tab */}
       {activeTab === "places" && categories && categories.length >= 1 && (
         <div className="overflow-x-auto whitespace-nowrap py-4 scrollbar-hide">
@@ -805,13 +803,13 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
               onClickHandler={() => setSelectedCategory("")}
               size="xsmall"
             />
-            {categories?.map((tag: string, index: number) => (
+            {categories.map(tag => (
               <Button
-                key={index}
-                btnText={getTranslatedCategoryName(tag)}
+                key={tag.id}
+                btnText={tag.label}
                 type="button"
-                variant={selectedCategory === tag ? "tagSelected" : "tag"}
-                onClickHandler={() => setSelectedCategory(tag)}
+                variant={selectedCategory === tag.id ? "tagSelected" : "tag"}
+                onClickHandler={() => setSelectedCategory(tag.id)}
                 size="xsmall"
               />
             ))}
@@ -1057,6 +1055,8 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                     <span className="places-grid-card-title font-poppins font-bold text-white text-xs md:text-sm line-clamp-1 leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)]">
                       {title}
                     </span>
+                    {data.recommendation_category && <span className="text-xs text-white/70">{categoryLabel(data.recommendation_category)}</span>}
+                    {data.recommendation_sub_category && <span className="text-xs text-white/70">{categoryLabel(data.recommendation_sub_category)}</span>}
                     {!isPersonType && (rating !== undefined || reviews !== undefined) && (
                       <div className="places-grid-card-meta flex items-center gap-1 text-[10px] md:text-xs text-white font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)]">
                         <span className="text-dashboard-accent">★</span>

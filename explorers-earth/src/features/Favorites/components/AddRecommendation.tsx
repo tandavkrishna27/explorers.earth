@@ -7,7 +7,7 @@ import RecommendationForm, {
 import { AddIcon } from "../../../assets/icons/AddIcon";
 import { toast } from "sonner";
 import { usePlacesOwner } from "../hooks/usePlacesOwner";
-import type { KeyValuePair } from "./RecommendForm";
+
 import { Places } from "../../Profile/types/types";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { EarthLoader } from "../../../components/EarthLoader";
@@ -24,6 +24,9 @@ import StarIcon from "../../../assets/icons/StarIcon";
 import Modal from "../../../components/ui/Modal";
 import { Tooltip } from "react-tooltip";
 import { useTranslation } from "react-i18next";
+import { PlacesClient } from "../api/placesClient";
+import type { CompleteTaxonomyCatalog, RecommendationObservation } from "../../../lib/explorersApiClient";
+import { useLocation } from "react-router-dom";
 import { resizeImageToAspectRatio } from "../../../utils/resizeMediaToAspectRatio";
 
 // Add new type for Custom Search API response
@@ -193,9 +196,18 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
 
   // Ticket 5.1. The place being edited comes from the native owner read, which returns
   // every list complete, so the recommendation is found in it rather than fetched by id.
+  const accountId = useAuthStore(s=>s.accountId), generation = useAuthStore(s=>s.generation);
+  const location = useLocation();
+  const catalogScope = JSON.stringify([accountId,generation,location.pathname]);
+  const hydrated = useRef<{scope:string;place:NonNullable<ReturnType<typeof usePlacesOwner>['data']>['recommendationLists'][number]['recommended_places'][number];observation:RecommendationObservation}>();
+  if(hydrated.current?.scope!==catalogScope)hydrated.current=undefined;
+  const [reviewMessage,setReviewMessage]=useState<string>();
+  const [,setReviewVersion]=useState(0);
+  const reviewController=useRef<AbortController>();
+  useEffect(()=>()=>reviewController.current?.abort(),[catalogScope]);
   const owner = usePlacesOwner(undefined, Boolean(placeId));
   const isPlaceLoading = owner.loading;
-  const editedPlace = useMemo(() => {
+  const candidatePlace = useMemo(() => {
     if (!placeId) return undefined;
     for (const list of owner.data?.recommendationLists ?? []) {
       const found = list.recommended_places.find((place: { documentId: string }) => place.documentId === placeId);
@@ -203,7 +215,12 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     }
     return undefined;
   }, [owner.data, placeId]);
-  // The shape the form fields and the media transform already read.
+  const candidateObservation=placeId?owner.content?.details.get(placeId):undefined;
+  if(!hydrated.current && candidatePlace && candidateObservation)hydrated.current={scope:catalogScope,place:candidatePlace,observation:candidateObservation};
+  const editedPlace=hydrated.current?.place;
+  const editObservation=hydrated.current?.observation;
+  useEffect(()=>{if(type==='edit' && editedPlace)setRecommendationType(editedPlace.Recommendation_Type);},[editedPlace,type]);
+  // The form remains bound to the original hydration until the owner explicitly reviews a refresh.
   const fetchedPlace = useMemo(() => (editedPlace ? { recommendedPlace: editedPlace } : undefined), [editedPlace]);
   const navigate = useNavigate();
 
@@ -259,6 +276,8 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     mediaFeedback,
     retryMediaUpload,
     continueWithoutImage,
+    editConflict, clearEditConflict,
+    retireDraftIntent,
   } = useAddRecommendation({
     places,
     googlePlaceRefId,
@@ -274,14 +293,24 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     setIsLoading,
     userInputRef,
     fetchedPlace,
+    editObservation,
   });
   const hasMediaFailure = mediaStatus === "upload-failed" || mediaStatus === "metadata-failed";
 
-  // Taxonomy is deferred to its own ticket: the category vocabulary is Strapi content and
-  // 5.1 forbids inventing production values, so the form offers no terms rather than terms
-  // this app made up.
-  const fetchedCategories = { recommendationCategories: [] as KeyValuePair[] };
-
+  const [catalogResult,setCatalogResult] = useState<{scope:string;catalog?:CompleteTaxonomyCatalog;error?:string}>();
+  const [catalogAttempt,setCatalogAttempt] = useState(0);
+  useEffect(()=>{
+    const controller=new AbortController();setCatalogResult(undefined);
+    void PlacesClient.readTaxonomyCatalog(controller.signal).then(catalog=>{
+      const terms=new Map(catalog.items.map(term=>[term.id,term]));
+      if(catalog.items.some(term=>term.category!=='places'||term.parentId!==null&&(!terms.has(term.parentId)||terms.get(term.parentId)?.parentId!==null||term.parentId===term.id)))throw new Error('Invalid Places taxonomy hierarchy. Retry loading taxonomy.');
+      if(!controller.signal.aborted)setCatalogResult({scope:catalogScope,catalog});
+    }).catch(error=>{if(!controller.signal.aborted)setCatalogResult({scope:catalogScope,error:(error.message || 'Places taxonomy could not be loaded.').replace(/sectors/g,'Places taxonomy')});});
+    return ()=>controller.abort();
+  },[catalogScope,catalogAttempt]);
+  const catalog=catalogResult?.scope===catalogScope?catalogResult.catalog:undefined;
+  const catalogError=catalogResult?.scope===catalogScope?catalogResult.error:undefined;
+  const fetchedCategories={recommendationCategories:(catalog?.items || []).filter(t=>t.parentId===null).map(root=>({documentId:root.id,Category_Name:root.label,slug:root.slug,recommendation_sub_categories:(catalog?.items || []).filter(t=>t.parentId===root.id).map(child=>({documentId:child.id,sub_category:child.label,slug:child.slug}))}))};
   useEffect(() => {
     // function to fetch google photos
     const fetchGoogleMedia = async () => {
@@ -908,7 +937,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
   };
 
   // Show loading if fetching place data in edit mode
-  if (type === "edit" && isPlaceLoading) {
+  if (type === "edit" && isPlaceLoading && !hydrated.current) {
     return (
       <div className="flex bg-dashboard-bg z-50 items-center justify-center min-h-screen">
         <EarthLoader context="general" size="small" />
@@ -943,7 +972,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
         </div>,
         document.body
       )}
-      {!isLoading ? (
+      {(
         <div className="flex relative flex-col mb-10 items-center max-w-full gap-4">
           <div className="flex flex-row gap-4 md:w-[70%] w-full md:justify-between justify-between md:mt-0 mt-4 mx-6 md:mx-0 items-center">
             <Button
@@ -1051,9 +1080,27 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
             </div>
           )}
 
+          {editConflict && <div role="alert">This recommendation changed. Your draft is retained.<button type="button" onClick={async()=>{
+            if(!placeId || !hydrated.current)return;
+            const captured=catalogScope;
+            reviewController.current?.abort();const controller=new AbortController();reviewController.current=controller;
+            try{const observation=await PlacesClient.observeRecommendation(placeId,controller.signal);if(controller.signal.aborted||hydrated.current?.scope!==captured)return;hydrated.current.observation=observation;clearEditConflict();setReviewMessage('Current revision loaded. Review your draft, then save again.');setReviewVersion(n=>n+1);}catch(error){if(!controller.signal.aborted)toast.error(error instanceof Error?error.message:'Refresh failed');}
+          }}>Refresh and review</button></div>}
+          {reviewMessage && <div>
+            <p role="status">{reviewMessage}</p>
+            <dl>
+              <dt>Current saved title</dt><dd>{editObservation?.detail.displayTitle}</dd>
+              <dt>Current saved category</dt><dd>{editObservation?.detail.placesTaxonomy?.category?.label ?? editObservation?.detail.placesTaxonomy?.category?.id ?? 'Unassigned'}{editObservation?.detail.placesTaxonomy?.category?.unavailable ? ' (unavailable)' : ''}</dd>
+              <dt>Current saved subcategory</dt><dd>{editObservation?.detail.placesTaxonomy?.subcategory?.label ?? editObservation?.detail.placesTaxonomy?.subcategory?.id ?? 'No subcategory'}{editObservation?.detail.placesTaxonomy?.subcategory?.unavailable ? ' (unavailable)' : ''}</dd>
+            </dl>
+          </div>}
           <RecommendationForm
+            onDraftChange={retireDraftIntent}
             ref={formRef}
             categories={fetchedCategories.recommendationCategories}
+            taxonomyState={catalogError ? "error" : !catalog ? "loading" : catalog.state === "UNCONFIGURED" ? "unconfigured" : "configured"}
+            taxonomyError={catalogError}
+            retryTaxonomy={()=>setCatalogAttempt(n=>n+1)}
             setPlaces={setPlaces}
             places={places}
             isCustom={true}
@@ -1407,7 +1454,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
             />
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 });

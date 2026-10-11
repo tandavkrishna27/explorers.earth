@@ -360,6 +360,13 @@ export class ExplorersRecommendationRepository {
     if(Number(result.rows[0].revision)!==revision) throw new RecommendationFailure(409,'Stale recommendation revision');
     return result.rows[0];
   }
+  private async lockRecommendationParents(db:PoolClient,accountId:string,id:string,activeOnly=true) {
+    // Scope discovery occurs under command's account/category locks. Stable UUID
+    // parent order precedes every recommendation lock for cleanup-capable commands.
+    return (await db.query(`SELECT c.id,c.revision,c.category FROM collections c JOIN collection_items ci ON ci.collection_id=c.id
+      AND ci.account_id=c.account_id AND ci.category=c.category WHERE ci.recommendation_id=$1 AND c.account_id=$2
+      ${activeOnly?'AND c.archived_at IS NULL':"AND (c.category<>'places' OR c.archived_at IS NULL)"} ORDER BY c.id FOR UPDATE OF c`,[id,accountId])).rows;
+  }
   async writeGameMembership(accountId:string,collectionId:string,recommendationId:string,input:{expectedCollectionRevision:number;expectedRecommendationRevision:number},key:string,attached:boolean){
     return this.command(accountId,attached?'attachGameMembership':'detachGameMembership',{category:'games',collectionId,recommendationId,...input},key,async db=>{
       const collection=await this.lockCollection(db,accountId,collectionId,input.expectedCollectionRevision);
@@ -476,6 +483,7 @@ export class ExplorersRecommendationRepository {
   }
   async replaceRecommendationEntity(accountId:string,id:string,expectedRevision:number,entityId:string,key:string):Promise<RecommendationRecord> {
     return this.command(accountId,'replaceRecommendationEntity',{id,expectedRevision,entityId},key,async db=>{
+      const parent=await this.lockRecommendationParents(db,accountId,id);
       const current=await this.lockRecommendation(db,accountId,id,expectedRevision);
       if(current.entity_id===entityId)throw new RecommendationFailure(422,'Entity replacement is unchanged');
       const entity=(await db.query('SELECT kind FROM entities WHERE id=$1 FOR KEY SHARE',[entityId])).rows[0];
@@ -483,7 +491,6 @@ export class ExplorersRecommendationRepository {
       const expected:Record<string,string[]>={places:['place','person'],books:['book'],movies:['movie'],games:['game'],apps:['app'],products:['product'],people:['person']};
       if(!expected[current.category]?.includes(entity.kind))throw new RecommendationFailure(422,'Entity category mismatch');
       if(current.category==='movies'&&(await db.query('SELECT 1 FROM movie_recommendation_context WHERE recommendation_id=$1',[id])).rows[0])await checkMovieContext(db,entityId,await readMovieContext(db,id,accountId));
-      const parent=(await db.query('SELECT c.id FROM collections c JOIN collection_items ci ON ci.collection_id=c.id AND ci.account_id=c.account_id AND ci.category=c.category WHERE ci.recommendation_id=$1 AND c.account_id=$2 AND c.archived_at IS NULL ORDER BY c.id FOR UPDATE OF c',[id,accountId])).rows;
       if(!parent.length)throw new RecommendationFailure(404,'Recommendation aggregate unavailable');
       if(current.category==='movies') {
         const detached=await db.query<{media_id:string}>('DELETE FROM recommendation_movie_media WHERE recommendation_id=$1 AND account_id=$2 RETURNING media_id',[id,accountId]);
@@ -506,13 +513,16 @@ export class ExplorersRecommendationRepository {
   }
   async archiveRecommendation(accountId:string,id:string,expectedRevision:number,key:string):Promise<{id:string;archived:true}> {
     return this.command(accountId,'archiveRecommendation',{id,expectedRevision},key,async db=>{
+      const parents=await this.lockRecommendationParents(db,accountId,id,false);
       const recommendation=await this.lockRecommendation(db,accountId,id,expectedRevision);
-      const parents=await db.query(`SELECT c.id FROM collections c JOIN collection_items ci ON ci.collection_id=c.id
-        WHERE ci.recommendation_id=$1 ORDER BY c.id FOR UPDATE OF c`,[id]);
       const pins=await db.query('DELETE FROM category_recommendation_pins WHERE recommendation_id=$1 RETURNING recommendation_id',[id]);
       if(pins.rowCount) await db.query('UPDATE account_category_pin_state SET revision=revision+1 WHERE account_id=$1 AND category=$2',[accountId,recommendation.category]);
       await db.query('DELETE FROM collection_items WHERE recommendation_id=$1',[id]);
-      for(const parent of parents.rows) await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1',[parent.id]);
+      for(const parent of parents) {
+        const current=(await db.query('SELECT revision FROM collections WHERE id=$1 AND account_id=$2',[parent.id,accountId])).rows[0];
+        if(parent.category!=='places'||String(current?.revision)===String(parent.revision))
+          await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1',[parent.id]);
+      }
       await db.query('UPDATE recommendations SET archived_at=now(),revision=revision+1,updated_at=now() WHERE id=$1',[id]);
       return {id,archived:true};
     });

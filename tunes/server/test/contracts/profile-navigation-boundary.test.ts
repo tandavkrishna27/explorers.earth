@@ -15,10 +15,10 @@ function observer(){
  return (p:unknown,origin:string)=>{const o=c.observeNativeBoundary(p,origin);let category='books',stage='publish-poll';return {begin(cat:string,action:string){category=cat;stage=action==='publish'?'publish-poll':'hide-poll';o.begin(cat,action);},seal:o.seal,finish(i:any){if(!i.skipProgress)c.setProfileDiagnosticState(i,i.progressCategory??category,i.progressStage??stage,'incomplete','incomplete');o.finish(i);}};};
 }
 function page(){const listeners=new Map<string,Set<Function>>();return {on(event:string,fn:Function){if(!listeners.has(event))listeners.set(event,new Set());listeners.get(event)!.add(fn);},off(event:string,fn:Function){listeners.get(event)?.delete(fn);},emit(event:string,value:unknown){for(const fn of listeners.get(event)??[])fn(value);},count(){return [...listeners.values()].reduce((n,s)=>n+s.size,0);}};}
-const request=(url='https://fixture.invalid/api/explorers/v1/me/profile',method='PATCH')=>({url:()=>url,method:()=>method,postData(){throw Error('body must never be read');},headers(){throw Error('headers must never be read');}});
+const request=(url='https://fixture.invalid/api/explorers/v1/account',method='PATCH')=>({url:()=>url,method:()=>method,postData(){throw Error('body must never be read');},headers(){throw Error('headers must never be read');}});
 describe('passive native PATCH observation',()=>{
  it('observes current original request and only finite outcome; removes listeners and seals first failure',()=>{const p=page(),o=observer()(p,'https://fixture.invalid'),i=info(),r=request();o.begin('books','publish');p.emit('request',r);p.emit('response',{request:()=>r,status:()=>200});o.seal();p.emit('requestfailed',r);o.begin('games','hide');Object.assign(i,{progressCategory:'books',progressStage:'publish-poll'});o.finish(i);o.finish(i);expect(i.errors).toEqual([{message:'[profile-native-boundary-v1:books|publish|present|2xx]'}]);expect(p.count()).toBe(0);});
- it('ignores prior requests, foreign pages, foreign routes and late previous epochs',()=>{const p=page(),foreign=page(),o=observer()(p,'https://fixture.invalid'),i=info(),prior=request(),old=request();p.emit('request',prior);o.begin('books','publish');p.emit('request',old);o.begin('movies','hide');p.emit('response',{request:()=>old,status:()=>409});p.emit('response',{request:()=>prior,status:()=>200});foreign.emit('request',request());for(const r of [request('https://foreign.invalid/api/explorers/v1/me/profile'),request('https://fixture.invalid/api/explorers/v1/account'),request(undefined,'GET'),request('https://fixture.invalid/api/explorers/v1/me/profile?private=secret')])p.emit('request',r);o.finish(i);expect(i.errors).toEqual([{message:'[profile-native-boundary-v1:movies|hide|absent|none]'}]);});
+ it('ignores prior requests, foreign pages, foreign routes and late previous epochs',()=>{const p=page(),foreign=page(),o=observer()(p,'https://fixture.invalid'),i=info(),prior=request(),old=request();p.emit('request',prior);o.begin('books','publish');p.emit('request',old);o.begin('movies','hide');p.emit('response',{request:()=>old,status:()=>409});p.emit('response',{request:()=>prior,status:()=>200});foreign.emit('request',request());for(const r of [request('https://foreign.invalid/api/explorers/v1/account'),request('https://fixture.invalid/api/explorers/v1/me/profile'),request(undefined,'GET'),request('https://fixture.invalid/api/explorers/v1/account?private=secret'),request('https://fixture.invalid/api/explorers/v1/account#private')])p.emit('request',r);o.finish(i);expect(i.errors).toEqual([{message:'[profile-native-boundary-v1:movies|hide|absent|none]'}]);});
  it('uses bounded uncertainty for multiple requests or contradictory outcomes',()=>{for(const multiple of [true,false]){const p=page(),o=observer()(p,'https://fixture.invalid'),i=info(),r=request();o.begin('games','publish');p.emit('request',r);p.emit('response',{request:()=>r,status:()=>200});if(multiple)p.emit('request',request());else p.emit('requestfailed',r);o.finish(i);expect(i.errors).toEqual([{message:'[profile-native-boundary-v1:games|publish|uncertain|uncertain]'}]);}});
  it('maps pending, conflict, other and transport without retaining raw values',()=>{for(const [status,result] of [[undefined,'none'],[409,'409'],[500,'other'],[204,'2xx'],[-1,'transport']] as const){const p=page(),o=observer()(p,'https://fixture.invalid'),i=info(),r=request();o.begin('books','hide');p.emit('request',r);if(status===-1)p.emit('requestfailed',r);else if(status!==undefined)p.emit('response',{request:()=>r,status:()=>status});o.finish(i);expect(i.errors).toEqual([{message:`[profile-native-boundary-v1:books|hide|present|${result}]`}]);}});
  it('emits no marker on successful or foreign identity and still cleans up',()=>{for(const change of [{status:'passed'},{retry:1}]){const p=page(),o=observer()(p,'https://fixture.invalid'),i={...info(),...change};o.begin('books','publish');o.finish(i);expect(i.errors).toEqual([]);expect(p.count()).toBe(0);}});
@@ -29,4 +29,37 @@ describe('passive native PATCH observation',()=>{
 describe('boundary progress correlation',()=>{
  it('refuses a previous action when current category or stage moved on',()=>{for(const change of [{progressCategory:'movies'},{progressStage:'initial-unchecked'},{progressStage:'setup'},{progressStage:'hide-poll'},{skipProgress:true}]){const p=page(),o=observer()(p,'https://fixture.invalid'),i={...info(),...change};o.begin('books','publish');p.emit('request',request());o.finish(i);expect(i.errors).toEqual([]);expect(p.count()).toBe(0);}});
  it('admits only matching publish and hide stages',()=>{for(const [action,stages] of [['publish',['publish-click','publish-poll','published-checked']],['hide',['hide-click','hide-poll','hidden-unchecked']]] as const){for(const stage of stages){const p=page(),o=observer()(p,'https://fixture.invalid'),i={...info(),progressStage:stage};o.begin('books',action);o.finish(i);expect(i.errors).toEqual([{message:`[profile-native-boundary-v1:books|${action}|absent|none]`}]);}}});
+});
+
+// Exercise the actual writer method with its external fetch boundary contained.
+// A writer route change must still be observed without updating a test route literal.
+async function actualAccountRequest() {
+ const clientSource=readFileSync(new URL('../../../../explorers-earth/src/lib/explorersApiClient.ts',import.meta.url),'utf8');
+ const tree=ts.createSourceFile('explorersApiClient.ts',clientSource,ts.ScriptTarget.Latest,true);
+ let method:ts.MethodDeclaration|undefined;
+ const visit=(node:ts.Node)=>{if(ts.isMethodDeclaration(node)&&node.name.getText(tree)==='updateAccount')method=node;ts.forEachChild(node,visit);};
+ visit(tree);
+ if(!method)throw new Error('Actual updateAccount method missing');
+ const body=ts.transpileModule('const writer={'+method.getText(tree)+'};',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ let emitted:ReturnType<typeof request>|undefined;
+ const writer=new Function('fetch','useAuthStore','responseBody',body+';return writer;')(
+  async (url:string,options:{method:string})=>{emitted=request(new URL(url,'https://fixture.invalid').href,options.method);return {};},
+  {getState:()=>({generation:1})},async ()=>({account:{revision:2}}));
+ await writer.updateAccount({expectedRevision:1});
+ if(!emitted)throw new Error('Actual updateAccount did not emit a request');
+ return emitted;
+}
+describe('actual account writer observation',()=>{
+ it.each(['publish','hide'] as const)('captures Games %s request and scoped response from the actual writer',async action=>{
+  const p=page(),o=observer()(p,'https://fixture.invalid'),i=info(),r=await actualAccountRequest();
+  o.begin('games',action);p.emit('request',r);p.emit('response',{request:()=>r,status:()=>204});o.finish(i);
+  expect(i.errors).toEqual([{message:`[profile-native-boundary-v1:games|${action}|present|2xx]`}]);expect(p.count()).toBe(0);
+ });
+ it('resets each action and rejects an earlier response even on the same writer route',async ()=>{
+  const p=page(),o=observer()(p,'https://fixture.invalid'),i=info(),publish=await actualAccountRequest(),hide=await actualAccountRequest();
+  o.begin('games','publish');p.emit('request',publish);p.emit('response',{request:()=>publish,status:()=>200});
+  o.begin('games','hide');p.emit('response',{request:()=>publish,status:()=>409});
+  p.emit('response',{request:()=>hide,status:()=>200});p.emit('request',hide);o.finish(i);
+  expect(i.errors).toEqual([{message:'[profile-native-boundary-v1:games|hide|present|none]'}]);
+ });
 });

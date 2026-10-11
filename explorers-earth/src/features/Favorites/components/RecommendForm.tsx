@@ -12,7 +12,7 @@ import * as Yup from "yup";
 import Button from "../../../components/ui/Button";
 import AddressInput from "../../Profile/components/AddressInput";
 import { Places, AddressComponent } from "../../Profile/types/types";
-import Dropdown from "../../../components/ui/Dropdown";
+
 import TiptapEditor from "./TiptapEditor";
 import { AddIcon } from "../../../assets/icons/AddIcon";
 import CrossIcon from "../../../assets/icons/CrossIcon";
@@ -33,6 +33,12 @@ import {
 import { EarthLoader } from "../../../components/EarthLoader";
 import { useTranslation } from "react-i18next";
 
+function DraftChangeEffect({onChange,category,subcategory,reason}:{onChange?:()=>void;category:string;subcategory:string;reason:string}){
+  const {values}=useFormikContext();const signature=JSON.stringify([values,category,subcategory,reason]);
+  const previous=useRef(signature),callback=useRef(onChange);callback.current=onChange;
+  useEffect(()=>{if(previous.current!==signature){previous.current=signature;callback.current?.();}},[signature]);return null;
+}
+
 
 
 // Runs form-level side effects from inside the Formik provider. Extracted from
@@ -46,8 +52,6 @@ const RecommendFormEffects = ({
   selectedCategory,
   selectedSubcategory,
   setRecommendation,
-  setSelectedsubcategory,
-  setSelectedCategory,
 }: {
   recommendationType: string;
   type?: string;
@@ -57,8 +61,8 @@ const RecommendFormEffects = ({
   selectedCategory: string;
   selectedSubcategory: string;
   setRecommendation: (value: string) => void;
-  setSelectedsubcategory: (value: string) => void;
-  setSelectedCategory: (value: string) => void;
+
+
 }) => {
   const { setFieldValue } = useFormikContext<Record<string, any>>();
 
@@ -74,25 +78,25 @@ const RecommendFormEffects = ({
         setFieldValue("title", "");
         setFieldValue("recommendation", "");
         setFieldValue("address", "");
-        setFieldValue("subcategory", "");
+
         setFieldValue("contactName", "");
         setFieldValue("contactNumber", "");
         setFieldValue("socialLink", "");
         setRecommendation("");
-        setSelectedsubcategory("");
-        setSelectedCategory("");
+
+
       } else {
         // Clear person-specific fields when switching to place
         setFieldValue("contactName", "");
         setFieldValue("recommendation", "");
         setFieldValue("address", "");
-        setFieldValue("subcategory", "");
+
         setFieldValue("title", "");
         setFieldValue("contactNumber", "");
         setFieldValue("socialLink", "");
         setRecommendation("");
-        setSelectedsubcategory("");
-        setSelectedCategory("");
+
+
       }
       // Update ref to current type
       prevTypeRef.current = recommendationType;
@@ -301,6 +305,10 @@ interface RecommendationFormProps {
   formFields: FormField[];
   isCustom: boolean;
   categories: KeyValuePair[];
+  taxonomyState?: "loading" | "error" | "configured" | "unconfigured";
+  taxonomyError?: string;
+  retryTaxonomy?: () => void;
+  onDraftChange?: () => void;
   type?: "edit" | "default";
   places?: Places | null;
   recommendationType?: "place" | "person";
@@ -342,6 +350,8 @@ const RecommendationForm = memo(
         validationSchema,
         onSubmit,
         categories,
+        taxonomyState = "configured", taxonomyError, retryTaxonomy,
+        onDraftChange,
         places,
         setPlaces,
         isCustom,
@@ -357,14 +367,14 @@ const RecommendationForm = memo(
       const { t } = useTranslation();
       const { selectedCity } = useCityStore();
 
-      // Track if form has been submitted (to prevent re-initialization after submission)
-      const [hasSubmitted, setHasSubmitted] = useState<boolean>(false);
+
+
 
       // local state for handling recommendation
       // Initialize with title in edit mode, address for place in create mode
       const [recommendation, setRecommendation] = useState<string>((() => {
         if (type === "edit") {
-          return initialValues.title || "";
+          return (recommendationType==='person'?initialValues.recommendation:initialValues.title) || "";
         }
         // For place type, use address; for person type, use empty string
         return recommendationType === "place" ? (initialValues.address || "") : "";
@@ -373,11 +383,11 @@ const RecommendationForm = memo(
       // Update recommendation when initialValues change (for edit mode or when place is selected)
       useEffect(() => {
         if (type === "edit" && initialValues.title) {
-          setRecommendation(initialValues.title);
+          setRecommendation(recommendationType==='person'?initialValues.recommendation || '':initialValues.title);
         } else if (type !== "edit" && recommendationType === "place" && initialValues.address) {
           setRecommendation(initialValues.address);
         }
-      }, [type, initialValues.title, initialValues.address, recommendationType]);
+      }, [type, initialValues.title, initialValues.address, initialValues.recommendation, recommendationType]);
 
       // Helper function for geocoding (fallback only - rarely used)
       async function geocodeAddress(address: string) {
@@ -394,12 +404,14 @@ const RecommendationForm = memo(
       const [isOpen, setIsOpen] = useState<boolean>(true);
 
       // local state for handling selected category
-      const [selectedCategory, setSelectedCategory] = useState<string>("");
+      const [selectedCategory, setSelectedCategory] = useState<string>(initialValues.category || "");
       // local state for handling selected subcategory
       const [selectedSubcategory, setSelectedsubcategory] =
-        useState<string>("");
-      // local state for handling subcategories
-      const [subcategories, setSubcategories] = useState<KeyValuePair[]>([]);
+        useState<string>(initialValues.subcategory || "");
+      const [taxonomyChanged, setTaxonomyChanged] = useState(false);
+      const [taxonomyValidationError,setTaxonomyValidationError]=useState<string>();
+
+
       // local state for handling recommended reason
       const [recommendedReason, setRecommendedReason] = useState<string>(
         initialValues.reason || ""
@@ -419,6 +431,7 @@ const RecommendationForm = memo(
 
 
       // Local state for managing the updated coords
+      const coordinatesEdited=useRef(false);
       const [newCoords, setNewCoords] = useState<Geometry>({
         lat: 20.5937,
         lng: 78.9629,
@@ -631,6 +644,7 @@ const RecommendationForm = memo(
       // Function to handle marker drag
       const handleDragEnd = (event: google.maps.MapMouseEvent) => {
         if (event.latLng) {
+          coordinatesEdited.current=true;
           const updatedCoords = {
             lat: event.latLng.lat(),
             lng: event.latLng.lng(),
@@ -653,252 +667,6 @@ const RecommendationForm = memo(
         }
       };
 
-
-      // Ref to track if category matching is in progress to prevent duplicate calls
-      const categoryMatchingRef = useRef<string | null>(null);
-      const categoryMatchInProgressRef = useRef(false);
-      const categoryMatchPromiseRef = useRef<Promise<void> | null>(null);
-
-      // Effect to handle Google Places types and match with valid subcategories
-      useEffect(() => {
-        // For person recommendations, show all subcategories immediately
-        if (recommendationType === "person" && Array.isArray(categories) && categories.length > 0) {
-          const allSubcategories = categories.flatMap((category) =>
-            Array.isArray(category.recommendation_sub_categories)
-              ? category.recommendation_sub_categories.map(
-                (subcategory: Subcategory) => ({
-                  Category_Name: subcategory.sub_category,
-                  documentId: subcategory.documentId,
-                  parentCategory: category.documentId,
-                  parentCategoryName: category.Category_Name,
-                })
-              )
-              : []
-          );
-
-          const formattedSubcategories: KeyValuePair[] = Array.isArray(allSubcategories) && allSubcategories.length > 0
-            ? allSubcategories.map(
-              (sub) => ({
-                Category_Name: sub.Category_Name,
-                documentId: sub.documentId,
-              })
-            )
-            : [];
-          setSubcategories(formattedSubcategories);
-          return;
-        }
-
-        // For place recommendations, use enhanced category matching
-        if (places?.place_id && places?.name && Array.isArray(categories) && categories.length > 0) {
-          // Create a unique key for this place to prevent duplicate calls
-          const placeKey = `${places.place_id}-${places.name}`;
-
-          // Skip if already processed this exact place
-          if (categoryMatchingRef.current === placeKey) {
-            return;
-          }
-
-          // Skip if already processing
-          if (categoryMatchInProgressRef.current) {
-            return;
-          }
-
-          // Mark as in progress and store the key
-          categoryMatchInProgressRef.current = true;
-          categoryMatchingRef.current = placeKey;
-
-          // Use async function to handle category matching
-          const matchCategory = async () => {
-            try {
-              const { findPlaceCategory } = await import("../../../utils/categoryMapper");
-              const placeCategoryData = {
-                placeName: places.name || "",
-                types: places.types || [],
-                primaryType: places.primaryType,
-                primaryTypeDisplayName: places.primaryTypeDisplayName,
-                formattedAddress: places.formatted_address,
-              };
-
-              // Use LLM as primary method for accurate categorization
-              // Cast categories to the expected type (categories actually has the correct structure at runtime)
-              const match = await findPlaceCategory(placeCategoryData, categories as unknown as Array<{
-                Category_Name: string;
-                documentId: string;
-                recommendation_sub_categories: Array<{
-                  sub_category: string;
-                  documentId: string;
-                }>;
-              }>, {
-                useRuleBasedFallback: true,
-                enableCache: true,
-              });
-
-              if (match) {
-                // Found a match - set category and subcategory IMMEDIATELY
-                console.log('Setting category:', match.categoryId, match.subcategoryId, match);
-
-                // Find the category to get its subcategories
-                const matchedCategory = categories.find(cat => cat.documentId === match.categoryId);
-
-                // Set state variables FIRST
-                setSelectedCategory(match.categoryId);
-                setSelectedsubcategory(match.subcategoryId);
-
-                // Update subcategories list for the selected category
-                if (matchedCategory && Array.isArray(matchedCategory.recommendation_sub_categories)) {
-                  const formattedSubcategories: KeyValuePair[] = matchedCategory.recommendation_sub_categories.map(
-                    (subcategory: Subcategory) => ({
-                      Category_Name: subcategory.sub_category,
-                      documentId: subcategory.documentId,
-                    })
-                  );
-                  setSubcategories(formattedSubcategories);
-                  console.log('Subcategories updated for category:', match.categoryName, formattedSubcategories.length);
-                }
-
-                // Show success message for LLM matches
-                if (match.method === 'llm') {
-                  toast.success(
-                    `Category detected: ${match.categoryName} > ${match.subcategoryName}`
-                  );
-                }
-              } else {
-                // No match found - show all subcategories for manual selection
-                const allSubcategories = categories.flatMap((category) =>
-                  Array.isArray(category.recommendation_sub_categories)
-                    ? category.recommendation_sub_categories.map(
-                      (subcategory: Subcategory) => ({
-                        Category_Name: subcategory.sub_category,
-                        documentId: subcategory.documentId,
-                      })
-                    )
-                    : []
-                );
-
-                const formattedSubcategories: KeyValuePair[] = Array.isArray(allSubcategories) && allSubcategories.length > 0
-                  ? allSubcategories.map(
-                    (sub) => ({
-                      Category_Name: sub.Category_Name,
-                      documentId: sub.documentId,
-                    })
-                  )
-                  : [];
-                setSubcategories(formattedSubcategories);
-              }
-            } catch (error) {
-              console.error("Error in category matching:", error);
-              // Fallback to showing all subcategories
-              const allSubcategories = categories.flatMap((category) =>
-                Array.isArray(category.recommendation_sub_categories)
-                  ? category.recommendation_sub_categories.map(
-                    (subcategory: Subcategory) => ({
-                      Category_Name: subcategory.sub_category,
-                      documentId: subcategory.documentId,
-                    })
-                  )
-                  : []
-              );
-
-              const formattedSubcategories: KeyValuePair[] = Array.isArray(allSubcategories) && allSubcategories.length > 0
-                ? allSubcategories.map(
-                  (sub) => ({
-                    Category_Name: sub.Category_Name,
-                    documentId: sub.documentId,
-                  })
-                )
-                : [];
-              setSubcategories(formattedSubcategories);
-            } finally {
-              // Reset in progress flag
-              categoryMatchInProgressRef.current = false;
-              categoryMatchPromiseRef.current = null;
-            }
-          };
-
-          // Store the promise to prevent duplicate calls
-          const promise = matchCategory();
-          categoryMatchPromiseRef.current = promise;
-        } else {
-          // Reset refs when places is cleared
-          categoryMatchingRef.current = null;
-          categoryMatchInProgressRef.current = false;
-          categoryMatchPromiseRef.current = null;
-        }
-      }, [places?.place_id, places?.name, categories, recommendationType]);
-
-      const handleSubCategoryChange = (subcategory: KeyValuePair) => {
-        setSelectedsubcategory(subcategory.documentId);
-        // Find and set the parent category
-        if (Array.isArray(categories) && categories.length > 0) {
-          const parentCategory = categories.find(
-            (category) =>
-              Array.isArray(category.recommendation_sub_categories) &&
-              category.recommendation_sub_categories.some(
-                (sub: Subcategory) => sub.documentId === subcategory.documentId
-              )
-          );
-          if (parentCategory) {
-            setSelectedCategory(parentCategory.documentId);
-          }
-        }
-      };
-
-      // categories for initial values
-      useEffect(() => {
-        if (initialValues.category && Array.isArray(categories) && categories.length > 0) {
-          // In edit mode, initialValues.category is a documentId
-          // In create mode, it might be a category name
-          const matchedCategory = categories.find(
-            (cat) =>
-              cat.documentId === initialValues.category ||
-              cat.Category_Name.toLowerCase().trim() ===
-              initialValues.category.toLowerCase().trim()
-          );
-
-          if (matchedCategory) {
-            setSelectedCategory(matchedCategory.documentId);
-            // Set subcategories based on initial category
-            const subcategoryOptions = Array.isArray(
-              matchedCategory.recommendation_sub_categories
-            )
-              ? matchedCategory.recommendation_sub_categories.map(
-                (subcategory: Subcategory) => ({
-                  Category_Name: subcategory.sub_category,
-                  documentId: subcategory.documentId,
-                })
-              )
-              : [];
-
-            setSubcategories(subcategoryOptions);
-
-            // Set initial subcategory if available
-            if (initialValues.subcategory) {
-              // In edit mode, initialValues.subcategory is a documentId
-              // In create mode, it might be a subcategory name
-              const matchedSubcategory = subcategoryOptions.find(
-                (sub) =>
-                  sub.documentId === initialValues.subcategory ||
-                  sub.Category_Name.toLowerCase().trim() ===
-                  initialValues.subcategory.toLowerCase().trim()
-              );
-
-              if (matchedSubcategory) {
-                setSelectedsubcategory(matchedSubcategory.documentId);
-              } else {
-                // If subcategory from initialValues doesn't match, still set it
-                // This handles cases where subcategory might be a documentId but not in current options
-                if (initialValues.subcategory) {
-                  setSelectedsubcategory(initialValues.subcategory);
-                }
-              }
-            }
-          } else if (initialValues.subcategory) {
-            // If category doesn't match but subcategory exists, set it anyway
-            // This handles edge cases where data might be inconsistent
-            setSelectedsubcategory(initialValues.subcategory);
-          }
-        }
-      }, [initialValues.category, initialValues.subcategory, categories]);
 
       // Use the formFields passed as props (which come from useRecommendationFields hook)
       const formFields = initialFormFields;
@@ -1150,28 +918,29 @@ const RecommendationForm = memo(
                 }
               }
 
+              if (taxonomyChanged && selectedCategory) {
+                const root = categories.find(c=>c.documentId===selectedCategory);
+                if (!root || selectedSubcategory && !root.recommendation_sub_categories.some((c:Subcategory)=>c.documentId===selectedSubcategory)) {
+                  const message='Reload taxonomy and choose an available category and direct child before saving';setTaxonomyValidationError(message);throw new Error(message);
+                }
+              }
               const updatedRecommendationValues = {
                 ...values,
                 address: addressForSubmission,
                 title: titleForSubmission,
                 recommendation,
-                geoCoords: recommendationType === "place" ? JSON.stringify(newCoords) : JSON.stringify({ lat: 0, lng: 0 }),
+                geoCoords: recommendationType === "place" ? JSON.stringify(type==='edit' && !places && !coordinatesEdited.current ? {lat:initialValues.lat??null,lng:initialValues.lng??null}:newCoords) : JSON.stringify({ lat: null, lng: null }),
                 reason: recommendedReason || initialValues.reason,
+                ...(taxonomyChanged || type !== "edit" && selectedCategory ? {placesTaxonomy: {categoryTermId:selectedCategory || null,subcategoryTermId:selectedSubcategory || null}} : {}),
                 category: selectedCategory,
                 subcategory: selectedSubcategory,
               };
 
               try {
-                if (type === "edit") {
-                  setHasSubmitted(true);
-                }
                 await onSubmit(updatedRecommendationValues);
               } catch (error) {
                 // Error is handled in the onSubmit handler, just prevent form reset
                 console.error("Form submission error:", error);
-                if (type === "edit") {
-                  setHasSubmitted(false); // Allow retry
-                }
               } finally {
                 setSubmitting(false);
               }
@@ -1181,7 +950,7 @@ const RecommendationForm = memo(
               setSubmitting(false);
             }
           }}
-          enableReinitialize={type !== "edit" || !hasSubmitted}
+          enableReinitialize={type !== "edit"}
         >
           {({ isSubmitting, setFieldValue }) => {
             // Function to handle recommendation change and also set address
@@ -1198,6 +967,28 @@ const RecommendationForm = memo(
 
             return (
               <Form className="font-poppins h-full md:w-full w-full md:max-w-3xl px-2 flex flex-col gap-4">
+                <DraftChangeEffect onChange={onDraftChange} category={selectedCategory} subcategory={selectedSubcategory} reason={recommendedReason}/>
+                <fieldset className="flex flex-col gap-2">
+                  <legend>Places taxonomy (optional)</legend>
+                  {taxonomyValidationError && <p role="alert">{taxonomyValidationError}</p>}
+                  {taxonomyState === 'loading' && <p role="status">Loading Places taxonomy…</p>}
+                  {taxonomyState === 'error' && <div role="alert">{taxonomyError}<button type="button" onClick={retryTaxonomy}>Retry loading taxonomy</button></div>}
+                  {taxonomyState === 'unconfigured' && <p>Places taxonomy is not configured.</p>}
+                  {taxonomyState === 'configured' && !categories.length && <p>No Places categories are available.</p>}
+                  {initialValues.taxonomyUnavailable && <p>Existing taxonomy selection is unavailable.</p>}
+                  <label htmlFor="places-category">Category</label>
+                  <select id="places-category" value={selectedCategory} onChange={event=>{setSelectedCategory(event.target.value);setSelectedsubcategory('');setTaxonomyChanged(true);}}>
+                    <option value="">Unassigned</option>
+                    {selectedCategory && !categories.some(c=>c.documentId===selectedCategory) && <option value={selectedCategory}>{initialValues.categoryLabel || selectedCategory} (unavailable)</option>}
+                    {categories.map(c=><option key={c.documentId} value={c.documentId}>{c.Category_Name}</option>)}
+                  </select>
+                  <label htmlFor="places-subcategory">Subcategory</label>
+                  <select id="places-subcategory" value={selectedSubcategory} disabled={!selectedCategory} onChange={event=>{setSelectedsubcategory(event.target.value);setTaxonomyChanged(true);}}>
+                    <option value="">No subcategory</option>
+                    {selectedSubcategory && !categories.find(c=>c.documentId===selectedCategory)?.recommendation_sub_categories.some((c:Subcategory)=>c.documentId===selectedSubcategory) && <option value={selectedSubcategory}>{initialValues.subcategoryLabel || selectedSubcategory} (unavailable)</option>}
+                    {(categories.find(c=>c.documentId===selectedCategory)?.recommendation_sub_categories || []).map((c:Subcategory)=><option key={c.documentId} value={c.documentId}>{c.sub_category}</option>)}
+                  </select>
+                </fieldset>
                 <ScrollToFirstErrorWithActivation
                   handleTagClick={handleTagClick}
                   activeFields={activeFields}
@@ -1211,8 +1002,8 @@ const RecommendationForm = memo(
                   selectedCategory={selectedCategory}
                   selectedSubcategory={selectedSubcategory}
                   setRecommendation={setRecommendation}
-                  setSelectedsubcategory={setSelectedsubcategory}
-                  setSelectedCategory={setSelectedCategory}
+
+
                 />
                 {/* Loading indicator during validation */}
                 {(isValidatingLocation || isSubmitting) && (
@@ -1432,77 +1223,6 @@ const RecommendationForm = memo(
                             </div>
                           </div>
                         </>
-                      ) : field.name === "category" ? (
-                        <Field name="category">
-                          {({ form: { setFieldValue } }: { form: { setFieldValue: (field: string, value: any) => void } }) => {
-                            // Category state → Formik sync happens in RecommendFormEffects
-
-                            // Find the category object to display - ensure we always have Category_Name
-                            const categoryObj = Array.isArray(categories) && categories.length > 0 && selectedCategory
-                              ? categories.find((cat) => cat.documentId === selectedCategory)
-                              : null;
-
-                            // Ensure selectedValue has Category_Name for Dropdown to display
-                            const displayValue = categoryObj
-                              ? categoryObj
-                              : (selectedCategory
-                                ? { Category_Name: "", documentId: selectedCategory }
-                                : { Category_Name: initialValues.category || "", documentId: initialValues.category || "" });
-
-                            // Debug logging
-                            if (selectedCategory && categoryObj) {
-                              console.log('Category dropdown - Found category:', categoryObj.Category_Name, 'for ID:', selectedCategory);
-                            } else if (selectedCategory && !categoryObj) {
-                              console.warn('Category dropdown - Category ID not found in options:', selectedCategory, 'Available:', categories.map(c => c.documentId));
-                            }
-
-                            // Force update when category changes by using key with Category_Name
-                            return (
-                              <Dropdown
-                                key={`category-${selectedCategory || 'none'}-${categoryObj?.Category_Name || ''}`}
-                                initalValue={categoryObj?.Category_Name || initialValues.category || ""}
-                                options={Array.isArray(categories) ? categories : []}
-                                label={field.placeholder}
-                                selectedValue={displayValue}
-                                handleChange={(category: KeyValuePair) => {
-                                  console.log('Category changed manually:', category);
-                                  setSelectedCategory(category.documentId);
-                                  setFieldValue("category", category.documentId);
-                                  handleSubCategoryChange(category);
-                                }}
-                              />
-                            );
-                          }}
-                        </Field>
-                      ) : field.name === "subcategory" ? (
-                        <>
-                          <Field name="subcategory">
-                            {({ form: { setFieldValue } }: { form: { setFieldValue: (field: string, value: any) => void } }) => {
-                              // Category/subcategory state → Formik sync happens in RecommendFormEffects
-                              return (
-                                <Dropdown
-                                  initalValue={initialValues.subcategory}
-                                  options={subcategories}
-                                  label={field.placeholder}
-                                  selectedValue={
-                                    subcategories.find((sub) => sub.documentId === selectedSubcategory) ||
-                                    { Category_Name: "", documentId: selectedSubcategory }
-                                  }
-                                  handleChange={(subcategory: KeyValuePair) => {
-                                    handleSubCategoryChange(subcategory);
-                                    setFieldValue("subcategory", subcategory.documentId);
-                                  }}
-                                />
-                              );
-                            }}
-                          </Field>
-                          <ErrorMessage
-                            name="subcategory"
-                            component="span"
-                            className="text-sm text-red-400 font-poppins mt-1 block"
-                          />
-                        </>
-
                       ) : field.type === "custom" && field.components ? (
                         <div className="w-full my-4 md:max-w-3xl bg-dashboard-sidebar rounded-md">
                           <div
