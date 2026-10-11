@@ -457,8 +457,8 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
     // Check if segment already exists
     const existingSegment = transportSegments.find(
       (seg) =>
-        seg.fromPlaceId === fromPlace.place_id &&
-        seg.toPlaceId === toPlace.place_id
+        seg.fromPlaceId === fromPlace.id &&
+        seg.toPlaceId === toPlace.id
     );
 
     if (existingSegment) {
@@ -478,8 +478,8 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
       const estimatedMinutes = calculateTravelTime(distanceKm, defaultMode);
 
       return {
-        fromPlaceId: fromPlace.place_id,
-        toPlaceId: toPlace.place_id,
+        fromPlaceId: fromPlace.id,
+        toPlaceId: toPlace.id,
         mode: defaultMode,
         distanceKm,
         estimatedMinutes,
@@ -498,20 +498,21 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
     mode: TravelMode
   ) => {
     // Calculate distance
-    if (!fromPlace.geometry || !toPlace.geometry) return;
+    const existing = transportSegments.find(seg => seg.fromPlaceId === fromPlace.id && seg.toPlaceId === toPlace.id);
+    if ((!fromPlace.geometry || !toPlace.geometry) && !existing) return;
 
-    const distanceKm = calculateDistance(
+    const distanceKm = fromPlace.geometry && toPlace.geometry ? calculateDistance(
       fromPlace.geometry.location.lat,
       fromPlace.geometry.location.lng,
       toPlace.geometry.location.lat,
       toPlace.geometry.location.lng
-    );
+    ) : existing!.distanceKm;
 
-    const estimatedMinutes = calculateTravelTime(distanceKm, mode);
+    const estimatedMinutes = distanceKm === null ? null : calculateTravelTime(distanceKm, mode);
 
     const newSegment: TransportSegment = {
-      fromPlaceId: fromPlace.place_id,
-      toPlaceId: toPlace.place_id,
+      fromPlaceId: fromPlace.id,
+      toPlaceId: toPlace.id,
       mode,
       distanceKm,
       estimatedMinutes,
@@ -522,8 +523,8 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
       const filtered = prev.filter(
         (seg) =>
           !(
-            seg.fromPlaceId === fromPlace.place_id &&
-            seg.toPlaceId === toPlace.place_id
+            seg.fromPlaceId === fromPlace.id &&
+            seg.toPlaceId === toPlace.id
           )
       );
       return [...filtered, newSegment];
@@ -769,6 +770,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
       removedPlace = eveningPlaces.find((p) => p.id === placeId);
       setEveningPlaces((prev) => prev.filter((p) => p.id !== placeId));
     }
+    setTransportSegments(prev => prev.filter(seg => seg.fromPlaceId !== placeId && seg.toPlaceId !== placeId));
 
     // Remove from Stay tab if it's an accommodation
     if (removedPlace && isAccommodation(removedPlace.types)) {
@@ -913,26 +915,34 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
    */
   const generateCompleteTransportSegments = (): TransportSegment[] => {
     const allPlaces = [...morningPlaces, ...afternoonPlaces, ...eveningPlaces];
-    const completeSegments: TransportSegment[] = [];
+    // A title, budget or mode edit must not invent connections that were absent.
+    if (initialData?.Timeline) {
+      const original = typeof initialData.Timeline === "string" ? JSON.parse(initialData.Timeline) : initialData.Timeline;
+      const route = (timeline: TimelineData) => [timeline.morning ?? [], timeline.afternoon ?? [], timeline.evening ?? []]
+        .map(places => places.map(place => ({id: place.id, geometry: place.geometry})));
+      if (JSON.stringify(route(original)) === JSON.stringify(route({morning: morningPlaces, afternoon: afternoonPlaces, evening: eveningPlaces}))) {
+        return transportSegments;
+      }
+    }
+    const localIds = new Set([...allPlaces, ...stayAccommodations, ...activityPlaces].map(place => place.id));
+    const completeSegments: TransportSegment[] = transportSegments.filter(seg => localIds.has(seg.fromPlaceId) && localIds.has(seg.toPlaceId));
 
     for (let i = 0; i < allPlaces.length - 1; i++) {
       const currentPlace = allPlaces[i];
       const nextPlace = allPlaces[i + 1];
 
-      // Check if geometry exists for both places
-      if (!currentPlace.geometry || !nextPlace.geometry) continue;
-
       // Check if a segment already exists
       const existingSegment = transportSegments.find(
         (seg) =>
-          seg.fromPlaceId === currentPlace.place_id &&
-          seg.toPlaceId === nextPlace.place_id
+          seg.fromPlaceId === currentPlace.id &&
+          seg.toPlaceId === nextPlace.id
       );
 
       if (existingSegment) {
-        // Use existing segment
-        completeSegments.push(existingSegment);
+        // Existing manual segments were retained above, including unknown distances.
+        continue;
       } else {
+        if (!currentPlace.geometry || !nextPlace.geometry) continue;
         // Create default segment with "drive" mode
         const distanceKm = calculateDistance(
           currentPlace.geometry.location.lat,
@@ -945,8 +955,8 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         const estimatedMinutes = calculateTravelTime(distanceKm, defaultMode);
 
         completeSegments.push({
-          fromPlaceId: currentPlace.place_id,
-          toPlaceId: nextPlace.place_id,
+          fromPlaceId: currentPlace.id,
+          toPlaceId: nextPlace.id,
           mode: defaultMode,
           distanceKm,
           estimatedMinutes,
@@ -992,6 +1002,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
             p.priceRange !== undefined
           )
           .map(p => ({
+            localId: p.id,
             place_id: p.place_id,
             name: p.name,
             priceLevel: p.priceLevel,
@@ -1008,6 +1019,27 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         afternoon: extractBudgetData(afternoonPlaces),
         evening: extractBudgetData(eveningPlaces),
       };
+      if (initialData?.Budget && initialData?.Timeline) {
+        const originalBudget = typeof initialData.Budget === "string" ? JSON.parse(initialData.Budget) : initialData.Budget;
+        const originalTimeline = typeof initialData.Timeline === "string" ? JSON.parse(initialData.Timeline) : initialData.Timeline;
+        for (const period of ["morning", "afternoon", "evening"] as const) {
+          const originalRows = extractBudgetData(originalTimeline[period] ?? []);
+          const currentPlaces = [...morningPlaces, ...afternoonPlaces, ...eveningPlaces, ...stayAccommodations, ...activityPlaces];
+          // Budget is independently stored and can differ from timeline metadata.
+          // Retain each untouched local entry, including zero and exact money.
+          const retained = (originalBudget[period] ?? []).filter((row: any) => {
+            const before = originalRows.find(p => p.localId === row.localId);
+            const after = budgetData[period].find(p => p.localId === row.localId);
+            return currentPlaces.some(p => p.id === row.localId) && JSON.stringify(before) === JSON.stringify(after);
+          });
+          const updated = budgetData[period];
+          budgetData[period] = (originalBudget[period] ?? []).flatMap((row: any) => {
+            const value = retained.find((p: any) => p.localId === row.localId) ?? updated.find(p => p.localId === row.localId);
+            return value ? [value] : [];
+          });
+          budgetData[period].push(...updated.filter(row => !(originalBudget[period] ?? []).some((p: any) => p.localId === row.localId)));
+        }
+      }
 
       // Generate complete transport segments (including defaults)
       const completeSegments = generateCompleteTransportSegments();
@@ -1061,7 +1093,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
 
       // Prepare Map_Details with location for multi-city guides
       // Map_Details carries the chosen location for a multi-city stop.
-      const mapDetails = isMultiCityGuide && selectedLocation ? {location: selectedLocation} : null;
+      const mapDetails = isMultiCityGuide && selectedLocation ? {location: selectedLocation} : initialData?.Map_Details ?? null;
 
       // The form always composes the whole section, so create and update send the same
       // blocks; only where they land differs.
@@ -1072,6 +1104,9 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         Recommendation_Activity: activityData,
         Budget: budgetData,
         Map_Details: mapDetails,
+        Packing_List: initialData?.Packing_List ?? [],
+        Pre_Tasks: initialData?.Pre_Tasks ?? [],
+        Section_tags: initialData?.Section_tags ?? [],
       };
       // Description is rich blocks in the form and plain text on the section, so it is
       // flattened rather than stored twice in two shapes.
