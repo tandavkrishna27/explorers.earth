@@ -50,10 +50,10 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
     /** ADR-008. Present whenever this app is the Music credential issuer. */
     musicToken?: MusicTokenConfiguration } = {}, custodyMode=false,appsInput?:Omit<AppsCanonicalAdmissionOptions,'pool'>) {
   const admission=appsInput?createAppsCanonicalAdmission({pool,...appsInput}):undefined;
-  const actualApp = express(), instrument=custodyMode?createCanonicalHandlerCustody(actualApp):undefined;
+  const actualApp = express(), instrument=custodyMode?createCanonicalHandlerCustody(actualApp,admission):undefined;
   const app = instrument?.registration ?? actualApp;
   if(admission)app.use(admission.beforeDispatch);
-  const auth = createExplorersAuth(pool, config);
+  const auth = createExplorersAuth(pool, config, appsInput?{appsReadOnlySessionFixture:true}:undefined);
 
   // Better Auth must consume the original request stream before Express body parsers.
   const authHandler = toNodeHandler(auth);

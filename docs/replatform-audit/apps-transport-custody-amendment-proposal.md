@@ -1,6 +1,6 @@
 # Proposed Apps transport custody amendment
 
-Status: proposed; user approval required before behavior changes.
+Status: approved by the user on 2026-10-11; implementation and native qualification pending.
 
 ## Evidence
 
@@ -27,3 +27,11 @@ This deliberately amends the existing permanent-abort rule. It cannot be describ
 5. Run the exact clean replatform head natively. Require eight passing browser cases and positive cleanup; any unclassified or unsafe cancellation still blocks qualification.
 
 Alternative: retain the current permanent-abort rule. Apps then remains blocked by the observed real UI cancellation behavior; increasing the timeout or waiting at final teardown cannot undo an earlier permanent latch.
+
+## Implementation checkpoint
+The fixed Apps composition now passes its private admission identity into custody. Exact admitted owner/public GET scopes earn WeakMap proof only after dataset binding and relationship checks; request method and original URL must still match. Both transport closes, all actual original promise/callback settlement, current registration attestation and absence of unsafe causes are required. Native IncomingMessage aborted ECONNRESET uses the original stream error identity and bounded descriptor proof; generic/forged resets and handler errors remain unsafe. Callback-error and response-error are retained; all unsafe latches stay sticky. Captured native Promise settlement prevents an overridden then method from manufacturing completion.
+
+Apps-only session construction enables installed deferred GET refresh with cookie cache disabled; normal auth configuration stays unchanged. Installed runtime adapter-bound tests prove near-refresh GET0writes and expired GET0deletion, ordinary update/delete controls, signed-cookie/defaultGET behavior and held original finalizer. This supports the eight audited READ ONLY owner scopes. Authentication endpoints, /me, media GET/HEAD, control, uploads and mutations remain excluded.
+
+Independent auth and custody reviews accepted after fixing callback-error forwarding and altered-promise settlement. Fresh root verification:10 focused contract suites740PASS; six selected runner testsPASS; tsconfig.music-c0 and scoped runner typechecks0. Native exact-head Apps qualification remains pending.
+

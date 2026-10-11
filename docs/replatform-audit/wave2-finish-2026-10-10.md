@@ -819,3 +819,7 @@ Native8/8PASS, originalexit1, sourceintact. Deadline snapshot canonical-wait/han
 
 Exact09d1 native recovery at cd7693bc exited0/statusrecovered/qualificationfalse. Fresh retained-root/fullcontainer-ID/exactUAT-run-label/lease absence checks passed; secretlength0. All fourteen registered retained fixtures now have positive disposal receipts. Proposed amendment copied into tracked docs/replatform-audit/apps-transport-custody-amendment-proposal.md for review; approval stillpending and no behavior changes made.
 
+
+### Approved transport amendment implementation
+Userapproved the narrow transport-custody proposal. Implemented source-audited private readproof, positive transport closure and actual original settlement, allunsafe causes sticky, fixedApps-only nonmutatingGET session mode. Auth/media/me/control/uploads/mutations unclassified and stillrefused. Independent reviews accepted after alteredPromise.then andcallback-error forwarding fixes. Fresh10suites740PASS, six runner testsPASS, music-c0+runner scopedtypes0. Native qualification pending; no priorhead receipt qualifies this changed source.
+

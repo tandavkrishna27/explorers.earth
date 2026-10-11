@@ -51,7 +51,12 @@ export function isAllowedAuthReturnUrl(value: string, config: Pick<ExplorersAuth
   } catch { return false; }
 }
 
-export function createExplorersAuth(pool: Pool, config: ExplorersAuthConfig) {
+export interface ExplorersAuthFixtureOptions {
+  /** Only the bounded Apps browser fixture may defer session persistence on GET. */
+  appsReadOnlySessionFixture?: boolean;
+}
+
+export function createExplorersAuth(pool: Pool, config: ExplorersAuthConfig, fixtureOptions?: ExplorersAuthFixtureOptions) {
   const database = drizzle(pool, { schema: authSchema });
   const recoveryHooks = createRecoveryOAuthHooks(pool, config);
   return betterAuth({
@@ -61,7 +66,12 @@ export function createExplorersAuth(pool: Pool, config: ExplorersAuthConfig) {
     secret: config.secret,
     database: drizzleAdapter(database, { provider: "pg", schema: authSchema }),
     user: { modelName: "auth_user" },
-    session: { modelName: "auth_session" },
+    session: {
+      modelName: "auth_session",
+      ...(fixtureOptions?.appsReadOnlySessionFixture === true
+        ? { deferSessionRefresh: true, cookieCache: { enabled: false } }
+        : {}),
+    },
     account: {
       modelName: "auth_account",
       accountLinking: { disableImplicitLinking: true },

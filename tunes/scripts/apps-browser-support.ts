@@ -98,7 +98,7 @@ export function admitAppsFixtureRequest(options:AppsControlOptions,request:Incom
 /** Synchronous outer admission latch; no timed drain or release of original work. */
 export function sealAppsFixtureRequests(options:AppsControlOptions){try{const binding=requestBinding(options);binding.sealed=true;binding.admission.seal();}catch{throw fail('request seal');}}
 /** Only exact settled is positive request evidence; all other states retain custody. */
-export type AppsRequestDrainDiagnostic=Readonly<{status:'settled'|'failed-but-settled'|'unsettled';sealed:boolean;requests:number;frames:number;unknown:boolean;uncertain:boolean;reason?:CanonicalCustodyReason}>;
+export type AppsRequestDrainDiagnostic=Readonly<{status:'settled'|'failed-but-settled'|'unsettled';sealed:boolean;requests:number;frames:number;unknown:boolean;uncertain:boolean;reason?:CanonicalCustodyReason;provedReadTransportCancellations?:number}>;
 const requestDrainDiagnostics=new WeakMap<object,AppsRequestDrainDiagnostic>();
 export function extractAppsRequestDrainSnapshot(options:unknown):AppsRequestDrainDiagnostic|undefined{if(options===null||(typeof options!=='object'&&typeof options!=='function'))return undefined;const binding=requestSnapshotBindings.get(options as object);return binding?extractCanonicalCustodySnapshot(binding.custody):undefined;}
 export function extractAppsRequestDrainDiagnostic(options:unknown):AppsRequestDrainDiagnostic|undefined{return options!==null&&(typeof options==='object'||typeof options==='function')?requestDrainDiagnostics.get(options as object):undefined;}
