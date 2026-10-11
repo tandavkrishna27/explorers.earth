@@ -1,6 +1,6 @@
 import {assertFixtureOrigin} from './proxy-fixture-authority.mjs';
 import { readFileSync } from 'node:fs';
-import { test, expect, type Page, type TestInfo } from '@playwright/test';
+import { test, expect, type Page, type TestInfo, type Request, type Response } from '@playwright/test';
 import sharp from 'sharp';
 
 // BEGIN PROFILE DIAGNOSTIC CONTRACT
@@ -15,7 +15,7 @@ function profileDiagnosticIdentity(info: TestInfo): boolean {
   return file.endsWith('/explorers-earth/e2e/replatform/profile.spec.ts')
     && info.title === title && info.project.name === 'chromium-pr-safe' && info.repeatEachIndex === 0 && info.retry === 0
     && (info.titlePath.length === 1 && info.titlePath[0] === title
-      || info.titlePath.length === 2 && info.titlePath[0] === 'replatform/profile.spec.ts' && info.titlePath[1] === title);
+      || info.titlePath.length === 2 && info.titlePath[0].replaceAll('\\', '/') === 'replatform/profile.spec.ts' && info.titlePath[1] === title);
 }
 function setProfileDiagnosticState(info: TestInfo, category: ProfileDiagnosticCategory, stage: ProfileDiagnosticStage, publishPoll: 'incomplete' | 'completed', hidePoll: 'incomplete' | 'completed'): void {
   if (profileDiagnosticIdentity(info)) profileDiagnosticStates.set(info, { version: 1, category, stage, publishPoll, hidePoll });
@@ -36,6 +36,54 @@ function captureProfileDiagnostic(info: TestInfo): void {
   } catch {}
 }
 // END PROFILE DIAGNOSTIC CONTRACT
+
+// BEGIN PROFILE NATIVE BOUNDARY DIAGNOSTIC
+type NativeBoundary = { category: 'books' | 'movies' | 'games'; action: 'publish' | 'hide'; request: 'absent' | 'present' | 'uncertain'; response: 'none' | '2xx' | '409' | 'other' | 'transport' | 'uncertain' };
+const nativeBoundaryObservers = new WeakMap<TestInfo, ReturnType<typeof observeNativeBoundary>>();
+function observeNativeBoundary(page: Page, origin: string) {
+  let current: NativeBoundary | undefined;
+  let sealed = false;
+  let finished = false;
+  const admitted = new WeakMap<object, NativeBoundary>();
+  const request = (event: Request) => {
+    if (sealed || !current) return;
+    try {
+      const target = new URL(event.url());
+      if (event.method() !== 'PATCH' || target.origin !== origin || target.pathname !== '/api/explorers/v1/me/profile' || target.search || target.hash) return;
+      if (current.request !== 'absent') { current.request = 'uncertain'; current.response = 'uncertain'; }
+      else current.request = 'present';
+      admitted.set(event, current);
+    } catch {}
+  };
+  const outcome = (event: object, value: NativeBoundary['response']) => {
+    if (sealed || !current || admitted.get(event) !== current) return;
+    if (current.request === 'uncertain' || current.response !== 'none') { current.request = 'uncertain'; current.response = 'uncertain'; }
+    else current.response = value;
+  };
+  const response = (event: Response) => { try { const status = event.status(); outcome(event.request(), status >= 200 && status < 300 ? '2xx' : status === 409 ? '409' : 'other'); } catch {} };
+  const failed = (event: Request) => outcome(event, 'transport');
+  page.on('request', request); page.on('response', response); page.on('requestfailed', failed);
+  const seal = () => {
+    sealed = true;
+    page.off('request', request); page.off('response', response); page.off('requestfailed', failed);
+  };
+  return {
+    seal,
+    begin(category: NativeBoundary['category'], action: NativeBoundary['action']) { if (!sealed) current = { category, action, request: 'absent', response: 'none' }; },
+    finish(info: TestInfo) {
+      if (finished) return;
+      finished = true;
+      seal();
+      const progress = profileDiagnosticStates.get(info);
+      const stages = current?.action === 'publish' ? ['publish-click', 'publish-poll', 'published-checked'] : ['hide-click', 'hide-poll', 'hidden-unchecked'];
+      if (current && progress?.category === current.category && stages.includes(progress.stage)
+        && profileDiagnosticIdentity(info) && ['failed', 'timedOut', 'interrupted'].includes(info.status ?? '')) {
+        try { info.errors.push({ message: `[profile-native-boundary-v1:${current.category}|${current.action}|${current.request}|${current.response}]` }); } catch {}
+      }
+    },
+  };
+}
+// END PROFILE NATIVE BOUNDARY DIAGNOSTIC
 
 // BEGIN PROFILE ONBOARDING DIAGNOSTIC
 function profileOnboardingProjection(doc: Document = document) {
@@ -68,6 +116,7 @@ async function captureProfileOnboarding(page: Page, info: TestInfo): Promise<voi
 
 test.afterEach(({}, info) => {
   captureProfileDiagnostic(info);
+  nativeBoundaryObservers.get(info)?.finish(info);
 });
 type Persona = { userId: string; cookie: string; handle: string };
 type Fixture = { origin: string; personas: { ownerA: Persona; ownerB: Persona } };
@@ -332,6 +381,9 @@ async function createNavigationList(page: Page, category: 'books' | 'movies' | '
 }
 
 test('canonical navigation: native Books Movies and Games publish and hide through verified owner preferences', async ({ page }, info) => {
+  const nativeBoundary = observeNativeBoundary(page, fixture.origin);
+  nativeBoundaryObservers.set(info, nativeBoundary);
+  try {
   setProfileDiagnosticState(info, 'none', 'setup', 'incomplete', 'incomplete');
   const legacy = await prepareNavigation(page);
   for (const category of ['books', 'movies', 'games'] as const) {
@@ -351,12 +403,14 @@ test('canonical navigation: native Books Movies and Games publish and hide throu
     setProfileDiagnosticState(info, category, 'initial-unchecked', 'incomplete', 'incomplete');
     await expect(control).not.toBeChecked();
     setProfileDiagnosticState(info, category, 'publish-click', 'incomplete', 'incomplete');
+    nativeBoundary.begin(category, 'publish');
     await control.click({ force: true });
     setProfileDiagnosticState(info, category, 'publish-poll', 'incomplete', 'incomplete');
     await expect.poll(async () => (await navigationAccount(page)).categories.find(row => row.category === category)?.isPublic).toBe(true);
     setProfileDiagnosticState(info, category, 'published-checked', 'completed', 'incomplete');
     await expect(control).toBeChecked();
     setProfileDiagnosticState(info, category, 'hide-click', 'completed', 'incomplete');
+    nativeBoundary.begin(category, 'hide');
     await control.click({ force: true });
     setProfileDiagnosticState(info, category, 'hide-poll', 'completed', 'incomplete');
     await expect.poll(async () => (await navigationAccount(page)).categories.find(row => row.category === category)?.isPublic).toBe(false);
@@ -365,6 +419,7 @@ test('canonical navigation: native Books Movies and Games publish and hide throu
   }
   setProfileDiagnosticState(info, 'none', 'legacy-check', 'incomplete', 'incomplete');
   expect(legacy).toEqual([]);
+  } finally { nativeBoundary.seal(); }
 });
 
 test('canonical navigation: external account preference refresh preserves all nine saved rows', async ({ page }) => {
