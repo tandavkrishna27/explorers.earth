@@ -998,7 +998,7 @@ test('Guides registration: discovery and receipt reject retry missing and duplic
 
 function registeredIdentityCount(){return 134+appsRegistrationIdentities().length+guidesRegistrationIdentities().length;}
 
-const guidesExecutedSources=['guides-browser-fixture.ts','guides-browser-support.ts','guides-fixture-host.ts','guides-parent-supervision.ts','guides-provider-fixture.ts','guides-resource-worker.ts','music-local-state.ts','guides-windows-job.ps1'].map(name=>'tunes/scripts/'+name);
+const guidesExecutedSources=['guides-browser-fixture.ts','guides-browser-support.ts','guides-fixture-host.ts','guides-parent-supervision.ts','guides-launcher.ts','guides-provider-fixture.ts','guides-resource-worker.ts','music-local-state.ts','guides-windows-job.ps1'].map(name=>'tunes/scripts/'+name);
 function guidesSnapshotFixture({untracked,undeclared,mutation,closed=false}={}){
  const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),tracked=execFileSync('git',['ls-files'],{cwd:root,encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/).filter(file=>file!==untracked);
  const canonical=v=>JSON.stringify(v,(_,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.keys(x).sort().map(k=>[k,x[k]])):x),digest=v=>createHash('sha256').update(canonical(v)).digest('hex');
@@ -1013,6 +1013,14 @@ test('Guides source closure: actual complete AST import graph and Windows Job ar
  const {createRequire}=await import('node:module'),ts=createRequire(import.meta.url)('../tunes/node_modules/typescript'),root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),queue=guidesExecutedSources.filter(file=>file.endsWith('.ts')),seen=new Set();while(queue.length){const file=queue.pop();if(seen.has(file))continue;seen.add(file);const ast=ts.createSourceFile(file,readFileSync(resolve(root,file),'utf8'),ts.ScriptTarget.Latest,true);function visit(n){let s;if((ts.isImportDeclaration(n)||ts.isExportDeclaration(n))&&n.moduleSpecifier&&ts.isStringLiteral(n.moduleSpecifier))s=n.moduleSpecifier.text;else if(ts.isCallExpression(n)&&n.expression.kind===ts.SyntaxKind.ImportKeyword&&n.arguments.length===1&&ts.isStringLiteral(n.arguments[0]))s=n.arguments[0].text;if(s?.startsWith('.')){const base=resolve(root,dirname(file),s),found=[base,...['.ts','.tsx','.js','.mjs','/index.ts','/index.tsx','/index.js'].map(e=>base+e),base.replace(/\.js$/,'.ts')].find(f=>existsSync(f)&&lstatSync(f).isFile());assert.ok(found,file+' '+s);const dependency=relative(root,found).replaceAll('\\','/');assert.ok(snapshot.hashes[dependency],dependency);queue.push(dependency);}ts.forEachChild(n,visit);}visit(ast);}
  assert.ok(snapshot.hashes['tunes/scripts/music-local-private-files.ps1']);assert.ok(snapshot.hashes['tunes/scripts/windows-write-through.ps1']);
 });
+test('Guides source closure: actual launcher imports require exact tracked helper and bind helper bytes',()=>{
+ const file='tunes/scripts/guides-launcher.ts',snapshot=guidesSnapshotFixture();
+ assert.ok(snapshot.hashes[file],file);
+ assert.notEqual(guidesSnapshotFixture({mutation:file}).provenance.sourceHash,snapshot.provenance.sourceHash);
+ assert.throws(()=>guidesSnapshotFixture({untracked:file}),/not tracked|Unreviewed relative executed dependency/);
+ for(const undeclared of ['static','dynamic'])assert.throws(()=>guidesSnapshotFixture({undeclared}),/Unreviewed relative executed dependency/);
+});
+
 test('Music source closure: imported diagnostic must be tracked and changes provenance',()=>{
  const file='tunes/scripts/music-boundary-diagnostic.ts',snapshot=guidesSnapshotFixture();assert.ok(snapshot.hashes[file]);assert.notEqual(guidesSnapshotFixture({mutation:file}).provenance.sourceHash,snapshot.provenance.sourceHash);assert.throws(()=>guidesSnapshotFixture({untracked:file}),/not tracked/);
 });

@@ -392,7 +392,7 @@ export function snapshotSource(root){
  git(['ls-files','--error-unmatch',musicDiagnostic]);
  // Exact tracked Guides graph derived from static and literal dynamic AST imports;
  // include the separately executed Windows Job script in the same source authority.
- const guidesSources=['guides-browser-fixture.ts','guides-browser-support.ts','guides-fixture-host.ts','guides-parent-supervision.ts','guides-provider-fixture.ts','guides-resource-worker.ts','music-local-state.ts','guides-windows-job.ps1'].map(name=>`tunes/scripts/${name}`);
+ const guidesSources=['guides-browser-fixture.ts','guides-browser-support.ts','guides-fixture-host.ts','guides-parent-supervision.ts','guides-launcher.ts','guides-provider-fixture.ts','guides-resource-worker.ts','music-local-state.ts','guides-windows-job.ps1'].map(name=>`tunes/scripts/${name}`);
  git(['ls-files','--error-unmatch',...guidesSources]);
  const frontendRoot=git(['ls-files','explorers-earth']).filter(path=>path.split('/').length===2);
  if(git(['ls-files','--others','--exclude-standard','explorers-earth']).some(path=>path.split('/').length===2))fail('Untracked frontend entry/configuration dependency');
