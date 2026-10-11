@@ -493,6 +493,44 @@
     },
     {
       "method": "GET",
+      "path": "/api/explorers/v1/catalog/taxonomy",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/catalog/taxonomy",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
       "path": "/api/explorers/v1/catalog/games",
       "source": "tunes/server/routes/explorersCatalogRoutes.ts",
       "decision": "explorers-owner",

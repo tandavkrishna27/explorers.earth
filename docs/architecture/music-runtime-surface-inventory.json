@@ -588,13 +588,33 @@
     },
     {
       "method": "GET",
+      "path": "/api/explorers/v1/catalog/taxonomy",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "line": 14
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/catalog/taxonomy",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "line": 15
+    },
+    {
+      "method": "GET",
       "path": "/api/explorers/v1/catalog/games",
       "classification": "canonical-explorers-owner",
       "ownerSource": "verified-google-session+active-initial-account-binding",
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersCatalogRoutes.ts",
-      "line": 12
+      "line": 16
     },
     {
       "method": "ALL",
@@ -604,7 +624,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersCatalogRoutes.ts",
-      "line": 17
+      "line": 21
     },
     {
       "method": "GET",
@@ -614,7 +634,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersCatalogRoutes.ts",
-      "line": 18
+      "line": 22
     },
     {
       "method": "ALL",
@@ -624,7 +644,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersCatalogRoutes.ts",
-      "line": 19
+      "line": 23
     },
     {
       "method": "GET",
@@ -634,7 +654,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersCatalogRoutes.ts",
-      "line": 20
+      "line": 24
     },
     {
       "method": "ALL",
@@ -644,7 +664,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersCatalogRoutes.ts",
-      "line": 25
+      "line": 29
     },
     {
       "method": "GET",
@@ -654,7 +674,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersCatalogRoutes.ts",
-      "line": 26
+      "line": 30
     },
     {
       "method": "ALL",
@@ -664,7 +684,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersCatalogRoutes.ts",
-      "line": 27
+      "line": 31
     },
     {
       "method": "GET",

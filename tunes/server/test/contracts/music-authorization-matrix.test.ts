@@ -1,12 +1,19 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { authorizationMatrixFromInventory } from "../../policies/musicSurfacePolicy";
+import { authorizationMatrixFromInventory,decisionForRoute } from "../../policies/musicSurfacePolicy";
 import { inventoryRuntimeSurfaces } from "../../../scripts/inventory-runtime-surfaces";
 
 const repositoryRoot = resolve(import.meta.dirname, "../../../..");
 
 describe("generated full Music authorization matrix", () => {
+  it('classifies only the exact approved taxonomy GET and retains hostile-role denial',()=>{
+    const route={method:'GET',path:'/api/explorers/v1/catalog/taxonomy',source:'tunes/server/routes/explorersCatalogRoutes.ts',classification:'handler-authorization-unknown'};
+    expect(decisionForRoute(route)).toBe('explorers-owner');
+    for(const changed of [{method:'POST'},{method:'ALL'},{source:'tunes/server/routes/unknown.ts'},{path:'/api/explorers/v1/catalog/taxonomy/other'}])expect(decisionForRoute({...route,...changed})).not.toBe('explorers-owner');
+    const entry=authorizationMatrixFromInventory(inventoryRuntimeSurfaces(repositoryRoot)).routes.find(r=>r.method==='GET'&&r.path===route.path)!;
+    expect(entry.allowed.owner).toBe(true);expect(Object.entries(entry.allowed).filter(([role])=>role!=='owner').every(([,allowed])=>allowed===false)).toBe(true);
+  });
   it("matches every generated REST and socket inventory row", () => {
     // Break caught: a hand-maintained sample matrix omits a real runtime surface.
     const inventory = inventoryRuntimeSurfaces(repositoryRoot);

@@ -47,12 +47,10 @@ describe("runtime route/event/job inventory", () => {
       expect.objectContaining({ method: "GET", path: "/api/music/entitlement", classification: "local-music-owner" }),
       expect.objectContaining({ method: "GET", path: "/api/music/dashboard", classification: "local-music-owner" }),
     ]));
-    // 10: the handle-availability route added its own ALL 405 fallback the same way
-    // /public/recommendations/search has one, and decision D2's unsubscribe route added
-    // the tenth. The count is pinned rather than filtered so a new public surface cannot
-    // arrive without someone noticing it needs a method fallback.
+    // Taxonomy adds the eleventh fallback outside recommendation routes.
+    // Pin the count so every new surface receives an explicit method-boundary review.
     expect(inventory.routes.filter((route) => route.method === "ALL"
-      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(10);
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(11);
     // Decision D2. GET reports the address and must not write; POST performs it, which is
     // also what RFC 8058 one-click unsubscribe sends. Both are public: the authority is
     // the purpose-bound HMAC in the token, not the caller.
@@ -66,6 +64,8 @@ describe("runtime route/event/job inventory", () => {
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/movies',classification:'canonical-explorers-owner'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/catalog/movies',classification:'tombstone'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/books',classification:'canonical-explorers-owner'}));
+    expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/taxonomy',classification:'canonical-explorers-owner'}));
+    expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/catalog/taxonomy',classification:'tombstone',ownerSource:'none-fail-closed'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/public/recommendations/search',classification:'tombstone'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/public/recommendations/search',classification:'public',policy:'explicit-public-contract'}));
     expect(inventory.routes.every((route) => route.line > 0)).toBe(true);

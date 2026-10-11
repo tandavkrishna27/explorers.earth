@@ -7,8 +7,12 @@ import {CatalogService,MovieGenreFailure,GameCatalogFailure} from '../applicatio
 import {RecommendationFailure} from '../repositories/explorersRecommendationRepository';
 import {BookCatalog,BookProviderFailure} from '../services/bookCatalog';
 import {requireActor,sendActorError} from '../middleware/explorersPrincipal';
+import {TaxonomyCatalogService,TaxonomyCatalogFailure} from '../application/taxonomyCatalog';
 export function setupExplorersCatalogRoutes(app:Express,pool:Pool,auth:ExplorersAuth,config:ExplorersAuthConfig,books:BookCatalog,movies?:MovieCatalog){
  const service=new CatalogService(pool,books,movies);
+ const taxonomy=new TaxonomyCatalogService(pool,config.secret);
+ app.get('/api/explorers/v1/catalog/taxonomy',async(req,res)=>{res.set('Cache-Control','no-store');try{return res.json(await taxonomy.read(await requireActor(req,auth,pool),req.query));}catch(error){if(error instanceof TaxonomyCatalogFailure)return res.status(error.status).json({error:{code:error.code,message:error.message,requestId:randomUUID()}});sendActorError(req,res,error);}});
+ app.all('/api/explorers/v1/catalog/taxonomy',(_req,res)=>res.set('Cache-Control','no-store').status(405).json({error:{code:'INVALID_INPUT',message:'Method is not supported',requestId:randomUUID()}}));
  app.get('/api/explorers/v1/catalog/games',async(req,res)=>{
   res.set('Cache-Control','no-store');const requestId=randomUUID();
   try{return res.json(await service.searchGames(await requireActor(req,auth,pool),req.query));}
