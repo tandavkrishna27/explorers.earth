@@ -21,7 +21,128 @@ const sockets = new Set<Socket>();
 const contexts = new Set<BrowserContext>();
 const responseBodyPhases = new WeakMap<BrowserContext, 'body' | 'reload' | 'closing'>();
 const ownerConnections = new WeakMap<Page, number>();
+const nativePlaylistSnapshots = new WeakMap<Page, string>();
+const nativePlaylistUnavailable = new WeakSet<Page>();
 const song = (n: number) => ({ youtubeId: `fixture000${n}`.slice(-11), title: `Owned song ${n}`, artist: 'Owned artist', thumbnailUrl: 'https://music-fixture.test/thumb.png' });
+// Only observed DOM/event state: trusted delivery does not prove React handler execution.
+function musicPlaylistNativeEligible(info: { file: string; title: string; project: { name: string }; repeatEachIndex: number; retry: number }) {
+  return /(?:^|\/)explorers-earth\/e2e\/replatform\/music\.spec\.ts$/.test(info.file.replace(/\\/g, '/'))
+    && info.title === 'owner playlists songs queue playback and history preserve transactions'
+    && ['music-desktop', 'music-mobile'].includes(info.project.name) && info.repeatEachIndex === 0 && info.retry === 0;
+}
+function musicPlaylistNativeBoundary(input: { action: 'start' | 'stop'; expiresAt: number; leaseExpiresAt: number }): string | null {
+  const unavailable = '[music-playlist-native-v1:click=u;appeared=u;disappeared=u;panel=u;dashboard=u;section=u;error=u]';
+  const host = window as unknown as { __musicPlaylistNativeV1?: () => string; __musicPlaylistNativeV1Closed?: boolean };
+  if (input.action === 'stop') { host.__musicPlaylistNativeV1Closed = true; const stop = host.__musicPlaylistNativeV1; delete host.__musicPlaylistNativeV1; return stop ? stop() : unavailable; }
+  if (host.__musicPlaylistNativeV1Closed || Date.now() >= input.expiresAt) return unavailable;
+  if (host.__musicPlaylistNativeV1) return unavailable;
+  let click = false, appeared = false, disappeared = false, prior = false, invalid = false, retired = false;
+  let deliveries = 0, work = 0;
+  let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+  let panel: 'absent' | 'hidden' | 'visible' = 'absent', dashboard = false, section = false, error = false;
+  const panelSelector = '[role="tabpanel"][aria-label="Owned list"]';
+  // Finite work and constant state; no DOM, labels, errors or event payloads retained.
+  const walk = (root: Node, visit: (node: Element) => void) => {
+    const walker = document.createTreeWalker(root, 1); let node: Node | null = root;
+    while (node) { if (++work > 32768) throw new Error(); if (node instanceof Element) visit(node); node = walker.nextNode(); }
+  };
+  const present = (value: boolean) => { if (value) appeared = true; if (prior && !value) disappeared = true; prior = value; };
+  const sample = () => {
+    let count = 0; walk(document.documentElement, () => { if (++count > 2048) throw new Error(); });
+    const panels = document.querySelectorAll(panelSelector);
+    const publications = document.querySelectorAll('section[aria-label="Music publication"]');
+    const tabs = document.querySelectorAll('[role="tablist"][aria-label="Music sections"]');
+    const playlistTabs = document.querySelectorAll('#music-section-playlists');
+    const playlistSections = document.querySelectorAll('#music-section-playlists-panel');
+    const buttons = document.querySelectorAll('button[aria-label="Open Owned list"]');
+    if (panels.length > 1 || publications.length > 1 || tabs.length > 1 || playlistTabs.length > 1 || playlistSections.length > 1 || buttons.length > 1) throw new Error();
+    const scope = publications[0]?.parentElement;
+    dashboard = !!scope && tabs[0]?.parentElement === scope;
+    if (dashboard && (playlistTabs.length !== 1 || playlistSections.length !== 1 || !tabs[0].contains(playlistTabs[0]) || playlistSections[0].parentElement !== scope)) throw new Error();
+    if (!dashboard && (playlistTabs.length || playlistSections.length || panels.length || buttons.length)) throw new Error();
+    if (panels[0] && !playlistSections[0]?.contains(panels[0])) throw new Error();
+    if (buttons[0] && !playlistSections[0]?.contains(buttons[0])) throw new Error();
+    present(panels.length === 1); panel = panels.length ? 'visible' : 'absent';
+    if (panels.length) {
+      for (let node: Element | null = panels[0]; node; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if (node.hasAttribute('hidden') || style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') panel = 'hidden';
+      }
+      const rect = panels[0].getBoundingClientRect(); if (!rect.width || !rect.height) panel = 'hidden';
+    }
+    section = dashboard && playlistTabs[0].getAttribute('aria-selected') === 'true'
+      && playlistSections[0].hasAttribute('hidden') === false;
+    error = !!scope?.querySelector('[role="alert"]');
+    return playlistSections[0];
+  };
+  const retire = () => {
+    if (retired) return; retired = true; observer.disconnect();
+    clearTimeout(expiryTimer);
+    document.removeEventListener('click', delivered, true); window.removeEventListener('pagehide', unavailablePage);
+  };
+  const unavailablePage = () => { invalid = true; retire(); };
+  const delivered = (event: Event) => {
+    if (retired) return;
+    try {
+      if (event.isTrusted && event.target instanceof Element) {
+        const target = event.target.closest('button');
+        if (target?.getAttribute('aria-label') === 'Open Owned list') {
+          const playlistSection = sample();
+          const buttons = document.querySelectorAll('button[aria-label="Open Owned list"]');
+          if (buttons.length !== 1 || buttons[0] !== target || !playlistSection?.contains(target)) throw new Error();
+          click = true;
+        }
+      }
+    }
+    catch { invalid = true; retire(); }
+  };
+  const observe = (records: MutationRecord[]) => {
+    if (retired) return;
+    try {
+      if (++deliveries > 512 || records.length > 64) throw new Error();
+      for (const record of records) {
+        if (record.addedNodes.length + record.removedNodes.length > 64) throw new Error();
+        for (const node of record.addedNodes) walk(node, element => { if (element.matches(panelSelector)) present(true); });
+        for (const node of record.removedNodes) walk(node, element => { if (element.matches(panelSelector)) { appeared = true; disappeared = true; prior = false; } });
+      }
+      sample();
+    } catch { invalid = true; retire(); }
+  };
+  const observer = new MutationObserver(observe);
+  host.__musicPlaylistNativeV1 = () => {
+    // Browser mutation microtasks precede this separate evaluate task. Sample final
+    // state directly; never drain an unbounded pending-record array.
+    if (!retired) { try { sample(); } catch { invalid = true; } }
+    retire();
+    return invalid ? unavailable : `[music-playlist-native-v1:click=${+click};appeared=${+appeared};disappeared=${+disappeared};panel=${panel};dashboard=${+dashboard};section=${+section};error=${+error}]`;
+  };
+  try {
+    sample(); document.addEventListener('click', delivered, true); window.addEventListener('pagehide', unavailablePage);
+    observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true });
+    expiryTimer = setTimeout(unavailablePage, Math.max(0, Math.min(30000, input.leaseExpiresAt - Date.now())));
+  } catch { invalid = true; retire(); }
+  return null;
+}
+async function musicPlaylistNativeCapture(page: Page, action: 'start' | 'stop'): Promise<string | null> {
+  const unavailable = '[music-playlist-native-v1:click=u;appeared=u;disappeared=u;panel=u;dashboard=u;section=u;error=u]';
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  // Start expiry covers the original assertion window; transport deadline covers
+  // only this passive observation. Late starts are refused, live observers expire.
+  const expiresAt = Date.now() + 900, leaseExpiresAt = Date.now() + 30000;
+  try {
+    const result = await Promise.race([
+      page.evaluate(musicPlaylistNativeBoundary, { action, expiresAt, leaseExpiresAt }).catch(() => unavailable),
+      new Promise<string>(resolve => { timer = setTimeout(() => resolve(unavailable), 900); }),
+    ]);
+    if (result === unavailable) {
+      nativePlaylistUnavailable.add(page);
+      void page.evaluate(musicPlaylistNativeBoundary, { action: 'stop' as const, expiresAt, leaseExpiresAt }).catch(() => undefined);
+    }
+    const unavailableEarlier = nativePlaylistUnavailable.has(page);
+    if (action === 'stop') nativePlaylistUnavailable.delete(page);
+    return unavailableEarlier ? unavailable : result;
+  } catch { return unavailable; } finally { clearTimeout(timer); }
+}
 async function stage<T>(name: string, operation: () => Promise<T>): Promise<T> {
   try { return await operation(); } catch (error) {
     const cause = error instanceof Error ? error.message.match(/^\[music-cause:(child-unavailable|child-timeout|child-failed|control-active-case|control-scenario-exhausted|control-case-mismatch|control-session-failed|control-other)\]$/)?.[1] : undefined;
@@ -123,7 +244,11 @@ test.beforeEach(async ({ page }, info) => {
   scenario = await control('prepare');
   await install(page, scenario.owners[0]);
 });
-test.afterEach(async () => {
+test.afterEach(async ({ page }, info) => {
+  const nativeSnapshot = nativePlaylistSnapshots.get(page); nativePlaylistSnapshots.delete(page); nativePlaylistUnavailable.delete(page);
+  if (nativeSnapshot && musicPlaylistNativeEligible(info) && ['failed', 'timedOut'].includes(info.status ?? '')) {
+    try { info.errors.push({ message: nativeSnapshot }); } catch { /* Preserve the original failure. */ }
+  }
   try {
     await musicCleanup([
       ...[...sockets].map(connection => () => connection.disconnect()),
@@ -143,15 +268,26 @@ test('canonical cookie ensure opens one owner workspace and survives reload', as
   const state = await control('mapping'); expect(state.identityRows).toBe(1);
 });
 
-test('owner playlists songs queue playback and history preserve transactions', async ({ page }) => {
+test('owner playlists songs queue playback and history preserve transactions', async ({ page }, info) => {
   await page.getByRole('button', { name: 'New playlist', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Create playlist', exact: true });
   await dialog.getByLabel('Playlist name', { exact: true }).fill('Owned list');
   await dialog.getByRole('button', { name: 'Create playlist', exact: true }).click();
   await expect(dialog).toBeHidden();
   const lists = await ownerRequest(page, 'GET', '/api/playlists'); const id = lists.body.find((value: any) => value.name === 'Owned list').id;
-  await page.getByRole('button', { name: 'Open Owned list', exact: true }).click();
-  await expect(page.getByRole('tabpanel', { name: 'Owned list', exact: true })).toBeVisible();
+  const observeNativePlaylist = musicPlaylistNativeEligible(info);
+  if (observeNativePlaylist) await musicPlaylistNativeCapture(page, 'start');
+  let nativePlaylistFailed = false;
+  try {
+    await page.getByRole('button', { name: 'Open Owned list', exact: true }).click();
+    await expect(page.getByRole('tabpanel', { name: 'Owned list', exact: true })).toBeVisible();
+  } catch (error) { nativePlaylistFailed = true; throw error; }
+  finally {
+    if (observeNativePlaylist) {
+      const marker = await musicPlaylistNativeCapture(page, 'stop');
+      if (nativePlaylistFailed) nativePlaylistSnapshots.set(page, marker ?? '[music-playlist-native-v1:click=u;appeared=u;disappeared=u;panel=u;dashboard=u;section=u;error=u]');
+    }
+  }
   await page.getByRole('button', { name: 'Rename playlist', exact: true }).click();
   const rename = page.getByRole('dialog', { name: 'Rename playlist', exact: true });
   await rename.getByLabel('Playlist name', { exact: true }).fill('Owned edited');

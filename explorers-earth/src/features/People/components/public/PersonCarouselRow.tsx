@@ -1,7 +1,6 @@
 import { Users } from "lucide-react";
 import type { PersonList, RecommendedPerson } from "../../types";
 import { buildImageUrl } from "../../utils/personHelpers";
-import { deduplicatePeople } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
 
 interface PersonCarouselRowProps {
@@ -11,7 +10,7 @@ interface PersonCarouselRowProps {
 }
 
 const PersonCarouselRow = ({ list, onPersonClick, onViewAll }: PersonCarouselRowProps) => {
-  const people = deduplicatePeople(list.recommended_people ?? []);
+  const people = list.recommended_people;
   if (people.length === 0) return null;
 
   return (

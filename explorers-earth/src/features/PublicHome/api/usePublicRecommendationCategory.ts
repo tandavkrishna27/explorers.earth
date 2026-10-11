@@ -1,7 +1,8 @@
 import {completeGamesPreviews,gamePageCursor,mergeGamePage} from '../utils/publicProfileContent';
 import {completeMoviesPreviews,moviePageCursor,mergeMoviePage} from '../../Movies/api/publicMoviesContinuation';
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {completeBooksPreviews} from '../../Books/api/publicBooksContinuation';
+import {completePeoplePreviews} from '../../People/api/publicPeopleSectorViewModel';
 import { publicProfileGatewayClient, type PublicCategory } from "./publicProfileGatewayClient";
 import { subscribePublicProfileInvalidation } from "./publicProfileInvalidation";
 import { mergePublicPage, PUBLIC_PROFILE_PAGE_SIZE, readPublicPageRows } from "./publicProfilePagination";
@@ -15,11 +16,14 @@ export function usePublicRecommendationCategory(
   enabled: boolean,
 ): PublicPagedState {
   const normalizedUsername = username?.trim().toLowerCase();
-  const scope = normalizedUsername ? `${normalizedUsername}\u0000${category}` : undefined;
+  const [peopleRevision,setPeopleRevision]=useState(0);
+  const scope = normalizedUsername ? `${normalizedUsername}\u0000${category}${category==='people'?`\u0000${peopleRevision}`:''}` : undefined;
   const deferredInvalidation = useRef<string>();
   const movieCursors=useRef(new Map<number,string|null>());
-  const richPage=async(value:Promise<unknown>,signal:AbortSignal,bypass:boolean,offset=0)=>{
+  const peopleBudget=useRef({bytes:0});
+  const richPage=async(value:Promise<unknown>,signal:AbortSignal,bypass:boolean,offset=0,budget=peopleBudget.current)=>{
     const page=await value;
+    if(category==='people')return completePeoplePreviews(page,(slug,cursor)=>publicProfileGatewayClient.detailPage(username!,category,slug,{limit:24,cursor},signal,bypass),signal,budget);
     if(category==='books')return completeBooksPreviews(page,(slug,cursor)=>publicProfileGatewayClient.detailPage(username!,category,slug,{limit:24,cursor},signal,bypass));
     if(category!=='movies'&&category!=='games')return page;
     const complete=await (category==='games'?completeGamesPreviews:completeMoviesPreviews)(page,(slug,cursor)=>publicProfileGatewayClient.detailPage(username!,category,slug,{limit:12,cursor},signal,bypass));
@@ -29,7 +33,7 @@ export function usePublicRecommendationCategory(
   };
   const state = usePublicPagedResource({
     scope, enabled, bypassFirst: Boolean(scope && deferredInvalidation.current === scope),
-    readFirst: (signal, bypass) => {movieCursors.current.clear();return richPage(publicProfileGatewayClient.category(username!, category, signal, bypass),signal,bypass);},
+    readFirst: (signal, bypass) => {movieCursors.current.clear();peopleBudget.current={bytes:0};return richPage(publicProfileGatewayClient.category(username!, category, signal, bypass),signal,bypass);},
     readNext: (offset, signal, bypass) => {const cursor=(category==='movies'||category==='games')?movieCursors.current.get(offset):`o${offset}`;if(!cursor)throw Error('PUBLIC_PROFILE_PAGINATION_LIMIT');return richPage(publicProfileGatewayClient.categoryPage(username!, category, { limit: PUBLIC_PROFILE_PAGE_SIZE, cursor }, signal, bypass),signal,bypass,offset);},
     peek: () => publicProfileGatewayClient.peekCategory(username!, category) as PublicPagePayload | undefined,
     readRows: (data) => readPublicPageRows(data, category, false),
@@ -45,9 +49,10 @@ export function usePublicRecommendationCategory(
     }[category];
     if (!normalizedUsername) return;
     return subscribePublicProfileInvalidation((event) => {
-      if (event.username.trim().toLowerCase() !== normalizedUsername || event.category !== eventCategory) return;
+      if (event.username.trim().toLowerCase() !== normalizedUsername || (event.category !== eventCategory && !(category==='people'&&event.category==='public_profile'))) return;
       // The listener stays mounted while hidden; only this scope can consume it.
-      if (enabled) void state.refetch();
+      if(category==='people')setPeopleRevision(value=>value+1);
+      else if (enabled) void state.refetch();
       else deferredInvalidation.current = scope;
     });
   }, [category, enabled, normalizedUsername, scope, state.refetch]);

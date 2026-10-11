@@ -1,31 +1,27 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { useParams, Link, useOutletContext, useLocation } from "react-router-dom";
+import { useParams, Link, useOutletContext, useLocation, useNavigate } from "react-router-dom";
 import { Users, ArrowLeft } from "lucide-react";
 import {
-  deduplicatePeople,
   buildImageUrl,
-  slugToCategoryName,
-  categoryToSlug,
 } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
-import type { RecommendedPerson, PersonList } from "../../types";
+import type { RecommendedPerson } from "../../types";
 import PersonDetailModal from "./PersonDetailModal";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
-import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
+import { PublicRouteErrorState, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
 import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
-import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
-
-const isRenderablePersonList = (value: unknown): value is PersonList =>
-  isNonNullObject(value) && Array.isArray(value.recommended_people);
+import { usePublicPeopleSector } from "../../api/usePublicPeopleSector";
+import { publicPersonViewModel } from "../../api/publicPeopleSectorViewModel";
+import { subscribePublicProfileInvalidation } from "../../../PublicHome/api/publicProfileInvalidation";
 
 const PublicPersonSector = () => {
   const { username, sectorSlug } = useParams<{ username: string; sectorSlug: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
-  const sectorName = slugToCategoryName(sectorSlug ?? "");
 
   const [selectedPerson, setSelectedPerson] = useState<RecommendedPerson | null>(null);
 
@@ -36,19 +32,17 @@ const PublicPersonSector = () => {
     createAnalyticsOptions.people(accountDocumentId || "", username),
   );
 
-  const { data, loading: peopleLoading, error: peopleError, refetch: refetchPeople } = usePublicRecommendationCategory(username, "people", accountData?.public_people === "Yes");
+  const eligible = accountData?.public_people === "Yes";
+  const { data, loading: peopleLoading, error: peopleError, refetch: refetchPeople } = usePublicPeopleSector(username, sectorSlug, eligible);
+  const sectorName = data?.sector.Category_name ?? "People sector";
+  const canonicalSlug = data?.canonicalSlug;
+  useEffect(() => {if(data?.redirectSlug && data.redirectSlug!==sectorSlug)navigate(`/${username}/people/sector/${data.redirectSlug}`,{replace:true});},[data?.redirectSlug,sectorSlug,username,navigate]);
+  useEffect(() => {setSelectedPerson(null);},[username,sectorSlug,eligible]);
+  useEffect(() => subscribePublicProfileInvalidation(event=>{if(event.username.trim().toLowerCase()===username?.trim().toLowerCase()&&(event.category==='public_people'||event.category==='public_profile'))setSelectedPerson(null);}),[username]);
 
   const loading = userLoading || peopleLoading;
-  const queryError = userError || peopleError;
-  const rawLists = data?.personLists;
-  const lists: PersonList[] = (Array.isArray(rawLists) ? rawLists : [])
-    .filter(isRenderablePersonList)
-    .map((list) => ({
-      ...list,
-      recommended_people: list.recommended_people.filter(isNonNullObject) as PersonList["recommended_people"],
-    }));
-  const completeCollection = Array.isArray(rawLists) && rawLists.every(isRenderablePersonList);
-  const hasUsableData = queryError ? lists.length > 0 : completeCollection;
+  const queryError = userError || peopleError || (!userLoading && !eligible ? new Error("PUBLIC_PROFILE_404") : null);
+  const hasUsableData = Boolean(data) && eligible;
 
   useEffect(() => {
     if (!loading || hasUsableData) {
@@ -60,48 +54,23 @@ const PublicPersonSector = () => {
     await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchPeople : undefined);
   }, [accountDocumentId, refetchPeople, refetchUser]);
 
-  // Extract all people across lists, deduplicate, and filter by sector slug
-  const allPeople = useMemo(() => {
-    return deduplicatePeople<RecommendedPerson>(lists.flatMap((l) => l.recommended_people ?? []));
-  }, [lists]);
-
-  const sectorPeople = useMemo(() => {
-    return allPeople.filter(
-      (p) =>
-        p.people_category?.Category_name &&
-        categoryToSlug(p.people_category.Category_name) === sectorSlug
-    );
-  }, [allPeople, sectorSlug]);
-
-  const owningListByPersonId = useMemo(() => {
-    const ownership = new Map<string, { documentId: string; name: string }>();
-    lists.forEach((list) => {
-      list.recommended_people?.forEach((person) => {
-        ownership.set(person.documentId, {
-          documentId: list.documentId,
-          name: list.List_Name,
-        });
-      });
-    });
-    return ownership;
-  }, [lists]);
+  const sectorPeople = useMemo(() => (data?.recommended_people ?? []).map(publicPersonViewModel),[data]);
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
     setSelectedPerson(person);
-    const owningList = owningListByPersonId.get(person.documentId);
     analytics.trackClick("person-card", {
       id: person.documentId,
-      listId: person.person_list?.documentId || owningList?.documentId,
-      listName: person.person_list?.List_Name || owningList?.name,
+      listId: person.person_list?.documentId,
+      listName: person.person_list?.List_Name,
       title: person.full_name || person.name,
       category: person.people_category?.Category_name,
     });
-  }, [analytics, owningListByPersonId]);
+  }, [analytics]);
 
   usePublicHeaderDescriptor(sectorSlug ? {
     navigationKey: location.key,
     title: `${sectorName} recommendations by ${creatorName}`,
-    url: window.location.href,
+    url: canonicalSlug ? createCanonicalUrl(`/${username}/people/sector/${canonicalSlug}`) : window.location.href,
     analyticsContext: "people-sector-header",
     analyticsMetadata: { sector: sectorSlug },
   } : undefined);
@@ -117,7 +86,7 @@ const PublicPersonSector = () => {
           title={pageTitle}
           description={metaDescription}
           keywords={seoKeywords}
-          canonical={createCanonicalUrl(`/${username}/people/sector/${sectorSlug}`)}
+          canonical={createCanonicalUrl(`/${username}/people/sector/${canonicalSlug ?? sectorSlug}`)}
           type="website"
           author={creatorName}
           siteName="explorers"
@@ -132,8 +101,6 @@ const PublicPersonSector = () => {
           >
             <ArrowLeft size={14} /> {creatorName}'s People
           </Link>
-
-          {Boolean(queryError) && hasUsableData && <PublicRoutePartialNotice message="Some people data is unavailable." />}
 
           {loading && !hasUsableData ? (
             <>
@@ -166,7 +133,7 @@ const PublicPersonSector = () => {
                   <div className="w-20 h-3 rounded bg-[var(--category-skeleton,rgba(255,255,255,0.05))] skeleton-shimmer relative overflow-hidden" />
                 </div>
               ))
-            ) : sectorPeople.length === 0 ? (
+            ) : queryError ? null : hasUsableData && sectorPeople.length === 0 ? (
               <div className="col-span-full py-12 text-center text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-sm">
                 No people recommended in this sector.
               </div>
@@ -216,8 +183,8 @@ const PublicPersonSector = () => {
         </div>
 
         <PersonDetailModal
-          open={!!selectedPerson}
-          person={selectedPerson}
+          open={eligible && !peopleLoading && !!selectedPerson}
+          person={eligible && !peopleLoading ? selectedPerson : null}
           onClose={() => setSelectedPerson(null)}
         />
       </div>
