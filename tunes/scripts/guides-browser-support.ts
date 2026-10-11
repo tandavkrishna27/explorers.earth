@@ -56,6 +56,23 @@ function blocks() {
     preTasks:{items:[{localId:'reserve',label:'Reserve room',done:true}]},tags:['दिन','café']});
 }
 
+// Case4 has overlapping manual fixture metadata so positive filters can prove
+// ordered subsets. The selected guide, foreign owner and every other case retain
+// their original metadata; these city snapshots make no provider lookup claim.
+function pagingDetails(order:number){
+ const original=details(),group=order%6;
+ if(group===0)return original;
+ const variants=[null,
+  {guideType:'city',categories:['food'],numberOfDays:5,budgetType:'total',bestTimeToVisit:['नवंबर'],city:'दिल्ली'},
+  {guideType:'itinerary',categories:['culture'],numberOfDays:5,budgetType:'total',bestTimeToVisit:['अक्टूबर'],city:'दिल्ली'},
+  {guideType:'experience',categories:['nature'],numberOfDays:3,budgetType:'per-person',bestTimeToVisit:['नवंबर'],city:'कोलकाता'},
+  {guideType:'city',categories:['culture'],numberOfDays:7,budgetType:'per-person',bestTimeToVisit:['अक्टूबर'],city:'कोलकाता'},
+  {guideType:'collection',categories:['food'],numberOfDays:3,budgetType:'total',bestTimeToVisit:['नवंबर'],city:'दिल्ली'},
+ ];
+ const {city,...variant}=variants[group]!;
+ return guideCollectionDetailsSchema.parse({...original,...variant,place:{name:city,address:'भारत',placeId:city==='कोलकाता'?'guide_city':'guide_city_delhi',rating:4.5,ratingsCount:12,lat:0,lng:0}});
+}
+
 export function buildGuidesSeedPlan(caseId:string) {
   const index=GUIDES_CASES.findIndex(title=>title===caseId);
   if(index<0) throw new Error('Unknown Guides case');
@@ -63,7 +80,7 @@ export function buildGuidesSeedPlan(caseId:string) {
     key:`${owner}-guide-${displayOrder}`,owner,title:`यात्रा ${displayOrder+1}`,
     slug:`guide-${displayOrder+1}`,displayOrder,archived:owner==='ownerA' && index===3 && displayOrder===1,
     visibility:owner==='ownerA' && index===4 && displayOrder===53?'private' as const:'public' as const,
-    publicationState:'published' as const,details:details(),
+    publicationState:'published' as const,details:index===4&&owner==='ownerA'?pagingDetails(displayOrder):details(),
   });
   const guides=[...sectionCounts[index].map((_,i)=>makeGuide('ownerA',i)),makeGuide('ownerB',0)];
   const sections=guides.flatMap(guide=>{

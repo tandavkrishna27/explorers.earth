@@ -78,7 +78,7 @@ it('actual browser response requires bounded body and finished original transpor
 it('only frozen authored cases are present; native deletion/archive follow reload and precede retirement',()=>{
  const ast=source(),tests:ts.CallExpression[]=[];function walk(n:ts.Node){if(ts.isCallExpression(n)&&(n.expression.getText(ast)==='test'||ts.isPropertyAccessExpression(n.expression)&&n.expression.expression.getText(ast)==='test'))tests.push(n);ts.forEachChild(n,walk);}walk(ast);
  expect(tests.every(t=>t.expression.getText(ast)==='test')).toBe(true);
- expect(tests.map(t=>t.arguments[0].getText(ast)).sort()).toEqual(['GUIDES_CASES[1]','GUIDES_CASES[2]','GUIDES_CASES[3]']);
+ expect(tests.map(t=>t.arguments[0].getText(ast)).sort()).toEqual(['GUIDES_CASES[1]','GUIDES_CASES[2]','GUIDES_CASES[3]','GUIDES_CASES[4]']);
  const sectionCase=tests.find(t=>t.arguments[0].getText(ast)==='GUIDES_CASES[3]')!;
  const body=sectionCase.arguments[1].getText(ast);expect(body).toContain('repeat: 0');expect(body).toContain('harness.trackProducer');expect(body).toContain('harness.closeContext');expect(body.indexOf('harness.observe')).toBeLessThan(body.indexOf('harness.retire'));
  const calls:string[]=[];function collect(n:ts.Node){if(ts.isCallExpression(n))calls.push(n.expression.getText(ast));ts.forEachChild(n,collect);}collect(sectionCase);
