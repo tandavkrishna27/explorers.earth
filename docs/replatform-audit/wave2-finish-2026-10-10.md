@@ -867,3 +867,7 @@ Independent review accepted case2 original native stale save, retained draft, ex
 ### Approval and next source work
 User approval received for proposed included feature semantics and Guides entered-location/local fixture provider approach. Actual People vocabulary, approved scrape sources and intended nightly worker host remain unsupplied; approval is not evidence of real provider execution. Guides case1 implementation and bounded transport identity repair are proceeding separately. QA attestation adapter source proceeds under audited closed configuration, genuine pinned executable provenance and original child custody; publishing/deployment remain unauthorized and no native qualification is inferred.
 
+
+### Taxonomy contract first slice
+Approved Places/People semantics now have strict pure catalog import and assignment contracts. Independent review found UUID case aliases bypassing duplicate/distinct identity checks; actual regression RED1 then GREEN7 after rejecting noncanonical casing. Root fresh seven taxonomy contracts and selected TypeScript passed. Complete state validation rejects duplicate IDs/slugs/mappings, unsupported hierarchy, missing default labels and dangling references without synthesizing source data. Storage, locks, actual import, routes and native feature qualification remain open; no production vocabulary or provider provenance is claimed.
+
