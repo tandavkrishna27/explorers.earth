@@ -1255,6 +1255,146 @@
           "repeat": 0
         }
       ]
+    },
+    {
+      "name": "guides",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/guides.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/guides.spec.ts",
+      "projects": [
+        "guides-desktop",
+        "guides-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: complete non-ASCII wizard metadata and creator categories survive reload"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: retained section editors preserve every untouched block after reload"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: stale sections retain drafts and wrong guide owner matches missing"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: section reorder deletion and archive preserve exact persisted scope"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: complete owner and public guide pages retain every section and filter order"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: native cover failure preserves old bytes and fresh retry replaces cover"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: native section photo import persists metadata and public views after reload"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: publication pin and ancestor withdrawal enforce cold public media access"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: complete non-ASCII wizard metadata and creator categories survive reload"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: retained section editors preserve every untouched block after reload"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: stale sections retain drafts and wrong guide owner matches missing"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: section reorder deletion and archive preserve exact persisted scope"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: complete owner and public guide pages retain every section and filter order"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: native cover failure preserves old bytes and fresh retry replaces cover"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: native section photo import persists metadata and public views after reload"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: publication pin and ancestor withdrawal enforce cold public media access"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        }
+      ]
     }
   ],
   "limits": [
@@ -1264,7 +1404,8 @@
     "Lifecycle is one Chromium desktop project; provider simulation is not deployed Google acceptance",
     "The stable delivered-auth-profile-books CLI scope is a compatibility identifier; actual scope includes Movies desktop/mobile Chromium in its separate exact24-identity lane, not live TMDB or deployed QA qualification.",
     "Places and place-links append16 proposed local identities; Maps selection and Google REST are simulated with no provider photo import. Linked arrays are bounded12, Places traversal53 is distinct from all-category parity.",
-    "Apps adds eight manual desktop/mobile Chromium identities; native source integration and protected execution remain unqualified; no nightly provider fetch, scheduler or complete public pagination evidence."
+    "Apps adds eight manual desktop/mobile Chromium identities; native source integration and protected execution remain unqualified; no nightly provider fetch, scheduler or complete public pagination evidence.",
+    "Guides adds sixteen complete desktop/mobile Chromium source identities; clean frozen exact-head discovery and protected native execution remain unqualified. Public32 and new feature obligations remain mandatory."
   ],
   "pending": [
     {
@@ -1311,6 +1452,11 @@
       "ticket": "5.3/5.4",
       "obligation": "Apps manual8 awaits integrated owned fixture and protected native execution; provider enrichment, taxonomy and complete public pagination remain independently pending",
       "status": "pending"
+    },
+    {
+      "ticket": "5.5/5.6",
+      "obligation": "Guides complete16 awaits independently reviewed clean exact-head discovery and protected owned native execution; Public32 and new feature acceptance remain pending",
+      "status": "pending"
     }
   ],
   "scopeContents": [
@@ -1323,7 +1469,8 @@
     "music",
     "places",
     "place-links",
-    "apps"
+    "apps",
+    "guides"
   ],
   "scopeCompatibilityIdentifier": true
 }
