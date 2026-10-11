@@ -29,6 +29,7 @@ it('source only: lock protocol and privileges preserve existing revision authori
  expect(source).toContain('Legacy mapping conflicts with canonical slug');
  expect(source).toContain('PRIMARY KEY(category,source_host,entity_kind,document_id)');
  expect(source).toContain('PRIMARY KEY(category,legacy_slug)');
- expect(source).not.toContain('CREATE OR REPLACE FUNCTION');expect(source).not.toContain('content_revision');
+ expect(source.match(/CREATE OR REPLACE FUNCTION/g)).toHaveLength(1);
+ expect(source).toContain('CREATE OR REPLACE FUNCTION public.purge_explorers_account_content');expect(source).not.toContain('content_revision');
  expect(source).toContain('REFERENCES public.taxonomy_terms(id,category) ON DELETE RESTRICT');
 });

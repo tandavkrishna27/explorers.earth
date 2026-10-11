@@ -95,6 +95,9 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
       const db = uploadGate;
       try {
         await db.query("BEGIN");
+        // Cascading taxonomy deletes must follow catalog -> account -> category order.
+        await db.query("SELECT lock_explorers_taxonomy_catalog('people')");
+        await db.query("SELECT lock_explorers_taxonomy_catalog('places')");
         const account = await db.query<{ status: string; user_id: string }>(`SELECT a.status,m.user_id FROM creator_accounts a
           JOIN account_memberships m ON m.account_id=a.id AND m.role='owner'
           WHERE a.id=$1 FOR UPDATE OF a`, [operation.account_id]);

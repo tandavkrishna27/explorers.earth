@@ -147,3 +147,39 @@ REVOKE ALL ON public.taxonomy_catalogs,public.taxonomy_source_mappings,public.ta
 GRANT SELECT ON public.taxonomy_catalogs,public.taxonomy_source_mappings,public.taxonomy_legacy_slug_mappings TO music_runtime;
 REVOKE ALL ON FUNCTION public.lock_explorers_taxonomy_catalog(text),public.lock_recommendation_taxonomy_catalog(),public.validate_explorers_taxonomy_catalogs(),public.guard_explorers_taxonomy_catalogs(),public.guard_taxonomy_import_receipt_immutable() FROM PUBLIC,music_runtime;
 GRANT EXECUTE ON FUNCTION public.lock_explorers_taxonomy_catalog(text) TO music_runtime;
+
+-- Lifecycle purge may cascade taxonomy DELETEs. Acquire sorted catalog locks
+-- before the account lock; preserve the latest 0049 deletion authority and body.
+CREATE OR REPLACE FUNCTION public.purge_explorers_account_content(target_account uuid,target_operation uuid) RETURNS integer
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+DECLARE current_status text; eligible boolean; removed_collections integer; removed_recommendations integer; scope_category text;
+BEGIN
+ PERFORM public.lock_explorers_taxonomy_catalog('people');
+ PERFORM public.lock_explorers_taxonomy_catalog('places');
+ SELECT status INTO current_status FROM public.creator_accounts WHERE id=target_account FOR UPDATE;
+ IF current_status IS DISTINCT FROM 'pending_deletion' THEN
+  RAISE EXCEPTION 'Terminal deletion authority required' USING ERRCODE='42501';
+ END IF;
+ -- Account -> sorted category -> operation/aggregate. Retain counters forever;
+ -- zero-row statement triggers derive no scopes on an idempotent purge retry.
+ FOR scope_category IN SELECT category FROM unnest(ARRAY['apps','books','games','guides','movies','people','places','products']) category ORDER BY category LOOP
+  PERFORM pg_catalog.pg_advisory_xact_lock(44031,pg_catalog.hashtext(target_account::text || ':' || scope_category));
+ END LOOP;
+ SELECT true INTO eligible FROM public.account_lifecycle_operations o JOIN public.creator_accounts a ON a.id=o.account_id
+   WHERE o.id=target_operation AND o.account_id=target_account AND o.kind='delete' AND o.state='running'
+     AND a.deletion_requested_at<=clock_timestamp() FOR UPDATE OF o;
+ IF eligible IS DISTINCT FROM true THEN
+  RAISE EXCEPTION 'Matching running terminal deletion required' USING ERRCODE='42501';
+ END IF;
+ UPDATE public.analytics_event_receipts SET retired_at=coalesce(retired_at,clock_timestamp()),event_id=NULL WHERE account_id=target_account AND event_id IS NOT NULL;
+ DELETE FROM public.analytics_events WHERE account_id=target_account;
+ DELETE FROM public.collections WHERE account_id=target_account;
+ GET DIAGNOSTICS removed_collections=ROW_COUNT;
+ DELETE FROM public.recommendation_app_screenshots WHERE account_id=target_account;
+ DELETE FROM public.recommendation_place_photos WHERE account_id=target_account;
+ DELETE FROM public.recommendation_movie_media WHERE account_id=target_account;
+ DELETE FROM public.recommendations WHERE account_id=target_account;
+ GET DIAGNOSTICS removed_recommendations=ROW_COUNT;
+ DELETE FROM public.account_category_pin_state WHERE account_id=target_account;
+ RETURN removed_collections+removed_recommendations;
+END $$;
