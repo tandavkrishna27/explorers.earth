@@ -1,4 +1,5 @@
 import {act, cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import {MockedProvider} from '@apollo/client/testing';
@@ -14,7 +15,7 @@ import useAuthStore from '../../../../../store/store';
 
 const fixture = vi.hoisted(() => ({content: {view: {lists: [] as unknown[]}, details: new Map(), observation: {}}, loading: false, error: undefined as Error | undefined, refetch: vi.fn()}));
 vi.mock('../../../hooks/usePeopleOwner', () => ({usePeopleOwner: () => ({content: fixture.content, data: {personLists: fixture.content.view.lists}, loading: fixture.loading, error: fixture.error, refetch: fixture.refetch}), invalidatePeople: vi.fn()}));
-vi.mock('../../../api/peopleClient', () => ({PeopleClient: {observeCollection: vi.fn(), prepareManualIntent: vi.fn(), createManual: vi.fn(), upload: vi.fn(), updateRecommendation: vi.fn(), observeRecommendation: vi.fn(), updateCollection: vi.fn(), archiveCollection: vi.fn(), archiveRecommendation: vi.fn(), createCollection: vi.fn(), readCompleteOwner: vi.fn(), setTopPicks: vi.fn(), prepareMembershipIntent: vi.fn(), saveMembership: vi.fn()}}));
+vi.mock('../../../api/peopleClient', () => ({PeopleClient: {readSectorCatalog:vi.fn(),observeCollection: vi.fn(), prepareManualIntent: vi.fn(), createManual: vi.fn(), upload: vi.fn(), updateRecommendation: vi.fn(), observeRecommendation: vi.fn(), updateCollection: vi.fn(), archiveCollection: vi.fn(), archiveRecommendation: vi.fn(), createCollection: vi.fn(), readCompleteOwner: vi.fn(), setTopPicks: vi.fn(), prepareMembershipIntent: vi.fn(), saveMembership: vi.fn()}}));
 vi.mock('../../../../Favorites/components/TiptapEditor', () => ({default: ({value, onChange}: {value: string; onChange: (value: string) => void}) => <textarea aria-label="Note" value={value} onChange={event => onChange(event.target.value)} />}));
 vi.mock('sonner', () => ({toast: {success: vi.fn(), error: vi.fn(), loading: vi.fn()}}));
 
@@ -22,16 +23,46 @@ function mount() { return render(<MockedProvider><MemoryRouter initialEntries={[
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return {promise, resolve}; }
 const fill = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), {target: {value}});
 const draft = () => vi.mocked(PeopleClient.prepareManualIntent).mock.calls[0][1];
+const sectorId='00000000-0000-4000-8000-000000000123';
+const catalog=()=>({complete:true,category:'people',state:'CONFIGURED',catalogVersion:2,defaultLocale:'en',requestedLocale:null,items:[{id:sectorId,category:'people',parentId:null,label:'Approved sector',slug:'approved-sector',position:0,resolvedLocale:'en'}],nextCursor:null});
+beforeEach(()=>{vi.mocked(PeopleClient.readSectorCatalog).mockResolvedValue(catalog() as never);});
 
 describe('native manual People', () => {
  beforeEach(() => {
   vi.clearAllMocks(); fixture.loading = false; fixture.error = undefined; fixture.content.view.lists = []; fixture.content.details.clear();
-  useAuthStore.getState().login({id: 'u1', documentId: 'u1', username: 'owner', token: 'fixture'}); useAuthStore.setState({accountId: 'a1'});
+  useAuthStore.getState().login({id: 'u1', documentId: 'u1', username: 'owner',email:'owner@example.invalid',blocked:false, token: 'fixture'}); useAuthStore.setState({accountId: 'a1'});
   vi.mocked(PeopleClient.observeCollection).mockResolvedValue({detail: {id: 'list-1'}} as never);
   vi.mocked(PeopleClient.prepareManualIntent).mockImplementation((parent, d) => ({parent, draft: d, entityKey: 'entity-key', recommendationKey: 'recommendation-key'}) as never);
   vi.mocked(PeopleClient.createManual).mockResolvedValue({id: 'person-1'} as never);
  });
  afterEach(() => { cleanup(); useAuthStore.getState().logout(); });
+
+ it('selects the canonical sector and keeps it in the retry signature',async()=>{
+  vi.mocked(PeopleClient.createManual).mockRejectedValueOnce(new Error('Retry save'));
+  mount();fill('Full Name','Alex');await screen.findByRole('option',{name:'Approved sector'});fill('Sector',sectorId);
+  fireEvent.click(screen.getByRole('button',{name:'Save person'}));await screen.findByText('Retry save');
+  expect(draft()).toHaveProperty('peopleSectorTermId',sectorId);
+  fireEvent.click(screen.getByRole('button',{name:'Save person'}));await screen.findByText('Saved list');expect(PeopleClient.prepareManualIntent).toHaveBeenCalledTimes(1);
+ });
+ it('reports unconfigured sector and saves an unassigned person',async()=>{
+  vi.mocked(PeopleClient.readSectorCatalog).mockResolvedValue({...catalog(),state:'UNCONFIGURED',catalogVersion:0,defaultLocale:null,items:[]} as never);
+  mount();await screen.findByText('Sector catalog is not configured.');fill('Full Name','Alex');fireEvent.click(screen.getByRole('button',{name:'Save person'}));await screen.findByText('Saved list');expect(draft()).not.toHaveProperty('peopleSectorTermId');
+ });
+ it('restarts catalog loading after a conflict without losing entered fields',async()=>{
+  vi.mocked(PeopleClient.readSectorCatalog).mockRejectedValueOnce(new Error('Catalog changed'));
+  mount();fill('Full Name','Retained');await screen.findByText('Catalog changed');fireEvent.click(screen.getByRole('button',{name:'Retry loading sectors'}));await screen.findByRole('option',{name:'Approved sector'});expect(screen.getByLabelText('Full Name')).toHaveValue('Retained');
+ });
+ it('ignores late catalog replies after the owner changes',async()=>{
+  const old=deferred<never>();vi.mocked(PeopleClient.readSectorCatalog).mockReturnValueOnce(old.promise).mockResolvedValueOnce({...catalog(),items:[],state:'UNCONFIGURED',catalogVersion:0,defaultLocale:null} as never);
+  mount();act(()=>useAuthStore.setState({generation:useAuthStore.getState().generation+1}));await screen.findByText('Sector catalog is not configured.');await act(async()=>old.resolve(catalog() as never));expect(screen.queryByRole('option',{name:'Approved sector'})).not.toBeInTheDocument();
+ });
+ it.each(['category','child','unknown'])('refuses a forged %s sector choice before dispatch',async kind=>{
+  if(kind!=='unknown')vi.mocked(PeopleClient.readSectorCatalog).mockResolvedValue({...catalog(),items:[{...catalog().items[0],...(kind==='category'?{category:'places'}:{parentId:'root-id'})}]} as never);
+  mount();fill('Full Name','Retained');await waitFor(()=>expect(screen.queryByText('Loading sectors…')).not.toBeInTheDocument());
+  const forgedId=kind==='unknown'?'00000000-0000-4000-8000-000000000999':sectorId;
+  const select=screen.getByLabelText('Sector') as HTMLSelectElement;const option=document.createElement('option');option.value=forgedId;option.text='Forged';select.add(option);fill('Sector',forgedId);
+  fireEvent.click(screen.getByRole('button',{name:'Save person'}));await screen.findByText('Reload sectors and choose an available sector before saving');expect(PeopleClient.prepareManualIntent).not.toHaveBeenCalled();expect(PeopleClient.createManual).not.toHaveBeenCalled();
+ });
 
  it('creates a person from the owner-entered fields, with the link under both keys', async () => {
   mount();
@@ -60,6 +91,7 @@ describe('native manual People', () => {
 
  it('offers X as the label while sending the stored twitter value', async () => {
   mount();
+  await screen.findByRole('option',{name:'Approved sector'});
   const options = [...(screen.getByLabelText('Platform') as HTMLSelectElement).options];
   expect(options.map(option => option.value)).toEqual(['', 'instagram', 'linkedin', 'twitter', 'github', 'youtube', 'website', 'other']);
   expect(options.find(option => option.value === 'twitter')?.text).toBe('X');
@@ -138,7 +170,7 @@ describe('native manual People', () => {
 });
 
 describe('manual People edit', () => {
- function editElement() { return <MockedProvider><MemoryRouter initialEntries={['/people/list-1/edit/person-a']}><Routes><Route path="/people/:listId/edit/:personId" element={<AddPersonPage />} /></Routes></MemoryRouter></MockedProvider>; }
+ function editElement() { return <MockedProvider><MemoryRouter initialEntries={['/people/list-1/edit/person-a']}><Routes><Route path="/people/:listId/edit/:personId" element={<AddPersonPage />} /><Route path="/recommendations/people/:listId" element={<p>Saved list</p>} /></Routes></MemoryRouter></MockedProvider>; }
  function loaded() {
   const person = {documentId: 'person-a', name: 'Alex Lee', full_name: 'Alex Lee', username_handle: 'alexlee', headline: 'Designer',
    location: 'Lisbon', avatar_path: null, media_details: null, primary_platform: 'twitter', platform: 'x',
@@ -149,8 +181,20 @@ describe('manual People edit', () => {
   fixture.content.details.set('person-a', {detail: {id: 'person-a', revision: 1, category: 'people'}});
   fixture.content = {...fixture.content}; fixture.loading = false; fixture.error = undefined;
  }
- beforeEach(() => { vi.clearAllMocks(); fixture.content = {view: {lists: []}, details: new Map(), observation: {}}; fixture.loading = false; fixture.error = undefined; useAuthStore.getState().login({id: 'u1', documentId: 'u1', username: 'owner', token: 'fixture'}); useAuthStore.setState({accountId: 'a1'}); });
+ beforeEach(() => { vi.clearAllMocks(); fixture.content = {view: {lists: []}, details: new Map(), observation: {}}; fixture.loading = false; fixture.error = undefined; useAuthStore.getState().login({id: 'u1', documentId: 'u1', username: 'owner',email:'owner@example.invalid',blocked:false, token: 'fixture'}); useAuthStore.setState({accountId: 'a1'}); });
  afterEach(() => { cleanup(); useAuthStore.getState().logout(); });
+
+ it('hydrates a sector from the owner read and omits untouched assignments',async()=>{
+  loaded();fixture.content.details.get('person-a').detail.peopleSector={sector:{id:sectorId,slug:'approved-sector',label:'Approved sector',unavailable:false},catalogState:'CONFIGURED',catalogVersion:2,defaultLocale:'en',selectionUnavailable:false};
+  render(editElement());await screen.findByRole('option',{name:'Approved sector'});expect(screen.getByLabelText('Sector')).toHaveValue(sectorId);
+  fireEvent.click(screen.getByRole('button',{name:'Save person'}));await waitFor(()=>expect(PeopleClient.updateRecommendation).toHaveBeenCalled());expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).not.toHaveProperty('peopleSectorTermId');
+ });
+ it.each(['clear','replace'])('allows %s of an unavailable existing sector even with no configured catalog',async action=>{
+  loaded();fixture.content.details.get('person-a').detail.peopleSector={sector:{id:'old-sector',slug:'stored-slug',label:null,unavailable:true},catalogState:'UNCONFIGURED',catalogVersion:0,defaultLocale:null,selectionUnavailable:true};
+  if(action==='clear')vi.mocked(PeopleClient.readSectorCatalog).mockResolvedValue({...catalog(),state:'UNCONFIGURED',catalogVersion:0,defaultLocale:null,items:[]} as never);
+  render(editElement());await screen.findByText(action==='clear'?'Sector catalog is not configured.':'Existing sector is unavailable.');expect(screen.getByLabelText('Sector')).toHaveValue('old-sector');expect(screen.getByRole('option',{name:'stored-slug (unavailable)'})).toBeInTheDocument();
+  fill('Sector',action==='clear'?'':sectorId);fireEvent.click(screen.getByRole('button',{name:'Save person'}));await waitFor(()=>expect(PeopleClient.updateRecommendation).toHaveBeenCalled());expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toHaveProperty('peopleSectorTermId',action==='clear'?null:sectorId);
+ });
 
  it('hydrates the stored platform rather than its presented alias', async () => {
   loaded(); render(editElement());

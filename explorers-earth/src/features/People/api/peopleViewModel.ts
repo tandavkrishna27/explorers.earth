@@ -26,6 +26,8 @@ export function personViewModel(detail:Readonly<EditableOwnerRecommendation>,mem
  const parsed=personEntityDetailsSchema.safeParse(detail.effectivePersonDetails);
  if(!parsed.success)throw new ExplorersApiError(409,'CONFLICT','Person details are unavailable');
  const facts=parsed.data;
+ const sector=detail.peopleSector?.sector;
+ const category=sector?{id:sector.id,documentId:sector.id,slug:sector.slug,Category_name:sector.label,unavailable:sector.unavailable}:null;
  const name=detail.displayTitle??'Unnamed person';
  const selectedPin=pin?.recommendationId===membership.recommendationId&&pin.collectionId===membership.collectionId?pin:undefined;
  // The primary link is the explicit primary, else the link for the stated platform.
@@ -57,10 +59,10 @@ export function personViewModel(detail:Readonly<EditableOwnerRecommendation>,mem
   bio:facts.headline,
   follower_count:facts.externalFollowerCountText,
   ...(primary===undefined?{}:{profile_url:primary}),
-  // Sector taxonomy is out of 4.5's scope and has no seeded vocabulary.
-  person_category:null,
-  people_category:null,
-  person_categories:null,
+  people_sector:detail.peopleSector,
+  person_category:category,
+  people_category:category,
+  person_categories:category?[category]:null,
  };
 }
 

@@ -66,9 +66,17 @@ describe('canonical fields and compatibility aliases',()=>{
   expect(row.profile_url).toBeUndefined();
  });
 
- it('reports no sector, since the taxonomy has no canonical source yet',()=>{
+ it('reports no sector when no assignment was returned',()=>{
   const row=personViewModel(detail(),membership());
   expect(row.person_category).toBeNull();expect(row.people_category).toBeNull();expect(row.person_categories).toBeNull();
+ });
+
+ it.each(['Known label',null])('maps sector identity, canonical slug and %s label from one source',label=>{
+  const sector={id:id(3),slug:'canonical-sector',label,unavailable:label===null};
+  const row=personViewModel(detail({peopleSector:{catalogState:'CONFIGURED',catalogVersion:2,defaultLocale:'en',sector,selectionUnavailable:label===null}}),membership());
+  expect(row.person_category).toMatchObject({id:id(3),documentId:id(3),slug:'canonical-sector',Category_name:label,unavailable:label===null});
+  expect(row.people_category).toBe(row.person_category);expect(row.person_categories).toEqual([row.person_category]);
+  expect(row.people_sector).toMatchObject({sector,selectionUnavailable:label===null});
  });
 
  it('refuses wrong category, wrong entity kind, mismatched identity and broken details',()=>{

@@ -19,6 +19,7 @@ export interface PersonList {
 }
 
 export interface RecommendedPerson {
+  people_sector?: {catalogState:'CONFIGURED'|'UNCONFIGURED';catalogVersion:number;defaultLocale:string|null;sector:{id:string;slug:string;label:string|null;unavailable:boolean}|null;selectionUnavailable:boolean};
   documentId: string;
   name: string;
   username_handle: string | null;
@@ -58,8 +59,11 @@ export interface RecommendedPerson {
 }
 
 export interface PeopleCategory {
+  id?: string;
   documentId: string;
-  Category_name: string;
+  Category_name: string | null;
+  slug?: string;
+  unavailable?: boolean;
 }
 
 // --- Form State Types ---

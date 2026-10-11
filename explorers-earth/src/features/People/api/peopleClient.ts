@@ -14,6 +14,7 @@ export type ManualPersonDraft={
  avatarUrl:string|null;primaryPlatform:PersonPlatform|null;socialUrls:PersonSocialUrls;
  skillsTags:string[];externalFollowerCountText:string|null;
  note:RichNote|null;userRating:number|null;mediaIds:string[];
+ peopleSectorTermId?:string|null;
 };
 export type ManualPersonIntent=Readonly<{entityKey:string;recommendationKey:string;parent:CollectionObservation;draft:Readonly<ManualPersonDraft>}>;
 export type PersonMembershipIntent=Readonly<{parent:CollectionObservation;item:RecommendationObservation;attached:boolean;commandKey:string}>;
@@ -30,6 +31,7 @@ function recommendation(value:RecommendationObservation){assertOwnerDetailObserv
 function complete(value:CompleteMyCategoryContent):asserts value is CompletePeopleOwnerContent{assertCompleteMyCategoryContent(value);if(value.category!=='people')fail();}
 
 export const PeopleClient={
+ readSectorCatalog(signal?:AbortSignal){return explorersApiClient.getCompleteTaxonomyCatalog({category:'people'},signal);},
  prepareMembershipIntent(parent:CollectionObservation,item:RecommendationObservation,attached:boolean):PersonMembershipIntent{
   collection(parent);recommendation(item);if(parent.accountId!==item.accountId||parent.generation!==item.generation||typeof attached!=='boolean')fail();
   const intent=freeze({parent,item,attached,commandKey:key()}),state=useAuthStore.getState();
@@ -56,9 +58,9 @@ export const PeopleClient={
    externalFollowerCountText:draft.externalFollowerCountText,
   }}).details;
   const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
-   .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft'});
+   .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',...(draft.peopleSectorTermId===undefined?{}:{peopleSectorTermId:draft.peopleSectorTermId})});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{
-   ...draft,...details,note:normalized.note,userRating:normalized.userRating,mediaIds:[...normalized.mediaIds],
+   ...draft,...details,note:normalized.note,userRating:normalized.userRating,mediaIds:[...normalized.mediaIds],...(normalized.peopleSectorTermId===undefined?{}:{peopleSectorTermId:normalized.peopleSectorTermId}),
   }});
   const state=useAuthStore.getState();intents.set(intent,{accountId:state.accountId,generation:state.generation,route:route()});return intent;
  },
@@ -67,7 +69,7 @@ export const PeopleClient={
   const {title,usernameHandle,headline,locationText,avatarUrl,primaryPlatform,socialUrls,skillsTags,externalFollowerCountText}=intent.draft;
   const entity=await explorersApiClient.resolvePersonEntity({kind:'manual',category:'people',details:{title,usernameHandle,headline,locationText,avatarUrl,primaryPlatform,socialUrls:{...socialUrls},skillsTags:[...skillsTags],externalFollowerCountText}},intent.entityKey,signal);
   current(scope,signal);collection(intent.parent);
-  const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,mediaIds:[...intent.draft.mediaIds],publicationState:'draft'},intent.recommendationKey,signal);
+  const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,mediaIds:[...intent.draft.mediaIds],publicationState:'draft',...(intent.draft.peopleSectorTermId===undefined?{}:{peopleSectorTermId:intent.draft.peopleSectorTermId})},intent.recommendationKey,signal);
   current(scope,signal);return result;
  },
  // Ticket 5.2. A list created from a location is linked in the same command, so a

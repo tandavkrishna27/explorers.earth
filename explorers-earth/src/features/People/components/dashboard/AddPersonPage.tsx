@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '../../../../store/store';
-import type { RecommendationObservation } from '../../../../lib/explorersApiClient';
+import type { RecommendationObservation, CompleteTaxonomyCatalog } from '../../../../lib/explorersApiClient';
 import { PeopleClient, type ManualPersonIntent } from '../../api/peopleClient';
 import { usePeopleCommands } from '../../api/query';
 import { invalidatePeople, usePeopleOwner } from '../../hooks/usePeopleOwner';
@@ -29,8 +29,6 @@ const PLATFORM_LABELS: Record<PersonPlatform, string> = {
  *    draft" asks for - there is no enrichment left to fail.
  *  - Scraped screenshots: imagery is owner media through the native route. Nothing here
  *    copies an image from a third party's profile.
- *  - The category selector read a Strapi taxonomy with no canonical replacement, and the
- *    projection serves person_category as null.
  *
  * One field genuinely has nowhere to go. The Strapi form had separate "Headline / Role"
  * and "Bio / Description" inputs, but the target schema's person_entity_details has only
@@ -58,12 +56,22 @@ export default function AddPersonPage() {
  const [note, setNote] = useState(''), [rating, setRating] = useState<number | null>(null);
  const [media, setMedia] = useState<{ id: string; url: string }[]>([]), [pending, setPending] = useState(0);
  const [saving, setSaving] = useState(false), [error, setError] = useState('');
+ const [sectorId,setSectorId]=useState(''),[sectorTouched,setSectorTouched]=useState(false);
+ const [catalog,setCatalog]=useState<CompleteTaxonomyCatalog>(),[catalogLoading,setCatalogLoading]=useState(true),[catalogError,setCatalogError]=useState(''),[catalogRetry,setCatalogRetry]=useState(0);
+ const [existingSector,setExistingSector]=useState<{id:string;slug:string;label:string|null;unavailable:boolean}|null>(null);
  const initialized = useRef(''), draftObservation = useRef<RecommendationObservation>();
  const intent = useRef<{ scope: string; signature: string; value: ManualPersonIntent }>();
  const updateKey = useRef<{ signature: string; key: string }>();
  const mounted = useRef(true);
 
  useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); active.current++; }; }, []);
+ useEffect(()=>{
+  const captured=scope,abort=new AbortController();let live=true;
+  setCatalog(undefined);setCatalogLoading(true);setCatalogError('');
+  PeopleClient.readSectorCatalog(abort.signal).then(value=>{if(live&&mounted.current&&currentScope.current===captured&&!abort.signal.aborted)setCatalog(value);},failure=>{if(live&&mounted.current&&currentScope.current===captured&&!abort.signal.aborted)setCatalogError(failure instanceof Error?failure.message:'Sectors could not be loaded');}).finally(()=>{if(live&&mounted.current&&currentScope.current===captured&&!abort.signal.aborted)setCatalogLoading(false);});
+  return()=>{live=false;abort.abort();};
+ },[scope,catalogRetry]);
+ useEffect(()=>{setSectorId('');setSectorTouched(false);setExistingSector(null);},[scope]);
  useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setName(''); setProfileUrl(''); setPlatform(''); setHandle(''); setHeadline(''); setLocationText(''); setFollowers(''); setTags([]); setTagDraft(''); setNote(''); setRating(null); setMedia([]); setPending(0); setSaving(false); setError(''); setExistingId(''); }, [scope]);
 
  useEffect(() => {
@@ -72,6 +80,7 @@ export default function AddPersonPage() {
   const observed = owner.content.details.get(personId);
   if (!person || !observed) return;
   initialized.current = scope; draftObservation.current = observed;
+  const stored=observed.detail.peopleSector?.sector??null;setExistingSector(stored);setSectorId(stored?.id??'');setSectorTouched(false);
   setName(person.name); setHandle(person.username_handle ?? ''); setHeadline(person.headline ?? '');
   setLocationText(person.location ?? ''); setFollowers(person.follower_count ?? '');
   setPlatform((person.primary_platform as PersonPlatform | null) ?? '');
@@ -116,6 +125,8 @@ export default function AddPersonPage() {
   const captured = scope, operation = ++active.current; controller.current?.abort(); controller.current = new AbortController(); const signal = controller.current.signal;
   setSaving(true); setError('');
   try {
+   const sectorPatch=sectorTouched?{peopleSectorTermId:sectorId||null}:{};
+   if(sectorTouched&&sectorId&&(!catalog||catalog.category!=='people'||catalog.state!=='CONFIGURED'||!catalog.items.some(item=>item.id===sectorId&&item.category==='people'&&item.parentId===null)))throw new Error('Reload sectors and choose an available sector before saving');
    const link = blank(profileUrl);
    // The stated platform's link and the explicit primary are the same address here;
    // keying it under both is what lets the projection resolve a primary either way.
@@ -123,7 +134,7 @@ export default function AddPersonPage() {
    const facts = { usernameHandle: blank(handle), headline: blank(headline), locationText: blank(locationText),
     avatarUrl: null, primaryPlatform: platform === '' ? null : platform, socialUrls,
     skillsTags: tags, externalFollowerCountText: blank(followers) };
-   const draft = { title: name.trim(), ...facts, note: richNoteFromEditor(note), userRating: rating, mediaIds: media.map(item => item.id) };
+   const draft = { title: name.trim(), ...facts, note: richNoteFromEditor(note), userRating: rating, mediaIds: media.map(item => item.id),...sectorPatch };
    const signature = JSON.stringify(draft);
    assertCurrent(captured, operation);
    if (personId) {
@@ -134,7 +145,7 @@ export default function AddPersonPage() {
     // usernameHandle is absent here on purpose: it is not in the override vocabulary,
     // because a handle is how a person is identified on a platform.
     const {usernameHandle: _handle, ...overridable} = facts;
-    await PeopleClient.updateRecommendation(observed, { displayOverrides: { title: draft.title, ...overridable }, note: draft.note, userRating: rating, mediaIds: draft.mediaIds }, updateKey.current.key, signal);
+    await PeopleClient.updateRecommendation(observed, { displayOverrides: { title: draft.title, ...overridable }, note: draft.note, userRating: rating, mediaIds: draft.mediaIds,...sectorPatch }, updateKey.current.key, signal);
     assertCurrent(captured, operation);
    } else {
     if (intent.current?.scope !== captured || intent.current.signature !== signature) {
@@ -180,6 +191,17 @@ export default function AddPersonPage() {
     {owner.error && <p role="alert">{owner.error.message}</p>}
 
     <label className="block">Full Name<input value={name} onChange={event => setName(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    <label className="block">Sector
+     <select value={sectorId} onChange={event=>{setSectorId(event.target.value);setSectorTouched(true);}} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3">
+      <option value="">No sector</option>
+      {existingSector&&!catalog?.items.some(item=>item.id===existingSector.id)&&<option value={existingSector.id} disabled>{existingSector.label??existingSector.slug} (unavailable)</option>}
+      {catalog?.items.filter(item=>item.category==='people'&&item.parentId===null).map(item=><option key={item.id} value={item.id}>{item.label}</option>)}
+     </select>
+    </label>
+    {catalogLoading&&<p role="status">Loading sectors…</p>}
+    {catalog?.state==='UNCONFIGURED'&&<p role="status">Sector catalog is not configured.</p>}
+    {existingSector&&(existingSector.unavailable||catalog&&!catalog.items.some(item=>item.id===existingSector.id))&&<p role="status">Existing sector is unavailable.</p>}
+    {catalogError&&<div role="alert"><p>{catalogError}</p><button onClick={()=>setCatalogRetry(value=>value+1)}>Retry loading sectors</button></div>}
     <p className="text-sm text-dashboard-muted">Details are not fetched automatically. Fill in whatever you know; nothing you type is discarded.</p>
 
     <label className="block">Profile URL<input value={profileUrl} onChange={event => setProfileUrl(event.target.value)} disabled={saving} placeholder="https://example.com/their-profile" className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>

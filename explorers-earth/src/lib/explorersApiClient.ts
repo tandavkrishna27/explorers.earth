@@ -13,6 +13,7 @@ import { ownerCollectionPageSchema, ownerRecommendationPageSchema, ownerCollecti
   type OwnerCollectionsRequest, type OwnerRecommendationsRequest, type OwnerCollectionDto, type OwnerRecommendationDto } from '../../../tunes/shared/explorersOwnerContentContract';
 import {ownerTopPicksRequestSchema,ownerTopPickPageSchema,type OwnerTopPicksRequest} from '../../../tunes/shared/explorersOwnerContentContract';
 import { z } from 'zod/v3';
+import {taxonomyCatalogQuerySchema,taxonomyCatalogPageSchema,type TaxonomyCatalogPage} from '../../../tunes/shared/explorersTaxonomyContract';
 import { createCollectionSchema,createCollectionResultSchema,type CreateCollectionResult,updateCollectionSchema,createRecommendationObjectSchema,createRecommendationSchema,updateRecommendationSchema,reorderCollectionSchema,collectionCoreDtoSchema,recommendationCoreDtoSchema,apiErrorSchema,contentIdSchema,type CreateCollectionInput,type UpdateCollectionInput,type CreateRecommendationInput,type UpdateRecommendationInput } from '../../../tunes/shared/explorersContract';
 import { editableOwnerCollectionSchema,editableOwnerRecommendationSchema,type EditableOwnerCollection,type EditableOwnerRecommendation } from '../../../tunes/shared/explorersOwnerContentContract';
 import { resolveManualEntitySchema,entityCoreDtoSchema,type ResolveManualEntityInput } from '../../../tunes/shared/explorersContract';
@@ -80,6 +81,35 @@ async function allOwnerContent<T extends {id:string;accountId:string}>(input:Rec
 
 export class ExplorersApiError extends Error {
   constructor(readonly status: number, readonly code: string, message: string) { super(message); }
+}
+
+export type CompleteTaxonomyCatalog=Readonly<Omit<TaxonomyCatalogPage,'items'|'nextCursor'>&{complete:true;items:readonly TaxonomyCatalogPage['items'][number][];nextCursor:null;accountId:string;generation:number}>;
+async function taxonomyPage(input:{category:'places'|'people';locale?:string;limit?:number;cursor?:string},signal?:AbortSignal):Promise<TaxonomyCatalogPage>{
+ const query=taxonomyCatalogQuerySchema.parse({...input,...(input.limit===undefined?{}:{limit:String(input.limit)})});
+ let page:TaxonomyCatalogPage;
+ try{page=await ownerRead('/catalog/taxonomy',query,taxonomyCatalogPageSchema,signal,true);}catch(error){
+  if(error instanceof ExplorersApiError&&error.code==='INVALID_OWNER_CONTENT')throw new ExplorersApiError(error.status,error.code,'Invalid taxonomy catalog response; retry loading sectors');
+  throw error;
+ }
+ if(page.category!==query.category||page.requestedLocale!==(query.locale??null))throw new ExplorersApiError(409,'CONFLICT','Catalog response changed; retry loading sectors');
+ return page;
+}
+async function completeTaxonomyCatalog(input:{category:'places'|'people';locale?:string},signal?:AbortSignal):Promise<CompleteTaxonomyCatalog>{
+ const initial=useAuthStore.getState(),controller=new AbortController();
+ const isCurrent=()=>{const now=useAuthStore.getState();return now.isAuthenticated&&now.accountId===initial.accountId&&now.generation===initial.generation;};
+ const stop=()=>controller.abort(),check=()=>{if(controller.signal.aborted||!isCurrent())throw new DOMException('Catalog owner changed','AbortError');};
+ const unsubscribe=useAuthStore.subscribe(()=>{if(!isCurrent())stop();});signal?.addEventListener('abort',stop,{once:true});if(signal?.aborted)stop();
+ const items:TaxonomyCatalogPage['items']=[],ids=new Set<string>(),slugs=new Set<string>(),cursors=new Set<string>();let cursor:string|undefined,first:TaxonomyCatalogPage|undefined;
+ const invalid=():never=>{throw new ExplorersApiError(409,'CONFLICT','Catalog changed; retry loading the complete catalog');};
+ try{
+  while(true){
+   check();const page=await taxonomyPage({...input,cursor},controller.signal);check();
+   if(first&&(page.catalogVersion!==first.catalogVersion||page.defaultLocale!==first.defaultLocale||page.state!==first.state||page.version!==first.version))invalid();first??=page;
+   for(const item of page.items){const prior=items[items.length-1];if(ids.has(item.id)||slugs.has(item.slug)||prior&&(item.position<prior.position||item.position===prior.position&&item.id<=prior.id)||input.category==='people'&&item.parentId!==null)invalid();ids.add(item.id);slugs.add(item.slug);items.push(Object.freeze(item));}
+   if(page.nextCursor===null){check();return Object.freeze({...first,complete:true,items:Object.freeze(items),nextCursor:null,accountId:initial.accountId!,generation:initial.generation});}
+   if(!page.items.length||cursors.has(page.nextCursor))invalid();cursors.add(page.nextCursor);cursor=page.nextCursor;
+  }
+ }finally{unsubscribe();signal?.removeEventListener('abort',stop);}
 }
 
 export type GuardedParentCreateFailure = Readonly<
@@ -372,6 +402,8 @@ async function guideCommand(collectionId:string,suffix:string,method:string,body
  return result;
 }
 export const explorersApiClient = {
+ getTaxonomyCatalogPage:taxonomyPage,
+ getCompleteTaxonomyCatalog:completeTaxonomyCatalog,
   attachMyGameMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>membershipCommand('games',parent,item,key,true,signal),
   attachMyAppMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>membershipCommand('apps',parent,item,key,true,signal),
   detachMyGameMembership:(parent:CollectionObservation,item:RecommendationObservation,key:string,signal?:AbortSignal)=>membershipCommand('games',parent,item,key,false,signal),
