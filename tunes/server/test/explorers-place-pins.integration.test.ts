@@ -62,6 +62,81 @@ async function snapshot(f:Fixture,draftIds:string[]=[]){
  return {pins,collections,categories,drafts,chunks,items};
 }
 async function receipt(f:Fixture,request:PlacePinsRequest,key:string){return (await admin.query('SELECT * FROM application_command_receipts WHERE account_id=$1 AND operation=$2 AND idempotency_key_hash=$3',[f.account,request.operation,createHash('sha256').update(key).digest()])).rows;}
+// Batch B owns complete SQL oracles; the earlier partial snapshot stays unchanged.
+type SqlSetup={f:Fixture;request:PlacePinsRequest;context:{requestId:string;idempotencyKey:string};rows:any[]};
+async function sqlSetup(f:Fixture,pinned=true,accepted=true){
+ const records:SqlSetup[]=[];
+ const write=async(target:Fixture,request:PlacePinsRequest)=>{
+  const context={requestId:randomUUID(),idempotencyKey:randomUUID()};
+  const result=await repo.execute(target.account,request,context,Buffer.byteLength(JSON.stringify(request)),policy) as any;
+  const rows=await receipt(target,request,context.idempotencyKey);expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({request_hash:Buffer.from(hashPlacePinsRequest(request),'hex'),idempotency_key_hash:createHash('sha256').update(context.idempotencyKey).digest(),response:result});
+  records.push({f:target,request,context,rows});return result;
+ };
+ for(const list of [f.list,f.otherList]){
+  const target={...f,list};
+  if(pinned)await write(target,{operation:'replacePlacePins',collectionId:list,body:{...await fences(target),orderedRecommendationIds:f.ids}});
+  const draft=await write(target,{operation:'beginPlacePinsDraft',collectionId:list,body:await fences(target)});
+  if(accepted)await write(target,appendRequest(target,draft.draftId,f.ids));
+ }
+ return records;
+}
+async function completeSqlSnapshot(fixtures:Fixture[],records:SqlSetup[],extraEntities:string[]=[]){
+ const accounts=fixtures.map(f=>f.account),lists=fixtures.flatMap(f=>[f.list,f.otherList]),ids=fixtures.flatMap(f=>f.ids);
+ const collections=(await admin.query('SELECT * FROM collections WHERE id=ANY($1::uuid[]) ORDER BY id',[lists])).rows;
+ const memberships=(await admin.query('SELECT * FROM collection_items WHERE collection_id=ANY($1::uuid[]) ORDER BY collection_id,display_order,recommendation_id',[lists])).rows;
+ const recommendations=(await admin.query('SELECT * FROM recommendations WHERE id=ANY($1::uuid[]) ORDER BY id',[ids])).rows;
+ const entities=(await admin.query('SELECT * FROM entities WHERE id=ANY($1::uuid[]) ORDER BY id',[[...recommendations.map(row=>row.entity_id),...extraEntities]])).rows;
+ const pins=(await admin.query('SELECT * FROM collection_place_pins WHERE collection_id=ANY($1::uuid[]) ORDER BY collection_id,position,recommendation_id',[lists])).rows;
+ const categories=(await admin.query('SELECT * FROM account_category_content_state WHERE account_id=ANY($1::uuid[]) ORDER BY account_id,category',[accounts])).rows;
+ const drafts=(await admin.query('SELECT * FROM place_pin_drafts WHERE account_id=ANY($1::uuid[]) ORDER BY id',[accounts])).rows;
+ const draftIds=drafts.map(row=>row.id);
+ const chunks=(await admin.query('SELECT * FROM place_pin_draft_chunks WHERE draft_id=ANY($1::uuid[]) ORDER BY draft_id,chunk_index',[draftIds])).rows;
+ const items=(await admin.query('SELECT * FROM place_pin_draft_items WHERE draft_id=ANY($1::uuid[]) ORDER BY draft_id,chunk_index,item_index',[draftIds])).rows;
+ const markers=(await admin.query('SELECT * FROM places_collection_mutation_state WHERE collection_id=ANY($1::uuid[]) ORDER BY collection_id',[lists])).rows;
+ const pinQueue=(await admin.query('SELECT * FROM places_pin_validation_dirty WHERE collection_id=ANY($1::uuid[]) ORDER BY validation_xid,collection_id',[lists])).rows;
+ // Setup identities retain deleted draft IDs, so cascade cannot hide dirty rows.
+ const addressed=[...new Set([...draftIds,...records.filter(r=>'draftId' in r.request).map(r=>(r.request as Extract<PlacePinsRequest,{draftId:string}>).draftId),...records.filter(r=>r.request.operation==='beginPlacePinsDraft').map(r=>r.rows[0].response.draftId)])];
+ const chunkQueue=(await admin.query('SELECT * FROM places_chunk_validation_dirty WHERE draft_id=ANY($1::uuid[]) ORDER BY validation_xid,draft_id,chunk_index',[addressed])).rows;
+ const receipts=(await admin.query('SELECT * FROM application_command_receipts WHERE account_id=ANY($1::uuid[]) ORDER BY id',[accounts])).rows;
+ const exactReceipts=[];for(const record of records)exactReceipts.push(await receipt(record.f,record.request,record.context.idempotencyKey));
+ return {collections,memberships,recommendations,entities,pins,categories,drafts,chunks,items,markers,pinQueue,chunkQueue,receipts,exactReceipts};
+}
+type SqlSnapshot=Awaited<ReturnType<typeof completeSqlSnapshot>>;
+// One checked-out client, actual SQLSTATE, and actual xid. Admin reads only after release.
+async function rawSqlTransaction(mutate:(db:pg.PoolClient)=>Promise<void>,options:{privileged?:boolean;rollback?:boolean}={}){
+ const db=await (options.privileged?admin:runtime).connect();let xid:string|undefined,error:unknown,drained=false,committed=false;
+ try{
+  await db.query('BEGIN');xid=(await db.query('SELECT pg_current_xact_id()::text xid')).rows[0].xid;
+  await mutate(db);await db.query('SET CONSTRAINTS ALL IMMEDIATE');drained=true;
+  if(!options.rollback){await db.query('COMMIT');committed=true;}
+ }catch(caught){error=caught;}finally{try{if(!committed)await db.query('ROLLBACK');}finally{db.release();}}
+ expect(xid).toBeDefined();
+ expect((await admin.query('SELECT * FROM places_pin_validation_dirty WHERE validation_xid=$1::xid8',[xid])).rows).toEqual([]);
+ expect((await admin.query('SELECT * FROM places_chunk_validation_dirty WHERE validation_xid=$1::xid8',[xid])).rows).toEqual([]);
+ return {xid:xid!,error,code:(error as {code?:string}|undefined)?.code,drained,committed};
+}
+async function rejectRawSql(fixtures:Fixture[],records:SqlSetup[],mutate:(db:pg.PoolClient)=>Promise<void>,codes:string[],extraEntities:string[]=[]){
+ const before=await completeSqlSnapshot(fixtures,records,extraEntities),result=await rawSqlTransaction(mutate);
+ expect(result.committed).toBe(false);expect(result.error).toBeDefined();expect(codes).toContain(result.code);
+ expect(await completeSqlSnapshot(fixtures,records,extraEntities)).toEqual(before);
+}
+function unchangedSqlChildren(before:SqlSnapshot,after:SqlSnapshot){
+ for(const key of ['drafts','chunks','items','receipts','exactReceipts','pinQueue','chunkQueue'] as const)expect(after[key]).toEqual(before[key]);
+}
+function sqlCategoryDelta(before:SqlSnapshot,after:SqlSnapshot,account:string,xid:string){
+ expect(after.categories).toEqual(before.categories.map(row=>row.account_id===account&&row.category==='places'?{...row,revision:String(BigInt(row.revision)+1n),places_last_mutation_xid:xid}:row));
+}
+function sqlCollectionDelta(before:SqlSnapshot,after:SqlSnapshot,affected:string[],xid:string){
+ expect(after.collections).toHaveLength(before.collections.length);
+ for(const row of before.collections){const current=after.collections.find(r=>r.id===row.id);expect(current).toBeDefined();
+  if(affected.includes(row.id)){
+   expect(current).toEqual({...row,revision:String(BigInt(row.revision)+1n),updated_at:current.updated_at});
+   expect(current.updated_at.getTime()).toBeGreaterThanOrEqual(row.updated_at.getTime());
+  }else expect(current).toEqual(row);
+ }
+ expect(after.markers).toEqual(before.markers.map(row=>affected.includes(row.collection_id)?{...row,last_mutation_xid:xid}:row));
+}
 function commitRequest(f:Fixture,draftId:string,ids:string[]):Extract<PlacePinsRequest,{operation:'commitPlacePinsDraft'}>{const hash=createPlacePinsSequenceHasher();hash.append(ids);return {operation:'commitPlacePinsDraft',collectionId:f.list,draftId,body:{totalCount:ids.length,sequenceHash:hash.finish()}};}
 function appendRequest(f:Fixture,draftId:string,ids:string[]):Extract<PlacePinsRequest,{operation:'appendPlacePinsChunk'}>{return {operation:'appendPlacePinsChunk',collectionId:f.list,draftId,chunkIndex:0,body:{recommendationIds:ids,chunkHash:hashPlacePinsChunk(0,ids)}};}
 async function resultVersions(f:Fixture,result:any){const persisted=await versions(f);expect(result).toMatchObject({collectionRevision:persisted.collection,categoryContentRevision:String(persisted.category)});}
@@ -349,9 +424,15 @@ const databaseClock=async()=>((await admin.query('SELECT clock_timestamp() now')
   const v=await versions(f);await recommendations.updateCollection(f.account,f.list,v.collection,{visibility:'private',publicationState:'draft'},randomUUID());expect((await live(f)).map(row=>row.id)).toEqual(f.ids);
  });
  it('membership deletion compacts survivors and isolates another list',async()=>{
-  const f=await seed();await replace(f);await replace({...f,list:f.otherList});const otherBefore=await live(f,f.otherList),v=await versions(f);
-  await runtime.query('DELETE FROM collection_items WHERE collection_id=$1 AND recommendation_id=$2',[f.list,f.ids[1]]);
+  const f=await seed(),records=await sqlSetup(f),before=await completeSqlSnapshot([f],records),otherBefore=await live(f,f.otherList),v=await versions(f);
+  const result=await rawSqlTransaction(async db=>{await db.query('DELETE FROM collection_items WHERE collection_id=$1 AND recommendation_id=$2',[f.list,f.ids[1]]);});
+  expect(result.error).toBeUndefined();expect(result.drained).toBe(true);expect(result.committed).toBe(true);
   expect(await live(f)).toEqual([{id:f.ids[0],position:0},{id:f.ids[2],position:1}]);expect(await live(f,f.otherList)).toEqual(otherBefore);expect(await versions(f)).toEqual({collection:v.collection+1,category:v.category+1n});
+  const after=await completeSqlSnapshot([f],records);
+  expect(after.pins).toEqual(before.pins.filter(row=>row.collection_id!==f.list||row.recommendation_id!==f.ids[1]).map(row=>row.collection_id===f.list&&row.recommendation_id===f.ids[2]?{...row,position:'1'}:row));
+  expect(after.memberships).toEqual(before.memberships.filter(row=>row.collection_id!==f.list||row.recommendation_id!==f.ids[1]));
+  for(const key of ['recommendations','entities'] as const)expect(after[key]).toEqual(before[key]);
+  sqlCollectionDelta(before,after,[f.list],result.xid);sqlCategoryDelta(before,after,f.account,result.xid);unchangedSqlChildren(before,after);
  });
  it('rejects unsafe/gapped ranks atomically and rolls back the revision marker',async()=>{
   const f=await seed();await replace(f);const before=await versions(f);
@@ -473,8 +554,8 @@ const databaseClock=async()=>((await admin.query('SELECT clock_timestamp() now')
   expect(await receipt(f,request,key)).toEqual(retired);expect(await snapshot(f,[draft.draftId])).toEqual(deleted);
  });
  it('keeps immediate foreign-key failure cleanup and category invalidation atomic',async()=>{
-  const f=await seed(),foreign=await seed();await replace(f);const before=await versions(f);
-  await expect(runtime.query('UPDATE recommendations SET account_id=$2 WHERE id=$1',[f.ids[1],foreign.account])).rejects.toMatchObject({code:'23503'});
+  const f=await seed(),foreign=await seed(),records=[...await sqlSetup(f),...await sqlSetup(foreign)],before=await versions(f);
+  await rejectRawSql([f,foreign],records,async db=>{await db.query('UPDATE recommendations SET account_id=$2 WHERE id=$1',[f.ids[1],foreign.account]);},['23503']);
   expect((await live(f)).map(row=>row.id)).toEqual(f.ids);expect(await versions(f)).toEqual(before);
  });
  it('guards lifecycle purge and retains tombstone category counters on retry',async()=>{
@@ -646,5 +727,107 @@ const databaseClock=async()=>((await admin.query('SELECT clock_timestamp() now')
   const before=(await admin.query('SELECT revision FROM collections WHERE id=$1',[list.id])).rows[0].revision;
   await recommendations.archiveRecommendation(account,item.id,item.revision,randomUUID());
   expect(Number((await admin.query('SELECT revision FROM collections WHERE id=$1',[list.id])).rows[0].revision)).toBe(Number(before)+1);
+ });
+ async function rawPinRejection(variant:'foreign owner insert'|'nonmember insert'|'non-Places category insert'|'archived collection insert'|'archived recommendation insert'|'duplicate recommendation insert'|'duplicate position insert'|'foreign owner update'){
+  // Removing the composite FKs/CHECK/unique/final-scope guard must fail these oracles.
+  const f=await seed(3),foreign=variant.startsWith('foreign owner')?await seed(1):undefined;
+  const duplicate=variant.startsWith('duplicate'),update=variant==='foreign owner update';
+  // Complete supported setup precedes archive/membership fixture preparation
+  // and the captured baseline. No stale fence is reused by the raw mutation.
+  const records=await sqlSetup(variant==='duplicate position insert'?{...f,ids:[f.ids[0]]}:f,duplicate||update);
+  if(variant==='nonmember insert')await admin.query('DELETE FROM collection_items WHERE collection_id=$1 AND recommendation_id=$2',[f.list,f.ids[0]]);
+  if(variant==='archived collection insert')await admin.query('UPDATE collections SET archived_at=clock_timestamp() WHERE id=$1',[f.list]);
+  if(variant==='archived recommendation insert')await admin.query('UPDATE recommendations SET archived_at=clock_timestamp() WHERE id=$1',[f.ids[0]]);
+  if(foreign)records.push(...await sqlSetup(foreign));
+  const fixtures=foreign?[f,foreign]:[f],codes=variant==='duplicate position insert'?['23505','23514']:variant==='duplicate recommendation insert'?['23505']:['non-Places category insert','archived collection insert','archived recommendation insert'].includes(variant)?['23514']:['23503'];
+  await rejectRawSql(fixtures,records,async db=>{
+   if(update)await db.query('UPDATE collection_place_pins SET account_id=$3 WHERE collection_id=$1 AND recommendation_id=$2',[f.list,f.ids[0],foreign!.account]);
+   else await db.query('INSERT INTO collection_place_pins(collection_id,recommendation_id,account_id,category,position) VALUES($1,$2,$3,$4,$5)',[f.list,variant==='duplicate position insert'?f.ids[1]:f.ids[0],foreign?.account??f.account,variant==='non-Places category insert'?'books':'places',variant==='duplicate recommendation insert'?f.ids.length:0]);
+  },codes);
+ }
+ it('rejects raw Places pin foreign owner insert with complete rollback',async()=>{await rawPinRejection('foreign owner insert');});
+ it('rejects raw Places pin nonmember insert with complete rollback',async()=>{await rawPinRejection('nonmember insert');});
+ it('rejects raw Places pin non-Places category insert with complete rollback',async()=>{await rawPinRejection('non-Places category insert');});
+ it('rejects raw Places pin archived collection insert with complete rollback',async()=>{await rawPinRejection('archived collection insert');});
+ it('rejects raw Places pin archived recommendation insert with complete rollback',async()=>{await rawPinRejection('archived recommendation insert');});
+ it('rejects raw Places pin duplicate recommendation insert with complete rollback',async()=>{await rawPinRejection('duplicate recommendation insert');});
+ it('rejects raw Places pin duplicate position insert with complete rollback',async()=>{await rawPinRejection('duplicate position insert');});
+ it('rejects raw Places pin foreign owner update with complete rollback',async()=>{await rawPinRejection('foreign owner update');});
+ it('raw recommendation archive compacts all pinned containing lists once',async()=>{
+  // Missing BEFORE cleanup, dense compaction, or xid dedup must be observable.
+  const f=await seed(4),records=await sqlSetup(f),before=await completeSqlSnapshot([f],records);
+  const result=await rawSqlTransaction(async db=>{await db.query('UPDATE recommendations SET archived_at=clock_timestamp() WHERE id=$1',[f.ids[1]]);});
+  expect(result.error).toBeUndefined();expect(result.drained).toBe(true);expect(result.committed).toBe(true);
+  const after=await completeSqlSnapshot([f],records),survivors=[f.ids[0],f.ids[2],f.ids[3]];
+  for(const list of [f.list,f.otherList])expect(await live(f,list)).toEqual(survivors.map((id,position)=>({id,position})));
+  expect(after.pins).toEqual(before.pins.filter(row=>row.recommendation_id!==f.ids[1]).map(row=>({...row,position:String(survivors.indexOf(row.recommendation_id))})));
+  sqlCollectionDelta(before,after,[f.list,f.otherList],result.xid);sqlCategoryDelta(before,after,f.account,result.xid);
+  expect(after.memberships).toEqual(before.memberships);expect(after.entities).toEqual(before.entities);unchangedSqlChildren(before,after);
+  const archived=after.recommendations.find(row=>row.id===f.ids[1]);expect(archived.archived_at).toBeInstanceOf(Date);
+  expect(after.recommendations).toEqual(before.recommendations.map(row=>row.id===f.ids[1]?{...row,archived_at:archived.archived_at}:row));
+ });
+ it('raw compatible recommendation entity update retains pins',async()=>{
+  // Compatible place/person assignment must retain both collection revisions.
+  const f=await seed(3),records=await sqlSetup(f),entity=(await admin.query("INSERT INTO entities(kind,title,origin) VALUES('person','Raw compatible fixture','manual') RETURNING id")).rows[0].id;
+  const old=(await admin.query('SELECT entity_id FROM recommendations WHERE id=$1',[f.ids[0]])).rows[0].entity_id,extras=[old,entity],before=await completeSqlSnapshot([f],records,extras);
+  const result=await rawSqlTransaction(async db=>{await db.query('UPDATE recommendations SET entity_id=$2 WHERE id=$1',[f.ids[0],entity]);});
+  expect(result.error).toBeUndefined();expect(result.drained).toBe(true);expect(result.committed).toBe(true);
+  const after=await completeSqlSnapshot([f],records,extras);
+  for(const key of ['collections','memberships','pins','entities','markers'] as const)expect(after[key]).toEqual(before[key]);
+  expect(after.recommendations).toEqual(before.recommendations.map(row=>row.id===f.ids[0]?{...row,entity_id:entity}:row));
+  sqlCategoryDelta(before,after,f.account,result.xid);unchangedSqlChildren(before,after);
+ });
+ it('raw incompatible recommendation entity update rolls cleanup back',async()=>{
+  // Removing 0029's deferred category/kind guard would commit transient cleanup.
+  const f=await seed(3),records=await sqlSetup(f),entity=(await admin.query("INSERT INTO entities(kind,title,origin) VALUES('book','Raw incompatible fixture','manual') RETURNING id")).rows[0].id;
+  await rejectRawSql([f],records,async db=>{await db.query('UPDATE recommendations SET entity_id=$2 WHERE id=$1',[f.ids[1],entity]);},['23514'],[entity]);
+ });
+ it('raw incompatible entity kind update rolls cleanup back',async()=>{
+  const f=await seed(3),records=await sqlSetup(f),entity=(await admin.query('SELECT entity_id FROM recommendations WHERE id=$1',[f.ids[1]])).rows[0].entity_id;
+  await rejectRawSql([f],records,async db=>{await db.query("UPDATE entities SET kind='book' WHERE id=$1",[entity]);},['23514']);
+ });
+ it('raw multirow and multistatement membership deletion compacts once',async()=>{
+  const f=await seed(5),records=await sqlSetup(f),before=await completeSqlSnapshot([f],records);
+  const result=await rawSqlTransaction(async db=>{
+   await db.query('DELETE FROM collection_items WHERE collection_id=$1 AND recommendation_id=ANY($2::uuid[])',[f.list,[f.ids[1],f.ids[3]]]);
+   await db.query('DELETE FROM collection_items WHERE collection_id=$1 AND recommendation_id=$2',[f.list,f.ids[0]]);
+  });
+  expect(result.error).toBeUndefined();expect(result.drained).toBe(true);expect(result.committed).toBe(true);
+  const after=await completeSqlSnapshot([f],records),survivors=[f.ids[2],f.ids[4]];
+  expect(await live(f)).toEqual([{id:f.ids[2],position:0},{id:f.ids[4],position:1}]);
+  expect(after.pins).toEqual(before.pins.filter(row=>row.collection_id!==f.list||survivors.includes(row.recommendation_id)).map(row=>row.collection_id===f.list?{...row,position:String(survivors.indexOf(row.recommendation_id))}:row));
+  expect(after.memberships).toEqual(before.memberships.filter(row=>row.collection_id!==f.list||survivors.includes(row.recommendation_id)));
+  for(const key of ['recommendations','entities'] as const)expect(after[key]).toEqual(before[key]);
+  sqlCollectionDelta(before,after,[f.list],result.xid);sqlCategoryDelta(before,after,f.account,result.xid);unchangedSqlChildren(before,after);
+ });
+ it('raw membership cleanup outer rollback restores complete state',async()=>{
+  const f=await seed(5),records=await sqlSetup(f),before=await completeSqlSnapshot([f],records);
+  const result=await rawSqlTransaction(async db=>{
+   await db.query('DELETE FROM collection_items WHERE collection_id=$1 AND recommendation_id=ANY($2::uuid[])',[f.list,[f.ids[1],f.ids[3]]]);
+   await db.query('DELETE FROM collection_items WHERE collection_id=$1 AND recommendation_id=$2',[f.list,f.ids[0]]);
+  },{rollback:true});
+  expect(result.error).toBeUndefined();expect(result.drained).toBe(true);expect(result.committed).toBe(false);
+  expect(await completeSqlSnapshot([f],records)).toEqual(before);
+ });
+ it('privileged collection hard deletion cascades without parent resurrection',async()=>{
+  const f=await seed(3),records=await sqlSetup(f),before=await completeSqlSnapshot([f],records);
+  const result=await rawSqlTransaction(async db=>{await db.query('DELETE FROM collections WHERE id=$1',[f.list]);},{privileged:true});
+  expect(result.error).toBeUndefined();expect(result.drained).toBe(true);expect(result.committed).toBe(true);
+  const after=await completeSqlSnapshot([f],records),deletedDrafts=before.drafts.filter(row=>row.collection_id===f.list).map(row=>row.id);
+  expect(deletedDrafts).toHaveLength(1);expect(before.chunks.filter(row=>deletedDrafts.includes(row.draft_id))).toHaveLength(1);expect(before.items.filter(row=>deletedDrafts.includes(row.draft_id))).toHaveLength(3);
+  expect(after.collections).toEqual(before.collections.filter(row=>row.id!==f.list));
+  for(const key of ['pins','memberships','markers'] as const)expect(after[key]).toEqual(before[key].filter(row=>row.collection_id!==f.list));
+  expect(after.drafts).toEqual(before.drafts.filter(row=>row.collection_id!==f.list));
+  for(const key of ['chunks','items'] as const)expect(after[key]).toEqual(before[key].filter(row=>!deletedDrafts.includes(row.draft_id)));
+  for(const key of ['recommendations','entities','receipts','exactReceipts','pinQueue','chunkQueue'] as const)expect(after[key]).toEqual(before[key]);
+  sqlCategoryDelta(before,after,f.account,result.xid);
+ });
+ it('rejects raw partial chunk ordinals without committing staging corruption',async()=>{
+  // A missing final count/min/max validator would admit indices [0,2] for count 2.
+  const f=await seed(3),records=await sqlSetup(f,true,false),draft=records.find(record=>record.request.operation==='beginPlacePinsDraft'&&record.f.list===f.list)!.rows[0].response.draftId;
+  await rejectRawSql([f],records,async db=>{
+   await db.query("INSERT INTO place_pin_draft_chunks(draft_id,chunk_index,hash,item_count,admitted_bytes,acknowledgement) VALUES($1,0,$2,2,0,'{}'::jsonb)",[draft,Buffer.alloc(32,7)]);
+   await db.query('INSERT INTO place_pin_draft_items(draft_id,chunk_index,item_index,recommendation_id) VALUES($1,0,0,$2),($1,0,2,$3)',[draft,f.ids[0],f.ids[1]]);
+  },['23514']);
  });
 });

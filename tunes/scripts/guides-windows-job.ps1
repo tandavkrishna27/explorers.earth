@@ -1,5 +1,6 @@
 param([switch]$DefinitionsOnly)
 $ErrorActionPreference = 'Stop'
+if ($PSVersionTable.PSEdition -ne 'Core' -or $PSVersionTable.PSVersion.Major -lt 7 -or -not $IsWindows) { throw 'GUIDES_RUNTIME_UNSUPPORTED' }
 Add-Type -TypeDefinition @"
 using System;
 using System.Collections.Generic;
@@ -208,6 +209,7 @@ public static class Wire {
   if(!Hex(token,64)||pipe==null||!pipe.StartsWith("\\\\.\\pipe\\explorers-guides-")||pipe.Length>256)throw new NativeFailure("protocol");
   var environment=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
   foreach(var item in configuredEnvironment.EnumerateObject()){
+   if(String.Equals(item.Name,"GUIDES_POWERSHELL_EXECUTABLE",StringComparison.OrdinalIgnoreCase))throw new NativeFailure("protocol");
    string value=item.Value.GetString();
    if(item.Name.Length>128||value==null||value.Length>4096||item.Name.Contains("=")||item.Name.Any(c=>c<' ')||value.Contains('\0')||!environment.TryAdd(item.Name,value))throw new NativeFailure("protocol");
   }
@@ -253,10 +255,19 @@ public static class Wire {
   if(!overlapRefused||!exitAdmitted||!successorAdmitted||!tailPending)throw new Exception("dispatcher contract failed");
   return JsonSerializer.Serialize(new{passed=true,overlapRefused,exitAdmitted,successorAdmitted,tailPending,priorityKeptOwnership,productionConstructors=ProductionNative.ConstructionCount,productionEntries=ProductionNative.EntryCount});
  }
+ public static void ValidateConfigure(string json,string root){using(var doc=JsonDocument.Parse(json)){Unique(doc.RootElement);ValidateConfigure(doc.RootElement,root);}}
+ static void ValidateConfigure(JsonElement payload,string root){Exact(payload,"nodeExecutable","loaderPath","fixtureEntrypoint","workerEntrypoint","cwd","environment","receiptArguments");foreach(string key in new[]{"nodeExecutable","loaderPath","fixtureEntrypoint","workerEntrypoint","cwd"}){string path=payload.GetProperty(key).GetString();if(path==null||path.Length>4096||!Path.IsPathFullyQualified(path)||path.Any(c=>c<' '))throw new NativeFailure("protocol");}
+    if(payload.GetProperty("cwd").GetString()!=root||payload.GetProperty("fixtureEntrypoint").GetString()!=Path.Combine(root,"tunes","scripts","guides-browser-fixture.ts")||payload.GetProperty("workerEntrypoint").GetString()!=Path.Combine(root,"tunes","scripts","guides-resource-worker.ts")||payload.GetProperty("loaderPath").GetString()!=Path.Combine(root,"tunes","node_modules","tsx","dist","loader.mjs"))throw new NativeFailure("protocol");
+    if(payload.GetProperty("environment").EnumerateObject().Count()>64||payload.GetProperty("receiptArguments").GetArrayLength()!=8)throw new NativeFailure("protocol");
+    using(var bootstrap=JsonDocument.Parse(JsonSerializer.Serialize(new{pipe="\\\\.\\pipe\\explorers-guides-validation",token=new string('a',64)})))PrivateEnvironment(payload.GetProperty("environment"),bootstrap.RootElement,false);
+    string[] receipt=payload.GetProperty("receiptArguments").EnumerateArray().Select(x=>x.GetString()).ToArray();
+    if(receipt[0]!="--suite"||receipt[1]!="guides"||receipt[2]!="--ack"||receipt[3]!="TASK4_FIXTURE_OWNED_DISPOSABLE_PG15"||receipt[4]!="--receipt-directory"||receipt[6]!="--receipt-capability"||!Hex(receipt[7],64)||receipt[5]==null||!Path.IsPathFullyQualified(receipt[5])||receipt[5].Length>4096||receipt[5].Any(c=>c<' '))throw new NativeFailure("protocol");
+}
  public static async Task<int> Run(string root){
-  output=Console.OpenStandardOutput();Stream input=Console.OpenStandardInput();runner=new JobRunner(new ProductionNative());JsonElement configure=default(JsonElement);bool configured=false;int incoming=0;Task ordinary=null;var serial=new SemaphoreSlim(1);var operationSlot=new OrdinarySlot();bool exiting=false;
+  output=Console.OpenStandardOutput();Stream input=Console.OpenStandardInput();runner=null;JsonElement configure=default(JsonElement);bool configured=false;int incoming=0;Task ordinary=null;var serial=new SemaphoreSlim(1);var operationSlot=new OrdinarySlot();bool exiting=false;
   try{while(!exiting){byte[] header=await Read(input,4,true);if(header==null)throw new NativeFailure("protocol");int size=System.Net.IPAddress.NetworkToHostOrder(BitConverter.ToInt32(header,0));if(size<1||size>65536)throw new NativeFailure("protocol");byte[] bytes=await Read(input,size,false);string decoded=new UTF8Encoding(false,true).GetString(bytes);using(var doc=JsonDocument.Parse(decoded)){var msg=doc.RootElement.Clone();Unique(msg);Exact(msg,"v","seq","id","type","payload");if(msg.GetProperty("v").GetInt32()!=1||msg.GetProperty("seq").GetInt32()!=++incoming||incoming>4096)throw new NativeFailure("protocol");string id=msg.GetProperty("id").GetString(),type=msg.GetProperty("type").GetString();if(!Hex(id,32))throw new NativeFailure("protocol");JsonElement payload=msg.GetProperty("payload");
    if(type=="abort-job"){
+    if(!configured||runner==null)throw new NativeFailure("protocol");
     Exact(payload,"remainingMs");int budget=Budget(payload,15000);long abortDeadline=Environment.TickCount64+budget;
     runner.Cancel();Task previous=ordinary;long abortOwner=operationSlot.Begin(true);
     ordinary=Task.Run(async()=>{
@@ -269,13 +280,9 @@ public static class Wire {
      operationSlot.Publish(abortOwner,()=>Send(id,replyType,replyPayload));
     });continue;
    }
-   operationSlot.RequireIdle();if(runner.Cancelled&&type!="exit")throw new NativeFailure("protocol");
-   if(type=="configure"){if(configured)throw new NativeFailure("protocol");Exact(payload,"nodeExecutable","loaderPath","fixtureEntrypoint","workerEntrypoint","cwd","environment","receiptArguments");foreach(string key in new[]{"nodeExecutable","loaderPath","fixtureEntrypoint","workerEntrypoint","cwd"}){string path=payload.GetProperty(key).GetString();if(path==null||path.Length>4096||!Path.IsPathFullyQualified(path)||path.Any(c=>c<' '))throw new NativeFailure("protocol");}
-    if(payload.GetProperty("cwd").GetString()!=root||payload.GetProperty("fixtureEntrypoint").GetString()!=Path.Combine(root,"tunes","scripts","profile-browser-fixture.ts")||payload.GetProperty("workerEntrypoint").GetString()!=Path.Combine(root,"tunes","scripts","guides-resource-worker.ts")||payload.GetProperty("loaderPath").GetString()!=Path.Combine(root,"tunes","node_modules","tsx","dist","loader.mjs"))throw new NativeFailure("protocol");
-    if(payload.GetProperty("environment").EnumerateObject().Count()>64||payload.GetProperty("receiptArguments").GetArrayLength()!=6)throw new NativeFailure("protocol");
-    string[] receipt=payload.GetProperty("receiptArguments").EnumerateArray().Select(x=>x.GetString()).ToArray();
-    if(receipt[0]!="--ack"||receipt[1]!="TASK4_FIXTURE_OWNED_DISPOSABLE_PG15"||receipt[2]!="--receipt-directory"||receipt[4]!="--receipt-capability"||!Hex(receipt[5],64)||receipt[3]==null||!Path.IsPathFullyQualified(receipt[3])||receipt[3].Length>4096||receipt[3].Any(c=>c<' '))throw new NativeFailure("protocol");
-    configure=payload;configured=true;Send(id,"configured",new{});continue;}
+   operationSlot.RequireIdle();if(runner!=null&&runner.Cancelled&&type!="exit")throw new NativeFailure("protocol");
+   if(type=="configure"){if(configured)throw new NativeFailure("protocol");ValidateConfigure(payload,root);
+    runner=new JobRunner(new ProductionNative());configure=payload;configured=true;Send(id,"configured",new{});continue;}
    if(!configured)throw new NativeFailure("protocol");
    if(type=="exit"){Exact(payload,"remainingMs");int exitBudget=Budget(payload,5000);runner.Exit(Environment.TickCount64+exitBudget);Send(id,"exit-ack",new{handlesClosed=true});exiting=true;continue;}
    if(type!="launch-fixture"&&type!="launch-worker"&&type!="terminate-worker"&&type!="finish-job")throw new NativeFailure("protocol");
@@ -292,7 +299,7 @@ public static class Wire {
     Send(id,replyType,replyPayload);
    });
   });
-  }}return 0;}catch{runner.Cancel();return 1;}
+  }}return 0;}catch{if(runner!=null)runner.Cancel();return 1;}
  }
 }
 }

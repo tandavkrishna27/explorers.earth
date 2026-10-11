@@ -1,4 +1,5 @@
 import path from 'node:path';
+import {assertGuidesPowerShellRuntime} from './guides-launcher';
 import {randomBytes} from 'node:crypto';
 import {tmpdir} from 'node:os';
 import {fileURLToPath,pathToFileURL} from 'node:url';
@@ -61,9 +62,11 @@ export async function runGuidesFixtureEntry(environment:Record<string,string|und
  if(host)await host();else await(await import('./guides-fixture-host')).createGuidesFixtureHost().run();
 }
 
+export function buildGuidesLauncherConfigure(root:string,nodeExecutable:string,environment:Record<string,string>,receiptArguments:string[]):Input['configure']{const childEnvironment=Object.fromEntries(Object.entries(environment).filter(([key])=>key.toUpperCase()!=='GUIDES_POWERSHELL_EXECUTABLE'));return {nodeExecutable:nodeExecutable,loaderPath:path.join(root,'tunes/node_modules/tsx/dist/loader.mjs'),fixtureEntrypoint:path.join(root,'tunes/scripts/guides-browser-fixture.ts'),workerEntrypoint:path.join(root,'tunes/scripts/guides-resource-worker.ts'),cwd:root,environment:childEnvironment,receiptArguments:[...receiptArguments]};}
+
 function nativeDependencies():Dependencies{
  const root=path.resolve(fileURLToPath(new URL('../../',import.meta.url))),frontend=path.join(root,'explorers-earth'),temporary=tmpdir();
- let receipt:Receipt|undefined,commit='',runId='',secret:string|undefined,unknown=false;const created:Input['custody'][number][]=[];const ancestors:Input['custody'][number][]=[];
+ let receipt:Receipt|undefined,commit='',runId='',secret:string|undefined,unknown=false,powershellExecutable:string|undefined;const created:Input['custody'][number][]=[];const ancestors:Input['custody'][number][]=[];
  const fs=()=>import('node:fs/promises');
  async function physical(file:string,directory:boolean){if(!path.isAbsolute(file)||path.resolve(file)!==file||file.startsWith('\\\\')||file.length>4096||/[\x00-\x1f\x7f]/.test(file)||file.slice(path.parse(file).root.length).includes(':'))throw new Refusal();const f=await fs();for(let candidate=directory?file:path.dirname(file);;candidate=path.dirname(candidate)){const stat=await f.lstat(candidate,{bigint:true});if(!stat.isDirectory()||stat.isSymbolicLink()||await f.realpath(candidate)!==candidate)throw new Refusal();if(candidate===path.dirname(candidate))break;}const stat=await f.lstat(file,{bigint:true});if(stat.isSymbolicLink()||(directory?!stat.isDirectory():!stat.isFile()))throw new Refusal();if(await f.realpath(file)!==file)throw new Refusal();return stat;}
  async function row(kind:Input['custody'][number]['kind'],file:string){const stat=await physical(file,kind!=='secret');return{kind,path:file,dev:String(stat.dev),ino:String(stat.ino)};}
@@ -82,7 +85,8 @@ function nativeDependencies():Dependencies{
   installSignals(fn){process.on('SIGINT',fn);process.on('SIGTERM',fn);const timer=setTimeout(fn,21600000);return()=>{clearTimeout(timer);process.off('SIGINT',fn);process.off('SIGTERM',fn);};},
   async preflight(){
    if(process.versions.node!=='24.21.0')throw new Refusal();
-   for(const file of[process.execPath,path.join(root,'tunes/node_modules/tsx/dist/loader.mjs'),path.join(root,'tunes/scripts/guides-windows-job.ps1'),path.join(root,'tunes/scripts/guides-resource-worker.ts'),path.join(root,'tunes/scripts/guides-fixture-host.ts'),path.join(root,'tunes/scripts/music-local-private-files.ps1'),path.join(frontend,'e2e/replatform/guides.spec.ts'),path.join(frontend,'e2e/replatform/guides.playwright.config.ts'),path.join(frontend,'e2e/replatform/guides.vite.config.ts'),path.join(frontend,'node_modules/@playwright/test/cli.js'),path.join(frontend,'node_modules/vite/bin/vite.js'),'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'])await physical(file,false);
+   powershellExecutable=await assertGuidesPowerShellRuntime(process.env.GUIDES_POWERSHELL_EXECUTABLE,path.join(root,'tunes/scripts/guides-windows-job.ps1'));
+   for(const file of[process.execPath,path.join(root,'tunes/node_modules/tsx/dist/loader.mjs'),path.join(root,'tunes/scripts/guides-windows-job.ps1'),path.join(root,'tunes/scripts/guides-resource-worker.ts'),path.join(root,'tunes/scripts/guides-fixture-host.ts'),path.join(root,'tunes/scripts/music-local-private-files.ps1'),path.join(frontend,'e2e/replatform/guides.spec.ts'),path.join(frontend,'e2e/replatform/guides.playwright.config.ts'),path.join(frontend,'e2e/replatform/guides.vite.config.ts'),path.join(frontend,'node_modules/@playwright/test/cli.js'),path.join(frontend,'node_modules/vite/bin/vite.js'),powershellExecutable])await physical(file,false);
    const contract=await import(pathToFileURL(path.join(root,'scripts/replatform-e2e.mjs')).href);const manifest=await boundedJson(path.join(frontend,'e2e/replatform/suite-manifest.json'),1024*1024) as any;contract.validateManifest(manifest);
    const {GUIDES_CASES,GUIDES_PROJECTS}=await import('./guides-browser-support');const lane=manifest.lanes.find((value:any)=>value.name==='guides');
    const expected=GUIDES_PROJECTS.flatMap(project=>GUIDES_CASES.map(title=>JSON.stringify({file:'explorers-earth/e2e/replatform/guides.spec.ts',titlePath:[title],project,repeat:0}))).sort();
@@ -94,7 +98,7 @@ function nativeDependencies():Dependencies{
    if(!candidate||typeof candidate.adoptArguments!=='function')throw new Refusal();receipt=candidate;return{receipt};
   },
   async prepare(){
-   if(!receipt||!commit)throw new Refusal();runId=randomBytes(16).toString('hex');const directory=path.join(temporary,`explorers-profile-e2e-${runId}`),storage=path.join(directory,'owned-media');const local=await import('./music-local-state');
+   if(!receipt||!commit||!powershellExecutable)throw new Refusal();runId=randomBytes(16).toString('hex');const directory=path.join(temporary,`explorers-profile-e2e-${runId}`),storage=path.join(directory,'owned-media');const local=await import('./music-local-state');
    const tokenDirectory=path.join(root,'.artifacts','music-token-secrets');
    if(process.platform==='win32'){
     await physical(tokenDirectory,true);
@@ -115,7 +119,7 @@ function nativeDependencies():Dependencies{
    const custody=[...created,...ancestors];await verifyCustody();
    const {prepareOwnedUatDatabaseAcquisition}=await import('./music-uat-database');const acquisition=await prepareOwnedUatDatabaseAcquisition({runId,commit,database:`music_uat_${runId}`,port:57001,passwordFile:secret});
    const {GUIDES_CASES,GUIDES_PROJECTS}=await import('./guides-browser-support');const environment=(await import('./music-local-state')).localMusicOsEnvironment(process.env) as Record<string,string>;
-   return{runId,commit,acquisition,inventory:GUIDES_PROJECTS.flatMap(project=>GUIDES_CASES.map(caseId=>({caseId,project,repeat:0 as const}))),configure:{nodeExecutable:process.execPath,loaderPath:path.join(root,'tunes/node_modules/tsx/dist/loader.mjs'),fixtureEntrypoint:fileURLToPath(import.meta.url),workerEntrypoint:path.join(root,'tunes/scripts/guides-resource-worker.ts'),cwd:root,environment,receiptArguments:process.argv.slice(2)},powershellExecutable:'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',jobScript:path.join(root,'tunes/scripts/guides-windows-job.ps1'),disposableDirectory:directory,storageDirectory:storage,origin:'http://127.0.0.1:53001',apiOrigin:'http://127.0.0.1:55001',frontendPort:53002,harnessPort:53003,apiPort:55001,controlPort:55002,personas:Object.fromEntries(['ownerA','ownerB','ownerC'].map((owner,index)=>[owner,{userId:`guides-${runId}-${owner}`,handle:`guides${index}-${runId.slice(0,12)}`}])) as Input['personas'],databasePassword:password,authSecret:randomBytes(32).toString('hex'),custody};
+   return{runId,commit,acquisition,inventory:GUIDES_PROJECTS.flatMap(project=>GUIDES_CASES.map(caseId=>({caseId,project,repeat:0 as const}))),configure:buildGuidesLauncherConfigure(root,process.execPath,environment,process.argv.slice(2)),powershellExecutable:powershellExecutable!,jobScript:path.join(root,'tunes/scripts/guides-windows-job.ps1'),disposableDirectory:directory,storageDirectory:storage,origin:'http://127.0.0.1:53001',apiOrigin:'http://127.0.0.1:55001',frontendPort:53002,harnessPort:53003,apiPort:55001,controlPort:55002,personas:Object.fromEntries(['ownerA','ownerB','ownerC'].map((owner,index)=>[owner,{userId:`guides-${runId}-${owner}`,handle:`guides${index}-${runId.slice(0,12)}`}])) as Input['personas'],databasePassword:password,authSecret:randomBytes(32).toString('hex'),custody};
   },
   async cleanupSetup(){if(unknown)throw new Refusal();const f=await fs();for(const item of [...created].reverse()){for(const ancestor of ancestors)await exact(ancestor);await exact(item);if(item.kind==='secret'){const {cleanupFixtureMusicTokenSecret}=await import('./music-fixture-secret');cleanupFixtureMusicTokenSecret(root,item.path);}else await f.rmdir(item.path);}},
   async createSupervisor(input){return(await import('./guides-parent-supervision')).createGuidesParentSupervisor(input);},readReport:report};

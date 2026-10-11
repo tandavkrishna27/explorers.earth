@@ -1,4 +1,4 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { assertGuidesPowerShellRuntime, launchGuidesSupervisor } from './guides-launcher';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createServer, type Socket, type Server } from 'node:net';
 import { lstatSync, realpathSync } from 'node:fs';
@@ -176,7 +176,7 @@ function production(input: SupervisorInput): SupervisorDependencies {
  };
  return { clock, randomHex: bytes => randomBytes(bytes).toString('hex'),
   async listen(pipe) { let server: Server; const connections: Stream[] = []; let waiter: (() => void) | undefined; let failed = false; server = createServer(socket => { if (connections.length) { socket.destroy(); failed = true; } else connections.push(socketStream(socket)); waiter?.(); }); await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(pipe, resolve); }); server.on('error', () => { failed = true; waiter?.(); }); return { async next() { while (!connections.length && !failed) await new Promise<void>(resolve => { waiter = resolve; }); waiter = undefined; if (failed) throw new Failure('service-children'); return connections.shift()!; }, close() { return new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); } }; },
-  launch(executable, args, cwd) { const child: ChildProcessWithoutNullStreams = spawn(executable, [...args], { cwd, shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env: { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH } }); let stderr = 0; child.stderr.on('data', bytes => { stderr += bytes.length; if (stderr > 1024 * 1024) child.stderr.destroy(new Failure('service-children')); }); const stream = socketStream(child.stdout as unknown as Socket); stream.write = bytes => new Promise((resolve, reject) => child.stdin.write(bytes, error => error ? reject(error) : resolve())); stream.close = async () => { child.stdin.end(); }; const exit = new Promise<{ code: number | null; closed: boolean }>((resolve, reject) => { child.once('error', reject); child.once('close', code => resolve({ code, closed: true })); }); return { stream, exited: () => exit }; },
+  launch: launchGuidesSupervisor,
   witness(authority, ms) { return admin(authority, ms, async client => { const end = clock.now() + Math.min(ms, 15000); while (true) { await client.query('SELECT pg_stat_clear_snapshot()'); const result = await client.query("SELECT current_database() AS maintenance, (SELECT oid::int FROM pg_database WHERE datname=$1) AS oid, (SELECT rolsuper FROM pg_roles WHERE rolname=current_user) AS privileged, current_setting('max_prepared_transactions')::int AS config, (SELECT count(*)::int FROM pg_prepared_xacts WHERE database=$1) AS prepared, (SELECT count(*)::int FROM pg_stat_activity WHERE datname=$1 AND backend_type='client backend') AS sessions", [authority.database]); const r = result.rows[0]; integer(r.oid, 1, 0xffffffff); if (r.maintenance !== 'postgres' || witnessedOid !== undefined && r.oid !== witnessedOid || r.privileged !== true || r.config !== 0 || r.prepared !== 0) throw new Failure('runtime-pool'); if (r.sessions === 0) { witnessedOid ??= r.oid; return { maintenanceDatabase: 'postgres', databaseOid: r.oid, privileged: true, maxPreparedTransactions: 0, preparedTransactions: 0, clientSessions: 0, fresh: true }; } await bounded(clock, end, () => new Promise<void>(resolve => clock.setTimeout(resolve, 250)), 'runtime-pool'); } }); },
   drop(authority, ms) { return admin(authority, ms, async client => { if (!/^[a-z0-9_]+$/.test(authority.database)) throw new Failure('owned-database'); await client.query(`DROP DATABASE "${authority.database}"`); }); },
   async disposeCustody(custody, ms) {
@@ -281,6 +281,7 @@ export function createGuidesParentSupervisor(input: SupervisorInput, dependencie
    check();
    if (!dependencies) {
     // Read-only source/executable preflight precedes owned resource acquisition.
+    await assertGuidesPowerShellRuntime(input.powershellExecutable,input.jobScript);
     const files = [input.powershellExecutable, input.jobScript, input.configure.nodeExecutable, input.configure.loaderPath, input.configure.fixtureEntrypoint, input.configure.workerEntrypoint];
     for (const file of files) {
      const stat = lstatSync(file);
