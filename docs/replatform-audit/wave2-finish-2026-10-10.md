@@ -812,3 +812,7 @@ Pending-ledger diagnostic checkpoint: branded current canonical/support snapshot
 
 Exact600696 native recovery at de62c6f7 exited0/statusrecovered/qualificationfalse. Fresh retained-root/fullcontainer-ID/exactUAT-run-label/lease absence checks passed; retained secret length0. This is disposal evidence, not Apps qualification.
 
+
+### Proven Apps aborted-request retention at da090a63
+Native8/8PASS, originalexit1, sourceintact. Deadline snapshot canonical-wait/handlers0/requests58/frames0/unknownfalse/uncertaintrue/firstreasonrequest-aborted. Model removes records only after complete input AND response finish AND frames0; abort/close retains requests permanently even after known original handlers settle. Independent reviewers identified actual StrictMode, Apps owner-read effect cleanup, route/invalidation and command cancellation mechanisms. This proves the retention mismatch, not that every retained request is a safe GET. Browser assertions and frontend cancellation guards stay intact. Proposed source-audited read-only transport-custody amendment is documented under .superpowers/sdd/2026-10-09-replatform-waves/wave2-apps-transport-custody-amendment.md; user approval pending under brainstorming design rule. Mutation/upload/auth/unclassified/unsafe/unknown failures remain excluded. Root fresh279 exact-recovery testsPASS and scopedrecoverytypes0; actual14th11-entryinventory independentlymatched. No amended qualification behavior implemented.
+
