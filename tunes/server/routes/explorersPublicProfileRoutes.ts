@@ -1,9 +1,10 @@
+import {PublicPeopleCursorError} from '../publicProfile/publicPeopleProjection';
 import {PublicMovieCursorError} from '../publicProfile/publicMoviesProjection';
 import {PublicGameCursorError,PublicGameReadLimit,prepareGamePublicReply,discardGamePublicResult} from '../publicProfile/publicGamesProjection';
 import { createHash } from "node:crypto";
 import type { Express,Request,Response } from "express";
 import rateLimit from "express-rate-limit";
-import { parsePublicMovieGenreRequest, parsePublicProfileDetailRequest, parsePublicProfileRequest, parsePublicProfileUsername } from "../publicProfile/publicProfileContract";
+import { parsePublicPeopleSectorRequest, parsePublicMovieGenreRequest, parsePublicProfileDetailRequest, parsePublicProfileRequest, parsePublicProfileUsername } from "../publicProfile/publicProfileContract";
 import type { PublicCategory } from "../publicProfile/publicProfilePolicy";
 
 const notFound = { version: "explorers-public-error/v1", error: { code: "NOT_FOUND" } };
@@ -36,7 +37,7 @@ async function sendGames(request:Request,response:Response,value:unknown){
 
 export function setupExplorersPublicProfileRoutes(
   app: Express,
-  dependencies: { movieGenre?(username:string,genreSlug:string,limit:number,options?:{bypassCache?:boolean;cursor?:string}):Promise<unknown|undefined>; shell?(username: string, options?: { bypassCache?: boolean }): Promise<unknown | undefined>; category(username: string, category: PublicCategory, limit: number, options?: { bypassCache?: boolean; cursor?: string;signal?:AbortSignal }): Promise<unknown | undefined>; detail?(username: string, category: PublicCategory, slug: string, limit: number, options?: { bypassCache?: boolean; cursor?: string;signal?:AbortSignal }): Promise<unknown | undefined> },
+  dependencies: { peopleSector?(username:string,sectorSlug:string,limit:number,options?:{cursor?:string}):Promise<unknown|undefined>; movieGenre?(username:string,genreSlug:string,limit:number,options?:{bypassCache?:boolean;cursor?:string}):Promise<unknown|undefined>; shell?(username: string, options?: { bypassCache?: boolean }): Promise<unknown | undefined>; category(username: string, category: PublicCategory, limit: number, options?: { bypassCache?: boolean; cursor?: string;signal?:AbortSignal }): Promise<unknown | undefined>; detail?(username: string, category: PublicCategory, slug: string, limit: number, options?: { bypassCache?: boolean; cursor?: string;signal?:AbortSignal }): Promise<unknown | undefined> },
   options: { rateLimit?: { windowMs?: number; limit?: number } } = {},
 ): void {
   app.use("/api/explorers/v1/profiles", rateLimit({
@@ -89,6 +90,11 @@ export function setupExplorersPublicProfileRoutes(
   app.get('/api/explorers/v1/profiles/:username/recommendations/movies/genres/:genreSlug',async(req,res)=>{
     let parsed;try{if(Object.keys(req.query).some(key=>key!=='limit'&&key!=='cursor'))throw Error();parsed=parsePublicMovieGenreRequest({username:req.params.username,genreSlug:req.params.genreSlug,...req.query});}catch{return res.status(400).json(badRequest);}
     let value;try{value=await dependencies.movieGenre?.(parsed.username,parsed.genreSlug,parsed.limit,{cursor:parsed.cursor});}catch(error){return res.status(error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?400:503).json(error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?badRequest:error instanceof PublicGameReadLimit?readLimited:unavailable);}
+    if(!value)return res.status(404).json(notFound);const etag=`"${createHash('sha256').update(JSON.stringify(value)).digest('base64url')}"`;res.set('ETag',etag);if(req.get('if-none-match')===etag)return res.status(304).end();return res.status(200).json(value);
+  });
+  app.get('/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug',async(req,res)=>{
+    let parsed;try{if(Object.keys(req.query).some(k=>k!=='limit'&&k!=='cursor'))throw Error();parsed=parsePublicPeopleSectorRequest({username:req.params.username,sectorSlug:req.params.sectorSlug,...req.query});}catch{return res.status(400).json(badRequest);}
+    let value;try{value=await dependencies.peopleSector?.(parsed.username,parsed.sectorSlug,parsed.limit,{cursor:parsed.cursor});}catch(error){return res.status(error instanceof PublicPeopleCursorError?400:503).json(error instanceof PublicPeopleCursorError?badRequest:unavailable);}
     if(!value)return res.status(404).json(notFound);const etag=`"${createHash('sha256').update(JSON.stringify(value)).digest('base64url')}"`;res.set('ETag',etag);if(req.get('if-none-match')===etag)return res.status(304).end();return res.status(200).json(value);
   });
   app.get("/api/explorers/v1/profiles/:username/recommendations/:category/:slug", async (req, res) => {

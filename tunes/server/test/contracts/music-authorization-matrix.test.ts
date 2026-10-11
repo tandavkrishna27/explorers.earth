@@ -39,6 +39,7 @@ describe("generated full Music authorization matrix", () => {
       expect.objectContaining({ method: "ALL", path: "/api/explorers/v1/collections/:id/memberships/:recommendationId", decision: "tombstone" }),
       expect.objectContaining({ method: "ALL", path: "/api/explorers/v1/catalog/movie-genres", decision: "tombstone" }),
       expect.objectContaining({ method: "GET", path: "/api/explorers/v1/profiles/:username/recommendations/movies/genres/:genreSlug", decision: "public" }),
+      expect.objectContaining({ method: "GET", path: "/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug", source: "tunes/server/routes/explorersPublicProfileRoutes.ts", decision: "public", allowed: { unauthenticated: true, owner: false, otherUser: false, suspended: false, pendingDeletion: false, staleEntitlement: false, guestValid: false, guestInvalid: false, guestRevoked: false, internalAdmin: false, nativeSession: false } }),
       expect.objectContaining({ method: "POST", path: "/api/explorers/v1/recommendations/:id/movie-media/import", decision: "explorers-owner" }),
       expect.objectContaining({ method: "ALL", path: "/api/explorers/v1/recommendations/:id/movie-media/import", decision: "tombstone" }),
     ]));

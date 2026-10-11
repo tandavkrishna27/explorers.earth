@@ -1,10 +1,11 @@
+import {publicAssignedTaxonomy,publicCatalogFence,samePublicCatalog} from './publicTaxonomyProjection';
 import type {Pool,PoolClient} from 'pg';
 import {readPlaceEntity,readPlaceContext,readPlacePhotoMediaIds,readPlaceCollectionDetails,effectivePlaceDetails} from '../repositories/placeCatalogRepository';
 import {publicPlaceContact,legacyListNameDetails} from '../../shared/explorersPlaceContract';
 import {displayOverridesReadSchema} from '../../shared/explorersContract';
 import {normalizeRichNote} from '../application/richNote';
 import {publicProfileCursorStart} from './publicProfileContract';
-import {publicLinkedPeopleLists} from './publicPeopleProjection';
+import {publicLinkedPeopleLists,publicPeopleScope,samePeopleScope,publicPeopleResultEligible} from './publicPeopleProjection';
 import {publicLinkedProductsLists} from './publicProductsProjection';
 
 /**
@@ -44,6 +45,7 @@ const mediaUrl=(id:string)=>`/api/explorers/v1/media/${id}/content`;
 
 async function richPlace(db:PoolClient,row:any){
  if(Number(row.note_bytes)>8192||Number(row.override_bytes)>8192)throw new Error('Public Place exceeds read bound');
+ const taxonomy=await publicAssignedTaxonomy(db,row.id,row.account_id,'places');
  const entity=await readPlaceEntity(db,row.entity_id);
  const overrides=displayOverridesReadSchema.parse(row.display_values??{}),facts=effectivePlaceDetails(entity.details,overrides);
  const context=await readPlaceContext(db,row.id,row.account_id);
@@ -80,7 +82,7 @@ async function richPlace(db:PoolClient,row:any){
  recommendation_list:{documentId:row.collection_id,List_Name:row.collection_title,slug:row.collection_slug},
  // Taxonomy is deferred to its own ticket: the vocabulary is Strapi content and 5.1
  // forbids inventing production values.
- recommendation_category:null,recommendation_sub_category:null};
+ recommendation_category:taxonomy.root?{...taxonomy.root,Category_Name:taxonomy.root.Category_name}:null,recommendation_sub_category:taxonomy.child?{...taxonomy.child,Sub_Category_Name:taxonomy.child.Category_name}:null};
 }
 async function projectRows(db:PoolClient,rows:any[]){const places=[];for(const row of rows)places.push(await richPlace(db,row));return places;}
 
@@ -100,13 +102,13 @@ async function children(db:PoolClient,account:string,collectionId:string,limit:n
 /** Live bounded offset compatibility for the existing public Places routes. */
 export async function publicPlacesProjection(pool:Pool,username:string,limit:number,cursor?:string,slug?:string){
  const offset=publicProfileCursorStart(cursor);if(!Number.isInteger(limit)||limit<1||limit>24)throw new Error('Invalid Places page size');
- const db=await pool.connect();let observed:any,result:any;
+ const db=await pool.connect();let observed:any,result:any,catalog:any,peopleCatalog:any,peopleScope:any;
  try{
   await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');await db.query("SET LOCAL statement_timeout='2000ms'");
-  observed=await scope(db,username);if(!observed){await db.query('COMMIT');return undefined;}
+  catalog=await publicCatalogFence(db,'places');peopleCatalog=await publicCatalogFence(db,'people');peopleScope=await publicPeopleScope(db,username);observed=await scope(db,username);if(!observed){await db.query('COMMIT');return undefined;}
   const rows=(await db.query(`SELECT c.id,c.title,c.description,c.slug,c.heading,c.display_order,cm.media_id AS cover_media_id FROM collections c
    JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category
-   LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover'
+   LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover' AND EXISTS(SELECT 1 FROM media_assets m WHERE m.id=cm.media_id AND m.account_id=cm.account_id AND m.status='ready')
    WHERE a.id=$1 AND c.category='places' AND ${gate} AND ${listGate} AND ($2::text IS NULL OR c.slug=$2)
    ORDER BY c.display_order,c.id LIMIT $3 OFFSET $4`,[observed.id,slug??null,slug?1:limit+1,slug?0:offset])).rows;
   if(slug&&!rows.length){await db.query('COMMIT');return undefined;}
@@ -138,5 +140,5 @@ export async function publicPlacesProjection(pool:Pool,username:string,limit:num
   if(Buffer.byteLength(JSON.stringify(result),'utf8')>4*1024*1024)throw new Error('Public Places page exceeds read bound');
   await db.query('COMMIT');
  }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
- return sameScope(observed,await scope(pool,username))?result:undefined;
+ return sameScope(observed,await scope(pool,username))&&samePublicCatalog(catalog,await publicCatalogFence(pool,'places'))&&samePublicCatalog(peopleCatalog,await publicCatalogFence(pool,'people'))&&((!peopleScope&&!await publicPeopleScope(pool,username))||samePeopleScope(peopleScope,await publicPeopleScope(pool,username)))&&await publicPeopleResultEligible(pool,observed.id,result)?result:undefined;
 }

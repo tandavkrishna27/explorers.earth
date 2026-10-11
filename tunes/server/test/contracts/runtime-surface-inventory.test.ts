@@ -10,6 +10,12 @@ describe("runtime route/event/job inventory", () => {
     // Production break caught: an authorization migration misses a route,
     // Socket event, or scheduled lifecycle job that was hand-summarized only.
     const inventory = inventoryRuntimeSurfaces(repositoryRoot);
+    expect(inventory.routes).toHaveLength(177);
+    expect(inventory.events).toHaveLength(15);
+    expect(inventory.jobs).toHaveLength(29);
+    expect(inventory.routes.filter(route => route.path === '/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug')).toEqual([
+      expect.objectContaining({method:'GET',classification:'public',source:'tunes/server/routes/explorersPublicProfileRoutes.ts',policy:'explicit-public-contract',ownerSource:'none'}),
+    ]);
     expect(inventory.routes).toEqual(expect.arrayContaining([
       expect.objectContaining({ method: "POST", path: "/api/music/identity/ensure", ownerSource: "authoritative-strapi-user+selected-account", classification: "strapi-identity-boundary" }),
       expect.objectContaining({ method: "GET", path: "/api/music/identity/current", ownerSource: "req.musicPrincipal.musicUserId", classification: "local-music-owner" }),

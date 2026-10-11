@@ -944,7 +944,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 42
+      "line": 43
     },
     {
       "method": "USE",
@@ -954,7 +954,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 49
+      "line": 50
     },
     {
       "method": "GET",
@@ -964,7 +964,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 53
+      "line": 54
     },
     {
       "method": "GET",
@@ -974,7 +974,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 67
+      "line": 68
     },
     {
       "method": "GET",
@@ -984,7 +984,17 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 89
+      "line": 90
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "line": 95
     },
     {
       "method": "GET",
@@ -994,7 +1004,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 94
+      "line": 100
     },
     {
       "method": "GET",

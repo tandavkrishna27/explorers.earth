@@ -6,7 +6,7 @@ import type { PublicCategory } from "./publicProfilePolicy";
 import {publicBooksProjection} from './publicBooksProjection';
 import {publicAppsProjection} from './publicAppsProjection';
 import {publicProductsProjection} from './publicProductsProjection';
-import {publicPeopleProjection} from './publicPeopleProjection';
+import {publicPeopleProjection,publicPeopleSectorProjection} from './publicPeopleProjection';
 import {publicPlacesProjection} from './publicPlacesProjection';
 import {publicGuidesProjection} from './publicGuidesProjection';
 
@@ -65,6 +65,7 @@ export class PostgresPublicProfileGateway implements PublicProfileGateway {
   async resolveDetail(username:string,category:PublicCategory,slug:string,limit=12,cursor?:string,operation?:GamePublicOperation): Promise<unknown> {
     return category==='games'?publicGamesProjection(this.db,username,limit,cursor,slug,this.movieCursorSecret,operation):category==='movies'?publicMoviesProjection(this.db,username,limit,cursor,slug,this.movieCursorSecret):category==='books'?publicBooksProjection(this.db,username,limit,cursor,slug):category==='apps'?publicAppsProjection(this.db,username,limit,cursor,slug):category==='products'?publicProductsProjection(this.db,username,limit,cursor,slug):category==='people'?publicPeopleProjection(this.db,username,limit,cursor,slug):category==='places'?publicPlacesProjection(this.db,username,limit,cursor,slug):category==='guides'?publicGuidesProjection(this.db,username,limit,cursor,slug):undefined;
   }
+  async resolvePeopleSector(username:string,sectorSlug:string,limit:number,cursor?:string):Promise<unknown>{return publicPeopleSectorProjection(this.db,username,sectorSlug,limit,cursor,this.movieCursorSecret);}
   async resolveMovieGenre(username:string,genreSlug:string,limit:number,cursor?:string):Promise<unknown>{return publicMoviesProjection(this.db,username,limit,cursor,undefined,this.movieCursorSecret,genreSlug);}
 
 }

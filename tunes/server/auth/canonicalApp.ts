@@ -106,7 +106,7 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   // Privacy changes must be visible on the very next public request, including across app replicas.
   const publicProfiles = new PublicProfileService(new PostgresPublicProfileGateway(pool,config.secret), { ttlMs: 0 });
   setupExplorersPublicProfileRoutes(app, { shell: publicProfiles.shell.bind(publicProfiles),
-    movieGenre:publicProfiles.movieGenre.bind(publicProfiles), category: publicProfiles.category.bind(publicProfiles), detail: publicProfiles.detail.bind(publicProfiles) });
+    peopleSector:publicProfiles.peopleSector.bind(publicProfiles), movieGenre:publicProfiles.movieGenre.bind(publicProfiles), category: publicProfiles.category.bind(publicProfiles), detail: publicProfiles.detail.bind(publicProfiles) });
 
   app.post("/api/explorers/v1/recovery/start", async (request, response) => {
     if (request.get("origin") !== config.baseURL) {

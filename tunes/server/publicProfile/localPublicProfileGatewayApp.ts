@@ -28,6 +28,7 @@ export function createLocalPublicProfileGatewayApp(config: LocalPublicProfileGat
   app.get("/health/live", (_request, response) => response.status(200).json({ status: "ok" }));
   const profiles = new PublicProfileService(gateway);
   setupExplorersPublicProfileRoutes(app, {
+    peopleSector:(username,sectorSlug,limit,options)=>profiles.peopleSector(username,sectorSlug,limit,options),
     movieGenre:(username,genreSlug,limit,options)=>profiles.movieGenre(username,genreSlug,limit,options),
     shell: (username, options) => profiles.shell(username, options),
     category: (username, category, limit, options) => profiles.category(username, category, limit, options),

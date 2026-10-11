@@ -1,4 +1,7 @@
 import type {Pool,PoolClient} from 'pg';
+import {publicAssignedTaxonomy,publicCatalogFence,samePublicCatalog,resolvePublicSector} from './publicTaxonomyProjection';
+import {publicPeopleSectorPageSchema} from '../../shared/explorersPublicPeopleSectorContract';
+import {createHmac,timingSafeEqual} from 'node:crypto';
 import {readPersonEntity,effectivePersonDetails} from '../repositories/personCatalogRepository';
 import {displayOverridesReadSchema} from '../../shared/explorersContract';
 import {normalizeRichNote} from '../application/richNote';
@@ -29,22 +32,24 @@ const membershipJoin=`FROM collection_items ci JOIN collections c ON c.id=ci.col
  JOIN recommendations r ON r.id=ci.recommendation_id AND r.account_id=ci.account_id AND r.category=ci.category
  JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category`;
 
-async function scope(db:Pick<Pool,'query'>,username:string){return (await db.query(`SELECT a.id,a.handle,a.revision::text AS account_revision,coalesce(cs.revision::text,'0') AS content_revision
+export async function publicPeopleScope(db:Pick<Pool,'query'>,username:string){return (await db.query(`SELECT a.id,a.handle,a.revision::text AS account_revision,coalesce(cs.revision::text,'0') AS content_revision
  FROM creator_accounts a JOIN account_category_settings s ON s.account_id=a.id AND s.category='people'
  LEFT JOIN account_category_content_state cs ON cs.account_id=a.id AND cs.category='people'
  WHERE a.handle_key=lower($1) AND ${gate}`,[username])).rows[0];}
-const sameScope=(a:any,b:any)=>!!a&&!!b&&a.id===b.id&&a.account_revision===b.account_revision&&a.content_revision===b.content_revision;
+export const samePeopleScope=(a:any,b:any)=>!!a&&!!b&&a.id===b.id&&a.account_revision===b.account_revision&&a.content_revision===b.content_revision;
 
+const projectedPersonEntities=new WeakMap<object,string>();
 /** twitter is stored; the frontend has always presented x. */
 const presentedPlatform=(stored:string|null)=>stored===null?null:stored==='twitter'?'x':stored;
 
 async function richPerson(db:PoolClient,row:any){
  if(Number(row.note_bytes)>8192||Number(row.override_bytes)>8192)throw new Error('Public Person exceeds read bound');
+ const taxonomy=await publicAssignedTaxonomy(db,row.id,row.account_id,'people');
  const entity=await readPersonEntity(db,row.entity_id);
  const overrides=displayOverridesReadSchema.parse(row.display_values??{}),facts=effectivePersonDetails(entity.details,overrides);
  const name=(Object.hasOwn(overrides,'title')?overrides.title:entity.title)??'Unnamed person';
  const primary=facts.socialUrls.primary??(facts.primaryPlatform?facts.socialUrls[facts.primaryPlatform]:undefined)??null;
- return {documentId:row.id,
+ const person={documentId:row.id,
  // Canonical plus the compatibility aliases the consuming components still read.
  title:name,full_name:name,
  username_handle:facts.usernameHandle,headline:facts.headline,location_text:facts.locationText,
@@ -56,8 +61,9 @@ async function richPerson(db:PoolClient,row:any){
  user_recommendation_note:normalizeRichNote(row.note)?.html??'',user_rating:row.user_rating,
  is_pinned:row.pin_order!==null,pin_order:row.pin_order,display_order:row.display_order,
  person_list:{documentId:row.collection_id,List_Name:row.collection_title,slug:row.collection_slug},
- // Sector taxonomy is out of 4.5's scope and has no seeded vocabulary.
- person_category:null};
+ // Public aliases share the canonical recommendation-local sector identity.
+ person_category:taxonomy.root,people_category:taxonomy.root};
+ projectedPersonEntities.set(person,row.entity_id);return person;
 }
 async function projectRows(db:PoolClient,rows:any[]){const people=[];for(const row of rows)people.push(await richPerson(db,row));return people;}
 
@@ -86,7 +92,7 @@ export async function publicLinkedPeopleLists(db:PoolClient,accountId:string,loc
   FROM collection_location_links l
   JOIN collections c ON c.id=l.child_collection_id AND c.account_id=l.account_id AND c.category=l.child_category
   JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category
-  LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover'
+  LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover' AND EXISTS(SELECT 1 FROM media_assets m WHERE m.id=cm.media_id AND m.account_id=cm.account_id AND m.status='ready')
   WHERE l.account_id=$1 AND l.location_collection_id=$2 AND l.child_category='people'
    AND ${gate} AND ${listGate}
   ORDER BY c.display_order,c.id LIMIT $3`,[accountId,locationCollectionId,limit])).rows;
@@ -103,13 +109,13 @@ export async function publicLinkedPeopleLists(db:PoolClient,accountId:string,loc
 /** Live bounded offset compatibility for the existing public People routes. */
 export async function publicPeopleProjection(pool:Pool,username:string,limit:number,cursor?:string,slug?:string){
  const offset=publicProfileCursorStart(cursor);if(!Number.isInteger(limit)||limit<1||limit>24)throw new Error('Invalid People page size');
- const db=await pool.connect();let observed:any,result:any;
+ const db=await pool.connect();let observed:any,result:any,catalog:any;
  try{
   await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');await db.query("SET LOCAL statement_timeout='2000ms'");
-  observed=await scope(db,username);if(!observed){await db.query('COMMIT');return undefined;}
+  catalog=await publicCatalogFence(db,'people');observed=await publicPeopleScope(db,username);if(!observed){await db.query('COMMIT');return undefined;}
   const rows=(await db.query(`SELECT c.id,c.title,c.description,c.slug,c.heading,c.display_order,cm.media_id AS cover_media_id FROM collections c
    JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category
-   LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover'
+   LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover' AND EXISTS(SELECT 1 FROM media_assets m WHERE m.id=cm.media_id AND m.account_id=cm.account_id AND m.status='ready')
    WHERE a.id=$1 AND c.category='people' AND ${gate} AND ${listGate} AND ($2::text IS NULL OR c.slug=$2)
    ORDER BY c.display_order,c.id LIMIT $3 OFFSET $4`,[observed.id,slug??null,slug?1:limit+1,slug?0:offset])).rows;
   if(slug&&!rows.length){await db.query('COMMIT');return undefined;}
@@ -125,5 +131,66 @@ export async function publicPeopleProjection(pool:Pool,username:string,limit:num
   if(Buffer.byteLength(JSON.stringify(result),'utf8')>4*1024*1024)throw new Error('Public People page exceeds read bound');
   await db.query('COMMIT');
  }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
- return sameScope(observed,await scope(pool,username))?result:undefined;
+ return samePeopleScope(observed,await publicPeopleScope(pool,username))&&samePublicCatalog(catalog,await publicCatalogFence(pool,'people'))&&await publicPeopleResultEligible(pool,observed.id,result)?result:undefined;
+}
+
+export class PublicPeopleCursorError extends Error {constructor(){super('Invalid People continuation');}}
+const cursorDomain='explorers-public-people-sector/v1:';
+type SectorAfter=[number,string,number,string];
+function sectorCursor(secret:string,binding:Record<string,unknown>,after:SectorAfter){if(secret.length<32)throw Error('People continuation key unavailable');const part=Buffer.from(JSON.stringify({...binding,after})).toString('base64url');return part+'.'+createHmac('sha256',secret).update(cursorDomain+part).digest('base64url');}
+function sectorAfter(secret:string,binding:Record<string,unknown>,cursor?:string):SectorAfter|null{
+ if(!cursor)return null;if(secret.length<32||cursor.length>2048||!/^[-_A-Za-z0-9]+\.[-_A-Za-z0-9]{43}$/.test(cursor))throw new PublicPeopleCursorError();
+ const [part,signature]=cursor.split('.');const actual=createHmac('sha256',secret).update(cursorDomain+part).digest(),supplied=Buffer.from(signature,'base64url');
+ if(actual.length!==supplied.length||!timingSafeEqual(actual,supplied))throw new PublicPeopleCursorError();
+ try{const bytes=Buffer.from(part,'base64url');if(bytes.toString('base64url')!==part)throw Error();const parsed=JSON.parse(bytes.toString('utf8'));const {after,...bound}=parsed;
+  if(JSON.stringify(bound)!==JSON.stringify(binding)||!Array.isArray(after)||after.length!==4||!Number.isSafeInteger(after[0])||after[0]<0||!Number.isSafeInteger(after[2])||after[2]<0||![after[1],after[3]].every(v=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v)))throw Error();return after as SectorAfter;
+ }catch{throw new PublicPeopleCursorError();}
+}
+/** Metadata, eligible memberships and entity projection share one owned repeatable snapshot. */
+export async function publicPeopleSectorProjection(pool:Pool,username:string,sectorSlug:string,limit:number,cursor?:string,secret=''){
+ if(!Number.isInteger(limit)||limit<1||limit>24)throw new PublicPeopleCursorError();
+ const db=await pool.connect();let observed:any,resolved:any,result:any;
+ try{
+  await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');await db.query("SET LOCAL statement_timeout='2000ms'");
+  observed=await publicPeopleScope(db,username);resolved=await resolvePublicSector(db,sectorSlug);
+  if(!observed||!resolved){await db.query('COMMIT');return undefined;}
+  const binding={v:1,account:observed.id,username:username.toLowerCase(),category:'people',operation:'sector',term:resolved.sector.id,slug:resolved.sector.slug,catalogVersion:resolved.catalog.version,defaultLocale:resolved.catalog.default_locale,accountRevision:observed.account_revision,contentRevision:observed.content_revision,limit};
+  const after=sectorAfter(secret,binding,cursor);
+  const rows=(await db.query(`WITH eligible AS (
+   SELECT r.id,r.account_id,r.entity_id,r.user_rating,CASE WHEN octet_length(r.note::text)<=8192 THEN r.note END AS note,octet_length(r.note::text) AS note_bytes,
+   CASE WHEN octet_length(o.display_values::text)<=8192 THEN o.display_values END AS display_values,octet_length(o.display_values::text) AS override_bytes,
+   ci.display_order,c.display_order AS collection_order,c.id AS collection_id,c.title AS collection_title,c.slug AS collection_slug,NULL::integer AS pin_order,
+   row_number() OVER(PARTITION BY r.id ORDER BY c.display_order,c.id,ci.display_order,r.id) AS membership_rank ${membershipJoin}
+   JOIN recommendation_taxonomy rt ON rt.recommendation_id=r.id AND rt.account_id=r.account_id AND rt.category=r.category
+   LEFT JOIN recommendation_display_overrides o ON o.recommendation_id=r.id AND o.account_id=r.account_id
+   WHERE a.id=$1 AND c.category='people' AND rt.term_id=$2 AND ${gate} AND ${listGate} AND ${recommendationGate} AND ${suppressionGate}
+  ) SELECT * FROM eligible WHERE membership_rank=1 AND ($4::integer IS NULL OR (collection_order,collection_id,display_order,id)>($4::integer,$5::uuid,$6::integer,$7::uuid)) ORDER BY collection_order,collection_id,display_order,id LIMIT $3`,[observed.id,resolved.sector.id,limit+1,after?.[0]??null,after?.[1]??null,after?.[2]??null,after?.[3]??null])).rows;
+  const {id,...sector}=resolved.sector;
+  result=publicPeopleSectorPageSchema.parse({version:'explorers-public-people-sector/v1',sector,canonicalSlug:sector.slug,redirectSlug:sectorSlug===sector.slug?null:sector.slug,recommended_people:await projectRows(db,rows.slice(0,limit)),nextCursor:rows.length>limit?sectorCursor(secret,binding,[rows[limit-1].collection_order,rows[limit-1].collection_id,rows[limit-1].display_order,rows[limit-1].id]):null});
+  result.recommended_people.forEach((person:object,index:number)=>projectedPersonEntities.set(person,rows[index].entity_id));
+  if(Buffer.byteLength(JSON.stringify(result))>4*1024*1024)throw Error('Public People page exceeds read bound');
+  await db.query('COMMIT');
+ }catch(error){await db.query('ROLLBACK');throw error;}finally{db.release();}
+ const current=await resolvePublicSector(pool,resolved.sector.slug);
+ return samePeopleScope(observed,await publicPeopleScope(pool,username))&&current&&samePublicCatalog(resolved.catalog,current.catalog)&&JSON.stringify(resolved.sector)===JSON.stringify(current.sector)&&await publicPeopleResultEligible(pool,observed.id,result)?result:undefined;
+}
+
+
+/** Entity suppression has its own writer and is not covered by category revisions.
+ * Check the returned owned recommendations again in a fresh bounded transaction. */
+export async function publicPeopleResultEligible(pool:Pool,accountId:string,result:any){
+ const ids=new Set<string>();const entities=new Map<string,string>();
+ const add=(people:any[])=>{for(const person of people??[]){ids.add(person.documentId);const entity=projectedPersonEntities.get(person);if(!entity)throw Error('Public Person eligibility identity unavailable');entities.set(person.documentId,entity);}};
+ add(result?.recommended_people);
+ for(const list of result?.personLists??[])add(list.recommended_people);
+ for(const location of result?.recommendationLists??[])for(const list of location.person_lists??[])add(list.recommended_people);
+ if(!ids.size)return true;if(ids.size>24*12*12)throw Error('Public People eligibility read exceeds bound');
+ const db=await pool.connect();
+ try{
+  await db.query('BEGIN READ ONLY');await db.query("SET LOCAL statement_timeout='2000ms'");
+  const rows=(await db.query(`/* public_people_current_eligibility */ SELECT DISTINCT r.id,r.entity_id ${membershipJoin}
+   WHERE a.id=$1 AND r.id=ANY($2::uuid[]) AND r.category='people' AND c.category='people'
+   AND ${gate} AND ${listGate} AND ${recommendationGate} AND ${suppressionGate}`,[accountId,[...ids]])).rows;
+  await db.query('COMMIT');return rows.length===ids.size&&rows.every(row=>entities.get(row.id)===row.entity_id);
+ }catch(error){await db.query('ROLLBACK');throw error;}finally{db.release();}
 }

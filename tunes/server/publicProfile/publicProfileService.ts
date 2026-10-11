@@ -4,6 +4,7 @@ import type {GamesPublicPage} from '../../shared/explorersGameOwnerContract';
 
 export interface PublicProfileGateway {
   resolveGamesAccount?(username:string):Promise<Record<string,unknown>|undefined>;
+  resolvePeopleSector?(username:string,sectorSlug:string,limit:number,cursor?:string):Promise<unknown>;
   resolveMovieGenre?(username:string,genreSlug:string,limit:number,cursor?:string):Promise<unknown>;
   resolveAccount(username: string): Promise<Record<string, unknown> | undefined>;
   resolveCategory(username: string, category: PublicCategory, limit: number, cursor?: string,operation?:GamePublicOperation): Promise<unknown>;
@@ -87,7 +88,7 @@ export class PublicProfileService {
 
   async category(username: string, category: PublicCategory, limit: number, options: PublicProfileReadOptions = {}): Promise<unknown | undefined> {
     if(category==='games')return runGamePublicRead({username,kind:'category',limit,cursor:options.cursor},this.gamesExecutor,options.signal);
-    if (category === 'books' || category === 'movies') return this.freshBooksRead(username, category, () => this.gateway.resolveCategory(username, category, limit, options.cursor));
+    if (category === 'books' || category === 'movies' || category === 'people' || category === 'places') return this.freshBooksRead(username, category, () => this.gateway.resolveCategory(username, category, limit, options.cursor));
     const key = `${username}:${category}:${limit}:${options.cursor ?? "first"}`;
     const cached = this.read(this.categories, key, Boolean(options.bypassCache));
     if (cached !== undefined) return cached;
@@ -105,7 +106,7 @@ export class PublicProfileService {
 
   async detail(username: string, category: PublicCategory, slug: string, limit: number, options: PublicProfileReadOptions = {}): Promise<unknown | undefined> {
     if(category==='games')return runGamePublicRead({username,kind:'detail',slug,limit,cursor:options.cursor},this.gamesExecutor,options.signal);
-    if (category === 'books' || category === 'movies') return this.freshBooksRead(username, category, () => this.gateway.resolveDetail(username, category, slug, limit, options.cursor));
+    if (category === 'books' || category === 'movies' || category === 'people' || category === 'places') return this.freshBooksRead(username, category, () => this.gateway.resolveDetail(username, category, slug, limit, options.cursor));
     const key = `${username}:${category}:${slug}:${limit}:${options.cursor ?? "first"}`;
     const cached = this.read(this.categories, key, Boolean(options.bypassCache));
     if (cached !== undefined) return cached;
@@ -116,6 +117,7 @@ export class PublicProfileService {
     return value;
   }
 
+  async peopleSector(username:string,sectorSlug:string,limit:number,options:PublicProfileReadOptions={}):Promise<unknown|undefined>{return this.freshBooksRead(username,'people',()=>this.gateway.resolvePeopleSector?.(username,sectorSlug,limit,options.cursor)??Promise.resolve(undefined));}
   async movieGenre(username:string,genreSlug:string,limit:number,options:PublicProfileReadOptions={}):Promise<unknown|undefined>{return this.freshBooksRead(username,'movies',()=>this.gateway.resolveMovieGenre?.(username,genreSlug,limit,options.cursor)??Promise.resolve(undefined));}
 
   // Books and Movies content never consume cached or coalesced authorization. Recheck after
@@ -125,6 +127,6 @@ export class PublicProfileService {
     if (!before || !canReadPublicCategory(before, category)) return undefined;
     const value = await resolve();
     const after = await this.gateway.resolveAccount(username);
-    return after&&canReadPublicCategory(after,category)?value:undefined;
+    return after&&before.documentId===after.documentId&&canReadPublicCategory(after,category)?value:undefined;
   }
 }

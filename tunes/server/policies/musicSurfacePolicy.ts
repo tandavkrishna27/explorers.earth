@@ -118,6 +118,12 @@ const OWNER_PREFIXES = [
 ];
 
 export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "path" | "classification"> & Partial<Pick<RuntimeRouteSurface, "source">>): MusicSurfaceDecision {
+  const peopleSectorPath = '/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug';
+  if (route.path === peopleSectorPath || route.path.startsWith(peopleSectorPath + '/')) {
+    return route.classification !== 'tombstone' && route.classification !== 'admin-tombstone'
+      && route.source === 'tunes/server/routes/explorersPublicProfileRoutes.ts'
+      && route.method === 'GET' && route.path === peopleSectorPath ? 'public' : 'tombstone';
+  }
   const movieGenrePath='/api/explorers/v1/profiles/:username/recommendations/movies/genres/:genreSlug';
   const movieImportPath='/api/explorers/v1/recommendations/:id/movie-media/import';
   if(route.path===movieGenrePath||route.path.startsWith(movieGenrePath+'/'))return route.classification!=='tombstone'&&route.classification!=='admin-tombstone'&&route.source==='tunes/server/routes/explorersPublicProfileRoutes.ts'&&route.method==='GET'&&route.path===movieGenrePath?'public':'tombstone';

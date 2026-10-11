@@ -269,3 +269,10 @@ it('admits exact canonical Movie genre GET and import POST only',()=>{
  expect(decisionForRoute(routes[0])).toBe('public');expect(decisionForRoute(routes[1])).toBe('explorers-owner');
  for(const r of routes)for(const patch of [{source:'tunes/server/routes/legacyMovies.ts'},{method:'ALL'},{path:r.path+'/internal'},{classification:'tombstone'}])expect(decisionForRoute({...r,...patch})).toBe('tombstone');
 });
+
+it('admits only the exact canonical People sector GET and fails closed for siblings',()=>{
+ const route={source:'tunes/server/routes/explorersPublicProfileRoutes.ts',method:'GET',path:'/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug',classification:'handler-authorization-unknown'};
+ expect(decisionForRoute(route)).toBe('public');
+ for(const patch of [{source:'tunes/server/routes/unknown.ts'},{source:undefined},{method:'POST'},{method:'HEAD'},{method:'ALL'},{path:route.path+'/internal'},{classification:'tombstone'},{classification:'admin-tombstone'}])expect(decisionForRoute({...route,...patch})).toBe('tombstone');
+ for(const patch of [{source:'tunes/server/routes/unknown.ts'},{method:'POST'},{method:'ALL'},{path:route.path+'/internal'}])expect(decisionForRoute({...route,classification:'public',...patch})).toBe('tombstone');
+});

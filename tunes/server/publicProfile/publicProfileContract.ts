@@ -42,3 +42,4 @@ export function publicProfileCursorStart(cursor?: string): number {
 }
 
 export function parsePublicMovieGenreRequest(value:unknown){return requestSchema.omit({category:true}).extend({genreSlug:z.string().regex(/^[a-z][a-z0-9-]{0,63}$/)}).parse(value);}
+export function parsePublicPeopleSectorRequest(value:unknown){return requestSchema.omit({category:true}).extend({limit:z.union([z.number().int().min(1).max(24),z.string().regex(/^(?:[1-9]|1[0-9]|2[0-4])$/).transform(Number)]).default(12),sectorSlug:z.string().min(1).max(100).refine(v=>!/[/?#\s\u0000-\u001f]/.test(v))}).parse(value);}
