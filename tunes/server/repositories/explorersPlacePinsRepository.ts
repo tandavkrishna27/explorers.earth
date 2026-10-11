@@ -128,7 +128,9 @@ export class ExplorersPlacePinsRepository implements PlacePinsStorage {
  private async append(db:PoolClient,accountId:string,draft:Draft,request:Extract<PlacePinsRequest,{operation:'appendPlacePinsChunk'}>,bodyBytes:number,policy:PlacePinsPolicy){
   const ids=request.body.recommendationIds;
   if(bodyBytes>policy.transportChunkBytes||ids.length>policy.transportChunkIds)pinFailure(413,'Chunk transport budget exceeded');
-  const prior=(await db.query('SELECT hash,item_count,acknowledgement FROM place_pin_draft_chunks WHERE draft_id=$1 AND chunk_index=$2 FOR UPDATE',[draft.id,request.chunkIndex])).rows[0];
+  // Account, collection and draft are held. Child writes must lock this draft
+  // through the immutable guard; SELECT needs no child UPDATE privilege.
+  const prior=(await db.query('SELECT hash,item_count,acknowledgement FROM place_pin_draft_chunks WHERE draft_id=$1 AND chunk_index=$2',[draft.id,request.chunkIndex])).rows[0];
   if(prior){
    const content=(await db.query('SELECT recommendation_id FROM place_pin_draft_items WHERE draft_id=$1 AND chunk_index=$2 ORDER BY item_index',[draft.id,request.chunkIndex])).rows;
    if(!prior.hash.equals(Buffer.from(request.body.chunkHash,'hex'))||safeCounter(prior.item_count)!==ids.length||content.length!==ids.length||content.some((row,index)=>row.recommendation_id!==ids[index]))pinFailure(409,'Chunk content conflict');
@@ -162,8 +164,10 @@ export class ExplorersPlacePinsRepository implements PlacePinsStorage {
  }
  private async commit(db:PoolClient,accountId:string,draft:Draft,request:Extract<PlacePinsRequest,{operation:'commitPlacePinsDraft'}>,budget:PinWorkBudget){
   const oldCount=await admitLivePinPass(db,draft.collection_id,budget);
-  await db.query('SELECT count(*) FROM (SELECT chunk_index FROM place_pin_draft_chunks WHERE draft_id=$1 ORDER BY chunk_index FOR UPDATE) locked',[draft.id]);
-  await db.query('SELECT count(*) FROM (SELECT chunk_index,item_index FROM place_pin_draft_items WHERE draft_id=$1 ORDER BY chunk_index,item_index FOR UPDATE) locked',[draft.id]);
+  // Parent draft serialization protects immutable children; retain bounded
+  // count reads and work admission without requiring child UPDATE privilege.
+  await db.query('SELECT count(*) FROM (SELECT chunk_index FROM place_pin_draft_chunks WHERE draft_id=$1 ORDER BY chunk_index) admitted',[draft.id]);
+  await db.query('SELECT count(*) FROM (SELECT chunk_index,item_index FROM place_pin_draft_items WHERE draft_id=$1 ORDER BY chunk_index,item_index) admitted',[draft.id]);
   const shape=(await db.query(`SELECT count(*)::text count,coalesce(min(chunk_index),0)::text first,coalesce(max(chunk_index),-1)::text last,
     coalesce(sum(item_count),0)::text items FROM place_pin_draft_chunks WHERE draft_id=$1`,[draft.id])).rows[0];
   const chunks=safeCounter(shape.count);

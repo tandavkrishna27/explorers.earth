@@ -1018,3 +1018,11 @@ Root protected runner source-unit execution first failed source closure while ne
 The guarded PG recipe now collects 28 authored cases. Its independent rereview still holds execution for original child custody, interruption-safe teardown, inherited Node executable environment and stale guard documentation. The author is repairing those before any resource allocation. No actual PG run, full native rerun, push or hosted qualification has occurred at this checkpoint; P1 and Wave 2 remain open.
 
 The retained original shell contract process subsequently completed: 8 files, 194 tests passed, exit zero, duration 911.80 seconds. This resolves the pending shell source gate above. It remains separate from the final fast 118-test lane and actual PostgreSQL/native qualification.
+
+## 2026-10-11 first actual Places P1 PostgreSQL diagnosis
+
+The first guarded attempt applied all54canonical migrations and verified the actual runtime login, but lost case evidence through an obsolete Vitest reporter callback; a generated dependency cache also invalidated its source freeze. Both harness defects were diagnosed, repaired and independently reviewed. Original receipts/manifests remain retained.
+
+The second attempt preserved exact28case evidence:18passed and10failed; source integrity, original child shutdown and exact owned-container cleanup passed. Nine permission failures correspond to immutable staging child reads requesting FOR UPDATE, which requires UPDATE permission deliberately denied by the intended role policy. One authority fixture violated the canonical suspension CHECK before its replay assertion.
+
+The reviewed repair uses plain immutable child reads under retained account/collection/draft locks, preserving denied UPDATE/private-helper authority and all bounded count/work charging. The authority fixture now invokes canonical account deactivation with a real synthetic owner/session, asserts the succeeded operation and suspended timestamp, then checks the original replay returns404. Both independent source reviews passed; root focused42tests and actual1839-file strict graph passed. Actual full28-case qualification of this repaired source remains pending; P1/Wave2 are open.

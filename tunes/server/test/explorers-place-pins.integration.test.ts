@@ -7,6 +7,8 @@ import {createPlacePinsSequenceHasher,hashPlacePinsChunk} from '../application/p
 import type {PlacePinsRequest} from '../../shared/explorersPlacePinsContract';
 import {lockContentCategories} from '../db/explorers-content-lock';
 import {verifyMusicRuntimeLogin} from '../db/music-runtime-role';
+import {AccountLifecycleService} from '../application/accountLifecycle';
+import type {Actor} from '../application/actor';
 // Fixture only. Neither these values nor their cardinalities are production policy.
 const policy={policyId:'disposable-fixture-only',policyVersion:1,transportChunkBytes:4096,transportChunkIds:32,replacementBytes:8192,replacementIds:64,ownerDraftQuota:2,ownerStagingBytes:100000,draftExpiryMs:60000,stagingRetentionMs:120000,receiptRetentionMs:180000,commitProcessingBytes:200000,commitProcessingMs:10000,commitWorkUnits:10000,cleanupBatchSize:10,cleanupWorkUnits:100};
 let admin:pg.Pool,runtime:pg.Pool,repo:ExplorersPlacePinsRepository;
@@ -128,7 +130,22 @@ async function waitDatabaseCondition(sql:string,args:unknown[]){const deadline=p
  });
  it('requires active account authority before a previously completed replay',async()=>{
   const f=await seed(),key=randomUUID(),request={operation:'replacePlacePins' as const,collectionId:f.list,body:{...await fences(f),orderedRecommendationIds:f.ids}};
-  await command(f,request,key);await admin.query("UPDATE creator_accounts SET status='suspended' WHERE id=$1",[f.account]);await expect(command(f,request,key)).rejects.toMatchObject({status:404});
+  const userId=`places-replay-owner-${randomUUID()}`,sessionId=randomUUID();
+  await admin.query("INSERT INTO auth_user(id,name,email) VALUES($1,'Replay owner',$2)",[userId,`${userId}@example.invalid`]);
+  await admin.query("INSERT INTO account_memberships(account_id,user_id,role) VALUES($1,$2,'owner')",[f.account,userId]);
+  await admin.query('INSERT INTO user_security_state(user_id) VALUES($1)',[userId]);
+  const session=(await admin.query("INSERT INTO auth_session(id,user_id,token,expires_at,updated_at) VALUES($1,$2,$3,now()+interval '1 hour',now()) RETURNING session_version",[sessionId,userId,randomUUID()])).rows[0];
+  const actor:Actor={userId,accountId:f.account,role:'owner',credential:{kind:'web-session',sessionId,sessionVersion:Number(session.session_version)}};
+  expect(await command(f,request,key)).toMatchObject({changed:true,pinCount:f.ids.length});
+  const expectedRevision=Number((await admin.query('SELECT revision FROM creator_accounts WHERE id=$1',[f.account])).rows[0].revision);
+  const deactivated=await new AccountLifecycleService(runtime).requestAccountDeactivation(actor,{expectedRevision},{requestId:randomUUID(),idempotencyKey:randomUUID()});
+  expect(deactivated).toMatchObject({accountId:f.account,status:'suspended',revision:expectedRevision+1});
+  expect(deactivated.operationId).toEqual(expect.any(String));
+  const state=(await admin.query(`SELECT a.status,a.suspended_at,o.id operation_id,o.kind,o.state,o.requested_by_user_id
+   FROM creator_accounts a JOIN account_lifecycle_operations o ON o.account_id=a.id WHERE a.id=$1 AND o.id=$2`,[f.account,deactivated.operationId])).rows[0];
+  expect(state).toMatchObject({status:'suspended',operation_id:deactivated.operationId,kind:'deactivate',state:'succeeded',requested_by_user_id:userId});
+  expect(state.suspended_at).toEqual(expect.any(Date));
+  await expect(command(f,request,key)).rejects.toMatchObject({status:404});
  });
  it('denies direct private marker writes and direct private helper execution',async()=>{
   const f=await seed();await expect(runtime.query('UPDATE account_category_content_state SET places_last_mutation_xid=pg_current_xact_id() WHERE account_id=$1',[f.account])).rejects.toMatchObject({code:'42501'});

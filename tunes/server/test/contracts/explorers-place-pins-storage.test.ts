@@ -218,6 +218,34 @@ describe('transactional Places storage seams (no database allocation)',()=>{
   expect(calls.some(sql=>sql.startsWith('UPDATE place_pin_drafts')||sql.includes('sum(accepted_bytes)'))).toBe(false);
   const receipt=calls.find(sql=>sql.startsWith('INSERT INTO application_command_receipts'))!;expect(receipt).toContain('replay_until');
  });
+ it.each(['append','empty-commit'] as const)('uses permitted immutable child reads after parent locks for %s',async operation=>{
+  const calls:string[]=[];const hasher=createPlacePinsSequenceHasher();
+  const client={query:async(sql:string)=>{calls.push(sql);
+   if(/FROM place_pin_draft_(chunks|items)\b/.test(sql)&&sql.includes('FOR UPDATE')&&!sql.includes('FROM recommendations'))throw Object.assign(new Error('Child UPDATE privilege deliberately denied'),{code:'42501'});
+   if(sql.includes('SELECT status FROM creator_accounts'))return {rows:[{status:'active'}]};
+   if(sql.includes('FROM collections'))return {rows:[{id,revision:1,category:'places',archived_at:null}]};
+   if(sql.includes('account_category_content_state'))return {rows:[{revision:'0'}]};
+   if(sql.includes('FROM place_pin_drafts')){
+    if(sql.includes('sum(accepted_bytes)'))return {rows:[{drafts:'1',bytes:'0'}]};
+    return {rows:[{id,collection_id:id,state:'open',expired:false,policy_snapshot:fixturePolicy,expected_collection_revision:'1',expected_category_content_revision:'0',accepted_bytes:'0',item_count:'0',chunk_count:'0'}]};
+   }
+   if(sql.includes('AS count FROM collection_place_pins'))return {rows:[{count:'0'}]};
+   if(sql.includes('coalesce(min(chunk_index)'))return {rows:[{count:'0',first:'0',last:'-1',items:'0'}]};
+   if(sql.includes(' changed'))return {rows:[{changed:false}]};
+   return {rows:[],rowCount:0};},release:()=>{}};
+  const request=operation==='append'?{operation:'appendPlacePinsChunk' as const,collectionId:id,draftId:id,chunkIndex:0,body:{recommendationIds:[id],chunkHash:hashPlacePinsChunk(0,[id])}}:{operation:'commitPlacePinsDraft' as const,collectionId:id,draftId:id,body:{totalCount:0,sequenceHash:hasher.finish()}};
+  const result=await new ExplorersPlacePinsRepository({connect:async()=>withCommandClock(client)} as unknown as Pool).execute(id,request,{requestId:id,idempotencyKey:'fixture-permitted-children'},100,fixturePolicy);
+  expect(result).toMatchObject(operation==='append'?{acceptedCount:1,changed:true}:{pinCount:0,changed:false});
+  const account=calls.findIndex(sql=>sql.includes('SELECT status FROM creator_accounts')&&sql.includes('FOR UPDATE'));
+  const collection=calls.findIndex(sql=>sql.includes('FROM collections')&&sql.includes('FOR UPDATE'));
+  const draft=calls.findIndex(sql=>sql.includes('FROM place_pin_drafts')&&sql.includes('FOR UPDATE'));
+  expect(account).toBeGreaterThanOrEqual(0);expect(collection).toBeGreaterThan(account);expect(draft).toBeGreaterThan(collection);
+  const childReads=calls.map((sql,index)=>({sql,index})).filter(({sql})=>/^SELECT/.test(sql)&&/FROM place_pin_draft_(chunks|items)\b/.test(sql)&&!sql.includes('FROM recommendations')&&!sql.includes('LEFT JOIN recommendations'));
+  expect(childReads.length).toBeGreaterThan(0);for(const {sql,index} of childReads){expect(index).toBeGreaterThan(draft);expect(sql).not.toContain('FOR UPDATE');}
+  expect(calls.some(sql=>/^UPDATE place_pin_draft_(chunks|items)\b/.test(sql))).toBe(false);
+  if(operation==='append')expect(calls.findIndex(sql=>sql.startsWith('INSERT INTO place_pin_draft_chunks'))).toBeGreaterThan(draft);
+  else{expect(calls.findIndex(sql=>sql.startsWith('UPDATE place_pin_drafts SET state'))).toBeGreaterThan(draft);expect(calls.findIndex(sql=>sql.startsWith('DELETE FROM place_pin_draft_chunks'))).toBeGreaterThan(calls.findIndex(sql=>sql.startsWith('UPDATE place_pin_drafts SET state')));}
+ });
  it('rolls back numeric storage exhaustion and classifies it as a resource failure',async()=>{
   const calls:string[]=[];const client={query:async(sql:string)=>{calls.push(sql);if(sql.includes('creator_accounts'))throw Object.assign(new Error('counter overflow'),{code:'22003'});return {rows:[]};},release:()=>{}};
   await expect(new ExplorersPlacePinsRepository({connect:async()=>withCommandClock(client)} as unknown as Pool).execute(id,request,{requestId:id,idempotencyKey:'fixture-key'},100,fixturePolicy)).rejects.toMatchObject({status:413,code:'RESOURCE_TOO_LARGE'});
