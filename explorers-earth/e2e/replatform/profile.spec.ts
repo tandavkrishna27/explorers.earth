@@ -148,6 +148,119 @@ function observeNativeBoundary(page: Page, origin: string) {
 }
 // END PROFILE NATIVE BOUNDARY DIAGNOSTIC
 
+// BEGIN PROFILE SECOND SAVE DIAGNOSTIC
+const profileSecondSavePending = new WeakMap<TestInfo, string>();
+function captureProfileSecondSave(info: TestInfo): void {
+  const marker = profileSecondSavePending.get(info);
+  profileSecondSavePending.delete(info);
+  try {
+    if (marker && ['failed', 'timedOut', 'interrupted'].includes(info.status ?? '')
+      && info.errors.some(error => typeof error.message === 'string' && error.message.length > 0 && !/\[[a-z0-9-]+-v\d+:/.test(error.message))) info.errors.push({ message: marker });
+  } catch {}
+}
+type SecondSaveFlag = '0' | '1' | 'u';
+type SecondSaveStatus = 'absent' | 'pending' | '2xx' | '409' | 'other' | 'transport' | 'u';
+async function observeProfileSecondSave(page: Page, info: TestInfo, origin: string, firstName: string, secondName: string) {
+  const title = 'canonical onboarding and profile round-trip at 390px';
+  if (!info.file.replaceAll('\\', '/').endsWith('/explorers-earth/e2e/replatform/profile.spec.ts') || info.title !== title
+    || info.project.name !== 'chromium-pr-safe' || info.repeatEachIndex !== 0 || info.retry !== 0
+    || !(info.titlePath.length === 1 && info.titlePath[0] === title || info.titlePath.length === 2 && info.titlePath[0] === 'replatform/profile.spec.ts' && info.titlePath[1] === title)) return;
+  let handle: import('@playwright/test').JSHandle | undefined;
+  let sealed = false;
+  let phase: 'first' | 'edit2' | 'save2' | 'poll2' = 'first';
+  let patch1: SecondSaveStatus = 'absent', patch2: SecondSaveStatus = 'absent';
+  let requestName: SecondSaveFlag = 'u', revisionAdvanced: SecondSaveFlag = 'u';
+  let firstRevision: number | undefined;
+  const requests = new Map<Request, 1 | 2>();
+  const request = (item: Request) => {
+    try {
+      if (sealed || item.method() !== 'PATCH' || new URL(item.url()).origin !== origin || new URL(item.url()).pathname !== '/api/explorers/v1/account' || requests.size >= 2) return;
+      const ordinal = requests.size === 0 ? 1 : 2;
+      requests.set(item, ordinal);
+      if (ordinal === 1) patch1 = 'pending'; else patch2 = 'pending';
+      const body = item.postDataJSON();
+      if (ordinal === 1) firstRevision = Number.isSafeInteger(body?.expectedRevision) ? body.expectedRevision : undefined;
+      else {
+        requestName = typeof body?.displayName === 'string' ? body.displayName === secondName ? '1' : '0' : 'u';
+        revisionAdvanced = firstRevision !== undefined && Number.isSafeInteger(body?.expectedRevision) ? body.expectedRevision > firstRevision ? '1' : '0' : 'u';
+      }
+    } catch { if (requests.get(item) === 2) { requestName = 'u'; revisionAdvanced = 'u'; } }
+  };
+  const response = (item: Response) => {
+    try {
+      if (sealed) return;
+      const ordinal = requests.get(item.request());
+      if (!ordinal) return;
+      const status = item.status();
+      const finite = status >= 200 && status < 300 ? '2xx' : status === 409 ? '409' : 'other';
+      if (ordinal === 1) patch1 = finite; else patch2 = finite;
+    } catch {}
+  };
+  const failed = (item: Request) => {
+    try { if (!sealed) { if (requests.get(item) === 1) patch1 = 'transport'; else if (requests.get(item) === 2) patch2 = 'transport'; } } catch {}
+  };
+  try {
+    handle = await page.evaluateHandle(({ firstName, secondName }) => {
+      const input = document.querySelector<HTMLInputElement>('[name="accountName"]');
+      const root = input?.closest('[data-testid="profile-editor-root"]');
+      const save = () => Array.from(root?.querySelectorAll<HTMLButtonElement>('button') ?? []).find(button => /Save & Publish/i.test(button.textContent ?? ''));
+      const busy = (): SecondSaveFlag => { const button = save(); return button ? button.disabled ? '1' : '0' : 'u'; };
+      let secondEdit = false, clicked = false;
+      const state = { editBeforeBusy: 'u' as SecondSaveFlag, editAfterBusy: 'u' as SecondSaveFlag, saveBeforeBusy: 'u' as SecondSaveFlag, saveAfterBusy: 'u' as SecondSaveFlag, inputAtClick: 'u' as SecondSaveFlag };
+      const before = () => { if (input?.value === firstName) state.editBeforeBusy = busy(); };
+      const edit = () => { if (input?.value === secondName) { secondEdit = true; state.editAfterBusy = busy(); state.saveBeforeBusy = busy(); } };
+      const click = (event: Event) => {
+        const button = save();
+        if (!secondEdit || !button || !(event.target instanceof Node) || !button.contains(event.target)) return;
+        clicked = true;
+        state.saveBeforeBusy = busy();
+        state.inputAtClick = input?.value === secondName ? '1' : '0';
+      };
+      const mutations = new MutationObserver(() => { if (clicked) state.saveAfterBusy = busy(); });
+      input?.addEventListener('beforeinput', before);
+      input?.addEventListener('input', edit);
+      root?.addEventListener('click', click, true);
+      if (root) mutations.observe(root, { subtree: true, attributes: true, attributeFilter: ['disabled'] });
+      return {
+        snapshot: () => ({ ...state, saveAfterBusy: clicked ? busy() : state.saveAfterBusy }),
+        dispose: () => { input?.removeEventListener('beforeinput', before); input?.removeEventListener('input', edit); root?.removeEventListener('click', click, true); mutations.disconnect(); },
+      };
+    }, { firstName, secondName });
+    page.on('request', request); page.on('response', response); page.on('requestfailed', failed);
+  } catch {
+    sealed = true;
+    try { page.off('request', request); } catch {}
+    try { page.off('response', response); } catch {}
+    try { page.off('requestfailed', failed); } catch {}
+    requests.clear(); firstRevision = undefined;
+    try { await handle?.evaluate(observer => observer.dispose()); } catch {}
+    try { await handle?.dispose(); } catch {}
+    return;
+  }
+  return {
+    phase(value: 'edit2' | 'save2' | 'poll2') { if (!sealed) phase = value; },
+    async finish(businessFailed: boolean) {
+      if (sealed) return;
+      sealed = true;
+      try { page.off('request', request); } catch {}
+      try { page.off('response', response); } catch {}
+      try { page.off('requestfailed', failed); } catch {}
+      try {
+        if (businessFailed && phase !== 'first') {
+          const unavailable = { editBeforeBusy: 'u', editAfterBusy: 'u', saveBeforeBusy: 'u', saveAfterBusy: 'u', inputAtClick: 'u' };
+          const state = await handle?.evaluate(observer => observer.snapshot()).catch(() => unavailable) ?? unavailable;
+          try { profileSecondSavePending.set(info, `[profile-second-save-v1:${phase}|${patch1}|${patch2}|${requestName}|${revisionAdvanced}|u|${state.editBeforeBusy}|${state.editAfterBusy}|${state.saveBeforeBusy}|${state.saveAfterBusy}|${state.inputAtClick}]`); } catch {}
+        }
+      } catch {} finally {
+        requests.clear(); firstRevision = undefined;
+        try { await handle?.evaluate(observer => observer.dispose()); } catch {}
+        try { await handle?.dispose(); } catch {}
+      }
+    },
+  };
+}
+// END PROFILE SECOND SAVE DIAGNOSTIC
+
 // BEGIN PROFILE ONBOARDING DIAGNOSTIC
 function profileOnboardingProjection(doc: Document = document) {
   const present = (name: string) => doc.querySelector(`[name="${name}"]`);
@@ -180,6 +293,7 @@ async function captureProfileOnboarding(page: Page, info: TestInfo): Promise<voi
 test.afterEach(({}, info) => {
   captureProfileDiagnostic(info);
   nativeBoundaryObservers.get(info)?.finish(info);
+  captureProfileSecondSave(info);
 });
 type Persona = { userId: string; cookie: string; handle: string };
 type Fixture = { origin: string; personas: { ownerA: Persona; ownerB: Persona } };
@@ -251,16 +365,23 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
     await stalePage.goto('/profile');
     await expect(stalePage.getByTestId('profile-editor-root')).toBeVisible();
     await stalePage.locator('[name="accountName"]').fill(`Stale ${width}`);
+    const secondSave = await observeProfileSecondSave(page, test.info(), fixture.origin, `Updated ${width}`, `Updated twice ${width}`);
+    let secondSaveFailed = false;
+    try {
     await page.locator('[name="accountName"]').fill(`Updated ${width}`);
     await page.getByRole('button', { name: /Save & Publish/i }).first().click();
     await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
     })).json()).toMatchObject({ account: { displayName: `Updated ${width}` } });
+    secondSave?.phase('edit2');
     await page.locator('[name="accountName"]').fill(`Updated twice ${width}`);
+    secondSave?.phase('save2');
     await page.getByRole('button', { name: /Save & Publish/i }).first().click();
+    secondSave?.phase('poll2');
     await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
     })).json()).toMatchObject({ account: { displayName: `Updated twice ${width}` } });
+    } catch (error) { secondSaveFailed = true; throw error; } finally { await secondSave?.finish(secondSaveFailed); }
     const conflict = stalePage.waitForResponse((response) => response.url().endsWith('/api/explorers/v1/account')
       && response.request().method() === 'PATCH' && response.status() === 409);
     await stalePage.getByRole('button', { name: /Save & Publish/i }).first().click();
