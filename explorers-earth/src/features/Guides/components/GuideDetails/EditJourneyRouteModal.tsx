@@ -67,12 +67,12 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
               name: ending.Place_Name,
               formatted_address: ending.Place_Address,
               place_id: ending.Place_Id,
-              geometry: {
+              ...(ending.Geometry == null ? {} : {geometry: {
                 location: {
-                  lat: () => ending.Geometry?.lat || 0,
-                  lng: () => ending.Geometry?.lng || 0,
+                  lat: () => ending.Geometry.lat,
+                  lng: () => ending.Geometry.lng,
                 } as google.maps.LatLng,
-              } as google.maps.places.PlaceGeometry,
+              } as google.maps.places.PlaceGeometry}),
             } as google.maps.places.PlaceResult;
             setArrivalPlace(endingPlaceObj);
             setArrivalDisplay(ending.Place_Name || ending.Place_Address || "");
@@ -85,12 +85,12 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
               name: starting.Place_Name,
               formatted_address: starting.Place_Address,
               place_id: starting.Place_Id,
-              geometry: {
+              ...(starting.Geometry == null ? {} : {geometry: {
                 location: {
-                  lat: () => starting.Geometry?.lat || 0,
-                  lng: () => starting.Geometry?.lng || 0,
+                  lat: () => starting.Geometry.lat,
+                  lng: () => starting.Geometry.lng,
                 } as google.maps.LatLng,
-              } as google.maps.places.PlaceGeometry,
+              } as google.maps.places.PlaceGeometry}),
             } as google.maps.places.PlaceResult;
             setDeparturePlace(startingPlaceObj);
             setDepartureDisplay(starting.Place_Name || starting.Place_Address || "");
@@ -103,12 +103,12 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
               name: city.Place_Name,
               formatted_address: city.Place_Address,
               place_id: city.Place_Id,
-              geometry: {
+              ...(city.Geometry == null ? {} : {geometry: {
                 location: {
-                  lat: () => city.Geometry?.lat || 0,
-                  lng: () => city.Geometry?.lng || 0,
+                  lat: () => city.Geometry.lat,
+                  lng: () => city.Geometry.lng,
                 } as google.maps.LatLng,
-              } as google.maps.places.PlaceGeometry,
+              } as google.maps.places.PlaceGeometry}),
             } as google.maps.places.PlaceResult,
             displayValue: city.Place_Name || city.Place_Address || "",
             hasDate: city.hasDate || false,
@@ -148,10 +148,10 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
       Place_Id: place.place_id || "",
       Place_Name: place.name || "",
       Place_Address: place.formatted_address || "",
-      Geometry: {
-        lat: place.geometry?.location?.lat() || 0,
-        lng: place.geometry?.location?.lng() || 0,
-      },
+      Geometry: place.geometry?.location ? {
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+      } : null,
     };
   };
 

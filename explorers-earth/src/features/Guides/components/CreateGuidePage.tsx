@@ -191,12 +191,12 @@ const CreateGuidePage = ({
               // Rating fields are optional (for backward compatibility with old data)
               rating: startingDetails.Rating || undefined,
               user_ratings_total: startingDetails.Rating_Count || undefined,
-              geometry: {
+              ...(startingDetails.Geometry == null ? {} : {geometry: {
                 location: {
-                  lat: () => startingDetails.Geometry?.lat || 0,
-                  lng: () => startingDetails.Geometry?.lng || 0,
+                  lat: () => startingDetails.Geometry.lat,
+                  lng: () => startingDetails.Geometry.lng,
                 } as google.maps.LatLng,
-              } as google.maps.places.PlaceGeometry,
+              } as google.maps.places.PlaceGeometry}),
             };
           }
 
@@ -211,12 +211,12 @@ const CreateGuidePage = ({
               // Rating fields are optional (for backward compatibility with old data)
               rating: endingDetails.Rating || undefined,
               user_ratings_total: endingDetails.Rating_Count || undefined,
-              geometry: {
+              ...(endingDetails.Geometry == null ? {} : {geometry: {
                 location: {
-                  lat: () => endingDetails.Geometry?.lat || 0,
-                  lng: () => endingDetails.Geometry?.lng || 0,
+                  lat: () => endingDetails.Geometry.lat,
+                  lng: () => endingDetails.Geometry.lng,
                 } as google.maps.LatLng,
-              } as google.maps.places.PlaceGeometry,
+              } as google.maps.places.PlaceGeometry}),
             };
           }
 
@@ -230,12 +230,12 @@ const CreateGuidePage = ({
                 place_id: city.Place_Id,
                 rating: city.Rating || undefined,
                 user_ratings_total: city.Rating_Count || undefined,
-                geometry: {
-                  location: {
-                    lat: () => city.Geometry?.lat || 0,
-                    lng: () => city.Geometry?.lng || 0,
-                  } as google.maps.LatLng,
-                } as google.maps.places.PlaceGeometry,
+                ...(city.Geometry == null ? {} : {geometry: {
+                location: {
+                  lat: () => city.Geometry.lat,
+                  lng: () => city.Geometry.lng,
+                } as google.maps.LatLng,
+              } as google.maps.places.PlaceGeometry}),
               } as google.maps.places.PlaceResult,
               displayValue: city.Place_Name || city.Place_Address || "",
               hasDate: city.hasDate || false,
@@ -250,6 +250,11 @@ const CreateGuidePage = ({
             placeDetails.Place_Address ||
             "";
 
+          // Canonical single-place projections expose paired flat coordinates.
+          const coordinates = Number.isFinite(placeDetails.lat) && Number.isFinite(placeDetails.lng)
+            ? {lat: placeDetails.lat, lng: placeDetails.lng}
+            : Number.isFinite(placeDetails.Geometry?.lat) && Number.isFinite(placeDetails.Geometry?.lng)
+              ? placeDetails.Geometry : null;
           reconstructedPlace = {
             name: placeDetails.Place_Name,
             formatted_address: placeDetails.Place_Address,
@@ -257,12 +262,12 @@ const CreateGuidePage = ({
             // Rating fields are optional (for backward compatibility with old data)
             rating: placeDetails.Rating || undefined,
             user_ratings_total: placeDetails.Rating_Count || undefined,
-            geometry: {
-              location: {
-                lat: () => placeDetails.Geometry?.lat || 0,
-                lng: () => placeDetails.Geometry?.lng || 0,
-              } as google.maps.LatLng,
-            } as google.maps.places.PlaceGeometry,
+            ...(coordinates == null ? {} : {geometry: {
+                location: {
+                  lat: () => coordinates.lat,
+                  lng: () => coordinates.lng,
+                } as google.maps.LatLng,
+              } as google.maps.places.PlaceGeometry}),
           };
         }
       }
@@ -324,10 +329,10 @@ const CreateGuidePage = ({
       Place_Id: place.place_id || "",
       Place_Name: place.name || "",
       Place_Address: place.formatted_address || "",
-      Geometry: {
-        lat: place.geometry?.location?.lat() || 0,
-        lng: place.geometry?.location?.lng() || 0,
-      },
+      Geometry: place.geometry?.location ? {
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+      } : null,
     };
   };
 
@@ -488,8 +493,8 @@ const CreateGuidePage = ({
                 placeId: place.Place_Id || null,
                 rating: null,
                 ratingsCount: null,
-                lat: place.Geometry.lat,
-                lng: place.Geometry.lng,
+                lat: place.Geometry?.lat ?? null,
+                lng: place.Geometry?.lng ?? null,
               };
             })()
           : {};

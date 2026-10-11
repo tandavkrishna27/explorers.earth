@@ -197,7 +197,7 @@ export const guideSinglePlaceSnapshotSchema=z.object({
 // consumers, and none of them safe to "harmonise".
 const journeyStopSchema=z.object({
  Place_Id:z.string().trim().max(512),Place_Name:text(500),Place_Address:text(1000),
- Geometry:z.object({lat:coordinate(90),lng:coordinate(180)}).strict(),
+ Geometry:z.object({lat:coordinate(90),lng:coordinate(180)}).strict().nullable(),
 }).strict();
 export const guideJourneySnapshotSchema=z.object({
  starting:journeyStopSchema,ending:journeyStopSchema,

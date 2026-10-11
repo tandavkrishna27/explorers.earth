@@ -887,3 +887,7 @@ The bounded protected CLI adapter and synthetic contracts passed independent rev
 ### Public parity pure preparation source
 Exact sixteen proposed titles/two projects and complete eight-category53-list/53-target-item declarations passed independent review after correcting publication controls, active manual Games contract, strict descriptor-safe manifest validation and actual per-category paging. Root fresh7testsPASS and actual backend imported compiler context0. The prepared manifest grants no DB/session/resource authority; issued manifest, guarded controller, media bytes and native public browser execution remain unimplemented. Games catalog/genre, People sector and Places added feature acceptance remain explicit dependencies. An author mistakenly started a broad unit suite during source work; it was stopped at root instruction, terminal1, incomplete and excluded from completion evidence.
 
+
+### Guides manual location source
+Approved explicit manual location actions now retain unknown coordinates as null. Independent review fixed genuine autocomplete callbacks being invalidated, canonical flat coordinates lost on reload, and invalid completion retaining a stale selected place. Actual callback/roundtrip regressions RED then GREEN12; root fresh12PASS and actual frontend imported dependency TypeScript0. Valid zero coordinates survive; missing geometry does not invent a provider identity or trigger image fetch without place ID. Native wizard creation remains unqualified.
+

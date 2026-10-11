@@ -12,7 +12,7 @@ import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
 interface AddressInputProps {
   value?: string;
   type?: "title" | "address" | "listName" | "primaryAddressCombined";
-  onChange: (value: string) => void;
+  onChange: (value: string, origin?: "input" | "selection") => void;
   label: string;
   setPlaces?: (places: Places) => void;
   placeHolder?: string;
@@ -134,7 +134,7 @@ const AddressInput: FC<AddressInputProps> = ({
         const place = autocomplete?.getPlace();
         if (!place || !place.geometry) {
           setAddress("");
-          onChangeRef.current?.("");
+          onChangeRef.current?.("", "input");
           return;
         }
 
@@ -214,7 +214,7 @@ const AddressInput: FC<AddressInputProps> = ({
         // report this (now stale) selection's value.
         if (requestTokenRef.current !== requestToken) return;
         // Call onChange with the appropriate value
-        onChangeRef.current?.(returnValue);
+        onChangeRef.current?.(returnValue, "selection");
       });
     } catch (error) {
       console.error("Error initializing autocomplete:", error);
@@ -277,7 +277,7 @@ const AddressInput: FC<AddressInputProps> = ({
     }
 
     // Call onChange with the appropriate value
-    onChange(returnValue);
+    onChange(returnValue, "selection");
 
     toast.success("Location detected successfully!");
   };
@@ -391,7 +391,7 @@ const AddressInput: FC<AddressInputProps> = ({
     // async metadata fetch so it can't overwrite what the user is typing.
     requestTokenRef.current += 1;
     setAddress(nextAddress);
-    onChange(nextAddress);
+    onChange(nextAddress, "input");
   };
 
   return (

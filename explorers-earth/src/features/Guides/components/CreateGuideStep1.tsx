@@ -147,6 +147,16 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
     };
   }, [openKebabMenuId]);
 
+  // Explicitly accept the entered label; no provider identity or coordinates are inferred.
+  const useEnteredLocation = (value: string, select: (place: google.maps.places.PlaceResult) => void) => {
+    const label = value.trim();
+    if (!label || label.length > 500 || /[\u0000-\u001f\u007f]/.test(value) || /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(value)) {
+      setError("Enter a location of 1–500 characters without control characters");
+      return;
+    }
+    select({ name: label, formatted_address: label });
+  };
+
   // Single city location handler (preserves existing behavior)
   const handlePlaceSelect = (place: any) => {
     setSelectedPlace(place as google.maps.places.PlaceResult);
@@ -249,6 +259,11 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
 
   const handleNext = () => {
     setError("");
+
+    if (locationMode === "multi" && (editingCityId || intermediateCities.some((city) => !city.place))) {
+      setError("Select or use the entered location for each intermediate city");
+      return;
+    }
 
     // Validate guide type (required for both modes)
     if (!guideType) {
@@ -386,8 +401,9 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
               </label>
               <AddressInput
                 value={locationDisplayValue}
-                onChange={(value) => {
+                onChange={(value, origin) => {
                   setLocationDisplayValue(value);
+                  if (origin !== "selection") setSelectedPlace(null);
                   setError("");
                 }}
                 setPlaces={handlePlaceSelect}
@@ -395,6 +411,13 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
                 placeHolder="Search for a location"
                 className="w-full"
               />
+              <button
+                type="button"
+                onClick={() => useEnteredLocation(locationDisplayValue, handlePlaceSelect)}
+                className="mt-2 text-sm font-poppins text-dashboard-accent hover:underline"
+              >
+                Use entered location
+              </button>
             </div>
           ) : (
             /* Multi City Location Fields */
@@ -410,8 +433,9 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
                 </label>
                 <AddressInput
                   value={fromLocationDisplayValue}
-                  onChange={(value) => {
+                  onChange={(value, origin) => {
                     setFromLocationDisplayValue(value);
+                    if (origin !== "selection") setFromPlace(null);
                     setError("");
                   }}
                   setPlaces={handleFromPlaceSelect}
@@ -419,6 +443,13 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
                   placeHolder="Search for starting location"
                   className="w-full"
                 />
+              <button
+                type="button"
+                onClick={() => useEnteredLocation(fromLocationDisplayValue, handleFromPlaceSelect)}
+                className="mt-2 text-sm font-poppins text-dashboard-accent hover:underline"
+              >
+                Use entered location
+              </button>
               </div>
 
               {/* Ending Point */}
@@ -432,8 +463,9 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
                 </label>
                 <AddressInput
                   value={toLocationDisplayValue}
-                  onChange={(value) => {
+                  onChange={(value, origin) => {
                     setToLocationDisplayValue(value);
+                    if (origin !== "selection") setToPlace(null);
                     setError("");
                   }}
                   setPlaces={handleToPlaceSelect}
@@ -441,6 +473,13 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
                   placeHolder="Search for destination location"
                   className="w-full"
                 />
+              <button
+                type="button"
+                onClick={() => useEnteredLocation(toLocationDisplayValue, handleToPlaceSelect)}
+                className="mt-2 text-sm font-poppins text-dashboard-accent hover:underline"
+              >
+                Use entered location
+              </button>
               </div>
 
               {/* Intermediate Cities Section */}
@@ -528,12 +567,22 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
                             <div className="flex-1 flex items-center gap-2">
                               <AddressInput
                                 value={editingCityDisplay}
-                                onChange={(value) => setEditingCityDisplay(value)}
+                                onChange={(value, origin) => {
+                                  setEditingCityDisplay(value);
+                                  if (origin !== "selection") setIntermediateCities(intermediateCities.map((entry) => entry.id === city.id ? {...entry, place: null, displayValue: value} : entry));
+                                }}
                                 setPlaces={(place) => handleUpdateIntermediateCity(city.id, place)}
                                 label={`City ${index + 1}`}
                                 placeHolder="Search for city"
                                 className="flex-1"
                               />
+              <button
+                type="button"
+                onClick={() => useEnteredLocation(editingCityDisplay, (place) => handleUpdateIntermediateCity(city.id, place))}
+                className="mt-2 text-sm font-poppins text-dashboard-accent hover:underline"
+              >
+                Use entered location
+              </button>
                               <button
                                 type="button"
                                 onClick={handleCancelEdit}
@@ -677,6 +726,13 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
                     placeHolder="Search for a city to add to your journey"
                   className="w-full"
                 />
+              <button
+                type="button"
+                onClick={() => useEnteredLocation(newIntermediateCityDisplay, handleAddIntermediateCity)}
+                className="mt-2 text-sm font-poppins text-dashboard-accent hover:underline"
+              >
+                Use entered location
+              </button>
                   <p className="text-xs text-white font-poppins mt-2">
                     Add cities you'll visit between starting and ending points
                   </p>
