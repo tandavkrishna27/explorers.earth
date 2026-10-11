@@ -3,7 +3,7 @@ import { randomBytes, randomUUID, createHash, createHmac } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { z } from 'zod/v3';
-import {extractAppsControlDiagnostic,extractAppsRequestDrainDiagnostic,type AppsRequestDrainDiagnostic,type AppsControllerDiagnostic,type AppsControlOptions} from './apps-browser-support';
+import {extractAppsControlDiagnostic,extractAppsRequestDrainDiagnostic,extractAppsRequestDrainSnapshot,type AppsRequestDrainDiagnostic,type AppsControllerDiagnostic,type AppsControlOptions} from './apps-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment } from './lifecycle-browser-guards';
 import {registerAppsPrivateDirectory,inspectAppsPrivateDescendant} from './apps-private-custody';
 type Acquisition = Awaited<ReturnType<typeof import('./music-uat-database').prepareOwnedUatDatabaseAcquisition>>;
@@ -182,12 +182,13 @@ type CleanupStep = 'request-seal' | 'browser-stop' | 'browser-close' | 'discover
 export type NativeUnknownOrigin='clock-callback'|'clock-late-clear'|'guard-expiry'|'child-error'|'child-output-overflow'|'child-stdin'|'powershell-deadline'|'privacy-refusal'|'capture-rejection'|'directory-create'|'secret-create'|'api-failure'|'descriptor-create'|'vite-output-overflow';
 export type RequestDrainBoundary='native-unknown-before'|'ledger-missing'|'handler-drain'|'remaining-budget'|'support-drain'|'native-unknown-after'|'canonical-evidence';
 type NativeContext=Readonly<{stage:DiagnosticStage;cleanupStep?:CleanupStep}>;
+export type RequestDrainPending=Readonly<{phase:'handler-wait'|'canonical-wait';handlers:number;evidence?:AppsRequestDrainDiagnostic}>;
 type NativeUnknownDetail=Readonly<NativeContext&{origin:NativeUnknownOrigin;budgetMs?:number}>;
 type Diagnostic = Readonly<{
     stage: DiagnosticStage;
     category: DiagnosticCategory;
     cleanupStep?: CleanupStep;
-    nativeUnknownOrigin?:NativeUnknownDetail;requestDrainBoundary?:RequestDrainBoundary;requestDrain?:AppsRequestDrainDiagnostic;
+    nativeUnknownOrigin?:NativeUnknownDetail;requestDrainBoundary?:RequestDrainBoundary;requestDrain?:AppsRequestDrainDiagnostic;requestDrainPending?:RequestDrainPending;
     control?: AppsControllerDiagnostic;
 }>;
 const diagnostics = new WeakMap<object, Diagnostic>();
@@ -206,14 +207,17 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
     let stage: DiagnosticStage = 'validation', category: DiagnosticCategory = 'refusal', captured: Diagnostic | undefined;
     let cleanupStep: CleanupStep | undefined;
     let nativeUnknownOrigin:NativeUnknownDetail|undefined,requestDrainBoundary:RequestDrainBoundary|undefined;
+    let readDrainPending:(()=>RequestDrainPending|undefined)|undefined,deadlinePending:RequestDrainPending|undefined;
+    const registerDrainPending=(reader:()=>RequestDrainPending|undefined)=>{readDrainPending=reader;};
+    const safeDrainPending=():RequestDrainPending|undefined=>{try{return readDrainPending?.();}catch{return undefined;}};
     const readContext=():NativeContext=>Object.freeze({stage,...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{})});
     const recordUnknown=(origin:NativeUnknownOrigin,context:NativeContext,budgetMs?:number)=>{if(!nativeUnknownOrigin){nativeUnknownOrigin=Object.freeze({...context,origin,...(Number.isSafeInteger(budgetMs)&&budgetMs!>=1&&budgetMs!<=21600000?{budgetMs}:{})});if(['clock-callback','clock-late-clear','guard-expiry','powershell-deadline'].includes(origin))recordCategory('deadline');}};
     const recordDrain=(boundary:RequestDrainBoundary)=>{requestDrainBoundary??=boundary;};
-    const snapshot = (control?:unknown,options?:unknown): Diagnostic => {const detail=extractAppsControlDiagnostic(control),requestDrain=extractAppsRequestDrainDiagnostic(options);return Object.freeze({stage,category,...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{}),...(nativeUnknownOrigin?{nativeUnknownOrigin}:{}),...(requestDrainBoundary?{requestDrainBoundary}:{}),...(requestDrain?{requestDrain}:{})});};
+    const snapshot = (control?:unknown,options?:unknown): Diagnostic => {const detail=extractAppsControlDiagnostic(control),requestDrain=extractAppsRequestDrainDiagnostic(options),requestDrainPending=deadlinePending??(stage==='cleanup'&&cleanupStep==='request-drain'?safeDrainPending():undefined);return Object.freeze({stage,category,...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{}),...(nativeUnknownOrigin?{nativeUnknownOrigin}:{}),...(requestDrainBoundary?{requestDrainBoundary}:{}),...(requestDrain?{requestDrain}:{}),...(requestDrainPending?{requestDrainPending}:{})});};
     const recordCategory = (value: DiagnosticCategory) => { if (category === 'refusal')
         category = value; };
     let nativeFailure:(()=>void)|undefined;
-    const d = dependencies === undefined ? defaultDependencies(recordCategory,()=>nativeFailure?.(),recordUnknown,readContext,recordDrain) : dependencies;
+    const d = dependencies === undefined ? defaultDependencies(recordCategory,()=>nativeFailure?.(),recordUnknown,readContext,recordDrain,registerDrainPending) : dependencies;
     let promise: Promise<void> | undefined;
     return { run() {
             return promise ??= Promise.resolve().then(execute).catch(() => {
@@ -239,7 +243,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
         let phase: 'startup' | 'discovery' | 'execution' | 'cleanup' = 'startup', failurePhase: 'startup' | 'discovery' | 'execution' | 'cleanup' | undefined;
         async function bounded<T>(work: () => Promise<T>, limit = 15000, margin = false): Promise<T> { const ms = Math.min(limit, Math.floor(deadline - d.clock.now())); if (ms < 1 || margin && ms < limit)
             throw new Refusal(); let timer: unknown; const original = Promise.resolve().then(work); originals.add(original); original.then(() => originals.delete(original), () => originals.delete(original)); try {
-            return await Promise.race([original, ...(phase === 'cleanup' ? [] : [lifecycleFailed]), new Promise<never>((_, reject) => { timer = d.clock.setTimeout(() => { recordCategory('deadline'); uncertain = true; reject(new Refusal()); }, ms); })]);
+            return await Promise.race([original, ...(phase === 'cleanup' ? [] : [lifecycleFailed]), new Promise<never>((_, reject) => { timer = d.clock.setTimeout(() => { if(stage==='cleanup'&&cleanupStep==='request-drain')deadlinePending??=safeDrainPending();recordCategory('deadline'); uncertain = true; reject(new Refusal()); }, ms); })]);
         }
         finally {
             d.clock.clearTimeout(timer);
@@ -538,7 +542,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
         await bounded(() => Promise.resolve(receipt!.finish(authority!, [], interrupted)));
     }
 }
-function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void, reportFailure:()=>void,reportUnknown:(origin:NativeUnknownOrigin,context:NativeContext,budgetMs?:number)=>void,readContext:()=>NativeContext,reportDrain:(boundary:RequestDrainBoundary)=>void): Dependencies {
+function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void, reportFailure:()=>void,reportUnknown:(origin:NativeUnknownOrigin,context:NativeContext,budgetMs?:number)=>void,readContext:()=>NativeContext,reportDrain:(boundary:RequestDrainBoundary)=>void,registerDrainPending:(reader:()=>RequestDrainPending|undefined)=>void): Dependencies {
     const root = path.resolve(fileURLToPath(new URL('../../', import.meta.url))), frontend = path.join(root, 'explorers-earth'), temporaryRoot = tmpdir();
     const ps = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', helper = path.join(root, 'tunes/scripts/music-local-private-files.ps1'), cli = path.join(frontend, 'node_modules/@playwright/test/cli.js'), viteCli = path.join(frontend, 'node_modules/vite/bin/vite.js');
     const retained = new Map<string, {
@@ -682,7 +686,10 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
     }
     async function inspect(target: string) { nativeGuard(); await canonical(target); nativeGuard(); try { const accepted=inspectAppsPrivateDescendant(target); nativeGuard(); if(accepted)return; await privateOperation('inspect', target); nativeGuard(); } catch(error) { latchUnknown('privacy-refusal'); throw error; } }
     let actualSupport: typeof import('./apps-browser-support') | undefined;
-    const configurations = new WeakMap<object, any>(), nativeAccounts = new WeakMap<object, string[]>(), handlerDrains = new WeakMap<object, (ms: number) => Promise<boolean>>();
+    const configurations = new WeakMap<object, any>(), nativeAccounts = new WeakMap<object, string[]>(), handlerDrains = new WeakMap<object, (ms: number) => Promise<boolean>>(),handlerCounts=new WeakMap<object,()=>number>();
+    let drainOptions:Options|undefined,drainPhase:RequestDrainPending['phase']|undefined,drainCounter:(()=>number)|undefined;
+    function readRequestDrainPending():RequestDrainPending|undefined{if(!drainOptions||!drainPhase||!drainCounter)return undefined;const handlers=drainCounter();if(!Number.isSafeInteger(handlers)||handlers<0||handlers>128)return undefined;const evidence=extractAppsRequestDrainSnapshot(drainOptions);return Object.freeze({phase:drainPhase,handlers,...(evidence?{evidence}:{})});}
+    registerDrainPending(readRequestDrainPending);
     async function support() { return actualSupport ??= await import('./apps-browser-support'); }
     async function outputNames() { const { APPS_CASES } = await support(); const sanitize = (value: string) => value.replace(/[\x00-\x2c\x2e-\x2f\x3a-\x40\x5b-\x60\x7b-\x7f]+/g, '-'); const trim = (value: string) => { if (value.length <= 60)
         return value; const middle = '-' + createHash('sha1').update(value).digest('hex').slice(0, 5) + '-', start = Math.floor((60 - middle.length) / 2); return value.slice(0, start) + middle + value.slice(-(60 - middle.length - start)); }; return APPS_CASES.flatMap(title => ['apps-desktop', 'apps-mobile'].map(project => trim('apps-' + sanitize(title)) + '-' + sanitize(project))); }
@@ -850,6 +857,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
                 try{res.statusCode=status;res.setHeader('Cache-Control','no-store');res.end();}
                 catch{fail();try{res.destroy();}catch{}}
             };
+            handlerCounts.set(options.composed,()=>handlers.size);
             handlerDrains.set(options.composed,async(ms)=>{
                 if(!handlers.size)return true;let timer:ReturnType<typeof setTimeout>;
                 try{return await Promise.race([Promise.all([...handlers]).then(()=>handlers.size===0),new Promise<boolean>(resolve=>{timer=setTimeout(()=>resolve(false),ms);})]);}
@@ -916,12 +924,12 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         launchBrowser: (context, options) => nativeChild(context, options),
         sealRequests(options) { if (!actualSupport)
             throw new Refusal(); actualSupport.sealAppsFixtureRequests(options as any); },
-        async drainRequests(options, ms) {const began=performance.now(),drain=handlerDrains.get(options.composed);
+        async drainRequests(options, ms) {drainOptions=options;drainPhase='handler-wait';drainCounter=handlerCounts.get(options.composed);readRequestDrainPending();const began=performance.now(),drain=handlerDrains.get(options.composed);
             if(nativeUnknown){reportDrain('native-unknown-before');throw new Refusal();}
             if(!drain){reportDrain('ledger-missing');throw new Refusal();}
             let handlerSettled;try{handlerSettled=await drain(ms);}catch{reportDrain('handler-drain');throw new Refusal();}if(!handlerSettled){reportDrain('handler-drain');throw new Refusal();}
             const remaining=Math.floor(ms-(performance.now()-began));if(remaining<1){reportDrain('remaining-budget');throw new Refusal();}
-            let result;try{result=await(await support()).drainAppsFixtureRequests(options as unknown as AppsControlOptions,remaining);}catch{reportDrain('support-drain');throw new Refusal();}
+            drainPhase='canonical-wait';readRequestDrainPending();let result;try{result=await(await support()).drainAppsFixtureRequests(options as unknown as AppsControlOptions,remaining);}catch{reportDrain('support-drain');throw new Refusal();}
             if(nativeUnknown){reportDrain('native-unknown-after');throw new Refusal();}return result;
         },
         async drainStorage(options, ms) {

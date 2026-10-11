@@ -1,0 +1,28 @@
+{
+  "sourceCommit": "8d75f5c58e403c04f65dc46b1547902734c29ca3",
+  "runId": "600696f35eaf0e4dbfd43964e05fe32a",
+  "qualification": false,
+  "counts": {
+    "discovered": 8,
+    "executed": 8,
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "attempts": 8
+  },
+  "originalExitCode": 1,
+  "diagnostic": {
+    "stage": "cleanup",
+    "category": "deadline",
+    "cleanupStep": "request-drain",
+    "nativeUnknownOrigin": "clock-callback",
+    "nativeUnknownStage": "cleanup",
+    "nativeUnknownStep": "request-drain",
+    "nativeUnknownBudgetMs": 15000
+  },
+  "sourceIntact": true,
+  "interrupted": false,
+  "guardedOwnerClosed": true,
+  "freshOwnerAndChildrenAbsent": true,
+  "exactRetainedRecovery": "pending"
+}

@@ -13,7 +13,7 @@ import {mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {sep} from 'node:path';
 import type {OwnedUatDatabaseAuthority} from './music-uat-database';
 import {z} from 'zod/v3';
-import {extractCanonicalCustodyDiagnostic,type CanonicalCustodyReason} from '../server/auth/canonicalHandlerCustody';
+import {extractCanonicalCustodySnapshot,extractCanonicalCustodyDiagnostic,type CanonicalCustodyReason} from '../server/auth/canonicalHandlerCustody';
 import {inspectAppsPrivateDescendant} from './apps-private-custody';
 import {appEntityDetailsSchema,type AppEntityDetails} from '../shared/explorersAppContract';
 import {editableOwnerCollectionSchema,editableOwnerRecommendationSchema,ownerMembershipDtoSchema} from '../shared/explorersOwnerContentContract';
@@ -68,6 +68,7 @@ const fail=(phase:string)=>new Error(`Apps fixture ${phase} failed`);
 const storagePrototype=LocalObjectStorage.prototype;
 const storageMethods=Object.getOwnPropertyDescriptors(storagePrototype);
 type FixedAppsInput=Omit<import('../server/auth/canonicalApp').CanonicalAppsFixtureInput,'mediaStorage'>;
+const requestSnapshotBindings=new WeakMap<object,RequestBinding>();
 type RequestBinding={authority:OwnedUatDatabaseAuthority;authoritySnapshot:string;personas:FixedAppsInput['personasWithActualAccountIds'];poolPrototype:unknown;poolMethods:unknown[];custody:ReturnType<typeof import('../server/auth/canonicalApp').createCanonicalAppsFixtureApp>['custody'];admission:ReturnType<typeof import('../server/auth/canonicalApp').createCanonicalAppsFixtureApp>['admission'];sealed:boolean};
 type CompositionBinding={pool:Pool;config:ExplorersAuthConfig;configSnapshot:string;storage:LocalObjectStorage;settlement:LocalStorageSettlementCapability;root:string;app:unknown;auth:unknown;composedPrototype:unknown;objects:{value:object;prototype:unknown;descriptors:PropertyDescriptorMap}[];requests?:RequestBinding};
 const compositionBindings=new WeakMap<object,CompositionBinding>();
@@ -90,7 +91,7 @@ function requestBinding(options:AppsControlOptions){
  if(!binding||binding.authority!==options.ownedAuthority||binding.authoritySnapshot!==JSON.stringify(options.ownedAuthority))throw fail('request authority');
  if(Object.getPrototypeOf(options.pool)!==binding.poolPrototype||[options.pool.query,options.pool.connect,options.pool.end].some((method,index)=>method!==binding.poolMethods[index]))throw fail('request authority');
  for(const name of ['ownerA','ownerB'] as const){const fixed=binding.personas[name],person=options.personas[name];if(fixed.userId!==person.userId||fixed.handle!==person.handle)throw fail('request authority');}
- return binding;
+ requestSnapshotBindings.set(options,binding);return binding;
 }
 /** Begins the original canonical record. Dataset admission runs inside the fixed app. */
 export function admitAppsFixtureRequest(options:AppsControlOptions,request:IncomingMessage,response:ServerResponse){try{const binding=requestBinding(options);if(binding.sealed)return false;return binding.custody.admit(request,response);}catch{throw fail('request admission');}}
@@ -99,6 +100,7 @@ export function sealAppsFixtureRequests(options:AppsControlOptions){try{const bi
 /** Only exact settled is positive request evidence; all other states retain custody. */
 export type AppsRequestDrainDiagnostic=Readonly<{status:'settled'|'failed-but-settled'|'unsettled';sealed:boolean;requests:number;frames:number;unknown:boolean;uncertain:boolean;reason?:CanonicalCustodyReason}>;
 const requestDrainDiagnostics=new WeakMap<object,AppsRequestDrainDiagnostic>();
+export function extractAppsRequestDrainSnapshot(options:unknown):AppsRequestDrainDiagnostic|undefined{if(options===null||(typeof options!=='object'&&typeof options!=='function'))return undefined;const binding=requestSnapshotBindings.get(options as object);return binding?extractCanonicalCustodySnapshot(binding.custody):undefined;}
 export function extractAppsRequestDrainDiagnostic(options:unknown):AppsRequestDrainDiagnostic|undefined{return options!==null&&(typeof options==='object'||typeof options==='function')?requestDrainDiagnostics.get(options as object):undefined;}
 export async function drainAppsFixtureRequests(options:AppsControlOptions,milliseconds:number){try{if(!Number.isSafeInteger(milliseconds)||milliseconds<1||milliseconds>15000)throw fail('request budget');const binding=requestBinding(options);binding.sealed=true;binding.admission.seal();const result=await binding.custody.sealAndDrain(milliseconds);if(!requestDrainDiagnostics.has(options)){const detail=extractCanonicalCustodyDiagnostic(binding.custody);requestDrainDiagnostics.set(options,Object.freeze({...result,...(detail?{reason:detail.reason}:{})}));}return result;}catch{throw fail('request drain');}}
 function assertComposition(o:AppsControlOptions){
