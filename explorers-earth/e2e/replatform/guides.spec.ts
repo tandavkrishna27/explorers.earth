@@ -146,11 +146,32 @@ async function navigateGuides(page:Page,path:string){await settleGuidesBootstrap
 async function reloadGuides(page:Page){await settleGuidesBootstrap(page);const state=guidesBootstraps.get(page)!;state.floor=state.records.size;await page.reload();await settleGuidesBootstrap(page);}
 
 type SectionCommand={revision:number;title:string;description:string|null;blocks:GuideAggregateDto['sections'][number]['blocks']};
+function assertEditorPersistedScope(before:Observation,after:Observation,expected:GuideAggregateDto,sectionId?:string){
+ const target=before.guides.find(g=>g.id===expected.collectionId)!;expect(target).toBeDefined();
+ expect(after.guides.map(g=>g.id)).toEqual(before.guides.map(g=>g.id));expect(after.sections.map(s=>s.id)).toEqual(before.sections.map(s=>s.id));
+ for(const old of before.sections){const row=after.sections.find(s=>s.id===old.id)!;
+  if(old.id===sectionId){const wanted=expected.sections.find(s=>s.id===sectionId)!;expect(wanted).toBeDefined();expect(old.collectionId).toBe(expected.collectionId);expect(row).toEqual({...old,title:wanted.title,description:wanted.description,blocks:wanted.blocks,updatedAt:row.updatedAt});}
+  else expect(row).toEqual(old);
+ }
+ for(const old of before.guides)expect(after.guides.find(g=>g.id===old.id)).toEqual({...old,details:old.id===expected.collectionId?expected.details:old.details,categoryContentRevision:old.accountId===target.accountId?expected.revision:old.categoryContentRevision});
+ for(const [owner,old] of Object.entries(before.personas))expect(after.personas[owner]).toEqual({...old,guidesContentRevision:old.accountId===target.accountId?expected.revision:old.guidesContentRevision});
+ for(const key of ['media','objects','attachments'] as const)expect(after[key]).toEqual(before[key]);
+}
+function assertEditorAggregate(expected:GuideAggregateDto,actual:GuideAggregateDto,sectionId?:string){
+ expect(actual.revision).toBeGreaterThan(expected.revision);
+ expect(actual).toEqual({...expected,revision:actual.revision,sections:expected.sections.map(section=>section.id===sectionId?{...section,updatedAt:actual.sections.find(s=>s.id===sectionId)!.updatedAt}:section)});
+}
+function assertOriginalGuideCommandKey(response:Response,seen:Set<string>){
+ const key=response.request().headers()['idempotency-key'];expect(key).toMatch(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i);expect(seen.has(key)).toBe(false);seen.add(key);
+}
 function sectionAcknowledgement(page:Page,guideId:string,sectionId:string,command:SectionCommand){
  const work=page.waitForResponse(response=>{
   const url=new URL(response.url());if(url.origin!==origin||url.pathname!==`${base}/collections/${guideId}/guide/sections/${sectionId}`||response.request().method()!=='PATCH')return false;
   try{expect(response.request().postDataJSON()).toEqual(command);return true;}catch{return false;}
  });void work.catch(()=>undefined);return work;
+}
+function detailsAcknowledgement(page:Page,guideId:string,command:{revision:number;details:GuideAggregateDto['details']}){
+ const work=page.waitForResponse(response=>{const url=new URL(response.url());if(url.origin!==origin||url.pathname!==`${base}/collections/${guideId}/guide`||response.request().method()!=='PUT')return false;try{expect(response.request().postDataJSON()).toEqual(command);return true;}catch{return false;}});void work.catch(()=>undefined);return work;
 }
 async function guideErrorEvidence(response:Response|APIResponse,status:number,code:string,message:string){
  expect(response.status()).toBe(status);const bytes=await response.body();expect(bytes.length).toBeLessThanOrEqual(65536);
@@ -161,12 +182,49 @@ async function guideErrorEvidence(response:Response|APIResponse,status:number,co
 }
 async function openNativeTip(page:Page,placeName:string,text:string){
  await page.getByText('Tips',{exact:true}).click();const row=page.getByRole('heading',{level:4,name:placeName,exact:true}).locator('..');await expect(row).toHaveCount(1);await row.getByRole('button',{name:'Edit tip',exact:true}).click();
- const modal=page.getByRole('heading',{level:2,name:'Edit Tip',exact:true}).locator('../../..');await expect(modal).toBeVisible();await modal.getByRole('textbox').fill(text);return modal;
+ const modal=page.getByRole('heading',{level:2,name:'Edit Tip',exact:true}).locator('../../../..');await expect(modal).toBeVisible();await modal.getByRole('textbox').fill(text);return modal;
 }
 function tipCommand(current:GuideAggregateDto,sectionId:string,text:string):SectionCommand{
  const section=current.sections.find(s=>s.id===sectionId)!;expect(section).toBeDefined();const blocks=structuredClone(section.blocks);blocks.timeline.morning[0].tips=text;
  return {revision:current.revision,title:section.title,description:section.description,blocks};
 }
+
+test(GUIDES_CASES[1],async({browser},info)=>{
+ const harness=createGuidesHarnessClient();expect(info.repeatEachIndex).toBe(0);expect(GUIDES_PROJECTS).toContain(info.project.name);const manifest=await harness.start({caseId:GUIDES_CASES[1],project:info.project.name as typeof GUIDES_PROJECTS[number],repeat: 0});let owner:BrowserContext|undefined,completed=false;
+ try{
+  owner=await harness.createContext(browser,'ownerA',info.project.name==='guides-mobile'?{viewport:{width:390,height:844},isMobile:true,hasTouch:true}:{viewport:{width:1365,height:900}});const page=await harness.trackProducer(()=>owner!.newPage());trackGuidesBootstrap(page,manifest.personas.ownerA);
+  await harness.trackProducer(async()=>{
+   const guide=manifest.guides.find(g=>g.key==='ownerA-guide-0')!;expect(guide).toBeDefined();await navigateGuides(page,`/recommendations/guides/${guide.id}`);let current=await aggregate(owner!.request,guide.id),observed:Observation=await harness.observe();expect(current.sections).toHaveLength(1);const sectionId=current.sections[0].id,keys=new Set<string>();
+   expect(current.details).toEqual(guide.details);expect(current.sections[0].blocks).toEqual(manifest.sections.find(s=>s.id===sectionId)!.blocks);
+   // The expected complete snapshot describes the permitted delta. The command
+   // itself is always submitted by the retained editor using the original UI.
+   const finishNative=async(response:Response,expected:GuideAggregateDto,target?:string)=>{
+    assertOriginalGuideCommandKey(response,keys);const actual=guideAggregateDtoSchema.parse((await browserBody(response)).guide);assertEditorAggregate(expected,actual,target);const after:Observation=await harness.observe();assertEditorPersistedScope(observed,after,actual,target);observed=after;current=actual;
+    await expect(page.getByRole('heading',{level:1,name:guide.title,exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'+ Add Day/Stop',exact:true})).toBeVisible();await reloadGuides(page);await expect(page.getByRole('heading',{level:1,name:guide.title,exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'+ Add Day/Stop',exact:true})).toBeVisible();expect(await aggregate(owner!.request,guide.id)).toEqual(actual);expect(await harness.observe()).toEqual(after);
+   };
+   // Full day/stop editor: title and rich editor description change while every
+   // canonical block, precise money value, zero coordinate and identity persists.
+   await sectionOrder(page,guide.title,current.sections.map(s=>s.title));
+   const title='दिन café — संपादित',description='सुबह की सैर — café और भोजन',row=page.getByRole('heading',{level:3,name:current.sections[0].title,exact:true}).locator('../../..');await expect(row).toHaveCount(1);await row.getByRole('button').first().click();await row.getByRole('button',{name:'Edit',exact:true}).click();await expect(page.getByRole('heading',{level:1,name:'Edit Day/Stop',exact:true})).toBeVisible();await page.getByPlaceholder('e.g., Day 1: Arrival & City Exploration',{exact:true}).fill(title);await page.locator('.ql-editor[contenteditable="true"]').fill(description);
+   let expected=structuredClone(current);expected.sections[0].title=title;expected.sections[0].description=description;let ack=sectionAcknowledgement(page,guide.id,sectionId,{revision:current.revision,title,description,blocks:expected.sections[0].blocks});await page.getByRole('button',{name:'Update',exact:true}).click();await finishNative(await ack,expected,sectionId);
+   // Existing Activities, packing tasks, map and tags are complete independent
+   // blocks even when this editor shows only the changed title and description.
+   await page.getByText('Transport',{exact:true}).click();await page.getByRole('heading',{level:3,name:title,exact:true}).click();const mode=page.getByRole('button',{name:'Walk',exact:true});await expect(mode).toHaveAttribute('title','Click to change travel mode');await mode.click();expected=structuredClone(current);expected.sections[0].blocks.transport.segments[0].mode='drive';ack=sectionAcknowledgement(page,guide.id,sectionId,{revision:current.revision,title,description,blocks:expected.sections[0].blocks});await page.locator('.travel-mode-selector').getByRole('button',{name:/^Drive/}).click();await finishNative(await ack,expected,sectionId);
+   // Saving the existing accommodation through its native editor proves opaque
+   // money/provenance/photo fields survive a replacement, including (0,0).
+   await page.getByText('Stay',{exact:true}).click();await page.getByRole('heading',{level:3,name:title,exact:true}).click();await page.getByRole('button',{name:'Edit accommodation',exact:true}).click();const stayModal=page.getByRole('heading',{level:2,name:'Edit Accommodation',exact:true}).locator('../../../..');await expect(stayModal).toContainText(`Selected: ${current.sections[0].blocks.stay.accommodations[0].name}`);expected=structuredClone(current);ack=sectionAcknowledgement(page,guide.id,sectionId,{revision:current.revision,title,description,blocks:expected.sections[0].blocks});await stayModal.getByRole('button',{name:'Save Changes',exact:true}).click();await expect(page.getByRole('heading',{name:'Edit Accommodation',exact:true})).toHaveCount(0);await finishNative(await ack,expected,sectionId);
+   await page.getByText('Budget',{exact:true}).click();const budgetRow=page.getByRole('row').filter({has:page.getByText(current.sections[0].blocks.budget.morning[0].name,{exact:true})});await expect(budgetRow).toHaveCount(1);await budgetRow.getByRole('button',{name:'Edit budget',exact:true}).click();const budgetModal=page.getByRole('heading',{level:3,name:'Edit Budget',exact:true}).locator('../../..');await budgetModal.locator('#currency-amount-input').fill('321.45');expected=structuredClone(current);Object.assign(expected.sections[0].blocks.budget.morning[0],{budgetAmount:'321.45',budgetCurrency:'INR',customBudget:null});ack=sectionAcknowledgement(page,guide.id,sectionId,{revision:current.revision,title,description,blocks:expected.sections[0].blocks});await budgetModal.getByRole('button',{name:'Save Budget',exact:true}).click();await finishNative(await ack,expected,sectionId);
+   const tip='सुबह जल्दी आएँ — café ₹100.00',tipModal=await openNativeTip(page,current.sections[0].blocks.timeline.morning[0].name,tip);expected=structuredClone(current);expected.sections[0].blocks.timeline.morning[0].tips=tip;ack=sectionAcknowledgement(page,guide.id,sectionId,{revision:current.revision,title,description,blocks:expected.sections[0].blocks});await tipModal.getByRole('button',{name:'Save Changes',exact:true}).click();await expect(page.getByRole('heading',{name:'Edit Tip',exact:true})).toHaveCount(0);await finishNative(await ack,expected,sectionId);
+   await page.getByText('Tips',{exact:true}).click();await page.getByRole('button',{name:'Edit guides and packaging tips',exact:true}).click();const general=page.getByRole('heading',{level:2,name:'Edit General Guides and Packaging Tips',exact:true}).locator('../../../..'),richText='यात्रा के लिए café — पानी साथ रखें',rich=general.locator('.ql-editor[contenteditable="true"]');await rich.fill(richText);await rich.press('ControlOrMeta+A');await general.locator('button.ql-bold').click();await expect(rich.locator('strong')).toHaveText(richText);await general.getByPlaceholder('e.g., adventure, family-friendly, budget',{exact:true}).fill('संस्मरण');await general.getByRole('button',{name:'Add',exact:true}).click();expected=structuredClone(current);expected.details.tipsNotes=[{type:'paragraph',children:[{type:'text',text:richText,bold:true}]}];expected.details.tags.push('संस्मरण');let detailsAck=detailsAcknowledgement(page,guide.id,{revision:current.revision,details:expected.details});await general.getByRole('button',{name:'Save Changes',exact:true}).click();await expect(page.getByRole('heading',{name:'Edit General Guides and Packaging Tips',exact:true})).toHaveCount(0);await finishNative(await detailsAck,expected);await page.getByText('Tips',{exact:true}).click();await expect(page.getByText(richText,{exact:true})).toBeVisible();await expect(page.getByText('संस्मरण',{exact:true})).toBeVisible();
+   // Explicit canonical fixture prerequisite: the single-city seed cannot show
+   // the retained Journey Route editor. These authored route snapshots describe
+   // source setup; they do not claim a real provider lookup or native selection.
+   const stop=(Place_Id:string,Place_Name:string)=>({Place_Id,Place_Name,Place_Address:'भारत',Geometry:{lat:0,lng:0}});expected=guideAggregateDtoSchema.parse({...current,details:{...current.details,multiCity:true,place:{isMultiCity:true,starting:stop('route-start','कोलकाता'),ending:stop('route-end','दिल्ली'),intermediateCities:[{...stop('route-middle','वाराणसी café'),id:'route-middle',hasDate:false}]}}});
+   const prepared=await consume(await owner!.request.put(`${base}/collections/${guide.id}/guide`,{headers:{Origin:origin,'Idempotency-Key':randomUUID()},data:{revision:current.revision,details:expected.details}}),async response=>{expect(response.status()).toBe(200);return guideAggregateDtoSchema.parse((await response.json()).guide);});assertEditorAggregate(expected,prepared);const preparedRows:Observation=await harness.observe();assertEditorPersistedScope(observed,preparedRows,prepared);observed=preparedRows;current=prepared;await reloadGuides(page);expect(await aggregate(owner!.request,guide.id)).toEqual(prepared);
+   await page.getByRole('button',{name:'Edit Journey Route',exact:true}).click();const journey=page.getByRole('heading',{level:2,name:'Edit Journey Route',exact:true}).locator('../../../..'),middle=journey.getByText('वाराणसी café',{exact:true}).locator('../../..');await expect(middle).toHaveCount(1);await middle.getByRole('button').last().click();await middle.getByRole('button',{name:'Set date',exact:true}).click();await journey.locator('input[type="date"]').fill('2026-10-12');expected=structuredClone(current);if(!('isMultiCity' in expected.details.place))throw Error('Journey fixture missing');expected.details.place.intermediateCities[0].hasDate=true;expected.details.place.intermediateCities[0].date='2026-10-12';detailsAck=detailsAcknowledgement(page,guide.id,{revision:current.revision,details:expected.details});await journey.getByRole('button',{name:'Save Changes',exact:true}).click();await expect(page.getByRole('heading',{name:'Edit Journey Route',exact:true})).toHaveCount(0);await finishNative(await detailsAck,expected);await page.getByRole('button',{name:'Edit Journey Route',exact:true}).click();await expect(page.locator('input[type="date"]')).toHaveValue('2026-10-12');await page.getByRole('heading',{name:'Edit Journey Route',exact:true}).locator('../../../..').getByRole('button',{name:'Cancel',exact:true}).click();expect(keys.size).toBe(7);
+  });await settleGuidesBootstrap(page);await harness.closeContext(owner);owner=undefined;await harness.retire();completed=true;
+ }finally{if(!completed){const closed=await Promise.allSettled([owner].filter((c):c is BrowserContext=>!!c).map(c=>harness.closeContext(c)));await harness.fail();if(closed.some(r=>r.status==='rejected'))throw Error('Guides source case containment failed');}}
+});
 
 test(GUIDES_CASES[2],async({browser},info)=>{
  const harness=createGuidesHarnessClient();expect(info.repeatEachIndex).toBe(0);expect(GUIDES_PROJECTS).toContain(info.project.name);

@@ -875,3 +875,7 @@ Approved Places/People semantics now have strict pure catalog import and assignm
 ### Guides transport editor identity
 Canonical segment endpoints use local IDs; the retained Transport UI incorrectly resolved provider IDs and hid controls. The bounded repair resolves local IDs and includes valid persisted stay/activity endpoints while retaining provider IDs for directions and rendering only existing segments. Independent review accepted; root fresh transport/fullform tests12PASS. Initial root type configurations omitted the frontend zod/v3 alias and exhausted default4GB then8GB heaps without diagnostics. Repeating the actual frontend compiler context including that alias, imported dependency closure and backend ambient declarations exited0 with zero diagnostics in5.74seconds. No native qualification is claimed.
 
+
+### Guides retained editors case source
+Case1 now covers seven native retained editor writes with complete original command acknowledgements, unique keys, persisted scope and reload. Conditional Journey Route has an explicitly labeled canonical fixture prerequisite; it does not claim native provider selection. Independent review identified first editor selector requiring Timeline view; actual readiness ordering regression RED1/GREEN1 and rereview accepted the one-line fix. Root fresh selected spec/editor imported TypeScript exited0; focused Guides run reported11files/75testsPASS. Authored inventory is exact cases1,2,3; full16-case native qualification remains open.
+
