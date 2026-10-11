@@ -676,22 +676,19 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         // Show toast for activity detection
         toast.success("Activity found!");
 
-        setActivityPlaces((prev) => {
-          // Add with loading state for photos
-          const activityWithLoadingState = {
-            ...newPlace,
-            photosLoading: true,
-            photos: [],
-          };
+        // Keep the updater pure: React may replay it in StrictMode.
+        const activityWithLoadingState = {
+          ...newPlace,
+          photosLoading: true,
+          photos: [],
+        };
+        setActivityPlaces((prev) => [...prev, activityWithLoadingState]);
 
-          // Fetch and upload photos asynchronously, tracking the promise so
-          // handleSubmit can await it before persisting (prevents empty photos).
-          pendingActivityUploadsRef.current.push(
-            fetchAndUploadActivityPhotos(activityWithLoadingState)
-          );
-
-          return [...prev, activityWithLoadingState];
-        });
+        // Launch once from the event handler and retain the promise so submit
+        // can await the photos before persisting the activity.
+        pendingActivityUploadsRef.current.push(
+          fetchAndUploadActivityPhotos(activityWithLoadingState)
+        );
       }
     }
 
