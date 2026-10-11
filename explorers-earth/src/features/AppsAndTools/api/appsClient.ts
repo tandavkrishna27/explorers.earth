@@ -1,5 +1,5 @@
 import {explorersApiClient,assertCompleteMyCategoryContent,assertOwnerDetailObservation,ExplorersApiError,type CompleteMyCategoryContent,type CollectionObservation,type RecommendationObservation} from '../../../lib/explorersApiClient';
-import {createRecommendationSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
+import {createRecommendationObjectSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
 import {resolveManualAppSchema,appScreenshotsSchema} from '../../../../../tunes/shared/explorersAppContract';
 import type {RichNote} from '../../../../../tunes/shared/explorersRichNoteContract';
 import useAuthStore from '../../../store/store';
@@ -54,7 +54,7 @@ export const AppsClient={
    title:draft.title,appUrl:draft.appUrl,developer:draft.developer,logoUrl:draft.logoUrl,
    description:draft.description,downloadUrl:draft.downloadUrl,priceTier:draft.priceTier,platforms:draft.platforms,
   }}).details;
-  const normalized=createRecommendationSchema.innerType().omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
+  const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
    .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',appScreenshots:{screenshotMediaIds:draft.screenshotMediaIds}});
   const screenshots=appScreenshotsSchema.parse({screenshotMediaIds:draft.screenshotMediaIds});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{

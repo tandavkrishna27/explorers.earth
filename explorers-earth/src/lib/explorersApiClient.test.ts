@@ -1,12 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import useAuthStore from "../store/store";
 import { explorersApiClient } from "./explorersApiClient";
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 function signIn(accountId: string) {
   const generation = useAuthStore.getState().beginVerification();
   useAuthStore.getState().acceptVerified(generation, { id: accountId, userId: `user-${accountId}`,
     username: accountId, email: `${accountId}@example.invalid`, onboardingStatus: "complete", revision: 1 });
 }
+it('keeps every native create projection independent of refinement depth',()=>{
+ const consumers=['src/lib/explorersApiClient.ts','src/features/Favorites/api/placesClient.ts','src/features/People/api/peopleClient.ts','src/features/Products/api/productsClient.ts','src/features/AppsAndTools/api/appsClient.ts','src/features/Games/api/gamesClient.ts','src/features/Books/components/dashboard/AddBookPage.tsx'];
+ for(const file of consumers){const source=readFileSync(resolve(process.cwd(),file),'utf8');expect(source,file).not.toMatch(/createRecommendationSchema\s*\.\s*innerType\s*\(/);}
+});
+describe('native recommendation category create validation',()=>{
+ const account='00000000-0000-4000-8000-000000000201',listId='00000000-0000-4000-8000-000000000202',entityId='00000000-0000-4000-8000-000000000203',id='00000000-0000-4000-8000-000000000204';
+ beforeEach(()=>{vi.unstubAllGlobals();useAuthStore.getState().logout();signIn(account);});
+ it.each(['places','movies','books','games','apps','products','people'] as const)('accepts valid %s category fields through the final command schema',async category=>{
+  const writes:RequestInit[]=[];
+  const extra=category==='places'?{placesTaxonomy:{categoryTermId:entityId,subcategoryTermId:null}}:category==='people'?{peopleSectorTermId:entityId}:{};
+  vi.stubGlobal('fetch',vi.fn(async(_url:string,options:RequestInit)=>{
+   if(options.method){writes.push(options);return new Response(JSON.stringify({recommendation:{id,accountId:account,category,entityId,userRating:null,publicationState:'draft',revision:1,mediaIds:[]}}),{status:200});}
+   return new Response(JSON.stringify({collection:{id:listId,accountId:account,category,title:'List',slug:'list',visibility:'private',publicationState:'draft',revision:7,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',...(category==='places'?{placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null},linkedChildren:[]}:category==='people'||category==='products'?{locationLink:null}:{})}}),{status:200});
+  }));
+  const parent=await explorersApiClient.getMyEditableCollection(listId);
+  const saved=await explorersApiClient.createMyRecommendation(parent,{entityId,...extra},`category-${category}`);
+  expect(saved).toMatchObject({category,entityId,revision:1});expect(writes).toHaveLength(1);
+  expect(JSON.parse(writes[0].body as string)).toEqual({entityId,...extra,collectionId:listId,category,expectedCollectionRevision:7,userRating:null,publicationState:'draft',mediaIds:[],note:null});
+ });
+});
 describe('authentic Games membership wire',()=>{
  const account='00000000-0000-4000-8000-000000000001',listId='00000000-0000-4000-8000-000000000002',recId='00000000-0000-4000-8000-000000000003',entityId='00000000-0000-4000-8000-000000000004';
  const collection={id:listId,accountId:account,category:'games',title:'List',slug:'list',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null};
@@ -19,6 +41,30 @@ describe('authentic Games membership wire',()=>{
   vi.stubGlobal('fetch',vi.fn(async(url:string,options:RequestInit)=>options.method?mutation(options):reply(url.includes('/collections/')?{collection:collectionDetail}:{recommendation:recommendationDetail})));
   return {parent:await explorersApiClient.getMyEditableCollection(listId),item:await explorersApiClient.getMyEditableRecommendation(recId)};
  }
+ it('creates a recommendation with owner-derived fields and normalized defaults',async()=>{
+  let sent:RequestInit|undefined;const {parent}=await observations(options=>{sent=options;return reply({recommendation:{...recommendation,revision:1}});});
+  const saved=await explorersApiClient.createMyRecommendation(parent,{entityId},'create-defaults');
+  expect(saved).toMatchObject({id:recId,category:'games',entityId,revision:1});
+  expect(JSON.parse(sent!.body as string)).toEqual({entityId,collectionId:listId,expectedCollectionRevision:4,category:'games',userRating:null,publicationState:'draft',mediaIds:[],note:null});
+  expect(new Headers(sent!.headers).get('Idempotency-Key')).toBe('create-defaults');
+ });
+ it.each([{category:'books'},{collectionId:recId},{expectedCollectionRevision:99},{unknown:true},{peopleSectorTermId:entityId},{placesTaxonomy:{categoryTermId:entityId,subcategoryTermId:null}},{bookContext:{}},{movieTermIds:[]},{displayOverrides:{subtitle:'Wrong category'}}])('rejects forged or category-incompatible create fields %j before POST',async extra=>{
+  let posts=0;const {parent}=await observations(()=>{posts++;return reply({recommendation:{...recommendation,revision:1}});});
+  await expect(explorersApiClient.createMyRecommendation(parent,{entityId,...extra} as any,'create-invalid')).rejects.toMatchObject({status:422,code:'INVALID_INPUT'});
+  expect(posts).toBe(0);
+ });
+ it('requires the authentic parent observation before recommendation creation',async()=>{
+  let posts=0;const {parent}=await observations(()=>{posts++;return reply({recommendation:{...recommendation,revision:1}});});
+  await expect(explorersApiClient.createMyRecommendation({...parent},{entityId},'create-forged-parent')).rejects.toMatchObject({status:409});
+  signIn(account);
+  await expect(explorersApiClient.createMyRecommendation(parent,{entityId},'create-stale-parent')).rejects.toMatchObject({status:409});expect(posts).toBe(0);
+ });
+ it('preserves creation body and key across a lost acknowledgement',async()=>{
+  const bodies:string[]=[],keys:(string|null)[]=[];const {parent}=await observations(options=>{bodies.push(options.body as string);keys.push(new Headers(options.headers).get('Idempotency-Key'));if(bodies.length===1)throw Error('lost');return reply({recommendation:{...recommendation,revision:1}});});
+  await expect(explorersApiClient.createMyRecommendation(parent,{entityId},'create-replay')).rejects.toMatchObject({status:503});
+  await explorersApiClient.createMyRecommendation(parent,{entityId},'create-replay');
+  expect(bodies).toHaveLength(2);expect(bodies[1]).toBe(bodies[0]);expect(keys).toEqual(['create-replay','create-replay']);
+ });
  it('sends original paired revisions/key and validates both authenticated resource identities',async()=>{
   let sent:RequestInit|undefined;const {parent,item}=await observations(options=>{sent=options;return reply({membership:{collection:{...collection,revision:5},recommendation:{...recommendation,revision:3},attached:true}});});
   await expect(explorersApiClient.attachMyGameMembership({...parent},item,'paired-key')).rejects.toMatchObject({status:409});

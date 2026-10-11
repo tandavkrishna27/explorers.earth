@@ -1,5 +1,5 @@
 import {explorersApiClient,assertCompleteMyCategoryContent,assertOwnerDetailObservation,ExplorersApiError,type CompleteMyCategoryContent,type CollectionObservation,type RecommendationObservation} from '../../../lib/explorersApiClient';
-import {createRecommendationSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
+import {createRecommendationObjectSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
 import {resolveManualPlaceSchema,placeRecommendationContextSchema,placeCollectionDetailsSchema,emptyPlaceContext,emptyPlaceDetails,
  type PlaceEntityDetails,type PlaceRecommendationContext,type PlaceCollectionDetails} from '../../../../../tunes/shared/explorersPlaceContract';
 import {resolveManualPersonSchema} from '../../../../../tunes/shared/explorersPersonContract';
@@ -72,7 +72,7 @@ export const PlacesClient={
   // The context is validated separately because its rules are its own: contact
   // disclosure, and person fields only on a person recommendation.
   const context=placeRecommendationContextSchema.parse({...emptyPlaceContext(),...draft.context});
-  const normalized=createRecommendationSchema.innerType().omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
+  const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
    .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',placeContext:context,placePhotos:{photoMediaIds:draft.photoMediaIds}});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{
    ...draft,title:details.title,details,context,note:normalized.note,userRating:normalized.userRating,

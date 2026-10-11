@@ -1,5 +1,5 @@
 import {explorersApiClient,assertCompleteMyCategoryContent,assertOwnerDetailObservation,ExplorersApiError,type CompleteMyCategoryContent,type CollectionObservation,type RecommendationObservation} from '../../../lib/explorersApiClient';
-import {resolveManualEntitySchema,createRecommendationSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
+import {resolveManualEntitySchema,createRecommendationObjectSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
 import type {RichNote} from '../../../../../tunes/shared/explorersRichNoteContract';
 import useAuthStore from '../../../store/store';
 export type CompleteGamesOwnerContent=CompleteMyCategoryContent&{readonly category:'games'};
@@ -31,7 +31,7 @@ export const GamesClient={
  async observeRecommendation(id:string,signal?:AbortSignal){const value=await explorersApiClient.getMyEditableRecommendation(id,signal);recommendation(value);return value;},
  prepareManualIntent(parent:CollectionObservation,draft:ManualGameDraft):ManualGameIntent{
   collection(parent);const title=resolveManualEntitySchema.parse({kind:'manual',category:'games',details:{title:draft.title}}).details.title;
-  const normalized=createRecommendationSchema.innerType().omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict().parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft'});
+  const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict().parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft'});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{title,note:normalized.note,userRating:normalized.userRating,mediaIds:[...normalized.mediaIds]}});
   const state=useAuthStore.getState();intents.set(intent,{accountId:state.accountId,generation:state.generation,route:route()});return intent;
  },

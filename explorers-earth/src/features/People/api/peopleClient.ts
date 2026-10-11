@@ -1,5 +1,5 @@
 import {explorersApiClient,assertCompleteMyCategoryContent,assertOwnerDetailObservation,ExplorersApiError,type CompleteMyCategoryContent,type CollectionObservation,type RecommendationObservation} from '../../../lib/explorersApiClient';
-import {createRecommendationSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
+import {createRecommendationObjectSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
 import {resolveManualPersonSchema,personSocialUrlsSchema,type PersonPlatform,type PersonSocialUrls} from '../../../../../tunes/shared/explorersPersonContract';
 import type {RichNote} from '../../../../../tunes/shared/explorersRichNoteContract';
 import useAuthStore from '../../../store/store';
@@ -55,7 +55,7 @@ export const PeopleClient={
    socialUrls:personSocialUrlsSchema.parse(draft.socialUrls),skillsTags:draft.skillsTags,
    externalFollowerCountText:draft.externalFollowerCountText,
   }}).details;
-  const normalized=createRecommendationSchema.innerType().omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
+  const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
    .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft'});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{
    ...draft,...details,note:normalized.note,userRating:normalized.userRating,mediaIds:[...normalized.mediaIds],

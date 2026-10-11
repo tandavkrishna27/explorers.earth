@@ -1,5 +1,5 @@
 import {explorersApiClient,assertCompleteMyCategoryContent,assertOwnerDetailObservation,ExplorersApiError,type CompleteMyCategoryContent,type CollectionObservation,type RecommendationObservation} from '../../../lib/explorersApiClient';
-import {createRecommendationSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
+import {createRecommendationObjectSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
 import {resolveManualProductSchema,productOfferSchema,type ProductOffer} from '../../../../../tunes/shared/explorersProductContract';
 import type {RichNote} from '../../../../../tunes/shared/explorersRichNoteContract';
 import useAuthStore from '../../../store/store';
@@ -55,7 +55,7 @@ export const ProductsClient={
   // The offer is validated separately because its rules are its own: a known currency
   // constrains the amount's precision, and an unknown currency is still legitimate.
   const offer=productOfferSchema.parse(draft.offer);
-  const normalized=createRecommendationSchema.innerType().omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
+  const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
    .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',productOffer:offer});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{
    ...draft,...details,offer,note:normalized.note,userRating:normalized.userRating,mediaIds:[...normalized.mediaIds],
