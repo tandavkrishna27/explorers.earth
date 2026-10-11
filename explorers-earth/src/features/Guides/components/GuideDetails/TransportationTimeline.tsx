@@ -16,7 +16,7 @@ import {
   TravelMode,
 } from "../../types/guideSectionTypes";
 import { getTransportSegments } from "../../utils/guideHelpers";
-import { parseTimeline } from "../../utils/guideDataParser";
+import { parseTimeline, parseStay, parseActivity } from "../../utils/guideDataParser";
 import {
   getTravelModeConfig,
   getTravelModeLabel,
@@ -159,6 +159,8 @@ const TransportationTimeline: React.FC<TransportationTimelineProps> = ({
         ...(timelineData.morning || []),
         ...(timelineData.afternoon || []),
         ...(timelineData.evening || []),
+        ...parseStay(section.Stay).accommodations,
+        ...parseActivity(section.Recommendation_Activity).activities,
       ];
 
       const sectionNodes: TransportNode[] = [];
@@ -166,9 +168,9 @@ const TransportationTimeline: React.FC<TransportationTimelineProps> = ({
       // Create nodes for each transport segment
       transportSegments.forEach((segment) => {
         const fromPlace = allPlaces.find(
-          (p) => p.place_id === segment.fromPlaceId
+          (p) => p.id === segment.fromPlaceId
         );
-        const toPlace = allPlaces.find((p) => p.place_id === segment.toPlaceId);
+        const toPlace = allPlaces.find((p) => p.id === segment.toPlaceId);
 
         if (fromPlace && toPlace) {
           // Create unique ID for this segment

@@ -871,3 +871,7 @@ User approval received for proposed included feature semantics and Guides entere
 ### Taxonomy contract first slice
 Approved Places/People semantics now have strict pure catalog import and assignment contracts. Independent review found UUID case aliases bypassing duplicate/distinct identity checks; actual regression RED1 then GREEN7 after rejecting noncanonical casing. Root fresh seven taxonomy contracts and selected TypeScript passed. Complete state validation rejects duplicate IDs/slugs/mappings, unsupported hierarchy, missing default labels and dangling references without synthesizing source data. Storage, locks, actual import, routes and native feature qualification remain open; no production vocabulary or provider provenance is claimed.
 
+
+### Guides transport editor identity
+Canonical segment endpoints use local IDs; the retained Transport UI incorrectly resolved provider IDs and hid controls. The bounded repair resolves local IDs and includes valid persisted stay/activity endpoints while retaining provider IDs for directions and rendering only existing segments. Independent review accepted; root fresh transport/fullform tests12PASS. Initial root type configurations omitted the frontend zod/v3 alias and exhausted default4GB then8GB heaps without diagnostics. Repeating the actual frontend compiler context including that alias, imported dependency closure and backend ambient declarations exited0 with zero diagnostics in5.74seconds. No native qualification is claimed.
+
