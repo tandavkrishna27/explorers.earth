@@ -290,10 +290,110 @@ async function captureProfileOnboarding(page: Page, info: TestInfo): Promise<voi
 }
 // END PROFILE ONBOARDING DIAGNOSTIC
 
+// BEGIN SETTINGS READINESS DIAGNOSTIC
+const settingsReadinessPending = new WeakMap<TestInfo, string>();
+const settingsReadinessOrdinals = new WeakMap<TestInfo, number>();
+function captureSettingsReadiness(info: TestInfo): void {
+  const marker = settingsReadinessPending.get(info);
+  settingsReadinessPending.delete(info);
+  settingsReadinessOrdinals.delete(info);
+  try {
+    if (marker && ['failed', 'timedOut', 'interrupted'].includes(info.status ?? '')
+      && info.errors.some(error => typeof error.message === 'string' && error.message.length > 0 && !/\[[a-z0-9-]+-v\d+:/.test(error.message))
+      && !info.errors.some(error => error.message?.includes('[settings-readiness-v1:'))) info.errors.push({ message: marker });
+  } catch {}
+}
+function observeSettingsReadiness(page: Page, info: TestInfo) {
+  const ordinal = (settingsReadinessOrdinals.get(info) ?? 0) + 1;
+  settingsReadinessOrdinals.set(info, ordinal);
+  let sealed = false;
+  let finished = false;
+  let stage: 'goto' | 'assert-enabled' = 'goto';
+  const families = ['session', 'account', 'books', 'movies', 'games', 'patch'] as const;
+  const counts = Object.fromEntries(families.map(key => [key, { admitted: 0, settled: 0, failed: 0, status: 'absent' }])) as Record<typeof families[number], { admitted: number; settled: number; failed: number; status: string }>;
+  const admitted = new Map<Request, typeof families[number]>();
+  const request = (item: Request) => {
+    if (sealed) return;
+    try {
+      const url = new URL(item.url());
+      if (url.origin !== fixture.origin) return;
+      let key: typeof families[number] | undefined;
+      if (item.method() === 'GET' && url.pathname === '/api/auth/get-session') key = 'session';
+      if (item.method() === 'GET' && url.pathname === '/api/explorers/v1/me') key = 'account';
+      if (item.method() === 'PATCH' && url.pathname === '/api/explorers/v1/account') key = 'patch';
+      if (item.method() === 'GET' && url.pathname === '/api/explorers/v1/collections') {
+        const category = url.searchParams.get('category');
+        if (category === 'books' || category === 'movies' || category === 'games') key = category;
+      }
+      if (key) { admitted.set(item, key); counts[key].admitted = Math.min(2, counts[key].admitted + 1); counts[key].status = 'pending'; }
+    } catch {}
+  };
+  const outcome = (item: Request, status: string) => {
+    if (sealed) return;
+    const key = admitted.get(item);
+    if (!key) return;
+    admitted.delete(item);
+    counts[key].settled = Math.min(2, counts[key].settled + 1);
+    if (status === 'transport') counts[key].failed = Math.min(2, counts[key].failed + 1);
+    counts[key].status = status;
+  };
+  const response = (item: Response) => { try { const status = item.status(); outcome(item.request(), status >= 200 && status < 300 ? '2xx' : status === 401 || status === 403 ? 'denied' : status === 409 ? '409' : 'other'); } catch {} };
+  const failed = (item: Request) => outcome(item, 'transport');
+  let networkSample = 'observed';
+  try { page.on('request', request); page.on('response', response); page.on('requestfailed', failed); } catch { networkSample = 'u'; }
+  const seal = () => {
+    sealed = true;
+    try { page.off('request', request); } catch {}
+    try { page.off('response', response); } catch {}
+    try { page.off('requestfailed', failed); } catch {}
+    admitted.clear();
+  };
+  if (networkSample === 'u') seal();
+  return {
+    phase() { stage = 'assert-enabled'; },
+    async finish(failure: boolean) {
+      if (finished) return;
+      finished = true;
+      seal();
+      const title = 'canonical navigation: external revision contention reports conflict without replay or lost profile update';
+      if (!failure || ordinal !== 1 || info.title !== title || !info.file.replaceAll('\\', '/').endsWith('/explorers-earth/e2e/replatform/profile.spec.ts')
+        || info.project.name !== 'chromium-pr-safe' || info.repeatEachIndex !== 0 || info.retry !== 0
+        || !(info.titlePath.length === 1 && info.titlePath[0] === title || info.titlePath.length === 2 && info.titlePath[0] === 'replatform/profile.spec.ts' && info.titlePath[1] === title)) return;
+      // One failure-only snapshot. No polling or readiness wait; unavailable when the page/task is closed.
+      let dom = ['u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u'];
+      try {
+        dom = await page.evaluate(() => {
+          const bucket = (count: number) => count === 0 ? '0' : count === 1 ? '1' : 'many';
+          const flag = (value: boolean) => value ? '1' : '0';
+          const controls = [...document.querySelectorAll<HTMLInputElement>('input[type="checkbox"][aria-label="Auto-pin navigation tabs"]')];
+          const input = controls.length === 1 ? controls[0] : undefined;
+          const opener = document.querySelector('[aria-controls="public-navigation-panel"]');
+          let hidden = false;
+          if (input) {
+            for (let node: Element | null = input; node; node = node.parentElement) {
+              const style = getComputedStyle(node);
+              if (node.hasAttribute('hidden') || node.getAttribute('aria-hidden') === 'true' || style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') hidden = true;
+            }
+          }
+          const loaded = (window as unknown as { __dashboardLoaded?: unknown }).__dashboardLoaded;
+          return [bucket(controls.length), input ? flag(input.disabled) : 'u', input ? flag(input.checked) : 'u',
+            opener ? flag(opener.getAttribute('aria-expanded') === 'true') : 'u', typeof loaded === 'boolean' ? flag(!loaded) : 'u',
+            flag(document.querySelector('[role="alert"]') !== null), flag(document.querySelector('[role="status"]') !== null), flag(location.hash === '#public-navigation'), input ? flag(hidden) : 'u'];
+        });
+      } catch {}
+      const bucket = (count: number) => count === 0 ? '0' : count === 1 ? '1' : 'many';
+      const network = families.flatMap(key => [bucket(counts[key].admitted), bucket(counts[key].settled), bucket(counts[key].failed), counts[key].status]);
+      settingsReadinessPending.set(info, `[settings-readiness-v1:${['initial-open', '1', stage, ...dom, 'u', 'u', 'u', 'u', 'u', 'u', networkSample, ...network].join('|')}]`);
+    },
+  };
+}
+// END SETTINGS READINESS DIAGNOSTIC
+
 test.afterEach(({}, info) => {
   captureProfileDiagnostic(info);
   nativeBoundaryObservers.get(info)?.finish(info);
   captureProfileSecondSave(info);
+  captureSettingsReadiness(info);
 });
 type Persona = { userId: string; cookie: string; handle: string };
 type Fixture = { origin: string; personas: { ownerA: Persona; ownerB: Persona } };
@@ -548,8 +648,14 @@ async function prepareNavigation(page: Page) {
   return legacyOperations;
 }
 async function openNavigation(page: Page) {
-  await page.goto('/settings#public-navigation');
-  await expect(page.getByRole('checkbox', { name: 'Auto-pin navigation tabs', exact: true })).toBeEnabled();
+  const readiness = observeSettingsReadiness(page, test.info());
+  let failed = false;
+  try {
+    await page.goto('/settings#public-navigation');
+    readiness.phase();
+    await expect(page.getByRole('checkbox', { name: 'Auto-pin navigation tabs', exact: true })).toBeEnabled();
+  } catch (error) { failed = true; throw error; }
+  finally { try { await readiness.finish(failed); } catch {} }
 }
 async function createNavigationList(page: Page, category: 'books' | 'movies' | 'games') {
   const response = await page.request.post(`${fixture.origin}${navigationBase}/collections`, {
