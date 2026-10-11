@@ -809,3 +809,6 @@ All eight native cases passed, zero failed/skipped/retried; cleanup failed with 
 
 Pending-ledger diagnostic checkpoint: branded current canonical/support snapshots, native handler-wait/canonical-wait with bounded handler counts, immutable synchronous deadline capture, and contained diagnostic-reader exceptions. Actual local HTTP/Express regressions cover completion, response-close-before-finish, input abort, and original promise tails. Independent driver/QA/formatter reviews accepted; root fresh six contract suites599 PASS, six runner tests PASS, runner/recovery scoped type checks0. Root independently matched exact thirteenth11-entry inventory (5files/6directories/no reparse). Mid-edit root run is excluded from final verification; its thirteenth model failures are not claimed as implementation RED evidence. No deadlines, uncertainty flags, cleanup gates or qualification criteria changed.
 
+
+Exact600696 native recovery at de62c6f7 exited0/statusrecovered/qualificationfalse. Fresh retained-root/fullcontainer-ID/exactUAT-run-label/lease absence checks passed; retained secret length0. This is disposal evidence, not Apps qualification.
+
