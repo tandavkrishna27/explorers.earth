@@ -7,7 +7,7 @@
  * 
  * 1. Stay Field: Updates the accommodation in the Stay.accommodations array (matched by id)
  * 2. Timeline Field: Updates all occurrences in morning/afternoon/evening arrays (matched by id)
- * 3. Budget Field: Updates budget entries in corresponding periods (matched by place_id)
+ * 3. Budget Field: Updates budget entries in corresponding periods (matched by localId)
  * 
  * This ensures that:
  * - Editing from Stay tab updates Timeline tab (and vice versa)
@@ -127,6 +127,7 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
       }
       
       const updatedStay: DayPlace = {
+        ...stay, // Keep money, photos, notes and provenance unless explicitly edited.
         id: stay.id, // Preserve the original id - this is the key for syncing
         name: stayPlace.name || "",
         formatted_address: stayPlace.formatted_address || "",
@@ -198,56 +199,45 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
       // ============================================
       // UPDATE BUDGET FIELD (Sync budget entries)
       // ============================================
-      // Budget stores BudgetPlace objects keyed by place_id (not id)
-      // Budget entries correspond to Timeline entries, so we update Budget in periods
-      // where the stay appears in Timeline
+      // Budget rows belong to a local timeline entry; provider ids can be shared.
       const currentBudgetData = parseBudget(section.Budget);
-      const oldPlaceId = stay.place_id;
       const newPlaceId = updatedStay.place_id;
 
-      // Determine which periods contain this stay (by checking updated Timeline)
       const stayInMorning = updatedTimeline.morning.some((p) => p.id === stay.id);
       const stayInAfternoon = updatedTimeline.afternoon.some((p) => p.id === stay.id);
       const stayInEvening = updatedTimeline.evening.some((p) => p.id === stay.id);
 
-      // Helper to update budget entries in a specific period
       const updateBudgetInPeriod = (
         budgetPlaces: BudgetPlace[],
         hasStayInPeriod: boolean
       ): BudgetPlace[] => {
         if (!hasStayInPeriod) {
-          // Stay doesn't appear in this period, remove old entry if it exists
-          return budgetPlaces.filter((bp) => bp.place_id !== oldPlaceId);
+          return budgetPlaces.filter((bp) => bp.localId !== stay.id);
         }
 
-        // Stay appears in this period, update budget entry
-        const updated = budgetPlaces.filter((bp) => bp.place_id !== oldPlaceId);
-
-        // If the new place has price information, add/update it
-        if (newPlaceId && (updatedStay.priceLevel !== undefined || updatedStay.priceRange || updatedStay.customBudget)) {
-          const existingIndex = updated.findIndex((bp) => bp.place_id === newPlaceId);
-          const newBudgetPlace: BudgetPlace = {
-            // The budget row belongs to this stay entry, not merely to its place id.
-            localId: updatedStay.id,
-            place_id: newPlaceId,
-            name: updatedStay.name,
-            priceLevel: updatedStay.priceLevel,
-            priceRange: updatedStay.priceRange,
-            customBudget: updatedStay.customBudget,
-          };
-
-          if (existingIndex >= 0) {
-            // Update existing entry
-            updated[existingIndex] = newBudgetPlace;
-          } else {
-            // Add new entry
-            updated.push(newBudgetPlace);
-          }
+        const existingIndex = budgetPlaces.findIndex((bp) => bp.localId === stay.id);
+        const existing = budgetPlaces[existingIndex];
+        if (!newPlaceId || (!existing && updatedStay.priceLevel === undefined &&
+            !updatedStay.priceRange && !updatedStay.customBudget && updatedStay.budgetAmount === undefined)) {
+          return budgetPlaces;
         }
 
-        return updated;
+        const newBudgetPlace: BudgetPlace = {
+          priceLevel: updatedStay.priceLevel,
+          priceRange: updatedStay.priceRange,
+          customBudget: updatedStay.customBudget,
+          budgetAmount: updatedStay.budgetAmount,
+          budgetCurrency: updatedStay.budgetCurrency,
+          ...existing, // A location edit keeps this period's saved pricing metadata.
+          localId: updatedStay.id,
+          place_id: newPlaceId,
+          name: updatedStay.name,
+        };
+        if (existingIndex >= 0) {
+          return budgetPlaces.map((bp, index) => index === existingIndex ? newBudgetPlace : bp);
+        }
+        return [...budgetPlaces, newBudgetPlace];
       };
-
       const updatedBudget: BudgetData = {
         morning: updateBudgetInPeriod(currentBudgetData.morning || [], stayInMorning),
         afternoon: updateBudgetInPeriod(currentBudgetData.afternoon || [], stayInAfternoon),
