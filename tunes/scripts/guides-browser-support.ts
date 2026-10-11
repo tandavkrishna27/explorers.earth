@@ -92,7 +92,7 @@ export function buildGuidesSeedPlan(caseId:string) {
   });
   const roleKeys=index===5?['old-cover','replacement-cover','independent-cover']:
     index===6?['direct-timeline','direct-stay','activity-import']:
-    index===7?['shared-section','sole-withdrawal']:[];
+    index===7?['shared-section','sole-withdrawal','independent-cover']:[];
   const mediaRoles=roleKeys.map(key=>({key,owner:key==='independent-cover'?'ownerB' as const:'ownerA' as const,
     purpose:key.includes('cover')?'collection' as const:'guide' as const}));
   // Bindings are declarations; actual media IDs are allocated by later resource work.

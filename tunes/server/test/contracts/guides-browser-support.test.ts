@@ -22,7 +22,7 @@ const variants = [
   {guides:54, sections:[53,...Array(53).fill(0)], roles:[]},
   {guides:1, sections:[1], roles:['old-cover','replacement-cover','independent-cover']},
   {guides:1, sections:[1], roles:['direct-timeline','direct-stay','activity-import']},
-  {guides:2, sections:[1,1], roles:['shared-section','sole-withdrawal']},
+  {guides:2, sections:[1,1], roles:['shared-section','sole-withdrawal','independent-cover']},
 ] as const;
 const support = () => import('../../../scripts/guides-browser-support');
 const clone = <T>(value:T):T => structuredClone(value);
