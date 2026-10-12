@@ -85,3 +85,40 @@ it('runs the exact C10 draft oracle with driver BIGINT strings and numeric JSON 
  expect(()=>run(expect,{...opened,policy_version:parseInt8('2')},f,policy)).toThrow();
  expect(()=>run(expect,{...opened,policy_snapshot:{...opened.policy_snapshot,policyVersion:'1'}},f,policy)).toThrow();
 });
+
+import {expect as chaiExpect,AssertionError} from 'chai';
+import {runInNewContext,runInThisContext} from 'node:vm';
+import {isNativeError} from 'node:util/types';
+it('preserves real installed Chai and Vitest assertion metadata from native accessor carriers',()=>{
+ const filename='C:/inert/server/test/explorers-place-pins.integration.test.ts';
+ for(const [check,expression] of [[chaiExpect,'check(1).to.equal(2)'],[expect,'check(1).toBe(2)']] as const){
+  let raw:unknown;try{runInNewContext(expression,{check},{filename});}catch(error){raw=error;}
+  expect(raw).toBeInstanceOf(AssertionError);expect(isNativeError(raw)).toBe(true);
+  const direct=captureCaseErrorMetadata(raw),replacement=annotateCaseErrorReplacement(Error('generic'),raw);
+  expect(direct.sourceLine).toBe(1);expect(replacement).toMatchObject({category:'assertion',sourceFile:caseSourceFile,sourceLine:direct.sourceLine,sourceColumn:direct.sourceColumn});
+  expect(Object.keys(replacement).sort()).toEqual(['category','sourceColumn','sourceFile','sourceLine']);
+ }
+});
+it('preserves same-realm native SQLSTATE and original coordinates but refuses hostile and cross-realm stack getters',()=>{
+ const filename='C:/inert/server/test/explorers-place-pins.integration.test.ts';
+ const native=runInThisContext("Object.assign(new Error('private'),{code:'23503'})",{filename});
+ expect(isNativeError(native)).toBe(true);const direct=captureCaseErrorMetadata(native);
+ expect(annotateCaseErrorReplacement(Error('generic'),native)).toMatchObject({category:'database',sqlState:'23503',sourceFile:caseSourceFile,sourceLine:direct.sourceLine,sourceColumn:direct.sourceColumn});
+ let reads=0;Object.defineProperty(native,'stack',{get(){reads++;throw Error('private');}});
+ expect(annotateCaseErrorReplacement(Error('generic'),native)).toMatchObject({category:'database',sqlState:'23503'});expect(reads).toBe(0);
+ expect(annotateCaseErrorReplacement(Error('generic'),runInNewContext("new Error('private')",{},{filename})).sourceFile).toBeUndefined();
+ const disguised=Object.create(AssertionError.prototype);Object.defineProperty(disguised,'name',{get(){reads++;return 'AssertionError';}});
+ expect(annotateCaseErrorReplacement(Error('generic'),disguised).category).toBe('other');expect(reads).toBe(0);
+});
+it('refuses intrinsic stack formatting when native error name or message has an untrusted getter',()=>{
+ for(const key of ['name','message']){let reads=0;const raw=Error('private');Object.defineProperty(raw,key,{get(){reads++;throw Error('private');}});expect(annotateCaseErrorReplacement(Error('generic'),raw).sourceFile).toBeUndefined();expect(reads).toBe(0);}
+});
+it('does not invoke a changed or accessor global stack formatter for a real native error',()=>{
+ const descriptor=Object.getOwnPropertyDescriptor(Error,'prepareStackTrace');let reads=0;
+ try{
+  const raw=Error('private');Object.defineProperty(Error,'prepareStackTrace',{configurable:true,writable:true,value:()=>{reads++;return 'private';}});
+  expect(annotateCaseErrorReplacement(Error('generic'),raw).sourceFile).toBeUndefined();expect(reads).toBe(0);
+  Object.defineProperty(Error,'prepareStackTrace',{configurable:true,get(){reads++;return ()=> 'private';}});
+  expect(annotateCaseErrorReplacement(Error('generic'),raw).sourceFile).toBeUndefined();expect(reads).toBe(0);
+ }finally{if(descriptor)Object.defineProperty(Error,'prepareStackTrace',descriptor);else Reflect.deleteProperty(Error,'prepareStackTrace');}
+});

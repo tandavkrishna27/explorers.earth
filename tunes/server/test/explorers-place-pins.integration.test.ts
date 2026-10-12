@@ -1093,7 +1093,7 @@ const cAccountSql='SELECT status FROM creator_accounts WHERE id=$1 FOR UPDATE';
 const cLifecycleSql=`SELECT a.status,a.revision::text FROM creator_accounts a
       JOIN account_memberships m ON m.account_id=a.id AND m.user_id=$2 AND m.role='owner'
       WHERE a.id=$1 FOR UPDATE OF a`;
-function cOutcome(operation:()=>Promise<any>):Promise<COutcome>{return controller!.runOwned(operation).then(value=>({ok:true,value}),error=>({ok:false,error}));}
+function cOutcome(operation:()=>Promise<any>):Promise<COutcome>{return controller!.runOwned(async():Promise<COutcome>=>{try{return {ok:true,value:await operation()};}catch(error){return {ok:false,error};}}).then(value=>value,error=>({ok:false,error}));}
 function cSucceeded(outcome:COutcome){expect(outcome.ok).toBe(true);if(!outcome.ok)throw Error('Fixture command outcome');return outcome.value;}
 function cRefused(outcome:COutcome,status:number,message?:string){expect(outcome.ok).toBe(false);if(outcome.ok)throw Error('Fixture command outcome');expect(outcome.error).toMatchObject({status,...message?{message}:{}});expect(['40P01','57014','55P03']).not.toContain(outcome.error?.code);}
 function cSpec(request:PlacePinsRequest,activePolicy=policy,key=randomUUID()):CCommand{return {request,context:{requestId:randomUUID(),idempotencyKey:key},policy:activePolicy};}
