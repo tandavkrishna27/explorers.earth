@@ -1,3 +1,5 @@
+import ts from 'typescript';
+import {readFileSync} from 'node:fs';
 import {describe,it,expect} from 'vitest';
 import {createWriterGuardTransport} from '../helpers/placesWriterGuardTransport';
 const nonce='a'.repeat(32);
@@ -32,4 +34,16 @@ it('optional bootstrap metadata is exact finite data and cannot widen ordinary f
  const invalid=[{...valid,setupStage:'private'},{...valid,category:'private'},{...valid,sqlState:'private'},{...valid,category:'assertion'},{...valid,message:'private'},{...valid,caseId:'registered'},{...valid,setupStage:undefined},{...valid,category:undefined},{...valid,sqlState:undefined}];
  for(const event of invalid){const writes:string[]=[];const guard=createWriterGuardTransport({env,caseIds:['registered','suite-bootstrap'],now:()=>0,writeExclusive:(_p,b)=>writes.push(b)});guard.bootstrap();expect(()=>guard.failStop(event as any)).toThrow();expect(guard.admitted()).toBe(false);expect(writes).toHaveLength(2);}
  const writes:string[]=[];const guard=createWriterGuardTransport({env,caseIds:['suite-bootstrap'],now:()=>0,writeExclusive:(_p,b)=>writes.push(b)});guard.bootstrap();guard.failStop(valid);guard.failStop({...valid,setupStage:'settle'});expect(writes).toHaveLength(3);expect(Buffer.byteLength(writes[2])).toBeLessThanOrEqual(512);expect(JSON.parse(writes[2])).toMatchObject(valid);
+});
+
+it('emits finite case metadata only for exact leaf IDs and within the unchanged byte bound',()=>{
+ const writes:string[]=[];const guard=createWriterGuardTransport({env,caseIds:['registered','suite-bootstrap'],writeExclusive:(_p,b)=>writes.push(b)});guard.bootstrap();
+ const event={caseId:'registered',reason:'settlement' as const,phase:'settle' as const,unsettledCount:0,caseCategory:'assertion' as const,sourceFile:'server/test/explorers-place-pins.integration.test.ts' as const,sourceLine:1265,sourceColumn:42};guard.failStop(event);expect(JSON.parse(writes[2])).toMatchObject(event);expect(Buffer.byteLength(writes[2])).toBeLessThanOrEqual(512);
+ for(const extra of [{sourceLine:0},{sourceFile:'private'},{message:'private'},{caseId:'suite-bootstrap'}]){const bad=createWriterGuardTransport({env,caseIds:['registered','suite-bootstrap'],writeExclusive:()=>{}});bad.bootstrap();expect(()=>bad.failStop({...event,...extra} as any)).toThrow();}
+});
+
+it('fits the complete original 116-identity inventory with maximum finite metadata within 512 bytes',()=>{
+ const source=readFileSync(new URL('../explorers-place-pins.integration.test.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('case.ts',source,ts.ScriptTarget.Latest,true),cases:string[]=[];
+ const visit=(n:ts.Node)=>{if(ts.isCallExpression(n)&&n.arguments[0]&&ts.isStringLiteral(n.arguments[0])){if(ts.isIdentifier(n.expression)&&n.expression.text==='it')cases.push(n.arguments[0].text);else if(ts.isCallExpression(n.expression)&&ts.isPropertyAccessExpression(n.expression.expression)&&n.expression.expression.expression.getText(ast)==='it'&&n.expression.expression.name.text==='each'){let values=n.expression.arguments[0];if(ts.isAsExpression(values))values=values.expression;if(!ts.isArrayLiteralExpression(values))throw Error('Fixture inventory');for(const value of values.elements){if(!ts.isStringLiteral(value))throw Error('Fixture inventory');cases.push(n.arguments[0].text.replace('%s',value.text));}}}ts.forEachChild(n,visit);};visit(ast);const inventory={cases};expect(cases).toHaveLength(116);expect(new Set(cases).size).toBe(116);
+ for(const caseId of inventory.cases){const writes:string[]=[];const guard=createWriterGuardTransport({env,caseIds:inventory.cases,writeExclusive:(_p,b)=>writes.push(b)});guard.bootstrap();guard.failStop({caseId,reason:'settlement',phase:'settle',unsettledCount:16,caseCategory:'database',caseSqlState:'57014',sourceFile:'server/test/explorers-place-pins.integration.test.ts',sourceLine:1000000,sourceColumn:1000000});expect(writes).toHaveLength(3);expect(Buffer.byteLength(writes[2])).toBeLessThanOrEqual(512);}
 });

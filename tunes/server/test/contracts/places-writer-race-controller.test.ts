@@ -170,3 +170,32 @@ it('keeps the actual integration bootstrap callback compatible with installed su
  collect(callback.body);expect(calls).toHaveLength(1);expect(calls[0].arguments).toHaveLength(1);
  const collectedSuite=calls[0].arguments[0];expect(ts.isIdentifier(collectedSuite)&&collectedSuite.text===suite.text).toBe(true);
 });
+
+it('latches the original case error without closing admission and preserves original rollback before failure delivery',async()=>{
+ const h=harness();h.controller.admit('one');const client=await h.controller.wrapPool(h.pool(),'runtime').connect();await client.query('BEGIN');
+ h.controller.captureCaseError({name:'AssertionError',stack:'at file (C:/repo/tunes/server/test/explorers-place-pins.integration.test.ts:1265:42)'});
+ h.controller.captureCaseError({code:'57014'});expect(h.controller.status().admissionClosed).toBe(false);expect(h.events).toHaveLength(0);
+ await h.controller.abortCase();expect(h.calls.some(c=>c.config==='ROLLBACK')).toBe(true);expect(h.events).toHaveLength(1);
+ expect(h.events[0]).toMatchObject({reason:'settlement',phase:'settle',caseCategory:'assertion',sourceLine:1265,sourceColumn:42});expect(h.events[0]).not.toHaveProperty('caseSqlState');
+});
+it('resets finite case diagnostics only at subsequent valid admission',async()=>{
+ const h=harness();h.controller.admit('one');h.controller.captureCaseError({name:'AssertionError'});await h.controller.settleCase();h.controller.admit('two');h.controller.captureCaseError({code:'57014'});await h.controller.abortCase();expect(h.events[0]).toMatchObject({caseId:'two',caseCategory:'database',caseSqlState:'57014'});
+});
+
+it('keeps active-query cancellation and original settlement after capturing the first error',async()=>{
+ const h=await raceHarness(),work=h.pair.second.query('owned',['account']);await flush();h.controller.captureCaseError({name:'AssertionError'});
+ expect(h.events).toHaveLength(0);expect(h.controller.status().admissionClosed).toBe(false);
+ const aborted=h.controller.abortCase();await flush();expect(h.queries.filter(q=>q.text?.startsWith('SELECT pg_cancel_backend'))).toHaveLength(1);
+ h.original.resolve({rows:[]});await work;await aborted;expect(h.events[0]).toMatchObject({reason:'settlement',caseCategory:'assertion'});
+});
+
+it('diagnostic getter failure cannot prevent the original abort and first latch remains finite',async()=>{
+ const h=harness();h.controller.admit('one');h.controller.captureCaseError({get name(){throw Error('private');}});expect(h.controller.status().admissionClosed).toBe(false);h.controller.captureCaseError({name:'AssertionError'});await h.controller.abortCase();expect(h.events[0]).toMatchObject({caseCategory:'other',reason:'settlement',phase:'settle'});
+});
+
+it('never attributes a prior case diagnostic to a rejected next admission',async()=>{
+ const events:any[]=[];const controller=createWriterSuiteController({identity:{database:'fixture',runtimeLogin:'runtime_login'},admission:id=>{if(id==='two')throw Error('rejected');},guardFailure:event=>events.push(event)});controller.admit('one');controller.captureCaseError({name:'AssertionError'});await controller.settleCase();expect(()=>controller.admit('two')).toThrow();expect(events[0]).toMatchObject({caseId:'two',reason:'transport'});expect(events[0]).not.toHaveProperty('caseCategory');
+});
+it('does not emit a retained unsettled case diagnostic under a different admitted case ID',async()=>{
+ const h=harness(),pending=deferred();h.controller.admit('one');const work=h.controller.runOwned(()=>pending.promise);h.controller.captureCaseError({name:'AssertionError'});h.controller.admit('two');pending.resolve(undefined);await work;await h.controller.abortCase();expect(h.events[0]).toMatchObject({caseId:'two',reason:'settlement'});expect(h.events[0]).not.toHaveProperty('caseCategory');
+});

@@ -47,7 +47,7 @@ beforeAll(async({},suite)=>{
  },readyAt);
 });
 beforeEach(context=>{if(!controller)throw new Error('Fixture bootstrap unavailable');controller.admit(context.task.name);});
-afterEach(async context=>{if(!controller)throw new Error('Fixture bootstrap unavailable');if(context.task.result?.state==='fail'){await controller.abortCase();throw new Error('Fixture case failed');}await controller.settleCase();});
+afterEach(async context=>{if(!controller)throw new Error('Fixture bootstrap unavailable');if(context.task.result?.state==='fail'){controller.captureCaseError(context.task.result.errors?.[0]);await controller.abortCase();throw new Error('Fixture case failed');}await controller.settleCase();});
 afterAll(async()=>{await controller?.shutdown();});
 type Fixture={account:string;list:string;otherList:string;ids:string[];allLists?:string[];allIds?:string[];entityIds?:string[];sectionIds?:string[]};
 async function seed(count=3):Promise<Fixture>{
@@ -1112,27 +1112,28 @@ async function cFixture(options:{drafts?:number;draftPolicy?:typeof policy;charg
 }
 // Each adapter supplies one controller-owned reserved lease once. A successful
 // account query is gated before the next statement; SQL/results are unchanged.
-function cPool(client:{query:(...args:any[])=>Promise<any>;release:()=>void},accountStatement:string,values:unknown[],gate:ReturnType<NonNullable<typeof controller>['gate']>,reached?:ReturnType<NonNullable<typeof controller>['gate']>){
+function cPool(client:{query:(...args:any[])=>Promise<any>;release:()=>void},accountStatement:string,values:unknown[],gate:ReturnType<NonNullable<typeof controller>['gate']>,reached?:ReturnType<NonNullable<typeof controller>['gate']>,locked?:()=>Promise<void>){
  let connected=false,arrived=false;
  return {connect:async()=>{expect(connected).toBe(false);connected=true;return {query:async(...args:any[])=>{
   const sql=typeof args[0]==='string'?args[0]:args[0]?.text,parameters=typeof args[0]==='string'?(args[1]??[]):args[0]?.values??[];
   if(sql===accountStatement){expect(parameters).toEqual(values);reached?.arrive();}
   const result=await client.query(...args);
-  if(sql===accountStatement){expect(parameters).toEqual(values);expect(arrived).toBe(false);arrived=true;gate.arrive();await gate.wait();}return result;
+  if(sql===accountStatement){expect(parameters).toEqual(values);expect(arrived).toBe(false);arrived=true;await locked?.();gate.arrive();await gate.wait();}return result;
  },release:()=>client.release()};}} as unknown as pg.Pool;
 }
-async function cRace(caseId:string,account:string,first:(pool:pg.Pool)=>Promise<any>,second:(pool:pg.Pool)=>Promise<any>,read:()=>Promise<SqlSnapshot>,firstLock={text:cAccountSql,values:[account] as unknown[]},secondLock={text:cAccountSql,values:[account] as unknown[]}){
+async function cRace(caseId:string,account:string,first:(pool:pg.Pool)=>Promise<any>,second:(pool:pg.Pool)=>Promise<any>,read:()=>Promise<SqlSnapshot>,firstLock={text:cAccountSql,values:[account] as unknown[]},secondLock={text:cAccountSql,values:[account] as unknown[]},lifecycleXid?:(xid:string)=>void){
  const pair=await controller!.reservePair(caseId,admin,runtime),winnerGate=controller!.gate();
- const winner=cOutcome(()=>first(cPool(pair.first,firstLock.text,firstLock.values,winnerGate)));
+ const capture=(client:typeof pair.first,lock:typeof firstLock)=>lifecycleXid&&lock.text===cLifecycleSql?async()=>{const xid=(await client.query('SELECT pg_current_xact_id()::text xid')).rows[0]?.xid;expect(xid).toMatch(/^[0-9]+$/);lifecycleXid(xid);}:undefined;
+ const winner=cOutcome(()=>first(cPool(pair.first,firstLock.text,firstLock.values,winnerGate,undefined,capture(pair.first,firstLock))));
  try{
   await winnerGate.acquired;
-  const loserGate=controller!.gate(),loserQuery=controller!.gate(),loser=cOutcome(()=>second(cPool(pair.second,secondLock.text,secondLock.values,loserGate,loserQuery)));
+  const loserGate=controller!.gate(),loserQuery=controller!.gate(),loser=cOutcome(()=>second(cPool(pair.second,secondLock.text,secondLock.values,loserGate,loserQuery,capture(pair.second,secondLock))));
   await loserQuery.acquired;loserQuery.open();await controller!.observeBlocker(pair.second,pair.first,secondLock);winnerGate.open();
   const winnerOutcome=await winner;expect(winnerOutcome.ok).toBe(true);await loserGate.acquired;
   const settledWinner=await read();loserGate.open();const loserOutcome=await loser;await controller!.settleCase();
   expect(controller!.status()).toMatchObject({admissionClosed:false,serverUnresolved:false,leases:0,unsettledCount:0,leaseRestored:true});
   return {winner:winnerOutcome,loser:loserOutcome,settledWinner,after:await read()};
- }catch{winnerGate.open();await controller!.abortCase();throw Error('Fixture writer race');}
+ }catch(error){controller!.captureCaseError(error);winnerGate.open();await controller!.abortCase();throw Error('Fixture writer race');}
 }
 function cForeign(before:SqlSnapshot,after:SqlSnapshot,foreign:Fixture){
  for(const key of ['collections','memberships','recommendations','pins','categories','drafts','receipts'] as const)expect(after[key].filter(row=>row.account_id===foreign.account)).toEqual(before[key].filter(row=>row.account_id===foreign.account));
@@ -1244,7 +1245,8 @@ async function cLifecycleRace(caseId:string,deletion:boolean,writerFirst:boolean
  const input=deletion?{expectedRevision,feedbackId:feedbackId!}:{expectedRevision},pin=cSpec(commitRequest(f,drafts[0],sequences[0]));
  const read=async()=>({...await setup.read(),life:await cLifeSnapshot(actors)}),before=await read(),lower=(await admin.query('SELECT clock_timestamp() clock')).rows[0].clock as Date;
  const writer=(pool:pg.Pool)=>deletion?new AccountLifecycleService(pool).requestAccountDeletion(actor,input as {expectedRevision:number;feedbackId:string},context):new AccountLifecycleService(pool).requestAccountDeactivation(actor,input,context),lifeLock={text:cLifecycleSql,values:[f.account,actor.userId]};
- const raced=await cRace(caseId,f.account,writerFirst?writer:pool=>cExecute(pool,f,pin),writerFirst?pool=>cExecute(pool,f,pin):writer,read,writerFirst?lifeLock:{text:cAccountSql,values:[f.account]},writerFirst?{text:cAccountSql,values:[f.account]}:lifeLock),upper=(await admin.query('SELECT clock_timestamp() clock')).rows[0].clock as Date;
+ let lifecycleXid:string|undefined;
+ const raced=await cRace(caseId,f.account,writerFirst?writer:pool=>cExecute(pool,f,pin),writerFirst?pool=>cExecute(pool,f,pin):writer,read,writerFirst?lifeLock:{text:cAccountSql,values:[f.account]},writerFirst?{text:cAccountSql,values:[f.account]}:lifeLock,xid=>{expect(lifecycleXid).toBeUndefined();lifecycleXid=xid;}),upper=(await admin.query('SELECT clock_timestamp() clock')).rows[0].clock as Date;
  const transitionBefore=writerFirst?before:raced.settledWinner,transitionAfter=writerFirst?raced.settledWinner:raced.after,response=cSucceeded(writerFirst?raced.winner:raced.loser),lifeBefore=(transitionBefore as typeof before).life,lifeAfter=(transitionAfter as typeof before).life,status=deletion?'pending_deletion':'suspended';
  expect(response).toEqual({accountId:f.account,status,operationId:expect.any(String),revision:expectedRevision+1});
  const inBounds=(time:Date)=>{expect(time).toBeInstanceOf(Date);expect(time.getTime()).toBeGreaterThanOrEqual(lower.getTime());expect(time.getTime()).toBeLessThanOrEqual(upper.getTime());};
@@ -1262,7 +1264,7 @@ async function cLifecycleRace(caseId:string,deletion:boolean,writerFirst:boolean
  expect(lifeAfter.account_lifecycle_operations.filter(r=>r.id!==workflow.id)).toEqual(lifeBefore.account_lifecycle_operations);expect(lifeAfter.account_lifecycle_operations).toHaveLength(lifeBefore.account_lifecycle_operations.length+1);
  for(const category of ['apps','books','games','guides','movies','people','places','products']){
   const prior=transitionBefore.categories.find(r=>r.account_id===f.account&&r.category===category),next=transitionAfter.categories.find(r=>r.account_id===f.account&&r.category===category);expect(next).toBeDefined();expect(next.revision).toBe(String(BigInt(prior?.revision??0)+1n));
-  if(prior)expect(next).toEqual({...prior,revision:next.revision});else expect(next).toMatchObject({account_id:f.account,category,revision:'1',places_last_mutation_xid:null});
+  if(prior){if(category==='places'){expect(lifecycleXid).toMatch(/^[0-9]+$/);expect(lifecycleXid).not.toBe(prior.places_last_mutation_xid);}expect(next).toEqual({...prior,revision:next.revision,...category==='places'?{places_last_mutation_xid:lifecycleXid}:{}});}else expect(next).toMatchObject({account_id:f.account,category,revision:'1',places_last_mutation_xid:null});
  }
  expect(transitionAfter.categories.filter(r=>r.account_id!==f.account)).toEqual(transitionBefore.categories.filter(r=>r.account_id!==f.account));expect(transitionAfter.categories.filter(r=>r.account_id===f.account)).toHaveLength(8);
  for(const k of ['collections','memberships','recommendations','entities','pins','drafts','chunks','items','markers','pinQueue','chunkQueue','exactReceipts'] as const)expect(transitionAfter[k]).toEqual(transitionBefore[k]);

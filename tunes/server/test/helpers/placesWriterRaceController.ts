@@ -1,3 +1,4 @@
+import {captureCaseErrorMetadata,type CaseErrorMetadata} from './placesCaseErrorDiagnostic';
 import {finiteBootstrapMetadata,type BootstrapMetadata} from './placesBootstrapDiagnostic';
 import type {GuardFailure,GuardPhase,GuardReason} from './placesWriterGuardTransport';
 
@@ -41,6 +42,7 @@ export function createWriterSuiteController(options:Options){
  const tasks=new Set<Task>(),leases=new Set<Lease>(),pools=new Set<Pool>(),gates=new Set<ReturnType<typeof makeGate>>();
  const rawPools=new WeakMap<object,Pool>();
  let caseId:string='suite-bootstrap',closed=false,serverUnresolved=false,scopeDeadline=Infinity,nativeDeadline=Infinity,aborting:Promise<void>|undefined;
+ let firstCaseError:CaseErrorMetadata|undefined,firstCaseErrorId:string|undefined;
  let observer:Client|undefined;
  let nativeAdmission:NativeAdmission|undefined;
  function error(){return Error('Fixture writer controller');}
@@ -50,9 +52,10 @@ export function createWriterSuiteController(options:Options){
   if(closed)return;closed=true;if([...leases].some(lease=>lease.current&&!lease.current.task.settled))serverUnresolved=true;for(const value of gates)value.fail();nativeAdmission?.close();
   // Latch precedes delivery; the sink may fail or block without reopening admission.
   let metadata:BootstrapMetadata={};try{if(caseId==='suite-bootstrap')metadata=finiteBootstrapMetadata(diagnostic?.setupStage?diagnostic:options.bootstrapDiagnostic?.());}catch{/* Optional diagnostic failure cannot prevent the original guard delivery. */}
-  try{options.guardFailure({caseId,reason,phase,unsettledCount:Math.min(16,pending().length),...metadata});}catch{/* Root supervision remains responsible for delivery failure. */}
+  try{options.guardFailure({caseId,reason,phase,unsettledCount:Math.min(16,pending().length),...metadata,...(caseId!=='suite-bootstrap'&&caseId!=='suite-teardown'&&firstCaseErrorId===caseId?firstCaseError:{} )});}catch{/* Root supervision remains responsible for delivery failure. */}
  }
- function admit(id:string){if(closed)throw error();if(nativeAdmission){fail('lease','acquire');throw error();}try{options.admission(id);}catch{caseId=id;fail('transport','preflight');throw error();}caseId=id;aborting=undefined;nativeDeadline=Infinity;}
+ function admit(id:string){if(closed)throw error();if(nativeAdmission){fail('lease','acquire');throw error();}try{options.admission(id);}catch{caseId=id;fail('transport','preflight');throw error();}caseId=id;if(!pending().length&&![...leases].some(lease=>!lease.released)){firstCaseError=undefined;firstCaseErrorId=undefined;}aborting=undefined;nativeDeadline=Infinity;}
+ function captureCaseError(value:unknown){if(!closed&&caseId!=='suite-bootstrap'&&caseId!=='suite-teardown'&&!firstCaseError){firstCaseErrorId=caseId;try{firstCaseError=captureCaseErrorMetadata(value);}catch{firstCaseError={caseCategory:'other'};}}}
  function check(){if(closed)throw error();options.admission(caseId);}
  function own<T>(operation:()=>Promise<T>,lease?:Lease,supervisor=false):Task{
   let original:Promise<T>;try{original=Promise.resolve(operation());}catch{original=Promise.reject(error());}
@@ -278,5 +281,5 @@ export function createWriterSuiteController(options:Options){
  }
  async function directPreflight<T>(operation:()=>Promise<T>){const prior=scopeDeadline;scopeDeadline=Math.min(prior,clock.now()+8000);try{return await bound<T>(own(operation,undefined,true),8000,()=>fail('settlement','preflight'));}finally{scopeDeadline=prior;}}
  function nativePhase(admission:NativeAdmission){check();if(nativeAdmission!==admission||admission.caseId!==caseId||admission.entered||admission.finished||admission.task?.settled)throw error();if(clock.now()>=admission.deadline){admission.close();fail('settlement','settle');throw expired();}admission.entered=true;nativeDeadline=clock.now()+12000;admission.arm(nativeDeadline);}
- return {admit,wrapPool,bootstrap,directPreflight,runOwned,runOwnedNative,gate,reservePair,observeBlocker,signal:(client:Client)=>signal(client),terminateAfterHandoff,settleCase,abortCase,shutdown,fail,status:()=>({admissionClosed:closed,unsettledCount:pending().length,serverUnresolved,leases:[...leases].filter(lease=>!lease.released).length,leaseRestored:!closed&&!serverUnresolved&&![...leases].some(lease=>!lease.released)&&!pending().length})};
+ return {admit,captureCaseError,wrapPool,bootstrap,directPreflight,runOwned,runOwnedNative,gate,reservePair,observeBlocker,signal:(client:Client)=>signal(client),terminateAfterHandoff,settleCase,abortCase,shutdown,fail,status:()=>({admissionClosed:closed,unsettledCount:pending().length,serverUnresolved,leases:[...leases].filter(lease=>!lease.released).length,leaseRestored:!closed&&!serverUnresolved&&![...leases].some(lease=>!lease.released)&&!pending().length})};
 }

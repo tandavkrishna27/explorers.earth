@@ -1,9 +1,10 @@
+import {finiteCaseErrorMetadata,type CaseErrorMetadata} from './placesCaseErrorDiagnostic';
 import {finiteBootstrapMetadata,type BootstrapMetadata} from './placesBootstrapDiagnostic';
 import {isAbsolute,dirname,basename} from 'node:path';
 import {writeFileSync} from 'node:fs';
 export type GuardReason='identity'|'authority'|'binding'|'acquisition'|'gate'|'blocker'|'settlement'|'admin-timeout'|'cancel-failed'|'terminate-failed'|'transport'|'lease'|'guard';
 export type GuardPhase='preflight'|'acquire'|'gate'|'observe'|'settle'|'cancel'|'terminate'|'teardown';
-export type GuardFailure={caseId:string;reason:GuardReason;phase:GuardPhase;unsettledCount:number}&BootstrapMetadata;
+export type GuardFailure={caseId:string;reason:GuardReason;phase:GuardPhase;unsettledCount:number}&BootstrapMetadata&Partial<CaseErrorMetadata>;
 type Options={env:Record<string,string|undefined>;caseIds:readonly string[];collection?:boolean;now?:()=>number;writeExclusive?:(path:string,bytes:string)=>void};
 const reasons=['identity','authority','binding','acquisition','gate','blocker','settlement','admin-timeout','cancel-failed','terminate-failed','transport','lease','guard'];
 const phases=['preflight','acquire','gate','observe','settle','cancel','terminate','teardown'];
@@ -20,10 +21,13 @@ export function createWriterGuardTransport(options:Options){
  }
  function failStop(event:GuardFailure){
   if(closed)return;closed=true;
+  const caseKeys=['caseCategory','caseSqlState','sourceFile','sourceLine','sourceColumn'].filter(key=>Object.hasOwn(event,key));
+  const caseMetadata=finiteCaseErrorMetadata(Object.fromEntries(caseKeys.map(k=>[k,(event as any)[k]])));
+  const validCase=!caseKeys.length||event.caseId!=='suite-bootstrap'&&event.caseId!=='suite-teardown'&&!!caseMetadata;
   const metadataKeys=['setupStage','category','sqlState'].filter(key=>Object.hasOwn(event,key));
   const metadata=finiteBootstrapMetadata(event);
   const validMetadata=!metadataKeys.length||event.caseId==='suite-bootstrap'&&Object.hasOwn(event,'setupStage')&&Object.hasOwn(event,'category')&&metadataKeys.length===Object.keys(metadata).length&&metadataKeys.every(key=>(event as any)[key]===(metadata as any)[key]);
-  if(!validMetadata||Object.keys(event).length!==4+metadataKeys.length||!ids.has(event.caseId)||!reasons.includes(event.reason)||!phases.includes(event.phase)||!Number.isInteger(event.unsettledCount)||event.unsettledCount<0||event.unsettledCount>16)throw Error('Fixture guard frame');
+  if(!validCase||!validMetadata||Object.keys(event).length!==4+metadataKeys.length+caseKeys.length||!ids.has(event.caseId)||!reasons.includes(event.reason)||!phases.includes(event.phase)||!Number.isInteger(event.unsettledCount)||event.unsettledCount<0||event.unsettledCount>16)throw Error('Fixture guard frame');
   if(!usable)return;
   const bytes=JSON.stringify({version:1,nonce,kind:'failure',...event});if(Buffer.byteLength(bytes,'utf8')>512)throw Error('Fixture guard frame');
   try{write(paths[2]!,bytes);}catch{/* Closed admission is irreversible even for EEXIST or hung delivery. */}
