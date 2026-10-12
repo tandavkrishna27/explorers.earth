@@ -16,7 +16,7 @@ const policy={policyId:'disposable-fixture-only',policyVersion:1,transportChunkB
 let admin:pg.Pool,runtime:pg.Pool,repo:ExplorersPlacePinsRepository;
 let controller:ReturnType<typeof createWriterSuiteController>|undefined;
 (process.env.PLACE_PINS_POSTGRES_TEST==='1'?describe.sequential:describe.skip)('Places P1 actual PostgreSQL acceptance (authored, requires approved guard)',()=>{
-beforeAll(async(_context,suite)=>{
+beforeAll(async({},suite)=>{
  const caseIds=collectedWriterCaseIds(suite);
  const guard=createWriterGuardTransport({env:process.env,caseIds:[...caseIds,...writerSuiteFrames]});
  // The reviewed handshake is mandatory before any Pool construction or SQL.

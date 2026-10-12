@@ -1,5 +1,8 @@
-import {describe,it,expect} from 'vitest';
-import {createWriterSuiteController,collectedWriterCaseIds} from '../helpers/placesWriterRaceController';
+import {readFileSync} from 'node:fs';
+import ts from 'typescript';
+import {beforeAll,describe,it,expect} from 'vitest';
+import {createWriterSuiteController,collectedWriterCaseIds,writerSuiteFrames} from '../helpers/placesWriterRaceController';
+import {createWriterGuardTransport} from '../helpers/placesWriterGuardTransport';
 
 function deferred<T=any>() {let resolve!:(value:T)=>void,reject!:(error:unknown)=>void;const promise=new Promise<T>((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};}
 const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
@@ -109,4 +112,37 @@ describe('observation-only bounded backend readiness',()=>{
  it('rejects an unrelated blocker during previous-query transition immediately',async()=>{const h=await raceHarness();void h.pair.second.query('owned',['account']);await flush();h.setActivity('idle in transaction','previous',[9],'Lock');await expect(h.controller.observeBlocker(h.pair.second,h.pair.first,{text:'owned',values:['account']})).rejects.toThrow();expect(h.events[0]).toMatchObject({reason:'blocker',phase:'observe'});expect(h.clock.now()).toBe(0);});
  for(const state of ['idle','active'])it(`keeps cancellation strict for transitional ${state} previous-query activity`,async()=>{const h=await raceHarness();void h.pair.second.query('owned',['account']);await flush();h.setActivity(state,'previous');await expect(h.controller.signal(h.pair.second)).rejects.toThrow();expect(h.events[0]).toMatchObject({reason:'binding',phase:'cancel'});expect(h.queries.some(query=>query.text?.startsWith('SELECT pg_cancel_backend'))).toBe(false);});
  it('refuses mismatched expected local values even while the backend is transitional',async()=>{const h=await raceHarness();void h.pair.second.query('owned',['account']);await flush();h.setActivity('idle','previous');await expect(h.controller.observeBlocker(h.pair.second,h.pair.first,{text:'owned',values:['other']})).rejects.toThrow();expect(h.events[0].reason).toBe('binding');});
+});
+
+describe('installed suite hook bootstrap boundary',()=>{
+ const ids=['admits the collected nested leaf after bootstrap','rejects an uncollected identity after bootstrap'];
+ let collected:string[]=[],frames:{kind:string}[]=[],guard:ReturnType<typeof createWriterGuardTransport>;
+ beforeAll(async({},suite)=>{
+  collected=collectedWriterCaseIds(suite);
+  guard=createWriterGuardTransport({env:{PLACE_PINS_GUARD_NONCE:'a'.repeat(32),PLACE_PINS_GUARD_ENTERED_PATH:'C:/inert/writer-entered.json',PLACE_PINS_GUARD_READY_PATH:'C:/inert/writer-ready.json',PLACE_PINS_GUARD_FAILURE_PATH:'C:/inert/writer-failure.json'},caseIds:[...collected,...writerSuiteFrames],now:()=>0,writeExclusive:(_path,bytes)=>{frames.push(JSON.parse(bytes));}});
+  expect(guard.bootstrap()).toBe(0);
+ });
+ describe('collected leaves',()=>{
+  it(ids[0],()=>{expect(collected).toEqual(ids);expect(frames.map(frame=>frame.kind)).toEqual(['entered','ready']);expect(()=>guard.admit(ids[0])).not.toThrow();expect(guard.admitted()).toBe(true);});
+  it(ids[1],()=>{expect(()=>guard.admit(ids[1])).not.toThrow();expect(()=>guard.admit('uncollected leaf')).toThrow('Fixture guard transport');expect(guard.admitted()).toBe(false);});
+ });
+});
+
+it('keeps the actual integration bootstrap callback compatible with installed suite fixtures',()=>{
+ const source=ts.createSourceFile('explorers-place-pins.integration.test.ts',readFileSync(new URL('../explorers-place-pins.integration.test.ts',import.meta.url),'utf8'),ts.ScriptTarget.Latest,true);
+ let hook:ts.CallExpression|undefined;
+ function find(node:ts.Node){if(!hook&&ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&node.expression.text==='beforeAll')hook=node;ts.forEachChild(node,find);}
+ find(source);expect(hook).toBeDefined();
+ const callback=hook!.arguments[0];expect(ts.isArrowFunction(callback)).toBe(true);
+ if(!ts.isArrowFunction(callback))throw Error('Fixture bootstrap callback');
+ expect(callback.parameters).toHaveLength(2);
+ const context=callback.parameters[0].name;expect(ts.isObjectBindingPattern(context)).toBe(true);
+ if(!ts.isObjectBindingPattern(context))throw Error('Fixture bootstrap context');
+ expect(context.elements).toHaveLength(0);
+ const suite=callback.parameters[1].name;expect(ts.isIdentifier(suite)).toBe(true);
+ if(!ts.isIdentifier(suite))throw Error('Fixture bootstrap suite');
+ const calls:ts.CallExpression[]=[];
+ function collect(node:ts.Node){if(ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&node.expression.text==='collectedWriterCaseIds')calls.push(node);ts.forEachChild(node,collect);}
+ collect(callback.body);expect(calls).toHaveLength(1);expect(calls[0].arguments).toHaveLength(1);
+ const collectedSuite=calls[0].arguments[0];expect(ts.isIdentifier(collectedSuite)&&collectedSuite.text===suite.text).toBe(true);
 });
