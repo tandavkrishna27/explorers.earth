@@ -10,7 +10,14 @@ describe("runtime route/event/job inventory", () => {
     // Production break caught: an authorization migration misses a route,
     // Socket event, or scheduled lifecycle job that was hand-summarized only.
     const inventory = inventoryRuntimeSurfaces(repositoryRoot);
-    expect(inventory.routes).toHaveLength(177);
+    // 189 = 177 + the 12 Places pin-storage surfaces registered by
+    // tunes/server/routes/explorersPlacePinsRoutes.ts (6 operations plus their 6 ALL
+    // method-guard siblings), added by 82d64b79 "Complete reviewed Places taxonomy and
+    // pin storage foundations". Six of them classify as `tombstone` only because
+    // musicSurfacePolicy's fail-closed owner allowlist has not yet declared them; see the
+    // note in that allowlist. That is an authorization-declaration gap, not an extra
+    // surface, and the count pin is honest about the surfaces that exist.
+    expect(inventory.routes).toHaveLength(189);
     expect(inventory.events).toHaveLength(15);
     expect(inventory.jobs).toHaveLength(29);
     expect(inventory.routes.filter(route => route.path === '/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug')).toEqual([
@@ -53,10 +60,12 @@ describe("runtime route/event/job inventory", () => {
       expect.objectContaining({ method: "GET", path: "/api/music/entitlement", classification: "local-music-owner" }),
       expect.objectContaining({ method: "GET", path: "/api/music/dashboard", classification: "local-music-owner" }),
     ]));
-    // Taxonomy adds the eleventh fallback outside recommendation routes.
+    // Taxonomy adds the eleventh fallback outside recommendation routes; the Places
+    // pin-storage routes add the twelfth through seventeenth, one ALL guard per pin
+    // operation, each answering 405 INVALID_INPUT with no actor resolution.
     // Pin the count so every new surface receives an explicit method-boundary review.
     expect(inventory.routes.filter((route) => route.method === "ALL"
-      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(11);
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(17);
     // Decision D2. GET reports the address and must not write; POST performs it, which is
     // also what RFC 8058 one-click unsubscribe sends. Both are public: the authority is
     // the purpose-bound HMAC in the token, not the caller.

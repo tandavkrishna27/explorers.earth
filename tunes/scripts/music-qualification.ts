@@ -8,13 +8,28 @@ import { MUSIC_UAT_DATABASE_TEST_FILES } from "./music-vitest-evidence.ts";
 
 export type MusicQualificationLaneName = "fast" | "pr" | "nightly" | "release";
 
+// The exact manifest that the release lane's integration aggregation must observe: it is
+// passed to unionFileEvidence as the required set for the union of postgres-integration,
+// load-postgres, tunes-identity-repository-coverage and uat-postgres-integration, and
+// unionFileEvidence ends in requireExactFileManifest, so a member that one of those four
+// tasks genuinely runs but this list omits fails the whole integration gate. The six
+// canonical-music/explorers entries below are contributed by uat-postgres-integration via
+// MUSIC_UAT_DATABASE_TEST_FILES in scripts/music-vitest-evidence.ts; they were added there
+// as their waves landed and were never mirrored here, which is what made the release-lane
+// aggregation and the lanes contract disagree.
 export const MUSIC_INTEGRATION_FILES = [
   "server/test/account-recovery.test.ts",
+  "server/test/canonical-music-identity.integration.test.ts",
+  "server/test/canonical-music-public-lifecycle.integration.test.ts",
   "server/test/explorers-lifecycle.integration.test.ts",
   "server/test/explorers-media.integration.test.ts",
   "server/test/explorers-profile.integration.test.ts",
+  "server/test/explorers-recommendation-api.integration.test.ts",
   "server/test/explorers-recovery-callback.integration.test.ts",
   "server/test/explorers-recovery.integration.test.ts",
+  "server/test/explorers/collectionCoverVisibility.integration.test.ts",
+  "server/test/explorers/guideMediaVisibility.integration.test.ts",
+  "server/test/explorers/placeLinks.integration.test.ts",
   "server/test/google-sync.integration.test.ts",
   "server/test/load/music-load-http-postgres.integration.test.ts",
   "server/test/load/music-load-postgres.integration.test.ts",

@@ -1,17 +1,31 @@
 """Independent deterministic stdlib fixtures. No application/validator imports."""
-import base64, copy, gzip, hashlib, io, json, pathlib, tarfile
+import base64, copy, gzip, hashlib, io, json, pathlib, re, tarfile
 OUT=pathlib.Path(__file__).parent
-# Explicit reviewed fixture revision; no application/validator import. This must equal
-# SCHEMA_FLOOR, which is derived from EXPECTED_MUSIC_MIGRATION_ID, so it moves with every
-# migration. It was left at 42 while the committed fixtures moved to 49, which meant this
-# generator no longer reproduced its own committed output; 5.3 brought it back in step and
-# the D1/D2 launch-control migration moves it to 51. Canonical numeric retirement
-# moves it to 52; taxonomy catalog authority moves it to 53.
-# Note that the committed cases.json/receipt.json are pretty-printed with a one-space
-# indent while enc() writes them compact, so re-running this reformats both. The content
-# is identical either way - only the floor and each release's manifestDigest change when
-# the floor moves.
-SCHEMA_VERSION=53
+# DERIVATION SOURCE, single point of truth for this floor:
+#   tunes/shared/music-migration-contract.ts -> EXPECTED_MUSIC_MIGRATION_ID
+#   tunes/server/deployment/platform-release-contract.ts -> SCHEMA_FLOOR =
+#     Number(EXPECTED_MUSIC_MIGRATION_ID.slice(0,4))
+# The literal below is kept because platform-oci-evidence.test.ts reads THIS FILE'S TEXT
+# with /^SCHEMA_VERSION=(\d+)$/m and compares it with the runtime SCHEMA_FLOOR. That is an
+# independence check: the fixture floor must be a reviewed constant in a generator that
+# imports nothing from the application, so it cannot be replaced by an import without
+# voiding the check. What IS automated is the drift: _CONTRACT_SCHEMA_VERSION below reads
+# the canonical head id out of the TypeScript contract with a stdlib regex (text read only,
+# no TS import, no application/validator import) and the assert makes a head bump a loud,
+# self-explaining generator failure instead of a silent 53-vs-55 fixture skew. Procedure
+# when the head moves: bump the literal, re-run this generator, commit cases.json and
+# receipt.json.
+_CONTRACT=(OUT.parents[4]/'shared'/'music-migration-contract.ts').read_text(encoding='utf-8')
+_CONTRACT_SCHEMA_VERSION=int(re.search(r'EXPECTED_MUSIC_MIGRATION_ID\s*=\s*"(\d{4})',_CONTRACT).group(1))
+# Note that the committed cases.json/receipt.json are the generator's own compact output,
+# so a fresh run reproduces the committed bytes exactly; only the floor and each release's
+# manifestDigest change when the floor moves.
+SCHEMA_VERSION=55
+assert SCHEMA_VERSION==_CONTRACT_SCHEMA_VERSION, (
+    'fixture floor SCHEMA_VERSION=%d no longer matches the canonical migration head '
+    '(%d, from EXPECTED_MUSIC_MIGRATION_ID in tunes/shared/music-migration-contract.ts). '
+    'Set SCHEMA_VERSION=%d and re-run this generator.'
+    % (SCHEMA_VERSION,_CONTRACT_SCHEMA_VERSION,_CONTRACT_SCHEMA_VERSION))
 INDEX='application/vnd.oci.image.index.v1+json'
 MANIFEST='application/vnd.oci.image.manifest.v1+json'
 CONFIG='application/vnd.oci.image.config.v1+json'
