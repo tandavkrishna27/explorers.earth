@@ -124,7 +124,7 @@ export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
   Object.freeze({table:'entities',name:'movie_media_entity_reverse_guard',enabled:'O',type:17}),
   Object.freeze({table:'movie_entity_details',name:'movie_media_facts_reverse_guard',enabled:'O',type:25}),
   Object.freeze({table:'entity_identifiers',name:'movie_media_identity_reverse_guard',enabled:'O',type:25}),
-  // Deferred integrity guards from migrations 0043–0050 stay active during replay.
+  // Deferred integrity guards from migrations 0043ï¿½0050 stay active during replay.
   Object.freeze({table:'app_entity_details',name:'app_entity_details_kind_guard',enabled:'O',type:21}),
   Object.freeze({table:'entities',name:'entities_app_details_kind_guard',enabled:'O',type:17}),
   Object.freeze({table:'recommendation_app_screenshots',name:'recommendation_app_screenshots_guard',enabled:'O',type:21}),
@@ -164,8 +164,33 @@ export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
   Object.freeze({table:'place_pin_draft_chunks',name:'place_pin_draft_chunks_dirty',enabled:'O',type:5}),
   Object.freeze({table:'place_pin_draft_items',name:'place_pin_draft_items_dirty',enabled:'O',type:29}),
   Object.freeze({table:'places_chunk_validation_dirty',name:'places_chunk_validation_final',enabled:'O',type:5}),
+  // Apps0055 immutability, identity and deferred current/receipt guards. tgtype is
+  // ROW(1)+BEFORE(2 when BEFORE)+INSERT(4)+UPDATE(16); a CREATE CONSTRAINT TRIGGER is AFTER
+  // and FOR EACH ROW, so it carries no BEFORE bit. None may be disabled by the runtime.
+  Object.freeze({table:'app_enrichment_generations',name:'app_enrichment_generation_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_generation_retirements',name:'app_enrichment_retirement_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_snapshots',name:'app_enrichment_snapshot_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_entitlements',name:'app_enrichment_entitlement_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_acceptances',name:'app_enrichment_acceptance_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_bindings',name:'app_enrichment_binding_identity_guard',enabled:'O',type:23}),
+  Object.freeze({table:'app_enrichment_bindings',name:'app_enrichment_binding_current_guard',enabled:'O',type:21}),
+  Object.freeze({table:'app_enrichment_generation_retirements',name:'app_enrichment_retired_current_guard',enabled:'O',type:5}),
+  Object.freeze({table:'app_enrichment_snapshots',name:'app_enrichment_snapshot_insert_guard',enabled:'O',type:7}),
+  Object.freeze({table:'app_enrichment_entitlements',name:'app_enrichment_entitlement_source_guard',enabled:'O',type:7}),
+  Object.freeze({table:'app_enrichment_acceptances',name:'app_enrichment_acceptance_admission_guard',enabled:'O',type:7}),
+  Object.freeze({table:'app_enrichment_acceptances',name:'app_enrichment_acceptance_receipt_guard',enabled:'O',type:5}),
+  Object.freeze({table:'recommendations',name:'app_enrichment_recommendation_replacement_guard',enabled:'O',type:17}),
   ...revisionTriggers,
-].sort((a,b) => a.table.localeCompare(b.table)||a.name.localeCompare(b.name)));
+// Deterministic CODE-POINT ordering, not localeCompare. Every name here is ASCII snake_case, but
+// ICU collation treats `_` as variable-weight punctuation, so pairs like place_pins vs
+// place_pin_draft_chunks can order differently between ICU versions and host locales. This array's
+// order is load-bearing: it is compared against array_agg(... ORDER BY class.relname,trigger.tgname)
+// below (:247). Those two columns are of type `name`, and in PostgreSQL `name` carries a hardcoded
+// C collation -- so the server side orders by BYTE VALUE regardless of the fixture database's
+// locale or ICU version. A code-point comparator removes the environment variance on this side AND
+// matches that guarantee exactly. Do NOT revert to localeCompare if the fixture is later initdb'd
+// with an ICU locale: the reason above does not depend on the database locale, so it still holds.
+].sort((a,b) => (a.table<b.table?-1:a.table>b.table?1:0)||(a.name<b.name?-1:a.name>b.name?1:0)));
 
 const replayTriggers = Object.freeze([
   ...revisionTriggers.map(({table,name}) => Object.freeze({table,name,mode:'ENABLE'})),

@@ -17,6 +17,12 @@ const expectedRuntimeTables = [
   "analytics_events",
   "analytics_snapshots",
   "api_tokens",
+  "app_enrichment_acceptances",
+  "app_enrichment_bindings",
+  "app_enrichment_entitlements",
+  "app_enrichment_generation_retirements",
+  "app_enrichment_generations",
+  "app_enrichment_snapshots",
   "app_entity_details",
   "application_command_receipts",
   "auth_account",
@@ -140,6 +146,16 @@ const expectedRuntimeSequences = [
   "youtube_tokens_id_seq",
 ] as const;
 const expectedRuntimeFunctions = [
+  "app_enrichment_acceptance_admission()",
+  "app_enrichment_acceptance_guard()",
+  "app_enrichment_binding_identity()",
+  "app_enrichment_canonical_json(jsonb)",
+  "app_enrichment_current_generation_guard()",
+  "app_enrichment_entitlement_guard()",
+  "app_enrichment_immutable_payload()",
+  "app_enrichment_recommendation_replacement()",
+  "app_enrichment_safe_host(text)",
+  "app_enrichment_snapshot_guard()",
   "assert_music_venue_owned()",
   "assert_music_venue_owner_retained()",
   "enforce_music_identity_immutability()",
@@ -665,6 +681,22 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`REVOKE UPDATE,TRUNCATE,REFERENCES,TRIGGER ON place_pin_draft_chunks,place_pin_draft_items FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION explorers_places_category_mutation(uuid),explorers_places_collection_claim(uuid),
       explorers_place_pins_revision(),explorers_place_pins_cleanup(),explorers_place_pins_validate(),explorers_place_draft_immutable(),explorers_place_chunk_validate(),explorers_place_pins_dirty(),explorers_place_chunk_dirty() FROM ${capabilityRole}`);
+    // Apps enrichment, migration 0055. The blanket GRANT ON ALL TABLES above re-grants exactly
+    // what 0055 revoked, so these statements are what actually hold the Apps boundary. 0055's
+    // column-level GRANT UPDATE on app_enrichment_bindings is deliberately NOT reproduced here:
+    // the attestation below requires the schema to carry no column ACLs at all, the same shape
+    // the 0019/0020 column grants on users already rely on. Immutability of the binding identity
+    // columns is held by app_enrichment_binding_identity(), not by a column privilege.
+    await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON app_enrichment_bindings FROM ${capabilityRole}`);
+    await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON app_enrichment_generations,app_enrichment_generation_retirements,app_enrichment_acceptances FROM ${capabilityRole}`);
+    await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON app_enrichment_snapshots,app_enrichment_entitlements FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON FUNCTION app_enrichment_immutable_payload(),app_enrichment_binding_identity(),
+      app_enrichment_current_generation_guard(),app_enrichment_canonical_json(jsonb),app_enrichment_safe_host(text),
+      app_enrichment_snapshot_guard(),app_enrichment_entitlement_guard(),app_enrichment_acceptance_admission(),
+      app_enrichment_acceptance_guard(),app_enrichment_recommendation_replacement() FROM ${capabilityRole}`);
     await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON account_category_content_state FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL PRIVILEGES ON FUNCTION explorers_content_revision_insert(),
@@ -818,6 +850,32 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "DELETE FROM places_chunk_validation_dirty WHERE false",
     "UPDATE place_pin_draft_chunks SET hash=hash WHERE false",
     "UPDATE place_pin_draft_items SET recommendation_id=recommendation_id WHERE false",
+    "DELETE FROM app_enrichment_bindings WHERE false",
+    "UPDATE app_enrichment_generations SET source_id=source_id WHERE false",
+    "DELETE FROM app_enrichment_generations WHERE false",
+    "UPDATE app_enrichment_generation_retirements SET retired_at=retired_at WHERE false",
+    "DELETE FROM app_enrichment_generation_retirements WHERE false",
+    "UPDATE app_enrichment_acceptances SET actor_user_id=actor_user_id WHERE false",
+    "DELETE FROM app_enrichment_acceptances WHERE false",
+    "INSERT INTO app_enrichment_snapshots DEFAULT VALUES",
+    "UPDATE app_enrichment_snapshots SET payload=payload WHERE false",
+    "DELETE FROM app_enrichment_snapshots WHERE false",
+    "TRUNCATE TABLE app_enrichment_snapshots",
+    "INSERT INTO app_enrichment_entitlements DEFAULT VALUES",
+    "UPDATE app_enrichment_entitlements SET observed_binding_revision=observed_binding_revision WHERE false",
+    "DELETE FROM app_enrichment_entitlements WHERE false",
+    "SELECT app_enrichment_canonical_json('{}'::jsonb)",
+    "SELECT app_enrichment_safe_host('example.com')",
+    "SELECT app_enrichment_immutable_payload()",
+    "SELECT app_enrichment_binding_identity()",
+    "SELECT app_enrichment_current_generation_guard()",
+    "SELECT app_enrichment_snapshot_guard()",
+    "SELECT app_enrichment_entitlement_guard()",
+    "SELECT app_enrichment_acceptance_admission()",
+    "SELECT app_enrichment_acceptance_guard()",
+    "SELECT app_enrichment_recommendation_replacement()",
+    "ALTER TABLE app_enrichment_snapshots DISABLE TRIGGER app_enrichment_snapshot_insert_guard",
+    "DROP TRIGGER app_enrichment_binding_identity_guard ON app_enrichment_bindings",
     "UPDATE music_credential_revocation_operations SET reason=reason WHERE false",
     "DELETE FROM music_credential_revocation_operations WHERE false",
     "DELETE FROM music_publication_operations WHERE false",
@@ -871,7 +929,13 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
   if (!sameRuntimeInventory(tableRows.map((row) => row.object_name), expectedRuntimeTables)
       || tableRows.some((row) => row.object_owner !== approvedOwnerRole)
       || tableRows.some((row) => {
-    const expected = row.object_name === "music_schema_migrations" || row.object_name === "account_category_content_state" || ["taxonomy_terms","taxonomy_term_translations","movie_provider_genre_terms","taxonomy_catalogs","taxonomy_source_mappings","taxonomy_legacy_slug_mappings"].includes(row.object_name)
+    const expected = row.object_name === "app_enrichment_snapshots" || row.object_name === "app_enrichment_entitlements"
+      ? [true, false, false, false]
+      : ["app_enrichment_generations","app_enrichment_generation_retirements","app_enrichment_acceptances"].includes(row.object_name)
+        ? [true, true, false, false]
+      : row.object_name === "app_enrichment_bindings"
+        ? [true, true, true, false]
+      : row.object_name === "music_schema_migrations" || row.object_name === "account_category_content_state" || ["taxonomy_terms","taxonomy_term_translations","movie_provider_genre_terms","taxonomy_catalogs","taxonomy_source_mappings","taxonomy_legacy_slug_mappings"].includes(row.object_name)
       ? [true, false, false, false]
       : ["analytics_events","analytics_event_receipts"].includes(row.object_name)
         ? [true,true,false,false]
@@ -941,6 +1005,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
         !== (row.function_signature !== "provision_music_runtime_login(name,text)"
           && !/^explorers_content_revision_(insert|update|delete|lifecycle)\(\)$/.test(row.function_signature)
           && !row.function_signature.startsWith("explorers_place")
+          && !row.function_signature.startsWith("app_enrichment_")
           && !["lock_recommendation_taxonomy_catalog()","validate_explorers_taxonomy_catalogs()","guard_explorers_taxonomy_catalogs()","guard_taxonomy_import_receipt_immutable()","guard_movie_details()","guard_movie_genres()","lock_movie_genre_parent()","guard_movie_media()","lock_movie_media_parent()","validate_movie_media(uuid)","guard_taxonomy_tree()","lock_taxonomy_tree()","validate_movie_context(uuid,text,bigint[])","guard_movie_context()","guard_recommendation_taxonomy()","lock_recommendation_taxonomy_parent()"].includes(row.function_signature)
           && !/^guard_book_(entity_details|recommendation_context)\(\)$/.test(row.function_signature) && row.function_signature!=="guard_recommendation_book_cover()"
           && !/^guard_(app_entity_details|recommendation_app_screenshot|product_entity_details|person_entity_details|place_entity_details|place_context_kind|recommendation_place_photo|place_collection_details|guide_section_media|guide_location_entity)\(\)$/.test(row.function_signature)))) {

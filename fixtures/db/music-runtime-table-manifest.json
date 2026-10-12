@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0054_explorers_place_individual_pins",
+    "expectedId": "0055_explorers_app_enrichment",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -57,7 +57,8 @@
       "0051_explorers_launch_controls.sql",
       "0052_canonical_music_numeric_retirement.sql",
       "0053_explorers_taxonomy_catalogs.sql",
-      "0054_explorers_place_individual_pins.sql"
+      "0054_explorers_place_individual_pins.sql",
+      "0055_explorers_app_enrichment.sql"
     ],
     "controlTables": [
       "music_schema_migrations",
@@ -163,6 +164,42 @@
       "managedBy": "drizzle",
       "family": "security-audit",
       "lifecycle": "revoke-delete"
+    },
+    {
+      "name": "app_enrichment_acceptances",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "app_enrichment_bindings",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "app_enrichment_entitlements",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "app_enrichment_generation_retirements",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "app_enrichment_generations",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "app_enrichment_snapshots",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
     },
     {
       "name": "app_entity_details",
