@@ -126,18 +126,24 @@ const RecommendFormEffects = ({
     }
   }, [initialValues, activeFields, handleTagClick, type]);
 
-  // Sync category field when selectedCategory changes
+  // Sync category field when selectedCategory changes.
+  // Finding 6b. The cleared case syncs too: guarding on a truthy value left a stale term in
+  // values.category after an explicit clear. Dropping the guard is INERT today for one
+  // reason only - nothing reads values.category or values.subcategory. The submit payload
+  // and the draft-change probe both read selectedCategory/selectedSubcategory directly, so
+  // these Formik fields are a write-only mirror. It is NOT safe because the form only
+  // mounts after hydration: usePlacesOwner clears loading without data when accountId is
+  // absent or the owner read fails, and selectedCategory is a useState initializer living
+  // outside the key={formKey} element, so it can stick at '' across the loading->loaded
+  // remount. If anyone ever reads values.category, that stale-selectedCategory hazard goes
+  // live in BOTH directions and needs a real fix, not this mirror.
   useEffect(() => {
-    if (selectedCategory) {
-      setFieldValue("category", selectedCategory);
-    }
+    setFieldValue("category", selectedCategory);
   }, [selectedCategory, setFieldValue]);
 
-  // Sync subcategory field when selectedSubcategory changes
+  // Sync subcategory field when selectedSubcategory changes (cleared case included).
   useEffect(() => {
-    if (selectedSubcategory) {
-      setFieldValue("subcategory", selectedSubcategory);
-    }
+    setFieldValue("subcategory", selectedSubcategory);
   }, [selectedSubcategory, setFieldValue]);
 
   return null;
@@ -878,6 +884,17 @@ const RecommendationForm = memo(
         }
       };
 
+      // Finding 6a. A stored term is only genuinely absent from the catalog once the catalog
+      // has actually landed. While the catalog is loading or its read failed, availability is
+      // unknown, so the suffix names the catalog state instead of condemning a valid term.
+      // No label is invented for an unknown term — the id still stands in for the label.
+      const storedTermSuffix =
+        taxonomyState === "loading"
+          ? " (catalog loading)"
+          : taxonomyState === "error"
+            ? " (catalog unavailable)"
+            : " (unavailable)";
+
       // Generate a key that changes when data loads (for edit mode)
       const formKey = type === "edit"
         ? `edit-${placeId || 'new'}-${initialValues.title ? 'loaded' : 'loading'}`
@@ -979,13 +996,13 @@ const RecommendationForm = memo(
                   <label htmlFor="places-category">Category</label>
                   <select id="places-category" value={selectedCategory} onChange={event=>{setSelectedCategory(event.target.value);setSelectedsubcategory('');setTaxonomyChanged(true);}}>
                     <option value="">Unassigned</option>
-                    {selectedCategory && !categories.some(c=>c.documentId===selectedCategory) && <option value={selectedCategory}>{initialValues.categoryLabel || selectedCategory} (unavailable)</option>}
+                    {selectedCategory && !categories.some(c=>c.documentId===selectedCategory) && <option value={selectedCategory}>{initialValues.categoryLabel || selectedCategory}{storedTermSuffix}</option>}
                     {categories.map(c=><option key={c.documentId} value={c.documentId}>{c.Category_Name}</option>)}
                   </select>
                   <label htmlFor="places-subcategory">Subcategory</label>
                   <select id="places-subcategory" value={selectedSubcategory} disabled={!selectedCategory} onChange={event=>{setSelectedsubcategory(event.target.value);setTaxonomyChanged(true);}}>
                     <option value="">No subcategory</option>
-                    {selectedSubcategory && !categories.find(c=>c.documentId===selectedCategory)?.recommendation_sub_categories.some((c:Subcategory)=>c.documentId===selectedSubcategory) && <option value={selectedSubcategory}>{initialValues.subcategoryLabel || selectedSubcategory} (unavailable)</option>}
+                    {selectedSubcategory && !categories.find(c=>c.documentId===selectedCategory)?.recommendation_sub_categories.some((c:Subcategory)=>c.documentId===selectedSubcategory) && <option value={selectedSubcategory}>{initialValues.subcategoryLabel || selectedSubcategory}{storedTermSuffix}</option>}
                     {(categories.find(c=>c.documentId===selectedCategory)?.recommendation_sub_categories || []).map((c:Subcategory)=><option key={c.documentId} value={c.documentId}>{c.sub_category}</option>)}
                   </select>
                 </fieldset>

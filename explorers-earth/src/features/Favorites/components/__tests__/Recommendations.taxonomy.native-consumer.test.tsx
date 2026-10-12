@@ -63,7 +63,7 @@ beforeEach(()=>{
   const snapshot={version:'explorers-owner-content/v2',snapshotToken:'synthetic-snapshot',revision:'1',expiresAt,pinRevision:null};
   if(path.includes('content-snapshot'))return reply(snapshot);
   if(path.endsWith('/editable'))return path.includes('/collections/')?reply({collection:list}):reply({recommendation:rows.find(r=>path.includes(r.id))});
-  const items=path.endsWith('/collections')?[coreList]:path.endsWith('/recommendations')?rows.map(r=>coreRow(Number(r.id.slice(-12))-100)):path.endsWith('/memberships')?rows.map((r,n)=>({recommendationId:r.id,collectionId:id(100),collectionRevision:1,displayOrder:n,collectionArchived:false,recommendationArchived:false})):[];
+  const items=path.endsWith('/collections')?[coreList]:path.endsWith('/recommendations')?rows.map(r=>coreRow(Number(r.id.slice(-12))-100)):path.endsWith('/memberships')?rows.map((r,n)=>({recommendationId:r.id,collectionId:id(100),collectionRevision:1,displayOrder:n,collectionArchived:false,recommendationArchived:false,placePinPosition:null})):[];
   return reply({version:'explorers-owner-content/v2',snapshot:'1',snapshotToken:'synthetic-snapshot',expiresAt,items,nextCursor:null});
  });vi.stubGlobal('fetch',fetcher);
 });

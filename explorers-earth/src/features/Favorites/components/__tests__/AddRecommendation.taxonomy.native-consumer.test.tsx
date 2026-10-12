@@ -34,7 +34,7 @@ beforeEach(()=>{
    const core={id:recommendation,accountId:account,category:'places',entityId:entity,userRating:null,publicationState:'draft',revision:currentRevision,mediaIds:storedMedia,archived:false,pin:null};
    if(url.includes('/editable'))return reply(url.includes('/recommendations/')?{recommendation:{...core,note:null,categoryRevision,entity:{id:entity,kind:'place',title:'Draft title',details:{...emptyPlaceDetails(),formattedAddress:'Synthetic address',...storedCoordinates},origin:'manual',providerPlaceId:null},displayOverrides:{},displayTitle:'Draft title',effectivePlaceDetails:{...emptyPlaceDetails(),formattedAddress:'Synthetic address',...storedCoordinates},placeContext:storedContext,placePhotos:{photoMediaIds:[]},placesTaxonomy:{catalogState:'CONFIGURED',catalogVersion:3,defaultLocale:'en',category:assignment.categoryTermId?{id:assignment.categoryTermId,slug:`synthetic-${Number(assignment.categoryTermId.slice(-12))}`,label:`Synthetic term ${Number(assignment.categoryTermId.slice(-12))}`,unavailable:false}:null,subcategory:assignment.subcategoryTermId?{id:assignment.subcategoryTermId,slug:`synthetic-${Number(assignment.subcategoryTermId.slice(-12))}`,label:`Synthetic term ${Number(assignment.subcategoryTermId.slice(-12))}`,unavailable:false}:null,selectionUnavailable:false}}}:{collection:{...collection,categoryRevision}});
    const {pinOrder:_,categoryRevision:__,linkedChildren:___,placeLocation:____,...row}=collection;
-   const items=!editing?[]:url.includes('/memberships?')?[{collectionId:list,recommendationId:recommendation,collectionRevision:4,displayOrder:0,collectionArchived:false,recommendationArchived:false}]:url.includes('/recommendations?')?[core]:[{...row}];
+   const items=!editing?[]:url.includes('/memberships?')?[{collectionId:list,recommendationId:recommendation,collectionRevision:4,displayOrder:0,collectionArchived:false,recommendationArchived:false,placePinPosition:null}]:url.includes('/recommendations?')?[core]:[{...row}];
    return reply({version:'explorers-owner-content/v2',snapshot:categoryRevision,snapshotToken:'synthetic-token',expiresAt,items,nextCursor:null});
   }
   writes.push({url,options});if(url.includes('/entities/')){const input=JSON.parse(options.body as string);return reply({entity:input.category==='people'?{id:entity,kind:'person',title:input.details.title,details:emptyPersonDetails(),origin:'manual',suppressed:false}:{id:entity,kind:'place',title:'Draft title',details:emptyPlaceDetails(),origin:'manual',providerPlaceId:null}});}
@@ -112,10 +112,15 @@ it('creates a person entity inside Places with Places taxonomy through the actua
  mount('?recommendationType=person');await screen.findByRole('option',{name:'Synthetic term 25'});await act(async()=>fireEvent.change(document.querySelector('[name="recommendation"]')!,{target:{value:'https://instagram.com/synthetic'}}));await act(async()=>fireEvent.change(screen.getByLabelText('Category'),{target:{value:id(25)}}));await act(async()=>fireEvent.submit(document.querySelector('form')!));await screen.findByText('Saved');
  expect(JSON.parse(writes.find(w=>w.url.includes('/entities/'))!.options.body as string).category).toBe('people');const body=JSON.parse(writes.find(w=>w.url.endsWith('/recommendations'))!.options.body as string);expect(body.category).toBe('places');expect(body.placesTaxonomy).toEqual({categoryTermId:id(25),subcategoryTermId:null});expect(body).not.toHaveProperty('peopleSectorTermId');
 });
-it.each(['empty','unconfigured','error'])('distinguishes %s catalog without clearing an untouched edit assignment',async state=>{
+it.each(['empty','unconfigured','error','loading'])('distinguishes %s catalog without clearing an untouched edit assignment',async state=>{
  const transport=vi.mocked(fetch),implementation=transport.getMockImplementation()!;
- transport.mockImplementation(async(...args)=>String(args[0]).includes('/catalog/taxonomy')?state==='error'?reply({error:{code:'UNAVAILABLE',message:'Synthetic unavailable',requestId:'synthetic'}},503):reply(state==='empty'?page([]):{...page([]),state:'UNCONFIGURED',catalogVersion:0,defaultLocale:null}):implementation(...args));
- mountEdit();await screen.findByLabelText('Category');await screen.findByText(state==='empty'?'No Places categories are available.':state==='unconfigured'?'Places taxonomy is not configured.':/Invalid taxonomy catalog response/);expect(screen.getByLabelText('Category')).toHaveValue(id(25));await act(async()=>fireEvent.submit(document.querySelector('form')!));await screen.findByText('Saved');expect(JSON.parse(writes[0].options.body as string)).not.toHaveProperty('placesTaxonomy');
+ transport.mockImplementation(async(...args)=>String(args[0]).includes('/catalog/taxonomy')?state==='loading'?new Promise<Response>(()=>{}):state==='error'?reply({error:{code:'UNAVAILABLE',message:'Synthetic unavailable',requestId:'synthetic'}},503):reply(state==='empty'?page([]):{...page([]),state:'UNCONFIGURED',catalogVersion:0,defaultLocale:null}):implementation(...args));
+ mountEdit();await screen.findByLabelText('Category');await screen.findByText(state==='empty'?'No Places categories are available.':state==='unconfigured'?'Places taxonomy is not configured.':state==='loading'?'Loading Places taxonomy…':/Invalid taxonomy catalog response/);expect(screen.getByLabelText('Category')).toHaveValue(id(25));
+ // Finding 6a. An indeterminate catalog must not tell the owner their valid stored term is
+ // unavailable; only a catalog that actually landed without the term may say that.
+ const stored=Array.from((screen.getByLabelText('Category') as HTMLSelectElement).options).find(option=>option.value===id(25))!;
+ expect(stored.textContent).toMatch(state==='loading'?/ \(catalog loading\)$/:state==='error'?/ \(catalog unavailable\)$/:/ \(unavailable\)$/);
+ await act(async()=>fireEvent.submit(document.querySelector('form')!));await screen.findByText('Saved');expect(JSON.parse(writes[0].options.body as string)).not.toHaveProperty('placesTaxonomy');
 });
 it.each(['clear','replace'])('retains and permits explicit %s of unavailable canonical selections',async action=>{
  const transport=vi.mocked(fetch),implementation=transport.getMockImplementation()!;
@@ -194,9 +199,16 @@ it.each(['unchanged','changed','refresh'])('replays staged edit media after lost
  });
  mountEdit();await screen.findByRole('option',{name:'Synthetic term 26'});const boxes=screen.getAllByRole('checkbox');await act(async()=>fireEvent.click(boxes[boxes.length-1]));await act(async()=>fireEvent.change(document.querySelector('input[type="file"]')!,{target:{files:[new File(['data'],'synthetic.png',{type:'image/png'})]}}));
  await act(async()=>fireEvent.submit(document.querySelector('form')!));await waitFor(()=>expect(uploads).toBe(1));await waitFor(()=>expect(writes.filter(w=>w.options.method==='PATCH')).toHaveLength(1));await act(async()=>release(reply({error:{code:mode==='refresh'?'CONFLICT':'UNAVAILABLE',message:'Response lost after commit',requestId:'synthetic'}},mode==='refresh'?409:503)));
- if(mode==='changed'){await act(async()=>fireEvent.change(screen.getByLabelText('Category'),{target:{value:id(24)}}));currentRevision=1;}
+ // Finding 4. No revision rewind: the first PATCH really committed before its response was
+ // lost, so the stored revision is genuinely 2 while the frozen draft still carries 1.
+ if(mode==='changed')await act(async()=>fireEvent.change(screen.getByLabelText('Category'),{target:{value:id(24)}}));
  if(mode==='refresh'){await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Refresh and review'})));await screen.findByText('Current revision loaded. Review your draft, then save again.');}
- await act(async()=>fireEvent.submit(document.querySelector('form')!));await screen.findByText('Saved');const patches=writes.filter(w=>w.options.method==='PATCH');expect(uploads).toBe(mode==='unchanged'?1:2);
+ await act(async()=>fireEvent.submit(document.querySelector('form')!));
+ // A changed draft retires the frozen key and replays against the stale expected revision,
+ // so the genuine post-commit outcome is a real conflict the owner must review, not a save.
+ if(mode==='changed')await screen.findByRole('button',{name:'Refresh and review'});else await screen.findByText('Saved');
+ const patches=writes.filter(w=>w.options.method==='PATCH');expect(uploads).toBe(mode==='unchanged'?1:2);
+ if(mode==='changed')expect(JSON.parse(patches[1].options.body as string).expectedRevision).toBe(1);
  if(mode==='unchanged'){expect(patches[1].options.body).toBe(patches[0].options.body);expect(new Headers(patches[1].options.headers).get('Idempotency-Key')).toBe(new Headers(patches[0].options.headers).get('Idempotency-Key'));}else expect(new Headers(patches[1].options.headers).get('Idempotency-Key')).not.toBe(new Headers(patches[0].options.headers).get('Idempotency-Key'));
 });
 

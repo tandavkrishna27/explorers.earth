@@ -199,8 +199,11 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
   const accountId = useAuthStore(s=>s.accountId), generation = useAuthStore(s=>s.generation);
   const location = useLocation();
   const catalogScope = JSON.stringify([accountId,generation,location.pathname]);
-  const hydrated = useRef<{scope:string;place:NonNullable<ReturnType<typeof usePlacesOwner>['data']>['recommendationLists'][number]['recommended_places'][number];observation:RecommendationObservation}>();
-  if(hydrated.current?.scope!==catalogScope)hydrated.current=undefined;
+  // Finding 2. Retention is state, not a ref written during render — a render-phase ref
+  // write is discarded under a concurrent re-render, which would silently lose the
+  // hydration the form must stay bound to while owner.loading flips during a save re-read.
+  type EditHydration={scope:string;place:NonNullable<ReturnType<typeof usePlacesOwner>['data']>['recommendationLists'][number]['recommended_places'][number];observation:RecommendationObservation};
+  const [hydration,setHydration]=useState<EditHydration>();
   const [reviewMessage,setReviewMessage]=useState<string>();
   const [,setReviewVersion]=useState(0);
   const reviewController=useRef<AbortController>();
@@ -216,9 +219,19 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     return undefined;
   }, [owner.data, placeId]);
   const candidateObservation=placeId?owner.content?.details.get(placeId):undefined;
-  if(!hydrated.current && candidatePlace && candidateObservation)hydrated.current={scope:catalogScope,place:candidatePlace,observation:candidateObservation};
-  const editedPlace=hydrated.current?.place;
-  const editObservation=hydrated.current?.observation;
+  // A hydration from a superseded authority scope is ignored rather than cleared in render.
+  const retainedHydration=hydration?.scope===catalogScope?hydration:undefined;
+  // The candidate is derived, so a discarded render costs nothing: it is recomputed from
+  // live data on the retry and only the commit below turns it into retained state. Using it
+  // in the same render keeps the hydrated form available on the very first render that can
+  // build it, exactly as the render-phase ref write did.
+  const freshHydration=useMemo<EditHydration|undefined>(()=>retainedHydration||!candidatePlace||!candidateObservation?undefined:{scope:catalogScope,place:candidatePlace,observation:candidateObservation},[retainedHydration,candidatePlace,candidateObservation,catalogScope]);
+  useEffect(()=>{if(freshHydration)setHydration(freshHydration);},[freshHydration]);
+  const editHydration=retainedHydration??freshHydration;
+  const editHydrationScope=useRef<string>();
+  useEffect(()=>{editHydrationScope.current=editHydration?.scope;},[editHydration?.scope]);
+  const editedPlace=editHydration?.place;
+  const editObservation=editHydration?.observation;
   useEffect(()=>{if(type==='edit' && editedPlace)setRecommendationType(editedPlace.Recommendation_Type);},[editedPlace,type]);
   // The form remains bound to the original hydration until the owner explicitly reviews a refresh.
   const fetchedPlace = useMemo(() => (editedPlace ? { recommendedPlace: editedPlace } : undefined), [editedPlace]);
@@ -937,7 +950,8 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
   };
 
   // Show loading if fetching place data in edit mode
-  if (type === "edit" && isPlaceLoading && !hydrated.current) {
+  // The full-screen loader can never replace an already hydrated form.
+  if (type === "edit" && isPlaceLoading && !editHydration) {
     return (
       <div className="flex bg-dashboard-bg z-50 items-center justify-center min-h-screen">
         <EarthLoader context="general" size="small" />
@@ -1081,10 +1095,10 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
           )}
 
           {editConflict && <div role="alert">This recommendation changed. Your draft is retained.<button type="button" onClick={async()=>{
-            if(!placeId || !hydrated.current)return;
+            if(!placeId || !editHydration)return;
             const captured=catalogScope;
             reviewController.current?.abort();const controller=new AbortController();reviewController.current=controller;
-            try{const observation=await PlacesClient.observeRecommendation(placeId,controller.signal);if(controller.signal.aborted||hydrated.current?.scope!==captured)return;hydrated.current.observation=observation;clearEditConflict();setReviewMessage('Current revision loaded. Review your draft, then save again.');setReviewVersion(n=>n+1);}catch(error){if(!controller.signal.aborted)toast.error(error instanceof Error?error.message:'Refresh failed');}
+            try{const observation=await PlacesClient.observeRecommendation(placeId,controller.signal);if(controller.signal.aborted||editHydrationScope.current!==captured)return;setHydration(previous=>previous&&previous.scope===captured?{...previous,observation}:previous);clearEditConflict();setReviewMessage('Current revision loaded. Review your draft, then save again.');setReviewVersion(n=>n+1);}catch(error){if(!controller.signal.aborted)toast.error(error instanceof Error?error.message:'Refresh failed');}
           }}>Refresh and review</button></div>}
           {reviewMessage && <div>
             <p role="status">{reviewMessage}</p>
