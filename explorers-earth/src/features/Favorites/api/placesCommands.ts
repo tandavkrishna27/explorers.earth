@@ -5,6 +5,8 @@ import type {CollectionObservation,RecommendationObservation} from '../../../lib
 import {PlacesClient,type CompletePlacesOwnerContent,type PlaceMembershipIntent,type ManualPlaceDraft,type ManualPlaceIntent} from './placesClient';
 import type {PlaceCollectionDetails,PlaceEntityDetails} from '../../../../../tunes/shared/explorersPlaceContract';
 import {invalidatePlaces} from '../hooks/usePlacesOwner';
+import type {PlacePinsIntent} from './placePinsIntent';
+import {publishPublicProfileInvalidation} from '../../PublicHome/api/publicProfileInvalidation';
 
 // Ticket 5.1. Native Places commands, in their own module because api/query.ts is the
 // retired Strapi consumer and Epic 8 removes it after checking callers.
@@ -13,9 +15,9 @@ import {invalidatePlaces} from '../hooks/usePlacesOwner';
 // intent is keyed so a retry of the same intent is the same command rather than a second
 // one. setLocation is separate from updateList on purpose: moving a list is not the same
 // edit as renaming it, and the two must not share a command key.
-export function usePlacesCommands() {
+export function usePlacesCommands(listId?:string) {
  const generation=useAuthStore(state=>state.generation),accountId=useAuthStore(state=>state.accountId),location=useLocation();
- const scope=JSON.stringify([generation,accountId,location.pathname]);
+ const scope=JSON.stringify([generation,accountId,location.pathname,location.key,listId]);
  const current=useRef(scope);current.current=scope;
  const mounted=useRef(true),operation=useRef(0),controllers=useRef(new Set<AbortController>());
  const observationKeys=useRef(new WeakMap<RecommendationObservation,string>());
@@ -34,13 +36,32 @@ export function usePlacesCommands() {
  const observeRecommendation=async(signature:string,id:string,assert:()=>void,signal:AbortSignal)=>{let observed=recommendations.current.get(signature);if(!observed){observed=await PlacesClient.observeRecommendation(id,signal);assert();recommendations.current.set(signature,observed);}return observed;};
  const observeComplete=async(signature:string,assert:()=>void,signal:AbortSignal)=>{let observed=completeReads.current.get(signature);if(!observed){observed=await PlacesClient.readCompleteOwner(signal);assert();completeReads.current.set(signature,observed);}return observed;};
  const key=(intent:string)=>{const existing=keys.current.get(intent);if(existing)return existing;const value=crypto.randomUUID();keys.current.set(intent,value);return value;};
- const run=async<T,>(action:(assert:()=>void,signal:AbortSignal)=>Promise<T>):Promise<T>=>{
+ const run=async<T,>(action:(assert:()=>void,signal:AbortSignal)=>Promise<T>,refresh=true):Promise<T>=>{
   const captured=scope,token=++operation.current,controller=new AbortController();controllers.current.add(controller);setPending(value=>value+1);
-  const assert=()=>{if(!mounted.current||current.current!==captured||operation.current!==token||controller.signal.aborted)throw new Error('Places owner or route changed');};
-  try{assert();const result=await action(assert,controller.signal);assert();invalidatePlaces();return result;}
+  const assert=()=>{const state=useAuthStore.getState();if(!state.isAuthenticated||state.accountId!==accountId||state.generation!==generation||!mounted.current||current.current!==captured||operation.current!==token||controller.signal.aborted)throw new Error('Places owner or route changed');};
+  try{assert();const result=await action(assert,controller.signal);assert();if(refresh)invalidatePlaces();return result;}
   finally{controllers.current.delete(controller);if(mounted.current&&current.current===captured)setPending(value=>Math.max(0,value-1));}
  };
  return {loading:pending>0,
+  retirePins:(intent:PlacePinsIntent)=>PlacesClient.retirePinsIntent(intent),
+  pinsAvailability:(observed:CompletePlacesOwnerContent,id:string)=>run(async(assert,signal)=>{if(listId&&id!==listId)throw new Error('Places list changed');assert();const result=await PlacesClient.pinsAvailability(observed,id,signal);assert();return result;},false),
+  preparePins:(observed:CompletePlacesOwnerContent,id:string,ids:readonly string[])=>{if(listId&&id!==listId)throw new Error('Places list changed');return PlacesClient.preparePinsIntent(observed,id,ids);},
+  // Finding 4, second site. The fences are published from the SERVER-CONFIRMED result, in
+  // the `committed` callback PlacesClient.savePins invokes before its own post-response
+  // authority assertion - and before this closure's `assert()`. Both of those can throw on
+  // a route change or sign-out that happened while the request was in flight, and either
+  // throw used to mean a commit the server had applied never raised the read fence floor
+  // and never invalidated the public profile. The guards are unchanged; only the ORDER is.
+  savePins:(intent:PlacePinsIntent)=>run(async(assert,signal)=>{
+   assert();
+   const result=await PlacesClient.savePins(intent,signal,committed=>{
+    invalidatePlaces({accountId:accountId!,generation,collectionId:committed.collectionId,collectionRevision:committed.collectionRevision,categoryContentRevision:committed.categoryContentRevision});
+    const state=useAuthStore.getState();
+    if(state.user?.username)publishPublicProfileInvalidation({eventId:`place-pins:${accountId}:${committed.collectionId}:${committed.collectionRevision}:${committed.categoryContentRevision}`,accountDocumentId:accountId!,username:state.user.username,category:'public_recommendations',action:'content-changed'});
+   });
+   assert();return result;
+  },false),
+  abortPins:(intent:PlacePinsIntent)=>run(async(assert,signal)=>{assert();await PlacesClient.abortPins(intent,signal);assert();},false),
   retireDraftIntent:()=>{for(const signature of [...keys.current.keys(),...creates.current.keys()])if(signature.startsWith('create-place:')||signature.startsWith('create-person:')||signature.startsWith('update-place:'))forget(signature);},
   // A location list is created with its location in one command, so a list never exists
   // without the location it was created for.
@@ -96,8 +117,8 @@ export function usePlacesCommands() {
    if(!intent){const parent=await PlacesClient.observeCollection(collectionId,signal);assert();const item=await PlacesClient.observeRecommendation(id,signal);assert();intent=PlacesClient.prepareMembershipIntent(parent,item,attached);memberships.current.set(signature,intent);}
    assert();const result=await PlacesClient.saveMembership(intent,signal);assert();memberships.current.delete(signature);return result;
   }),
-  // No pin or top-picks commands: Places is not a top-pick category, so the endpoint
-  // cannot accept it. A place's position is its order inside its list.
+  // Individual Places pins use their dedicated list contract above, independently of
+  // category top picks and membership display order.
   // Provider imagery is imported into owned media before it is referenced, so a place
   // gallery never depends on a provider request to render.
   upload:(file:File,purpose:'recommendation'|'collection'='recommendation')=>run(async(assert,signal)=>{const signature=`upload:${purpose}:${file.name}:${file.size}:${file.lastModified}`;begin(`upload:${purpose}:${file.name}`,signature);assert();const result=await PlacesClient.upload(file,purpose,signal);assert();forget(signature);return result;}),
