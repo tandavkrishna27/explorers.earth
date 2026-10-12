@@ -26,6 +26,12 @@ const trimEdgeTitleCodes=[32,160,8192,12288,65279];
 // additionally accepts brace-wrapped and unhyphenated spellings. Shared by the portable
 // contract-side case and by the authored A1-S08 SQL evidence, so both target one list.
 const unlawfulInstants=[' 2026-10-12T00:00:00.000Z','2026-10-12T00:00:00.000Z ','2026-10-12 00:00:00+00','2026-10-12t00:00:00.000Z','2026-10-12T00:00:00.000z','2026-10-12T00:00:00+00','2026-10-12T24:00:00.000Z','2026-10-12T00:00:60.000Z','2026-02-29T00:00:00.000Z'];
+// Year zero is the SECOND of 0055's two documented retained-cast exceptions, and unlike the
+// non-leap 29 February it is CONTRACT-LAWFUL (measured: snapshotForStorage admits it), so it
+// cannot join `unlawfulInstants` - the portable admission case there asserts a contract throw.
+// It therefore gets its own list, used only by the A1-S08 SQL evidence, where it is well-formed
+// to app_enrichment_instant, reaches the retained cast and refuses as 22008 (measured).
+const castExceptionInstants=['0000-01-01T00:00:00Z'];
 const unlawfulIds=[`{${randomUUID()}}`,randomUUID().replace(/-/g,''),` ${randomUUID()}`,`${randomUUID()} `];
 // Hosts the WHATWG URL parser inside safeAppUrlSchema refuses: an invalid percent-escape, an
 // encoded delimiter, an empty bracketed literal, and dotted hosts read as malformed IPv4.
@@ -166,6 +172,22 @@ async function seedApps(h:AppsA1StorageHarness,entity?:string,category='apps',ki
  const recommendation=(await h.admin.query('INSERT INTO recommendations(account_id,category,entity_id) VALUES($1,$2,$3) RETURNING id',[account,category,actualEntity])).rows[0].id;
  return {account,recommendation,entity:actualEntity,actor:randomUUID()};
 }
+/** seedApps deliberately creates a bare Apps recommendation with no list membership, which is
+ * all the enrichment commands need. ExplorersRecommendationRepository.replaceRecommendationEntity
+ * is different: it locks the recommendation's PARENT COLLECTIONS first and refuses with
+ * 404 'Recommendation aggregate unavailable' (explorersRecommendationRepository.ts:494) when the
+ * recommendation belongs to no live owner collection, because an entity replacement has to carry
+ * every list the recommendation appears in. So the groups that exercise the real replacement call
+ * must first put the fixture in one lawful, non-archived collection of its own category. This is
+ * a genuine precondition of the command, not a softening: the membership is inserted with the
+ * owner's own account and category so the collections/collection_items composite foreign keys
+ * (0029:54-55) are satisfied exactly as an owner-created list would be, and nothing about the
+ * replacement behaviour under assertion is relaxed. */
+async function listed(h:AppsA1StorageHarness,f:Fixture,category='apps'){
+ const collection=(await h.admin.query('INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,$2,$3,$4,0) RETURNING id',[f.account,category,'Owner list',`owner-list-${category}`])).rows[0].id;
+ await h.admin.query('INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order) VALUES($1,$2,$3,$4,0)',[collection,f.recommendation,f.account,category]);
+ return collection;
+}
 const sourceB={...identity,sourceIdentity:'Exact/B',sourceIdentityHash:'b'.repeat(64)};
 const repository=(h:AppsA1StorageHarness,pool=h.runtime)=>new ExplorersAppEnrichmentRepository(pool,[identity,sourceB]);
 async function versions(h:AppsA1StorageHarness,f:Fixture){
@@ -189,7 +211,10 @@ async function ownerState(h:AppsA1StorageHarness,f:Fixture){
  for(const [name,sql] of Object.entries({recommendation:'SELECT * FROM recommendations WHERE id=$1',overrides:'SELECT * FROM recommendation_display_overrides WHERE recommendation_id=$1',bindings:'SELECT * FROM app_enrichment_bindings WHERE recommendation_id=$1',generations:'SELECT * FROM app_enrichment_generations WHERE recommendation_id=$1 ORDER BY id',entitlements:'SELECT * FROM app_enrichment_entitlements WHERE recommendation_id=$1 ORDER BY snapshot_id,generation_id',acceptances:'SELECT * FROM app_enrichment_acceptances WHERE recommendation_id=$1 ORDER BY id'}))output[name]=(await h.admin.query(sql,[f.recommendation])).rows;
  output.versions=await versions(h,f);output.receipts=(await h.admin.query('SELECT * FROM application_command_receipts WHERE account_id=$1 ORDER BY id',[f.account])).rows;return output;
 }
-async function denied(db:Pick<Pool,'query'>,sql:string,values:unknown[]=[],codes=['23514','23503','42501']){let code:string|undefined;try{await db.query(sql,values);}catch(error){code=(error as {code?:string}).code;}expect(code).toBeDefined();expect(codes).toContain(code);}
+/** Returns the refusal's SQLSTATE and, when PostgreSQL reports one, the NAME of the constraint
+ * that refused. Existing callers ignore the return value; a caller that needs to prove WHICH
+ * guard fired (rather than merely that something did) asserts on `constraint`. */
+async function denied(db:Pick<Pool,'query'>,sql:string,values:unknown[]=[],codes=['23514','23503','42501']){let code:string|undefined,constraint:string|undefined;try{await db.query(sql,values);}catch(error){code=(error as {code?:string}).code;constraint=(error as {constraint?:string}).constraint;}expect(code).toBeDefined();expect(codes).toContain(code);return {code,constraint};}
 /** Raw privileged insert of an already-hashed payload: the only way to exercise 0055's own text
  * clauses, since every application path normalizes through the contract first. */
 async function deniedSnapshot(h:AppsA1StorageHarness,value:Record<string,any>,codes=['23514']){await denied(h.admin,'INSERT INTO app_enrichment_snapshots(id,app_entity_id,source_id,source_identity,source_identity_hash,canonicalization_version,fetched_at,payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb)',[value.snapshotId,value.appEntityId,value.sourceId,value.sourceIdentity,value.sourceIdentityHash,value.canonicalizationVersion,value.fetchedAt,JSON.stringify(value)],codes);}
@@ -247,15 +272,34 @@ export async function runAppsA1StorageAcceptance(h:AppsA1StorageHarness):Promise
   // Scalar SPELLING, not castability. Each payload here casts cleanly under ::uuid or
   // ::timestamptz and hashes cleanly over its raw text, so only the new format clauses can
   // refuse it. Without them these rows were admitted immutably and then failed every read.
+  // 0055 pins app_enrichment_instant in a STATEMENT OF ITS OWN BEFORE the retained cast, so every
+  // spelling the contract refuses but ::timestamptz accepts is a deterministic 23514 from that
+  // clause. The ONE documented residue the month-length grammar cannot express - a non-leap
+  // 29 February - is well-formed to the regex and therefore still reaches the retained cast,
+  // where PostgreSQL's datetime input refuses it as a DATETIME FIELD OVERFLOW (22008, measured;
+  // the migration's prose says 22P02, which is the uuid-side code, not this one). Each input
+  // keeps EXACTLY ONE expected code so a refusal can still be attributed to one guard.
   for(const instant of unlawfulInstants){
-   const bad=snapshotWith({description:null,platforms:[]},f.entity);bad.fetchedAt=instant;bad.contentHash=rawSnapshotHash(bad as unknown as ReturnType<typeof snapshot>);await deniedSnapshot(h,bad);
-   const prov=snapshotWith({description:null,platforms:[]},f.entity) as Record<string,any>;prov.fieldProvenance.description.observedAt=instant;prov.contentHash=rawSnapshotHash(prov as unknown as ReturnType<typeof snapshot>);await deniedSnapshot(h,prov);
+   const castOnly=instant==='2026-02-29T00:00:00.000Z'?['22008']:['23514'];
+   const bad=snapshotWith({description:null,platforms:[]},f.entity);bad.fetchedAt=instant;bad.contentHash=rawSnapshotHash(bad as unknown as ReturnType<typeof snapshot>);await deniedSnapshot(h,bad,castOnly);
+   const prov=snapshotWith({description:null,platforms:[]},f.entity) as Record<string,any>;prov.fieldProvenance.description.observedAt=instant;prov.contentHash=rawSnapshotHash(prov as unknown as ReturnType<typeof snapshot>);await deniedSnapshot(h,prov,castOnly);
   }
-  // Same list as the portable case above, deliberately. PostgreSQL's uuid input SKIPS surrounding
-  // whitespace, so the padded spellings in `unlawfulIds` were real cast-only gaps too; iterating
-  // the inline brace/unhyphenated pair here left them witnessed only on the contract side.
+  // The OTHER retained-cast exception: year zero. It had no SQL-side expectation anywhere before
+  // this loop (only an ad-hoc probe), because it is contract-lawful and so cannot live in
+  // `unlawfulInstants`. Single expected code, 22008, exactly as for the non-leap 29 February: the
+  // regex admits it, PostgreSQL has no year 0, so only the retained cast can refuse it.
+  for(const instant of castExceptionInstants){
+   const bad=snapshotWith({description:null,platforms:[]},f.entity);bad.fetchedAt=instant;bad.contentHash=rawSnapshotHash(bad as unknown as ReturnType<typeof snapshot>);await deniedSnapshot(h,bad,['22008']);
+   const prov=snapshotWith({description:null,platforms:[]},f.entity) as Record<string,any>;prov.fieldProvenance.description.observedAt=instant;prov.contentHash=rawSnapshotHash(prov as unknown as ReturnType<typeof snapshot>);await deniedSnapshot(h,prov,['22008']);
+  }
+  // Same list as the portable case above, deliberately. The brace-wrapped and unhyphenated
+  // spellings ARE accepted by PostgreSQL's uuid input, reach the payload clause and refuse as
+  // 23514. The whitespace-padded spellings are NOT: uuid input does not skip surrounding
+  // whitespace (measured), so they refuse at the id/app_entity_id PARAMETER parse as 22P02
+  // before the trigger runs at all. Both are real storage refusals of a contract-unlawful
+  // spelling, and each input keeps its own single code so the firing guard stays identifiable.
   for(const id of unlawfulIds)for(const field of ['snapshotId','appEntityId'] as const){
-   const bad=snapshotWith({description:null,platforms:[]},f.entity) as Record<string,any>;bad[field]=id;bad.contentHash=rawSnapshotHash(bad as unknown as ReturnType<typeof snapshot>);await deniedSnapshot(h,bad);
+   const bad=snapshotWith({description:null,platforms:[]},f.entity) as Record<string,any>;bad[field]=id;bad.contentHash=rawSnapshotHash(bad as unknown as ReturnType<typeof snapshot>);await deniedSnapshot(h,bad,/^\s|\s$/.test(id)?['22P02']:['23514']);
   }
   for(const host of unlawfulHosts){
    const bad=snapshotWith({description:null,platforms:[]},f.entity) as Record<string,any>;bad.fieldProvenance.description.sourceUrl=`https://${host}/app`;bad.contentHash=rawSnapshotHash(bad as unknown as ReturnType<typeof snapshot>);await deniedSnapshot(h,bad);
@@ -280,7 +324,15 @@ export async function runAppsA1StorageAcceptance(h:AppsA1StorageHarness):Promise
   // an already-parsed result whose identifiers are contentIdSchema values), so an out-of-band
   // receipt writer is the only author of this shape, and this is the only witness for it.
   const pinned=randomUUID();
-  await h.admin.query("INSERT INTO application_command_receipts(id,account_id,operation,idempotency_key_hash,request_hash,response) VALUES($1,$2,'acceptAppEnrichment',sha256(convert_to($1::text,'UTF8')),sha256(convert_to($1::text,'UTF8')),$3::jsonb)",[pinned,f.account,JSON.stringify({receiptId:pinned,recommendationId:f.recommendation,snapshotId:`{${s.snapshotId}}`,bindingGenerationId:b.bindingGenerationId,acceptedFields:[]})]);
+  // The receipt id is bound TWICE, as $1 (the uuid column) and as $4 (the text convert_to feeds
+  // sha256). One placeholder cannot carry both: PostgreSQL deduces a SINGLE type per parameter,
+  // so reusing $1 as a uuid column value AND inside convert_to($1::text,'UTF8') made the
+  // statement itself unpreparable (42P08, inconsistent types deduced for parameter) before any
+  // guard could run. Casting at each use cannot resolve it - $1::uuid and $1::text ARE the two
+  // conflicting deductions - so the same value is simply passed twice, in its own parameter.
+  // Identical literal string, so convert_to() hashes the SAME BYTES as before and the stored
+  // receipt row is byte-identical; only the parameter list changed.
+  await h.admin.query("INSERT INTO application_command_receipts(id,account_id,operation,idempotency_key_hash,request_hash,response) VALUES($1,$2,'acceptAppEnrichment',sha256(convert_to($4,'UTF8')),sha256(convert_to($4,'UTF8')),$3::jsonb)",[pinned,f.account,JSON.stringify({receiptId:pinned,recommendationId:f.recommendation,snapshotId:`{${s.snapshotId}}`,bindingGenerationId:b.bindingGenerationId,acceptedFields:[]}),pinned]);
   await denied(h.admin,'INSERT INTO app_enrichment_acceptances(account_id,recommendation_id,snapshot_id,generation_id,selected_fields,accepted_values,actor_user_id,receipt_id) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8)',[f.account,f.recommendation,s.snapshotId,b.bindingGenerationId,[],'{}',f.actor,pinned],['23514']);
   await run(h,f,'rebindAppEnrichment',{...sourceB,optIn:false});expect(await repository(h).execute(f.account,f.recommendation,command,f.actor,{idempotencyKey:key})).toEqual(original);await expect(repository(h).execute(f.account,f.recommendation,{...command,selectedFields:['title']},f.actor,{idempotencyKey:key})).rejects.toMatchObject({status:409});const other=(await h.admin.query("INSERT INTO recommendations(account_id,category,entity_id) VALUES($1,'apps',$2) RETURNING id",[f.account,f.entity])).rows[0].id;await expect(repository(h).execute(f.account,other,command,f.actor,{idempotencyKey:key})).rejects.toMatchObject({status:409});expect([403,404]).toContain(await h.currentActorReplayStatus(f.account,f.recommendation,command,key));await h.admin.query("UPDATE creator_accounts SET status='suspended',suspended_at=clock_timestamp() WHERE id=$1",[f.account]);await expect(repository(h).execute(f.account,f.recommendation,command,f.actor,{idempotencyKey:key})).rejects.toMatchObject({status:404});await h.admin.query("UPDATE creator_accounts SET status='active',suspended_at=NULL WHERE id=$1",[f.account]);expect(await repository(h).execute(f.account,f.recommendation,command,f.actor,{idempotencyKey:key})).toEqual(original);await h.admin.query('UPDATE application_command_receipts SET replay_until=clock_timestamp()-interval \'1 second\' WHERE id=$1',[original.receiptId]);await expect(repository(h).execute(f.account,f.recommendation,command,f.actor,{idempotencyKey:key})).rejects.toMatchObject({status:409});await h.admin.query('UPDATE application_command_receipts SET status=\'retired\',response=NULL WHERE id=$1',[original.receiptId]);await expect(repository(h).execute(f.account,f.recommendation,command,f.actor,{idempotencyKey:key})).rejects.toMatchObject({status:409});},
  async()=>{const f=await seedApps(h),b=await configured(h,f),s=await seedSnapshot(h,f,b),before=await ownerState(h,f),key=randomUUID();
@@ -291,31 +343,60 @@ export async function runAppsA1StorageAcceptance(h:AppsA1StorageHarness):Promise
   try{await expect(new ExplorersAppEnrichmentRepository(owned,[identity,sourceB]).execute(f.account,f.recommendation,{operation:'acceptAppEnrichment',snapshotId:s.snapshotId,selectedFields:['title'],expectedRecommendationRevision:b.recommendationRevision,expectedBindingRevision:b.bindingRevision},f.actor,{idempotencyKey:key})).rejects.toMatchObject({code:'23514'});}finally{corrupted=false;client.query=originalQuery;client.release();}
   expect(await ownerState(h,f)).toEqual(before);expect(await run(h,f,'acceptAppEnrichment',{snapshotId:s.snapshotId,selectedFields:['title']},key)).toMatchObject({changed:true});
  },
- async()=>{const f=await seedApps(h),b=await configured(h,f),s=await seedSnapshot(h,f,b),before=await versions(h,f),replacement=(await h.admin.query("INSERT INTO entities(kind,title,origin) VALUES('app','Replacement','manual') RETURNING id")).rows[0].id;await new ExplorersRecommendationRepository(h.runtime).replaceRecommendationEntity(f.account,f.recommendation,before.recommendation,replacement,randomUUID());const row=(await h.admin.query('SELECT * FROM app_enrichment_bindings WHERE recommendation_id=$1',[f.recommendation])).rows[0];expect(row).toMatchObject({app_entity_id:replacement,opt_in:false,current_generation_id:null});expect(Number(row.binding_revision)).toBe(b.bindingRevision+1);expect((await versions(h,f)).recommendation).toBe(before.recommendation+1);expect((await h.admin.query('SELECT app_entity_id FROM app_enrichment_generations WHERE id=$1',[b.bindingGenerationId])).rows[0].app_entity_id).toBe(f.entity);expect(await repository(h).readSuggestions(f.account,f.recommendation)).toEqual([]);expect((await h.admin.query('SELECT payload FROM app_enrichment_snapshots WHERE id=$1',[s.snapshotId])).rows).toHaveLength(1);
-  // Category EXIT, in one statement with the entity change. recommendations.category is mutable
-  // (0029:40 is a value CHECK with no immutability trigger, and 0029:138 grants music_runtime
-  // table-level UPDATE with no column list), and no application path writes it, so this shape is
-  // reachable only out of band -- which is exactly why it needs SQL evidence rather than a
-  // repository call. Under the former NEW.category='apps' WHEN clause this UPDATE did not fire
-  // the replacement trigger and COMMITTED, leaving a live Apps binding on a recommendation no
-  // longer in Apps and pointing at a generation nothing would retire. Testing OLD as well makes
-  // the pointer-advancing UPDATE re-check a recommendation whose category is no longer 'apps',
-  // so the whole statement is refused.
-  // WHICH ASSERTIONS DISCRIMINATE, stated honestly: only two of the five below actually fail
-  // under the former NEW-only clause -- the `denied` 23514 expectation and the category:'apps'
-  // rollback assertion. The untouched-binding and zero-retirement assertions would ALSO pass
-  // under the old clause, because there the trigger simply never fired and so touched nothing
-  // either; they CORROBORATE the no-partial-commit shape rather than discriminate between the
-  // two clauses. The unbound and never-Apps cases that follow are likewise non-discriminating
-  // by construction: they pin the no-spurious-fire property, which both clauses satisfy.
+ async()=>{const f=await seedApps(h),b=await configured(h,f),s=await seedSnapshot(h,f,b),before=await versions(h,f),replacement=(await h.admin.query("INSERT INTO entities(kind,title,origin) VALUES('app','Replacement','manual') RETURNING id")).rows[0].id;await listed(h,f);await new ExplorersRecommendationRepository(h.runtime).replaceRecommendationEntity(f.account,f.recommendation,before.recommendation,replacement,randomUUID());const row=(await h.admin.query('SELECT * FROM app_enrichment_bindings WHERE recommendation_id=$1',[f.recommendation])).rows[0];expect(row).toMatchObject({app_entity_id:replacement,opt_in:false,current_generation_id:null});expect(Number(row.binding_revision)).toBe(b.bindingRevision+1);expect((await versions(h,f)).recommendation).toBe(before.recommendation+1);expect((await h.admin.query('SELECT app_entity_id FROM app_enrichment_generations WHERE id=$1',[b.bindingGenerationId])).rows[0].app_entity_id).toBe(f.entity);expect(await repository(h).readSuggestions(f.account,f.recommendation)).toEqual([]);expect((await h.admin.query('SELECT payload FROM app_enrichment_snapshots WHERE id=$1',[s.snapshotId])).rows).toHaveLength(1);
+  // Category EXIT of a BOUND Apps recommendation. recommendations.category is mutable (0029:40 is
+  // a value CHECK with no immutability trigger, and 0029:138 grants music_runtime table-level
+  // UPDATE with no column list), and no application path writes it, so this shape is reachable
+  // only out of band -- which is exactly why it needs SQL evidence rather than a repository call.
+  //
+  // WHAT ACTUALLY REFUSES IT, measured, correcting an earlier claim in this file and in 0055:
+  // NOT the replacement trigger. The composite foreign key
+  // app_enrichment_bindings(recommendation_id,account_id,category) -> recommendations(id,account_id,
+  // category) (0055:23,28) pins the binding's category to 'apps', so moving the referenced
+  // recommendation out of 'apps' is a REFERENCED-KEY violation: PostgreSQL's internal RI
+  // constraint triggers on `recommendations` are named RI_ConstraintTrigger_a_... and sort before
+  // any user trigger named app_enrichment_..., so the statement is refused as 23503 naming that FK
+  // and the widened OLD.category='apps' OR NEW.category='apps' WHEN clause is NEVER REACHED by an
+  // exit statement at all. The earlier ['23514'] expectation here therefore asserted an outcome
+  // that CANNOT OCCUR -- it was never a reachable witness. Crediting the FK is not a weakening:
+  // the FK is a BROADER and EARLIER guard than the trigger could be, it refuses the whole
+  // statement atomically, and asserting its NAME proves WHICH guard refused rather than merely
+  // that something refused. The widened WHEN clause is retained as harmless defence-in-depth
+  // should the FK shape ever change.
+  //
+  // THE FENCE IS BROADER THAN THE ENTITY-CHANGE CASE: measured, the FK refuses the exit with an
+  // entity change, WITHOUT one (so it is not an entity-replacement guard), and AFTER
+  // disableAppEnrichment (which leaves the binding row and its current_generation_id in place).
+  // All three shapes are asserted below, each leaving the row completely unchanged.
+  // The unbound and never-Apps cases that follow are non-discriminating by construction: they pin
+  // the no-spurious-fire property and the fact that neither guard freezes the column outright.
+  const exitFk='app_enrichment_bindings_recommendation_id_account_id_categ_fkey';
   const exiting=await seedApps(h),eb=await configured(h,exiting);
   const bookEntity=(await h.admin.query("INSERT INTO entities(kind,title,origin) VALUES('book','Exit target','manual') RETURNING id")).rows[0].id;
-  await denied(h.admin,'UPDATE recommendations SET category=$2,entity_id=$3,revision=revision+1 WHERE id=$1',[exiting.recommendation,'books',bookEntity],['23514']);
-  expect((await h.admin.query('SELECT category,entity_id FROM recommendations WHERE id=$1',[exiting.recommendation])).rows[0]).toMatchObject({category:'apps',entity_id:exiting.entity});
-  expect((await h.admin.query('SELECT app_entity_id,opt_in,current_generation_id FROM app_enrichment_bindings WHERE recommendation_id=$1',[exiting.recommendation])).rows[0]).toMatchObject({app_entity_id:exiting.entity,opt_in:true,current_generation_id:eb.bindingGenerationId});
-  expect((await h.admin.query('SELECT count(*) count FROM app_enrichment_generation_retirements WHERE generation_id=$1',[eb.bindingGenerationId])).rows[0].count).toBe('0');
-  // The same exit on an UNBOUND Apps recommendation updates zero binding rows, so it must remain
-  // lawful: the widened clause fences the stale-binding path only, it does not freeze the column.
+  const unchanged=async(opt_in:boolean)=>{
+   expect((await h.admin.query('SELECT category,entity_id FROM recommendations WHERE id=$1',[exiting.recommendation])).rows[0]).toMatchObject({category:'apps',entity_id:exiting.entity});
+   expect((await h.admin.query('SELECT app_entity_id,opt_in,current_generation_id FROM app_enrichment_bindings WHERE recommendation_id=$1',[exiting.recommendation])).rows[0]).toMatchObject({app_entity_id:exiting.entity,opt_in,current_generation_id:eb.bindingGenerationId});
+   expect((await h.admin.query('SELECT count(*) count FROM app_enrichment_generation_retirements WHERE generation_id=$1',[eb.bindingGenerationId])).rows[0].count).toBe('0');
+  };
+  // Shape 1: exit in one statement with the entity change.
+  expect((await denied(h.admin,'UPDATE recommendations SET category=$2,entity_id=$3,revision=revision+1 WHERE id=$1',[exiting.recommendation,'books',bookEntity],['23503'])).constraint).toBe(exitFk);
+  await unchanged(true);
+  // Shape 2: exit with NO entity change. The replacement trigger's WHEN clause additionally
+  // requires NEW.entity_id IS DISTINCT FROM OLD.entity_id, so no trigger could ever have fenced
+  // this statement -- yet the FK refuses it identically. This is the assertion that proves the
+  // exit fence is the FK and is broader than the entity-change path the group previously covered.
+  expect((await denied(h.admin,'UPDATE recommendations SET category=$2,revision=revision+1 WHERE id=$1',[exiting.recommendation,'books'],['23503'])).constraint).toBe(exitFk);
+  await unchanged(true);
+  // Shape 3: exit AFTER disableAppEnrichment. Disable sets opt_in=false and bumps
+  // binding_revision but LEAVES the binding row and its current_generation_id in place
+  // (explorersAppEnrichmentRepository.ts:88-89, and nothing in the repository DELETEs a binding),
+  // so the referenced key still exists and the FK still refuses the exit.
+  await run(h,exiting,'disableAppEnrichment');
+  expect((await denied(h.admin,'UPDATE recommendations SET category=$2,entity_id=$3,revision=revision+1 WHERE id=$1',[exiting.recommendation,'books',bookEntity],['23503'])).constraint).toBe(exitFk);
+  await unchanged(false);
+  // The same exit on an UNBOUND Apps recommendation has no referencing binding row, so no
+  // referenced key is violated and it must remain lawful: neither the FK nor the widened WHEN
+  // clause freezes the column -- they fence the stale-binding path only.
   const unbound=await seedApps(h);
   const otherBook=(await h.admin.query("INSERT INTO entities(kind,title,origin) VALUES('book','Exit target 2','manual') RETURNING id")).rows[0].id;
   await h.admin.query('UPDATE recommendations SET category=$2,entity_id=$3,revision=revision+1 WHERE id=$1',[unbound.recommendation,'books',otherBook]);
@@ -361,6 +442,11 @@ export async function runAppsA1StorageAcceptance(h:AppsA1StorageHarness):Promise
   for(const mutation of ['edit','disable','rebind','replace'] as const)for(const first of ['accept','mutate'] as const){
    const f=await seedApps(h),b=await configured(h,f),s=await seedSnapshot(h,f,b),v=await versions(h,f);
    const replacement=mutation==='replace'?(await h.admin.query("INSERT INTO entities(kind,title,origin) VALUES('app','Replacement','manual') RETURNING id")).rows[0].id:undefined;
+   // Same genuine precondition as the replacement group: only the 'replace' mutation reaches
+   // lockRecommendationParents, so only that fixture needs its owner list. Leaving the other
+   // three mutations membership-free keeps this group's loser/winner expectations on exactly
+   // the fixture shape they were authored against.
+   if(mutation==='replace')await listed(h,f);
    const accept=()=>repository(h,h.runtimeA).execute(f.account,f.recommendation,{operation:'acceptAppEnrichment',snapshotId:s.snapshotId,selectedFields:['title'],expectedRecommendationRevision:v.recommendation,expectedBindingRevision:v.binding},f.actor,{idempotencyKey:randomUUID()});
    const mutate=():Promise<unknown>=>mutation==='edit'?new ExplorersRecommendationRepository(h.runtimeB).updateRecommendation(f.account,f.recommendation,v.recommendation,{displayOverrides:{title:'Other'}},randomUUID()):mutation==='replace'?new ExplorersRecommendationRepository(h.runtimeB).replaceRecommendationEntity(f.account,f.recommendation,v.recommendation,replacement!,randomUUID()):repository(h,h.runtimeB).execute(f.account,f.recommendation,{operation:mutation==='disable'?'disableAppEnrichment':'rebindAppEnrichment',...(mutation==='rebind'?{...sourceB,optIn:true}:{}),expectedRecommendationRevision:v.recommendation,expectedBindingRevision:v.binding},f.actor,{idempotencyKey:randomUUID()});
    let a:Promise<AppEnrichmentResult>|undefined,m:Promise<unknown>|undefined;

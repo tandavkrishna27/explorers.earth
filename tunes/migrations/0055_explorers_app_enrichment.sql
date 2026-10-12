@@ -159,20 +159,27 @@ END $$;
 --    refine). Lone surrogates need no clause: UTF-8 input rejects them before this guard runs,
 --    which is why the UTF8 assertion at the head of this migration is not optional.
 -- 4. Formatted scalars. A ::uuid or ::timestamptz CAST IS NOT A FORMAT CHECK. PostgreSQL's uuid
---    input also accepts brace-wrapped and unhyphenated spellings; its datetime input skips
---    surrounding whitespace, takes a space separator, lowercase t/z and a bare +HH offset.
+--    input also accepts brace-wrapped and unhyphenated spellings. It does NOT, however, skip
+--    surrounding whitespace (measured: SELECT $1::uuid refuses both a lead- and a trail-padded
+--    spelling with 22P02), so a space-padded uuid was never a cast-only gap on the uuid side:
+--    the id columns refuse it at Bind, BEFORE the payload regex is ever consulted. That refusal
+--    is real and deterministic, just EARLIER than this note once claimed; the payload regex was
+--    verified independently to refuse the same spellings, so neither layer relies on the other.
+--    The datetime input is the lax one for whitespace: it skips surrounding whitespace, and also
+--    takes a space separator, lowercase t/z and a bare +HH offset.
 --    contentIdSchema is z.string().uuid() and the contract's timestamp is
 --    z.string().datetime({offset:true}), all of which refuse those spellings. Because the
 --    contentHash is computed over the RAW payload, a cast-only clause admitted an immutable row
 --    whose every later read through appSnapshotSchema threw, denying the owner's whole
 --    suggestion list. app_enrichment_uuid and app_enrichment_instant below pin the SPELLING
 --    before the cast, and the casts stay so that a well-formed but nonexistent instant still
---    fails. TWO such instants are well-formed to the regex AND lawful to the contract and are
---    refused by the retained cast, so they are the only guarded values here that raise 22P02
---    rather than 23514: a non-leap 29 February (the residue the month-length grammar cannot
---    express) and year zero, '0000-01-01T00:00:00Z' (PostgreSQL has no year 0). Both are
---    deliberate, both refuse in the safe direction, and a reader expecting 23514 everywhere
---    should expect 22P02 for exactly these two.
+--    fails. TWO such instants are well-formed to the regex and are refused by the retained cast,
+--    so they are the only guarded values here that raise 22008 (datetime_field_overflow) rather
+--    than 23514: a non-leap 29 February (the residue the month-length grammar cannot express)
+--    and year zero, '0000-01-01T00:00:00Z' (PostgreSQL has no year 0). Both were measured as
+--    22008; 22P02 is the uuid side's code, not the datetime side's. Both are deliberate, both
+--    refuse in the safe direction, and a reader expecting 23514 everywhere should expect 22008
+--    for exactly these two.
 --    The grammars were derived by probing the actual schemas, not from memory:
 --      uuid    - 8-4-4-4-12 hex, case-insensitive, version and variant nibbles UNCONSTRAINED
 --                (zod v3 accepts every hex nibble there, so this pattern must not refuse them).
@@ -490,7 +497,10 @@ BEGIN
   WHERE recommendation_id=NEW.id AND account_id=NEW.account_id;
  RETURN NULL;
 END $$;
--- WHEN clause scope: OLD or NEW, not NEW alone. recommendations.category IS MUTABLE. 0029:40
+-- WHEN clause scope: OLD or NEW, not NEW alone -- defence-in-depth only, NOT the exit fence.
+-- The exit fence is the composite foreign key at 0055:28; see the MEASURED correction further
+-- down this comment before relying on the clause for anything. recommendations.category IS
+-- MUTABLE, which is the background for both. 0029:40
 -- declares it with a value CHECK and no immutability trigger; the only trigger 0029 installs on
 -- the table is the deferred recommendation_entity_kind_guard (0029:102), which constrains the
 -- category/entity-kind PAIR and not the category's stability; and 0029:138 grants music_runtime
@@ -515,36 +525,41 @@ END $$;
 --   0047:53 recommendations_place_photo_guard.
 -- Anyone adding a recategorise command must reckon with ALL of these, not just this one.
 --
--- PRECEDENT, and it is favourable. Refusing a category EXIT with 23514 while a dependent row in
--- that category's side table exists is an ESTABLISHED class here, not an invention of 0055:
+-- PRECEDENT, and it is favourable. Refusing a category EXIT while a dependent row in that
+-- category's side table exists is an ESTABLISHED class here, not an invention of 0055:
 --   0035:21-22 book covers, 0037:246 movie context, 0043:69-70 app screenshots,
 --   0046:99-102 place context kind, 0047:47 place photos.
 -- 0055's binding is exactly such a dependent row. Most directly, 0043:69-70 ALREADY refuses an
 -- Apps category exit for any recommendation holding an app screenshot, and its trigger (0043:82)
--- carries no column list -- a STRICTLY BROADER refusal than this one. 0054 is the lone
--- counter-pattern: its exit cleans up pins rather than refusing.
+-- carries no column list. 0054 is the lone counter-pattern: its exit cleans up pins rather than
+-- refusing.
 --
--- The shape that matters: one UPDATE that changes entity_id AND moves category off 'apps'. Under
--- a NEW-only clause that statement does not fire, leaving a live Apps binding pointing at the
--- retired generation of a recommendation no longer in Apps. Testing OLD as well fences the exit:
--- the trigger fires, and app_enrichment_binding_identity() re-checks the pointer-advancing UPDATE
--- against a recommendation whose category is no longer 'apps' (0055:106 requires r.category
--- ='apps'), so the statement RAISES 23514 and is refused outright rather than committing a stale
--- binding. An unbound recommendation updates zero binding rows and leaves such a transition
--- lawful, so this strengthens one path only.
---
--- THE FENCE KEYS ON BINDING EXISTENCE, NOT LIVENESS. The UPDATE at 0055:490 is keyed on
--- recommendation_id and account_id alone, so it matches ANY binding row; the identity guard is
--- BEFORE INSERT OR UPDATE on the bindings table (0055:111) and so fires on that UPDATE whatever
--- the pointer holds. A binding with current_generation_id IS NULL is therefore fenced too.
--- This is reachable and durable: disableAppEnrichment
--- (explorersAppEnrichmentRepository.ts:88-89) sets opt_in=false and bumps binding_revision but
--- LEAVES the row AND its current_generation_id in place, and nothing in the repository ever
--- DELETEs a binding (the only DELETE on the table in tunes/server is the `WHERE false` grant
--- probe at db/music-runtime-role.ts:853). FORWARD-LOOKING: any future recategorise path must
--- DROP or RE-POINT the binding before moving the category, or it will be refused 23514 on a
--- recommendation whose owner disabled enrichment long ago -- which will read as a spurious
--- failure to whoever hits it.
+-- WHAT ACTUALLY FENCES THE EXIT -- MEASURED, AND CORRECTING AN EARLIER CLAIM IN THIS COMMENT.
+-- An earlier revision of this prose credited the widened WHEN clause below with fencing the
+-- category exit (a 23514 from app_enrichment_binding_identity()). That was WRONG. The composite
+-- foreign key at 0055:28, which pins app_enrichment_bindings.category (0055:23, CHECK category
+-- ='apps') to recommendations(id,account_id,category), makes ANY category exit of a BOUND Apps
+-- recommendation a REFERENCED-KEY violation. PostgreSQL's internal RI constraint triggers on
+-- `recommendations` are named RI_ConstraintTrigger_a_... and sort BEFORE any user trigger named
+-- app_enrichment_..., so an exit statement is refused as 23503 naming
+-- app_enrichment_bindings_recommendation_id_account_id_categ_fkey, the whole statement is rolled
+-- back with the row completely unchanged, and the widened WHEN clause is NEVER REACHED.
+-- The FK fence is also STRICTLY BROADER than any trigger fence could be: measured, it refuses the
+-- exit with an entity change, WITHOUT an entity change (the WHEN clause additionally requires
+-- NEW.entity_id IS DISTINCT FROM OLD.entity_id, so no trigger could reach that shape at all), and
+-- AFTER disableAppEnrichment, which leaves the binding row and its current_generation_id in place
+-- (explorersAppEnrichmentRepository.ts:88-89; nothing in the repository ever DELETEs a binding --
+-- the only DELETE on the table in tunes/server is the `WHERE false` grant probe at
+-- db/music-runtime-role.ts:853). So the fence keys on binding EXISTENCE, not liveness, and a
+-- binding with current_generation_id IS NULL is fenced too. An UNBOUND Apps recommendation has no
+-- referencing row, so its exit is lawful; the column is not frozen.
+-- The OLD.category='apps' disjunct below is therefore REDUNDANT FOR THE EXIT PATH. It is NOT
+-- removed: it is retained as harmless defence-in-depth should the FK shape ever change (for
+-- example if the pinned `category` column were dropped from the composite reference). Nothing
+-- below this comment is altered by this correction.
+-- FORWARD-LOOKING: any future recategorise path must DROP or RE-POINT the binding before moving
+-- the category, or it will be refused 23503 on a recommendation whose owner disabled enrichment
+-- long ago -- which will read as a spurious failure to whoever hits it.
 CREATE TRIGGER app_enrichment_recommendation_replacement_guard AFTER UPDATE OF entity_id ON recommendations
  FOR EACH ROW WHEN ((OLD.category='apps' OR NEW.category='apps') AND NEW.entity_id IS DISTINCT FROM OLD.entity_id)
  EXECUTE FUNCTION app_enrichment_recommendation_replacement();
