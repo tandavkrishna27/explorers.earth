@@ -25,7 +25,12 @@ describe('owned browser Music opaque admission', () => {
     for (const options of [{ apiOnly: false }, { apiOnly: true, host: '0.0.0.0' }, { apiOnly: true, port: 5000 }, { apiOnly: true, loadRuntime: async () => { throw new Error('must never execute'); } }])
       await expect(startMusicServer(process.env, options, forged)).rejects.toThrow('unmodified production composition');
   });
-  it('rejects malformed duplicate oversized and excessively nested private markers without resource admission', async () => {
+  // Harness budget, not a product relaxation. Spawns five real powershell.exe children (one
+  // create-directory plus one create-file per marker case): 2285ms measured in isolation, observed
+  // at ~6.0s against the 5000ms default under full-sweep load. This was the only case in this file
+  // without an explicit budget; 60000ms matches the five sibling budgets below and keeps a genuine
+  // hang failing.
+  it('rejects malformed duplicate oversized and excessively nested private markers without resource admission', { timeout: 60_000 }, async () => {
     const directory = join(tmpdir(), `explorers-music-e2e-${randomBytes(16).toString('hex')}`);
     const helper = resolve(import.meta.dirname, '../../../scripts/music-local-private-files.ps1');
     if (process.platform === 'win32') execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', helper, 'create-directory', directory], { stdio: 'ignore', windowsHide: true });

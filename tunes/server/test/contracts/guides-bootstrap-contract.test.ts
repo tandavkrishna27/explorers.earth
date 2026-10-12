@@ -3,12 +3,30 @@ import {execFileSync} from 'node:child_process';
 import {assertGuidesPowerShellRuntime} from '../../../scripts/guides-launcher';
 import path from 'node:path';
 import * as fixture from '../../../scripts/guides-browser-fixture';
-const pwsh=process.env.GUIDES_POWERSHELL_EXECUTABLE!;
+import {statSync} from 'node:fs';
+// HARNESS GATE (not a product assertion). Every case below drives a real PowerShell 7 (Core) host
+// chosen explicitly through GUIDES_POWERSHELL_EXECUTABLE; `assertGuidesPowerShellRuntime` has no
+// discovery fallback by design. Nothing in the repo or in CI sets that variable, so this file used
+// to report three failures that read as Guides product defects on any host where no PS7 was
+// selected. Rule now: executable genuinely unavailable => LOUD, explicit, reasoned skip; variable
+// set and naming a real file => the cases run and FAIL for real if the gate's subject is wrong.
+// A silent skip is as bad as a false failure, so the reason is both logged and put in the suite name.
+const configured=process.env.GUIDES_POWERSHELL_EXECUTABLE;
+const unavailable=((): string|undefined=>{
+ if(process.platform!=='win32')return `host platform is ${process.platform}, and this Guides bootstrap gate is Windows-only`;
+ if(!configured)return 'GUIDES_POWERSHELL_EXECUTABLE is unset, so no PowerShell 7 host was selected for the Guides bootstrap gate';
+ try{if(!statSync(configured).isFile())return 'GUIDES_POWERSHELL_EXECUTABLE is set but does not name a regular file';}
+ catch{return 'GUIDES_POWERSHELL_EXECUTABLE is set but the executable it names is not present on this host';}
+ return undefined;
+})();
+if(unavailable)console.warn(`[SKIP] guides-bootstrap-contract.test.ts: ${unavailable}. Harness gate unavailable - this is NOT a passing Guides product contract and NOT a product defect.`);
+const suite=unavailable?describe.skip:describe;
+const pwsh=configured as string;
 const root=path.resolve(import.meta.dirname,'../../../..');
 const script=path.join(root,'tunes/scripts/guides-windows-job.ps1');
 const argv=['--suite','guides','--ack','TASK4_FIXTURE_OWNED_DISPOSABLE_PG15','--receipt-directory','C:\\receipts','--receipt-capability','a'.repeat(64)];
 function ps(command:string,input?:Buffer){return execFileSync(pwsh,['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(`$ErrorActionPreference='Stop'\n. '${script.replaceAll("'","''")}' -DefinitionsOnly\n${command}`,'utf16le').toString('base64')],{input,encoding:'utf8',timeout:10000,windowsHide:true,maxBuffer:1024*1024,stdio:['pipe','pipe','pipe']}).trim();}
-describe('Guides actual configure boundary before native allocation',()=>{
+suite(`Guides actual configure boundary before native allocation${unavailable?` [SKIPPED - ${unavailable}]`:''}`,()=>{
  it('admits actual direct host configure and refuses unauthorized shapes without native entry',()=>{
   const build=(fixture as any).buildGuidesLauncherConfigure;
   expect(typeof build).toBe('function');

@@ -187,7 +187,10 @@ describe("Music Docker release source authority", () => {
     );
   });
 
-  it("captures exact Git-object bytes from the executing tracked script and fails on source changes", () => {
+  // Harness budget, not a product relaxation. Builds a real throwaway Git repository and shells out
+  // to git: 1406ms measured in isolation, over the 5000ms default under full-sweep load. 20000ms is
+  // ~14x that measurement and keeps a genuine hang failing.
+  it("captures exact Git-object bytes from the executing tracked script and fails on source changes", { timeout: 20_000 }, () => {
     const fixture = cleanFixtureRepository(true);
     const fakeBin = join(fixture.root, "caller-bin");
     mkdirSync(fakeBin);
@@ -214,7 +217,10 @@ describe("Music Docker release source authority", () => {
     expect(authority.tunesArchive.includes(Buffer.from("export const exact = 2;"))).toBe(false);
   });
 
-  it("rejects dirty, detached-script, and hidden index authority before source capture", () => {
+  // Harness budget, not a product relaxation. Three real throwaway Git repositories: 1933ms measured
+  // in isolation (the worst case in this file), over the 5000ms default under full-sweep load.
+  // 20000ms is ~10x that measurement and keeps a genuine hang failing.
+  it("rejects dirty, detached-script, and hidden index authority before source capture", { timeout: 20_000 }, () => {
     const dirty = cleanFixtureRepository();
     writeFileSync(join(dirty.root, "tunes/app.ts"), "dirty\n");
     expect(() => captureTrustedFixtureSource(dirty.script)).toThrow("tracked source checkout must be clean");

@@ -41,6 +41,7 @@ COPY tunes/shared/explorersGuideContract.ts /workspace/tunes/shared/explorersGui
 COPY tunes/shared/explorersLifecycleObservation.ts /workspace/tunes/shared/explorersLifecycleObservation.ts
 COPY tunes/shared/explorersGameContract.ts /workspace/tunes/shared/explorersGameContract.ts
 COPY tunes/shared/explorersGameOwnerContract.ts /workspace/tunes/shared/explorersGameOwnerContract.ts
+COPY tunes/shared/explorersTaxonomyContract.ts /workspace/tunes/shared/explorersTaxonomyContract.ts
 RUN npm run build
 
 FROM public.ecr.aws/docker/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS runner

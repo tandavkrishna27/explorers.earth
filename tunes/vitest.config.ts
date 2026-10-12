@@ -21,6 +21,10 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./server/test/setup.ts'],
     // Exclude integration tests from the default run so `npm test` never needs a DB.
-    exclude: [...configDefaults.exclude, '**/*.integration.test.ts', '**/account-recovery.test.ts', '**/*.real-tool.test.ts'],
+    // `.music-cli-contract-isolated-*` is an ignored scratch tree (.gitignore:193) with zero
+    // tracked files, frozen at migration 0052 and referenced by no tracked code. Collecting it
+    // added failures to every sweep and corrupted failure accounting. The glob is deliberately
+    // pinned to that one prefix: a broader exclude could hide real tests, which would be worse.
+    exclude: [...configDefaults.exclude, '**/*.integration.test.ts', '**/account-recovery.test.ts', '**/*.real-tool.test.ts', '**/.music-cli-contract-isolated-*/**'],
   },
 });

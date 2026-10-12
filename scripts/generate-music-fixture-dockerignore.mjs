@@ -13,28 +13,11 @@ const deniedSegments = new Set([
   "test", "tests", "__tests__", "node_modules", "dist", "coverage", "test-results", ".chrome-profile",
   "traces", "screenshots", ".artifacts",
 ]);
-const fixedFiles = [
-  "explorers-earth/Dockerfile.music-fixture",
-  "explorers-earth/package.json",
-  "explorers-earth/package-lock.json",
-  "explorers-earth/index.html",
-  "explorers-earth/vite.config.ts",
-  "explorers-earth/tsconfig.json",
-  "explorers-earth/tsconfig.app.json",
-  "explorers-earth/tsconfig.node.json",
-  "explorers-earth/tailwind.config.js",
-  "explorers-earth/postcss.config.js",
-  "explorers-earth/nginx.conf",
-  "explorers-earth/nginx.music-fixture.conf",
-  "explorers-earth/scripts/check-landing-i18n.mjs",
-  "explorers-earth/scripts/check-landing-hardcoded-copy.mjs",
-  "explorers-earth/scripts/generate-static-files.js",
-  "explorers-earth/scripts/check-music-production-bundle.mjs",
-  "explorers-earth/src/features/Movies/api/explorersAdapter.ts",
-  "explorers-earth/src/features/Movies/api/moviesClient.ts",
-  "explorers-earth/src/features/Movies/api/moviesViewModel.ts",
-  "explorers-earth/src/features/Movies/api/publicMoviesContinuation.ts",
-  "explorers-earth/src/features/Movies/api/usePublicMovieGenre.ts",
+// Entry points only. Every shared contract these transitively import through a
+// relative specifier is DERIVED below by sharedContractClosure(), so adding a
+// new `from "./otherContract"` inside a manifested contract can no longer break
+// the Music fixture build (or the transitive-closure gate that caught it).
+const sharedContractEntryPoints = [
   "tunes/shared/musicPublicationContract.ts",
   "tunes/shared/explorersContract.ts",
   "tunes/shared/explorersOwnerContentContract.ts",
@@ -56,6 +39,49 @@ const fixedFiles = [
   "tunes/shared/explorersLifecycleObservation.ts",
   "tunes/shared/explorersGameContract.ts",
   "tunes/shared/explorersGameOwnerContract.ts",
+];
+
+// Breadth-first over relative `from "./x"` specifiers inside tunes/shared, so the
+// manifest is the import closure of the entry points rather than a hand-kept list.
+function sharedContractClosure(entryPoints) {
+  const closure = new Set();
+  const queue = [...entryPoints];
+  while (queue.length) {
+    const file = queue.shift();
+    if (closure.has(file)) continue;
+    closure.add(file);
+    const source = readFileSync(resolve(repositoryRoot, file), "utf8");
+    for (const [, specifier] of source.matchAll(/from\s+['"]\.\/([\w.-]+)['"]/g)) {
+      const dependency = `tunes/shared/${specifier.replace(/\.(?:ts|js)$/, "")}.ts`;
+      if (!closure.has(dependency)) queue.push(dependency);
+    }
+  }
+  return [...closure];
+}
+
+const fixedFiles = [
+  ...sharedContractClosure(sharedContractEntryPoints),
+  "explorers-earth/Dockerfile.music-fixture",
+  "explorers-earth/package.json",
+  "explorers-earth/package-lock.json",
+  "explorers-earth/index.html",
+  "explorers-earth/vite.config.ts",
+  "explorers-earth/tsconfig.json",
+  "explorers-earth/tsconfig.app.json",
+  "explorers-earth/tsconfig.node.json",
+  "explorers-earth/tailwind.config.js",
+  "explorers-earth/postcss.config.js",
+  "explorers-earth/nginx.conf",
+  "explorers-earth/nginx.music-fixture.conf",
+  "explorers-earth/scripts/check-landing-i18n.mjs",
+  "explorers-earth/scripts/check-landing-hardcoded-copy.mjs",
+  "explorers-earth/scripts/generate-static-files.js",
+  "explorers-earth/scripts/check-music-production-bundle.mjs",
+  "explorers-earth/src/features/Movies/api/explorersAdapter.ts",
+  "explorers-earth/src/features/Movies/api/moviesClient.ts",
+  "explorers-earth/src/features/Movies/api/moviesViewModel.ts",
+  "explorers-earth/src/features/Movies/api/publicMoviesContinuation.ts",
+  "explorers-earth/src/features/Movies/api/usePublicMovieGenre.ts",
   // Ticket 5.3. Named explicitly because discovery only picks up the *Client/*ViewModel/
   // explorersAdapter/hooks shapes, and GuidesPage - which is in this context - imports it.
   "explorers-earth/src/features/Guides/api/guideListWrites.ts",
