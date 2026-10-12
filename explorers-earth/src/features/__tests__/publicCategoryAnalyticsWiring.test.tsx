@@ -43,6 +43,16 @@ const gatewayFixtures = vi.hoisted(() => ({
   loading: false,
   categoryData: undefined as Record<string, unknown> | undefined,
   detailData: undefined as Record<string, unknown> | undefined,
+  sectorData: undefined as Record<string, unknown> | undefined,
+}));
+
+// PublicPeople and PublicPersonSector were moved off Apollo onto the native sector view
+// model, so their rows must be public-people DTOs (uuid identities, `title`/`full_name`)
+// rather than the Strapi-shaped records the Apollo consumers below still read.
+const nativePeopleIds = vi.hoisted(() => ({
+  list: '00000000-0000-4000-8000-000000000201',
+  person: '00000000-0000-4000-8000-000000000301',
+  sector: '00000000-0000-4000-8000-000000000401',
 }));
 
 vi.mock('@apollo/client', async (importOriginal) => {
@@ -64,6 +74,12 @@ vi.mock('../PublicHome/api/usePublicProfileShell', () => ({
 vi.mock('../PublicHome/api/usePublicRecommendationCategory', () => ({
   usePublicRecommendationCategory: () => ({
     data: gatewayFixtures.categoryData, loading: gatewayFixtures.loading, error: null, refetch: vi.fn(),
+  }),
+}));
+
+vi.mock('../People/api/usePublicPeopleSector', () => ({
+  usePublicPeopleSector: () => ({
+    data: gatewayFixtures.sectorData, loading: gatewayFixtures.loading, error: null, refetch: vi.fn(),
   }),
 }));
 
@@ -148,6 +164,53 @@ const records = {
   },
 };
 
+const nativeSectorTerm = {
+  documentId: nativePeopleIds.sector,
+  id: nativePeopleIds.sector,
+  slug: 'creators',
+  Category_name: 'Creators',
+};
+const nativePerson = {
+  documentId: nativePeopleIds.person,
+  title: 'Ada',
+  full_name: 'Ada',
+  username_handle: null,
+  headline: null,
+  location_text: null,
+  avatar_url: null,
+  platform: null,
+  primary_platform: 'website',
+  profile_url: null,
+  social_urls: null,
+  skills_tags: null,
+  follower_count: null,
+  user_recommendation_note: '',
+  user_rating: null,
+  is_pinned: true,
+  pin_order: 1,
+  display_order: 0,
+  person_list: { documentId: nativePeopleIds.list, List_Name: 'Creators', slug: 'creators' },
+  person_category: nativeSectorTerm,
+  people_category: nativeSectorTerm,
+};
+const nativePeopleCategoryPayload = {
+  personLists: [{
+    documentId: nativePeopleIds.list,
+    List_Name: 'Creators',
+    slug: 'creators',
+    recommended_people: [nativePerson],
+    recommended_people_next_cursor: null,
+  }],
+};
+const nativePeopleSectorPayload = {
+  version: 'explorers-public-people-sector/v1',
+  sector: { documentId: nativeSectorTerm.documentId, slug: nativeSectorTerm.slug, Category_name: nativeSectorTerm.Category_name },
+  canonicalSlug: 'creators',
+  redirectSlug: null,
+  recommended_people: [nativePerson],
+  nextCursor: null,
+};
+
 function installQueryResults(category: keyof typeof records) {
   const source = records[category];
   mockUseQuery.mockImplementation((query: any) => {
@@ -189,8 +252,11 @@ function installQueryResults(category: keyof typeof records) {
       ? 'productLists'
       : 'personLists';
   const data = { [root]: [{ ...source.list, [relation]: [source.item] }] };
-  gatewayFixtures.categoryData = data;
+  // Native consumers (PublicPeople, PublicPersonSector) read the gateway payloads; the
+  // Apollo consumers (PublicPersonList and the apps/products pages) read the mock above.
+  gatewayFixtures.categoryData = category === 'people' ? nativePeopleCategoryPayload : data;
   gatewayFixtures.detailData = data;
+  gatewayFixtures.sectorData = category === 'people' ? nativePeopleSectorPayload : undefined;
 }
 
 function renderCategory(path: string, Component: React.ComponentType) {
@@ -214,6 +280,7 @@ describe('public category analytics wiring', () => {
     gatewayFixtures.loading = false;
     gatewayFixtures.categoryData = undefined;
     gatewayFixtures.detailData = undefined;
+    gatewayFixtures.sectorData = undefined;
     class TestIntersectionObserver implements IntersectionObserver {
       readonly root = null;
       readonly rootMargin = '';
@@ -264,7 +331,7 @@ describe('public category analytics wiring', () => {
   it.each([
     ['apps', PublicApps, 'Open app card', 'app-card', 'app-1', 'app-list-1', 'Open app list', 'app-list'],
     ['products', PublicProducts, 'Open product card', 'product-card', 'product-1', 'product-list-1', 'Open product list', 'product-list'],
-    ['people', PublicPeople, 'Open person card', 'person-card', 'person-1', 'person-list-1', 'Open people list', 'person-list'],
+    ['people', PublicPeople, 'Open person card', 'person-card', nativePeopleIds.person, nativePeopleIds.list, 'Open people list', 'person-list'],
   ] as const)(
     'tracks %s page item and list navigation with canonical ownership IDs',
     (category, Component, cardLabel, cardElement, itemId, listId, listLabel, listElement) => {
@@ -348,7 +415,7 @@ describe('public category analytics wiring', () => {
     fireEvent.click(screen.getByRole('button', { name: /Ada/i }));
     expect(analyticsMocks.trackClick).toHaveBeenCalledWith(
       'person-card',
-      expect.objectContaining({ id: 'person-1', listId: 'person-list-1' }),
+      expect.objectContaining({ id: nativePeopleIds.person, listId: nativePeopleIds.list }),
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Share' }));

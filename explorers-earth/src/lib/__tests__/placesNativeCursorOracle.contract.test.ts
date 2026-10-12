@@ -1,6 +1,7 @@
 // The native oracle is evaluated from its actual AST without collecting Playwright tests.
 import {describe,it,expect} from 'vitest';
-import {readFileSync} from 'node:fs';
+import {existsSync,readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
 import ts from 'typescript';
 import {encodePlacePinsCursor,decodePlacePinsCursor} from '../../../../tunes/server/application/placePinsRead';
 
@@ -8,12 +9,20 @@ const binding={account:'00000000-0000-0000-0000-000000000001',username:'inert',c
 const secret='inert-key-'.repeat(5);
 const tuple=(n:number)=>({pinBucket:1 as const,sortPosition:n,id:`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`});
 const tokens=[23,47].map(n=>encodePlacePinsCursor(secret,binding,tuple(n)));
-const source=readFileSync(new URL('../../../e2e/replatform/places.spec.ts',import.meta.url),'utf8');
+// VACUITY GUARD (path): `new URL(<literal>,import.meta.url)` is statically rewritten by
+// Vite into a served http:// asset URL, which under jsdom made readFileSync throw and this
+// whole file fail at collection. Resolve from __dirname instead, which Vite does not touch,
+// and assert the spec is actually on disk so a move fails by name rather than by ENOENT.
+const specPath=resolve(__dirname,'../../../e2e/replatform/places.spec.ts');
+expect(existsSync(specPath),`native Places oracle source missing: ${specPath}`).toBe(true);
+const source=readFileSync(specPath,'utf8');
+expect(source.length,'native Places oracle source is empty').toBeGreaterThan(0);
 const ast=ts.createSourceFile('places.ts',source,ts.ScriptTarget.Latest,true);
 const functions:string[]=[];
 function visit(node:ts.Node){if(ts.isFunctionDeclaration(node)&&['recordPublicPages','assertPublicPageShape'].includes(node.name?.text??''))functions.push(node.getText(ast));ts.forEachChild(node,visit);}
 visit(ast);
-expect(functions).toHaveLength(2);
+// VACUITY GUARD (extraction): both oracles must still be extractable by name.
+expect(functions,'recordPublicPages/assertPublicPageShape no longer extractable from places.spec.ts').toHaveLength(2);
 const code=ts.transpileModule(functions.join('\n'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}}).outputText;
 const {recordPublicPages,assertPublicPageShape}=new Function('expect','base',code+';return {recordPublicPages,assertPublicPageShape};')(expect,'/api');
 const ids=Array.from({length:53},(_,n)=>`id${n}`),shape=[[0,24,24,0],[24,24,24,0],[48,24,5,1]];
@@ -30,7 +39,9 @@ function findDirect(node:ts.Node){
  }
  ts.forEachChild(node,findDirect);
 }
-findDirect(ast);expect(directSource.length).toBeGreaterThan(0);
+findDirect(ast);
+// VACUITY GUARD (extraction): the real direct paging loop must still be locatable.
+expect(directSource.length,'direct paging loop no longer extractable from places.spec.ts').toBeGreaterThan(0);
 const directCode=ts.transpileModule(directSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}}).outputText;
 const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
 async function runDirect(next:unknown[]= [...tokens,null],sizes=[24,24,5]){

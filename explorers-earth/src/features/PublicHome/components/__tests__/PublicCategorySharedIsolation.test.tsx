@@ -48,7 +48,27 @@ vi.mock('../../api/usePublicProfileDetail', () => ({
           documentId: 'day-1',
           Sequence: 1,
           Title: 'Day 1: Old Town',
-          Timeline: { morning: [{ place_id: 'place-1', name: 'Museum' }] },
+          // Canonical guideDayPlaceSchema entry, which is what the native projection
+          // emits (tunes/server/publicProfile/publicGuidesProjection.ts:57 -> data.timeline).
+          // convertPublicGuideSection drops a section whose places are neither canonical
+          // nor a complete legacy DayPlace, so this fixture carries the real shape.
+          Timeline: { morning: [{
+            localId: 'place-1',
+            placeId: 'place-1',
+            name: 'Museum',
+            formattedAddress: null,
+            geometry: null,
+            types: [],
+            tips: null,
+            photos: [],
+            priceLevel: null,
+            priceRange: null,
+            customBudget: null,
+            budgetAmount: null,
+            budgetCurrency: null,
+            source: 'manual',
+            verified: true,
+          }] },
         }],
       }],
     },

@@ -114,5 +114,8 @@ async function custodyMatrix(row:Row){
  }finally{replacementGate.resolve(reply({collection:{...receipt(row.category).collection,title:'Replacement',slug:'replacement'}}));gate.resolve(reply({}));text.resolve(JSON.stringify(receipt(row.category)));await act(async()=>{await gate.promise;await text.promise;await new Promise(resolve=>setTimeout(resolve,0));});mounted.unmount();}}
 }
 
-it('suppresses obsolete success error and navigation after custody changes',async()=>{await custodyMatrix(rows[0]);});
-it('suppresses obsolete People success error and navigation after custody changes',async()=>{await custodyMatrix(rows[1]);});
+// Both custody-matrix cases drive the full create+refusal+recovery sequence and measured
+// 3.9s of a 5s default under full-lane load, i.e. they sat ~1s from a false failure. The
+// budget is raised; the assertions are unchanged.
+it('suppresses obsolete success error and navigation after custody changes',async()=>{await custodyMatrix(rows[0]);},20000);
+it('suppresses obsolete People success error and navigation after custody changes',async()=>{await custodyMatrix(rows[1]);},20000);
