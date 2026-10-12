@@ -440,3 +440,349 @@ test('Places: foreign owner edits and private contact reads cannot disclose owne
     await expect(anon.page.getByRole('dialog',{name:'Place details',exact:true}).locator('[data-public-place-detail]').getByText('Call',{exact:true}).locator('..').getByRole('button')).toBeEnabled();anon.transport.assertExpected();
   } finally {await anon.context.close();}
 });
+
+// ---------------------------------------------------------------------------
+// Additive Places pin identities. AUTHORED ONLY: no native run has executed any
+// of the four cases below, so none of them is qualified. They are registered
+// separately from the original eight Places identities in suite-manifest.json
+// under additiveRegistrations, together with the owned fixture declarations they
+// still require. Until the fixture declares these case identifiers the reset in
+// beforeEach is refused, so these cases fail at setup instead of reporting a
+// pass; that refusal is intentional and must not be weakened with a retry.
+//
+// Every transport bound comes from the server's advertised clientTransport.
+// No chunk size, pin cap, staging bound or policy number is written here: an
+// absent policy must leave the feature unavailable, and no advertised budget is
+// divided into a product pin cap.
+// ---------------------------------------------------------------------------
+
+type PinsTransport={policyId:string;policyVersion:number;replacementBytes:number;replacementIds:number;
+  transportChunkBytes:number;transportChunkIds:number;ownerStagingBytes:number;commitProcessingBytes:number;
+  commitProcessingMs:number;commitWorkUnits:number;draftExpiryMs:number};
+
+/** The only admissible source of staging bounds. Unavailable is terminal, never a default. */
+async function advertisedPinsTransport(listId:string,persona=manifest.personas.ownerA) {
+  const dto=await json(`/collections/${listId}/place-pins/availability`,persona);
+  expect(dto.available===true && dto.state==='configured').toBe(true);
+  const transport=dto.clientTransport as PinsTransport;
+  for(const key of ['replacementBytes','replacementIds','transportChunkBytes','transportChunkIds',
+    'ownerStagingBytes','commitProcessingBytes','commitProcessingMs','commitWorkUnits','draftExpiryMs'] as const)
+    expect(Number.isSafeInteger(transport[key]) && transport[key]>0).toBe(true);
+  expect(transport.transportChunkIds<=transport.replacementIds).toBe(true);
+  return transport;
+}
+
+/** Complete owner traversal of one list: pinned-first order, ascending positions, list-local counts. */
+async function ownerListMembers(listId:string,persona=manifest.personas.ownerA) {
+  const snapshot=await json('/categories/places/content-snapshot',persona);
+  const rows:Dto[]=[],seen=new Set<string>();let cursor:string|undefined,metadata:Dto|undefined,pages=0;
+  do {
+    const search=new URLSearchParams({category:'places',collectionId:listId,status:'active',limit:'24',
+      snapshotToken:snapshot.snapshotToken,...(cursor?{cursor}:{})});
+    const page=await json(`/recommendations?${search}`,persona);pages++;
+    expect(page.snapshotToken===snapshot.snapshotToken && page.snapshot===snapshot.revision).toBe(true);
+    expect(page.placePins!==undefined && page.placePins.collectionId===listId).toBe(true);
+    if(metadata)same(page.placePins,metadata);else metadata=page.placePins;
+    expect(Array.isArray(page.items) && page.items.length<=24).toBe(true);rows.push(...page.items);
+    if(page.nextCursor===null)break;
+    expect(typeof page.nextCursor==='string' && page.items.length>0 && !seen.has(page.nextCursor)).toBe(true);
+    cursor=page.nextCursor;seen.add(cursor!);
+  } while(true);
+  expect(new Set(rows.map(row=>row.id)).size).toBe(rows.length);
+  const boundary=rows.findIndex(row=>row.pin===null);
+  // Pinned-first: no pinned row may follow the first unpinned row, whatever its display order.
+  expect(boundary===-1 || rows.slice(boundary).every(row=>row.pin===null)).toBe(true);
+  const pinned=rows.filter(row=>row.pin!==null);
+  expect(JSON.stringify(pinned.map(row=>row.pin.position))
+    ===JSON.stringify([...pinned.map(row=>row.pin.position)].sort((a:number,b:number)=>a-b))).toBe(true);
+  expect(pinned.every(row=>row.pin.collectionId===listId)).toBe(true);
+  expect(metadata!.eligiblePinCount).toBe(pinned.length);
+  expect(metadata!.eligibleItemCount).toBe(rows.length);
+  return {rows,pages,pinnedIds:pinned.map(row=>row.id as string),ids:rows.map(row=>row.id as string),metadata:metadata!};
+}
+
+/** Complete public child traversal through the actual server continuations only. */
+async function publicDetailSequence(slug:string,handle=manifest.personas.ownerA.handle) {
+  const ids:string[]=[],sizes:number[]=[],seen=new Set<string>();let cursor:string|null=null;
+  do {
+    const dto=await json(`${publicPath(slug,handle)}?limit=24${cursor?`&cursor=${encodeURIComponent(cursor)}`:''}`);
+    const row=dto.recommendationLists[0];expect(Array.isArray(row.recommended_places)).toBe(true);
+    ids.push(...row.recommended_places.map((place:Dto)=>place.documentId));sizes.push(row.recommended_places.length);
+    cursor=row.recommended_places_next_cursor;
+    if(cursor!==null) {
+      expect(typeof cursor==='string' && /^[-_A-Za-z0-9]+\.[-_A-Za-z0-9]{43}$/.test(cursor)).toBe(true);
+      expect(seen.has(cursor)).toBe(false);seen.add(cursor);
+    }
+    expect(sizes.length).toBeLessThanOrEqual(64);
+  } while(cursor);
+  expect(new Set(ids).size).toBe(ids.length);
+  return {ids,sizes,pages:sizes.length};
+}
+
+async function openPinsEditor(page:Page,list:Dto) {
+  await page.goto('/recommendations/places');
+  await page.getByText(list.title,{exact:true}).filter({visible:true}).first().click();
+  const open=page.getByRole('button',{name:'Edit pinned places',exact:true});
+  await expect(open).toBeEnabled();await open.click();
+  const dialog=page.getByRole('dialog',{name:'Pinned places in this list',exact:true});
+  await expect(dialog).toBeVisible();
+  // A configured policy is what makes Save reachable; unavailable keeps it absent.
+  await expect(dialog.getByRole('button',{name:'Save pins',exact:true})).toBeVisible();
+  return dialog;
+}
+const orderedPinRows=(dialog:Locator)=>dialog.getByRole('list',{name:'Ordered pinned places',exact:true}).locator('li');
+const pinnedNames=async(dialog:Locator)=>(await orderedPinRows(dialog).locator('span').allTextContents())
+  .map(text=>text.trim().replace(/^\d+\.\s*/,''));
+
+/** Click Pin in an explicit sequence so the staged order is the click order, never a sort. */
+async function stagePins(dialog:Locator,names:string[]) {
+  await dialog.getByRole('button',{name:'Clear all pins',exact:true}).click();
+  await expect(orderedPinRows(dialog)).toHaveCount(0);
+  for(const name of names) {
+    await dialog.getByRole('button',{name:`Pin ${name}`,exact:true}).click();
+    await expect(dialog.getByRole('button',{name:`Unpin ${name}`,exact:true})).toBeVisible();
+  }
+  expect(JSON.stringify(await pinnedNames(dialog))===JSON.stringify(names)).toBe(true);
+}
+
+/** Finite census of the actual pin request families; no bodies, keys or URLs retained. */
+function recordPinRequests(page:Page,listId:string) {
+  const counts={availability:0,replace:0,begin:0,chunk:0,commit:0,abort:0};
+  const chunkIndexes:number[]=[];
+  const prefix=`${base}/collections/${listId}/place-pins`;
+  const handler=(request:BrowserRequest)=>{
+    const {pathname}=new URL(request.url()),method=request.method();
+    if(!pathname.startsWith(prefix))return;
+    if(pathname===`${prefix}/availability` && method==='GET')counts.availability++;
+    else if(pathname===prefix && method==='PUT')counts.replace++;
+    else if(pathname===`${prefix}/drafts` && method==='POST')counts.begin++;
+    else if(method==='PUT' && /\/drafts\/[^/]+\/chunks\/(\d+)$/.test(pathname)) {
+      counts.chunk++;chunkIndexes.push(Number(pathname.match(/\/chunks\/(\d+)$/)![1]));
+    }
+    else if(method==='POST' && /\/drafts\/[^/]+\/commit$/.test(pathname))counts.commit++;
+    else if(method==='DELETE' && /\/drafts\/[^/]+$/.test(pathname))counts.abort++;
+  };
+  page.on('request',handler);
+  return ()=>{page.off('request',handler);return {counts,chunkIndexes};};
+}
+
+test('Places: additive pinned-first owner traversal and signed seek survive reload and list navigation',async ({page})=>{
+  const lists=aLists(),list=lists[0],other=lists[1];
+  await appPage(page,manifest.personas.ownerA);
+  const transport=await advertisedPinsTransport(list.id);
+  const before=await ownerListMembers(list.id);
+  // The uncapped per-list obligation: the advertised budget must admit the whole list.
+  expect(before.ids.length<=transport.replacementIds).toBe(true);
+  expect(before.pages>1).toBe(true); // a complete read, not one page of a bounded preview
+  const titleOf=new Map(manifest.recommendations.map(row=>[row.id,row.title]));
+  // Pin across the boundary: the last member first, then the first, then a middle one.
+  const chosen=[before.ids.at(-1)!,before.ids[0],before.ids[Math.floor(before.ids.length/2)]];
+  const names=chosen.map(id=>titleOf.get(id)!);
+  const dialog=await openPinsEditor(page,list);
+  await stagePins(dialog,names);
+  await dialog.getByRole('button',{name:'Save pins',exact:true}).click();
+  await expect(page.getByRole('dialog',{name:'Pinned places in this list',exact:true})).toHaveCount(0);
+  await expect.poll(async()=>JSON.stringify((await ownerListMembers(list.id)).pinnedIds)).toBe(JSON.stringify(chosen));
+  const after=await ownerListMembers(list.id);
+  expect(after.metadata.collectionRevision>before.metadata.collectionRevision).toBe(true);
+  same(after.ids.slice(0,chosen.length),chosen);
+  same([...after.ids].sort(),[...before.ids].sort()); // no member gained, lost or duplicated
+  expect(after.pages).toBe(before.pages);
+  await page.reload();
+  const reloaded=await openPinsEditor(page,list);
+  expect(JSON.stringify(await pinnedNames(reloaded))===JSON.stringify(names)).toBe(true);
+  await reloaded.getByRole('button',{name:'Close pinned places editor',exact:true}).click();
+  // Cross-page navigation must re-read the list, not reuse another list's pin state.
+  const otherDialog=await openPinsEditor(page,other);
+  expect((await pinnedNames(otherDialog)).length).toBe(0);
+  await otherDialog.getByRole('button',{name:'Close pinned places editor',exact:true}).click();
+  const back=await openPinsEditor(page,list);
+  expect(JSON.stringify(await pinnedNames(back))===JSON.stringify(names)).toBe(true);
+  same((await ownerListMembers(list.id)).pinnedIds,chosen);
+  same((await ownerListMembers(other.id)).pinnedIds,[]);
+});
+
+test('Places: additive public pinned pages omit private members and restart without mixed rows',async ({page,browser})=>{
+  const list=aLists()[0];
+  await appPage(page,manifest.personas.ownerA);
+  await advertisedPinsTransport(list.id);
+  const before=await ownerListMembers(list.id);
+  const titleOf=new Map(manifest.recommendations.map(row=>[row.id,row.title]));
+  const chosen=[before.ids.at(-1)!,before.ids[1],before.ids[0]];
+  const dialog=await openPinsEditor(page,list);
+  await stagePins(dialog,chosen.map(id=>titleOf.get(id)!));
+  await dialog.getByRole('button',{name:'Save pins',exact:true}).click();
+  await expect(page.getByRole('dialog',{name:'Pinned places in this list',exact:true})).toHaveCount(0);
+  await expect.poll(async()=>JSON.stringify((await ownerListMembers(list.id)).pinnedIds)).toBe(JSON.stringify(chosen));
+  const published=await publicDetailSequence(list.slug);
+  same(published.ids.slice(0,chosen.length),chosen);
+  expect(published.pages>1).toBe(true);
+  // Withdraw one pinned member. It must leave public order and public counts together.
+  const hidden=chosen[1],current=await editable('recommendations',hidden);
+  const withdraw=await api(`/recommendations/${hidden}`,manifest.personas.ownerA,'PATCH',
+    {expectedRevision:current.revision,publicationState:'draft'});
+  expect(withdraw.status).toBe(200);
+  const withheld=await publicDetailSequence(list.slug);
+  same(withheld.ids.slice(0,2),[chosen[0],chosen[2]]);
+  expect(withheld.ids.includes(hidden)).toBe(false);
+  expect(withheld.ids.length).toBe(published.ids.length-1);
+  // Owner retains the withdrawn pin; a public omission is not an unpin.
+  const withdrawn=await ownerListMembers(list.id);
+  expect(withdrawn.pinnedIds.includes(hidden)).toBe(true);
+  same(withdrawn.pinnedIds,chosen);
+  const retained=await editable('recommendations',hidden);
+  expect(retained.publicationState).toBe('draft');
+  // A continuation issued before the change cannot resume under the new tuple, and a
+  // legacy offset cursor cannot be translated into the pinned ordering either.
+  const firstPage=await json(`${publicPath(list.slug)}?limit=24`);
+  const stale=firstPage.recommendationLists[0].recommended_places_next_cursor as string|null;
+  expect(typeof stale==='string').toBe(true);
+  const republish=await api(`/recommendations/${hidden}`,manifest.personas.ownerA,'PATCH',
+    {expectedRevision:retained.revision,publicationState:'published'});
+  expect(republish.status).toBe(200);
+  const resumed=await api(`${publicPath(list.slug)}?limit=24&cursor=${encodeURIComponent(stale!)}`);
+  expect(resumed.status).toBe(409);
+  const legacy=await api(`${publicPath(list.slug)}?limit=24&cursor=o24`);
+  expect(legacy.status===400 || legacy.status===409).toBe(true); // rejected, never translated
+  const restarted=await publicDetailSequence(list.slug);
+  same(restarted.ids.slice(0,chosen.length),chosen);
+  expect(new Set(restarted.ids).size).toBe(restarted.ids.length);
+  const anon=await anonymous(browser);
+  try {
+    const detailPages=recordPublicPages(anon.page,publicPath(list.slug),true);
+    await anon.page.goto(`/${manifest.personas.ownerA.handle}/places/${list.slug}`);
+    const cards=anon.page.locator('button[aria-label^="Owned Place R"]');
+    await exhaustRendered(anon.page,cards,'places',24);
+    const rendered=await cards.evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label')));
+    expect(new Set(rendered).size).toBe(rendered.length); // restart cleared rows, never mixed them
+    same(rendered.slice(0,chosen.length),chosen.map(id=>titleOf.get(id)!));
+    const observed=await detailPages();
+    expect(observed.parseFailures).toBe(0);
+    await anon.page.goto(`/${manifest.personas.ownerA.handle}/places`);
+    await anon.page.goto(`/${manifest.personas.ownerA.handle}/places/${list.slug}`);
+    await expect(cards.first()).toHaveAttribute('aria-label',titleOf.get(chosen[0])!);
+    anon.transport.assertExpected();
+  } finally {await anon.context.close();}
+});
+
+test('Places: additive complete70 staged pin order commits in advertised chunks and replays a lost acknowledgement once',async ({page})=>{
+  const list=aLists()[0];
+  await appPage(page,manifest.personas.ownerA);
+  const transport=await advertisedPinsTransport(list.id);
+  const before=await ownerListMembers(list.id);
+  const total=before.ids.length;
+  // The acceptance fixture size for this case is the complete list; it is never a cap.
+  expect(total).toBe(before.metadata.eligibleItemCount);
+  expect(total<=transport.replacementIds).toBe(true);
+  expect(total>transport.transportChunkIds).toBe(true); // this case exists to exercise framing
+  const expectedChunks=Math.ceil(total/transport.transportChunkIds);
+  const titleOf=new Map(manifest.recommendations.map(row=>[row.id,row.title]));
+  const sequence=[...before.ids].reverse();
+  const dialog=await openPinsEditor(page,list);
+  const census=recordPinRequests(page,list.id);
+  let lost=false;
+  const commitPattern=new RegExp(`^${base}/collections/${list.id}/place-pins/drafts/[^/]+/commit$`);
+  const commitMatcher=(url:URL)=>commitPattern.test(url.pathname);
+  await page.route(commitMatcher,async route=>{
+    if(lost)return route.continue();
+    lost=true;
+    // The server commits; only the acknowledgement is lost, which is the real ambiguity.
+    await route.fetch();
+    await route.abort('connectionaborted');
+  });
+  try {
+    await stagePins(dialog,sequence.map(id=>titleOf.get(id)!));
+    await dialog.getByRole('button',{name:'Save pins',exact:true}).click();
+    const retry=dialog.getByRole('button',{name:'Retry save',exact:true});
+    await expect(retry).toBeVisible();
+    await expect(dialog.getByRole('alert')).toBeVisible();
+    expect(JSON.stringify(await pinnedNames(dialog))
+      ===JSON.stringify(sequence.map(id=>titleOf.get(id)!))).toBe(true); // draft retained
+    await retry.click();
+    await expect(page.getByRole('dialog',{name:'Pinned places in this list',exact:true})).toHaveCount(0);
+  } finally {await page.unroute(commitMatcher);}
+  const {counts,chunkIndexes}=census();
+  expect(counts.replace).toBe(0); // a staged sequence never falls back to a single replace
+  expect(counts.begin).toBe(1);
+  expect(counts.chunk).toBe(expectedChunks);
+  same(chunkIndexes,Array.from({length:expectedChunks},(_,index)=>index));
+  expect(counts.commit).toBe(2); // the lost acknowledgement and its one exact replay
+  expect(counts.abort).toBe(0);
+  const after=await ownerListMembers(list.id);
+  same(after.pinnedIds,sequence); // exact full order, no truncation at any chunk edge
+  expect(after.metadata.eligiblePinCount).toBe(total);
+  same([...after.ids].sort(),[...before.ids].sort());
+  await page.reload();
+  const reloaded=await openPinsEditor(page,list);
+  expect(JSON.stringify(await pinnedNames(reloaded))
+    ===JSON.stringify(sequence.map(id=>titleOf.get(id)!))).toBe(true);
+  const settled=await ownerListMembers(list.id);
+  same(settled.pinnedIds,sequence);
+  expect(settled.metadata.collectionRevision).toBe(after.metadata.collectionRevision); // replay, not a second commit
+});
+
+test('Places: additive complete70 resource refusal and session replacement keep the returned fence authoritative',async ({page})=>{
+  const list=aLists()[0];
+  await appPage(page,manifest.personas.ownerA);
+  const transport=await advertisedPinsTransport(list.id);
+  const before=await ownerListMembers(list.id);
+  const total=before.ids.length;
+  expect(total<=transport.replacementIds).toBe(true);
+  const titleOf=new Map(manifest.recommendations.map(row=>[row.id,row.title]));
+  const sequence=[...before.ids];
+  const dialog=await openPinsEditor(page,list);
+  await stagePins(dialog,sequence.map(id=>titleOf.get(id)!));
+  await dialog.getByRole('button',{name:'Save pins',exact:true}).click();
+  await expect(page.getByRole('dialog',{name:'Pinned places in this list',exact:true})).toHaveCount(0);
+  await expect.poll(async()=>JSON.stringify((await ownerListMembers(list.id)).pinnedIds)).toBe(JSON.stringify(sequence));
+  const committed=await ownerListMembers(list.id);
+  // Server resource refusal is authoritative and leaves the committed pins untouched.
+  // The refused size is derived from the advertised bound, never from a chosen number.
+  const oversized=Array.from({length:transport.replacementIds+1},(_,index)=>sequence[index%total]);
+  const refusedDuplicates=await api(`/collections/${list.id}/place-pins`,manifest.personas.ownerA,'PUT',
+    {expectedCollectionRevision:committed.metadata.collectionRevision,
+      expectedCategoryContentRevision:committed.metadata.categoryContentRevision,
+      orderedRecommendationIds:oversized});
+  expect(refusedDuplicates.status===400 || refusedDuplicates.status===413 || refusedDuplicates.status===422).toBe(true);
+  same((await ownerListMembers(list.id)).pinnedIds,sequence);
+  // A stale fence cannot overwrite the committed sequence either.
+  const stale=await api(`/collections/${list.id}/place-pins`,manifest.personas.ownerA,'PUT',
+    {expectedCollectionRevision:before.metadata.collectionRevision,
+      expectedCategoryContentRevision:before.metadata.categoryContentRevision,
+      orderedRecommendationIds:[sequence[0]]});
+  expect(stale.status).toBe(409);
+  same((await ownerListMembers(list.id)).pinnedIds,sequence);
+  // Session replacement in the same tab: the replaced owner must see no stale pin state,
+  // and the original owner's returned fence stays authoritative on reload.
+  const open=await openPinsEditor(page,list);
+  expect(JSON.stringify(await pinnedNames(open))
+    ===JSON.stringify(sequence.map(id=>titleOf.get(id)!))).toBe(true);
+  const b=manifest.personas.ownerB,split=b.cookie.indexOf('=');
+  await page.context().clearCookies();
+  await page.context().addCookies([{name:b.cookie.slice(0,split),value:b.cookie.slice(split+1),
+    url:fixture.origin,sameSite:'Lax',httpOnly:true}]);
+  await page.addInitScript(({userId,handle})=>localStorage.setItem('auth-storage',JSON.stringify({state:{
+    isAuthenticated:true,token:'places-fixture-placeholder',user:{id:userId,documentId:userId,username:handle,
+      email:`${userId}@example.invalid`,blocked:false}},version:0})),{userId:b.userId,handle:b.handle});
+  await page.reload();
+  await page.goto('/recommendations/places');
+  for(const title of sequence.slice(0,3).map(id=>titleOf.get(id)!))
+    await expect(page.getByText(title,{exact:true})).toHaveCount(0);
+  expect((await api(`/collections/${list.id}/place-pins/availability`,b)).status).toBe(404);
+  same((await ownerListMembers(list.id)).pinnedIds,sequence);
+  // Back to the original owner: the committed fence, not the replaced session, decides.
+  await page.context().clearCookies();
+  const a=manifest.personas.ownerA,aSplit=a.cookie.indexOf('=');
+  await page.context().addCookies([{name:a.cookie.slice(0,aSplit),value:a.cookie.slice(aSplit+1),
+    url:fixture.origin,sameSite:'Lax',httpOnly:true}]);
+  await page.addInitScript(({userId,handle})=>localStorage.setItem('auth-storage',JSON.stringify({state:{
+    isAuthenticated:true,token:'places-fixture-placeholder',user:{id:userId,documentId:userId,username:handle,
+      email:`${userId}@example.invalid`,blocked:false}},version:0})),{userId:a.userId,handle:a.handle});
+  await page.reload();
+  const restored=await openPinsEditor(page,list);
+  expect(JSON.stringify(await pinnedNames(restored))
+    ===JSON.stringify(sequence.map(id=>titleOf.get(id)!))).toBe(true);
+  const settled=await ownerListMembers(list.id);
+  same(settled.pinnedIds,sequence);
+  expect(settled.metadata.collectionRevision).toBe(committed.metadata.collectionRevision);
+});
