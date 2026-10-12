@@ -1,6 +1,17 @@
 import {it,expect,vi} from 'vitest';
 import {publicGamesProjection,discardGamePublicResult,gamePublicBudgetSnapshot,createGamePublicExecutor,runGamePublicRead} from '../publicProfile/publicGamesProjection';
 import {PublicProfileService} from '../publicProfile/publicProfileService';
+import {SqlStatementRecorder} from './helpers/sqlStatementRecorder';
+import {gamesPublicRules,gamesPublicStructural,gamesNativeReply} from './helpers/publicGamesStatementRules';
+/**
+ * Every Games query mock below was keyed on the `SELECT a.id,a.handle` prefix of the
+ * public account scope SELECT list - the exact shape that went vacuous in 343df2dd, and
+ * a SELECT list shared verbatim by nine projection files. They are now keyed on
+ * FROM/JOIN/WHERE structure (see helpers/publicGamesStatementRules.ts) and guarded:
+ * `recorder.assertExercised` fails if any structural statement reached the `[]`
+ * fallback, or if the scope read was never actually answered.
+ */
+function gamesRecorder(){return new SqlStatementRecorder(gamesPublicRules,gamesPublicStructural);}
 it('bounds queued callers at32 and starts FIFO only after actual settlement',async()=>{
  const order:string[]=[],settlers:Array<()=>void>=[];
  const executor=createGamePublicExecutor(undefined,async(_dependency,input)=>{order.push(input.username);await new Promise<void>(resolve=>settlers.push(resolve));return undefined;});
@@ -63,7 +74,8 @@ it('keeps result memory across a caller deadline until noncooperative fresh auth
  vi.useFakeTimers();let settle:(value:any)=>void=()=>{};let result:unknown;
  try{
   const id='00000000-0000-4000-8000-000000000001';
-  const query=vi.fn(async(sql:string)=>nativeReply(sql,sql.includes('SELECT a.id,a.handle')?[{id,handle:'owner',account_revision:'1',content_revision:'1'}]:[]));
+  const seen=gamesRecorder();
+  const query=vi.fn(async(sql:string)=>{const kind=seen.kind(sql);return gamesNativeReply(sql,kind,seen.serve(kind,kind==='scope'?[{id,handle:'owner',account_revision:'1',content_revision:'1'}]:[]));});
   const pool={query,connect:vi.fn(async()=>({query,release:vi.fn()}))};
   let calls=0;const pending=new Promise(resolve=>{settle=resolve;});
   const service=new PublicProfileService({resolveAccount:async()=>++calls===1?{documentId:id,public_profile:'Yes',public_games:'Yes'}:pending as any,resolveCategory:async(_u,_c,_l,_cursor,operation)=>result=await publicGamesProjection(pool as any,'owner',12,undefined,undefined,'test-only-'.repeat(5),operation),resolveDetail:async()=>undefined});
@@ -72,20 +84,24 @@ it('keeps result memory across a caller deadline until noncooperative fresh auth
   expect(gamePublicBudgetSnapshot()).toEqual({active:1,callers:1,memory:24*1024*1024});
   settle({documentId:id,public_profile:'Yes',public_games:'No'});await vi.advanceTimersByTimeAsync(0);
   expect(gamePublicBudgetSnapshot()).toEqual({active:0,callers:0,memory:0});
+  seen.assertExercised([],['scope']);
  }finally{settle(undefined);discardGamePublicResult(result);vi.useRealTimers();}
 });
 it('discards a charged Games result when fresh public authorization changes after composition',async()=>{
  const id='00000000-0000-4000-8000-000000000001';
- const query=vi.fn(async(sql:string)=>nativeReply(sql,sql.includes('SELECT a.id,a.handle')?[{id,handle:'owner',account_revision:'1',content_revision:'1'}]:[]));
+ const seen=gamesRecorder();
+ const query=vi.fn(async(sql:string)=>{const kind=seen.kind(sql);return gamesNativeReply(sql,kind,seen.serve(kind,kind==='scope'?[{id,handle:'owner',account_revision:'1',content_revision:'1'}]:[]));});
  const pool={query,connect:vi.fn(async()=>({query,release:vi.fn()}))};
  let result:unknown;let calls=0;const service=new PublicProfileService({resolveAccount:async()=>({documentId:id,public_profile:'Yes',public_games:++calls===1?'Yes':'No'}),resolveCategory:async(_u,_c,_l,_cursor,operation)=>result=await publicGamesProjection(pool as any,'owner',12,undefined,undefined,'test-only-'.repeat(5),operation),resolveDetail:async()=>undefined});
- try{expect(await service.category('owner','games',12)).toBeUndefined();expect(gamePublicBudgetSnapshot()).toEqual({active:0,callers:0,memory:0});}finally{discardGamePublicResult(result);}
+ try{expect(await service.category('owner','games',12)).toBeUndefined();expect(gamePublicBudgetSnapshot()).toEqual({active:0,callers:0,memory:0});seen.assertExercised([],['scope']);}finally{discardGamePublicResult(result);}
 });
 it('charges completed real result custody until its consumer discards it exactly once',async()=>{
  const id='00000000-0000-4000-8000-000000000001';
- const query=vi.fn(async(sql:string)=>nativeReply(sql,sql.includes('SELECT a.id,a.handle')?[{id,handle:'owner',account_revision:'1',content_revision:'1'}]:[]));
+ const seen=gamesRecorder();
+ const query=vi.fn(async(sql:string)=>{const kind=seen.kind(sql);return gamesNativeReply(sql,kind,seen.serve(kind,kind==='scope'?[{id,handle:'owner',account_revision:'1',content_revision:'1'}]:[]));});
  const pool={query,connect:vi.fn(async()=>({query,release:vi.fn()}))};
  const result=await publicGamesProjection(pool as any,'owner',12,undefined,undefined,'test-only-'.repeat(5));
+ seen.assertExercised([],['scope']);
  try{expect(gamePublicBudgetSnapshot()).toEqual({active:1,callers:1,memory:24*1024*1024});}
  finally{discardGamePublicResult(result);discardGamePublicResult(result);}
  expect(gamePublicBudgetSnapshot()).toEqual({active:0,callers:0,memory:0});
@@ -93,9 +109,12 @@ it('charges completed real result custody until its consumer discards it exactly
 it('category24 retains a signed list preview12 and does not confuse its continuation limit',async()=>{
  const id='00000000-0000-4000-8000-000000000001',collection='00000000-0000-4000-8000-000000000002';
  const rows=Array.from({length:13},(_,index)=>({id:`00000000-0000-4000-8000-${String(index+10).padStart(12,'0')}`,entity_id:id,account_id:id,collection_id:collection,collection_title:'Games',collection_slug:'games',user_rating:null,note:null,display_values:null,canonical_title:'Manual',title_bytes:8,note_bytes:0,override_bytes:0,display_order:index,pin_order:null}));
- const query=vi.fn(async(sql:string)=>nativeReply(sql,sql.includes('SELECT a.id,a.handle')?[{id,handle:'owner',account_revision:'1',content_revision:'1'}]:sql.includes('SELECT c.id,CASE')?[{id:collection,title:'Games',description:null,slug:'games',heading:null,display_order:0,cover_media_id:null,revision:'1',item_bytes:40}]:sql.includes('SELECT r.id,ci.collection_id')?rows:sql.includes('SELECT e.origin')?[{origin:'manual',kind:'game'}]:[]));
+ const seen=gamesRecorder();
+ const reply:Record<string,any[]>={scope:[{id,handle:'owner',account_revision:'1',content_revision:'1'}],lists:[{id:collection,title:'Games',description:null,slug:'games',heading:null,display_order:0,cover_media_id:null,revision:'1',item_bytes:40}],children:rows,manualOrigin:[{origin:'manual',kind:'game'}]};
+ const query=vi.fn(async(sql:string)=>{const kind=seen.kind(sql);return gamesNativeReply(sql,kind,seen.serve(kind,reply[kind??'']??[]));});
  const pool={query,connect:vi.fn(async()=>({query,release:vi.fn()}))};
  const result=await publicGamesProjection(pool as any,'owner',24,undefined,undefined,'test-only-'.repeat(5)) as any;
+ seen.assertExercised(['hero','manualMedia'],['scope','lists','children','manualOrigin']);
  expect(result.gameLists[0].recommendations).toHaveLength(12);
  expect(result.gameLists[0].nextCursor).toEqual(expect.any(String));
  const payload=JSON.parse(Buffer.from(result.gameLists[0].nextCursor.split('.')[0],'base64url').toString('utf8'));
@@ -105,19 +124,22 @@ it('category24 retains a signed list preview12 and does not confuse its continua
 });
 it('returns actual native Games collections rather than a successful empty compatibility response',async()=>{
  const id='00000000-0000-4000-8000-000000000001';
- const query=vi.fn(async(sql:string)=>nativeReply(sql,sql.includes('SELECT a.id,a.handle')?[{id,handle:'owner',account_revision:'1',content_revision:'1'}]:sql.includes('SELECT c.id,CASE')?[{id,title:'Games',description:null,slug:'games',heading:null,display_order:0,cover_media_id:null,revision:'1',item_bytes:40}]:[]));
+ const seen=gamesRecorder();
+ const reply:Record<string,any[]>={scope:[{id,handle:'owner',account_revision:'1',content_revision:'1'}],lists:[{id,title:'Games',description:null,slug:'games',heading:null,display_order:0,cover_media_id:null,revision:'1',item_bytes:40}]};
+ const query=vi.fn(async(sql:string)=>{const kind=seen.kind(sql);return gamesNativeReply(sql,kind,seen.serve(kind,reply[kind??'']??[]));});
  const pool={query,connect:vi.fn(async()=>({query,release:vi.fn()}))};
  const result=await publicGamesProjection(pool as any,'owner',24,undefined,undefined,'test-only-'.repeat(5));
+ seen.assertExercised(['children','hero'],['scope','lists']);
  expect(result).toMatchObject({version:'explorers-manual-games-page/v1',gameLists:[{id,title:'Games',slug:'games',recommendations:[],nextCursor:null}],nextCursor:null});
  discardGamePublicResult(result);
 });
 it('projects an eligible empty manual Games scope without a provider or fabricated rows',async()=>{
  const scope={id:'00000000-0000-4000-8000-000000000001',handle:'owner',account_revision:'1',content_revision:'1'};
- const query=vi.fn(async(sql:string)=>nativeReply(sql,sql.includes('SELECT a.id,a.handle')?[scope]:[]));
+ const seen=gamesRecorder();
+ const query=vi.fn(async(sql:string)=>{const kind=seen.kind(sql);return gamesNativeReply(sql,kind,seen.serve(kind,kind==='scope'?[scope]:[]));});
  const release=vi.fn();const pool={query,connect:vi.fn(async()=>({query,release}))};
  const result=await publicGamesProjection(pool as any,'owner',12,undefined,undefined,'test-only-'.repeat(5));
+ seen.assertExercised(['lists','hero'],['scope']);
  expect(result).toEqual({version:'explorers-manual-games-page/v1',gameLists:[],topPicks:[],nextCursor:null});discardGamePublicResult(result);
  expect(release).toHaveBeenCalledTimes(1);
 });
-
-function nativeReply(sql:string,rows:any[]){return {rows:sql.startsWith('WITH candidate')?rows.map(row=>({payload:row,batch_bytes:String(Buffer.byteLength(JSON.stringify(rows))),batch_count:rows.length,batch_invalid:false})):rows,rowCount:rows.length};}

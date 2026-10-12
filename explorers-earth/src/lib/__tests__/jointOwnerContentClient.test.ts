@@ -12,22 +12,72 @@ const snapshot=()=>({version:'explorers-owner-content/v2',snapshotToken:'shared-
 const page=(items:unknown[],nextCursor:string|null=null)=>({version:'explorers-owner-content/v2',snapshotToken:'shared-token',snapshot:'7',expiresAt,items,nextCursor});
 const response=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status});
 type Hook=(stream:string,cursor:string|null,body:any,u:URL)=>Response|undefined|Promise<Response|undefined>;
+/**
+ * Transport-side vacuity guard, the `SqlStatementRecorder` pattern
+ * (tunes/server/test/helpers/sqlStatementRecorder.ts) applied to streams instead of
+ * statements: every stream the client asks for must match a named branch, and the
+ * branches that must actually answer are counted.
+ *
+ * What was missing here was not a wrong envelope - it was the absence of a fence. The
+ * mock built `let body=snapshot()` as a CATCH-ALL default and only overrode it for
+ * collections/recommendations/memberships, so `validate` was answered by an unnamed
+ * fallthrough. That fallthrough happened to be correct, because `getSnapshot` and
+ * `validateSnapshot` both return `ownerSnapshotSchema`
+ * (tunes/server/application/ownerContent.ts:128 and :135) - the two envelopes are
+ * identical by contract. But the same catch-all would have answered ANY other stream
+ * with a snapshot envelope just as silently: `top-picks`
+ * (explorersApiClient.ts:297, reached via getCompleteMyCategoryTopPicks) is one request
+ * away, and it expects `ownerTopPickPageSchema`. `STREAMS` turns the default into an
+ * allowlist so that lands as a named failure instead of a shrug.
+ */
+const STREAMS=['content-snapshot','validate','collections','recommendations','memberships'] as const;
+class StreamRecorder {
+  readonly served:Record<string,number>={};
+  readonly unmatched:string[]=[];
+  armed=false;
+  classify(stream:string):typeof STREAMS[number]|undefined {
+    const hit=STREAMS.find(known=>known===stream);
+    if(!hit) {this.unmatched.push(stream);return undefined;}
+    this.served[hit]=(this.served[hit]??0)+1;return hit;
+  }
+  assertExercised(withResponses:string[]=[]) {
+    expect(this.unmatched,'streams that reached the unkeyed fallback').toEqual([]);
+    for(const stream of withResponses) expect(this.served[stream]??0,`stream '${stream}' was never served`).toBeGreaterThan(0);
+  }
+}
+let streams=new StreamRecorder();
 function server(hook?:Hook,lists=27,children=53) {
+  streams=new StreamRecorder();streams.armed=true;
   vi.stubGlobal('fetch',async(url:string)=>{
     const u=new URL(url,'http://localhost'),stream=u.pathname.split('/').at(-1)!,cursor=u.searchParams.get('cursor');
     if(stream!=='content-snapshot') expect(u.searchParams.get('snapshotToken')).toBe('shared-token');
-    let body:any=snapshot();
-    if(['collections','recommendations','memberships'].includes(stream)) {
-      if(stream==='collections') expect(u.searchParams.get('status')).toBe('all');
-      if(stream==='memberships') expect(u.searchParams.get('collectionStatus')).toBe('all');
-      const offset=cursor?Number(cursor.split('-').at(-1)):0,total=stream==='collections'?lists:children;
-      body=page(Array.from({length:Math.min(24,total-offset)},(_,n)=>stream==='collections'?collection(offset+n):stream==='recommendations'?child(offset+n):membership(offset+n)),offset+24<total?`${stream}-${offset+24}`:null);
+    let body:any;
+    switch(streams.classify(stream)) {
+      case 'content-snapshot':body=snapshot();break;
+      // The final validation envelope IS the snapshot envelope - both endpoints parse
+      // ownerSnapshotSchema - so this branch returns the same shape deliberately
+      // rather than by falling through. A future divergence breaks here, by name.
+      case 'validate':body=snapshot();break;
+      case 'collections':case 'recommendations':case 'memberships':{
+        if(stream==='collections') expect(u.searchParams.get('status')).toBe('all');
+        if(stream==='memberships') expect(u.searchParams.get('collectionStatus')).toBe('all');
+        const offset=cursor?Number(cursor.split('-').at(-1)):0,total=stream==='collections'?lists:children;
+        body=page(Array.from({length:Math.min(24,total-offset)},(_,n)=>stream==='collections'?collection(offset+n):stream==='recommendations'?child(offset+n):membership(offset+n)),offset+24<total?`${stream}-${offset+24}`:null);
+        break;
+      }
     }
     return await hook?.(stream,cursor,body,u)??response(body);
   });
 }
-beforeEach(()=>{expiresAt=expiry();useAuthStore.setState({generation:10,accountId,isAuthenticated:true});});
-afterEach(()=>vi.unstubAllGlobals());
+beforeEach(()=>{expiresAt=expiry();streams=new StreamRecorder();useAuthStore.setState({generation:10,accountId,isAuthenticated:true});});
+afterEach(()=>{
+  // Blanket vacuity fence over every test in this file, including the ones that stub
+  // fetch directly: no stream may be answered by an unnamed branch, and any test that
+  // armed the fixture must at least have been asked for the opening snapshot.
+  const armed=streams.armed;const recorded=streams;streams=new StreamRecorder();
+  vi.unstubAllGlobals();
+  recorded.assertExercised(armed?['content-snapshot']:[]);
+});
 it('joins 27 lists, 53 children and the late pin at one validated immutable revision',async()=>{
   server();const value=await explorersApiClient.getCompleteMyCategoryContent({category:'books'});
   expect(value.collections).toHaveLength(27);expect(value.recommendations).toHaveLength(53);expect(value.memberships).toHaveLength(53);
@@ -35,10 +85,12 @@ it('joins 27 lists, 53 children and the late pin at one validated immutable revi
   expect(Object.isFrozen(value.recommendations[52].pin)).toBe(true);expect(Object.isFrozen(value.collections[0])).toBe(true);
   expect(()=>assertCompleteMyCategoryContent({...value})).toThrow();
   expect(()=>assertCompleteMyCategoryContent({complete:true,items:[]} as any)).toThrow();
+  streams.assertExercised(['content-snapshot','collections','recommendations','memberships','validate']);
 });
 it.each(['recommendations','validate'])('rejects a committed change before %s and grants no joint marker',async(stream)=>{
   server((s)=>s===stream?response({error:{code:'CONFLICT',message:'Changed'}},409):undefined);
   await expect(explorersApiClient.getCompleteMyCategoryContent({category:'books'})).rejects.toMatchObject({status:409});
+  streams.assertExercised([stream]);
 });
 it.each(['collections','recommendations','memberships'])('rejects %s page two failure and retries the entire snapshot',async(stream)=>{
   let failed=true;server((s,c)=>s===stream&&c&&failed?response({error:{code:'UNAVAILABLE'}},503):undefined);
@@ -78,6 +130,10 @@ it.each(['duplicate','collection-duplicate','recommendation-duplicate','cursor',
 it.each(['revision','snapshotToken','expiresAt','pinRevision'])('rejects mismatched final validation %s',async(key)=>{
   server((s,_c,b)=>s==='validate'?response({...b,[key]:key==='revision'?'8':key==='snapshotToken'?'other':key==='expiresAt'?expiresAt+1:2}):undefined);
   await expect(explorersApiClient.getCompleteMyCategoryContent({category:'books'})).rejects.toMatchObject({code:'INVALID_OWNER_CONTENT'});
+  // Only reachable because `validate` is a named branch handing back a real validate
+  // envelope: the hook mutates one field of it, so an empty or wrong-shaped answer
+  // would fail parsing for the wrong reason instead of failing the comparison.
+  streams.assertExercised(['validate']);
 });
 it('rejects an actual individual collector result as category writer authority',async()=>{
   vi.stubGlobal('fetch',async()=>response(page([collection(0)])));

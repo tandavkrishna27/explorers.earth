@@ -1,5 +1,6 @@
 import {it,expect} from 'vitest';
 import {PUBLIC_PARITY_CASES,PUBLIC_PARITY_PROJECTS,buildPublicParitySeedPlan,publicParityManifestSchema} from '../../../scripts/public-parity-browser-support';
+import {SqlStatementRecorder,isPublicAccountScope,isTransactionControl} from '../helpers/sqlStatementRecorder';
 it('preserves exact source identities and deterministic complete ordered positive sets',()=>{
  expect(PUBLIC_PARITY_CASES).toHaveLength(16);
  expect(PUBLIC_PARITY_PROJECTS).toEqual(['public-parity-desktop','public-parity-mobile']);
@@ -71,13 +72,29 @@ it('matches actual public Guides response windows when request limit is 24',asyn
  const seed=guides.items.filter(i=>i.control===null&&i.collectionKey===guides.targetCollectionKey);
  const observed={id:'fixture-account',handle:'public-parity-a',account_revision:'1',content_revision:'1'};
  const requests:number[][]=[];
+ /**
+  * Structural keys, not SELECT-list prefixes. `SELECT a.id,a.handle` is the public
+  * account-scope SELECT list shared by nine projection files; keying on it is how
+  * 343df2dd silently emptied a Places mock. The scope read is keyed on
+  * creator_accounts + the guides category-settings join + `a.handle_key=lower($1)`, and
+  * the guide list on `FROM collections c` + `c.category='guides'`. The recorder's
+  * `unmatched` makes any structural statement that reaches the `[]` fallback fatal, and
+  * the positive counters make an empty answer on either read fatal too - without them
+  * the pagination assertions below could pass over an empty projection.
+  */
+ const seen=new SqlStatementRecorder({
+  sections:sql=>sql.includes('FROM guide_sections'),
+  scope:sql=>isPublicAccountScope(sql,'guides'),
+  guideList:sql=>sql.includes('FROM collections c')&&sql.includes("c.category='guides'"),
+ },sql=>!isTransactionControl(sql)&&/FROM (creator_accounts a|collections c|guide_sections gs)\b/.test(sql));
  const query=async(sql:string,parameters?:unknown[])=>{
-  if(sql.includes('FROM guide_sections')){
+  const kind=seen.kind(sql);
+  if(kind==='sections'){
    const limit=Number(parameters![2]),offset=Number(parameters![3]);requests.push([limit,offset]);
-   return {rows:seed.slice(offset,offset+limit).map(i=>({id:i.key,title:i.title,description:null,display_order:i.displayOrder,block_version:'guide-section-blocks/v1',blocks:i.details}))};
+   return {rows:seen.serve(kind,seed.slice(offset,offset+limit).map(i=>({id:i.key,title:i.title,description:null,display_order:i.displayOrder,block_version:'guide-section-blocks/v1',blocks:i.details})))};
   }
-  if(sql.includes('SELECT a.id,a.handle'))return {rows:[observed]};
-  if(sql.includes('c.id,c.title'))return {rows:[{id:guides.targetCollectionKey,title:'Fixture guide',slug:'guides-list-0',pin_order:null,estimated_budget:null}]};
+  if(kind==='scope')return {rows:seen.serve(kind,[observed])};
+  if(kind==='guideList')return {rows:seen.serve(kind,[{id:guides.targetCollectionKey,title:'Fixture guide',slug:'guides-list-0',pin_order:null,estimated_budget:null}])};
   return {rows:[]};
  };
  const pool={query,connect:async()=>({query,release:()=>{}})};
@@ -93,6 +110,7 @@ it('matches actual public Guides response windows when request limit is 24',asyn
  expect(cursors).toEqual(['o12','o24','o36','o48',null]);
  expect(ids).toEqual(seed.map(i=>i.key));
  expect(requests).toEqual([[13,0],[13,12],[13,24],[13,36],[13,48]]);
+ seen.assertExercised([],['scope','guideList','sections']);
  expect(guides.traversal.explicitApiDetail).toEqual({requestLimit:24,limit:12,offsets:[0,12,24,36,48],lengths,cursorKind:'offset'});
 });
 

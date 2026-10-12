@@ -70,6 +70,31 @@ it('installed pg queue physically submits its two accepted logical requests in t
 });
 import {publicPlacesProjection} from '../../publicProfile/publicPlacesProjection';
 import {createReaderLeaseAdapter} from '../helpers/placesReaderAcceptanceFixture';
+import {SqlStatementRecorder,isPublicAccountScope,isTransactionControl} from '../helpers/sqlStatementRecorder';
+/**
+ * Structural keys for the mounted compatibility read. Three of these statements carry a
+ * production `/* ... *\/` statement marker, which is the most stable key available; the
+ * rest are keyed on FROM/WHERE structure and must additionally be UNMARKED, because the
+ * marked variants read the same tables with the same predicates and would otherwise
+ * over-match. The previous keys were SELECT-list prefixes, one of them the exact
+ * `SELECT c.id,c.revision::text AS collection_revision` fragment commit 343df2dd
+ * introduced - one more column away from matching nothing at all.
+ */
+const unmarked=(sql:string)=>!/^\s*\/\*/.test(sql);
+const placesCompatRules={
+ aggregate:(sql:string)=>sql.includes('/* public_places_eligibility_aggregate */'),
+ currentList:(sql:string)=>sql.includes('/* public_places_current_list */'),
+ currentEligibility:(sql:string)=>sql.includes('/* public_places_current_eligibility */'),
+ placesScope:(sql:string)=>isPublicAccountScope(sql,'places'),
+ collectionList:(sql:string)=>unmarked(sql)&&sql.includes('FROM collections c')&&sql.includes("c.category='places'"),
+ items:(sql:string)=>unmarked(sql)&&sql.includes('FROM collection_items ci')&&sql.includes("c.category='places'"),
+ entity:(sql:string)=>sql.includes('FROM entities e')&&sql.includes('place_entity_details'),
+ entityBounds:(sql:string)=>sql.includes('FROM place_entity_details d'),
+};
+/** Statements over the tables this mock answers for: reaching the `[]` fallback is vacuity. */
+const placesCompatStructural=(sql:string)=>!isTransactionControl(sql)&&(
+ /FROM collection_items ci\b/.test(sql)||/FROM collections c\b/.test(sql)
+ ||/FROM entities e LEFT JOIN place_entity_details/.test(sql)||isPublicAccountScope(sql,'places'));
 function mountedCompat(admitted:()=>boolean){
  const declarations:ts.FunctionDeclaration[]=[];function visit(n:ts.Node){if(ts.isFunctionDeclaration(n)&&['p2ReaderPool','p2Compat'].includes(n.name?.text??''))declarations.push(n);ts.forEachChild(n,visit);}visit(ast);expect(declarations).toHaveLength(2);
  const code=ts.transpileModule(declarations.map(n=>n.getText(ast)).join('\n'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}}).outputText;
@@ -77,20 +102,26 @@ function mountedCompat(admitted:()=>boolean){
 }
 for(const empty of [true,false])for(const raced of [false,true])it(`actual mounted compatibility preserves retained scope protocol for ${empty?'empty':'populated'} list ${raced?'raced':'stable'} validation`,async()=>{
  const list='00000000-0000-0000-0000-000000000001',account='00000000-0000-0000-0000-000000000002',recommendation='00000000-0000-0000-0000-000000000003',entity='00000000-0000-0000-0000-000000000004';let releases=0,aggregates=0,barriers=0;
+ const seen=new SqlStatementRecorder(placesCompatRules,placesCompatStructural);
  const lease={release:()=>releases++,query:async(text:string)=>{
-  let rows:any[]=[];
-  if(text.includes('public_places_eligibility_aggregate')){aggregates++;rows=[{item_count:String((empty?0:1)+(raced&&aggregates===2?1:0)),pin_count:'0',lane_0:'0',lane_1:'0',lane_2:'0',lane_3:'0'}];}
-  else if(text.includes('public_places_current_eligibility'))rows=empty?[]:[{id:recommendation,entity_id:entity,collection_id:list}];
-  else if(text.startsWith('SELECT r.id,r.account_id'))rows=empty?[]:[{id:recommendation,account_id:account,entity_id:entity,entity_kind:'place',note:null,note_bytes:0,override_bytes:0,display_order:0,pin_order:null,pin_bucket:1,sort_position:0,collection_id:list,collection_title:'Inert',collection_slug:'inert-list'}];
-  else if(text.startsWith('SELECT e.id,e.kind,e.title,e.origin'))rows=[{id:entity,kind:'place',title:'Inert place',origin:'manual'}];
-  else if(text.includes('public_places_current_list'))rows=[{id:list,collection_revision:'1',category_revision:'1'}];
-  else if(text.includes("s.category='places'"))rows=[{id:account,handle:'inert',account_revision:'1',content_revision:'1'}];
-  else if(text.startsWith('SELECT c.id,c.revision::text AS collection_revision'))rows=[{id:list,collection_revision:'1',title:'Inert',description:null,slug:'inert-list',heading:null,display_order:0,cover_media_id:null}];
-  return {rows,command:text.split(' ')[0]};
+  let rows:any[]=[];const kind=seen.kind(text);
+  if(kind==='aggregate'){aggregates++;rows=[{item_count:String((empty?0:1)+(raced&&aggregates===2?1:0)),pin_count:'0',lane_0:'0',lane_1:'0',lane_2:'0',lane_3:'0'}];}
+  else if(kind==='currentEligibility')rows=empty?[]:[{id:recommendation,entity_id:entity,collection_id:list}];
+  else if(kind==='items')rows=empty?[]:[{id:recommendation,account_id:account,entity_id:entity,entity_kind:'place',note:null,note_bytes:0,override_bytes:0,display_order:0,pin_order:null,pin_bucket:1,sort_position:0,collection_id:list,collection_title:'Inert',collection_slug:'inert-list'}];
+  else if(kind==='entity')rows=[{id:entity,kind:'place',title:'Inert place',origin:'manual'}];
+  else if(kind==='currentList')rows=[{id:list,collection_revision:'1',category_revision:'1'}];
+  else if(kind==='placesScope')rows=[{id:account,handle:'inert',account_revision:'1',content_revision:'1'}];
+  else if(kind==='collectionList')rows=[{id:list,collection_revision:'1',title:'Inert',description:null,slug:'inert-list',heading:null,display_order:0,cover_media_id:null}];
+  return {rows:seen.serve(kind,rows),command:text.split(' ')[0]};
  }};
  const adapter=createReaderLeaseAdapter(lease,async()=>{barriers++;expect(adapter.status()).toMatchObject({begins:1,commits:1,logicalReleases:1,physicalReleases:0,transaction:false});},()=>true);
  const compat=mountedCompat(()=>true),operation=compat({handle:'inert',list,lists:[list],slugs:['inert-list']},24,undefined,list,adapter.pool);
  if(raced){const {PublicPlaceRestartConflict}=await import('../../application/placePinsRead');await expect(operation).rejects.toBeInstanceOf(PublicPlaceRestartConflict);}else {const places=(await operation).recommendationLists[0].recommended_places;expect(places).toHaveLength(empty?0:1);if(!empty)expect(places[0].documentId).toBe(recommendation);}
+ // Vacuity guard. `entity` and `items` had no downstream assertion that would notice a
+ // missing row in the empty case, and both were keyed on SELECT-list prefixes; the guard
+ // now fails if any structural Places statement reached the `[]` fallback, and requires
+ // rows on every key whose emptiness the assertions above cannot see.
+ seen.assertExercised([],['placesScope','collectionList','aggregate','currentList',...(empty?[]:['items','entity']),...(empty||raced?[]:['currentEligibility'])]);
  expect(barriers).toBe(1);expect(aggregates).toBe(2);adapter.finish();expect(releases).toBe(1);expect(adapter.status()).toMatchObject({logicalReleases:2,physicalReleases:1,transaction:false,connected:false,busy:false});
 });
 

@@ -7,6 +7,8 @@ import {editableOwnerRecommendationSchema} from '../../../shared/explorersOwnerC
 import {readManualGamePresentation} from '../../repositories/gameManualRepository';
 import {publicRecommendationDetailSchema} from '../../../shared/explorersPublicContentContract';
 import {decisionForRoute} from '../../policies/musicSurfacePolicy';
+import {SqlStatementRecorder} from '../helpers/sqlStatementRecorder';
+import {gamesPublicRules,gamesPublicStructural,gamesNativeReply} from '../helpers/publicGamesStatementRules';
 
 describe('Games manual native boundaries',()=>{
  it('admits exact paired membership methods/source only and denies ALL and invented methods',()=>{
@@ -68,7 +70,8 @@ describe('Games manual native boundaries',()=>{
   it(`${method} does not return cached Games rows after privacy is revoked`,async()=>{
    let visible=true;
    const resolveAccount=vi.fn(async()=>({documentId:id,public_profile:'Yes',public_games:visible?'Yes':'No'}));
-   const query=vi.fn(async(sql:string)=>nativeReply(sql,sql.includes('SELECT a.id,a.handle')?[{id,handle:'owner',account_revision:'1',content_revision:'1'}]:[]));
+   const seen=new SqlStatementRecorder(gamesPublicRules,gamesPublicStructural);
+   const query=vi.fn(async(sql:string)=>{const kind=seen.kind(sql);return gamesNativeReply(sql,kind,seen.serve(kind,kind==='scope'?[{id,handle:'owner',account_revision:'1',content_revision:'1'}]:[]));});
    const pool={query,connect:async()=>({query,release:vi.fn()})};
    const resolveCategory=vi.fn(async(_u:any,_c:any,_l:any,_cursor:any,operation:any)=>publicGamesProjection(pool as any,'owner',12,undefined,undefined,'test-only-'.repeat(5),operation));
    const resolveDetail=vi.fn(async(_u:any,_c:any,_slug:any,_l:any,_cursor:any,operation:any)=>publicGamesProjection(pool as any,'owner',12,undefined,undefined,'test-only-'.repeat(5),operation));
@@ -78,8 +81,12 @@ describe('Games manual native boundaries',()=>{
    expect(await read()).toBeUndefined();
    expect(resolveAccount.mock.calls.length).toBeGreaterThanOrEqual(3);
    expect((method==='category'?resolveCategory:resolveDetail).mock.calls).toHaveLength(1);
+   // Vacuity guard: the scope read must actually have been answered, and no structural
+   // Games statement may have reached the mock's `[]` fallback. Without this, a column
+   // added to the shared public account-scope SELECT list would make the projection
+   // return an empty page and this privacy assertion would pass having read nothing.
+   seen.assertExercised(['lists'],['scope']);
   });
  }
 });
 
-function nativeReply(sql:string,rows:any[]){return {rows:sql.startsWith('WITH candidate')?rows.map(row=>({payload:row,batch_bytes:String(Buffer.byteLength(JSON.stringify(rows))),batch_count:rows.length,batch_invalid:false})):rows,rowCount:rows.length};}
