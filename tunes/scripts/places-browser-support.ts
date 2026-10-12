@@ -16,11 +16,43 @@ export function assertPlacesStorageDirectory(path:string){
   if(!isAbsolute(path)||resolved!==path||basename(resolved)!=='owned-media'||!/^explorers-profile-e2e-[A-Za-z0-9]+$/.test(basename(parent))||dirname(parent)!==resolve(tmpdir()))throw new Error('Owned Places storage path mismatch');
   for(const candidate of [parent,resolved])if(existsSync(candidate)&&(lstatSync(candidate).isSymbolicLink()||realpathSync(candidate)!==candidate||!lstatSync(candidate).isDirectory()))throw new Error('Owned Places storage custody changed');
 }
+/** Additive Places pin identities. Declared separately and appended to the frozen
+ * original four below, which keep their existing positions and bytes. */
+export const PLACES_PIN_CASES = [
+  'Places: additive pinned-first owner traversal and signed seek survive reload and list navigation',
+  'Places: additive public pinned pages omit private members and restart without mixed rows',
+  'Places: additive complete70 staged pin order commits in advertised chunks and replays a lost acknowledgement once',
+  'Places: additive complete70 resource refusal and session replacement keep the returned fence authoritative',
+] as const;
+/** The complete70 acceptance fixture size: the complete active membership seeded into
+ * one owned list for the additive pin cases. An acceptance size for the uncapped
+ * per-list obligation only; it is never a product pin cap or a staging bound. */
+export const PLACES_COMPLETE70_MEMBERS = 70;
+/**
+ * SYNTHETIC FIXTURE DATA - NOT PRODUCTION CONFIGURATION AND NOT A DEFAULT.
+ *
+ * Labelled synthetic place-pins staging policy owned by this private Places browser
+ * fixture. It exists only so the additive pin identities can observe an advertised
+ * clientTransport; it is injected exclusively through the fixture-only canonical
+ * composition path and is never read by production composition, which passes no
+ * policy at all and therefore leaves the pin feature correctly unavailable.
+ *
+ * Real pin staging bounds (chunk and count limits, byte limits, owner draft quotas
+ * and expiry) remain a MISSING EXTERNAL INPUT. Nothing here may be promoted to an
+ * operational value, a default or an approved product limit.
+ */
+export const SYNTHETIC_FIXTURE_PLACE_PINS_POLICY = Object.freeze({
+  policyId:'synthetic-fixture-places-pins-e2e',policyVersion:1,
+  transportChunkBytes:1024,transportChunkIds:20,replacementBytes:4096,replacementIds:80,
+  ownerDraftQuota:4,ownerStagingBytes:20000,draftExpiryMs:600000,stagingRetentionMs:900000,receiptRetentionMs:1800000,
+  commitProcessingBytes:40000,commitProcessingMs:20000,commitWorkUnits:100000,cleanupBatchSize:16,cleanupWorkUnits:256,
+});
 export const PLACES_CASES = [
   'Places: retained location create edit and reload preserve zero and absent coordinates',
   'Places: complete owner and anonymous pages contain every seeded list and recommendation',
   'Places: owned image bytes disappear after the final public attachment is hidden',
   'Places: foreign owner edits and private contact reads cannot disclose owner data',
+  ...PLACES_PIN_CASES,
 ] as const;
 export const PLACE_LINK_CASES = [
   'Place links: existing Products and People lists attach detach and survive reload',
@@ -35,14 +67,24 @@ type LocationSeed = {title:string; slug:string; displayOrder:number; snapshot:Pl
 export function buildPlacesSeedPlan(caseId:string) {
   if (![...PLACES_CASES,...PLACE_LINK_CASES].includes(caseId as never)) throw new Error('Undeclared Places case');
   const traversal = caseId === PLACES_CASES[1];
+  // Additive pin cases seed the complete70 acceptance membership into the first owned
+  // list and keep the original two-location shape, so a second list stays available
+  // for the cross-list navigation obligation.
+  const pinned = (PLACES_PIN_CASES as readonly string[]).includes(caseId);
+  const locationCount = traversal?53:2;
+  const recommendationCount = pinned?PLACES_COMPLETE70_MEMBERS:traversal?53:1;
   return {
-    locations:Array.from({length:traversal?53:2},(_,index):LocationSeed=>({
+    locations:Array.from({length:locationCount},(_,index):LocationSeed=>({
       title:index===0?'Owned Zero City':index===1?'Owned Absent City':`Owned City C${String(index+1).padStart(2,'0')}`,
       slug:`owned-city-c${String(index+1).padStart(2,'0')}`,displayOrder:index,
       snapshot:{version:1,name:index===1?'Owned Absent City':'Owned Zero City',address:'Owned Test Country',providerPlaceId:null,latitude:index===1?null:0,longitude:index===1?null:0},
     })),
-    recommendations:Array.from({length:traversal?53:1},(_,index)=>({title:`Owned Place R${String(index+1).padStart(2,'0')}`,displayOrder:index})),
+    recommendations:Array.from({length:recommendationCount},(_,index)=>({title:`Owned Place R${String(index+1).padStart(2,'0')}`,displayOrder:index})),
     traversal,
+    pinned,
+    // Observed public list page sizes for the seeded locations; identical to the
+    // previously inlined [24,24,5] / [2] for the original four cases.
+    publicPageSizes:Array.from({length:Math.ceil(locationCount/24)},(_,index)=>Math.min(24,locationCount-index*24)),
   };
 }
 export function validatePlacesControl(input:{remote:string;host:string;expectedHost:string;capability:string;expectedCapability:string;runId:string;expectedRunId:string;commit:string;expectedCommit:string;lane:string;body:Record<string,unknown>;active?:PlacesIdentity}) {
@@ -87,7 +129,7 @@ export async function startPlacesControl(options:{pool:Pool;composed:ReturnType<
   }
   async function reset(identity:PlacesIdentity):Promise<PlacesManifest> {
     const plan=buildPlacesSeedPlan(identity.caseId),oldKeys=[...keys],newKeys:string[]=[],newEntities:string[]=[];
-    const result:PlacesManifest={version:1,runId,commit,...identity,personas,collections:[],recommendations:[],relations:[],media:[],expectedPublic:{placesCollectionIds:[],recommendationIds:[],pageSizes:plan.traversal?[24,24,5]:[2],previewLimit:12,linkedArrayLimit:12},provider:'simulated Maps selection and bounded Google REST; no provider photos'};
+    const result:PlacesManifest={version:1,runId,commit,...identity,personas,collections:[],recommendations:[],relations:[],media:[],expectedPublic:{placesCollectionIds:[],recommendationIds:[],pageSizes:plan.publicPageSizes,previewLimit:12,linkedArrayLimit:12},provider:'simulated Maps selection and bounded Google REST; no provider photos'};
     manifest=undefined;
     let committed=false;
     const db=await pool.connect();
