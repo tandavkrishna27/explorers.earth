@@ -5,18 +5,47 @@ import {readFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {test,expect,type Page,type BrowserContext,type APIRequestContext,type TestInfo} from '@playwright/test';
 import {canonicalMoviesBrowserSnapshot,moviesProducerEnums} from '../../src/features/Movies/api/moviesOwnerDiagnostic';
+// BEGIN MOVIES NETWORK DIAGNOSTIC CONTRACT
+const moviesNetworkStages=['setup','edit-navigation','edit-form','save-start','save-returned','list-route-reached','saved-note-confirmed','keep-draft-start','keep-draft-returned','archive','overflow-check','navigation','manager-open','manager-visible','unpin-click','persisted-fifteen-check','reorder-waiter-register','reorder-click','reorder-response','persisted-fifteen-after-order','save-click','persisted-fourteen','restore','unavailable'] as const;
+function observeMoviesNetwork(page:Page,stage:()=>string){
+ const active=new Map<object,{ordinal:number;family:string;method:string;start:string;status:number}>(),seen=new WeakSet<object>(),candidates:{ordinal:number;family:string;method:string;start:string;end:string;status:number;outcome:string;reason:string}[]=[];
+ const counts={observed:0,finished:0,failed:0,put:0,patch:0,putFinished:0,putFailed:0,patchFinished:0,patchFailed:0};let inert=false,overflow=0,candidateOverflow=0,incomplete=0,receipt:any;
+ const phase=()=>{try{const value=stage();return (moviesNetworkStages as readonly string[]).includes(value)?value:'unavailable';}catch{incomplete=1;return 'unavailable';}};
+ const retain=(entry:typeof active extends Map<object,infer E>?E:never,outcome:string,reason='none')=>{if(candidates.length===4){candidateOverflow=1;return;}candidates.push({...entry,end:phase(),outcome,reason});};
+ const request=(value:any)=>{try{if(inert||!value||typeof value!=='object'||seen.has(value))return;const method=value.method(),url=new URL(value.url()),path=url.pathname,root='/api/explorers/v1/';let family:string|undefined;
+  if(method==='GET'){family=path===root+'categories/movies/content-snapshot'?'snapshot':path===root+'categories/movies/content-snapshot/validate'?'validate':path===root+'categories/movies/memberships'?'memberships':path===root+'categories/movies/top-picks'?'top-picks':path===root+'collections'&&url.searchParams.get('category')==='movies'?'collections':path===root+'recommendations'&&url.searchParams.get('category')==='movies'?'recommendations':/^\/api\/explorers\/v1\/(collections|recommendations)\/[^/]+\/editable$/.test(path)?'editable':undefined;}
+  else if(method==='PATCH'&&path===root+'categories/movies/top-picks/order')family='pins-order';else if(method==='PUT'&&path===root+'categories/movies/top-picks')family='exact-pins';
+  if(!family)return;seen.add(value);if(counts.observed===4096||active.size===128){overflow=1;incomplete=1;return;}counts.observed++;if(family==='exact-pins')counts.put++;if(family==='pins-order')counts.patch++;active.set(value,{ordinal:counts.observed,family,method,start:phase(),status:0});
+ }catch{incomplete=1;}};
+ const response=(value:any)=>{try{if(inert)return;const entry=active.get(value.request());if(!entry)return;const status=value.status();if(!Number.isInteger(status)||status<100||status>599){incomplete=1;return;}if(entry.status&&entry.status!==status){incomplete=1;return;}entry.status=status;}catch{incomplete=1;}};
+ const settle=(value:any,failed:boolean)=>{try{if(inert)return;const entry=active.get(value);if(!entry)return;active.delete(value);counts[failed?'failed':'finished']++;if(entry.family==='exact-pins')counts[failed?'putFailed':'putFinished']++;if(entry.family==='pins-order')counts[failed?'patchFailed':'patchFinished']++;
+  if(failed){let reason='unknown';try{const text=value.failure()?.errorText;reason=text==='net::ERR_ABORTED'?'aborted':text==='net::ERR_FAILED'?'failed':text==='net::ERR_CONNECTION_RESET'?'connection-reset':text==='net::ERR_CONNECTION_REFUSED'?'connection-refused':text==='net::ERR_TIMED_OUT'?'timed-out':text==='net::ERR_NAME_NOT_RESOLVED'?'name-not-resolved':'unknown';}catch{incomplete=1;}const end=phase();retain(entry,reason==='aborted'&&[entry.start,end].some(s=>s==='navigation'||s==='edit-navigation')?'navigation-abort':entry.status?'body-failed':'transport-failed',reason);}
+  else if(entry.status&&(entry.status<200||entry.status>=300))retain(entry,'http-non-ok');
+ }catch{incomplete=1;}};
+ const listeners=[{event:'request',callback:request,attempted:false},{event:'response',callback:response,attempted:false},{event:'requestfinished',callback:(value:any)=>settle(value,false),attempted:false},{event:'requestfailed',callback:(value:any)=>settle(value,true),attempted:false}];
+ try{for(const listener of listeners){listener.attempted=true;page.on(listener.event as any,listener.callback);}}catch{incomplete=1;inert=true;}
+ return {finish(){if(receipt)return receipt;inert=true;for(const listener of listeners)if(listener.attempted){try{page.off(listener.event as any,listener.callback);}catch{incomplete=1;}}for(const entry of active.values())if(entry.status&&(entry.status<200||entry.status>=300))retain(entry,'http-non-ok');const pending=active.size;if(pending)incomplete=1;active.clear();receipt={version:1,binding:'unbound',...counts,pending,overflow,candidateOverflow,incomplete,candidates};return receipt;}};
+}
+const moviesNetworkObservers=new WeakMap<TestInfo,ReturnType<typeof observeMoviesNetwork>>();
+const moviesNetworkReceipts=new WeakMap<TestInfo,unknown>();
+function beginMoviesNetwork(page:Page,info:TestInfo,stage:()=>string){try{const path=info.titlePath;if(!Array.isArray(path)||path.length!==2||path[0]!=='movies.spec.ts'||path[1]!==info.title||!['owner manual form all fields snapshot repeat edits and archive reload','category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection'].includes(info.title)||!['movies-mobile','movies-desktop'].includes(info.project.name)||info.repeatEachIndex!==0||info.retry!==0||resolve(info.file)!==fileURLToPath(import.meta.url))return;if(!moviesNetworkObservers.has(info))moviesNetworkObservers.set(info,observeMoviesNetwork(page,stage));}catch{}}
+function finishMoviesNetwork(info:TestInfo){try{const observer=moviesNetworkObservers.get(info);if(observer){moviesNetworkReceipts.set(info,observer.finish());moviesNetworkObservers.delete(info);}}catch{}}
+function moviesNetworkSuffix(info:TestInfo){try{const receipt=moviesNetworkReceipts.get(info);return receipt?'|'+Buffer.from(JSON.stringify(receipt),'utf8').toString('base64url'):'';}catch{return '';}}
+// END MOVIES NETWORK DIAGNOSTIC CONTRACT
+
 // BEGIN MOVIES PIN DIAGNOSTIC CONTRACT
 const moviesPinStages=['setup','overflow-check','navigation','manager-open','manager-visible','unpin-click','persisted-fifteen-check','reorder-waiter-register','reorder-click','reorder-response','persisted-fifteen-after-order','save-click','persisted-fourteen','restore'] as const;
 type MoviesPinState={stage:typeof moviesPinStages[number];request:'unavailable'|'none'|'one'|'multiple';transport:'unavailable'|'unseen'|'pending'|'response'|'failed'|'ambiguous';status:'unavailable'|'informational'|'success'|'redirect'|'client-error'|'server-error'|'other';requestRef?:unknown;inert:boolean;frozen:boolean;sealed:boolean;page?:Page;listeners:{event:'request'|'response'|'requestfailed';callback:(value:any)=>void;attempted:boolean}[]};
 const moviesPinDiagnosticStates=new WeakMap<TestInfo,MoviesPinState>();
 const moviesPinDiagnosticSeen=new WeakSet<TestInfo>();
 function moviesPinDiagnosticIdentity(info:TestInfo):boolean{
- try{const title='category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection',path=info.titlePath;return info.title===title&&info.project.name==='movies-mobile'&&info.repeatEachIndex===0&&info.retry===0&&resolve(info.file)===fileURLToPath(import.meta.url)&&Array.isArray(path)&&path.length===2&&path[0]==='movies.spec.ts'&&path[1]===title;}catch{return false;}
+ try{const title='category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection',path=info.titlePath;return info.title===title&&(info.project.name==='movies-mobile'||info.project.name==='movies-desktop')&&info.repeatEachIndex===0&&info.retry===0&&resolve(info.file)===fileURLToPath(import.meta.url)&&Array.isArray(path)&&path.length===2&&path[0]==='movies.spec.ts'&&path[1]===title;}catch{return false;}
 }
 function beginMoviesPinDiagnostic(page:Page,info:TestInfo):void{
  try{
   if(!moviesPinDiagnosticIdentity(info)||moviesPinDiagnosticStates.has(info))return;
   const state:MoviesPinState={stage:'setup',request:'unavailable',transport:'unavailable',status:'unavailable',inert:false,frozen:false,sealed:false,page,listeners:[]};moviesPinDiagnosticStates.set(info,state);
+  beginMoviesNetwork(page,info,()=>state.stage);
   const unavailable=()=>{state.request='unavailable';state.transport='unavailable';state.status='unavailable';state.requestRef=undefined;};
   const request=(value:any)=>{try{if(state.inert||state.request==='unavailable'||state.request==='multiple')return;if(value.method()!=='PATCH'||new URL(value.url()).pathname!=='/api/explorers/v1/categories/movies/top-picks/order')return;if(state.request==='none'){state.request='one';state.transport='pending';state.requestRef=value;}else if(state.requestRef!==value){state.request='multiple';state.transport='ambiguous';state.status='unavailable';state.requestRef=undefined;}}catch{unavailable();}};
   const response=(value:any)=>{try{if(state.inert||state.request!=='one')return;if(value.request()!==state.requestRef)return;if(state.transport==='ambiguous')return;const status=value.status();if(typeof status!=='number'||!Number.isFinite(status)){unavailable();return;}if(state.transport==='failed'){state.transport='ambiguous';state.status='unavailable';return;}if(state.transport==='response')return;state.transport='response';state.status=status>=100&&status<200?'informational':status>=200&&status<300?'success':status>=300&&status<400?'redirect':status>=400&&status<500?'client-error':status>=500&&status<600?'server-error':'other';}catch{unavailable();}};
@@ -38,14 +67,14 @@ function freezeMoviesPinDiagnostic(info:TestInfo):void{
  }catch{}
 }
 function finalizeMoviesPinDiagnostic(info:TestInfo):void{
- try{freezeMoviesPinDiagnostic(info);const state=moviesPinDiagnosticStates.get(info);if(state?.frozen)state.sealed=true;}catch{}
+ try{finishMoviesNetwork(info);freezeMoviesPinDiagnostic(info);const state=moviesPinDiagnosticStates.get(info);if(state?.frozen)state.sealed=true;}catch{}
 }
 function captureMoviesPinDiagnostic(info:TestInfo):void{
  try{
   const state=moviesPinDiagnosticStates.get(info);if(!state?.frozen||!state.sealed||!moviesPinDiagnosticIdentity(info)||moviesPinDiagnosticSeen.has(info))return;
   const status=info.status;if(!['failed','timedOut','interrupted'].includes(status??''))return;
   const errors=info.errors;if(errors.some(error=>typeof error.message==='string'&&error.message.includes('[movies-pin-diagnostic-v1:')))return;
-  const cells=status==='interrupted'?[state.stage,'unavailable','unavailable','unavailable']:[state.stage,state.request,state.transport,state.status],message='[movies-pin-diagnostic-v1:'+cells.join('|')+']';if(Buffer.byteLength(message,'utf8')>512)return;
+  const cells=status==='interrupted'?[state.stage,'unavailable','unavailable','unavailable']:[state.stage,state.request,state.transport,state.status],message='[movies-pin-diagnostic-v1:'+cells.join('|')+moviesNetworkSuffix(info)+']';if(Buffer.byteLength(message,'utf8')>4096)return;
   errors.push({message});moviesPinDiagnosticSeen.add(info);
  }catch{}
 }
@@ -114,7 +143,7 @@ test.afterEach(async({page},info)=>{
  // Public TestInfo has no original start time: both deadline observations stay unavailable.
  const receipt={version:1,iteration:state.iteration,stage:state.stage,...snapshot,budgetAtStage:'unavailable',budgetAtFailure:'unavailable'};
  const keys=['iteration','stage','owner','phase','cause','view','list','visibility','signal','guard','prompt','button','budgetAtStage','budgetAtFailure','sample'] as const;
- try{info.errors.push({message:`[movies-diagnostic-v1:${keys.map(key=>receipt[key]).join('|')}]`});}catch{/* retain original errors unchanged */}
+ try{info.errors.push({message:`[movies-diagnostic-v1:${keys.map(key=>receipt[key]).join('|')}${moviesNetworkSuffix(info)}]`});}catch{/* retain original errors unchanged */}
 });
 type Persona={userId:string;cookie:string;handle:string};
 const fixture=JSON.parse(readFileSync(process.env.MOVIES_E2E_FIXTURE_PATH!,'utf8')) as {origin:string;personas:{ownerA:Persona;ownerB:Persona}};
@@ -136,6 +165,7 @@ test('owner manual form all fields snapshot repeat edits and archive reload',asy
  if(diagnosticEnabled(info)){
   diagnosticStages.set(info,{iteration:'none',stage:'setup'});
   await page.addInitScript(()=>{(globalThis as unknown as {__moviesOwnerDiagnostic:unknown}).__moviesOwnerDiagnostic={version:1,snapshot:{owner:'unavailable',phase:'unavailable',cause:'none',view:'unavailable',list:'unavailable',visibility:'unavailable',signal:'unavailable',guard:'unavailable',prompt:'unavailable'}};});
+  beginMoviesNetwork(page,info,()=>diagnosticStages.get(info)?.stage??'unavailable');
  }
  try{
  await signIn(page);const bad=monitor(page);await page.goto('/recommendations/movies');await page.getByRole('button',{name:'New List',exact:true}).filter({visible:true}).first().click();
@@ -150,7 +180,7 @@ test('owner manual form all fields snapshot repeat edits and archive reload',asy
  }catch(error){
   // No public whole-test deadline origin is available at this failure boundary.
   throw error;
- }
+ }finally{finishMoviesNetwork(info);}
 });
 
 test('canonical both-kind provider search resolves typed facts and copies original cast slots',async({page})=>{
