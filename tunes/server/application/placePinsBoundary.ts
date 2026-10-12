@@ -1,5 +1,6 @@
+import {placePinsFrameStart,placePinsFrameId,placePinsFrameEnd,placePinsChunkFragments} from '../../shared/explorersPlacePinsFraming';
 import {createHash} from 'node:crypto';
-import {placePinsRequestSchema,placePinsIdSchema,placePinsHashDomain,type PlacePinsRequest} from '../../shared/explorersPlacePinsContract';
+import {placePinsRequestSchema,placePinsHashDomain,type PlacePinsRequest} from '../../shared/explorersPlacePinsContract';
 import {commandKeySchema,type RequestContext} from '../../shared/explorersContract';
 import type {Actor} from './actor';
 import {resolvePlacePinsPolicy,PLACE_PINS_PARSER_BYTES,type PlacePinsPolicy} from './placePinsPolicy';
@@ -20,16 +21,15 @@ export function hashPlacePinsRequest(input:unknown):string {
  return createHash('sha256').update(placePinsHashDomain+'receipt\n'+canonical(parsed.data),'utf8').digest('hex');
 }
 export function createPlacePinsSequenceHasher(){
- const hash=createHash('sha256').update(placePinsHashDomain+'sequence\n','utf8');let count=0,finished=false;
+ const hash=createHash('sha256').update(placePinsFrameStart());let count=0,finished=false;
  return {append(ids:readonly string[]){if(finished)throw new Error('Sequence hash is finalized');
-  for(const id of ids){if(count===Number.MAX_SAFE_INTEGER)throw new PlacePinsFailure(413,'RESOURCE_TOO_LARGE','Sequence count overflow');hash.update(placePinsIdSchema.parse(id)+'\n','utf8');count++;}},
-  finish(){if(finished)throw new Error('Sequence hash is finalized');finished=true;return hash.update(`count:${count}\n`,'utf8').digest('hex');}};
+  for(const id of ids){if(count===Number.MAX_SAFE_INTEGER)throw new PlacePinsFailure(413,'RESOURCE_TOO_LARGE','Sequence count overflow');hash.update(placePinsFrameId(id));count++;}},
+  finish(){if(finished)throw new Error('Sequence hash is finalized');finished=true;return hash.update(placePinsFrameEnd(count)).digest('hex');}};
 }
 export function hashPlacePinsChunk(index:number,ids:readonly string[]):string {
  if(!Number.isSafeInteger(index)||index<0)return invalid();
- const hash=createHash('sha256').update(placePinsHashDomain+`chunk\n${index}\n`,'utf8');
- for(const id of ids)hash.update(placePinsIdSchema.parse(id)+'\n','utf8');
- return hash.update(`count:${ids.length}\n`,'utf8').digest('hex');
+ const hash=createHash('sha256');for(const part of placePinsChunkFragments(index,ids))hash.update(part);
+ return hash.digest('hex');
 }
 export type PlacePinsAuthorizer=(actor:Actor,scope:'collections:read'|'collections:write'|'recommendations:write')=>Promise<void>;
 /** Policy and an explicitly injected storage capability are both required.

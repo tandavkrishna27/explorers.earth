@@ -22,7 +22,7 @@ const actor:Actor={accountId:id,userId:id,role:'owner',credential:{kind:'web-ses
 export const fixturePolicy={policyId:'fixture-only',policyVersion:1,transportChunkBytes:4096,transportChunkIds:32,replacementBytes:8192,replacementIds:64,ownerDraftQuota:2,ownerStagingBytes:100000,draftExpiryMs:1000,stagingRetentionMs:2000,receiptRetentionMs:3000,commitProcessingBytes:100000,commitProcessingMs:1000,commitWorkUnits:10000,cleanupBatchSize:10,cleanupWorkUnits:100};
 describe('Places storage capability gate',()=>{
  it('accepts only the strict configured availability success',()=>{
-  expect(placePinsAvailabilitySchema.safeParse({available:true,state:'configured'}).success).toBe(true);
+  expect(placePinsAvailabilitySchema.safeParse({available:true,state:'configured',clientTransport:{policyId:'synthetic',policyVersion:1,replacementBytes:4096,replacementIds:80,transportChunkBytes:1024,transportChunkIds:20,ownerStagingBytes:20000,commitProcessingBytes:40000,commitProcessingMs:1000,commitWorkUnits:1000,draftExpiryMs:1000}}).success).toBe(true);
   expect(placePinsAvailabilitySchema.safeParse({available:true,state:'unconfigured'}).success).toBe(false);
   expect(placePinsAvailabilitySchema.safeParse({available:true,state:'configured',policyId:'secret'}).success).toBe(false);
  });

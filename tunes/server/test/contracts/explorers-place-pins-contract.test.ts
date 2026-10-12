@@ -6,7 +6,8 @@ const fences={expectedCollectionRevision:1,expectedCategoryContentRevision:'0'};
 describe('Places pin syntax and canonical digests',()=>{
  it('preserves unavailable results and permits only strict configured storage availability',()=>{
   for(const state of ['configured','unconfigured','unsupported'])expect(placePinsAvailabilitySchema.safeParse({available:false,state,reason:'STORAGE_UNAVAILABLE'}).success).toBe(true);
-  expect(placePinsAvailabilitySchema.parse({available:true,state:'configured'})).toEqual({available:true,state:'configured'});
+  const clientTransport={policyId:'synthetic',policyVersion:1,replacementBytes:4096,replacementIds:80,transportChunkBytes:1024,transportChunkIds:20,ownerStagingBytes:20000,commitProcessingBytes:40000,commitProcessingMs:1000,commitWorkUnits:1000,draftExpiryMs:1000};
+  expect(placePinsAvailabilitySchema.parse({available:true,state:'configured',clientTransport})).toEqual({available:true,state:'configured',clientTransport});
   for(const result of [{available:true,state:'unconfigured'},{available:true,state:'configured',reason:'STORAGE_UNAVAILABLE'},{available:false,state:'configured'}])expect(placePinsAvailabilitySchema.safeParse(result).success).toBe(false);
  });
  it('accepts empty clear and more than fifteen without a product cap',()=>{

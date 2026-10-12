@@ -3,7 +3,7 @@ import type {Pool,PoolClient} from 'pg';
 import type {PlacePinsRequest} from '../../shared/explorersPlacePinsContract';
 import type {RequestContext} from '../../shared/explorersContract';
 import type {PlacePinsPolicy} from '../application/placePinsPolicy';
-import {placePinsPolicySchema} from '../application/placePinsPolicy';
+import {placePinsPolicySchema,clientPlacePinsTransport} from '../application/placePinsPolicy';
 import {hashPlacePinsRequest,type PlacePinsStorage} from '../application/placePinsBoundary';
 import {lockContentCategories} from '../db/explorers-content-lock';
 import {admittedStagingBytes,checkPinFences,ownedPlaceCollection,pinFailure,pinResult,safeCounter,PinWorkBudget,hashDraftSequence,admitLivePinPass} from './placePinsStorage';
@@ -71,7 +71,7 @@ export class ExplorersPlacePinsRepository implements PlacePinsStorage {
    }
    await lockContentCategories(db,accountId,['places']);
    const collection=await ownedPlaceCollection(db,accountId,request.collectionId);
-   if(request.operation==='placePinsAvailability')return {available:true,state:'configured'};
+   if(request.operation==='placePinsAvailability')return {available:true,state:'configured',clientTransport:clientPlacePinsTransport(policy)};
    let result:unknown,receiptRetentionMs=policy.receiptRetentionMs;
    if(request.operation==='replacePlacePins'){
     await checkPinFences(db,accountId,collection,request.body.expectedCollectionRevision,request.body.expectedCategoryContentRevision);
@@ -84,7 +84,7 @@ export class ExplorersPlacePinsRepository implements PlacePinsStorage {
      expected_category_content_revision,policy_id,policy_version,policy_snapshot,created_at,expires_at,state,accepted_bytes,item_count,chunk_count)
      VALUES($1,$2,'places',$3,$4,$5,$6,$7,$8,clock_timestamp(),clock_timestamp()+$9::bigint*interval '1 millisecond','open',0,0,0) RETURNING expires_at`,
      [id,accountId,request.collectionId,request.body.expectedCollectionRevision,request.body.expectedCategoryContentRevision,policy.policyId,policy.policyVersion,JSON.stringify(policy),policy.draftExpiryMs])).rows[0];
-    result={collectionId:request.collectionId,draftId:id,...request.body,expiresAt:row.expires_at.toISOString(),policyId:policy.policyId,policyVersion:policy.policyVersion};
+    result={collectionId:request.collectionId,draftId:id,...request.body,expiresAt:row.expires_at.toISOString(),policyId:policy.policyId,policyVersion:policy.policyVersion,clientTransport:clientPlacePinsTransport(policy)};
    }else{
     if(request.operation==='commitPlacePinsDraft'){
      const addressed=(await db.query('SELECT *,expires_at<=clock_timestamp() expired FROM place_pin_drafts WHERE id=$1 AND account_id=$2 AND collection_id=$3',[request.draftId,accountId,request.collectionId])).rows[0];

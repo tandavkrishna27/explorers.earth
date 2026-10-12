@@ -1,0 +1,12 @@
+import {describe,it,expect,vi} from 'vitest';
+import {hashPlacePinsSequence,hashPlacePinsChunk} from './placePinsBrowserHash';
+import {placePinsFramingBytes} from '../../../../../tunes/shared/explorersPlacePinsFraming';
+const a='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',b='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+describe('portable Places hash',()=>{
+ it('matches independent empty server golden',async()=>expect(await hashPlacePinsSequence([],4096)).toBe('0a169203c8873dba692c90eab522d385f6e34829ac5920c0b1c258a3ade75c14'));
+ it('matches independently frozen ordered and chunk server vectors',async()=>{expect(await hashPlacePinsSequence([a.toUpperCase(),b],4096)).toBe('86407931e8dacd393e6096bfa06bef16d3ceb57e695ec7b2a364ff9d52da04b7');expect(await hashPlacePinsChunk(0,[a,b],4096)).toBe('10992bc7c58b5b46821a94a44205f2ad844ea53dd85c5b3508ab3ee75cef1cf0');});
+ it('preserves independently frozen complete 70 hash across input partitions',async()=>{const ids=Array.from({length:70},(_,i)=>`00000000-0000-4000-8000-${i.toString(16).padStart(12,'0')}`);for(const size of [1,7,20,70]){const parts:string[][]=[];for(let i=0;i<ids.length;i+=size)parts.push(ids.slice(i,i+size));expect(await hashPlacePinsSequence(parts.flat(),4096)).toBe('073f9f30b3dec3a4ec54a242ecb5acd8136421b4de1a47d94c10fb2e98b29c63');}});
+ it('normalizes uppercase and binds order and chunk index',async()=>{expect(await hashPlacePinsSequence([a,b],4096)).not.toBe(await hashPlacePinsSequence([b,a],4096));expect(await hashPlacePinsSequence([a.toUpperCase(),b],4096)).toBe(await hashPlacePinsSequence([a,b],4096));expect(await hashPlacePinsChunk(0,[a,b],4096)).not.toBe(await hashPlacePinsChunk(1,[a,b],4096));});
+ it('denies unsafe or insufficient materialization before digest',async()=>{await expect(hashPlacePinsSequence([a],1)).rejects.toThrow('RESOURCE');await expect(hashPlacePinsSequence([],Number.MAX_SAFE_INTEGER+1)).rejects.toThrow();});
+ it('turns admitted allocation and digest failures into recoverable resource failure',async()=>{const Native=Uint8Array,bytes=placePinsFramingBytes(2);vi.stubGlobal('Uint8Array',new Proxy(Native,{construct(target,args){if(args.length===1&&args[0]===bytes)throw Error('Allocation denied');return Reflect.construct(target,args);}}));try{await expect(hashPlacePinsSequence([a,b],4096)).rejects.toThrow('RESOURCE');}finally{vi.unstubAllGlobals();}const digest=vi.spyOn(crypto.subtle,'digest').mockRejectedValueOnce(Error('Digest denied'));try{await expect(hashPlacePinsSequence([a,b],4096)).rejects.toThrow('RESOURCE');}finally{digest.mockRestore();}});
+});
