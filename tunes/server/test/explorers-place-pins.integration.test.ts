@@ -29,8 +29,8 @@ beforeAll(async({},suite)=>{
   if(!['127.0.0.1','localhost','[::1]'].includes(url.hostname)||decodeURIComponent(url.pathname.slice(1))!==identity||!/^explorers_place_pins_disposable_[a-z0-9_]+$/.test(identity)||runtimeUrl.hostname!==url.hostname||runtimeUrl.port!==url.port||runtimeUrl.pathname!==url.pathname||runtimeUrl.username===url.username)throw new Error('Fixture identity');
   runtimeLogin=decodeURIComponent(runtimeUrl.username);
  }catch{guard.failStop({caseId:'suite-bootstrap',reason:'identity',phase:'preflight',unsettledCount:0});throw new Error('Fixture bootstrap identity');}
- controller=createWriterSuiteController({identity:{database:identity,runtimeLogin},guardFailure:guard.failStop,admission:guard.admit});
  const setup=createBootstrapDiagnostic();
+ controller=createWriterSuiteController({identity:{database:identity,runtimeLogin},guardFailure:guard.failStop,admission:guard.admit,bootstrapDiagnostic:()=>setup.snapshot()});
  await controller.bootstrap(async()=>{
  // Root must document and approve the exact disposable database before setting
  // this explicit identity. No protected fixture URL or checkout credential fallback.

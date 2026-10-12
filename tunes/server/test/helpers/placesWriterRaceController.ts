@@ -1,4 +1,4 @@
-import {finiteBootstrapMetadata} from './placesBootstrapDiagnostic';
+import {finiteBootstrapMetadata,type BootstrapMetadata} from './placesBootstrapDiagnostic';
 import type {GuardFailure,GuardPhase,GuardReason} from './placesWriterGuardTransport';
 
 type QueryResult={rows:any[];command?:string};
@@ -11,7 +11,7 @@ type Binding={pid:number;backend_start:string;database:string;login:string;backe
 type Operation={text:string;values:readonly unknown[];task:Task};
 type Lease={raw:Client;kind:Kind;caseId:string;verified:boolean;released:boolean;unsafe:boolean;transaction:boolean;binding?:Binding;current?:Operation;wrapper:Client};
 type NativeAdmission={caseId:string;lease:Lease;task?:Task;deadline:number;entered:boolean;finished:boolean;arm:(deadline:number)=>void;close:()=>void};
-type Options={identity:{database:string;runtimeLogin:string};guardFailure:(event:GuardFailure)=>void;admission:(caseId:string)=>void;clock?:Clock};
+type Options={identity:{database:string;runtimeLogin:string};guardFailure:(event:GuardFailure)=>void;admission:(caseId:string)=>void;clock?:Clock;bootstrapDiagnostic?:()=>BootstrapMetadata};
 export const writerSuiteFrames=['suite-bootstrap','suite-teardown'] as const;
 // The installed beforeAll listener supplies the collected suite as its second argument.
 // No names come from a file, environment path, or duplicated case inventory.
@@ -46,10 +46,11 @@ export function createWriterSuiteController(options:Options){
  function error(){return Error('Fixture writer controller');}
  function pending(){return [...tasks].filter(task=>!task.settled);}
  function openGates(){for(const gate of gates)gate.open();}
- function fail(reason:GuardReason,phase:GuardPhase){
+ function fail(reason:GuardReason,phase:GuardPhase,diagnostic?:BootstrapMetadata){
   if(closed)return;closed=true;if([...leases].some(lease=>lease.current&&!lease.current.task.settled))serverUnresolved=true;for(const value of gates)value.fail();nativeAdmission?.close();
   // Latch precedes delivery; the sink may fail or block without reopening admission.
-  try{options.guardFailure({caseId,reason,phase,unsettledCount:Math.min(16,pending().length)});}catch{/* Root supervision remains responsible for delivery failure. */}
+  let metadata:BootstrapMetadata={};try{if(caseId==='suite-bootstrap')metadata=finiteBootstrapMetadata(diagnostic?.setupStage?diagnostic:options.bootstrapDiagnostic?.());}catch{/* Optional diagnostic failure cannot prevent the original guard delivery. */}
+  try{options.guardFailure({caseId,reason,phase,unsettledCount:Math.min(16,pending().length),...metadata});}catch{/* Root supervision remains responsible for delivery failure. */}
  }
  function admit(id:string){if(closed)throw error();if(nativeAdmission){fail('lease','acquire');throw error();}try{options.admission(id);}catch{caseId=id;fail('transport','preflight');throw error();}caseId=id;aborting=undefined;nativeDeadline=Infinity;}
  function check(){if(closed)throw error();options.admission(caseId);}
@@ -273,7 +274,7 @@ export function createWriterSuiteController(options:Options){
  }
  async function bootstrap<T>(operation:()=>Promise<T>,readyAt=clock.now()){
   admit('suite-bootstrap');if(!Number.isFinite(readyAt)||readyAt>clock.now()){fail('transport','preflight');throw error();}scopeDeadline=readyAt+20000;
-  try{if(scopeDeadline<=clock.now()){fail('settlement','preflight');throw expired();}return await bound<T>(own(operation,undefined,true),20000,()=>fail('settlement','preflight'));}catch(value){fail('guard','preflight');throw Object.assign(error(),finiteBootstrapMetadata(value));}finally{scopeDeadline=Infinity;}
+  try{if(scopeDeadline<=clock.now()){fail('settlement','preflight');throw expired();}return await bound<T>(own(operation,undefined,true),20000,()=>fail('settlement','preflight'));}catch(value){fail('guard','preflight',finiteBootstrapMetadata(value));throw Object.assign(error(),finiteBootstrapMetadata(value));}finally{scopeDeadline=Infinity;}
  }
  async function directPreflight<T>(operation:()=>Promise<T>){const prior=scopeDeadline;scopeDeadline=Math.min(prior,clock.now()+8000);try{return await bound<T>(own(operation,undefined,true),8000,()=>fail('settlement','preflight'));}finally{scopeDeadline=prior;}}
  function nativePhase(admission:NativeAdmission){check();if(nativeAdmission!==admission||admission.caseId!==caseId||admission.entered||admission.finished||admission.task?.settled)throw error();if(clock.now()>=admission.deadline){admission.close();fail('settlement','settle');throw expired();}admission.entered=true;nativeDeadline=clock.now()+12000;admission.arm(nativeDeadline);}

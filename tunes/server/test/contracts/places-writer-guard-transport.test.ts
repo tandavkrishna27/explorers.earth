@@ -27,3 +27,9 @@ describe('fixture writer guard transport with injected adapters',()=>{
   const writes:string[]=[];const guard=createWriterGuardTransport({env,caseIds:['registered'],now:()=>0,writeExclusive:(_p,v)=>writes.push(v)});guard.bootstrap();expect(()=>guard.failStop({caseId:'unknown',reason:'guard',phase:'teardown',unsettledCount:0})).toThrow();expect(guard.admitted()).toBe(false);expect(writes.length).toBe(2);
  });
 });
+it('optional bootstrap metadata is exact finite data and cannot widen ordinary frames',()=>{
+ const valid={caseId:'suite-bootstrap',reason:'guard' as const,phase:'preflight' as const,unsettledCount:0,setupStage:'direct-verifier' as const,category:'database' as const,sqlState:'42501'};
+ const invalid=[{...valid,setupStage:'private'},{...valid,category:'private'},{...valid,sqlState:'private'},{...valid,category:'assertion'},{...valid,message:'private'},{...valid,caseId:'registered'},{...valid,setupStage:undefined},{...valid,category:undefined},{...valid,sqlState:undefined}];
+ for(const event of invalid){const writes:string[]=[];const guard=createWriterGuardTransport({env,caseIds:['registered','suite-bootstrap'],now:()=>0,writeExclusive:(_p,b)=>writes.push(b)});guard.bootstrap();expect(()=>guard.failStop(event as any)).toThrow();expect(guard.admitted()).toBe(false);expect(writes).toHaveLength(2);}
+ const writes:string[]=[];const guard=createWriterGuardTransport({env,caseIds:['suite-bootstrap'],now:()=>0,writeExclusive:(_p,b)=>writes.push(b)});guard.bootstrap();guard.failStop(valid);guard.failStop({...valid,setupStage:'settle'});expect(writes).toHaveLength(3);expect(Buffer.byteLength(writes[2])).toBeLessThanOrEqual(512);expect(JSON.parse(writes[2])).toMatchObject(valid);
+});
