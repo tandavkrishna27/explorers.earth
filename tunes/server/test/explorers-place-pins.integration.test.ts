@@ -5,6 +5,7 @@ import {beforeAll,beforeEach,afterEach,afterAll,describe,it,expect} from 'vitest
 import {createWriterGuardTransport} from './helpers/placesWriterGuardTransport';
 import {createWriterSuiteController,collectedWriterCaseIds,writerSuiteFrames} from './helpers/placesWriterRaceController';
 import {ExplorersPlacePinsRepository} from '../repositories/explorersPlacePinsRepository';
+import {traverseCleanup} from './helpers/placesCleanupTraversal';
 import {ExplorersRecommendationRepository} from '../repositories/explorersRecommendationRepository';
 import {createPlacePinsSequenceHasher,hashPlacePinsChunk,hashPlacePinsRequest} from '../application/placePinsBoundary';
 import type {PlacePinsRequest} from '../../shared/explorersPlacePinsContract';
@@ -1470,22 +1471,45 @@ async function rLostResponse(caseId:string,aborting:boolean){
  await rFenceMutation(setup);if(!aborting){const prior=await read(),abort=cSpec({operation:'abortPlacePinsDraft',collectionId:f.list,draftId:drafts[0],body:{}},rCaller),value=cSucceeded(await cOutcome(()=>cExecute(runtime,f,abort))),after=await read();rTerminal(prior,after,drafts[0],'aborted',value);await cPinReceipt(f,abort,value,prior,after);}
  const finished=await read();for(const field of ['policy_id','policy_version','policy_snapshot','expected_collection_revision','expected_category_content_revision','created_at','expires_at'])expect(finished.drafts.find(r=>r.id===drafts[0])[field]).toEqual(before.drafts.find(r=>r.id===drafts[0])[field]);
  await rClockUntil("SELECT terminal_at+(policy_snapshot->>'stagingRetentionMs')::bigint*interval '1 millisecond'<=clock_timestamp() ready FROM place_pin_drafts WHERE id=$1",[drafts[0]]);
- expect(rows[0].replay_until.getTime()).toBeGreaterThan(await databaseClock());cSucceeded(await cOutcome(()=>repo.cleanupExpired(rCaller)));const removed=await read();expect(removed.drafts).toEqual(finished.drafts.filter(r=>r.id!==drafts[0]));unchangedSqlFields(finished,removed,['drafts']);await replay();
+ expect(rows[0].replay_until.getTime()).toBeGreaterThan(await databaseClock());const cleanupInventory=await rCleanupInventory(drafts[0],'removed');cSucceeded(await cOutcome(()=>rDrainCleanup(repo,drafts[0],'removed',cleanupInventory)));const removed=await read();expect(removed.drafts).toEqual(finished.drafts.filter(r=>r.id!==drafts[0]));unchangedSqlFields(finished,removed,['drafts']);await replay();
  const altered:PlacePinsRequest=aborting?{...request,draftId:randomUUID()} as PlacePinsRequest:appendRequest(f,drafts[0],[sequences[0][0]]);const saved=await read();cRefused(await cOutcome(()=>cExecute(runtime,f,{...spec,request:altered,policy:rCaller})),409);expect(await read()).toEqual(saved);expect(await receipt(f,request,spec.context.idempotencyKey)).toEqual(rows);
  const separate=cSpec({operation:'replacePlacePins',collectionId:f.list,body:{...await fences(f),orderedRecommendationIds:[...f.ids].reverse()}},rCaller,spec.context.idempotencyKey as ReturnType<typeof randomUUID>),separateBefore=await read(),separateValue=cSucceeded(await cOutcome(()=>cExecute(runtime,f,separate))),separateAfter=await read();expect(separateValue.changed).toBe(true);await cPinReceipt(f,separate,separateValue,separateBefore,separateAfter);expect(await receipt(f,request,spec.context.idempotencyKey)).toEqual(rows);
  const separateXid=separateAfter.categories.find(r=>r.account_id===f.account&&r.category==='places').places_last_mutation_xid;sqlCollectionDelta(separateBefore,separateAfter,[f.list],separateXid);sqlCategoryDelta(separateBefore,separateAfter,f.account,separateXid);expect(separateAfter.pins).toEqual(separateBefore.pins.filter(r=>r.collection_id!==f.list).concat([...f.ids].reverse().map((id,position)=>({collection_id:f.list,recommendation_id:id,account_id:f.account,category:'places',position:String(position)}))).sort((a,b)=>a.collection_id.localeCompare(b.collection_id)||Number(a.position)-Number(b.position)));unchangedSqlFields(separateBefore,separateAfter,['pins','collections','categories','markers','receipts']);
  const expectedRevision=Number((await admin.query('SELECT revision FROM creator_accounts WHERE id=$1',[f.account])).rows[0].revision);cSucceeded(await cOutcome(()=>new AccountLifecycleService(runtime).requestAccountDeactivation(actor,{expectedRevision},{requestId:randomUUID(),idempotencyKey:randomUUID()})));
  const inactive=await read();cRefused(await cOutcome(()=>cExecute(runtime,f,{...spec,policy:rCaller})),404,'Account unavailable');expect(await read()).toEqual(inactive);expect(await receipt(f,request,spec.context.idempotencyKey)).toEqual(rows);rForeign(before,inactive,foreign);
 }
+async function rCleanupInventory(draftId:string,expected:'removed'|'expired'){
+ const row=(await admin.query(`SELECT
+  (SELECT count(*)*2+count(*) FILTER (WHERE state='open') FROM place_pin_drafts)+
+  (SELECT count(*) FROM application_command_receipts WHERE operation IN ('replacePlacePins','beginPlacePinsDraft','appendPlacePinsChunk','commitPlacePinsDraft','abortPlacePinsDraft') AND status='completed') remaining,
+  (SELECT count(*) FROM (SELECT account_id FROM place_pin_drafts UNION SELECT account_id FROM application_command_receipts WHERE operation IN ('replacePlacePins','beginPlacePinsDraft','appendPlacePinsChunk','commitPlacePinsDraft','abortPlacePinsDraft')) owners) owners,
+  NOT EXISTS(SELECT 1 FROM place_pin_drafts WHERE id=$1) removed,
+  EXISTS(SELECT 1 FROM place_pin_drafts WHERE id=$1 AND state='expired') expired`,[draftId])).rows[0];
+ const remaining=Number(row.remaining),owners=Number(row.owners);
+ if(!Number.isSafeInteger(remaining)||remaining<0||!Number.isSafeInteger(owners)||owners<0)throw Error('Fixture cleanup inventory');
+ return {remaining,owners,targetReached:expected==='removed'?row.removed===true:row.expired===true};
+}
+async function rDrainCleanup(repository:ExplorersPlacePinsRepository,draftId:string,expected:'removed'|'expired',inventory:{remaining:number;owners:number},completeSweep=false){
+ return traverseCleanup({initialRemaining:inventory.remaining,owners:inventory.owners,completeSweep,
+  page:(after,resume)=>repository.cleanupExpired(rCaller,after,resume),observe:()=>rCleanupInventory(draftId,expected)});
+}
 it('replays the original append after a lost response across terminalization and draft removal',async()=>{await rLostResponse('replays the original append after a lost response across terminalization and draft removal',false);},45000);
 it('replays the original abort after a lost response across draft removal',async()=>{await rLostResponse('replays the original abort after a lost response across draft removal',true);},45000);
 async function rCleanup(caseId:string,committing:boolean,cleanupFirst:boolean){
  const P={...rOriginal,policyId:'residual-cleanup'},setup=await cFixture({draftPolicy:P,charged:committing}),{f,foreign,drafts,sequences,read}=setup,spec=cSpec(committing?commitRequest(f,drafts[0],sequences[0]):appendRequest(f,drafts[0],sequences[0]),rCaller),before=await read();
  if(cleanupFirst)await rClockUntil('SELECT expires_at<=clock_timestamp() ready FROM place_pin_drafts WHERE id=$1',[drafts[0]]);
+ const inventory=await rCleanupInventory(drafts[0],'expired');
  const pair=await controller!.reservePair(caseId,admin,runtime),gate=controller!.gate(),reached=controller!.gate();let validation=false,cleanupLock=false;
  const {createResidualLeaseAdapter}=await import('./helpers/placesResidualLeaseAdapter');
- const cleanup=createResidualLeaseAdapter(pair.first,async(args,result)=>{if(args[0]==='SELECT id FROM creator_accounts WHERE id=$1 FOR UPDATE'&&args[1]?.[0]===f.account){expect(result.rows).toHaveLength(1);cleanupLock=true;if(cleanupFirst){gate.arrive();await gate.wait();}}});
- const cleanupOperation=()=>new ExplorersPlacePinsRepository(cleanup.pool as unknown as pg.Pool).cleanupExpired(rCaller);
+ const cleanup=createResidualLeaseAdapter(pair.first,async(args,result)=>{if(args[0]==='SELECT id FROM creator_accounts WHERE id=$1 FOR UPDATE'&&args[1]?.[0]===f.account){expect(result.rows).toHaveLength(1);if(!cleanupLock){cleanupLock=true;if(cleanupFirst){gate.arrive();await gate.wait();}}}});
+ const cleanupRepository=new ExplorersPlacePinsRepository(cleanup.pool as unknown as pg.Pool);
+ // The command-first winner produces exactly one supported command receipt.
+ // Account/row inventory stays finite; this explicit credit is not a retry waiver.
+ const cleanupOperation=async()=>{
+  const fresh=await rCleanupInventory(drafts[0],'expired');
+  if(fresh.remaining>inventory.remaining+(cleanupFirst?0:1)||fresh.owners>inventory.owners)throw Error('Fixture cleanup producer inventory');
+  return rDrainCleanup(cleanupRepository,drafts[0],'expired',fresh,committing&&!cleanupFirst);
+ };
  const commandPool={connect:async()=>({query:async(sql:string,args:unknown[]=[])=>{if(sql===cAccountSql&&cleanupFirst)reached.arrive();const result=await pair.second.query(sql,args);
   if(!cleanupFirst&&sql.startsWith('SELECT *,expires_at<=clock_timestamp() expired FROM place_pin_drafts')&&args[0]===drafts[0]){expect(result.rows[0].expired).toBe(false);validation=true;}return result;
  },release:()=>pair.second.release()})} as unknown as pg.Pool;
