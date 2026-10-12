@@ -3,6 +3,10 @@ import {createWriterGuardTransport} from '../helpers/placesWriterGuardTransport'
 const nonce='a'.repeat(32);
 const env={PLACE_PINS_GUARD_ENTERED_PATH:'/owned/writer-entered.json',PLACE_PINS_GUARD_READY_PATH:'/owned/writer-ready.json',PLACE_PINS_GUARD_FAILURE_PATH:'/owned/writer-failure.json',PLACE_PINS_GUARD_NONCE:nonce};
 describe('fixture writer guard transport with injected adapters',()=>{
+ it('returns the monotonic ready write origin for the consumer bootstrap deadline',()=>{
+  let time=10;const guard=createWriterGuardTransport({env,caseIds:['registered'],now:()=>time,writeExclusive:()=>{time+=20;}});
+  expect(guard.bootstrap()).toBe(30);expect(guard.admitted()).toBe(true);
+ });
  it('closes admission before emitting a finite first failure and never reopens',()=>{
   const writes:Array<{path:string,value:string}>=[];let guard:ReturnType<typeof createWriterGuardTransport>;
   guard=createWriterGuardTransport({env,caseIds:['registered'],now:()=>0,writeExclusive:(path,value)=>{if(path.endsWith('failure.json'))expect(guard.admitted()).toBe(false);writes.push({path,value});}});

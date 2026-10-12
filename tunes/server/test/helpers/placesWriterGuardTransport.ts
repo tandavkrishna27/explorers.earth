@@ -26,7 +26,7 @@ export function createWriterGuardTransport(options:Options){
  }
  function bootstrap(install:()=>void=()=>{}){
   if(options.collection)return;if(bootstrapped||closed)reject();bootstrapped=true;
-  try{validateBinding();const began=now();write(paths[0]!,JSON.stringify({version:1,nonce,kind:'entered'}));install();if(now()-began>=1000)reject();write(paths[1]!,JSON.stringify({version:1,nonce,kind:'ready'}));if(now()-began>=1000)reject();ready=true;}
+  try{validateBinding();const began=now();write(paths[0]!,JSON.stringify({version:1,nonce,kind:'entered'}));install();if(now()-began>=1000)reject();const readyAt=now();write(paths[1]!,JSON.stringify({version:1,nonce,kind:'ready'}));if(now()-began>=1000)reject();ready=true;return readyAt;}
   catch{closed=true;throw Error('Fixture guard bootstrap');}
  }
  function admit(caseId:string){if(closed||!ready||!ids.has(caseId))reject();}

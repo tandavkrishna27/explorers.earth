@@ -1,6 +1,8 @@
 import pg from 'pg';
 import {createHash,randomUUID} from 'node:crypto';
-import {beforeAll,afterAll,describe,it,expect} from 'vitest';
+import {beforeAll,beforeEach,afterEach,afterAll,describe,it,expect} from 'vitest';
+import {createWriterGuardTransport} from './helpers/placesWriterGuardTransport';
+import {createWriterSuiteController,collectedWriterCaseIds,writerSuiteFrames} from './helpers/placesWriterRaceController';
 import {ExplorersPlacePinsRepository} from '../repositories/explorersPlacePinsRepository';
 import {ExplorersRecommendationRepository} from '../repositories/explorersRecommendationRepository';
 import {createPlacePinsSequenceHasher,hashPlacePinsChunk,hashPlacePinsRequest} from '../application/placePinsBoundary';
@@ -12,25 +14,39 @@ import type {Actor} from '../application/actor';
 // Fixture only. Neither these values nor their cardinalities are production policy.
 const policy={policyId:'disposable-fixture-only',policyVersion:1,transportChunkBytes:4096,transportChunkIds:32,replacementBytes:8192,replacementIds:64,ownerDraftQuota:2,ownerStagingBytes:100000,draftExpiryMs:60000,stagingRetentionMs:120000,receiptRetentionMs:180000,commitProcessingBytes:200000,commitProcessingMs:10000,commitWorkUnits:10000,cleanupBatchSize:10,cleanupWorkUnits:100};
 let admin:pg.Pool,runtime:pg.Pool,repo:ExplorersPlacePinsRepository;
+let controller:ReturnType<typeof createWriterSuiteController>|undefined;
 (process.env.PLACE_PINS_POSTGRES_TEST==='1'?describe.sequential:describe.skip)('Places P1 actual PostgreSQL acceptance (authored, requires approved guard)',()=>{
-beforeAll(async()=>{
+beforeAll(async(_context,suite)=>{
+ const caseIds=collectedWriterCaseIds(suite);
+ const guard=createWriterGuardTransport({env:process.env,caseIds:[...caseIds,...writerSuiteFrames]});
+ // The reviewed handshake is mandatory before any Pool construction or SQL.
+ const readyAt=guard.bootstrap();
+ const source=process.env.DATABASE_URL_TEST,runtimeSource=process.env.PLACE_PINS_RUNTIME_DATABASE_URL_TEST,identity=process.env.PLACE_PINS_DISPOSABLE_DATABASE;
+ if(!source||!runtimeSource||!identity){guard.failStop({caseId:'suite-bootstrap',reason:'identity',phase:'preflight',unsettledCount:0});throw new Error('Fixture bootstrap identity');}
+ let url:URL,runtimeUrl:URL,runtimeLogin:string;
+ try{url=new URL(source);runtimeUrl=new URL(runtimeSource);
+  if(!['127.0.0.1','localhost','[::1]'].includes(url.hostname)||decodeURIComponent(url.pathname.slice(1))!==identity||!/^explorers_place_pins_disposable_[a-z0-9_]+$/.test(identity)||runtimeUrl.hostname!==url.hostname||runtimeUrl.port!==url.port||runtimeUrl.pathname!==url.pathname||runtimeUrl.username===url.username)throw new Error('Fixture identity');
+  runtimeLogin=decodeURIComponent(runtimeUrl.username);
+ }catch{guard.failStop({caseId:'suite-bootstrap',reason:'identity',phase:'preflight',unsettledCount:0});throw new Error('Fixture bootstrap identity');}
+ controller=createWriterSuiteController({identity:{database:identity,runtimeLogin},guardFailure:guard.failStop,admission:guard.admit});
+ await controller.bootstrap(async()=>{
  // Root must document and approve the exact disposable database before setting
  // this explicit identity. No protected fixture URL or checkout credential fallback.
- const source=process.env.DATABASE_URL_TEST,runtimeSource=process.env.PLACE_PINS_RUNTIME_DATABASE_URL_TEST,identity=process.env.PLACE_PINS_DISPOSABLE_DATABASE;
- if(!source||!runtimeSource||!identity)throw new Error('Approved Places disposable database and separate runtime login identities are required');
- const url=new URL(source),runtimeUrl=new URL(runtimeSource);
- if(!['127.0.0.1','localhost','[::1]'].includes(url.hostname)||decodeURIComponent(url.pathname.slice(1))!==identity||!/^explorers_place_pins_disposable_[a-z0-9_]+$/.test(identity)||runtimeUrl.hostname!==url.hostname||runtimeUrl.port!==url.port||runtimeUrl.pathname!==url.pathname||runtimeUrl.username===url.username)throw new Error('Places disposable database guard rejected the target');
- admin=new pg.Pool({connectionString:source,max:3});
+ admin=controller!.wrapPool(new pg.Pool({connectionString:source,max:3,connectionTimeoutMillis:2000}),'admin');
  expect((await admin.query('SELECT current_database() name')).rows[0].name).toBe(identity);
- const direct=new pg.Pool({connectionString:runtimeSource,max:1});
- try{await verifyMusicRuntimeLogin(admin,direct,{loginRole:decodeURIComponent(runtimeUrl.username)});}finally{await direct.end();}
- runtime=new pg.Pool({connectionString:runtimeSource,options:'-c role=music_runtime',max:2});
+ const direct=controller!.wrapPool(new pg.Pool({connectionString:runtimeSource,max:1,connectionTimeoutMillis:2000}),'direct');
+ await controller!.directPreflight(async()=>{try{await verifyMusicRuntimeLogin(admin,direct,{loginRole:decodeURIComponent(runtimeUrl.username)});}finally{await direct.end();}});
+ runtime=controller!.wrapPool(new pg.Pool({connectionString:runtimeSource,options:'-c role=music_runtime',max:2,connectionTimeoutMillis:2000}),'runtime');
  const role=(await runtime.query(`SELECT current_database() database,current_user effective,session_user login,r.rolsuper,r.rolcreatedb,r.rolcreaterole,r.rolreplication,r.rolbypassrls,
   pg_has_role(session_user,'music_runtime','MEMBER') member FROM pg_roles r WHERE r.rolname=session_user`)).rows[0];
  expect(role).toMatchObject({database:identity,effective:'music_runtime',login:decodeURIComponent(runtimeUrl.username),rolsuper:false,rolcreatedb:false,rolcreaterole:false,rolreplication:false,rolbypassrls:false,member:true});
  repo=new ExplorersPlacePinsRepository(runtime);
+ await controller!.settleCase();
+ },readyAt);
 });
-afterAll(async()=>{await runtime?.end();await admin?.end();});
+beforeEach(context=>{if(!controller)throw new Error('Fixture bootstrap unavailable');controller.admit(context.task.name);});
+afterEach(async context=>{if(!controller)throw new Error('Fixture bootstrap unavailable');if(context.task.result?.state==='fail'){await controller.abortCase();throw new Error('Fixture case failed');}await controller.settleCase();});
+afterAll(async()=>{await controller?.shutdown();});
 type Fixture={account:string;list:string;otherList:string;ids:string[];allLists?:string[];allIds?:string[];entityIds?:string[];sectionIds?:string[]};
 async function seed(count=3):Promise<Fixture>{
  const account=(await admin.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
