@@ -1,3 +1,4 @@
+import {publicPlaceReadFailure,readPublicPlaceEligibility,PublicPlaceRestartConflict,placePinsReadInteger,publicPlaceSuppressionGate,publicPlaceRowsStillEligible,placePinJoin,placePinBucket,placeSortPosition} from './placePinsRead';
 import {readManualGamePresentation} from '../repositories/gameManualRepository';
 import {readMovieProviderMedia} from '../repositories/movieMedia';
 import {movieDisplayFieldsSchema} from '../../shared/explorersMovieContract';
@@ -12,7 +13,7 @@ import type { Pool } from 'pg';
 import { z } from 'zod/v3';
 import { publicContentRequestSchema, type PublicContentPage, type PublicContentRequest,
   type PublicCollectionSummary, type PublicRecommendationSummary } from '../../shared/explorersPublicContentContract';
-import { publicRecommendationDetailRequestSchema,publicRecommendationDetailSchema,publicRecommendationSummarySchema } from '../../shared/explorersPublicContentContract';
+import { publicPlacePinsReadSchema,publicRecommendationDetailRequestSchema,publicRecommendationDetailSchema,publicRecommendationSummarySchema } from '../../shared/explorersPublicContentContract';
 import { displayOverridesReadSchema,catalogTitleSchema } from '../../shared/explorersContract';
 import { normalizeRichNote } from './richNote';
 import {publicSearchRequestSchema,publicSearchPageSchema,publicCollectionByIdSchema} from '../../shared/explorersSearchContract';
@@ -23,8 +24,8 @@ import {SearchQuery,SearchFailure,searchError,publicAccountGate,publicCollection
 export class PublicContentFailure extends Error {
   constructor(readonly status:400|409|413) {super(status===400?'Invalid public content request':status===413?'Public detail exceeds the response bound':'Collection changed; restart pagination');}
 }
-const cursorSchema=z.object({version:z.literal(1),binding:z.string(),account:z.string().uuid(),
-  revision:z.string().nullable(),order:z.number().int().nonnegative().max(2147483647),id:z.string().uuid()}).strict();
+const cursorSchema=z.object({version:z.union([z.literal(1),z.literal(2)]),pinBucket:z.union([z.literal(0),z.literal(1)]).optional(),eligibilityFingerprint:z.string().regex(/^[a-f0-9]{64}$/).optional(),binding:z.string(),account:z.string().uuid(),
+  revision:z.string().nullable(),order:z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER-1).safe(),id:z.string().uuid()}).strict().superRefine((v,ctx)=>{if(v.version===2&&(!v.eligibilityFingerprint||v.pinBucket===undefined)||v.version===1&&(v.order>2147483647||v.pinBucket!==undefined||v.eligibilityFingerprint!==undefined))ctx.addIssue({code:'custom',message:'Invalid legacy cursor position'});});
 type Cursor=z.infer<typeof cursorSchema>;
 const overrideJoin='LEFT JOIN recommendation_display_overrides o ON o.recommendation_id=r.id AND o.account_id=r.account_id';
 const titleBytes='octet_length(to_json(e.title)::text)+coalesce(octet_length(o.display_values::text),0)';
@@ -105,7 +106,7 @@ export class PublicContentService {
     await db.query('COMMIT');return result;
    }catch(error){await db.query('ROLLBACK');if(error instanceof SearchFailure&&error.status===422)throw new SearchFailure(400,error.message);searchError(error);}finally{db.release();}
   }
-  private binding(input:PublicContentRequest) {return JSON.stringify([input.username,input.category,input.slug??null,input.limit,'display_order,id/v1']);}
+  private binding(input:PublicContentRequest) {return JSON.stringify([input.username,input.category,input.slug??null,input.limit,input.category==='places'&&input.slug!==undefined?'pinBucket,sortPosition,id/places-v1':'display_order,id/v1']);}
   private decode(value:string|undefined,binding:string):Cursor|undefined {
     if(!value) return undefined;
     try {
@@ -145,26 +146,41 @@ export class PublicContentService {
   async page(raw:unknown):Promise<PublicContentPage<PublicCollectionSummary|PublicRecommendationSummary>|undefined> {
     const parsed=publicContentRequestSchema.safeParse(raw);if(!parsed.success) throw new PublicContentFailure(400);
     const input=parsed.data,binding=this.binding(input),cursor=this.decode(input.cursor,binding);
+    if(cursor&&input.category==='places'&&input.slug!==undefined&&(cursor.version!==2||cursor.pinBucket===undefined))throw new PublicContentFailure(400);
     const db=await this.pool.connect();
     try {
       await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+      if(input.category==='places')await db.query("SET LOCAL statement_timeout='2000ms'");
       const account=(await db.query(`SELECT a.id FROM creator_accounts a JOIN account_category_settings s ON s.account_id=a.id AND s.category=$2
         WHERE a.handle_key=$1 AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile AND s.is_public`,[input.username,input.category])).rows[0];
       if(!account) {await db.query('COMMIT');return undefined;}
       if(cursor&&cursor.account!==account.id) throw new PublicContentFailure(400);
-      let revision:string|null=null,rows:any[];
+      let revision:string|null=null,rows:any[],placePins:PublicContentPage<never>['placePins'];
       if(input.slug!==undefined) {
         const collection=(await db.query(`SELECT id,revision::text FROM collections WHERE account_id=$1 AND category=$2 AND slug=$3
           AND archived_at IS NULL AND visibility='public' AND publication_state='published'`,[account.id,input.category,input.slug])).rows[0];
         if(!collection) {await db.query('COMMIT');return undefined;}
         const categoryState=(await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') revision",[account.id,input.category])).rows[0];
         revision=`${collection.revision}:${categoryState.revision}`;if(cursor&&cursor.revision!==revision) throw new PublicContentFailure(409);
-        rows=(await db.query(`SELECT r.id,${boundedTitle},e.kind,r.user_rating,ci.display_order FROM collection_items ci
-          JOIN recommendations r ON r.id=ci.recommendation_id AND r.account_id=ci.account_id AND r.category=ci.category
-          JOIN entities e ON e.id=r.entity_id ${overrideJoin}
-          WHERE ci.collection_id=$1 AND ci.account_id=$2 AND ci.category=$3 AND r.archived_at IS NULL AND r.publication_state='published'
-          AND ($4::integer IS NULL OR (ci.display_order,r.id)>($4,$5::uuid)) ORDER BY ci.display_order,r.id LIMIT $6`,
-          [collection.id,account.id,input.category,cursor?.order??null,cursor?.id??null,input.limit+1])).rows;
+        if(input.category==='places'){
+          const bucket=placePinBucket(),position=placeSortPosition('ci');
+          const observation=await readPublicPlaceEligibility(db,account.id,collection.id);
+          if(cursor&&cursor.eligibilityFingerprint!==observation.eligibilityFingerprint)throw new PublicContentFailure(409);
+          placePins=publicPlacePinsReadSchema.parse({collectionId:collection.id,collectionRevision:collection.revision,categoryContentRevision:categoryState.revision,...observation});
+          rows=(await db.query(`SELECT r.id,r.entity_id,${boundedTitle},e.kind,r.user_rating,${position} AS display_order,${bucket} AS pin_bucket FROM collection_items ci
+            JOIN recommendations r ON r.id=ci.recommendation_id AND r.account_id=ci.account_id AND r.category=ci.category
+            JOIN entities e ON e.id=r.entity_id ${overrideJoin} ${placePinJoin('ci')}
+            WHERE ci.collection_id=$1 AND ci.account_id=$2 AND ci.category=$3 AND r.archived_at IS NULL AND r.publication_state='published' AND ${publicPlaceSuppressionGate}
+            AND ($4::integer IS NULL OR (${bucket},${position},r.id)>($4,$5::bigint,$6::uuid)) ORDER BY ${bucket},${position},r.id LIMIT $7`,
+            [collection.id,account.id,input.category,cursor?.pinBucket??null,cursor?.order??null,cursor?.id??null,input.limit+1])).rows;
+        }else{
+          rows=(await db.query(`SELECT r.id,${boundedTitle},e.kind,r.user_rating,ci.display_order FROM collection_items ci
+            JOIN recommendations r ON r.id=ci.recommendation_id AND r.account_id=ci.account_id AND r.category=ci.category
+            JOIN entities e ON e.id=r.entity_id ${overrideJoin}
+            WHERE ci.collection_id=$1 AND ci.account_id=$2 AND ci.category=$3 AND r.archived_at IS NULL AND r.publication_state='published'
+            AND ($4::integer IS NULL OR (ci.display_order,r.id)>($4,$5::uuid)) ORDER BY ci.display_order,r.id LIMIT $6`,
+            [collection.id,account.id,input.category,cursor?.order??null,cursor?.id??null,input.limit+1])).rows;
+        }
       } else {
         if(cursor&&cursor.revision!==null) throw new PublicContentFailure(400);
         rows=(await db.query(`SELECT id,title,slug,description,heading,display_order FROM collections WHERE account_id=$1 AND category=$2
@@ -176,8 +192,11 @@ export class PublicContentService {
       const result:PublicContentPage<PublicCollectionSummary|PublicRecommendationSummary>={version:'explorers-public-content/v1',
         items:rows.map(row=>input.slug!==undefined?publicRecommendationSummarySchema.parse({id:row.id,title:effectiveTitle(row),kind:row.kind,userRating:row.user_rating}):
           {id:row.id,title:row.title,slug:row.slug,description:row.description,heading:row.heading}),
-        nextCursor:hasMore?this.encode({version:1,binding,account:account.id,revision,order:last.display_order,id:last.id}):null};
-      await db.query('COMMIT');return result;
-    } catch(error) {await db.query('ROLLBACK');throw error;} finally {db.release();}
+        nextCursor:hasMore?this.encode({version:placePins?2:1,binding,account:account.id,revision,order:placePins?placePinsReadInteger(last.display_order):last.display_order,id:last.id,...(placePins?{pinBucket:last.pin_bucket,eligibilityFingerprint:placePins.eligibilityFingerprint}:{})}):null,...(placePins?{placePins}:{})};
+      if(placePins&&Buffer.byteLength(JSON.stringify(result),'utf8')>4*1024*1024)throw new PublicContentFailure(413);
+      await db.query('COMMIT');
+      if(placePins&&!await publicPlaceRowsStillEligible(this.pool,account.id,rows.map(row=>({id:row.id,entityId:row.entity_id,collectionId:placePins!.collectionId})),[placePins],db))return undefined;
+      return result;
+    } catch(error) {await db.query('ROLLBACK');if(error instanceof PublicPlaceRestartConflict)throw new PublicContentFailure(409);throw input.category==='places'?publicPlaceReadFailure(error):error;} finally {db.release();}
   }
 }

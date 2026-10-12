@@ -33,7 +33,7 @@ it('rejects missing Places taxonomy instead of silently losing an assignment',()
 });
 
 it('maps every consumed Place_Details key, with photos as owned media routes',()=>{
- const row=placeViewModel(detail(),membership(),{recommendationId:id(1),collectionId:id(2),position:0});
+ const row=placeViewModel(detail(),membership({placePinPosition:0}));
  expect(row.Place_Details).toEqual({
   Place_Id:'ChIJ_example',Place_Name:'Blue Tokai',Title:'Blue Tokai',Place_Address:'1 Example Road',
   Geometry:{lat:12.9715987,lng:77.5945627},Rating:4.5,Rating_Count:1200,
@@ -99,9 +99,8 @@ it('refuses wrong category, unsupported entity kind and mismatched identity',()=
 });
 
 it('does not pin a row through a membership of another collection',()=>{
- const pin={recommendationId:id(1),collectionId:id(2),position:0};
- expect(placeViewModel(detail(),membership(),pin).is_pinned).toBe(true);
- expect(placeViewModel(detail(),membership({collectionId:id(4)}),pin)).toMatchObject({is_pinned:false,pin_order:null});
+ expect(placeViewModel(detail(),membership({placePinPosition:0})).is_pinned).toBe(true);
+ expect(placeViewModel(detail(),membership({collectionId:id(4),placePinPosition:null}))).toMatchObject({is_pinned:false,pin_order:null});
 });
 
 it('assembles List_Name_Details from the snapshot, the list note and the list cover',()=>{
@@ -135,7 +134,7 @@ it('refuses a list that is not a Places list or arrives without its location agg
  expect(()=>collectionViewModel(collection({placeLocation:undefined}),[])).toThrow();
 });
 
-it('orders members by display order, drops archived rows and applies only the matching pin',()=>{
+it('orders members by list-local pins then display order and drops archived rows',()=>{
  const lists=new Map<string,unknown>([[id(2),{detail:collection()}]]);
  const details=new Map<string,unknown>([
   [id(1),{detail:detail()}],
@@ -145,17 +144,22 @@ it('orders members by display order, drops archived rows and applies only the ma
  const view=placesViewModel.complete({
   category:'places',collections:[collection()],
   memberships:[
-   {recommendationId:id(5),collectionId:id(2),displayOrder:1},
-   {recommendationId:id(1),collectionId:id(2),displayOrder:0},
+   {recommendationId:id(5),collectionId:id(2),displayOrder:1,placePinPosition:3},
+   {recommendationId:id(1),collectionId:id(2),displayOrder:0,placePinPosition:null},
    {recommendationId:id(6),collectionId:id(2),displayOrder:2,recommendationArchived:true},
   ],
   topPicks:[{recommendationId:id(5),collectionId:id(2),position:3}],
  } as never,lists as never,details as never,'owner');
  expect(view.lists).toHaveLength(1);
- expect(view.lists[0].recommended_places.map(row=>row.documentId)).toEqual([id(1),id(5)]);
- expect(view.lists[0].recommended_places.map(row=>row.is_pinned)).toEqual([false,true]);
- expect(view.lists[0].recommended_places[1].pin_order).toBe(3);
+ expect(view.lists[0].recommended_places.map(row=>row.documentId)).toEqual([id(5),id(1)]);
+ expect(view.lists[0].recommended_places.map(row=>row.is_pinned)).toEqual([true,false]);
+ expect(view.lists[0].recommended_places[0].pin_order).toBe(3);
  expect(view.lists[0].account).toMatchObject({documentId:id(3),username:'owner'});
+});
+
+it('membership-local pin state wins over category top picks and differs between lists',()=>{
+ expect(placeViewModel(detail(),membership({placePinPosition:5})).pin_order).toBe(5);
+ expect(placeViewModel(detail(),membership({collectionId:id(3),placePinPosition:null})).is_pinned).toBe(false);
 });
 
 it('refuses to map a complete observation with a list or a place missing from hydration',()=>{

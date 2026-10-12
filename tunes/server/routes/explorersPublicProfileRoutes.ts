@@ -1,3 +1,4 @@
+import {PublicPlaceReadLimit,PublicPlaceCursorError,PublicPlaceRestartConflict} from '../application/placePinsRead';
 import {PublicPeopleCursorError} from '../publicProfile/publicPeopleProjection';
 import {PublicMovieCursorError} from '../publicProfile/publicMoviesProjection';
 import {PublicGameCursorError,PublicGameReadLimit,prepareGamePublicReply,discardGamePublicResult} from '../publicProfile/publicGamesProjection';
@@ -11,6 +12,7 @@ const notFound = { version: "explorers-public-error/v1", error: { code: "NOT_FOU
 const badRequest = { version: "explorers-public-error/v1", error: { code: "BAD_REQUEST" } };
 const unavailable = { version: "explorers-public-error/v1", error: { code: "UNAVAILABLE", retryable: true } };
 const rateLimited = { version: "explorers-public-error/v1", error: { code: "RATE_LIMITED", retryable: true } };
+const restartRequired={version:'explorers-public-error/v1',error:{code:'RESTART_REQUIRED',retryable:false}};
 const readLimited={version:'explorers-public-error/v1',error:{code:'READ_LIMIT',retryable:true}};
 function gamesRequestLifetime(request:Request,response:Response){
  const controller=new AbortController();
@@ -57,7 +59,7 @@ export function setupExplorersPublicProfileRoutes(
     catch { return res.status(400).json(badRequest); }
     let value: unknown | undefined;
     try { value = await dependencies.shell?.(username, { bypassCache: /(?:^|,)\s*no-cache\s*(?:,|$)/i.test(req.get("cache-control") ?? "") }); }
-    catch(error) { return res.status(error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?400:503).json(error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?badRequest:error instanceof PublicGameReadLimit?readLimited:unavailable); }
+    catch(error) { return res.status(error instanceof PublicPlaceRestartConflict?409:error instanceof PublicPlaceCursorError||error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?400:503).json(error instanceof PublicPlaceRestartConflict?restartRequired:error instanceof PublicPlaceCursorError||error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?badRequest:error instanceof PublicGameReadLimit?readLimited:unavailable); }
     if (!value) return res.status(404).json(notFound);
     const etag = `"${createHash("sha256").update(JSON.stringify(value)).digest("base64url")}"`;
     res.setHeader("Cache-Control", "no-store");
@@ -75,7 +77,7 @@ export function setupExplorersPublicProfileRoutes(
     try { value = await dependencies.category(parsed.username, parsed.category, parsed.limit, { bypassCache: /(?:^|,)\s*no-cache\s*(?:,|$)/i.test(req.get("cache-control") ?? ""), cursor: parsed.cursor,...(lifetime?{signal:lifetime.signal}:{}) }); }
     catch(error) {
       if(lifetime&&res.destroyed)return;
-      return res.status(error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?400:503).json(error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?badRequest:error instanceof PublicGameReadLimit?readLimited:unavailable);
+      return res.status(error instanceof PublicPlaceRestartConflict?409:error instanceof PublicPlaceCursorError||error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?400:503).json(error instanceof PublicPlaceRestartConflict?restartRequired:error instanceof PublicPlaceCursorError||error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?badRequest:error instanceof PublicGameReadLimit||error instanceof PublicPlaceReadLimit&&('category' in req.params&&req.params.category==='places')?readLimited:unavailable);
     }
     if(lifetime?.signal.aborted){discardGamePublicResult(value);return;}
     if (!value) return res.status(404).json(notFound);
@@ -89,7 +91,7 @@ export function setupExplorersPublicProfileRoutes(
   });
   app.get('/api/explorers/v1/profiles/:username/recommendations/movies/genres/:genreSlug',async(req,res)=>{
     let parsed;try{if(Object.keys(req.query).some(key=>key!=='limit'&&key!=='cursor'))throw Error();parsed=parsePublicMovieGenreRequest({username:req.params.username,genreSlug:req.params.genreSlug,...req.query});}catch{return res.status(400).json(badRequest);}
-    let value;try{value=await dependencies.movieGenre?.(parsed.username,parsed.genreSlug,parsed.limit,{cursor:parsed.cursor});}catch(error){return res.status(error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?400:503).json(error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?badRequest:error instanceof PublicGameReadLimit?readLimited:unavailable);}
+    let value;try{value=await dependencies.movieGenre?.(parsed.username,parsed.genreSlug,parsed.limit,{cursor:parsed.cursor});}catch(error){return res.status(error instanceof PublicPlaceRestartConflict?409:error instanceof PublicPlaceCursorError||error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?400:503).json(error instanceof PublicPlaceRestartConflict?restartRequired:error instanceof PublicPlaceCursorError||error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?badRequest:error instanceof PublicGameReadLimit||error instanceof PublicPlaceReadLimit&&('category' in req.params&&req.params.category==='places')?readLimited:unavailable);}
     if(!value)return res.status(404).json(notFound);const etag=`"${createHash('sha256').update(JSON.stringify(value)).digest('base64url')}"`;res.set('ETag',etag);if(req.get('if-none-match')===etag)return res.status(304).end();return res.status(200).json(value);
   });
   app.get('/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug',async(req,res)=>{
@@ -105,7 +107,7 @@ export function setupExplorersPublicProfileRoutes(
     try{
     let value: unknown | undefined;
     try { value = await dependencies.detail?.(parsed.username, parsed.category, parsed.slug, parsed.limit, { bypassCache: /(?:^|,)\s*no-cache\s*(?:,|$)/i.test(req.get("cache-control") ?? ""), cursor: parsed.cursor,...(lifetime?{signal:lifetime.signal}:{}) }); }
-    catch(error) { if(lifetime&&res.destroyed)return;return res.status(error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?400:503).json(error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?badRequest:error instanceof PublicGameReadLimit?readLimited:unavailable); }
+    catch(error) { if(lifetime&&res.destroyed)return;return res.status(error instanceof PublicPlaceRestartConflict?409:error instanceof PublicPlaceCursorError||error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?400:503).json(error instanceof PublicPlaceRestartConflict?restartRequired:error instanceof PublicPlaceCursorError||error instanceof PublicMovieCursorError||error instanceof PublicGameCursorError?badRequest:error instanceof PublicGameReadLimit||error instanceof PublicPlaceReadLimit&&('category' in req.params&&req.params.category==='places')?readLimited:unavailable); }
     if(lifetime?.signal.aborted){discardGamePublicResult(value);return;}
     if (!value) return res.status(404).json(notFound);
     if(parsed.category==='games')return await sendGames(req,res,value);

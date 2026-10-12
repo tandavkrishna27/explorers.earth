@@ -22,10 +22,14 @@ export type PublicPagedOptions = {
   readNext: (offset: number, signal: AbortSignal, bypassCache: boolean) => Promise<unknown>;
   peek?: () => PublicPagePayload | undefined;
   readRows: (data: PublicPagePayload) => unknown[];
+  readHasMore?: (data: PublicPagePayload) => boolean;
   merge: (previous: PublicPagePayload, next: PublicPagePayload) => PublicPagePayload;
   refreshVersion?: number;
   bypassFirst?: boolean;
   showLoadingOnRevalidation?: boolean;
+  retainOnFirst?: boolean;
+  restartOnConflict?: boolean;
+  cursorTraversal?: boolean;
 };
 type Snapshot = Omit<PublicPagedState, "loadMore" | "refetch"> & { scope: string | undefined; partialError: Error | null };
 type Request = { controller: AbortController; settle: () => void };
@@ -33,6 +37,8 @@ const empty = (scope: string | undefined, loading = false): Snapshot => ({
   scope, data: undefined, loading, error: null, partialError: null, hasMore: false, loadingMore: false, loadMoreError: null,
 });
 const blocking = (error: unknown) => error instanceof Error && /^PUBLIC_PROFILE_(401|403|404)$/.test(error.message);
+
+export function canContinuePublicTraversal(offset:number,cursorTraversal=false):boolean {return Number.isSafeInteger(offset)&&offset>=0&&(cursorTraversal||offset<=99999);}
 
 export function usePublicPagedResource(options: PublicPagedOptions): PublicPagedState {
   const pageSize = options.pageSize ?? PUBLIC_PROFILE_PAGE_SIZE;
@@ -74,7 +80,7 @@ export function usePublicPagedResource(options: PublicPagedOptions): PublicPaged
     const token = generation.current;
     const requestedOffset = offset.current;
     const previous = current.current.scope === scope ? current.current : empty(scope);
-    if (!first && requestedOffset > 99999) {
+    if (!first && !canContinuePublicTraversal(requestedOffset,config.cursorTraversal)) {
       publish({ ...previous, loadMoreError: new Error("PUBLIC_PROFILE_PAGINATION_LIMIT") });
       return Promise.resolve();
     }
@@ -94,8 +100,8 @@ export function usePublicPagedResource(options: PublicPagedOptions): PublicPaged
       return { data, rows };
     };
 
-    let retained = previous.data;
-    let retainedPartialError = previous.partialError;
+    let retained = first && config.retainOnFirst === false ? undefined : previous.data;
+    let retainedPartialError = first && config.retainOnFirst === false ? null : previous.partialError;
     if (first && !bypass && !retained && config.peek) {
       try {
         const cached = config.peek();
@@ -120,11 +126,18 @@ export function usePublicPagedResource(options: PublicPagedOptions): PublicPaged
         // A continuation keeps that evidence; only a first-page replacement resets it.
         const partialError = (!first && previous.partialError) || (rows.includes(null) ? new Error("PUBLIC_PROFILE_PARTIAL_RESPONSE") : null);
         const merged = config.merge(first ? data : previous.data!, data);
-        offset.current = requestedOffset + rows.length;
-        publish({ ...empty(scope), data: merged, partialError, hasMore: rows.length === requestedSize });
+        const nextOffset=requestedOffset+rows.length;
+        if(!Number.isSafeInteger(nextOffset))throw Error('PUBLIC_PROFILE_PAGINATION_LIMIT');
+        offset.current = nextOffset;
+        publish({ ...empty(scope), data: merged, partialError, hasMore: config.readHasMore ? config.readHasMore(data) : rows.length === requestedSize });
       } catch (error: unknown) {
         if (!isCurrent()) return;
-        if (blocking(error)) publish({ ...empty(scope), error });
+        if (!first && config.restartOnConflict && error instanceof Error && error.message==='PUBLIC_PROFILE_409') {
+          publish(empty(scope));
+          if(request.current===pending)request.current=undefined;
+          void start(true,true);
+        }
+        else if (blocking(error)) publish({ ...empty(scope), error });
         else if (first) publish({ ...empty(scope), data: retained, partialError: retainedPartialError, error });
         else publish({ ...previous, loadingMore: false, loadMoreError: error });
       } finally {

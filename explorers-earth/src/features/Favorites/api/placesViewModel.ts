@@ -20,7 +20,6 @@ import type {z} from 'zod/v3';
 // The owner sees their own contact details unconditionally: contactVisibility gates what
 // a *reader* sees, and the public projection is the only thing that applies it.
 
-type Pin={recommendationId:string;collectionId:string;position:number};
 const MEDIA=(id:string)=>`/api/explorers/v1/media/${id}/content`;
 
 // Flat {lat,lng}, which is the shape every map and card in the app reads. Nesting it
@@ -68,7 +67,7 @@ export type RecommendationListView={
  linked_product_list_ids:string[];
 };
 
-export function placeViewModel(detail:Readonly<EditableOwnerRecommendation>,membership:Readonly<OwnerMembershipDto>,pin?:Readonly<Pin>):RecommendedPlaceView{
+export function placeViewModel(detail:Readonly<EditableOwnerRecommendation>,membership:Readonly<OwnerMembershipDto>):RecommendedPlaceView{
  if(detail.category!=='places'||detail.id!==membership.recommendationId)throw new ExplorersApiError(409,'CONFLICT','Places detail identity changed');
  if(detail.entity.kind!=='place'&&detail.entity.kind!=='person')throw new ExplorersApiError(409,'CONFLICT','Unsupported Places entity kind');
  // A place recommendation must carry provider facts; a person recommendation inside a
@@ -85,10 +84,8 @@ export function placeViewModel(detail:Readonly<EditableOwnerRecommendation>,memb
  // provider identity, and the internal entity id is never substituted for it.
  const entity='providerPlaceId' in detail.entity?detail.entity:null;
  const title=detail.displayTitle??'Unnamed place';
- // Places has no category-wide top picks, so no pin ever arrives here. The field is
- // kept because the cards read it, and it is honestly always false rather than
- // reflecting a feature that cannot be set.
- const selectedPin=pin?.recommendationId===membership.recommendationId&&pin.collectionId===membership.collectionId?pin:undefined;
+ // Membership-local metadata permits different pin positions in different lists.
+ const selectedPin=membership.placePinPosition==null?undefined:{position:membership.placePinPosition};
  // Photos are owned media in their stored order, then the recommendation's own uploads.
  // PlaceOverview concatenates both into one gallery, so both are emitted.
  const photos=detail.placePhotos?.photoMediaIds??[];
@@ -170,12 +167,11 @@ export const placesViewModel={
     observation.detail as Readonly<EditableOwnerCollection>,
     observed.memberships
      .filter(member=>member.collectionId===collection.id&&!member.collectionArchived&&!member.recommendationArchived)
-     .sort((a,b)=>a.displayOrder-b.displayOrder||a.recommendationId.localeCompare(b.recommendationId))
+     .sort((a,b)=>Number(a.placePinPosition==null)-Number(b.placePinPosition==null)||(a.placePinPosition??a.displayOrder)-(b.placePinPosition??b.displayOrder)||a.recommendationId.localeCompare(b.recommendationId))
      .map(member=>{
       const detail=details.get(member.recommendationId);
       if(!detail)throw new ExplorersApiError(409,'CONFLICT','Place detail missing while mapping');
-      const pin=observed.topPicks?.find(entry=>entry.recommendationId===member.recommendationId);
-      return placeViewModel(detail.detail as Readonly<EditableOwnerRecommendation>,member,pin);
+      return placeViewModel(detail.detail as Readonly<EditableOwnerRecommendation>,member);
      }),
     username,
    );

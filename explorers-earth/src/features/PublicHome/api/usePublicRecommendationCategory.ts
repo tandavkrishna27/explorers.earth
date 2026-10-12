@@ -5,7 +5,7 @@ import {completeBooksPreviews} from '../../Books/api/publicBooksContinuation';
 import {completePeoplePreviews} from '../../People/api/publicPeopleSectorViewModel';
 import { publicProfileGatewayClient, type PublicCategory } from "./publicProfileGatewayClient";
 import { subscribePublicProfileInvalidation } from "./publicProfileInvalidation";
-import { mergePublicPage, PUBLIC_PROFILE_PAGE_SIZE, readPublicPageRows } from "./publicProfilePagination";
+import { completePlacesPreviews, mergePublicPage, PUBLIC_PROFILE_PAGE_SIZE, readPublicPageRows } from "./publicProfilePagination";
 import { usePublicPagedResource, type PublicPagedState, type PublicPagePayload } from "./usePublicPagedResource";
 
 export type PublicCategoryGatewayState = PublicPagedState;
@@ -23,6 +23,7 @@ export function usePublicRecommendationCategory(
   const peopleBudget=useRef({bytes:0});
   const richPage=async(value:Promise<unknown>,signal:AbortSignal,bypass:boolean,offset=0,budget=peopleBudget.current)=>{
     const page=await value;
+    if(category==='places')return completePlacesPreviews(page,(slug,cursor)=>publicProfileGatewayClient.detailPage(username!,category,slug,{limit:12,cursor},signal,bypass),signal);
     if(category==='people')return completePeoplePreviews(page,(slug,cursor)=>publicProfileGatewayClient.detailPage(username!,category,slug,{limit:24,cursor},signal,bypass),signal,budget);
     if(category==='books')return completeBooksPreviews(page,(slug,cursor)=>publicProfileGatewayClient.detailPage(username!,category,slug,{limit:24,cursor},signal,bypass));
     if(category!=='movies'&&category!=='games')return page;
@@ -32,10 +33,10 @@ export function usePublicRecommendationCategory(
     if(!signal.aborted){if(movieCursors.current.size>=1000)throw Error('PUBLIC_PROFILE_PAGINATION_LIMIT');movieCursors.current.set(offset+rows.length,cursor);}return complete;
   };
   const state = usePublicPagedResource({
-    scope, enabled, bypassFirst: Boolean(scope && deferredInvalidation.current === scope),
+    scope, enabled, retainOnFirst:category!=='places',restartOnConflict:category==='places', bypassFirst: Boolean(scope && deferredInvalidation.current === scope),
     readFirst: (signal, bypass) => {movieCursors.current.clear();peopleBudget.current={bytes:0};return richPage(publicProfileGatewayClient.category(username!, category, signal, bypass),signal,bypass);},
     readNext: (offset, signal, bypass) => {const cursor=(category==='movies'||category==='games')?movieCursors.current.get(offset):`o${offset}`;if(!cursor)throw Error('PUBLIC_PROFILE_PAGINATION_LIMIT');return richPage(publicProfileGatewayClient.categoryPage(username!, category, { limit: PUBLIC_PROFILE_PAGE_SIZE, cursor }, signal, bypass),signal,bypass,offset);},
-    peek: () => publicProfileGatewayClient.peekCategory(username!, category) as PublicPagePayload | undefined,
+    peek: () => category==='places'?undefined:publicProfileGatewayClient.peekCategory(username!, category) as PublicPagePayload | undefined,
     readRows: (data) => readPublicPageRows(data, category, false),
     merge: (previous, next) => category==='games'?mergeGamePage(previous,next,false,PUBLIC_PROFILE_PAGE_SIZE):category==='movies'?mergeMoviePage(previous,next,false,PUBLIC_PROFILE_PAGE_SIZE):mergePublicPage(previous, next, category, false),
     showLoadingOnRevalidation: true,

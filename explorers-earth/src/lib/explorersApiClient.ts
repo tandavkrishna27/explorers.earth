@@ -210,9 +210,11 @@ async function completeCategory(input:Pick<OwnerCollectionsRequest,'category'|'s
     for(const item of recommendations) {
       if(item.accountId!==initial.accountId||item.category!==query.category||children.has(item.id)||(query.status!=='all'&&item.archived!==(query.status==='archived'))) return invalid();children.set(item.id,item);
     }
-    const tuples=new Set<string>();
+    const tuples=new Set<string>(),placePinPositions=new Map<string,Set<number>>();
     for(const item of memberships) {
       const parent=parents.get(item.collectionId),child=children.get(item.recommendationId),key=`${item.recommendationId}:${item.collectionId}`;
+      if((item.placePinPosition!==undefined)!==(query.category==='places'))return invalid();
+      if(item.placePinPosition!=null){const positions=placePinPositions.get(item.collectionId)??new Set<number>();if(positions.has(item.placePinPosition)||item.collectionArchived||item.recommendationArchived)return invalid();positions.add(item.placePinPosition);placePinPositions.set(item.collectionId,positions);}
       if(!parent||!child||tuples.has(key)||parent.revision!==item.collectionRevision||parent.archived!==item.collectionArchived||child.archived!==item.recommendationArchived) return invalid();tuples.add(key);
     }
     for(const child of recommendations) if(child.pin) {

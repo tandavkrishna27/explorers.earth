@@ -27,7 +27,7 @@ export function parsePublicProfileUsername(value: unknown): string {
 export type PublicProfileDetailRequest = PublicProfileRequest & { slug: string };
 
 export function parsePublicProfileDetailRequest(value: unknown): PublicProfileDetailRequest {
-  const p=detailRequestSchema.parse(value);if(p.cursor&&p.category!=='movies'&&p.category!=='games'&&!/^o(?:0|[1-9][0-9]{0,4})$/.test(p.cursor))throw new Error('Invalid cursor');return p;
+  const p=detailRequestSchema.parse(value);if(p.cursor&&p.category!=='movies'&&p.category!=='games'&&p.category!=='places'&&!/^o(?:0|[1-9][0-9]{0,4})$/.test(p.cursor))throw new Error('Invalid cursor');return p;
 }
 
 /** Cursor values are deliberately opaque to callers; only this BFF translates

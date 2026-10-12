@@ -1,3 +1,4 @@
+import {placePinsReadInteger,placePinJoin,placePinBucket,placeSortPosition} from './placePinsRead';
 import {readTaxonomyAssignment} from '../repositories/taxonomyAssignmentRepository';
 import {readManualGamePresentation} from '../repositories/gameManualRepository';
 import {readMovieProviderMedia} from '../repositories/movieMedia';
@@ -25,7 +26,7 @@ import {readLocationLink,readLinkedChildren} from '../repositories/placeLinkRepo
 export const OWNER_PAGE_BYTES=4*1024*1024;
 const VERSION='explorers-owner-content/v2' as const;
 const snapshotSchema=z.object({v:z.literal(2),account:z.string().uuid(),category:z.string(),revision:z.string(),issued:z.number().int(),expires:z.number().int()}).strict();
-const cursorSchema=z.object({v:z.literal(2),binding:z.string(),snapshotToken:z.string().max(4096),order:z.number().int().nonnegative(),id:z.string().uuid(),secondary:z.string().uuid().optional()}).strict();
+const cursorSchema=z.object({v:z.literal(2),binding:z.string(),snapshotToken:z.string().max(4096),order:z.number().int().nonnegative(),id:z.string().uuid(),secondary:z.string().uuid().optional(),pinBucket:z.union([z.literal(0),z.literal(1)]).optional(),collectionRevision:z.number().int().positive().safe().optional()}).strict().superRefine((v,ctx)=>{if(v.pinBucket!==undefined&&(!Number.isSafeInteger(v.order)||v.order>Number.MAX_SAFE_INTEGER-1))ctx.addIssue({code:'custom',message:'Invalid Places cursor position'});});
 type Snapshot=z.infer<typeof snapshotSchema>;
 type Cursor=z.infer<typeof cursorSchema>;
 // Compute the exact emitted JSON scalar bytes inside SQL, returning only a
@@ -108,8 +109,8 @@ export class OwnerContentService {
    return wire.ownerRecommendationDtoSchema.parse({id:row.id,accountId:row.account_id,entityId:row.entity_id,category:row.category,userRating:row.user_rating,publicationState:row.publication_state,revision:Number(row.revision),mediaIds,archived:row.archived_at!==null,pin:pin?{collectionId:pin.collection_id,position:pin.position,revision:Number(pin.revision)}:null});
   });
  }
- private page<T>(rows:any[],items:T[],context:{state:Snapshot;token:string},binding:string,key:(row:any)=>Pick<Cursor,'order'|'id'|'secondary'>) {
-  const base={version:VERSION,snapshot:context.state.revision,snapshotToken:context.token,expiresAt:context.state.expires};
+ private page<T>(rows:any[],items:T[],context:{state:Snapshot;token:string},binding:string,key:(row:any)=>Pick<Cursor,'order'|'id'|'secondary'|'pinBucket'|'collectionRevision'>,extra:Record<string,unknown>={}) {
+  const base={version:VERSION,snapshot:context.state.revision,snapshotToken:context.token,expiresAt:context.state.expires,...extra};
   let result:{version:typeof VERSION;snapshot:string;snapshotToken:string;expiresAt:number;items:T[];nextCursor:string|null}={...base,items:[],nextCursor:null};
   for(let n=0;n<items.length;n++) {
    const nextCursor=rows.length>n+1?this.token({v:2,binding,snapshotToken:context.token,...key(rows[n])},'cursor'):null;
@@ -153,18 +154,30 @@ export class OwnerContentService {
   });
  }
  async listRecommendations(actor:Actor,raw:unknown) {
-  return this.read(actor,['recommendations:read'],async db=>{
-   const input=parseContent(wire.ownerRecommendationsRequestSchema,raw),binding=JSON.stringify([actor.accountId,'recommendations',input.category,input.status,input.collectionId??null,input.limit,'display_order,id/v2']);
-   const ctx=await this.context(db,actor,input,binding),cursor=ctx.cursor,values:any[]=[actor.accountId,input.category];let join='',order='r.id',pageOrder='0',where='';
+  return this.read(actor,['recommendations:read',...(raw&&typeof raw==='object'&&Object.hasOwn(raw,'collectionId')?['collections:read']:[])],async db=>{
+   const input=parseContent(wire.ownerRecommendationsRequestSchema,raw),places=input.category==='places'&&!!input.collectionId;
+   const binding=JSON.stringify([actor.accountId,'recommendations',input.category,input.status,input.collectionId??null,input.limit,places?'pinBucket,sortPosition,id/places-v1':'display_order,id/v2']);
+   const ctx=await this.context(db,actor,input,binding),cursor=ctx.cursor,values:any[]=[actor.accountId,input.category];let join='',order='r.id',pageOrder='0',where='',collectionRevision:number|undefined,counts:any;
+   const bucket=placePinBucket(),position=placeSortPosition('i');
    if(input.collectionId) {
-    const parent=await db.query('SELECT id FROM collections WHERE id=$1 AND account_id=$2 AND category=$3',[input.collectionId,actor.accountId,input.category]);
+    const parent=await db.query('SELECT id,revision FROM collections WHERE id=$1 AND account_id=$2 AND category=$3',[input.collectionId,actor.accountId,input.category]);
     if(!parent.rows[0]) throw new RecommendationFailure(404,'Resource unavailable');
+    collectionRevision=Number(parent.rows[0].revision);
+    if(places&&cursor&&cursor.collectionRevision!==collectionRevision)throw new RecommendationFailure(409,'Places list changed; restart pagination');
     values.push(input.collectionId);join='JOIN collection_items i ON i.recommendation_id=r.id AND i.account_id=r.account_id AND i.category=r.category AND i.collection_id=$3';order='i.display_order,r.id';pageOrder='i.display_order';
+    if(places){
+     join+=' '+placePinJoin('i');order=`${bucket},${position},r.id`;pageOrder=position;
+     counts=(await db.query(`SELECT count(*)::text AS item_count,count(pp.recommendation_id)::text AS pin_count FROM recommendations r ${join} WHERE r.account_id=$1 AND r.category=$2 AND ${statusPredicate('r',input.status)}`,values)).rows[0];
+    }
    }
-   if(cursor) {values.push(...(input.collectionId?[cursor.order,cursor.id]:[cursor.id]));where=input.collectionId?`AND (i.display_order,r.id)>($${values.length-1},$${values.length}::uuid)`:`AND r.id>$${values.length}::uuid`;}
+   if(cursor) {
+    if(places){if(cursor.pinBucket===undefined)throw new RecommendationFailure(422,'Invalid Places continuation');values.push(cursor.pinBucket,cursor.order,cursor.id);where=`AND (${bucket},${position},r.id)>($${values.length-2}::integer,$${values.length-1}::bigint,$${values.length}::uuid)`;}
+    else{values.push(...(input.collectionId?[cursor.order,cursor.id]:[cursor.id]));where=input.collectionId?`AND (i.display_order,r.id)>($${values.length-1},$${values.length}::uuid)`:`AND r.id>$${values.length}::uuid`;}
+   }
    values.push(input.limit+1);
-   const rows=(await db.query(`SELECT ${recommendationProjection},${pageOrder} AS page_order FROM recommendations r ${join} WHERE r.account_id=$1 AND r.category=$2 AND ${statusPredicate('r',input.status)} ${where} ORDER BY ${order} LIMIT $${values.length}`,values)).rows;
-   return wire.ownerRecommendationPageSchema.parse(this.page(rows,await this.recommendations(db,rows.slice(0,input.limit)),ctx,binding,r=>({order:r.page_order,id:r.id})));
+   const rows=(await db.query(`SELECT ${recommendationProjection},${pageOrder} AS page_order${places?`,${bucket} AS pin_bucket`:''} FROM recommendations r ${join} WHERE r.account_id=$1 AND r.category=$2 AND ${statusPredicate('r',input.status)} ${where} ORDER BY ${order} LIMIT $${values.length}`,values)).rows;
+   const extra=places?{placePins:{collectionId:input.collectionId,collectionRevision,categoryContentRevision:ctx.state.revision,eligibleItemCount:placePinsReadInteger(counts.item_count,Number.MAX_SAFE_INTEGER),eligiblePinCount:placePinsReadInteger(counts.pin_count,Number.MAX_SAFE_INTEGER)}}:{};
+   return wire.ownerRecommendationPageSchema.parse(this.page(rows,await this.recommendations(db,rows.slice(0,input.limit)),ctx,binding,r=>({order:places?placePinsReadInteger(r.page_order):r.page_order,id:r.id,...(places?{pinBucket:r.pin_bucket,collectionRevision}:{})}),extra));
   });
  }
  async listMemberships(actor:Actor,raw:unknown) {
@@ -177,8 +190,8 @@ export class OwnerContentService {
    }
    if(cursor) {if(!cursor.secondary) throw new RecommendationFailure(422,'Invalid continuation');values.push(cursor.id,cursor.secondary);where+=` AND (i.recommendation_id,i.collection_id)>($${values.length-1}::uuid,$${values.length}::uuid)`;}
    values.push(input.limit+1);
-   const rows=(await db.query(`SELECT i.recommendation_id,i.collection_id,c.revision AS collection_revision,i.display_order,c.archived_at IS NOT NULL AS collection_archived,r.archived_at IS NOT NULL AS recommendation_archived FROM collection_items i JOIN collections c ON c.id=i.collection_id AND c.account_id=i.account_id AND c.category=i.category JOIN recommendations r ON r.id=i.recommendation_id AND r.account_id=i.account_id AND r.category=i.category WHERE i.account_id=$1 AND i.category=$2 AND ${statusPredicate('c',input.collectionStatus)} AND ${statusPredicate('r',input.recommendationStatus)} ${where} ORDER BY i.recommendation_id,i.collection_id LIMIT $${values.length}`,values)).rows;
-   const items=rows.slice(0,input.limit).map(r=>wire.ownerMembershipDtoSchema.parse({recommendationId:r.recommendation_id,collectionId:r.collection_id,collectionRevision:Number(r.collection_revision),displayOrder:r.display_order,collectionArchived:r.collection_archived,recommendationArchived:r.recommendation_archived}));
+   const rows=(await db.query(`SELECT i.recommendation_id,i.collection_id,c.revision AS collection_revision,i.display_order,c.archived_at IS NOT NULL AS collection_archived,r.archived_at IS NOT NULL AS recommendation_archived${input.category==='places'?',pp.position AS place_pin_position':''} FROM collection_items i JOIN collections c ON c.id=i.collection_id AND c.account_id=i.account_id AND c.category=i.category JOIN recommendations r ON r.id=i.recommendation_id AND r.account_id=i.account_id AND r.category=i.category ${input.category==='places'?placePinJoin('i'):''} WHERE i.account_id=$1 AND i.category=$2 AND ${statusPredicate('c',input.collectionStatus)} AND ${statusPredicate('r',input.recommendationStatus)} ${where} ORDER BY i.recommendation_id,i.collection_id LIMIT $${values.length}`,values)).rows;
+   const items=rows.slice(0,input.limit).map(r=>wire.ownerMembershipDtoSchema.parse({recommendationId:r.recommendation_id,collectionId:r.collection_id,collectionRevision:Number(r.collection_revision),displayOrder:r.display_order,collectionArchived:r.collection_archived,recommendationArchived:r.recommendation_archived,...(input.category==='places'?{placePinPosition:r.place_pin_position===null?null:placePinsReadInteger(r.place_pin_position)}:{})}));
    return wire.ownerMembershipPageSchema.parse(this.page(rows,items,ctx,binding,r=>({order:0,id:r.recommendation_id,secondary:r.collection_id})));
   });
  }

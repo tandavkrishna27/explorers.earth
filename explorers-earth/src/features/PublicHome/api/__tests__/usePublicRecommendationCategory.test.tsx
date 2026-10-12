@@ -9,6 +9,16 @@ vi.mock("../publicProfileGatewayClient", () => ({
 
 import { usePublicRecommendationCategory } from "../usePublicRecommendationCategory";
 import { publishPublicProfileInvalidation } from "../publicProfileInvalidation";
+it('completes every Places preview using the addressed list cursor before exposing the category',async()=>{
+ const placeList=(name:string,start:number,count:number,cursor:string|null)=>({documentId:name,slug:name,collection_revision:'4',eligibility_fingerprint:'a'.repeat(64),category_content_revision:'9',eligible_item_count:26,eligible_pin_count:14,recommended_places:Array.from({length:count},(_,i)=>({documentId:`${name}-${start+i}`})),recommended_places_next_cursor:cursor});
+ category.mockResolvedValueOnce({recommendationLists:[placeList('synthetic-one',0,12,'one.first'),placeList('synthetic-two',0,12,'two.first')]});
+ detailPage.mockImplementation(async(_username,_category,slug,query)=>({recommendationLists:[placeList(slug,query.cursor.endsWith('first')?12:24,query.cursor.endsWith('first')?12:2,query.cursor.endsWith('first')?`${slug==='synthetic-one'?'one':'two'}.last`:null)]}));
+ const {result}=renderHook(()=>usePublicRecommendationCategory('alice','places',true));
+ await waitFor(()=>expect(result.current.loading).toBe(false));
+ expect(result.current.error).toBeNull();expect(result.current.data?.recommendationLists).toHaveLength(2);
+ for(const list of result.current.data!.recommendationLists as any[])expect(list.recommended_places).toHaveLength(26);
+ expect(detailPage.mock.calls.map(call=>[call[2],call[3].cursor])).toEqual([['synthetic-one','one.first'],['synthetic-one','one.last'],['synthetic-two','two.first'],['synthetic-two','two.last']]);
+});
 it('uses the actual signed Games category cursor rather than fabricated offset authority',async()=>{
  category.mockResolvedValueOnce({gameLists:Array.from({length:12},(_,i)=>({documentId:'g'+i,slug:'g'+i,recommended_games:[],nextCursor:null})),topPicks:[],nextCursor:'signed.games'});
  categoryPage.mockImplementationOnce(async(_username,_category,query)=>{if(query.cursor!=='signed.games')throw Error('PUBLIC_PROFILE_400');return{gameLists:[{documentId:'last',slug:'last',recommended_games:[],nextCursor:null}],topPicks:[],nextCursor:null};});

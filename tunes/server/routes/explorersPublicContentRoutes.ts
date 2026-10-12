@@ -1,3 +1,4 @@
+import {PublicPlaceReadLimit} from '../application/placePinsRead';
 import { Router, type Express, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import type { Pool } from 'pg';
@@ -40,6 +41,7 @@ export function setupExplorersPublicContentRoutes(app:Express,pool:Pool,secret:s
       const value=await service.page({...req.query,username:req.params.username,category:req.params.category,...(req.params.slug?{slug:req.params.slug}:{})});
       return value?res.json(value):res.status(404).json({version:'explorers-public-error/v1',error:{code:'NOT_FOUND'}});
     } catch(error) {
+      if(error instanceof PublicPlaceReadLimit&&req.params.category==='places')return res.status(503).json({version:'explorers-public-error/v1',error:{code:'READ_LIMIT',retryable:true}});
       if(error instanceof PublicContentFailure) return res.status(error.status).json({version:'explorers-public-error/v1',error:{code:error.status===409?'PAGE_CHANGED':'BAD_REQUEST',...(error.status===409?{restart:true}:{})}});
       return res.status(503).json({version:'explorers-public-error/v1',error:{code:'UNAVAILABLE',retryable:true}});
     }

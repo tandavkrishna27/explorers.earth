@@ -1081,4 +1081,445 @@ const databaseClock=async()=>((await admin.query('SELECT clock_timestamp() now')
   const expectedInventory={...before.inventory};for(const table of ['recommendation_media','place_recommendation_context','recommendation_place_photos','recommendation_display_overrides'])expectedInventory[table]=before.inventory[table].filter(r=>r.recommendation_id!==f.ids[0]);expect(after.inventory).toEqual(expectedInventory);
   unchangedSqlFields(before,after,['collections','recommendations','memberships','pins','categories','markers','inventory']);
  });
+// C01..C12: removing account serialization, original fences, atomic promotion,
+// receipt replay or immutable staging accounting must break these real commands.
+type COutcome={ok:true;value:any}|{ok:false;error:any};
+type CCommand={request:PlacePinsRequest;context:{requestId:string;idempotencyKey:string};policy:typeof policy};
+const cAccountSql='SELECT status FROM creator_accounts WHERE id=$1 FOR UPDATE';
+const cLifecycleSql=`SELECT a.status,a.revision::text FROM creator_accounts a
+      JOIN account_memberships m ON m.account_id=a.id AND m.user_id=$2 AND m.role='owner'
+      WHERE a.id=$1 FOR UPDATE OF a`;
+function cOutcome(operation:()=>Promise<any>):Promise<COutcome>{return controller!.runOwned(operation).then(value=>({ok:true,value}),error=>({ok:false,error}));}
+function cSucceeded(outcome:COutcome){expect(outcome.ok).toBe(true);if(!outcome.ok)throw Error('Fixture command outcome');return outcome.value;}
+function cRefused(outcome:COutcome,status:number,message?:string){expect(outcome.ok).toBe(false);if(outcome.ok)throw Error('Fixture command outcome');expect(outcome.error).toMatchObject({status,...message?{message}:{}});expect(['40P01','57014','55P03']).not.toContain(outcome.error?.code);}
+function cSpec(request:PlacePinsRequest,activePolicy=policy,key=randomUUID()):CCommand{return {request,context:{requestId:randomUUID(),idempotencyKey:key},policy:activePolicy};}
+function cExecute(pool:pg.Pool,f:Fixture,spec:CCommand){return new ExplorersPlacePinsRepository(pool).execute(f.account,spec.request,spec.context,Buffer.byteLength(JSON.stringify(spec.request)),spec.policy);}
+async function cWrite(f:Fixture,request:PlacePinsRequest,records:SqlSetup[],activePolicy=policy){
+ const spec=cSpec(request,activePolicy),response=cSucceeded(await cOutcome(()=>cExecute(runtime,f,spec))),rows=await receipt(f,request,spec.context.idempotencyKey);
+ expect(rows).toHaveLength(1);expect(rows[0]).toMatchObject({status:'completed',response,request_hash:Buffer.from(hashPlacePinsRequest(request),'hex')});records.push({f,request,context:spec.context,rows});return response as any;
+}
+async function cFixture(options:{drafts?:number;draftPolicy?:typeof policy;charged?:boolean}={}){
+ const f=await seed(3),foreign=await seed(1),records:SqlSetup[]=[];
+ for(const target of [f,{...f,list:f.otherList},foreign])await cWrite(target,{operation:'replacePlacePins',collectionId:target.list,body:{...await fences(target),orderedRecommendationIds:target.list===f.otherList?[f.ids[1],f.ids[0],f.ids[2]]:target.ids}},records);
+ const drafts:string[]=[],sequences:string[][]=[];
+ for(let i=0;i<(options.drafts??1);i++){
+  const opened=await cWrite(f,{operation:'beginPlacePinsDraft',collectionId:f.list,body:await fences(f)},records,options.draftPolicy??policy),ids=i===0?[f.ids[2],f.ids[0],f.ids[1]]:[f.ids[1],f.ids[2],f.ids[0]];
+  drafts.push(opened.draftId);sequences.push(ids);if(options.charged!==false)await cWrite(f,appendRequest(f,opened.draftId,ids),records,options.draftPolicy??policy);
+ }
+ const fixtures=[f,foreign],read=()=>completeSqlSnapshot(fixtures,records,f.entityIds??[]);return {f,foreign,records,drafts,sequences,fixtures,read};
+}
+// Each adapter supplies one controller-owned reserved lease once. A successful
+// account query is gated before the next statement; SQL/results are unchanged.
+function cPool(client:{query:(...args:any[])=>Promise<any>;release:()=>void},accountStatement:string,values:unknown[],gate:ReturnType<NonNullable<typeof controller>['gate']>,reached?:ReturnType<NonNullable<typeof controller>['gate']>){
+ let connected=false,arrived=false;
+ return {connect:async()=>{expect(connected).toBe(false);connected=true;return {query:async(...args:any[])=>{
+  const sql=typeof args[0]==='string'?args[0]:args[0]?.text,parameters=typeof args[0]==='string'?(args[1]??[]):args[0]?.values??[];
+  if(sql===accountStatement){expect(parameters).toEqual(values);reached?.arrive();}
+  const result=await client.query(...args);
+  if(sql===accountStatement){expect(parameters).toEqual(values);expect(arrived).toBe(false);arrived=true;gate.arrive();await gate.wait();}return result;
+ },release:()=>client.release()};}} as unknown as pg.Pool;
+}
+async function cRace(caseId:string,account:string,first:(pool:pg.Pool)=>Promise<any>,second:(pool:pg.Pool)=>Promise<any>,read:()=>Promise<SqlSnapshot>,firstLock={text:cAccountSql,values:[account] as unknown[]},secondLock={text:cAccountSql,values:[account] as unknown[]}){
+ const pair=await controller!.reservePair(caseId,admin,runtime),winnerGate=controller!.gate();
+ const winner=cOutcome(()=>first(cPool(pair.first,firstLock.text,firstLock.values,winnerGate)));
+ try{
+  await winnerGate.acquired;
+  const loserGate=controller!.gate(),loserQuery=controller!.gate(),loser=cOutcome(()=>second(cPool(pair.second,secondLock.text,secondLock.values,loserGate,loserQuery)));
+  await loserQuery.acquired;loserQuery.open();await controller!.observeBlocker(pair.second,pair.first,secondLock);winnerGate.open();
+  const winnerOutcome=await winner;expect(winnerOutcome.ok).toBe(true);await loserGate.acquired;
+  const settledWinner=await read();loserGate.open();const loserOutcome=await loser;await controller!.settleCase();
+  expect(controller!.status()).toMatchObject({admissionClosed:false,serverUnresolved:false,leases:0,unsettledCount:0,leaseRestored:true});
+  return {winner:winnerOutcome,loser:loserOutcome,settledWinner,after:await read()};
+ }catch{winnerGate.open();await controller!.abortCase();throw Error('Fixture writer race');}
+}
+function cForeign(before:SqlSnapshot,after:SqlSnapshot,foreign:Fixture){
+ for(const key of ['collections','memberships','recommendations','pins','categories','drafts','receipts'] as const)expect(after[key].filter(row=>row.account_id===foreign.account)).toEqual(before[key].filter(row=>row.account_id===foreign.account));
+ expect(after.inventory).toEqual(before.inventory);
+ expect(after.pinQueue).toEqual(before.pinQueue);expect(after.chunkQueue).toEqual(before.chunkQueue);
+}
+function cStagingSame(before:SqlSnapshot,after:SqlSnapshot){for(const key of ['drafts','chunks','items','exactReceipts'] as const)expect(after[key]).toEqual(before[key]);}
+async function cPinReceipt(f:Fixture,spec:CCommand,response:any,before:SqlSnapshot,after:SqlSnapshot){
+ const rows=await receipt(f,spec.request,spec.context.idempotencyKey);expect(rows).toHaveLength(1);const row=rows[0];
+ expect(row).toMatchObject({account_id:f.account,operation:spec.request.operation,status:'completed',response,idempotency_key_hash:createHash('sha256').update(spec.context.idempotencyKey).digest(),request_hash:Buffer.from(hashPlacePinsRequest(spec.request),'hex')});
+ expect(row.created_at).toBeInstanceOf(Date);expect(row.replay_until).toBeInstanceOf(Date);expect(row.replay_until.getTime()).toBeGreaterThan(row.created_at.getTime());
+ expect(after.receipts.filter(r=>r.id!==row.id)).toEqual(before.receipts);expect(after.receipts).toHaveLength(before.receipts.length+1);expect(after.exactReceipts).toEqual(before.exactReceipts);return row;
+}
+async function cPromotion(f:Fixture,draftId:string,ids:string[],spec:CCommand,response:any,before:SqlSnapshot,after:SqlSnapshot){
+ const collection=before.collections.find(r=>r.id===f.list),category=before.categories.find(r=>r.account_id===f.account&&r.category==='places'),xid=after.categories.find(r=>r.account_id===f.account&&r.category==='places').places_last_mutation_xid;
+ expect(response).toEqual({collectionId:f.list,collectionRevision:Number(collection.revision)+1,categoryContentRevision:String(BigInt(category.revision)+1n),pinCount:ids.length,changed:true});
+ sqlCollectionDelta(before,after,[f.list],xid);sqlCategoryDelta(before,after,f.account,xid);
+ expect(after.pins.filter(r=>r.collection_id!==f.list)).toEqual(before.pins.filter(r=>r.collection_id!==f.list));expect(after.pins.filter(r=>r.collection_id===f.list)).toEqual(ids.map((id,position)=>({collection_id:f.list,recommendation_id:id,account_id:f.account,category:'places',position:String(position)})));
+ const old=before.drafts.find(r=>r.id===draftId),draft=after.drafts.find(r=>r.id===draftId);expect(draft.terminal_at).toBeInstanceOf(Date);
+ expect(after.drafts).toEqual(before.drafts.map(r=>r.id===draftId?{...old,state:'committed',terminal_at:draft.terminal_at,terminal_result:response,accepted_bytes:'0',item_count:'0',chunk_count:'0'}:r));
+ for(const key of ['chunks','items'] as const)expect(after[key]).toEqual(before[key].filter(r=>r.draft_id!==draftId));
+ unchangedSqlFields(before,after,['collections','pins','categories','markers','drafts','chunks','items','receipts']);await cPinReceipt(f,spec,response,before,after);
+}
+async function cWriterOracle(kind:'archiveRecommendation'|'replaceRecommendationEntity'|'archiveCollection'|'reorderCollection',f:Fixture,input:any,key:string,response:any,before:SqlSnapshot,after:SqlSnapshot){
+ const rows=(await admin.query('SELECT * FROM application_command_receipts WHERE account_id=$1 AND operation=$2 AND idempotency_key_hash=$3',[f.account,kind,createHash('sha256').update(key).digest()])).rows;
+ expect(rows).toHaveLength(1);expect(rows[0]).toMatchObject({account_id:f.account,operation:kind,status:'completed',request_hash:createHash('sha256').update(stableCommandInput(input)).digest(),response});
+ expect(after.receipts.filter(r=>r.id!==rows[0].id)).toEqual(before.receipts);expect(after.receipts).toHaveLength(before.receipts.length+1);
+ const xid=after.categories.find(r=>r.account_id===f.account&&r.category==='places').places_last_mutation_xid;sqlCategoryDelta(before,after,f.account,xid);
+ if(kind==='replaceRecommendationEntity'){
+  const old=before.recommendations.find(r=>r.id===input.id),changed=after.recommendations.find(r=>r.id===input.id);
+  expect(after.recommendations).toEqual(before.recommendations.map(r=>r.id===input.id?{...old,entity_id:input.entityId,revision:String(BigInt(old.revision)+1n),updated_at:changed.updated_at}:r));
+  expect(response).toMatchObject({id:input.id,entityId:input.entityId,revision:Number(old.revision)+1});
+  unchangedSqlFields(before,after,['recommendations','categories','receipts']);
+ }else if(kind==='reorderCollection'){
+  sqlCollectionDelta(before,after,[f.list],xid,false);expect(after.pins).toEqual(before.pins);
+  expect(after.memberships).toEqual(before.memberships.map(r=>r.collection_id===f.list?{...r,display_order:input.ids.indexOf(r.recommendation_id)}:r).sort((a,b)=>a.collection_id.localeCompare(b.collection_id)||a.display_order-b.display_order||a.recommendation_id.localeCompare(b.recommendation_id)));
+  unchangedSqlFields(before,after,['collections','memberships','categories','markers','receipts']);
+ }else if(kind==='archiveRecommendation'){
+  sqlCollectionDelta(before,after,[f.list,f.otherList],xid);expect(response).toEqual({id:input.id,archived:true});
+  const changed=after.recommendations.find(r=>r.id===input.id);expect(changed.archived_at).toBeInstanceOf(Date);
+  expect(after.recommendations).toEqual(before.recommendations.map(r=>r.id===input.id?{...r,archived_at:changed.archived_at,revision:String(BigInt(r.revision)+1n),updated_at:changed.updated_at}:r));
+  expect(after.memberships).toEqual(before.memberships.filter(r=>r.recommendation_id!==input.id));
+  for(const list of [f.list,f.otherList]){const old=before.pins.filter(r=>r.collection_id===list),survivors=old.filter(r=>r.recommendation_id!==input.id);expect(after.pins.filter(r=>r.collection_id===list)).toEqual(survivors.map((r,position)=>({...r,position:String(position)})));}
+  unchangedSqlFields(before,after,['collections','memberships','recommendations','pins','categories','markers','receipts']);
+ }else{
+  expect(response).toEqual({id:f.list,archived:true});const changed=after.collections.find(r=>r.id===f.list);expect(changed.archived_at).toBeInstanceOf(Date);
+  expect(after.collections).toEqual(before.collections.map(r=>r.id===f.list?{...r,revision:String(BigInt(r.revision)+1n),archived_at:changed.archived_at,updated_at:changed.updated_at}:r));
+  expect(after.pins).toEqual(before.pins.filter(r=>r.collection_id!==f.list));expect(after.markers).toEqual(before.markers.map(r=>r.collection_id===f.list?{...r,last_mutation_xid:xid}:r));
+  const aborted=before.drafts.filter(r=>r.collection_id===f.list&&r.state==='open').map(r=>r.id);
+  expect(after.drafts).toEqual(before.drafts.map(r=>aborted.includes(r.id)?{...r,state:'aborted',terminal_at:after.drafts.find(a=>a.id===r.id).terminal_at,terminal_result:null,accepted_bytes:'0',item_count:'0',chunk_count:'0'}:r));
+  for(const id of aborted)expect(after.drafts.find(r=>r.id===id).terminal_at).toBeInstanceOf(Date);
+  for(const k of ['chunks','items'] as const)expect(after[k]).toEqual(before[k].filter(r=>!aborted.includes(r.draft_id)));
+  unchangedSqlFields(before,after,['collections','pins','categories','markers','drafts','chunks','items','receipts']);
+ }
+}
+async function cContentRace(caseId:string,kind:'archiveRecommendation'|'replaceRecommendationEntity'|'archiveCollection'|'reorderCollection',writerFirst:boolean){
+ const setup=await cFixture(),{f,foreign,drafts,sequences,read}=setup;
+ let entity:string|undefined;if(kind==='replaceRecommendationEntity'){entity=(await admin.query("INSERT INTO entities(kind,title,origin) VALUES('person','C compatible fixture','manual') RETURNING id")).rows[0].id;const oldEntity=(await admin.query('SELECT entity_id FROM recommendations WHERE id=$1',[f.ids[0]])).rows[0].entity_id;f.entityIds=[oldEntity,entity!];}
+ const before=await read(),pin=cSpec(commitRequest(f,drafts[0],sequences[0])),key=randomUUID(),id=kind==='archiveCollection'||kind==='reorderCollection'?f.list:f.ids[0],old=(kind==='archiveCollection'||kind==='reorderCollection'?before.collections:before.recommendations).find(r=>r.id===id),input={id,expectedRevision:Number(old.revision),...kind==='replaceRecommendationEntity'?{entityId:entity}:kind==='reorderCollection'?{ids:[...f.ids].reverse()}:{}},writer=(pool:pg.Pool)=>{
+  const repository=new ExplorersRecommendationRepository(pool);
+  if(kind==='archiveRecommendation')return repository.archiveRecommendation(f.account,id,input.expectedRevision,key);
+  if(kind==='replaceRecommendationEntity')return repository.replaceRecommendationEntity(f.account,id,input.expectedRevision,entity!,key);
+  if(kind==='archiveCollection')return repository.archiveCollection(f.account,id,input.expectedRevision,key);
+  return repository.reorderCollection(f.account,id,input.expectedRevision,(input as {ids:string[]}).ids,key);
+ };
+ const raced=await cRace(caseId,f.account,writerFirst?writer:pool=>cExecute(pool,f,pin),writerFirst?pool=>cExecute(pool,f,pin):writer,read);
+ if(writerFirst){
+  await cWriterOracle(kind,f,input,key,cSucceeded(raced.winner),before,raced.settledWinner);
+  cRefused(raced.loser,kind==='archiveCollection'?404:409,kind==='archiveCollection'?'Collection unavailable':'Stale Places pin revision');expect(raced.after).toEqual(raced.settledWinner);expect(await receipt(f,pin.request,pin.context.idempotencyKey)).toEqual([]);
+ }else{
+  await cPromotion(f,drafts[0],sequences[0],pin,cSucceeded(raced.winner),before,raced.settledWinner);
+  if(kind==='archiveCollection'||kind==='reorderCollection'){
+   cRefused(raced.loser,409);expect(raced.after).toEqual(raced.settledWinner);expect((await admin.query('SELECT 1 FROM application_command_receipts WHERE account_id=$1 AND operation=$2 AND idempotency_key_hash=$3',[f.account,kind,createHash('sha256').update(key).digest()])).rows).toEqual([]);
+  }else await cWriterOracle(kind,f,input,key,cSucceeded(raced.loser),raced.settledWinner,raced.after);
+ }
+ cForeign(before,raced.after,foreign);
+}
+it('C01 recommendation archive / writer first',async()=>{await cContentRace('C01 recommendation archive / writer first','archiveRecommendation',true);});
+it('C01 recommendation archive / commit first',async()=>{await cContentRace('C01 recommendation archive / commit first','archiveRecommendation',false);});
+it('C02 compatible entity replacement / writer first',async()=>{await cContentRace('C02 compatible entity replacement / writer first','replaceRecommendationEntity',true);});
+it('C02 compatible entity replacement / commit first',async()=>{await cContentRace('C02 compatible entity replacement / commit first','replaceRecommendationEntity',false);});
+it('C03 collection archive / writer first',async()=>{await cContentRace('C03 collection archive / writer first','archiveCollection',true);});
+it('C03 collection archive / commit first',async()=>{await cContentRace('C03 collection archive / commit first','archiveCollection',false);});
+it('C04 list membership reorder / writer first',async()=>{await cContentRace('C04 list membership reorder / writer first','reorderCollection',true);});
+it('C04 list membership reorder / commit first',async()=>{await cContentRace('C04 list membership reorder / commit first','reorderCollection',false);});
+async function cActor(f:Fixture):Promise<Actor>{
+ const userId=`c-owner-${randomUUID()}`,sessionId=randomUUID();
+ await admin.query("INSERT INTO auth_user(id,name,email) VALUES($1,'C owner',$2)",[userId,`${userId}@example.invalid`]);
+ await admin.query("INSERT INTO account_memberships(account_id,user_id,role) VALUES($1,$2,'owner')",[f.account,userId]);await admin.query('INSERT INTO user_security_state(user_id) VALUES($1)',[userId]);
+ const session=(await admin.query("INSERT INTO auth_session(id,user_id,token,expires_at,updated_at) VALUES($1,$2,$3,now()+interval '1 hour',now()) RETURNING session_version",[sessionId,userId,randomUUID()])).rows[0];
+ return {userId,accountId:f.account,role:'owner',credential:{kind:'web-session',sessionId,sessionVersion:Number(session.session_version)}};
+}
+async function cLifeSnapshot(actors:Actor[]){
+ const accounts=actors.map(a=>a.accountId),users=actors.map(a=>a.userId),tables:Record<string,any[]>={};
+ for(const table of ['creator_accounts','account_memberships','account_lifecycle_operations','deletion_feedback'])tables[table]=(await admin.query(`SELECT * FROM ${table} WHERE ${table==='creator_accounts'?'id':'account_id'}=ANY($1::uuid[]) ORDER BY to_jsonb(${table})::text`,[accounts])).rows;
+ for(const table of ['auth_user','user_security_state','auth_session','auth_account'])tables[table]=(await admin.query(`SELECT * FROM ${table} WHERE ${table==='auth_user'?'id':'user_id'}=ANY($1::text[]) ORDER BY to_jsonb(${table})::text`,[users])).rows;
+ return tables;
+}
+async function cLifecycleRace(caseId:string,deletion:boolean,writerFirst:boolean){
+ const setup=await cFixture(),{f,foreign,drafts,sequences}=setup,actor=await cActor(f),otherActor=await cActor(foreign),actors=[actor,otherActor],service=new AccountLifecycleService(runtime);
+ // Existing Places row plus seven absent scopes tests insert and increment paths.
+ const expectedRevision=Number((await admin.query('SELECT revision FROM creator_accounts WHERE id=$1',[f.account])).rows[0].revision),context={requestId:randomUUID(),idempotencyKey:randomUUID()},operation=deletion?'delete':'deactivate';
+ let feedbackId:string|undefined,feedbackReceipt:any[]|undefined;
+ if(deletion){const feedbackContext={requestId:randomUUID(),idempotencyKey:randomUUID()},reason='C deletion fixture';feedbackId=cSucceeded(await cOutcome(()=>service.recordDeletionFeedback(actor,{reason},feedbackContext))).id;
+  feedbackReceipt=(await admin.query("SELECT * FROM application_command_receipts WHERE account_id=$1 AND operation='deletion-feedback' AND idempotency_key_hash=$2",[f.account,createHash('sha256').update(feedbackContext.idempotencyKey).digest()])).rows;
+  expect(feedbackReceipt).toHaveLength(1);expect(feedbackReceipt[0]).toMatchObject({status:'completed',request_hash:createHash('sha256').update(JSON.stringify({reason})).digest(),response:{id:feedbackId}});
+  expect((await admin.query('SELECT account_id,user_id,reason FROM deletion_feedback WHERE id=$1',[feedbackId])).rows).toEqual([{account_id:f.account,user_id:actor.userId,reason}]);
+ }
+ const input=deletion?{expectedRevision,feedbackId:feedbackId!}:{expectedRevision},pin=cSpec(commitRequest(f,drafts[0],sequences[0]));
+ const read=async()=>({...await setup.read(),life:await cLifeSnapshot(actors)}),before=await read(),lower=(await admin.query('SELECT clock_timestamp() clock')).rows[0].clock as Date;
+ const writer=(pool:pg.Pool)=>deletion?new AccountLifecycleService(pool).requestAccountDeletion(actor,input as {expectedRevision:number;feedbackId:string},context):new AccountLifecycleService(pool).requestAccountDeactivation(actor,input,context),lifeLock={text:cLifecycleSql,values:[f.account,actor.userId]};
+ const raced=await cRace(caseId,f.account,writerFirst?writer:pool=>cExecute(pool,f,pin),writerFirst?pool=>cExecute(pool,f,pin):writer,read,writerFirst?lifeLock:{text:cAccountSql,values:[f.account]},writerFirst?{text:cAccountSql,values:[f.account]}:lifeLock),upper=(await admin.query('SELECT clock_timestamp() clock')).rows[0].clock as Date;
+ const transitionBefore=writerFirst?before:raced.settledWinner,transitionAfter=writerFirst?raced.settledWinner:raced.after,response=cSucceeded(writerFirst?raced.winner:raced.loser),lifeBefore=(transitionBefore as typeof before).life,lifeAfter=(transitionAfter as typeof before).life,status=deletion?'pending_deletion':'suspended';
+ expect(response).toEqual({accountId:f.account,status,operationId:expect.any(String),revision:expectedRevision+1});
+ const inBounds=(time:Date)=>{expect(time).toBeInstanceOf(Date);expect(time.getTime()).toBeGreaterThanOrEqual(lower.getTime());expect(time.getTime()).toBeLessThanOrEqual(upper.getTime());};
+ const account=lifeAfter.creator_accounts.find(r=>r.id===f.account),oldAccount=lifeBefore.creator_accounts.find(r=>r.id===f.account);
+ inBounds(account.updated_at);inBounds(deletion?account.deletion_requested_at:account.suspended_at);expect(deletion?account.suspended_at:account.deletion_requested_at).toBeNull();
+ expect(lifeAfter.creator_accounts).toEqual(lifeBefore.creator_accounts.map(r=>r.id===f.account?{...oldAccount,status,revision:String(expectedRevision+1),suspended_at:account.suspended_at,deletion_requested_at:account.deletion_requested_at,updated_at:account.updated_at}:r));
+ const security=lifeAfter.user_security_state.find(r=>r.user_id===actor.userId),oldSecurity=lifeBefore.user_security_state.find(r=>r.user_id===actor.userId);inBounds(security.blocked_at);inBounds(security.updated_at);
+ expect(lifeAfter.user_security_state).toEqual(lifeBefore.user_security_state.map(r=>r.user_id===actor.userId?{...oldSecurity,blocked_at:security.blocked_at,updated_at:security.updated_at,session_version:String(BigInt(oldSecurity.session_version)+1n)}:r));
+ expect(lifeAfter.auth_session).toEqual(lifeBefore.auth_session.filter(r=>r.user_id!==actor.userId));
+ for(const table of ['account_memberships','auth_user','auth_account','deletion_feedback'])expect(lifeAfter[table]).toEqual(lifeBefore[table]);
+ const rows=(await admin.query('SELECT * FROM application_command_receipts WHERE account_id=$1 AND operation=$2 AND idempotency_key_hash=$3',[f.account,operation,createHash('sha256').update(context.idempotencyKey).digest()])).rows;
+ expect(rows).toHaveLength(1);expect(rows[0]).toMatchObject({status:'completed',response,request_hash:createHash('sha256').update(JSON.stringify(input)).digest()});expect(rows[0].created_at).toBeInstanceOf(Date);expect(rows[0].replay_until.getTime()).toBeGreaterThan(rows[0].created_at.getTime());
+ expect(transitionAfter.receipts.filter(r=>r.id!==rows[0].id)).toEqual(transitionBefore.receipts);expect(transitionAfter.receipts).toHaveLength(transitionBefore.receipts.length+1);
+ const workflow=lifeAfter.account_lifecycle_operations.find(r=>r.id===response.operationId);expect(workflow).toMatchObject({account_id:f.account,requested_by_user_id:actor.userId,kind:operation,state:deletion?'pending':'succeeded',expected_revision:String(expectedRevision),feedback_id:feedbackId??null,receipt_id:rows[0].id});inBounds(workflow.created_at);if(deletion)expect(workflow.completed_at).toBeNull();else inBounds(workflow.completed_at);
+ expect(lifeAfter.account_lifecycle_operations.filter(r=>r.id!==workflow.id)).toEqual(lifeBefore.account_lifecycle_operations);expect(lifeAfter.account_lifecycle_operations).toHaveLength(lifeBefore.account_lifecycle_operations.length+1);
+ for(const category of ['apps','books','games','guides','movies','people','places','products']){
+  const prior=transitionBefore.categories.find(r=>r.account_id===f.account&&r.category===category),next=transitionAfter.categories.find(r=>r.account_id===f.account&&r.category===category);expect(next).toBeDefined();expect(next.revision).toBe(String(BigInt(prior?.revision??0)+1n));
+  if(prior)expect(next).toEqual({...prior,revision:next.revision});else expect(next).toMatchObject({account_id:f.account,category,revision:'1',places_last_mutation_xid:null});
+ }
+ expect(transitionAfter.categories.filter(r=>r.account_id!==f.account)).toEqual(transitionBefore.categories.filter(r=>r.account_id!==f.account));expect(transitionAfter.categories.filter(r=>r.account_id===f.account)).toHaveLength(8);
+ for(const k of ['collections','memberships','recommendations','entities','pins','drafts','chunks','items','markers','pinQueue','chunkQueue','exactReceipts'] as const)expect(transitionAfter[k]).toEqual(transitionBefore[k]);
+ expect(transitionAfter.inventory).toEqual({...transitionBefore.inventory,creator_accounts:transitionAfter.inventory.creator_accounts,account_lifecycle_operations:transitionAfter.inventory.account_lifecycle_operations});
+ if(writerFirst){cRefused(raced.loser,404,'Account unavailable');expect(raced.after).toEqual(raced.settledWinner);expect(await receipt(f,pin.request,pin.context.idempotencyKey)).toEqual([]);}else{
+  await cPromotion(f,drafts[0],sequences[0],pin,cSucceeded(raced.winner),before,raced.settledWinner);
+  const durable=await receipt(f,pin.request,pin.context.idempotencyKey),completed=await read();cRefused(await cOutcome(()=>cExecute(runtime,f,pin)),404,'Account unavailable');expect(await read()).toEqual(completed);expect(await receipt(f,pin.request,pin.context.idempotencyKey)).toEqual(durable);
+ }
+ if(feedbackReceipt)expect(raced.after.receipts.find(r=>r.id===feedbackReceipt![0].id)).toEqual(feedbackReceipt[0]);
+ expect((await cLifeSnapshot(actors)).creator_accounts.find(r=>r.id===foreign.account)).toEqual(before.life.creator_accounts.find(r=>r.id===foreign.account));
+}
+it('C05 account deactivation / writer first',async()=>{await cLifecycleRace('C05 account deactivation / writer first',false,true);});
+it('C05 account deactivation / commit first',async()=>{await cLifecycleRace('C05 account deactivation / commit first',false,false);});
+it('C06 account deletion request / writer first',async()=>{await cLifecycleRace('C06 account deletion request / writer first',true,true);});
+it('C06 account deletion request / commit first',async()=>{await cLifecycleRace('C06 account deletion request / commit first',true,false);});
+async function cCommitRace(caseId:string,kind:'same-key'|'distinct-keys'|'two-drafts',aFirst:boolean){
+ const setup=await cFixture({drafts:kind==='two-drafts'?2:1}),{f,foreign,drafts,sequences,read}=setup,before=await read(),keyA=randomUUID(),keyB=kind==='same-key'?keyA:randomUUID(),a=cSpec(commitRequest(f,drafts[0],sequences[0]),policy,keyA),b=cSpec(commitRequest(f,drafts[kind==='two-drafts'?1:0],sequences[kind==='two-drafts'?1:0]),policy,keyB),winner=aFirst?a:b,loser=aFirst?b:a,winningDraft=(winner.request as Extract<PlacePinsRequest,{draftId:string}>).draftId,winningIds=aFirst||kind!=='two-drafts'?sequences[0]:sequences[1];
+ const raced=await cRace(caseId,f.account,pool=>cExecute(pool,f,winner),pool=>cExecute(pool,f,loser),read),result=cSucceeded(raced.winner);await cPromotion(f,winningDraft,winningIds,winner,result,before,raced.settledWinner);
+ if(kind==='same-key'){expect(cSucceeded(raced.loser)).toEqual(result);expect(raced.after).toEqual(raced.settledWinner);expect(await receipt(f,winner.request,winner.context.idempotencyKey)).toHaveLength(1);}else{cRefused(raced.loser,409,kind==='two-drafts'?'Stale Places pin revision':'Draft is terminal or expired');expect(raced.after).toEqual(raced.settledWinner);expect(await receipt(f,loser.request,loser.context.idempotencyKey)).toEqual([]);}
+ const durable=await receipt(f,winner.request,winner.context.idempotencyKey),finished=await read();expect(cSucceeded(await cOutcome(()=>cExecute(runtime,f,winner)))).toEqual(result);expect(await read()).toEqual(finished);expect(await receipt(f,winner.request,winner.context.idempotencyKey)).toEqual(durable);cForeign(before,raced.after,foreign);
+}
+it('C07 same draft same commit key / A first',async()=>{await cCommitRace('C07 same draft same commit key / A first','same-key',true);});
+it('C07 same draft same commit key / B first',async()=>{await cCommitRace('C07 same draft same commit key / B first','same-key',false);});
+it('C08 same draft distinct commit keys / A first',async()=>{await cCommitRace('C08 same draft distinct commit keys / A first','distinct-keys',true);});
+it('C08 same draft distinct commit keys / B first',async()=>{await cCommitRace('C08 same draft distinct commit keys / B first','distinct-keys',false);});
+it('C09 two drafts original fences / A first',async()=>{await cCommitRace('C09 two drafts original fences / A first','two-drafts',true);});
+it('C09 two drafts original fences / B first',async()=>{await cCommitRace('C09 two drafts original fences / B first','two-drafts',false);});
+async function cBeginRace(caseId:string,aFirst:boolean){
+ const setup=await cFixture({charged:false}),{f,foreign,read}=setup,before=await read(),request:PlacePinsRequest={operation:'beginPlacePinsDraft',collectionId:f.list,body:await fences(f)},a=cSpec(request),b=cSpec(request),winner=aFirst?a:b,loser=aFirst?b:a;
+ const raced=await cRace(caseId,f.account,pool=>cExecute(pool,f,winner),pool=>cExecute(pool,f,loser),read),result=cSucceeded(raced.winner);cRefused(raced.loser,413,'Owner staging quota exceeded');expect(raced.after).toEqual(raced.settledWinner);
+ expect(result).toMatchObject({collectionId:f.list,...(request as Extract<PlacePinsRequest,{operation:'beginPlacePinsDraft'}>).body,policyId:policy.policyId,policyVersion:policy.policyVersion,draftId:expect.any(String)});
+ const opened=raced.after.drafts.find(r=>r.id===result.draftId);expect(opened).toMatchObject({account_id:f.account,collection_id:f.list,state:'open',policy_id:policy.policyId,policy_version:policy.policyVersion,policy_snapshot:policy,accepted_bytes:'0',item_count:'0',chunk_count:'0',terminal_at:null,terminal_result:null});expect(opened.expires_at.toISOString()).toBe(result.expiresAt);expect(opened.expires_at.getTime()-opened.created_at.getTime()).toBeGreaterThanOrEqual(policy.draftExpiryMs);expect(opened.expires_at.getTime()-opened.created_at.getTime()).toBeLessThan(policy.draftExpiryMs+2000);
+ expect(raced.after.drafts.filter(r=>r.id!==opened.id)).toEqual(before.drafts);expect(raced.after.drafts.filter(r=>r.account_id===f.account&&r.state==='open')).toHaveLength(2);unchangedSqlFields(before,raced.after,['drafts','receipts']);await cPinReceipt(f,winner,result,before,raced.after);expect(await receipt(f,loser.request,loser.context.idempotencyKey)).toEqual([]);cForeign(before,raced.after,foreign);
+}
+it('C10 final owner draft slot / A first',async()=>{await cBeginRace('C10 final owner draft slot / A first',true);});
+it('C10 final owner draft slot / B first',async()=>{await cBeginRace('C10 final owner draft slot / B first',false);});
+function cAppendSpec(f:Fixture,draftId:string,index:number,ids:string[],activePolicy=policy){const request:PlacePinsRequest={operation:'appendPlacePinsChunk',collectionId:f.list,draftId,chunkIndex:index,body:{recommendationIds:ids,chunkHash:hashPlacePinsChunk(index,ids)}};return cSpec(request,activePolicy);}
+async function cAppendOracle(f:Fixture,spec:CCommand,response:any,before:SqlSnapshot,after:SqlSnapshot,charge:boolean){
+ const request=spec.request as Extract<PlacePinsRequest,{operation:'appendPlacePinsChunk'}>,ids=request.body.recommendationIds,bytes=Buffer.byteLength(JSON.stringify(request))+ids.length*64;
+ expect(response).toEqual({draftId:request.draftId,chunkIndex:request.chunkIndex,chunkHash:request.body.chunkHash,acceptedCount:ids.length,changed:true});
+ if(charge){
+  const old=before.drafts.find(r=>r.id===request.draftId);expect(after.drafts).toEqual(before.drafts.map(r=>r.id===request.draftId?{...old,accepted_bytes:String(BigInt(old.accepted_bytes)+BigInt(bytes)),item_count:String(BigInt(old.item_count)+BigInt(ids.length)),chunk_count:String(BigInt(old.chunk_count)+1n)}:r));
+  const chunk=after.chunks.find(r=>r.draft_id===request.draftId&&Number(r.chunk_index)===request.chunkIndex);expect(chunk).toMatchObject({draft_id:request.draftId,chunk_index:String(request.chunkIndex),hash:Buffer.from(request.body.chunkHash,'hex'),item_count:String(ids.length),admitted_bytes:String(bytes),acknowledgement:response});
+  expect(after.chunks.filter(r=>!(r.draft_id===request.draftId&&Number(r.chunk_index)===request.chunkIndex))).toEqual(before.chunks);
+  expect(after.items.filter(r=>!(r.draft_id===request.draftId&&Number(r.chunk_index)===request.chunkIndex))).toEqual(before.items);
+  expect(after.items.filter(r=>r.draft_id===request.draftId&&Number(r.chunk_index)===request.chunkIndex)).toEqual(ids.map((id,index)=>({draft_id:request.draftId,chunk_index:String(request.chunkIndex),item_index:String(index),recommendation_id:id})));
+ }else cStagingSame(before,after);
+ unchangedSqlFields(before,after,['drafts','chunks','items','receipts']);await cPinReceipt(f,spec,response,before,after);
+}
+async function cBytesRace(caseId:string,aFirst:boolean){
+ // Form requests first: the immutable original cap admits either exact charge,
+ // and denies their sum. Transport/body bytes are not a product cardinality cap.
+ const f=await seed(3),foreign=await seed(1),records:SqlSetup[]=[];
+ for(const target of [f,{...f,list:f.otherList},foreign])await cWrite(target,{operation:'replacePlacePins',collectionId:target.list,body:{...await fences(target),orderedRecommendationIds:target.ids}},records);
+ const draftIds=[randomUUID(),randomUUID()],probeA=cAppendSpec(f,draftIds[0],0,[f.ids[0],f.ids[1]]),probeB=cAppendSpec(f,draftIds[1],0,[f.ids[2],f.ids[1]]),bodyBytes=(s:CCommand)=>Buffer.byteLength(JSON.stringify(s.request)),reservation=(s:CCommand)=>bodyBytes(s)+(s.request as Extract<PlacePinsRequest,{operation:'appendPlacePinsChunk'}>).body.recommendationIds.length*64,original={...policy,policyId:'C-original-staging-bytes',transportChunkBytes:Math.max(bodyBytes(probeA),bodyBytes(probeB)),replacementBytes:Math.max(bodyBytes(probeA),bodyBytes(probeB)),transportChunkIds:2,replacementIds:2,ownerStagingBytes:Math.max(reservation(probeA),reservation(probeB))};
+ const opened=[];for(let i=0;i<2;i++)opened.push(await cWrite(f,{operation:'beginPlacePinsDraft',collectionId:f.list,body:await fences(f)},records,original));
+ const a=cAppendSpec(f,opened[0].draftId,0,[f.ids[0],f.ids[1]],original),b=cAppendSpec(f,opened[1].draftId,0,[f.ids[2],f.ids[1]],original);expect(reservation(a)).toBe(reservation(probeA));expect(reservation(b)).toBe(reservation(probeB));expect(reservation(a)+reservation(b)).toBeGreaterThan(original.ownerStagingBytes);
+ const read=()=>completeSqlSnapshot([f,foreign],records),before=await read(),winner=aFirst?a:b,loser=aFirst?b:a,raced=await cRace(caseId,f.account,pool=>cExecute(pool,f,winner),pool=>cExecute(pool,f,loser),read);
+ await cAppendOracle(f,winner,cSucceeded(raced.winner),before,raced.settledWinner,true);cRefused(raced.loser,413,'Owner staging quota exceeded');expect(raced.after).toEqual(raced.settledWinner);expect(await receipt(f,loser.request,loser.context.idempotencyKey)).toEqual([]);
+ expect(raced.after.drafts.filter(r=>r.account_id===f.account).reduce((sum,r)=>sum+Number(r.accepted_bytes),0)).toBe(reservation(winner));cForeign(before,raced.after,foreign);
+}
+it('C11 owner staging bytes across drafts / A first',async()=>{await cBytesRace('C11 owner staging bytes across drafts / A first',true);});
+it('C11 owner staging bytes across drafts / B first',async()=>{await cBytesRace('C11 owner staging bytes across drafts / B first',false);});
+async function cChunkRace(caseId:string,kind:'same'|'different'|'distinct',aFirst:boolean){
+ const setup=await cFixture({charged:false}),{f,foreign,drafts,read}=setup,before=await read(),a=cAppendSpec(f,drafts[0],0,kind==='distinct'?[f.ids[2],f.ids[0]]:[f.ids[2],f.ids[0],f.ids[1]]),b=cAppendSpec(f,drafts[0],kind==='distinct'?1:0,kind==='same'?[f.ids[2],f.ids[0],f.ids[1]]:kind==='distinct'?[f.ids[1]]:[f.ids[1],f.ids[2],f.ids[0]]),winner=aFirst?a:b,loser=aFirst?b:a;
+ const raced=await cRace(caseId,f.account,pool=>cExecute(pool,f,winner),pool=>cExecute(pool,f,loser),read);await cAppendOracle(f,winner,cSucceeded(raced.winner),before,raced.settledWinner,true);
+ if(kind==='different'){cRefused(raced.loser,409,'Chunk content conflict');expect(raced.after).toEqual(raced.settledWinner);expect(await receipt(f,loser.request,loser.context.idempotencyKey)).toEqual([]);}else{
+  await cAppendOracle(f,loser,cSucceeded(raced.loser),raced.settledWinner,raced.after,kind==='distinct');if(kind==='same')expect(cSucceeded(raced.loser)).toEqual(cSucceeded(raced.winner));
+ }
+ cForeign(before,raced.after,foreign);
+ const expectedChunks=kind==='distinct'?2:1,expectedItems=3;expect(raced.after.drafts.find(r=>r.id===drafts[0])).toMatchObject({chunk_count:String(expectedChunks),item_count:String(expectedItems)});
+ if(kind==='distinct'){
+  const ids=[f.ids[2],f.ids[0],f.ids[1]],spec=cSpec(commitRequest(f,drafts[0],ids)),result=cSucceeded(await cOutcome(()=>cExecute(runtime,f,spec))),after=await read();await cPromotion(f,drafts[0],ids,spec,result,raced.after,after);cForeign(before,after,foreign);
+ }
+}
+it('C12 chunk index contention same content / A first',async()=>{await cChunkRace('C12 chunk index contention same content / A first','same',true);});
+it('C12 chunk index contention same content / B first',async()=>{await cChunkRace('C12 chunk index contention same content / B first','same',false);});
+it('C12 chunk index contention different content / A first',async()=>{await cChunkRace('C12 chunk index contention different content / A first','different',true);});
+it('C12 chunk index contention different content / B first',async()=>{await cChunkRace('C12 chunk index contention different content / B first','different',false);});
+it('C12 chunk index contention distinct indices / A first',async()=>{await cChunkRace('C12 chunk index contention distinct indices / A first','distinct',true);});
+it('C12 chunk index contention distinct indices / B first',async()=>{await cChunkRace('C12 chunk index contention distinct indices / B first','distinct',false);});
+it('C13 earlier PostgreSQL receipt lock deadline after promotion',async()=>{
+ // Removing native remaining-time lock setup or atomic rollback must fail:
+ // actual promotion and terminalization precede a real blocked receipt INSERT.
+ const caseId='C13 earlier PostgreSQL receipt lock deadline after promotion',setup=await cFixture(),{f,foreign,drafts,sequences,read}=setup,before=await read(),spec=cSpec(commitRequest(f,drafts[0],sequences[0]));
+ expect(before.drafts.find(r=>r.id===drafts[0]).policy_snapshot).toEqual(policy);expect(policy.commitProcessingMs).toBe(10000);
+ const pair=await controller!.reservePair(caseId,admin,runtime);pair.first.release();
+ const holder=await admin.connect(),holderPid=(holder as unknown as {processID:number}).processID;
+ expect(Number.isInteger(holderPid)).toBe(true);expect(holderPid).toBeGreaterThan(0);expect(holderPid).not.toBe(pair.second.processID);
+ const receiptSql=`INSERT INTO application_command_receipts(account_id,operation,idempotency_key_hash,request_hash,response,replay_until)
+    VALUES($1,$2,$3,$4,$5,clock_timestamp()+$6::bigint*interval '1 millisecond')`;
+ const promotionSql=`INSERT INTO collection_place_pins(collection_id,recommendation_id,account_id,category,position)
+    SELECT $1,recommendation_id,$2,'places',row_number() OVER(ORDER BY chunk_index,item_index)-1 FROM place_pin_draft_items WHERE draft_id=$3`;
+ const collectionResultSql='SELECT revision FROM collections WHERE id=$1 AND account_id=$2',countResultSql='SELECT count(*)::text AS count FROM collection_place_pins WHERE collection_id=$1',categoryResultSql="SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category='places'),'0') revision",terminalSql='UPDATE place_pin_drafts SET state=$2,terminal_at=clock_timestamp(),terminal_result=$3,accepted_bytes=0,item_count=0,chunk_count=0 WHERE id=$1';
+ const observed:string[]=[];let connected=false,rolledBack=false,released=false,nativeCode:string|undefined,rejectedReceipt=false,receiptValues:unknown[]|undefined,operation:Promise<COutcome>|undefined,holderBegan=false;
+ try{
+  await holder.query('BEGIN');holderBegan=true;await holder.query('LOCK TABLE public.application_command_receipts IN SHARE MODE');
+  const reached=controller!.gate(),pool={connect:async()=>{expect(connected).toBe(false);connected=true;return {query:async(sql:string,args:unknown[]=[])=>{
+   if(sql===receiptSql){expect(observed).toEqual(['promotion','collection-result','count-result','category-result','terminal']);expect(args.slice(0,4)).toEqual([f.account,spec.request.operation,createHash('sha256').update(spec.context.idempotencyKey).digest(),Buffer.from(hashPlacePinsRequest(spec.request),'hex')]);expect(args[5]).toBe(policy.receiptRetentionMs);receiptValues=[...args];reached.arrive();}
+   try{const result=await pair.second.query(sql,args);
+    if(sql===promotionSql){expect(args).toEqual([f.list,f.account,drafts[0]]);expect(result.command).toBe('INSERT');observed.push('promotion');}
+    else if(observed.includes('promotion')&&sql===collectionResultSql){expect(args).toEqual([f.list,f.account]);observed.push('collection-result');}
+    else if(observed.includes('promotion')&&sql===countResultSql){expect(args).toEqual([f.list]);observed.push('count-result');}
+    else if(observed.includes('promotion')&&sql===categoryResultSql){expect(args).toEqual([f.account]);observed.push('category-result');}
+    else if(sql===terminalSql){expect(args[0]).toBe(drafts[0]);expect(args[1]).toBe('committed');expect(observed).toEqual(['promotion','collection-result','count-result','category-result']);expect(result.command).toBe('UPDATE');observed.push('terminal');}
+    else if(sql==='ROLLBACK'){expect(result.command).toBe('ROLLBACK');rolledBack=true;}return result;
+   }catch(error){const code=(error as {code?:string}).code;if(sql===receiptSql&&['55P03','57014'].includes(code??'')){nativeCode=code;rejectedReceipt=true;}throw error;}
+  },release:()=>{expect(released).toBe(false);released=true;pair.second.release();}};}} as unknown as pg.Pool;
+  // This explicit owned admission arms its12000 phase only when the selected
+  // verified lease forwards actual BEGIN. It retains rollback/release originals.
+  operation=controller!.runOwnedNative(pair.second,()=>cExecute(pool,f,spec)).then(value=>({ok:true,value}),error=>({ok:false,error}));
+  await reached.acquired;reached.open();expect(receiptValues).toBeDefined();
+  await controller!.observeBlocker(pair.second,holder as unknown as typeof pair.second,{text:receiptSql,values:receiptValues!});
+  const outcome=await operation;expect(outcome.ok).toBe(false);if(outcome.ok)throw Error('Fixture native deadline outcome');
+  expect(outcome.error).toMatchObject({status:413,code:'RESOURCE_TOO_LARGE',message:'Places pin processing or numeric budget exhausted'});expect(['55P03','57014']).toContain(nativeCode);expect(rejectedReceipt).toBe(true);expect(rolledBack).toBe(true);expect(released).toBe(true);expect(controller!.status().admissionClosed).toBe(false);
+ }catch{await controller!.abortCase();throw Error('Fixture native deadline');}finally{
+  // Wrapped admin queries retain originals and fail-stop unsafe public timeout;
+  // no signal is ever directed at this admin holder.
+  if(!controller!.status().admissionClosed){try{if(holderBegan)await holder.query('ROLLBACK');}finally{holder.release();}}
+ }
+ await controller!.settleCase();expect(controller!.status()).toMatchObject({admissionClosed:false,serverUnresolved:false,leases:0,unsettledCount:0,leaseRestored:true});
+ expect(await read()).toEqual(before);expect(await receipt(f,spec.request,spec.context.idempotencyKey)).toEqual([]);
+ const retried=cSucceeded(await cOutcome(()=>cExecute(runtime,f,spec))),after=await read();await cPromotion(f,drafts[0],sequences[0],spec,retried,before,after);cForeign(before,after,foreign);
+ const durable=await receipt(f,spec.request,spec.context.idempotencyKey);expect(cSucceeded(await cOutcome(()=>cExecute(runtime,f,spec)))).toEqual(retried);expect(await read()).toEqual(after);expect(await receipt(f,spec.request,spec.context.idempotencyKey)).toEqual(durable);
+});
+// Residual9: each identity adds a distinct actual storage outcome. The outer
+// allowance never changes the original processing policy or native phase cap.
+const rOriginal={...policy,policyId:'residual-original',policyVersion:1,draftExpiryMs:10000,stagingRetentionMs:12000,receiptRetentionMs:180000};
+const rCaller={...policy,policyId:'residual-generous',policyVersion:2,commitProcessingMs:20000,draftExpiryMs:120000,stagingRetentionMs:240000,receiptRetentionMs:360000};
+async function rClockUntil(sql:string,args:unknown[],window=20000){
+ const end=performance.now()+window;let observations=0;
+ while(performance.now()<end){const began=performance.now(),result=await admin.query(sql,args);expect(performance.now()-began).toBeLessThan(2000);observations++;if(result.rows[0]?.ready===true)return observations;}
+ throw Error('Fixture original database clock window exhausted');
+}
+function rForeign(before:SqlSnapshot,after:SqlSnapshot,f:Fixture){
+ for(const key of ['collections','memberships','recommendations','pins','categories','drafts','receipts'] as const)expect(after[key].filter(r=>r.account_id===f.account)).toEqual(before[key].filter(r=>r.account_id===f.account));
+ for(const [table,rows] of Object.entries(before.inventory))expect(after.inventory[table].filter(r=>r.account_id===f.account||table==='creator_accounts'&&r.id===f.account)).toEqual(rows.filter(r=>r.account_id===f.account||table==='creator_accounts'&&r.id===f.account));
+ for(const table of sharedSqlRelations)expect(after.inventory[table]).toEqual(before.inventory[table]);expect(after.pinQueue).toEqual(before.pinQueue);expect(after.chunkQueue).toEqual(before.chunkQueue);
+}
+function rTerminal(before:SqlSnapshot,after:SqlSnapshot,id:string,state:string,response:any){
+ const old=before.drafts.find(r=>r.id===id),row=after.drafts.find(r=>r.id===id);expect(row.terminal_at).toBeInstanceOf(Date);
+ expect(after.drafts).toEqual(before.drafts.map(r=>r.id===id?{...old,state,terminal_at:row.terminal_at,terminal_result:response,accepted_bytes:'0',item_count:'0',chunk_count:'0'}:r));
+ for(const key of ['chunks','items'] as const)expect(after[key]).toEqual(before[key].filter(r=>r.draft_id!==id));
+ unchangedSqlFields(before,after,['drafts','chunks','items','receipts']);
+}
+async function rFenceMutation(setup:Awaited<ReturnType<typeof cFixture>>){
+ const {f,read}=setup,before=await read(),row=before.collections.find(r=>r.id===f.list),key=randomUUID(),input={id:f.list,expectedRevision:Number(row.revision),ids:[...f.ids].reverse()};
+ const result=cSucceeded(await cOutcome(()=>new ExplorersRecommendationRepository(runtime).reorderCollection(f.account,f.list,input.expectedRevision,input.ids,key))),after=await read();
+ await cWriterOracle('reorderCollection',f,input,key,result,before,after);return after;
+}
+async function rNativePhase(caseId:string,f:Fixture,spec:CCommand,hold:boolean){
+ const pair=await controller!.reservePair(caseId,admin,runtime);pair.first.release();const gate=controller!.gate();
+ let connected=false,released=false,rolled=false,promoted=false,resultReads=0,clock=0,replyMs=0,beginAt=0,entryAt=0,terminal=0,receipts=0,commits=0,finalAttempts=0;
+ const pool={connect:async()=>{expect(connected).toBe(false);connected=true;return {query:async(sql:string,args:unknown[]=[])=>{
+  const start=performance.now();if(sql==='BEGIN')beginAt=start;
+  if(sql.startsWith('UPDATE place_pin_drafts SET state='))terminal++;
+  if(sql.startsWith('INSERT INTO application_command_receipts'))receipts++;
+  if(sql.includes('DO $places_deadline$'))finalAttempts++;
+  const result=await pair.second.query(sql,args);replyMs=Math.max(replyMs,performance.now()-start);
+  if(sql==='SELECT clock_timestamp() AS command_clock')clock=result.rows[0].command_clock.getTime();
+  if(sql.startsWith('INSERT INTO collection_place_pins')){expect(args).toEqual([f.list,f.account,(spec.request as any).draftId]);expect(result.command).toBe('INSERT');promoted=true;}
+  if(promoted&&sql==='SELECT revision FROM collections WHERE id=$1 AND account_id=$2'){expect(args).toEqual([f.list,f.account]);resultReads++;}
+  if(promoted&&sql==='SELECT count(*)::text AS count FROM collection_place_pins WHERE collection_id=$1'){expect(args).toEqual([f.list]);resultReads++;}
+  if(promoted&&sql==="SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category='places'),'0') revision"){
+   expect(args).toEqual([f.account]);resultReads++;expect(resultReads).toBe(3);expect(clock).toBeGreaterThan(0);expect(performance.now()-entryAt).toBeLessThan(10000);gate.arrive();if(hold)await gate.wait();
+  }
+  const last=Array.isArray(result)?result.at(-1):result;if(last?.command==='COMMIT')commits++;if(sql==='ROLLBACK'){expect(result.command).toBe('ROLLBACK');rolled=true;}return result;
+ },release:()=>{expect(released).toBe(false);released=true;pair.second.release();}};}} as unknown as pg.Pool;
+ entryAt=performance.now();const operation=controller!.runOwnedNative(pair.second,()=>cExecute(pool,f,spec)).then(value=>({ok:true,value} as COutcome),error=>({ok:false,error} as COutcome));
+ try{await gate.acquired;expect(promoted).toBe(true);expect(resultReads).toBe(3);
+  if(hold){const margin=Math.max(25,Math.ceil(replyMs*2));expect(margin).toBeLessThan(500);expect(performance.now()-beginAt).toBeLessThan(1000);
+   await rClockUntil('SELECT clock_timestamp()>=$1::timestamptz ready',[new Date(clock+10000+margin).toISOString()],11000-(performance.now()-beginAt));
+   expect(performance.now()-entryAt).toBeGreaterThan(10000);expect(performance.now()-beginAt).toBeLessThan(11500);gate.open();
+  }else gate.open();
+  const outcome=await operation;expect(released).toBe(true);if(hold){cRefused(outcome,413);expect(rolled).toBe(true);expect([terminal,receipts,commits,finalAttempts]).toEqual([0,0,0,0]);}else{expect(outcome.ok).toBe(true);expect([terminal,receipts,commits,finalAttempts]).toEqual([1,1,1,1]);}
+  await controller!.settleCase();expect(controller!.status()).toMatchObject({leaseRestored:true,serverUnresolved:false,unsettledCount:0});return outcome;
+ }catch{gate.open();await controller!.abortCase();throw Error('Fixture original processing phase');}
+}
+it('rolls back late staged processing time under the original policy despite a generous caller policy',async()=>{
+ const caseId='rolls back late staged processing time under the original policy despite a generous caller policy',setup=await cFixture({charged:false}),{f,foreign,drafts,read}=setup,ids=[...f.ids].reverse();
+ const a=appendRequest(f,drafts[0],ids.slice(0,1)),b={...appendRequest(f,drafts[0],ids.slice(1)),chunkIndex:1,body:{recommendationIds:ids.slice(1),chunkHash:hashPlacePinsChunk(1,ids.slice(1))}};
+ await cWrite(f,a,setup.records);await cWrite(f,b,setup.records);const before=await read(),spec=cSpec(commitRequest(f,drafts[0],ids),rCaller);
+ expect(before.drafts.find(r=>r.id===drafts[0]).policy_snapshot.commitProcessingMs).toBe(10000);
+ for(let attempt=0;attempt<2;attempt++){await rNativePhase(caseId,f,spec,true);expect(await read()).toEqual(before);expect(await receipt(f,spec.request,spec.context.idempotencyKey)).toEqual([]);}
+ const control=await cFixture({charged:false,draftPolicy:{...policy,policyId:'residual-control',commitProcessingMs:20000}}),controlSequence=[...control.f.ids].reverse(),controlA=appendRequest(control.f,control.drafts[0],controlSequence.slice(0,1)),controlIds=controlSequence.slice(1),controlB={...appendRequest(control.f,control.drafts[0],controlIds),chunkIndex:1,body:{recommendationIds:controlIds,chunkHash:hashPlacePinsChunk(1,controlIds)}};
+ await cWrite(control.f,controlA,control.records);await cWrite(control.f,controlB,control.records);const controlBefore=await control.read(),controlSpec=cSpec(commitRequest(control.f,control.drafts[0],controlSequence),rCaller);
+ const outcome=await rNativePhase(caseId,control.f,controlSpec,false),after=await control.read();await cPromotion(control.f,control.drafts[0],controlSequence,controlSpec,cSucceeded(outcome),controlBefore,after);cForeign(controlBefore,after,control.foreign);cForeign(before,await read(),foreign);
+},45000);
+async function rLostResponse(caseId:string,aborting:boolean){
+ const setup=await cFixture({draftPolicy:rOriginal,charged:aborting}),{f,foreign,drafts,sequences,read}=setup,actor=await cActor(f),before=await read();
+ const request:PlacePinsRequest=aborting?{operation:'abortPlacePinsDraft',collectionId:f.list,draftId:drafts[0],body:{}}:appendRequest(f,drafts[0],sequences[0]),spec=cSpec(request,rOriginal),sentinel=Error('Fixture lost residual response'),lower=await databaseClock();
+ const pair=await controller!.reservePair(caseId,admin,runtime);pair.first.release();let connected=false,fired=false,released=false,commitSeen=false,rolled=false;
+ const pool={connect:async()=>{expect(connected).toBe(false);connected=true;return {query:async(...args:any[])=>{
+  const result=await pair.second.query(...args),last=Array.isArray(result)?result.at(-1):result;
+  if(last?.command==='COMMIT'){expect(Array.isArray(result)).toBe(true);expect(args[0]).toContain('DO $places_deadline$');expect(args[0]).toContain('SET CONSTRAINTS ALL IMMEDIATE');expect(args[0]).toContain('DO $places_completion$');expect(fired).toBe(false);commitSeen=true;fired=true;throw sentinel;}if(args[0]==='ROLLBACK'){expect(result.command).toBe('ROLLBACK');rolled=true;}return result;
+ },release:()=>{expect(released).toBe(false);released=true;pair.second.release();}};}} as unknown as pg.Pool;
+ const outcome=await cOutcome(()=>cExecute(pool,f,spec));expect(outcome.ok).toBe(false);if(outcome.ok)throw Error('Fixture lost response outcome');expect(outcome.error).toBe(sentinel);expect([fired,commitSeen,released,rolled]).toEqual([true,true,true,true]);
+ await controller!.settleCase();const upper=await databaseClock(),durable=await read(),rows=await receipt(f,request,spec.context.idempotencyKey);expect(upper).toBeLessThan(before.drafts.find(r=>r.id===drafts[0]).expires_at.getTime());
+ const response=rows[0]?.response;expect(rows).toHaveLength(1);expect(response.changed).toBe(true);
+ if(aborting){rTerminal(before,durable,drafts[0],'aborted',response);await cPinReceipt(f,spec,response,before,durable);}else await cAppendOracle(f,spec,response,before,durable,true);
+ expect(rows[0].replay_until.getTime()).toBeGreaterThanOrEqual(lower+rOriginal.receiptRetentionMs);expect(rows[0].replay_until.getTime()).toBeLessThanOrEqual(upper+rOriginal.receiptRetentionMs);
+ const replay=async()=>{const saved=await read();expect(cSucceeded(await cOutcome(()=>cExecute(runtime,f,{...spec,policy:rCaller})))).toEqual(response);expect(await read()).toEqual(saved);expect(await receipt(f,request,spec.context.idempotencyKey)).toEqual(rows);};await replay();
+ await rFenceMutation(setup);if(!aborting){const prior=await read(),abort=cSpec({operation:'abortPlacePinsDraft',collectionId:f.list,draftId:drafts[0],body:{}},rCaller),value=cSucceeded(await cOutcome(()=>cExecute(runtime,f,abort))),after=await read();rTerminal(prior,after,drafts[0],'aborted',value);await cPinReceipt(f,abort,value,prior,after);}
+ const finished=await read();for(const field of ['policy_id','policy_version','policy_snapshot','expected_collection_revision','expected_category_content_revision','created_at','expires_at'])expect(finished.drafts.find(r=>r.id===drafts[0])[field]).toEqual(before.drafts.find(r=>r.id===drafts[0])[field]);
+ await rClockUntil("SELECT terminal_at+(policy_snapshot->>'stagingRetentionMs')::bigint*interval '1 millisecond'<=clock_timestamp() ready FROM place_pin_drafts WHERE id=$1",[drafts[0]]);
+ expect(rows[0].replay_until.getTime()).toBeGreaterThan(await databaseClock());cSucceeded(await cOutcome(()=>repo.cleanupExpired(rCaller)));const removed=await read();expect(removed.drafts).toEqual(finished.drafts.filter(r=>r.id!==drafts[0]));unchangedSqlFields(finished,removed,['drafts']);await replay();
+ const altered:PlacePinsRequest=aborting?{...request,draftId:randomUUID()} as PlacePinsRequest:appendRequest(f,drafts[0],[sequences[0][0]]);const saved=await read();cRefused(await cOutcome(()=>cExecute(runtime,f,{...spec,request:altered,policy:rCaller})),409);expect(await read()).toEqual(saved);expect(await receipt(f,request,spec.context.idempotencyKey)).toEqual(rows);
+ const separate=cSpec({operation:'replacePlacePins',collectionId:f.list,body:{...await fences(f),orderedRecommendationIds:[...f.ids].reverse()}},rCaller,spec.context.idempotencyKey as ReturnType<typeof randomUUID>),separateBefore=await read(),separateValue=cSucceeded(await cOutcome(()=>cExecute(runtime,f,separate))),separateAfter=await read();expect(separateValue.changed).toBe(true);await cPinReceipt(f,separate,separateValue,separateBefore,separateAfter);expect(await receipt(f,request,spec.context.idempotencyKey)).toEqual(rows);
+ const separateXid=separateAfter.categories.find(r=>r.account_id===f.account&&r.category==='places').places_last_mutation_xid;sqlCollectionDelta(separateBefore,separateAfter,[f.list],separateXid);sqlCategoryDelta(separateBefore,separateAfter,f.account,separateXid);expect(separateAfter.pins).toEqual(separateBefore.pins.filter(r=>r.collection_id!==f.list).concat([...f.ids].reverse().map((id,position)=>({collection_id:f.list,recommendation_id:id,account_id:f.account,category:'places',position:String(position)}))).sort((a,b)=>a.collection_id.localeCompare(b.collection_id)||Number(a.position)-Number(b.position)));unchangedSqlFields(separateBefore,separateAfter,['pins','collections','categories','markers','receipts']);
+ const expectedRevision=Number((await admin.query('SELECT revision FROM creator_accounts WHERE id=$1',[f.account])).rows[0].revision);cSucceeded(await cOutcome(()=>new AccountLifecycleService(runtime).requestAccountDeactivation(actor,{expectedRevision},{requestId:randomUUID(),idempotencyKey:randomUUID()})));
+ const inactive=await read();cRefused(await cOutcome(()=>cExecute(runtime,f,{...spec,policy:rCaller})),404,'Account unavailable');expect(await read()).toEqual(inactive);expect(await receipt(f,request,spec.context.idempotencyKey)).toEqual(rows);rForeign(before,inactive,foreign);
+}
+it('replays the original append after a lost response across terminalization and draft removal',async()=>{await rLostResponse('replays the original append after a lost response across terminalization and draft removal',false);},45000);
+it('replays the original abort after a lost response across draft removal',async()=>{await rLostResponse('replays the original abort after a lost response across draft removal',true);},45000);
+async function rCleanup(caseId:string,committing:boolean,cleanupFirst:boolean){
+ const P={...rOriginal,policyId:'residual-cleanup'},setup=await cFixture({draftPolicy:P,charged:committing}),{f,foreign,drafts,sequences,read}=setup,spec=cSpec(committing?commitRequest(f,drafts[0],sequences[0]):appendRequest(f,drafts[0],sequences[0]),rCaller),before=await read();
+ if(cleanupFirst)await rClockUntil('SELECT expires_at<=clock_timestamp() ready FROM place_pin_drafts WHERE id=$1',[drafts[0]]);
+ const pair=await controller!.reservePair(caseId,admin,runtime),gate=controller!.gate(),reached=controller!.gate();let validation=false,cleanupLock=false;
+ const {createResidualLeaseAdapter}=await import('./helpers/placesResidualLeaseAdapter');
+ const cleanup=createResidualLeaseAdapter(pair.first,async(args,result)=>{if(args[0]==='SELECT id FROM creator_accounts WHERE id=$1 FOR UPDATE'&&args[1]?.[0]===f.account){expect(result.rows).toHaveLength(1);cleanupLock=true;if(cleanupFirst){gate.arrive();await gate.wait();}}});
+ const cleanupOperation=()=>new ExplorersPlacePinsRepository(cleanup.pool as unknown as pg.Pool).cleanupExpired(rCaller);
+ const commandPool={connect:async()=>({query:async(sql:string,args:unknown[]=[])=>{if(sql===cAccountSql&&cleanupFirst)reached.arrive();const result=await pair.second.query(sql,args);
+  if(!cleanupFirst&&sql.startsWith('SELECT *,expires_at<=clock_timestamp() expired FROM place_pin_drafts')&&args[0]===drafts[0]){expect(result.rows[0].expired).toBe(false);validation=true;}return result;
+ },release:()=>pair.second.release()})} as unknown as pg.Pool;
+ try{if(cleanupFirst){const first=cOutcome(cleanupOperation);await gate.acquired;const second=cOutcome(()=>cExecute(commandPool,f,spec));await reached.acquired;reached.open();await controller!.observeBlocker(pair.second,pair.first,{text:cAccountSql,values:[f.account]});gate.open();cSucceeded(await first);cleanup.finish();cRefused(await second,409,'Draft is terminal or expired');expect(cleanupLock).toBe(true);
+  const after=await read();rTerminal(before,after,drafts[0],'expired',null);expect(after.receipts).toEqual(before.receipts);expect(await receipt(f,spec.request,spec.context.idempotencyKey)).toEqual([]);cForeign(before,after,foreign);
+ }else{gate.arrive();gate.open();reached.arrive();reached.open();const value=cSucceeded(await cOutcome(()=>cExecute(commandPool,f,spec))),won=await read();expect(validation).toBe(true);
+  if(committing)await cPromotion(f,drafts[0],sequences[0],spec,value,before,won);else await cAppendOracle(f,spec,value,before,won,true);
+  await rClockUntil('SELECT expires_at<=clock_timestamp() ready FROM place_pin_drafts WHERE id=$1',[drafts[0]]);cSucceeded(await cOutcome(cleanupOperation));cleanup.finish();const after=await read();
+  if(committing)expect(after).toEqual(won);else{rTerminal(won,after,drafts[0],'expired',null);expect(after.receipts).toEqual(won.receipts);}cForeign(before,after,foreign);expect(await receipt(f,spec.request,spec.context.idempotencyKey)).toHaveLength(1);
+ }
+ await controller!.settleCase();expect(controller!.status()).toMatchObject({leaseRestored:true,serverUnresolved:false,unsettledCount:0});
+ }catch{gate.open();reached.open();await controller!.abortCase();throw Error('Fixture cleanup ordering');}
+}
+it('cleanup before expired append',async()=>{await rCleanup('cleanup before expired append',false,true);},45000);
+it('cleanup before expired staged commit',async()=>{await rCleanup('cleanup before expired staged commit',true,true);},45000);
+it('append validated before expiry then cleanup',async()=>{await rCleanup('append validated before expiry then cleanup',false,false);},45000);
+it('staged commit validated before expiry then cleanup',async()=>{await rCleanup('staged commit validated before expiry then cleanup',true,false);},45000);
+async function rPurge(caseId:string,purgeFirst:boolean){
+ const {target:f,foreign,records}=await fullOwnedSqlFixture(),fixtures=[f,foreign],operation=await lifecycleSqlOperation(f.account),read=()=>completeSqlSnapshot(fixtures,records),draft=(await read()).drafts.find(r=>r.account_id===f.account&&r.collection_id===f.list&&r.state==='open'),spec=cSpec(commitRequest(f,draft.id,f.ids));
+ await admin.query("UPDATE creator_accounts SET status='pending_deletion',deletion_requested_at=$2 WHERE id=$1",[f.account,fixtureTime]);const before=await read(),pair=await controller!.reservePair(caseId,admin,runtime),gate=controller!.gate();let xid='',catalogHeld=false,purgeSeen=false;
+ const authority=await pair.first.query("SELECT current_user effective,session_user login,current_database() database,has_function_privilege(current_user,'purge_explorers_account_content(uuid,uuid)','EXECUTE') allowed");expect(authority.rows[0]).toMatchObject({effective:'music_runtime',allowed:true});expect(authority.rows[0].login).toBe(decodeURIComponent(new URL(process.env.PLACE_PINS_RUNTIME_DATABASE_URL_TEST!).username));expect(authority.rows[0].database).toBe(process.env.PLACE_PINS_DISPOSABLE_DATABASE);
+ const purge=()=>controller!.runOwned(async()=>{try{await pair.first.query('BEGIN');await pair.first.query("SELECT lock_explorers_taxonomy_catalog('people')");await pair.first.query("SELECT lock_explorers_taxonomy_catalog('places')");catalogHeld=true;gate.arrive();if(purgeFirst)await gate.wait();
+  xid=(await pair.first.query('SELECT pg_current_xact_id()::text xid')).rows[0].xid;const result=await pair.first.query('SELECT purge_explorers_account_content($1,$2) removed',[f.account,operation]);purgeSeen=true;expect(result.rows[0].removed).toBe(17);expect((await pair.first.query('COMMIT')).command).toBe('COMMIT');
+ }catch(error){await pair.first.query('ROLLBACK');throw error;}finally{pair.first.release();}});
+ const denial=()=>cOutcome(()=>cExecute({connect:async()=>pair.second} as unknown as pg.Pool,f,spec));
+ try{if(purgeFirst){const original=purge();original.catch(()=>{});await gate.acquired;expect(catalogHeld).toBe(true);expect(purgeSeen).toBe(false);cRefused(await denial(),404,'Account unavailable');expect(await read()).toEqual(before);expect(purgeSeen).toBe(false);gate.open();await original;}else{cRefused(await denial(),404,'Account unavailable');expect(await read()).toEqual(before);gate.open();await purge();}
+  expect(purgeSeen).toBe(true);await controller!.settleCase();const after=await read();expect(await receipt(f,spec.request,spec.context.idempotencyKey)).toEqual([]);
+  for(const key of ['collections','recommendations','memberships','pins','drafts'] as const)expect(after[key]).toEqual(before[key].filter(r=>r.account_id!==f.account));expect(after.markers).toEqual(before.markers.filter(r=>!f.allLists!.includes(r.collection_id)));
+  const deleted=before.drafts.filter(r=>r.account_id===f.account).map(r=>r.id);for(const key of ['chunks','items'] as const)expect(after[key]).toEqual(before[key].filter(r=>!deleted.includes(r.draft_id)));
+  for(const key of ['entities','receipts','exactReceipts','pinQueue','chunkQueue'] as const)expect(after[key]).toEqual(before[key]);
+  const retained=new Set(['media_assets','analytics_event_receipts','account_lifecycle_operations','deletion_feedback','creator_accounts',...sharedSqlRelations,'book_entity_details','app_entity_details','product_entity_details','person_entity_details','place_entity_details','movie_entity_details','entity_identifiers','places_pin_validation_dirty','places_chunk_validation_dirty']);
+  for(const [table,rows] of Object.entries(before.inventory)){if(table==='analytics_event_receipts')continue;expect(after.inventory[table],table).toEqual(retained.has(table)?rows:rows.filter(r=>r.account_id!==f.account));}
+  expect(after.inventory.analytics_event_receipts).toHaveLength(before.inventory.analytics_event_receipts.length);for(const row of before.inventory.analytics_event_receipts){const current=after.inventory.analytics_event_receipts.find(r=>r.account_id===row.account_id&&r.client_event_id===row.client_event_id);if(row.account_id===f.account&&row.event_id!==null){expect(current.retired_at).toBeInstanceOf(Date);expect(current).toEqual({...row,event_id:null,retired_at:current.retired_at});}else expect(current).toEqual(row);}
+  expect(after.categories).toHaveLength(before.categories.length);expect(after.categories.filter(r=>r.account_id===f.account)).toHaveLength(8);for(const row of before.categories){const current=after.categories.find(r=>r.account_id===row.account_id&&r.category===row.category);if(row.account_id!==f.account)expect(current).toEqual(row);else if(row.category==='places')expect(current).toEqual({...row,revision:String(BigInt(row.revision)+1n),places_last_mutation_xid:xid});else{expect(BigInt(current.revision)).toBeGreaterThanOrEqual(BigInt(row.revision));expect(current).toEqual({...row,revision:current.revision});}}
+  rForeign(before,after,foreign);expect(controller!.status()).toMatchObject({leaseRestored:true,serverUnresolved:false,unsettledCount:0});
+  const retry=cSucceeded(await cOutcome(()=>rawSqlTransaction(async db=>{expect((await db.query('SELECT purge_explorers_account_content($1,$2) removed',[f.account,operation])).rows[0].removed).toBe(0);})));expect(retry.committed).toBe(true);expect(retry.drained).toBe(true);expect(retry.error).toBeUndefined();expect(await read()).toEqual(after);
+ }catch{gate.open();await controller!.abortCase();throw Error('Fixture pending purge ordering');}
+}
+it('pending-account purge before staged commit',async()=>{await rPurge('pending-account purge before staged commit',true);},45000);
+it('pending-account staged commit denial before purge',async()=>{await rPurge('pending-account staged commit denial before purge',false);},45000);
 });

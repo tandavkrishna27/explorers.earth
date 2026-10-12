@@ -8,7 +8,8 @@ type Kind='admin'|'runtime'|'direct';
 type Task={original:Promise<any>;settled:boolean;failed:boolean;caseId:string;lease?:Lease;supervisor:boolean};
 type Binding={pid:number;backend_start:string;database:string;login:string;backend_type:string};
 type Operation={text:string;values:readonly unknown[];task:Task};
-type Lease={raw:Client;kind:Kind;released:boolean;unsafe:boolean;transaction:boolean;binding?:Binding;current?:Operation;wrapper:Client};
+type Lease={raw:Client;kind:Kind;caseId:string;verified:boolean;released:boolean;unsafe:boolean;transaction:boolean;binding?:Binding;current?:Operation;wrapper:Client};
+type NativeAdmission={caseId:string;lease:Lease;task?:Task;deadline:number;entered:boolean;finished:boolean;arm:(deadline:number)=>void;close:()=>void};
 type Options={identity:{database:string;runtimeLogin:string};guardFailure:(event:GuardFailure)=>void;admission:(caseId:string)=>void;clock?:Clock};
 export const writerSuiteFrames=['suite-bootstrap','suite-teardown'] as const;
 // The installed beforeAll listener supplies the collected suite as its second argument.
@@ -40,15 +41,16 @@ export function createWriterSuiteController(options:Options){
  const rawPools=new WeakMap<object,Pool>();
  let caseId:string='suite-bootstrap',closed=false,serverUnresolved=false,scopeDeadline=Infinity,nativeDeadline=Infinity,aborting:Promise<void>|undefined;
  let observer:Client|undefined;
+ let nativeAdmission:NativeAdmission|undefined;
  function error(){return Error('Fixture writer controller');}
  function pending(){return [...tasks].filter(task=>!task.settled);}
  function openGates(){for(const gate of gates)gate.open();}
  function fail(reason:GuardReason,phase:GuardPhase){
-  if(closed)return;closed=true;if([...leases].some(lease=>lease.current&&!lease.current.task.settled))serverUnresolved=true;for(const value of gates)value.fail();
+  if(closed)return;closed=true;if([...leases].some(lease=>lease.current&&!lease.current.task.settled))serverUnresolved=true;for(const value of gates)value.fail();nativeAdmission?.close();
   // Latch precedes delivery; the sink may fail or block without reopening admission.
   try{options.guardFailure({caseId,reason,phase,unsettledCount:Math.min(16,pending().length)});}catch{/* Root supervision remains responsible for delivery failure. */}
  }
- function admit(id:string){if(closed)throw error();try{options.admission(id);}catch{caseId=id;fail('transport','preflight');throw error();}caseId=id;aborting=undefined;nativeDeadline=Infinity;}
+ function admit(id:string){if(closed)throw error();if(nativeAdmission){fail('lease','acquire');throw error();}try{options.admission(id);}catch{caseId=id;fail('transport','preflight');throw error();}caseId=id;aborting=undefined;nativeDeadline=Infinity;}
  function check(){if(closed)throw error();options.admission(caseId);}
  function own<T>(operation:()=>Promise<T>,lease?:Lease,supervisor=false):Task{
   let original:Promise<T>;try{original=Promise.resolve(operation());}catch{original=Promise.reject(error());}
@@ -81,6 +83,9 @@ export function createWriterSuiteController(options:Options){
    config.query_timeout=Math.max(1,Math.min(budget,typeof config.query_timeout==='number'?config.query_timeout:budget));forwarded=[config];
   }
   if(lease.kind==='runtime'&&nativeDeadline!==Infinity&&text==='BEGIN'&&clock.now()>=nativeDeadline){fail('settlement','settle');throw expired();}
+  // Only the explicitly admitted native lease can transition its original's wait.
+  // Origin is immediately before forwarding this actual BEGIN, after acquisition.
+  if(text==='BEGIN'&&nativeAdmission?.lease===lease&&!nativeAdmission.entered&&!nativeAdmission.finished)nativePhase(nativeAdmission);
   const task=own(()=>lease.raw.query(...forwarded),lease),operation:Operation={text,values:[...values],task};lease.current=operation;
   try{
    const result=lease.kind==='runtime'&&caseId!=='suite-bootstrap'&&!boundIdentity?await task.original:await bound<QueryResult>(task,2000,()=>{
@@ -103,6 +108,7 @@ export function createWriterSuiteController(options:Options){
    if(row.admin_super!==true||row.runtime_super!==false||row.cancel_execute!==true||row.terminate_execute!==true){fail('authority','preflight');destroy(lease);throw error();}
    lease.binding=binding(row);
   }
+  lease.verified=true;
  }
  function release(lease:Lease,destroyRequested=false){
   if(lease.released)throw error();
@@ -111,7 +117,7 @@ export function createWriterSuiteController(options:Options){
   lease.released=true;releaseRequest(lease,false);
  }
  function makeLease(raw:Client,kind:Kind):Lease{
-  const lease:Lease={raw,kind,released:false,unsafe:false,transaction:false,wrapper:undefined!};
+  const lease:Lease={raw,kind,caseId,verified:false,released:false,unsafe:false,transaction:false,wrapper:undefined!};
   lease.wrapper={processID:raw.processID,query:(...args)=>forward(lease,args),release:destroyRequested=>release(lease,destroyRequested)};leases.add(lease);return lease;
  }
  async function acquire(pool:Pool,kind:Kind){
@@ -140,7 +146,29 @@ export function createWriterSuiteController(options:Options){
   return {acquired:signal,arrive,open,wait:()=>waiting,fail:()=>{if(!acquired)reject();open();},get opened(){return opened;}};
  }
  function gate(){check();const value=makeGate();gates.add(value);const acquired=bound<void>(own(()=>value.acquired),2000,()=>{value.fail();fail('gate','gate');});acquired.then(()=>{},()=>{});return {...value,acquired};}
- function runOwned<T>(operation:()=>Promise<T>){check();const task=own(operation);task.original.catch(()=>{for(const value of gates)value.fail();});return bound<T>(task,nativeDeadline===Infinity?5000:Math.max(0,nativeDeadline-clock.now()),()=>fail('settlement','settle'),Math.min(scopeDeadline,nativeDeadline));}
+ function runOwned<T>(operation:()=>Promise<T>){check();const task=own(operation);task.original.catch(()=>{for(const value of gates)value.fail();});return bound<T>(task,5000,()=>fail('settlement','settle'));}
+ function runOwnedNative<T>(client:Client,operation:()=>Promise<T>):Promise<T>{
+  check();const lease=find(client);
+  if(nativeAdmission||lease.kind!=='runtime'||lease.caseId!==caseId||!lease.verified||lease.released||lease.unsafe||lease.transaction||lease.current&&!lease.current.task.settled){fail('lease','acquire');throw error();}
+  let timer:any,resolve!:(value:T)=>void,reject!:(reason:unknown)=>void;
+  const waiting=new Promise<T>((yes,no)=>{resolve=yes;reject=no;});waiting.then(()=>{},()=>{});
+  const admission:NativeAdmission={caseId,lease,deadline:clock.now()+5000,entered:false,finished:false,
+   close:()=>{if(admission.finished)return;admission.finished=true;clock.clearTimeout(timer);reject(error());},
+   arm:deadline=>{clock.clearTimeout(timer);admission.deadline=Math.min(deadline,scopeDeadline);const remaining=Math.max(0,admission.deadline-clock.now());
+    const expire=()=>{admission.close();fail('settlement','settle');};if(remaining<=0){expire();return;}timer=clock.setTimeout(expire,remaining);
+   }};
+  nativeAdmission=admission;admission.arm(clock.now()+5000);
+  if(closed)return waiting;
+  const task=own(operation);admission.task=task;
+  const finish=(success:boolean,value:unknown)=>{
+   if(admission.finished)return;
+   if(clock.now()>=admission.deadline){admission.close();fail('settlement','settle');return;}
+   if(!admission.entered){admission.close();fail('binding','preflight');return;}
+   admission.finished=true;clock.clearTimeout(timer);if(success)resolve(value as T);else reject(value);
+  };
+  task.original.then(value=>finish(true,value),failure=>{for(const value of gates)value.fail();finish(false,failure);});
+  return waiting;
+ }
  async function reservePair(id:string,admin:Pool,runtime:Pool){
   admit(id);if(runtime.totalCount-runtime.idleCount!==0||runtime.waitingCount!==0){fail('lease','acquire');throw error();}
   observer=await acquire(admin,'admin');const first=await acquire(runtime,'runtime'),second=await acquire(runtime,'runtime');
@@ -163,11 +191,24 @@ export function createWriterSuiteController(options:Options){
   if(result.rows.length!==1||!sameBinding(target.binding,row)||row.state!=='active'||row.query!==operation.text||target.current!==operation||operation.task.settled||expected&&(expected.text!==operation.text||expected.values.length!==operation.values.length||expected.values.some((value,index)=>value!==operation.values[index]))){fail('binding','cancel');throw error();}
   return {target,operation,row};
  }
+ // Readiness polling is observation only. It never supplies signal authority:
+ // freshTarget above still requires the active exact query for every signal.
+ async function observationTarget(client:Client,expected:{text:string;values:readonly unknown[]},operation:Operation|undefined){
+  check();const target=find(client);
+  const stillOwned=()=>!closed&&target.kind==='runtime'&&target.caseId===caseId&&target.verified&&!target.released&&!target.unsafe&&!!operation&&target.current===operation&&!operation.task.settled&&target.binding?.pid===client.processID&&target.raw.processID===client.processID&&expected.text===operation.text&&expected.values.length===operation.values.length&&expected.values.every((value,index)=>value===operation.values[index]);
+  if(!stillOwned()){fail('binding','observe');throw error();}
+  if(!observer||find(observer).released||find(observer).unsafe){fail('authority','observe');throw error();}
+  const observerLease=find(observer),prior=observerLease.binding;await verify(observerLease);
+  if(!sameBinding(prior,observerLease.binding)||!stillOwned()){fail('binding','observe');throw error();}
+  const result=await forward(observerLease,[activitySql,[client.processID]],false,'observe'),row=result.rows[0];
+  if(!stillOwned()||result.rows.length!==1||!sameBinding(target.binding,row)||typeof row.query!=='string'||!['active','idle','idle in transaction','idle in transaction (aborted)'].includes(row.state)||!Array.isArray(row.blockers)||row.blockers.some((pid:unknown)=>!Number.isInteger(pid)||(pid as number)<=0)){fail('binding','observe');throw error();}
+  return row;
+ }
  async function observeBlocker(client:Client,winner:Client,expected:{text:string;values:readonly unknown[]}){
-  check();const prior=scopeDeadline,deadline=Math.min(scopeDeadline,clock.now()+2000);scopeDeadline=deadline;
-  try{for(;;){const target=await freshTarget(client,expected);if(!target){fail('blocker','observe');throw error();}
-   if(target.row.state==='active'&&target.row.wait_event_type==='Lock'&&Array.isArray(target.row.blockers)&&target.row.blockers.length===1&&target.row.blockers[0]===winner.processID)return;
-   if(target.row.blockers?.some((pid:number)=>pid!==winner.processID)||clock.now()>=deadline){fail('blocker','observe');throw error();}
+  check();const operation=find(client).current,prior=scopeDeadline,deadline=Math.min(scopeDeadline,clock.now()+2000);scopeDeadline=deadline;
+  try{for(;;){if(clock.now()>=deadline){fail('blocker','observe');throw error();}const row=await observationTarget(client,expected,operation);
+   if(row.blockers.some((pid:number)=>pid!==winner.processID)||clock.now()>=deadline){fail('blocker','observe');throw error();}
+   if(row.state==='active'&&row.query===operation!.text&&row.wait_event_type==='Lock'&&row.blockers.length===1&&row.blockers[0]===winner.processID)return;
    const yieldTask=own(()=>new Promise<void>(resolve=>clock.setTimeout(resolve,0)));await bound(yieldTask,Math.max(1,deadline-clock.now()),()=>fail('blocker','observe'),deadline);
   }}finally{scopeDeadline=prior;}
  }
@@ -205,7 +246,7 @@ export function createWriterSuiteController(options:Options){
   openGates();if(closed)throw error();
   try{const budget=nativeDeadline===Infinity?5000:Math.max(0,nativeDeadline-clock.now());await originals(budget);await rollbackLeases();await originals(2000);
    if(closed||serverUnresolved||[...leases].some(lease=>!lease.released)||[...pools].some(pool=>pool.waitingCount!==0||pool.totalCount-pool.idleCount!==0)){fail('lease','settle');throw error();}
-   gates.clear();for(const task of tasks)if(task.settled)tasks.delete(task);for(const lease of leases)if(lease.released&&!lease.unsafe)leases.delete(lease);nativeDeadline=Infinity;
+   gates.clear();for(const task of tasks)if(task.settled)tasks.delete(task);for(const lease of leases)if(lease.released&&!lease.unsafe)leases.delete(lease);nativeDeadline=Infinity;nativeAdmission=undefined;
   }catch{await abortCase();throw error();}
  }
  async function abortCase(){
@@ -234,6 +275,6 @@ export function createWriterSuiteController(options:Options){
   try{if(scopeDeadline<=clock.now()){fail('settlement','preflight');throw expired();}return await bound<T>(own(operation,undefined,true),20000,()=>fail('settlement','preflight'));}catch{fail('guard','preflight');throw error();}finally{scopeDeadline=Infinity;}
  }
  async function directPreflight<T>(operation:()=>Promise<T>){const prior=scopeDeadline;scopeDeadline=Math.min(prior,clock.now()+8000);try{return await bound<T>(own(operation,undefined,true),8000,()=>fail('settlement','preflight'));}finally{scopeDeadline=prior;}}
- function nativePhase(){check();if(nativeDeadline!==Infinity)throw error();nativeDeadline=clock.now()+12000;return nativeDeadline;}
- return {admit,wrapPool,bootstrap,directPreflight,runOwned,gate,reservePair,observeBlocker,signal:(client:Client)=>signal(client),terminateAfterHandoff,settleCase,abortCase,shutdown,nativePhase,fail,status:()=>({admissionClosed:closed,unsettledCount:pending().length,serverUnresolved,leases:[...leases].filter(lease=>!lease.released).length,leaseRestored:!closed&&!serverUnresolved&&![...leases].some(lease=>!lease.released)&&!pending().length})};
+ function nativePhase(admission:NativeAdmission){check();if(nativeAdmission!==admission||admission.caseId!==caseId||admission.entered||admission.finished||admission.task?.settled)throw error();if(clock.now()>=admission.deadline){admission.close();fail('settlement','settle');throw expired();}admission.entered=true;nativeDeadline=clock.now()+12000;admission.arm(nativeDeadline);}
+ return {admit,wrapPool,bootstrap,directPreflight,runOwned,runOwnedNative,gate,reservePair,observeBlocker,signal:(client:Client)=>signal(client),terminateAfterHandoff,settleCase,abortCase,shutdown,fail,status:()=>({admissionClosed:closed,unsettledCount:pending().length,serverUnresolved,leases:[...leases].filter(lease=>!lease.released).length,leaseRestored:!closed&&!serverUnresolved&&![...leases].some(lease=>!lease.released)&&!pending().length})};
 }

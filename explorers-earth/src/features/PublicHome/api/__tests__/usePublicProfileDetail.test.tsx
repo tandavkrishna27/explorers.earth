@@ -12,6 +12,52 @@ it('uses the actual signed Games list cursor and honors a terminal full page',as
 });
 
 const page = (start = 0, count = 12, parent = "parent") => ({ appLists: [{ documentId: parent, List_Name: "Original", recommended_apps: Array.from({ length: count }, (_, i) => ({ documentId: `app-${start + i}` })) }] });
+const places=(start=0,count=12,cursor:string|null='signed.first',revision='1',total=30)=>({recommendationLists:[{documentId:'places-list',slug:'synthetic',collection_revision:revision,eligibility_fingerprint:'a'.repeat(64),category_content_revision:revision,eligible_item_count:total,eligible_pin_count:Math.min(14,total),recommended_places:Array.from({length:count},(_,i)=>({documentId:`place-${start+i}`})),recommended_places_next_cursor:cursor}]});
+describe('Places scoped seek detail',()=>{
+ beforeEach(()=>{detail.mockReset();detailPage.mockReset();});
+ it('uses server child cursors beyond 24 rows and stops on the terminal page',async()=>{
+  detail.mockResolvedValue(places());detailPage.mockResolvedValueOnce(places(12,12,'signed.second')).mockResolvedValueOnce(places(24,6,null));
+  const {result}=renderHook(()=>usePublicProfileDetail('alice','places','synthetic'));
+  await waitFor(()=>expect(result.current.loading).toBe(false));
+  await act(()=>result.current.loadMore());await act(()=>result.current.loadMore());
+  expect(detailPage.mock.calls.map(c=>c[3])).toEqual([{limit:12,cursor:'signed.first'},{limit:12,cursor:'signed.second'}]);
+  expect((result.current.data?.recommendationLists[0] as any).recommended_places).toHaveLength(30);expect(result.current.hasMore).toBe(false);
+ });
+ it('restarts a stale continuation with cleared accumulated rows and a fresh cursor map',async()=>{
+  detail.mockResolvedValueOnce(places()).mockResolvedValueOnce(places(100,12,'fresh.first','2',18));
+  detailPage.mockRejectedValueOnce(Error('PUBLIC_PROFILE_409')).mockResolvedValueOnce(places(112,6,null,'2',18));
+  const {result}=renderHook(()=>usePublicProfileDetail('alice','places','synthetic'));
+  await waitFor(()=>expect(result.current.loading).toBe(false));await act(()=>result.current.loadMore());
+  await waitFor(()=>expect((result.current.data?.recommendationLists[0] as any)?.collection_revision).toBe('2'));
+  await act(()=>result.current.loadMore());
+  expect(detailPage.mock.calls[1][3]).toEqual({limit:12,cursor:'fresh.first'});
+  expect((result.current.data?.recommendationLists[0] as any).recommended_places.every((p:any)=>!/^place-[0-9]$/.test(p.documentId))).toBe(true);
+ });
+ it('surfaces a first-page conflict without retrying in a loop',async()=>{
+  detail.mockRejectedValue(Error('PUBLIC_PROFILE_409'));
+  const {result}=renderHook(()=>usePublicProfileDetail('alice','places','synthetic'));
+  await waitFor(()=>expect(result.current.error).toEqual(Error('PUBLIC_PROFILE_409')));
+  expect(detail).toHaveBeenCalledTimes(1);expect(result.current.data).toBeUndefined();
+ });
+ it('follows an actual cursor from a short transport page',async()=>{
+  detail.mockResolvedValue(places(0,3,'signed.short','1',5));detailPage.mockResolvedValue(places(3,2,null,'1',5));
+  const {result}=renderHook(()=>usePublicProfileDetail('alice','places','synthetic'));
+  await waitFor(()=>expect(result.current.hasMore).toBe(true));await act(()=>result.current.loadMore());
+  expect(detailPage.mock.calls[0][3].cursor).toBe('signed.short');expect((result.current.data?.recommendationLists[0] as any).recommended_places).toHaveLength(5);
+ });
+ it('clears accumulated rows immediately during invalidation and ignores an aborted old continuation',async()=>{
+  let resolveOld!:(v:unknown)=>void,resolveFirst!:(v:unknown)=>void;
+  detail.mockResolvedValueOnce(places()).mockImplementationOnce(()=>new Promise(resolve=>{resolveFirst=resolve;}));
+  detailPage.mockImplementationOnce(()=>new Promise(resolve=>{resolveOld=resolve;}));
+  const {result}=renderHook(()=>usePublicProfileDetail('alice','places','synthetic'));
+  await waitFor(()=>expect(result.current.loading).toBe(false));act(()=>{void result.current.loadMore();});
+  const oldSignal=detailPage.mock.calls[0][4];
+  act(()=>publishPublicProfileInvalidation({username:'alice',accountDocumentId:'alice',category:'public_recommendations',action:'content-changed',eventId:'places-detail-invalidation'}));
+  expect(oldSignal.aborted).toBe(true);expect(result.current.data).toBeUndefined();
+  await act(async()=>{resolveFirst(places(100,4,null,'2',4));resolveOld(places(12,12,'old.next'));});
+  expect(result.current.hasMore).toBe(false);expect((result.current.data?.recommendationLists[0] as any).recommended_places[0].documentId).toBe('place-100');
+ });
+});
 describe("usePublicProfileDetail", () => {
   beforeEach(() => { detail.mockReset(); detailPage.mockReset(); });
   it.each([24, 25])("uses explicit 24-item pages through the terminal request for %i children", async (total) => {

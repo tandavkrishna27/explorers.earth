@@ -61,3 +61,71 @@ export function mergePublicPage(previous: PublicPagePayload, next: PublicPagePay
   if (parent.documentId !== documentRow(next[root][0]).documentId) return invalid();
   return { ...previous, [root]: [{ ...parent, [child]: rows }] };
 }
+
+function placeParent(data: PublicPagePayload): Record<string, unknown> & {documentId:string} {
+  readPublicPageRows(data,'places',true);
+  const parent=documentRow(data.recommendationLists[0]);
+  for(const field of ['collection_revision','category_content_revision']) {
+    if(typeof parent[field]!=='string'||!/^\d+$/.test(parent[field] as string))return invalid();
+  }
+  if(typeof parent.eligibility_fingerprint!=='string'||! /^[a-f0-9]{64}$/.test(parent.eligibility_fingerprint))return invalid();
+  for(const field of ['eligible_item_count','eligible_pin_count']) {
+    if(!Number.isSafeInteger(parent[field])||(parent[field] as number)<0)return invalid();
+  }
+  if((parent.eligible_pin_count as number)>(parent.eligible_item_count as number))return invalid();
+  return parent;
+}
+
+export function placePageCursor(data:PublicPagePayload):string|null {
+  const cursor=placeParent(data).recommended_places_next_cursor;
+  if(cursor===null)return null;
+  if(typeof cursor!=='string'||cursor.length>2048||!/^[-_A-Za-z0-9]+\.[-_A-Za-z0-9]+$/.test(cursor))return invalid();
+  return cursor;
+}
+
+export function mergePlacePage(previous:PublicPagePayload,next:PublicPagePayload,pageSize:PublicProfilePageSize=PUBLIC_PROFILE_PAGE_SIZE):PublicPagePayload {
+  const old=placeParent(previous),fresh=placeParent(next);
+  for(const field of ['documentId','collection_revision','category_content_revision','eligible_item_count','eligible_pin_count','eligibility_fingerprint']) {
+    if(old[field]!==fresh[field])throw Error('PUBLIC_PROFILE_409');
+  }
+  const cursor=placePageCursor(next);
+  const before=readPublicPageRows(previous,'places',true,pageSize),incoming=readPublicPageRows(next,'places',true,pageSize);
+  const ids=new Set(before.map(row=>documentRow(row).documentId));
+  if(ids.size!==before.length)return invalid();
+  const nextIds=new Set<string>();
+  for(const row of incoming){const id=documentRow(row).documentId;if(nextIds.has(id)||previous!==next&&ids.has(id))return invalid();nextIds.add(id);}
+  const merged=mergePublicPage(previous,next,'places',true,pageSize);
+  const rows=(merged.recommendationLists[0] as Record<string,unknown>).recommended_places;
+  if((rows as unknown[]).length>(fresh.eligible_item_count as number)||cursor===null&&(rows as unknown[]).length!==fresh.eligible_item_count)return invalid();
+  return {...merged,recommendationLists:[{...old,...fresh,recommended_places:rows}]};
+}
+
+/** Child traversals are list-local and retain their original list/category fences. */
+export async function completePlacesPreviews(value:unknown,read:(slug:string,cursor:string)=>Promise<unknown>,signal:AbortSignal):Promise<PublicPagePayload> {
+  const data=value as PublicPagePayload;
+  readPublicPageRows(data,'places',false);
+  const lists:unknown[]=[];
+  for(const raw of data.recommendationLists) {
+    if(signal.aborted)throw Error('PUBLIC_PROFILE_ABORTED');
+    let current:PublicPagePayload={recommendationLists:[raw]};
+    const parent=placeParent(current);
+    if(typeof parent.slug!=='string'||!parent.slug)return invalid();
+    const seen=new Set<string>();
+    let cursor=placePageCursor(current);
+    while(cursor!==null) {
+      if(signal.aborted)throw Error('PUBLIC_PROFILE_ABORTED');
+      if(seen.has(cursor))return invalid();
+      seen.add(cursor);
+      const next=await read(parent.slug,cursor) as PublicPagePayload;
+      if(signal.aborted)throw Error('PUBLIC_PROFILE_ABORTED');
+      const incoming=readPublicPageRows(next,'places',true);
+      if(!incoming.length)return invalid();
+      current=mergePlacePage(current,next);
+      cursor=placePageCursor(current);
+    }
+    const rows=readPublicPageRows(current,'places',true);
+    if(rows.length!==parent.eligible_item_count)return invalid();
+    lists.push(current.recommendationLists[0]);
+  }
+  return {...data,recommendationLists:lists};
+}
