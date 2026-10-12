@@ -12,13 +12,27 @@ function ownerAuthoritySource(file: string, source: string): string {
     return source.replace('service.page({...req.query,username:req.params.username,','service.page({...req.query,username:publicLocator,');
   }
   if (file.replaceAll("\\", "/") !== "tunes/server/routes/explorersPublicProfileRoutes.ts") return source;
-  // These four parser inputs locate public resources. Mask only one exact
+  // These five parser inputs locate public resources. Mask only one exact
   // occurrence per reader, leaving the rest of the file and line scanned.
+  //
+  // The People-sector reader is lawful on the same grounds as the Movies-genre reader
+  // directly above it, verified rather than assumed:
+  //  - the path segment is a public profile LOCATOR, not an owner selector: the surface
+  //    is classified 'public' for GET by musicSurfacePolicy.ts decisionForRoute, and the
+  //    only thing it can reach is publicPeopleSectorProjection, a read-only projection
+  //    gated on a.public_profile AND s.is_public AND c.visibility='public';
+  //  - `...req.query` cannot smuggle a second target: the route rejects any query key
+  //    other than limit/cursor before parsing, and parsePublicPeopleSectorRequest is
+  //    built on a .strict() schema that rejects unknown fields (asserted separately in
+  //    publicPeopleSector.test.ts);
+  //  - no owner authority, credential or mutation is derived from the value anywhere
+  //    downstream.
   return source
     .replace("parsePublicProfileUsername(req.params.username)", "parsePublicProfileUsername(publicLocator)")
     .replace("parsePublicProfileRequest({ username: req.params.username,", "parsePublicProfileRequest({ username: publicLocator,")
     .replace("parsePublicProfileDetailRequest({ username: req.params.username,", "parsePublicProfileDetailRequest({ username: publicLocator,")
-    .replace("parsePublicMovieGenreRequest({username:req.params.username,genreSlug:req.params.genreSlug,...req.query})", "parsePublicMovieGenreRequest({username:publicLocator,genreSlug:req.params.genreSlug,...req.query})");
+    .replace("parsePublicMovieGenreRequest({username:req.params.username,genreSlug:req.params.genreSlug,...req.query})", "parsePublicMovieGenreRequest({username:publicLocator,genreSlug:req.params.genreSlug,...req.query})")
+    .replace("parsePublicPeopleSectorRequest({username:req.params.username,sectorSlug:req.params.sectorSlug,...req.query})", "parsePublicPeopleSectorRequest({username:publicLocator,sectorSlug:req.params.sectorSlug,...req.query})");
 }
 
 function productionFiles(directory: string): string[] {
@@ -154,6 +168,7 @@ describe("forbidden Music authority search contract", () => {
     "parsePublicProfileRequest({ username: req.params.username, category: req.params.category })",
     "parsePublicProfileDetailRequest({ username: req.params.username, category: req.params.category, slug: req.params.slug })",
     "parsePublicMovieGenreRequest({username:req.params.username,genreSlug:req.params.genreSlug,...req.query})",
+    "parsePublicPeopleSectorRequest({username:req.params.username,sectorSlug:req.params.sectorSlug,...req.query})",
   ])("recognizes a validated public profile locator without excluding other authority access: %s", (locator) => {
     const file = "tunes/server/routes/explorersPublicProfileRoutes.ts";
     expect(ownerAuthoritySource(file, locator)).not.toMatch(ownerTargetAccess);

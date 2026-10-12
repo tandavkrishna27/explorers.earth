@@ -4,14 +4,46 @@ import {publicPeopleSectorProjection,PublicPeopleCursorError,publicPeopleProject
 import {publicAssignedTaxonomy} from '../../publicProfile/publicTaxonomyProjection';
 import {parsePublicPeopleSectorRequest} from '../../publicProfile/publicProfileContract';
 const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',term='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-function fixture(options:{unknown?:boolean;inactive?:boolean;alias?:boolean;hide?:boolean;catalogRace?:boolean;count?:number;revision?:string;suppressionRace?:boolean;deep?:boolean;peopleHide?:boolean;account?:string;term?:string;catalogVersion?:string;locale?:string;accountRevision?:string;labelRace?:boolean;assigned?:boolean;placeContent?:boolean}={}){
- let committed=false;const query=vi.fn(async(sql:string,params?:any[])=>{
+const placeRecommendation='ffffffff-ffff-4fff-8fff-ffffffffffff',placeCollectionRevision='5';
+/**
+ * Places vacuity guard. 343df2dd inserted `c.revision::text AS collection_revision` into
+ * the public Places collection SELECT list, which silently stopped matching a mock keyed
+ * on the SELECT-list prefix: the branch fell through, `recommendationLists` came back
+ * empty, and every Places assertion below stopped exercising the Places path.
+ *
+ * Two defences, so a future SELECT-list change cannot repeat it:
+ *  - the mock keys on the FROM/WHERE structure and on the `/* ... *\/` statement markers,
+ *    never on a SELECT list;
+ *  - `unmatched` records any structural Places/collection statement that reached the
+ *    fallback branch, and `placeRowsServed` records rows actually handed to the
+ *    projection, so a guarded test fails loudly instead of passing on an empty page.
+ */
+function assertPlacesPathExercised(f:{seen:{unmatched:string[];placeListsServed:number;placeRowsServed:number}}){
+ expect(f.seen.unmatched).toEqual([]);
+ expect(f.seen.placeListsServed).toBeGreaterThan(0);
+ expect(f.seen.placeRowsServed).toBeGreaterThan(0);
+}
+function fixture(options:{unknown?:boolean;inactive?:boolean;alias?:boolean;hide?:boolean;catalogRace?:boolean;count?:number;revision?:string;suppressionRace?:boolean;deep?:boolean;peopleHide?:boolean;account?:string;term?:string;catalogVersion?:string;locale?:string;accountRevision?:string;labelRace?:boolean;assigned?:boolean;placeContent?:boolean;placeRowRace?:boolean}={}){
+ let committed=false;const seen={unmatched:[] as string[],placeListsServed:0,placeRowsServed:0};
+ const placeRows=options.placeContent?[{id:placeRecommendation,account_id:id,entity_id:term,entity_kind:'place',user_rating:null,note:null,note_bytes:0,display_values:{},override_bytes:0,display_order:0,collection_id:id,collection_title:'Fixture location list',collection_slug:'fixture-location-list',provider_place_id:null,pin_order:null,pin_bucket:1,sort_position:0}]:[];
+ const query=vi.fn(async(sql:string,params?:any[])=>{
  if(sql==='COMMIT'){committed=true;return {rows:[]};}
+ // Statement markers, keyed before the structural branches that would also match them.
+ if(sql.includes('public_places_eligibility_aggregate'))return {rows:[{item_count:String(placeRows.length),pin_count:'0',lane_0:'0',lane_1:'0',lane_2:'0',lane_3:'0'}]};
+ if(sql.includes('public_places_current_list'))return {rows:[{id,collection_revision:placeCollectionRevision,category_revision:options.revision??'2'}]};
+ // Entity suppression has its own writer: an emptied answer here is a Places row that
+ // stopped being eligible after it was projected.
+ if(sql.includes('public_places_current_eligibility'))return {rows:options.suppressionRace||options.placeRowRace?[]:placeRows.map(row=>({id:row.id,entity_id:row.entity_id,collection_id:row.collection_id}))};
  if(sql.includes('public_people_current_eligibility'))return {rows:options.suppressionRace?[]:(params?.[1]??[]).map((id:string)=>({id,entity_id:term}))};
  if(sql.includes('WITH eligible')){const all=Array.from({length:options.count??0},(_,n)=>({id:`cccccccc-cccc-4ccc-8ccc-${String(n+1).padStart(12,'0')}`,account_id:id,entity_id:term,user_rating:null,note:null,note_bytes:0,override_bytes:0,display_values:{},display_order:options.deep?100000+n:n,collection_order:options.deep?100000:0,collection_id:id,collection_title:'Fixture list',collection_slug:'fixture-list',pin_order:null}));const start=sql.includes('OFFSET')?(params?.[3]??0):params?.[3]===null||params?.[3]===undefined?0:Math.max(0,Number(params?.[5])-(options.deep?100000:0)+1);return {rows:all.slice(start,start+(params?.[2]??25))};}
  if(sql.includes("l.child_category='products'"))return {rows:[]};
- if(sql.includes('SELECT c.id,c.title,c.description'))return {rows:[{id,title:'Fixture list',slug:'fixture-list',display_order:0,cover_media_id:null}]};
- if(sql.includes('SELECT r.id,r.account_id,r.entity_id')&&sql.includes("c.category='places'")&&!options.placeContent)return {rows:[]};
+ // The public Places collection list: keyed on FROM/WHERE structure, not the SELECT list.
+ if(sql.includes('FROM collections c')&&sql.includes("c.category='places'")){seen.placeListsServed++;return {rows:[{id,collection_revision:placeCollectionRevision,title:'Fixture location list',description:null,slug:'fixture-location-list',heading:null,display_order:0,cover_media_id:null}]};}
+ if(sql.includes('FROM collections c')&&sql.includes("c.category='people'"))return {rows:[{id,title:'Fixture list',slug:'fixture-list',display_order:0,cover_media_id:null}]};
+ // The linked People lists under a location.
+ if(sql.includes('FROM collection_location_links l'))return {rows:[{id,title:'Fixture list',slug:'fixture-list',display_order:0,cover_media_id:null}]};
+ // The public Places child page.
+ if(sql.includes('FROM collection_items ci')&&sql.includes("c.category='places'")){seen.placeRowsServed+=placeRows.length;return {rows:placeRows};}
  if(sql.includes('SELECT r.id,r.account_id,r.entity_id'))return {rows:[{id:term,account_id:id,entity_id:term,user_rating:null,note:null,note_bytes:0,override_bytes:0,display_values:{},display_order:0,collection_id:id,collection_title:'Fixture list',collection_slug:'fixture-list',pin_order:null}]};
  if(sql.includes('FROM recommendation_taxonomy rt'))return {rows:options.assigned?[{id:term,slug:'fixture-sector',parent_id:null,label:'Fixture sector'}]:[]};
  if(sql.includes('FROM entities e'))return {rows:[{id:term,kind:sql.includes('place_entity_details')?'place':'person',title:'Fixture person',origin:'manual',suppressed:false}]};
@@ -22,13 +54,18 @@ function fixture(options:{unknown?:boolean;inactive?:boolean;alias?:boolean;hide
  if(sql.includes("category='people' AND slug="))return {rows:options.unknown||options.alias&&!committed?[]:[{id:options.term??term,slug:'fixture-sector',active:!options.inactive,parent_id:null}]};
  if(sql.includes('taxonomy_legacy_slug_mappings'))return {rows:options.alias?[{id:options.term??term,slug:'fixture-sector',active:true,parent_id:null}]:[]};
  if(sql.includes('SELECT label'))return {rows:[{label:committed&&options.labelRace?'Changed label':'Fixture sector'}]};
+ // A structural collection statement reaching here is the 343df2dd failure mode.
+ if(sql.includes('FROM collections c')||sql.includes('FROM collection_items ci'))seen.unmatched.push(sql.slice(0,80));
  return {rows:[]};
- });const release=vi.fn();return {pool:{query,connect:async()=>({query,release})} as any,query,release};
+ });const release=vi.fn();return {pool:{query,connect:async()=>({query,release})} as any,query,release,seen};
 }
 describe('public People sector resource-free contract',()=>{
- it('Places linked composition preserves contact denial and owned photo media URLs',async()=>{const result=await publicPlacesProjection(fixture({placeContent:true}).pool,'alice',12);const place=result!.recommendationLists[0].recommended_places[0];expect(place.contact_name).toBeNull();expect(place.contact_number).toBeNull();expect(place.Place_Details.Photos).toEqual([{url:`/api/explorers/v1/media/${id}/content`}]);expect(JSON.stringify(result)).not.toContain('Private fixture');expect(JSON.stringify(result)).not.toContain('+1234567890');});
- it('suppression after linked projection denies Places without revision changes',async()=>{const f=fixture({suppressionRace:true});expect(await publicPlacesProjection(f.pool,'alice',12)).toBeUndefined();});
- it('People category becomes private during linked composition and denies Places result',async()=>{const f=fixture({peopleHide:true});expect(await publicPlacesProjection(f.pool,'alice',12)).toBeUndefined();});
+ it('Places linked composition preserves contact denial and owned photo media URLs',async()=>{const f=fixture({placeContent:true});const result=await publicPlacesProjection(f.pool,'alice',12);assertPlacesPathExercised(f);const place=result!.recommendationLists[0].recommended_places[0];expect(place.contact_name).toBeNull();expect(place.contact_number).toBeNull();expect(place.Place_Details.Photos).toEqual([{url:`/api/explorers/v1/media/${id}/content`}]);expect(JSON.stringify(result)).not.toContain('Private fixture');expect(JSON.stringify(result)).not.toContain('+1234567890');});
+ it('suppression after linked projection denies Places without revision changes',async()=>{const f=fixture({placeContent:true,suppressionRace:true});expect(await publicPlacesProjection(f.pool,'alice',12)).toBeUndefined();assertPlacesPathExercised(f);});
+ // The Places leg on its own: only the projected Place row stops being eligible, so the
+ // linked People eligibility cannot be what denies the page.
+ it('a projected Place row losing eligibility denies Places on its own',async()=>{const f=fixture({placeContent:true,placeRowRace:true});expect(await publicPlacesProjection(f.pool,'alice',12)).toBeUndefined();assertPlacesPathExercised(f);});
+ it('People category becomes private during linked composition and denies Places result',async()=>{const f=fixture({placeContent:true,peopleHide:true});expect(await publicPlacesProjection(f.pool,'alice',12)).toBeUndefined();assertPlacesPathExercised(f);});
  it('suppression after projection denies sector with unchanged revision fences',async()=>{const f=fixture({count:1,suppressionRace:true});expect(await publicPeopleSectorProjection(f.pool,'alice','fixture-sector',12)).toBeUndefined();});
  it('suppression after projection denies existing People lists with unchanged revision fences',async()=>{const f=fixture({suppressionRace:true});expect(await publicPeopleProjection(f.pool,'alice',12)).toBeUndefined();});
  it('seek continuation has no total offset cap and resumes deeply ordered ties',async()=>{const f=fixture({count:30,deep:true});const first=await publicPeopleSectorProjection(f.pool,'alice','fixture-sector',24,undefined,'x'.repeat(32));const payload=JSON.parse(Buffer.from(first!.nextCursor!.split('.')[0],'base64url').toString());expect(payload).not.toHaveProperty('offset');expect(payload.after).toEqual([100000,id,100023,'cccccccc-cccc-4ccc-8ccc-000000000024']);const second=await publicPeopleSectorProjection(f.pool,'alice','fixture-sector',24,first!.nextCursor!,'x'.repeat(32));expect(second!.recommended_people).toHaveLength(6);expect(second!.recommended_people[0].display_order).toBe(100024);});
