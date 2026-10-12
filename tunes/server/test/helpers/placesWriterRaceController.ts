@@ -1,3 +1,4 @@
+import {finiteBootstrapMetadata} from './placesBootstrapDiagnostic';
 import type {GuardFailure,GuardPhase,GuardReason} from './placesWriterGuardTransport';
 
 type QueryResult={rows:any[];command?:string};
@@ -272,7 +273,7 @@ export function createWriterSuiteController(options:Options){
  }
  async function bootstrap<T>(operation:()=>Promise<T>,readyAt=clock.now()){
   admit('suite-bootstrap');if(!Number.isFinite(readyAt)||readyAt>clock.now()){fail('transport','preflight');throw error();}scopeDeadline=readyAt+20000;
-  try{if(scopeDeadline<=clock.now()){fail('settlement','preflight');throw expired();}return await bound<T>(own(operation,undefined,true),20000,()=>fail('settlement','preflight'));}catch{fail('guard','preflight');throw error();}finally{scopeDeadline=Infinity;}
+  try{if(scopeDeadline<=clock.now()){fail('settlement','preflight');throw expired();}return await bound<T>(own(operation,undefined,true),20000,()=>fail('settlement','preflight'));}catch(value){fail('guard','preflight');throw Object.assign(error(),finiteBootstrapMetadata(value));}finally{scopeDeadline=Infinity;}
  }
  async function directPreflight<T>(operation:()=>Promise<T>){const prior=scopeDeadline;scopeDeadline=Math.min(prior,clock.now()+8000);try{return await bound<T>(own(operation,undefined,true),8000,()=>fail('settlement','preflight'));}finally{scopeDeadline=prior;}}
  function nativePhase(admission:NativeAdmission){check();if(nativeAdmission!==admission||admission.caseId!==caseId||admission.entered||admission.finished||admission.task?.settled)throw error();if(clock.now()>=admission.deadline){admission.close();fail('settlement','settle');throw expired();}admission.entered=true;nativeDeadline=clock.now()+12000;admission.arm(nativeDeadline);}

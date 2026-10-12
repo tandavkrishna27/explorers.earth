@@ -1,4 +1,5 @@
 import pg from 'pg';
+import {createBootstrapDiagnostic} from './helpers/placesBootstrapDiagnostic';
 import {createHash,randomUUID} from 'node:crypto';
 import {beforeAll,beforeEach,afterEach,afterAll,describe,it,expect} from 'vitest';
 import {createWriterGuardTransport} from './helpers/placesWriterGuardTransport';
@@ -29,19 +30,20 @@ beforeAll(async({},suite)=>{
   runtimeLogin=decodeURIComponent(runtimeUrl.username);
  }catch{guard.failStop({caseId:'suite-bootstrap',reason:'identity',phase:'preflight',unsettledCount:0});throw new Error('Fixture bootstrap identity');}
  controller=createWriterSuiteController({identity:{database:identity,runtimeLogin},guardFailure:guard.failStop,admission:guard.admit});
+ const setup=createBootstrapDiagnostic();
  await controller.bootstrap(async()=>{
  // Root must document and approve the exact disposable database before setting
  // this explicit identity. No protected fixture URL or checkout credential fallback.
- admin=controller!.wrapPool(new pg.Pool({connectionString:source,max:3,connectionTimeoutMillis:2000}),'admin');
- expect((await admin.query('SELECT current_database() name')).rows[0].name).toBe(identity);
- const direct=controller!.wrapPool(new pg.Pool({connectionString:runtimeSource,max:1,connectionTimeoutMillis:2000}),'direct');
- await controller!.directPreflight(async()=>{try{await verifyMusicRuntimeLogin(admin,direct,{loginRole:decodeURIComponent(runtimeUrl.username)});}finally{await direct.end();}});
- runtime=controller!.wrapPool(new pg.Pool({connectionString:runtimeSource,options:'-c role=music_runtime',max:2,connectionTimeoutMillis:2000}),'runtime');
- const role=(await runtime.query(`SELECT current_database() database,current_user effective,session_user login,r.rolsuper,r.rolcreatedb,r.rolcreaterole,r.rolreplication,r.rolbypassrls,
-  pg_has_role(session_user,'music_runtime','MEMBER') member FROM pg_roles r WHERE r.rolname=session_user`)).rows[0];
- expect(role).toMatchObject({database:identity,effective:'music_runtime',login:decodeURIComponent(runtimeUrl.username),rolsuper:false,rolcreatedb:false,rolcreaterole:false,rolreplication:false,rolbypassrls:false,member:true});
- repo=new ExplorersPlacePinsRepository(runtime);
- await controller!.settleCase();
+ admin=await setup.run('admin-pool',()=>controller!.wrapPool(new pg.Pool({connectionString:source,max:3,connectionTimeoutMillis:2000}),'admin'));
+ await setup.run('admin-database',async()=>{expect((await admin.query('SELECT current_database() name')).rows[0].name).toBe(identity);});
+ const direct=await setup.run('direct-pool',()=>controller!.wrapPool(new pg.Pool({connectionString:runtimeSource,max:1,connectionTimeoutMillis:2000}),'direct'));
+ await controller!.directPreflight(async()=>{try{await setup.run('direct-verifier',()=>verifyMusicRuntimeLogin(admin,direct,{loginRole:decodeURIComponent(runtimeUrl.username)}));}finally{await setup.run('direct-end',()=>direct.end());}});
+ runtime=await setup.run('runtime-pool',()=>controller!.wrapPool(new pg.Pool({connectionString:runtimeSource,options:'-c role=music_runtime',max:2,connectionTimeoutMillis:2000}),'runtime'));
+ const role=await setup.run('runtime-role-query',async()=>(await runtime.query(`SELECT current_database() database,current_user effective,session_user login,r.rolsuper,r.rolcreatedb,r.rolcreaterole,r.rolreplication,r.rolbypassrls,
+  pg_has_role(session_user,'music_runtime','MEMBER') member FROM pg_roles r WHERE r.rolname=session_user`)).rows[0]);
+ await setup.run('runtime-role-assertion',()=>{expect(role).toMatchObject({database:identity,effective:'music_runtime',login:decodeURIComponent(runtimeUrl.username),rolsuper:false,rolcreatedb:false,rolcreaterole:false,rolreplication:false,rolbypassrls:false,member:true});});
+ repo=await setup.run('repository',()=>new ExplorersPlacePinsRepository(runtime));
+ await setup.run('settle',()=>controller!.settleCase());
  },readyAt);
 });
 beforeEach(context=>{if(!controller)throw new Error('Fixture bootstrap unavailable');controller.admit(context.task.name);});
