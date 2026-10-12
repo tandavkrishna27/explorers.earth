@@ -2,6 +2,7 @@ import ts from 'typescript';
 import {it,expect} from 'vitest';
 import {captureCaseErrorMetadata,finiteCaseErrorMetadata,caseSourceFile} from '../helpers/placesCaseErrorDiagnostic';
 import {readFileSync} from 'node:fs';
+import {types} from 'pg';
 it('extracts finite original assertion coordinates without its private payload',()=>{
  const error={name:'AssertionError',message:'private',actual:'private',stack:'AssertionError: private\n at check (C:/checkout/tunes/server/test/explorers-place-pins.integration.test.ts:1265:42)'};
  expect(captureCaseErrorMetadata(error)).toEqual({caseCategory:'assertion',sourceFile:caseSourceFile,sourceLine:1265,sourceColumn:42});
@@ -39,4 +40,23 @@ it('runs the exact account gate adapter: same lease capture precedes arrival and
  const factory=new Function('expect',compiled+';return cPool;')(expect),calls:string[]=[],client={query:async(text:string)=>{calls.push(text);return {rows:[{xid:'205'}]};},release:()=>{}},gate={arrive:()=>calls.push('arrive'),wait:async()=>{calls.push('wait');}};
  const pool=factory(client,'account',['owner'],gate,undefined,async()=>{const result=await client.query('xid');expect(result.rows[0].xid).toBe('205');});await (await pool.connect()).query('account',['owner']);expect(calls).toEqual(['account','xid','arrive','wait']);
  calls.length=0;await (await factory(client,'account',['owner'],gate).connect()).query('account',['owner']);expect(calls).toEqual(['account','arrive','wait']);
+});
+
+it('runs the exact C10 draft oracle with driver BIGINT strings and numeric JSON policy version',()=>{
+ const schema=readFileSync(new URL('../../../migrations/0054_explorers_place_individual_pins.sql',import.meta.url),'utf8');
+ const draftTable=schema.slice(schema.indexOf('CREATE TABLE public.place_pin_drafts ('),schema.indexOf('CREATE TABLE public.place_pin_draft_chunks ('));
+ expect(draftTable).toMatch(/\bpolicy_version\s+bigint\b/i);expect(draftTable).toMatch(/\bpolicy_snapshot\s+jsonb\b/i);
+ const text=readFileSync(new URL('../explorers-place-pins.integration.test.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('case.ts',text,ts.ScriptTarget.Latest,true);
+ let fn!:ts.FunctionDeclaration;const visit=(n:ts.Node)=>{if(ts.isFunctionDeclaration(n)&&n.name?.text==='cBeginRace')fn=n;ts.forEachChild(n,visit);};visit(ast);
+ const calls:ts.CallExpression[]=[];const find=(n:ts.Node)=>{if(ts.isCallExpression(n)&&ts.isPropertyAccessExpression(n.expression)&&n.expression.name.text==='toMatchObject'&&n.expression.expression.getText(ast)==='expect(opened)')calls.push(n);ts.forEachChild(n,find);};find(fn);
+ expect(calls).toHaveLength(1);
+ const compiled=ts.transpileModule(calls[0].getText(ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ const run=new Function('expect','opened','f','policy',compiled),parseInt8=types.getTypeParser(20,'text');
+ const policySnapshot=types.getTypeParser(3802,'text')('{"policyId":"policy","policyVersion":1}');
+ if(typeof policySnapshot!=='object'||policySnapshot===null||Array.isArray(policySnapshot)||!('policyId' in policySnapshot)||!('policyVersion' in policySnapshot))throw Error('Expected parsed policy object');
+ const policy={policyId:'policy',policyVersion:1},f={account:'owner',list:'list'},opened={account_id:'owner',collection_id:'list',state:'open',policy_id:'policy',policy_version:parseInt8('1'),policy_snapshot:policySnapshot,accepted_bytes:parseInt8('0'),item_count:parseInt8('0'),chunk_count:parseInt8('0'),terminal_at:null,terminal_result:null};
+ expect(opened.policy_version).toBe('1');expect(opened.policy_snapshot.policyVersion).toBe(1);
+ run(expect,opened,f,policy);
+ expect(()=>run(expect,{...opened,policy_version:parseInt8('2')},f,policy)).toThrow();
+ expect(()=>run(expect,{...opened,policy_snapshot:{...opened.policy_snapshot,policyVersion:'1'}},f,policy)).toThrow();
 });
