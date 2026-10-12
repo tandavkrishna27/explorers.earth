@@ -27,7 +27,7 @@ const authoritySql=`SELECT pg_backend_pid() pid,current_database() database,curr
  (SELECT rolsuper FROM pg_roles WHERE rolname='music_migrator') admin_super,
  (SELECT rolsuper FROM pg_roles WHERE rolname=$1) runtime_super,
  has_function_privilege(current_user,'pg_cancel_backend(integer)','EXECUTE') cancel_execute,
- has_function_privilege(current_user,'pg_terminate_backend(integer)','EXECUTE') terminate_execute
+ has_function_privilege(current_user,'pg_terminate_backend(integer,bigint)','EXECUTE') terminate_execute
  FROM pg_stat_activity a WHERE a.pid=pg_backend_pid()`;
 const activitySql=`SELECT pid,backend_start::text,datname database,usename login,backend_type,state,wait_event_type,query,pg_blocking_pids(pid) blockers FROM pg_stat_activity WHERE pid=$1`;
 const expired=()=>Error('Fixture controller deadline');

@@ -14,6 +14,30 @@ function harness(){const clock=fakeClock(),events:any[]=[],calls:any[]=[],releas
  const pool=(clients:any[]=[],kind='runtime')=>({totalCount:0,idleCount:0,waitingCount:0,query:async(..._args:any[])=>({rows:[]}),connect:()=>Promise.resolve(clients.shift()??client(kind)),end:()=>Promise.resolve()});
  return {clock,events,calls,releases,controller,client,pool};}
 
+// Frozen catalog oracle: PostgreSQL REL_15_19 src/include/catalog/pg_proc.dat,
+// OIDs 2171 and 2096. Catalog identity types are independent of call defaults.
+// https://github.com/postgres/postgres/blob/REL_15_19/src/include/catalog/pg_proc.dat
+const pg15SignalCatalog=[{oid:2171,name:'pg_cancel_backend',types:['int4']},{oid:2096,name:'pg_terminate_backend',types:['int4','int8']}];
+const pg15TypeNames:Record<string,string>={int4:'integer',int8:'bigint'};
+for(const terminateExecute of [true,false])it(`resolves effective PG15 signal authority with terminate EXECUTE ${terminateExecute}`,async()=>{
+ const h=harness(),resolved:number[]=[];
+ const admin=h.client('admin',async(config)=>{
+  const text=config.text as string;
+  const probes=[...text.matchAll(/has_function_privilege\(current_user,'([^']+)','EXECUTE'\)\s+(\w+)/g)];
+  expect(probes).toHaveLength(2);
+  const privileges:Record<string,boolean>={};
+  for(const probe of probes){
+   const entry=pg15SignalCatalog.find(row=>`${row.name}(${row.types.map(type=>pg15TypeNames[type]).join(',')})`===probe[1]);
+   if(!entry)throw Object.assign(Error('Undefined function'),{code:'42883'});
+   resolved.push(entry.oid);privileges[probe[2]]=entry.oid===2096?terminateExecute:true;
+  }
+  return {rows:[{pid:1,database:'fixture',effective:'music_migrator',login:'music_migrator',backend_start:'start1',backend_type:'client backend',admin_super:true,runtime_super:false,...privileges}]};
+ });
+ const pool=h.controller.wrapPool(h.pool([admin]),'admin');h.controller.admit('one');
+ if(terminateExecute){const client=await pool.connect();client.release();await h.controller.settleCase();expect(h.events).toHaveLength(0);expect(h.controller.status().leaseRestored).toBe(true);}
+ else {await expect(pool.connect()).rejects.toThrow();expect(h.events[0]).toMatchObject({reason:'authority',phase:'preflight'});expect(h.releases).toEqual([{pid:1,destroy:true}]);}
+ expect(resolved).toEqual([2171,2096]);expect(h.calls[0].config.values).toEqual(['runtime_login']);expect(h.calls[0].config.query_timeout).toBe(2000);
+});
 describe('fixture writer controller retained ownership',()=>{
  it('derives actual leaf names and refuses duplicate collection identities',()=>{expect(collectedWriterCaseIds({tasks:[{type:'test',name:'one'},{type:'suite',tasks:[{type:'test',name:'two'}]}]})).toEqual(['one','two']);expect(()=>collectedWriterCaseIds({tasks:[{type:'test',name:'one'},{type:'test',name:'one'}]})).toThrow();});
  it('refuses every pool operation after irreversible admission failure',async()=>{const h=harness();const pool=h.controller.wrapPool(h.pool(),'runtime');h.controller.admit('one');h.controller.fail('guard','settle');await expect(pool.connect()).rejects.toThrow();expect(()=>h.controller.admit('two')).toThrow();expect(h.calls).toHaveLength(0);expect(h.events).toHaveLength(1);});
@@ -95,7 +119,7 @@ describe('writer controller actual reserved pair cancellation predicates',()=>{
  it('treats false cancel as failure and revalidates without pretending settlement',async()=>{const h=await raceHarness();h.setAccepted(false);void h.pair.second.query('owned',['account']);await flush();await expect(h.controller.signal(h.pair.second)).rejects.toThrow();expect(h.events[0].reason).toBe('cancel-failed');expect(h.controller.status().unsettledCount).toBe(1);expect(h.queries.filter(query=>query.text?.includes('pg_stat_activity WHERE pid=$1'))).toHaveLength(4);});
  for(const change of ['changeStart','changeQuery','changePid'] as const)it(`never signals an owned PID after ${change}`,async()=>{const h=await raceHarness();void h.pair.second.query('owned',['account']);await flush();h[change]();await expect(h.controller.signal(h.pair.second)).rejects.toThrow();expect(h.queries.some(query=>query.text?.startsWith('SELECT pg_cancel_backend'))).toBe(false);expect(h.events[0].reason).toBe('binding');});
  it('immediately hands off a hung observer and never queues rollback or a signal behind it',async()=>{const h=await raceHarness();void h.pair.second.query('owned',['account']);await flush();h.hangObserver();const signal=h.controller.signal(h.pair.second),rejected=expect(signal).rejects.toThrow();await flush();await h.clock.advance(2000);await rejected;expect(h.events[0].reason).toBe('admin-timeout');expect(h.controller.status().serverUnresolved).toBe(true);expect(h.queries.some(query=>query.text==='ROLLBACK'||query.text?.startsWith('SELECT pg_cancel_backend'))).toBe(false);expect(h.released.filter(value=>value.pid===1)).toEqual([{pid:1,destroy:true}]);});
- it('permits fresh safe termination only after handoff and retains originals despite true',async()=>{const h=await raceHarness();void h.pair.second.query('owned',['account']);await flush();await expect(h.controller.terminateAfterHandoff(h.pair.second)).rejects.toThrow();h.controller.fail('settlement','settle');const termination=h.controller.terminateAfterHandoff(h.pair.second),rejected=expect(termination).rejects.toThrow();await flush();expect(h.queries.filter(query=>query.text?.startsWith('SELECT pg_terminate_backend'))).toHaveLength(1);await h.clock.advance(2000);await rejected;expect(h.controller.status().unsettledCount).toBeGreaterThan(0);expect(h.controller.status().leaseRestored).toBe(false);expect(h.events).toHaveLength(1);});
+ it('permits fresh safe termination only after handoff and retains originals despite true',async()=>{const h=await raceHarness();void h.pair.second.query('owned',['account']);await flush();await expect(h.controller.terminateAfterHandoff(h.pair.second)).rejects.toThrow();h.controller.fail('settlement','settle');const termination=h.controller.terminateAfterHandoff(h.pair.second),rejected=expect(termination).rejects.toThrow();await flush();expect(h.queries.filter(query=>query.text?.startsWith('SELECT pg_terminate_backend'))).toEqual([{text:'SELECT pg_terminate_backend($1) accepted',values:[3],query_timeout:2000}]);await h.clock.advance(2000);await rejected;expect(h.controller.status().unsettledCount).toBeGreaterThan(0);expect(h.controller.status().leaseRestored).toBe(false);expect(h.events).toHaveLength(1);});
  it('hands off immediately after cancel settlement expires with original query still attached',async()=>{const h=await raceHarness();void h.pair.second.query('owned',['account']);await flush();const aborted=h.controller.abortCase();await flush();await h.clock.advance(2000);await aborted;expect(h.events[0]).toMatchObject({reason:'settlement',phase:'settle'});expect(h.controller.status().unsettledCount).toBeGreaterThan(0);expect(()=>h.controller.admit('two')).toThrow();expect(h.clock.count()).toBe(0);});
 });
 
