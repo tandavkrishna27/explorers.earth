@@ -21,3 +21,14 @@ export function captureCaseErrorMetadata(error:unknown):CaseErrorMetadata{
  }
  return metadata;
 }
+export function annotateCaseErrorReplacement<T extends Error>(replacement:T,original:unknown):T&{category:CaseErrorMetadata['caseCategory'];sqlState?:string;sourceFile?:typeof caseSourceFile;sourceLine?:number;sourceColumn?:number}{
+ // Read only data descriptors: diagnostic getters must never run during failure cleanup.
+ const safe:Record<string,unknown>={};
+ if(original&&typeof original==='object')for(const key of ['code','name','stack']){
+  try{let current:object|null=original;for(let depth=0;current&&depth<4;depth++,current=Object.getPrototypeOf(current)){
+   const descriptor=Object.getOwnPropertyDescriptor(current,key);if(descriptor){if(Object.hasOwn(descriptor,'value')&&typeof descriptor.value==='string')safe[key]=descriptor.value;break;}
+  }}catch{/* A hostile descriptor is diagnostically unknown. */}
+ }
+ const finite=finiteCaseErrorMetadata(captureCaseErrorMetadata(safe))??{caseCategory:'other' as const};
+ return Object.assign(replacement,{category:finite.caseCategory,...(finite.caseSqlState?{sqlState:finite.caseSqlState}:{}),...(finite.sourceFile?{sourceFile:finite.sourceFile,sourceLine:finite.sourceLine,sourceColumn:finite.sourceColumn}:{})});
+}

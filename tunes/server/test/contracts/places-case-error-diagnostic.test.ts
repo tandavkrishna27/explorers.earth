@@ -1,8 +1,33 @@
 import ts from 'typescript';
 import {it,expect} from 'vitest';
-import {captureCaseErrorMetadata,finiteCaseErrorMetadata,caseSourceFile} from '../helpers/placesCaseErrorDiagnostic';
+import {captureCaseErrorMetadata,finiteCaseErrorMetadata,caseSourceFile,annotateCaseErrorReplacement} from '../helpers/placesCaseErrorDiagnostic';
 import {readFileSync} from 'node:fs';
 import {types} from 'pg';
+it('executes actual residual catches with original capture before abort and finite fallback',async()=>{
+ const text=readFileSync(new URL('../explorers-place-pins.integration.test.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('case.ts',text,ts.ScriptTarget.Latest,true);
+ for(const [name,message] of [['rNativePhase','Fixture original processing phase'],['rCleanup','Fixture cleanup ordering'],['rPurge','Fixture pending purge ordering'],['cRace','Fixture writer race'],['cNativeDeadline','Fixture native deadline']]){
+  let fn!:ts.FunctionDeclaration;const visit=(n:ts.Node)=>{if(ts.isFunctionDeclaration(n)&&n.name?.text===name)fn=n;ts.forEachChild(n,visit);};visit(ast);
+  const clauses:ts.CatchClause[]=[];const find=(n:ts.Node)=>{if(ts.isCatchClause(n)&&n.getText(ast).includes('abortCase'))clauses.push(n);ts.forEachChild(n,find);};if(name==='cNativeDeadline')find(ast);else find(fn);const selected=clauses.filter(n=>n.getText(ast).includes(message));expect(selected).toHaveLength(1);
+  const clause=selected[0],binding=clause.variableDeclaration?.name.getText(ast);expect(binding).toBe('error');
+  const body=ts.transpileModule(clause.block.getText(ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+  const original={code:'23503',message:'private',stack:'at assertion (C:/repo/tunes/server/test/explorers-place-pins.integration.test.ts:1540:12)'},calls:string[]=[];
+  const controller={captureCaseError:(value:unknown)=>{expect(value).toBe(original);calls.push('capture');},abortCase:async()=>{calls.push('abort');}};
+  const run=new Function('error','controller','gate','reached','winnerGate','annotateCaseErrorReplacement',`return (async()=>${body})()`);
+  let result:unknown;try{await run(original,controller,{open:()=>calls.push('gate')},{open:()=>calls.push('reached')},{open:()=>calls.push('winner')},annotateCaseErrorReplacement);}catch(error){result=error;}
+  expect(calls.indexOf('capture')).toBe(0);expect(calls.indexOf('abort')).toBeGreaterThan(0);expect(result).toBeInstanceOf(Error);expect((result as Error).message).toBe(message);
+  expect(result).toMatchObject({category:'database',sqlState:'23503',sourceFile:caseSourceFile,sourceLine:1540,sourceColumn:12});expect(Object.hasOwn(result as object,'cause')).toBe(false);
+  const abortFailure=new Error('abort sentinel');calls.length=0;
+  await expect(run(original,{...controller,abortCase:async()=>{calls.push('abort');throw abortFailure;}},{open:()=>{}},{open:()=>{}},{open:()=>{}},annotateCaseErrorReplacement)).rejects.toBe(abortFailure);expect(calls).toEqual(['capture','abort']);
+ }
+});
+it('replacement annotation rejects private getters and unknown metadata without copying payload',()=>{
+ const original={get code(){throw Error('private');},get name(){throw Error('private');},get stack(){throw Error('private');}};
+ expect(()=>annotateCaseErrorReplacement(new Error('generic'),original)).not.toThrow();
+ const error=annotateCaseErrorReplacement(new Error('generic'),original);expect(Object.keys(error)).toEqual(['category']);expect(error.category).toBe('other');
+ const assertion=annotateCaseErrorReplacement(new Error('generic'),{name:'AssertionError',stack:'at check (C:/repo/tunes/server/test/explorers-place-pins.integration.test.ts:13:7)',actual:'private',cause:{code:'23503'}});
+ expect(Object.keys(assertion).sort()).toEqual(['category','sourceColumn','sourceFile','sourceLine']);expect(assertion.category).toBe('assertion');
+ const inherited=Object.create({name:'AssertionError'});expect(annotateCaseErrorReplacement(new Error('generic'),inherited).category).toBe('assertion');
+});
 it('extracts finite original assertion coordinates without its private payload',()=>{
  const error={name:'AssertionError',message:'private',actual:'private',stack:'AssertionError: private\n at check (C:/checkout/tunes/server/test/explorers-place-pins.integration.test.ts:1265:42)'};
  expect(captureCaseErrorMetadata(error)).toEqual({caseCategory:'assertion',sourceFile:caseSourceFile,sourceLine:1265,sourceColumn:42});
@@ -14,7 +39,7 @@ it('fails closed for malformed finite coordinates and private extra keys',()=>{
 });
 it('binds first error capture before both original abort paths and the lifecycle xid to the original lease',()=>{
  const source=readFileSync(new URL('../explorers-place-pins.integration.test.ts',import.meta.url),'utf8');
- expect(source).toContain("catch(error){controller!.captureCaseError(error);winnerGate.open();await controller!.abortCase();throw Error('Fixture writer race');}");
+ expect(source).toContain("catch(error){controller!.captureCaseError(error);winnerGate.open();await controller!.abortCase();throw annotateCaseErrorReplacement(Error('Fixture writer race'),error);}");
  expect(source).toContain('controller.captureCaseError(context.task.result.errors?.[0]);await controller.abortCase()');
  expect(source).toContain("const xid=(await client.query('SELECT pg_current_xact_id()::text xid')).rows[0]?.xid");
  expect(source).toContain('capture(pair.first,firstLock)');expect(source).toContain('capture(pair.second,secondLock)');

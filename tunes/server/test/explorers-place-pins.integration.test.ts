@@ -1,4 +1,5 @@
 import pg from 'pg';
+import {annotateCaseErrorReplacement} from './helpers/placesCaseErrorDiagnostic';
 import {createBootstrapDiagnostic} from './helpers/placesBootstrapDiagnostic';
 import {createHash,randomUUID} from 'node:crypto';
 import {beforeAll,beforeEach,afterEach,afterAll,describe,it,expect} from 'vitest';
@@ -1134,7 +1135,7 @@ async function cRace(caseId:string,account:string,first:(pool:pg.Pool)=>Promise<
   const settledWinner=await read();loserGate.open();const loserOutcome=await loser;await controller!.settleCase();
   expect(controller!.status()).toMatchObject({admissionClosed:false,serverUnresolved:false,leases:0,unsettledCount:0,leaseRestored:true});
   return {winner:winnerOutcome,loser:loserOutcome,settledWinner,after:await read()};
- }catch(error){controller!.captureCaseError(error);winnerGate.open();await controller!.abortCase();throw Error('Fixture writer race');}
+ }catch(error){controller!.captureCaseError(error);winnerGate.open();await controller!.abortCase();throw annotateCaseErrorReplacement(Error('Fixture writer race'),error);}
 }
 function cForeign(before:SqlSnapshot,after:SqlSnapshot,foreign:Fixture){
  for(const key of ['collections','memberships','recommendations','pins','categories','drafts','receipts'] as const)expect(after[key].filter(row=>row.account_id===foreign.account)).toEqual(before[key].filter(row=>row.account_id===foreign.account));
@@ -1381,7 +1382,7 @@ it('C13 earlier PostgreSQL receipt lock deadline after promotion',async()=>{
   await controller!.observeBlocker(pair.second,holder as unknown as typeof pair.second,{text:receiptSql,values:receiptValues!});
   const outcome=await operation;expect(outcome.ok).toBe(false);if(outcome.ok)throw Error('Fixture native deadline outcome');
   expect(outcome.error).toMatchObject({status:413,code:'RESOURCE_TOO_LARGE',message:'Places pin processing or numeric budget exhausted'});expect(['55P03','57014']).toContain(nativeCode);expect(rejectedReceipt).toBe(true);expect(rolledBack).toBe(true);expect(released).toBe(true);expect(controller!.status().admissionClosed).toBe(false);
- }catch{await controller!.abortCase();throw Error('Fixture native deadline');}finally{
+ }catch(error){controller!.captureCaseError(error);await controller!.abortCase();throw annotateCaseErrorReplacement(Error('Fixture native deadline'),error);}finally{
   // Wrapped admin queries retain originals and fail-stop unsafe public timeout;
   // no signal is ever directed at this admin holder.
   if(!controller!.status().admissionClosed){try{if(holderBegan)await holder.query('ROLLBACK');}finally{holder.release();}}
@@ -1442,7 +1443,7 @@ async function rNativePhase(caseId:string,f:Fixture,spec:CCommand,hold:boolean){
   }else gate.open();
   const outcome=await operation;expect(released).toBe(true);if(hold){cRefused(outcome,413);expect(rolled).toBe(true);expect([terminal,receipts,commits,finalAttempts]).toEqual([0,0,0,0]);}else{expect(outcome.ok).toBe(true);expect([terminal,receipts,commits,finalAttempts]).toEqual([1,1,1,1]);}
   await controller!.settleCase();expect(controller!.status()).toMatchObject({leaseRestored:true,serverUnresolved:false,unsettledCount:0});return outcome;
- }catch{gate.open();await controller!.abortCase();throw Error('Fixture original processing phase');}
+ }catch(error){controller!.captureCaseError(error);gate.open();await controller!.abortCase();throw annotateCaseErrorReplacement(Error('Fixture original processing phase'),error);}
 }
 it('rolls back late staged processing time under the original policy despite a generous caller policy',async()=>{
  const caseId='rolls back late staged processing time under the original policy despite a generous caller policy',setup=await cFixture({charged:false}),{f,foreign,drafts,read}=setup,ids=[...f.ids].reverse();
@@ -1521,7 +1522,7 @@ async function rCleanup(caseId:string,committing:boolean,cleanupFirst:boolean){
   if(committing)expect(after).toEqual(won);else{rTerminal(won,after,drafts[0],'expired',null);expect(after.receipts).toEqual(won.receipts);}cForeign(before,after,foreign);expect(await receipt(f,spec.request,spec.context.idempotencyKey)).toHaveLength(1);
  }
  await controller!.settleCase();expect(controller!.status()).toMatchObject({leaseRestored:true,serverUnresolved:false,unsettledCount:0});
- }catch{gate.open();reached.open();await controller!.abortCase();throw Error('Fixture cleanup ordering');}
+ }catch(error){controller!.captureCaseError(error);gate.open();reached.open();await controller!.abortCase();throw annotateCaseErrorReplacement(Error('Fixture cleanup ordering'),error);}
 }
 it('cleanup before expired append',async()=>{await rCleanup('cleanup before expired append',false,true);},45000);
 it('cleanup before expired staged commit',async()=>{await rCleanup('cleanup before expired staged commit',true,true);},45000);
@@ -1546,7 +1547,7 @@ async function rPurge(caseId:string,purgeFirst:boolean){
   expect(after.categories).toHaveLength(before.categories.length);expect(after.categories.filter(r=>r.account_id===f.account)).toHaveLength(8);for(const row of before.categories){const current=after.categories.find(r=>r.account_id===row.account_id&&r.category===row.category);if(row.account_id!==f.account)expect(current).toEqual(row);else if(row.category==='places')expect(current).toEqual({...row,revision:String(BigInt(row.revision)+1n),places_last_mutation_xid:xid});else{expect(BigInt(current.revision)).toBeGreaterThanOrEqual(BigInt(row.revision));expect(current).toEqual({...row,revision:current.revision});}}
   rForeign(before,after,foreign);expect(controller!.status()).toMatchObject({leaseRestored:true,serverUnresolved:false,unsettledCount:0});
   const retry=cSucceeded(await cOutcome(()=>rawSqlTransaction(async db=>{expect((await db.query('SELECT purge_explorers_account_content($1,$2) removed',[f.account,operation])).rows[0].removed).toBe(0);})));expect(retry.committed).toBe(true);expect(retry.drained).toBe(true);expect(retry.error).toBeUndefined();expect(await read()).toEqual(after);
- }catch{gate.open();await controller!.abortCase();throw Error('Fixture pending purge ordering');}
+ }catch(error){controller!.captureCaseError(error);gate.open();await controller!.abortCase();throw annotateCaseErrorReplacement(Error('Fixture pending purge ordering'),error);}
 }
 it('pending-account purge before staged commit',async()=>{await rPurge('pending-account purge before staged commit',true);},45000);
 it('pending-account staged commit denial before purge',async()=>{await rPurge('pending-account staged commit denial before purge',false);},45000);
