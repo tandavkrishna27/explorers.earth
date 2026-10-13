@@ -15,7 +15,7 @@ it('preserves exact source identities and deterministic complete ordered positiv
   expect(c.lists.find(l=>l.owner==='ownerB')?.slug).toBe(c.lists[0].slug);
   expect(c.lists.find(l=>l.owner==='ownerB')?.title).not.toBe(c.lists[0].title);
  }
- expect(plan.dependencies.every(d=>d.status==='missing')).toBe(true);
+ expect(plan.dependencies.filter(d=>d.status==='missing').map(d=>d.feature)).toEqual(['games-catalog-genre','media-bytes']);expect(plan.dependencies).toContainEqual({feature:'people-sector',status:'configured-empty',marker:'reviewed-real-people-empty-v1-no-positive-sector'});expect(plan.dependencies).toContainEqual({feature:'places-taxonomy',status:'reviewed-input',marker:'reviewed-real-places335-v1'});expect(plan.dependencies).toContainEqual({feature:'individual-place-pins',status:'reviewed-contract',marker:'canonical-individual-place-pin-contract'});
  expect(plan.qualification).toBe('source-preparation-only');
 });
 it('strict prepared manifest refuses secrets authority altered facts and wrong order',()=>{
@@ -114,3 +114,4 @@ it('matches actual public Guides response windows when request limit is 24',asyn
  expect(guides.traversal.explicitApiDetail).toEqual({requestLimit:24,limit:12,offsets:[0,12,24,36,48],lengths,cursorKind:'offset'});
 });
 
+it('Guide photo lineage starts from an explicit manual unverified fixture activity',()=>{const guide=buildPublicParitySeedPlan(PUBLIC_PARITY_CASES[0]).categories.find(c=>c.category==='guides')!;const row=guide.items[0].details as any;expect(row.timeline.morning[0]).toMatchObject({localId:'public-parity-photo-activity',placeId:'public-parity-manual-place',source:'manual',verified:false,geometry:null,formattedAddress:null,photos:[]})});

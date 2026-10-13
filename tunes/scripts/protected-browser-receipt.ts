@@ -52,8 +52,8 @@ export async function createProtectedReceipt(root:string,laneName:string,options
    return [...selected,'--config',artifactPolicy.configFile,'--trace=off','--output',artifactPolicy.outputDir];
   },
   adoptArguments(fixtureDirectory:string){
-   const refuse=()=>{throw new Error('Protected Guides artifact adoption refused');};
-   if(laneName!=='guides'||artifactPolicy||typeof fixtureDirectory!=='string'||!isAbsolute(fixtureDirectory)||resolve(fixtureDirectory)!==fixtureDirectory||fixtureDirectory.length>4096||fixtureDirectory.startsWith('\\\\')||/[\x00-\x1f\x7f]/.test(fixtureDirectory)||dirname(fixtureDirectory)!==resolve(tmpdir())||!/^explorers-profile-e2e-[a-f0-9]{32}$/.test(basename(fixtureDirectory)))refuse();
+   const refuse=()=>{throw new Error('Protected host artifact adoption refused');};
+   if(!['guides','public-parity','people'].includes(laneName)||artifactPolicy||typeof fixtureDirectory!=='string'||!isAbsolute(fixtureDirectory)||resolve(fixtureDirectory)!==fixtureDirectory||fixtureDirectory.length>4096||fixtureDirectory.startsWith('\\\\')||/[\x00-\x1f\x7f]/.test(fixtureDirectory)||dirname(fixtureDirectory)!==resolve(tmpdir())||!/^explorers-profile-e2e-[a-f0-9]{32}$/.test(basename(fixtureDirectory)))refuse();
    const policy={configFile:join(fixtureDirectory,'protected.playwright.config.mjs'),outputDir:join(fixtureDirectory,'browser-output')};
    const identity=(stat:BigIntStats,file:boolean)=>[stat.dev,stat.ino,stat.mode,stat.uid,...(file?[stat.size,stat.mtimeNs,stat.ctimeNs,stat.nlink]:[])].map(String).join(':');
    const retained=new Map<string,{identity:string;file:boolean}>();
