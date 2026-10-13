@@ -1,5 +1,7 @@
-import {describe,it,expect} from 'vitest';
+import {describe,it,expect,vi} from 'vitest';
 import {createGuidesBrowserFixture,runGuidesFixtureEntry} from '../../../scripts/guides-browser-fixture';
+import * as browserFixture from '../../../scripts/guides-browser-fixture';
+import * as supervisor from '../../../scripts/guides-parent-supervision';
 import {readFileSync,realpathSync} from 'node:fs';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import path from 'node:path';
@@ -57,6 +59,17 @@ function fake(failure?:string) {
  const deps:any={clock:{setTimeout(fn:any){const id=++timer;timers.set(id,fn);return id;},clearTimeout(id:any){timers.delete(id);}},platform:'win32',argv:['--suite','guides','--ack','TASK4_FIXTURE_OWNED_DISPOSABLE_PG15','--receipt-directory','C:\\receipt\\guides','--receipt-capability','f'.repeat(64)],environment:{},preflight:step('preflight',{receipt}),prepare:step('prepare',input),cleanupSetup:step('setup-cleanup',undefined),createSupervisor(value:any){events.push('parent');return{run:step('run',async()=>{await value.acquisition.create();if(failure==='held'){await new Promise<void>(r=>{release=r});}return{completedEpochs:16,activeProcesses:0,fixtureExitCode:0,launcherExitCode:0,handlesClosed:true,databaseOid:1};}),abort(){events.push('abort');},dispose:step('dispose',()=>failure==='dispose-false'?{disposed:false,failures:['owned-database']}:{disposed:true,failures:[]})};},readReport:step('report',{}),installSignals(fn:any){signal=fn;return()=>events.push('uninstall');}};
  return{expire(){for(const fn of [...timers.values()])fn();},deps,events,signal:()=>signal(),release:()=>release(),authority,receipt};
 }
+it('preserves only the original private supervisor diagnostic through root refusal and cleanup',async()=>{
+ const original=Error('PRIVATE_SENTINEL'),diagnostic:any=Object.freeze({version:1,role:'worker',epoch:7,phase:'reset',code:'unsettled',boundary:null});
+ const spy=vi.spyOn(supervisor,'extractGuidesSupervisorDiagnostic').mockImplementation(error=>error===original?diagnostic:undefined);
+ try{const f=fake();f.deps.createSupervisor=()=>({run:async()=>{throw original;},abort(){},dispose:async()=>({disposed:false,failures:['service-children','control']})});
+ let caught:unknown;try{await createGuidesBrowserFixture(f.deps).run();}catch(error){caught=error;}
+ expect((browserFixture as any).formatGuidesFixtureFailure?.(caught)).toBe('Guides owned fixture failed [guides-failure-v1:'+JSON.stringify(diagnostic)+']\n');
+ expect(f.events).toContain('failure');expect(f.events).not.toContain('finish');
+ const proxy=new Proxy({}, {get(){throw Error('PRIVATE_SENTINEL');},ownKeys(){throw Error('PRIVATE_SENTINEL');}});
+ expect((browserFixture as any).formatGuidesFixtureFailure?.(proxy)).toBe('Guides owned fixture failed\n');
+ }finally{spy.mockRestore();}
+});
 describe('Guides root driver resource-free custody',()=>{
  it('captures reports before exclusive parent disposal then publishes receipt',async()=>{const f=fake();await createGuidesBrowserFixture(f.deps).run();expect(f.events).toEqual(['preflight','prepare','parent','run','create','report','report','adopt','decode-discovery','decode-execution','dispose','finish','uninstall']);});
  for(const failure of ['preflight','prepare','run','report','adopt','decode-discovery','decode-execution','dispose','dispose-false','finish'])it(`denies success on ${failure}`,async()=>{const f=fake(failure);await expect(createGuidesBrowserFixture(f.deps).run()).rejects.toThrow('GUIDES_ROOT_FAILED');if(failure!=='finish')expect(f.events).not.toContain('finish');if(f.events.includes('parent')){expect(f.events.filter(x=>x==='dispose')).toHaveLength(1);expect(f.events).not.toContain('setup-cleanup');}});

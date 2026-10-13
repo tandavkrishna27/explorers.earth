@@ -43,8 +43,14 @@ type DisposalEvidence = Readonly<{ disposed: boolean; failures: readonly Label[]
 type Frame = { v: 1; seq: number; id: string; type: string; payload: Record<string, unknown> };
 const CONTROLLER_CLEANUP_LABELS = ['listener', 'drain', 'authority', 'custody', 'storage'] as const;
 type ControllerCleanup = Readonly<{ code: 'GUIDES_CONTROL_CLEANUP_FAILED'; unsettled: boolean; failures: readonly typeof CONTROLLER_CLEANUP_LABELS[number][] }>;
+const GUIDES_HOST_BOUNDARIES = Object.freeze(['init-validation','begin','protected-context','gateway-bind','harness-bind','vite-launch','vite-readiness','vite-runtime','descriptor-write','discovery-launch','discovery-exit','discovery-decode','browser-launch','browser-exit','execution-decode','harness-command','gateway-forward','completion'] as const);
+export type GuidesFailureDiagnostic = Readonly<{version:1;role:'fixture'|'worker';epoch:number;phase:'bootstrap'|'reset'|'observe'|'execution'|'retirement';code:'failed'|'timeout'|'protocol'|'unsettled';boundary:typeof GUIDES_HOST_BOUNDARIES[number]|null}>;
+const guidesDiagnostics = new WeakMap<object,GuidesFailureDiagnostic>();
+export function extractGuidesSupervisorDiagnostic(error:unknown):GuidesFailureDiagnostic|undefined {
+ return (typeof error==='object'&&error!==null||typeof error==='function')?guidesDiagnostics.get(error as object):undefined;
+}
 class Failure extends Error {
- constructor(readonly label: Label, readonly cleanup?: ControllerCleanup) { super(label); }
+ constructor(readonly label: Label, readonly cleanup?: ControllerCleanup, diagnostic?:GuidesFailureDiagnostic) { super(label); if(diagnostic)guidesDiagnostics.set(this,diagnostic); }
 }
 function exact(value: unknown, keys: readonly string[]): asserts value is Record<string, unknown> {
  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).sort().join(',') !== [...keys].sort().join(',')) throw new Failure('service-children');
@@ -91,7 +97,7 @@ class Channel {
   private requireIdle(): void { if (!this.started || this.fatal || this.terminal || this.cleanEofSeen || this.pending || this.replies.size || this.queued.length || this.waiter) throw this.fatal ?? new Failure('service-children'); }
   beginWorkerRetirement(): void { this.requireIdle(); if (this.role !== 'worker') throw new Failure('control'); this.terminal = true; }
   acceptFixtureCompletion(): void { this.requireIdle(); if (this.role !== 'fixture' || !this.completion) throw new Failure('control'); this.terminal = true; this.completion.accept(); }
- constructor(readonly stream: Stream, private clock: Clock, private id: () => string, private max: number, private role: 'fixture' | 'worker' | 'launcher' = 'launcher') {}
+ constructor(readonly stream: Stream, private clock: Clock, private id: () => string, private max: number, private role: 'fixture' | 'worker' | 'launcher' = 'launcher', private epoch=0) {}
   resume(): void { if (this.terminal) throw new Failure('service-children'); this.allowed = true; }
  stop(): void { this.stopped = true; }
  cancel(): void {
@@ -107,8 +113,9 @@ class Channel {
    const frame = await this.decode(deadline); if (this.stopped) return;
    if (this.max === 65536 && frame.type === 'log') { exact(frame.payload, ['slot', 'stream', 'text']); const stream = frame.payload.stream; if (stream !== 'stdout' && stream !== 'stderr' || typeof frame.payload.text !== 'string' || Buffer.byteLength(frame.payload.text) > 16384 || !(frame.payload.slot === 'fixture' || Number.isInteger(frame.payload.slot) && Number(frame.payload.slot) >= 1 && Number(frame.payload.slot) <= 16)) throw new Failure('service-children'); this.logBytes[stream] += Buffer.byteLength(frame.payload.text); if (this.logBytes[stream] > 8388608) throw new Failure('service-children'); continue; }
    if (frame.type === 'fatal') {
-    exact(frame.payload, ['phase', 'code', 'cleanup']);
-    if (!['bootstrap', 'reset', 'observe', 'execution', 'retirement'].includes(String(frame.payload.phase)) || !['failed', 'timeout', 'protocol', 'unsettled'].includes(String(frame.payload.code))) throw new Failure('control');
+    exact(frame.payload, this.role==='fixture'?['phase', 'code', 'cleanup','boundary']:['phase','code','cleanup']);
+    if (typeof frame.payload.phase!=='string'||typeof frame.payload.code!=='string'||!['bootstrap', 'reset', 'observe', 'execution', 'retirement'].includes(frame.payload.phase) || !['failed', 'timeout', 'protocol', 'unsettled'].includes(String(frame.payload.code))) throw new Failure('control');
+    if(this.role!=='fixture'&&this.role!=='worker'||this.role==='fixture'&&(this.epoch!==0||frame.payload.boundary!==null&&!GUIDES_HOST_BOUNDARIES.includes(frame.payload.boundary as any))||this.role==='worker'&&(!Number.isSafeInteger(this.epoch)||this.epoch<1||this.epoch>16))throw new Failure('control');
     let cleanup: ControllerCleanup | undefined;
     if (frame.payload.cleanup !== null) {
      exact(frame.payload.cleanup, ['code', 'unsettled', 'failures']);
@@ -122,7 +129,8 @@ class Channel {
      }
      cleanup = Object.freeze({ code: 'GUIDES_CONTROL_CLEANUP_FAILED', unsettled: value.unsettled, failures: Object.freeze([...value.failures]) });
     }
-    throw new Failure('control', cleanup);
+    const diagnostic=Object.freeze({version:1,role:this.role,epoch:this.epoch,phase:frame.payload.phase,code:frame.payload.code,boundary:this.role==='fixture'?frame.payload.boundary:null}) as GuidesFailureDiagnostic;
+    throw new Failure('control', cleanup,diagnostic);
    }
    const reply = this.replies.get(frame.id);
    if (reply) { this.replies.delete(frame.id); if (reply.cancelled && frame.type !== 'cancelled') throw new Failure('service-children'); if (frame.type === 'cancelled') { exact(frame.payload, ['commandId']); if (!reply.cancelled || frame.payload.commandId !== frame.id) throw new Failure('service-children'); reply.reject(new Failure('service-children')); } else if (frame.type !== reply.expected) { reply.reject(new Failure('service-children')); throw new Failure('service-children'); } else reply.resolve(frame); if (frame.type === 'exit-ack') return; continue; }
@@ -259,7 +267,7 @@ export function createGuidesParentSupervisor(input: SupervisorInput, dependencie
  const request = async (type: string, payload: Record<string, unknown>, expected: string, ceiling: number, recovering = false) => { if (!channel) throw new Failure('service-children'); if (!recovering) check(); const deadline = Math.min(recovering ? recoveryDeadline : laneDeadline, d.clock.now() + ceiling); const result = await channel.request(type, payload, expected, deadline); if (!recovering) check(); return result; };
  const jobEmpty = (result: Frame, success: boolean) => { exact(result.payload, ['activeProcesses', 'fixtureSignaled', 'fixtureExitCode', 'workersSignaled']); integer(result.payload.fixtureExitCode, 0, 0xffffffff); if (result.payload.activeProcesses !== 0 || result.payload.fixtureSignaled !== true || result.payload.workersSignaled !== true || success && result.payload.fixtureExitCode !== 0) throw new Failure('service-children'); containment = true; };
  const witness = async (deadline: number) => { if (!authority) throw new Failure('owned-database'); const ms = remaining(15000, deadline); const result = await bounded(d.clock, d.clock.now() + ms, () => d.witness(authority!, ms), 'runtime-pool'); exact(result, ['maintenanceDatabase', 'databaseOid', 'privileged', 'maxPreparedTransactions', 'preparedTransactions', 'clientSessions', 'fresh']); if (result.maintenanceDatabase !== 'postgres' || databaseOid !== undefined && result.databaseOid !== databaseOid || result.privileged !== true || result.maxPreparedTransactions !== 0 || result.preparedTransactions !== 0 || result.clientSessions !== 0 || result.fresh !== true) throw new Failure('runtime-pool'); integer(result.databaseOid, 1, 0xffffffff); databaseOid ??= result.databaseOid; };
- const authenticate = async (role: 'fixture' | 'worker', epoch: number, token: string, deadline: number) => { if (!listener) throw new Failure('service-children'); check(); const stream = await bounded(d.clock, deadline, () => listener!.next(), 'service-children'); const peer = new Channel(stream, d.clock, id, 9 * 1024 * 1024, role); peers.push(peer); const hello = await peer.raw(deadline); exact(hello, ['v', 'type', 'role', 'epoch', 'token']); hex(hello.token, 64); if (hello.v !== 1 || hello.type !== 'hello' || hello.role !== role || hello.epoch !== epoch || !timingSafeEqual(Buffer.from(hello.token), Buffer.from(token))) throw new Failure('service-children'); check(); peer.activate(laneDeadline, error => { if (!first && error instanceof Failure) { channelFailure = error; fail(error.label); } abort('failure'); }); return peer; };
+ const authenticate = async (role: 'fixture' | 'worker', epoch: number, token: string, deadline: number) => { if (!listener) throw new Failure('service-children'); check(); const stream = await bounded(d.clock, deadline, () => listener!.next(), 'service-children'); const peer = new Channel(stream, d.clock, id, 9 * 1024 * 1024, role,epoch); peers.push(peer); const hello = await peer.raw(deadline); exact(hello, ['v', 'type', 'role', 'epoch', 'token']); hex(hello.token, 64); if (hello.v !== 1 || hello.type !== 'hello' || hello.role !== role || hello.epoch !== epoch || !timingSafeEqual(Buffer.from(hello.token), Buffer.from(token))) throw new Failure('service-children'); check(); peer.activate(laneDeadline, error => { if (!first && error instanceof Failure) { channelFailure = error; fail(error.label); } abort('failure'); }); return peer; };
  const initialize = async (peer: Channel, payload: Record<string, unknown>, deadline: number) => {
   check();
   const ack = await peer.request('init', { ...payload, remainingLaneMs: remaining(21600000) }, 'init-ack', deadline);
@@ -323,7 +331,7 @@ export function createGuidesParentSupervisor(input: SupervisorInput, dependencie
     if (command.type === 'complete') { exact(command.payload, ['browserExitCode']); if (command.payload.browserExitCode !== 0 || completed.size !== 16 || worker || active) throw new Failure('browser'); check(); fixture.acceptFixtureCompletion(); const finish = await request('finish-job', { remainingMs: remaining(15000) }, 'job-empty', 15000); jobEmpty(finish, true); exitAttempted = true; const exit = await request('exit', { remainingMs: remaining(5000) }, 'exit-ack', 5000); exact(exit.payload, ['handlesClosed']); if (exit.payload.handlesClosed !== true) throw new Failure('service-children'); handles = true; const actual = await bounded(d.clock, Math.min(laneDeadline, d.clock.now() + 5000), () => launcher!.exited(), 'service-children'); if (actual.code !== 0 || actual.closed !== true) throw new Failure('service-children'); launcherClosed = true; check(); fixture.stop(); return Object.freeze({ completedEpochs: 16, activeProcesses: 0, fixtureExitCode: 0, launcherExitCode: 0, handlesClosed: true, databaseOid: databaseOid! }); }
     throw new Failure(command.type === 'fatal' ? 'control' : 'service-children');
    }
-  } catch (error) { fail(error instanceof Failure ? error.label : 'service-children'); abort('failure'); throw new Failure(first!, channelFailure?.cleanup ?? (error instanceof Failure ? error.cleanup : undefined)); } })(); return runPromise;
+  } catch (error) { fail(error instanceof Failure ? error.label : 'service-children'); abort('failure'); throw new Failure(first!, channelFailure?.cleanup ?? (error instanceof Failure ? error.cleanup : undefined),extractGuidesSupervisorDiagnostic(channelFailure)??extractGuidesSupervisorDiagnostic(error)); } })(); return runPromise;
  }
  function dispose(): Promise<DisposalEvidence> {
   if (disposalPromise) return disposalPromise; disposed = true; if (!recoveryDeadline) recoveryDeadline = d.clock.now() + 300000;

@@ -111,7 +111,7 @@ describe('Guides parent job contract', () => {
     }, 30000);
     it('imports the sole effect-free factory and refuses invalid root input without effects', async () => {
         const module = await import('../../../scripts/guides-parent-supervision');
-        expect(Object.keys(module)).toEqual(['createGuidesParentSupervisor']);
+        expect(Object.keys(module).sort()).toEqual(['createGuidesParentSupervisor','extractGuidesSupervisorDiagnostic']);
         expect(() => module.createGuidesParentSupervisor({} as never)).toThrow();
     });
     function rootInput(acquisition: any) {
@@ -269,7 +269,7 @@ function guidesScripted(options: Record<string, any> = {}) {
         return p;
     }
     function tail(p: ReturnType<typeof stream>, kind: string) {
-        if(kind==='fatal')p.emit('fatal',{phase:'retirement',code:'unsettled',cleanup:{code:'GUIDES_CONTROL_CLEANUP_FAILED',unsettled:true,failures:['listener','drain']}});
+        if(kind==='fatal')p.emit('fatal',{phase:'retirement',code:'unsettled',cleanup:{code:'GUIDES_CONTROL_CLEANUP_FAILED',unsettled:true,failures:['listener','drain']},...(p===fixture?{boundary:null}:{})});
         else if(kind==='extra')p.emit('unexpected',{});
         else if(kind==='utf8')p.push(Buffer.from([0,0,0,1,255]));
         else p.push(kind==='body'?Buffer.from([0,0,0,10,123]):Buffer.alloc(Number(kind),1));
@@ -367,10 +367,11 @@ describe('Guides scripted parent behavior',()=>{
         await expect(createGuidesParentSupervisor(fake.input,fake.dependencies).run()).rejects.toThrow();
     });
     it.each(['worker','fixture'])('preserves terminal %s fatal cleanup rather than upgrading EOF',async role=>{
-        const {createGuidesParentSupervisor}=await load(),fake=guidesScripted(role==='worker'?{workerTail:'fatal'}:{completeTail:'fatal'});
+        const {createGuidesParentSupervisor,extractGuidesSupervisorDiagnostic}=await load(),fake=guidesScripted(role==='worker'?{workerTail:'fatal'}:{completeTail:'fatal'});
         let error:any;try{await createGuidesParentSupervisor(fake.input,fake.dependencies).run();}catch(caught){error=caught;}
         expect(error).toBeDefined();expect(error.cleanup).toEqual({code:'GUIDES_CONTROL_CLEANUP_FAILED',unsettled:true,failures:['listener','drain']});
         expect(Object.isFrozen(error.cleanup)).toBe(true);expect(Object.isFrozen(error.cleanup.failures)).toBe(true);
+        const diagnostic=extractGuidesSupervisorDiagnostic(error);expect(diagnostic).toEqual({version:1,role,epoch:role==='fixture'?0:1,phase:'retirement',code:'unsettled',boundary:null});expect(Object.isFrozen(diagnostic)).toBe(true);
     });
     it.each([{earlyWorkerEof:true},{workerEof:true,unconfirmedExit:true},{workerEof:true,witnessAfterExit:true},{workerEof:true,pgError:true},{completeEof:true,badComplete:true},{completeEof:true,nonzeroFixture:true},{completeEof:true,badExitAck:true},{completeEof:true,badActualExit:true},{completeEof:true,lostClose:true}])('does not upgrade EOF with failed independent gates %j',async options=>{
         const {createGuidesParentSupervisor}=await load(),fake=guidesScripted(options);

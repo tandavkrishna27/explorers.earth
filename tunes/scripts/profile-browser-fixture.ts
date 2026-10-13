@@ -22,7 +22,7 @@ import { startLifecycleControl } from './lifecycle-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment, assertLifecycleResults, assertOwnedCleanup } from './lifecycle-browser-guards';
 import { extractProtectedReceiptArguments, createProtectedReceipt } from './protected-browser-receipt';
 import { createAppsBrowserFixture, extractAppsFixtureDiagnostic } from './apps-browser-fixture';
-import { createGuidesBrowserFixture } from './guides-browser-fixture';
+import { createGuidesBrowserFixture, formatGuidesFixtureFailure } from './guides-browser-fixture';
 
 const receiptArguments = extractProtectedReceiptArguments(process.argv.slice(2));
 const suite = parseBrowserSuite(receiptArguments.args);
@@ -37,9 +37,9 @@ if (suite === 'apps') {
   }
 } else if (suite === 'guides') {
   try { await createGuidesBrowserFixture().run(); }
-  catch {
+  catch (error) {
     process.exitCode = 1;
-    process.stderr.write('Guides owned fixture failed\n');
+    process.stderr.write(formatGuidesFixtureFailure(error));
   }
 } else {
 const root = resolve(import.meta.dirname, '../..');

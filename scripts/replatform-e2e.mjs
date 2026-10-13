@@ -4,6 +4,7 @@ import {readFileSync,writeFileSync,existsSync,mkdirSync,lstatSync,realpathSync,u
 import {tmpdir} from 'node:os';
 import {resolve,join,dirname,basename,relative,isAbsolute,delimiter} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
+import {types as utilTypes} from 'node:util';
 const ACK='TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
 export function childNodeEnvironment(environment,platform=process.platform){
  const entries=Object.entries(environment);
@@ -78,12 +79,12 @@ export function assertEnvironment(env){
  if(env.NODE_ENV==='production'||Object.keys(env).some(key=>key.startsWith('MUSIC_C10_STANDALONE_POSTGRES_')||/^(?:AUTH|PROFILE|BOOKS|LIFECYCLE|MOVIES|GAMES|MUSIC|PLACES|PLACE_LINKS)_E2E_/.test(key)||/^(?:APPS|GUIDES|REPLATFORM)_E2E_/i.test(key))||['DATABASE_URL','DATABASE_URL_TEST','DOCKER_HOST','DOCKER_CONTEXT','GATE_PROD','MUSIC_DEPLOY_PRODUCTION','MUSIC_DEPLOY_PROD','PLAYWRIGHT_EXTERNAL_BASE_URL'].some(key=>Boolean(env[key])))fail('Ambient database, Docker, hosted fixture or production authority is forbidden');
 }
 export function parseArguments(args){
- if(args.length!==6&&args.length!==8)fail('Expected exact --milestone, --ack, --receipt and optional --lane apps flags');const flags={};for(let i=0;i<args.length;i+=2){if(!['--milestone','--ack','--receipt','--lane'].includes(args[i])||flags[args[i]]!==undefined||!args[i+1])fail('Unknown/duplicate/missing flag');flags[args[i]]=args[i+1];}
- if(args.length===8?flags['--lane']!=='apps':flags['--lane']!==undefined)fail('Only the exact Apps selected lane is supported');
+ if(args.length!==6&&args.length!==8)fail('Expected exact --milestone, --ack, --receipt and optional --lane apps or guides flags');const flags={};for(let i=0;i<args.length;i+=2){if(!['--milestone','--ack','--receipt','--lane'].includes(args[i])||flags[args[i]]!==undefined||!args[i+1])fail('Unknown/duplicate/missing flag');flags[args[i]]=args[i+1];}
+ if(args.length===8?!['apps','guides'].includes(flags['--lane']):flags['--lane']!==undefined)fail('Only exact Apps or Guides selected lanes are supported');
  if(flags['--milestone']!==SCOPE||flags['--ack']!==ACK)fail('Unsupported scope or owned acknowledgement');
  const path=flags['--receipt'];if(!isAbsolute(path)||dirname(resolve(path))!==resolve(tmpdir())||!/^replatform-e2e-[A-Za-z0-9-]{8,64}$/.test(basename(path))||existsSync(path))fail('Receipt must be a fresh direct temporary replatform-e2e directory');
  if(realpathSync(dirname(path))!==realpathSync(tmpdir())||lstatSync(dirname(path)).isSymbolicLink())fail('Receipt parent ownership mismatch');
- return {milestone:SCOPE,receiptDirectory:resolve(path),...(flags['--lane']?{lane:'apps'}:{})};
+ return {milestone:SCOPE,receiptDirectory:resolve(path),...(flags['--lane']?{lane:flags['--lane']}:{})};
 }
 export function validateManifest(manifest){
  if(manifest?.version!==1||manifest.scope!==SCOPE||manifest.scopeCompatibilityIdentifier!==true||!equal(manifest.scopeContents,Object.keys(lanes))||!Array.isArray(manifest.lanes)||!equal(manifest.lanes.map(l=>l.name),Object.keys(lanes))||!Array.isArray(manifest.pending)||manifest.pending.length<7||manifest.pending.some(o=>!o.ticket||!o.obligation||o.status!=='pending')||!Array.isArray(manifest.limits)||manifest.limits.length<4)fail('Invalid delivered-slice manifest or pending ledger');
@@ -462,6 +463,14 @@ export async function qualifyAppsLane({manifest,provenance,runLane,expectedPlayw
  if(expectedPlaywright&&receipt.playwright!==expectedPlaywright)fail('Installed Playwright version mismatch');
  return {version:1,scope:SCOPE,scopeContents:['apps'],scopeCompatibilityIdentifier:true,selectedLane:{name:'apps',status:'passed'},deliveredSlice:'incomplete',overallMilestone:'incomplete',fullParity:'incomplete',releaseEligible:false,provenance,identities:receipt.results.length,lanes:[receipt],pending:manifest.pending,limits:manifest.limits,producer:'selected local owned-fixture evidence; delivered slice and hosted release remain incomplete'};
 }
+export async function qualifyGuidesLane({manifest,provenance,runLane,expectedPlaywright}){
+ // Validate the complete registered166 inventory; selection never truncates authority.
+ validateManifest(manifest);
+ const lane=manifest.lanes.find(lane=>lane.name==='guides');
+ const receipt=validateLaneReceipt(lane,await runLane(lane),provenance);
+ if(expectedPlaywright&&receipt.playwright!==expectedPlaywright)fail('Installed Playwright version mismatch');
+ return {version:1,scope:SCOPE,scopeContents:['guides'],scopeCompatibilityIdentifier:true,selectedLane:{name:'guides',status:'passed'},deliveredSlice:'incomplete',overallMilestone:'incomplete',fullParity:'incomplete',releaseEligible:false,provenance,identities:receipt.results.length,lanes:[receipt],pending:manifest.pending,limits:manifest.limits,producer:'selected local owned-fixture evidence; delivered slice and hosted release remain incomplete'};
+}
 export function snapshotSource(root){
  const commit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8',windowsHide:true}).trim();
  const roots=['tunes/server','tunes/shared','tunes/auth-runtime','tunes/migrations','explorers-earth/src','explorers-earth/public','explorers-earth/e2e/replatform','explorers-earth/e2e/setup'];
@@ -582,6 +591,26 @@ export function decodeAppsFixtureFailureLine(line){
  const reasons=['registration','request-reused','admission-capacity','request-aborted','request-error','response-close','response-error','handler-capacity','uncovered-handler','duplicate-next','then-getter','foreign-thenable','then-call','handler-rejection','handler-throw','callback-error','registration-closed','unsupported-registration','drain-deadline'];
  return match&&(!census||match[16]&&validAppsRequestCensus(census[1],Number(match[18])))&&stages.includes(match[1])&&categories.includes(match[2])&&(!match[3]||match[1]==='cleanup'&&cleanup.includes(match[3]))&&(!match[4]||operations.includes(match[4])&&phases.includes(match[5])&&boundaries.includes(match[6])&&['deadline','refusal'].includes(match[7]))&&(!match[9]||origins.includes(match[9])&&stages.includes(match[10])&&(!match[11]||match[10]==='cleanup'&&cleanup.includes(match[11]))&&(!match[12]||Number(match[12])<=21600000))&&(!match[13]||match[1]==='cleanup'&&drainBoundaries.includes(match[13]))&&(!match[14]||match[1]==='cleanup'&&match[3]==='request-drain'&&['handler-wait','canonical-wait'].includes(match[14])&&Number(match[15])<=128)&&(!match[16]||Boolean(match[13]||match[14])&&['settled','failed-but-settled','unsettled'].includes(match[16])&&Number(match[18])<=128&&Number(match[19])<=8192&&(!match[22]||reasons.includes(match[22]))&&(!match[23]||Number(match[23])<=4096))?originalLine:undefined;
 }
+const guidesHostBoundaries=Object.freeze(['init-validation','begin','protected-context','gateway-bind','harness-bind','vite-launch','vite-readiness','vite-runtime','descriptor-write','discovery-launch','discovery-exit','discovery-decode','browser-launch','browser-exit','execution-decode','harness-command','gateway-forward','completion']);
+/** Canonical producer JSON prevents duplicate keys and alternate embedded encodings. */
+export function decodeGuidesFixtureFailureLine(line){
+ if(typeof line!=='string'||Buffer.byteLength(line)>1024||/[\r\n]/.test(line))return undefined;
+ const match=/^Guides owned fixture failed \[guides-failure-v1:(\{.*\})\]$/.exec(line);if(!match)return undefined;
+ let value;try{value=JSON.parse(match[1]);}catch{return undefined;}
+ if(!value||Array.isArray(value)||Object.keys(value).sort().join(',')!=='boundary,code,epoch,phase,role,version'||value.version!==1||!['fixture','worker'].includes(value.role)||!Number.isSafeInteger(value.epoch)||!['bootstrap','reset','observe','execution','retirement'].includes(value.phase)||!['failed','timeout','protocol','unsettled'].includes(value.code)||value.role==='fixture'&&(value.epoch!==0||value.boundary!==null&&!guidesHostBoundaries.includes(value.boundary))||value.role==='worker'&&(value.epoch<1||value.epoch>16||value.boundary!==null))return undefined;
+ const diagnostic=Object.freeze({version:1,role:value.role,epoch:value.epoch,phase:value.phase,code:value.code,boundary:value.boundary});
+ return JSON.stringify(diagnostic)===match[1]?diagnostic:undefined;
+}
+/** Copy only a single terminated finite marker from the matching failed Guides child. */
+export function retainGuidesFixtureFailure(record,child){
+ const own=(value,required,allowed)=>{try{if(!value||typeof value!=='object'||utilTypes.isProxy(value)||![Object.prototype,null].includes(Object.getPrototypeOf(value)))return undefined;const descriptors=Object.getOwnPropertyDescriptors(value);if(Reflect.ownKeys(descriptors).some(key=>typeof key!=='string'||!allowed.includes(key))||required.some(key=>!Object.hasOwn(descriptors,key))||Object.values(descriptors).some(d=>!Object.hasOwn(d,'value')))return undefined;return descriptors;}catch{return undefined;}};
+ const r=own(record,['lane','status'],['lane','status','signal','error']),c=own(child,['status','stderr'],['status','signal','error','stdout','stderr']);
+ if(!r||!c||r.lane.value!=='guides'||r.status.value!==c.status.value||!Number.isSafeInteger(c.status.value)||c.status.value<1||c.status.value>0xffffffff||r.signal&&c.signal&&r.signal.value!==c.signal.value)return undefined;
+ const stderr=c.stderr.value;if(typeof stderr!=='string'||stderr.split('guides-failure-v1:').length!==2)return undefined;
+ const lines=stderr.split(/\r?\n/),index=lines.findIndex(line=>line.startsWith('Guides owned fixture failed [guides-failure-v1:'));
+ if(index<0||index===lines.length-1)return undefined;const diagnostic=decodeGuidesFixtureFailureLine(lines[index]);if(!diagnostic)return undefined;
+ try{Object.defineProperty(record,'guidesFixtureFailure',{value:diagnostic,enumerable:true,configurable:false,writable:false});}catch{return undefined;}return 'Guides owned fixture failed [guides-failure-v1:'+JSON.stringify(diagnostic)+']';
+}
 export async function main(args=process.argv.slice(2)){
  const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');assertEnvironment(process.env);const options=parseArguments(args);
  if(process.versions.node!=='24.21.0')fail('Protected qualification requires Node24.21.0');
@@ -594,7 +623,7 @@ export async function main(args=process.argv.slice(2)){
  try{
   const playwright=JSON.parse(readFileSync(join(root,'explorers-earth/node_modules/playwright-core/package.json'))).version;
   for(const [name,target] of [['auth','tsx scripts/profile-browser-fixture.ts --suite auth'],['profile','tsx scripts/profile-browser-fixture.ts'],['lifecycle','tsx scripts/profile-browser-fixture.ts --suite lifecycle'],['music','tsx scripts/canonical-music-browser-fixture.ts'],['places','tsx scripts/profile-browser-fixture.ts --suite places'],['place-links','tsx scripts/profile-browser-fixture.ts --suite place-links'],['apps','tsx scripts/profile-browser-fixture.ts --suite apps']])if(JSON.parse(readFileSync(join(root,'tunes/package.json'))).scripts[`explorers:test:${name}-browser`]!==target)fail('Protected package runner target changed');
-  const qualify=options.lane==='apps'?qualifyAppsLane:qualifyLanes;
+  const qualify=options.lane==='apps'?qualifyAppsLane:options.lane==='guides'?qualifyGuidesLane:qualifyLanes;
   const result=await qualify({manifest,provenance:source.provenance,expectedPlaywright:playwright,runLane:async lane=>{
    if(!equal(snapshotSource(root).provenance,source.provenance))fail('Source changed before lane execution');
    const directory=join(options.receiptDirectory,lane.name);mkdirSync(directory,{mode:0o700});const capability=randomBytes(32).toString('hex');
@@ -605,7 +634,8 @@ export async function main(args=process.argv.slice(2)){
    const child=await capturedChild(process.execPath,childArgs,root,{...process.env},capability);const childRecord={lane:lane.name,status:child.status,signal:child.signal,error:child.error};children.push(childRecord);
    const musicDiagnostic=retainMusicBoundaryFailure(childRecord,child);if(musicDiagnostic)process.stderr.write(`${lane.name}: ${musicDiagnostic}\n`);
    const appsDiagnostic=lane.name==='apps'?retainAppsFixtureFailure(childRecord,child):undefined;if(appsDiagnostic)process.stderr.write(`${lane.name}: ${appsDiagnostic}\n`);
-   if(lane.name!=='music'&&lane.name!=='apps'&&child.status!==0){const diagnostics=child.stderr.split(/\r?\n/).filter(line=>Boolean(decodeAppsFixtureFailureLine(line))||/^(?:Error(?: \[[A-Z_]+\])?:|[^\n]*: ERROR:|(?:Profile|Books|Movies) E2E fixture failed:)/.test(line)).slice(0,3).map(line=>line.replaceAll(capability,'<owned-capability>').replace(/postgres(?:ql)?:\/\/\S+|(?:Bearer\s+)\S+|[A-Za-z0-9_-]{32,}/g,'<redacted>'));for(const line of diagnostics)process.stderr.write(`${lane.name}: ${line}\n`);}
+   const guidesDiagnostic=lane.name==='guides'?retainGuidesFixtureFailure(childRecord,child):undefined;if(guidesDiagnostic)process.stderr.write(`${lane.name}: ${guidesDiagnostic}\n`);
+   if(lane.name!=='music'&&lane.name!=='apps'&&lane.name!=='guides'&&child.status!==0){const diagnostics=child.stderr.split(/\r?\n/).filter(line=>Boolean(decodeAppsFixtureFailureLine(line))||/^(?:Error(?: \[[A-Z_]+\])?:|[^\n]*: ERROR:|(?:Profile|Books|Movies) E2E fixture failed:)/.test(line)).slice(0,3).map(line=>line.replaceAll(capability,'<owned-capability>').replace(/postgres(?:ql)?:\/\/\S+|(?:Bearer\s+)\S+|[A-Za-z0-9_-]{32,}/g,'<redacted>'));for(const line of diagnostics)process.stderr.write(`${lane.name}: ${line}\n`);}
    const receiptPath=join(directory,'receipt.json');if(existsSync(receiptPath))child.receipt=JSON.parse(readFileSync(receiptPath,'utf8'));
    const lifecycleFailurePath=join(directory,'lifecycle-failure.json');if(existsSync(lifecycleFailurePath)){if(child.status===0)fail('Lifecycle failure cannot qualify a successful child');childRecord.lifecycleFailure=validateLifecycleFailureRecord(lane,JSON.parse(readFileSync(lifecycleFailurePath,'utf8')),source.provenance);}
    const failurePath=join(directory,'failure.json');if(existsSync(failurePath))childRecord.failure=validateFailureRecord(lane,JSON.parse(readFileSync(failurePath,'utf8')),source.provenance,child);
@@ -615,9 +645,9 @@ export async function main(args=process.argv.slice(2)){
   }});
   result.sourceHashes=source.hashes;result.tools={node:process.versions.node,npm,nodeExecutable:npmOwner.nodeExecutable,npmCli:npmOwner.npmCli,npmPackage:npmOwner.npmPackage,playwright,chromium:browserVersion,locks};result.startedAt=startedAt;result.endedAt=new Date().toISOString();result.children=children;
   writeFileSync(join(options.receiptDirectory,'qualification.json'),JSON.stringify(result,null,2),{mode:0o600,flag:'wx'});
-  process.stdout.write(`${options.lane==='apps'?'Selected Apps lane passed; delivered slice incomplete':'Delivered slice passed'}: ${result.identities} identities. Overall milestone/full parity incomplete. Receipt: ${join(options.receiptDirectory,'qualification.json')}\n`);
+  process.stdout.write(`${options.lane==='apps'?'Selected Apps lane passed; delivered slice incomplete':options.lane==='guides'?'Selected Guides lane passed; delivered slice incomplete':'Delivered slice passed'}: ${result.identities} identities. Overall milestone/full parity incomplete. Receipt: ${join(options.receiptDirectory,'qualification.json')}\n`);
   return result;
- }catch(error){writeFileSync(join(options.receiptDirectory,'qualification.json'),JSON.stringify({version:1,scope:SCOPE,scopeContents:options.lane==='apps'?['apps']:Object.keys(lanes),scopeCompatibilityIdentifier:true,...(options.lane==='apps'?{selectedLane:{name:'apps',status:'failed'}}:{}),deliveredSlice:options.lane==='apps'?'incomplete':'failed',overallMilestone:'incomplete',fullParity:'incomplete',releaseEligible:false,provenance:source.provenance,children,error:'Protected lane or qualification contract failed',pending:manifest.pending},null,2),{mode:0o600,flag:'wx'});throw error;}
+ }catch(error){writeFileSync(join(options.receiptDirectory,'qualification.json'),JSON.stringify({version:1,scope:SCOPE,scopeContents:options.lane?[options.lane]:Object.keys(lanes),scopeCompatibilityIdentifier:true,...(options.lane?{selectedLane:{name:options.lane,status:'failed'}}:{}),deliveredSlice:options.lane?'incomplete':'failed',overallMilestone:'incomplete',fullParity:'incomplete',releaseEligible:false,provenance:source.provenance,children,error:'Protected lane or qualification contract failed',pending:manifest.pending},null,2),{mode:0o600,flag:'wx'});throw error;}
  finally{for(const lane of manifest.lanes){const marker=join(options.receiptDirectory,lane.name,'.protected-owned.json');if(existsSync(marker))unlinkSync(marker);}}
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))main().catch(error=>{process.stderr.write(`Scoped qualification failed: ${error.message}\n`);process.exitCode=1;});
