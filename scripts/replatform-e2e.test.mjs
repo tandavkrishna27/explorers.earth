@@ -341,8 +341,14 @@ test('Places additive: the original eight stay at positions 0-7 and every later 
  // The original record is recovered positionally, not merely by size or set membership.
  assert.equal(createHash('sha256').update(JSON.stringify(lane.identities.slice(0,8))).digest('hex'),
   '02f972f77de8e2d236989077c1cbca4e723cfb7f977871f4116bef39a890eda7');
+ // The HEAD side must be stripped too. Before the additive registration was committed,
+ // HEAD's places lane WAS the original 8 and a bare comparison held. Now that HEAD
+ // carries all 16, comparing a prefix of 8 against 16 can never pass - the check had
+ // become self-defeating rather than a freeze. Stripping both sides restores the
+ // intended assertion: the original record at HEAD is positionally identical to the
+ // original record here. The pinned digest above remains the primary freeze.
  assert.deepEqual(lane.identities.slice(0,8),
-  JSON.parse(execFileSync('git',['show','HEAD:explorers-earth/e2e/replatform/suite-manifest.json'],{encoding:'utf8',windowsHide:true}))
+  withoutAdditiveIdentities(JSON.parse(execFileSync('git',['show','HEAD:explorers-earth/e2e/replatform/suite-manifest.json'],{encoding:'utf8',windowsHide:true})))
    .lanes.find(lane=>lane.name==='places').identities);
  assert.equal(lane.identities.length,16);
  assert.deepEqual(lane.identities.slice(8),entry.identities);
