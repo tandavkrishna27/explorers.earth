@@ -174,7 +174,14 @@ export async function startPlacesControl(options:{pool:Pool;composed:ReturnType<
         if(kind==='product')await insertProductDetails(db,entityId,{productUrl:'https://example.invalid/owned-product',brand:null,logoUrl:null,description:null,specifications:{},imageUrls:[]});
         if(kind==='place')await insertPlaceDetails(db,entityId,{...emptyPlaceDetails(),latitude:0,longitude:0,formattedAddress:'Owned Test Country'});
         await db.query("INSERT INTO recommendations(id,account_id,category,entity_id,publication_state) VALUES($1,$2,$3,$4,'published')",[id,list.accountId,list.category,entityId]);
-        if(kind==='place')await writePlaceContext(db,id,list.accountId,{...emptyPlaceContext(),contactName:'Owned private contact',contactNumber:'+15550001111'});
+        // The owner pin editor and the public card both label a place by its contact name
+        // when one exists, falling back to the place title. The original four cases seed one
+        // shared private contact on purpose, because they assert that contact never leaks.
+        // The additive pin cases address members BY TITLE, so a single shared contact name
+        // would make all 70 members indistinguishable in the UI; they seed no contact at
+        // all. No case loses a contact it asserts on, and no assertion is relaxed.
+        if(kind==='place')await writePlaceContext(db,id,list.accountId,plan.pinned?emptyPlaceContext()
+          :{...emptyPlaceContext(),contactName:'Owned private contact',contactNumber:'+15550001111'});
         await db.query('INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order) VALUES($1,$2,$3,$4,$5)',[list.id,id,list.accountId,list.category,order]);
         result.recommendations.push({id,accountId:list.accountId,collectionId:list.id,entityId,title,displayOrder:order,revision:1});
       }

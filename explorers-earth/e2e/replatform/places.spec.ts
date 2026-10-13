@@ -142,11 +142,28 @@ test.beforeEach(async ({},info)=>{manifest=await control('reset',info) as Places
 
 function recordPublicPages(page:Page,pathname:string,detail:boolean) {
   type RecordedPage={offset:number;limit:number;ids:string[];requestCursor?:string|null;terminal?:boolean;nextCursor?:string|null};
-  const pending:Promise<RecordedPage|null>[]=[];
+  // The public shell runs MORE THAN ONE traversal of this very path at once. Besides the
+  // rendered list page being audited here, the public navigation completes a preview of
+  // every published list, and it reads the same child path with the PREVIEW page size.
+  // Those preview reads are a different traversal with its own contract; they are not
+  // pages of the page under audit, and they share its document, its URL path and its
+  // response shape, so neither the document nor the payload can separate them.
+  //
+  // Admission is therefore by the requested page size of the traversal being audited -
+  // 24 for a rendered list page, the 12 of the preview/category size otherwise - taken
+  // from the request itself, with an absent limit meaning the server default of 12. That
+  // is the only thing filtered. Every read of the audited traversal is still recorded and
+  // validated in full: a duplicated limit parameter is still a failure, and the page
+  // census below still demands the exact pages, offsets, limits, terminality, continuation
+  // chain and complete id sequence, so a missing, extra or wrong page still fails.
+  const size=detail?24:12;
+  const foreign=Symbol('read from another traversal');
+  const pending:Promise<RecordedPage|null|typeof foreign>[]=[];
   const handler=(response:BrowserResponse)=>{
     const url=new URL(response.url());
     if(url.pathname!==`${base}${pathname}` || response.request().method()!=='GET' || response.status()!==200)return;
     const query=new URL(response.request().url()).searchParams;
+    if(query.getAll('limit').length<=1 && (query.get('limit')??'12')!==String(size))return;
     pending.push(response.json().then(dto=>{
       const cursors=query.getAll('cursor'),limits=query.getAll('limit');
       const cursor=cursors[0]??'o0',rawLimit=limits[0]??'12';
@@ -170,7 +187,7 @@ function recordPublicPages(page:Page,pathname:string,detail:boolean) {
   page.on('response',handler);
   return async()=>{
     page.off('response',handler);
-    const results=await Promise.all(pending);
+    const results=(await Promise.all(pending)).filter((row):row is RecordedPage|null=>row!==foreign);
     return {parseFailures:results.filter(row=>row===null).length,
       pages:results.filter((row):row is RecordedPage=>row!==null).sort((a,b)=>a.offset-b.offset)};
   };
@@ -462,7 +479,11 @@ type PinsTransport={policyId:string;policyVersion:number;replacementBytes:number
 
 /** The only admissible source of staging bounds. Unavailable is terminal, never a default. */
 async function advertisedPinsTransport(listId:string,persona=manifest.personas.ownerA) {
-  const dto=await json(`/collections/${listId}/place-pins/availability`,persona);
+  const envelope=await json(`/collections/${listId}/place-pins/availability`,persona);
+  // Canonical single-key response envelope, identical to the client transport contract.
+  expect(envelope!==null && typeof envelope==='object' && Object.keys(envelope).length===1
+    && Object.keys(envelope)[0]==='placePinsAvailability').toBe(true);
+  const dto=envelope.placePinsAvailability as Dto;
   expect(dto.available===true && dto.state==='configured').toBe(true);
   const transport=dto.clientTransport as PinsTransport;
   for(const key of ['replacementBytes','replacementIds','transportChunkBytes','transportChunkIds',
