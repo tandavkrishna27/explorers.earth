@@ -65,6 +65,15 @@ it('reads only the native getter in an owned formatter window and restores the e
   const unknown=Error('synthetic');Object.defineProperty(unknown,'name',{get(){calls++;throw Error('name must never run')}});expect(module.captureGuidesNativeFailure(unknown)).toMatchObject({line:null,column:null});expect(Object.getOwnPropertyDescriptor(Error,'prepareStackTrace')).toEqual(descriptor);expect(calls).toBe(0);
  }finally{if(prior)Object.defineProperty(Error,'prepareStackTrace',prior);else Reflect.deleteProperty(Error,'prepareStackTrace');}
 });
+it('localizes native action property frames to verified call starts without inferring failure kind',async()=>{
+ const module=await load(),file=fileURLToPath(new URL('../../../../explorers-earth/e2e/replatform/guides.spec.ts',import.meta.url)),ast=ts.createSourceFile(file,readFileSync(file,'utf8'),ts.ScriptTarget.Latest,true);let target:ts.CallExpression|undefined;
+ const visit=(node:ts.Node)=>{if(!target&&ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&node.expression.name.text==='click')target=node;ts.forEachChild(node,visit)};visit(ast);
+ const call=target!,raw=ast.getLineAndCharacterOfPosition((call.expression as ts.PropertyAccessExpression).name.getStart(ast)),start=ast.getLineAndCharacterOfPosition(call.getStart(ast)),error=Error('PRIVATE_ACTION');
+ const at=(location:string)=>Object.defineProperty(error,'stack',{configurable:true,value:`Error: PRIVATE_ACTION\n    at nativeAction (${location})`});
+ at(`${file}:${raw.line+1}:${raw.character+1}`);expect(module.captureGuidesNativeFailure(error)).toEqual({kind:'unknown',matcher:'unknown',line:start.line+1,column:start.character+1,stage:'unknown'});
+ for(const location of [`${file}:${raw.line+1}:${raw.character+2}`,`${file}-foreign:${raw.line+1}:${raw.character+1}`]){at(location);expect(module.captureGuidesNativeFailure(error)).toMatchObject({line:null,column:null});}
+ let reads=0;const unsafe=Error('PRIVATE_ACTION');Object.defineProperty(unsafe,'stack',{get(){reads++;throw Error('unsafe')}});expect(module.captureGuidesNativeFailure(unsafe)).toMatchObject({line:null,column:null});expect(module.captureGuidesNativeFailure(new Proxy(error,{get(){reads++;throw Error('unsafe')}}))).toMatchObject({line:null,column:null});expect(reads).toBe(0);
+});
 it('normalizes actual offline Playwright matcher-name points to exact source call starts',async()=>{
  const module=await load(),file=fileURLToPath(new URL('../../../../explorers-earth/e2e/replatform/guides.spec.ts',import.meta.url)),source=readFileSync(file,'utf8'),ast=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true);let target:ts.CallExpression|undefined;
  const visit=(node:ts.Node)=>{if(!target&&ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&node.expression.name.text==='toBeVisible')target=node;ts.forEachChild(node,visit)};visit(ast);expect(target).toBeDefined();const call=target!,property=(call.expression as ts.PropertyAccessExpression).name,raw=ast.getLineAndCharacterOfPosition(property.getStart(ast)),start=ast.getLineAndCharacterOfPosition(call.getStart(ast)),point={line:start.line+1,column:start.character+1};

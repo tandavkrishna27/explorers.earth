@@ -12,6 +12,7 @@ const specFile=()=>specURL.protocol==='file:'?fileURLToPath(specURL):undefined;
 const nativeStackGetter=Object.getOwnPropertyDescriptor(new Error(),'stack')?.get;
 let census:readonly Readonly<{line:number;column:number}>[]|undefined;
 const matcherPoints=new Map<string,Readonly<{matcher:string;line:number;column:number}>>();
+const actionPoints=new Map<string,Readonly<{line:number;column:number}>>();
 const callerStages=new Map<string,GuidesNativeMetadata['stage']>();
 export function guidesNativeCallsites(){
  if(census)return census;const file=specFile();if(!file)throw Error('Guides diagnostic source refused');const stat=lstatSync(file);if(!stat.isFile()||stat.isSymbolicLink()||stat.size>262144||realpathSync(file)!==file)throw Error('Guides diagnostic source refused');
@@ -20,6 +21,7 @@ export function guidesNativeCallsites(){
   // Playwright captures the invoked property name, while metadata emits only
   // canonical call starts. Admit an exact AST point and exact matcher together.
   if(ts.isPropertyAccessExpression(node.expression)&&GUIDES_NATIVE_MATCHERS.includes(node.expression.name.text as any)&&node.expression.name.text!=='unknown'){const name=ast.getLineAndCharacterOfPosition(node.expression.name.getStart(ast));matcherPoints.set(`${name.line+1}:${name.character+1}`,Object.freeze({matcher:node.expression.name.text,...point}));}
+  else if(ts.isPropertyAccessExpression(node.expression)){const name=ast.getLineAndCharacterOfPosition(node.expression.name.getStart(ast));actionPoints.set(`${name.line+1}:${name.character+1}`,point);}
  }ts.forEachChild(node,visit);};visit(ast);
  const selected=ast.statements.find(node=>ts.isExpressionStatement(node)&&ts.isCallExpression(node.expression)&&node.expression.expression.getText(ast)==='test'&&node.expression.arguments[0]?.getText(ast)==='GUIDES_CASES[3]');
  if(selected){const calls:ts.CallExpression[]=[];const collect=(node:ts.Node)=>{if(ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&node.expression.text==='sectionOrder')calls.push(node);ts.forEachChild(node,collect)};collect(selected);if(calls.length===3)calls.forEach((node,index)=>{const p=ast.getLineAndCharacterOfPosition(node.getStart(ast));callerStages.set(`${p.line+1}:${p.character+1}`,GUIDES_NATIVE_STAGES[index+1]);});}
@@ -65,7 +67,7 @@ export function captureGuidesNativeFailure(error:unknown):GuidesNativeMetadata{
    if(location.startsWith('async '))location=location.slice(6);
    const file=specFile(),m=/^(.*):(\d{1,6}):(\d{1,6})$/.exec(location);if(!file||!m||![file.replaceAll('\\','/'),specURL.href].includes(m[1].replaceAll('\\','/')))continue;
    const line=Number(m[2]),column=Number(m[3]);guidesNativeCallsites();
-   if(!selectedPoint){if(guidesNativeCallsites().some(p=>p.line===line&&p.column===column))selectedPoint={line,column};else{const normalized=matcherPoints.get(`${line}:${column}`);if(kind==='assertion'&&normalized?.matcher===matcher)selectedPoint=normalized;}}
+   if(!selectedPoint){if(guidesNativeCallsites().some(p=>p.line===line&&p.column===column))selectedPoint={line,column};else{const normalized=matcherPoints.get(`${line}:${column}`);if(kind==='assertion'&&normalized?.matcher===matcher)selectedPoint=normalized;else selectedPoint=actionPoints.get(`${line}:${column}`);}}
    const caller=callerStages.get(`${line}:${column}`);if(caller&&kind==='assertion'&&matcher==='toBeVisible')stages.add(caller);
   }
   return Object.freeze({kind,matcher,line:selectedPoint?.line??null,column:selectedPoint?.column??null,stage:selectedPoint&&stages.size===1?[...stages][0]:'unknown'});
