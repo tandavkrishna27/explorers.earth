@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {useGuideEditing} from '../context/GuideEditingProvider';
+import {guideDescriptionText} from '../../../utils/guideDescriptionText';
 import { toast } from "sonner";
 import { Reorder } from "framer-motion";
 import TiptapEditor from "../../Favorites/components/TiptapEditor";
@@ -1108,9 +1109,9 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
       // Description is rich blocks in the form and plain text on the section, so it is
       // flattened rather than stored twice in two shapes.
       const descriptionText = Array.isArray(descriptionBlocks)
-        ? descriptionBlocks
+        ? guideDescriptionText(descriptionBlocks
             .map((block: any) => (block.children ?? []).map((child: any) => child.text ?? "").join(""))
-            .join(String.fromCharCode(10))
+            .join(String.fromCharCode(10)))
             .trim() || null
         : null;
 
