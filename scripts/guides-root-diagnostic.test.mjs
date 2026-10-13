@@ -140,3 +140,15 @@ test('Guides producer stage is closed optional metadata for the actual second na
  for(const changed of [{action:'observe'},{caseIndex:0},{caseIndex:2}])assert.equal(contract.decodeGuidesNativeFailureLine(marker({...native,...changed,producerStage:'section-edit'}),lane),undefined);
  assert.equal(contract.decodeGuidesNativeFailureLine(marker({...native,producerStage:'section-edit'}).replace('"producerStage":"section-edit"','"producerStage":"section-edit","producerStage":"section-edit"'),lane),undefined);
 });
+
+test('Guide section operation and acknowledgement census are closed immutable failure evidence',()=>{
+ const lane=manifest().lanes.find(l=>l.name==='guides'),native={version:1,epoch:2,caseIndex:1,project:'guides-desktop',repeat:0,action:'fail',kind:'unknown',matcher:'unknown',line:null,column:null,stage:'unknown',clientBoundary:'producer',producerStage:'section-edit'};
+ const marker=v=>'Guides native case failed [guides-native-failure-v1:'+JSON.stringify(v)+']',empty={seen:0,matched:false,lastStatus:null,fields:null},fields={fieldSet:true,revision:true,title:false,description:true,blocks:null};
+ for(const sectionOperation of ['section-order','open-editor','fill-title','fill-description','submit-update','await-ack','verify-persisted'])for(const sectionAck of [empty,{seen:1,matched:false,lastStatus:200,fields},{seen:16,matched:false,lastStatus:null,fields:null},{seen:2,matched:true,lastStatus:200,fields:null}]){
+  const value={...native,sectionOperation,sectionAck},decoded=contract.decodeGuidesNativeFailureLine(marker(value),lane);assert.deepEqual(decoded,value);assert(Object.isFrozen(decoded.sectionAck));if(decoded.sectionAck.fields)assert(Object.isFrozen(decoded.sectionAck.fields));
+  const fixture={version:1,role:'fixture',epoch:0,phase:'execution',code:'unsettled',boundary:'harness-command'},record={lane:'guides',status:1,signal:null,error:null,guidesFixtureFailure:fixture},child={status:1,signal:null,error:null,stderr:line(fixture)+'\n'+marker(value)+'\n'};assert.equal(contract.retainGuidesNativeFailure(record,child,lane),marker(value));assert.deepEqual(record.guidesNativeFailure,value);
+ }
+ for(const sectionAck of [null,{}, {...empty,seen:-1},{...empty,seen:17},{...empty,seen:0.5},{...empty,matched:true},{...empty,lastStatus:200},{...empty,fields},{seen:1,matched:true,lastStatus:200,fields},{seen:1,matched:false,lastStatus:600,fields:null},{seen:1,matched:false,lastStatus:200,fields:{...fields,title:'private-cookie'}},{seen:1,matched:false,lastStatus:200,fields:{...fields,raw:'private-cookie'}}])assert.equal(contract.decodeGuidesNativeFailureLine(marker({...native,sectionAck}),lane),undefined);
+ for(const changed of [{caseIndex:0},{action:'observe'},{producerStage:'initial-load'},{sectionOperation:'private-cookie'}])assert.equal(contract.decodeGuidesNativeFailureLine(marker({...native,sectionOperation:'await-ack',sectionAck:empty,...changed}),lane),undefined);
+ const valid={...native,sectionOperation:'await-ack',sectionAck:empty};assert.equal(contract.decodeGuidesNativeFailureLine(marker(valid).replace('"seen":0','"seen":0,"seen":0'),lane),undefined);
+});

@@ -172,10 +172,10 @@ function assertEditorAggregate(expected:GuideAggregateDto,actual:GuideAggregateD
 function assertOriginalGuideCommandKey(response:Response,seen:Set<string>){
  const key=response.request().headers()['idempotency-key'];expect(key).toMatch(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i);expect(seen.has(key)).toBe(false);seen.add(key);
 }
-function sectionAcknowledgement(page:Page,guideId:string,sectionId:string,command:SectionCommand){
+function sectionAcknowledgement(page:Page,guideId:string,sectionId:string,command:SectionCommand,observe?:(response:Response,command:SectionCommand,matched:boolean)=>void){
  const work=page.waitForResponse(response=>{
   const url=new URL(response.url());if(url.origin!==origin||url.pathname!==`${base}/collections/${guideId}/guide/sections/${sectionId}`||response.request().method()!=='PATCH')return false;
-  try{expect(response.request().postDataJSON()).toEqual(command);return true;}catch{return false;}
+  try{expect(response.request().postDataJSON()).toEqual(command);try{observe?.(response,command,true);}catch{}return true;}catch{try{observe?.(response,command,false);}catch{}return false;}
  });void work.catch(()=>undefined);return work;
 }
 function detailsAcknowledgement(page:Page,guideId:string,command:{revision:number;details:GuideAggregateDto['details']}){
@@ -208,16 +208,18 @@ test(GUIDES_CASES[1],async({browser},info)=>{
    // The expected complete snapshot describes the permitted delta. The command
    // itself is always submitted by the retained editor using the original UI.
    const finishNative=async(response:Response,expected:GuideAggregateDto,target?:string)=>{
+    try{harness.clearSectionOperation('await-ack');}catch{}try{harness.markSectionOperation('verify-persisted');}catch{}
     assertOriginalGuideCommandKey(response,keys);const actual=guideAggregateDtoSchema.parse((await browserBody(response)).guide);assertEditorAggregate(expected,actual,target);const after:Observation=await harness.observe();assertEditorPersistedScope(observed,after,actual,target);observed=after;current=actual;
-    await expect(page.getByRole('heading',{level:1,name:guide.title,exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'+ Add Day/Stop',exact:true})).toBeVisible();await reloadGuides(page);await expect(page.getByRole('heading',{level:1,name:guide.title,exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'+ Add Day/Stop',exact:true})).toBeVisible();expect(await aggregate(owner!.request,guide.id)).toEqual(actual);expect(await harness.observe()).toEqual(after);
+    await expect(page.getByRole('heading',{level:1,name:guide.title,exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'+ Add Day/Stop',exact:true})).toBeVisible();await reloadGuides(page);await expect(page.getByRole('heading',{level:1,name:guide.title,exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'+ Add Day/Stop',exact:true})).toBeVisible();expect(await aggregate(owner!.request,guide.id)).toEqual(actual);expect(await harness.observe()).toEqual(after);try{harness.clearSectionOperation('verify-persisted');}catch{}
    };
    try{harness.clearProducerStage('initial-load');}catch{}
    try{harness.markProducerStage('section-edit');}catch{}
+   try{harness.markSectionOperation('section-order');}catch{}
    // Full day/stop editor: title and rich editor description change while every
    // canonical block, precise money value, zero coordinate and identity persists.
-   await sectionOrder(page,guide.title,current.sections.map(s=>s.title));
-   const title='दिन café — संपादित',description='सुबह की सैर — café और भोजन',row=page.getByRole('heading',{level:3,name:current.sections[0].title,exact:true}).locator('../../..');await expect(row).toHaveCount(1);await row.getByRole('button').first().click();await row.getByRole('button',{name:'Edit',exact:true}).click();await expect(page.getByRole('heading',{level:1,name:'Edit Day/Stop',exact:true})).toBeVisible();await page.getByPlaceholder('e.g., Day 1: Arrival & City Exploration',{exact:true}).fill(title);await page.locator('.ql-editor[contenteditable="true"]').fill(description);
-   let expected=structuredClone(current);expected.sections[0].title=title;expected.sections[0].description=description;let ack=sectionAcknowledgement(page,guide.id,sectionId,{revision:current.revision,title,description,blocks:expected.sections[0].blocks});await page.getByRole('button',{name:'Update',exact:true}).click();await finishNative(await ack,expected,sectionId);
+   await sectionOrder(page,guide.title,current.sections.map(s=>s.title));try{harness.clearSectionOperation('section-order');}catch{}try{harness.markSectionOperation('open-editor');}catch{}
+   const title='दिन café — संपादित',description='सुबह की सैर — café और भोजन',row=page.getByRole('heading',{level:3,name:current.sections[0].title,exact:true}).locator('../../..');await expect(row).toHaveCount(1);await row.getByRole('button').first().click();await row.getByRole('button',{name:'Edit',exact:true}).click();await expect(page.getByRole('heading',{level:1,name:'Edit Day/Stop',exact:true})).toBeVisible();try{harness.clearSectionOperation('open-editor');}catch{}try{harness.markSectionOperation('fill-title');}catch{}await page.getByPlaceholder('e.g., Day 1: Arrival & City Exploration',{exact:true}).fill(title);try{harness.clearSectionOperation('fill-title');}catch{}try{harness.markSectionOperation('fill-description');}catch{}await page.locator('.ql-editor[contenteditable="true"]').fill(description);try{harness.clearSectionOperation('fill-description');}catch{}
+   let expected=structuredClone(current);expected.sections[0].title=title;expected.sections[0].description=description;let ack=sectionAcknowledgement(page,guide.id,sectionId,{revision:current.revision,title,description,blocks:expected.sections[0].blocks},harness.observeSectionAck);try{harness.markSectionOperation('submit-update');}catch{}await page.getByRole('button',{name:'Update',exact:true}).click();try{harness.clearSectionOperation('submit-update');}catch{}try{harness.markSectionOperation('await-ack');}catch{}await finishNative(await ack,expected,sectionId);
    try{harness.clearProducerStage('section-edit');}catch{}
    try{harness.markProducerStage('transport-edit');}catch{}
    // Existing Activities, packing tasks, map and tags are complete independent
