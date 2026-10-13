@@ -127,3 +127,16 @@ test('Guides client failure boundary is finite optional metadata bound to authen
  assert.equal(contract.retainGuidesNativeFailure({lane:'guides',status:1,signal:null,error:null,guidesFixtureFailure:fixture},{...child,status:0},lane),undefined);
  assert.equal(contract.decodeGuidesNativeFailureLine(marker(value).replace('"clientBoundary":"observe-rows"','"clientBoundary":"observe-rows","clientBoundary":"observe-rows"'),lane),undefined);
 });
+
+test('Guides producer stage is closed optional metadata for the actual second native case',()=>{
+ const lane=manifest().lanes.find(l=>l.name==='guides'),native={version:1,epoch:2,caseIndex:1,project:'guides-desktop',repeat:0,action:'fail',kind:'unknown',matcher:'unknown',line:null,column:null,stage:'unknown',clientBoundary:'producer'};
+ const marker=v=>'Guides native case failed [guides-native-failure-v1:'+JSON.stringify(v)+']';
+ for(const producerStage of ['initial-load','section-edit','transport-edit','stay-edit','budget-edit','tip-edit','general-tips-edit','journey-prepare','journey-edit']){
+  const value={...native,producerStage};assert.deepEqual(contract.decodeGuidesNativeFailureLine(marker(value),lane),value);
+  const fixture={version:1,role:'fixture',epoch:0,phase:'execution',code:'unsettled',boundary:'harness-command'},record={lane:'guides',status:1,signal:null,error:null,guidesFixtureFailure:fixture},child={status:1,signal:null,error:null,stderr:line(fixture)+'\n'+marker(value)+'\n'};
+  assert.equal(contract.retainGuidesNativeFailure(record,child,lane),marker(value));assert.deepEqual(record.guidesNativeFailure,value);
+ }
+ for(const producerStage of [null,{},'unknown','private-cookie'])assert.equal(contract.decodeGuidesNativeFailureLine(marker({...native,producerStage}),lane),undefined);
+ for(const changed of [{action:'observe'},{caseIndex:0},{caseIndex:2}])assert.equal(contract.decodeGuidesNativeFailureLine(marker({...native,...changed,producerStage:'section-edit'}),lane),undefined);
+ assert.equal(contract.decodeGuidesNativeFailureLine(marker({...native,producerStage:'section-edit'}).replace('"producerStage":"section-edit"','"producerStage":"section-edit","producerStage":"section-edit"'),lane),undefined);
+});

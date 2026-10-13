@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import path from 'node:path';
 import { request } from 'node:http';
 import { TextDecoder } from 'node:util';
-import {captureGuidesNativeFailure,type GuidesNativeMetadata} from '../../../tunes/scripts/guides-native-diagnostic';
+import {captureGuidesNativeFailure,GUIDES_PRODUCER_STAGES,type GuidesNativeMetadata} from '../../../tunes/scripts/guides-native-diagnostic';
 import {validateGuidesPageCapsule,validateGuidesPageSeal,type GuidesPageSeal,type GuidesPageCapsule} from './guides-page-diagnostic';
 import type { Browser, BrowserContext, Request as BrowserRequest } from '@playwright/test';
 import { GUIDES_CASES, GUIDES_PROJECTS, buildGuidesSeedPlan, guidesManifestSchema, guidesProviderObservationSchema, guidesObservationRowSchemas, type GuidesManifest } from '../../../tunes/scripts/guides-browser-support';
@@ -322,7 +322,8 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
     const d = dependencies;
     let deadline = d.clock.now() + 21600000, failed = false, busy = false, lastEpoch = 0, total = 0;
     let firstFailure:GuidesNativeMetadata|undefined;
-    const captureClientFailure=(error:unknown,clientBoundary?:GuidesNativeMetadata['clientBoundary'])=>{firstFailure??=captureGuidesNativeFailure(error);if(clientBoundary&&!firstFailure.clientBoundary)firstFailure=Object.freeze({...firstFailure,clientBoundary});};
+    let pendingProducerStage:GuidesNativeMetadata['producerStage'];
+    const captureClientFailure=(error:unknown,clientBoundary?:GuidesNativeMetadata['clientBoundary'])=>{firstFailure??=Object.freeze({...captureGuidesNativeFailure(error),...(pendingProducerStage?{producerStage:pendingProducerStage}:{})});if(clientBoundary&&!firstFailure.clientBoundary)firstFailure=Object.freeze({...firstFailure,clientBoundary});};
     let firstPageFailure:GuidesPageCapsule|undefined;let firstPageSeal:GuidesPageSeal|undefined;
     let active: {
         identity: Identity;
@@ -617,7 +618,7 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             failed = true;
         }
     }
-    return Object.freeze({ start, observe, createContext, closeContext, retire, fail, remainingMs,capturedFailure:()=>firstFailure,capturePageSeal(outcome:GuidesPageSeal['outcome']){if(firstPageSeal||firstFailure?.stage!=='initial-detail'||active?.identity.caseId!==GUIDES_CASES[3])return;firstPageSeal=validateGuidesPageSeal({version:1,epoch:active.epoch,caseIndex:3,project:active.identity.project,repeat:0,stage:'initial-detail',outcome});},capturePageFailure(value:unknown){if(firstPageFailure||firstFailure?.stage!=='initial-detail'||active?.identity.caseId!==GUIDES_CASES[3])return;const capsule=validateGuidesPageCapsule(value);if(capsule.epoch!==active.epoch||capsule.project!==active.identity.project)return;firstPageFailure=capsule;},captureFailure(error:unknown){firstFailure??=captureGuidesNativeFailure(error);}, trackProducer<T>(operation: () => Promise<T>) {
+    return Object.freeze({ markProducerStage(stage:NonNullable<GuidesNativeMetadata['producerStage']>){check();if(active?.identity.caseId!==GUIDES_CASES[1]||pendingProducerStage||!GUIDES_PRODUCER_STAGES.includes(stage))denied();pendingProducerStage=stage;},clearProducerStage(stage:NonNullable<GuidesNativeMetadata['producerStage']>){check();if(pendingProducerStage!==stage)denied();pendingProducerStage=undefined;},start, observe, createContext, closeContext, retire, fail, remainingMs,capturedFailure:()=>firstFailure,capturePageSeal(outcome:GuidesPageSeal['outcome']){if(firstPageSeal||firstFailure?.stage!=='initial-detail'||active?.identity.caseId!==GUIDES_CASES[3])return;firstPageSeal=validateGuidesPageSeal({version:1,epoch:active.epoch,caseIndex:3,project:active.identity.project,repeat:0,stage:'initial-detail',outcome});},capturePageFailure(value:unknown){if(firstPageFailure||firstFailure?.stage!=='initial-detail'||active?.identity.caseId!==GUIDES_CASES[3])return;const capsule=validateGuidesPageCapsule(value);if(capsule.epoch!==active.epoch||capsule.project!==active.identity.project)return;firstPageFailure=capsule;},captureFailure(error:unknown){firstFailure??=captureGuidesNativeFailure(error);}, trackProducer<T>(operation: () => Promise<T>) {
             check();
             if (busy || !active || typeof operation !== 'function')
                 denied();
