@@ -2,6 +2,7 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {GuidesClient} from '../guidesClient';
 import {readGuidesOwnerContent} from '../explorersAdapter';
 import useAuthStore from '../../../../store/store';
+import {guideAggregateDtoSchema} from '../../../../../../tunes/shared/explorersGuideContract';
 
 vi.mock('../guidesClient', () => ({
  GuidesClient: {readCompleteOwner: vi.fn(), observeCollection: vi.fn(), observeWholeGuide: vi.fn()},
@@ -41,6 +42,15 @@ describe('Guides owner read orchestration', () => {
   expect(result.aggregates.size).toBe(1);
   expect(result.lists.size).toBe(1);
  });
+ it('hydrates active Guides while retaining archived sibling parents in the complete owner observation',async()=>{
+  const activeId='10000000-0000-4000-8000-000000000001',archivedId='10000000-0000-4000-8000-000000000002',aggregate=guideAggregateDtoSchema.parse({collectionId:activeId,revision:1,details:{guideType:null,multiCity:false,numberOfDays:null,estimatedBudget:null,budgetCurrency:null,budgetType:null,bestTimeToVisit:[],categories:[],tags:[],tipsNotes:null,place:{},locationEntityId:null},coverMediaId:null,sections:[],sectionCount:0,nextCursor:null});
+  const complete={...observed(2),collections:[{id:activeId,revision:1,archived:false},{id:archivedId,revision:1,archived:true}]};
+  vi.mocked(GuidesClient.readCompleteOwner).mockResolvedValue(complete as never);
+  vi.mocked(GuidesClient.observeCollection).mockImplementation(async id=>{if(id===archivedId)throw Object.assign(Error('Resource unavailable'),{status:404});return freshList();});
+  vi.mocked(GuidesClient.observeWholeGuide).mockResolvedValue({revision:1,aggregate} as never);
+  const result=await readGuidesOwnerContent();expect(result.guides).toHaveLength(1);expect([...result.lists.keys()]).toEqual([activeId]);expect([...result.aggregates.keys()]).toEqual([activeId]);expect(result.aggregates.get(activeId)?.aggregate).toEqual(aggregate);expect(result.observation.collections).toEqual(complete.collections);expect(GuidesClient.observeCollection).toHaveBeenCalledTimes(1);expect(GuidesClient.observeWholeGuide).toHaveBeenCalledTimes(1);expect(GuidesClient.observeCollection).toHaveBeenCalledWith(activeId,expect.any(AbortSignal));expect(GuidesClient.observeWholeGuide).toHaveBeenCalledWith(activeId,expect.any(AbortSignal));
+ });
+ it('returns an empty active view when the consistency bracket contains only archived parents',async()=>{const complete={...observed(1),collections:[{id:'archived-sibling',revision:1,archived:true}]};vi.mocked(GuidesClient.readCompleteOwner).mockResolvedValue(complete as never);const result=await readGuidesOwnerContent();expect(result.guides).toEqual([]);expect(result.lists.size).toBe(0);expect(result.aggregates.size).toBe(0);expect(result.observation.collections).toEqual(complete.collections);expect(GuidesClient.observeCollection).not.toHaveBeenCalled();expect(GuidesClient.observeWholeGuide).not.toHaveBeenCalled();});
 
  it('never returns a view built on a category observation that changed under it', async () => {
   const first = observed(1);

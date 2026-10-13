@@ -63,6 +63,9 @@ export async function readGuidesOwnerContent(signal?: AbortSignal): Promise<Guid
 
   const lists = new Map<string, CollectionObservation>();
   const aggregates = new Map<string, GuideObservation>();
+  // The complete owner bracket retains archived parents for membership checks.
+  // Guides requests active content and hydrates through active-only detail reads.
+  const activeCollections = first.collections.filter(row => !row.archived);
   let index = 0;
   let bytes = 0;
   const budget = (value: unknown) => {
@@ -70,12 +73,12 @@ export async function readGuidesOwnerContent(signal?: AbortSignal): Promise<Guid
    if (bytes > READ_BUDGET) throw new ExplorersApiError(503, 'READ_LIMIT', 'Guides read limit exceeded');
   };
 
-  await Promise.all(Array.from({length: Math.min(READER_COUNT, first.collections.length)}, async () => {
+  await Promise.all(Array.from({length: Math.min(READER_COUNT, activeCollections.length)}, async () => {
    try {
-    while (index < first.collections.length) {
+    while (index < activeCollections.length) {
      checkTerminal();
      assertCurrent();
-     const row = first.collections[index++];
+     const row = activeCollections[index++];
      const list = await GuidesClient.observeCollection(row.id, controller.signal);
      checkTerminal();
      assertCurrent();
@@ -107,7 +110,7 @@ export async function readGuidesOwnerContent(signal?: AbortSignal): Promise<Guid
   if (first.revision !== final.revision || first.pinRevision !== final.pinRevision)
    throw new ExplorersApiError(409, 'CONFLICT', 'Guides changed while loading');
 
-  const guides = final.collections.map((row) => {
+  const guides = final.collections.filter(row => !row.archived).map((row) => {
    const list = lists.get(row.id);
    const aggregate = aggregates.get(row.id);
    // Every guide in the closing read must have been hydrated. A missing one means the two
