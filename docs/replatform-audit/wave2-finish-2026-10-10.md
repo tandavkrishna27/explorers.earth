@@ -13,6 +13,22 @@ Latest actual checkpoint at clean `aa3738f3`:
 
 Subsequent concrete source repairs and actual results:
 
+- Full frontend production build passed on `f78dcbeb`, including TypeScript and
+  the production Music transport contract. Root's full runner checks passed
+  512/513 with no skips; the sole stale shared-formatter hash was independently
+  reviewed and corrected, and all eight affected Place-links guards passed.
+- People at `f78dcbeb` executed all 12 attempts: zero passed, 12 failed, zero
+  skips. Source and cleanup passed. The next run uses the existing strict failed
+  receipt writer to retain finite assertion evidence after positive cleanup;
+  its 19 integrated checks and independent review passed.
+- Apps at `f78dcbeb` passed startup and discovered four identities, then failed
+  execution. The retained first desktop matcher identifies a disabled enrichment
+  selector; no rendered-state snapshot exists to determine its lock reason.
+  Playwright's error-context files were refused by artifact containment. The
+  original execution failure and failed browser/private-directory cleanup remain
+  retained. Its exact owned fixture process was stopped only after failed-receipt
+  and source/parent/entry/family identity proofs; acceptance remains open.
+
 - `cf099720` repairs the Guides form's rich-text entity-to-plain-text projection.
   Its real run passed the former description mismatch, then failed the transport
   edit's return-to-detail visibility assertion. The exact aggregate/update proof

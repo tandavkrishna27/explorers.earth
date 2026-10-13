@@ -76,7 +76,7 @@
   "protectedHashes": {
     "explorers-earth/e2e/replatform/place-links.playwright.config.ts": "57a18d7e1ad0fb4b6a517cb947b023e8fb4785996925dbbb635db64b9e2033e2",
     "explorers-earth/e2e/replatform/suite-manifest.json": "276bb0aca15f0db7c67081e34d407fec7b2d19e811981146140fdb3da6fa5348",
-    "tunes/scripts/profile-browser-fixture.ts": "c15c4371ce42fb55f6082aeb2c39f421d6041555bc6a049678537b9beb14ace7",
+    "tunes/scripts/profile-browser-fixture.ts": "c28e76224738e24b52aff105076e399e22e0595bd65f101b0c5e7191fb2fdc19",
     "tunes/scripts/protected-browser-receipt.ts": "970ed231edb8d0a0fe11730e8a805e1f24a57522a6707213b53e1ea92ca172da",
     "scripts/browser-playwright-receipt.mjs": "b6094a409a06969bb0290452203fa68c680ccaf3b7e0b0f500f306a748e60898"
   },
