@@ -3,7 +3,7 @@ import path from 'node:path';
 import { request } from 'node:http';
 import { TextDecoder } from 'node:util';
 import {captureGuidesNativeFailure,type GuidesNativeMetadata} from '../../../tunes/scripts/guides-native-diagnostic';
-import {validateGuidesPageCapsule,type GuidesPageCapsule} from './guides-page-diagnostic';
+import {validateGuidesPageCapsule,validateGuidesPageSeal,type GuidesPageSeal,type GuidesPageCapsule} from './guides-page-diagnostic';
 import type { Browser, BrowserContext, Request as BrowserRequest } from '@playwright/test';
 import { GUIDES_CASES, GUIDES_PROJECTS, buildGuidesSeedPlan, guidesManifestSchema, guidesProviderObservationSchema, guidesObservationRowSchemas, type GuidesManifest } from '../../../tunes/scripts/guides-browser-support';
 const owners = ['ownerA', 'ownerB', 'ownerC'] as const;
@@ -322,7 +322,7 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
     const d = dependencies;
     let deadline = d.clock.now() + 21600000, failed = false, busy = false, lastEpoch = 0, total = 0;
     let firstFailure:GuidesNativeMetadata|undefined;
-    let firstPageFailure:GuidesPageCapsule|undefined;
+    let firstPageFailure:GuidesPageCapsule|undefined;let firstPageSeal:GuidesPageSeal|undefined;
     let active: {
         identity: Identity;
         epoch: number;
@@ -376,7 +376,7 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
     };
     async function command(action: 'start' | 'observe' | 'retire' | 'fail', selected: Identity, epoch?: number) {
         const sentAt = d.clock.now();
-        const body = JSON.stringify({ v: 1, action, ...selected, ...(epoch === undefined ? {} : { epoch }), ...(action === 'retire' ? { nativeComplete: true, producersClosed: true } : {}),...(action==='fail'?{failure:firstFailure??null,...(firstPageFailure?{pageFailure:firstPageFailure}:{})}:{}) });
+        const body = JSON.stringify({ v: 1, action, ...selected, ...(epoch === undefined ? {} : { epoch }), ...(action === 'retire' ? { nativeComplete: true, producersClosed: true } : {}),...(action==='fail'?{failure:firstFailure??null,...(firstPageFailure?{pageFailure:firstPageFailure}:{}),...(firstPageSeal?{pageSeal:firstPageSeal}:{})}:{}) });
         if (Buffer.byteLength(body) > 4096)
             denied();
         const result = await bounded(() => d.post(descriptor.parent.url, { 'x-guides-parent-capability': descriptor.parent.capability }, body), action === 'start' ? 630000 : action === 'observe' ? 310000 : 30000);
@@ -603,7 +603,7 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             failed = true;
         }
     }
-    return Object.freeze({ start, observe, createContext, closeContext, retire, fail, remainingMs,capturedFailure:()=>firstFailure,capturePageFailure(value:unknown){if(firstPageFailure||firstFailure?.stage!=='initial-detail'||active?.identity.caseId!==GUIDES_CASES[3])return;const capsule=validateGuidesPageCapsule(value);if(capsule.epoch!==active.epoch||capsule.project!==active.identity.project)return;firstPageFailure=capsule;},captureFailure(error:unknown){firstFailure??=captureGuidesNativeFailure(error);}, trackProducer<T>(operation: () => Promise<T>) {
+    return Object.freeze({ start, observe, createContext, closeContext, retire, fail, remainingMs,capturedFailure:()=>firstFailure,capturePageSeal(outcome:GuidesPageSeal['outcome']){if(firstPageSeal||firstFailure?.stage!=='initial-detail'||active?.identity.caseId!==GUIDES_CASES[3])return;firstPageSeal=validateGuidesPageSeal({version:1,epoch:active.epoch,caseIndex:3,project:active.identity.project,repeat:0,stage:'initial-detail',outcome});},capturePageFailure(value:unknown){if(firstPageFailure||firstFailure?.stage!=='initial-detail'||active?.identity.caseId!==GUIDES_CASES[3])return;const capsule=validateGuidesPageCapsule(value);if(capsule.epoch!==active.epoch||capsule.project!==active.identity.project)return;firstPageFailure=capsule;},captureFailure(error:unknown){firstFailure??=captureGuidesNativeFailure(error);}, trackProducer<T>(operation: () => Promise<T>) {
             check();
             if (busy || !active || typeof operation !== 'function')
                 denied();

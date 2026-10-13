@@ -81,7 +81,7 @@ test(GUIDES_CASES[3],async({browser},info)=>{
    await consume(await guest!.request.get(`${base}/public/profiles/${manifest.personas.ownerA.handle}/collections/guides/${guide.slug}/recommendations`),async r=>{expect(r.status()).toBe(404);expect((await r.json()).error.code).toBe('NOT_FOUND');});
   });
   await settleGuidesBootstrap(page);await harness.closeContext(owner);owner=undefined;await harness.closeContext(guest);guest=undefined;await harness.retire();completed=true;
- }catch(error){harness.captureFailure(error);if(harness.capturedFailure()?.stage==='initial-detail'){try{const capsule=await pageDiagnostic?.sealFailure();if(capsule)harness.capturePageFailure(capsule);}catch{/* Passive refusal preserves the original failure. */}}throw error;}finally{
+ }catch(error){harness.captureFailure(error);if(harness.capturedFailure()?.stage==='initial-detail'){try{const capsule=await pageDiagnostic?.sealFailure();if(capsule)harness.capturePageFailure(capsule);}catch{/* Passive refusal preserves the original failure. */}finally{try{harness.capturePageSeal(pageDiagnostic?.sealOutcome()??'unattached');}catch{/* Passive outcome refusal preserves the original failure. */}}}throw error;}finally{
   pageDiagnostic?.detach();
   if(!completed){const closed=await Promise.allSettled([owner,guest].filter((c):c is BrowserContext=>!!c).map(c=>harness.closeContext(c)));await harness.fail();if(closed.some(r=>r.status==='rejected'))throw Error('Guides source case containment failed');}
  }
