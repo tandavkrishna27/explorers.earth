@@ -564,3 +564,70 @@ CREATE TRIGGER app_enrichment_recommendation_replacement_guard AFTER UPDATE OF e
  FOR EACH ROW WHEN ((OLD.category='apps' OR NEW.category='apps') AND NEW.entity_id IS DISTINCT FROM OLD.entity_id)
  EXECUTE FUNCTION app_enrichment_recommendation_replacement();
 REVOKE ALL ON FUNCTION app_enrichment_recommendation_replacement() FROM PUBLIC,music_runtime;
+
+-- ENTITY ORIGIN IMMUTABILITY (stage 2, SQL side; shared table, hence below the root banner).
+-- THE EXPOSURE THIS CLOSES, stated as the terminal-deletion abort it actually was.
+-- app_enrichment_binding_identity() re-checks `e.origin='manual'` on EVERY binding write, and
+-- the forward purge above clears the binding's current pointer with an UPDATE on
+-- app_enrichment_bindings, so that pointer-clear RE-FIRES the identity guard. entities.origin is
+-- declared at 0029:6 as a VALUE check (origin IN ('provider','manual')) with NO immutability
+-- guard, and 0029:136 grants music_runtime table-level UPDATE on entities with no column list,
+-- so the column was freely re-writable in both directions. An out-of-band flip of a bound Apps
+-- entity's origin to 'provider' therefore made the purge's pointer-clear raise 23514 and ABORT
+-- THE WHOLE TERMINAL ACCOUNT DELETION -- a data-subject-erasure stopper reachable by one column
+-- write on a SHARED table, with no Apps command and no Apps privilege involved. MEASURED, not
+-- reasoned: with this trigger disabled, the flip is accepted and
+-- purge_explorers_account_content() then refuses 23514.
+--
+-- WHY THE REMEDY IS HERE AND NOT IN THE IDENTITY GUARD. Narrowing the identity re-check (for
+-- example to fire only when app_entity_id changes) is REFUSED and stays refused: that re-check
+-- is the fence that stops a generation being bound after an entity has ceased to be manual, and
+-- the replacement path above depends on it seeing NEW.app_entity_id. Immutability STRENGTHENS
+-- the invariant instead of relaxing the fence: if origin cannot change, the guard's EXISTS can
+-- never go from satisfied to unsatisfied underneath a bound binding, so the pointer-clear cannot
+-- be made to raise. The exposure is closed at its cause, not at its symptom.
+--
+-- FULL IMMUTABILITY IS THE CORRECT STRENGTH, NOT MERELY A CONVENIENT ONE. Measured over the
+-- repository: NOTHING writes entities.origin after insert. There is no `UPDATE entities SET
+-- origin` anywhere in tunes/server, tunes/shared, tunes/scripts or migrations 0001-0054; the
+-- column is set at INSERT time only (explorersRecommendationRepository.ts and the fixture
+-- scripts all supply it inside an INSERT column list), and the single `entities.origin`
+-- reference in the server tree is a READ in a SELECT predicate
+-- (explorersAppEnrichmentRepository.ts:109). So no lawful path is broken by freezing it, and a
+-- weaker monotonicity rule (permitting provider -> manual only) would buy nothing while leaving
+-- the abort reachable in the other direction for every entity seeded as manual -- which is every
+-- Apps entity any Apps path accepts.
+--
+-- SCOPE: ONLY an origin CHANGE is refused, never the statement shape. music_runtime legitimately
+-- holds UPDATE on entities and lawfully rewrites other columns -- title and search_document on
+-- the content paths, and kind on the compatible-replacement path whose own guards decide
+-- admissibility -- so a blanket BEFORE UPDATE refusal would be a regression across every
+-- category, not just Apps. The discrimination therefore lives entirely in the WHEN clause,
+-- exactly as app_enrichment_immutable_payload() leaves its unconditional RAISE to the triggers
+-- that mount it. The clause is deliberately NOT narrowed with an `OF origin` column list: an
+-- `UPDATE ... SET origin` must name the column, so the list would add no reach, while the
+-- column-less form cannot be sidestepped by a future statement shape and keeps the WHEN
+-- predicate the single authority on what is refused. `IS DISTINCT FROM` rather than `<>`
+-- because a NULL on either side must compare as a change, not as unknown.
+--
+-- WHY NO NEW FUNCTION IS DEFINED FOR THIS, which is the one thing a reader will ask.
+-- app_enrichment_immutable_payload() is REUSED rather than joined by a purpose-named sibling
+-- because expectedRuntimeFunctions (music-runtime-role.ts:148) is a HARD-CODED inventory of
+-- every public-schema function, compared with exact set equality by
+-- assertMusicRuntimeObjectPrivilegeMatrix (music-runtime-role.ts:1003), and that file is owned
+-- by another allocation at this point in the sequence. Measured: defining any additional
+-- public function here makes verifyMusicRuntimeLogin throw 'runtime database privilege matrix
+-- is unsafe' at PROVISIONING time, before a single test runs. Reuse costs nothing functionally
+-- -- the body is an unconditional RAISE with ERRCODE 23514, which is exactly this guard's
+-- semantics and the same code every other guard in this file and the 0029 kind/facts_version
+-- refusals already use, so no caller needs new error handling -- and it inherits the REVOKE at
+-- :323 and the `app_enrichment_` EXECUTE-denial rule in the privilege matrix unchanged.
+-- THE ONE COST, recorded so it is not discovered as a surprise: the refusal MESSAGE reads
+-- 'Immutable Apps enrichment payload' on a shared-table origin refusal. The TRIGGER NAME
+-- (app_enrichment_entity_origin_guard) is what identifies the refusal, and PostgreSQL does not
+-- report a trigger name on a RAISE, so whoever re-mints expectedRuntimeFunctions should split
+-- this into a purpose-named function with its own message at that point. Nothing depends on the
+-- message today: the authored evidence asserts the SQLSTATE and the post-state, not the text.
+CREATE TRIGGER app_enrichment_entity_origin_guard BEFORE UPDATE ON entities
+ FOR EACH ROW WHEN (NEW.origin IS DISTINCT FROM OLD.origin)
+ EXECUTE FUNCTION app_enrichment_immutable_payload();

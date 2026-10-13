@@ -244,6 +244,49 @@ export async function runAppsA1StorageAcceptance(h:AppsA1StorageHarness):Promise
   await denied(h.runtime,'INSERT INTO app_enrichment_snapshots SELECT * FROM app_enrichment_snapshots',[],['42501']);await denied(h.runtime,'INSERT INTO app_enrichment_entitlements SELECT * FROM app_enrichment_entitlements',[],['42501']);
   for(const fn of ['app_enrichment_immutable_payload','app_enrichment_binding_identity','app_enrichment_current_generation_guard','app_enrichment_snapshot_guard','app_enrichment_entitlement_guard','app_enrichment_acceptance_admission','app_enrichment_acceptance_guard'])expect((await h.admin.query('SELECT has_function_privilege(\'music_runtime\',$1,\'EXECUTE\') allowed',[`${fn}()`])).rows[0].allowed).toBe(false);
   for(const signature of ['app_enrichment_canonical_json(jsonb)','app_enrichment_safe_host(text)'])expect((await h.admin.query('SELECT has_function_privilege(\'music_runtime\',$1,\'EXECUTE\') allowed',[signature])).rows[0].allowed).toBe(false);
+  // ENTITIES.ORIGIN IMMUTABILITY (0055 tail). entities.origin is declared at 0029:6 with a VALUE
+  // check and no immutability guard, and 0029:136 grants music_runtime table-level UPDATE on
+  // entities with no column list, so the column used to be re-writable in both directions by the
+  // runtime role. That mattered far beyond Apps: app_enrichment_binding_identity() re-checks
+  // e.origin='manual' on EVERY binding write, and the forward purge clears the binding's current
+  // pointer with an UPDATE on app_enrichment_bindings, so an out-of-band flip to 'provider' made
+  // the pointer-clear raise 23514 and ABORTED THE WHOLE TERMINAL ACCOUNT DELETION.
+  // Three things are proved here, in this order, because a trigger's mere existence is not the
+  // claim: (1) the origin change is refused, (2) a lawful NON-origin update to the SAME row still
+  // succeeds, so the guard is not a blanket BEFORE UPDATE refusal, and (3) the original exposure
+  // is closed end to end -- the flip cannot be staged and the real purge then completes.
+  // The guard mounts app_enrichment_immutable_payload() rather than a purpose-named sibling
+  // because expectedRuntimeFunctions (music-runtime-role.ts:148) is an exact-equality inventory
+  // of every public function; see the 0055 tail for the measurement. Its EXECUTE denial is
+  // therefore already asserted by the loop above, and the assertions below key on the SQLSTATE
+  // and the post-state, never on the refusal text.
+  const bound=await seedApps(h),boundBinding=await configured(h,bound);
+  expect(boundBinding.bindingGenerationId).toBeTruthy();
+  // (1) Refused under BOTH roles, and under the UPDATE-every-row shape as well as the targeted
+  // one, so neither a privileged out-of-band operator nor the granted runtime role can stage it.
+  for(const db of [h.admin,h.runtime]){
+   expect((await denied(db,"UPDATE entities SET origin='provider' WHERE id=$1",[bound.entity],['23514'])).code).toBe('23514');
+   await denied(db,"UPDATE entities SET origin=CASE origin WHEN 'manual' THEN 'provider' ELSE 'manual' END WHERE id=$1",[bound.entity],['23514']);
+  }
+  // Reverse direction too: a provider-origin entity is equally frozen, which is why the remedy is
+  // immutability and not a provider -> manual monotonicity rule.
+  const providerEntity=(await h.admin.query("INSERT INTO entities(kind,title,origin) VALUES('app','Synthetic provider app','provider') RETURNING id")).rows[0].id;
+  await denied(h.admin,"UPDATE entities SET origin='manual' WHERE id=$1",[providerEntity],['23514']);
+  // The refusals changed nothing: the column still reads its insert-time value.
+  expect((await h.admin.query('SELECT origin FROM entities WHERE id=ANY($1::uuid[]) ORDER BY origin',[[bound.entity,providerEntity]])).rows.map(r=>r.origin)).toEqual(['manual','provider']);
+  // (2) Not a blanket refusal. The same row takes a lawful non-origin update, and a no-op write of
+  // origin to its own value is admitted (the WHEN clause keys on a CHANGE, not on the statement
+  // naming the column), so every other category's entities writer is unaffected.
+  await h.admin.query("UPDATE entities SET title='Renamed synthetic app' WHERE id=$1",[bound.entity]);
+  await h.admin.query('UPDATE entities SET origin=origin WHERE id=$1',[bound.entity]);
+  expect((await h.admin.query('SELECT title,origin FROM entities WHERE id=$1',[bound.entity])).rows[0]).toMatchObject({title:'Renamed synthetic app',origin:'manual'});
+  // (3) The exposure itself. The binding still carries a non-null current pointer, which is the
+  // row the purge must clear and the write that re-fires the identity guard. With the flip
+  // refused, the guard's EXISTS cannot have been falsified underneath it, so the real terminal
+  // purge runs to completion and removes the owner's Apps provenance instead of aborting 23514.
+  expect((await h.admin.query('SELECT current_generation_id FROM app_enrichment_bindings WHERE account_id=$1',[bound.account])).rows[0].current_generation_id).toBe(boundBinding.bindingGenerationId);
+  await h.purgeOwned(bound.account);
+  for(const table of ['app_enrichment_bindings','app_enrichment_generations','app_enrichment_entitlements','app_enrichment_acceptances'])expect((await h.admin.query(`SELECT * FROM ${table} WHERE account_id=$1`,[bound.account])).rows).toEqual([]);
  },
  async()=>{const f=await seedApps(h);await expect(new ExplorersAppEnrichmentRepository(h.runtime).execute(f.account,f.recommendation,{operation:'configureAppEnrichment',...identity,optIn:true,expectedBindingRevision:null,expectedRecommendationRevision:1},f.actor,{idempotencyKey:randomUUID()})).rejects.toMatchObject({status:422});expect(await receiptCount(h,f)).toBe(0);const b=await configured(h,f);expect(b).toMatchObject({bindingRevision:1,changed:true});await expect(run(h,f,'configureAppEnrichment',{...identity,optIn:true,expectedBindingRevision:null})).rejects.toMatchObject({status:409});},
  async()=>{const f=await seedApps(h);await configured(h,f);const before=await versions(h,f),receipts=await receiptCount(h,f);expect(await run(h,f,'configureAppEnrichment',{...identity,optIn:true})).toMatchObject({changed:false});expect(await versions(h,f)).toEqual(before);await run(h,f,'disableAppEnrichment');const disabled=await versions(h,f);expect(await run(h,f,'disableAppEnrichment')).toMatchObject({changed:false});expect(await versions(h,f)).toEqual(disabled);expect(await receiptCount(h,f)).toBe(receipts+3);},
