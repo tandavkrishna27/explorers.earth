@@ -25,6 +25,47 @@ function reset() { const seed = buildGuidesSeedPlan(identity.caseId); const guid
 function fsFake(bytes = Buffer.from(JSON.stringify(descriptor))) { const regular = (file: boolean) => ({ dev: 1n, ino: file ? 2n : 1n, mode: 1n, uid: 1n, gid: 1n, nlink: 1n, mtimeNs: 1n, ctimeNs: 1n, size: BigInt(bytes.length), isFile: () => file, isDirectory: () => !file, isSymbolicLink: () => false }); let position = 0; return { lstatSync: vi.fn((value: string) => regular(value === file)), realpathSync: vi.fn((value: string) => value), openSync: vi.fn(() => 1), fstatSync: vi.fn(() => regular(true)), readSync: vi.fn((_fd: number, out: Buffer, offset: number, length: number) => { const n = Math.min(length, bytes.length - position); bytes.copy(out, offset, position, position + n); position += n; return n; }), closeSync: vi.fn() }; }
 function setup() { const posts: any[] = []; let observation: any = { version: 1, action: 'observe', runId, commit, ...identity, generation: 1, personas: Object.fromEntries(Object.entries(people).map(([k, p]) => [k, { ...p, status: 'active', publicProfile: true, guidesPublic: true, guidesContentRevision: 1 }])), guides: [], sections: [], media: [], objects: [], attachments: [], provider: { version: 1, epoch: 1, counts: {search:0,details:0,price:0,photos:0,jpeg:0}, error: null } }; const post = vi.fn(async (_url: string, _headers: unknown, body: string) => { const command = JSON.parse(body); posts.push(command); return { status: 200, headers: { 'x-guides-remaining-lane-ms': '100000' }, body: Buffer.from(JSON.stringify(command.action === 'start' ? { v: 1, epoch: 1, reset: reset() } : command.action === 'observe' ? { v: 1, epoch: 1, observation } : command.action === 'retire' ? { v: 1, epoch: 1, retired: true } : { v: 1, failed: true })) }; }); const clock = { now: () => performance.now(), setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms), clearTimeout: (timer: ReturnType<typeof setTimeout>) => clearTimeout(timer) }; const client = createGuidesHarnessClient(env, { fs: fsFake(), post, clock }); return { client, post, posts, setObservation: (v: any) => { observation = v; } }; }
 describe('Guides Node harness custody', () => {
+    it('starts a fresh worker client at the authenticated parent next global epoch', async () => {
+        const first = setup();
+        await first.client.start(identity);
+        await first.client.observe();
+        await first.client.retire();
+        const selected = { ...identity, project: 'guides-mobile' } as const;
+        const next = reset();
+        Object.assign(next, selected);
+        Object.assign(next.manifest, selected);
+        first.post.mockImplementationOnce(async () => ({ status: 200, headers: { 'x-guides-remaining-lane-ms': '100000' }, body: Buffer.from(JSON.stringify({ v: 1, epoch: 2, reset: next })) }));
+        const fresh = createGuidesHarnessClient(env, { fs: fsFake(), post: first.post, clock: { now: () => performance.now(), setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: timer => clearTimeout(timer as ReturnType<typeof setTimeout>) } });
+        await expect(fresh.start(selected)).resolves.toMatchObject(selected);
+        expect(fresh.snapshot().epoch).toBe(2);
+        await fresh.fail();
+        expect(first.posts.at(-1)).toMatchObject({ action: 'fail', ...selected, epoch: 2 });
+    });
+    it.each([0, 17, 1.5, '2'])('refuses invalid first private epoch %s', async epoch => {
+        const s = setup();
+        s.post.mockImplementationOnce(async () => ({ status: 200, headers: { 'x-guides-remaining-lane-ms': '100000' }, body: Buffer.from(JSON.stringify({ v: 1, epoch, reset: reset() })) }));
+        await expect(s.client.start(identity)).rejects.toThrow('Guides harness');
+    });
+    it.each(['run', 'case'] as const)('refuses foreign first private reset %s', async field => {
+        const s = setup(), value = reset();
+        if (field === 'run') value.runId = 'd'.repeat(32);
+        else value.caseId = GUIDES_CASES[1];
+        s.post.mockImplementationOnce(async () => ({ status: 200, headers: { 'x-guides-remaining-lane-ms': '100000' }, body: Buffer.from(JSON.stringify({ v: 1, epoch: 2, reset: value })) }));
+        await expect(s.client.start(identity)).rejects.toThrow('Guides harness');
+    });
+    it('refuses replayed completed identity before transport', async () => {
+        const s = setup(); await s.client.start(identity); await s.client.observe(); await s.client.retire();
+        const count = s.post.mock.calls.length;
+        await expect(s.client.start(identity)).rejects.toThrow('Guides harness');
+        expect(s.post.mock.calls.length).toBe(count);
+    });
+    it.each([1, 3])('retains strict subsequent epoch sequence and refuses %s', async epoch => {
+        const s = setup(); await s.client.start(identity); await s.client.observe(); await s.client.retire();
+        const selected = { ...identity, project: 'guides-mobile' } as const, value = reset();
+        Object.assign(value, selected); Object.assign(value.manifest, selected);
+        s.post.mockImplementationOnce(async () => ({ status: 200, headers: { 'x-guides-remaining-lane-ms': '100000' }, body: Buffer.from(JSON.stringify({ v: 1, epoch, reset: value })) }));
+        await expect(s.client.start(selected)).rejects.toThrow('Guides harness');
+    });
     it('refuses operation4097 before producer effects and retains existing original custody',async()=>{const s=setup();await s.client.start(identity);let release!:()=>void;const held=s.client.trackProducer(()=>new Promise<void>(r=>{release=r;}));await Promise.all(Array.from({length:4094},()=>s.client.trackProducer(async()=>undefined)));expect(s.client.snapshot().pending).toBe(1);const extra=vi.fn(async()=>undefined);await expect(s.client.trackProducer(extra)).rejects.toThrow('Guides harness');await Promise.resolve();expect.soft(extra).not.toHaveBeenCalled();expect(s.client.snapshot().pending).toBe(1);release();await held;expect(s.client.snapshot().pending).toBe(0);await expect(s.client.retire()).rejects.toThrow('Guides harness');});
     it('reserves all64 context slots before concurrent effects and retains late ownership after timeout', async () => { vi.useFakeTimers(); try {
         const s = setup();
@@ -56,7 +97,7 @@ describe('Guides Node harness custody', () => {
     it.each(['epoch', 'generation', 'session', 'persona', 'manifest'] as const)('refuses incorrect reset %s correlation', async (change) => {
         const s = setup(), value: any = { v: 1, epoch: 1, reset: reset() };
         if (change === 'epoch')
-            value.epoch = 2;
+            value.epoch = 17;
         else if (change === 'generation')
             value.reset.generation = 2;
         else if (change === 'session')

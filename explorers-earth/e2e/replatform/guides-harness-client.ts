@@ -399,7 +399,7 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
         try {
             const result = await command('start', selected);
             exact(result, ['v', 'epoch', 'reset']);
-            if (result.v !== 1 || result.epoch !== lastEpoch + 1)
+            if (result.v !== 1 || !Number.isSafeInteger(result.epoch) || result.epoch < 1 || result.epoch > 16 || (lastEpoch !== 0 && result.epoch !== lastEpoch + 1))
                 denied();
             const r = result.reset;
             exact(r, ['version', 'action', 'runId', 'commit', 'caseId', 'project', 'repeat', 'generation', 'manifest', 'sessions']);
