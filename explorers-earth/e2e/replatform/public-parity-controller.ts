@@ -346,7 +346,7 @@ export function createPublicParityHarnessClient(environment: Record<string, stri
         denied(); const reply = await bounded(signal => d.post(descriptor!.parent.url, { 'x-public-parity-parent-capability': descriptor!.parent.capability }, body, signal), action === 'start' ? policy.startMs : action === 'observe' ? policy.observeMs : policy.controlMs, action === 'fail'); if (reply.status !== 200)
         denied(); const remaining = reply.headers['x-public-parity-remaining-lane-ms']; if (!/^[1-9][0-9]{0,7}$/.test(remaining) || Number(remaining) > policy.suiteMs)
         denied(); deadline = Math.min(deadline!, sentAt + Number(remaining)); return json(reply.body, policy.responseBytes); }
-    async function start(input: PublicParityIdentity) { if (failed || busy || active || lastEpoch >= 44)
+    async function start(input: PublicParityIdentity) { if (failed || busy || active || lastEpoch >= (env.REPLATFORM_E2E_LANE === 'public-parity' ? 32 : 12))
         denied(); const selected = identity(input), key = JSON.stringify(selected); if (completed.has(key))
         denied(); if (!descriptor) {
         descriptor = readPublicParityDescriptor(e.file, d.fs, policy);
@@ -356,7 +356,7 @@ export function createPublicParityHarnessClient(environment: Record<string, stri
     } check(); busy = true; try {
         const reply = await command('start', selected);
         exact(reply, ['v', 'epoch', 'reset']);
-        if (reply.v !== 1 || reply.epoch !== lastEpoch + 1)
+        if (reply.v !== 1 || !Number.isSafeInteger(reply.epoch) || reply.epoch < 1 || reply.epoch > (env.REPLATFORM_E2E_LANE === 'public-parity' ? 32 : 12) || (lastEpoch !== 0 && reply.epoch !== lastEpoch + 1))
             denied();
         const reset = reply.reset;
         exact(reset, ['version', 'action', 'runId', 'commit', 'family', 'caseId', 'project', 'repeat', 'generation', 'personas', 'manifest', 'sessions']);
