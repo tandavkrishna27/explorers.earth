@@ -51,7 +51,7 @@ export function createAppsA2StorageHarness(input:AppsA2PgHarnessInput):AppsA2Sto
    await admin.query('INSERT INTO user_security_state(user_id) VALUES($1)',[userId]);
    await admin.query("INSERT INTO creator_accounts(id,handle,display_name,account_type,onboarding_status,public_profile) VALUES($1,$2,'Synthetic Apps owner','Personal','complete',true)",[accountId,`a2-${accountId.replaceAll('-','').slice(0,20)}`]);
    await admin.query("INSERT INTO account_memberships(account_id,user_id,role) VALUES($1,$2,'owner')",[accountId,userId]);
-   await admin.query("INSERT INTO account_category_settings(account_id,category,is_public) VALUES($1,'apps',true)",[accountId]);
+   await admin.query("INSERT INTO account_category_settings(account_id,category,is_public,display_order) VALUES($1,'apps',true,0)",[accountId]);
    if(!entityId){await admin.query("INSERT INTO entities(id,kind,title,origin) VALUES($1,'app','Synthetic Apps A2','manual')",[actualEntity]);await admin.query("INSERT INTO app_entity_details(entity_id,app_url,description,platforms) VALUES($1,'https://example.org/manual','Manual',ARRAY['Manual'])",[actualEntity]);}
    await admin.query("INSERT INTO recommendations(id,account_id,entity_id,category,publication_state) VALUES($1,$2,$3,'apps','published')",[recommendationId,accountId,actualEntity]);
    await admin.query("INSERT INTO collections(id,account_id,category,title,slug,display_order,visibility,publication_state) VALUES($1,$2,'apps','Synthetic Apps list','synthetic-apps-list',0,'public','published')",[collectionId,accountId]);
