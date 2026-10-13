@@ -1,4 +1,4 @@
-import {it,expect} from 'vitest';
+import {it,expect,vi} from 'vitest';
 import {publicParityFixtureFamily,publicParityFixtureEpoch,parsePublicParityFixtureFrame,signPublicParityFixtureFrame,verifyPublicParityFixtureFrame} from '../../../scripts/public-parity-fixture-protocol';
 import {PUBLIC_PARITY_CASES,PUBLIC_PARITY_PROJECTS,PEOPLE_CASES,PEOPLE_PROJECTS} from '../../../scripts/public-parity-browser-support';
 it('binds the exact separate public32 and People12 families without a combined or default family',()=>{expect(publicParityFixtureFamily('public-parity').inventory).toEqual(PUBLIC_PARITY_PROJECTS.flatMap(project=>PUBLIC_PARITY_CASES.map(caseId=>({caseId,project,repeat:0}))));expect(publicParityFixtureFamily('people').inventory).toEqual(PEOPLE_PROJECTS.flatMap(project=>PEOPLE_CASES.map(caseId=>({caseId,project,repeat:0}))));for(const value of [undefined,'guides','all','public-parity,people'])expect(()=>publicParityFixtureFamily(value)).toThrow();});

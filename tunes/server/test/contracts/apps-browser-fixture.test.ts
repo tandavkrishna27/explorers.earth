@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {describe,it,expect} from 'vitest';
+import {describe,it,expect,vi} from 'vitest';
 import {EventEmitter} from 'node:events';
 import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';

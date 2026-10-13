@@ -520,11 +520,11 @@ export function snapshotSource(root){
  git(['ls-files','--error-unmatch',...publicSources]);
  const appsEnrichmentSources=['tunes/scripts/apps-enrichment-browser-support.ts','tunes/scripts/apps-enrichment-native-runtime.ts'];
  git(['ls-files','--error-unmatch',...appsEnrichmentSources]);
- git(['ls-files','--error-unmatch','scripts/replatform-e2e.mjs']);
+ git(['ls-files','--error-unmatch','scripts/replatform-e2e.mjs','scripts/replatform-e2e.d.mts']);
  const frontendRoot=git(['ls-files','explorers-earth']).filter(path=>path.split('/').length===2);
  if(git(['ls-files','--others','--exclude-standard','explorers-earth']).some(path=>path.split('/').length===2))fail('Untracked frontend entry/configuration dependency');
  const paths=[...new Set([...tracked,MANIFEST,'.github/workflows/frontend-e2e-qualification.yml','scripts/replatform-e2e.mjs','scripts/replatform-e2e.test.mjs','scripts/node-owned-npm.test.mjs','package.json','package-lock.json','tunes/package.json','tunes/package-lock.json','explorers-earth/package.json','explorers-earth/package-lock.json','explorers-earth/playwright.config.ts','tunes/scripts/profile-browser-fixture.ts','tunes/scripts/books-browser-fixture.ts','tunes/scripts/movies-browser-fixture.ts','tunes/scripts/games-browser-fixture.ts','tunes/scripts/canonical-music-browser-fixture.ts','tunes/scripts/protected-browser-receipt.ts','tunes/scripts/lifecycle-browser-guards.ts','tunes/scripts/lifecycle-browser-support.ts','tunes/scripts/places-browser-support.ts',appsHelper,appsCustody])].sort();
- const dependencies=new Set([...paths,...authority,...frontendRoot,...guidesSources,...publicSources,...appsEnrichmentSources]);
+ const dependencies=new Set(['scripts/replatform-e2e.d.mts',...paths,...authority,...frontendRoot,...guidesSources,...publicSources,...appsEnrichmentSources]);
  // Follow relative source imports from the runner/helper roots, including additions
  // ignored by Git. Every resolved dependency must be tracked or an explicit overlay.
  const reviewed=new Set(['scripts/replatform-e2e.mjs',...tracked,...frontendRoot,...authority,placesHelper,appsHelper,appsRunner,appsAdmission,appsCustody,musicDiagnostic,...guidesSources,...publicSources,...appsEnrichmentSources]);
