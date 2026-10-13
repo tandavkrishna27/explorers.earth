@@ -6,6 +6,7 @@ import {resolve,join,dirname,basename,relative,isAbsolute,delimiter} from 'node:
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {types as utilTypes} from 'node:util';
 import {createRequire} from 'node:module';
+import {retainGuidesBrowserReportFailure} from '../tunes/scripts/guides-browser-report-diagnostic.mjs';
 const ACK='TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
 export function childNodeEnvironment(environment,platform=process.platform){
  const entries=Object.entries(environment);
@@ -500,6 +501,8 @@ export function snapshotSource(root){
  // include the separately executed Windows Job script in the same source authority.
  const guidesSources=['guides-browser-fixture.ts','guides-browser-support.ts','guides-fixture-host.ts','guides-parent-supervision.ts','guides-launcher.ts','guides-provider-fixture.ts','guides-resource-worker.ts','guides-native-diagnostic.ts','music-local-state.ts','guides-windows-job.ps1'].map(name=>`tunes/scripts/${name}`).concat('explorers-earth/e2e/replatform/guides-page-diagnostic.ts');
  git(['ls-files','--error-unmatch',...guidesSources]);
+ guidesSources.push('tunes/scripts/guides-browser-report-diagnostic.mjs','tunes/scripts/guides-browser-report-diagnostic.d.mts');
+ git(['ls-files','--error-unmatch','tunes/scripts/guides-browser-report-diagnostic.mjs','tunes/scripts/guides-browser-report-diagnostic.d.mts']);
  const frontendRoot=git(['ls-files','explorers-earth']).filter(path=>path.split('/').length===2);
  if(git(['ls-files','--others','--exclude-standard','explorers-earth']).some(path=>path.split('/').length===2))fail('Untracked frontend entry/configuration dependency');
  const paths=[...new Set([...tracked,MANIFEST,'.github/workflows/frontend-e2e-qualification.yml','scripts/replatform-e2e.mjs','scripts/replatform-e2e.test.mjs','scripts/node-owned-npm.test.mjs','package.json','package-lock.json','tunes/package.json','tunes/package-lock.json','explorers-earth/package.json','explorers-earth/package-lock.json','explorers-earth/playwright.config.ts','tunes/scripts/profile-browser-fixture.ts','tunes/scripts/books-browser-fixture.ts','tunes/scripts/movies-browser-fixture.ts','tunes/scripts/games-browser-fixture.ts','tunes/scripts/canonical-music-browser-fixture.ts','tunes/scripts/protected-browser-receipt.ts','tunes/scripts/lifecycle-browser-guards.ts','tunes/scripts/lifecycle-browser-support.ts','tunes/scripts/places-browser-support.ts',appsHelper,appsCustody])].sort();
@@ -701,6 +704,7 @@ export async function main(args=process.argv.slice(2)){
    const musicDiagnostic=retainMusicBoundaryFailure(childRecord,child);if(musicDiagnostic)process.stderr.write(`${lane.name}: ${musicDiagnostic}\n`);
    const appsDiagnostic=lane.name==='apps'?retainAppsFixtureFailure(childRecord,child):undefined;if(appsDiagnostic)process.stderr.write(`${lane.name}: ${appsDiagnostic}\n`);
    const guidesDiagnostic=lane.name==='guides'?retainGuidesFixtureFailure(childRecord,child):undefined;if(guidesDiagnostic)process.stderr.write(`${lane.name}: ${guidesDiagnostic}\n`);
+   const guidesReportDiagnostic=lane.name==='guides'?retainGuidesBrowserReportFailure(childRecord,child,lane,{caseTitles:guidesTitles,projects:['guides-desktop','guides-mobile'],isSourcePoint:guidesNativePoint,decodeFixtureFailureLine:decodeGuidesFixtureFailureLine}):undefined;if(guidesReportDiagnostic)process.stderr.write(`${lane.name}: ${guidesReportDiagnostic}\n`);
    const guidesNativeDiagnostic=lane.name==='guides'?retainGuidesNativeFailure(childRecord,child,lane):undefined;if(guidesNativeDiagnostic)process.stderr.write(`${lane.name}: ${guidesNativeDiagnostic}\n`);
    const guidesSealDiagnostic=lane.name==='guides'?retainGuidesPageSeal(childRecord,child,lane):undefined;if(guidesSealDiagnostic)process.stderr.write(`${lane.name}: ${guidesSealDiagnostic}\n`);
    const guidesPageDiagnostic=lane.name==='guides'?retainGuidesPageFailure(childRecord,child,lane):undefined;if(guidesPageDiagnostic)process.stderr.write(`${lane.name}: ${guidesPageDiagnostic}\n`);
