@@ -66,8 +66,31 @@ jobs:
         run: node node_modules/tsx/dist/cli.mjs tunes/scripts/music-cli.ts fixtures:capture --format json
       - if: runner.os == 'Linux'
         run: npm test --prefix tunes -- --run server/test/contracts
+      # Preflight for the Guides bootstrap gate. `shell: pwsh` is itself the runner's PowerShell 7,
+      # so this step cannot start at all without PS7 present; it then resolves pwsh from PATH and
+      # exports the RESOLVED ABSOLUTE path, rather than hardcoding an install location that moves
+      # between runner image versions. A missing or non-PS7 host is a hard failure, never a skip.
+      - name: Resolve hosted PowerShell 7 for the Guides bootstrap gate
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if ($PSVersionTable.PSVersion.Major -lt 7) { throw "GUIDES_GATE_PREFLIGHT_FAILED: host shell is PowerShell $($PSVersionTable.PSVersion), not 7+" }
+          $resolved = (Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+          if (-not $resolved) { throw 'GUIDES_GATE_PREFLIGHT_FAILED: no pwsh executable on PATH' }
+          if (-not (Test-Path -LiteralPath $resolved -PathType Leaf)) { throw 'GUIDES_GATE_PREFLIGHT_FAILED: resolved pwsh path is not a regular file' }
+          # assertGuidesPowerShellRuntime demands a canonical, non-symlink, native-separator absolute
+          # path (path.resolve(x) === x and realpath(x) === x), so normalise and assert that here.
+          $item = Get-Item -LiteralPath $resolved
+          if ($item.LinkType) { throw "GUIDES_GATE_PREFLIGHT_FAILED: resolved pwsh is a $($item.LinkType), not a real file" }
+          $resolved = $item.FullName
+          if ($resolved -ne [IO.Path]::GetFullPath($resolved) -or $resolved.Contains('/')) { throw 'GUIDES_GATE_PREFLIGHT_FAILED: resolved pwsh path is not canonical' }
+          "GUIDES_POWERSHELL_EXECUTABLE=$resolved" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - if: runner.os == 'Windows'
-        run: npm test --prefix tunes -- --run server/test/contracts/music-reconciliation-workflow.test.ts server/test/contracts/music-documentation-contract.test.ts server/test/contracts/music-openapi-contract.test.ts
+        env:
+          # Belt and braces: the test refuses to skip when this is set, so the lane cannot go green
+          # unless the Guides bootstrap gate actually executed.
+          GUIDES_BOOTSTRAP_GATE_REQUIRED: "1"
+        run: npm test --prefix tunes -- --run server/test/contracts/music-reconciliation-workflow.test.ts server/test/contracts/music-documentation-contract.test.ts server/test/contracts/music-openapi-contract.test.ts server/test/contracts/guides-bootstrap-contract.test.ts
       - run: npm run music:types:scoped
       - run: npm run music:types:baseline
       - if: runner.os == 'Linux'

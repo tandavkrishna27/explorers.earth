@@ -19,6 +19,9 @@ const unavailable=((): string|undefined=>{
  catch{return 'GUIDES_POWERSHELL_EXECUTABLE is set but the executable it names is not present on this host';}
  return undefined;
 })();
+// A loud skip is right on a developer machine, but WRONG in the CI lane that exists to exercise
+// this gate: there, an unavailable host must fail, or the gate silently never runs again.
+if(unavailable&&process.env.GUIDES_BOOTSTRAP_GATE_REQUIRED)throw new Error(`GUIDES_BOOTSTRAP_GATE_REQUIRED is set, so the Guides bootstrap gate must execute, but ${unavailable}`);
 if(unavailable)console.warn(`[SKIP] guides-bootstrap-contract.test.ts: ${unavailable}. Harness gate unavailable - this is NOT a passing Guides product contract and NOT a product defect.`);
 const suite=unavailable?describe.skip:describe;
 const pwsh=configured as string;
