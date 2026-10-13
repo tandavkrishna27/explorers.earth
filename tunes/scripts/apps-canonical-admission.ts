@@ -51,7 +51,7 @@ export function createAppsCanonicalAdmission(options:AppsCanonicalAdmissionOptio
   else if(path===`${prefix}/media`&&method==='POST'){if(req.get('x-media-purpose')!=='recommendation')throw Error('denied');kind='upload';}
   else if((match=path.match(new RegExp(`^${prefix}/media/(${id})(/content)?$`)))&&((match[2]&&['GET','HEAD'].includes(method))||(!match[2]&&method==='DELETE')))kind='media';
   else if((match=path.match(new RegExp(`^${prefix}/(collections|recommendations)/(${id})(/editable)?$`)))&&((match[3]&&method==='GET')||(!match[3]&&['PATCH','DELETE'].includes(method)))){kind=`${match[1]}-${method==='GET'?'editable':'command'}`;return checked({kind,id:match[2],query:q});}
-  else if((match=path.match(new RegExp(`^${prefix}/recommendations/(${id})/app-enrichment/(binding|suggestions)$`)))&&method==='GET')return checked({kind:'recommendations-editable',id:match[1],query:q});
+  else if((match=path.match(new RegExp(`^${prefix}/recommendations/(${id})/app-enrichment/(binding|suggestions|sources)$`)))&&method==='GET')return checked({kind:'recommendations-editable',id:match[1],query:q});
   else if((match=path.match(new RegExp(`^${prefix}/collections/(${id})/memberships/(${id})$`)))&&method==='DELETE')return checked({kind:'detach',id:match[1],other:match[2],query:q});
   else if(path===`${prefix}/collections`&&['GET','POST'].includes(method))kind=method==='GET'?'collections-read':'collections-create';
   else if(path===`${prefix}/recommendations`&&['GET','POST'].includes(method))kind=method==='GET'?'recommendations-read':'recommendations-create';

@@ -17,7 +17,7 @@ async function dispatch(s:ReturnType<typeof setup>,req:any){const res=response()
 const p='/api/explorers/v1';
 describe('fixed Apps canonical admission',()=>{
  it('admits only owned enrichment GETs as tracked read-only recommendation transports',async()=>{
-  for(const endpoint of ['binding','suggestions']){
+  for(const endpoint of ['binding','suggestions','sources']){
    const s=setup(),req=request('GET',`${p}/recommendations/${r}/app-enrichment/${endpoint}`),result=await dispatch(s,req);
    expect(result.next).toHaveBeenCalledOnce();expect(isAppsCanonicalReadTransport(s.gate,req)).toBe(true);
    for(const method of ['POST','PUT','DELETE'])expect((await dispatch(setup(),request(method,req.originalUrl))).next).not.toHaveBeenCalled();

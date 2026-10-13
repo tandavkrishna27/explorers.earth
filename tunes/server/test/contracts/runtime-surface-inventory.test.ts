@@ -10,7 +10,7 @@ describe("runtime route/event/job inventory", () => {
     // Production break caught: an authorization migration misses a route,
     // Socket event, or scheduled lifecycle job that was hand-summarized only.
     const inventory = inventoryRuntimeSurfaces(repositoryRoot);
-    // 197 = 177 + the 12 Places pin-storage surfaces and 8 Apps enrichment surfaces.
+    // 199 = 177 + 12 Places pin-storage and 10 Apps enrichment surfaces.
     // The Places surfaces are registered by
     // tunes/server/routes/explorersPlacePinsRoutes.ts (6 operations plus their 6 ALL
     // method-guard siblings), added by 82d64b79 "Complete reviewed Places taxonomy and
@@ -18,9 +18,10 @@ describe("runtime route/event/job inventory", () => {
     // musicSurfacePolicy's fail-closed owner allowlist has not yet declared them; see the
     // note in that allowlist. That is an authorization-declaration gap, not an extra
     // surface, and the count pin is honest about the surfaces that exist.
-    expect(inventory.routes).toHaveLength(197);
+    expect(inventory.routes).toHaveLength(199);
     expect(inventory.events).toHaveLength(15);
-    expect(inventory.jobs).toHaveLength(33);
+    expect(inventory.jobs).toHaveLength(37);
+    expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/application/appEnrichmentLocalScheduler.ts',lifecycle:'scheduled-callback'}));
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/services/appEnrichmentFetch.ts',lifecycle:'scheduled-callback'}));
     expect(inventory.routes.filter(route => route.path === '/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug')).toEqual([
       expect.objectContaining({method:'GET',classification:'public',source:'tunes/server/routes/explorersPublicProfileRoutes.ts',policy:'explicit-public-contract',ownerSource:'none'}),
@@ -67,7 +68,7 @@ describe("runtime route/event/job inventory", () => {
     // operation, each answering 405 INVALID_INPUT with no actor resolution.
     // Pin the count so every new surface receives an explicit method-boundary review.
     expect(inventory.routes.filter((route) => route.method === "ALL"
-      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(20);
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(21);
     // Decision D2. GET reports the address and must not write; POST performs it, which is
     // also what RFC 8058 one-click unsubscribe sends. Both are public: the authority is
     // the purpose-bound HMAC in the token, not the caller.
@@ -150,13 +151,13 @@ describe("runtime route/event/job inventory", () => {
     expect(routes.filter(route=>route.method==='ALL').every(route=>route.classification==='tombstone' && route.ownerSource==='none-fail-closed')).toBe(true);
   });
 
-  it("declares only the five Apps enrichment owner methods and keeps method guards closed", () => {
+  it("declares only the six Apps enrichment owner methods and keeps method guards closed", () => {
     const routes = inventoryRuntimeSurfaces(repositoryRoot).routes.filter(route => route.source === 'tunes/server/routes/explorersAppEnrichmentRoutes.ts');
     const base = '/api/explorers/v1/recommendations/:id/app-enrichment';
-    const commands = [['PUT', base + '/binding'], ['DELETE', base + '/binding'], ['GET', base + '/binding'], ['POST', base + '/acceptances'], ['GET', base + '/suggestions']];
-    expect(routes).toHaveLength(8);
+    const commands = [['GET', base + '/sources'], ['PUT', base + '/binding'], ['DELETE', base + '/binding'], ['GET', base + '/binding'], ['POST', base + '/acceptances'], ['GET', base + '/suggestions']];
+    expect(routes).toHaveLength(10);
     for (const [method, path] of commands) expect(routes).toContainEqual(expect.objectContaining({method, path, classification:'canonical-explorers-owner', ownerSource:'verified-google-session+active-initial-account-binding'}));
-    expect(routes.filter(route=>route.method==='ALL')).toHaveLength(3);
+    expect(routes.filter(route=>route.method==='ALL')).toHaveLength(4);
     expect(routes.filter(route=>route.method==='ALL').every(route=>route.classification==='tombstone')).toBe(true);
   });
 

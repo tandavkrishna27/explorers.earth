@@ -57,12 +57,15 @@ export default function AddAppPage() {
  const [enrichmentBusy, setEnrichmentBusy] = useState(false);
  useEffect(() => { setEnrichmentBusy(false); }, [scope]);
  const initialized = useRef(''), draftObservation = useRef<RecommendationObservation>();
+ const savedDraft = useRef<{scope:string;signature:string}>();
+ const draftSignature=(values:unknown[])=>JSON.stringify(values);
+ const manualDirty=Boolean(appId&&savedDraft.current?.scope===scope&&savedDraft.current.signature!==draftSignature([title,developer,logoUrl,description,downloadUrl,priceTier,platforms,note,rating,screenshots.map(item=>item.id)]));
  const intent = useRef<{ scope: string; signature: string; value: ManualAppIntent }>();
  const updateKey = useRef<{ signature: string; key: string }>();
  const mounted = useRef(true);
 
  useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); active.current++; }; }, []);
- useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setAppUrl(''); setDeveloper(''); setLogoUrl(''); setDescription(''); setDownloadUrl(''); setPriceTier('Freemium'); setPlatforms([]); setNote(''); setRating(null); setScreenshots([]); setPending(0); setSaving(false); setError(''); setExistingId(''); }, [scope]);
+ useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; savedDraft.current=undefined; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setAppUrl(''); setDeveloper(''); setLogoUrl(''); setDescription(''); setDownloadUrl(''); setPriceTier('Freemium'); setPlatforms([]); setNote(''); setRating(null); setScreenshots([]); setPending(0); setSaving(false); setError(''); setExistingId(''); }, [scope]);
 
  useEffect(() => {
   if (!appId || !owner.content || initialized.current === scope) return;
@@ -70,6 +73,7 @@ export default function AddAppPage() {
   const observed = owner.content.details.get(appId);
   if (!app || !observed) return;
   initialized.current = scope; draftObservation.current = observed;
+  savedDraft.current={scope,signature:draftSignature([app.title,app.developer??'',app.logo_url??'',app.description??'',app.download_url??'',app.price_tier??'',app.platforms??[],typeof app.user_recommendation_note==='string'?app.user_recommendation_note:'',app.user_rating,(observed.detail.category==='apps'?observed.detail.appScreenshots?.screenshotMediaIds??[]:[])])};
   setTitle(app.title); setAppUrl(app.app_url); setDeveloper(app.developer ?? ''); setLogoUrl(app.logo_url ?? '');
   setDescription(app.description ?? ''); setDownloadUrl(app.download_url ?? '');
   setPriceTier(app.price_tier ?? ''); setPlatforms(app.platforms ?? []);
@@ -159,7 +163,7 @@ export default function AddAppPage() {
     <button disabled={!existingId || commands.loading} onClick={attachExisting}>Add existing app to this list</button>
    </section>}
 
-   {appId && initialized.current === scope && draftObservation.current && <AppEnrichmentPanel key={scope} observed={draftObservation.current} disabled={saving || pending > 0} onBusyChange={setEnrichmentBusy} onReload={() => window.location.reload()} onAccepted={() => { invalidateApps(); toast.success('Selected app details accepted'); navigate(`/recommendations/apps/${listId}`); }} />}
+   {appId && initialized.current === scope && draftObservation.current && <AppEnrichmentPanel key={scope} observed={draftObservation.current} disabled={saving || pending > 0} manualDirty={manualDirty} onBusyChange={setEnrichmentBusy} onReload={() => window.location.reload()} onAccepted={() => { invalidateApps(); toast.success('Selected app details accepted'); navigate(`/recommendations/apps/${listId}`); }} />}
    <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-5">
     <h2 className="font-semibold flex gap-2"><Smartphone size={18} />{appId ? 'My App' : 'Add manually'}</h2>
     {appId && owner.loading && <p role="status">Loading app…</p>}

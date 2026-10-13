@@ -1,7 +1,7 @@
 import {createHash,randomUUID} from 'node:crypto';
 import type {Pool,PoolClient} from 'pg';
 import {contentIdSchema} from '../../shared/explorersContract';
-import {appSourceIdentitySchema,appSnapshotSchema,appBindingSchema,appGenerationSchema,appEntitlementSchema,appEnrichmentCommandSchema,appBindingResultSchema,appAcceptanceResultSchema,appAcceptanceRecordSchema,type AppBinding,type AppGeneration,type AppSnapshot} from '../../shared/explorersAppEnrichmentContract';
+import {appSourceIdentitySchema,appSnapshotSchema,appBindingSchema,appOwnerBindingSchema,appGenerationSchema,appEntitlementSchema,appEnrichmentCommandSchema,appBindingResultSchema,appAcceptanceResultSchema,appAcceptanceRecordSchema,type AppBinding,type AppOwnerBinding,type AppGeneration,type AppSnapshot} from '../../shared/explorersAppEnrichmentContract';
 import {canonicalAppJson,hashAppSnapshot,mergeAppSnapshot,validateAppAcceptance,AppAcceptanceValidationError} from '../application/appEnrichmentValidation';
 import {lockContentCategories} from '../db/explorers-content-lock';
 import {RecommendationFailure} from './explorersRecommendationRepository';
@@ -109,8 +109,8 @@ export class ExplorersAppEnrichmentRepository {
   const rows=await this.pool.query(`SELECT s.payload FROM app_enrichment_bindings b JOIN creator_accounts a ON a.id=b.account_id JOIN recommendations r ON r.id=b.recommendation_id AND r.account_id=b.account_id JOIN entities e ON e.id=r.entity_id JOIN app_enrichment_generations g ON g.id=b.current_generation_id AND g.binding_id=b.id AND g.app_entity_id=r.entity_id JOIN app_enrichment_entitlements t ON t.generation_id=g.id AND t.recommendation_id=r.id AND t.account_id=b.account_id JOIN app_enrichment_snapshots s ON s.id=t.snapshot_id WHERE b.account_id=$1 AND b.recommendation_id=$2 AND a.status='active' AND r.archived_at IS NULL AND r.category='apps' AND e.kind='app' AND e.origin='manual' AND NOT EXISTS(SELECT 1 FROM app_enrichment_generation_retirements x WHERE x.generation_id=g.id) ORDER BY s.fetched_at DESC,s.id`,[accountId,recommendationId]);
   return rows.rows.map(row=>ExplorersAppEnrichmentRepository.snapshotForStorage(row.payload));
  }
- async readBinding(accountId:string,recommendationId:string):Promise<AppBinding|null>{
+ async readBinding(accountId:string,recommendationId:string):Promise<AppOwnerBinding|null>{
   contentIdSchema.parse(accountId);contentIdSchema.parse(recommendationId);
-  const row=(await this.pool.query(`SELECT b.* FROM app_enrichment_bindings b JOIN creator_accounts a ON a.id=b.account_id JOIN recommendations r ON r.id=b.recommendation_id AND r.account_id=b.account_id WHERE b.account_id=$1 AND b.recommendation_id=$2 AND a.status='active' AND r.archived_at IS NULL AND r.category='apps'`,[accountId,recommendationId])).rows[0];return row?bindingDto(row):null;
+  const row=(await this.pool.query(`SELECT b.*,g.source_id AS bound_source_id,g.source_identity AS bound_source_identity,g.source_identity_hash AS bound_source_identity_hash,g.canonicalization_version AS bound_canonicalization_version FROM app_enrichment_bindings b LEFT JOIN app_enrichment_generations g ON g.id=b.current_generation_id AND g.binding_id=b.id AND g.account_id=b.account_id AND g.recommendation_id=b.recommendation_id AND g.app_entity_id=b.app_entity_id JOIN creator_accounts a ON a.id=b.account_id JOIN recommendations r ON r.id=b.recommendation_id AND r.account_id=b.account_id WHERE b.account_id=$1 AND b.recommendation_id=$2 AND a.status='active' AND r.archived_at IS NULL AND r.category='apps'`,[accountId,recommendationId])).rows[0];return row?appOwnerBindingSchema.parse({...bindingDto(row),currentSource:row.current_generation_id===null?null:appSourceIdentitySchema.parse({sourceId:row.bound_source_id,sourceIdentity:row.bound_source_identity,sourceIdentityHash:row.bound_source_identity_hash,canonicalizationVersion:row.bound_canonicalization_version})}):null;
  }
 }

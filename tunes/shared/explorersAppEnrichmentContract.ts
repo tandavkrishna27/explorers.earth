@@ -6,6 +6,8 @@ const label=z.string().min(1).max(2048); // Exact configured identity: deliberat
 const hash=z.string().regex(/^[a-f0-9]{64}$/);
 const timestamp=z.string().datetime({offset:true});
 export const appSourceIdentitySchema=z.object({sourceId:label,sourceIdentity:label,sourceIdentityHash:hash,canonicalizationVersion:label}).strict();
+export const appSourceChoiceSchema=z.object({identity:appSourceIdentitySchema,label:z.string().min(1).max(120).refine(v=>v.trim()===v&&!/[<>]/.test(v)&&!/[\u0000-\u001f\u007f-\u009f]/.test(v)&&!/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(v),'Invalid source label'),sourceUrl:safeAppUrlSchema.refine(v=>{try{return new URL(v).protocol==='https:'&&new URL(v).href===v;}catch{return false;}},'Canonical HTTPS source required')}).strict();
+export type AppSourceChoice=z.infer<typeof appSourceChoiceSchema>;
 export const appSelectableFields=['title','description','priceTier','platforms'] as const;
 export const appSelectableFieldMap={displayName:'title',description:'description',priceTier:'priceTier',platforms:'platforms'} as const;
 export const appSelectedFieldsSchema=z.array(z.enum(appSelectableFields)).max(4).refine(v=>new Set(v).size===v.length,'Duplicate field');
@@ -19,6 +21,7 @@ export const appSnapshotSchema=appSourceIdentitySchema.extend({snapshotId:conten
 });
 const owned={accountId:contentIdSchema,recommendationId:contentIdSchema,appEntityId:contentIdSchema};
 export const appBindingSchema=z.object({...owned,bindingId:contentIdSchema,optIn:z.boolean(),bindingRevision:appEnrichmentRevisionSchema,currentGenerationId:contentIdSchema.nullable()}).strict();
+export const appOwnerBindingSchema=appBindingSchema.extend({currentSource:appSourceIdentitySchema.nullable()}).superRefine((value,context)=>{if((value.currentGenerationId===null)!==(value.currentSource===null))context.addIssue({code:z.ZodIssueCode.custom,message:'Current generation requires its authoritative source'});});
 export const appGenerationSchema=appSourceIdentitySchema.extend({...owned,generationId:contentIdSchema,bindingId:contentIdSchema,createdAt:timestamp}).strict();
 // Retirement is separate from immutable generation identity. A rebind must allocate a new UUID.
 export const appGenerationRetirementSchema=z.object({generationId:contentIdSchema,retiredAt:timestamp}).strict();
@@ -34,6 +37,7 @@ export const appAcceptanceResultSchema=z.object({recommendationId:contentIdSchem
 export const appAcceptanceRecordSchema=z.object({acceptanceId:contentIdSchema,accountId:contentIdSchema,recommendationId:contentIdSchema,snapshotId:contentIdSchema,generationId:contentIdSchema,selectedFields:appSelectedFieldsSchema,acceptedValues:appSnapshotFieldsSchema,actorUserId:contentIdSchema,receiptId:contentIdSchema,acceptedAt:timestamp}).strict().superRefine((v,ctx)=>{if(appSelectableFields.some(k=>v.selectedFields.includes(k)!==own(v.acceptedValues,k)||own(v.acceptedValues,k)&&v.acceptedValues[k]===undefined))ctx.addIssue({code:z.ZodIssueCode.custom,message:'Accepted values must exactly match selected fields'});});
 export type AppSnapshot=z.infer<typeof appSnapshotSchema>;
 export type AppBinding=z.infer<typeof appBindingSchema>;
+export type AppOwnerBinding=z.infer<typeof appOwnerBindingSchema>;
 export type AppGeneration=z.infer<typeof appGenerationSchema>;
 export type AppEntitlement=z.infer<typeof appEntitlementSchema>;
 export type AppSelectedField=typeof appSelectableFields[number];

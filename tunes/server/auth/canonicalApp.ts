@@ -36,6 +36,7 @@ import type { ObjectStorage } from "../services/objectStorage";
 import { setupExplorersLifecycleRoutes } from "../routes/explorersLifecycleRoutes";
 import { setupExplorersRecommendationRoutes } from "../routes/explorersRecommendationRoutes";
 import { setupExplorersAppEnrichmentRoutes } from "../routes/explorersAppEnrichmentRoutes";
+import {appSourceChoiceSchema,type AppSourceChoice} from '../../shared/explorersAppEnrichmentContract';
 import { setupExplorersPublicContentRoutes } from "../routes/explorersPublicContentRoutes";
 import {setupExplorersCatalogRoutes} from '../routes/explorersCatalogRoutes';
 import {BookCoverFetcher} from '../services/bookCoverFetch';
@@ -47,7 +48,7 @@ function errorResponse(res: Response, status: number, code: ApiError["error"]["c
 }
 
 function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
-  options: { mediaStorage?: ObjectStorage; bookCatalog?:BookCatalog; bookCoverFetcher?:BookCoverFetcher;movieCatalog?:MovieCatalog;movieImageFetcher?:MovieImageFetcher;
+  options: { mediaStorage?: ObjectStorage; bookCatalog?:BookCatalog; bookCoverFetcher?:BookCoverFetcher;movieCatalog?:MovieCatalog;movieImageFetcher?:MovieImageFetcher;appEnrichmentChoices?:readonly AppSourceChoice[];
     /** ADR-008. Present whenever this app is the Music credential issuer. */
     musicToken?: MusicTokenConfiguration } = {}, custodyMode=false,appsInput?:Omit<AppsCanonicalAdmissionOptions,'pool'>,
   /** Fixture-only place-pins injection. Production composition never passes this, so
@@ -103,7 +104,8 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   const books=options.bookCatalog??new BookCatalog({apiKey:process.env.GOOGLE_BOOKS_API_KEY,secret:config.secret});
   const movies=options.movieCatalog??new MovieCatalog({accessToken:process.env.TMDB_ACCESS_TOKEN,apiKey:process.env.TMDB_API_KEY,authorize:a=>authorizeOperation(pool,a,'entities:resolve',a.accountId)});
   setupExplorersRecommendationRoutes(app, pool, auth, config,books,new BookCoverImportService(pool,new MediaService(pool,options.mediaStorage),options.bookCoverFetcher),movies,new MovieMediaImportService(pool,new MediaService(pool,options.mediaStorage),options.movieImageFetcher),instrument?.routerFactory,placePinsFixtureSetup);
-  setupExplorersAppEnrichmentRoutes(app, pool, auth, config, [], instrument?.routerFactory);
+  const appSourceChoices=appSourceChoiceSchema.array().parse(options.appEnrichmentChoices??[]);
+  setupExplorersAppEnrichmentRoutes(app, pool, auth, config, appSourceChoices.map(choice=>choice.identity), instrument?.routerFactory,appSourceChoices);
   setupExplorersCatalogRoutes(app,pool,auth,config,books,movies);
   setupExplorersPublicContentRoutes(app, pool, config.secret,instrument?.routerFactory);
   setupExplorersLifecycleRoutes(app, pool, auth, config);

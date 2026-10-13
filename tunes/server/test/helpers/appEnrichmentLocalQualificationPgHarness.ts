@@ -1,0 +1,92 @@
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import type {z} from 'zod/v3';
+import {createAppProviderRegistry} from '../../application/appEnrichmentProviderRegistry';
+import {createAppDecoderCustody} from '../../services/appEnrichmentOwnedDecoder';
+import type {AppScheduledConfiguration,AppScheduledOutcome} from '../../application/appEnrichmentScheduledRun';
+import type {createAppLocalScheduler} from '../../application/appEnrichmentLocalScheduler';
+import type {createAppQualificationLedger} from '../../services/appEnrichmentQualificationLedger';
+import type {ApprovedAppWorkerSource} from '../../application/appEnrichmentWorkerValidation';
+import {appOwnerBindingSchema,appSnapshotSchema,appSourceChoiceSchema,appEnrichmentCommandSchema,appBindingResultSchema,appAcceptanceResultSchema,type AppOwnerBinding,type AppSnapshot,type AppSourceChoice,type AppSelectedField} from '../../../shared/explorersAppEnrichmentContract';
+import {hashAppSnapshot} from '../../application/appEnrichmentValidation';
+
+export const appsLocalQualificationCaseIds=Object.freeze([
+ 'Apps local actual: real website and Apple bodies through native daily scheduled producer',
+ 'Apps local actual: explicit owner acceptance preserves unselected manual values',
+ 'Apps local actual: same UTC day duplicate invocation reuses exact durable jobs',
+ 'Apps local actual: explicit opt-out fences stale acceptance and scheduled fetching',
+ 'Apps local actual: explicit re-enable rebind retires the prior source generation',
+ 'Apps local actual: stop aborts and drains a real leased invocation before dispatch',
+ 'Apps local actual: natural lease expiry restart recovers and renews before publication',
+ 'Apps local actual: final dedup retention and stop drain close owned resources',
+] as const);
+export type AppLocalQualificationCaseId=typeof appsLocalQualificationCaseIds[number];
+export type AppQualificationFixture=Readonly<{accountId:string;recommendationId:string;appEntityId:string}>;
+export type AppQualificationJob=Readonly<{jobId:string;sourceIdentityHash:string;appEntityId:string;runDate:string;state:string;attempt:number;tokenHash:string|null;leaseExpiresAt:string|null}>;
+export type AppQualificationOwner=Readonly<{binding:AppOwnerBinding|null;suggestions:readonly AppSnapshot[];sources:readonly AppSourceChoice[];recommendationRevision:number;manualValues:Readonly<Record<string,unknown>>}>;
+export type AppQualificationState=Readonly<{databaseInstant:string;jobs:readonly AppQualificationJob[];snapshots:readonly string[];entitlements:readonly {recommendationId:string;snapshotId:string;generationId:string}[];runIds:readonly string[]}>;
+type ClaimGate=Readonly<{started:Promise<AppQualificationJob>}>;
+type CommitGate=Readonly<{started:Promise<{job:AppQualificationJob;snapshot:AppSnapshot}>;renewed:Promise<{jobId:string;tokenHash:string;leaseExpiresAt:string}>;release:()=>void}>;
+/** Root supplies only named owned capabilities. No pool/DSN/arbitrary SQL/paths are accepted here. */
+export type AppLocalQualificationCapabilities=Readonly<{
+ assertOwnedDatabase:(signal:AbortSignal)=>Promise<string>;
+ installExactApprovals:(sources:readonly ApprovedAppWorkerSource[],signal:AbortSignal)=>Promise<void>;
+ seedUnboundManual:(signal:AbortSignal)=>Promise<{website:AppQualificationFixture;apple:AppQualificationFixture}>;
+ readOwner:(fixture:AppQualificationFixture,signal:AbortSignal)=>Promise<AppQualificationOwner>;
+ ownerCommand:(fixture:AppQualificationFixture,command:z.infer<typeof appEnrichmentCommandSchema>,key:string,signal:AbortSignal)=>Promise<unknown>;
+ readOwnedState:(fixtures:readonly AppQualificationFixture[],signal:AbortSignal)=>Promise<AppQualificationState>;
+ pauseNextClaimBeforeDispatch:(signal:AbortSignal)=>Promise<ClaimGate>;
+ pauseNextCommitUntilHeartbeat:(signal:AbortSignal)=>Promise<CommitGate>;
+ proveDrained:(signal:AbortSignal)=>Promise<{timers:number;threads:number;sockets:number;queries:number;children:number}>;
+ closeOwnedResources:()=>Promise<void>;
+}>;
+type Scheduler=ReturnType<typeof createAppLocalScheduler<AppScheduledOutcome>>;
+type Ledger=ReturnType<typeof createAppQualificationLedger>;
+export type AppLocalQualificationInput=Readonly<{ownedDatabaseName:string;configuration:AppScheduledConfiguration;scheduler:Scheduler;ledger:Ledger;capabilities:AppLocalQualificationCapabilities}>;
+/** Construction/registration is inert. Root guard invokes these eight cases sequentially after explicit admission. */
+export function createAppsLocalQualificationPgHarness(input:AppLocalQualificationInput){
+ if(!/^explorers_apps_enrichment_disposable_[a-z0-9_]+$/.test(input.ownedDatabaseName)||!input.scheduler.inspect().nativeClock||!input.ledger.inspect().nativeTransport||!input.ledger.inspect().nativeClock||input.configuration.retention===null)throw new Error('Actual local qualification custody required');
+ const registry=createAppProviderRegistry(input.configuration.providers,input.configuration.parsing,input.configuration.isolation,createAppDecoderCustody(input.configuration.isolation,()=>{throw new Error('Validation only');},input.configuration.isolation.maxConcurrentDecoders));
+ const website=registry.workerSources.find(source=>source.identity.sourceId==='website-metadata'),apple=registry.workerSources.find(source=>source.identity.sourceId==='apple-app-store');
+ if(registry.workerSources.length!==2||website?.canonicalUrl!=='https://www.figma.com/'||apple?.identity.sourceIdentity!=='{"trackId":"1152747299","storefront":"us","kind":"software"}')throw new Error('Exact saved qualification sources required');
+ const controller=new AbortController();let watchdog:ReturnType<typeof setTimeout>|undefined,failedCase:AppLocalQualificationCaseId|undefined,nextCase=0,closed=false;
+ let fixtures:{website:AppQualificationFixture;apple:AppQualificationFixture}|undefined,websiteSnapshot:AppSnapshot|undefined,appleSnapshot:AppSnapshot|undefined,stoppedJob:AppQualificationJob|undefined,baselineState:AppQualificationState|undefined;
+ const passed:AppLocalQualificationCaseId[]=[],outcomes:AppScheduledOutcome[]=[];
+ const fixtureList=()=>{assert(fixtures);return [fixtures.website,fixtures.apple];};
+ const read=async(fixture:AppQualificationFixture)=>{const value=await input.capabilities.readOwner(fixture,controller.signal);const binding=appOwnerBindingSchema.nullable().parse(value.binding);if(binding){assert.equal(binding.appEntityId,fixture.appEntityId);assert.equal(binding.accountId,fixture.accountId);assert.equal(binding.recommendationId,fixture.recommendationId);}const suggestions=value.suggestions.map(raw=>appSnapshotSchema.parse(raw)),sources=value.sources.map(raw=>appSourceChoiceSchema.parse(raw));return {...value,binding,suggestions,sources};};
+ const command=async(fixture:AppQualificationFixture,raw:unknown)=>{const parsed=appEnrichmentCommandSchema.parse(raw),result=await input.capabilities.ownerCommand(fixture,parsed,randomUUID(),controller.signal);return parsed.operation==='acceptAppEnrichment'?appAcceptanceResultSchema.parse(result):appBindingResultSchema.parse(result);};
+ const configure=async(fixture:AppQualificationFixture,source:ApprovedAppWorkerSource,operation:'configureAppEnrichment'|'rebindAppEnrichment')=>{const before=await read(fixture);assert(before.sources.some(choice=>JSON.stringify(choice.identity)===JSON.stringify(source.identity)));return command(fixture,{...source.identity,operation,optIn:true,expectedRecommendationRevision:before.recommendationRevision,expectedBindingRevision:before.binding?.bindingRevision??null});};
+ const assertSnapshot=(snapshot:AppSnapshot,fixture:AppQualificationFixture,source:ApprovedAppWorkerSource)=>{assert.equal(snapshot.appEntityId,fixture.appEntityId);for(const [key,value]of Object.entries(source.identity))assert.equal(snapshot[key as keyof AppSnapshot],value);assert.equal(snapshot.adapterVersion,source.adapterVersion);assert.equal(snapshot.contentHash,hashAppSnapshot(snapshot));assert(Object.keys(snapshot.fields).length>0);for(const field of Object.keys(snapshot.fields) as AppSelectedField[]){assert(source.allowedFields.includes(field));assert.equal(snapshot.fieldProvenance[field]?.sourceUrl,source.canonicalUrl);assert.equal(snapshot.fieldProvenance[field]?.observedAt,snapshot.fetchedAt);}};
+ const accept=async(fixture:AppQualificationFixture,snapshot:AppSnapshot)=>{const before=await read(fixture);assert(before.binding);const selectedFields=(['title','description'] as AppSelectedField[]).filter(field=>Object.hasOwn(snapshot.fields,field));assert(selectedFields.length>0);const result=await command(fixture,{operation:'acceptAppEnrichment',snapshotId:snapshot.snapshotId,selectedFields,expectedRecommendationRevision:before.recommendationRevision,expectedBindingRevision:before.binding.bindingRevision});assert('acceptedFields'in result);assert.deepEqual(result.acceptedFields,selectedFields);const after=await read(fixture);for(const field of selectedFields)assert.deepEqual(after.manualValues[field],snapshot.fields[field]);for(const [field,value]of Object.entries(before.manualValues))if(!selectedFields.includes(field as AppSelectedField))assert.deepEqual(after.manualValues[field],value);};
+ const complete=(value:AppScheduledOutcome)=>{assert.equal(value.kind,'complete');outcomes.push(value);if(value.kind!=='complete')throw Error();assert.equal(value.receipt.counts.exhausted,0);assert.equal(value.receipt.counts.leaseLosses,0);return value;};
+ const state=()=>input.capabilities.readOwnedState(fixtureList(),controller.signal);
+ const noNewWire=(before:ReturnType<Ledger['inspect']>)=>{const after=input.ledger.inspect();assert.equal(after.admittedAttempts,before.admittedAttempts);assert.equal(after.observedResponses,before.observedResponses);assert.equal(after.firstFailure,undefined);};
+ async function close(){if(closed)return;closed=true;controller.abort();if(watchdog)clearTimeout(watchdog);let stopFailed=false;try{await input.scheduler.stop();}catch{stopFailed=true;}await input.capabilities.closeOwnedResources();if(stopFailed)throw new Error('Apps local qualification drain failed');}
+ return Object.freeze({caseIds:appsLocalQualificationCaseIds,
+  async runCase(id:AppLocalQualificationCaseId):Promise<void>{
+   if(failedCase||closed||id!==appsLocalQualificationCaseIds[nextCase])throw new Error('Apps local qualification halted');
+   if(!watchdog)watchdog=setTimeout(()=>controller.abort(),120000);
+   try{
+    if(id===appsLocalQualificationCaseIds[0]){
+     assert.equal(await input.capabilities.assertOwnedDatabase(controller.signal),input.ownedDatabaseName);
+     await input.capabilities.installExactApprovals(registry.workerSources,controller.signal);fixtures=await input.capabilities.seedUnboundManual(controller.signal);assert.notEqual(fixtures.website.appEntityId,fixtures.apple.appEntityId);
+     assert.equal((await read(fixtures.website)).binding,null);assert.equal((await read(fixtures.apple)).binding,null);
+     await configure(fixtures.website,website,'configureAppEnrichment');await configure(fixtures.apple,apple,'configureAppEnrichment');
+     input.scheduler.start();const first=complete(await input.scheduler.waitForScheduledInvocation());assert.equal(first.receipt.counts.unavailable,0);
+     const w=await read(fixtures.website),a=await read(fixtures.apple);assert(w.binding?.optIn);assert(a.binding?.optIn);assert.equal(w.suggestions.length,1);assert.equal(a.suggestions.length,1);websiteSnapshot=w.suggestions[0];appleSnapshot=a.suggestions[0];assertSnapshot(websiteSnapshot,fixtures.website,website);assertSnapshot(appleSnapshot,fixtures.apple,apple);
+     const ledger=input.ledger.inspect();assert.equal(ledger.firstFailure,undefined);assert.equal(ledger.admittedAttempts,2);assert.equal(ledger.observedResponses,2);assert.equal(ledger.unknownWireAttempts,0);assert.equal(ledger.records.filter(record=>record.responseStatus===200&&record.bodyHash&&record.bodyBytes).length,2);baselineState=await state();assert.equal(baselineState.jobs.length,2);assert.equal(baselineState.snapshots.length,2);
+    }else if(id===appsLocalQualificationCaseIds[1]){assert(fixtures&&websiteSnapshot&&appleSnapshot);await accept(fixtures.website,websiteSnapshot);await accept(fixtures.apple,appleSnapshot);}
+    else if(id===appsLocalQualificationCaseIds[2]){assert(baselineState);const ledger=input.ledger.inspect();complete(await input.scheduler.trigger());noNewWire(ledger);const after=await state();assert.deepEqual(after.jobs.map(job=>job.jobId).sort(),baselineState.jobs.map(job=>job.jobId).sort());assert.deepEqual([...after.snapshots].sort(),[...baselineState.snapshots].sort());assert(after.runIds.length>baselineState.runIds.length);assert.equal(new Set(after.entitlements.map(e=>JSON.stringify(e))).size,after.entitlements.length);}
+    else if(id===appsLocalQualificationCaseIds[3]){assert(fixtures&&websiteSnapshot);const before=await read(fixtures.website);assert(before.binding);const stale={operation:'acceptAppEnrichment',snapshotId:websiteSnapshot.snapshotId,selectedFields:['title'],expectedRecommendationRevision:before.recommendationRevision,expectedBindingRevision:before.binding.bindingRevision};await command(fixtures.website,{operation:'disableAppEnrichment',expectedRecommendationRevision:before.recommendationRevision,expectedBindingRevision:before.binding.bindingRevision});await assert.rejects(()=>command(fixtures!.website,stale),(error:any)=>error?.status===409);assert.deepEqual((await read(fixtures.website)).manualValues,before.manualValues);const ledger=input.ledger.inspect();complete(await input.scheduler.trigger());noNewWire(ledger);}
+    else if(id===appsLocalQualificationCaseIds[4]){assert(fixtures&&websiteSnapshot);const before=await read(fixtures.website);assert(before.binding&&!before.binding.optIn);const rebound=await configure(fixtures.website,apple,'rebindAppEnrichment');assert('bindingId'in rebound);assert.notEqual(rebound.bindingGenerationId,before.binding.currentGenerationId);assert.equal(rebound.optIn,true);const after=await read(fixtures.website);assert.equal(after.suggestions.length,0);assert.deepEqual(after.manualValues,before.manualValues);}
+    else if(id===appsLocalQualificationCaseIds[5]){assert(fixtures);const ledger=input.ledger.inspect(),gate=await input.capabilities.pauseNextClaimBeforeDispatch(controller.signal),pending=input.scheduler.trigger();void pending.catch(()=>{});stoppedJob=await gate.started;assert.equal(stoppedJob.appEntityId,fixtures.website.appEntityId);assert.equal(stoppedJob.sourceIdentityHash,apple.identity.sourceIdentityHash);assert.equal(stoppedJob.state,'leased');await input.scheduler.stop();const result=await pending;assert.equal(result.kind,'interrupted');assert.equal(result.kind==='interrupted'&&result.drained,true);outcomes.push(result);assert.deepEqual(input.scheduler.inspect(),{state:'stopped',active:false,failed:false,nativeClock:true});noNewWire(ledger);}
+    else if(id===appsLocalQualificationCaseIds[6]){
+     assert(fixtures&&stoppedJob&&stoppedJob.leaseExpiresAt);const poll=new AbortController(),abort=()=>poll.abort();controller.signal.addEventListener('abort',abort,{once:true});const limit=setTimeout(abort,6000);try{for(;;){if(poll.signal.aborted)throw Error();const current=await input.capabilities.readOwnedState(fixtureList(),poll.signal);if(Date.parse(current.databaseInstant)>=Date.parse(stoppedJob.leaseExpiresAt))break;await new Promise<void>(resolve=>{const timer=setTimeout(done,50);function done(){clearTimeout(timer);poll.signal.removeEventListener('abort',done);resolve();}poll.signal.addEventListener('abort',done,{once:true});if(poll.signal.aborted)done();});}}finally{clearTimeout(limit);controller.signal.removeEventListener('abort',abort);poll.abort();}
+     const gate=await input.capabilities.pauseNextCommitUntilHeartbeat(controller.signal);input.scheduler.start();const pending=input.scheduler.trigger();void pending.catch(()=>{});const observed=await gate.started;assert.equal(observed.job.jobId,stoppedJob.jobId);assert.equal(observed.job.attempt,2);assert.notEqual(observed.job.tokenHash,stoppedJob.tokenHash);const renewed=await gate.renewed;assert.equal(renewed.jobId,stoppedJob.jobId);assert.equal(renewed.tokenHash,observed.job.tokenHash);assert(Date.parse(renewed.leaseExpiresAt)>Date.parse(observed.job.leaseExpiresAt!));gate.release();complete(await pending);const after=await read(fixtures.website);assert.equal(after.suggestions.length,1);assertSnapshot(after.suggestions[0],fixtures.website,apple);await accept(fixtures.website,after.suggestions[0]);assert.equal(input.ledger.inspect().admittedAttempts,3);assert.equal(input.ledger.inspect().observedResponses,3);
+    }else if(id===appsLocalQualificationCaseIds[7]){const before=await state(),ledger=input.ledger.inspect(),result=complete(await input.scheduler.trigger());noNewWire(ledger);assert.equal(result.retention.status,'completed');assert.deepEqual(result.retention.deleted,{jobs:0,candidates:0,runs:0,authorities:0});const after=await state();assert.deepEqual(after.jobs.map(job=>job.jobId).sort(),before.jobs.map(job=>job.jobId).sort());assert.deepEqual([...after.snapshots].sort(),[...before.snapshots].sort());await input.scheduler.stop();assert.deepEqual(await input.capabilities.proveDrained(controller.signal),{timers:0,threads:0,sockets:0,queries:0,children:0});await close();}
+    if(controller.signal.aborted&&!closed)throw Error();passed.push(id);nextCase++;
+   }catch{failedCase??=id;controller.abort();throw new Error('Apps local qualification failed');}
+  },close,
+  receipt:()=>Object.freeze({scope:'local-actual-only',caseIds:appsLocalQualificationCaseIds,passed:Object.freeze([...passed]),...(failedCase?{failedCase}:{}),outcomes:Object.freeze([...outcomes]),ledger:input.ledger.inspect(),scheduler:input.scheduler.inspect(),complete:passed.length===8&&closed&&!failedCase}),
+ });
+}

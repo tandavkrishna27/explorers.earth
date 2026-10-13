@@ -182,6 +182,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
         ['GET', '/api/explorers/v1/recommendations/:id/app-enrichment/binding'],
         ['POST', '/api/explorers/v1/recommendations/:id/app-enrichment/acceptances'],
         ['GET', '/api/explorers/v1/recommendations/:id/app-enrichment/suggestions'],
+        ['GET', '/api/explorers/v1/recommendations/:id/app-enrichment/sources'],
       ].some(([method, path]) => route.method === method && route.path === path)) return 'explorers-owner';
   if (route.source === "tunes/server/routes/explorersRecommendationRoutes.ts"
       && [

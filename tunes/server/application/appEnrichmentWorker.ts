@@ -8,14 +8,16 @@ import {hashAppSnapshot} from './appEnrichmentValidation';
 import {ExplorersAppEnrichmentRepository} from '../repositories/explorersAppEnrichmentRepository';
 import {appWorkerLeaseSchema,type AppWorkerRepository,type AppWorkerReceipt,type AppWorkerLease,type ApprovedWorkerSource} from '../repositories/explorersAppEnrichmentWorkerRepository';
 import {createAppEnrichmentFetcher,parseAppRetryAfter,type AppFetchConfig,type AppFetchOutcome} from '../services/appEnrichmentFetch';
-export type ReviewedAppWorkerAdapter={adapterVersion:string;canonicalUrlPolicyVersion:string;transientStatuses:readonly number[];resolve:(source:ApprovedAppWorkerSource)=>string;decode:(bytes:Buffer,identity:ApprovedAppWorkerSource['identity'],observedAt:string)=>unknown};
+import {isAppDecoderCustodyFailure} from '../services/appEnrichmentOwnedDecoder';
+export type AppWorkerDecodeRequest=Readonly<{bytes:Buffer;identity:ApprovedAppWorkerSource['identity'];observedAt:string;signal:AbortSignal;deadlineMs:number}>;
+export type ReviewedAppWorkerAdapter={adapterVersion:string;canonicalUrlPolicyVersion:string;transientStatuses:readonly number[];resolve:(source:ApprovedAppWorkerSource)=>string;decode:(input:AppWorkerDecodeRequest)=>Promise<unknown>};
 export type AppWorkerClock={now:()=>number;setTimeout:(callback:()=>void,ms:number)=>unknown;clearTimeout:(handle:unknown)=>void};
 export type AppWorkerDependencies={repository:AppWorkerRepository;registry:readonly ReviewedAppWorkerAdapter[];clock?:AppWorkerClock;fetcher?:(config:AppFetchConfig)=>{fetch:(url:string,signal:AbortSignal)=>Promise<AppFetchOutcome>};uuid?:()=>string;retryDelay?:(attempt:number,source:ApprovedAppWorkerSource)=>number};
 export type AppWorkerInput={sources:unknown;runId:string;scheduleId:string;holder:string;trustedInstant:Date|string;signal?:AbortSignal};
 const nativeClock:AppWorkerClock={now:()=>Date.now(),setTimeout:(callback,ms)=>setTimeout(callback,ms),clearTimeout:handle=>clearTimeout(handle as ReturnType<typeof setTimeout>)};
 const descriptor=(s:ApprovedAppWorkerSource):ApprovedWorkerSource=>({...s.identity,approvalRevision:s.approvalRevision,configurationFingerprint:s.configurationFingerprint});
 const label=z.string().regex(/^[A-Za-z0-9._-]{1,100}$/);
-const decodedSchema=z.object({fields:appSnapshotFieldsSchema}).strict();
+const decodedSchema=z.discriminatedUnion('kind',[z.object({kind:z.literal('fields'),fields:appSnapshotFieldsSchema}).strict(),z.object({kind:z.literal('unavailable')}).strict()]);
 /** Budgets count conservative per-fetch reservations, including every allowed hop.
  * Unfinished leases remain durable for database-clock expiry/recovery after a stop. */
 export async function runAppEnrichmentWorker(input:AppWorkerInput,deps:AppWorkerDependencies):Promise<{kind:'disabled'}|{kind:'complete';receipt:AppWorkerReceipt}> {
@@ -44,22 +46,30 @@ export async function runAppEnrichmentWorker(input:AppWorkerInput,deps:AppWorker
   const onAbort=()=>controller.abort();runController.signal.addEventListener('abort',onAbort,{once:true});if(runController.signal.aborted)onAbort();
   const renew=()=>{pending=(async()=>{try{const r=await repository.renew(lease);if(r.status!=='renewed'){lost=true;controller.abort();}}catch{lost=true;controller.abort();}finally{if(!stopped&&!lost)heartbeat=clock.setTimeout(renew,source.limits.heartbeatIntervalMs);}})();};
   heartbeat=clock.setTimeout(renew,source.limits.heartbeatIntervalMs);
+  const deadlineMs=start+budgets.runtime;
+  const expired=()=>{if(now()>=deadlineMs&&!runController.signal.aborted)abort();return runController.signal.aborted;};
+  try {
   let outcome:AppFetchOutcome;
   try {
    const url=adapter.resolve(source);if(url!==source.canonicalUrl)throw new Error('Invalid reviewed destination');
    outcome=await (deps.fetcher??createAppEnrichmentFetcher)(source.fetch).fetch(url,controller.signal);
   }catch{outcome={kind:'rejected'};}
-  finally{stopped=true;clock.clearTimeout(heartbeat);await pending;runController.signal.removeEventListener('abort',onAbort);}
-  if(lost){counts.leaseLosses++;return;}if(runController.signal.aborted){counts.deferred++;return;}
+  await pending;
+  if(lost){counts.leaseLosses++;return;}if(expired()){counts.deferred++;return;}
   if(outcome.kind==='success'){
    let snapshot:AppSnapshot;
    try {
-    const observedAt=new Date(now()).toISOString(),decoded=decodedSchema.parse(adapter.decode(Buffer.from(outcome.bytes),source.identity,observedAt));
+    if(outcome.bytes.byteLength>source.fetch.maxBytes)throw new Error();
+    const observedAt=new Date(now()).toISOString(),decoded=decodedSchema.parse(await adapter.decode(Object.freeze({bytes:Buffer.from(outcome.bytes),identity:source.identity,observedAt,signal:controller.signal,deadlineMs})));
+    await pending;
+    if(lost){counts.leaseLosses++;return;}if(expired()){counts.deferred++;return;}
+    if(decoded.kind==='unavailable'){const result=await repository.finishOutcome(lease,{code:'unavailable'});if(result.status==='lease-lost')counts.leaseLosses++;else{counts.processed++;if(result.state==='unavailable')counts.unavailable++;else if(result.state==='cancelled')counts.cancelled++;else if(result.state==='exhausted')counts.exhausted++;else counts.deferred++;}return;}
     if(outcome.bytes.byteLength>source.fetch.maxBytes||!Object.keys(decoded.fields).length||Object.keys(decoded.fields).some(k=>!source.allowedFields.includes(k as typeof source.allowedFields[number])))throw new Error();
     const fieldProvenance=Object.fromEntries(Object.keys(decoded.fields).map(k=>[k,{sourceUrl:source.canonicalUrl,observedAt}]));
     const payload={...source.identity,snapshotId:contentIdSchema.parse((deps.uuid??randomUUID)()),appEntityId:lease.appEntityId,adapterVersion:source.adapterVersion,fetchedAt:observedAt,fields:decoded.fields,fieldProvenance,contentHash:'0'.repeat(64)};
     snapshot=ExplorersAppEnrichmentRepository.snapshotForStorage({...payload,contentHash:hashAppSnapshot(payload)});
-   }catch{const result=await repository.finishOutcome(lease,{code:'invalid'});if(result.status==='lease-lost')counts.leaseLosses++;else {counts.processed++;if(result.state==='exhausted')counts.exhausted++;else if(result.state==='cancelled')counts.cancelled++;else if(result.state==='unavailable')counts.unavailable++;else counts.deferred++;}return;}
+   }catch(error){if(isAppDecoderCustodyFailure(error)){abort();throw error;}if(lost){counts.leaseLosses++;return;}if(expired()){counts.deferred++;return;}const result=await repository.finishOutcome(lease,{code:'invalid'});if(result.status==='lease-lost')counts.leaseLosses++;else {counts.processed++;if(result.state==='exhausted')counts.exhausted++;else if(result.state==='cancelled')counts.cancelled++;else if(result.state==='unavailable')counts.unavailable++;else counts.deferred++;}return;}
+   if(lost){counts.leaseLosses++;return;}if(expired()){counts.deferred++;return;}
    const result=await repository.commitSnapshot(lease,eligible.candidateIds,snapshot);
    if(result.status==='lease-lost')counts.leaseLosses++;else if(result.status==='succeeded')counts.processed++;else counts.cancelled++;
    return;
@@ -69,6 +79,7 @@ export async function runAppEnrichmentWorker(input:AppWorkerInput,deps:AppWorker
   if(retry){const hint=outcome.kind==='http-failure'?parseAppRetryAfter(outcome.retryAfter,now(),{minMs:source.limits.retryMinDelayMs,maxMs:source.limits.retryAfterMaxMs}):null;const configured=hint??deps.retryDelay?.(lease.attempt,source)??source.limits.retryMinDelayMs;if(!Number.isSafeInteger(configured)||configured<source.limits.retryMinDelayMs||configured>source.limits.retryMaxDelayMs)throw new Error('Invalid explicit retry delay');delay=configured;}
   const result=await repository.finishOutcome(lease,retry?{code:'retry',retryDelayMs:delay}:{code:outcome.kind==='rejected'||outcome.kind==='budget-exceeded'?'invalid':outcome.kind==='aborted'?'cancelled':'unavailable'});
   if(result.status==='lease-lost')counts.leaseLosses++;else{counts.processed++;if(result.state==='exhausted')counts.exhausted++;else if(result.state==='cancelled')counts.cancelled++;else if(result.state==='unavailable')counts.unavailable++;else counts.deferred++;}
+  }finally{stopped=true;clock.clearTimeout(heartbeat);await pending;runController.signal.removeEventListener('abort',onAbort);}
  };
  try {
   repository=deps.repository.forRun(runController.signal,authorityPolicy);

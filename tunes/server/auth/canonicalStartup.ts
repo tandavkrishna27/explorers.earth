@@ -8,6 +8,7 @@ import { createCanonicalApp } from "./canonicalApp";
 import { resolveExplorersAuthConfig } from "./betterAuth";
 import { runAccountLifecycleMaintenance } from "../application/accountLifecycleMaintenance";
 import { resolveObjectStorage } from "../services/objectStorage";
+import {resolveAppProviderOwnerChoices} from '../config/app-provider-configuration';
 
 type Environment = Record<string, string | undefined>;
 
@@ -23,6 +24,7 @@ export async function startCanonicalServer(
   options: CanonicalStartupOptions = {},
 ): Promise<{ httpServer: Server; shutdown: () => Promise<void> }> {
   const config = resolveExplorersAuthConfig(environment);
+  const appEnrichmentChoices=resolveAppProviderOwnerChoices(environment);
   process.env.TZ = "UTC";
   let pool = options.pool;
   const ownsPool = !pool;
@@ -34,7 +36,7 @@ export async function startCanonicalServer(
   try {
     const readiness = await checkMusicDatabaseReadiness(pool);
     if (!readiness.ready) throw new Error("Canonical identity schema is not ready");
-    const { app } = createCanonicalApp(pool, config);
+    const { app } = createCanonicalApp(pool, config,{appEnrichmentChoices});
     const httpServer = createServer(app);
     const port = options.port ?? Number(environment.PORT ?? "5000");
     if (!Number.isInteger(port) || port < 0 || port > 65_535) throw new Error("PORT must be a valid TCP port");

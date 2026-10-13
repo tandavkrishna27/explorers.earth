@@ -394,7 +394,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 67
+      "line": 68
     },
     {
       "method": "USE",
@@ -404,7 +404,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 68
+      "line": 69
     },
     {
       "method": "ALL",
@@ -414,7 +414,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 75
+      "line": 76
     },
     {
       "method": "ALL",
@@ -424,7 +424,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 76
+      "line": 77
     },
     {
       "method": "GET",
@@ -434,7 +434,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 80
+      "line": 81
     },
     {
       "method": "POST",
@@ -444,7 +444,7 @@
       "policy": "trusted-origin+signed-short-lived-recovery-intent",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 116
+      "line": 118
     },
     {
       "method": "GET",
@@ -454,7 +454,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 134
+      "line": 136
     },
     {
       "method": "GET",
@@ -608,7 +608,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/sources",
       "classification": "canonical-explorers-owner",
       "ownerSource": "verified-google-session+active-initial-account-binding",
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
@@ -618,7 +618,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/suggestions",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
       "classification": "canonical-explorers-owner",
       "ownerSource": "verified-google-session+active-initial-account-binding",
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
@@ -627,18 +627,18 @@
       "line": 30
     },
     {
-      "method": "ALL",
-      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
-      "classification": "tombstone",
-      "ownerSource": "none-fail-closed",
-      "policy": "fail-closed-tombstone",
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/suggestions",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
-      "line": 32
+      "line": 31
     },
     {
       "method": "ALL",
-      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/acceptances",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/sources",
       "classification": "tombstone",
       "ownerSource": "none-fail-closed",
       "policy": "fail-closed-tombstone",
@@ -648,13 +648,33 @@
     },
     {
       "method": "ALL",
-      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/suggestions",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
       "classification": "tombstone",
       "ownerSource": "none-fail-closed",
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
       "line": 34
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/acceptances",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 35
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/suggestions",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 36
     },
     {
       "method": "GET",
@@ -2475,8 +2495,14 @@
     {
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
+      "source": "tunes/server/application/appEnrichmentLocalScheduler.ts",
+      "line": 4
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
       "source": "tunes/server/application/appEnrichmentWorker.ts",
-      "line": 15
+      "line": 17
     },
     {
       "kind": "setTimeout",
@@ -2494,7 +2520,7 @@
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/auth/canonicalStartup.ts",
-      "line": 58
+      "line": 60
     },
     {
       "kind": "setTimeout",
@@ -2554,7 +2580,25 @@
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/appEnrichmentFetch.ts",
-      "line": 50
+      "line": 88
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/appEnrichmentOwnedDecoder.ts",
+      "line": 71
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/appEnrichmentOwnedDecoder.ts",
+      "line": 75
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/appEnrichmentOwnedDecoder.ts",
+      "line": 77
     },
     {
       "kind": "setTimeout",
