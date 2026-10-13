@@ -43,7 +43,12 @@ export const PLACES_COMPLETE70_MEMBERS = 70;
  */
 export const SYNTHETIC_FIXTURE_PLACE_PINS_POLICY = Object.freeze({
   policyId:'synthetic-fixture-places-pins-e2e',policyVersion:1,
-  transportChunkBytes:1024,transportChunkIds:20,replacementBytes:4096,replacementIds:80,
+  // The item bound admits the complete70 membership whole (never a product pin cap), while
+  // the replacement BYTE bound is one fixed-width identifier array short of a 70-id single
+  // replacement envelope. The client planner chooses a single replacement only when BOTH
+  // bounds admit the sequence, so a byte bound - not an item cap - is what makes the
+  // complete membership arrive as the several advertised chunks this policy frames it into.
+  transportChunkBytes:1024,transportChunkIds:20,replacementBytes:2730,replacementIds:70,
   ownerDraftQuota:4,ownerStagingBytes:20000,draftExpiryMs:600000,stagingRetentionMs:900000,receiptRetentionMs:1800000,
   commitProcessingBytes:40000,commitProcessingMs:20000,commitWorkUnits:100000,cleanupBatchSize:16,cleanupWorkUnits:256,
 });

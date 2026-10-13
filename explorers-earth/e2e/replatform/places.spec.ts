@@ -247,17 +247,20 @@ function assertPublicPageShape(recording:Awaited<ReturnType<ReturnType<typeof re
   if(expected[0].length===4)expect(pages.filter((row,index)=>Number(row.terminal)!==expected[index][3]).length).toBe(0);
   return pages;
 }
-async function exhaustRendered(page:Page,rows:Locator,label:string,initial:number) {
+// `total` is the complete rendered census for the surface under test. The original eight
+// identities exhaust the 53-row seeded surfaces; a caller on a differently sized list
+// passes the count the SERVER's own complete traversal returned, never a literal.
+async function exhaustRendered(page:Page,rows:Locator,label:string,initial:number,total=53) {
   await expect.poll(()=>rows.count()).toBeGreaterThanOrEqual(initial);
   // Scrolling a real button can let the real observer finish the same continuation.
   // Accept that race only when rendered rows demonstrably advanced; no request retry.
-  for(let step=0;step<5 && await rows.count()<53;step++) {
+  for(let step=0;step<Math.max(5,Math.ceil(total/initial)+2) && await rows.count()<total;step++) {
     const before=await rows.count(),button=page.getByRole('button',{name:`Load more ${label}`,exact:true});
     try {await button.click({timeout:1000});}
     catch(error) {try {await expect.poll(()=>rows.count()).toBeGreaterThan(before);}catch {throw error;}}
     await expect.poll(()=>rows.count()).toBeGreaterThan(before);
   }
-  await expect(rows).toHaveCount(53);
+  await expect(rows).toHaveCount(total);
   await expect(page.getByRole('button',{name:`Load more ${label}`,exact:true})).toHaveCount(0);
 }
 
@@ -510,13 +513,41 @@ async function ownerListMembers(listId:string,persona=manifest.personas.ownerA) 
     cursor=page.nextCursor;seen.add(cursor!);
   } while(true);
   expect(new Set(rows.map(row=>row.id)).size).toBe(rows.length);
-  const boundary=rows.findIndex(row=>row.pin===null);
+  // Per-row place pin state is served on the owner MEMBERSHIP projection as
+  // `placePinPosition`, because a place pin is collection-local (collection_place_pins).
+  // The recommendation DTO's `pin` is the CATEGORY top pick (category_recommendation_pins),
+  // a different feature, and is null for every row here by design. Read the designed source.
+  const positionOf=new Map<string,number>(),members=new Set<string>(),memberSeen=new Set<string>();
+  let memberCursor:string|undefined;
+  do {
+    // The category is specified by the route alone; repeating it in the query is refused.
+    const search=new URLSearchParams({collectionStatus:'all',recommendationStatus:'active',
+      limit:'24',snapshotToken:snapshot.snapshotToken,...(memberCursor?{cursor:memberCursor}:{})});
+    const page=await json(`/categories/places/memberships?${search}`,persona);
+    expect(page.snapshotToken===snapshot.snapshotToken && page.snapshot===snapshot.revision).toBe(true);
+    expect(Array.isArray(page.items) && page.items.length<=24).toBe(true);
+    for(const row of page.items as Dto[]) {
+      // The per-row pin field is emitted for every places membership row, pinned or not.
+      expect(Object.prototype.hasOwnProperty.call(row,'placePinPosition')).toBe(true);
+      expect(row.placePinPosition===null
+        || (Number.isSafeInteger(row.placePinPosition) && row.placePinPosition>=0)).toBe(true);
+      if(row.collectionId!==listId) continue;
+      expect(row.collectionArchived===false && row.recommendationArchived===false).toBe(true);
+      expect(members.has(row.recommendationId)).toBe(false);members.add(row.recommendationId);
+      if(row.placePinPosition!==null) positionOf.set(row.recommendationId,row.placePinPosition);
+    }
+    if(page.nextCursor===null)break;
+    expect(typeof page.nextCursor==='string' && page.items.length>0 && !memberSeen.has(page.nextCursor)).toBe(true);
+    memberCursor=page.nextCursor;memberSeen.add(memberCursor!);
+  } while(true);
+  // Closure: the paged recommendation traversal and this list's memberships are the same rows.
+  expect(members.size===rows.length && rows.every(row=>members.has(row.id))).toBe(true);
+  const boundary=rows.findIndex(row=>!positionOf.has(row.id));
   // Pinned-first: no pinned row may follow the first unpinned row, whatever its display order.
-  expect(boundary===-1 || rows.slice(boundary).every(row=>row.pin===null)).toBe(true);
-  const pinned=rows.filter(row=>row.pin!==null);
-  expect(JSON.stringify(pinned.map(row=>row.pin.position))
-    ===JSON.stringify([...pinned.map(row=>row.pin.position)].sort((a:number,b:number)=>a-b))).toBe(true);
-  expect(pinned.every(row=>row.pin.collectionId===listId)).toBe(true);
+  expect(boundary===-1 || rows.slice(boundary).every(row=>!positionOf.has(row.id))).toBe(true);
+  const pinned=rows.filter(row=>positionOf.has(row.id)),positions=pinned.map(row=>positionOf.get(row.id)!);
+  expect(JSON.stringify(positions)===JSON.stringify([...positions].sort((a:number,b:number)=>a-b))).toBe(true);
+  expect(new Set(positions).size).toBe(positions.length); // one pin position per row, list-local
   expect(metadata!.eligiblePinCount).toBe(pinned.length);
   expect(metadata!.eligibleItemCount).toBe(rows.length);
   return {rows,pages,pinnedIds:pinned.map(row=>row.id as string),ids:rows.map(row=>row.id as string),metadata:metadata!};
@@ -673,9 +704,12 @@ test('Places: additive public pinned pages omit private members and restart with
     const detailPages=recordPublicPages(anon.page,publicPath(list.slug),true);
     await anon.page.goto(`/${manifest.personas.ownerA.handle}/places/${list.slug}`);
     const cards=anon.page.locator('button[aria-label^="Owned Place R"]');
-    await exhaustRendered(anon.page,cards,'places',24);
+    // The rendered census must equal the server's own complete public traversal of THIS
+    // list, which is this case's complete list, not the 53-row default of the seeded ones.
+    await exhaustRendered(anon.page,cards,'places',24,restarted.ids.length);
     const rendered=await cards.evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label')));
     expect(new Set(rendered).size).toBe(rendered.length); // restart cleared rows, never mixed them
+    same([...rendered].sort(),restarted.ids.map(id=>titleOf.get(id)!).sort()); // same rows, not just the same count
     same(rendered.slice(0,chosen.length),chosen.map(id=>titleOf.get(id)!));
     const observed=await detailPages();
     expect(observed.parseFailures).toBe(0);
