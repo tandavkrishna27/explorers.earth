@@ -1,3 +1,4 @@
+import {types as nativeTypes} from 'node:util';
 import { execFileSync, spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { lstatSync, realpathSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -618,6 +619,52 @@ function authorityEnvironment(authority: UatDatabaseAuthority): NodeJS.ProcessEn
     MUSIC_UAT_DATABASE_CONTAINER_ID: authority.containerId,
     MUSIC_UAT_DATABASE_COMMIT: authority.commit,
   };
+}
+
+export type OwnedStagedReadonlyDependencies={dockerRead:(args:string[])=>string;fileSystem:StagedDatabaseDependencies['fileSystem']};
+/** Read-only witness only: fixture authority still requires the private owned-handle binding. */
+/** Read-only witness only: fixture authority still requires the private owned-handle binding. */
+export function attestOwnedStagedUatDatabaseAuthority(input: OwnedUatDatabaseAuthority, passwordFile: string, dependencies?: OwnedStagedReadonlyDependencies): Readonly<OwnedUatDatabaseAuthority> {
+    const capture = (value: unknown, expected: readonly string[]) => { if (!value || typeof value !== 'object' || nativeTypes.isProxy(value) || Object.getPrototypeOf(value) !== Object.prototype)
+        throw authorityError('staged readonly input is invalid'); const descriptors = Object.getOwnPropertyDescriptors(value), keys = Reflect.ownKeys(descriptors); if (keys.some(key => typeof key !== 'string') || keys.sort().join(',') !== [...expected].sort().join(',') || keys.some(key => !descriptors[key as string]?.enumerable || !Object.hasOwn(descriptors[key as string], 'value')))
+        throw authorityError('staged readonly input is invalid'); return Object.fromEntries(keys.map(key => [key, descriptors[key as string].value])); };
+    const data = capture(input, ['owned', 'runId', 'database', 'commit', 'port', 'containerId', 'imageId', 'contextHost']);
+    if (data.owned !== true || typeof data.port !== 'number' || ['runId', 'database', 'commit', 'containerId', 'imageId', 'contextHost'].some(key => typeof data[key] !== 'string'))
+        throw authorityError('staged readonly authority is invalid');
+    const authority = Object.freeze({ ...data }) as unknown as OwnedUatDatabaseAuthority;
+    validateRequestedIdentity({ ...authority, passwordFile });
+    if (!/^[a-f0-9]{64}$/.test(authority.containerId) || !/^sha256:[a-f0-9]{64}$/.test(authority.imageId))
+        throw authorityError('staged readonly identity is invalid');
+    requireLocalDockerHost(authority.contextHost);
+    let dockerRead = defaultDockerRead, fileSystem: StagedDatabaseDependencies['fileSystem'] = { realpath: path => realpathSync(path), lstat: path => lstatSync(path, { bigint: true }) };
+    if (dependencies !== undefined) {
+        const adapter = capture(dependencies, ['dockerRead', 'fileSystem']), files = capture(adapter.fileSystem, ['realpath', 'lstat']);
+        if ([adapter.dockerRead, files.realpath, files.lstat].some(value => typeof value !== 'function' || nativeTypes.isProxy(value)))
+            throw authorityError('complete readonly adapter required');
+        dockerRead = adapter.dockerRead;
+        fileSystem = { realpath: files.realpath, lstat: files.lstat };
+    }
+    const retained = stagedCustody(passwordFile, fileSystem);
+    const contextHost = readLocalDockerContext(dockerRead);
+    if (contextHost !== authority.contextHost)
+        throw authorityError('staged readonly context changed');
+    let inspect: UatDatabaseContainerInspect;
+    try {
+        inspect = JSON.parse(dockerRead(['--host', contextHost, 'inspect', '--type', 'container', '--format', '{{json .}}', authority.containerId]));
+    }
+    catch {
+        throw authorityError('staged readonly inspection failed');
+    }
+    const imageId = dockerRead(['--host', contextHost, 'image', 'inspect', '--format', '{{.Id}}', authority.imageId]).trim();
+    if (imageId !== authority.imageId)
+        throw authorityError('staged readonly image changed');
+    const result = validateDatabaseInspect(authority, { contextHost, imageId, inspect }, authority.imageId, true), mounts = (inspect.Mounts ?? []).filter(mount => mount.Destination === PASSWORD_DESTINATION);
+    if (mounts.length !== 1 || mounts[0].Source !== passwordFile)
+        throw authorityError('staged readonly mount changed');
+    const fresh = stagedCustody(passwordFile, fileSystem);
+    if (fresh.length !== retained.length || fresh.some((identity, index) => identity !== retained[index]))
+        throw authorityError('secret or ancestor custody changed');
+    return Object.freeze({ ...result, owned: true });
 }
 
 export function attestUatDatabaseAuthority(

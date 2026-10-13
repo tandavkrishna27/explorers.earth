@@ -13,14 +13,33 @@ The following supersedes the older pending-status bullets below. Wave 2 remains 
   PostgreSQL cases on clean `f8215c98`, with source and resource cleanup verified.
   See `receipts/apps-real-providers-f8215c98/`. Authenticated browser enrichment
   controls are a separate remaining proof; no hosted nightly schedule is qualified.
-- Guides diagnostic transport is repaired in `4b3522aa`; 259 lifecycle contract
-  tests passed. Its fresh protected run still failed the first section-order case:
-  auth/session and `/me` returned 200, but the editable Guide request returned 404.
-  The retained page showed the load-failure state. This is failed acceptance,
-  and its actual source cause must be repaired before another qualification run.
-- Public/People fixture and browser source is still being completed and reviewed.
-  Passing resource-free contracts do not establish the required 32 public and
-  12 People native browser identities.
+- Guides passed the earlier archived-detail and fresh-client epoch blockers after
+  reviewed repairs. The actual run at `dd30f5c0` still failed in the second desktop
+  case's producer; the Transport/Stay traversal correction did not resolve it.
+  Its receipt preserves failed process/control cleanup and intact source. The
+  nine closed, passive producer stages in `8eb32067` await actual qualification;
+  stripping those markers preserves the reviewed business AST exactly.
+- All 32 public, 12 People and four separate Apps enrichment browser identities
+  are authored, reviewed and registered, preserving the original 166 identities.
+  Source registration is not acceptance. Actual People at `8eb32067` reached
+  discovery, then failed exact configuration adoption; source and cleanup passed.
+  Root and host canonical-path corrections retain the exact-byte guard and need
+  a fresh complete run. The imported Places catalogue has 335 records; the actual
+  configured People sectors catalogue remains empty, explicitly retained.
+- Actual Apps enrichment at `278baab5` failed composition because the full provider
+  registry crossed a metadata-only boundary. The reviewed projection correction
+  in `8eb32067` progressed to grant creation, which refused the older tag-based
+  database attestation against the actual pinned-image acquisition. Its startup
+  failure was retained before exact owned-child termination. The new strict staged
+  attestation and startup API closure are reviewed; browser execution remains open.
+- All 504 Root runner/evidence tests passed at `8eb32067`, with zero skips. Fresh
+  integrated checks passed 217 Apps, 360 Guides backend and 63 contained frontend
+  tests. Subsequent staged-attestation/API-close checks passed 302 tests and the
+  public host/Root checks passed 19. These are resource-free source checks.
+- Three specifically owned retained database runs were recovered separately after
+  exact CID/source/image/secret custody, native-process absence and zero sessions/
+  prepared transactions were proved. Their original failed cleanup receipts remain
+  failed; recovery does not turn those runs into qualification.
 - Remote PR119 remains draft at `622f6893`; the latest local work has not been
   pushed. Existing `platform-fixture` and dependent `music-required` CI failures
   remain unresolved. No merge, deployment or Strapi retirement occurred.

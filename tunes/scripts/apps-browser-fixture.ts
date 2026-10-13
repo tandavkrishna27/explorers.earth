@@ -530,6 +530,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies, family: 'a
                     }
                     catch { captured ??= snapshot(control,options); producerFailure = true; }
                 }
+            if(failurePhase==='startup'&&api){cleanupStep='api-close';await bounded(()=>api!.close());api=undefined;}
             if (producerFailure) throw new Refusal();
             cleanupStep = 'producer-settlement';
             if (originals.size || uncertain || error && !knownFailure && !(interrupted && setupComplete))
@@ -624,7 +625,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
     let nativeUnknown = false;
     function latchUnknown(origin:NativeUnknownOrigin,context:NativeContext=readContext(),budgetMs?:number){if(!nativeUnknown)reportUnknown(origin,context,budgetMs);nativeUnknown=true;}
 
-    const enrichmentAbort=new AbortController(),enrichmentPending=new Set<Promise<unknown>>(),ownedAuthorities=new WeakSet<object>();
+    const enrichmentAbort=new AbortController(),enrichmentPending=new Set<Promise<unknown>>(),ownedAuthorities=new WeakSet<object>(),ownedSecretFiles=new WeakMap<object,string>();
     let enrichmentRegistry:Awaited<ReturnType<typeof import('./apps-enrichment-native-runtime').createReviewedAppsEnrichmentRegistry>>|undefined,workerPool:import('pg').Pool|undefined,enrichmentControl:any,sourceSnapshot:string|undefined,protectedReceiptIssued=false,enrichmentState:EnrichmentGrant|undefined,workerClosed=false,workerOwner:ReturnType<typeof createAppsEnrichmentProvisioningOwner>|undefined;
     const nativeTokens=new Set<symbol>(),nativeTokenWaiters=new Set<()=>void>();
     const retainEnrichment=<T>(original:Promise<T>)=>{enrichmentPending.add(original);void original.then(()=>enrichmentPending.delete(original),()=>{enrichmentPending.delete(original);enrichmentAbort.abort();});return original;};
@@ -672,8 +673,8 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
     const proof = await enrichmentQuery(options.pool as any, 'SELECT current_database() AS database,session_user AS login');
     if (proof.rows[0]?.database !== options.ownedAuthority.database || proof.rows[0]?.login !== 'music_migrator' || !/^music_uat_[a-f0-9]{32}$/.test(options.ownedAuthority.database))
         throw new Refusal();
-    const authority = options.ownedAuthority, attest = await import('./music-uat-database');
-    const attested = attest.attestUatDatabaseAuthority({ MUSIC_UAT_DATABASE_ACK: attest.MUSIC_UAT_DATABASE_ACK, MUSIC_UAT_DATABASE_RUN_ID: authority.runId, MUSIC_UAT_DATABASE_NAME: authority.database, MUSIC_UAT_DATABASE_PORT: String(authority.port), MUSIC_UAT_DATABASE_CONTAINER_ID: authority.containerId, MUSIC_UAT_DATABASE_COMMIT: authority.commit }, authority.commit);
+    const authority = options.ownedAuthority,passwordFile=ownedSecretFiles.get(options.ownedAuthority);if(!passwordFile)throw new Refusal();const attest = await import('./music-uat-database');
+    const attested = attest.attestOwnedStagedUatDatabaseAuthority(authority,passwordFile);
     if (!attested || attested.imageId !== authority.imageId || attested.contextHost !== authority.contextHost || attested.containerId !== authority.containerId)
         throw new Refusal();
     const login = 'apps_http_worker_' + authority.runId, password = randomBytes(32).toString('hex'), quote = (name: string) => '"' + name.replaceAll('"', '""') + '"';
@@ -691,7 +692,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
     const beforePool = await enrichmentQuery(options.pool as any, 'SELECT current_database() AS database,session_user AS login');
     if (beforePool.rows[0]?.database !== authority.database || beforePool.rows[0]?.login !== 'music_migrator')
         throw new Refusal();
-    const { default: pg } = await import('pg');nativeGuard();if(enrichmentAbort.signal.aborted)throw new Refusal();
+    const { default: pg } = await import('pg');nativeGuard();if(enrichmentAbort.signal.aborted)throw new Refusal();attest.attestOwnedStagedUatDatabaseAuthority(authority,passwordFile);nativeGuard();
     const nativeWorkerPool = new pg.Pool({ host: '127.0.0.1', port: authority.port, database: authority.database, user: login, password, max: 4, connectionTimeoutMillis: 2000, statement_timeout: 60000, options: '-c role=app_enrichment_worker -c lock_timeout=1000' });workerOwner=createAppsEnrichmentProvisioningOwner(nativeWorkerPool,enrichmentAbort);workerPool=workerOwner.pool;
     workerPool.on('error', () => { enrichmentAbort.abort(); latchUnknown('api-failure'); reportFailure(); });
     await retainEnrichment((await import('../server/db/app-enrichment-worker-role')).verifyAppEnrichmentWorkerLogin(workerPool, { loginRole: login, databaseName: authority.database }));
@@ -708,7 +709,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
     let issued: ReturnType<typeof issueAppsEnrichmentProvisionGrant>;
     const state: EnrichmentGrant = { abort: () => enrichmentAbort.abort(), signal: enrichmentAbort.signal, pending: enrichmentPending, registry: Object.freeze({workerSources:registry.workerSources,choices:registry.choices}), adapters: registry.adapters, ledger, workerPool, runId: options.runId,
         assertCurrent() { try {
-            nativeGuard();
+            nativeGuard();attest.attestOwnedStagedUatDatabaseAuthority(authority,passwordFile);nativeGuard();
         }
         catch {
             enrichmentAbort.abort();
@@ -1004,7 +1005,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
             latchUnknown('secret-create');
             throw new Refusal();
         } },
-        async prepareDatabase(input) { nativeGuard(); const { prepareOwnedUatDatabaseAcquisition } = await import('./music-uat-database'); nativeGuard(); const acquisition=await prepareOwnedUatDatabaseAcquisition({ runId: input.runId, database: `music_uat_${input.runId}`, commit: input.commit, port: input.port, passwordFile: input.secret.path }); nativeGuard(); return {...acquisition,async create(){nativeGuard();const result=await acquisition.create();nativeGuard();if(family==='apps-enrichment')ownedAuthorities.add(result);return result;},async dispose(drop){nativeGuard();await acquisition.dispose(async authority=>{nativeGuard();await drop(authority);nativeGuard();});nativeGuard();}}; }, async createPool(authority, secret) { const { readSecureMusicSecretFile } = await import('../server/config/secure-music-secret-file'); const password = await readSecureMusicSecretFile(secret.path, { mode: 'fixture' }); const { default: pg } = await import('pg'); return new pg.Pool({ host: '127.0.0.1', user: 'music_migrator', password, database: authority.database, port: authority.port, max: 4, connectionTimeoutMillis: 3000, statement_timeout: 10000, options: '-c lock_timeout=5000' }) as unknown as Pool; },
+        async prepareDatabase(input) { nativeGuard(); const { prepareOwnedUatDatabaseAcquisition } = await import('./music-uat-database'); nativeGuard(); const acquisition=await prepareOwnedUatDatabaseAcquisition({ runId: input.runId, database: `music_uat_${input.runId}`, commit: input.commit, port: input.port, passwordFile: input.secret.path }); nativeGuard(); return {...acquisition,async create(){nativeGuard();const result=await acquisition.create();nativeGuard();if(family==='apps-enrichment'){ownedAuthorities.add(result);ownedSecretFiles.set(result,input.secret.path);}return result;},async dispose(drop){nativeGuard();await acquisition.dispose(async authority=>{nativeGuard();await drop(authority);nativeGuard();});nativeGuard();}}; }, async createPool(authority, secret) { const { readSecureMusicSecretFile } = await import('../server/config/secure-music-secret-file'); const password = await readSecureMusicSecretFile(secret.path, { mode: 'fixture' }); const { default: pg } = await import('pg'); return new pg.Pool({ host: '127.0.0.1', user: 'music_migrator', password, database: authority.database, port: authority.port, max: 4, connectionTimeoutMillis: 3000, statement_timeout: 10000, options: '-c lock_timeout=5000' }) as unknown as Pool; },
         async migrate(pool) { const { migrateMusicDatabase } = await import('../server/db/migrate'); await migrateMusicDatabase(pool as any); },
         async seedAuth(pool, runId) { const result = {} as {
             ownerA: Persona;
