@@ -9,18 +9,33 @@ export type AppFetchTarget={url:URL;address:AppFetchAddress;signal:AbortSignal};
 export type AppFetchResponse={status:number;headers:Record<string,string|undefined>;body:AsyncIterable<Uint8Array>;complete:()=>boolean};
 export type AppFetchConnection={outcome:Promise<AppFetchResponse>;cancel:()=>void};
 export type AppFetchDependencies={resolve?:(host:string)=>Promise<AppFetchAddress[]>;connect?:(target:AppFetchTarget)=>AppFetchConnection};
-export type AppFetchOutcome={kind:'success';bytes:Buffer;status:200}|{kind:'unconfigured'|'rejected'|'budget-exceeded'|'aborted'|'timeout'|'unavailable'};
+export type AppFetchOutcome={kind:'success';bytes:Buffer;status:200}|{kind:'http-failure';status:number;retryAfter?:string}|{kind:'unconfigured'|'rejected'|'budget-exceeded'|'aborted'|'timeout'|'unavailable'};
+function safeRetryAfter(value:unknown):string|undefined {
+ if(typeof value!=='string'||value.length>128)return undefined;
+ if(/^(0|[1-9]\d{0,14})$/.test(value)&&Number.isSafeInteger(Number(value)*1000))return value;
+ if(!/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/.test(value))return undefined;
+ const instant=Date.parse(value);return Number.isFinite(instant)&&new Date(instant).toUTCString()===value?value:undefined;
+}
+/** Parse finite retry hints; callers supply their approved bounds and trusted clock. */
+export function parseAppRetryAfter(value:unknown,nowMs:number,bounds:{minMs:number;maxMs:number}):number|null {
+ if(!Number.isSafeInteger(nowMs)||nowMs<0||!Number.isSafeInteger(bounds.minMs)||bounds.minMs<1||!Number.isSafeInteger(bounds.maxMs)||bounds.maxMs<bounds.minMs)throw new Error('Invalid App retry policy');
+ const hint=safeRetryAfter(value);if(hint===undefined)return null;
+ let delay:number;
+ if(/^(0|[1-9]\d{0,14})$/.test(hint))delay=Number(hint)*1000;
+ else delay=Date.parse(hint)-nowMs;
+ return Math.max(bounds.minMs,Math.min(bounds.maxMs,delay));
+}
 /** Private agents and pinned DNS preserve HTTPS hostname/certificate verification. */
 export function connectAppEnrichmentNative(target:AppFetchTarget,httpsRequest:typeof request=request):AppFetchConnection {
  let req:ReturnType<typeof request>|undefined,res:import('node:http').IncomingMessage|undefined;
  const outcome=new Promise<AppFetchResponse>((resolve,reject)=>{try{
   const options:RequestOptions&Pick<TcpNetConnectOpts,'autoSelectFamily'>={method:'GET',agent:false,family:target.address.family,autoSelectFamily:false,servername:target.url.hostname,rejectUnauthorized:true,checkServerIdentity,signal:target.signal,maxHeaderSize:16384,headers:{Accept:'application/json','Accept-Encoding':'identity',Connection:'close'},lookup:(_host,_options,callback)=>callback(null,target.address.address,target.address.family)};
-  req=httpsRequest(target.url,options,message=>{res=message;resolve({status:message.statusCode??0,headers:{location:message.headers.location,'content-length':message.headers['content-length'],'content-encoding':message.headers['content-encoding']},body:message,complete:()=>message.complete});});
+  req=httpsRequest(target.url,options,message=>{res=message;resolve({status:message.statusCode??0,headers:{location:message.headers.location,'content-length':message.headers['content-length'],'content-encoding':message.headers['content-encoding'],'retry-after':safeRetryAfter(message.headers['retry-after'])},body:message,complete:()=>message.complete});});
   req.maxHeadersCount=64;req.on('error',()=>reject(new Error('App transport unavailable')));req.end();
  }catch{reject(new Error('App transport unavailable'));}});
  return {outcome,cancel:()=>{res?.destroy();req?.destroy();}};
 }
-class Failure extends Error {constructor(readonly kind:Exclude<AppFetchOutcome['kind'],'success'|'unconfigured'>){super(kind);}}
+class Failure extends Error {constructor(readonly kind:Exclude<AppFetchOutcome['kind'],'success'|'unconfigured'|'http-failure'>){super(kind);}}
 /** Explicit source configuration only; absent registry entries perform zero I/O. */
 export function createAppEnrichmentFetcher(input:AppFetchConfig|null,deps:AppFetchDependencies={}) {
  const config=input?{...input,allowedHosts:[...input.allowedHosts]}:null;
@@ -47,6 +62,7 @@ export function createAppEnrichmentFetcher(input:AppFetchConfig|null,deps:AppFet
      connection.cancel();if(config.redirectPolicy==='deny')throw new Failure('rejected');if(redirects++>=config.maxRedirects)throw new Failure('budget-exceeded');
      if(!response.headers.location)throw new Failure('rejected');url=urlFor(response.headers.location,url);if(config.redirectPolicy==='same-host'&&url.hostname!==originHost)throw new Failure('rejected');continue;
     }
+    if(Number.isInteger(response.status)&&response.status>=400&&response.status<=599){const retry=safeRetryAfter(response.headers['retry-after']);return {kind:'http-failure',status:response.status,...(retry===undefined?{}:{retryAfter:retry})};}
     if(response.status!==200||response.headers['content-encoding']!==undefined&&response.headers['content-encoding']!=='identity')throw new Failure('unavailable');
     const length=response.headers['content-length'];if(length!==undefined&&(!/^(0|[1-9]\d*)$/.test(length)||Number(length)>config.maxBytes))throw new Failure('budget-exceeded');
     let bytes=0;const chunks:Buffer[]=[],iterator=response.body[Symbol.asyncIterator]();

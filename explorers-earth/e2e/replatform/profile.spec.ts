@@ -695,7 +695,8 @@ test('canonical navigation: native Books Movies and Games publish and hide throu
     setProfileDiagnosticState(info, category, 'publish-click', 'incomplete', 'incomplete');
     nativeBoundary.begin(category, 'publish');
     await observeNativeInteraction(control, info, category, 'publish', 'before');
-    await control.click({ force: true });
+    // Settings clips the native input with sr-only; users activate its visible label.
+    await control.locator('xpath=ancestor::label').click();
     await observeNativeInteraction(control, info, category, 'publish', 'after');
     setProfileDiagnosticState(info, category, 'publish-poll', 'incomplete', 'incomplete');
     await expect.poll(async () => (await navigationAccount(page)).categories.find(row => row.category === category)?.isPublic).toBe(true);
@@ -704,7 +705,7 @@ test('canonical navigation: native Books Movies and Games publish and hide throu
     setProfileDiagnosticState(info, category, 'hide-click', 'completed', 'incomplete');
     nativeBoundary.begin(category, 'hide');
     await observeNativeInteraction(control, info, category, 'hide', 'before');
-    await control.click({ force: true });
+    await control.locator('xpath=ancestor::label').click();
     await observeNativeInteraction(control, info, category, 'hide', 'after');
     setProfileDiagnosticState(info, category, 'hide-poll', 'completed', 'incomplete');
     await expect.poll(async () => (await navigationAccount(page)).categories.find(row => row.category === category)?.isPublic).toBe(false);
