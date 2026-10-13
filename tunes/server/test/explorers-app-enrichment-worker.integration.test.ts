@@ -163,6 +163,9 @@ export async function runAppsA2StorageAcceptance(h:AppsA2StorageHarness):Promise
    const f=await prepare(h),other=await h.seedEligible(source,f.entityId);await repo(h.workerA).enqueueRun(run(),[source]);const held=await claim(h.workerA),ids=await candidates(h.workerA,held),snapshot=await snapshotFor(held);
    await h.preparePendingDeletion(f);
    const outcomes=await h.raceWithAccountFence(f,()=>h.runMaintenance(),[{pool:h.workerA,work:()=>repo(h.workerA).commitSnapshot(held,ids,snapshot)},{pool:h.workerB,work:()=>repo(h.workerB).enqueueRun(run(),[source])}]);
+   // Maintenance uses SKIP LOCKED and may defer finalization while these actors
+   // hold the account. Its actual follow-up pass runs after every actor settles.
+   await h.runMaintenance();
    expect(outcomes[1]).toEqual({status:'succeeded',granted:1});expect((await h.admin.query('SELECT status FROM creator_accounts WHERE id=$1',[f.accountId])).rows[0].status).toBe('deleted');expect((await h.admin.query('SELECT id FROM app_enrichment_job_candidates WHERE account_id=$1',[f.accountId])).rows).toHaveLength(0);expect(await grants(h,f.recommendationId)).toBe(0);expect(await grants(h,other.recommendationId)).toBe(1);expect((await job(h,held.jobId)).state).toBe('succeeded');
   }},
  ];
