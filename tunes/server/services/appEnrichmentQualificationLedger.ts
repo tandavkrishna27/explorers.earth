@@ -1,12 +1,13 @@
 import {createHash} from 'node:crypto';
 import {types as utilTypes} from 'node:util';
 import {z} from 'zod/v3';
+import {request as nativeRequest} from 'node:https';
 import {validateAppWorkerSources,type ApprovedAppWorkerSource} from '../application/appEnrichmentWorkerValidation';
 import {createAppEnrichmentFetcher,connectAppEnrichmentNative,type AppFetchConfig,type AppFetchOutcome} from './appEnrichmentFetch';
 export type AppQualificationBounds=Readonly<{maxAttempts:number;maxAdmittedBodyBytes:number;maxDurationMs:number}>;
 type Evidence={sourceIdentityHash:string;profile:string;responseStatus?:number;bodyHash?:string;bodyBytes?:number;outcome?:string};
 /** These seams are trusted offline tests only; any injected transport marks evidence synthetic. */
-type Dependencies={now?:()=>number;createFetcher?:(config:AppFetchConfig)=>{fetch:(url:string,signal?:AbortSignal)=>Promise<AppFetchOutcome>}};
+type Dependencies={now?:()=>number;createFetcher?:(config:AppFetchConfig)=>{fetch:(url:string,signal?:AbortSignal)=>Promise<AppFetchOutcome>};observeNativeLifecycle?:(event:'request-opened'|'request-closed'|'socket-opened'|'socket-closed',token:symbol)=>void};
 function own(value:unknown):Record<string,unknown>{if(!value||typeof value!=='object'||utilTypes.isProxy(value)||Object.getPrototypeOf(value)!==Object.prototype)throw Error();const captured:Record<string,unknown>={};for(const key of Reflect.ownKeys(value)){if(typeof key!=='string')throw Error();const d=Object.getOwnPropertyDescriptor(value,key);if(!d?.enumerable||!Object.hasOwn(d,'value'))throw Error();Object.defineProperty(captured,key,{value:d.value,enumerable:true});}return captured;}
 function canonical(value:unknown):string{if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(key=>JSON.stringify(key)+':'+canonical((value as Record<string,unknown>)[key])).join(',')+'}';return JSON.stringify(value);}
 /** Does no I/O on construction. Outer reservations are conservative body/attempt admissions, not wire totals. */
@@ -21,6 +22,7 @@ export function createAppQualificationLedger(inputs:readonly ApprovedAppWorkerSo
  let admittedAttempts=0,reservedBodyBytes=0,observedResponses=0,successfulBodyBytes=0,firstFailure:string|undefined;
  const records:Evidence[]=[],privateBodies:Array<{sourceIdentityHash:string;bodyHash:string;bytes:Buffer}>=[];
  const failure=(kind:string)=>{firstFailure??=kind;};
+ const observer=deps.observeNativeLifecycle;const notify=(event:'request-opened'|'request-closed'|'socket-opened'|'socket-closed',token:symbol)=>{try{observer?.(event,token);}catch{failure('observer-refused');}};
  return Object.freeze({
   fetcher(config:AppFetchConfig){let source:ApprovedAppWorkerSource|undefined;try{source=sources.find(s=>canonical(s.fetch)===canonical(own(config)));}catch{/* Fail closed below. */}if(!source){failure('configuration');throw new Error('Qualification fetch configuration refused');}const approved=source;
    return {async fetch(url:string,signal?:AbortSignal):Promise<AppFetchOutcome>{
@@ -32,7 +34,7 @@ export function createAppQualificationLedger(inputs:readonly ApprovedAppWorkerSo
     if(approved.fetch.maxBytes>bounds.maxAdmittedBodyBytes-reservedBodyBytes){failure('byte-budget');return {kind:'budget-exceeded'};}
     admittedAttempts++;reservedBodyBytes+=approved.fetch.maxBytes;const record:Evidence={sourceIdentityHash:approved.identity.sourceIdentityHash,profile:approved.fetch.contentProfile};records.push(record);
     try{
-     const fetcher=deps.createFetcher?deps.createFetcher(approved.fetch):createAppEnrichmentFetcher(approved.fetch,{connect:target=>{const connection=connectAppEnrichmentNative(target);void connection.outcome.then(response=>{observedResponses++;record.responseStatus=response.status;},()=>{});return connection;}});
+     const fetcher=deps.createFetcher?deps.createFetcher(approved.fetch):createAppEnrichmentFetcher(approved.fetch,{connect:target=>{const connection=connectAppEnrichmentNative(target,observer?((...args:Parameters<typeof nativeRequest>)=>{const request=nativeRequest(...args),token=Symbol();notify('request-opened',token);request.once('close',()=>notify('request-closed',token));request.once('socket',socket=>{const socketToken=Symbol();notify('socket-opened',socketToken);socket.once('close',()=>notify('socket-closed',socketToken));});return request;}) as typeof nativeRequest:undefined);void connection.outcome.then(response=>{observedResponses++;record.responseStatus=response.status;},()=>{});return connection;}});
      const outcome=await fetcher.fetch(url,signal);record.outcome=outcome.kind;
      if(outcome.kind!=='success'){failure('transport-refused');return outcome;}
      if(!Buffer.isBuffer(outcome.bytes)||outcome.bytes.byteLength>approved.fetch.maxBytes){failure('body-budget');return {kind:'budget-exceeded'};}
