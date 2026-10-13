@@ -13,6 +13,21 @@ Latest actual checkpoint at clean `aa3738f3`:
 
 Subsequent concrete source repairs and actual results:
 
+- Correction to the Guides transport visibility diagnosis: source-column mapping
+  in the actual `e3d84ee3` run identifies the first **Add Day/Stop button**, not
+  the preceding guide heading. The heading passed; Transport legitimately keeps
+  its own tab selected, while that button belongs to Journey. The reviewed test
+  correction adds exactly one real Journey-tab click before the unchanged button
+  assertion. It preserves every update, reload and persistence oracle. The new
+  business AST hash is `075755c0…`, with an exact one-call projection back to the
+  `74ffc54…` predecessor; the action is not hidden by passive diagnostic stripping.
+  Integrated checks passed 283 native/business guards and 78 frontend tests, with
+  scoped types and independent review clear. Actual Guides remains pending.
+- Apps at `e3d84ee3` passed the editor lock and source configuration. Its first
+  remaining failure is the native refresh control returning 403, before any
+  worker run authority/job/snapshot was admitted. The run stayed source-intact;
+  browser/private-directory cleanup failed. No timeout increase is justified.
+
 - The untouched Apps editor lock was reproduced with the production StrictMode
   wrapper and real installed Quill. Its empty note callback differed from the
   saved dirty signature. The reviewed fix normalizes only Quill's two exact empty
