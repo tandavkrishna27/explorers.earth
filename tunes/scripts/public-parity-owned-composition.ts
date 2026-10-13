@@ -192,7 +192,7 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
             if (native.role !== 'owner' || native.status !== 'active' || native.onboarding_status !== 'complete')
                 throw refuse();
             const profile = await profiles.getMyProfile(source.actor);
-            await profiles.updateAccount(source.actor, { expectedRevision: profile.revision, handle: source.handle, displayName: null, publicProfile: true, categories: profile.categories.map(category => ({ ...category, isPublic: category.category === 'music' ? category.isPublic : true })) }, context());
+            await profiles.updateAccount(source.actor, { expectedRevision: profile.revision, handle: source.handle, displayName: profile.displayName, publicProfile: true, categories: profile.categories.map(category => ({ ...category, isPublic: category.category === 'music' ? category.isPublic : true })) }, context());
         }
         guard();
         const taxonomy = loadReviewedTaxonomyInputs({ fixedDirectory: reviewedTaxonomyInputDirectory, expectedManifestHash: taxonomyManifestHash });

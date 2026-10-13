@@ -24,11 +24,11 @@ it('an explicitly empty Places handle has no compatibility default', () => { con
     f.options.placePins = value;
     expect(() => createPublicParityOwnedComposition(f.options)).toThrow();
 } expect(f.query).not.toHaveBeenCalled(); });
-it('fixed native profile reset supports absent display name for real handle fallback', () => {
-    expect(updateAccountRequestSchema.parse({ expectedRevision: 1, handle: 'public-parity-a', displayName: null, publicProfile: true }).displayName).toBeNull();
+it('fixed native profile reset preserves the truthful completed-account display name', () => {
+    expect(updateAccountRequestSchema.parse({ expectedRevision: 1, handle: 'public-parity-a', displayName: 'public-parity-a', publicProfile: true }).displayName).toBe('public-parity-a');
     const source = ts.createSourceFile('composition.ts', readFileSync(new URL('../../../scripts/public-parity-owned-composition.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
     let found = false;
-    const visit = (node: ts.Node) => { if (ts.isCallExpression(node) && node.expression.getText(source) === 'profiles.updateAccount' && node.arguments[0]?.getText(source) === 'source.actor' && ts.isObjectLiteralExpression(node.arguments[1])) found = node.arguments[1].properties.some(property => ts.isPropertyAssignment(property) && property.name.getText(source) === 'displayName' && property.initializer.kind === ts.SyntaxKind.NullKeyword); ts.forEachChild(node, visit); };
+    const visit = (node: ts.Node) => { if (ts.isCallExpression(node) && node.expression.getText(source) === 'profiles.updateAccount' && node.arguments[0]?.getText(source) === 'source.actor' && ts.isObjectLiteralExpression(node.arguments[1])) found = node.arguments[1].properties.some(property => ts.isPropertyAssignment(property) && property.name.getText(source) === 'displayName' && property.initializer.getText(source) === 'profile.displayName'); ts.forEachChild(node, visit); };
     visit(source);
     expect(found).toBe(true);
 });

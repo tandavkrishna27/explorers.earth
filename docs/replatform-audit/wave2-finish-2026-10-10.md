@@ -11,6 +11,33 @@ The following supersedes the older pending-status bullets below. Wave 2 remains 
 
 Latest actual checkpoint at clean `aa3738f3`:
 
+Subsequent concrete source repairs and actual results:
+
+- `cf099720` repairs the Guides form's rich-text entity-to-plain-text projection.
+  Its real run passed the former description mismatch, then failed the transport
+  edit's return-to-detail visibility assertion. The exact aggregate/update proof
+  preceded that assertion; Guides acceptance remains open. All 80 affected
+  frontend source checks passed. Source stayed intact; service/control cleanup
+  failed in that actual run.
+- People at `186e0e0c` identified `owner-profile` as the failed worker bootstrap
+  step; source and cleanup passed. The fixture incorrectly combined completed
+  onboarding with a null display name, which migration 0022 forbids. The reviewed
+  correction initializes a truthful nonnull name and preserves it through reset.
+  The 28 paired integrated source checks passed; actual acceptance is pending.
+- Named public residual: a null-name handle fallback cannot be exercised by these
+  completed native accounts. The supported owner HTTP contract does not permit
+  reverting onboarding to incomplete, and the complete-account constraint cannot
+  be bypassed. The existing public attribution and fallback-avatar checks still
+  execute; they do not claim native null-name fallback evidence.
+- Apps at `186e0e0c` passed creation, then failed control creation. Read-only
+  inspection verified the exact owned container and ruled out a TEMP privilege
+  defect. PostgreSQL reproduced SQLSTATE `42P18` for the uncast format parameter;
+  the explicit text-cast form passed. The narrow query correction passed review
+  and 226 integrated Apps/public checks, with scoped types clean.
+  Its retained owned resources were separately recovered after zero-session,
+  zero-prepared-transaction and native-process-absence proofs; the failed receipt
+  remains failed.
+
 - Guides reached the second desktop case and received one HTTP 200 section-update
   response. Its exact request matcher rejected only the description; field set,
   revision, title and blocks matched. Failure was retained at `section-edit` /

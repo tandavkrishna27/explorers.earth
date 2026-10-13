@@ -681,7 +681,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         throw new Refusal();
     const login = 'apps_http_worker_' + authority.runId, password = randomBytes(32).toString('hex'), quote = (name: string) => '"' + name.replaceAll('"', '""') + '"';
     await enrichmentQuery(options.pool as any, 'CREATE ROLE ' + quote(login) + ' LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT');
-    const formatted = await enrichmentQuery(options.pool as any, "SELECT format('ALTER ROLE %I PASSWORD %L',$1,$2) AS command", [login, password]);
+    const formatted = await enrichmentQuery(options.pool as any, "SELECT format('ALTER ROLE %I PASSWORD %L',$1::text,$2::text) AS command", [login, password]);
     await enrichmentQuery(options.pool as any, formatted.rows[0].command);
     await enrichmentQuery(options.pool as any, 'GRANT CONNECT ON DATABASE ' + quote(authority.database) + ' TO ' + quote(login));
     await enrichmentQuery(options.pool as any, 'GRANT app_enrichment_worker TO ' + quote(login));
