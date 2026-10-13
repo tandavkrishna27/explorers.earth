@@ -18,17 +18,17 @@ export const LIFECYCLE_CASES = [
     'held recovery completion preserves verified replacement B',
     'held recovery completion preserves a fresh verified returning A session',
 ] as const;
-export function parseBrowserSuite(args: string[]): 'profile' | 'auth' | 'lifecycle' | 'places' | 'place-links' | 'apps' | 'guides' {
+export function parseBrowserSuite(args: string[]): 'profile' | 'auth' | 'lifecycle' | 'places' | 'place-links' | 'apps' | 'guides' | 'public-parity' | 'people' | 'apps-enrichment' {
     const ack = 'TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
     if (JSON.stringify(args) === JSON.stringify(['--ack', ack]))
         return 'profile';
-    for (const suite of ['auth', 'lifecycle', 'places', 'place-links', 'apps', 'guides'] as const)
+    for (const suite of ['auth', 'lifecycle', 'places', 'place-links', 'apps', 'guides', 'public-parity', 'people', 'apps-enrichment'] as const)
         if (JSON.stringify(args) === JSON.stringify(['--suite', suite, '--ack', ack]))
             return suite;
     throw new Error('Browser E2E requires exact disposable PostgreSQL acknowledgement');
 }
 export function assertBrowserEnvironment(env: NodeJS.ProcessEnv) {
-    if (env.NODE_ENV === 'production' || Object.keys(env).some(key => key.startsWith('MUSIC_C10_STANDALONE_POSTGRES_') || /^(?:PLACES|PLACE_LINKS)_E2E_/.test(key) || /^(?:APPS|GUIDES|REPLATFORM)_E2E_/i.test(key) || key === 'PROFILE_E2E_SUITE') || ['DATABASE_URL', 'DATABASE_URL_TEST', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'GATE_PROD', 'MUSIC_DEPLOY_PRODUCTION', 'MUSIC_DEPLOY_PROD'].some(key => Boolean(env[key])))
+    if (env.NODE_ENV === 'production' || Object.keys(env).some(key => key.startsWith('MUSIC_C10_STANDALONE_POSTGRES_') || /^(?:PLACES|PLACE_LINKS)_E2E_/.test(key) || /^(?:APPS|GUIDES|PUBLIC_PARITY|PEOPLE|REPLATFORM)_E2E_/i.test(key)||/^(?:PUBLIC_PARITY|PEOPLE)_PRIVATE_/i.test(key) || key === 'PROFILE_E2E_SUITE') || ['DATABASE_URL', 'DATABASE_URL_TEST', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'GATE_PROD', 'MUSIC_DEPLOY_PRODUCTION', 'MUSIC_DEPLOY_PROD'].some(key => Boolean(env[key])))
         throw new Error('Ambient database, Docker or production authority is forbidden');
 }
 export function validateLifecycleControl(input: {

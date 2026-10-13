@@ -21,14 +21,15 @@ import { startPlacesControl, assertPlacesStorageDirectory, SYNTHETIC_FIXTURE_PLA
 import { startLifecycleControl } from './lifecycle-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment, assertLifecycleResults, assertOwnedCleanup } from './lifecycle-browser-guards';
 import { extractProtectedReceiptArguments, createProtectedReceipt } from './protected-browser-receipt';
-import { createAppsBrowserFixture, extractAppsFixtureDiagnostic } from './apps-browser-fixture';
+import { createAppsBrowserFixture, createAppsEnrichmentBrowserFixture, extractAppsFixtureDiagnostic } from './apps-browser-fixture';
 import { createGuidesBrowserFixture, formatGuidesFixtureFailure } from './guides-browser-fixture';
+import { createPublicParityBrowserFixture, formatPublicParityFixtureFailure } from './public-parity-browser-fixture';
 
 const receiptArguments = extractProtectedReceiptArguments(process.argv.slice(2));
 const suite = parseBrowserSuite(receiptArguments.args);
 assertBrowserEnvironment(process.env);
-if (suite === 'apps') {
-  try { await createAppsBrowserFixture().run(); }
+if (suite === 'apps' || suite === 'apps-enrichment') {
+  try { await (suite === 'apps-enrichment' ? createAppsEnrichmentBrowserFixture() : createAppsBrowserFixture()).run(); }
   catch (error) {
     process.exitCode = 1;
     const diagnostic = extractAppsFixtureDiagnostic(error);
@@ -40,6 +41,12 @@ if (suite === 'apps') {
   catch (error) {
     process.exitCode = 1;
     process.stderr.write(formatGuidesFixtureFailure(error));
+  }
+} else if (suite === 'public-parity' || suite === 'people') {
+  try { await createPublicParityBrowserFixture().run(); }
+  catch (error) {
+    process.exitCode = 1;
+    process.stderr.write(formatPublicParityFixtureFailure(error));
   }
 } else {
 const root = resolve(import.meta.dirname, '../..');

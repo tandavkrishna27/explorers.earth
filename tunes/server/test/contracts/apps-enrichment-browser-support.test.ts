@@ -1,0 +1,70 @@
+import { it, expect } from 'vitest';
+import { validateAppWorkerSources } from '../../../server/application/appEnrichmentWorkerValidation';
+import { websiteProviderIdentity, appleProviderIdentity, appleLookupUrl } from '../../../server/application/appEnrichmentProviderIdentity';
+const load = () => import('../../../scripts/apps-enrichment-browser-support').catch(() => undefined as any);
+function registry() { const limits = { leaseDurationMs: 1000, heartbeatIntervalMs: 100, maxAttempts: 3, retryMinDelayMs: 10, retryMaxDelayMs: 100, retryAfterMaxMs: 100, jobConcurrency: 2, maxJobsPerRun: 4, maxRequestsPerRun: 8, maxBytesPerRun: 4000, maxRuntimeMs: 2000, authorityTimeoutMs: 100, authorityCleanupTimeoutMs: 100, maxCostUnitsPerRun: 8, costUnitsPerRequest: 1, retentionDays: 7 }, apple = { trackId: '1152747299', storefront: 'us', kind: 'software' as const }, sources = [{ identity: websiteProviderIdentity('https://www.figma.com/'), canonicalUrl: 'https://www.figma.com/', profile: 'html-utf8', host: 'www.figma.com' }, { identity: appleProviderIdentity(apple), canonicalUrl: appleLookupUrl(apple), profile: 'apple-json-utf8', host: 'itunes.apple.com' }].map((s, i) => ({ identity: s.identity, approvalRevision: 1, adapterVersion: 'SYNTHETIC_TEST_VERSION', allowedFields: i ? ['title', 'description', 'platforms'] : ['title', 'description'], canonicalUrlPolicyVersion: s.identity.canonicalizationVersion, canonicalUrl: s.canonicalUrl, fetch: { contentProfile: s.profile, allowedHosts: [s.host], redirectPolicy: 'deny', timeoutMs: 100, maxBytes: 500, maxRedirects: 0, maxRequests: 1 }, limits })); const workerSources = validateAppWorkerSources(sources).sources; return { workerSources, choices: workerSources.map((s, i) => ({ identity: s.identity, label: i ? 'Synthetic Apple' : 'Synthetic website', sourceUrl: s.canonicalUrl })) }; }
+it('exposes exactly two additive cases times the existing two Apps projects, separately from manual8', async () => {
+    const m = await load();
+    expect(m?.APPS_ENRICHMENT_CASES).toHaveLength(2);
+    expect(m.APPS_ENRICHMENT_IDENTITIES).toHaveLength(4);
+    expect(m.APPS_ENRICHMENT_BOUNDS).toEqual({ maxActualGets: 8, maxReservedBodyBytes: 16777216 });
+    for (const identity of m.APPS_ENRICHMENT_IDENTITIES)
+        expect(m.validateAppsEnrichmentIdentity(identity)).toEqual(identity);
+    for (const identity of [{ ...m.APPS_ENRICHMENT_IDENTITIES[0], repeat: 1 }, { ...m.APPS_ENRICHMENT_IDENTITIES[0], project: 'apps-other' }, { ...m.APPS_ENRICHMENT_IDENTITIES[0], url: 'private' }])
+        expect(() => m.validateAppsEnrichmentIdentity(identity)).toThrow();
+});
+it('binds immutable exact approved choices and source fingerprints without constructing workers', async () => {
+    const m = await load(), input = registry(), result = m.createAppsEnrichmentRegistryBinding(input);
+    expect(result.choices).toEqual(input.choices);
+    expect(result.workerSources).toEqual(input.workerSources);
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.choices[0].identity)).toBe(true);
+    for (const value of [{ ...input, choices: input.choices.slice(0, 1) }, { ...input, choices: [input.choices[0], input.choices[0]] }, { ...input, choices: input.choices.map((s, i) => i ? s : { ...s, sourceUrl: 'https://figma.com/' }) }, { ...input, workerSources: input.workerSources.map((s, i) => i ? s : { ...s, configurationFingerprint: '0'.repeat(64) }) }])
+        expect(() => m.createAppsEnrichmentRegistryBinding(value)).toThrow();
+    let reads = 0;
+    const proxy = new Proxy(input, { get() { reads++; throw Error('unsafe'); }, getPrototypeOf() { reads++; throw Error('unsafe'); } }), getter = Object.defineProperty({ ...input }, 'choices', { get() { reads++; throw Error('unsafe'); } });
+    for (const bad of [proxy, getter])
+        expect(() => m.createAppsEnrichmentRegistryBinding(bad)).toThrow();
+    expect(reads).toBe(0);
+});
+function workerAdmission(input = registry()) { const accountId = '11111111-1111-4111-8111-111111111111', recommendationId = '22222222-2222-4222-8222-222222222222', appEntityId = '33333333-3333-4333-8333-333333333333'; return { identity: { caseId: 'Apps enrichment: explicit approved source choices and selected-field acceptance survive reload', project: 'apps-desktop', repeat: 0 }, runId: 'a'.repeat(32), commit: 'b'.repeat(40), epoch: 1, accountId, recommendationId, appEntityId, binding: { accountId, recommendationId, appEntityId, bindingId: '44444444-4444-4444-8444-444444444444', optIn: true, bindingRevision: 2, currentGenerationId: '55555555-5555-4555-8555-555555555555', currentSource: input.choices[0].identity }, source: input.choices[0].identity, expectedRecommendationRevision: 3, expectedBindingRevision: 2, bindingReceiptId: '66666666-6666-4666-8666-666666666666' }; }
+it('inert native worker trigger requires Root verification and keeps original execution through cancellation', async () => {
+    const m = await load();
+    expect(typeof m.createAppsEnrichmentWorkerTrigger).toBe('function');
+    let verified = 0, executed = 0, release!: (value: unknown) => void;
+    const controller = new AbortController(), input = registry(), admission = workerAdmission(input);
+    const trigger = m.createAppsEnrichmentWorkerTrigger(input, { verify: async (value: any, signal: AbortSignal) => { verified++; expect(Object.isFrozen(value.binding)).toBe(true); expect(signal).toBe(controller.signal); return true; }, execute: async () => { executed++; return new Promise(resolve => release = resolve); } });
+    expect([verified, executed]).toEqual([0, 0]);
+    const pending = trigger(admission, controller.signal);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(executed).toBe(1);
+    controller.abort();
+    let settled = false;
+    void pending.catch(() => { settled = true; });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    release({ runId: '77777777-7777-4777-8777-777777777777', bindingGenerationId: admission.binding.currentGenerationId, completed: true });
+    await expect(pending).rejects.toThrow();
+});
+it('native worker trigger refuses missing authority, disabled/stale/foreign tuples and unverified native acknowledgements before worker effects', async () => {
+    const m = await load(), input = registry(), admission = workerAdmission(input);
+    let execute = 0, verify = 0;
+    expect(() => m.createAppsEnrichmentWorkerTrigger(input, { execute: () => { execute++; } })).toThrow();
+    const trigger = m.createAppsEnrichmentWorkerTrigger(input, { verify: async () => { verify++; return false; }, execute: async () => { execute++; throw Error('unexpected'); } });
+    for (const value of [{ ...admission, bindingReceiptId: undefined }, { ...admission, binding: { ...admission.binding, optIn: false } }, { ...admission, expectedBindingRevision: 1 }, { ...admission, accountId: '88888888-8888-4888-8888-888888888888' }, { ...admission, source: input.choices[1].identity }, { ...admission, url: 'https://example.test/' }])
+        await expect(trigger(value, new AbortController().signal)).rejects.toThrow();
+    expect(verify).toBe(0);
+    await expect(trigger(admission, new AbortController().signal)).rejects.toThrow();
+    expect(verify).toBe(1);
+    expect(execute).toBe(0);
+});
+it('qualification browser policy is required exact immutable data and never changes original Task7 limits', async () => {
+    const m = await load(), policy = { requestTimeoutMs: 15000, maxJsonBytes: 65536, nativeRefreshTimeoutMs: 60000, caseTimeoutMs: 120000 };
+    expect(m.validateAppsEnrichmentBrowserPolicy(policy)).toEqual(policy);
+    expect(Object.isFrozen(m.validateAppsEnrichmentBrowserPolicy(policy))).toBe(true);
+    for (const value of [undefined, { ...policy, caseTimeoutMs: 600000 }, { ...policy, nativeRefreshTimeoutMs: 0 }, { ...policy, providerBudget: 8 }])
+        expect(() => m.validateAppsEnrichmentBrowserPolicy(value)).toThrow();
+});
+it('native completion keeps immutable exact generation identity and propagates original executor custody failures', async () => { const m = await load(), input = registry(), admission = workerAdmission(input), completion = { runId: '77777777-7777-4777-8777-777777777777', bindingGenerationId: admission.binding.currentGenerationId, completed: true }; const trigger = m.createAppsEnrichmentWorkerTrigger(input, { verify: async () => true, execute: async () => completion }); expect(Object.isFrozen(await trigger(admission, new AbortController().signal))).toBe(true); const fatal = Error('synthetic custody failure'); const failed = m.createAppsEnrichmentWorkerTrigger(input, { verify: async () => true, execute: async () => { throw fatal; } }); await expect(failed(admission, new AbortController().signal)).rejects.toBe(fatal); const wrong = m.createAppsEnrichmentWorkerTrigger(input, { verify: async () => true, execute: async () => ({ ...completion, bindingGenerationId: admission.appEntityId }) }); await expect(wrong(admission, new AbortController().signal)).rejects.toThrow(); });
+it('native retry fault retains the committed response through bounded body and disposal before aborting delivery', async () => { const m: any = await load(); expect(typeof m.captureAppsEnrichmentNativeRetry).toBe('function'); const admission = workerAdmission(), command = { ...admission.source, operation: 'configureAppEnrichment', optIn: true, expectedRecommendationRevision: 3, expectedBindingRevision: null }, key = '77777777-7777-4777-8777-777777777777', binding = { recommendationId: admission.recommendationId, bindingId: admission.binding.bindingId, bindingGenerationId: admission.binding.currentGenerationId, optIn: true, bindingRevision: 2, recommendationRevision: 3, categoryContentRevision: '1', changed: true, receiptId: admission.bindingReceiptId }; let release!: (bytes: Buffer) => void; const order: string[] = []; const pending = m.captureAppsEnrichmentNativeRetry(command, { key, command, fetch: async () => ({ status: () => 200, body: () => new Promise(resolve => release = resolve), dispose: async () => { order.push('disposed'); } }), abort: async () => { order.push('aborted'); } }, 65536); await Promise.resolve(); expect(order).toEqual([]); release(Buffer.from(JSON.stringify({ binding }))); expect(await pending).toEqual({ key, command, binding }); expect(order).toEqual(['disposed', 'aborted']); let disposed = 0, aborted = 0; await expect(m.captureAppsEnrichmentNativeRetry(command, { key, command, fetch: async () => ({ status: () => 200, body: async () => Buffer.alloc(65537), dispose: async () => { disposed++; } }), abort: async () => { aborted++; } }, 65536)).rejects.toThrow(); expect(disposed).toBe(1); expect(aborted).toBe(0); });

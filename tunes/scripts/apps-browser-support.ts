@@ -82,6 +82,18 @@ export async function createAppsFixtureComposition(pool:Pool,config:ExplorersAut
  compositionBindings.set(composed,{pool,config,configSnapshot:JSON.stringify(config),storage,settlement,root,app:composed.app,auth:composed.auth,composedPrototype:Object.getPrototypeOf(composed),objects:[composed,composed.app,composed.auth].map(value=>({value,prototype:Object.getPrototypeOf(value),descriptors:Object.getOwnPropertyDescriptors(value)})),requests});
  return {composed,storage};
 }
+/** Separate approved enrichment composition; the manual factory remains unchanged. */
+/** Separate approved enrichment composition; the manual factory remains unchanged. */
+export async function createAppsEnrichmentFixtureComposition(pool: Pool, config: ExplorersAuthConfig, storageDirectory: string, fixedInput: Omit<import('../server/auth/canonicalApp').CanonicalAppsEnrichmentFixtureInput, 'mediaStorage'>) {
+    if (!isAbsolute(storageDirectory) || storageDirectory.length > 1024)
+        throw fail('composition');
+    exactKeys(fixedInput, ['runAuthority', 'personasWithActualAccountIds', 'registry']);
+    const canonical = await import('../server/auth/canonicalApp');
+    const root = resolve(storageDirectory), { storage, settlement } = createLocalObjectStorageWithSettlement(root), fixed = fixedInput ? canonical.createCanonicalAppsEnrichmentFixtureApp(pool, config, { mediaStorage: storage, ...fixedInput }) : undefined, composed = fixed?.composed ?? canonical.createCanonicalApp(pool, config, { mediaStorage: storage });
+    const requests = fixed ? { authority: fixedInput!.runAuthority, authoritySnapshot: JSON.stringify(fixedInput!.runAuthority), personas: structuredClone(fixedInput!.personasWithActualAccountIds), poolPrototype: Object.getPrototypeOf(pool), poolMethods: [pool.query, pool.connect, pool.end], custody: fixed.custody, admission: fixed.admission, sealed: false } : undefined;
+    compositionBindings.set(composed, { pool, config, configSnapshot: JSON.stringify(config), storage, settlement, root, app: composed.app, auth: composed.auth, composedPrototype: Object.getPrototypeOf(composed), objects: [composed, composed.app, composed.auth].map(value => ({ value, prototype: Object.getPrototypeOf(value), descriptors: Object.getOwnPropertyDescriptors(value) })), requests });
+    return { composed, storage };
+}
 /** Physical media FS only; grants no request, auth, PG or disposal authority. */
 export async function drainAppsFixtureStorage(options:AppsControlOptions,milliseconds:number){
  try{validateOptions(options);assertComposition(options);const binding=compositionBindings.get(options.composed)!;return await binding.settlement.sealAndDrain(milliseconds);}catch{throw fail('storage drain');}
@@ -305,4 +317,234 @@ export async function createAppsControl(options:AppsControlOptions,dependencies?
   if(failures.length){poisoned=true;throw fail(`cleanup ${[...new Set(failures)].join(',')}`);}
  }
  const controller={capability,provenance,reset:resetTracked,observe:observeTracked,handle,close,getDiagnostic:()=>diagnostic};if(provenance==='native')controllerDiagnostics.set(controller,()=>diagnostic);return controller;
+}
+
+/** Separate additive control: appends native rows and never deletes immutable enrichment facts. */
+/** Separate additive control: appends native rows and never deletes immutable enrichment facts. */
+export async function createAppsEnrichmentControl(options: AppsControlOptions, token: object) {
+    validateOptions(options);
+    assertComposition(options);
+    const support = await import('./apps-enrichment-browser-support'), fixture = await import('./apps-browser-fixture'), state = fixture.inspectAppsEnrichmentProvisionGrant(token, options), runtime = (await import('./apps-enrichment-native-runtime')).createAppsEnrichmentNativeRuntime({ grant: token, options });
+    const capability = randomBytes(32).toString('hex'), host = new URL(options.origin).host;
+    let active: import('./apps-enrichment-browser-support').AppsEnrichmentReset | undefined, epoch = 0, busy = false, closed = false, poisoned = false, caseDeadline = 0, caseTimer: ReturnType<typeof setTimeout> | undefined;
+    const seenIdentities = new Set<string>(), ackPending = new Set<Promise<unknown>>(), acks = new Map<string, {
+        admission: import('./apps-enrichment-browser-support').AppsEnrichmentWorkerAdmission;
+        key: string;
+    }>();
+    const retain = <T>(original: Promise<T>) => { state.pending.add(original); void original.then(() => state.pending.delete(original), () => { poisoned = true; state.pending.delete(original); }); return original; };
+    const guard = () => { state.assertCurrent(); if (caseDeadline && performance.now() >= caseDeadline) {
+        poisoned = true;
+        state.abort();
+    } if (closed || poisoned || state.signal.aborted)
+        throw fail('enrichment custody'); };
+    const q = (text: string, values: unknown[] = []) => retain(state.query(text, values));
+    async function native(person: 'ownerA' | 'ownerB', url: string, method = 'GET', body?: unknown) { guard(); return retain((async () => { const response = await fetch(options.apiOrigin + url, { method, headers: { Cookie: options.personas[person].cookie, Origin: options.origin, ...(body ? { 'Content-Type': 'application/json', 'Idempotency-Key': randomUUID() } : {}) }, body: body ? JSON.stringify(body) : undefined, redirect: 'error', signal: AbortSignal.any([state.signal, AbortSignal.timeout(15000)]) }); const reader = response.body?.getReader(); if (!reader)
+        throw fail('enrichment response'); const bytes: Buffer[] = []; let size = 0; try {
+        for (;;) {
+            const next = await reader.read();
+            if (next.done)
+                break;
+            size += next.value.length;
+            if (size > 65536)
+                throw fail('enrichment response');
+            bytes.push(Buffer.from(next.value));
+        }
+    }
+    catch (error) {
+        await reader.cancel();
+        throw error;
+    }
+    finally {
+        reader.releaseLock();
+    } if (response.status !== 200)
+        throw fail('enrichment response'); return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(bytes))); })()); }
+    function identity(input: unknown) { const id = support.validateAppsEnrichmentIdentity(input); return id; }
+    async function reset(input: unknown) {
+        guard();
+        if (busy || epoch >= 4)
+            throw fail('enrichment reset');
+        busy = true;
+        try {
+            const id = identity(input), identityKey = JSON.stringify(id);
+            if (seenIdentities.has(identityKey))
+                throw fail('enrichment duplicate identity');
+            seenIdentities.add(identityKey);
+            await Promise.allSettled([...state.pending]);
+            guard();
+            if (active)
+                for (const item of active.items) {
+                    const owner = item.role === 'foreign-control' ? 'ownerB' : 'ownerA', value = await native(owner, '/api/explorers/v1/recommendations/' + item.recommendation.id + '/app-enrichment/binding');
+                    if (value.binding?.optIn) {
+                        const editable = await native(owner, '/api/explorers/v1/recommendations/' + item.recommendation.id + '/editable?status=all');
+                        await native(owner, '/api/explorers/v1/recommendations/' + item.recommendation.id + '/app-enrichment/binding', 'DELETE', { operation: 'disableAppEnrichment', expectedRecommendationRevision: editable.recommendation.revision, expectedBindingRevision: value.binding.bindingRevision });
+                    }
+                }
+            const owners = (await q('SELECT user_id,account_id FROM initial_account_bindings WHERE user_id=ANY($1::text[])', [Object.values(options.personas).map(person => person.userId)])).rows;
+            if (owners.length !== 2)
+                throw fail('enrichment ownership');
+            const personas = {} as any;
+            for (const name of ['ownerA', 'ownerB'] as const) {
+                const person = options.personas[name], owner = owners.find(row => row.user_id === person.userId);
+                if (!owner || !uuid.safeParse(owner.account_id).success)
+                    throw fail('enrichment ownership');
+                personas[name] = { userId: person.userId, accountId: owner.account_id, handle: person.handle };
+                await q("UPDATE creator_accounts SET status='active',onboarding_status='complete',handle=$2,display_name=$3,account_type='Creator',public_profile=true WHERE id=$1", [owner.account_id, person.handle, 'Apps ' + person.handle]);
+                await q("INSERT INTO account_category_settings(account_id,category,is_public,display_order) SELECT $1,'apps',true,coalesce(max(display_order)+1,0) FROM account_category_settings WHERE account_id=$1 ON CONFLICT(account_id,category) DO UPDATE SET is_public=true", [owner.account_id]);
+            }
+            if (caseTimer)
+                clearTimeout(caseTimer);
+            caseDeadline = performance.now() + 120000;
+            caseTimer = setTimeout(() => { poisoned = true; state.abort(); }, 120000);
+            const next = epoch + 1, collectionIds = [randomUUID(), randomUUID()], allocations = [] as {
+                role: 'website' | 'apple' | 'foreign-control';
+                collectionId: string;
+                id: string;
+                entityId: string;
+            }[];
+            for (const [i, name] of (['ownerA', 'ownerB'] as const).entries())
+                await q("INSERT INTO collections(id,account_id,category,title,slug,display_order,visibility,publication_state) VALUES($1,$2,'apps',$3,$4,$5,'private','draft')", [collectionIds[i], personas[name].accountId, 'Enrichment ' + name + ' ' + next, 'enrichment-' + name.toLowerCase() + '-' + next, next]);
+            for (const [i, role] of (['website', 'apple', 'foreign-control'] as const).entries()) {
+                const owner = i === 2 ? 'ownerB' : 'ownerA', entityId = randomUUID(), rid = randomUUID(), collectionId = collectionIds[i === 2 ? 1 : 0];
+                await q("INSERT INTO entities(id,kind,title,origin) VALUES($1,'app',$2,'manual')", [entityId, 'Manual enrichment app ' + next + ' ' + role]);
+                await q('INSERT INTO app_entity_details(entity_id,app_url,developer,logo_url,description,download_url,price_tier,platforms) VALUES($1,$2,$3,NULL,$4,NULL,$5,$6)', [entityId, 'https://apps.example.invalid/manual-' + next + '-' + role, 'Manual developer ' + role, 'Manual description ' + role, 'Paid', ['Web']]);
+                await q("INSERT INTO recommendations(id,account_id,category,entity_id,publication_state) VALUES($1,$2,'apps',$3,'draft')", [rid, personas[owner].accountId, entityId]);
+                await q("INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order) VALUES($1,$2,$3,'apps',$4)", [collectionId, rid, personas[owner].accountId, i === 2 ? 0 : i]);
+                allocations.push({ role, collectionId, id: rid, entityId });
+            }
+            const collections = [] as any[];
+            for (const [i, owner] of (['ownerA', 'ownerB'] as const).entries())
+                collections.push((await native(owner, '/api/explorers/v1/collections/' + collectionIds[i] + '/editable?status=all')).collection);
+            const items = [] as any[];
+            for (const allocation of allocations) {
+                const owner = allocation.role === 'foreign-control' ? 'ownerB' : 'ownerA';
+                items.push({ role: allocation.role, collectionId: allocation.collectionId, recommendation: (await native(owner, '/api/explorers/v1/recommendations/' + allocation.id + '/editable?status=all')).recommendation });
+            }
+            active = support.validateAppsEnrichmentReset({ version: 1, runId: options.runId, commit: options.commit, ...id, epoch: next, personas, choices: state.registry.choices, collections, items });
+            epoch = next;
+            acks.clear();
+            return active;
+        }
+        catch {
+            poisoned = true;
+            throw fail('enrichment reset');
+        }
+        finally {
+            busy = false;
+        }
+    }
+    async function observeNativeAck(req: IncomingMessage, res: ServerResponse) {
+        if (req.method !== 'PUT' || !active)
+            return;
+        const match = /^\/api\/explorers\/v1\/recommendations\/([a-f0-9-]{36})\/app-enrichment\/binding$/.exec(req.url ?? '');
+        const item = match && active.items.find(item => item.role !== 'foreign-control' && item.recommendation.id === match[1]);
+        if (!item)
+            return;
+        const allocation = active, fragments: Buffer[] = [];
+        let size = 0, finished = false;
+        const originalWrite = res.write, originalEnd = res.end;
+        const capture = (chunk: unknown, encoding?: unknown) => { if (chunk === undefined || chunk === null)
+            return; const bytes = Buffer.isBuffer(chunk) ? Buffer.from(chunk) : typeof chunk === 'string' ? Buffer.from(chunk, typeof encoding === 'string' ? encoding as BufferEncoding : undefined) : undefined; if (!bytes || size + bytes.length > 65536) {
+            poisoned = true;
+            return;
+        } size += bytes.length; fragments.push(bytes); };
+        res.write = function (this: ServerResponse, chunk: any, ...rest: any[]) { capture(chunk, rest[0]); return originalWrite.apply(this, [chunk, ...rest] as any); } as any;
+        res.end = function (this: ServerResponse, chunk: any, ...rest: any[]) { capture(chunk, rest[0]); return originalEnd.apply(this, [chunk, ...rest] as any); } as any;
+        const original = new Promise<void>((resolve, reject) => { const done = async () => { finished = true; res.removeListener('close', cancel); res.write = originalWrite; res.end = originalEnd; try {
+            if (res.statusCode !== 200) {
+                resolve();
+                return;
+            }
+            guard();
+            if (active !== allocation)
+                throw fail('enrichment epoch');
+            const contracts = await import('../shared/explorersAppEnrichmentContract'), command = contracts.appEnrichmentCommandSchema.parse((req as any).body);
+            if (command.operation !== 'configureAppEnrichment' || !command.optIn) {
+                resolve();
+                return;
+            }
+            const value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(fragments))), result = contracts.appBindingResultSchema.parse(value.binding), key = uuid.parse(req.headers['idempotency-key']);
+            const headers = (await import('#auth-runtime')).fromNodeHeaders(req.headers), session = await options.composed.auth.api.getSession({ headers });
+            if (session?.user?.id !== allocation.personas.ownerA.userId)
+                throw fail('enrichment actor');
+            const repository = new (await import('../server/repositories/explorersAppEnrichmentRepository')).ExplorersAppEnrichmentRepository({ query: (text: any, values: any) => q(text, values) } as any, state.registry.choices.map(choice => choice.identity));
+            const binding = await repository.readBinding(allocation.personas.ownerA.accountId, item!.recommendation.id);
+            if (!binding || binding.bindingRevision !== result.bindingRevision || binding.currentGenerationId !== result.bindingGenerationId || result.recommendationId !== item!.recommendation.id)
+                throw fail('enrichment ack');
+            const admission = { identity: { caseId: allocation.caseId, project: allocation.project, repeat: 0 as const }, runId: options.runId, commit: options.commit, epoch: allocation.epoch, accountId: allocation.personas.ownerA.accountId, recommendationId: item!.recommendation.id, appEntityId: item!.recommendation.entityId, binding, source: { sourceId: command.sourceId, sourceIdentity: command.sourceIdentity, sourceIdentityHash: command.sourceIdentityHash, canonicalizationVersion: command.canonicalizationVersion }, expectedRecommendationRevision: result.recommendationRevision, expectedBindingRevision: result.bindingRevision, bindingReceiptId: result.receiptId };
+            await verifyReceipt(admission, key, command);
+            acks.set(result.receiptId, { admission, key });
+            resolve();
+        }
+        catch {
+            poisoned = true;
+            reject(fail('enrichment ack'));
+        } }; const cancel = () => { if (!finished) {
+            res.removeListener('finish', done);
+            res.write = originalWrite;
+            res.end = originalEnd;
+            reject(fail('enrichment ack interrupted'));
+        } }; res.once('finish', done); res.once('close', cancel); });
+        ackPending.add(original);
+        void original.then(() => ackPending.delete(original), () => ackPending.delete(original));
+        retain(original);
+    }
+    async function verifyReceipt(admission: import('./apps-enrichment-browser-support').AppsEnrichmentWorkerAdmission, key: string, command: unknown) { const canonical = (await import('../server/application/appEnrichmentValidation')).canonicalAppJson, rows = (await q('SELECT id,status,request_hash,response FROM application_command_receipts WHERE id=$1 AND account_id=$2 AND operation=$3 AND idempotency_key_hash=$4', [admission.bindingReceiptId, admission.accountId, 'configureAppEnrichment', createHash('sha256').update(key).digest()])).rows; if (rows.length !== 1 || rows[0].status !== 'completed' || !Buffer.isBuffer(rows[0].request_hash) || !rows[0].request_hash.equals(createHash('sha256').update(canonical({ recommendationId: admission.recommendationId, ...command as object })).digest()) || rows[0].response?.receiptId !== admission.bindingReceiptId)
+        throw fail('enrichment receipt'); }
+    async function verifyNativeAdmission(admission: import('./apps-enrichment-browser-support').AppsEnrichmentWorkerAdmission, signal: AbortSignal) { guard(); if (signal !== state.signal || !active || admission.epoch !== epoch || admission.runId !== options.runId || admission.commit !== options.commit || admission.identity.caseId !== active.caseId || admission.identity.project !== active.project || admission.identity.repeat !== 0)
+        return false; await Promise.all([...ackPending]); const ack = acks.get(admission.bindingReceiptId); const canonical = (await import('../server/application/appEnrichmentValidation')).canonicalAppJson; if (!ack || canonical(ack.admission) !== canonical(admission))
+        return false; const rows = (await q("SELECT r.revision,b.binding_revision,b.opt_in,b.current_generation_id,r.entity_id FROM recommendations r JOIN app_enrichment_bindings b ON b.recommendation_id=r.id AND b.account_id=r.account_id WHERE r.id=$1 AND r.account_id=$2 AND r.category='apps' AND r.archived_at IS NULL", [admission.recommendationId, admission.accountId])).rows; return rows.length === 1 && Number(rows[0].revision) === admission.expectedRecommendationRevision && Number(rows[0].binding_revision) === admission.expectedBindingRevision && rows[0].opt_in === true && rows[0].current_generation_id === admission.binding.currentGenerationId && rows[0].entity_id === admission.appEntityId; }
+    async function handle(req: IncomingMessage, res: ServerResponse) { if (req.url !== '/api/__apps-fixture/control')
+        return false; try {
+        guard();
+        const presented = String(req.headers['x-apps-fixture-capability'] ?? '');
+        if (req.method !== 'POST' || req.headers['content-type']?.split(';')[0] !== 'application/json' || req.socket.remoteAddress !== '127.0.0.1' || req.headers.host !== host || req.headers.origin !== options.origin || !sha.safeParse(presented).success || !timingSafeEqual(Buffer.from(presented), Buffer.from(capability)))
+            throw fail('enrichment control');
+        const parts = [] as Buffer[];
+        let size = 0;
+        const readTimer = setTimeout(() => { poisoned = true; state.abort(); req.destroy(); }, 15000);
+        try {
+            for await (const part of req) {
+                size += part.length;
+                if (size > 4096)
+                    throw fail('enrichment control');
+                parts.push(Buffer.from(part));
+            }
+        }
+        finally {
+            clearTimeout(readTimer);
+        }
+        const body = JSON.parse(Buffer.concat(parts).toString('utf8')), action = body.action, base = ['version', 'runId', 'commit', 'caseId', 'project', 'repeat', 'action'], expected = action === 'reset-enrichment' ? base : action === 'observe-enrichment' ? [...base, 'epoch'] : action === 'refresh-enrichment' ? [...base, 'epoch', 'admission'] : [];
+        exactKeys(body, expected);
+        if (body.version !== 1 || body.runId !== options.runId || body.commit !== options.commit)
+            throw fail('enrichment identity');
+        const id = identity({ caseId: body.caseId, project: body.project, repeat: body.repeat });
+        let result: unknown;
+        if (action === 'reset-enrichment')
+            result = await reset(id);
+        else {
+            if (!active || body.epoch !== epoch || id.caseId !== active.caseId || id.project !== active.project)
+                throw fail('enrichment epoch');
+            if (action === 'observe-enrichment') {
+                const rows = (await q("SELECT id,account_id,entity_id FROM recommendations WHERE id=ANY($1::uuid[]) AND category='apps'", [active.items.map(item => item.recommendation.id)])).rows;
+                if (rows.length !== 3 || active.items.some(item => !rows.some(row => row.id === item.recommendation.id && row.account_id === item.recommendation.accountId && row.entity_id === item.recommendation.entityId)))
+                    throw fail('enrichment observation');
+            }
+            result = action === 'refresh-enrichment' ? await runtime.refresh(body.admission) : { version: 1, runId: options.runId, commit: options.commit, ...id, epoch, completed: true };
+        }
+        const text = JSON.stringify(result);
+        if (Buffer.byteLength(text) > 65536)
+            throw fail('enrichment response');
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(text);
+    }
+    catch {
+        res.statusCode = 403;
+        res.setHeader('Content-Type', 'application/json');
+        res.end('{"error":"owned Apps enrichment control denied"}');
+    } return true; }
+    return { capability, handle, observeNativeAck, verifyNativeAdmission, async close() { closed = true; if (caseTimer)
+            clearTimeout(caseTimer); await runtime.close(); if (poisoned)
+            throw fail('enrichment cleanup'); } };
 }

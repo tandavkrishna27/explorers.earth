@@ -322,6 +322,7 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
     const d = dependencies;
     let deadline = d.clock.now() + 21600000, failed = false, busy = false, lastEpoch = 0, total = 0;
     let firstFailure:GuidesNativeMetadata|undefined;
+    const captureClientFailure=(error:unknown,clientBoundary?:GuidesNativeMetadata['clientBoundary'])=>{firstFailure??=captureGuidesNativeFailure(error);if(clientBoundary&&!firstFailure.clientBoundary)firstFailure=Object.freeze({...firstFailure,clientBoundary});};
     let firstPageFailure:GuidesPageCapsule|undefined;let firstPageSeal:GuidesPageSeal|undefined;
     let active: {
         identity: Identity;
@@ -353,14 +354,14 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
         original.then(() => operations.delete(original), () => { operations.delete(original); failed = true; });
         return original;
     }
-    async function bounded<T>(operation: () => Promise<T>, ceiling: number) {
+    async function bounded<T>(operation: () => Promise<T>, ceiling: number, boundary?:()=>GuidesNativeMetadata['clientBoundary']) {
         const owned = track(operation);
         let timer: unknown;
         try {
             return await Promise.race([owned, new Promise<never>((_, reject) => { timer = d.clock.setTimeout(() => { failed = true; reject(Error('Guides harness timeout unsettled')); }, Math.max(1, Math.min(remainingMs(), ceiling))); })]);
         }
         catch (error) {
-            firstFailure ??= captureGuidesNativeFailure(error);
+            captureClientFailure(error,boundary?.());
             failed = true;
             denied();
         }
@@ -423,7 +424,8 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             active = { identity: selected, epoch: lastEpoch, manifest, sessions: r.sessions, observed: false };
             return structuredClone(manifest);
         }
-        catch {
+        catch (error) {
+            captureClientFailure(error,'start-response');
             failed = true;
             denied();
         }
@@ -436,8 +438,10 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
         if (busy || !active)
             denied();
         busy = true;
+        let boundary:GuidesNativeMetadata['clientBoundary']='observe-transport';
         try {
             const result = await command('observe', active.identity, active.epoch);
+            boundary='observe-response';
             exact(result, ['v', 'epoch', 'observation']);
             if (result.v !== 1 || result.epoch !== active.epoch)
                 denied();
@@ -445,9 +449,11 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             exact(o, ['version', 'action', 'runId', 'commit', 'caseId', 'project', 'repeat', 'generation', 'personas', 'guides', 'sections', 'media', 'objects', 'attachments', 'provider']);
             if (o.version !== 1 || o.action !== 'observe' || o.runId !== descriptor.runId || o.commit !== descriptor.commit || o.caseId !== active.identity.caseId || o.project !== active.identity.project || o.repeat !== 0 || o.generation !== 1)
                 denied();
+            boundary='observe-provider';
             const provider = guidesProviderObservationSchema.parse(o.provider);
             if (provider.epoch !== active.epoch || provider.error !== null || active.identity.caseId !== GUIDES_CASES[6] && Object.values(provider.counts).some(count => count !== 0))
                 denied();
+            boundary='observe-personas';
             exact(o.personas, [...owners]);
             for (const owner of owners) {
                 const p = guidesObservationRowSchemas.persona.parse(o.personas[owner]), expected = active.manifest.personas[owner];
@@ -455,12 +461,14 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
                     if (p[key] !== expected[key])
                         denied();
             }
+            boundary='observe-rows';
             const rows: any = {};
             for (const [key, schema] of Object.entries({ guides: guidesObservationRowSchemas.guide, sections: guidesObservationRowSchemas.section, media: guidesObservationRowSchemas.media, objects: guidesObservationRowSchemas.object, attachments: guidesObservationRowSchemas.attachment })) {
                 if (!Array.isArray(o[key]) || o[key].length > 5000)
                     denied();
                 rows[key] = o[key].map((v: unknown) => schema.parse(v));
             }
+            boundary='observe-relations';
             const accountIds = owners.map(owner => active!.manifest.personas[owner].accountId);
             for (const key of ['guides', 'sections', 'media', 'objects', 'attachments'])
                 if (rows[key].some((r: any) => !accountIds.includes(r.accountId)))
@@ -477,6 +485,7 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             for (const a of rows.attachments)
                 if (!rows.guides.some((g: any) => g.id === a.guideId && g.accountId === a.accountId) || !rows.media.some((m: any) => m.id === a.mediaId && m.accountId === a.accountId) || a.slot === 'section-photo' && !rows.sections.some((s: any) => s.id === a.sectionId && s.collectionId === a.guideId && s.accountId === a.accountId))
                     denied();
+            boundary='observe-attachments';
             const attachmentKey = (a: any) => JSON.stringify([a.slot, a.guideId, a.sectionId ?? null, a.mediaId]);
             if (new Set(rows.attachments.map(attachmentKey)).size !== rows.attachments.length || new Set(rows.objects.map((o: any) => JSON.stringify([o.mediaId, o.variant, o.environment]))).size !== rows.objects.length)
                 denied();
@@ -493,7 +502,8 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             active.observed = true;
             return structuredClone(o);
         }
-        catch {
+        catch (error) {
+            captureClientFailure(error,boundary);
             failed = true;
             denied();
         }
@@ -510,17 +520,20 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
         const selected = active;
         requireOperationSlot();
         contextReservations++;
+        let boundary:GuidesNativeMetadata['clientBoundary']='context-allocation';
         const work = async () => {
             let context: BrowserContext;
             try {
                 context = await browser.newContext({ ...options, baseURL: descriptor.origin });
             }
-            catch {
+            catch (error) {
+                captureClientFailure(error,boundary);
                 contextReservations--;
                 throw Error('Guides harness context creation failed');
             }
             contextReservations--;
             contexts.set(context, 'open');
+            boundary='context-session';
             check();
             const cookie = selected.sessions[owner].cookie, index = cookie.indexOf('=');
             await context.addCookies([{ name: cookie.slice(0, index), value: cookie.slice(index + 1), url: descriptor.origin, httpOnly: true, sameSite: 'Lax' }]);
@@ -553,12 +566,12 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             check();
             return context;
         };
-        return bounded(work, 60000);
+        return bounded(work, 60000,()=>boundary);
     }
     async function closeContext(context: BrowserContext) {
         if (contexts.get(context) !== 'open')
             denied();
-        return bounded(async () => { await context.close(); contexts.set(context, 'closed'); }, 30000);
+        return bounded(async () => { await context.close(); contexts.set(context, 'closed'); }, 30000,()=> 'context-close');
     }
     async function retire() {
         check();
@@ -580,7 +593,8 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             active = undefined;
             contexts.clear();
         }
-        catch {
+        catch (error) {
+            captureClientFailure(error,'retire');
             failed = true;
             denied();
         }
@@ -607,6 +621,6 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             check();
             if (busy || !active || typeof operation !== 'function')
                 denied();
-            return bounded(operation, 900000);
+            return bounded(operation, 900000,()=> 'producer');
         }, snapshot: () => Object.freeze({ pending: operations.size + providerRequests.size, openContexts: [...contexts.values()].filter(v => v === 'open').length, failed, epoch: lastEpoch }) });
 }

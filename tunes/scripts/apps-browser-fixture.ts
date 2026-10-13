@@ -6,6 +6,58 @@ import { z } from 'zod/v3';
 import {extractAppsControlDiagnostic,extractAppsRequestDrainDiagnostic,extractAppsRequestDrainSnapshot,type AppsRequestDrainDiagnostic,type AppsControllerDiagnostic,type AppsControlOptions} from './apps-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment } from './lifecycle-browser-guards';
 import {registerAppsPrivateDirectory,inspectAppsPrivateDescendant} from './apps-private-custody';
+type EnrichmentGrant=import('./apps-enrichment-native-runtime').AppsEnrichmentProvisionState;
+const enrichmentGrants=new WeakMap<object,{options:object;state:EnrichmentGrant;authority:Authority;snapshot:string;closed:boolean}>();
+/** Verifier only; opaque tokens are issued inside the owned native fixture lifecycle. */
+/** Verifier only; opaque tokens are issued inside the owned native fixture lifecycle. */
+export function inspectAppsEnrichmentProvisionGrant(token: object, options: object): EnrichmentGrant {
+    const issued = enrichmentGrants.get(token);
+    if (!issued || issued.closed || issued.options !== options || JSON.stringify(issued.authority) !== issued.snapshot)
+        throw Error('Apps enrichment native custody refused');
+    issued.state.assertCurrent();
+    return issued.state;
+}
+function issueAppsEnrichmentProvisionGrant(options: object, authority: Authority, state: EnrichmentGrant) {
+    state.assertCurrent();
+    const token = Object.freeze({}), record = { options, state, authority, snapshot: JSON.stringify(authority), closed: false };
+    enrichmentGrants.set(token, record);
+    return { token, closeAfterDrain() { if (state.pending.size)
+            throw Error('Apps enrichment native custody refused'); record.closed = true; } };
+}
+/** Immediate custody exists before capability verification or grant publication. */
+/** Immediate custody exists before capability verification or grant publication. */
+function createAppsEnrichmentProvisioningOwner(nativePool: import('pg').Pool, controller: AbortController) {
+    const pending = new Set<Promise<unknown>>(), clients = new Set<import('pg').PoolClient>();
+    let closing: Promise<void> | undefined, closed = false;
+    const retain = <T>(original: Promise<T>) => { pending.add(original); void original.then(() => pending.delete(original), () => pending.delete(original)); return original; };
+    const stop = () => { for (const client of [...clients])
+        client.release(true); };
+    controller.signal.addEventListener('abort', stop);
+    const connect = () => retain((async () => {
+        const client = await nativePool.connect();
+        if (closed || closing || controller.signal.aborted) {
+            client.release(true);
+            throw new Refusal();
+        }
+        clients.add(client);
+        const originalQueryMethod = client.query, originalQuery = client.query.bind(client), originalRelease = client.release.bind(client);
+        let released = false;
+        client.query = ((...args: any[]) => { if (released || controller.signal.aborted)
+            throw new Refusal(); return retain((originalQuery as any)(...args)); }) as any;
+        client.release = ((error?: Error | boolean) => { if (released)
+            return; released = true; clients.delete(client); client.query = originalQueryMethod; originalRelease(error); }) as any;
+        return client;
+    })());
+    const close = () => closing ??= (async () => { controller.abort(); stop(); while (pending.size)
+        await Promise.allSettled([...pending]); await nativePool.end(); closed = true; controller.signal.removeEventListener('abort', stop); })();
+    const pool = { options: (nativePool as any).options, connect, query: async (...args: any[]) => { const client = await connect(); try {
+            return await (client.query as any)(...args);
+        }
+        finally {
+            client.release();
+        } }, end: close, on: nativePool.on.bind(nativePool) } as unknown as import('pg').Pool;
+    return Object.freeze({ pool, close, pending });
+}
 type Acquisition = Awaited<ReturnType<typeof import('./music-uat-database').prepareOwnedUatDatabaseAcquisition>>;
 type ReportHandle = {
     stat(): Promise<{
@@ -208,7 +260,7 @@ class Refusal extends Error {
 }
 const uuid = z.string().uuid(), baseline = z.object({ id: uuid, revision: z.number().int().positive().safe(), displayName: z.string().nullable(), handle: z.string().nullable() });
 /** Construction and import perform no allocation. Complete adapters are synthetic. */
-export function createAppsBrowserFixture(dependencies?: Dependencies): {
+export function createAppsBrowserFixture(dependencies?: Dependencies, family: 'apps'|'apps-enrichment'='apps'): {
     run(): Promise<void>;
 } {
     let stage: DiagnosticStage = 'validation', category: DiagnosticCategory = 'refusal', captured: Diagnostic | undefined;
@@ -227,7 +279,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
     const recordCategory = (value: DiagnosticCategory) => { if (category === 'refusal')
         category = value; };
     let nativeFailure:(()=>void)|undefined;
-    const d = dependencies === undefined ? defaultDependencies(recordCategory,()=>nativeFailure?.(),recordUnknown,readContext,recordDrain,registerDrainPending,registerViteDiagnostic) : dependencies;
+    const d = dependencies === undefined ? defaultDependencies(recordCategory,()=>nativeFailure?.(),recordUnknown,readContext,recordDrain,registerDrainPending,registerViteDiagnostic,family) : dependencies;
     let promise: Promise<void> | undefined;
     return { run() {
             return promise ??= Promise.resolve().then(execute).catch(() => {
@@ -239,13 +291,13 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
     async function execute() {
         if (!d || Object.keys(d).sort().join(',') !== [...keys].sort().join(',') || keys.filter(key => !['platform', 'argv', 'environment', 'temporaryRoot', 'clock'].includes(key)).some(key => typeof Reflect.get(d, key) !== 'function') || !d.clock || ['now', 'setTimeout', 'clearTimeout'].some(key => typeof Reflect.get(d.clock, key) !== 'function'))
             throw new Refusal();
-        if (!['win32', 'linux', 'darwin'].includes(d.platform) || d.argv.length !== 8 || parseBrowserSuite(d.argv.slice(0, 4)) !== 'apps' || d.argv[4] !== '--receipt-directory' || d.argv[6] !== '--receipt-capability' || !/^[a-f0-9]{64}$/.test(d.argv[7]))
+        if (!['win32', 'linux', 'darwin'].includes(d.platform) || d.argv.length !== 8 || parseBrowserSuite(d.argv.slice(0, 4)) !== family || d.argv[4] !== '--receipt-directory' || d.argv[6] !== '--receipt-capability' || !/^[a-f0-9]{64}$/.test(d.argv[7]))
             throw new Refusal();
         assertBrowserEnvironment(d.environment);
         if (d.environment.PLAYWRIGHT_LAST_RUN_OUTPUT_FILE !== undefined || d.environment.NODE_OPTIONS !== undefined || d.environment.NODE_CHANNEL_FD !== undefined)
             throw new Refusal();
         const paths = d.platform === 'win32' ? path.win32 : path.posix;
-        if (!paths.isAbsolute(d.temporaryRoot) || paths.normalize(d.temporaryRoot) !== d.temporaryRoot || !paths.isAbsolute(d.argv[5]) || paths.basename(d.argv[5]) !== 'apps' || paths.dirname(paths.dirname(d.argv[5])) !== d.temporaryRoot || !/^replatform-e2e-[A-Za-z0-9-]{8,64}$/.test(paths.basename(paths.dirname(d.argv[5]))))
+        if (!paths.isAbsolute(d.temporaryRoot) || paths.normalize(d.temporaryRoot) !== d.temporaryRoot || !paths.isAbsolute(d.argv[5]) || paths.basename(d.argv[5]) !== family || paths.dirname(paths.dirname(d.argv[5])) !== d.temporaryRoot || !/^replatform-e2e-[A-Za-z0-9-]{8,64}$/.test(paths.basename(paths.dirname(d.argv[5]))))
             throw new Refusal();
         const originals = new Set<Promise<unknown>>();
         let deadline = d.clock.now() + 21600000, uncertain = false, interrupted = false, knownFailure = false, setupComplete = false, stopping = false, cleanupSettled = false;
@@ -415,7 +467,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
             await bounded(() => d.createControl(options!).then(value => { control = value; return value; }));
             if (!/^[a-f0-9]{64}$/.test(control!.capability))
                 throw new Refusal();
-            const value = { origin, controlCapability: control!.capability, personas: initialPersons, version: 1, runId, commit: input.commit, fixtureFilesRoot: options.fixtureFilesRoot };
+            const value = { ...(family==='apps-enrichment'?{lane:family,enrichmentPolicy:{requestTimeoutMs:15000,maxJsonBytes:65536,nativeRefreshTimeoutMs:60000,caseTimeoutMs:120000}}:{}),origin, controlCapability: control!.capability, personas: initialPersons, version: 1, runId, commit: input.commit, fixtureFilesRoot: options.fixtureFilesRoot };
             if (Buffer.byteLength(JSON.stringify(value)) > 65536)
                 throw new Refusal();
             stage='check-directory'; for (const root of roots)
@@ -423,9 +475,9 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
             stage = 'descriptor';
             descriptor = await bounded(() => d.writeDescriptor(roots[0], value));
             stage = 'browser-context';
-            const args = await bounded(() => Promise.resolve(receipt!.arguments(['--config', 'e2e/replatform/apps.playwright.config.ts', '--retries=0', '--workers=1', '--forbid-only'], candidate!)));
+            const args = await bounded(() => Promise.resolve(receipt!.arguments(['--config', family==='apps-enrichment'?'e2e/replatform/apps-enrichment.playwright.config.ts':'e2e/replatform/apps.playwright.config.ts', '--retries=0', '--workers=1', '--forbid-only'], candidate!)));
             const fixturePath = paths.join(candidate, 'sessions.json');
-            const context = { arguments: args, environment: { ...receipt.executionEnvironment({}, candidate), APPS_E2E_FIXTURE_PATH: fixturePath, REPLATFORM_E2E_FIXTURE_PATH: fixturePath, REPLATFORM_E2E_LANE: 'apps', PLAYWRIGHT_EXTERNAL_BASE_URL: origin } };
+            const context = { arguments: args, environment: { ...receipt.executionEnvironment({}, candidate), APPS_E2E_FIXTURE_PATH: fixturePath, REPLATFORM_E2E_FIXTURE_PATH: fixturePath, REPLATFORM_E2E_LANE: family, PLAYWRIGHT_EXTERNAL_BASE_URL: origin } };
             stage = 'vite';
             setupComplete = true;
             await bounded(() => d.launchVite(options!, readResponse).then(value => { vite = value; return value; }));
@@ -552,7 +604,10 @@ export function createAppsBrowserFixture(dependencies?: Dependencies): {
         await bounded(() => Promise.resolve(receipt!.finish(authority!, [], interrupted)));
     }
 }
-function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void, reportFailure:()=>void,reportUnknown:(origin:NativeUnknownOrigin,context:NativeContext,budgetMs?:number)=>void,readContext:()=>NativeContext,reportDrain:(boundary:RequestDrainBoundary)=>void,registerDrainPending:(reader:()=>RequestDrainPending|undefined)=>void,registerViteDiagnostic:(reader:()=>AppsViteDiagnostic|undefined)=>void=()=>{}): Dependencies {
+/** Distinct protected additive family; construction remains inert. */
+/** Distinct protected additive family; construction remains inert. */
+export function createAppsEnrichmentBrowserFixture(dependencies?: Dependencies) { return createAppsBrowserFixture(dependencies, 'apps-enrichment'); }
+function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void, reportFailure:()=>void,reportUnknown:(origin:NativeUnknownOrigin,context:NativeContext,budgetMs?:number)=>void,readContext:()=>NativeContext,reportDrain:(boundary:RequestDrainBoundary)=>void,registerDrainPending:(reader:()=>RequestDrainPending|undefined)=>void,registerViteDiagnostic:(reader:()=>AppsViteDiagnostic|undefined)=>void=()=>{},family:'apps'|'apps-enrichment'='apps'): Dependencies {
     const root = path.resolve(fileURLToPath(new URL('../../', import.meta.url))), frontend = path.join(root, 'explorers-earth'), temporaryRoot = tmpdir();
     const ps = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', helper = path.join(root, 'tunes/scripts/music-local-private-files.ps1'), cli = path.join(frontend, 'node_modules/@playwright/test/cli.js'), viteCli = path.join(frontend, 'node_modules/vite/bin/vite.js');
     const retained = new Map<string, {
@@ -568,6 +623,115 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
     }>(), nativeChildren = new Set<Child>();
     let nativeUnknown = false;
     function latchUnknown(origin:NativeUnknownOrigin,context:NativeContext=readContext(),budgetMs?:number){if(!nativeUnknown)reportUnknown(origin,context,budgetMs);nativeUnknown=true;}
+
+    const enrichmentAbort=new AbortController(),enrichmentPending=new Set<Promise<unknown>>(),ownedAuthorities=new WeakSet<object>();
+    let enrichmentRegistry:Awaited<ReturnType<typeof import('./apps-enrichment-native-runtime').createReviewedAppsEnrichmentRegistry>>|undefined,workerPool:import('pg').Pool|undefined,enrichmentControl:any,sourceSnapshot:string|undefined,protectedReceiptIssued=false,enrichmentState:EnrichmentGrant|undefined,workerClosed=false,workerOwner:ReturnType<typeof createAppsEnrichmentProvisioningOwner>|undefined;
+    const nativeTokens=new Set<symbol>(),nativeTokenWaiters=new Set<()=>void>();
+    const retainEnrichment=<T>(original:Promise<T>)=>{enrichmentPending.add(original);void original.then(()=>enrichmentPending.delete(original),()=>{enrichmentPending.delete(original);enrichmentAbort.abort();});return original;};
+    async function enrichmentQuery(pool: import('pg').Pool, text: string, values: unknown[] = []) {
+    nativeGuard();
+    if (enrichmentAbort.signal.aborted)
+        throw new Refusal();
+    let client: import('pg').PoolClient | undefined, released = false, stopped = false;
+    const stop = () => { stopped = true; enrichmentAbort.abort(); if (client && !released) {
+        released = true;
+        client.release(true);
+    } };
+    const timer = setTimeout(stop, 10000);
+    enrichmentAbort.signal.addEventListener('abort', stop, { once: true });
+    const original = (async () => { try {
+        client = await pool.connect();
+        if (stopped) {
+            released = true;
+            client.release(true);
+            throw new Refusal();
+        }
+        const result = await client.query(text, values);
+        if (stopped)
+            throw new Refusal();
+        nativeGuard();
+        return result;
+    }
+    finally {
+        clearTimeout(timer);
+        enrichmentAbort.signal.removeEventListener('abort', stop);
+        if (client && !released) {
+            released = true;
+            client.release();
+        }
+    } })();
+    return retainEnrichment(original);
+}
+    async function prepareEnrichmentGrant(options: Options) {
+    nativeGuard();
+    if (!protectedReceiptIssued || !sourceSnapshot || !ownedAuthorities.has(options.ownedAuthority) || !enrichmentRegistry || workerPool)
+        throw new Refusal();
+    const contract = await import(pathToFileURL(path.join(root, 'scripts/replatform-e2e.mjs')).href);
+    if (JSON.stringify(contract.snapshotSource(root)) !== sourceSnapshot)
+        throw new Refusal();
+    const proof = await enrichmentQuery(options.pool as any, 'SELECT current_database() AS database,session_user AS login');
+    if (proof.rows[0]?.database !== options.ownedAuthority.database || proof.rows[0]?.login !== 'music_migrator' || !/^music_uat_[a-f0-9]{32}$/.test(options.ownedAuthority.database))
+        throw new Refusal();
+    const authority = options.ownedAuthority, attest = await import('./music-uat-database');
+    const attested = attest.attestUatDatabaseAuthority({ MUSIC_UAT_DATABASE_ACK: attest.MUSIC_UAT_DATABASE_ACK, MUSIC_UAT_DATABASE_RUN_ID: authority.runId, MUSIC_UAT_DATABASE_NAME: authority.database, MUSIC_UAT_DATABASE_PORT: String(authority.port), MUSIC_UAT_DATABASE_CONTAINER_ID: authority.containerId, MUSIC_UAT_DATABASE_COMMIT: authority.commit }, authority.commit);
+    if (!attested || attested.imageId !== authority.imageId || attested.contextHost !== authority.contextHost || attested.containerId !== authority.containerId)
+        throw new Refusal();
+    const login = 'apps_http_worker_' + authority.runId, password = randomBytes(32).toString('hex'), quote = (name: string) => '"' + name.replaceAll('"', '""') + '"';
+    await enrichmentQuery(options.pool as any, 'CREATE ROLE ' + quote(login) + ' LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT');
+    const formatted = await enrichmentQuery(options.pool as any, "SELECT format('ALTER ROLE %I PASSWORD %L',$1,$2) AS command", [login, password]);
+    await enrichmentQuery(options.pool as any, formatted.rows[0].command);
+    await enrichmentQuery(options.pool as any, 'GRANT CONNECT ON DATABASE ' + quote(authority.database) + ' TO ' + quote(login));
+    await enrichmentQuery(options.pool as any, 'GRANT app_enrichment_worker TO ' + quote(login));
+    for (const source of enrichmentRegistry.workerSources)
+        await enrichmentQuery(options.pool as any, 'INSERT INTO app_enrichment_source_approvals(source_id,source_identity,source_identity_hash,canonicalization_version,enabled,approval_revision,adapter_version,canonical_url,canonical_url_policy_version,allowed_fields,allowed_hosts,configuration_fingerprint,operational_configuration) VALUES($1,$2,$3,$4,true,$5,$6,$7,$8,$9,$10,$11,$12::jsonb)', [source.identity.sourceId, source.identity.sourceIdentity, source.identity.sourceIdentityHash, source.identity.canonicalizationVersion, source.approvalRevision, source.adapterVersion, source.canonicalUrl, source.canonicalUrlPolicyVersion, source.allowedFields, source.fetch.allowedHosts, source.configurationFingerprint, JSON.stringify(source.limits)]);
+    // Reattest the exact native migrator before constructing the separate worker pool.
+    nativeGuard();
+    if (JSON.stringify(contract.snapshotSource(root)) !== sourceSnapshot || !ownedAuthorities.has(authority) || enrichmentAbort.signal.aborted)
+        throw new Refusal();
+    const beforePool = await enrichmentQuery(options.pool as any, 'SELECT current_database() AS database,session_user AS login');
+    if (beforePool.rows[0]?.database !== authority.database || beforePool.rows[0]?.login !== 'music_migrator')
+        throw new Refusal();
+    const { default: pg } = await import('pg');nativeGuard();if(enrichmentAbort.signal.aborted)throw new Refusal();
+    const nativeWorkerPool = new pg.Pool({ host: '127.0.0.1', port: authority.port, database: authority.database, user: login, password, max: 4, connectionTimeoutMillis: 2000, statement_timeout: 60000, options: '-c role=app_enrichment_worker -c lock_timeout=1000' });workerOwner=createAppsEnrichmentProvisioningOwner(nativeWorkerPool,enrichmentAbort);workerPool=workerOwner.pool;
+    workerPool.on('error', () => { enrichmentAbort.abort(); latchUnknown('api-failure'); reportFailure(); });
+    await retainEnrichment((await import('../server/db/app-enrichment-worker-role')).verifyAppEnrichmentWorkerLogin(workerPool, { loginRole: login, databaseName: authority.database }));
+    const { createAppsEnrichmentQualificationLedger } = await import('../server/services/appEnrichmentQualificationLedger');
+    const ledger = createAppsEnrichmentQualificationLedger(enrichmentRegistry.workerSources, { maxAttempts: 8, maxAdmittedBodyBytes: 16777216, maxDurationMs: 600000 }, { observeNativeLifecycle(event, token) { if (event === 'request-opened' || event === 'socket-opened')
+            nativeTokens.add(token);
+        else {
+            nativeTokens.delete(token);
+            if (!nativeTokens.size)
+                for (const wake of nativeTokenWaiters)
+                    wake();
+        } } });
+    const optionsSnapshot = JSON.stringify({ authority, runId: options.runId, commit: options.commit, personas: options.personas }), pool = options.pool, composed = options.composed, registry = enrichmentRegistry, worker = workerPool, poolMethods = [(pool as any).query, (pool as any).connect, (pool as any).end], workerMethods = [worker.query, worker.connect, worker.end], configSnapshot = JSON.stringify(options.config);
+    let issued: ReturnType<typeof issueAppsEnrichmentProvisionGrant>;
+    const state: EnrichmentGrant = { abort: () => enrichmentAbort.abort(), signal: enrichmentAbort.signal, pending: enrichmentPending, registry, adapters: registry.adapters, ledger, workerPool, runId: options.runId,
+        assertCurrent() { try {
+            nativeGuard();
+        }
+        catch {
+            enrichmentAbort.abort();
+            throw new Refusal();
+        } if (workerPool !== worker || [worker.query, worker.connect, worker.end].some((method, index) => method !== workerMethods[index]) || [(pool as any).query, (pool as any).connect, (pool as any).end].some((method, index) => method !== poolMethods[index]) || JSON.stringify(options.config) !== configSnapshot || JSON.stringify(contract.snapshotSource(root)) !== sourceSnapshot || options.pool !== pool || options.composed !== composed || JSON.stringify({ authority, runId: options.runId, commit: options.commit, personas: options.personas }) !== optionsSnapshot || !ownedAuthorities.has(authority))
+            throw new Refusal(); },
+        query: (text, values) => enrichmentQuery(pool as any, text, values), trustedInstant: async () => { const result = await enrichmentQuery(pool as any, 'SELECT clock_timestamp() AS now'); return result.rows[0].now; },
+        verifyAck: (admission, signal) => enrichmentControl ? enrichmentControl.verifyNativeAdmission(admission, signal) : Promise.resolve(false),
+        async close() { enrichmentAbort.abort(); while (enrichmentPending.size) {
+            const originals = [...enrichmentPending];
+            await Promise.allSettled(originals);
+        } if (nativeTokens.size) {
+            await new Promise<void>((resolve, reject) => { const timer = setTimeout(() => { nativeTokenWaiters.delete(done); reject(new Refusal()); }, 10000), done = () => { clearTimeout(timer); nativeTokenWaiters.delete(done); resolve(); }; nativeTokenWaiters.add(done); });
+        } if (!workerClosed) {
+            await workerPool!.end();
+            workerClosed = true;
+        } issued.closeAfterDrain(); }
+    };
+    Object.freeze(state);
+    enrichmentState = state;
+    issued = issueAppsEnrichmentProvisionGrant(options, authority, state);
+    return issued.token;
+}
     const activeDeadlines = new Map<unknown, {deadline:number;context:NativeContext;budgetMs:number}>();
     function nativeGuard() {
         for(const entry of activeDeadlines.values())if(performance.now()>=entry.deadline)latchUnknown('guard-expiry',entry.context,entry.budgetMs);
@@ -701,8 +865,8 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
     function readRequestDrainPending():RequestDrainPending|undefined{if(!drainOptions||!drainPhase||!drainCounter)return undefined;const handlers=drainCounter();if(!Number.isSafeInteger(handlers)||handlers<0||handlers>128)return undefined;const evidence=extractAppsRequestDrainSnapshot(drainOptions);return Object.freeze({phase:drainPhase,handlers,...(evidence?{evidence}:{})});}
     registerDrainPending(readRequestDrainPending);
     async function support() { return actualSupport ??= await import('./apps-browser-support'); }
-    async function outputNames() { const { APPS_CASES } = await support(); const sanitize = (value: string) => value.replace(/[\x00-\x2c\x2e-\x2f\x3a-\x40\x5b-\x60\x7b-\x7f]+/g, '-'); const trim = (value: string) => { if (value.length <= 60)
-        return value; const middle = '-' + createHash('sha1').update(value).digest('hex').slice(0, 5) + '-', start = Math.floor((60 - middle.length) / 2); return value.slice(0, start) + middle + value.slice(-(60 - middle.length - start)); }; return APPS_CASES.flatMap(title => ['apps-desktop', 'apps-mobile'].map(project => trim('apps-' + sanitize(title)) + '-' + sanitize(project))); }
+    async function outputNames() { const { APPS_CASES: manualCases } = await support();const APPS_CASES=family==='apps-enrichment'?(await import('./apps-enrichment-browser-support')).APPS_ENRICHMENT_CASES:manualCases; const sanitize = (value: string) => value.replace(/[\x00-\x2c\x2e-\x2f\x3a-\x40\x5b-\x60\x7b-\x7f]+/g, '-'); const trim = (value: string) => { if (value.length <= 60)
+        return value; const middle = '-' + createHash('sha1').update(value).digest('hex').slice(0, 5) + '-', start = Math.floor((60 - middle.length) / 2); return value.slice(0, start) + middle + value.slice(-(60 - middle.length - start)); }; return APPS_CASES.flatMap(title => ['apps-desktop', 'apps-mobile'].map(project => trim((family==='apps-enrichment'?'apps-enrichment-':'apps-') + sanitize(title)) + '-' + sanitize(project))); }
     async function captureBrowserArtifacts(options: Options, execution: boolean) {
         const fs = await import('node:fs/promises');
         const file = path.join(options.disposableDirectory, execution ? 'protected-execution.json' : 'protected-discovery.json');
@@ -719,7 +883,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
             throw error;
         }
         const allowed = new Set(['.last-run.json', ...await outputNames()]);
-        if (names.length > 9 || names.some(name => !allowed.has(name)))
+        if (names.length > (family==='apps-enrichment'?5:9) || names.some(name => !allowed.has(name)))
             throw new Refusal();
         await inspect(output);
         await remember(output, true);
@@ -766,7 +930,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
     return { platform: process.platform, argv: process.argv.slice(2), environment: process.env, temporaryRoot, clock: nativeClock(), randomHex: n => randomBytes(n).toString('hex'), installSignals(callback) { process.on('SIGINT', callback); process.on('SIGTERM', callback); return () => { process.removeListener('SIGINT', callback); process.removeListener('SIGTERM', callback); }; },
         async preflight() {
             const fs = await import('node:fs/promises');
-            for (const file of [process.execPath, helper, cli, viteCli, path.join(frontend, 'e2e/replatform/apps.playwright.config.ts'), path.join(frontend, 'e2e/replatform/profile.vite.config.ts'), path.join(frontend, 'e2e/replatform/apps.spec.ts')]) {
+            for (const file of [process.execPath, helper, cli, viteCli, path.join(frontend, family==='apps-enrichment'?'e2e/replatform/apps-enrichment.playwright.config.ts':'e2e/replatform/apps.playwright.config.ts'), path.join(frontend, 'e2e/replatform/profile.vite.config.ts'), path.join(frontend, family==='apps-enrichment'?'e2e/replatform/apps-enrichment.spec.ts':'e2e/replatform/apps.spec.ts')]) {
                 await canonical(file);
                 if (!(await fs.lstat(file)).isFile())
                     throw new Refusal();
@@ -780,7 +944,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
                     throw new Refusal();
             }
             const contract = await import(pathToFileURL(path.join(root, 'scripts/replatform-e2e.mjs')).href);
-            const source = contract.snapshotSource(root);
+            const source = contract.snapshotSource(root);if(family==='apps-enrichment')sourceSnapshot=JSON.stringify(source);
             const commit = source.provenance.commit;
             if (!/^[a-f0-9]{40}$/.test(commit))
                 throw new Refusal();
@@ -791,8 +955,8 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
             const port = (min: number, max: number) => min + randomBytes(2).readUInt16BE() % (max - min + 1);
             return { commit, pgPort: port(56000, 60999), apiPort: port(54000, 55999), webPort: port(52000, 53999) };
         },
-        async createReceipt(argv) { const { extractProtectedReceiptArguments, createProtectedReceipt } = await import('./protected-browser-receipt'); const receipt = await createProtectedReceipt(root, 'apps', extractProtectedReceiptArguments(argv)); if (!receipt)
-            throw new Refusal(); return { ...receipt, async arguments(args: string[], directory: string) { const result = receipt.arguments(args, directory); const target = path.join(directory, 'protected.playwright.config.mjs'); await inspect(target); await remember(target, false); return result; } } as Receipt; },
+        async createReceipt(argv) { const { extractProtectedReceiptArguments, createProtectedReceipt } = await import('./protected-browser-receipt'); const receipt = await createProtectedReceipt(root, family, extractProtectedReceiptArguments(argv)); if (!receipt)
+            throw new Refusal();if(family==='apps-enrichment')protectedReceiptIssued=true; return { ...receipt, async arguments(args: string[], directory: string) { const result = receipt.arguments(args, directory); const target = path.join(directory, 'protected.playwright.config.mjs'); await inspect(target); await remember(target, false); return result; } } as Receipt; },
         async createDirectory(target) { try {
             await canonical(path.dirname(target));
             await privateOperation('create-directory', target);
@@ -840,20 +1004,20 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
             latchUnknown('secret-create');
             throw new Refusal();
         } },
-        async prepareDatabase(input) { nativeGuard(); const { prepareOwnedUatDatabaseAcquisition } = await import('./music-uat-database'); nativeGuard(); const acquisition=await prepareOwnedUatDatabaseAcquisition({ runId: input.runId, database: `music_uat_${input.runId}`, commit: input.commit, port: input.port, passwordFile: input.secret.path }); nativeGuard(); return {...acquisition,async create(){nativeGuard();const result=await acquisition.create();nativeGuard();return result;},async dispose(drop){nativeGuard();await acquisition.dispose(async authority=>{nativeGuard();await drop(authority);nativeGuard();});nativeGuard();}}; }, async createPool(authority, secret) { const { readSecureMusicSecretFile } = await import('../server/config/secure-music-secret-file'); const password = await readSecureMusicSecretFile(secret.path, { mode: 'fixture' }); const { default: pg } = await import('pg'); return new pg.Pool({ host: '127.0.0.1', user: 'music_migrator', password, database: authority.database, port: authority.port, max: 4, connectionTimeoutMillis: 3000, statement_timeout: 10000, options: '-c lock_timeout=5000' }) as unknown as Pool; },
+        async prepareDatabase(input) { nativeGuard(); const { prepareOwnedUatDatabaseAcquisition } = await import('./music-uat-database'); nativeGuard(); const acquisition=await prepareOwnedUatDatabaseAcquisition({ runId: input.runId, database: `music_uat_${input.runId}`, commit: input.commit, port: input.port, passwordFile: input.secret.path }); nativeGuard(); return {...acquisition,async create(){nativeGuard();const result=await acquisition.create();nativeGuard();if(family==='apps-enrichment')ownedAuthorities.add(result);return result;},async dispose(drop){nativeGuard();await acquisition.dispose(async authority=>{nativeGuard();await drop(authority);nativeGuard();});nativeGuard();}}; }, async createPool(authority, secret) { const { readSecureMusicSecretFile } = await import('../server/config/secure-music-secret-file'); const password = await readSecureMusicSecretFile(secret.path, { mode: 'fixture' }); const { default: pg } = await import('pg'); return new pg.Pool({ host: '127.0.0.1', user: 'music_migrator', password, database: authority.database, port: authority.port, max: 4, connectionTimeoutMillis: 3000, statement_timeout: 10000, options: '-c lock_timeout=5000' }) as unknown as Pool; },
         async migrate(pool) { const { migrateMusicDatabase } = await import('../server/db/migrate'); await migrateMusicDatabase(pool as any); },
         async seedAuth(pool, runId) { const result = {} as {
             ownerA: Persona;
             ownerB: Persona;
         }; for (const key of ['ownerA', 'ownerB'] as const) {
-            const userId = `apps-e2e-${randomUUID()}`;
+            const userId = family==='apps-enrichment'?randomUUID():`apps-e2e-${randomUUID()}`;
             await pool.query({ text: 'INSERT INTO auth_user(id,name,email) VALUES ($1,$2,$3)', values: [userId, key, `${userId}@example.invalid`] });
             await pool.query({ text: "INSERT INTO auth_account(id,account_id,provider_id,user_id,updated_at) VALUES ($1,$2,'google',$3,now())", values: [randomUUID(), `google-${userId}`, userId] });
             result[key] = { userId, handle: `apps${key.toLowerCase()}${runId.slice(0, 4)}`, cookie: '' };
         } return result; },
         async ensureInitialAccount(pool, userId) { const { ensureInitialAccount } = await import('../server/auth/initialAccount'); return ensureInitialAccount(pool as any, userId); },
         async createConfig(origin) { const { resolveExplorersAuthConfig } = await import('../server/auth/betterAuth'); return resolveExplorersAuthConfig({ EXPLORERS_PUBLIC_ORIGIN: origin, EXPLORERS_AUTH_SECRET: randomBytes(32).toString('hex'), GOOGLE_CLIENT_ID: 'apps-fixture-google', GOOGLE_CLIENT_SECRET: 'apps-fixture-secret' }); },
-        async createComposition(pool, config, directory, binding) { const pair = await (await support()).createAppsFixtureComposition(pool as any, config, directory, binding as any); configurations.set(pair.composed, config); nativeAccounts.set(pair.composed, Object.values(binding.personasWithActualAccountIds).map(person => person.accountId!)); return pair; },
+        async createComposition(pool, config, directory, binding) { if(family==='apps-enrichment')enrichmentRegistry=await (await import('./apps-enrichment-native-runtime')).createReviewedAppsEnrichmentRegistry(()=>{enrichmentAbort.abort();latchUnknown('api-failure');reportFailure();});const pair = family==='apps-enrichment'?await (await support()).createAppsEnrichmentFixtureComposition(pool as any,config,directory,{...binding,registry:enrichmentRegistry} as any):await (await support()).createAppsFixtureComposition(pool as any, config, directory, binding as any); configurations.set(pair.composed, config); nativeAccounts.set(pair.composed, Object.values(binding.personasWithActualAccountIds).map(person => person.accountId!)); return pair; },
         async startApi(options,getControl){
             const {createServer}=await import('node:http');const binding=await support();
             const handlers=new Set<Promise<unknown>>(),sockets=new Set<import('node:net').Socket>();
@@ -876,7 +1040,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
             const server=createServer((req,res)=>{
                 const original=(async()=>{
                     if(!binding.admitAppsFixtureRequest(options as unknown as AppsControlOptions,req,res)){respond(res,503);return;}
-                    const control=getControl();if(control&&await control.handle(req,res))return;
+                    const control=getControl();if(control&&await control.handle(req,res))return;if(family==='apps-enrichment'&&control)await control.observeNativeAck(req,res);
                     options.composed.app(req,res);
                 })();
                 handlers.add(original);
@@ -893,7 +1057,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         } },
         async canonicalMe(_composition, origin, person, read) { const response = await fetch(`${origin}/api/explorers/v1/me`, { headers: { Cookie: person.cookie }, redirect: 'error', signal: AbortSignal.timeout(10000) }); if (response.status !== 200)
             throw new Refusal(); const bytes = await read(response, 65536); const value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); const { accountDtoSchema } = await import('../shared/explorersContract'); return accountDtoSchema.parse(value.account); },
-        async createControl(options) { return (await support()).createAppsControl(options as unknown as AppsControlOptions,undefined,nativeGuard); },
+        async createControl(options) {if(family==='apps-enrichment'){try{const token=await prepareEnrichmentGrant(options);enrichmentControl=await (await support()).createAppsEnrichmentControl(options as unknown as AppsControlOptions,token);return enrichmentControl;}catch{if(workerOwner){const physicalClose=workerOwner.close();while(enrichmentPending.size)await Promise.allSettled([...enrichmentPending]);await physicalClose;workerClosed=true;}throw new Refusal();}}return (await support()).createAppsControl(options as unknown as AppsControlOptions,undefined,nativeGuard); },
         async writeDescriptor(directory, value) { await same(directory.path, true); await inspect(directory.path); const target = path.join(directory.path, 'sessions.json'), text = JSON.stringify(value); if (Buffer.byteLength(text) > 65536)
             throw new Refusal(); try {
             await privateOperation('create-file', target, text);
@@ -1044,11 +1208,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
             if (outputExists) {
                 await inspect(output);
                 await exactUnlink(path.join(output, '.last-run.json'), true);
-                const { APPS_CASES } = await import('./apps-browser-support');
-                const sanitize = (value: string) => value.replace(/[\x00-\x2c\x2e-\x2f\x3a-\x40\x5b-\x60\x7b-\x7f]+/g, '-');
-                const trim = (value: string) => { if (value.length <= 60)
-                    return value; const middle = '-' + createHash('sha1').update(value).digest('hex').slice(0, 5) + '-', start = Math.floor((60 - middle.length) / 2); return value.slice(0, start) + middle + value.slice(-(60 - middle.length - start)); };
-                const names = APPS_CASES.flatMap(title => ['apps-desktop', 'apps-mobile'].map(project => trim('apps-' + sanitize(title)) + '-' + sanitize(project)));
+                const names = await outputNames();
                 for (const name of names)
                     await emptyDirectory(path.join(output, name), true);
                 await emptyDirectory(output);

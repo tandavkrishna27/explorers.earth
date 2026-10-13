@@ -338,10 +338,3 @@ if (-not $IsWindows) { throw 'Public parity requires qualified Windows containme
 $repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $code = [PublicParityJob.Wire]::Run($repository).GetAwaiter().GetResult()
 exit $code
-
-
-
-
-
-
-

@@ -1,3 +1,5 @@
+import {validateAppsEnrichmentSources} from './apps-enrichment-browser-support';
+import {appEnrichmentCommandSchema,appSourceIdentitySchema} from '../shared/explorersAppEnrichmentContract';
 import type {Request,Response,NextFunction} from 'express';
 import type {Pool} from 'pg';
 import type {OwnedUatDatabaseAuthority} from './music-uat-database';
@@ -8,7 +10,7 @@ import {ownerCollectionsRequestSchema,ownerRecommendationsRequestSchema,ownerDet
 import {explorersAnalyticsInputSchema} from '../server/services/explorers-analytics-service';
 import {parsePublicProfileRequest,parsePublicProfileDetailRequest} from '../server/publicProfile/publicProfileContract';
 type Persona=Readonly<{userId:string;accountId:string;handle:string}>;
-export type AppsCanonicalAdmissionOptions={pool:Pool;runAuthority:OwnedUatDatabaseAuthority;personas:{ownerA:Persona;ownerB:Persona}};
+export type AppsCanonicalAdmissionOptions={pool:Pool;runAuthority:OwnedUatDatabaseAuthority;personas:{ownerA:Persona;ownerB:Persona};enrichmentSources?:readonly unknown[]};
 export const APPS_REQUEST_ROUTE_LABELS=Object.freeze(['unproved','me','auth-session','health','media-get','media-head','upload','media-delete','collections-read','collections-editable','recommendations-read','recommendations-editable','content-snapshot','content-snapshot/validate','memberships','top-picks','public-shell','public-apps','command'] as const);
 export const APPS_REQUEST_METHOD_LABELS=Object.freeze(['UNKNOWN','GET','HEAD','POST','PATCH','PUT','DELETE','OPTIONS','OTHER'] as const);
 export type AppsRequestRouteLabel=typeof APPS_REQUEST_ROUTE_LABELS[number];
@@ -29,7 +31,7 @@ const denied=(res:Response)=>res.status(503).json({error:{code:'UNAVAILABLE',mes
 /** Effect-free construction. The owning composition must register these original async
  * middleware functions in its custody ledger. This module supplies no settlement proof. */
 export function createAppsCanonicalAdmission(options:AppsCanonicalAdmissionOptions){
- keys(options,['pool','runAuthority','personas']);keys(options.personas,['ownerA','ownerB']);
+ keys(options,Object.hasOwn(options,'enrichmentSources')?['pool','runAuthority','personas','enrichmentSources']:['pool','runAuthority','personas']);const enrichmentSources=Object.hasOwn(options,'enrichmentSources')?validateAppsEnrichmentSources(options.enrichmentSources):undefined;keys(options.personas,['ownerA','ownerB']);
  const authority=options.runAuthority;keys(authority,['owned','runId','commit','database','port','containerId','imageId','contextHost']);
  if(authority.owned!==true||!/^[a-f0-9]{32}$/.test(authority.runId)||!/^[a-f0-9]{40}$/.test(authority.commit)||authority.database!==`music_uat_${authority.runId}`||!Number.isSafeInteger(authority.port)||authority.port<1024||authority.port>65535||!/^[a-f0-9]{64}$/.test(authority.containerId)||!/^sha256:[a-f0-9]{64}$/.test(authority.imageId)||!['npipe:////./pipe/docker_engine','npipe:////./pipe/dockerDesktopLinuxEngine','unix:///var/run/docker.sock'].includes(authority.contextHost))throw Error('Apps admission configuration denied');
  const people=Object.values(options.personas).map(p=>{keys(p,['userId','accountId','handle']);if(!uuid.test(p.accountId)||typeof p.userId!=='string'||p.userId.length<1||p.userId.length>128||!/^[-a-z0-9]{3,30}$/.test(p.handle))throw Error('Apps admission configuration denied');return Object.freeze({...p});});
@@ -52,6 +54,7 @@ export function createAppsCanonicalAdmission(options:AppsCanonicalAdmissionOptio
   else if((match=path.match(new RegExp(`^${prefix}/media/(${id})(/content)?$`)))&&((match[2]&&['GET','HEAD'].includes(method))||(!match[2]&&method==='DELETE')))kind='media';
   else if((match=path.match(new RegExp(`^${prefix}/(collections|recommendations)/(${id})(/editable)?$`)))&&((match[3]&&method==='GET')||(!match[3]&&['PATCH','DELETE'].includes(method)))){kind=`${match[1]}-${method==='GET'?'editable':'command'}`;return checked({kind,id:match[2],query:q});}
   else if((match=path.match(new RegExp(`^${prefix}/recommendations/(${id})/app-enrichment/(binding|suggestions|sources)$`)))&&method==='GET')return checked({kind:'recommendations-editable',id:match[1],query:q});
+  else if(enrichmentSources&&(match=path.match(new RegExp(`^${prefix}/recommendations/(${id})/app-enrichment/(binding|acceptances)$`)))&&((match[2]==='binding'&&['PUT','DELETE'].includes(method))||(match[2]==='acceptances'&&method==='POST')))return checked({kind:'enrichment-command',id:match[1],other:match[2],query:q});
   else if((match=path.match(new RegExp(`^${prefix}/collections/(${id})/memberships/(${id})$`)))&&method==='DELETE')return checked({kind:'detach',id:match[1],other:match[2],query:q});
   else if(path===`${prefix}/collections`&&['GET','POST'].includes(method))kind=method==='GET'?'collections-read':'collections-create';
   else if(path===`${prefix}/recommendations`&&['GET','POST'].includes(method))kind=method==='GET'?'recommendations-read':'recommendations-create';
@@ -71,7 +74,7 @@ export function createAppsCanonicalAdmission(options:AppsCanonicalAdmissionOptio
   case 'public-apps':if(scope.slug)parsePublicProfileDetailRequest({...q,username:scope.handle,category:'apps',slug:scope.slug});else parsePublicProfileRequest({...q,username:scope.handle,category:'apps'});if(Object.keys(q).some(key=>!['limit','cursor'].includes(key)))throw Error('denied');break;
   default:if(Object.keys(q).length)throw Error('denied');
  }return scope;}
- async function relations(scope:Scope){if(scope.kind.startsWith('collections-')&&scope.id)await collection(scope.id);if(scope.kind.startsWith('recommendations-')&&scope.id)await recommendation(scope.id);if(scope.kind==='detach'){const parent=await collection(scope.id!),item=await recommendation(scope.other!);if(parent.account_id!==item.account_id)throw Error('denied');}
+ async function relations(scope:Scope){if(scope.kind==='enrichment-command')await recommendation(scope.id!);if(scope.kind.startsWith('collections-')&&scope.id)await collection(scope.id);if(scope.kind.startsWith('recommendations-')&&scope.id)await recommendation(scope.id);if(scope.kind==='detach'){const parent=await collection(scope.id!),item=await recommendation(scope.other!);if(parent.account_id!==item.account_id)throw Error('denied');}
   if(scope.kind==='media')await media(scope.id!);if(scope.query.collectionId)await collection(scope.query.collectionId);if(scope.query.recommendationId)await recommendation(scope.query.recommendationId);
   if(scope.handle){const person=people.find(p=>p.handle===scope.handle)!;const account=await row('SELECT id AS account_id FROM creator_accounts WHERE id=$1::uuid AND handle=$2 AND current_database()=$3 LIMIT 2',[person.accountId,person.handle,database]);if(account.account_id!==person.accountId)throw Error('denied');}
   if(scope.kind==='public-apps'&&scope.slug){const person=people.find(p=>p.handle===scope.handle)!;await row("SELECT c.account_id FROM collections c JOIN creator_accounts a ON a.id=c.account_id WHERE c.slug=$1 AND c.category='apps' AND c.account_id=$2::uuid AND a.handle=$3 AND current_database()=$4 LIMIT 2",[scope.slug,person.accountId,person.handle,database]);}
@@ -80,6 +83,7 @@ export function createAppsCanonicalAdmission(options:AppsCanonicalAdmissionOptio
  async function checkMedia(values:string[],account?:string){for(const value of [...new Set(values)]){const asset=await media(value);if(account&&asset.account_id!==account)throw Error('denied');}}
  async function afterJsonParser(req:Request,res:Response,next:NextFunction){try{const scope=admitted.get(req);if(!scope)throw Error('denied');await binding();const body=req.body;
   switch(scope.kind){
+   case 'enrichment-command':{const v=appEnrichmentCommandSchema.parse(body);if(!enrichmentSources)throw Error('denied');if(req.method==='PUT'?!['configureAppEnrichment','rebindAppEnrichment'].includes(v.operation):req.method==='DELETE'?v.operation!=='disableAppEnrichment':v.operation!=='acceptAppEnrichment')throw Error('denied');if(v.operation==='configureAppEnrichment'||v.operation==='rebindAppEnrichment'){const tuple=(source:unknown)=>JSON.stringify(appSourceIdentitySchema.parse(source));if(!enrichmentSources.some(source=>tuple(source)===tuple({sourceId:v.sourceId,sourceIdentity:v.sourceIdentity,sourceIdentityHash:v.sourceIdentityHash,canonicalizationVersion:v.canonicalizationVersion})))throw Error('denied');}break;}
    case 'resolve':resolveManualAppSchema.parse(body);break;
    case 'collections-create':{const v=createCollectionSchema.parse(body);if(v.category!=='apps'||v.coverMediaId!==null||v.parentLocationCollectionId!==undefined||v.placeLocation!==undefined)throw Error('denied');break;}
    case 'collections-command':if(req.method==='PATCH'){const v=updateCollectionSchema.parse(body);if(v.placeLocation!==undefined||v.coverMediaId!=null)throw Error('denied');}break;

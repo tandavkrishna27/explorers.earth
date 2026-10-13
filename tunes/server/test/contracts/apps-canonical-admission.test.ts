@@ -5,12 +5,12 @@ import {EventEmitter} from 'node:events';
 import {createCanonicalHandlerCustody} from '../../auth/canonicalHandlerCustody';
 const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222',c='33333333-3333-4333-8333-333333333333',r='44444444-4444-4444-8444-444444444444',e='55555555-5555-4555-8555-555555555555',m='66666666-6666-4666-8666-666666666666';
 const runId='a'.repeat(32),database=`music_uat_${runId}`;
-function setup(contextHost='npipe:////./pipe/docker_engine'){const state={database,category:'apps',account:a,kind:'app',origin:'manual',exists:true};const query=vi.fn(async(sql:string,values:any[])=>{
+function setup(contextHost='npipe:////./pipe/docker_engine',enrichmentSources?:readonly unknown[]){const state={database,category:'apps',account:a,kind:'app',origin:'manual',exists:true};const query=vi.fn(async(sql:string,values:any[])=>{
  if(sql.includes('initial_account_bindings'))return {rows:[{database:state.database,user_id:'user-a',account_id:a},{database:state.database,user_id:'user-b',account_id:b}]};
  if(sql.startsWith('SELECT id AS account_id FROM creator_accounts'))return {rows:state.exists?[{account_id:values[0]}]:[]};
  if(!state.exists||state.database!==database||state.category!=='apps'||![a,b].includes(state.account)||state.kind!=='app'||state.origin!=='manual')return {rows:[]};
  return {rows:[{account_id:state.account,object_key:`local/${state.account}/${values[0]}`} ]};});
- const gate=createAppsCanonicalAdmission({pool:{query} as any,runAuthority:{owned:true,runId,commit:'b'.repeat(40),database,port:56001,containerId:'c'.repeat(64),imageId:`sha256:${'d'.repeat(64)}`,contextHost},personas:{ownerA:{userId:'user-a',accountId:a,handle:'native-owner-a'},ownerB:{userId:'user-b',accountId:b,handle:'native-owner-b'}}});return {gate,query,state};}
+ const gate=createAppsCanonicalAdmission({...(enrichmentSources?{enrichmentSources}:{}),pool:{query} as any,runAuthority:{owned:true,runId,commit:'b'.repeat(40),database,port:56001,containerId:'c'.repeat(64),imageId:`sha256:${'d'.repeat(64)}`,contextHost},personas:{ownerA:{userId:'user-a',accountId:a,handle:'native-owner-a'},ownerB:{userId:'user-b',accountId:b,handle:'native-owner-b'}}});return {gate,query,state};}
 function request(method:string,path:string,body?:unknown){return {method,originalUrl:path,body,headers:{},get(name:string){return (this.headers as any)[name.toLowerCase()];}} as any;}
 function response(){return {code:0,status(n:number){this.code=n;return this;},json:vi.fn(),set:vi.fn()} as any;}
 async function dispatch(s:ReturnType<typeof setup>,req:any){const res=response(),next=vi.fn();await s.gate.beforeDispatch(req,res,next);return {res,next};}
@@ -56,3 +56,18 @@ it('transport proof refuses fields and getter substitutions without reading them
 it.each([p+'/collections?category=apps',p+'/collections/'+c+'/editable',p+'/recommendations?category=apps',p+'/recommendations/'+r+'/editable',p+'/categories/apps/content-snapshot',p+'/categories/apps/content-snapshot/validate?snapshotToken=abcdefghijklmnop',p+'/categories/apps/memberships',p+'/categories/apps/top-picks'])('audited owner GET proof follows live Apps admission %s',async path=>{const s=setup(),req=request('GET',path);const result=await dispatch(s,req);expect(result.next).toHaveBeenCalledOnce();expect(isAppsCanonicalReadTransport(s.gate,req)).toBe(true);});
 
 it('stored diagnostic identity is independent of current request getters',async()=>{const s=setup(),req=request('GET',p+'/me');await dispatch(s,req);let reads=0;Object.defineProperty(req,'originalUrl',{get(){reads++;throw Error('private getter');}});Object.defineProperty(req,'method',{get(){reads++;throw Error('private getter');}});expect(extractAppsCanonicalRequestLabel(s.gate,req)).toEqual({route:'me',method:'GET'});expect(extractAppsCanonicalRequestLabel({get label(){reads++;throw Error('foreign');}},req)).toBeUndefined();expect(reads).toBe(0);});
+import {websiteProviderIdentity,appleProviderIdentity} from '../../application/appEnrichmentProviderIdentity';
+const enrichmentSources=[websiteProviderIdentity('https://www.figma.com/'),appleProviderIdentity({trackId:'1152747299',storefront:'us',kind:'software'})];
+it('distinct enrichment admission forwards only approved typed native commands after parser and owned row check',async()=>{
+ for(const [method,endpoint,command] of [['PUT','binding',{...enrichmentSources[0],operation:'configureAppEnrichment',optIn:true,expectedRecommendationRevision:1,expectedBindingRevision:null}],['PUT','binding',{...enrichmentSources[1],operation:'rebindAppEnrichment',optIn:true,expectedRecommendationRevision:1,expectedBindingRevision:1}],['DELETE','binding',{operation:'disableAppEnrichment',expectedRecommendationRevision:1,expectedBindingRevision:1}],['POST','acceptances',{operation:'acceptAppEnrichment',expectedRecommendationRevision:1,expectedBindingRevision:1,snapshotId:m,selectedFields:['title']}]] as const){
+  const s=setup(undefined,enrichmentSources),req=request(method,`${p}/recommendations/${r}/app-enrichment/${endpoint}`);let reads=0;Object.defineProperty(req,'body',{get(){reads++;return command},configurable:true});
+  expect((await dispatch(s,req)).next).toHaveBeenCalledOnce();expect(reads).toBe(0);expect(isAppsCanonicalReadTransport(s.gate,req)).toBe(false);
+  const next=vi.fn();await s.gate.afterJsonParser(req,response(),next);expect(next).toHaveBeenCalledOnce();expect(reads).toBe(1);
+ }
+});
+it('enrichment admission refuses foreign source, malformed operation and mismatched method after parsing',async()=>{
+ const s=setup(undefined,enrichmentSources);for(const [method,endpoint,body]of [['PUT','binding',{...enrichmentSources[0],sourceIdentityHash:'0'.repeat(64),operation:'configureAppEnrichment',optIn:true,expectedRecommendationRevision:1,expectedBindingRevision:null}],['POST','acceptances',{operation:'acceptAppEnrichment',expectedRecommendationRevision:1,expectedBindingRevision:1,snapshotId:m,selectedFields:['title','title']}],['DELETE','binding',{...enrichmentSources[0],operation:'configureAppEnrichment',optIn:true,expectedRecommendationRevision:1,expectedBindingRevision:null}]]){
+  const req=request(method as string,`${p}/recommendations/${r}/app-enrichment/${endpoint}`,body);await dispatch(s,req);const res=response(),next=vi.fn();await s.gate.afterJsonParser(req,res,next);expect(next).not.toHaveBeenCalled();expect(res.code).toBe(503);
+ }
+ for(const sources of [[],[enrichmentSources[0]],[enrichmentSources[0],enrichmentSources[0]],[enrichmentSources[1],enrichmentSources[0]]])expect(()=>setup(undefined,sources)).toThrow();
+});

@@ -7,6 +7,7 @@ import {pathToFileURL,fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {join,basename,dirname,resolve,relative} from 'node:path';
+import {buildWave2BrowserRegistration} from './wave2-browser-registration.mjs';
 import {validateLockedInstall,childNodeEnvironment,parseArguments,assertEnvironment,validateManifest,validateLaneReceipt,validateMusicTopology,qualifyLanes,capturedChild,decodeProtectedReport,snapshotSource,protectedBrowserConfiguration,validateFailureRecord,validateLifecycleFailureRecord,decodeProtectedFailureDiagnostics} from './replatform-e2e.mjs';
 const ack='TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
 test('Music boundary root: strict finite decoder and failed Music child custody',async()=>{
@@ -116,7 +117,7 @@ test('manifest requires exactly eleven nonempty unique delivered lanes and pendi
 });
 test('fake children qualify only scoped delivery while full milestone remains incomplete',async()=>{
  const m=manifest();const seen=[];const receipt=await qualifyLanes({manifest:m,provenance,runLane:async lane=>{seen.push(lane.name);return child(lane);}});
- assert.deepEqual(seen,['auth','profile','books','lifecycle','movies','games','music','places','place-links','apps','guides']);assert.equal(receipt.deliveredSlice,'passed');assert.equal(receipt.overallMilestone,'incomplete');assert.equal(receipt.releaseEligible,false);assert.equal(receipt.identities,totalIdentityCount());
+ assert.deepEqual(seen,['auth','profile','books','lifecycle','movies','games','music','places','place-links','apps','guides','public-parity','people','apps-enrichment']);assert.equal(receipt.deliveredSlice,'passed');assert.equal(receipt.overallMilestone,'incomplete');assert.equal(receipt.releaseEligible,false);assert.equal(receipt.identities,totalIdentityCount());
 });
 for(const [name,change] of [
  ['nonzero',c=>c.status=1],['signal',c=>c.signal='SIGTERM'],['spawn error',c=>c.error='failed'],['missing receipt',c=>delete c.receipt],['wrong source',c=>c.receipt.provenance.commit='0'.repeat(40)],['source hash',c=>c.receipt.provenance.sourceHash='0'.repeat(64)],['wrong config',c=>c.receipt.config='other.config.ts'],['wrong project',c=>c.receipt.projects=['other']],['loader error',c=>c.receipt.errors.push({message:'missing module'})],['missing discovery',c=>c.receipt.discovery.pop()],['extra discovery',c=>c.receipt.discovery.push({...c.receipt.discovery[0],titlePath:['extra']})],['duplicate discovery',c=>c.receipt.discovery.push(c.receipt.discovery[0])],['missing result',c=>c.receipt.results.pop()],['extra result',c=>c.receipt.results.push(c.receipt.results[0])],['dynamic skip',c=>c.receipt.results[0].attempts[0].status='skipped'],['fixme',c=>c.receipt.results[0].expectedStatus='skipped'],['timeout',c=>c.receipt.results[0].attempts[0].status='timedOut'],['interrupted',c=>c.receipt.results[0].attempts[0].status='interrupted'],['retry pass',c=>c.receipt.results[0].attempts.push({status:'passed',retry:1})],['flaky',c=>c.receipt.results[0].status='flaky'],['empty attempts',c=>c.receipt.results[0].attempts=[]],['cleanup failure',c=>c.receipt.cleanup.status='failed'],['unowned database',c=>c.receipt.authority.owned=false],['failed browser child',c=>c.receipt.child.status=1]
@@ -323,7 +324,7 @@ test('Games diagnostics retain fixed stages and causes without private data',()=
 test('Places lanes preserve the original ordered118 and append exact proposed16 with zero retry custody',()=>{
  const m=manifest();
  assert.equal(createHash('sha256').update(JSON.stringify(m.lanes.slice(0,7))).digest('hex'),'7d574d84788ac979be8560ec3f65ad95a25f1d7b9605664a2656c1430e43de01');
- assert.deepEqual(m.scopeContents,['auth','profile','books','lifecycle','movies','games','music','places','place-links','apps','guides']);
+ assert.deepEqual(originalElevenProjection(m).scopeContents,['auth','profile','books','lifecycle','movies','games','music','places','place-links','apps','guides']);
  assert.equal(m.lanes.flatMap(lane=>lane.identities).length,totalIdentityCount());
  for(const name of ['places','place-links']){
    const lane=m.lanes.find(lane=>lane.name===name);
@@ -354,7 +355,7 @@ test('Places additive: the original eight stay at positions 0-7 and every later 
  assert.deepEqual(lane.identities.slice(8),entry.identities);
  assert.equal(entry.identities.length,8);
  assert.equal(additiveIdentityCount(),8);
- assert.equal(totalIdentityCount(),166);
+ assert.equal(originalElevenProjection(m).lanes.flatMap(lane=>lane.identities).length,166);assert.equal(totalIdentityCount(),214);
  assert.equal(registeredIdentityCount(),158);
  // Authored, never executed: the ledger may not advertise these as qualified.
  assert.equal(entry.qualified,false);
@@ -383,7 +384,7 @@ test('Places additive: the original eight stay at positions 0-7 and every later 
   ['stale prefix digest',x=>x.additiveRegistrations[0].originalIdentityDigest='0'.repeat(64)],
  ]){const changed=structuredClone(m);mutate(changed);assert.throws(()=>validateManifest(changed),`additive freeze must reject ${name}`);}
  // A prefix rename also breaks the accepted predecessor bytes, independently of the ledger.
- const renamed=structuredClone(m);renamed.lanes.find(lane=>lane.name==='places').identities[0].titlePath=['renamed original'];
+ const renamed=originalElevenProjection(m);renamed.lanes.find(lane=>lane.name==='places').identities[0].titlePath=['renamed original'];
  assert.notEqual(createHash('sha256').update(predecessorManifestBytes(renamed)).digest('hex'),
   '6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039');
 });
@@ -894,8 +895,20 @@ const appsRegistrationPending={ticket:'5.3/5.4',obligation:'Apps manual8 awaits 
  * entry on purpose: one would shift the element the guides/apps pops remove and break
  * this predecessor chain, so nothing may be added there later either.
  */
+function originalElevenProjection(m){
+ m=structuredClone(m);
+ const registration=buildWave2BrowserRegistration({lanes:m.lanes.slice(0,11)});
+ if(m.lanes.length>11)assert.deepEqual(m.lanes.slice(11),registration.lanes.slice(11));
+ m.lanes=m.lanes.slice(0,11);m.scopeContents=m.lanes.map(lane=>lane.name);
+ return m;
+}
 function withoutAdditiveIdentities(m){
  m=structuredClone(m);
+ if(m.lanes.length>11){
+  const registration=buildWave2BrowserRegistration({lanes:m.lanes.slice(0,11)});
+  assert.deepEqual(m.lanes.slice(11),registration.lanes.slice(11));
+  m.lanes=m.lanes.slice(0,11);m.scopeContents=m.lanes.map(lane=>lane.name);
+ }
  const [entry]=m.additiveRegistrations??[];
  if(entry){
   const lane=m.lanes.find(value=>value.name===entry.lane);
@@ -959,9 +972,9 @@ test('Apps registration: actual config binds exact two projects one worker no re
 test('Apps registration: protected package selector workflow and legacy retirement remain atomic',()=>{
  const pkg=JSON.parse(readFileSync(new URL('../tunes/package.json',import.meta.url),'utf8'));assert.equal(pkg.scripts['explorers:test:apps-browser'],'tsx scripts/profile-browser-fixture.ts --suite apps');
  const workflow=readFileSync(new URL('../.github/workflows/frontend-e2e-qualification.yml',import.meta.url),'utf8');assert.equal(existsSync(new URL('../explorers-earth/e2e/apps.spec.ts',import.meta.url)),false);assert.doesNotMatch(workflow,/e2e\/apps\.spec\.ts/);assert.match(workflow,/apps-native:/);assert.match(workflow,/--lane apps/);assert.match(workflow,/platform:test:e2e/);assert.match(workflow,/working-directory: \./);assert.doesNotMatch(workflow.slice(workflow.indexOf('  apps-native:')),/VITE_PUBLIC_ACCESS_TOKEN|\.artifacts\/\*\*|test-results|sessions\.json/);
- const runner=readFileSync(new URL('./replatform-e2e.mjs',import.meta.url),'utf8');assert.match(runner,/\['auth','lifecycle','places','place-links','apps','guides'\]/);assert.match(runner,/qualifyAppsLane/);assert.match(runner,/Selected Apps lane passed/);
- const selected=runner.match(/const qualify=(options\.lane==='apps'\?qualifyAppsLane:options\.lane==='guides'\?qualifyGuidesLane:qualifyLanes);/);assert.ok(selected,'actual main selects the bounded aggregation');
- const choose=Function('options','qualifyAppsLane','qualifyGuidesLane','qualifyLanes',`return ${selected[1]}`),apps=()=>{},guides=()=>{},full=()=>{};assert.equal(choose({lane:'apps'},apps,guides,full),apps);assert.equal(choose({lane:'guides'},apps,guides,full),guides);assert.equal(choose({},apps,guides,full),full);
+ const runner=readFileSync(new URL('./replatform-e2e.mjs',import.meta.url),'utf8');assert.match(runner,/\['auth','lifecycle','places','place-links','apps','guides','public-parity','people','apps-enrichment'\]/);assert.match(runner,/qualifyAppsLane/);assert.ok(runner.includes('Selected ${options.lane} lane passed; delivered slice incomplete'));
+ const selected=runner.match(/const qualify=(options\.lane==='apps'\?qualifyAppsLane:options\.lane==='guides'\?qualifyGuidesLane:\['public-parity','people','apps-enrichment'\]\.includes\(options\.lane\)\?input=>qualifyPublicPeopleLane\(input,options\.lane\):qualifyLanes);/);assert.ok(selected,'actual main selects the bounded aggregation');
+ const choose=Function('options','qualifyAppsLane','qualifyGuidesLane','qualifyLanes','qualifyPublicPeopleLane',`return ${selected[1]}`),apps=()=>{},guides=()=>{},full=()=>{};assert.equal(choose({lane:'apps'},apps,guides,full),apps);assert.equal(choose({lane:'guides'},apps,guides,full),guides);assert.equal(choose({},apps,guides,full),full);
  assert.match(runner,/scopeContents:options\.lane\?\[options\.lane\]:Object\.keys\(lanes\)/);assert.match(runner,/deliveredSlice:options\.lane\?'incomplete':'failed'/);
  const step=workflow.slice(workflow.indexOf('      - name: Run protected Apps selection'),workflow.indexOf('      - name: Upload sanitized protected Apps evidence'));
  const binding=/TMPDIR: \$\{\{ runner\.temp \}\}/.test(step);
@@ -988,7 +1001,7 @@ test('Apps startup diagnostic: exact finite line admits no arbitrary child conte
 });
 test('Apps diagnostic suffix: actual profile formatter round trips every finite field',async()=>{
  const {decodeAppsFixtureFailureLine}=await import('./replatform-e2e.mjs'),{createRequire}=await import('node:module'),ts=createRequire(import.meta.url)('../tunes/node_modules/typescript');
- const source=readFileSync(new URL('../tunes/scripts/profile-browser-fixture.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('profile.ts',source,ts.ScriptTarget.Latest,true),branch=ast.statements.find(n=>ts.isIfStatement(n)&&n.expression.getText(ast)==="suite === 'apps'"),body=branch.thenStatement.statements.find(ts.isTryStatement).catchClause.block;
+ const source=readFileSync(new URL('../tunes/scripts/profile-browser-fixture.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('profile.ts',source,ts.ScriptTarget.Latest,true),branch=ast.statements.find(n=>ts.isIfStatement(n)&&n.expression.getText(ast)==="suite === 'apps' || suite === 'apps-enrichment'"),body=branch.thenStatement.statements.find(ts.isTryStatement).catchClause.block;
  const code=ts.transpileModule(ts.createPrinter().printNode(ts.EmitHint.Unspecified,body,ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
  const format=diagnostic=>{let line;new Function('process','extractAppsFixtureDiagnostic','error',code)({exitCode:0,stderr:{write:value=>{line=value;}}},()=>diagnostic,{});assert.equal(line.at(-1),'\n');return line.slice(0,-1);};
  const cleanup=['request-seal','browser-stop','browser-close','discovery-stop','discovery-close','vite-stop','vite-close','producer-settlement','request-drain','control-close','storage-drain','api-close','artifact-remove','runtime-pool-close','database-budget','admin-pool-open','database-drop','admin-pool-close','database-dispose','root-check','root-remove','secret-clean','failure-receipt','finish-receipt'];
@@ -1006,7 +1019,7 @@ test('Apps diagnostic suffix: refuses malformed partial duplicate reordered and 
 });
 test('Apps diagnostic suffix: actual formatter forwards native origins and canonical drain witnesses',async()=>{
  const {decodeAppsFixtureFailureLine:decode}=await import('./replatform-e2e.mjs'),{createRequire}=await import('node:module'),ts=createRequire(import.meta.url)('../tunes/node_modules/typescript');
- const source=readFileSync(new URL('../tunes/scripts/profile-browser-fixture.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('profile.ts',source,ts.ScriptTarget.Latest,true),branch=ast.statements.find(n=>ts.isIfStatement(n)&&n.expression.getText(ast)==="suite === 'apps'"),body=branch.thenStatement.statements.find(ts.isTryStatement).catchClause.block;
+ const source=readFileSync(new URL('../tunes/scripts/profile-browser-fixture.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('profile.ts',source,ts.ScriptTarget.Latest,true),branch=ast.statements.find(n=>ts.isIfStatement(n)&&n.expression.getText(ast)==="suite === 'apps' || suite === 'apps-enrichment'"),body=branch.thenStatement.statements.find(ts.isTryStatement).catchClause.block;
  const code=ts.transpileModule(ts.createPrinter().printNode(ts.EmitHint.Unspecified,body,ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
  const format=diagnostic=>{let line;new Function('process','extractAppsFixtureDiagnostic','error',code)({exitCode:0,stderr:{write:value=>{line=value;}}},()=>diagnostic,{});assert.equal(line.at(-1),'\n');return line.slice(0,-1);};
  const origins=['clock-callback','clock-late-clear','guard-expiry','child-error','child-output-overflow','child-stdin','powershell-deadline','privacy-refusal','capture-rejection','directory-create','secret-create','api-failure','descriptor-create','vite-output-overflow'];
@@ -1039,7 +1052,7 @@ test('Apps registration: source closure requires tracked Apps runtime helper and
  const appsHelper='tunes/scripts/apps-browser-support.ts';const authority=['music-uat-database','music-fixture-secret','music-vitest-evidence','music-output-redaction','music-qualification-postgres'].map(name=>`tunes/scripts/${name}.ts`).concat(['tunes/scripts/music-local-private-files.ps1','tunes/scripts/windows-write-through.ps1']);
  const appsRunner='tunes/scripts/apps-browser-fixture.ts',appsAdmission='tunes/scripts/apps-canonical-admission.ts',appsCustody='tunes/scripts/apps-private-custody.ts';
  function execute({helperTracked=true,runnerTracked=true,admissionTracked=true,custodyTracked=true,ignoredImport=false,mutation=''}={}){
-  const tracked=[...authority,...guidesExecutedSources,'tunes/scripts/music-boundary-diagnostic.ts','tunes/scripts/places-browser-support.ts','tunes/migrations/001.sql','tunes/server/auth/canonicalApp.ts',...(helperTracked?[appsHelper]:[]),...(runnerTracked?[appsRunner]:[]),...(admissionTracked?[appsAdmission]:[]),...(custodyTracked?[appsCustody]:[])];const virtualRoot=resolve('synthetic-custody-root');let commands=0;
+  const tracked=[...authority,...guidesExecutedSources,...publicExecutedSources,...appsEnrichmentExecutedSources,'tunes/scripts/music-boundary-diagnostic.ts','tunes/scripts/places-browser-support.ts','tunes/migrations/001.sql','tunes/server/auth/canonicalApp.ts',...(helperTracked?[appsHelper]:[]),...(runnerTracked?[appsRunner]:[]),...(admissionTracked?[appsAdmission]:[]),...(custodyTracked?[appsCustody]:[])];const virtualRoot=resolve('synthetic-custody-root');let commands=0;
   const fakeGit=(exe,args)=>{
    assert.equal(exe,'git');commands++;
    if(args[0]==='rev-parse')return 'a'.repeat(40);
@@ -1079,7 +1092,7 @@ const guidesRegistrationTitles=[
 ];
 const guidesRegistrationIdentities=()=>['guides-desktop','guides-mobile'].flatMap(project=>guidesRegistrationTitles.map(title=>({file:'explorers-earth/e2e/replatform/guides.spec.ts',titlePath:[title],project,repeat:0})));
 test('Guides registration: complete eight cases across exact two projects adds sixteen identities',async()=>{
- const m=manifest(),lane=m.lanes.find(l=>l.name==='guides');assert.ok(lane);assert.equal(validateManifest(m),true);assert.deepEqual(lane.identities,guidesRegistrationIdentities());assert.equal(m.lanes.length,11);assert.equal(originalManifest().lanes.flatMap(l=>l.identities).length,158);assert.equal(m.lanes.flatMap(l=>l.identities).length,totalIdentityCount());
+ const m=manifest(),lane=m.lanes.find(l=>l.name==='guides');assert.ok(lane);assert.equal(validateManifest(m),true);assert.deepEqual(lane.identities,guidesRegistrationIdentities());assert.equal(m.lanes.length,14);assert.equal(originalManifest().lanes.flatMap(l=>l.identities).length,158);assert.equal(m.lanes.flatMap(l=>l.identities).length,totalIdentityCount());
  const support=readFileSync(new URL('../tunes/scripts/guides-browser-support.ts',import.meta.url),'utf8');const actual=Function('return '+support.match(/export const GUIDES_CASES = ([\s\S]*?) as const;/)[1])();assert.deepEqual(actual,guidesRegistrationTitles);
  const spec=readFileSync(new URL('../explorers-earth/e2e/replatform/guides.spec.ts',import.meta.url),'utf8');assert.deepEqual([...spec.matchAll(/test\(GUIDES_CASES\[(\d)\]/g)].map(m=>Number(m[1])).sort(),[0,1,2,3,4,5,6,7]);
  const guards=await appsRegistrationGuards();assert.equal(guards.parseBrowserSuite(['--suite','guides','--ack',ack]),'guides');assert.throws(()=>guards.parseBrowserSuite(['--suite','unknown','--ack',ack]));for(const key of ['GUIDES_E2E_FIXTURE_PATH','guides_e2e_custom']){assert.throws(()=>assertEnvironment({[key]:'caller'}));assert.throws(()=>guards.assertBrowserEnvironment({[key]:'caller'}));}
@@ -1097,11 +1110,13 @@ test('Guides registration: discovery and receipt reject retry missing and duplic
 function registeredIdentityCount(){return 134+appsRegistrationIdentities().length+guidesRegistrationIdentities().length;}
 /** Separately counted additive identities: authored, registered, and not executed. */
 function additiveIdentityCount(){return manifest().additiveRegistrations.reduce((n,entry)=>n+entry.identities.length,0);}
-function totalIdentityCount(){return registeredIdentityCount()+additiveIdentityCount();}
+function totalIdentityCount(){return registeredIdentityCount()+additiveIdentityCount()+32+12+4;}
 
-const guidesExecutedSources=['guides-browser-fixture.ts','guides-browser-support.ts','guides-fixture-host.ts','guides-parent-supervision.ts','guides-launcher.ts','guides-provider-fixture.ts','guides-resource-worker.ts','guides-native-diagnostic.ts','music-local-state.ts','guides-windows-job.ps1'].map(name=>'tunes/scripts/'+name).concat('explorers-earth/e2e/replatform/guides-page-diagnostic.ts');
+const guidesExecutedSources=['guides-browser-fixture.ts','guides-browser-support.ts','guides-fixture-host.ts','guides-parent-supervision.ts','guides-launcher.ts','guides-provider-fixture.ts','guides-resource-worker.ts','guides-native-diagnostic.ts','music-local-state.ts','guides-windows-job.ps1','guides-browser-report-diagnostic.mjs','guides-browser-report-diagnostic.d.mts'].map(name=>'tunes/scripts/'+name).concat('explorers-earth/e2e/replatform/guides-page-diagnostic.ts');
+const appsEnrichmentExecutedSources=['tunes/scripts/apps-enrichment-browser-support.ts','tunes/scripts/apps-enrichment-native-runtime.ts'];
+const publicExecutedSources=['public-parity-browser-fixture.ts','public-parity-browser-support.ts','public-parity-owned-composition.ts','public-parity-parent-supervision.ts','public-parity-launcher.ts','public-parity-resource-worker.ts','public-parity-fixture-host.ts','public-parity-fixture-protocol.ts','public-parity-windows-job.ps1','taxonomy-owned-import.ts'].map(name=>'tunes/scripts/'+name).concat('scripts/replatform-e2e.mjs','scripts/wave2-browser-registration.mjs','scripts/wave2-browser-registration.test.mjs','fixtures/replatform/public-parity/one-frame.mp4',...['source-manifest.json','places-import.json','people-import.json'].map(name=>'fixtures/taxonomy/real-strapi-20261013/'+name),...['public-parity-controller.ts','public-parity-spec-support.ts','public-parity.spec.ts','people.spec.ts','public-parity.playwright.config.ts','people.playwright.config.ts','public-parity.vite.config.ts','people.vite.config.ts'].map(name=>'explorers-earth/e2e/replatform/'+name));
 function guidesSnapshotFixture({untracked,undeclared,mutation,closed=false}={}){
- const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),tracked=execFileSync('git',['ls-files'],{cwd:root,encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/).filter(file=>file!==untracked);
+ const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),tracked=[...new Set([...execFileSync('git',['ls-files'],{cwd:root,encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/),...guidesExecutedSources,...publicExecutedSources,...appsEnrichmentExecutedSources])].filter(file=>file!==untracked);
  const canonical=v=>JSON.stringify(v,(_,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.keys(x).sort().map(k=>[k,x[k]])):x),digest=v=>createHash('sha256').update(canonical(v)).digest('hex');
  const git=(exe,args)=>{assert.equal(exe,'git');if(args[0]==='rev-parse')return 'a'.repeat(40);if(args[0]==='status'||args.includes('--others'))return '';if(args.includes('--error-unmatch')){for(const file of args.slice(2))if(!tracked.includes(file))throw Error('not tracked: '+file);return args.slice(2).join('\n');}return tracked.filter(file=>args.slice(1).some(prefix=>file===prefix||file.startsWith(prefix+'/'))).join('\n');};
  const foreign=resolve(root,'tunes/scripts/guides-undeclared.ts');
@@ -1298,7 +1313,7 @@ test('Apps Vite finite: strict marker and failed owned record persistence',async
 });
 test('Apps Vite finite: actual formatter golden enums and canonical integer limits',async()=>{
  const {decodeAppsFixtureFailureLine:decode}=await import('./replatform-e2e.mjs'),{createRequire}=await import('node:module'),ts=createRequire(import.meta.url)('../tunes/node_modules/typescript');
- const source=readFileSync(new URL('../tunes/scripts/profile-browser-fixture.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('profile.ts',source,ts.ScriptTarget.Latest,true),branch=ast.statements.find(n=>ts.isIfStatement(n)&&n.expression.getText(ast)==="suite === 'apps'"),body=branch.thenStatement.statements.find(ts.isTryStatement).catchClause.block,code=ts.transpileModule(ts.createPrinter().printNode(ts.EmitHint.Unspecified,body,ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ const source=readFileSync(new URL('../tunes/scripts/profile-browser-fixture.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('profile.ts',source,ts.ScriptTarget.Latest,true),branch=ast.statements.find(n=>ts.isIfStatement(n)&&n.expression.getText(ast)==="suite === 'apps' || suite === 'apps-enrichment'"),body=branch.thenStatement.statements.find(ts.isTryStatement).catchClause.block,code=ts.transpileModule(ts.createPrinter().printNode(ts.EmitHint.Unspecified,body,ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
  const base={origin:'closed-before-ready',childCode:0,childSignal:'none',stdioClosed:true,advertised:false,httpReady:false,probeOutcome:'none',stderr:'unknown',stderrBytes:0,stderrOverflow:false};
  const format=vite=>{let line;new Function('process','extractAppsFixtureDiagnostic','error',code)({exitCode:0,stderr:{write:v=>line=v}},()=>({stage:'vite',category:'refusal',vite}),{});return line.slice(0,-1);};
  for(const [field,values]of Object.entries({origin:['launch','closed-before-ready','advertisement-budget','probe-budget','output-overflow'],childCode:[null,0,1,-2147483648,2147483647],childSignal:['none','SIGTERM','SIGKILL','other'],probeOutcome:['none','http200','non200','transport-refused','transport-timeout','redirect-refused','body-refused','unknown'],stderr:['port-in-use','config-load','module-not-found','unknown'],stderrBytes:[0,4096],stderrOverflow:[false,true]}))for(const value of values){const v={...base,[field]:value,...(field==='origin'&&value==='probe-budget'?{advertised:true}:{})},line=format(v);assert.equal(decode(line),line);}
@@ -1331,3 +1346,12 @@ test('Movies network diagnostic: real desktop pin helper preserves PATCH boundar
 test('Movies network diagnostic: strict direct DTO descriptors status grammar and foreign phase privacy',()=>{const f=moviesFixture('movies-desktop'),network={...mnEmpty(),observed:1,finished:1,candidates:[{ordinal:1,family:'snapshot',method:'GET',start:'edit-navigation',end:'keep-draft-start',status:503,outcome:'http-non-ok',reason:'none'}]},card={...moviesSnapshot(),network},envelope={identity:f.identity,kind:'error',matcher:'unknown',locations:[],movies:card},validate=card=>validateFailureRecord(f.lane,{...f.failure,diagnostics:[{...envelope,movies:card}]},provenance,f.c);validate(card);let reads=0;for(const key of Object.keys(network)){const n={...network};Object.defineProperty(n,key,{enumerable:true,get(){reads++;throw Error('private')}});assert.throws(()=>validate({...card,network:n}));}assert.equal(reads,0);for(const mutate of [n=>n.candidates[0].status=600,n=>n.candidates[0].status=200,n=>n.candidates[0].method='PUT',n=>n.candidates[0].reason='private',n=>n.candidates[0].start='save-click',n=>n.candidates[0].url='private',n=>n.candidates.push({...n.candidates[0]}),n=>n.finished=0]){const n=structuredClone(network);mutate(n);assert.throws(()=>validate({...card,network:n}));}for(const suffix of ['private','\n','|'+Buffer.from('{}').toString('base64url')]){f.result.errors=[{message:'original'},{message:mnAttach(moviesMarker(moviesSnapshot()),network)+suffix}];assert.equal(moviesMetadata(f.report,f.lane).length,0);}});
 test('Movies network diagnostic: all endpoint families exact filtering terminal pending and observer errors',async()=>{const h=await mnHarness();for(const family of ['snapshot','collections','recommendations','memberships','top-picks','validate','editable']){const p=new EventEmitter(),o=h.observeMoviesNetwork(p,()=> 'save-start'),r=mnRequest(family);p.emit('request',r);p.emit('response',mnResponse(r,302));const c=o.finish();assert.equal(c.incomplete,1);assert.equal(c.pending,1);assert.equal(c.candidates[0].family,family);assert.equal(c.candidates[0].outcome,'http-non-ok');assert.equal(c.candidates[0].status,302);}const p=new EventEmitter(),o=h.observeMoviesNetwork(p,()=> 'setup');for(const path of ['/api/explorers/v1/profiles/private/recommendations/movies','/api/explorers/v1/collections?category=books','/api/explorers/v1/categories/books/top-picks','/api/explorers/v1/categories/movies/top-picks/order/private','/api/explorers/v1/collections/private/editable/extra'])p.emit('request',{url:()=> 'https://synthetic.invalid'+path,method:()=> 'GET'});assert.equal(o.finish().observed,0);const q=new EventEmitter(),v=h.observeMoviesNetwork(q,()=>{throw Error('private')});q.emit('request',{url(){throw Error('private')},method:()=> 'GET'});const r=mnRequest();q.emit('request',r);q.emit('response',{request:()=>r,status:()=>200.5});q.emit('requestfailed',{...r});q.emit('requestfinished',r);const c=v.finish();assert.equal(c.incomplete,1);assert.equal(c.finished,1);assert.equal(c.failed,0);assert.doesNotMatch(JSON.stringify(c),/private/);});
 test('Movies network diagnostic: raw wiring and exact normalization reject changed business and passive violations',async()=>{const {createRequire}=await import('node:module'),ts=createRequire(import.meta.url)('../explorers-earth/node_modules/typescript'),source=readFileSync(new URL('../'+mpFile,import.meta.url),'utf8'),a=source.indexOf('// BEGIN MOVIES NETWORK DIAGNOSTIC CONTRACT'),b=source.indexOf('// END MOVIES NETWORK DIAGNOSTIC CONTRACT'),block=source.slice(a,b);assert.doesNotMatch(block,/\bawait\b|\bPromise\b|setTimeout|setInterval|Date\.|performance\.|\.evaluate|\.route\(|\.waitFor|\.postData|\.headers\(|\.cookies\(|\.body\(|\.json\(|\.text\(|fetch\(/);const sf=ts.createSourceFile('raw.ts',source,99,true),manual=sf.statements.find(n=>ts.isExpressionStatement(n)&&ts.isCallExpression(n.expression)&&n.expression.arguments[0]?.text==='owner manual form all fields snapshot repeat edits and archive reload');assert.ok(manual);const body=manual.expression.arguments[1].body,gate=body.statements[0];assert.equal(gate.thenStatement.statements.at(-1).expression.expression.getText(sf),'beginMoviesNetwork');const attempt=body.statements[1];assert.ok(ts.isTryStatement(attempt));assert.equal(attempt.finallyBlock.statements.length,1);assert.equal(attempt.finallyBlock.statements[0].getText(sf),'finishMoviesNetwork(info);');assert.doesNotThrow(()=>mnNormalizeSource(ts,source));for(const change of [s=>s.replace(' }finally{finishMoviesNetwork(info);}',' }finally{finishMoviesNetwork(info);finishMoviesNetwork(info);}'),s=>s.replace('beginMoviesNetwork(page,info,()=>state.stage);','beginMoviesNetwork(page,info,()=>state.stage); await page.reload();')])assert.throws(()=>{const raw=change(source);assert.doesNotMatch(raw.slice(raw.indexOf('// BEGIN MOVIES NETWORK DIAGNOSTIC CONTRACT'),raw.indexOf('// END MOVIES PIN DIAGNOSTIC CONTRACT')),/\bawait\b|\bPromise\b|\.reload\(/);const changed=mnNormalizeSource(ts,raw);assert.deepEqual(mpSourceInventory(ts,mpNormalizeSource(ts,changed,true)),mpSourceInventory(ts,mpFrozenSource));});const changed=source.replace("name:'Keep Draft',exact:true","name:'Wrong Draft',exact:true");assert.throws(()=>{const inventory=mpSourceInventory(ts,mpNormalizeSource(ts,changed,true));assert.deepEqual(inventory,mpSourceInventory(ts,mpFrozenSource));});});
+
+test('Apps enrichment source closure tracks and hashes both exact runtime modules',()=>{
+ const snapshot=guidesSnapshotFixture();
+ for(const file of appsEnrichmentExecutedSources){
+  assert.ok(snapshot.hashes[file],file);
+  assert.notEqual(guidesSnapshotFixture({mutation:file}).provenance.sourceHash,snapshot.provenance.sourceHash,file);
+  assert.throws(()=>guidesSnapshotFixture({untracked:file}),/not tracked|Unreviewed relative executed dependency/);
+ }
+});

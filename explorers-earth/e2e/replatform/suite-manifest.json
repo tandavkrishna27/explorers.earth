@@ -1459,6 +1459,426 @@
           "repeat": 0
         }
       ]
+    },
+    {
+      "name": "public-parity",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/public-parity.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+      "projects": [
+        "public-parity-desktop",
+        "public-parity-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: eight canonical category and nested cold entries render owned positive content"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: category list item catalog and guide continuations preserve every ordered seeded ID"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: same slugs resolve independently for two owners and canonical handles"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: profile category list and item visibility refuse hidden anonymous and foreign reads"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: missing private draft and archived details share the public unavailable response"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: account and category withdrawal deny previously issued continuation cursors"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: unpublish revalidation never returns cached private content as 304"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: logout and account replacement cannot reuse another account public cache"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: cross tab unpublish remains hidden during failed and stale refresh"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: duplicate and wrong account invalidations preserve the correct profile"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: rapid username changes and history never reveal a late previous profile"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: invalid handles and terminal API failures release the cold entry overlay"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: uploaded images videos and ranges obey every media ancestor boundary"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: pinned navigation top picks themes and fallback attribution remain compatible"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: genre subject sector and linked child routes render eligible nested content"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: keyboard focus and long names preserve the baseline public shells"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: eight canonical category and nested cold entries render owned positive content"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: category list item catalog and guide continuations preserve every ordered seeded ID"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: same slugs resolve independently for two owners and canonical handles"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: profile category list and item visibility refuse hidden anonymous and foreign reads"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: missing private draft and archived details share the public unavailable response"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: account and category withdrawal deny previously issued continuation cursors"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: unpublish revalidation never returns cached private content as 304"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: logout and account replacement cannot reuse another account public cache"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: cross tab unpublish remains hidden during failed and stale refresh"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: duplicate and wrong account invalidations preserve the correct profile"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: rapid username changes and history never reveal a late previous profile"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: invalid handles and terminal API failures release the cold entry overlay"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: uploaded images videos and ranges obey every media ancestor boundary"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: pinned navigation top picks themes and fallback attribution remain compatible"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: genre subject sector and linked child routes render eligible nested content"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: keyboard focus and long names preserve the baseline public shells"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "people",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/people.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/people.spec.ts",
+      "projects": [
+        "people-desktop",
+        "people-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: native manual list and typed person create edit and reload preserve nullable facts and notes"
+          ],
+          "project": "people-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: same-name records and matching account handles remain distinct without identity authority"
+          ],
+          "project": "people-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: shared-person presentation and immutable handle preserve owner isolation and stale drafts"
+          ],
+          "project": "people-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: native draft publication and public detail retain explicit social fields without private owner data"
+          ],
+          "project": "people-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: pre-suppressed public omission preserves the original owner record and eligible control"
+          ],
+          "project": "people-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: configured-empty sector input preserves ordinary recommendations and refuses unknown public sectors"
+          ],
+          "project": "people-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: native manual list and typed person create edit and reload preserve nullable facts and notes"
+          ],
+          "project": "people-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: same-name records and matching account handles remain distinct without identity authority"
+          ],
+          "project": "people-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: shared-person presentation and immutable handle preserve owner isolation and stale drafts"
+          ],
+          "project": "people-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: native draft publication and public detail retain explicit social fields without private owner data"
+          ],
+          "project": "people-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: pre-suppressed public omission preserves the original owner record and eligible control"
+          ],
+          "project": "people-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: configured-empty sector input preserves ordinary recommendations and refuses unknown public sectors"
+          ],
+          "project": "people-mobile",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "apps-enrichment",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/apps-enrichment.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+      "projects": [
+        "apps-desktop",
+        "apps-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+          "titlePath": [
+            "Apps enrichment: explicit approved source choices and selected-field acceptance survive reload"
+          ],
+          "project": "apps-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+          "titlePath": [
+            "Apps enrichment: disable same-source re-enable and different-source rebind preserve manual values"
+          ],
+          "project": "apps-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+          "titlePath": [
+            "Apps enrichment: explicit approved source choices and selected-field acceptance survive reload"
+          ],
+          "project": "apps-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+          "titlePath": [
+            "Apps enrichment: disable same-source re-enable and different-source rebind preserve manual values"
+          ],
+          "project": "apps-mobile",
+          "repeat": 0
+        }
+      ]
     }
   ],
   "limits": [
@@ -1534,7 +1954,10 @@
     "places",
     "place-links",
     "apps",
-    "guides"
+    "guides",
+    "public-parity",
+    "people",
+    "apps-enrichment"
   ],
   "scopeCompatibilityIdentifier": true,
   "additiveRegistrations": [

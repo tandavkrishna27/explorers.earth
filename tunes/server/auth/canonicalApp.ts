@@ -1,3 +1,4 @@
+import {createAppsEnrichmentRegistryBinding,type AppsEnrichmentRegistryBinding} from '../../scripts/apps-enrichment-browser-support';
 import {createCanonicalHandlerCustody} from './canonicalHandlerCustody';
 import {createCanonicalSessionNodeHandler} from './canonicalSessionNodeHandler';
 import {createAppsCanonicalAdmission,type AppsCanonicalAdmissionOptions} from '../../scripts/apps-canonical-admission';
@@ -184,5 +185,14 @@ export type CanonicalAppsFixtureInput={mediaStorage:ObjectStorage;runAuthority:A
 export function createCanonicalAppsFixtureApp(pool:Pool,config:ExplorersAuthConfig,input:CanonicalAppsFixtureInput){
  if(!input||Object.keys(input).sort().join(',')!=='mediaStorage,personasWithActualAccountIds,runAuthority'||!input.mediaStorage)throw Error('Canonical Apps fixture configuration denied');
  const result=constructCanonicalApp(pool,config,{mediaStorage:input.mediaStorage},true,{runAuthority:input.runAuthority,personas:input.personasWithActualAccountIds});
+ return {composed:result.composed,custody:result.custody!,admission:result.admission!};
+}
+
+export type CanonicalAppsEnrichmentFixtureInput=CanonicalAppsFixtureInput&{registry:AppsEnrichmentRegistryBinding};
+/** Distinct qualification composition. Registry data cannot replace Root custody/admission. */
+export function createCanonicalAppsEnrichmentFixtureApp(pool:Pool,config:ExplorersAuthConfig,input:CanonicalAppsEnrichmentFixtureInput){
+ if(!input||Object.keys(input).sort().join(',')!=='mediaStorage,personasWithActualAccountIds,registry,runAuthority'||!input.mediaStorage)throw Error('Canonical Apps enrichment fixture configuration denied');
+ const registry=createAppsEnrichmentRegistryBinding(input.registry);
+ const result=constructCanonicalApp(pool,config,{mediaStorage:input.mediaStorage,appEnrichmentChoices:registry.choices},true,{runAuthority:input.runAuthority,personas:input.personasWithActualAccountIds,enrichmentSources:registry.choices.map(choice=>choice.identity)});
  return {composed:result.composed,custody:result.custody!,admission:result.admission!};
 }

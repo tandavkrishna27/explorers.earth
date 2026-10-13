@@ -11,10 +11,10 @@ type Dependencies={now?:()=>number;createFetcher?:(config:AppFetchConfig)=>{fetc
 function own(value:unknown):Record<string,unknown>{if(!value||typeof value!=='object'||utilTypes.isProxy(value)||Object.getPrototypeOf(value)!==Object.prototype)throw Error();const captured:Record<string,unknown>={};for(const key of Reflect.ownKeys(value)){if(typeof key!=='string')throw Error();const d=Object.getOwnPropertyDescriptor(value,key);if(!d?.enumerable||!Object.hasOwn(d,'value'))throw Error();Object.defineProperty(captured,key,{value:d.value,enumerable:true});}return captured;}
 function canonical(value:unknown):string{if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(key=>JSON.stringify(key)+':'+canonical((value as Record<string,unknown>)[key])).join(',')+'}';return JSON.stringify(value);}
 /** Does no I/O on construction. Outer reservations are conservative body/attempt admissions, not wire totals. */
-export function createAppQualificationLedger(inputs:readonly ApprovedAppWorkerSource[],input:AppQualificationBounds,deps:Dependencies={}){
+function createLedger(inputs:readonly ApprovedAppWorkerSource[],input:AppQualificationBounds,deps:Dependencies,maxima:AppQualificationBounds){
  let sources:readonly ApprovedAppWorkerSource[],bounds:AppQualificationBounds;
  try{
-  bounds=Object.freeze(z.object({maxAttempts:z.number().int().min(1).max(6),maxAdmittedBodyBytes:z.number().int().min(1).max(12582912),maxDurationMs:z.number().int().min(1).max(120000)}).strict().parse(own(input)));
+  bounds=Object.freeze(z.object({maxAttempts:z.number().int().min(1).max(maxima.maxAttempts),maxAdmittedBodyBytes:z.number().int().min(1).max(maxima.maxAdmittedBodyBytes),maxDurationMs:z.number().int().min(1).max(maxima.maxDurationMs)}).strict().parse(own(input)));
   const expected:string[]=[],raw=inputs.map(value=>{const data=own(value),fingerprint=z.string().regex(/^[a-f0-9]{64}$/).parse(data.configurationFingerprint);expected.push(fingerprint);const {configurationFingerprint:_derived,...source}=data;return source;});sources=validateAppWorkerSources(raw).sources;
   if(!sources.length||sources.some((source,index)=>source.configurationFingerprint!==expected[index]||source.fetch.redirectPolicy!=='deny'||source.fetch.maxRedirects!==0||source.fetch.maxRequests!==1||source.fetch.maxBytes>2097152||source.fetch.allowedHosts.length!==1||source.fetch.allowedHosts[0]!==new URL(source.canonicalUrl).hostname))throw Error();
  }catch{throw new Error('Invalid App qualification ledger');}
@@ -48,3 +48,8 @@ export function createAppQualificationLedger(inputs:readonly ApprovedAppWorkerSo
   bodies:()=>Object.freeze(privateBodies.map(value=>Object.freeze({...value,bytes:Buffer.from(value.bytes)}))),
  });
 }
+
+/** Original Task7 qualification authority, unchanged6/12MiB/120s. */
+export function createAppQualificationLedger(inputs:readonly ApprovedAppWorkerSource[],input:AppQualificationBounds,deps:Dependencies={}){return createLedger(inputs,input,deps,{maxAttempts:6,maxAdmittedBodyBytes:12582912,maxDurationMs:120000})}
+/** Separately ratified additive4 HTTP/UI authority. Explicit bounds remain required. */
+export function createAppsEnrichmentQualificationLedger(inputs:readonly ApprovedAppWorkerSource[],input:AppQualificationBounds,deps:Dependencies={}){return createLedger(inputs,input,deps,{maxAttempts:8,maxAdmittedBodyBytes:16777216,maxDurationMs:600000})}
