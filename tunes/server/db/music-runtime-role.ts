@@ -22,7 +22,13 @@ const expectedRuntimeTables = [
   "app_enrichment_entitlements",
   "app_enrichment_generation_retirements",
   "app_enrichment_generations",
+  "app_enrichment_job_candidates",
+  "app_enrichment_jobs",
+  "app_enrichment_retention_policy",
   "app_enrichment_snapshots",
+  "app_enrichment_source_approvals",
+  "app_enrichment_worker_run_authorities",
+  "app_enrichment_worker_runs",
   "app_entity_details",
   "application_command_receipts",
   "auth_account",
@@ -154,8 +160,23 @@ const expectedRuntimeFunctions = [
   "app_enrichment_entitlement_guard()",
   "app_enrichment_immutable_payload()",
   "app_enrichment_recommendation_replacement()",
+  "app_enrichment_retention_cleanup(bigint,jsonb)",
+  "app_enrichment_retention_policy_guard()",
   "app_enrichment_safe_host(text)",
   "app_enrichment_snapshot_guard()",
+  "app_enrichment_worker_approval_guard()",
+  "app_enrichment_worker_binding_eligible(uuid,uuid,bigint)",
+  "app_enrichment_worker_check_fetch(uuid,uuid,uuid,text)",
+  "app_enrichment_worker_claim(uuid,text,text,text,text,bigint,text)",
+  "app_enrichment_worker_complete(uuid,uuid,uuid,text,uuid[],jsonb)",
+  "app_enrichment_worker_enroll_run(uuid,text,text,text,text,text,text,bigint,text)",
+  "app_enrichment_worker_finish_outcome(uuid,uuid,uuid,text,bigint)",
+  "app_enrichment_worker_job_guard()",
+  "app_enrichment_worker_lease_json(app_enrichment_jobs)",
+  "app_enrichment_worker_lock_candidates(uuid[])",
+  "app_enrichment_worker_record_run(uuid,text,text,timestamp with time zone,timestamp with time zone,jsonb)",
+  "app_enrichment_worker_renew(uuid,uuid,uuid)",
+  "app_enrichment_worker_reuse_success(uuid,text)",
   "assert_music_venue_owned()",
   "assert_music_venue_owner_retained()",
   "enforce_music_identity_immutability()",
@@ -681,6 +702,8 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`REVOKE UPDATE,TRUNCATE,REFERENCES,TRIGGER ON place_pin_draft_chunks,place_pin_draft_items FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION explorers_places_category_mutation(uuid),explorers_places_collection_claim(uuid),
       explorers_place_pins_revision(),explorers_place_pins_cleanup(),explorers_place_pins_validate(),explorers_place_draft_immutable(),explorers_place_chunk_validate(),explorers_place_pins_dirty(),explorers_place_chunk_dirty() FROM ${capabilityRole}`);
+    // The durable worker authority is separate from the owner runtime.
+    await client.query(`REVOKE ALL ON app_enrichment_source_approvals,app_enrichment_jobs,app_enrichment_job_candidates,app_enrichment_worker_runs,app_enrichment_worker_run_authorities,app_enrichment_retention_policy FROM ${capabilityRole}`);
     // Apps enrichment, migration 0055. The blanket GRANT ON ALL TABLES above re-grants exactly
     // what 0055 revoked, so these statements are what actually hold the Apps boundary. 0055's
     // column-level GRANT UPDATE on app_enrichment_bindings is deliberately NOT reproduced here:
@@ -693,6 +716,8 @@ export async function provisionMusicRuntimeLogin(
       ON app_enrichment_generations,app_enrichment_generation_retirements,app_enrichment_acceptances FROM ${capabilityRole}`);
     await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON app_enrichment_snapshots,app_enrichment_entitlements FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON FUNCTION app_enrichment_retention_cleanup(bigint,jsonb),app_enrichment_retention_policy_guard() FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON FUNCTION app_enrichment_worker_enroll_run(uuid,text,text,text,text,text,text,bigint,text),app_enrichment_worker_claim(uuid,text,text,text,text,bigint,text),app_enrichment_worker_check_fetch(uuid,uuid,uuid,text),app_enrichment_worker_renew(uuid,uuid,uuid),app_enrichment_worker_complete(uuid,uuid,uuid,text,uuid[],jsonb),app_enrichment_worker_finish_outcome(uuid,uuid,uuid,text,bigint),app_enrichment_worker_reuse_success(uuid,text),app_enrichment_worker_record_run(uuid,text,text,timestamp with time zone,timestamp with time zone,jsonb),app_enrichment_worker_approval_guard(),app_enrichment_worker_job_guard(),app_enrichment_worker_lock_candidates(uuid[]),app_enrichment_worker_binding_eligible(uuid,uuid,bigint),app_enrichment_worker_lease_json(app_enrichment_jobs) FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION app_enrichment_immutable_payload(),app_enrichment_binding_identity(),
       app_enrichment_current_generation_guard(),app_enrichment_canonical_json(jsonb),app_enrichment_safe_host(text),
       app_enrichment_snapshot_guard(),app_enrichment_entitlement_guard(),app_enrichment_acceptance_admission(),
@@ -851,6 +876,14 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "UPDATE place_pin_draft_chunks SET hash=hash WHERE false",
     "UPDATE place_pin_draft_items SET recommendation_id=recommendation_id WHERE false",
     "DELETE FROM app_enrichment_bindings WHERE false",
+    ...["app_enrichment_source_approvals","app_enrichment_jobs","app_enrichment_job_candidates","app_enrichment_worker_runs","app_enrichment_worker_run_authorities","app_enrichment_retention_policy"].flatMap(table=>[
+      `SELECT * FROM ${table} LIMIT 0`,
+      `INSERT INTO ${table} DEFAULT VALUES`,
+      `DELETE FROM ${table} WHERE false`,
+      `TRUNCATE TABLE ${table}`,
+    ]),
+    "SELECT app_enrichment_worker_renew(NULL::uuid,NULL::uuid,NULL::uuid)",
+    "SELECT app_enrichment_retention_cleanup(NULL::bigint,'{}'::jsonb)",
     "UPDATE app_enrichment_generations SET source_id=source_id WHERE false",
     "DELETE FROM app_enrichment_generations WHERE false",
     "UPDATE app_enrichment_generation_retirements SET retired_at=retired_at WHERE false",
@@ -929,7 +962,9 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
   if (!sameRuntimeInventory(tableRows.map((row) => row.object_name), expectedRuntimeTables)
       || tableRows.some((row) => row.object_owner !== approvedOwnerRole)
       || tableRows.some((row) => {
-    const expected = row.object_name === "app_enrichment_snapshots" || row.object_name === "app_enrichment_entitlements"
+    const expected = ["app_enrichment_source_approvals","app_enrichment_jobs","app_enrichment_job_candidates","app_enrichment_worker_runs","app_enrichment_worker_run_authorities","app_enrichment_retention_policy"].includes(row.object_name)
+      ? [false,false,false,false]
+      : row.object_name === "app_enrichment_snapshots" || row.object_name === "app_enrichment_entitlements"
       ? [true, false, false, false]
       : ["app_enrichment_generations","app_enrichment_generation_retirements","app_enrichment_acceptances"].includes(row.object_name)
         ? [true, true, false, false]
@@ -1001,7 +1036,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       JOIN pg_roles owner ON owner.oid=procedure.proowner
     WHERE namespace.nspname='public' ORDER BY procedure.oid::regprocedure::text`)).rows;
   if (!sameRuntimeInventory(functionRows.map((row) => row.function_signature), expectedRuntimeFunctions)
-      || functionRows.some((row) => row.object_owner !== approvedOwnerRole || row.can_execute
+      || functionRows.some((row) => row.object_owner !== (row.function_signature.startsWith("app_enrichment_worker_") ? "app_enrichment_worker_owner" : row.function_signature.startsWith("app_enrichment_retention_") ? "app_enrichment_retention_owner" : approvedOwnerRole) || row.can_execute
         !== (row.function_signature !== "provision_music_runtime_login(name,text)"
           && !/^explorers_content_revision_(insert|update|delete|lifecycle)\(\)$/.test(row.function_signature)
           && !row.function_signature.startsWith("explorers_place")

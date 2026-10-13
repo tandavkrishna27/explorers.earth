@@ -181,6 +181,12 @@ export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
   Object.freeze({table:'app_enrichment_acceptances',name:'app_enrichment_acceptance_receipt_guard',enabled:'O',type:5}),
   Object.freeze({table:'recommendations',name:'app_enrichment_recommendation_replacement_guard',enabled:'O',type:17}),
   Object.freeze({table:'entities',name:'app_enrichment_entity_origin_guard',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_source_approvals',name:'app_enrichment_source_approval_guard',enabled:'O',type:23}),
+  Object.freeze({table:'app_enrichment_job_candidates',name:'app_enrichment_job_candidate_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_jobs',name:'app_enrichment_job_identity_guard',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_worker_runs',name:'app_enrichment_worker_run_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_worker_run_authorities',name:'app_enrichment_worker_run_authority_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_retention_policy',name:'app_enrichment_retention_policy_guard',enabled:'O',type:23}),
   ...revisionTriggers,
 // Deterministic CODE-POINT ordering, not localeCompare. Every name here is ASCII snake_case, but
 // ICU collation treats `_` as variable-weight punctuation, so pairs like place_pins vs

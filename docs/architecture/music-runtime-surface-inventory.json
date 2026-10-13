@@ -2475,6 +2475,12 @@
     {
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
+      "source": "tunes/server/application/appEnrichmentWorker.ts",
+      "line": 15
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
       "source": "tunes/server/application/movieMediaImport.ts",
       "line": 50
     },
@@ -2527,6 +2533,18 @@
       "line": 116
     },
     {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/repositories/explorersAppEnrichmentRetentionRepository.ts",
+      "line": 27
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/repositories/explorersAppEnrichmentWorkerRepository.ts",
+      "line": 61
+    },
+    {
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/routes/index.ts",
@@ -2536,7 +2554,7 @@
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/appEnrichmentFetch.ts",
-      "line": 35
+      "line": 50
     },
     {
       "kind": "setTimeout",

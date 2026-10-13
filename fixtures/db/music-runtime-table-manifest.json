@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0055_explorers_app_enrichment",
+    "expectedId": "0056_explorers_app_enrichment_jobs",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -58,7 +58,8 @@
       "0052_canonical_music_numeric_retirement.sql",
       "0053_explorers_taxonomy_catalogs.sql",
       "0054_explorers_place_individual_pins.sql",
-      "0055_explorers_app_enrichment.sql"
+      "0055_explorers_app_enrichment.sql",
+      "0056_explorers_app_enrichment_jobs.sql"
     ],
     "controlTables": [
       "music_schema_migrations",
@@ -196,10 +197,46 @@
       "lifecycle": "strip-on-deletion"
     },
     {
+      "name": "app_enrichment_job_candidates",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "app_enrichment_jobs",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "app_enrichment_retention_policy",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "retain-approved-policy"
+    },
+    {
       "name": "app_enrichment_snapshots",
       "managedBy": "unmanaged-raw-sql",
       "family": "user-content",
       "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "app_enrichment_source_approvals",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "retain-approved-policy"
+    },
+    {
+      "name": "app_enrichment_worker_run_authorities",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "retain-bounded-receipts"
+    },
+    {
+      "name": "app_enrichment_worker_runs",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "retain-bounded-receipts"
     },
     {
       "name": "app_entity_details",

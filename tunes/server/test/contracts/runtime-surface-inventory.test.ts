@@ -20,7 +20,7 @@ describe("runtime route/event/job inventory", () => {
     // surface, and the count pin is honest about the surfaces that exist.
     expect(inventory.routes).toHaveLength(197);
     expect(inventory.events).toHaveLength(15);
-    expect(inventory.jobs).toHaveLength(30);
+    expect(inventory.jobs).toHaveLength(33);
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/services/appEnrichmentFetch.ts',lifecycle:'scheduled-callback'}));
     expect(inventory.routes.filter(route => route.path === '/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug')).toEqual([
       expect.objectContaining({method:'GET',classification:'public',source:'tunes/server/routes/explorersPublicProfileRoutes.ts',policy:'explicit-public-contract',ownerSource:'none'}),

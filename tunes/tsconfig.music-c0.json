@@ -7,6 +7,18 @@
     "types": ["node", "vite/client", "passport"]
   },
   "include": [
+    "shared/explorersAppEnrichmentWorkerContract.ts",
+    "server/application/appEnrichmentWorker.ts",
+    "server/application/appEnrichmentWorkerValidation.ts",
+    "server/db/app-enrichment-worker-custody.ts",
+    "server/db/app-enrichment-worker-role.ts",
+    "server/db/app-enrichment-retention-role.ts",
+    "server/repositories/explorersAppEnrichmentRetentionRepository.ts",
+    "server/test/migrations/app-enrichment-retention.integration.test.ts",
+    "server/repositories/explorersAppEnrichmentWorkerRepository.ts",
+    "server/test/explorers-app-enrichment-worker.integration.test.ts",
+    "server/test/migrations/app-enrichment-worker-role.integration.test.ts",
+    "server/test/helpers/appEnrichmentWorkerPgHarness.ts",
     "shared/explorersMovieMediaContract.ts",
     "scripts/movies-browser-fixture.ts",
     "server/services/movieImageFetch.ts",

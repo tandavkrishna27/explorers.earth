@@ -5,50 +5,41 @@ focused local evidence and remaining acceptance. Wave 2 is **open**.
 
 ## Current reconciliation — 2026-10-13
 
-This section supersedes the historical current-state descriptions below. The new source
-package is an overlay on `8df74c5990d307d8cbe09bd96c16f5fc0ba2c093` until committed and
-qualified; it is not a Wave 2 completion receipt.
+This section supersedes historical current-state descriptions below. Wave 2 remains
+**open**; reviewed source and portable tests do not substitute for protected acceptance.
 
-- The older hosted PR119 source remains `622f6893`. Its direct failure is the local
-  fixture ingress graph: `/health/live` reaches the SPA instead of canonical JSON, while
-  Compose still starts legacy Music. `music-required` fails solely through that fixture
-  job. Coordinated canonical/Music ingress cutover remains Wave 3; no probe or required
-  aggregate is waived.
-- Current-head full native receipts at `replatform-e2e-8df74c59-full` and
-  `replatform-e2e-8df74c59-run2` are failed: respectively Places complete70 session
-  replacement and Books mobile cover visibility. Fixed finite phase diagnostics now
-  preserve the next failure boundary without changing actions, assertions or budgets.
-  Those source changes do not qualify the failed runs. Guides was not reached.
-- Apps A1 now has mounted owner binding/suggestion/acceptance endpoints and owner UI for
-  explicit selected-field acceptance, disabling existing enrichment, and exact uncertain
-  replay. Independent review found and closed observation-refresh replay loss and
-  expired-session handling. Configuration remains unavailable with the empty approved
-  registry; no real source or provider permission is invented. Five owner methods and
-  three closed method guards are explicitly inventoried.
-- The new Apps A2 HTTPS transport is independently reviewed generic source only:
-  explicit configuration, validated/pinned public DNS, redirect/TLS checks and finite
-  cancellation/time/byte/request bounds. Durable jobs/leases/recovery, worker privilege
-  composition and actual approved provider/host/schedule acceptance remain outstanding.
-- The origin guard is now included in the exact restore trigger fingerprint. The
-  Windows contract selector identifies the real test step rather than the Guides
-  preflight. The four previously excluded Windows contracts are added to the Windows
-  job; actual local execution of those plus the mandatory Guides bootstrap gate passed
-  101 tests. Hosted behavior remains unqualified.
-- Docker fixture manifests/COPY closure include Apps enrichment and Places pin transport
-  contracts. The Places oracle distinguishes independent twelve-row previews from the
-  audited twenty-four-row continuation census while retaining malformed-query negatives.
-- Earlier protected Places PostgreSQL receipt `places-p1-pg-b3c70d257307` binds
-  `b82d42b5`: 128/128, complete finite report, source intact and all cleanup passed.
-  This is historical source-bound acceptance, not qualification of this new overlay.
+- PR119 remains a draft against `main`, remote head `622f6893`. Its direct failure is
+  `platform-fixture`: `/health/live` reaches the SPA instead of canonical JSON while
+  Compose still starts legacy Music. `music-required` fails through that dependency.
+  The coordinated ingress/runtime cutover belongs to Wave 3. No required gate is waived.
+- Owner Apps enrichment API/UI and secure transport are committed in `12abecb9`.
+  Full frontend 370 files/5161 tests and default backend 273 passing files/5952 passing
+  tests were verified on that commit (backend also has one skipped file/eight tests).
+- Protected native acceptance on `12abecb9` passed Auth 6 and Profile 5, then failed the
+  Games publication control. The original forced click generated no change event or
+  request. Independently reviewed visible-label interaction and bounded transport retry
+  metadata are committed in `c2d197d5`. No successful aggregate receipt binds that repair.
+- The pending C56 package implements durable Apps jobs, leases, retry/exhaustion,
+  immutable DB-clock run authority, independent worker privileges and bounded retention.
+  Operator approvals and retention policy are deliberately empty. Independent source
+  reviews closed the worker, retention and shared migration integration findings.
+  Latest focused verification: 129 tests and scoped TypeScript passed; the complete
+  shell migration-history test passed after restoring the 0055 predecessor entry.
+- Real Apps PostgreSQL worker and retention cases remain unexecuted. Their dedicated
+  runner is being finalized with separate logins, pre-Pool admission, exact finite
+  identities, source custody and owned container/anonymous-volume cleanup proof.
+- Fresh Places 128-case C56 qualification and the original full 166-case native lane
+  remain required on clean reviewed source. Historical Places 128/128 acceptance binds
+  `b82d42b5` only; it is not qualification of C56.
+- The four formerly excluded Windows contracts are selected by CI. Local execution
+  with the mandatory Guides bootstrap gate passed 101 tests on the earlier checkpoint.
+  Hosted-runner behavior remains unverified.
+- Actual approved Apps provider, field permissions, host/secret custody, schedule and
+  operational limits remain required for nightly-fetch acceptance. Taxonomy/sector
+  actual application and retained category evidence still require reconciliation.
 
-Portable overlay evidence: full frontend 370 files/5161 tests and strict frontend types
-passed; backend scoped types passed; targeted API/custody/admission 185 tests and strict
-diagnostic serialization 14 tests passed. The controlled broad backend contract run
-passed 3469 with three generated inventory failures, subsequently repaired and checked
-in the focused gates. Exact committed-source broad and protected qualification still
-follow. Real Apps source/field permissions and trusted host/schedule inputs remain
-required; taxonomy/sector actual application and full retained category evidence must
-also be reconciled before closing Wave 2. No main merge or deployment occurred.
+No push, hosted CI trigger, merge or deployment occurred. The local branch is not yet
+Wave 2 merge-ready; the all-ten-epic integration boundary remains in force.
 
 ## Evidence retained
 
