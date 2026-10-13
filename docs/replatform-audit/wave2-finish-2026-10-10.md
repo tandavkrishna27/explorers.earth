@@ -5,6 +5,26 @@ focused local evidence and remaining acceptance. Wave 2 is **open**.
 
 ## Current reconciliation — 2026-10-13
 
+### Local qualification update — 2026-10-14
+
+The following supersedes the older pending-status bullets below. Wave 2 remains open.
+
+- Real Apps website/Apple provider and native scheduler qualification passed all eight
+  PostgreSQL cases on clean `f8215c98`, with source and resource cleanup verified.
+  See `receipts/apps-real-providers-f8215c98/`. Authenticated browser enrichment
+  controls are a separate remaining proof; no hosted nightly schedule is qualified.
+- Guides diagnostic transport is repaired in `4b3522aa`; 259 lifecycle contract
+  tests passed. Its fresh protected run still failed the first section-order case:
+  auth/session and `/me` returned 200, but the editable Guide request returned 404.
+  The retained page showed the load-failure state. This is failed acceptance,
+  and its actual source cause must be repaired before another qualification run.
+- Public/People fixture and browser source is still being completed and reviewed.
+  Passing resource-free contracts do not establish the required 32 public and
+  12 People native browser identities.
+- Remote PR119 remains draft at `622f6893`; the latest local work has not been
+  pushed. Existing `platform-fixture` and dependent `music-required` CI failures
+  remain unresolved. No merge, deployment or Strapi retirement occurred.
+
 This section supersedes historical current-state descriptions below. Wave 2 remains
 **open**; reviewed source and portable tests do not substitute for protected acceptance.
 
