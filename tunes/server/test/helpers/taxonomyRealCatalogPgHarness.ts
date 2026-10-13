@@ -129,7 +129,7 @@ export function createTaxonomyRealCatalogPgHarness(input: TaxonomyRealCatalogPgI
     async function nativeIdentity() {
         verify();
         for (const [pool, login] of [[input.migrator, e.migratorUser], [input.runtime, e.runtimeUser]] as const) {
-            const row = (await pool.query("SELECT current_database() AS database,session_user AS login,current_setting('server_version_num')::int AS version,current_setting('application_name') AS applicationName,(SELECT rolcanlogin FROM pg_roles WHERE rolname=session_user) AS loginAllowed,pg_has_role(session_user,'music_runtime','MEMBER') AS runtime")).rows[0];
+            const row = (await pool.query("SELECT current_database() AS database,session_user AS login,current_setting('server_version_num')::int AS version,current_setting('application_name') AS \"applicationName\",(SELECT rolcanlogin FROM pg_roles WHERE rolname=session_user) AS \"loginAllowed\",pg_has_role(session_user,'music_runtime','MEMBER') AS runtime")).rows[0];
             expect(row.database).toBe(e.databaseName);
             expect(row.login).toBe(login);
             expect(row.version).toBe(150019);

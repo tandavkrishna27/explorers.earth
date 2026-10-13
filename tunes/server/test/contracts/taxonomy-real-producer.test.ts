@@ -46,6 +46,23 @@ it('captures exact admitted handle identities rather than following caller mutat
     expect(replacement).not.toHaveBeenCalled();
 });
 import { AccountLifecycleService } from '../../application/accountLifecycle';
+import { EXPECTED_MUSIC_MIGRATION_CHAIN } from '../../../shared/music-migration-contract';
+it('attests native identity with PostgreSQL folding unquoted column aliases', async () => {
+    const f = make();
+    const nativeQuery = (login: string) => vi.fn(async (sql: string) => {
+        if (sql.includes('FROM music_schema_migrations')) return {rows: EXPECTED_MUSIC_MIGRATION_CHAIN.map(id => ({id}))};
+        if (!sql.includes('session_user AS login')) throw Error('Unexpected identity SQL');
+        const row: Record<string, unknown> = {database: f.input.expectedIdentity.databaseName, login, version: 150019, runtime: true};
+        for (const match of sql.matchAll(/\bAS\s+(?:"(applicationName|loginAllowed)"|(applicationName|loginAllowed))/g)) {
+            const label = match[1] ?? match[2].toLowerCase();
+            row[label] = (match[1] ?? match[2]) === 'loginAllowed' ? true : f.input.runtimeApplicationName;
+        }
+        return {rows: [row]};
+    });
+    f.input.migrator.query = nativeQuery(f.input.expectedIdentity.migratorUser) as any;
+    f.input.runtime.query = nativeQuery(f.input.expectedIdentity.runtimeUser) as any;
+    await createTaxonomyRealCatalogPgHarness(f.input).nativeIdentity();
+});
 import * as maintenance from '../../application/accountLifecycleMaintenance';
 it('settles an early barrier failure and releases the exact acquired client', async () => {
     const f = make(), seedRelease = vi.fn(), runtimeRelease = vi.fn();
