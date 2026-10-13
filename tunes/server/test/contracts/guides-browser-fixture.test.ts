@@ -6,6 +6,7 @@ import {readFileSync,realpathSync} from 'node:fs';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import path from 'node:path';
 import ts from 'typescript';
+import {GUIDES_PAGE_FAMILIES} from '../../../../explorers-earth/e2e/replatform/guides-page-diagnostic';
 // Execute native helpers without preflight, preparation, or resource allocation.
 function actualNative(bindings:Record<string,unknown>){
  const source=readFileSync(path.resolve(import.meta.dirname,'../../../scripts/guides-browser-fixture.ts'),'utf8'),ast=ts.createSourceFile('driver.ts',source,ts.ScriptTarget.Latest,true);
@@ -70,6 +71,11 @@ it('preserves only the original private supervisor diagnostic through root refus
  const proxy=new Proxy({}, {get(){throw Error('PRIVATE_SENTINEL');},ownKeys(){throw Error('PRIVATE_SENTINEL');}});
  expect((browserFixture as any).formatGuidesFixtureFailure?.(proxy)).toBe('Guides owned fixture failed\n');
  }finally{spy.mockRestore();native.mockRestore();}
+});
+it('retains the separate page marker only through the original privately branded initial-detail failure',async()=>{
+ const original=Error('PRIVATE_SENTINEL'),diagnostic:any={version:1,role:'fixture',epoch:0,phase:'execution',code:'unsettled',boundary:'harness-command'},native:any={version:1,epoch:1,caseIndex:3,project:'guides-desktop',repeat:0,action:'fail',kind:'assertion',matcher:'toBeVisible',line:1,column:1,stage:'initial-detail'},page:any={version:1,epoch:1,caseIndex:3,project:'guides-desktop',repeat:0,stage:'initial-detail',pageErrors:1,overflow:false,families:Object.fromEntries(GUIDES_PAGE_FAMILIES.map(f=>[f,{seen:0,lastStatus:null}])),dom:{expectedHeading:0,loadFailure:1,earthLoader:0}};
+ const spies=[vi.spyOn(supervisor,'extractGuidesSupervisorDiagnostic').mockImplementation(error=>error===original?diagnostic:undefined),vi.spyOn(supervisor,'extractGuidesSupervisorNativeFailure').mockImplementation(error=>error===original?native:undefined),vi.spyOn(supervisor,'extractGuidesSupervisorPageFailure').mockImplementation(error=>error===original?page:undefined)];
+ try{const f=fake();f.deps.createSupervisor=()=>({run:async()=>{throw original;},abort(){},dispose:async()=>({disposed:false,failures:['service-children','control']})});let caught:unknown;try{await createGuidesBrowserFixture(f.deps).run();}catch(error){caught=error;}const formatted=browserFixture.formatGuidesFixtureFailure(caught);expect(formatted).toContain('Guides page failed [guides-page-failure-v1:'+JSON.stringify(page)+']\n');expect(formatted).not.toContain('PRIVATE_SENTINEL');expect(f.events).toContain('failure');expect(f.events).not.toContain('finish');}finally{for(const spy of spies)spy.mockRestore();}
 });
 describe('Guides root driver resource-free custody',()=>{
  it('captures reports before exclusive parent disposal then publishes receipt',async()=>{const f=fake();await createGuidesBrowserFixture(f.deps).run();expect(f.events).toEqual(['preflight','prepare','parent','run','create','report','report','adopt','decode-discovery','decode-execution','dispose','finish','uninstall']);});

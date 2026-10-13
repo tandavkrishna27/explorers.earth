@@ -7,6 +7,7 @@ import path from 'node:path';
 import { Client } from 'pg';
 import type { OwnedUatDatabaseAuthority } from './music-uat-database';
 import { GUIDES_CASES, GUIDES_PROJECTS, guidesManifestSchema, guidesProviderObservationSchema, buildGuidesSeedPlan } from './guides-browser-support';
+import {validateGuidesPageCapsule,type GuidesPageCapsule} from '../../explorers-earth/e2e/replatform/guides-page-diagnostic';
 import {validateGuidesNativeCapsule,type GuidesNativeCapsule} from './guides-native-diagnostic';
 
 type Label = 'browser' | 'vite' | 'service-children' | 'control' | 'runtime-pool' | 'migrator-pool' | 'owned-database' | 'private-directory' | 'artifacts' | 'receipt';
@@ -47,13 +48,14 @@ type ControllerCleanup = Readonly<{ code: 'GUIDES_CONTROL_CLEANUP_FAILED'; unset
 const GUIDES_HOST_BOUNDARIES = Object.freeze(['init-validation','begin','protected-context','gateway-bind','harness-bind','vite-launch','vite-readiness','vite-runtime','descriptor-write','discovery-launch','discovery-exit','discovery-decode','browser-launch','browser-exit','execution-decode','harness-command','gateway-forward','completion'] as const);
 export type GuidesFailureDiagnostic = Readonly<{version:1;role:'fixture'|'worker';epoch:number;phase:'bootstrap'|'reset'|'observe'|'execution'|'retirement';code:'failed'|'timeout'|'protocol'|'unsettled';boundary:typeof GUIDES_HOST_BOUNDARIES[number]|null}>;
 const guidesDiagnostics = new WeakMap<object,GuidesFailureDiagnostic>();
-const guidesNativeDiagnostics=new WeakMap<object,GuidesNativeCapsule>();
+const guidesNativeDiagnostics=new WeakMap<object,GuidesNativeCapsule>();const guidesPageDiagnostics=new WeakMap<object,GuidesPageCapsule>();
+export function extractGuidesSupervisorPageFailure(error:unknown):GuidesPageCapsule|undefined{return typeof error==='object'&&error!==null?guidesPageDiagnostics.get(error):undefined;}
 export function extractGuidesSupervisorNativeFailure(error:unknown):GuidesNativeCapsule|undefined{return typeof error==='object'&&error!==null?guidesNativeDiagnostics.get(error):undefined;}
 export function extractGuidesSupervisorDiagnostic(error:unknown):GuidesFailureDiagnostic|undefined {
  return (typeof error==='object'&&error!==null||typeof error==='function')?guidesDiagnostics.get(error as object):undefined;
 }
 class Failure extends Error {
- constructor(readonly label: Label, readonly cleanup?: ControllerCleanup, diagnostic?:GuidesFailureDiagnostic,native?:GuidesNativeCapsule) { super(label); if(diagnostic)guidesDiagnostics.set(this,diagnostic);if(native)guidesNativeDiagnostics.set(this,native); }
+ constructor(readonly label: Label, readonly cleanup?: ControllerCleanup, diagnostic?:GuidesFailureDiagnostic,native?:GuidesNativeCapsule,page?:GuidesPageCapsule) { super(label); if(diagnostic)guidesDiagnostics.set(this,diagnostic);if(native)guidesNativeDiagnostics.set(this,native);if(page)guidesPageDiagnostics.set(this,page); }
 }
 function exact(value: unknown, keys: readonly string[]): asserts value is Record<string, unknown> {
  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).sort().join(',') !== [...keys].sort().join(',')) throw new Failure('service-children');
@@ -88,7 +90,7 @@ function bounded<T>(clock: Clock, deadline: number, operation: () => Promise<T>,
 }
 class CleanEof extends Error {}
 class Channel {
- private nativeCapsule:GuidesNativeCapsule|undefined;
+ private nativeCapsule:GuidesNativeCapsule|undefined;private pageCapsule:GuidesPageCapsule|undefined;
  private bytes = Buffer.alloc(0); private incoming = 0; private outgoing = 0; private pending = false;
  private started = false; private allowed = false; private fatal: Error | undefined;
  private queued: Frame[] = []; private waiter: { resolve(frame: Frame): void; reject(error: unknown): void } | undefined;
@@ -116,6 +118,7 @@ class Channel {
   void (async () => { try { while (true) {
    const frame = await this.decode(deadline); if (this.stopped) return;
    if (this.max === 65536 && frame.type === 'log') { exact(frame.payload, ['slot', 'stream', 'text']); const stream = frame.payload.stream; if (stream !== 'stdout' && stream !== 'stderr' || typeof frame.payload.text !== 'string' || Buffer.byteLength(frame.payload.text) > 16384 || !(frame.payload.slot === 'fixture' || Number.isInteger(frame.payload.slot) && Number(frame.payload.slot) >= 1 && Number(frame.payload.slot) <= 16)) throw new Failure('service-children'); this.logBytes[stream] += Buffer.byteLength(frame.payload.text); if (this.logBytes[stream] > 8388608) throw new Failure('service-children'); continue; }
+   if(frame.type==='page-failure'){if(this.role!=='fixture'||this.pageCapsule||this.nativeCapsule||this.epoch!==0)throw new Failure('control');this.pageCapsule=validateGuidesPageCapsule(frame.payload);continue;}if(this.pageCapsule&&!this.nativeCapsule&&frame.type!=='native-failure')throw new Failure('control');
    if(frame.type==='native-failure'){if(this.role!=='fixture'||this.nativeCapsule||this.epoch!==0)throw new Failure('control');this.nativeCapsule=validateGuidesNativeCapsule(frame.payload);continue;}
    if(this.nativeCapsule&&frame.type!=='fatal')throw new Failure('control');
    if (frame.type === 'fatal') {
@@ -136,8 +139,8 @@ class Channel {
      cleanup = Object.freeze({ code: 'GUIDES_CONTROL_CLEANUP_FAILED', unsettled: value.unsettled, failures: Object.freeze([...value.failures]) });
     }
     const diagnostic=Object.freeze({version:1,role:this.role,epoch:this.epoch,phase:frame.payload.phase,code:frame.payload.code,boundary:this.role==='fixture'?frame.payload.boundary:null}) as GuidesFailureDiagnostic;
-    if(this.nativeCapsule&&frame.payload.boundary!=='harness-command')throw new Failure('control');
-    throw new Failure('control', cleanup,diagnostic,this.nativeCapsule);
+    if(this.nativeCapsule&&frame.payload.boundary!=='harness-command')throw new Failure('control');if(this.pageCapsule&&(!this.nativeCapsule||this.nativeCapsule.stage!=='initial-detail'||this.nativeCapsule.caseIndex!==3||this.nativeCapsule.action!=='fail'||this.pageCapsule.epoch!==this.nativeCapsule.epoch||this.pageCapsule.project!==this.nativeCapsule.project))throw new Failure('control');
+    throw new Failure('control', cleanup,diagnostic,this.nativeCapsule,this.pageCapsule);
    }
    const reply = this.replies.get(frame.id);
    if (reply) { this.replies.delete(frame.id); if (reply.cancelled && frame.type !== 'cancelled') throw new Failure('service-children'); if (frame.type === 'cancelled') { exact(frame.payload, ['commandId']); if (!reply.cancelled || frame.payload.commandId !== frame.id) throw new Failure('service-children'); reply.reject(new Failure('service-children')); } else if (frame.type !== reply.expected) { reply.reject(new Failure('service-children')); throw new Failure('service-children'); } else reply.resolve(frame); if (frame.type === 'exit-ack') return; continue; }

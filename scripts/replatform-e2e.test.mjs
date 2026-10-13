@@ -1099,7 +1099,7 @@ function registeredIdentityCount(){return 134+appsRegistrationIdentities().lengt
 function additiveIdentityCount(){return manifest().additiveRegistrations.reduce((n,entry)=>n+entry.identities.length,0);}
 function totalIdentityCount(){return registeredIdentityCount()+additiveIdentityCount();}
 
-const guidesExecutedSources=['guides-browser-fixture.ts','guides-browser-support.ts','guides-fixture-host.ts','guides-parent-supervision.ts','guides-launcher.ts','guides-provider-fixture.ts','guides-resource-worker.ts','guides-native-diagnostic.ts','music-local-state.ts','guides-windows-job.ps1'].map(name=>'tunes/scripts/'+name);
+const guidesExecutedSources=['guides-browser-fixture.ts','guides-browser-support.ts','guides-fixture-host.ts','guides-parent-supervision.ts','guides-launcher.ts','guides-provider-fixture.ts','guides-resource-worker.ts','guides-native-diagnostic.ts','music-local-state.ts','guides-windows-job.ps1'].map(name=>'tunes/scripts/'+name).concat('explorers-earth/e2e/replatform/guides-page-diagnostic.ts');
 function guidesSnapshotFixture({untracked,undeclared,mutation,closed=false}={}){
  const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),tracked=execFileSync('git',['ls-files'],{cwd:root,encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/).filter(file=>file!==untracked);
  const canonical=v=>JSON.stringify(v,(_,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.keys(x).sort().map(k=>[k,x[k]])):x),digest=v=>createHash('sha256').update(canonical(v)).digest('hex');

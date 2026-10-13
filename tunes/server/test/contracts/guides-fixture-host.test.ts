@@ -11,6 +11,8 @@ describe('Guides actual fixture host', () => {
 });
 
 import { GUIDES_CASES, GUIDES_PROJECTS, buildGuidesSeedPlan } from '../../../scripts/guides-browser-support';
+import {GUIDES_PAGE_FAMILIES} from '../../../../explorers-earth/e2e/replatform/guides-page-diagnostic';
+import {guidesNativeCallsites} from '../../../scripts/guides-native-diagnostic';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const GUIDES_TEST_RUN = 'a'.repeat(32), GUIDES_TEST_COMMIT = 'b'.repeat(40);
@@ -44,6 +46,11 @@ function syntheticGuidesManifest(plan:any, project:string=GUIDES_PROJECTS[0], ge
   const expectedPublic={eligibleGuideIds:own.map((g:any)=>g.id),selectedGuideId:traversal?own[0].id:null,orderedSectionIds:traversal?sections.filter((s:any)=>s.collectionId===own[0].id).map((s:any)=>s.id):[],roleMediaIds:Object.fromEntries(plan.mediaRoles.map((r:any)=>[r.key,media.find((m:any)=>m.key===r.key)?.id??null])),traversal};
   return {expected,manifest:{version:1,runId:GUIDES_TEST_RUN,commit:GUIDES_TEST_COMMIT,caseId:plan.caseId,project,repeat:0,generation,personas,guides,sections,media,attachments,expectedPublic},fixtureBytes};
 }
+it('forwards only an authenticated initial-detail page capsule before unchanged native and fatal frames',async()=>{
+ const {createGuidesFixtureHost}=await import('../../../scripts/guides-fixture-host'),point=guidesNativeCallsites()[0],selected={caseId:GUIDES_CASES[3],project:GUIDES_PROJECTS[0],repeat:0},failure={kind:'assertion',matcher:'toBeVisible',...point,stage:'initial-detail'};let capsule:any;
+ const fake=fakeHost({drive:async({call}:any)=>{const started=await call({v:1,action:'start',...selected});capsule={version:1,epoch:started.body.epoch,caseIndex:3,project:selected.project,repeat:0,stage:'initial-detail',pageErrors:1,overflow:false,families:Object.fromEntries(GUIDES_PAGE_FAMILIES.map(f=>[f,{seen:0,lastStatus:null}])),dom:{expectedHeading:0,loadFailure:1,earthLoader:0}};expect((await call({v:1,action:'fail',...selected,epoch:started.body.epoch,failure,pageFailure:{...capsule,epoch:2}})).status).toBe(403);expect((await call({v:1,action:'fail',...selected,epoch:started.body.epoch,failure,pageFailure:capsule})).status).toBe(200);}});
+ await expect(createGuidesFixtureHost(fake.deps).run()).rejects.toThrow();expect(fake.frames.filter(f=>['page-failure','native-failure','fatal'].includes(f.type)).map(f=>f.type)).toEqual(['page-failure','native-failure','fatal']);expect(fake.frames.find(f=>f.type==='page-failure')?.payload).toEqual(capsule);expect(fake.frames.some(f=>f.type==='complete')).toBe(false);
+});
 
 
 

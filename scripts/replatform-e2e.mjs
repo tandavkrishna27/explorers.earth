@@ -498,7 +498,7 @@ export function snapshotSource(root){
  git(['ls-files','--error-unmatch',musicDiagnostic]);
  // Exact tracked Guides graph derived from static and literal dynamic AST imports;
  // include the separately executed Windows Job script in the same source authority.
- const guidesSources=['guides-browser-fixture.ts','guides-browser-support.ts','guides-fixture-host.ts','guides-parent-supervision.ts','guides-launcher.ts','guides-provider-fixture.ts','guides-resource-worker.ts','guides-native-diagnostic.ts','music-local-state.ts','guides-windows-job.ps1'].map(name=>`tunes/scripts/${name}`);
+ const guidesSources=['guides-browser-fixture.ts','guides-browser-support.ts','guides-fixture-host.ts','guides-parent-supervision.ts','guides-launcher.ts','guides-provider-fixture.ts','guides-resource-worker.ts','guides-native-diagnostic.ts','music-local-state.ts','guides-windows-job.ps1'].map(name=>`tunes/scripts/${name}`).concat('explorers-earth/e2e/replatform/guides-page-diagnostic.ts');
  git(['ls-files','--error-unmatch',...guidesSources]);
  const frontendRoot=git(['ls-files','explorers-earth']).filter(path=>path.split('/').length===2);
  if(git(['ls-files','--others','--exclude-standard','explorers-earth']).some(path=>path.split('/').length===2))fail('Untracked frontend entry/configuration dependency');
@@ -638,6 +638,23 @@ export function retainGuidesNativeFailure(record,child,lane){
   const capsule=decodeGuidesNativeFailureLine(lines[index],lane);if(!capsule)return;Object.defineProperty(record,'guidesNativeFailure',{value:capsule,enumerable:true,configurable:false,writable:false});return 'Guides native case failed [guides-native-failure-v1:'+JSON.stringify(capsule)+']';
  }catch{return undefined;}
 }
+const guidesPageFamilies=Object.freeze(['auth-session','me','content-snapshot','content-validate','collections','recommendations','memberships','top-picks','guide-editable','guide-aggregate']);
+const guidesPageStatuses=Object.freeze([200,304,400,401,403,404,409,422,500,503,'other']);
+export function decodeGuidesPageFailureLine(line,lane){try{
+ if(typeof line!=='string'||Buffer.byteLength(line)>1024)return;const match=/^Guides page failed \[guides-page-failure-v1:(\{.*\})\]$/.exec(line);if(!match)return;const v=JSON.parse(match[1]),l=guidesNativeData(lane),identities=guidesNativeArray(l?.identities,16);
+ if(!l||l.name!=='guides'||!identities||identities.length!==16||!v||Object.keys(v).sort().join(',')!=='caseIndex,dom,epoch,families,overflow,pageErrors,project,repeat,stage,version'||v.version!==1||!Number.isSafeInteger(v.epoch)||v.epoch<1||v.epoch>16||v.caseIndex!==3||!['guides-desktop','guides-mobile'].includes(v.project)||v.repeat!==0||v.stage!=='initial-detail'||!Number.isSafeInteger(v.pageErrors)||v.pageErrors<0||v.pageErrors>64||typeof v.overflow!=='boolean')return;
+ const approved=identities.map(guidesNativeData);if(approved.some(i=>!i||!guidesNativeArray(i.titlePath,1)))return;const count=approved.filter(i=>i.file==='explorers-earth/e2e/replatform/guides.spec.ts'&&guidesNativeArray(i.titlePath,1)?.[0]===guidesTitles[3]&&i.project===v.project&&i.repeat===0);if(count.length!==1)return;
+ const families=guidesNativeData(v.families),dom=guidesNativeData(v.dom);if(!families||Object.keys(families).sort().join(',')!==[...guidesPageFamilies].sort().join(',')||!dom||Object.keys(dom).sort().join(',')!=='earthLoader,expectedHeading,loadFailure'||Object.values(dom).some(c=>![null,0,1,'many'].includes(c)))return;
+ for(const key of guidesPageFamilies){const f=guidesNativeData(families[key]);if(!f||Object.keys(f).sort().join(',')!=='lastStatus,seen'||!Number.isSafeInteger(f.seen)||f.seen<0||f.seen>64||(f.seen===0)!==(f.lastStatus===null)||f.lastStatus!==null&&!guidesPageStatuses.includes(f.lastStatus))return;Object.freeze(families[key]);}
+ if(line!=='Guides page failed [guides-page-failure-v1:'+JSON.stringify(v)+']')return;Object.freeze(v.families);Object.freeze(v.dom);return Object.freeze(v);
+ }catch{return undefined;}}
+export function retainGuidesPageFailure(record,child,lane){try{
+ const r=guidesNativeData(record),c=guidesNativeData(child),native=guidesNativeData(r?.guidesNativeFailure),fixture=guidesNativeData(r?.guidesFixtureFailure);
+ if(!r||!c||Object.keys(r).some(k=>!['lane','status','signal','error','guidesFixtureFailure','guidesNativeFailure'].includes(k))||Object.keys(c).some(k=>!['status','signal','error','stdout','stderr'].includes(k))||r.lane!=='guides'||r.status!==c.status||r.signal!==c.signal||!Number.isSafeInteger(c.status)||c.status<1||c.status>0xffffffff||!fixture||fixture.role!=='fixture'||fixture.epoch!==0||fixture.boundary!=='harness-command'||!native||native.caseIndex!==3||native.action!=='fail'||native.stage!=='initial-detail'||typeof c.stderr!=='string'||c.stderr.split('guides-page-failure-v1:').length!==2||c.stderr.split('guides-native-failure-v1:').length!==2||c.stderr.split('guides-failure-v1:').length!==2)return;
+ const lines=c.stderr.split(/\r?\n/),index=lines.findIndex(v=>v.startsWith('Guides page failed [guides-page-failure-v1:')),nativeIndex=lines.findIndex(v=>v.startsWith('Guides native case failed [guides-native-failure-v1:')),fixtureIndex=lines.findIndex(v=>v.startsWith('Guides owned fixture failed [guides-failure-v1:'));
+ if(index<0||index===lines.length-1||nativeIndex<0||fixtureIndex<0||!(fixtureIndex<nativeIndex&&nativeIndex<index)||JSON.stringify(decodeGuidesNativeFailureLine(lines[nativeIndex],lane))!==JSON.stringify(native)||JSON.stringify(decodeGuidesFixtureFailureLine(lines[fixtureIndex]))!==JSON.stringify(fixture))return;
+ const capsule=decodeGuidesPageFailureLine(lines[index],lane);if(!capsule||capsule.epoch!==native.epoch||capsule.project!==native.project)return;Object.defineProperty(record,'guidesPageFailure',{value:capsule,enumerable:true,configurable:false,writable:false});return 'Guides page failed [guides-page-failure-v1:'+JSON.stringify(capsule)+']';
+ }catch{return undefined;}}
 export async function main(args=process.argv.slice(2)){
  const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');assertEnvironment(process.env);const options=parseArguments(args);
  if(process.versions.node!=='24.21.0')fail('Protected qualification requires Node24.21.0');
@@ -663,6 +680,7 @@ export async function main(args=process.argv.slice(2)){
    const appsDiagnostic=lane.name==='apps'?retainAppsFixtureFailure(childRecord,child):undefined;if(appsDiagnostic)process.stderr.write(`${lane.name}: ${appsDiagnostic}\n`);
    const guidesDiagnostic=lane.name==='guides'?retainGuidesFixtureFailure(childRecord,child):undefined;if(guidesDiagnostic)process.stderr.write(`${lane.name}: ${guidesDiagnostic}\n`);
    const guidesNativeDiagnostic=lane.name==='guides'?retainGuidesNativeFailure(childRecord,child,lane):undefined;if(guidesNativeDiagnostic)process.stderr.write(`${lane.name}: ${guidesNativeDiagnostic}\n`);
+   const guidesPageDiagnostic=lane.name==='guides'?retainGuidesPageFailure(childRecord,child,lane):undefined;if(guidesPageDiagnostic)process.stderr.write(`${lane.name}: ${guidesPageDiagnostic}\n`);
    if(lane.name!=='music'&&lane.name!=='apps'&&lane.name!=='guides'&&child.status!==0){const diagnostics=child.stderr.split(/\r?\n/).filter(line=>Boolean(decodeAppsFixtureFailureLine(line))||/^(?:Error(?: \[[A-Z_]+\])?:|[^\n]*: ERROR:|(?:Profile|Books|Movies) E2E fixture failed:)/.test(line)).slice(0,3).map(line=>line.replaceAll(capability,'<owned-capability>').replace(/postgres(?:ql)?:\/\/\S+|(?:Bearer\s+)\S+|[A-Za-z0-9_-]{32,}/g,'<redacted>'));for(const line of diagnostics)process.stderr.write(`${lane.name}: ${line}\n`);}
    const receiptPath=join(directory,'receipt.json');if(existsSync(receiptPath))child.receipt=JSON.parse(readFileSync(receiptPath,'utf8'));
    const lifecycleFailurePath=join(directory,'lifecycle-failure.json');if(existsSync(lifecycleFailurePath)){if(child.status===0)fail('Lifecycle failure cannot qualify a successful child');childRecord.lifecycleFailure=validateLifecycleFailureRecord(lane,JSON.parse(readFileSync(lifecycleFailurePath,'utf8')),source.provenance);}

@@ -6,6 +6,7 @@ import {GUIDES_CASES,GUIDES_PROJECTS,guidesObservationRowSchemas,guidesProviderO
 import {guideAggregateDtoSchema,writeGuideDetailsSchema,type GuideAggregateDto} from '../../../tunes/shared/explorersGuideContract';
 import {ownerCollectionDtoSchema,ownerCollectionPageSchema,ownerSnapshotSchema,ownerMembershipPageSchema,ownerRecommendationPageSchema} from '../../../tunes/shared/explorersOwnerContentContract';
 import {createGuidesHarnessClient,validateGuidesEnvironment,guidesFixtureBytes} from './guides-harness-client';
+import {attachGuidesPageDiagnostic} from './guides-page-diagnostic';
 import {GUIDES_PROVIDER_PATHS,GUIDES_PROVIDER_QUERY,GUIDES_PROVIDER_ID,GUIDES_PROVIDER_DETAILS,GUIDES_PROVIDER_PRICE,GUIDES_PROVIDER_PHOTOS} from '../setup/guides-browser-provider';
 
 const {origin}=validateGuidesEnvironment(process.env),base='/api/explorers/v1';
@@ -57,6 +58,7 @@ test(GUIDES_CASES[3],async({browser},info)=>{
  const harness=createGuidesHarnessClient();expect(info.repeatEachIndex).toBe(0);expect(GUIDES_PROJECTS).toContain(info.project.name);
  const manifest=await harness.start({caseId:GUIDES_CASES[3],project:info.project.name as typeof GUIDES_PROJECTS[number],repeat: 0});
  let owner:BrowserContext|undefined,guest:BrowserContext|undefined,completed=false;
+ let pageDiagnostic:ReturnType<typeof attachGuidesPageDiagnostic>|undefined;
  try{
   owner=await harness.createContext(browser,'ownerA',info.project.name==='guides-mobile'?{viewport:{width:390,height:844},isMobile:true,hasTouch:true}:{viewport:{width:1365,height:900}});
   guest=await harness.createContext(browser,'ownerC');await harness.trackProducer(()=>guest!.clearCookies());
@@ -64,7 +66,9 @@ test(GUIDES_CASES[3],async({browser},info)=>{
   await harness.trackProducer(async()=>{
    const guide=manifest.guides.find(g=>g.key==='ownerA-guide-0')!;expect(guide).toBeDefined();expect(manifest.guides).toHaveLength(3);expect(manifest.sections.filter(s=>s.collectionId===guide.id)).toHaveLength(4);
    const baseline:Observation=await harness.observe();expect(await publicIds(guest!.request,manifest.personas.ownerA.handle)).toEqual([guide.id]);expect(await publicIds(guest!.request,manifest.personas.ownerB.handle)).toEqual(manifest.guides.filter(g=>g.accountId===manifest.personas.ownerB.accountId).map(g=>g.id));
+   pageDiagnostic=attachGuidesPageDiagnostic(page,{origin,guideIds:manifest.guides.filter(g=>g.accountId===manifest.personas.ownerA.accountId).map(g=>g.id),expectedTitle:guide.title,epoch:harness.snapshot().epoch,caseIndex:3,project:info.project.name,repeat:0,remainingMs:harness.remainingMs});
    await navigateGuides(page,`/recommendations/guides/${guide.id}`);const initial=await aggregate(owner!.request,guide.id);expect(initial.sections.map(s=>s.id)).toEqual(manifest.sections.filter(s=>s.collectionId===guide.id).map(s=>s.id));await sectionOrder(page,guide.title,initial.sections.map(s=>s.title));
+   pageDiagnostic.detach();
    // Explicit canonical API coverage: retained Guides has no section reorder UI.
    const ordered=[initial.sections[2],initial.sections[0],initial.sections[3],initial.sections[1]],ids=ordered.map(s=>s.id);const reordered=await reorderCanonical(owner!.request,guide.id,initial,ids);
    const afterReorder:Observation=await harness.observe();assertPersistedScope(baseline,afterReorder,guide.id,ids,false,reordered.revision);await reloadGuides(page);await sectionOrder(page,guide.title,ordered.map(s=>s.title));expect(await aggregate(owner!.request,guide.id)).toEqual(reordered);
@@ -77,7 +81,8 @@ test(GUIDES_CASES[3],async({browser},info)=>{
    await consume(await guest!.request.get(`${base}/public/profiles/${manifest.personas.ownerA.handle}/collections/guides/${guide.slug}/recommendations`),async r=>{expect(r.status()).toBe(404);expect((await r.json()).error.code).toBe('NOT_FOUND');});
   });
   await settleGuidesBootstrap(page);await harness.closeContext(owner);owner=undefined;await harness.closeContext(guest);guest=undefined;await harness.retire();completed=true;
- }catch(error){harness.captureFailure(error);throw error;}finally{
+ }catch(error){harness.captureFailure(error);if(harness.capturedFailure()?.stage==='initial-detail'){try{const capsule=await pageDiagnostic?.sealFailure();if(capsule)harness.capturePageFailure(capsule);}catch{/* Passive refusal preserves the original failure. */}}throw error;}finally{
+  pageDiagnostic?.detach();
   if(!completed){const closed=await Promise.allSettled([owner,guest].filter((c):c is BrowserContext=>!!c).map(c=>harness.closeContext(c)));await harness.fail();if(closed.some(r=>r.status==='rejected'))throw Error('Guides source case containment failed');}
  }
 });

@@ -61,6 +61,6 @@ assert.equal(deniedAttempts, 1); assert.equal(toolIpcDenied, 1); assert.equal(ap
 toolInitialization = false;
 const targetURL = pathToFileURL(path.join(root, 'tunes/scripts/guides-parent-supervision.ts')).href;
 const module = await tsImport(targetURL, { parentURL, tsconfig: false });
-assert.deepEqual(Object.keys(module), ['createGuidesParentSupervisor','extractGuidesSupervisorDiagnostic','extractGuidesSupervisorNativeFailure']); assert.equal(typeof module.createGuidesParentSupervisor, 'function'); assert.equal(typeof module.extractGuidesSupervisorDiagnostic,'function');
+assert.deepEqual(Object.keys(module), ['createGuidesParentSupervisor','extractGuidesSupervisorDiagnostic','extractGuidesSupervisorNativeFailure','extractGuidesSupervisorPageFailure']); assert.equal(typeof module.createGuidesParentSupervisor, 'function'); assert.equal(typeof module.extractGuidesSupervisorDiagnostic,'function');
 assert.equal(deniedAttempts, 1); assert.equal(toolIpcDenied, 1); assert.equal(applicationAttempts, 0); assert.ok(toolCalls <= 1);
 console.log(JSON.stringify({ ok: true, target: 'supervision', applicationResourceCalls: 0, toolIpcDenied: 1 }));

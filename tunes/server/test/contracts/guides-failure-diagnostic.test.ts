@@ -1,17 +1,23 @@
 import {it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
 import ts from 'typescript';
-import {validateGuidesNativeCapsule} from '../../../scripts/guides-native-diagnostic';
+import {validateGuidesPageCapsule,GUIDES_PAGE_FAMILIES} from '../../../../explorers-earth/e2e/replatform/guides-page-diagnostic';
+import {validateGuidesNativeCapsule,guidesNativeCallsites} from '../../../scripts/guides-native-diagnostic';
 
 // Execute the actual pure protocol classes with an in-memory authenticated peer.
 function protocol(){
  const source=readFileSync(new URL('../../../scripts/guides-parent-supervision.ts',import.meta.url),'utf8');
  const ast=ts.createSourceFile('parent.ts',source,ts.ScriptTarget.Latest,true);
- const names=new Set(['Failure','CleanEof','Channel','exact','integer','hex','parseJson','bounded','extractGuidesSupervisorDiagnostic','GUIDES_HOST_BOUNDARIES','guidesDiagnostics','guidesNativeDiagnostics','extractGuidesSupervisorNativeFailure']);
+ const names=new Set(['Failure','CleanEof','Channel','exact','integer','hex','parseJson','bounded','extractGuidesSupervisorDiagnostic','GUIDES_HOST_BOUNDARIES','guidesDiagnostics','guidesNativeDiagnostics','extractGuidesSupervisorNativeFailure','guidesPageDiagnostics','extractGuidesSupervisorPageFailure']);
  const selected=ast.statements.filter(node=>!ts.isImportDeclaration(node)&&((ts.isClassDeclaration(node)||ts.isFunctionDeclaration(node))&&node.name&&names.has(node.name.text)||ts.isVariableStatement(node)&&node.declarationList.declarations.some(d=>names.has(d.name.getText(ast)))));
  const body=selected.map(node=>ts.createPrinter().printNode(ts.EmitHint.Unspecified,node,ast)).join('\n').replaceAll('export ','');
- return new Function('Buffer','TextDecoder','validateGuidesNativeCapsule',ts.transpileModule(body+'\nreturn {Channel,extract:typeof extractGuidesSupervisorDiagnostic===\'function\'?extractGuidesSupervisorDiagnostic:()=>undefined,native:typeof extractGuidesSupervisorNativeFailure===\'function\'?extractGuidesSupervisorNativeFailure:()=>undefined};',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText)(Buffer,TextDecoder,validateGuidesNativeCapsule);
+ return new Function('Buffer','TextDecoder','validateGuidesNativeCapsule','validateGuidesPageCapsule',ts.transpileModule(body+'\nreturn {Channel,extract:typeof extractGuidesSupervisorDiagnostic===\'function\'?extractGuidesSupervisorDiagnostic:()=>undefined,native:typeof extractGuidesSupervisorNativeFailure===\'function\'?extractGuidesSupervisorNativeFailure:()=>undefined,page:extractGuidesSupervisorPageFailure};',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText)(Buffer,TextDecoder,validateGuidesNativeCapsule,validateGuidesPageCapsule);
 }
+it.each(['matching','worker','duplicate','wrong-native','unpaired'] as const)('authenticates separate page capsule %s before native fatal without replacing its fixture diagnostic',async mode=>{
+ const p=protocol(),point=guidesNativeCallsites()[0],page={version:1,epoch:1,caseIndex:3,project:'guides-desktop',repeat:0,stage:'initial-detail',pageErrors:1,overflow:false,families:Object.fromEntries(GUIDES_PAGE_FAMILIES.map(f=>[f,{seen:0,lastStatus:null}])),dom:{expectedHeading:0,loadFailure:1,earthLoader:0}},native={version:1,epoch:mode==='wrong-native'?2:1,caseIndex:3,project:'guides-desktop',repeat:0,action:'fail',kind:'assertion',matcher:'toBeVisible',...point,stage:'initial-detail'};
+ const wire=(seq:number,type:string,payload:unknown)=>{const body=Buffer.from(JSON.stringify({v:1,seq,id:'a'.repeat(32),type,payload})),head=Buffer.alloc(4);head.writeUInt32BE(body.length);return Buffer.concat([head,body]);},frames=[wire(1,'page-failure',page),...(mode==='duplicate'?[wire(2,'page-failure',page)]:mode==='unpaired'?[]:[wire(2,'native-failure',native)]),wire(3,'fatal',{phase:'execution',code:'unsettled',cleanup:null,boundary:'harness-command'})];
+ const stream={async read(){return frames.shift()??null;},async write(){},async close(){}},clock={now:()=>0,setTimeout:()=>0,clearTimeout(){}},peer=new p.Channel(stream,clock,()=> 'b'.repeat(32),9*1024*1024,mode==='worker'?'worker':'fixture',mode==='worker'?1:0),error=await new Promise(resolve=>peer.activate(1000,resolve));if(mode==='matching'){expect(p.page(error)).toEqual(page);expect(p.native(error)).toEqual(native);expect(p.extract(error)).toMatchObject({role:'fixture',epoch:0,boundary:'harness-command'});}else expect(p.page(error)).toBeUndefined();
+});
 async function fatal(role='fixture',epoch=0,payload:any={phase:'bootstrap',code:'failed',cleanup:null,boundary:'protected-context'}){
  const p=protocol(),body=Buffer.from(JSON.stringify({v:1,seq:1,id:'a'.repeat(32),type:'fatal',payload})),head=Buffer.alloc(4);head.writeUInt32BE(body.length);
  let sent=false;const stream={async read(){if(sent)return null;sent=true;return Buffer.concat([head,body]);},async write(){},async close(){}};

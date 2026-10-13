@@ -111,7 +111,7 @@ describe('Guides parent job contract', () => {
     }, 30000);
     it('imports the sole effect-free factory and refuses invalid root input without effects', async () => {
         const module = await import('../../../scripts/guides-parent-supervision');
-        expect(Object.keys(module).sort()).toEqual(['createGuidesParentSupervisor','extractGuidesSupervisorDiagnostic','extractGuidesSupervisorNativeFailure']);
+        expect(Object.keys(module).sort()).toEqual(['createGuidesParentSupervisor','extractGuidesSupervisorDiagnostic','extractGuidesSupervisorNativeFailure','extractGuidesSupervisorPageFailure']);
         expect(() => module.createGuidesParentSupervisor({} as never)).toThrow();
     });
     function rootInput(acquisition: any) {
