@@ -276,7 +276,8 @@ describe("Music E2E transactional state restore", () => {
     // the committed SQL: a CONSTRAINT TRIGGER is AFTER and carries no BEFORE bit.
     const appsSql = readFileSync(resolve("migrations/0055_explorers_app_enrichment.sql"), "utf8");
     const appsTriggers = [...appsSql.matchAll(/CREATE (?:CONSTRAINT )?TRIGGER ([a-z_]+) (AFTER|BEFORE) ([\s\S]*?) ON (?:public\.)?([a-z_]+)\s+([\s\S]*?)EXECUTE FUNCTION (?:public\.)?([a-z_]+)\(\);/g)].map(([,name,timing,events,table,body]) => ({ table, name, enabled: "O", type: (body.includes("FOR EACH ROW") ? 1 : 0) | (timing === "BEFORE" ? 2 : 0) | (/\bINSERT\b/.test(events) ? 4 : 0) | (/\bDELETE\b/.test(events) ? 8 : 0) | (/\bUPDATE\b/.test(events) ? 16 : 0) }));
-    expect(appsTriggers).toHaveLength(13);
+    expect(appsTriggers).toHaveLength(14);
+    expect(appsTriggers).toContainEqual({ table: "entities", name: "app_enrichment_entity_origin_guard", enabled: "O", type: 19 });
     expectedTriggers.push(...appsTriggers);
     expect(contract.MUSIC_FIXTURE_TRIGGER_FINGERPRINTS).toEqual(expectedTriggers.sort((a,b)=>a.table.localeCompare(b.table)||a.name.localeCompare(b.name)));
     expect(Object.isFrozen(contract.MUSIC_FIXTURE_TABLES)).toBe(true);

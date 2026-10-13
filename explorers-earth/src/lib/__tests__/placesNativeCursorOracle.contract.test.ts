@@ -72,7 +72,11 @@ describe('native Places opaque continuation oracle without resources',()=>{
  it('permits the same physical token and identical page observed twice',async()=>{expect(assertPublicPageShape(await detail(p=>p.emit(tokens[0],ids.slice(24,48),tokens[1])),shape)).toHaveLength(3);});
  it('derives the chain independently of physical observation order',async()=>{const p=page(),record=recordPublicPages(p,'/places/inert-list',true);p.emit(tokens[1],ids.slice(48),null);p.emit(tokens[0],ids.slice(24,48),tokens[1]);p.emit(null,ids.slice(0,24),tokens[0]);expect(assertPublicPageShape(await record(),shape).flatMap((r:any)=>r.ids)).toEqual(ids);});
  it('rejects conflicting duplicate IDs, limits and continuations',async()=>{
-  for(const emit of [(p:ReturnType<typeof page>)=>p.emit(tokens[0],['wrong',...ids.slice(25,48)],tokens[1]),(p:ReturnType<typeof page>)=>p.emit(tokens[0],ids.slice(24,48),tokens[0]),(p:ReturnType<typeof page>)=>p.emit(tokens[0],ids.slice(24,48),tokens[1],true,`limit=12&cursor=${tokens[0]}`)]){const conflict=await detail(emit);expect(()=>assertPublicPageShape(conflict,shape)).toThrow();}
+  for(const emit of [(p:ReturnType<typeof page>)=>p.emit(tokens[0],['wrong',...ids.slice(25,48)],tokens[1]),(p:ReturnType<typeof page>)=>p.emit(tokens[0],ids.slice(24,48),tokens[0]),(p:ReturnType<typeof page>)=>p.emit(tokens[0],ids.slice(24,48),tokens[1],true,`limit=24&limit=12&cursor=${tokens[0]}`)]){const conflict=await detail(emit);expect(()=>assertPublicPageShape(conflict,shape)).toThrow();}
+ });
+ it('keeps independent twelve-row previews out of the twenty-four-row detail census',async()=>{
+  const recording=await detail(p=>p.emit(tokens[0],ids.slice(24,36),tokens[1],true,`limit=12&cursor=${tokens[0]}`));
+  expect(assertPublicPageShape(recording,shape).flatMap((row:any)=>row.ids)).toEqual(ids);
  });
  it('rejects orphan requests, missing links, cycles, empty or malformed tokens and multiple terminals',async()=>{
   const variants=[{request:tokens[1],next:tokens[1]},{request:tokens[0],next:tokens[0]},{request:tokens[0],next:null},{request:tokens[0],next:''},{request:tokens[0],next:'o48'},{request:'',next:tokens[1]}];

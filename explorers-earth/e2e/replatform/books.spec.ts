@@ -213,14 +213,36 @@ test('anonymous later list, complete subject children, full eligible hero and mo
  await page.goto(`/${owner.handle}/books/seed-list-13`);await expect(page.getByText('ownerB seed book 13-0',{exact:true})).toBeVisible();expect(forbidden).toEqual([]);await page.screenshot({path:info.outputPath('public-books.png'),fullPage:true});
 });
 
-test('cover success, one-slot failure and both fallback remain distinct real API Add outcomes',async({page})=>{
+// A finite observation of this assertion's owner-read boundary, never page text or URLs.
+async function captureBooksCoverDiagnostic(page:Page,info:TestInfo,slot:'one'|'two'|'three',title:string,statuses:number[]){
+ const category=(status:number)=>status>=200&&status<300?'success':status>=400&&status<500?'client-error':status>=500&&status<600?'server-error':'other';
+ let observation:{ownerState:string;titleCount:string;titleVisible:string;sample:string}={ownerState:'unavailable',titleCount:'unavailable',titleVisible:'unavailable',sample:'unavailable'};
+ let timer:ReturnType<typeof setTimeout>|undefined;
+ try{
+  if(!page.isClosed()){
+   const captured=await Promise.race([page.evaluate(expected=>{
+    const roots=document.querySelectorAll('[data-books-owner-state]'),value=roots.length===1?roots[0].getAttribute('data-books-owner-state'):null;
+    const ownerState=roots.length===0?'absent':roots.length>1?'multiple':['loading','error','missing','ready-empty','ready-nonempty'].includes(value??'')?value!:'unavailable';
+    const matches=Array.from(document.querySelectorAll('p')).filter(node=>node.textContent===expected);
+    const visible=matches.some(node=>{const style=getComputedStyle(node),rect=node.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&style.visibility!=='collapse'&&rect.width>0&&rect.height>0;});
+    return {ownerState,titleCount:matches.length===0?'zero':matches.length===1?'one':'multiple',titleVisible:visible?'yes':'no',sample:'captured'};
+   },title),new Promise<undefined>(resolve=>{timer=setTimeout(()=>resolve(undefined),1000);})]);
+   if(captured)observation=captured;
+  }
+ }catch{}finally{if(timer!==undefined)clearTimeout(timer);}
+ try{info.errors.push({message:`[books-cover-diagnostic-v1:${slot}|${observation.ownerState}|${observation.titleCount}|${observation.titleVisible}|${statuses.map(category).join('|')}|223-115|${observation.sample}]`});}catch{}
+}
+
+test('cover success, one-slot failure and both fallback remain distinct real API Add outcomes',async({page},info)=>{
  await signIn(page,fixture.personas.ownerA);const candidates=await page.request.get(`${base}/catalog/books?query=fixture&limit=12`);expect(candidates.status()).toBe(200);
  for(const id of ['success','one-fallback','both-fallback']){
   const list=await createList(page.request,`Cover ${id}`);const resolved=await command(page.request,'post','/entities/resolve',{kind:'provider',category:'books',provider:'google_books',externalKind:'volume',externalId:id});expect(resolved.status()).toBe(200);
   const added=await command(page.request,'post','/recommendations',{category:'books',collectionId:list.id,expectedCollectionRevision:1,entityId:(await resolved.json()).entity.id,publicationState:'published'});expect(added.status()).toBe(201);const r=(await added.json()).recommendation;
   const imported=await command(page.request,'post',`/recommendations/${r.id}/book-covers`,{expectedRevision:1});expect(imported.status()).toBe(200);const slots=(await imported.json()).coverImport.slots;
   expect(slots.cover.status).toBe(id==='both-fallback'?'fallback':'copied');expect(slots.thumbnail.status).toBe(id==='success'?'copied':'fallback');
-  await page.goto(`/recommendations/books/${list.id}`);await expect(page.getByText(`Fixture ${id}`,{exact:true})).toBeVisible();
+  await page.goto(`/recommendations/books/${list.id}`);
+  try{await expect(page.getByText(`Fixture ${id}`,{exact:true})).toBeVisible();}
+  catch(originalError){await captureBooksCoverDiagnostic(page,info,id==='success'?'one':id==='one-fallback'?'two':'three',`Fixture ${id}`,[resolved.status(),added.status(),imported.status()]);throw originalError;}
  }
 });
 

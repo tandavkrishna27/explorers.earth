@@ -33,6 +33,9 @@ COPY tunes/shared/explorersBookCoverContract.ts /workspace/tunes/shared/explorer
 COPY tunes/shared/explorersMovieContract.ts /workspace/tunes/shared/explorersMovieContract.ts
 COPY tunes/shared/explorersMovieMediaContract.ts /workspace/tunes/shared/explorersMovieMediaContract.ts
 COPY tunes/shared/explorersAppContract.ts /workspace/tunes/shared/explorersAppContract.ts
+COPY tunes/shared/explorersAppEnrichmentContract.ts /workspace/tunes/shared/explorersAppEnrichmentContract.ts
+COPY tunes/shared/explorersPlacePinsContract.ts /workspace/tunes/shared/explorersPlacePinsContract.ts
+COPY tunes/shared/explorersPlacePinsFraming.ts /workspace/tunes/shared/explorersPlacePinsFraming.ts
 COPY tunes/shared/explorersProductContract.ts /workspace/tunes/shared/explorersProductContract.ts
 COPY tunes/shared/explorersPersonContract.ts /workspace/tunes/shared/explorersPersonContract.ts
 COPY tunes/shared/explorersPlaceContract.ts /workspace/tunes/shared/explorersPlaceContract.ts

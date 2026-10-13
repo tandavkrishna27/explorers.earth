@@ -9,6 +9,7 @@ import { useAppsCommands } from '../../api/query';
 import { invalidateApps, useAppsOwner } from '../../hooks/useAppsOwner';
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import TiptapEditor from '../../../Favorites/components/TiptapEditor';
+import AppEnrichmentPanel from './AppEnrichmentPanel';
 
 const PRICE_TIERS = ['Free', 'Freemium', 'Paid', 'Subscription'] as const;
 const ALL_PLATFORMS = ['iOS', 'iPadOS', 'macOS', 'Android', 'Windows', 'Web', 'Linux', 'Chrome Extension'];
@@ -53,6 +54,8 @@ export default function AddAppPage() {
  const [note, setNote] = useState(''), [rating, setRating] = useState<number | null>(null);
  const [screenshots, setScreenshots] = useState<{ id: string; url: string }[]>([]), [pending, setPending] = useState(0);
  const [saving, setSaving] = useState(false), [error, setError] = useState('');
+ const [enrichmentBusy, setEnrichmentBusy] = useState(false);
+ useEffect(() => { setEnrichmentBusy(false); }, [scope]);
  const initialized = useRef(''), draftObservation = useRef<RecommendationObservation>();
  const intent = useRef<{ scope: string; signature: string; value: ManualAppIntent }>();
  const updateKey = useRef<{ signature: string; key: string }>();
@@ -101,7 +104,7 @@ export default function AddAppPage() {
  };
 
  const save = async () => {
-  if (!listId || pending || saving || !title.trim() || !appUrl.trim() || (appId && initialized.current !== scope)) return;
+  if (!listId || pending || saving || enrichmentBusy || !title.trim() || !appUrl.trim() || (appId && initialized.current !== scope)) return;
   const captured = scope, operation = ++active.current; controller.current?.abort(); controller.current = new AbortController(); const signal = controller.current.signal;
   setSaving(true); setError('');
   try {
@@ -156,6 +159,7 @@ export default function AddAppPage() {
     <button disabled={!existingId || commands.loading} onClick={attachExisting}>Add existing app to this list</button>
    </section>}
 
+   {appId && initialized.current === scope && draftObservation.current && <AppEnrichmentPanel key={scope} observed={draftObservation.current} disabled={saving || pending > 0} onBusyChange={setEnrichmentBusy} onReload={() => window.location.reload()} onAccepted={() => { invalidateApps(); toast.success('Selected app details accepted'); navigate(`/recommendations/apps/${listId}`); }} />}
    <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-5">
     <h2 className="font-semibold flex gap-2"><Smartphone size={18} />{appId ? 'My App' : 'Add manually'}</h2>
     {appId && owner.loading && <p role="status">Loading app…</p>}
@@ -204,7 +208,7 @@ export default function AddAppPage() {
     </div>)}</div>
 
     {error && <p role="alert">{error}</p>}
-    <button onClick={save} disabled={saving || pending > 0 || !title.trim() || !appUrl.trim() || Boolean(appId && initialized.current !== scope)} className="bg-dashboard-accent text-white rounded-xl px-5 py-3">
+    <button onClick={save} disabled={saving || enrichmentBusy || pending > 0 || !title.trim() || !appUrl.trim() || Boolean(appId && initialized.current !== scope)} className="bg-dashboard-accent text-white rounded-xl px-5 py-3">
      {saving && <Loader2 className="inline animate-spin mr-2" size={16} />}Save app
     </button>
    </section>

@@ -3,6 +3,53 @@
 Branch: `codex/unified-replatform`. This record distinguishes implemented source,
 focused local evidence and remaining acceptance. Wave 2 is **open**.
 
+## Current reconciliation — 2026-10-13
+
+This section supersedes the historical current-state descriptions below. The new source
+package is an overlay on `8df74c5990d307d8cbe09bd96c16f5fc0ba2c093` until committed and
+qualified; it is not a Wave 2 completion receipt.
+
+- The older hosted PR119 source remains `622f6893`. Its direct failure is the local
+  fixture ingress graph: `/health/live` reaches the SPA instead of canonical JSON, while
+  Compose still starts legacy Music. `music-required` fails solely through that fixture
+  job. Coordinated canonical/Music ingress cutover remains Wave 3; no probe or required
+  aggregate is waived.
+- Current-head full native receipts at `replatform-e2e-8df74c59-full` and
+  `replatform-e2e-8df74c59-run2` are failed: respectively Places complete70 session
+  replacement and Books mobile cover visibility. Fixed finite phase diagnostics now
+  preserve the next failure boundary without changing actions, assertions or budgets.
+  Those source changes do not qualify the failed runs. Guides was not reached.
+- Apps A1 now has mounted owner binding/suggestion/acceptance endpoints and owner UI for
+  explicit selected-field acceptance, disabling existing enrichment, and exact uncertain
+  replay. Independent review found and closed observation-refresh replay loss and
+  expired-session handling. Configuration remains unavailable with the empty approved
+  registry; no real source or provider permission is invented. Five owner methods and
+  three closed method guards are explicitly inventoried.
+- The new Apps A2 HTTPS transport is independently reviewed generic source only:
+  explicit configuration, validated/pinned public DNS, redirect/TLS checks and finite
+  cancellation/time/byte/request bounds. Durable jobs/leases/recovery, worker privilege
+  composition and actual approved provider/host/schedule acceptance remain outstanding.
+- The origin guard is now included in the exact restore trigger fingerprint. The
+  Windows contract selector identifies the real test step rather than the Guides
+  preflight. The four previously excluded Windows contracts are added to the Windows
+  job; actual local execution of those plus the mandatory Guides bootstrap gate passed
+  101 tests. Hosted behavior remains unqualified.
+- Docker fixture manifests/COPY closure include Apps enrichment and Places pin transport
+  contracts. The Places oracle distinguishes independent twelve-row previews from the
+  audited twenty-four-row continuation census while retaining malformed-query negatives.
+- Earlier protected Places PostgreSQL receipt `places-p1-pg-b3c70d257307` binds
+  `b82d42b5`: 128/128, complete finite report, source intact and all cleanup passed.
+  This is historical source-bound acceptance, not qualification of this new overlay.
+
+Portable overlay evidence: full frontend 370 files/5161 tests and strict frontend types
+passed; backend scoped types passed; targeted API/custody/admission 185 tests and strict
+diagnostic serialization 14 tests passed. The controlled broad backend contract run
+passed 3469 with three generated inventory failures, subsequently repaired and checked
+in the focused gates. Exact committed-source broad and protected qualification still
+follow. Real Apps source/field permissions and trusted host/schedule inputs remain
+required; taxonomy/sector actual application and full retained category evidence must
+also be reconciled before closing Wave 2. No main merge or deployment occurred.
+
 ## Evidence retained
 
 | Area | Exact evidence | Limit |

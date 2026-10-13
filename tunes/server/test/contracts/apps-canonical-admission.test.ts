@@ -16,6 +16,15 @@ function response(){return {code:0,status(n:number){this.code=n;return this;},js
 async function dispatch(s:ReturnType<typeof setup>,req:any){const res=response(),next=vi.fn();await s.gate.beforeDispatch(req,res,next);return {res,next};}
 const p='/api/explorers/v1';
 describe('fixed Apps canonical admission',()=>{
+ it('admits only owned enrichment GETs as tracked read-only recommendation transports',async()=>{
+  for(const endpoint of ['binding','suggestions']){
+   const s=setup(),req=request('GET',`${p}/recommendations/${r}/app-enrichment/${endpoint}`),result=await dispatch(s,req);
+   expect(result.next).toHaveBeenCalledOnce();expect(isAppsCanonicalReadTransport(s.gate,req)).toBe(true);
+   for(const method of ['POST','PUT','DELETE'])expect((await dispatch(setup(),request(method,req.originalUrl))).next).not.toHaveBeenCalled();
+   expect((await dispatch(setup(),request('GET',req.originalUrl+'?accountId='+b))).next).not.toHaveBeenCalled();
+   const foreign=setup();foreign.state.exists=false;expect((await dispatch(foreign,request('GET',req.originalUrl))).next).not.toHaveBeenCalled();
+  }
+ });
  it('accepts the local Desktop Linux engine authority admitted by owned database acquisition',()=>{const s=setup('npipe:////./pipe/dockerDesktopLinuxEngine');expect(s.query).not.toHaveBeenCalled();});
  it.each(['tcp://127.0.0.1:2375','tcp://remote.example:2376','npipe:////./pipe/unreviewed-engine'])('refuses unreviewed Docker authority %s',host=>{expect(()=>setup(host)).toThrow('Apps admission configuration denied');});
  it.each(['/api/auth/sign-in/social',`${p}/entities/provider-resolve`,`${p}/recommendations/${r}/book-covers`,`${p}/collections?category=books`,`${p}/collections?category=apps&category=apps`,`${p}//collections?category=apps`,`${p}/collections/?category=apps`,`${p}/collections%2f${c}`,`${p}/categories/apps/top-picks/order`,`${p}/public/profiles/native-owner-a/collections/apps`])('denies %s before queries/downstream',async path=>{const s=setup(),v=await dispatch(s,request('GET',path));expect(v.res.code).toBe(503);expect(v.next).not.toHaveBeenCalled();expect(s.query).not.toHaveBeenCalled();});

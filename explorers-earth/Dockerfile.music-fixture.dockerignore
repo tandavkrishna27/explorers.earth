@@ -533,12 +533,14 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Analytics/utils/countryMapping.ts
 !explorers-earth/src/features/Analytics/utils/geolocationService.ts
 !explorers-earth/src/features/Analytics/utils/trafficSource.ts
+!explorers-earth/src/features/AppsAndTools/api/appEnrichmentClient.ts
 !explorers-earth/src/features/AppsAndTools/api/appsClient.ts
 !explorers-earth/src/features/AppsAndTools/api/appsViewModel.ts
 !explorers-earth/src/features/AppsAndTools/api/explorersAdapter.ts
 !explorers-earth/src/features/AppsAndTools/api/mutation.ts
 !explorers-earth/src/features/AppsAndTools/api/query.ts
 !explorers-earth/src/features/AppsAndTools/components/dashboard/AddAppPage.tsx
+!explorers-earth/src/features/AppsAndTools/components/dashboard/AppEnrichmentPanel.tsx
 !explorers-earth/src/features/AppsAndTools/components/dashboard/AppListView.tsx
 !explorers-earth/src/features/AppsAndTools/components/dashboard/AppTopPicksManager.tsx
 !explorers-earth/src/features/AppsAndTools/components/dashboard/AppsHome.tsx
@@ -548,6 +550,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/AppsAndTools/components/public/AppTopPicksMobileHero.tsx
 !explorers-earth/src/features/AppsAndTools/components/public/PublicAppList.tsx
 !explorers-earth/src/features/AppsAndTools/components/public/PublicApps.tsx
+!explorers-earth/src/features/AppsAndTools/hooks/useAppEnrichment.ts
 !explorers-earth/src/features/AppsAndTools/hooks/useAppsOwner.ts
 !explorers-earth/src/features/AppsAndTools/index.ts
 !explorers-earth/src/features/AppsAndTools/types/index.ts
@@ -592,6 +595,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Favorites/components/LinksAndQR.tsx
 !explorers-earth/src/features/Favorites/components/ListForm.tsx
 !explorers-earth/src/features/Favorites/components/MediaItem.tsx
+!explorers-earth/src/features/Favorites/components/PlacePinsEditor.tsx
 !explorers-earth/src/features/Favorites/components/QRSticker.tsx
 !explorers-earth/src/features/Favorites/components/RecommendForm.tsx
 !explorers-earth/src/features/Favorites/components/Recommendations.tsx
@@ -1130,6 +1134,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/tsconfig.node.json
 !explorers-earth/vite.config.ts
 !tunes/shared/explorersAppContract.ts
+!tunes/shared/explorersAppEnrichmentContract.ts
 !tunes/shared/explorersBookContract.ts
 !tunes/shared/explorersBookCoverContract.ts
 !tunes/shared/explorersContract.ts
@@ -1143,6 +1148,8 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !tunes/shared/explorersPersonContract.ts
 !tunes/shared/explorersPlaceContract.ts
 !tunes/shared/explorersPlaceLinkContract.ts
+!tunes/shared/explorersPlacePinsContract.ts
+!tunes/shared/explorersPlacePinsFraming.ts
 !tunes/shared/explorersProductContract.ts
 !tunes/shared/explorersPublicContentContract.ts
 !tunes/shared/explorersRichNoteContract.ts

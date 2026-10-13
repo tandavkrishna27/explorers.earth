@@ -473,6 +473,158 @@
       }
     },
     {
+      "method": "PUT",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/acceptances",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/suggestions",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/acceptances",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/suggestions",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
       "method": "GET",
       "path": "/api/explorers/analytics/summary",
       "source": "tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts",
@@ -4029,6 +4181,17 @@
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/routes/index.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/appEnrichmentFetch.ts",
       "decision": "internal-service",
       "allowed": {
         "internalService": true,

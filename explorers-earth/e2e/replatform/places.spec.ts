@@ -776,7 +776,39 @@ test('Places: additive complete70 staged pin order commits in advertised chunks 
   expect(settled.metadata.collectionRevision).toBe(after.metadata.collectionRevision); // replay, not a second commit
 });
 
-test('Places: additive complete70 resource refusal and session replacement keep the returned fence authoritative',async ({page})=>{
+type PlacesPinDiagnosticPhase='initial-load'|'pin70-save'|'server-refusal'|'disable-check'|'sessionB'|'returnA'|'reopen';
+// Only fixed classifications reach the retained reporter; never DOM text, identities or credentials.
+async function capturePlacesPinDiagnostic(page:Page,info:TestInfo,phase:PlacesPinDiagnosticPhase,started:number,owner:'unavailable'|'ownerA'|'ownerB'|'other') {
+  const elapsed=Date.now()-started,budget=info.timeout;
+  const elapsedBucket=elapsed>=budget?'expired':elapsed>=budget*0.75?'last-quarter':elapsed>=budget*0.5?'half-to-three-quarters':elapsed>=budget*0.25?'quarter-to-half':'under-quarter';
+  let observation={ownerState:'unavailable',action:'unavailable',cardCount:'unavailable',sample:'unavailable'};
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  try {
+    if(!page.isClosed()) {
+      const captured=await Promise.race([page.evaluate(()=>{
+        const actions=Array.from(document.querySelectorAll('button')).filter(node=>node.textContent?.trim()==='Edit pinned places');
+        const action=actions.length===0?'absent':actions.length!==1?'unavailable':actions[0].disabled?'disabled':'enabled';
+        // Recommendations does not expose owner.error. The editor disabled prop is exactly
+        // owner.loading; an absent editor therefore leaves owner state unobservable.
+        const ownerState=action==='disabled'?'loading':action==='enabled'?'ready':'unavailable';
+        const count=document.querySelectorAll('.places-grid-card').length;
+        return {ownerState,action,cardCount:count===0?'zero':count<=10?'one-to-ten':count<=24?'eleven-to-twenty-four':'more-than-twenty-four',sample:'captured'};
+      }),new Promise<undefined>(resolve=>{timer=setTimeout(()=>resolve(undefined),1000);})]);
+      if(captured)observation=captured;
+    }
+  } catch {} finally {if(timer!==undefined)clearTimeout(timer);}
+  try {info.errors.push({message:`[places-pin-diagnostic-v1:${phase}|${elapsedBucket}|${observation.ownerState}|${observation.action}|${observation.cardCount}|${owner}|${observation.sample}]`});} catch {}
+}
+
+test('Places: additive complete70 resource refusal and session replacement keep the returned fence authoritative',async ({page},info)=>{
+  const started=Date.now();let phase:PlacesPinDiagnosticPhase='initial-load';
+  let owner:'unavailable'|'ownerA'|'ownerB'|'other'='unavailable';
+  const classifyOwner=async(response:BrowserResponse)=>{
+    if(new URL(response.url()).pathname!==`${base}/me` || response.request().method()!=='GET')return;
+    try {const body=await response.json();owner=body?.account?.id===manifest.personas.ownerA.accountId?'ownerA':body?.account?.id===manifest.personas.ownerB.accountId?'ownerB':'other';} catch {owner='unavailable';}
+  };
+  page.on('response',classifyOwner);
+  try {
   const list=aLists()[0];
   await appPage(page,manifest.personas.ownerA);
   const transport=await advertisedPinsTransport(list.id);
@@ -786,6 +818,7 @@ test('Places: additive complete70 resource refusal and session replacement keep 
   const titleOf=new Map(manifest.recommendations.map(row=>[row.id,row.title]));
   const sequence=[...before.ids];
   const dialog=await openPinsEditor(page,list);
+  phase='pin70-save';
   await stagePins(dialog,sequence.map(id=>titleOf.get(id)!));
   await dialog.getByRole('button',{name:'Save pins',exact:true}).click();
   await expect(page.getByRole('dialog',{name:'Pinned places in this list',exact:true})).toHaveCount(0);
@@ -793,6 +826,7 @@ test('Places: additive complete70 resource refusal and session replacement keep 
   const committed=await ownerListMembers(list.id);
   // Server resource refusal is authoritative and leaves the committed pins untouched.
   // The refused size is derived from the advertised bound, never from a chosen number.
+  phase='server-refusal';
   const oversized=Array.from({length:transport.replacementIds+1},(_,index)=>sequence[index%total]);
   const refusedDuplicates=await api(`/collections/${list.id}/place-pins`,manifest.personas.ownerA,'PUT',
     {expectedCollectionRevision:committed.metadata.collectionRevision,
@@ -809,9 +843,11 @@ test('Places: additive complete70 resource refusal and session replacement keep 
   same((await ownerListMembers(list.id)).pinnedIds,sequence);
   // Session replacement in the same tab: the replaced owner must see no stale pin state,
   // and the original owner's returned fence stays authoritative on reload.
+  phase='disable-check';
   const open=await openPinsEditor(page,list);
   expect(JSON.stringify(await pinnedNames(open))
     ===JSON.stringify(sequence.map(id=>titleOf.get(id)!))).toBe(true);
+  phase='sessionB';owner='unavailable';
   const b=manifest.personas.ownerB,split=b.cookie.indexOf('=');
   await page.context().clearCookies();
   await page.context().addCookies([{name:b.cookie.slice(0,split),value:b.cookie.slice(split+1),
@@ -827,6 +863,7 @@ test('Places: additive complete70 resource refusal and session replacement keep 
   same((await ownerListMembers(list.id)).pinnedIds,sequence);
   // Back to the original owner: the committed fence, not the replaced session, decides.
   await page.context().clearCookies();
+  phase='returnA';owner='unavailable';
   const a=manifest.personas.ownerA,aSplit=a.cookie.indexOf('=');
   await page.context().addCookies([{name:a.cookie.slice(0,aSplit),value:a.cookie.slice(aSplit+1),
     url:fixture.origin,sameSite:'Lax',httpOnly:true}]);
@@ -834,10 +871,13 @@ test('Places: additive complete70 resource refusal and session replacement keep 
     isAuthenticated:true,token:'places-fixture-placeholder',user:{id:userId,documentId:userId,username:handle,
       email:`${userId}@example.invalid`,blocked:false}},version:0})),{userId:a.userId,handle:a.handle});
   await page.reload();
+  phase='reopen';
   const restored=await openPinsEditor(page,list);
   expect(JSON.stringify(await pinnedNames(restored))
     ===JSON.stringify(sequence.map(id=>titleOf.get(id)!))).toBe(true);
   const settled=await ownerListMembers(list.id);
   same(settled.pinnedIds,sequence);
   expect(settled.metadata.collectionRevision).toBe(committed.metadata.collectionRevision);
+  } catch(originalError) {await capturePlacesPinDiagnostic(page,info,phase,started,owner);throw originalError;}
+  finally {page.off('response',classifyOwner);}
 });

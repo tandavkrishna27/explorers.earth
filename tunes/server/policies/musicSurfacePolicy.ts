@@ -175,6 +175,14 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/movies')return 'explorers-owner';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/games')return 'explorers-owner';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/taxonomy')return 'explorers-owner';
+  if (route.source === 'tunes/server/routes/explorersAppEnrichmentRoutes.ts'
+      && [
+        ['PUT', '/api/explorers/v1/recommendations/:id/app-enrichment/binding'],
+        ['DELETE', '/api/explorers/v1/recommendations/:id/app-enrichment/binding'],
+        ['GET', '/api/explorers/v1/recommendations/:id/app-enrichment/binding'],
+        ['POST', '/api/explorers/v1/recommendations/:id/app-enrichment/acceptances'],
+        ['GET', '/api/explorers/v1/recommendations/:id/app-enrichment/suggestions'],
+      ].some(([method, path]) => route.method === method && route.path === path)) return 'explorers-owner';
   if (route.source === "tunes/server/routes/explorersRecommendationRoutes.ts"
       && [
         ["POST", "/api/explorers/v1/entities/resolve"],

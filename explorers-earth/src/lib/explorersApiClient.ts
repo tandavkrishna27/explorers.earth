@@ -312,7 +312,7 @@ async function completeCategory(input:Pick<OwnerCollectionsRequest,'category'|'s
   } finally {unsubscribe();signal?.removeEventListener('abort',stop);}
 }
 
-function handleExpiredSession(response: Response, generation: number) {
+export function handleExpiredSession(response: Response, generation: number) {
   if (response.status !== 401) return;
   const current = useAuthStore.getState();
   if (current.generation === generation && current.isAuthenticated) current.logout();

@@ -175,10 +175,13 @@ describe("Music reconciliation automation contract", () => {
       .toBe("node node_modules/tsx/dist/cli.mjs tunes/scripts/music-cli.ts fixtures:capture --format json");
     expect(c0.jobs.contracts.steps.find((step: any) => step.run?.includes("docker compose")).run)
       .toContain("--env-file .env.music.test.example");
-    const windowsContracts = c0.jobs.contracts.steps.find((step: any) => step.if === "runner.os == 'Windows'");
+    const windowsContracts = c0.jobs.contracts.steps.find((step: any) => step.if === "runner.os == 'Windows'" && step.run?.includes("npm test --prefix tunes"));
     expect(windowsContracts.run).toContain("music-reconciliation-workflow.test.ts");
     expect(windowsContracts.run).toContain("music-documentation-contract.test.ts");
     expect(windowsContracts.run).toContain("music-openapi-contract.test.ts");
+    for (const contract of ['music-local-state.test.ts', 'music-cli-contract-authority.test.ts', 'music-owned-browser-profile.test.ts', 'music-fixture-services.test.ts']) {
+      expect(windowsContracts.run).toContain(contract);
+    }
     expect(tunes.on.pull_request.paths).toEqual(expect.arrayContaining([".env.music.example", ".env.music.test.example"]));
     expect(tunes.on.push.paths).toEqual(expect.arrayContaining([".env.music.example", ".env.music.test.example"]));
   });

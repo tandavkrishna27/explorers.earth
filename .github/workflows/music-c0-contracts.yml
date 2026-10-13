@@ -90,7 +90,16 @@ jobs:
           # Belt and braces: the test refuses to skip when this is set, so the lane cannot go green
           # unless the Guides bootstrap gate actually executed.
           GUIDES_BOOTSTRAP_GATE_REQUIRED: "1"
-        run: npm test --prefix tunes -- --run server/test/contracts/music-reconciliation-workflow.test.ts server/test/contracts/music-documentation-contract.test.ts server/test/contracts/music-openapi-contract.test.ts server/test/contracts/guides-bootstrap-contract.test.ts
+        run: >-
+          npm test --prefix tunes -- --run
+          server/test/contracts/music-reconciliation-workflow.test.ts
+          server/test/contracts/music-documentation-contract.test.ts
+          server/test/contracts/music-openapi-contract.test.ts
+          server/test/contracts/guides-bootstrap-contract.test.ts
+          server/test/contracts/music-local-state.test.ts
+          server/test/contracts/music-cli-contract-authority.test.ts
+          server/test/contracts/music-owned-browser-profile.test.ts
+          server/test/contracts/music-fixture-services.test.ts
       - run: npm run music:types:scoped
       - run: npm run music:types:baseline
       - if: runner.os == 'Linux'

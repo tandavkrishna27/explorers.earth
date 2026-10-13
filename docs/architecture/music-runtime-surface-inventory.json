@@ -394,7 +394,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 66
+      "line": 67
     },
     {
       "method": "USE",
@@ -404,7 +404,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 67
+      "line": 68
     },
     {
       "method": "ALL",
@@ -414,7 +414,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 74
+      "line": 75
     },
     {
       "method": "ALL",
@@ -424,7 +424,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 75
+      "line": 76
     },
     {
       "method": "GET",
@@ -434,7 +434,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 79
+      "line": 80
     },
     {
       "method": "POST",
@@ -444,7 +444,7 @@
       "policy": "trusted-origin+signed-short-lived-recovery-intent",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 114
+      "line": 116
     },
     {
       "method": "GET",
@@ -454,7 +454,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 132
+      "line": 134
     },
     {
       "method": "GET",
@@ -575,6 +575,86 @@
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
       "line": 328
+    },
+    {
+      "method": "PUT",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 26
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 27
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/acceptances",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 28
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 29
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/suggestions",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 30
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 32
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/acceptances",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 33
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/suggestions",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 34
     },
     {
       "method": "GET",
@@ -2451,6 +2531,12 @@
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/routes/index.ts",
       "line": 279
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/appEnrichmentFetch.ts",
+      "line": 35
     },
     {
       "kind": "setTimeout",
