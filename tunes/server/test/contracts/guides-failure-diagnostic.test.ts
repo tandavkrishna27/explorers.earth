@@ -2,7 +2,7 @@ import {it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
 import ts from 'typescript';
 import {validateGuidesPageCapsule,validateGuidesPageSeal,GUIDES_PAGE_FAMILIES} from '../../../../explorers-earth/e2e/replatform/guides-page-diagnostic';
-import {validateGuidesNativeCapsule,guidesNativeCallsites} from '../../../scripts/guides-native-diagnostic';
+import {guidesPageNativeScope,validateGuidesNativeCapsule,guidesNativeCallsites} from '../../../scripts/guides-native-diagnostic';
 
 // Execute the actual pure protocol classes with an in-memory authenticated peer.
 function protocol(){
@@ -11,7 +11,7 @@ function protocol(){
  const names=new Set(['Failure','CleanEof','Channel','exact','integer','hex','parseJson','bounded','extractGuidesSupervisorDiagnostic','GUIDES_HOST_BOUNDARIES','guidesDiagnostics','guidesNativeDiagnostics','extractGuidesSupervisorNativeFailure','guidesPageDiagnostics','extractGuidesSupervisorPageFailure','guidesPageSealDiagnostics','extractGuidesSupervisorPageSeal']);
  const selected=ast.statements.filter(node=>!ts.isImportDeclaration(node)&&((ts.isClassDeclaration(node)||ts.isFunctionDeclaration(node))&&node.name&&names.has(node.name.text)||ts.isVariableStatement(node)&&node.declarationList.declarations.some(d=>names.has(d.name.getText(ast)))));
  const body=selected.map(node=>ts.createPrinter().printNode(ts.EmitHint.Unspecified,node,ast)).join('\n').replaceAll('export ','');
- return new Function('Buffer','TextDecoder','validateGuidesNativeCapsule','validateGuidesPageCapsule','validateGuidesPageSeal',ts.transpileModule(body+'\nreturn {Channel,extract:typeof extractGuidesSupervisorDiagnostic===\'function\'?extractGuidesSupervisorDiagnostic:()=>undefined,native:typeof extractGuidesSupervisorNativeFailure===\'function\'?extractGuidesSupervisorNativeFailure:()=>undefined,page:extractGuidesSupervisorPageFailure,seal:extractGuidesSupervisorPageSeal};',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText)(Buffer,TextDecoder,validateGuidesNativeCapsule,validateGuidesPageCapsule,validateGuidesPageSeal);
+ return new Function('guidesPageNativeScope','Buffer','TextDecoder','validateGuidesNativeCapsule','validateGuidesPageCapsule','validateGuidesPageSeal',ts.transpileModule(body+'\nreturn {Channel,extract:typeof extractGuidesSupervisorDiagnostic===\'function\'?extractGuidesSupervisorDiagnostic:()=>undefined,native:typeof extractGuidesSupervisorNativeFailure===\'function\'?extractGuidesSupervisorNativeFailure:()=>undefined,page:extractGuidesSupervisorPageFailure,seal:extractGuidesSupervisorPageSeal};',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText)(guidesPageNativeScope,Buffer,TextDecoder,validateGuidesNativeCapsule,validateGuidesPageCapsule,validateGuidesPageSeal);
 }
 it.each(['matching','worker','duplicate','wrong-native','unpaired'] as const)('authenticates separate page capsule %s before native fatal without replacing its fixture diagnostic',async mode=>{
  const p=protocol(),point=guidesNativeCallsites()[0],page={version:1,epoch:1,caseIndex:3,project:'guides-desktop',repeat:0,stage:'initial-detail',pageErrors:1,overflow:false,families:Object.fromEntries(GUIDES_PAGE_FAMILIES.map(f=>[f,{seen:0,lastStatus:null}])),dom:{expectedHeading:0,loadFailure:1,earthLoader:0}},native={version:1,epoch:mode==='wrong-native'?2:1,caseIndex:3,project:'guides-desktop',repeat:0,action:'fail',kind:'assertion',matcher:'toBeVisible',...point,stage:'initial-detail'};

@@ -7,7 +7,7 @@ import type {createGuidesParentSupervisor} from './guides-parent-supervision';
 import {extractGuidesSupervisorDiagnostic,extractGuidesSupervisorNativeFailure,extractGuidesSupervisorPageFailure,extractGuidesSupervisorPageSeal,extractGuidesSupervisorBrowserReportFailure,type GuidesFailureDiagnostic} from './guides-parent-supervision';
 import type {GuidesBrowserReportCapsule} from './guides-browser-report-diagnostic.mjs';
 import type {GuidesPageSeal,GuidesPageCapsule} from '../../explorers-earth/e2e/replatform/guides-page-diagnostic';
-import type {GuidesNativeCapsule} from './guides-native-diagnostic';
+import {guidesPageNativeScope,type GuidesNativeCapsule} from './guides-native-diagnostic';
 type Input=Parameters<typeof createGuidesParentSupervisor>[0];
 type Supervisor=ReturnType<typeof createGuidesParentSupervisor>;
 type Authority=Awaited<ReturnType<Input['acquisition']['create']>>;
@@ -25,7 +25,7 @@ export function formatGuidesFixtureFailure(error:unknown):string{
  const page=typeof error==='object'&&error!==null?pageDiagnostics.get(error):undefined,pageMarker=page?'[guides-page-failure-v1:'+JSON.stringify(page)+']':undefined;
  const seal=typeof error==='object'&&error!==null?pageSealDiagnostics.get(error):undefined,sealMarker=seal?'[guides-page-seal-v1:'+JSON.stringify(seal)+']':undefined;
  const report=typeof error==='object'&&error!==null?browserReportDiagnostics.get(error):undefined,reportMarker=report?'[guides-browser-report-failure-v1:'+JSON.stringify(report)+']':undefined;
- return `Guides owned fixture failed ${marker}\n`+(reportMarker&&diagnostic.boundary==='browser-exit'&&Buffer.byteLength(reportMarker)<=4096?`Guides browser report failed ${reportMarker}\n`:'')+(nativeMarker&&Buffer.byteLength(nativeMarker)<=1024?`Guides native case failed ${nativeMarker}\n`:'')+(sealMarker&&native?.stage==='initial-detail'&&Buffer.byteLength(sealMarker)<=1024?`Guides page seal ${sealMarker}\n`:'')+(pageMarker&&native?.stage==='initial-detail'&&Buffer.byteLength(pageMarker)<=1024?`Guides page failed ${pageMarker}\n`:'');
+ return `Guides owned fixture failed ${marker}\n`+(reportMarker&&diagnostic.boundary==='browser-exit'&&Buffer.byteLength(reportMarker)<=4096?`Guides browser report failed ${reportMarker}\n`:'')+(nativeMarker&&Buffer.byteLength(nativeMarker)<=1024?`Guides native case failed ${nativeMarker}\n`:'')+(sealMarker&&native&&seal&&guidesPageNativeScope(native,native.caseIndex,seal.stage)&&Buffer.byteLength(sealMarker)<=1024?`Guides page seal ${sealMarker}\n`:'')+(pageMarker&&native&&page&&guidesPageNativeScope(native,native.caseIndex,page.stage)&&Buffer.byteLength(pageMarker)<=1024?`Guides page failed ${pageMarker}\n`:'');
 }
 const ACK='TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
 const LABELS=['browser','vite','service-children','control','runtime-pool','migrator-pool','owned-database','private-directory','artifacts','receipt'];

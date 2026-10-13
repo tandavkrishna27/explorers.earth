@@ -13,6 +13,21 @@ Latest actual checkpoint at clean `aa3738f3`:
 
 Subsequent concrete source repairs and actual results:
 
+- The untouched Apps editor lock was reproduced with the production StrictMode
+  wrapper and real installed Quill. Its empty note callback differed from the
+  saved dirty signature. The reviewed fix normalizes only Quill's two exact empty
+  note representations for dirty comparison, preserving the saved payload and
+  genuine unsaved-change protection. All 36 affected frontend checks and the full
+  production build passed; actual browser qualification is still pending.
+- The Guides transport-detail diagnostic is restricted to the exact failed first
+  heading assertion after transport update. It retains bounded owner-read status
+  and finite DOM counts/visibility without changing requests, waits or assertions.
+  Integrated checks passed 438 backend, 77 frontend and 39 Root/Place-links tests;
+  scoped types and independent review passed. The business AST remains unchanged.
+- People at `236de9f9` retained its finite failed receipt after successful cleanup.
+  All 12 attempts failed with generic errors and no specification location. A
+  shared-browser harness checkpoint is being prepared; no acceptance is claimed.
+
 - Full frontend production build passed on `f78dcbeb`, including TypeScript and
   the production Music transport contract. Root's full runner checks passed
   512/513 with no skips; the sole stale shared-formatter hash was independently

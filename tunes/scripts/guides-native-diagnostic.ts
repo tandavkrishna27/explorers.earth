@@ -18,6 +18,9 @@ let census:readonly Readonly<{line:number;column:number}>[]|undefined;
 const matcherPoints=new Map<string,Readonly<{matcher:string;line:number;column:number}>>();
 const actionPoints=new Map<string,Readonly<{line:number;column:number}>>();
 const callerStages=new Map<string,GuidesNativeMetadata['stage']>();
+let transportDetailPoint:Readonly<{line:number;column:number}>|undefined;
+export function guidesTransportDetailPoint(){guidesNativeCallsites();return transportDetailPoint;}
+export function guidesPageNativeScope(native:GuidesNativeMetadata,caseIndex:number,stage:string){let v:Record<string,unknown>;try{v=own(native);}catch{return false;}if(caseIndex===3&&stage==='initial-detail')return v.stage==='initial-detail';const point=guidesTransportDetailPoint();return caseIndex===1&&stage==='transport-detail'&&v.producerStage==='transport-edit'&&v.kind==='assertion'&&v.matcher==='toBeVisible'&&!!point&&v.line===point.line&&v.column===point.column;}
 export function guidesNativeCallsites(){
  if(census)return census;const file=specFile();if(!file)throw Error('Guides diagnostic source refused');const stat=lstatSync(file);if(!stat.isFile()||stat.isSymbolicLink()||stat.size>262144||realpathSync(file)!==file)throw Error('Guides diagnostic source refused');
  const source=readFileSync(file,'utf8'),ast=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true),points=new Map<string,Readonly<{line:number;column:number}>>();
@@ -29,6 +32,8 @@ export function guidesNativeCallsites(){
  }ts.forEachChild(node,visit);};visit(ast);
  const selected=ast.statements.find(node=>ts.isExpressionStatement(node)&&ts.isCallExpression(node.expression)&&node.expression.expression.getText(ast)==='test'&&node.expression.arguments[0]?.getText(ast)==='GUIDES_CASES[3]');
  if(selected){const calls:ts.CallExpression[]=[];const collect=(node:ts.Node)=>{if(ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&node.expression.text==='sectionOrder')calls.push(node);ts.forEachChild(node,collect)};collect(selected);if(calls.length===3)calls.forEach((node,index)=>{const p=ast.getLineAndCharacterOfPosition(node.getStart(ast));callerStages.set(`${p.line+1}:${p.character+1}`,GUIDES_NATIVE_STAGES[index+1]);});}
+ const retained=ast.statements.find(node=>ts.isExpressionStatement(node)&&ts.isCallExpression(node.expression)&&node.expression.expression.getText(ast)==='test'&&node.expression.arguments[0]?.getText(ast)==='GUIDES_CASES[1]');
+ if(retained){let helper:ts.VariableDeclaration|undefined;const find=(node:ts.Node)=>{if(ts.isVariableDeclaration(node)&&ts.isIdentifier(node.name)&&node.name.text==='finishNative')helper=node;ts.forEachChild(node,find);};find(retained);if(helper){const matches:ts.CallExpression[]=[];const collect=(node:ts.Node)=>{if(ts.isCallExpression(node)&&node.expression.getText(ast)==="expect(page.getByRole('heading',{level:1,name:guide.title,exact:true})).toBeVisible")matches.push(node);ts.forEachChild(node,collect);};collect(helper);if(matches.length===2){const p=ast.getLineAndCharacterOfPosition(matches[0].getStart(ast));transportDetailPoint=Object.freeze({line:p.line+1,column:p.character+1});}}}
  census=Object.freeze([...points.values()]);return census;
 }
 function own(input:unknown):Record<string,unknown>{

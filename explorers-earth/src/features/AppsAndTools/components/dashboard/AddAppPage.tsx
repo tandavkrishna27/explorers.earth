@@ -58,8 +58,11 @@ export default function AddAppPage() {
  useEffect(() => { setEnrichmentBusy(false); }, [scope]);
  const initialized = useRef(''), draftObservation = useRef<RecommendationObservation>();
  const savedDraft = useRef<{scope:string;signature:string}>();
+ // Quill's empty document can be emitted during StrictMode initialization.
+ // Compare that exact empty representation without changing the saved payload.
+ const noteSignature=(value:string)=>value==='<p></p>'||value==='<p><br></p>'?'':value;
  const draftSignature=(values:unknown[])=>JSON.stringify(values);
- const manualDirty=Boolean(appId&&savedDraft.current?.scope===scope&&savedDraft.current.signature!==draftSignature([title,developer,logoUrl,description,downloadUrl,priceTier,platforms,note,rating,screenshots.map(item=>item.id)]));
+ const manualDirty=Boolean(appId&&savedDraft.current?.scope===scope&&savedDraft.current.signature!==draftSignature([title,developer,logoUrl,description,downloadUrl,priceTier,platforms,noteSignature(note),rating,screenshots.map(item=>item.id)]));
  const intent = useRef<{ scope: string; signature: string; value: ManualAppIntent }>();
  const updateKey = useRef<{ signature: string; key: string }>();
  const mounted = useRef(true);
@@ -73,7 +76,7 @@ export default function AddAppPage() {
   const observed = owner.content.details.get(appId);
   if (!app || !observed) return;
   initialized.current = scope; draftObservation.current = observed;
-  savedDraft.current={scope,signature:draftSignature([app.title,app.developer??'',app.logo_url??'',app.description??'',app.download_url??'',app.price_tier??'',app.platforms??[],typeof app.user_recommendation_note==='string'?app.user_recommendation_note:'',app.user_rating,(observed.detail.category==='apps'?observed.detail.appScreenshots?.screenshotMediaIds??[]:[])])};
+  savedDraft.current={scope,signature:draftSignature([app.title,app.developer??'',app.logo_url??'',app.description??'',app.download_url??'',app.price_tier??'',app.platforms??[],noteSignature(typeof app.user_recommendation_note==='string'?app.user_recommendation_note:''),app.user_rating,(observed.detail.category==='apps'?observed.detail.appScreenshots?.screenshotMediaIds??[]:[])])};
   setTitle(app.title); setAppUrl(app.app_url); setDeveloper(app.developer ?? ''); setLogoUrl(app.logo_url ?? '');
   setDescription(app.description ?? ''); setDownloadUrl(app.download_url ?? '');
   setPriceTier(app.price_tier ?? ''); setPlatforms(app.platforms ?? []);
