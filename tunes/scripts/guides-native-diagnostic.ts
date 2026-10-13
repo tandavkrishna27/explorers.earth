@@ -10,10 +10,15 @@ const specURL=new URL('../../explorers-earth/e2e/replatform/guides.spec.ts',impo
 const specFile=()=>specURL.protocol==='file:'?fileURLToPath(specURL):undefined;
 const nativeStackGetter=Object.getOwnPropertyDescriptor(new Error(),'stack')?.get;
 let census:readonly Readonly<{line:number;column:number}>[]|undefined;
+const matcherPoints=new Map<string,Readonly<{matcher:string;line:number;column:number}>>();
 export function guidesNativeCallsites(){
  if(census)return census;const file=specFile();if(!file)throw Error('Guides diagnostic source refused');const stat=lstatSync(file);if(!stat.isFile()||stat.isSymbolicLink()||stat.size>262144||realpathSync(file)!==file)throw Error('Guides diagnostic source refused');
  const source=readFileSync(file,'utf8'),ast=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true),points=new Map<string,Readonly<{line:number;column:number}>>();
- const visit=(node:ts.Node)=>{if(ts.isCallExpression(node)){const p=ast.getLineAndCharacterOfPosition(node.getStart(ast)),point=Object.freeze({line:p.line+1,column:p.character+1});points.set(`${point.line}:${point.column}`,point);}ts.forEachChild(node,visit);};visit(ast);
+ const visit=(node:ts.Node)=>{if(ts.isCallExpression(node)){const p=ast.getLineAndCharacterOfPosition(node.getStart(ast)),point=Object.freeze({line:p.line+1,column:p.character+1});points.set(`${point.line}:${point.column}`,point);
+  // Playwright captures the invoked property name, while metadata emits only
+  // canonical call starts. Admit an exact AST point and exact matcher together.
+  if(ts.isPropertyAccessExpression(node.expression)&&GUIDES_NATIVE_MATCHERS.includes(node.expression.name.text as any)&&node.expression.name.text!=='unknown'){const name=ast.getLineAndCharacterOfPosition(node.expression.name.getStart(ast));matcherPoints.set(`${name.line+1}:${name.character+1}`,Object.freeze({matcher:node.expression.name.text,...point}));}
+ }ts.forEachChild(node,visit);};visit(ast);
  census=Object.freeze([...points.values()]);return census;
 }
 function own(input:unknown):Record<string,unknown>{
@@ -28,6 +33,17 @@ export function validateGuidesNativeCapsule(input:unknown):GuidesNativeCapsule{
  const metadata=validateGuidesNativeMetadata({kind:v.kind,matcher:v.matcher,line:v.line,column:v.column});if(v.action!=='fail'&&(metadata.kind!=='unknown'||metadata.matcher!=='unknown'||metadata.line!==null))throw Error('Guides diagnostic refused');return Object.freeze({version:1,epoch:v.epoch,caseIndex:v.caseIndex,project:v.project,repeat:0,action:v.action,...metadata}) as GuidesNativeCapsule;
 }
 function dataProperty(error:object,key:string):unknown{let current:object|null=error;for(let depth=0;current&&depth<4;depth++,current=Object.getPrototypeOf(current)){if(utilTypes.isProxy(current))return;const d=Object.getOwnPropertyDescriptor(current,key);if(d)return Object.hasOwn(d,'value')?d.value:undefined;}}
+function nativeStack(error:object):unknown{
+ if(!nativeStackGetter||!utilTypes.isNativeError(error))return;
+ for(let current:object|null=error,depth=0;current;current=Object.getPrototypeOf(current),depth++)if(depth>=8||utilTypes.isProxy(current))return;
+ if(typeof dataProperty(error,'name')!=='string'||typeof dataProperty(error,'message')!=='string')return;
+ const formatter=Object.getOwnPropertyDescriptor(Error,'prepareStackTrace');
+ if(formatter&&(!formatter.configurable||!Object.hasOwn(formatter,'value')))return;
+ // Synchronous owned window: the previous formatter is never invoked. Restore
+ // all attributes even when native stack extraction throws.
+ try{if(formatter)Object.defineProperty(Error,'prepareStackTrace',{value:undefined,configurable:true,writable:true});return Reflect.apply(nativeStackGetter,error,[]);}
+ finally{if(formatter)Object.defineProperty(Error,'prepareStackTrace',formatter);}
+}
 export function captureGuidesNativeFailure(error:unknown):GuidesNativeMetadata{
  try{
   if(!error||typeof error!=='object'||utilTypes.isProxy(error)||!utilTypes.isNativeError(error))return unknown();
@@ -36,13 +52,14 @@ export function captureGuidesNativeFailure(error:unknown):GuidesNativeMetadata{
   if(kind==='unknown'&&dataProperty(error,'name')==='TimeoutError')kind='timeout';
   let stack:unknown;const descriptor=Object.getOwnPropertyDescriptor(error,'stack');
   if(descriptor&&Object.hasOwn(descriptor,'value'))stack=descriptor.value;
-  else if(descriptor?.get===nativeStackGetter&&nativeStackGetter){const formatter=Object.getOwnPropertyDescriptor(Error,'prepareStackTrace');if((!formatter||Object.hasOwn(formatter,'value')&&formatter.value===undefined)&&typeof dataProperty(error,'name')==='string'&&typeof dataProperty(error,'message')==='string')stack=nativeStackGetter.call(error);}
+  else if(descriptor?.get===nativeStackGetter)stack=nativeStack(error);
   const name=dataProperty(error,'name'),message=dataProperty(error,'message');let frames:string|undefined;
   if(typeof stack==='string'&&stack.length<=65536&&typeof name==='string'&&name.length<=256&&typeof message==='string'&&message.length<=65536){const headers=[`${name}: ${message}\n`,...(message?[]:[`${name}\n`])],header=headers.find(v=>stack.startsWith(v));if(header)frames=stack.slice(header.length);}
   if(frames!==undefined)for(const frame of frames.split('\n')){
    if(!/^\s{1,16}at /.test(frame))continue;let location=frame.trim().slice(3);const open=location.lastIndexOf('(');if(open!==-1)location=location.slice(open+1);if(location.endsWith(')'))location=location.slice(0,-1);
    const file=specFile(),m=/^(.*):(\d{1,6}):(\d{1,6})$/.exec(location);if(!file||!m||![file.replaceAll('\\','/'),specURL.href].includes(m[1].replaceAll('\\','/')))continue;
    const line=Number(m[2]),column=Number(m[3]);if(guidesNativeCallsites().some(p=>p.line===line&&p.column===column))return Object.freeze({kind,matcher,line,column});
+   const normalized=matcherPoints.get(`${line}:${column}`);if(kind==='assertion'&&normalized?.matcher===matcher)return Object.freeze({kind,matcher,line:normalized.line,column:normalized.column});
   }
   return Object.freeze({kind,matcher,line:null,column:null});
  }catch{return unknown();}
