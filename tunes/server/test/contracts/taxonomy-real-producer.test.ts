@@ -46,6 +46,18 @@ it('captures exact admitted handle identities rather than following caller mutat
     expect(replacement).not.toHaveBeenCalled();
 });
 import { AccountLifecycleService } from '../../application/accountLifecycle';
+it('seeds distinct category positions before the deferred uniqueness check commits', async () => {
+    const f = make(), positions: number[] = [], release = vi.fn();
+    f.input.migrator.connect = vi.fn(async () => ({release, query: async (sql: string, values: unknown[] = []) => {
+        if (sql.startsWith('INSERT INTO account_category_settings')) positions.push(sql.includes('$3') ? Number(values[2]) : 0);
+        if (sql === 'COMMIT' && new Set(positions).size !== positions.length) throw Object.assign(Error('Deferred category order conflict'), {code: '23505'});
+        return {rows: []};
+    }})) as any;
+    const result = await createTaxonomyRealCatalogPgHarness(f.input).seedOwner();
+    expect(result.actor.accountId).toBeTruthy();
+    expect(positions).toEqual([0, 1]);
+    expect(release).toHaveBeenCalledOnce();
+});
 import { EXPECTED_MUSIC_MIGRATION_CHAIN } from '../../../shared/music-migration-contract';
 it('attests native identity with PostgreSQL folding unquoted column aliases', async () => {
     const f = make();

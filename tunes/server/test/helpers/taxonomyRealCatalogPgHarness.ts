@@ -101,8 +101,8 @@ export function createTaxonomyRealCatalogPgHarness(input: TaxonomyRealCatalogPgI
             await client.query('INSERT INTO user_security_state(user_id) VALUES($1)', [userId]);
             await client.query("INSERT INTO creator_accounts(id,handle,display_name,account_type,onboarding_status,public_profile) VALUES($1,$2,'Synthetic taxonomy owner','Personal','complete',true)", [accountId, 'tax-' + accountId.replaceAll('-', '').slice(0, 20)]);
             await client.query("INSERT INTO account_memberships(account_id,user_id,role) VALUES($1,$2,'owner')", [accountId, userId]);
-            for (const category of ['places', 'people']) {
-                await client.query('INSERT INTO account_category_settings(account_id,category,is_public,display_order) VALUES($1,$2,true,0)', [accountId, category]);
+            for (const [position, category] of ['places', 'people'].entries()) {
+                await client.query('INSERT INTO account_category_settings(account_id,category,is_public,display_order) VALUES($1,$2,true,$3)', [accountId, category, position]);
                 await client.query('INSERT INTO account_category_content_state(account_id,category,revision) VALUES($1,$2,1)', [accountId, category]);
             }
             if (withSelection) {
