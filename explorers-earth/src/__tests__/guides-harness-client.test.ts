@@ -3,6 +3,7 @@ import path from 'node:path';
 import { GUIDES_CASES, buildGuidesSeedPlan, guidesObservationRowSchemas } from '../../../tunes/scripts/guides-browser-support';
 import { validateGuidesEnvironment, readGuidesDescriptor, createGuidesHarnessClient, guidesFixtureBytes } from '../../e2e/replatform/guides-harness-client';
 import { createHash } from 'node:crypto';
+it('passes only the first passive native failure on the existing authenticated fail command',async()=>{const s=setup();await s.client.start(identity);const before=s.client.snapshot(),error=Error('PRIVATE_SENTINEL');Object.defineProperty(error,'matcherResult',{value:{name:'toBe'}});s.client.captureFailure(error);s.client.captureFailure(Error('SECOND_PRIVATE_SENTINEL'));expect(s.client.snapshot()).toEqual(before);await s.client.fail();expect(s.posts.at(-1)).toEqual({v:1,action:'fail',...identity,epoch:1,failure:{kind:'assertion',matcher:'toBe',line:null,column:null}});expect(s.posts.filter(p=>p.action!=='fail').every(p=>!Object.hasOwn(p,'failure'))).toBe(true);expect(JSON.stringify(s.posts)).not.toContain('PRIVATE_SENTINEL');});
 const runId = 'a'.repeat(32), commit = 'b'.repeat(40), origin = 'http://127.0.0.1:55001', file = path.resolve('fake-guides-harness.json');
 const descriptor = { v: 1, runId, commit, origin, parent: { url: 'http://127.0.0.1:55003/control', capability: 'c'.repeat(64) } };
 const env = { PLAYWRIGHT_EXTERNAL_BASE_URL: origin, GUIDES_E2E_FIXTURE_PATH: file, REPLATFORM_E2E_FIXTURE_PATH: file, REPLATFORM_E2E_LANE: 'guides' };

@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import path from 'node:path';
 import { request } from 'node:http';
 import { TextDecoder } from 'node:util';
+import {captureGuidesNativeFailure,type GuidesNativeMetadata} from '../../../tunes/scripts/guides-native-diagnostic';
 import type { Browser, BrowserContext, Request as BrowserRequest } from '@playwright/test';
 import { GUIDES_CASES, GUIDES_PROJECTS, buildGuidesSeedPlan, guidesManifestSchema, guidesProviderObservationSchema, guidesObservationRowSchemas, type GuidesManifest } from '../../../tunes/scripts/guides-browser-support';
 const owners = ['ownerA', 'ownerB', 'ownerC'] as const;
@@ -319,6 +320,7 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
         denied();
     const d = dependencies;
     let deadline = d.clock.now() + 21600000, failed = false, busy = false, lastEpoch = 0, total = 0;
+    let firstFailure:GuidesNativeMetadata|undefined;
     let active: {
         identity: Identity;
         epoch: number;
@@ -371,7 +373,7 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
     };
     async function command(action: 'start' | 'observe' | 'retire' | 'fail', selected: Identity, epoch?: number) {
         const sentAt = d.clock.now();
-        const body = JSON.stringify({ v: 1, action, ...selected, ...(epoch === undefined ? {} : { epoch }), ...(action === 'retire' ? { nativeComplete: true, producersClosed: true } : {}) });
+        const body = JSON.stringify({ v: 1, action, ...selected, ...(epoch === undefined ? {} : { epoch }), ...(action === 'retire' ? { nativeComplete: true, producersClosed: true } : {}),...(action==='fail'?{failure:firstFailure??null}:{}) });
         if (Buffer.byteLength(body) > 4096)
             denied();
         const result = await bounded(() => d.post(descriptor.parent.url, { 'x-guides-parent-capability': descriptor.parent.capability }, body), action === 'start' ? 630000 : action === 'observe' ? 310000 : 30000);
@@ -598,7 +600,7 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             failed = true;
         }
     }
-    return Object.freeze({ start, observe, createContext, closeContext, retire, fail, remainingMs, trackProducer<T>(operation: () => Promise<T>) {
+    return Object.freeze({ start, observe, createContext, closeContext, retire, fail, remainingMs,captureFailure(error:unknown){firstFailure??=captureGuidesNativeFailure(error);}, trackProducer<T>(operation: () => Promise<T>) {
             check();
             if (busy || !active || typeof operation !== 'function')
                 denied();

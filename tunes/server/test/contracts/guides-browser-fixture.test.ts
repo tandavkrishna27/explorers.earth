@@ -60,15 +60,16 @@ function fake(failure?:string) {
  return{expire(){for(const fn of [...timers.values()])fn();},deps,events,signal:()=>signal(),release:()=>release(),authority,receipt};
 }
 it('preserves only the original private supervisor diagnostic through root refusal and cleanup',async()=>{
- const original=Error('PRIVATE_SENTINEL'),diagnostic:any=Object.freeze({version:1,role:'worker',epoch:7,phase:'reset',code:'unsettled',boundary:null});
+ const original=Error('PRIVATE_SENTINEL'),diagnostic:any=Object.freeze({version:1,role:'fixture',epoch:0,phase:'execution',code:'unsettled',boundary:'harness-command'});
  const spy=vi.spyOn(supervisor,'extractGuidesSupervisorDiagnostic').mockImplementation(error=>error===original?diagnostic:undefined);
+ const capsule:any=Object.freeze({version:1,epoch:7,caseIndex:3,project:'guides-mobile',repeat:0,action:'fail',kind:'unknown',matcher:'unknown',line:null,column:null}),native=vi.spyOn(supervisor,'extractGuidesSupervisorNativeFailure').mockImplementation(error=>error===original?capsule:undefined);
  try{const f=fake();f.deps.createSupervisor=()=>({run:async()=>{throw original;},abort(){},dispose:async()=>({disposed:false,failures:['service-children','control']})});
  let caught:unknown;try{await createGuidesBrowserFixture(f.deps).run();}catch(error){caught=error;}
- expect((browserFixture as any).formatGuidesFixtureFailure?.(caught)).toBe('Guides owned fixture failed [guides-failure-v1:'+JSON.stringify(diagnostic)+']\n');
+ expect((browserFixture as any).formatGuidesFixtureFailure?.(caught)).toBe('Guides owned fixture failed [guides-failure-v1:'+JSON.stringify(diagnostic)+']\nGuides native case failed [guides-native-failure-v1:'+JSON.stringify(capsule)+']\n');
  expect(f.events).toContain('failure');expect(f.events).not.toContain('finish');
  const proxy=new Proxy({}, {get(){throw Error('PRIVATE_SENTINEL');},ownKeys(){throw Error('PRIVATE_SENTINEL');}});
  expect((browserFixture as any).formatGuidesFixtureFailure?.(proxy)).toBe('Guides owned fixture failed\n');
- }finally{spy.mockRestore();}
+ }finally{spy.mockRestore();native.mockRestore();}
 });
 describe('Guides root driver resource-free custody',()=>{
  it('captures reports before exclusive parent disposal then publishes receipt',async()=>{const f=fake();await createGuidesBrowserFixture(f.deps).run();expect(f.events).toEqual(['preflight','prepare','parent','run','create','report','report','adopt','decode-discovery','decode-execution','dispose','finish','uninstall']);});

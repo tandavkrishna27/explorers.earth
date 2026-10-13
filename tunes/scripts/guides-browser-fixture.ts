@@ -4,19 +4,23 @@ import {randomBytes} from 'node:crypto';
 import {tmpdir} from 'node:os';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import type {createGuidesParentSupervisor} from './guides-parent-supervision';
-import {extractGuidesSupervisorDiagnostic,type GuidesFailureDiagnostic} from './guides-parent-supervision';
+import {extractGuidesSupervisorDiagnostic,extractGuidesSupervisorNativeFailure,type GuidesFailureDiagnostic} from './guides-parent-supervision';
+import type {GuidesNativeCapsule} from './guides-native-diagnostic';
 type Input=Parameters<typeof createGuidesParentSupervisor>[0];
 type Supervisor=ReturnType<typeof createGuidesParentSupervisor>;
 type Authority=Awaited<ReturnType<Input['acquisition']['create']>>;
 type Receipt={adoptArguments(directory:string):void|Promise<void>;decodeDiscovery(report:unknown):void|Promise<void>;decodeExecution(report:unknown,code:number,signal:null):void|Promise<void>;finish(authority:Authority,failures:string[],interrupted:boolean):void|Promise<void>;failure(phase:'startup'|'discovery'|'execution'|'cleanup',failures:string[],interrupted:boolean):void|Promise<void>};
 type Dependencies={clock:{setTimeout(fn:()=>void,ms:number):unknown;clearTimeout(timer:unknown):void};platform:string;argv:string[];environment:Record<string,string|undefined>;preflight():Promise<{receipt:Receipt}>;prepare():Promise<Input>;cleanupSetup():Promise<void>;createSupervisor(input:Input):Supervisor|Promise<Supervisor>;readReport(directory:string,execution:boolean):Promise<unknown>;installSignals(callback:()=>void):()=>void};
 const fixtureDiagnostics=new WeakMap<object,GuidesFailureDiagnostic>();
-class Refusal extends Error{constructor(diagnostic?:GuidesFailureDiagnostic){super('GUIDES_ROOT_FAILED');if(diagnostic)fixtureDiagnostics.set(this,diagnostic);}}
+const nativeDiagnostics=new WeakMap<object,GuidesNativeCapsule>();
+class Refusal extends Error{constructor(diagnostic?:GuidesFailureDiagnostic,native?:GuidesNativeCapsule){super('GUIDES_ROOT_FAILED');if(diagnostic)fixtureDiagnostics.set(this,diagnostic);if(native)nativeDiagnostics.set(this,native);}}
 export function formatGuidesFixtureFailure(error:unknown):string{
  const diagnostic=(typeof error==='object'&&error!==null||typeof error==='function')?fixtureDiagnostics.get(error as object):undefined;
  if(!diagnostic)return 'Guides owned fixture failed\n';
  const marker='[guides-failure-v1:'+JSON.stringify(diagnostic)+']';
- return Buffer.byteLength(marker)<=1024?`Guides owned fixture failed ${marker}\n`:'Guides owned fixture failed\n';
+ if(Buffer.byteLength(marker)>1024)return 'Guides owned fixture failed\n';
+ const native=typeof error==='object'&&error!==null?nativeDiagnostics.get(error):undefined,nativeMarker=native?'[guides-native-failure-v1:'+JSON.stringify(native)+']':undefined;
+ return `Guides owned fixture failed ${marker}\n`+(nativeMarker&&Buffer.byteLength(nativeMarker)<=1024?`Guides native case failed ${nativeMarker}\n`:'');
 }
 const ACK='TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
 const LABELS=['browser','vite','service-children','control','runtime-pool','migrator-pool','owned-database','private-directory','artifacts','receipt'];
@@ -59,7 +63,7 @@ export function createGuidesBrowserFixture(dependencies?:Dependencies):{run():Pr
    else if(receipt)await bounded(()=>receipt!.failure(phase,failures,interrupted),15000);
   }catch(error){primary??=error;if(receipt&&finishing&&!originals.size){try{await bounded(()=>receipt!.failure('cleanup',[...new Set([...failures,'receipt'])],interrupted),15000);}catch{}}}
   finally{try{uninstall();}catch(error){primary??=error;}}
-  if(primary||interrupted)throw new Refusal(extractGuidesSupervisorDiagnostic(primary));
+  if(primary||interrupted)throw new Refusal(extractGuidesSupervisorDiagnostic(primary),extractGuidesSupervisorNativeFailure(primary));
  }
 }
 

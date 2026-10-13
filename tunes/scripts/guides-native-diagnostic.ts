@@ -1,0 +1,49 @@
+import {types as utilTypes} from 'node:util';
+import {readFileSync,lstatSync,realpathSync} from 'node:fs';
+import {fileURLToPath,URL} from 'node:url';
+import ts from 'typescript';
+export const GUIDES_NATIVE_MATCHERS=Object.freeze(['unknown','toBe','toEqual','toMatchObject','toBeVisible','toHaveText','toHaveCount','toHaveLength','toBeDefined','toBeNull','toBeGreaterThan','toBeLessThanOrEqual','toHaveValue','toBeChecked','toBeEnabled','toBeDisabled','toContainText','toContain','toHaveAttribute','toBeUndefined','toBeLessThan','toHaveClass','toMatch'] as const);
+export type GuidesNativeMetadata=Readonly<{kind:'assertion'|'timeout'|'unknown';matcher:typeof GUIDES_NATIVE_MATCHERS[number];line:number|null;column:number|null}>;
+export type GuidesNativeCapsule=Readonly<{version:1;epoch:number;caseIndex:number;project:'guides-desktop'|'guides-mobile';repeat:0;action:'start'|'observe'|'retire'|'fail'}>&GuidesNativeMetadata;
+const unknown=():GuidesNativeMetadata=>Object.freeze({kind:'unknown',matcher:'unknown',line:null,column:null});
+const specURL=new URL('../../explorers-earth/e2e/replatform/guides.spec.ts',import.meta.url);
+const specFile=()=>specURL.protocol==='file:'?fileURLToPath(specURL):undefined;
+const nativeStackGetter=Object.getOwnPropertyDescriptor(new Error(),'stack')?.get;
+let census:readonly Readonly<{line:number;column:number}>[]|undefined;
+export function guidesNativeCallsites(){
+ if(census)return census;const file=specFile();if(!file)throw Error('Guides diagnostic source refused');const stat=lstatSync(file);if(!stat.isFile()||stat.isSymbolicLink()||stat.size>262144||realpathSync(file)!==file)throw Error('Guides diagnostic source refused');
+ const source=readFileSync(file,'utf8'),ast=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true),points=new Map<string,Readonly<{line:number;column:number}>>();
+ const visit=(node:ts.Node)=>{if(ts.isCallExpression(node)){const p=ast.getLineAndCharacterOfPosition(node.getStart(ast)),point=Object.freeze({line:p.line+1,column:p.character+1});points.set(`${point.line}:${point.column}`,point);}ts.forEachChild(node,visit);};visit(ast);
+ census=Object.freeze([...points.values()]);return census;
+}
+function own(input:unknown):Record<string,unknown>{
+ if(!input||typeof input!=='object'||utilTypes.isProxy(input)||![Object.prototype,null].includes(Object.getPrototypeOf(input)))throw Error('Guides diagnostic refused');
+ const d=Object.getOwnPropertyDescriptors(input);if(Reflect.ownKeys(d).some(k=>typeof k!=='string')||Object.values(d).some(v=>!v.enumerable||!Object.hasOwn(v,'value')))throw Error('Guides diagnostic refused');return Object.fromEntries(Object.entries(d).map(([k,v])=>[k,v.value]));
+}
+export function validateGuidesNativeMetadata(input:unknown):GuidesNativeMetadata{
+ const v=own(input);if(Object.keys(v).sort().join(',')!=='column,kind,line,matcher'||!['assertion','timeout','unknown'].includes(v.kind as string)||!GUIDES_NATIVE_MATCHERS.includes(v.matcher as any)||v.kind!=='assertion'&&v.matcher!=='unknown'||(v.line===null)!==(v.column===null)||v.line!==null&&(!Number.isSafeInteger(v.line)||!Number.isSafeInteger(v.column)||!guidesNativeCallsites().some(p=>p.line===v.line&&p.column===v.column)))throw Error('Guides diagnostic refused');return Object.freeze({kind:v.kind,matcher:v.matcher,line:v.line,column:v.column}) as GuidesNativeMetadata;
+}
+export function validateGuidesNativeCapsule(input:unknown):GuidesNativeCapsule{
+ const v=own(input);if(Object.keys(v).sort().join(',')!=='action,caseIndex,column,epoch,kind,line,matcher,project,repeat,version'||v.version!==1||!Number.isSafeInteger(v.epoch)||(v.epoch as number)<1||(v.epoch as number)>16||!Number.isSafeInteger(v.caseIndex)||(v.caseIndex as number)<0||(v.caseIndex as number)>7||!['guides-desktop','guides-mobile'].includes(v.project as string)||v.repeat!==0||!['start','observe','retire','fail'].includes(v.action as string))throw Error('Guides diagnostic refused');
+ const metadata=validateGuidesNativeMetadata({kind:v.kind,matcher:v.matcher,line:v.line,column:v.column});if(v.action!=='fail'&&(metadata.kind!=='unknown'||metadata.matcher!=='unknown'||metadata.line!==null))throw Error('Guides diagnostic refused');return Object.freeze({version:1,epoch:v.epoch,caseIndex:v.caseIndex,project:v.project,repeat:0,action:v.action,...metadata}) as GuidesNativeCapsule;
+}
+function dataProperty(error:object,key:string):unknown{let current:object|null=error;for(let depth=0;current&&depth<4;depth++,current=Object.getPrototypeOf(current)){if(utilTypes.isProxy(current))return;const d=Object.getOwnPropertyDescriptor(current,key);if(d)return Object.hasOwn(d,'value')?d.value:undefined;}}
+export function captureGuidesNativeFailure(error:unknown):GuidesNativeMetadata{
+ try{
+  if(!error||typeof error!=='object'||utilTypes.isProxy(error)||!utilTypes.isNativeError(error))return unknown();
+  let kind:GuidesNativeMetadata['kind']='unknown',matcher:GuidesNativeMetadata['matcher']='unknown';
+  const match=dataProperty(error,'matcherResult');if(match){const value=own(match).name;if(typeof value==='string'&&value!=='unknown'&&GUIDES_NATIVE_MATCHERS.includes(value as any)){kind='assertion';matcher=value as GuidesNativeMetadata['matcher'];}}
+  if(kind==='unknown'&&dataProperty(error,'name')==='TimeoutError')kind='timeout';
+  let stack:unknown;const descriptor=Object.getOwnPropertyDescriptor(error,'stack');
+  if(descriptor&&Object.hasOwn(descriptor,'value'))stack=descriptor.value;
+  else if(descriptor?.get===nativeStackGetter&&nativeStackGetter){const formatter=Object.getOwnPropertyDescriptor(Error,'prepareStackTrace');if((!formatter||Object.hasOwn(formatter,'value')&&formatter.value===undefined)&&typeof dataProperty(error,'name')==='string'&&typeof dataProperty(error,'message')==='string')stack=nativeStackGetter.call(error);}
+  const name=dataProperty(error,'name'),message=dataProperty(error,'message');let frames:string|undefined;
+  if(typeof stack==='string'&&stack.length<=65536&&typeof name==='string'&&name.length<=256&&typeof message==='string'&&message.length<=65536){const headers=[`${name}: ${message}\n`,...(message?[]:[`${name}\n`])],header=headers.find(v=>stack.startsWith(v));if(header)frames=stack.slice(header.length);}
+  if(frames!==undefined)for(const frame of frames.split('\n')){
+   if(!/^\s{1,16}at /.test(frame))continue;let location=frame.trim().slice(3);const open=location.lastIndexOf('(');if(open!==-1)location=location.slice(open+1);if(location.endsWith(')'))location=location.slice(0,-1);
+   const file=specFile(),m=/^(.*):(\d{1,6}):(\d{1,6})$/.exec(location);if(!file||!m||![file.replaceAll('\\','/'),specURL.href].includes(m[1].replaceAll('\\','/')))continue;
+   const line=Number(m[2]),column=Number(m[3]);if(guidesNativeCallsites().some(p=>p.line===line&&p.column===column))return Object.freeze({kind,matcher,line,column});
+  }
+  return Object.freeze({kind,matcher,line:null,column:null});
+ }catch{return unknown();}
+}
