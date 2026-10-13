@@ -357,7 +357,8 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
         try {
             return await Promise.race([owned, new Promise<never>((_, reject) => { timer = d.clock.setTimeout(() => { failed = true; reject(Error('Guides harness timeout unsettled')); }, Math.max(1, Math.min(remainingMs(), ceiling))); })]);
         }
-        catch {
+        catch (error) {
+            firstFailure ??= captureGuidesNativeFailure(error);
             failed = true;
             denied();
         }
