@@ -417,6 +417,12 @@ function stagedCustody(
   });
 }
 
+export type OwnedUatDatabaseAcquisitionStage='creation-custody'|'creation-command'|'creation-result'|'health-inspect'|'health-state'|'health-not-running'|'health-unhealthy'|'health-wait'|'health-deadline'|'secret-custody'|'secret-mount'|'container-witness';
+export type OwnedUatDatabaseAcquisitionDiagnostic=Readonly<{stage:OwnedUatDatabaseAcquisitionStage}>;
+const acquisitionDiagnostics=new WeakMap<object,OwnedUatDatabaseAcquisitionDiagnostic>();
+/** Reads only constructor-owned diagnostics; foreign error properties are never inspected. */
+export function extractOwnedUatDatabaseAcquisitionDiagnostic(error:unknown):OwnedUatDatabaseAcquisitionDiagnostic|undefined{return typeof error==='object'&&error!==null?acquisitionDiagnostics.get(error):undefined;}
+
 export async function prepareOwnedUatDatabaseAcquisition(
   input: StagedDatabaseInput,
   dependencies?: StagedDatabaseDependencies,
@@ -512,12 +518,13 @@ export async function prepareOwnedUatDatabaseAcquisition(
     let disposal: Promise<void> | undefined;
     let disposalRequested = false;
     let terminalRetention = false;
+    let acquisitionStage:OwnedUatDatabaseAcquisitionStage|undefined;
     const validatePinned = (inspect: UatDatabaseContainerInspect, healthy: boolean) => {
       if (!authority) throw authorityError("created ID is unknown");
-      checkCustody();
-      const mounts = (inspect.Mounts ?? []).filter(mount => mount.Destination === PASSWORD_DESTINATION);
+      acquisitionStage='secret-custody';checkCustody();
+      acquisitionStage='secret-mount';const mounts = (inspect.Mounts ?? []).filter(mount => mount.Destination === PASSWORD_DESTINATION);
       if (mounts.length !== 1 || mounts[0]?.Source !== requested.passwordFile) throw authorityError("secret bind source custody changed");
-      validateDatabaseInspect(authority, { contextHost, imageId, inspect }, imageId, healthy);
+      acquisitionStage='container-witness';validateDatabaseInspect(authority, { contextHost, imageId, inspect }, imageId, healthy);
     };
     const freshInspect = async (deadline: number, healthy: boolean) => {
       if (!authority) throw authorityError("created ID is unknown");
@@ -537,33 +544,33 @@ export async function prepareOwnedUatDatabaseAcquisition(
         creation = Promise.resolve().then(async () => {
           const deadline = clock.now() + 120000;
           try {
-            checkCustody();
-            const containerId = (await read(databaseCreationArguments(requested, contextHost, imageId), deadline, true)).trim();
-            if (!/^[a-f0-9]{64}$/.test(containerId)) throw authorityError("created container ID is invalid");
+            acquisitionStage='creation-custody';checkCustody();
+            acquisitionStage='creation-command';const containerId = (await read(databaseCreationArguments(requested, contextHost, imageId), deadline, true)).trim();
+            acquisitionStage='creation-result';if (!/^[a-f0-9]{64}$/.test(containerId)) throw authorityError("created container ID is invalid");
             // Store exact custody before invoking or awaiting any health adapter.
             authority = Object.freeze({ runId: requested.runId, database: requested.database, commit: requested.commit,
               port: requested.port, containerId, imageId, contextHost, owned: true as const });
             state = "created";
             if (terminalRetention) throw authorityError("late creation retained");
             let inspect: UatDatabaseContainerInspect;
-            if (dependencies) inspect = await bounded(dependencies.healthyInspect(authority, contextHost), deadline);
+            acquisitionStage='health-inspect';if (dependencies) inspect = await bounded(dependencies.healthyInspect(authority, contextHost), deadline);
             else {
               while (true) {
-                inspect = JSON.parse(await read(["--host", contextHost, "inspect", "--type", "container",
+                acquisitionStage='health-inspect';inspect = JSON.parse(await read(["--host", contextHost, "inspect", "--type", "container",
                   "--format", "{{json .}}", containerId], deadline)) as UatDatabaseContainerInspect;
-                if (inspect.State?.Running === true && inspect.State?.Health?.Status === "healthy") break;
-                if (inspect.State?.Running !== true || inspect.State?.Health?.Status === "unhealthy") throw authorityError("health failed");
-                if (deadline - clock.now() <= 250) throw authorityError("health expired");
-                await new Promise(resolveWait => setTimeout(resolveWait, 250));
+                acquisitionStage='health-state';if (inspect.State?.Running === true && inspect.State?.Health?.Status === "healthy") break;
+                if (inspect.State?.Running !== true || inspect.State?.Health?.Status === "unhealthy") {acquisitionStage=inspect.State?.Running!==true?'health-not-running':'health-unhealthy';throw authorityError("health failed");}
+                acquisitionStage='health-deadline';if (deadline - clock.now() <= 250) throw authorityError("health expired");
+                acquisitionStage='health-wait';await new Promise(resolveWait => setTimeout(resolveWait, 250));
               }
             }
-            if (clock.now() >= deadline || terminalRetention) throw authorityError("health expired");
+            acquisitionStage='health-deadline';if (clock.now() >= deadline || terminalRetention) throw authorityError("health expired");
             validatePinned(inspect, true);
-            state = "healthy";
+            state = "healthy";acquisitionStage=undefined;
             return authority;
           } catch {
             state = terminalRetention ? "retained" : authority ? "failed-known" : "uncertain";
-            throw authorityError("staged acquisition failed; custody retained");
+            const error=authorityError("staged acquisition failed; custody retained");if(acquisitionStage)acquisitionDiagnostics.set(error,Object.freeze({stage:acquisitionStage}));throw error;
           }
         });
         return creation;

@@ -1,3 +1,4 @@
+import {extractOwnedUatDatabaseAcquisitionDiagnostic,type OwnedUatDatabaseAcquisitionDiagnostic} from './music-uat-database';
 import path from 'node:path';
 import { randomBytes, randomUUID, createHash, createHmac } from 'node:crypto';
 import { tmpdir } from 'node:os';
@@ -248,7 +249,7 @@ type Diagnostic = Readonly<{
     cleanupStep?: CleanupStep;
     nativeUnknownOrigin?:NativeUnknownDetail;requestDrainBoundary?:RequestDrainBoundary;requestDrain?:AppsRequestDrainDiagnostic;requestDrainPending?:RequestDrainPending;
     control?: AppsControllerDiagnostic;
-    vite?:AppsViteDiagnostic;
+    vite?:AppsViteDiagnostic;databaseAcquisition?:OwnedUatDatabaseAcquisitionDiagnostic;
 }>;
 const diagnostics = new WeakMap<object, Diagnostic>();
 /** Only runner-branded errors expose finite sanitized diagnostics; foreign getters are never read. */
@@ -263,7 +264,7 @@ const uuid = z.string().uuid(), baseline = z.object({ id: uuid, revision: z.numb
 export function createAppsBrowserFixture(dependencies?: Dependencies, family: 'apps'|'apps-enrichment'='apps'): {
     run(): Promise<void>;
 } {
-    let stage: DiagnosticStage = 'validation', category: DiagnosticCategory = 'refusal', captured: Diagnostic | undefined;
+    let stage: DiagnosticStage = 'validation', category: DiagnosticCategory = 'refusal', captured: Diagnostic | undefined;let databaseAcquisition:OwnedUatDatabaseAcquisitionDiagnostic|undefined;
     let cleanupStep: CleanupStep | undefined;
     let nativeUnknownOrigin:NativeUnknownDetail|undefined,requestDrainBoundary:RequestDrainBoundary|undefined;
     let readDrainPending:(()=>RequestDrainPending|undefined)|undefined,deadlinePending:RequestDrainPending|undefined;
@@ -275,7 +276,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies, family: 'a
     let readViteDiagnostic:(()=>AppsViteDiagnostic|undefined)|undefined;
     const registerViteDiagnostic=(reader:()=>AppsViteDiagnostic|undefined)=>{readViteDiagnostic=reader;};
     const safeViteDiagnostic=()=>{if(stage!=='vite')return undefined;try{return readViteDiagnostic?.();}catch{return undefined;}};
-    const snapshot = (control?:unknown,options?:unknown): Diagnostic => {const vite=safeViteDiagnostic(),detail=extractAppsControlDiagnostic(control),requestDrain=extractAppsRequestDrainDiagnostic(options),requestDrainPending=deadlinePending??(stage==='cleanup'&&cleanupStep==='request-drain'?safeDrainPending():undefined);return Object.freeze({stage,category,...(vite?{vite}:{}),...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{}),...(nativeUnknownOrigin?{nativeUnknownOrigin}:{}),...(requestDrainBoundary?{requestDrainBoundary}:{}),...(requestDrain?{requestDrain}:{}),...(requestDrainPending?{requestDrainPending}:{})});};
+    const snapshot = (control?:unknown,options?:unknown): Diagnostic => {const vite=safeViteDiagnostic(),detail=extractAppsControlDiagnostic(control),requestDrain=extractAppsRequestDrainDiagnostic(options),requestDrainPending=deadlinePending??(stage==='cleanup'&&cleanupStep==='request-drain'?safeDrainPending():undefined);return Object.freeze({stage,category,...(stage==='create-database'&&category==='refusal'&&databaseAcquisition?{databaseAcquisition}:{}),...(vite?{vite}:{}),...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{}),...(nativeUnknownOrigin?{nativeUnknownOrigin}:{}),...(requestDrainBoundary?{requestDrainBoundary}:{}),...(requestDrain?{requestDrain}:{}),...(requestDrainPending?{requestDrainPending}:{})});};
     const recordCategory = (value: DiagnosticCategory) => { if (category === 'refusal')
         category = value; };
     let nativeFailure:(()=>void)|undefined;
@@ -506,6 +507,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies, family: 'a
             }
         }
         catch (value) {
+            if(stage==='create-database'&&category==='refusal')databaseAcquisition=extractOwnedUatDatabaseAcquisitionDiagnostic(value);
             captured ??= snapshot(control,options);
             error = value;
             failurePhase = phase;

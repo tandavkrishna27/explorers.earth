@@ -9,6 +9,31 @@ focused local evidence and remaining acceptance. Wave 2 is **open**.
 
 The following supersedes the older pending-status bullets below. Wave 2 remains open.
 
+Latest actual checkpoint at clean `aa3738f3`:
+
+- Guides reached the second desktop case and received one HTTP 200 section-update
+  response. Its exact request matcher rejected only the description; field set,
+  revision, title and blocks matched. Failure was retained at `section-edit` /
+  `await-ack`. Source stayed intact; service/control cleanup failed. This is a
+  diagnosed remaining defect, not Guides acceptance.
+- People discovered all 12 identities, then failed the first desktop case at
+  `reset` / `worker-bootstrap`. Source and cleanup passed. The strict numeric
+  PostgreSQL version check and authenticated discovery/execution barrier are
+  integrated, but actual People acceptance remains open.
+- Apps enrichment failed before browser execution at `create-database` / refusal.
+  The run's source stayed intact; control/private-directory cleanup failed. The
+  newly reviewed finite acquisition and worker-bootstrap diagnostics preserve
+  the original errors, guards, operations and deadlines; they await fresh runs.
+- Fresh integrated diagnostic checks passed 27 Root tests and 314 backend tests.
+  The earlier checkpoint also passed 386 backend and 71 contained Guides client
+  tests. These counts establish source checks, not protected browser acceptance.
+- Remote PR119 was rechecked: draft head remains `622f6893`, with
+  `platform-fixture` and dependent `music-required` failing. Latest local work
+  remains unpushed; exact-head CI and replatform readiness are not cleared.
+
+The historical details below retain their exact source bindings and are superseded
+where the latest checkpoint differs.
+
 - Real Apps website/Apple provider and native scheduler qualification passed all eight
   PostgreSQL cases on clean `f8215c98`, with source and resource cleanup verified.
   See `receipts/apps-real-providers-f8215c98/`. Authenticated browser enrichment
