@@ -7,7 +7,7 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import {types as utilTypes} from 'node:util';
 import {createRequire} from 'node:module';
 import {retainGuidesBrowserReportFailure} from '../tunes/scripts/guides-browser-report-diagnostic.mjs';
-import {buildWave2BrowserRegistration} from './wave2-browser-registration.mjs';
+import {buildWave2BrowserRegistration,PUBLIC_PARITY_TITLES,PEOPLE_TITLES} from './wave2-browser-registration.mjs';
 const ACK='TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
 export function childNodeEnvironment(environment,platform=process.platform){
  const entries=Object.entries(environment);
@@ -643,6 +643,28 @@ function guidesNativePoint(line,column){
 function guidesNativeData(value){if(!value||typeof value!=='object'||utilTypes.isProxy(value)||![Object.prototype,null].includes(Object.getPrototypeOf(value)))return;const d=Object.getOwnPropertyDescriptors(value);if(Reflect.ownKeys(d).some(k=>typeof k!=='string')||Object.values(d).some(v=>!v.enumerable||!Object.hasOwn(v,'value')))return;return Object.fromEntries(Object.entries(d).map(([k,v])=>[k,v.value]));}
 function guidesNativeArray(value,cap){if(!Array.isArray(value)||utilTypes.isProxy(value)||value.length>cap)return;const d=Object.getOwnPropertyDescriptors(value);if(Reflect.ownKeys(d).length!==value.length+1||Object.values(d).some(v=>!Object.hasOwn(v,'value')))return;const items=[];for(let i=0;i<value.length;i++){if(!Object.hasOwn(d,String(i)))return;items.push(d[String(i)].value);}return items;}
 const guidesClientBoundaries=['start-response','context-allocation','context-session','producer','observe-transport','observe-response','observe-provider','observe-personas','observe-rows','observe-relations','observe-attachments','context-close','retire'];
+export function decodePublicParityFixtureFailureLine(line,lane){
+ try{
+  if(typeof line!=='string'||Buffer.byteLength(line)>1024||/[\r\n]/.test(line))return;
+  const l=guidesNativeData(lane),titles=l?.name==='public-parity'?PUBLIC_PARITY_TITLES:l?.name==='people'?PEOPLE_TITLES:undefined;
+  if(!titles)return;const count=titles.length*2,identities=guidesNativeArray(l.identities,count);
+  if(!identities||identities.length!==count)return;
+  for(let index=0;index<count;index++){const identity=guidesNativeData(identities[index]),path=guidesNativeArray(identity?.titlePath,1);if(!identity||Object.keys(identity).sort().join(',')!=='file,project,repeat,titlePath'||identity.file!==`explorers-earth/e2e/replatform/${l.name}.spec.ts`||!path||path.length!==1||path[0]!==titles[index%titles.length]||identity.project!==`${l.name}-${index<titles.length?'desktop':'mobile'}`||identity.repeat!==0)return;}
+  const match=/^Public fixture failed \[public-parity-failure-v1:(\{.*\})\]$/.exec(line);if(!match)return;
+  const v=JSON.parse(match[1]);if(!v||Array.isArray(v)||Object.keys(v).sort().join(',')!=='boundary,caseId,caseIndex,completedEpochs,epoch,family,project,version'||v.version!==1||v.family!==l.name||!['bootstrap','reset','observe','retirement','execution','browser-exit','cleanup'].includes(v.boundary)||!Number.isSafeInteger(v.completedEpochs)||v.completedEpochs<0||v.completedEpochs>count)return;
+  if(v.epoch===null){if(v.caseIndex!==null||v.caseId!==null||v.project!==null)return;}
+  else{if(!Number.isSafeInteger(v.epoch)||v.epoch<1||v.epoch>count||v.caseIndex!==v.epoch-1||v.completedEpochs>v.epoch)return;const identity=identities[v.caseIndex];if(v.caseId!==identity.titlePath[0]||v.project!==identity.project)return;}
+  const capsule=Object.freeze({version:1,family:v.family,epoch:v.epoch,caseIndex:v.caseIndex,caseId:v.caseId,project:v.project,boundary:v.boundary,completedEpochs:v.completedEpochs});return JSON.stringify(capsule)===match[1]?capsule:undefined;
+ }catch{return undefined;}
+}
+export function retainPublicParityFixtureFailure(record,child,lane){
+ try{
+  const r=guidesNativeData(record),c=guidesNativeData(child),l=guidesNativeData(lane);
+  if(!r||!c||!l||Object.keys(r).some(key=>!['lane','status','signal','error'].includes(key))||Object.keys(c).some(key=>!['status','signal','error','stdout','stderr'].includes(key))||!['public-parity','people'].includes(l.name)||r.lane!==l.name||r.status!==c.status||r.signal!==c.signal||c.signal!==null||!Number.isSafeInteger(c.status)||c.status<1||c.status>0xffffffff||typeof c.stderr!=='string'||c.stderr.split('public-parity-failure-v1:').length!==2||Object.hasOwn(r,'publicParityFixtureFailure'))return;
+  const lines=c.stderr.split(/\r?\n/),index=lines.findIndex(value=>value.startsWith('Public fixture failed [public-parity-failure-v1:'));if(index<0||index===lines.length-1)return;
+  const capsule=decodePublicParityFixtureFailureLine(lines[index],lane);if(!capsule)return;Object.defineProperty(record,'publicParityFixtureFailure',{value:capsule,enumerable:true,configurable:false,writable:false});return lines[index];
+ }catch{return undefined;}
+}
 export function decodeGuidesNativeFailureLine(line,lane){
  try{
   if(typeof line!=='string'||Buffer.byteLength(line)>1024||/[\r\n]/.test(line))return;
@@ -720,6 +742,7 @@ export async function main(args=process.argv.slice(2)){
    const selector=['auth','lifecycle','places','place-links','apps','guides','public-parity','people','apps-enrichment'].includes(lane.name)?['--suite',lane.name]:[];
    const childArgs=['--import',pathToFileURL(join(root,'tunes/node_modules/tsx/dist/loader.mjs')).href,join(root,lane.runner),...selector,...suffix];
    const child=await capturedChild(process.execPath,childArgs,root,{...process.env},capability);const childRecord={lane:lane.name,status:child.status,signal:child.signal,error:child.error};children.push(childRecord);
+   const publicDiagnostic=retainPublicParityFixtureFailure(childRecord,child,lane);if(publicDiagnostic)process.stderr.write(`${lane.name}: ${publicDiagnostic}\n`);
    const musicDiagnostic=retainMusicBoundaryFailure(childRecord,child);if(musicDiagnostic)process.stderr.write(`${lane.name}: ${musicDiagnostic}\n`);
    const appsDiagnostic=lane.name==='apps'?retainAppsFixtureFailure(childRecord,child):undefined;if(appsDiagnostic)process.stderr.write(`${lane.name}: ${appsDiagnostic}\n`);
    const guidesDiagnostic=lane.name==='guides'?retainGuidesFixtureFailure(childRecord,child):undefined;if(guidesDiagnostic)process.stderr.write(`${lane.name}: ${guidesDiagnostic}\n`);
