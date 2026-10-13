@@ -5,6 +5,15 @@ import {decodePublicParityFixtureFailureLine as decode,retainPublicParityFixture
 const manifest=JSON.parse(readFileSync(new URL('../explorers-earth/e2e/replatform/suite-manifest.json',import.meta.url),'utf8'));
 const line=value=>'Public fixture failed [public-parity-failure-v1:'+JSON.stringify(value)+']';
 const value=(lane,epoch=null)=>({version:1,family:lane.name,epoch,caseIndex:epoch===null?null:epoch-1,caseId:epoch===null?null:lane.identities[epoch-1].titlePath[0],project:epoch===null?null:lane.identities[epoch-1].project,boundary:'bootstrap',completedEpochs:0});
+test('bootstrap checkpoint admits only closed bootstrap metadata and preserves legacy capsules',()=>{
+ const lane=manifest.lanes.find(l=>l.name==='people'),base=value(lane);
+ for(const step of ['source','manifest','powershell','receipt','physical-files','private-directory','private-secret','acquisition-preflight','acquisition-create','pg-witness','launcher','kernel-configure','fixture-launch','fixture-handshake','discovery']){
+  const capsule={...base,bootstrapStep:step};assert.deepEqual(decode(line(capsule),lane),capsule);
+  const record={lane:'people',status:1,signal:null,error:null};assert.equal(retain(record,{status:1,signal:null,error:null,stdout:'',stderr:line(capsule)+'\n'},lane),line(capsule));assert.deepEqual(record.publicParityFixtureFailure,capsule);
+ }
+ for(const step of [null,undefined,{},'private-secret-value'])assert.deepEqual(decode(line({...base,bootstrapStep:step}),lane),step===undefined?base:undefined);
+ assert.equal(decode(line({...base,boundary:'execution',bootstrapStep:'discovery'}),lane),undefined);
+});
 test('public failure decoder binds both complete source inventories and every issued epoch',()=>{
  for(const family of ['public-parity','people']){const lane=manifest.lanes.find(l=>l.name===family);assert.deepEqual(decode(line(value(lane)),lane),value(lane));for(let epoch=1;epoch<=lane.identities.length;epoch++){const capsule={...value(lane,epoch),boundary:'execution',completedEpochs:epoch-1};assert.deepEqual(decode(line(capsule),lane),capsule);}for(const boundary of ['bootstrap','reset','observe','retirement','execution','browser-exit','cleanup'])assert.deepEqual(decode(line({...value(lane),boundary}),lane),{...value(lane),boundary});}
 });

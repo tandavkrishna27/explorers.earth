@@ -651,10 +651,13 @@ export function decodePublicParityFixtureFailureLine(line,lane){
   if(!identities||identities.length!==count)return;
   for(let index=0;index<count;index++){const identity=guidesNativeData(identities[index]),path=guidesNativeArray(identity?.titlePath,1);if(!identity||Object.keys(identity).sort().join(',')!=='file,project,repeat,titlePath'||identity.file!==`explorers-earth/e2e/replatform/${l.name}.spec.ts`||!path||path.length!==1||path[0]!==titles[index%titles.length]||identity.project!==`${l.name}-${index<titles.length?'desktop':'mobile'}`||identity.repeat!==0)return;}
   const match=/^Public fixture failed \[public-parity-failure-v1:(\{.*\})\]$/.exec(line);if(!match)return;
-  const v=JSON.parse(match[1]);if(!v||Array.isArray(v)||Object.keys(v).sort().join(',')!=='boundary,caseId,caseIndex,completedEpochs,epoch,family,project,version'||v.version!==1||v.family!==l.name||!['bootstrap','reset','observe','retirement','execution','browser-exit','cleanup'].includes(v.boundary)||!Number.isSafeInteger(v.completedEpochs)||v.completedEpochs<0||v.completedEpochs>count)return;
+  const v=JSON.parse(match[1]);if(!v||Array.isArray(v))return;
+  const keys=Object.keys(v).sort().join(','),hasStep=Object.hasOwn(v,'bootstrapStep');
+  if(keys!==(hasStep?'bootstrapStep,boundary,caseId,caseIndex,completedEpochs,epoch,family,project,version':'boundary,caseId,caseIndex,completedEpochs,epoch,family,project,version')||v.version!==1||v.family!==l.name||!['bootstrap','reset','observe','retirement','execution','browser-exit','cleanup'].includes(v.boundary)||!Number.isSafeInteger(v.completedEpochs)||v.completedEpochs<0||v.completedEpochs>count)return;
+  if(hasStep&&(v.boundary!=='bootstrap'||!['source','manifest','powershell','receipt','physical-files','private-directory','private-secret','acquisition-preflight','acquisition-create','pg-witness','launcher','kernel-configure','fixture-launch','fixture-handshake','discovery'].includes(v.bootstrapStep)))return;
   if(v.epoch===null){if(v.caseIndex!==null||v.caseId!==null||v.project!==null)return;}
   else{if(!Number.isSafeInteger(v.epoch)||v.epoch<1||v.epoch>count||v.caseIndex!==v.epoch-1||v.completedEpochs>v.epoch)return;const identity=identities[v.caseIndex];if(v.caseId!==identity.titlePath[0]||v.project!==identity.project)return;}
-  const capsule=Object.freeze({version:1,family:v.family,epoch:v.epoch,caseIndex:v.caseIndex,caseId:v.caseId,project:v.project,boundary:v.boundary,completedEpochs:v.completedEpochs});return JSON.stringify(capsule)===match[1]?capsule:undefined;
+  const capsule=Object.freeze({version:1,family:v.family,epoch:v.epoch,caseIndex:v.caseIndex,caseId:v.caseId,project:v.project,boundary:v.boundary,completedEpochs:v.completedEpochs,...(hasStep?{bootstrapStep:v.bootstrapStep}:{})});return JSON.stringify(capsule)===match[1]?capsule:undefined;
  }catch{return undefined;}
 }
 export function retainPublicParityFixtureFailure(record,child,lane){
