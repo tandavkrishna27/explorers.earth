@@ -41,26 +41,26 @@ const E2E_REFERENCED = [
 ] as const;
 
 /**
- * Documents whose last named consumer is **gone**, and which are therefore now orphaned
- * pending an owner decision.
+ * There was a third table here, `ORPHANED`, holding one entry: `APP_LISTS_BY_ACCOUNT` in
+ * `src/features/AppsAndTools/api/query.ts`. It had been listed in `E2E_REFERENCED` as kept
+ * alive by `e2e/apps.spec.ts`; that spec moved to `e2e/replatform/apps.spec.ts` and, because
+ * Apps moved off Apollo in the same change, the replatformed spec dropped the GraphQL
+ * interception that named the document at all. The table recorded that orphan state in both
+ * directions so either resolution would fail loudly.
  *
- * `APP_LISTS_BY_ACCOUNT` was listed above as kept alive by `e2e/apps.spec.ts`. That spec was
- * moved to `e2e/replatform/apps.spec.ts`, and because Apps moved off Apollo in the same
- * change, the replatformed spec dropped the GraphQL interception that named this document
- * altogether. The stale path meant the pair above silently stopped asserting; pointing it at
- * the real file does not restore it, because the real file does not reference the document.
- * A repo-wide search finds the identifier only in its own declaration and in this file.
+ * The owner resolved it by **deleting the document** (2026-10-13), and the entry went with
+ * it in the same change - exactly the "delete the consumer and the entry together" rule
+ * above. Verified first: the identifier and its operation name `AppListsByAccount` appear in
+ * no live consumer. The one surviving mention of the operation name, in
+ * `src/features/navigation/__tests__/categoryNavigationSurfaces.test.tsx`, asserts the native
+ * Apps refresh issues *no* such request, so it is a negative assertion that the deletion
+ * only reinforces.
  *
- * This is recorded rather than deleted on purpose. Deleting the entry would remove the only
- * remaining assertion about the document; deleting the `gql` document itself is an owner
- * decision outside this test's reach. So the audited orphan state is asserted in both
- * directions: the document still exists, and **nothing under `e2e/` names it**. Either
- * resolution - deleting the document, or giving it a real consumer again - makes this fail
- * and forces the entry to be updated.
+ * Nothing is left to assert about that document, so there is no empty table to guard. The
+ * four `E2E_REFERENCED` pairs and the four `SCANNER_REQUIRED` operations below are unchanged,
+ * and the path-existence vacuity guard that caught the silent `apps.spec.ts` move still
+ * covers every remaining consumer.
  */
-const ORPHANED = [
-  { module: "src/features/AppsAndTools/api/query.ts", document: "APP_LISTS_BY_ACCOUNT", retiredConsumer: "e2e/apps.spec.ts", movedTo: "e2e/replatform/apps.spec.ts" },
-] as const;
 
 /**
  * Operations a source scanner requires, each **exactly once**. The scanners are
@@ -82,7 +82,7 @@ describe("retired Apollo document surface", () => {
     // VACUITY GUARD (non-empty): emptying a table must fail, not quietly assert nothing.
     expect(E2E_REFERENCED.length, "E2E_REFERENCED emptied").toBeGreaterThan(0);
     expect(SCANNER_REQUIRED.length, "SCANNER_REQUIRED emptied").toBeGreaterThan(0);
-    for (const { module } of [...E2E_REFERENCED, ...ORPHANED, ...SCANNER_REQUIRED]) {
+    for (const { module } of [...E2E_REFERENCED, ...SCANNER_REQUIRED]) {
       expect(existsSync(resolve(appRoot, module)), module).toBe(true);
       // VACUITY GUARD (non-empty): a truncated module would satisfy nothing below either.
       expect(read(module).length, `${module} is empty`).toBeGreaterThan(0);
@@ -94,30 +94,21 @@ describe("retired Apollo document surface", () => {
       expect(existsSync(resolve(appRoot, consumer)), consumer).toBe(true);
       expect(read(consumer).length, `${consumer} is empty`).toBeGreaterThan(0);
     }
-    // The retired consumer must stay gone; if it reappears, the ORPHANED verdict is stale.
-    for (const { retiredConsumer, movedTo } of ORPHANED) {
-      expect(existsSync(resolve(appRoot, retiredConsumer)), `${retiredConsumer} reappeared`).toBe(false);
-      expect(existsSync(resolve(appRoot, movedTo)), movedTo).toBe(true);
-    }
   });
 
-  describe("documents whose last consumer disappeared are recorded, not forgotten", () => {
-    for (const { module, document, retiredConsumer } of ORPHANED) {
-      it(`${document} is still declared although ${retiredConsumer.split("/").pop()} no longer names it`, () => {
-        expect(read(module)).toContain(`export const ${document}`);
-      });
-
-      it(`${document} is named by no spec under e2e/, so the pair above would be vacuous`, () => {
-        const e2eRoot = resolve(appRoot, "e2e");
-        expect(existsSync(e2eRoot), "e2e/ missing").toBe(true);
-        const specs = readdirSync(e2eRoot, { recursive: true, encoding: "utf8" })
-          .filter(entry => entry.endsWith(".ts") || entry.endsWith(".tsx") || entry.endsWith(".mjs"));
-        // VACUITY GUARD (non-empty): an empty sweep would make the claim below meaningless.
-        expect(specs.length, "no specs found under e2e/").toBeGreaterThan(0);
-        const naming = specs.filter(entry => read(`e2e/${entry}`).includes(document));
-        expect(naming, `${document} has a consumer again - move it back into E2E_REFERENCED`).toEqual([]);
-      });
-    }
+  it("the deleted APP_LISTS_BY_ACCOUNT stays deleted rather than quietly returning", () => {
+    // The owner deleted this document; a revival would resurrect the retired Apollo path
+    // that the replatform removed, so it is asserted gone in both directions here.
+    const module = "src/features/AppsAndTools/api/query.ts";
+    expect(read(module)).not.toContain("export const APP_LISTS_BY_ACCOUNT");
+    const e2eRoot = resolve(appRoot, "e2e");
+    expect(existsSync(e2eRoot), "e2e/ missing").toBe(true);
+    const specs = readdirSync(e2eRoot, { recursive: true, encoding: "utf8" })
+      .filter(entry => entry.endsWith(".ts") || entry.endsWith(".tsx") || entry.endsWith(".mjs"));
+    // VACUITY GUARD (non-empty): an empty sweep would make the claim below meaningless.
+    expect(specs.length, "no specs found under e2e/").toBeGreaterThan(0);
+    const naming = specs.filter(entry => read(`e2e/${entry}`).includes("APP_LISTS_BY_ACCOUNT"));
+    expect(naming, "APP_LISTS_BY_ACCOUNT has a consumer again - re-declare it deliberately").toEqual([]);
   });
 
   describe("documents named by a Playwright spec stay in place", () => {

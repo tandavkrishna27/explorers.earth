@@ -80,56 +80,13 @@ export function useAppsCommands() {
 }
 
 
-// ─────────────────────────────────────────────────────────────
-// Query 1.1 — App Lists by Account (Dashboard + Public)
-// ─────────────────────────────────────────────────────────────
-export const APP_LISTS_BY_ACCOUNT = gql`
-  query AppListsByAccount($accountDocumentId: ID!) {
-    appLists(
-      filters: { account: { documentId: { eq: $accountDocumentId } } }
-      sort: ["display_order:asc"]
-      pagination: { limit: 100 }
-    ) {
-      documentId
-      List_Name
-      list_description
-      slug
-      Visibility
-      cover_image {
-        url
-        alternativeText
-      }
-      display_order
-      top_apps_heading
-      recommended_apps(sort: ["display_order:asc"], pagination: { limit: 200 }) {
-        documentId
-        app_url
-        title
-        description
-        logo_url
-        developer
-        platforms
-        price_tier
-        download_url
-        is_pinned
-        display_order
-        screenshots
-        user_recommendation_note
-        user_rating
-        pin_order
-        app_category {
-          documentId
-          name
-          slug
-        }
-      }
-      account {
-        documentId
-        username
-      }
-    }
-  }
-`;
+// Query 1.1 — App Lists by Account — DELETED. Its only named consumer was
+// `e2e/apps.spec.ts`; that spec became `e2e/replatform/apps.spec.ts` and dropped the
+// GraphQL interception entirely because Apps moved off Apollo in the same change. The
+// dashboard now reads through `AppsClient`/`getCompleteMyCategoryContent`, so the
+// document was dead by design, not by accident: restoring a consumer would have meant
+// reviving the retired Apollo path the retirement existed to prevent. Owner decision,
+// 2026-10-13. The `retiredApolloDocumentSurface` gate's ORPHANED entry went with it.
 
 // ─────────────────────────────────────────────────────────────
 // Query 1.2 — Apps by List (paginated, for list view)
