@@ -281,7 +281,10 @@ for (const [index, title] of PUBLIC_PARITY_CASES.entries())
                 const videoAsset = scope.manifest.media.find(row => row.mimeType === 'video/mp4')!;
                 const video = profilePage.locator('video[src*="' + videoAsset.id + '"]').first();
                 await expect(video).toBeVisible();
-                const playback = await scope.client.trackProducer(() => video.evaluate(async (element) => { const media = element as HTMLVideoElement; media.muted = true; await media.play(); const result = { width: media.videoWidth, height: media.videoHeight, playing: !media.paused }; media.pause(); return result; }));
+                // The seeded asset is a single frame, so playback can finish before play()
+                // settles. Only that exact native rejection paired with a positive
+                // decoded-and-ended witness is admitted; every other error is preserved.
+                const playback = await scope.client.trackProducer(() => video.evaluate(async (element) => { const media = element as HTMLVideoElement; media.muted = true; let completed = false; try { await media.play(); } catch (error) { if (!(error instanceof DOMException) || error.name !== 'AbortError' || !media.ended || media.videoWidth <= 0) throw error; completed = true; } const result = { width: media.videoWidth, height: media.videoHeight, playing: completed || !media.paused }; media.pause(); return result; }));
                 expect(playback.playing).toBe(true);
                 expect(playback.width).toBeGreaterThan(0);
                 expect(playback.height).toBeGreaterThan(0);
