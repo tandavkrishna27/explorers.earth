@@ -331,8 +331,12 @@ for (const [index, title] of PUBLIC_PARITY_CASES.entries())
                 for (const link of scope.manifest.links) {
                     const media = scope.manifest.media.find(asset => asset.attachments.some(a => a.collectionId === link.childCollectionId))!;
                     expect(media).toBeDefined();
+                    // A linked child is independently addressable: the link is a presentation
+                    // relation for the location page only, so a private parent hides itself and
+                    // its own cover while the child's cover keeps serving. The child's own
+                    // visibility is asserted by the single-attachment loop above.
                     await patch(scope, owner, 'collections', link.locationCollectionId, { visibility: 'private' });
-                    await binary(scope, anonymous, media.contentUrl, 404);
+                    await binary(scope, anonymous, media.contentUrl, 200);
                     await patch(scope, owner, 'collections', link.locationCollectionId, { visibility: 'public' });
                     await binary(scope, anonymous, media.contentUrl, 200);
                 }
