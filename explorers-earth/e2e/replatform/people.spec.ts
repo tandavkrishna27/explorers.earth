@@ -129,8 +129,11 @@ for (const [index, title] of PEOPLE_CASES.entries())
                 await expect(page.getByLabel('Sector', { exact: true }).locator('option')).toHaveCount(1);
                 const catalog = (await peopleSectorHttp(scope,'catalog-read',()=>owner.request.get(BASE+'/catalog/taxonomy?category=people&limit=24',{headers:{},timeout:Math.min(scope.client.remainingMs(),PUBLIC_PARITY_QUALIFICATION_POLICY.contextMs)}),200)).body;
                 expect(catalog).toMatchObject({ state: 'CONFIGURED', catalogVersion: 1, defaultLocale: 'en', items: [], nextCursor: null });
-                for (const row of people.items)
-                    expect((await editable(scope, owner, 'recommendations', row.id) as any).peopleSector).toMatchObject({ catalogState: 'CONFIGURED', catalogVersion: 1, sector: null, selectionUnavailable: false });
+                for (const row of people.items) {
+                    const rowOwner=row.accountId===a.accountId?owner:row.accountId===b.accountId?foreign:undefined;
+                    expect(rowOwner).toBeDefined();
+                    expect((await editable(scope, rowOwner!, 'recommendations', row.id) as any).peopleSector).toMatchObject({ catalogState: 'CONFIGURED', catalogVersion: 1, sector: null, selectionUnavailable: false });
+                }
                 await peopleSectorHttp(scope,'unknown-sector-read',()=>anonymous.request.get(`${BASE}/profiles/${a.handle}/recommendations/people/sectors/no-configured-sector`,{headers:{},timeout:Math.min(scope.client.remainingMs(),PUBLIC_PARITY_QUALIFICATION_POLICY.contextMs)}),404);
                 unavailableInput(info, 'people-configured-empty-positive-sector-unavailable');
                 const row = people.items[0], current: any = await editable(scope, owner, 'recommendations', row.id);
