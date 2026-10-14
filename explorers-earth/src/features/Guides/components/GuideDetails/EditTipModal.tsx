@@ -57,7 +57,7 @@ const EditTipModal: React.FC<EditTipModalProps> = ({
     if (isOpen && tip) {
       setTipText(tip.tip || "");
     }
-  }, [isOpen, tip]);
+  }, [isOpen, tip.placeId, tip.tip]);
 
   const saveTip = async (newTipText: string, isDelete: boolean = false) => {
     setLoading(true);

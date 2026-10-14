@@ -48,7 +48,7 @@ async function richPerson(db:PoolClient,row:any){
  const entity=await readPersonEntity(db,row.entity_id);
  const overrides=displayOverridesReadSchema.parse(row.display_values??{}),facts=effectivePersonDetails(entity.details,overrides);
  const name=(Object.hasOwn(overrides,'title')?overrides.title:entity.title)??'Unnamed person';
- const primary=facts.socialUrls.primary??(facts.primaryPlatform?facts.socialUrls[facts.primaryPlatform]:undefined)??null;
+ const primary=facts.socialUrls.primary??(facts.primaryPlatform?facts.socialUrls[facts.primaryPlatform]:undefined)??facts.socialUrls.website??null;
  const person={documentId:row.id,
  // Canonical plus the compatibility aliases the consuming components still read.
  title:name,full_name:name,

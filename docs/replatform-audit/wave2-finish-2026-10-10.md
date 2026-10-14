@@ -13,6 +13,19 @@ Latest actual checkpoint at clean `aa3738f3`:
 
 Subsequent concrete source repairs and actual results:
 
+- Actual People at a7ef2ba1 completed three epochs; its next case exposed a
+  missing website-only public profile link. The reviewed public projection now
+  selects the explicit website after existing primary/platform precedence.
+- The reviewed Guides tip repair changes one initialization dependency line:
+  unchanged parent observations no longer overwrite typed text. Real mounted
+  StrictMode and canonical-write tests preserve blocks, switching, changed source
+  text and reopening. Integrated product regressions passed six tests, scoped
+  types and the full production frontend build. Actual qualification remains open.
+- Actual Apps at a7ef2ba1 narrowed the reset refusal to collection-readback
+  native-http at epoch 2; the completed source proof measured 1006 ms. The HTTP
+  cause is still under investigation; no guard or deadline has been weakened.
+
+
 - Actual People at dcdbb682 completed two epochs including retirement, then
   failed the third case comparing whole 404 envelopes. The native route issues
   a different request UUID each time. The reviewed oracle strictly validates
