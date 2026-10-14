@@ -13,6 +13,22 @@ The following entries are newest first; the original checkpoint was at clean `aa
 
 Subsequent concrete source repairs and actual results:
 
+- Public at clean `8460e645` failed its first Movie entity materialization;
+  canonical manual-origin Movie details prohibit nonempty provider genres.
+  A truthful manual-details/owner-selected taxonomy repair is under review.
+  Guides at that source reports read-body-bound for an unrelated API stream,
+  with three snapshot attempts/nine collection pages/two validations. The actual
+  mounted hook/client regression reproduces superseded native signal cancellation
+  while the current hook renders all 54 Guides and 53 sections; the original
+  tracker rejects that canceled attempt. A reviewed oracle amendment is pending.
+- The passive People cold-entry checkpoint now captures only the first admitted
+  same-origin tracked frontend served-module frame and bounded coordinates.
+  Actual installed Playwright/Node24 native stack access is tested, arbitrary
+  accessors/formatters refuse, and the exact formatter descriptor is restored.
+  Fresh integrated checks passed 549 Root contracts without skips, seven helper
+  and 59 controller/native checks, and scoped types. This is diagnostic evidence,
+  not a product repair or passing People qualification.
+
 - Real Apps enrichment at clean `2967db42` passed all four identities without
   retries or errors and with positive owned/artifact cleanup. Its sanitized
   exact-source receipt is saved under `receipts/wave2-apps-enrichment-2967db42`.
