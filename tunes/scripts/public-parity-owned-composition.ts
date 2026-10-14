@@ -513,6 +513,8 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
         }
         await transaction(async (db) => { for (const owner of ['ownerA', 'ownerB'] as const) {
             const accountId = actor(owner).accountId, listIds = [...lists.values()].filter(value => value.seed.owner === owner).map(value => value.id), recommendationIds = [...items.values()].filter(value => value.seed.owner === owner && value.category !== 'guides').map(value => value.id);
+            if (recommendationIds.length && listIds.length)
+                await db.query('DELETE FROM collection_items WHERE account_id=$1 AND collection_id=ANY($2::uuid[]) AND recommendation_id=ANY($3::uuid[])', [accountId, listIds, recommendationIds]);
             if (recommendationIds.length)
                 await db.query('DELETE FROM recommendations WHERE account_id=$1 AND id=ANY($2::uuid[])', [accountId, recommendationIds]);
             if (listIds.length)
