@@ -13,6 +13,19 @@ Latest actual checkpoint at clean `aa3738f3`:
 
 Subsequent concrete source repairs and actual results:
 
+- The next integrated checkpoint adds closed Apps refresh stages and a closed
+  Public/People first-browser checkpoint. Diagnostics retain the original error,
+  actual case identity and issued epoch; ungranted start failures remain null.
+  Failed Apps execution now attempts its existing bounded API listener close
+  after producers stop, while uncertain resource destruction remains refused.
+  Fresh checks passed 279 backend, 39 Root diagnostic and eight Place-links tests;
+  scoped types, portable test paths and independent reviews passed.
+- The exact retained Apps run from `f78dcbeb` was recovered separately: native
+  process absence, zero sessions/prepared transactions, exact CID/image/source,
+  private owner-only tree and descriptor custody were checked before disposal.
+  Its owned database/container/files are absent; the failed receipt remains failed.
+  The separate retained `e3d84ee3` run still awaits its reviewed recovery recipe.
+
 - Correction to the Guides transport visibility diagnosis: source-column mapping
   in the actual `e3d84ee3` run identifies the first **Add Day/Stop button**, not
   the preceding guide heading. The heading passed; Transport legitimately keeps

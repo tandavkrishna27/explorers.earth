@@ -25,6 +25,7 @@ export type AppsEnrichmentProvisionState = {
     close: () => Promise<void>;
 };
 const refused = () => Error('Apps enrichment native custody refused');
+export type AppsEnrichmentRefreshStage='worker-admission'|'verify-ack'|'provider-execute'|'result-verify'|'snapshot-read';
 /** No pool, request, decoder or environment lookup is created by this constructor. */
 export function createAppsEnrichmentNativeRuntime(input: Readonly<{
     grant: object;
@@ -37,29 +38,31 @@ export function createAppsEnrichmentNativeRuntime(input: Readonly<{
         throw refused();
     const state = inspectAppsEnrichmentProvisionGrant(input.grant, input.options);
     let closing: Promise<void> | undefined, closed = false, busy = false, failed = false;
+    let currentStage:AppsEnrichmentRefreshStage='worker-admission',failureStage:AppsEnrichmentRefreshStage|undefined;
     const inspect = () => { if (closed || closing)
         throw refused(); const current = inspectAppsEnrichmentProvisionGrant(input.grant, input.options); if (current !== state)
         throw refused(); state.assertCurrent(); if (state.signal.aborted)
         throw refused(); };
     const retain = <T>(original: Promise<T>): Promise<T> => { state.pending.add(original); void original.then(() => state.pending.delete(original), () => { failed = true; state.pending.delete(original); }); return original; };
-    const trigger = createAppsEnrichmentWorkerTrigger(state.registry, { verify: async (admission, signal) => { inspect(); if (signal !== state.signal)
+    const trigger = createAppsEnrichmentWorkerTrigger(state.registry, { verify: async (admission, signal) => { currentStage='verify-ack';inspect(); if (signal !== state.signal)
             throw refused(); return retain(state.verifyAck(admission, signal)); }, execute: async (admission, signal) => {
-            inspect();
+            currentStage='provider-execute';inspect();
             const source = state.registry.workerSources.find(source => source.identity.sourceIdentityHash === admission.source.sourceIdentityHash);
             if (!source)
                 throw refused();
             // The admitted worker login has already passed the production capability matrix.
             // Its repository retains original acquisitions/queries and cancels native clients.
-            const work = (async () => { const clock = await state.trustedInstant(); inspect(); const result = await runAppEnrichmentWorker({ sources: [source], runId: randomUUID(), scheduleId: 'apps-http-enrichment-' + state.runId, holder: randomUUID(), trustedInstant: clock, signal }, { repository: new ExplorersAppEnrichmentWorkerRepository(state.workerPool), registry: state.adapters, fetcher: config => state.ledger.fetcher(config) }); inspect(); if (result.kind !== 'complete' || state.ledger.inspect().firstFailure || result.receipt.counts.eligible !== 1 || result.receipt.counts.processed !== 1 || result.receipt.counts.requests !== 1 || result.receipt.counts.unavailable || result.receipt.counts.deferred || result.receipt.counts.exhausted || result.receipt.counts.cancelled || result.receipt.counts.leaseLosses)
-                throw refused(); const snapshots = await state.query('SELECT s.payload FROM app_enrichment_entitlements e JOIN app_enrichment_snapshots s ON s.id=e.snapshot_id AND s.app_entity_id=e.app_entity_id WHERE e.recommendation_id=$1 AND e.account_id=$2 AND e.generation_id=$3 AND e.app_entity_id=$4', [admission.recommendationId, admission.accountId, admission.binding.currentGenerationId, admission.appEntityId]); inspect(); if (snapshots.rows.length !== 1)
+            const work = (async () => { const clock = await state.trustedInstant(); inspect(); const result = await runAppEnrichmentWorker({ sources: [source], runId: randomUUID(), scheduleId: 'apps-http-enrichment-' + state.runId, holder: randomUUID(), trustedInstant: clock, signal }, { repository: new ExplorersAppEnrichmentWorkerRepository(state.workerPool), registry: state.adapters, fetcher: config => state.ledger.fetcher(config) }); currentStage='result-verify';inspect(); if (result.kind !== 'complete' || state.ledger.inspect().firstFailure || result.receipt.counts.eligible !== 1 || result.receipt.counts.processed !== 1 || result.receipt.counts.requests !== 1 || result.receipt.counts.unavailable || result.receipt.counts.deferred || result.receipt.counts.exhausted || result.receipt.counts.cancelled || result.receipt.counts.leaseLosses)
+                throw refused(); currentStage='snapshot-read';const snapshots = await state.query('SELECT s.payload FROM app_enrichment_entitlements e JOIN app_enrichment_snapshots s ON s.id=e.snapshot_id AND s.app_entity_id=e.app_entity_id WHERE e.recommendation_id=$1 AND e.account_id=$2 AND e.generation_id=$3 AND e.app_entity_id=$4', [admission.recommendationId, admission.accountId, admission.binding.currentGenerationId, admission.appEntityId]); inspect(); if (snapshots.rows.length !== 1)
                 throw refused(); const snapshot = (await import('../shared/explorersAppEnrichmentContract')).appSnapshotSchema.parse(snapshots.rows[0].payload); if (snapshot.appEntityId !== admission.appEntityId || snapshot.sourceId !== source.identity.sourceId || snapshot.sourceIdentity !== source.identity.sourceIdentity || snapshot.sourceIdentityHash !== source.identity.sourceIdentityHash || snapshot.canonicalizationVersion !== source.identity.canonicalizationVersion || typeof snapshot.fields.title !== 'string')
                 throw refused(); return Object.freeze({ runId: result.receipt.runId, bindingGenerationId: admission.binding.currentGenerationId!, completed: true as const }); })();
             return retain(work);
         } });
-    return Object.freeze({ async refresh(admission: AppsEnrichmentWorkerAdmission) { inspect(); if (busy)
-            throw refused(); busy = true; try {
-            return await retain(trigger(admission, state.signal));
+    return Object.freeze({ failureStage:()=>failureStage,async refresh(admission: AppsEnrichmentWorkerAdmission) { if (busy)
+            throw refused(); busy = true;currentStage='worker-admission';failureStage=undefined; try {
+            inspect();return await retain(trigger(admission, state.signal));
         }
+        catch(error){failureStage=currentStage;throw error;}
         finally {
             busy = false;
         } }, close() { if (closing)

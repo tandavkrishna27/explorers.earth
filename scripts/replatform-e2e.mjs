@@ -582,7 +582,7 @@ function validAppsRequestCensus(code,requests){
  const global=/^(0|[1-9a-f][0-9a-f]{0,4})\.(0|[1-9][0-9]?)\.(0|[1-9a-f][0-9a-f]{0,4})$/.exec(parts[4]);if(!global||parseInt(global[1],16)>0x7ffff||parseInt(global[3],16)>0x7ffff)return false;let bits=parseInt(global[1],16),count=0;while(bits){count+=bits&1;bits>>>=1;}return count===Number(global[2]);
 }
 /** Only a single exact failed Apps marker is copied into the child record. */
-export function retainAppsFixtureFailure(record,child){
+export function retainAppsFixtureFailure(record,child,lane){
  const own=(value,required,allowed)=>{try{if(!value||typeof value!=='object'||![Object.prototype,null].includes(Object.getPrototypeOf(value)))return undefined;const descriptors=Object.getOwnPropertyDescriptors(value);if(Reflect.ownKeys(descriptors).some(key=>typeof key!=='string'||!allowed.includes(key))||required.some(key=>!Object.hasOwn(descriptors,key)||!Object.hasOwn(descriptors[key],'value'))||Object.values(descriptors).some(d=>!Object.hasOwn(d,'value')))return undefined;return descriptors;}catch{return undefined;}};
  const r=own(record,['lane','status'],['lane','status','signal','error']),c=own(child,['status','stderr'],['status','signal','error','stdout','stderr']);
  if(!r||!c||!['apps','apps-enrichment'].includes(r.lane.value)||r.status.value!==c.status.value||!Number.isInteger(c.status.value)||c.status.value===0)return undefined;
@@ -592,11 +592,24 @@ export function retainAppsFixtureFailure(record,child){
  const pairs=diagnostic.slice('Apps owned fixture failed: '.length).split('; '),fields=Object.fromEntries(pairs.map(pair=>pair.split('=')));
  const vite=fields.viteOrigin?Object.freeze({origin:fields.viteOrigin,childCode:fields.viteChildCode==='null'?null:Number(fields.viteChildCode),childSignal:fields.viteChildSignal,stdioClosed:fields.viteStdioClosed==='true',advertised:fields.viteAdvertised==='true',httpReady:fields.viteHttpReady==='true',probeOutcome:fields.viteProbeOutcome,stderr:fields.viteStderr,stderrBytes:Number(fields.viteStderrBytes),stderrOverflow:fields.viteStderrOverflow==='true'}):undefined;
  const databaseAcquisition=fields.databaseAcquisitionStage?Object.freeze({stage:fields.databaseAcquisitionStage}):undefined;
- const evidence=Object.freeze({stage:fields.stage,category:fields.category,marker:diagnostic,...(databaseAcquisition?{databaseAcquisition}:{}),...(vite?{vite}:{})});
+ let enrichmentRefresh;
+ if(fields.enrichmentRefreshStage){
+  if(r.lane.value!=='apps-enrichment'||utilTypes.isProxy(lane))return undefined;
+  const laneFields=own(lane,['name','runner','config','spec','projects','identities'],['name','runner','config','spec','projects','identities']);
+  const array=(value,length)=>{if(!Array.isArray(value)||utilTypes.isProxy(value)||Object.getPrototypeOf(value)!==Array.prototype)return undefined;const descriptors=Object.getOwnPropertyDescriptors(value);if(descriptors.length?.value!==length||Reflect.ownKeys(descriptors).length!==length+1)return undefined;const result=[];for(let i=0;i<length;i++){const d=descriptors[String(i)];if(!d?.enumerable||!Object.hasOwn(d,'value'))return undefined;result.push(d.value);}return result;};
+  if(!laneFields||laneFields.name.value!=='apps-enrichment'||laneFields.runner.value!=='tunes/scripts/profile-browser-fixture.ts'||laneFields.config.value!=='explorers-earth/e2e/replatform/apps-enrichment.playwright.config.ts'||laneFields.spec.value!=='explorers-earth/e2e/replatform/apps-enrichment.spec.ts')return undefined;
+  const projects=array(laneFields.projects.value,2),identities=array(laneFields.identities.value,4),titles=['Apps enrichment: explicit approved source choices and selected-field acceptance survive reload','Apps enrichment: disable same-source re-enable and different-source rebind preserve manual values'];
+  if(!projects||projects[0]!=='apps-desktop'||projects[1]!=='apps-mobile'||!identities)return undefined;
+  const seen=new Set();for(const identity of identities){if(utilTypes.isProxy(identity))return undefined;const value=own(identity,['file','titlePath','project','repeat'],['file','titlePath','project','repeat']),title=value&&array(value.titlePath.value,1);if(!value||!title||value.file.value!==laneFields.spec.value||!titles.includes(title[0])||!projects.includes(value.project.value)||value.repeat.value!==0)return undefined;seen.add(JSON.stringify([title[0],value.project.value]));}if(seen.size!==4)return undefined;
+  const caseIndex=Number(fields.enrichmentRefreshCaseIndex),project=fields.enrichmentRefreshProject,epoch=Number(fields.enrichmentRefreshEpoch);if(epoch!==(project==='apps-desktop'?1:3)+caseIndex)return undefined;
+  enrichmentRefresh=Object.freeze({stage:fields.enrichmentRefreshStage,caseIndex,project,repeat:0,epoch});
+ }
+ const evidence=Object.freeze({stage:fields.stage,category:fields.category,marker:diagnostic,...(enrichmentRefresh?{enrichmentRefresh}:{}),...(databaseAcquisition?{databaseAcquisition}:{}),...(vite?{vite}:{})});
  try{Object.defineProperty(record,'appsFixtureFailure',{value:evidence,enumerable:true,configurable:false,writable:false});}catch{return undefined;}return diagnostic;
 }
 export function decodeAppsFixtureFailureLine(line){
  if(typeof line!=='string'||Buffer.byteLength(line,'utf8')>1024||/[\r\n]/.test(line))return undefined;
+ if(line.includes('; enrichmentRefresh')){const refresh=/^Apps owned fixture failed: stage=execution; category=refusal; enrichmentRefreshStage=([a-z-]+); enrichmentRefreshCaseIndex=(0|1); enrichmentRefreshProject=(apps-desktop|apps-mobile); enrichmentRefreshRepeat=0; enrichmentRefreshEpoch=([1-4])((?:; nativeUnknownOrigin=capture-rejection; nativeUnknownStage=execution)?)$/.exec(line);if(!refresh||!['worker-admission','verify-ack','provider-execute','result-verify','snapshot-read'].includes(refresh[1])||Number(refresh[4])!==(refresh[3]==='apps-desktop'?1:3)+Number(refresh[2]))return undefined;return decodeAppsFixtureFailureLine('Apps owned fixture failed: stage=execution; category=refusal'+refresh[5])?line:undefined;}
  if(line.includes('; databaseAcquisition')){const acquisition=/^Apps owned fixture failed: stage=create-database; category=refusal; databaseAcquisitionStage=([a-z-]+)$/.exec(line);return acquisition&&['creation-custody','creation-command','creation-result','health-inspect','health-state','health-not-running','health-unhealthy','health-wait','health-deadline','secret-custody','secret-mount','container-witness'].includes(acquisition[1])?line:undefined;}
  const vite=/; viteOrigin=([a-z-]+); viteChildCode=(null|0|-?[1-9][0-9]{0,9}); viteChildSignal=(none|SIGTERM|SIGKILL|other); viteStdioClosed=(true|false); viteAdvertised=(true|false); viteHttpReady=(true|false); viteProbeOutcome=([a-z0-9-]+); viteStderr=([a-z-]+); viteStderrBytes=(0|[1-9][0-9]{0,3}); viteStderrOverflow=(true|false)/.exec(line);
  const originalLine=line;
@@ -651,6 +664,37 @@ function guidesSectionAckData(value){
  if(v.fields!==null){const f=guidesNativeData(v.fields);if(!f||Object.keys(f).sort().join(',')!=='blocks,description,fieldSet,revision,title'||Object.values(f).some(item=>item!==null&&typeof item!=='boolean'))return;fields=Object.freeze({fieldSet:f.fieldSet,revision:f.revision,title:f.title,description:f.description,blocks:f.blocks});}
  return Object.freeze({seen:v.seen,matched:v.matched,lastStatus:v.lastStatus,fields});
 }
+
+const publicBrowserSteps=Object.freeze(['start-response','session-cookie','manifest','context-allocation','context-session','context-me','body','observe','retire']);
+function publicBrowserNativeBinding(lane,native){
+ const l=guidesNativeData(lane),n=guidesNativeData(native),identities=guidesNativeArray(l?.identities,32);
+ if(!l||!['public-parity','people'].includes(l.name)||!n||Object.keys(n).sort().join(',')!=='boundary,caseId,caseIndex,completedEpochs,epoch,family,project,version'||n.version!==1||n.family!==l.name||n.boundary!=='browser-exit'||!Number.isSafeInteger(n.epoch)||!identities||n.epoch<1||n.epoch>identities.length||n.caseIndex!==n.epoch-1)return;
+ if(!decodePublicParityFixtureFailureLine('Public fixture failed [public-parity-failure-v1:'+JSON.stringify(n)+']',l))return;
+ const identity=guidesNativeData(identities[n.caseIndex]),titles=guidesNativeArray(identity?.titlePath,1);
+ if(!identity||!titles||titles.length!==1||n.caseId!==titles[0]||n.project!==identity.project||identity.repeat!==0)return;
+ return {lane:l,native:n,identities,identity};
+}
+function publicBrowserCapsule(line,lane,native){try{
+ const bound=publicBrowserNativeBinding(lane,native);if(!bound||typeof line!=='string'||Buffer.byteLength(line)>768||/[\r\n]/.test(line))return;
+ const match=/^\[public-parity-browser-failure-v1:(\{.*\})\]$/.exec(line);if(!match)return;const v=guidesNativeData(JSON.parse(match[1]));
+ if(!v||Object.keys(v).sort().join(',')!=='caseIndex,epoch,family,project,repeat,step,version'||v.version!==1||v.family!==bound.lane.name||v.caseIndex!==bound.native.caseIndex||v.project!==bound.identity.project||v.repeat!==0||!publicBrowserSteps.includes(v.step)||(v.epoch===null?v.step!=='start-response':v.epoch!==bound.native.epoch))return;
+ const capsule=Object.freeze({version:1,family:v.family,epoch:v.epoch,caseIndex:v.caseIndex,project:v.project,repeat:0,step:v.step});return JSON.stringify(capsule)===match[1]?capsule:undefined;
+ }catch{return undefined;}}
+export function decodePublicParityBrowserFailure(report,lane,root,native){try{
+ const bound=publicBrowserNativeBinding(lane,native),r=guidesNativeData(report),config=guidesNativeData(r?.config),suites=guidesNativeArray(r?.suites,64);if(!bound||!config||typeof config.rootDir!=='string'||!suites)return;
+ const failed=[],seen=new Set();let visited=0;function walk(suite,titles,fileRoot,depth){if(depth>32||++visited>4096)throw Error();const s=guidesNativeData(suite);if(!s||typeof s.title!=='string')throw Error();const next=fileRoot?titles:[...titles,s.title],specs=s.specs===undefined?[]:guidesNativeArray(s.specs,128),nested=s.suites===undefined?[]:guidesNativeArray(s.suites,128);if(!specs||!nested)throw Error();for(const raw of specs){const spec=guidesNativeData(raw),tests=guidesNativeArray(spec?.tests,4);if(!spec||typeof spec.file!=='string'||typeof spec.title!=='string'||!tests)throw Error();for(const rawTest of tests){const test=guidesNativeData(rawTest),results=guidesNativeArray(test?.results,1);if(!test||!results)throw Error();const identity={file:relative(root,resolve(config.rootDir,spec.file)).replaceAll('\\','/'),titlePath:[...next,spec.title],project:test.projectName,repeat:0},index=bound.identities.findIndex(value=>identityKey(value)===identityKey(identity));if(index<0||seen.has(index))throw Error();seen.add(index);if(results.length){const result=guidesNativeData(results[0]);if(!result||result.retry!==0)throw Error();if(['failed','timedOut'].includes(result.status))failed.push({index,result});}}}for(const child of nested)walk(child,next,false,depth+1);}
+ for(const suite of suites)walk(suite,[],true,0);if(seen.size!==bound.identities.length)return;failed.sort((a,b)=>a.index-b.index);if(!failed.length||failed[0].index!==bound.native.caseIndex)return;
+ const stderr=failed[0].result.stderr===undefined?[]:guidesNativeArray(failed[0].result.stderr,64);if(!stderr)return;let text='';for(const chunk of stderr){const data=guidesNativeData(chunk);if(!data||Object.keys(data).join(',')!=='text'||typeof data.text!=='string'||Buffer.byteLength(text)+Buffer.byteLength(data.text)>8192)return;text+=data.text;}
+ if(text.split('public-parity-browser-failure-v1:').length!==2)return;const lines=text.split(/\r?\n/).filter(line=>line.includes('public-parity-browser-failure-v1:'));if(lines.length!==1)return;return publicBrowserCapsule(lines[0],lane,native);
+ }catch{return undefined;}}
+export function retainPublicParityBrowserFailure(record,child,lane){try{
+ const r=guidesNativeData(record),c=guidesNativeData(child),bound=publicBrowserNativeBinding(lane,r?.publicParityFixtureFailure),failure=guidesNativeData(r?.failure);
+ if(!r||!c||!bound||Object.keys(r).some(key=>!['lane','status','signal','error','publicParityFixtureFailure','lifecycleFailure','failure'].includes(key))||r.lane!==bound.lane.name||r.status!==c.status||r.signal!==c.signal||c.signal!==null||!Number.isSafeInteger(c.status)||c.status<1||typeof c.stderr!=='string'||c.stderr.split('public-parity-browser-failure-v1:').length!==2||Object.hasOwn(r,'publicParityBrowserFailure')||!failure||failure.lane!==r.lane||failure.version!==1)return;
+ const cleanup=guidesNativeData(failure.cleanup),results=guidesNativeArray(failure.results,32);if(!cleanup||cleanup.status!=='passed'||!results||results.length!==bound.identities.length)return;const failed=[],seen=new Set();for(const raw of results){const value=guidesNativeData(raw),attempts=guidesNativeArray(value?.attempts,1);if(!value||!attempts||attempts.length!==1) return;const attempt=guidesNativeData(attempts[0]),index=bound.identities.findIndex(identity=>identityKey(identity)===identityKey(value.identity));if(!attempt||attempt.retry!==0||index<0||seen.has(index))return;seen.add(index);if(['failed','timedOut'].includes(attempt.status))failed.push(index);}if(!failed.length||Math.min(...failed)!==bound.native.caseIndex)return;
+ const lines=c.stderr.split(/\r?\n/),index=lines.findIndex(line=>line.includes('public-parity-browser-failure-v1:'));if(index<0||index===lines.length-1)return;const prefix='Public browser failed ';if(!lines[index].startsWith(prefix))return;const capsule=publicBrowserCapsule(lines[index].slice(prefix.length),lane,bound.native);if(!capsule)return;
+ Object.defineProperty(record,'publicParityBrowserFailure',{value:capsule,enumerable:true,configurable:false,writable:false});return lines[index];
+ }catch{return undefined;}}
+
 export function decodePublicParityFixtureFailureLine(line,lane){
  try{
   if(typeof line!=='string'||Buffer.byteLength(line)>1024||/[\r\n]/.test(line))return;
@@ -765,7 +809,7 @@ export async function main(args=process.argv.slice(2)){
    const child=await capturedChild(process.execPath,childArgs,root,{...process.env},capability);const childRecord={lane:lane.name,status:child.status,signal:child.signal,error:child.error};children.push(childRecord);
    const publicDiagnostic=retainPublicParityFixtureFailure(childRecord,child,lane);if(publicDiagnostic)process.stderr.write(`${lane.name}: ${publicDiagnostic}\n`);
    const musicDiagnostic=retainMusicBoundaryFailure(childRecord,child);if(musicDiagnostic)process.stderr.write(`${lane.name}: ${musicDiagnostic}\n`);
-   const appsDiagnostic=['apps','apps-enrichment'].includes(lane.name)&&childRecord.lane===lane.name?retainAppsFixtureFailure(childRecord,child):undefined;if(appsDiagnostic)process.stderr.write(`${lane.name}: ${appsDiagnostic}\n`);
+   const appsDiagnostic=['apps','apps-enrichment'].includes(lane.name)&&childRecord.lane===lane.name?retainAppsFixtureFailure(childRecord,child,lane):undefined;if(appsDiagnostic)process.stderr.write(`${lane.name}: ${appsDiagnostic}\n`);
    const guidesDiagnostic=lane.name==='guides'?retainGuidesFixtureFailure(childRecord,child):undefined;if(guidesDiagnostic)process.stderr.write(`${lane.name}: ${guidesDiagnostic}\n`);
    const guidesReportDiagnostic=lane.name==='guides'?retainGuidesBrowserReportFailure(childRecord,child,lane,{caseTitles:guidesTitles,projects:['guides-desktop','guides-mobile'],isSourcePoint:guidesNativePoint,decodeFixtureFailureLine:decodeGuidesFixtureFailureLine}):undefined;if(guidesReportDiagnostic)process.stderr.write(`${lane.name}: ${guidesReportDiagnostic}\n`);
    const guidesNativeDiagnostic=lane.name==='guides'?retainGuidesNativeFailure(childRecord,child,lane):undefined;if(guidesNativeDiagnostic)process.stderr.write(`${lane.name}: ${guidesNativeDiagnostic}\n`);
@@ -777,6 +821,7 @@ export async function main(args=process.argv.slice(2)){
    const receiptPath=join(directory,'receipt.json');if(existsSync(receiptPath))child.receipt=JSON.parse(readFileSync(receiptPath,'utf8'));
    const lifecycleFailurePath=join(directory,'lifecycle-failure.json');if(existsSync(lifecycleFailurePath)){if(child.status===0)fail('Lifecycle failure cannot qualify a successful child');childRecord.lifecycleFailure=validateLifecycleFailureRecord(lane,JSON.parse(readFileSync(lifecycleFailurePath,'utf8')),source.provenance);}
    const failurePath=join(directory,'failure.json');if(existsSync(failurePath))childRecord.failure=validateFailureRecord(lane,JSON.parse(readFileSync(failurePath,'utf8')),source.provenance,child);
+   const publicBrowserDiagnostic=retainPublicParityBrowserFailure(childRecord,child,lane);if(publicBrowserDiagnostic)process.stderr.write(`${lane.name}: ${publicBrowserDiagnostic}\n`);
    const topologyPath=join(directory,'topology.json');if(child.status===0&&existsSync(topologyPath)){child.topology=JSON.parse(readFileSync(topologyPath,'utf8'));childRecord.topology=validateMusicTopology(child.topology,source.provenance,child.receipt?.authority??{});}
    if(!equal(snapshotSource(root).provenance,source.provenance))fail('Source changed during lane execution');
    return child;

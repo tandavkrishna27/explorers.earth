@@ -5,6 +5,12 @@ import { TextDecoder } from 'node:util';
 import type { Browser, BrowserContext } from '@playwright/test';
 import { PUBLIC_PARITY_CASES, PUBLIC_PARITY_PROJECTS, PEOPLE_CASES, PEOPLE_PROJECTS, publicParityIssuedManifestSchema, publicParityObservationSchema, type PublicParityIssuedManifest, type PublicParityExpectedManifest } from '../../../tunes/scripts/public-parity-browser-support';
 import { isProxy } from 'node:util/types';
+export const PUBLIC_PARITY_BROWSER_STEPS=Object.freeze(['start-response','session-cookie','manifest','context-allocation','context-session','context-me','body','observe','retire'] as const);
+export type PublicParityBrowserStep=typeof PUBLIC_PARITY_BROWSER_STEPS[number];
+export type PublicParityBrowserFailure=Readonly<{version:1;family:'public-parity'|'people';epoch:number|null;caseIndex:number;project:string;repeat:0;step:PublicParityBrowserStep}>;
+const browserFailures=new WeakMap<object,PublicParityBrowserFailure>();
+export function extractPublicParityBrowserFailure(error:unknown){return typeof error==='object'&&error!==null?browserFailures.get(error):undefined;}
+export function formatPublicParityBrowserFailure(error:unknown){const value=extractPublicParityBrowserFailure(error);return value?'[public-parity-browser-failure-v1:'+JSON.stringify(value)+']\n':'';}
 const LIMIT = 65536, RESPONSE_LIMIT = 9 * 1024 * 1024;
 export type PublicParityIdentity = {
     caseId: typeof PUBLIC_PARITY_CASES[number] | typeof PEOPLE_CASES[number];
@@ -306,6 +312,8 @@ export function createPublicParityHarnessClient(environment: Record<string, stri
     }
     const d = { fs: Object.freeze(filesystem) as FileSystem, post: deps.post as PublicParityDependencies['post'], clock: { now: clock.now.bind(deps.clock), setTimeout: clock.setTimeout.bind(deps.clock), clearTimeout: clock.clearTimeout.bind(deps.clock) } };
     let descriptor: PublicParityDescriptor | undefined, deadline: number | undefined, failed = false, busy = false, lastEpoch = 0, total = 0, reservations = 0;
+    let failureIdentity:PublicParityIdentity|undefined,grantedEpoch:number|null=null,firstBrowserFailure:PublicParityBrowserFailure|undefined;
+    const captureBrowserFailure=(error:unknown,step:PublicParityBrowserStep|undefined)=>{if(firstBrowserFailure||!descriptor||!failureIdentity||!step||grantedEpoch===null&&step!=='start-response')return;const family=env.REPLATFORM_E2E_LANE as 'public-parity'|'people',cases=family==='people'?PEOPLE_CASES:PUBLIC_PARITY_CASES,projects=family==='people'?PEOPLE_PROJECTS:PUBLIC_PARITY_PROJECTS,caseIndex=(projects as readonly string[]).indexOf(failureIdentity.project)*cases.length+(cases as readonly string[]).indexOf(failureIdentity.caseId);firstBrowserFailure=Object.freeze({version:1,family,epoch:grantedEpoch,caseIndex,project:failureIdentity.project,repeat:0,step});if(typeof error==='object'&&error!==null)browserFailures.set(error,firstBrowserFailure);if(dependencies===publicParityNativeDependencies)try{process.stderr.write('[public-parity-browser-failure-v1:'+JSON.stringify(firstBrowserFailure)+']\n');}catch{/* Passive emission cannot replace the original failure. */}};
     const operations = new Set<Promise<unknown>>(), controllers = new Set<AbortController>(), contexts = new Map<BrowserContext, 'open' | 'closed'>(), cookies = new Set<string>(), completed = new Set<string>();
     let active: {
         identity: PublicParityIdentity;
@@ -326,15 +334,16 @@ export function createPublicParityHarnessClient(environment: Record<string, stri
         controller.abort(); };
     function track<T>(operation: (signal: AbortSignal) => Promise<T>) { if (++total > policy.maxOperations)
         denied(); const controller = new AbortController(); controllers.add(controller); const original = Promise.resolve().then(() => operation(controller.signal)); operations.add(original); void original.then(() => { operations.delete(original); controllers.delete(controller); }, () => { operations.delete(original); controllers.delete(controller); seal(); }); return { original, controller }; }
-    async function bounded<T>(operation: (signal: AbortSignal) => Promise<T>, ceiling: number, closing = false): Promise<T> { if (!closing)
+    async function bounded<T>(operation: (signal: AbortSignal) => Promise<T>, ceiling: number, closing = false, checkpoint?:()=>PublicParityBrowserStep|undefined): Promise<T> { if (!closing)
         check();
     else if (deadline === undefined || remainingMs() < 1)
         denied(); const owned = track(operation); let timer: unknown; try {
         return await Promise.race([owned.original, new Promise<never>((_resolve, reject) => { timer = d.clock.setTimeout(() => { seal(); reject(Error('Public parity operation unsettled')); }, Math.max(1, Math.min(remainingMs(), ceiling))); })]);
     }
-    catch {
+    catch (error) {
+        captureBrowserFailure(error,checkpoint?.());
         seal();
-        denied();
+        throw error;
     }
     finally {
         d.clock.clearTimeout(timer);
@@ -343,7 +352,7 @@ export function createPublicParityHarnessClient(environment: Record<string, stri
         denied(); return Object.freeze({ ...value }) as PublicParityIdentity; }
     async function command(action: 'start' | 'observe' | 'retire' | 'fail', selected: PublicParityIdentity, epoch?: number) { if (!descriptor)
         denied(); const sentAt = d.clock.now(), body = JSON.stringify({ v: 1, action, ...selected, ...(epoch === undefined ? {} : { epoch }), ...(action === 'retire' ? { nativeComplete: true, producersClosed: true } : {}) }); if (Buffer.byteLength(body) > policy.commandBytes)
-        denied(); const reply = await bounded(signal => d.post(descriptor!.parent.url, { 'x-public-parity-parent-capability': descriptor!.parent.capability }, body, signal), action === 'start' ? policy.startMs : action === 'observe' ? policy.observeMs : policy.controlMs, action === 'fail'); if (reply.status !== 200)
+        denied(); const reply = await bounded(signal => d.post(descriptor!.parent.url, { 'x-public-parity-parent-capability': descriptor!.parent.capability }, body, signal), action === 'start' ? policy.startMs : action === 'observe' ? policy.observeMs : policy.controlMs, action === 'fail',()=>action==='start'?'start-response':action==='observe'?'observe':action==='retire'?'retire':undefined); if (reply.status !== 200)
         denied(); const remaining = reply.headers['x-public-parity-remaining-lane-ms']; if (!/^[1-9][0-9]{0,7}$/.test(remaining) || Number(remaining) > policy.suiteMs)
         denied(); deadline = Math.min(deadline!, sentAt + Number(remaining)); return json(reply.body, policy.responseBytes); }
     async function start(input: PublicParityIdentity) { if (failed || busy || active || lastEpoch >= (env.REPLATFORM_E2E_LANE === 'public-parity' ? 32 : 12))
@@ -353,7 +362,7 @@ export function createPublicParityHarnessClient(environment: Record<string, stri
         if (descriptor.origin !== e.origin)
             denied();
         deadline = d.clock.now() + policy.suiteMs;
-    } check(); busy = true; try {
+    } check(); busy = true; failureIdentity=selected;grantedEpoch=null;let checkpoint:PublicParityBrowserStep='start-response';try {
         const reply = await command('start', selected);
         exact(reply, ['v', 'epoch', 'reset']);
         if (reply.v !== 1 || !Number.isSafeInteger(reply.epoch) || reply.epoch < 1 || reply.epoch > (env.REPLATFORM_E2E_LANE === 'public-parity' ? 32 : 12) || (lastEpoch !== 0 && reply.epoch !== lastEpoch + 1))
@@ -363,6 +372,7 @@ export function createPublicParityHarnessClient(environment: Record<string, stri
         const family: 'public-parity' | 'people' = env.REPLATFORM_E2E_LANE === 'public-parity' ? 'public-parity' : 'people';
         if (reset.version !== 1 || reset.action !== 'reset' || reset.runId !== descriptor.runId || reset.commit !== descriptor.commit || reset.family !== family || reset.caseId !== selected.caseId || reset.project !== selected.project || reset.repeat !== 0 || reset.generation !== 1)
             denied();
+        grantedEpoch=reply.epoch;checkpoint='session-cookie';
         exact(reset.sessions, ['ownerA', 'ownerB']);
         const sessions = {} as Record<'ownerA' | 'ownerB', {
             cookie: string;
@@ -376,15 +386,16 @@ export function createPublicParityHarnessClient(environment: Record<string, stri
             sessions[owner] = Object.freeze({ cookie });
         }
         const expected = { version: 1 as const, runId: descriptor.runId, commit: descriptor.commit, family, caseId: selected.caseId, project: selected.project, repeat: 0 as const, generation: 1 as const, epoch: reply.epoch, origin: descriptor.origin, personas: reset.personas };
-        const manifest = publicParityIssuedManifestSchema.parse({ expected, manifest: reset.manifest });
+        checkpoint='manifest';const manifest = publicParityIssuedManifestSchema.parse({ expected, manifest: reset.manifest });
         check();
         lastEpoch = reply.epoch;
         active = { identity: selected, manifest, expected, sessions: Object.freeze(sessions), epoch: lastEpoch, observed: false, rotationIssued: false, currentPersonas: manifest.personas };
         return manifest;
     }
-    catch {
+    catch (error) {
+        captureBrowserFailure(error,checkpoint);
         seal();
-        denied();
+        throw error;
     }
     finally {
         busy = false;
@@ -414,15 +425,16 @@ export function createPublicParityHarnessClient(environment: Record<string, stri
         selected.currentPersonas = result.personas;
         return result;
     }
-    catch {
+    catch (error) {
+        captureBrowserFailure(error,'observe');
         seal();
-        denied();
+        throw error;
     }
     finally {
         busy = false;
     } }
     async function closeContext(context: BrowserContext) { if (contexts.get(context) !== 'open')
-        denied(); return bounded(async () => { await context.close(); contexts.set(context, 'closed'); }, policy.controlMs, true); }
+        denied(); return bounded(async () => { await context.close(); contexts.set(context, 'closed'); }, policy.controlMs, true,()=> 'retire'); }
     async function createContext(browser: Browser, owner: 'ownerA' | 'ownerB' | 'anonymous', options: Parameters<Browser['newContext']>[0] = {}) { if (!active || busy || !['ownerA', 'ownerB', 'anonymous'].includes(owner) || contexts.size + reservations >= policy.maxContexts)
         denied(); check(); const opts = data(options); if (Object.keys(opts).some(key => !['viewport', 'deviceScaleFactor', 'isMobile', 'hasTouch'].includes(key)))
         denied(); if (Object.hasOwn(opts, 'viewport')) {
@@ -434,7 +446,7 @@ export function createPublicParityHarnessClient(environment: Record<string, stri
     } for (const key of ['isMobile', 'hasTouch'])
         if (Object.hasOwn(opts, key) && typeof opts[key] !== 'boolean')
             denied(); if (Object.hasOwn(opts, 'deviceScaleFactor') && (!Number.isFinite(opts.deviceScaleFactor) || opts.deviceScaleFactor <= 0))
-        denied(); const selected = active; reservations++; return bounded(async () => { let context: BrowserContext; try {
+        denied(); const selected = active;let checkpoint:PublicParityBrowserStep='context-allocation';reservations++; return bounded(async () => { let context: BrowserContext; try {
         context = await browser.newContext({ ...opts, baseURL: descriptor!.origin });
         contexts.set(context, 'open');
     }
@@ -445,13 +457,13 @@ export function createPublicParityHarnessClient(environment: Record<string, stri
         contexts.set(context, 'closed');
         denied();
     } try {
-        await context.route('**/*', route => { const url = new URL(route.request().url()); return url.origin === descriptor!.origin || ['data:', 'blob:'].includes(url.protocol) ? route.continue() : route.abort(); });
+        checkpoint='context-session';await context.route('**/*', route => { const url = new URL(route.request().url()); return url.origin === descriptor!.origin || ['data:', 'blob:'].includes(url.protocol) ? route.continue() : route.abort(); });
         if (owner !== 'anonymous') {
             const cookie = selected.sessions[owner].cookie, index = cookie.indexOf('=');
             await context.addCookies([{ name: cookie.slice(0, index), value: cookie.slice(index + 1), url: descriptor!.origin, httpOnly: true, sameSite: 'Lax' }]);
             for (const [suffix, verify] of [['/api/auth/get-session', (v: any) => v.user?.id === selected.currentPersonas[owner].userId], ['/api/explorers/v1/me', (v: any) => v.account?.id === selected.currentPersonas[owner].accountId && v.account?.handle === selected.currentPersonas[owner].handle]] as const) {
                 check();
-                const response = await context.request.get(descriptor!.origin + suffix, { timeout: Math.min(remainingMs(), policy.contextMs) });
+                checkpoint=suffix==='/api/auth/get-session'?'context-session':'context-me';const response = await context.request.get(descriptor!.origin + suffix, { timeout: Math.min(remainingMs(), policy.contextMs) });
                 try {
                     if (response.status() !== 200 || !verify(await response.json()))
                         denied();
@@ -464,11 +476,10 @@ export function createPublicParityHarnessClient(environment: Record<string, stri
         check();
         return context;
     }
-    catch {
-        await context.close();
-        contexts.set(context, 'closed');
-        throw Error('Public parity context refused');
-    } }, policy.contextMs); }
+    catch (error) {
+        captureBrowserFailure(error,checkpoint);try{await context.close();contexts.set(context,'closed');}catch{/* Original context failure remains first; unknown close stays open. */}
+        throw error;
+    } }, policy.contextMs,false,()=>checkpoint); }
     async function retire() { if (!active || busy || !active.observed || operations.size || reservations)
         denied(); check(); busy = true; try {
         for (const [context, state] of contexts)
@@ -485,9 +496,10 @@ export function createPublicParityHarnessClient(environment: Record<string, stri
         active = undefined;
         contexts.clear();
     }
-    catch {
+    catch (error) {
+        captureBrowserFailure(error,'retire');
         seal();
-        denied();
+        throw error;
     }
     finally {
         busy = false;
@@ -506,5 +518,5 @@ export function createPublicParityHarnessClient(environment: Record<string, stri
         seal();
     } }
     return Object.freeze({ start, observe, retire, fail, createContext, closeContext, remainingMs, trackProducer<T>(operation: (signal: AbortSignal) => Promise<T>) { if (!active || busy || typeof operation !== 'function')
-            denied(); check(); return bounded(operation, policy.producerMs); } });
+            denied(); check(); return bounded(operation, policy.producerMs,false,()=> 'body'); } });
 }

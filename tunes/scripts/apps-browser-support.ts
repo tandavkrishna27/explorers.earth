@@ -16,6 +16,8 @@ import {z} from 'zod/v3';
 import {extractCanonicalCustodySnapshot,extractCanonicalCustodyDiagnostic,type CanonicalCustodyReason,type CanonicalCustodyCensus} from '../server/auth/canonicalHandlerCustody';
 import {inspectAppsPrivateDescendant} from './apps-private-custody';
 import {appEntityDetailsSchema,type AppEntityDetails} from '../shared/explorersAppContract';
+import {types as nativeTypes} from 'node:util';
+import {APPS_ENRICHMENT_CASES} from './apps-enrichment-browser-support';
 import {editableOwnerCollectionSchema,editableOwnerRecommendationSchema,ownerMembershipDtoSchema} from '../shared/explorersOwnerContentContract';
 // This module allocates no DB, listener, process, directory or HTTP request on import.
 export const APPS_CASES = [
@@ -139,6 +141,17 @@ function validateOptions(o:AppsControlOptions) {
 }
 export type AppsControllerDiagnostic=Readonly<{operation:'initialize'|'reset'|'observe'|'control'|'close';phase:'ownership'|'custody'|'remove-old-object'|'remove-upload-file'|'connect'|'transaction'|'seed-put'|'seed-get'|'upload-write'|'upload-read'|'sessions'|'canonical'|'response'|'settlement';boundary:'none'|'before-custody'|'after-custody'|'ancestor'|'target'|'before-mutation'|'after-mutation'|'final-custody';category:'deadline'|'refusal';budgetMs?:5000|10000|12000}>;
 const controllerDiagnostics=new WeakMap<object,()=>AppsControllerDiagnostic|undefined>();
+export type AppsEnrichmentRefreshDiagnostic=Readonly<{stage:import('./apps-enrichment-native-runtime').AppsEnrichmentRefreshStage;caseIndex:0|1;project:'apps-desktop'|'apps-mobile';repeat:0;epoch:number}>;
+const enrichmentRefreshDiagnostics=new WeakMap<object,()=>AppsEnrichmentRefreshDiagnostic|undefined>();
+export function extractAppsEnrichmentRefreshDiagnostic(value:unknown):AppsEnrichmentRefreshDiagnostic|undefined{return value!==null&&(typeof value==='object'||typeof value==='function')?enrichmentRefreshDiagnostics.get(value as object)?.():undefined;}
+function captureAppsEnrichmentRefreshFailure(active:unknown,stage:unknown,first?:AppsEnrichmentRefreshDiagnostic):AppsEnrichmentRefreshDiagnostic|undefined{
+ if(first)return first;
+ if(!['worker-admission','verify-ack','provider-execute','result-verify','snapshot-read'].includes(stage as string)||!active||typeof active!=='object'||nativeTypes.isProxy(active)||Object.getPrototypeOf(active)!==Object.prototype)return undefined;
+ const descriptors=Object.getOwnPropertyDescriptors(active);for(const name of ['caseId','project','repeat','epoch'])if(!descriptors[name]?.enumerable||!Object.hasOwn(descriptors[name],'value'))return undefined;
+ const caseIndex=APPS_ENRICHMENT_CASES.indexOf(descriptors.caseId.value),project=descriptors.project.value,epoch=descriptors.epoch.value;
+ if((caseIndex!==0&&caseIndex!==1)||(project!=='apps-desktop'&&project!=='apps-mobile')||descriptors.repeat.value!==0||epoch!==(project==='apps-desktop'?1:3)+caseIndex)return undefined;
+ return Object.freeze({stage:stage as AppsEnrichmentRefreshDiagnostic['stage'],caseIndex,project,repeat:0,epoch});
+}
 export function extractAppsControlDiagnostic(value:unknown):AppsControllerDiagnostic|undefined {return (typeof value==='object'&&value!==null||typeof value==='function')?controllerDiagnostics.get(value as object)?.():undefined;}
 function nativeDependencies(o:AppsControlOptions,guard:(boundary?:AppsControllerDiagnostic['boundary'])=>void):AppsControlDependencies {
  guard();assertComposition(o);
@@ -327,6 +340,7 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
     const support = await import('./apps-enrichment-browser-support'), fixture = await import('./apps-browser-fixture'), state = fixture.inspectAppsEnrichmentProvisionGrant(token, options), runtime = (await import('./apps-enrichment-native-runtime')).createAppsEnrichmentNativeRuntime({ grant: token, options });
     const capability = randomBytes(32).toString('hex'), host = new URL(options.origin).host;
     let active: import('./apps-enrichment-browser-support').AppsEnrichmentReset | undefined, epoch = 0, busy = false, closed = false, poisoned = false, caseDeadline = 0, caseTimer: ReturnType<typeof setTimeout> | undefined;
+    let refreshDiagnostic:AppsEnrichmentRefreshDiagnostic|undefined;
     const seenIdentities = new Set<string>(), ackPending = new Set<Promise<unknown>>(), acks = new Map<string, {
         admission: import('./apps-enrichment-browser-support').AppsEnrichmentWorkerAdmission;
         key: string;
@@ -529,7 +543,8 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
                 if (rows.length !== 3 || active.items.some(item => !rows.some(row => row.id === item.recommendation.id && row.account_id === item.recommendation.accountId && row.entity_id === item.recommendation.entityId)))
                     throw fail('enrichment observation');
             }
-            result = action === 'refresh-enrichment' ? await runtime.refresh(body.admission) : { version: 1, runId: options.runId, commit: options.commit, ...id, epoch, completed: true };
+            if(action==='refresh-enrichment'){try{result=await runtime.refresh(body.admission);}catch(error){const stage=runtime.failureStage();refreshDiagnostic=captureAppsEnrichmentRefreshFailure(active,stage,refreshDiagnostic);throw error;}}
+            else result={ version: 1, runId: options.runId, commit: options.commit, ...id, epoch, completed: true };
         }
         const text = JSON.stringify(result);
         if (Buffer.byteLength(text) > 65536)
@@ -544,7 +559,7 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
         res.setHeader('Content-Type', 'application/json');
         res.end('{"error":"owned Apps enrichment control denied"}');
     } return true; }
-    return { capability, handle, observeNativeAck, verifyNativeAdmission, async close() { closed = true; if (caseTimer)
+    const control={ capability, handle, observeNativeAck, verifyNativeAdmission, async close() { closed = true; if (caseTimer)
             clearTimeout(caseTimer); await runtime.close(); if (poisoned)
-            throw fail('enrichment cleanup'); } };
+            throw fail('enrichment cleanup'); } };enrichmentRefreshDiagnostics.set(control,()=>refreshDiagnostic);return control;
 }

@@ -4,7 +4,7 @@ import { randomBytes, randomUUID, createHash, createHmac } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { z } from 'zod/v3';
-import {extractAppsControlDiagnostic,extractAppsRequestDrainDiagnostic,extractAppsRequestDrainSnapshot,type AppsRequestDrainDiagnostic,type AppsControllerDiagnostic,type AppsControlOptions} from './apps-browser-support';
+import {extractAppsEnrichmentRefreshDiagnostic,type AppsEnrichmentRefreshDiagnostic,extractAppsControlDiagnostic,extractAppsRequestDrainDiagnostic,extractAppsRequestDrainSnapshot,type AppsRequestDrainDiagnostic,type AppsControllerDiagnostic,type AppsControlOptions} from './apps-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment } from './lifecycle-browser-guards';
 import {registerAppsPrivateDirectory,inspectAppsPrivateDescendant} from './apps-private-custody';
 type EnrichmentGrant=import('./apps-enrichment-native-runtime').AppsEnrichmentProvisionState;
@@ -249,7 +249,7 @@ type Diagnostic = Readonly<{
     cleanupStep?: CleanupStep;
     nativeUnknownOrigin?:NativeUnknownDetail;requestDrainBoundary?:RequestDrainBoundary;requestDrain?:AppsRequestDrainDiagnostic;requestDrainPending?:RequestDrainPending;
     control?: AppsControllerDiagnostic;
-    vite?:AppsViteDiagnostic;databaseAcquisition?:OwnedUatDatabaseAcquisitionDiagnostic;
+    vite?:AppsViteDiagnostic;databaseAcquisition?:OwnedUatDatabaseAcquisitionDiagnostic;enrichmentRefresh?:AppsEnrichmentRefreshDiagnostic;
 }>;
 const diagnostics = new WeakMap<object, Diagnostic>();
 /** Only runner-branded errors expose finite sanitized diagnostics; foreign getters are never read. */
@@ -276,7 +276,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies, family: 'a
     let readViteDiagnostic:(()=>AppsViteDiagnostic|undefined)|undefined;
     const registerViteDiagnostic=(reader:()=>AppsViteDiagnostic|undefined)=>{readViteDiagnostic=reader;};
     const safeViteDiagnostic=()=>{if(stage!=='vite')return undefined;try{return readViteDiagnostic?.();}catch{return undefined;}};
-    const snapshot = (control?:unknown,options?:unknown): Diagnostic => {const vite=safeViteDiagnostic(),detail=extractAppsControlDiagnostic(control),requestDrain=extractAppsRequestDrainDiagnostic(options),requestDrainPending=deadlinePending??(stage==='cleanup'&&cleanupStep==='request-drain'?safeDrainPending():undefined);return Object.freeze({stage,category,...(stage==='create-database'&&category==='refusal'&&databaseAcquisition?{databaseAcquisition}:{}),...(vite?{vite}:{}),...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{}),...(nativeUnknownOrigin?{nativeUnknownOrigin}:{}),...(requestDrainBoundary?{requestDrainBoundary}:{}),...(requestDrain?{requestDrain}:{}),...(requestDrainPending?{requestDrainPending}:{})});};
+    const snapshot = (control?:unknown,options?:unknown): Diagnostic => {const enrichmentRefresh=family==='apps-enrichment'&&stage==='execution'&&category==='refusal'&&typeof extractAppsEnrichmentRefreshDiagnostic==='function'?extractAppsEnrichmentRefreshDiagnostic(control):undefined;const vite=safeViteDiagnostic(),detail=extractAppsControlDiagnostic(control),requestDrain=extractAppsRequestDrainDiagnostic(options),requestDrainPending=deadlinePending??(stage==='cleanup'&&cleanupStep==='request-drain'?safeDrainPending():undefined);return Object.freeze({stage,category,...(enrichmentRefresh?{enrichmentRefresh}:{}),...(stage==='create-database'&&category==='refusal'&&databaseAcquisition?{databaseAcquisition}:{}),...(vite?{vite}:{}),...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{}),...(nativeUnknownOrigin?{nativeUnknownOrigin}:{}),...(requestDrainBoundary?{requestDrainBoundary}:{}),...(requestDrain?{requestDrain}:{}),...(requestDrainPending?{requestDrainPending}:{})});};
     const recordCategory = (value: DiagnosticCategory) => { if (category === 'refusal')
         category = value; };
     let nativeFailure:(()=>void)|undefined;
@@ -532,7 +532,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies, family: 'a
                     }
                     catch { captured ??= snapshot(control,options); producerFailure = true; }
                 }
-            if(failurePhase==='startup'&&api){cleanupStep='api-close';await bounded(()=>api!.close());api=undefined;}
+            if(failurePhase!==undefined&&api){cleanupStep='api-close';await bounded(()=>api!.close());api=undefined;}
             if (producerFailure) throw new Refusal();
             cleanupStep = 'producer-settlement';
             if (originals.size || uncertain || error && !knownFailure && !(interrupted && setupComplete))
