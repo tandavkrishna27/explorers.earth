@@ -55,7 +55,15 @@ export class PostgresPublicProfileGateway implements PublicProfileGateway {
       ...(a.mobile_number_visible ? { mobile_number: a.mobile_number, mobile_number_visibility: true } : {}),
     };
     for (const [category, legacyFlag] of Object.entries(flag)) publicShell[legacyFlag] = settings.rows.some((row) => row.category === category && row.is_public) ? "Yes" : "No";
-    publicShell.pinned_nav_tabs = settings.rows.filter((row) => row.pinned_order !== null).sort((x, y) => x.pinned_order - y.pinned_order).map((row) => row.category);
+    // The compatibility shell addresses nav tabs by legacy visibility flag, not by
+    // category: navPinning's NAV_TAB_ORDER holds public_* ids and isTabVisible reads
+    // account[tabId]. Emitting bare category names made every manual pin fall through
+    // normalizePinnedTabs' filter, leaving the nav profile-only.
+    publicShell.pinned_nav_tabs = settings.rows
+      .filter((row) => row.pinned_order !== null)
+      .sort((x, y) => x.pinned_order - y.pinned_order)
+      .map((row) => flag[row.category])
+      .filter((value): value is string => Boolean(value));
     return publicShell;
   }
 
