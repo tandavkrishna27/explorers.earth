@@ -5,6 +5,7 @@ import { inspectAppsEnrichmentProvisionGrant } from './apps-browser-fixture';
 import { createAppsEnrichmentWorkerTrigger, type AppsEnrichmentWorkerAdmission, type AppsEnrichmentRegistryBinding } from './apps-enrichment-browser-support';
 import { runAppEnrichmentWorker, type ReviewedAppWorkerAdapter } from '../server/application/appEnrichmentWorker';
 import { ExplorersAppEnrichmentWorkerRepository } from '../server/repositories/explorersAppEnrichmentWorkerRepository';
+import {validateAppWorkerSources,type ApprovedAppWorkerSource} from '../server/application/appEnrichmentWorkerValidation';
 import type { createAppsEnrichmentQualificationLedger } from '../server/services/appEnrichmentQualificationLedger';
 /** Interface only: the fixture's private WeakMap is the sole issuer. */
 export type AppsEnrichmentProvisionState = {
@@ -26,6 +27,12 @@ export type AppsEnrichmentProvisionState = {
 };
 const refused = () => Error('Apps enrichment native custody refused');
 export type AppsEnrichmentRefreshStage='worker-admission'|'verify-ack'|'provider-execute'|'result-verify'|'snapshot-read';
+/** The private registry derives this field; the production worker accepts raw inputs. */
+function rawSourceForOwnedWorker(source:ApprovedAppWorkerSource){
+ const {configurationFingerprint,...raw}=source,checked=validateAppWorkerSources([raw]);
+ if(checked.kind!=='configured'||checked.sources.length!==1||checked.sources[0].configurationFingerprint!==configurationFingerprint)throw refused();
+ return Object.freeze(raw);
+}
 /** No pool, request, decoder or environment lookup is created by this constructor. */
 export function createAppsEnrichmentNativeRuntime(input: Readonly<{
     grant: object;
@@ -52,7 +59,7 @@ export function createAppsEnrichmentNativeRuntime(input: Readonly<{
                 throw refused();
             // The admitted worker login has already passed the production capability matrix.
             // Its repository retains original acquisitions/queries and cancels native clients.
-            const work = (async () => { const clock = await state.trustedInstant(); inspect(); const result = await runAppEnrichmentWorker({ sources: [source], runId: randomUUID(), scheduleId: 'apps-http-enrichment-' + state.runId, holder: randomUUID(), trustedInstant: clock, signal }, { repository: new ExplorersAppEnrichmentWorkerRepository(state.workerPool), registry: state.adapters, fetcher: config => state.ledger.fetcher(config) }); currentStage='result-verify';inspect(); if (result.kind !== 'complete' || state.ledger.inspect().firstFailure || result.receipt.counts.eligible !== 1 || result.receipt.counts.processed !== 1 || result.receipt.counts.requests !== 1 || result.receipt.counts.unavailable || result.receipt.counts.deferred || result.receipt.counts.exhausted || result.receipt.counts.cancelled || result.receipt.counts.leaseLosses)
+            const work = (async () => { const clock = await state.trustedInstant(); inspect(); const result = await runAppEnrichmentWorker({ sources: [rawSourceForOwnedWorker(source)], runId: randomUUID(), scheduleId: 'apps-http-enrichment-' + state.runId, holder: randomUUID(), trustedInstant: clock, signal }, { repository: new ExplorersAppEnrichmentWorkerRepository(state.workerPool), registry: state.adapters, fetcher: config => state.ledger.fetcher(config) }); currentStage='result-verify';inspect(); if (result.kind !== 'complete' || state.ledger.inspect().firstFailure || result.receipt.counts.eligible !== 1 || result.receipt.counts.processed !== 1 || result.receipt.counts.requests !== 1 || result.receipt.counts.unavailable || result.receipt.counts.deferred || result.receipt.counts.exhausted || result.receipt.counts.cancelled || result.receipt.counts.leaseLosses)
                 throw refused(); currentStage='snapshot-read';const snapshots = await state.query('SELECT s.payload FROM app_enrichment_entitlements e JOIN app_enrichment_snapshots s ON s.id=e.snapshot_id AND s.app_entity_id=e.app_entity_id WHERE e.recommendation_id=$1 AND e.account_id=$2 AND e.generation_id=$3 AND e.app_entity_id=$4', [admission.recommendationId, admission.accountId, admission.binding.currentGenerationId, admission.appEntityId]); inspect(); if (snapshots.rows.length !== 1)
                 throw refused(); const snapshot = (await import('../shared/explorersAppEnrichmentContract')).appSnapshotSchema.parse(snapshots.rows[0].payload); if (snapshot.appEntityId !== admission.appEntityId || snapshot.sourceId !== source.identity.sourceId || snapshot.sourceIdentity !== source.identity.sourceIdentity || snapshot.sourceIdentityHash !== source.identity.sourceIdentityHash || snapshot.canonicalizationVersion !== source.identity.canonicalizationVersion || typeof snapshot.fields.title !== 'string')
                 throw refused(); return Object.freeze({ runId: result.receipt.runId, bindingGenerationId: admission.binding.currentGenerationId!, completed: true as const }); })();

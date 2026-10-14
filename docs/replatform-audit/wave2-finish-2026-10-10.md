@@ -13,6 +13,20 @@ Latest actual checkpoint at clean `aa3738f3`:
 
 Subsequent concrete source repairs and actual results:
 
+- Actual Guides at clean a57ba6e0 advanced to tip-edit, then failed with an
+  unsettled harness command; source remained intact and service/control cleanup
+  failed. The reviewed GeneralTips repair decodes one HTML layer into canonical
+  text on save and escapes text on hydration, preserving literal entities and
+  formatting. The People HTML oracle now checks exact rendered note text after
+  reload. Integrated regressions passed six tests and the frontend build.
+- The Apps refresh source boundary was reproduced: the actual worker refuses
+  the derived registry fingerprint as an unknown raw-input field before any
+  repository access. The reviewed projection removes only that derived field,
+  strictly validates raw configuration and requires the same recomputed
+  fingerprint. Seven integrated regressions and scoped types passed. Actual
+  browser acceptance for these repairs remains pending.
+
+
 - The next integrated checkpoint adds closed Apps refresh stages and a closed
   Public/People first-browser checkpoint. Diagnostics retain the original error,
   actual case identity and issued epoch; ungranted start failures remain null.

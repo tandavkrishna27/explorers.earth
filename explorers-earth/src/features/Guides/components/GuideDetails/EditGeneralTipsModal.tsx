@@ -14,6 +14,8 @@ import {
   blocksToHtml,
 } from "../../../../utils/strapiBlocksConverter";
 import type { Guide } from "../../types";
+import {guideDescriptionText} from '../../../../utils/guideDescriptionText';
+import {encode} from 'html-entities';
 
 interface EditGeneralTipsModalProps {
   isOpen: boolean;
@@ -48,7 +50,10 @@ const EditGeneralTipsModal: React.FC<EditGeneralTipsModalProps> = ({
         if (typeof guide.Tips_Notes === "string") {
           setTipsNotes(guide.Tips_Notes);
         } else if (Array.isArray(guide.Tips_Notes)) {
-          const htmlContent = blocksToHtml(guide.Tips_Notes);
+          const htmlContent = blocksToHtml(guide.Tips_Notes.map(block => Array.isArray(block.children) ? ({...block,
+            children: block.children.map((child:any) => typeof child.text === 'string'
+              ? {...child,text:encode(child.text,{mode:'specialChars'})} : child),
+          }) : block));
           setTipsNotes(htmlContent);
         }
       } else {
@@ -85,7 +90,10 @@ const EditGeneralTipsModal: React.FC<EditGeneralTipsModalProps> = ({
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const tipsBlocks = htmlToBlocks(tipsNotes);
+      const tipsBlocks = htmlToBlocks(tipsNotes).map(block => Array.isArray(block.children) ? ({...block,
+        children: block.children.map((child:any) => typeof child.text === 'string'
+          ? {...child,text:guideDescriptionText(child.text)} : child),
+      }) : block);
 
       await saveTips({tipsNotes: tipsBlocks, tags});
 

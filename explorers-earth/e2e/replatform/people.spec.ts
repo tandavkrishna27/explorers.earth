@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { PEOPLE_CASES } from '../../../tunes/scripts/public-parity-browser-support';
 import { BASE, qualificationClient, runOwnedCase, graph, target, cold, categoryURL, genericURL, patch, editable, browserAcknowledgement, noPrivateData, unavailableInput, consume } from './public-parity-spec-support';
+function renderedPeopleNoteText(html:string){const template=document.createElement('template');template.innerHTML=html;return (template.content.textContent??'').replace(/\s+/g,' ').trim();}
 const client = qualificationClient();
 for (const [index, title] of PEOPLE_CASES.entries())
     test(title, async ({ browser }, info) => runOwnedCase(client, browser, info, async (scope) => {
@@ -33,7 +34,7 @@ for (const [index, title] of PEOPLE_CASES.entries())
                 const final: any = await editable(scope, owner, 'recommendations', recommendation.id);
                 expect(final.effectivePersonDetails.headline).toBe('Explicit owner presentation');
                 expect(final.note).toMatchObject({ version: 1, format: 'quill-html' });
-                expect(final.note.html).toContain('Native qualification note');
+                expect(await scope.client.trackProducer(() => page.evaluate(renderedPeopleNoteText, final.note.html))).toBe('Native qualification note');
                 expect(final.userRating).toBeNull();
                 const observed = await scope.observe(), actual = observed.categories[0].items.find(row => row.id === recommendation.id)!;
                 expect(actual.creation?.operation).toBe('createRecommendation');
