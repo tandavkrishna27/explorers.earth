@@ -12,6 +12,23 @@ The following supersedes the older pending-status bullets below. Wave 2 remains 
 The following entries are newest first; the original checkpoint was at clean `aa3738f3`.
 
 Subsequent concrete source repairs and actual results:
+- Actual clean407bb001 Guides failed at case4 owner-list/category-reads with the
+  first read-body checkpoint (11 attempts, 10 responses, 9 finished, 2 native
+  failures). That first-error latch can hide a later owning supersession guard;
+  it does not prove that witness evaluation was never reached. Source integrity
+  passed; cleanup remains failed for service-children/control. Independent
+  read-only inspection found no Original-root native processes or exact-source
+  labeled containers, but does not rewrite that failed receipt as clean.
+- Actual clean407bb001 Public executed32 once:10 passed,22 failed,zero skips.
+  First failure was desktop username/history case10 after10 completed epochs.
+  The prior case7 account-return failure did not recur; no product fix or cause
+  is claimed. Source integrity, owned cleanup and artifact cleanup passed.
+- The reviewed optional Guides owning-guard capsule preserves the same original
+  body-error first checkpoint and appends exactly one finite final guard, without
+  accepting another cancellation or changing f917 business assertions. Actual
+  client-to-host-to-parent-to-Root RED/GREEN and independent review passed.
+  Fresh integration:125 frontend,142 host/failure,48 isolated native,25 Root
+  diagnostic tests passed; C0 types exit zero. Next actual Guides run is required.
 - Fresh integration adds finite Guides read-oracle and final A/B/A public-return
   witnesses without changing business assertions. Actual pinned TSX serialization
   reproduced an unbound compiler-helper callback; inlining the identical sole
