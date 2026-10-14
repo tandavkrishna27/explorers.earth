@@ -361,7 +361,12 @@ for (const [index, title] of PUBLIC_PARITY_CASES.entries())
                     expect(labels.slice(1).map(label => label.trim()).every(label => categories.includes(label))).toBe(true);
                 }
                 const me = (await scope.read(owner, '/me')).body.account;
-                await account(scope, owner, { categories: me.categories.map((row: any) => ({ ...row, pinnedOrder: row.category === 'people' ? 0 : null })), themeSettings: { ...me.themeSettings, preset: 'cinematic-dark' } });
+                // Pinning requires manual mode: categoryNavigationPolicy blocks pin actions
+                // with reason 'manual-required' while autoPinning is on, and
+                // computePinnedNavTabIds ignores pinned tabs entirely in auto mode
+                // (resolveAutoPinning defaults to true). Setting pinnedOrder alone cannot
+                // move a tab into a nav slot.
+                await account(scope, owner, { autoPinning: false, categories: me.categories.map((row: any) => ({ ...row, pinnedOrder: row.category === 'people' ? 0 : null })), themeSettings: { ...me.themeSettings, preset: 'cinematic-dark' } });
                 await pin(scope, owner, 'people', list.id, positive.id);
                 await scope.client.trackProducer(() => page.goto('/' + a.handle));
                 await expect(page.getByTestId('public-profile-theme-root')).toHaveAttribute('data-theme-preset', 'cinematic-dark');
