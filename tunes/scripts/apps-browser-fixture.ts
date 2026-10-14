@@ -4,11 +4,15 @@ import { randomBytes, randomUUID, createHash, createHmac } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { z } from 'zod/v3';
-import {extractAppsEnrichmentRefreshDiagnostic,type AppsEnrichmentRefreshDiagnostic,extractAppsControlDiagnostic,extractAppsRequestDrainDiagnostic,extractAppsRequestDrainSnapshot,type AppsRequestDrainDiagnostic,type AppsControllerDiagnostic,type AppsControlOptions} from './apps-browser-support';
+import {extractAppsEnrichmentResetDiagnostic,type AppsEnrichmentResetDiagnostic,extractAppsEnrichmentRefreshDiagnostic,type AppsEnrichmentRefreshDiagnostic,extractAppsControlDiagnostic,extractAppsRequestDrainDiagnostic,extractAppsRequestDrainSnapshot,type AppsRequestDrainDiagnostic,type AppsControllerDiagnostic,type AppsControlOptions} from './apps-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment } from './lifecycle-browser-guards';
 import {registerAppsPrivateDirectory,inspectAppsPrivateDescendant} from './apps-private-custody';
 type EnrichmentGrant=import('./apps-enrichment-native-runtime').AppsEnrichmentProvisionState;
 const enrichmentGrants=new WeakMap<object,{options:object;state:EnrichmentGrant;authority:Authority;snapshot:string;closed:boolean}>();
+const enrichmentSourceProofs=new WeakMap<object,number>();
+export function clearAppsEnrichmentSourceProof(state:object){enrichmentSourceProofs.delete(state);}
+export function extractAppsEnrichmentSourceProof(state:object){return enrichmentSourceProofs.get(state);}
+function measureAppsEnrichmentSourceProof<T>(state:object,read:()=>T):T{const start=performance.now();const result=read();enrichmentSourceProofs.set(state,Math.min(15000,Math.max(0,Math.floor(performance.now()-start))));return result;}
 /** Verifier only; opaque tokens are issued inside the owned native fixture lifecycle. */
 /** Verifier only; opaque tokens are issued inside the owned native fixture lifecycle. */
 export function inspectAppsEnrichmentProvisionGrant(token: object, options: object): EnrichmentGrant {
@@ -249,7 +253,7 @@ type Diagnostic = Readonly<{
     cleanupStep?: CleanupStep;
     nativeUnknownOrigin?:NativeUnknownDetail;requestDrainBoundary?:RequestDrainBoundary;requestDrain?:AppsRequestDrainDiagnostic;requestDrainPending?:RequestDrainPending;
     control?: AppsControllerDiagnostic;
-    vite?:AppsViteDiagnostic;databaseAcquisition?:OwnedUatDatabaseAcquisitionDiagnostic;enrichmentRefresh?:AppsEnrichmentRefreshDiagnostic;
+    vite?:AppsViteDiagnostic;databaseAcquisition?:OwnedUatDatabaseAcquisitionDiagnostic;enrichmentRefresh?:AppsEnrichmentRefreshDiagnostic;enrichmentReset?:AppsEnrichmentResetDiagnostic;
 }>;
 const diagnostics = new WeakMap<object, Diagnostic>();
 /** Only runner-branded errors expose finite sanitized diagnostics; foreign getters are never read. */
@@ -276,7 +280,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies, family: 'a
     let readViteDiagnostic:(()=>AppsViteDiagnostic|undefined)|undefined;
     const registerViteDiagnostic=(reader:()=>AppsViteDiagnostic|undefined)=>{readViteDiagnostic=reader;};
     const safeViteDiagnostic=()=>{if(stage!=='vite')return undefined;try{return readViteDiagnostic?.();}catch{return undefined;}};
-    const snapshot = (control?:unknown,options?:unknown): Diagnostic => {const enrichmentRefresh=family==='apps-enrichment'&&stage==='execution'&&category==='refusal'&&typeof extractAppsEnrichmentRefreshDiagnostic==='function'?extractAppsEnrichmentRefreshDiagnostic(control):undefined;const vite=safeViteDiagnostic(),detail=extractAppsControlDiagnostic(control),requestDrain=extractAppsRequestDrainDiagnostic(options),requestDrainPending=deadlinePending??(stage==='cleanup'&&cleanupStep==='request-drain'?safeDrainPending():undefined);return Object.freeze({stage,category,...(enrichmentRefresh?{enrichmentRefresh}:{}),...(stage==='create-database'&&category==='refusal'&&databaseAcquisition?{databaseAcquisition}:{}),...(vite?{vite}:{}),...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{}),...(nativeUnknownOrigin?{nativeUnknownOrigin}:{}),...(requestDrainBoundary?{requestDrainBoundary}:{}),...(requestDrain?{requestDrain}:{}),...(requestDrainPending?{requestDrainPending}:{})});};
+    const snapshot = (control?:unknown,options?:unknown): Diagnostic => {const enrichmentReset=family==='apps-enrichment'&&stage==='execution'&&category==='refusal'&&typeof extractAppsEnrichmentResetDiagnostic==='function'?extractAppsEnrichmentResetDiagnostic(control):undefined;const enrichmentRefresh=family==='apps-enrichment'&&stage==='execution'&&category==='refusal'&&typeof extractAppsEnrichmentRefreshDiagnostic==='function'?extractAppsEnrichmentRefreshDiagnostic(control):undefined;const vite=safeViteDiagnostic(),detail=extractAppsControlDiagnostic(control),requestDrain=extractAppsRequestDrainDiagnostic(options),requestDrainPending=deadlinePending??(stage==='cleanup'&&cleanupStep==='request-drain'?safeDrainPending():undefined);return Object.freeze({stage,category,...(enrichmentReset?{enrichmentReset}:{}),...(enrichmentRefresh?{enrichmentRefresh}:{}),...(stage==='create-database'&&category==='refusal'&&databaseAcquisition?{databaseAcquisition}:{}),...(vite?{vite}:{}),...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{}),...(nativeUnknownOrigin?{nativeUnknownOrigin}:{}),...(requestDrainBoundary?{requestDrainBoundary}:{}),...(requestDrain?{requestDrain}:{}),...(requestDrainPending?{requestDrainPending}:{})});};
     const recordCategory = (value: DiagnosticCategory) => { if (category === 'refusal')
         category = value; };
     let nativeFailure:(()=>void)|undefined;
@@ -716,7 +720,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         catch {
             enrichmentAbort.abort();
             throw new Refusal();
-        } if (workerPool !== worker || [worker.query, worker.connect, worker.end].some((method, index) => method !== workerMethods[index]) || [(pool as any).query, (pool as any).connect, (pool as any).end].some((method, index) => method !== poolMethods[index]) || JSON.stringify(options.config) !== configSnapshot || JSON.stringify(contract.snapshotSource(root)) !== sourceSnapshot || options.pool !== pool || options.composed !== composed || JSON.stringify({ authority, runId: options.runId, commit: options.commit, personas: options.personas }) !== optionsSnapshot || !ownedAuthorities.has(authority))
+        } if (workerPool !== worker || [worker.query, worker.connect, worker.end].some((method, index) => method !== workerMethods[index]) || [(pool as any).query, (pool as any).connect, (pool as any).end].some((method, index) => method !== poolMethods[index]) || JSON.stringify(options.config) !== configSnapshot || JSON.stringify(measureAppsEnrichmentSourceProof(state,()=>contract.snapshotSource(root))) !== sourceSnapshot || options.pool !== pool || options.composed !== composed || JSON.stringify({ authority, runId: options.runId, commit: options.commit, personas: options.personas }) !== optionsSnapshot || !ownedAuthorities.has(authority))
             throw new Refusal(); },
         query: (text, values) => enrichmentQuery(pool as any, text, values), trustedInstant: async () => { const result = await enrichmentQuery(pool as any, 'SELECT clock_timestamp() AS now'); return result.rows[0].now; },
         verifyAck: (admission, signal) => enrichmentControl ? enrichmentControl.verifyNativeAdmission(admission, signal) : Promise.resolve(false),

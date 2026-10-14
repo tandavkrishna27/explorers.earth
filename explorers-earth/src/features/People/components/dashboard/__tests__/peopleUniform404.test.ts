@@ -1,0 +1,20 @@
+import {readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {randomUUID} from 'node:crypto';
+import ts from 'typescript';
+import {expect,it} from 'vitest';
+import {z} from 'zod/v3';
+import {apiErrorSchema} from '../../../../../../../tunes/shared/explorersContract';
+import {RecommendationFailure} from '../../../../../../../tunes/server/repositories/explorersRecommendationRepository';
+const routeFile=resolve('../tunes/server/routes/explorersRecommendationRoutes.ts'),route=ts.createSourceFile(routeFile,readFileSync(routeFile,'utf8'),ts.ScriptTarget.Latest,true);
+let read:ts.VariableDeclaration|undefined;const findRead=(node:ts.Node)=>{if(ts.isVariableDeclaration(node)&&node.name.getText(route)==='read')read=node;ts.forEachChild(node,findRead);};findRead(route);if(!read)throw Error('Actual owner read wrapper missing');
+const code=ts.transpileModule('const '+read.getText(route)+';return read;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+const wrapper=new Function('randomUUID','requireActor','auth','pool','GamePresentationUnavailable','SearchFailure','RecommendationFailure','sendActorError',code)(randomUUID,async()=>({accountId:randomUUID()}),{}, {},class extends Error{},class extends Error{},RecommendationFailure,()=>{throw Error('Unexpected owner failure boundary');});
+async function native404(){let body:unknown,status:number|undefined;const response={set(){return response;},status(value:number){status=value;return response;},json(value:unknown){body=value;return response;}};await wrapper(async()=>{throw new RecommendationFailure(404,'Resource unavailable');})({params:{id:randomUUID()},query:{}},response);expect(status).toBe(404);return apiErrorSchema.parse(body);}
+const file=resolve('e2e/replatform/people.spec.ts'),source=readFileSync(file,'utf8'),ast=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true);let comparison:ts.ExpressionStatement|undefined,helper:ts.FunctionDeclaration|undefined;
+const visit=(node:ts.Node)=>{if(ts.isExpressionStatement(node)&&node.getText(ast).includes('/recommendations/${first.id}/editable?status=all')&&node.getText(ast).includes('toEqual(missing)'))comparison=node;if(ts.isFunctionDeclaration(node)&&node.name?.text==='ownerNotFoundEvidence')helper=node;ts.forEachChild(node,visit);};visit(ast);if(!comparison)throw Error('Actual owner isolation comparison missing');
+const compile=ts.transpileModule((helper?helper.getText(ast):'')+';return(async()=>{'+comparison.getText(ast)+'})();',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,oracle=new Function('apiErrorSchema','z','expect','scope','foreign','first','missing',compile);
+const stable=helper?new Function('apiErrorSchema','z','expect',ts.transpileModule(helper.getText(ast)+';return ownerNotFoundEvidence;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText)(apiErrorSchema,z,expect):(body:unknown)=>body;
+const compare=(body:unknown,missing:unknown)=>oracle(apiErrorSchema,z,expect,{read:async()=>({body})},{},{id:randomUUID()},stable(missing));
+it('actual owner-route UUIDs remain individually valid while the actual People oracle compares uniform missing/foreign evidence',async()=>{const missing=await native404(),foreign=await native404();expect(missing.error.requestId).not.toBe(foreign.error.requestId);z.string().uuid().parse(missing.error.requestId);z.string().uuid().parse(foreign.error.requestId);await compare(foreign,missing);});
+it('actual People uniform oracle refuses wrong code/message, extra private data and malformed transport IDs',async()=>{const missing=await native404();for(const body of [{error:{...missing.error,code:'FORBIDDEN'}},{error:{...missing.error,message:'Private resource exists'}},{error:{...missing.error,ownerAccountId:randomUUID()}},{...missing,private:'unsafe'},{error:{...missing.error,requestId:'not-a-native-uuid'}}])await expect(compare(body,missing)).rejects.toThrow();});

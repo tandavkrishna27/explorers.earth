@@ -13,6 +13,25 @@ Latest actual checkpoint at clean `aa3738f3`:
 
 Subsequent concrete source repairs and actual results:
 
+- Actual People at dcdbb682 completed two epochs including retirement, then
+  failed the third case comparing whole 404 envelopes. The native route issues
+  a different request UUID each time. The reviewed oracle strictly validates
+  both responses and UUIDs, then compares exact stable NOT_FOUND/message facts.
+- Actual Apps at 9de2f1e5 passed its first desktop case in 81.685 seconds,
+  including both real sources, acceptance, provenance and reload/denials. Its
+  next reset timed out after prior binding disable and fresh seed writes. The
+  reviewed pending/failed reset checkpoint measures existing source proof work
+  without changing guards, retained promises or deadlines.
+- Actual Guides at dcdbb682 captured a successful tip response whose revision,
+  title and description matched but blocks did not. A mounted real StrictMode
+  regression reproduced unchanged parent observation overwriting the typed tip
+  through object-identity initialization. Its product repair is in preparation.
+- Integrated source checks for the current batch passed all 532 Root contracts
+  without skips, 221 backend contracts, four People regressions and scoped
+  types. The sole shared formatter frozen hash update was independently reviewed;
+  PlaceLinks native metadata and its 180 mutation controls remain unchanged.
+
+
 - Actual People at cda27650 passed its first body and observation, then failed
   retirement at epoch 1; owned cleanup passed. Actual Apps passed raw source
   admission but result verification refused: the native worker receipt had zero

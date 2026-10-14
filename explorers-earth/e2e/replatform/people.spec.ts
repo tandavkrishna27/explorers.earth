@@ -1,8 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import {z} from 'zod/v3';
+import {apiErrorSchema} from '../../../tunes/shared/explorersContract';
 import { PEOPLE_CASES } from '../../../tunes/scripts/public-parity-browser-support';
 import { BASE, qualificationClient, runOwnedCase, graph, target, cold, categoryURL, genericURL, patch, editable, browserAcknowledgement, noPrivateData, unavailableInput, consume } from './public-parity-spec-support';
 function renderedPeopleNoteText(html:string){const template=document.createElement('template');template.innerHTML=html;return (template.content.textContent??'').replace(/\s+/g,' ').trim();}
+function ownerNotFoundEvidence(body:unknown){const {error}=apiErrorSchema.parse(body);z.string().uuid().parse(error.requestId);expect(error.code).toBe('NOT_FOUND');expect(error.message).toBe('Resource unavailable');return {code:error.code,message:error.message};}
 const client = qualificationClient();
 for (const [index, title] of PEOPLE_CASES.entries())
     test(title, async ({ browser }, info) => runOwnedCase(client, browser, info, async (scope) => {
@@ -68,8 +71,8 @@ for (const [index, title] of PEOPLE_CASES.entries())
                 expect(actual.entity.details).toEqual(base.entity.details);
                 expect((await editable(scope, foreign, 'recommendations', second.id)) as any).toEqual(base);
                 expect(actual.effectivePersonDetails.usernameHandle).toBe(base.entity.details.usernameHandle);
-                const missing = (await scope.read(foreign, `/recommendations/${randomUUID()}/editable?status=all`, 404)).body;
-                expect((await scope.read(foreign, `/recommendations/${first.id}/editable?status=all`, 404)).body).toEqual(missing);
+                const missing = ownerNotFoundEvidence((await scope.read(foreign, `/recommendations/${randomUUID()}/editable?status=all`, 404)).body);
+                expect(ownerNotFoundEvidence((await scope.read(foreign, `/recommendations/${first.id}/editable?status=all`, 404)).body)).toEqual(missing);
                 const page = await scope.client.trackProducer(() => owner.newPage());
                 await scope.client.trackProducer(() => page.goto(`/recommendations/people/${list.id}/edit/${first.id}`));
                 await page.getByLabel('Headline / Role', { exact: true }).fill('Unsaved stale draft');

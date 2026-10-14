@@ -5,7 +5,7 @@ import ts from 'typescript';
 // Execute the actual entry control flow with imports replaced by closed fakes.
 // This establishes dispatch ordering only; it never imports the native runner.
 const source=readFileSync(new URL('../../../scripts/profile-browser-fixture.ts',import.meta.url),'utf8');
-function entry(run:()=>Promise<void>,diagnostic?:{stage:string;category:string}){
+function entry(run:()=>Promise<void>,diagnostic?:{stage:string;category:string;enrichmentReset?:unknown}){
  const parsed=ts.createSourceFile('fixture.ts',source,ts.ScriptTarget.Latest,true);
  const body=ts.createPrinter().printList(ts.ListFormat.MultiLine,ts.factory.createNodeArray(parsed.statements.filter(node=>!ts.isImportDeclaration(node))),parsed).replaceAll('import.meta.dirname','fixtureModuleDirectory');
  const code=ts.transpileModule(body,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
@@ -18,6 +18,10 @@ function entry(run:()=>Promise<void>,diagnostic?:{stage:string;category:string})
  return {execute:()=>new AsyncFunction(...names,code)(...values),legacy,factory,process,write};
 }
 describe('Apps profile entry dispatch ordering',()=>{
+ it('prints pending reset explicitly with bounded source proof and no thrown payload',async()=>{
+  const s=entry(async()=>{throw Error('private body');},{stage:'execution',category:'refusal',enrichmentReset:{state:'pending',stage:'collection-readback',nativePhase:'native-http',sourceProofMs:15000,caseIndex:1,project:'apps-desktop',repeat:0,epoch:2}});
+  await s.execute();expect(s.write).toHaveBeenCalledWith('Apps owned fixture failed: stage=execution; category=refusal; enrichmentResetState=pending; enrichmentResetStage=collection-readback; enrichmentResetCaseIndex=1; enrichmentResetProject=apps-desktop; enrichmentResetRepeat=0; enrichmentResetEpoch=2; enrichmentResetNativePhase=native-http; enrichmentResetSourceProofMs=15000\n');
+ });
  it('surfaces only the branded finite diagnostic without raw error content',async()=>{
   const s=entry(async()=>{throw Error('private capability and cookie');},{stage:'migrate',category:'refusal'});
   await s.execute();expect(s.process.exitCode).toBe(1);expect(s.write).toHaveBeenCalledWith('Apps owned fixture failed: stage=migrate; category=refusal\n');expect(s.legacy).not.toHaveBeenCalled();

@@ -143,6 +143,15 @@ export type AppsControllerDiagnostic=Readonly<{operation:'initialize'|'reset'|'o
 const controllerDiagnostics=new WeakMap<object,()=>AppsControllerDiagnostic|undefined>();
 export type AppsEnrichmentRefreshDiagnostic=Readonly<{stage:import('./apps-enrichment-native-runtime').AppsEnrichmentRefreshStage;caseIndex:0|1;project:'apps-desktop'|'apps-mobile';repeat:0;epoch:number}>;
 const enrichmentRefreshDiagnostics=new WeakMap<object,()=>AppsEnrichmentRefreshDiagnostic|undefined>();
+export type AppsEnrichmentResetStage='pending-drain'|'prior-binding-read'|'prior-binding-disable'|'owner-seed'|'row-seed'|'collection-readback'|'recommendation-readback'|'reset-validate'|'response-write';
+export type AppsEnrichmentResetDiagnostic=Readonly<{state:'pending'|'failed';stage:AppsEnrichmentResetStage;nativePhase?:'native-custody'|'native-http'|'native-json';sourceProofMs?:number;caseIndex:0|1;project:'apps-desktop'|'apps-mobile';repeat:0;epoch:number}>;
+const enrichmentResetDiagnostics=new WeakMap<object,()=>AppsEnrichmentResetDiagnostic|undefined>();
+export function extractAppsEnrichmentResetDiagnostic(value:unknown):AppsEnrichmentResetDiagnostic|undefined{return value!==null&&(typeof value==='object'||typeof value==='function')?enrichmentResetDiagnostics.get(value as object)?.():undefined;}
+function createAppsEnrichmentResetCheckpoint(tuple:Pick<AppsEnrichmentResetDiagnostic,'caseIndex'|'project'|'repeat'|'epoch'>){
+ let stage:AppsEnrichmentResetStage='pending-drain',nativePhase:AppsEnrichmentResetDiagnostic['nativePhase'],first:AppsEnrichmentResetDiagnostic|undefined,cleared=false;
+ const snapshot=(busy:boolean,sourceProofMs?:number):AppsEnrichmentResetDiagnostic|undefined=>first??(!cleared&&busy?Object.freeze({...tuple,state:'pending' as const,stage,...(nativePhase?{nativePhase}:{}),...(nativePhase&&Number.isFinite(sourceProofMs)?{sourceProofMs:Math.min(15000,Math.max(0,Math.floor(sourceProofMs!)))}:{})}):undefined);
+ return {stage(value:AppsEnrichmentResetStage){if(first||cleared)return;stage=value;nativePhase=undefined;},native(value:NonNullable<AppsEnrichmentResetDiagnostic['nativePhase']>){if(!first&&!cleared)nativePhase=value;},snapshot,fail(_error:unknown,sourceProofMs?:number){if(!first&&!cleared){const value=snapshot(true,sourceProofMs)!;first=Object.freeze({...value,state:'failed'});}},clear(){cleared=true;}};
+}
 export function extractAppsEnrichmentRefreshDiagnostic(value:unknown):AppsEnrichmentRefreshDiagnostic|undefined{return value!==null&&(typeof value==='object'||typeof value==='function')?enrichmentRefreshDiagnostics.get(value as object)?.():undefined;}
 function captureAppsEnrichmentRefreshFailure(active:unknown,stage:unknown,first?:AppsEnrichmentRefreshDiagnostic):AppsEnrichmentRefreshDiagnostic|undefined{
  if(first)return first;
@@ -341,6 +350,7 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
     const capability = randomBytes(32).toString('hex'), host = new URL(options.origin).host;
     let active: import('./apps-enrichment-browser-support').AppsEnrichmentReset | undefined, epoch = 0, busy = false, closed = false, poisoned = false, caseDeadline = 0, caseTimer: ReturnType<typeof setTimeout> | undefined;
     let refreshDiagnostic:AppsEnrichmentRefreshDiagnostic|undefined;
+    let resetCheckpoint:ReturnType<typeof createAppsEnrichmentResetCheckpoint>|undefined,resetSourceProofMs:number|undefined;
     const seenIdentities = new Set<string>(), ackPending = new Set<Promise<unknown>>(), acks = new Map<string, {
         admission: import('./apps-enrichment-browser-support').AppsEnrichmentWorkerAdmission;
         key: string;
@@ -352,7 +362,7 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
     } if (closed || poisoned || state.signal.aborted)
         throw fail('enrichment custody'); };
     const q = (text: string, values: unknown[] = []) => retain(state.query(text, values));
-    async function native(person: 'ownerA' | 'ownerB', url: string, method = 'GET', body?: unknown) { guard(); return retain((async () => { const response = await fetch(options.apiOrigin + url, { method, headers: { Cookie: options.personas[person].cookie, Origin: options.origin, ...(body ? { 'Content-Type': 'application/json', 'Idempotency-Key': randomUUID() } : {}) }, body: body ? JSON.stringify(body) : undefined, redirect: 'error', signal: AbortSignal.any([state.signal, AbortSignal.timeout(15000)]) }); const reader = response.body?.getReader(); if (!reader)
+    async function native(person: 'ownerA' | 'ownerB', url: string, method = 'GET', body?: unknown) { if(busy){resetSourceProofMs=undefined;resetCheckpoint?.native('native-custody');fixture.clearAppsEnrichmentSourceProof(state);}guard();if(busy){resetSourceProofMs=fixture.extractAppsEnrichmentSourceProof(state);resetCheckpoint?.native('native-http');} return retain((async () => { const response = await fetch(options.apiOrigin + url, { method, headers: { Cookie: options.personas[person].cookie, Origin: options.origin, ...(body ? { 'Content-Type': 'application/json', 'Idempotency-Key': randomUUID() } : {}) }, body: body ? JSON.stringify(body) : undefined, redirect: 'error', signal: AbortSignal.any([state.signal, AbortSignal.timeout(15000)]) }); const reader = response.body?.getReader(); if (!reader)
         throw fail('enrichment response'); const bytes: Buffer[] = []; let size = 0; try {
         for (;;) {
             const next = await reader.read();
@@ -371,7 +381,7 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
     finally {
         reader.releaseLock();
     } if (response.status !== 200)
-        throw fail('enrichment response'); return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(bytes))); })()); }
+        throw fail('enrichment response'); if(busy)resetCheckpoint?.native('native-json');return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(bytes))); })()); }
     function identity(input: unknown) { const id = support.validateAppsEnrichmentIdentity(input); return id; }
     async function reset(input: unknown) {
         guard();
@@ -383,16 +393,22 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
             if (seenIdentities.has(identityKey))
                 throw fail('enrichment duplicate identity');
             seenIdentities.add(identityKey);
+            const caseIndex=APPS_ENRICHMENT_CASES.indexOf(id.caseId),nextEpoch=epoch+1;
+            if((caseIndex===0||caseIndex===1)&&nextEpoch===(id.project==='apps-desktop'?1:3)+caseIndex){resetCheckpoint=createAppsEnrichmentResetCheckpoint({caseIndex,project:id.project,repeat:0,epoch:nextEpoch});resetSourceProofMs=undefined;}
+            resetCheckpoint?.stage('pending-drain');
             await Promise.allSettled([...state.pending]);
             guard();
             if (active)
                 for (const item of active.items) {
+                    resetCheckpoint?.stage('prior-binding-read');resetSourceProofMs=undefined;
                     const owner = item.role === 'foreign-control' ? 'ownerB' : 'ownerA', value = await native(owner, '/api/explorers/v1/recommendations/' + item.recommendation.id + '/app-enrichment/binding');
                     if (value.binding?.optIn) {
                         const editable = await native(owner, '/api/explorers/v1/recommendations/' + item.recommendation.id + '/editable?status=all');
+                        resetCheckpoint?.stage('prior-binding-disable');resetSourceProofMs=undefined;
                         await native(owner, '/api/explorers/v1/recommendations/' + item.recommendation.id + '/app-enrichment/binding', 'DELETE', { operation: 'disableAppEnrichment', expectedRecommendationRevision: editable.recommendation.revision, expectedBindingRevision: value.binding.bindingRevision });
                     }
                 }
+            resetCheckpoint?.stage('owner-seed');resetSourceProofMs=undefined;
             const owners = (await q('SELECT user_id,account_id FROM initial_account_bindings WHERE user_id=ANY($1::text[])', [Object.values(options.personas).map(person => person.userId)])).rows;
             if (owners.length !== 2)
                 throw fail('enrichment ownership');
@@ -415,6 +431,7 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
                 id: string;
                 entityId: string;
             }[];
+            resetCheckpoint?.stage('row-seed');
             for (const [i, name] of (['ownerA', 'ownerB'] as const).entries())
                 await q("INSERT INTO collections(id,account_id,category,title,slug,display_order,visibility,publication_state) VALUES($1,$2,'apps',$3,$4,$5,'public','published')", [collectionIds[i], personas[name].accountId, 'Enrichment ' + name + ' ' + next, 'enrichment-' + name.toLowerCase() + '-' + next, next]);
             for (const [i, role] of (['website', 'apple', 'foreign-control'] as const).entries()) {
@@ -426,19 +443,23 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
                 allocations.push({ role, collectionId, id: rid, entityId });
             }
             const collections = [] as any[];
+            resetCheckpoint?.stage('collection-readback');
             for (const [i, owner] of (['ownerA', 'ownerB'] as const).entries())
                 collections.push((await native(owner, '/api/explorers/v1/collections/' + collectionIds[i] + '/editable?status=all')).collection);
             const items = [] as any[];
+            resetCheckpoint?.stage('recommendation-readback');resetSourceProofMs=undefined;
             for (const allocation of allocations) {
                 const owner = allocation.role === 'foreign-control' ? 'ownerB' : 'ownerA';
                 items.push({ role: allocation.role, collectionId: allocation.collectionId, recommendation: (await native(owner, '/api/explorers/v1/recommendations/' + allocation.id + '/editable?status=all')).recommendation });
             }
+            resetCheckpoint?.stage('reset-validate');resetSourceProofMs=undefined;
             active = support.validateAppsEnrichmentReset({ version: 1, runId: options.runId, commit: options.commit, ...id, epoch: next, personas, choices: state.registry.choices, collections, items });
             epoch = next;
             acks.clear();
-            return active;
+            resetCheckpoint?.stage('response-write');return active;
         }
-        catch {
+        catch (error) {
+            resetCheckpoint?.fail(error,resetSourceProofMs);
             poisoned = true;
             throw fail('enrichment reset');
         }
@@ -508,7 +529,7 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
         return false; await Promise.all([...ackPending]); const ack = acks.get(admission.bindingReceiptId); const canonical = (await import('../server/application/appEnrichmentValidation')).canonicalAppJson; if (!ack || canonical(ack.admission) !== canonical(admission))
         return false; const rows = (await q("SELECT r.revision,b.binding_revision,b.opt_in,b.current_generation_id,r.entity_id FROM recommendations r JOIN app_enrichment_bindings b ON b.recommendation_id=r.id AND b.account_id=r.account_id WHERE r.id=$1 AND r.account_id=$2 AND r.category='apps' AND r.archived_at IS NULL", [admission.recommendationId, admission.accountId])).rows; return rows.length === 1 && Number(rows[0].revision) === admission.expectedRecommendationRevision && Number(rows[0].binding_revision) === admission.expectedBindingRevision && rows[0].opt_in === true && rows[0].current_generation_id === admission.binding.currentGenerationId && rows[0].entity_id === admission.appEntityId; }
     async function handle(req: IncomingMessage, res: ServerResponse) { if (req.url !== '/api/__apps-fixture/control')
-        return false; try {
+        return false; let resetResponse=false;try {
         guard();
         const presented = String(req.headers['x-apps-fixture-capability'] ?? '');
         if (req.method !== 'POST' || req.headers['content-type']?.split(';')[0] !== 'application/json' || req.socket.remoteAddress !== '127.0.0.1' || req.headers.host !== host || req.headers.origin !== options.origin || !sha.safeParse(presented).success || !timingSafeEqual(Buffer.from(presented), Buffer.from(capability)))
@@ -533,8 +554,9 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
             throw fail('enrichment identity');
         const id = identity({ caseId: body.caseId, project: body.project, repeat: body.repeat });
         let result: unknown;
-        if (action === 'reset-enrichment')
-            result = await reset(id);
+        if (action === 'reset-enrichment'){
+            resetResponse=true;result = await reset(id);
+        }
         else {
             if (!active || body.epoch !== epoch || id.caseId !== active.caseId || id.project !== active.project)
                 throw fail('enrichment epoch');
@@ -553,13 +575,15 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Cache-Control', 'no-store');
         res.end(text);
+        if(resetResponse)resetCheckpoint?.clear();
     }
-    catch {
+    catch (error) {
+        if(resetResponse)resetCheckpoint?.fail(error,resetSourceProofMs);
         res.statusCode = 403;
         res.setHeader('Content-Type', 'application/json');
         res.end('{"error":"owned Apps enrichment control denied"}');
     } return true; }
     const control={ capability, handle, observeNativeAck, verifyNativeAdmission, async close() { closed = true; if (caseTimer)
             clearTimeout(caseTimer); await runtime.close(); if (poisoned)
-            throw fail('enrichment cleanup'); } };enrichmentRefreshDiagnostics.set(control,()=>refreshDiagnostic);return control;
+            throw fail('enrichment cleanup'); } };enrichmentRefreshDiagnostics.set(control,()=>refreshDiagnostic);enrichmentResetDiagnostics.set(control,()=>resetCheckpoint?.snapshot(busy,resetSourceProofMs));return control;
 }
