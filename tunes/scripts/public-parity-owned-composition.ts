@@ -365,7 +365,11 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
     async function attachMedia() {
         if (expected?.family !== 'public-parity')
             return;
-        for (const category of ['books', 'movies', 'games', 'apps', 'places'] as const) {
+        // Generic recommendation_media is only publicly resolvable for these three
+        // categories (mediaRepository required_category IS NULL branch). Apps and places
+        // carry media through recommendation_app_screenshots / recommendation_place_photos,
+        // so attaching them here seeds assets that can never be served publicly.
+        for (const category of ['books', 'movies', 'games'] as const) {
             const target = [...items.values()].find(value => value.category === category && value.seed.owner === 'ownerA' && value.seed.control === null);
             if (!target)
                 throw refuse();
