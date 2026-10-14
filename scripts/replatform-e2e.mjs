@@ -512,7 +512,7 @@ export function snapshotSource(root){
  git(['ls-files','--error-unmatch',musicDiagnostic]);
  // Exact tracked Guides graph derived from static and literal dynamic AST imports;
  // include the separately executed Windows Job script in the same source authority.
- const guidesSources=['guides-browser-fixture.ts','guides-browser-support.ts','guides-fixture-host.ts','guides-parent-supervision.ts','guides-launcher.ts','guides-provider-fixture.ts','guides-resource-worker.ts','guides-native-diagnostic.ts','music-local-state.ts','guides-windows-job.ps1'].map(name=>`tunes/scripts/${name}`).concat('explorers-earth/e2e/replatform/guides-page-diagnostic.ts');
+ const guidesSources=['guides-browser-fixture.ts','guides-browser-support.ts','guides-fixture-host.ts','guides-parent-supervision.ts','guides-launcher.ts','guides-provider-fixture.ts','guides-resource-worker.ts','guides-native-diagnostic.ts','music-local-state.ts','guides-windows-job.ps1'].map(name=>`tunes/scripts/${name}`).concat('explorers-earth/e2e/replatform/guides-page-diagnostic.ts','explorers-earth/e2e/replatform/guides-owner-read-oracle.ts');
  git(['ls-files','--error-unmatch',...guidesSources]);
  guidesSources.push('tunes/scripts/guides-browser-report-diagnostic.mjs','tunes/scripts/guides-browser-report-diagnostic.d.mts');
  git(['ls-files','--error-unmatch','tunes/scripts/guides-browser-report-diagnostic.mjs','tunes/scripts/guides-browser-report-diagnostic.d.mts']);

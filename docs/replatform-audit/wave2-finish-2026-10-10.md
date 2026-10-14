@@ -13,6 +13,22 @@ The following entries are newest first; the original checkpoint was at clean `aa
 
 Subsequent concrete source repairs and actual results:
 
+- Public at clean `b3a0af83` completed five epochs, then failed case 5 withdrawal
+  continuation. Its final generic-category cursor expectation conflates live
+  public keyset pages with collection-bound revision cursors; an actual-service
+  regression/amendment is pending, keeping account/category privacy checks.
+- The reviewed Guides owner-read amendment scopes the initial tracker to its
+  category/selected-guide contract and retains every relevant attempt. Extra
+  superseded attempts require the exact original fetch signal's cancellation
+  and correlated native request failure; malformed/HTTP/JSON/unknown failures
+  still refuse. Actual mounted hook/client RED-to-GREEN reproduces the original
+  aborted read while current 54 Guides/53 sections render. Completed category
+  pages remain 24/24/6, selected owner sections 20/20/13, and public limit24
+  assertions unchanged. Business hash 8d30e824 explicitly projects this approved
+  amendment to 8de87f36, then 075755c0/74ffc54d. New source joins tracked custody.
+  Integrated 17 regressions, 46 native guards, scoped types and all 550 Root
+  contracts (zero skips) passed. Actual Guides qualification remains pending.
+
 - Real People at clean `57dfc193` passed all twelve identities. The earlier
   mobile cold-page error did not recur; no claim is made that its diagnostic
   repaired a product defect. The selected receipt remains milestone-incomplete.
