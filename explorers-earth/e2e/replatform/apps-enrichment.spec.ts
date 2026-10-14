@@ -250,7 +250,7 @@ for (const [index, title] of APPS_ENRICHMENT_CASES.entries())
                 expect(off!.optIn).toBe(false);
                 expect(off!.currentGenerationId).toBe(active!.currentGenerationId);
                 expect(off!.bindingRevision).toBe(disabled.bindingRevision);
-                await staleAcceptance(before.id, off!, snapshot);
+                await staleAcceptance(before.id, active!, snapshot);
                 await page.reload({ timeout: timeout() });
                 const again = await configure(reset, row, 0, off!);
                 expect(again.active.currentGenerationId).toBe(active!.currentGenerationId);

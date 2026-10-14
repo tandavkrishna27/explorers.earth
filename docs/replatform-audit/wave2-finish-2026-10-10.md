@@ -13,6 +13,26 @@ The following entries are newest first; the original checkpoint was at clean `aa
 
 Subsequent concrete source repairs and actual results:
 
+- Real runs at clean `5709080a` remain failed, not acceptance. People completed
+  nine epochs (all six desktop and three mobile), then failed the mobile public
+  cold-entry body. Apps retained actual provider-refresh passes on desktop and
+  mobile; both stale-command cases sent current disabled revisions and received
+  legitimate 200 responses. The reviewed one-line oracle now sends the captured
+  old binding revision while retaining expected 409 and the rebind-generation
+  rejection. Guides reached case 4 owner-list traversal; public stopped at its
+  first reset materialization, with positive public cleanup. No product cause is
+  inferred from those opaque failures.
+- Reviewed passive People cold-entry and Guides owner-list substeps preserve
+  existing requests, assertions, timing and first errors. Integrated checks passed
+  543 Root contracts with zero skips, 199 backend and 95 frontend checks, and
+  scoped types. Fresh real receipts are still required. The older e3d84ee3 Apps
+  fixture was separately recovered with proven ownership, zero native processes,
+  zero sessions/prepared transactions and confirmed owned-resource absence;
+  this does not convert its failed receipt into acceptance.
+- Remote PR119 still points to `622f6893`: platform-fixture and dependent
+  music-required fail, other executed checks pass. This local batch is unpushed;
+  Wave 2 and technical cutover remain open.
+
 - The current reviewed compound-reset amendment uses the existing remaining
   120-second browser case budget for reset acknowledgement, replacing its
   15-second ceiling. Refresh remains 60 seconds, observation and native HTTP
