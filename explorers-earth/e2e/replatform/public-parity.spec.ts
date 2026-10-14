@@ -353,12 +353,17 @@ for (const [index, title] of PUBLIC_PARITY_CASES.entries())
                 // list-count rank. Asserting all eight categories at once contradicts that
                 // constraint; the pinned-order behaviour is asserted below.
                 {
-                    const nav = page.getByRole('navigation').first();
-                    await expect(nav.getByRole('link')).toHaveCount(5);
-                    const labels = await nav.getByRole('link').allTextContents();
-                    expect(labels[0].trim()).toBe('Profile');
+                    // Address the public nav by its accessible name: `.first()` is viewport
+                    // dependent. MAX_NAV_SLOTS is a ceiling, not a fixed count, so assert the
+                    // ceiling and the membership rather than a desktop-shaped exact count.
+                    const nav = page.getByRole('navigation', { name: 'Public navigation' });
+                    await expect(nav).toHaveCount(1);
+                    const labels = (await nav.getByRole('link').allTextContents()).map(label => label.trim());
+                    expect(labels.length).toBeGreaterThan(0);
+                    expect(labels.length).toBeLessThanOrEqual(5);
+                    expect(labels[0]).toBe('Profile');
                     const categories = ['Places', 'Movies', 'Books', 'Games', 'Guides', 'Apps', 'Products', 'People'];
-                    expect(labels.slice(1).map(label => label.trim()).every(label => categories.includes(label))).toBe(true);
+                    expect(labels.slice(1).every(label => categories.includes(label))).toBe(true);
                 }
                 const me = (await scope.read(owner, '/me')).body.account;
                 // Pinning requires manual mode: categoryNavigationPolicy blocks pin actions
