@@ -16,6 +16,7 @@ import {z} from 'zod/v3';
 import {extractCanonicalCustodySnapshot,extractCanonicalCustodyDiagnostic,type CanonicalCustodyReason,type CanonicalCustodyCensus} from '../server/auth/canonicalHandlerCustody';
 import {inspectAppsPrivateDescendant} from './apps-private-custody';
 import {appEntityDetailsSchema,type AppEntityDetails} from '../shared/explorersAppContract';
+import {appEnrichmentCommandSchema} from '../shared/explorersAppEnrichmentContract';
 import {types as nativeTypes} from 'node:util';
 import {APPS_ENRICHMENT_CASES} from './apps-enrichment-browser-support';
 import {editableOwnerCollectionSchema,editableOwnerRecommendationSchema,ownerMembershipDtoSchema} from '../shared/explorersOwnerContentContract';
@@ -398,16 +399,23 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
             resetCheckpoint?.stage('pending-drain');
             await Promise.allSettled([...state.pending]);
             guard();
-            if (active)
-                for (const item of active.items) {
-                    resetCheckpoint?.stage('prior-binding-read');resetSourceProofMs=undefined;
-                    const owner = item.role === 'foreign-control' ? 'ownerB' : 'ownerA', value = await native(owner, '/api/explorers/v1/recommendations/' + item.recommendation.id + '/app-enrichment/binding');
-                    if (value.binding?.optIn) {
-                        const editable = await native(owner, '/api/explorers/v1/recommendations/' + item.recommendation.id + '/editable?status=all');
-                        resetCheckpoint?.stage('prior-binding-disable');resetSourceProofMs=undefined;
-                        await native(owner, '/api/explorers/v1/recommendations/' + item.recommendation.id + '/app-enrichment/binding', 'DELETE', { operation: 'disableAppEnrichment', expectedRecommendationRevision: editable.recommendation.revision, expectedBindingRevision: value.binding.bindingRevision });
-                    }
+            if (active) {
+                resetCheckpoint?.stage('prior-binding-read');resetSourceProofMs=undefined;
+                const priorIds=active.items.map(item=>item.recommendation.id),priorRows=(await q("SELECT r.id,r.account_id,r.entity_id,r.revision,ci.collection_id,b.id AS binding_id,b.account_id AS binding_account_id,b.recommendation_id AS binding_recommendation_id,b.app_entity_id AS binding_entity_id,b.opt_in,b.binding_revision FROM recommendations r JOIN entities e ON e.id=r.entity_id AND e.kind='app' AND e.origin='manual' JOIN app_entity_details d ON d.entity_id=e.id JOIN collection_items ci ON ci.recommendation_id=r.id AND ci.account_id=r.account_id AND ci.category=r.category JOIN collections c ON c.id=ci.collection_id AND c.account_id=ci.account_id AND c.category=ci.category AND c.archived_at IS NULL LEFT JOIN app_enrichment_bindings b ON b.recommendation_id=r.id AND b.account_id=r.account_id WHERE r.id=ANY($1::uuid[]) AND r.category='apps' AND r.archived_at IS NULL LIMIT 4",[priorIds])).rows;
+                if(priorIds.length!==3||new Set(priorIds).size!==3||priorRows.length!==3||new Set(priorRows.map(row=>row.id)).size!==3)throw fail('enrichment prior ownership');
+                const revision=(value:unknown)=>{if(typeof value!=='number'&&(typeof value!=='string'||!/^[1-9][0-9]*$/.test(value)))throw fail('enrichment prior revision');const result=Number(value);if(!Number.isSafeInteger(result)||result<1)throw fail('enrichment prior revision');return result;};
+                const disables=[] as {owner:'ownerA'|'ownerB';id:string;command:unknown}[];
+                for(const item of active.items){
+                    const row=priorRows.find(row=>row.id===item.recommendation.id);
+                    if(!row||row.account_id!==item.recommendation.accountId||row.entity_id!==item.recommendation.entityId||row.collection_id!==item.collectionId)throw fail('enrichment prior ownership');
+                    const recommendationRevision=revision(row.revision);
+                    if(row.binding_id===null){if([row.binding_account_id,row.binding_recommendation_id,row.binding_entity_id,row.opt_in,row.binding_revision].some(value=>value!==null))throw fail('enrichment prior binding');continue;}
+                    if(!uuid.safeParse(row.binding_id).success||row.binding_account_id!==row.account_id||row.binding_recommendation_id!==row.id||row.binding_entity_id!==row.entity_id||typeof row.opt_in!=='boolean')throw fail('enrichment prior binding');
+                    const bindingRevision=revision(row.binding_revision),command=appEnrichmentCommandSchema.parse({operation:'disableAppEnrichment',expectedRecommendationRevision:recommendationRevision,expectedBindingRevision:bindingRevision});
+                    if(row.opt_in)disables.push({owner:item.role==='foreign-control'?'ownerB':'ownerA',id:row.id,command});
                 }
+                for(const disable of disables){resetCheckpoint?.stage('prior-binding-disable');resetSourceProofMs=undefined;await native(disable.owner,'/api/explorers/v1/recommendations/'+disable.id+'/app-enrichment/binding','DELETE',disable.command);}
+            }
             resetCheckpoint?.stage('owner-seed');resetSourceProofMs=undefined;
             const owners = (await q('SELECT user_id,account_id FROM initial_account_bindings WHERE user_id=ANY($1::text[])', [Object.values(options.personas).map(person => person.userId)])).rows;
             if (owners.length !== 2)
