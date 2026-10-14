@@ -12,6 +12,25 @@ The following supersedes the older pending-status bullets below. Wave 2 remains 
 The following entries are newest first; the original checkpoint was at clean `aa3738f3`.
 
 Subsequent concrete source repairs and actual results:
+- Actual mounted Guides page/hook/gateway/scroll continuation reproduces an
+  auto/manual race: at48 days the real observer completes all53 and removes
+  both controls after isEnabled succeeds, before the helper's Locator.click.
+  This proves a possible harness defect, not the actual42ce failure cause.
+  The reviewed business amendment keeps native click with timeout15000 (the
+  existing expect policy). Only the exact nonproxy native SDK timeout plus a
+  positive completed-and-no-control witness permits continuation; unknown
+  witness/other errors preserve the same primary. All53 ordering/five page
+  assertions remain. Business f47a0fc3 reverses exactly to f917 and the old chain.
+- Public case10 now retains finite existing final-navigation response counts,
+  statuses and optional native served frame/SDK timeout kind, without changing
+  goto/history actions, requests, timers or assertions. Mounted actual public
+  shell/detail/gateway and current-handle eligibility regression passes; no
+  product defect or historical navigation cause is claimed.
+- Fresh combined integration:15 frontend tests,49 isolated Guides native guards,
+  76 public backend contracts and32 focused diagnostics pass. Full Root559 has
+  zero failures/skips. Actual Guide/Public transitive scopes, C0 and full frontend
+  app types exit zero. Both packets are independently reviewed. Real Guides,
+  full Public and separate analytics executions remain pending; Wave2 stays open.
 - Actual clean42ce5a94 Guides advanced owner-list/detail/reload, then failed at
   case4 public-detail-ui with no read-oracle capsule. The original failure stays
   failed; it does not establish a read-body cause. Source integrity passed and
