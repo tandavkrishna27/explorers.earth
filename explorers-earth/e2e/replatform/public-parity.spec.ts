@@ -4,7 +4,7 @@ import { slugToSubjectName } from '../../src/features/Books/utils/bookHelpers';
 import { test, expect } from '@playwright/test';
 import { createHash, randomUUID } from 'node:crypto';
 import { PUBLIC_PARITY_CASES } from '../../../tunes/scripts/public-parity-browser-support';
-import { BASE, qualificationClient, runOwnedCase, graph, target, cold, categoryURL, genericURL, orderedPages, guideSections, patch, account, editable, invalidate, binary, noPrivateData, unavailableInput, pin, removeGuidePhoto, projectedPages, movieGenrePages, waitOwnedResponseGate, rateWindow, PUBLIC_PARITY_QUALIFICATION_POLICY } from './public-parity-spec-support';
+import { BASE, finalPeopleOwnerReturn, qualificationClient, runOwnedCase, graph, target, cold, categoryURL, genericURL, orderedPages, guideSections, patch, account, editable, invalidate, binary, noPrivateData, unavailableInput, pin, removeGuidePhoto, projectedPages, movieGenrePages, waitOwnedResponseGate, rateWindow, PUBLIC_PARITY_QUALIFICATION_POLICY } from './public-parity-spec-support';
 const livePublicCollectionPageSchema=publicRecommendationDetailSchema.omit({recommendation:true}).extend({items:ownerCollectionDtoSchema.pick({id:true,title:true,slug:true,description:true,heading:true}).strict().array().max(12),nextCursor:publicContentRequestSchema.shape.cursor.unwrap().nullable()}).strict();
 const livePublicRecommendationPageSchema=livePublicCollectionPageSchema.extend({items:publicRecommendationSummarySchema.array().max(12)}).strict();
 const client = qualificationClient();
@@ -181,8 +181,7 @@ for (const [index, title] of PUBLIC_PARITY_CASES.entries())
                 await scope.client.trackProducer(()=>owner.clearCookies());
                 await scope.client.trackProducer(()=>owner.addCookies(freshCookies));
                 expect((await scope.read(owner,'/me')).body.account.id).toBe(a.accountId);
-                await scope.client.trackProducer(()=>page.goto('/recommendations/people'));
-                await expect(page.getByText(list.title,{exact:true}).first()).toBeVisible();
+                await finalPeopleOwnerReturn(scope,page,list.title);
                 await expect(page.getByText(target(scope,'people','ownerB').title,{exact:true})).toHaveCount(0);
                 break;
             }

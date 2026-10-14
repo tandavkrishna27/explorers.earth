@@ -12,6 +12,20 @@ The following supersedes the older pending-status bullets below. Wave 2 remains 
 The following entries are newest first; the original checkpoint was at clean `aa3738f3`.
 
 Subsequent concrete source repairs and actual results:
+- Fresh integration adds finite Guides read-oracle and final A/B/A public-return
+  witnesses without changing business assertions. Actual pinned TSX serialization
+  reproduced an unbound compiler-helper callback; inlining the identical sole
+  predicate removes that serialization defect. All four scopes across fresh and
+  reload documents pass the real serialized-callback regression. This is not yet
+  evidence that the latest native Guides failure has cleared.
+- The mounted actual People owner adapter/view-model A/B/A regression retains the
+  private A list and drops B content. No deterministic product defect or product
+  fix is claimed; the next full public run carries finite existing-read evidence.
+- Fresh integrated verification: frontend 125/125, backend 252/253 initially
+  (one 5-second AST diagnostic timeout), isolated native diagnostic rerun 48/48,
+  C0 types exit zero, Root 554/554 with zero skips. Independent packet review
+  passed. Real Guides and public reruns and final combined qualification remain
+  required; these local changes remain unpushed pending qualification.
 
 - Public at clean `ec5afec6` completed seven epochs, including the amended
   withdrawal case, before failing the account-replacement public-cache case.
