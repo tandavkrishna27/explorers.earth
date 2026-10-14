@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {it,expect,vi} from 'vitest';
 import {EventEmitter} from 'node:events';
 import {readFileSync} from 'node:fs';
@@ -21,3 +22,5 @@ it('held real-response gates settle on release, abort, context close and deadlin
  const helper=await import('../../../../explorers-earth/e2e/replatform/public-parity-spec-support');vi.useFakeTimers();
  try{for(const mode of ['release','abort','close','deadline']){const signal=new AbortController(),context=new EventEmitter();let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);const pending=helper.waitOwnedResponseGate(signal.signal,gate,context as any,1000);const outcome=mode==='release'?expect(pending).resolves.toBeUndefined():expect(pending).rejects.toThrow('PUBLIC_PARITY_GATE_');if(mode==='release')release();else if(mode==='abort')signal.abort();else if(mode==='close')context.emit('close');else await vi.advanceTimersByTimeAsync(1000);await outcome;expect(vi.getTimerCount()).toBe(0);expect(context.listenerCount('close')).toBe(0)}}finally{vi.useRealTimers()}
 });
+
+it('case5 preserves every account/category withdrawal check while distinguishing live category and hidden parent cursors',()=>{const text=readFileSync(new URL('../../../../explorers-earth/e2e/replatform/public-parity.spec.ts',import.meta.url),'utf8').replace(/\r\n/g,'\n'),start=text.indexOf('            case 5: {'),end=text.indexOf('                const first = livePublicCollectionPageSchema',start),prefix=text.slice(start,end);expect(createHash('sha256').update(prefix).digest('hex')).toBe('cbdda4332548093bfad6dd9716c5882585abec1fa7fb91f9907b9eafb29c8a46');expect(text).not.toMatch(/scope\.read\([^\n]+,\s*409\)/);expect(text).toContain('livePublicCollectionPageSchema.parse');expect(text).toContain('livePublicRecommendationPageSchema.parse');expect(text).toContain('encodeURIComponent(parentFirst.nextCursor!)');expect(text).toContain('continued.items.some(row=>row.id===list.id)');});

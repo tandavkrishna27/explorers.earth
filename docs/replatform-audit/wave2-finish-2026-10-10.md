@@ -13,6 +13,27 @@ The following entries are newest first; the original checkpoint was at clean `aa
 
 Subsequent concrete source repairs and actual results:
 
+- Guides at clean `a58a7ba6` advanced past owner-list but failed owner-reload.
+  The actual selected hook/adapter regression reproduces the original abort
+  while all current 53 sections render. The reviewed explicit selected-guide
+  scope uses the same strict original-signal/native-failure ledger for detail
+  and reload, retaining exact 20/20/13 page assertions; default owner-content
+  mode still requires both snapshot brackets. Business hash 8c9b943a reverses
+  only those two factory calls to 8d30e824 and the existing predecessor chain.
+- The reviewed public case 5 amendment matches native live category cursors:
+  strict successful continuation excludes the withdrawn collection, and two
+  extra reads prove the hidden parent's previously issued cursor returns 404.
+  All eight account/category withdrawal checks remain byte-identical; no API,
+  retry or budget changes. Actual-service/source-probe RED-to-GREEN and review
+  passed. Integrated 20 frontend, 59 backend, scoped types and all 550 Root
+  contracts (zero skips) passed; real Guides/public qualification remains open.
+- All seven retained failed Apps fixtures (e3d84ee3, cda27650, 9de2f1e5,
+  a7ef2ba1, 3a7a8794, 64a5385b and 5709080a) now have separate positive recovery
+  witnesses and confirmed owned-resource absence. Fixed closed-tree candidates
+  were independently reviewed; 45 fresh synthetic/native-identity checks passed.
+  Each recovery proved zero native processes, sessions and prepared transactions;
+  original failed receipts remain failed. No unrelated containers were changed.
+
 - Public at clean `b3a0af83` completed five epochs, then failed case 5 withdrawal
   continuation. Its final generic-category cursor expectation conflates live
   public keyset pages with collection-bound revision cursors; an actual-service

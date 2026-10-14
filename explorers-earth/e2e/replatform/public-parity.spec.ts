@@ -1,8 +1,12 @@
+import {ownerCollectionDtoSchema} from '../../../tunes/shared/explorersOwnerContentContract';
+import {publicContentRequestSchema,publicRecommendationDetailSchema,publicRecommendationSummarySchema} from '../../../tunes/shared/explorersPublicContentContract';
 import { slugToSubjectName } from '../../src/features/Books/utils/bookHelpers';
 import { test, expect } from '@playwright/test';
 import { createHash, randomUUID } from 'node:crypto';
 import { PUBLIC_PARITY_CASES } from '../../../tunes/scripts/public-parity-browser-support';
 import { BASE, qualificationClient, runOwnedCase, graph, target, cold, categoryURL, genericURL, orderedPages, guideSections, patch, account, editable, invalidate, binary, noPrivateData, unavailableInput, pin, removeGuidePhoto, projectedPages, movieGenrePages, waitOwnedResponseGate, rateWindow, PUBLIC_PARITY_QUALIFICATION_POLICY } from './public-parity-spec-support';
+const livePublicCollectionPageSchema=publicRecommendationDetailSchema.omit({recommendation:true}).extend({items:ownerCollectionDtoSchema.pick({id:true,title:true,slug:true,description:true,heading:true}).strict().array().max(12),nextCursor:publicContentRequestSchema.shape.cursor.unwrap().nullable()}).strict();
+const livePublicRecommendationPageSchema=livePublicCollectionPageSchema.extend({items:publicRecommendationSummarySchema.array().max(12)}).strict();
 const client = qualificationClient();
 for (const [index, title] of PUBLIC_PARITY_CASES.entries())
     test(title, async ({ browser }, info) => runOwnedCase(client, browser, info, async (scope) => {
@@ -120,9 +124,17 @@ for (const [index, title] of PUBLIC_PARITY_CASES.entries())
                     await scope.read(anonymous, categoryURL(a.handle, name), 404);
                     await account(scope, owner, { categories: settings });
                 }
-                const first = (await scope.read(anonymous, `${genericURL(a.handle, 'people')}?limit=12`)).body;
+                const first = livePublicCollectionPageSchema.parse((await scope.read(anonymous, `${genericURL(a.handle, 'people')}?limit=12`)).body);
+                const publicPeopleLists=people.lists.filter(row=>row.accountId===a.accountId&&row.control===null&&!row.archived&&row.visibility==='public'&&row.publicationState==='published').sort((left,right)=>left.displayOrder-right.displayOrder);
+                expect(first.items.map(row=>row.id)).toEqual(publicPeopleLists.slice(0,12).map(row=>row.id));
+                expect(first.nextCursor).toEqual(expect.any(String));
+                const parentFirst=livePublicRecommendationPageSchema.parse((await scope.read(anonymous, `${genericURL(a.handle, 'people',list.slug)}?limit=12`)).body);
+                expect(parentFirst.nextCursor).toEqual(expect.any(String));
                 await patch(scope, owner, 'collections', list.id, { visibility: 'private' });
-                expect((await scope.read(anonymous, `${genericURL(a.handle, 'people')}?limit=12&cursor=${encodeURIComponent(first.nextCursor)}`, 409)).body.error.code).toBe('PAGE_CHANGED');
+                const continued=livePublicCollectionPageSchema.parse((await scope.read(anonymous, `${genericURL(a.handle, 'people')}?limit=12&cursor=${encodeURIComponent(first.nextCursor!)}`,200)).body);
+                expect(continued.items.map(row=>row.id)).toEqual(publicPeopleLists.slice(first.items.length).filter(row=>row.id!==list.id).slice(0,12).map(row=>row.id));
+                expect(continued.items.some(row=>row.id===list.id)).toBe(false);
+                expect((await scope.read(anonymous, `${genericURL(a.handle, 'people',list.slug)}?limit=12&cursor=${encodeURIComponent(parentFirst.nextCursor!)}`,404)).body).toEqual({version:'explorers-public-error/v1',error:{code:'NOT_FOUND'}});
                 break;
             }
             case 6: {
