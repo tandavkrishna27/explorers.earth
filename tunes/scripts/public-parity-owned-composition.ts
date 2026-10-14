@@ -1,3 +1,4 @@
+import {validatePublicParityMaterializationPoint,publicParityMaterializationBinding,type PublicParityMaterializationPoint} from './public-parity-materialization-diagnostic';
 import type { Pool, PoolClient } from 'pg';
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { isProxy } from 'node:util/types';
@@ -111,6 +112,9 @@ function capture(input: PublicParityOwnedCompositionOptions) { if (!input || typ
 export function createPublicParitySessionRotation(readAbsent:()=>Promise<boolean>,verifyMembership:()=>Promise<void>,mint:()=>Promise<Readonly<{cookie:string}>>){let attempt:Promise<Readonly<{cookie:string}>|undefined>|undefined,delivered=false;return async()=>{if(delivered)return undefined;if(!attempt)attempt=(async()=>{if(!await readAbsent())return undefined;await verifyMembership();return mint();})();const current=attempt,result=await current;if(!result){if(attempt===current)attempt=undefined;return undefined;}if(delivered)return undefined;delivered=true;return result;};}
 /** Root handles only. Construction/import allocates no connection, session, file or object. */
 export async function retirePublicParityMedia(service:Pick<MediaService,'deleteMedia'>,actor:Actor,id:string,context:RequestContext,readProof:()=>Promise<{assetDeleted:boolean;objects:readonly {deleted:boolean;storageDeleted:boolean}[]}>):Promise<void>{await service.deleteMedia(actor,id,context);const proof=await readProof();if(proof.assetDeleted!==true||!proof.objects.length||proof.objects.some(object=>object.deleted!==true||object.storageDeleted!==true))throw refuse();}
+const materializationFailures=new WeakMap<object,Map<string,PublicParityMaterializationPoint>>();
+function createMaterializationCheckpoint(expected:PublicParityExpectedManifest){const key=publicParityMaterializationBinding(expected);let pending:PublicParityMaterializationPoint|undefined,first:PublicParityMaterializationPoint|undefined,complete=false;return Object.freeze({mark(point:PublicParityMaterializationPoint){if(first||complete)return;try{pending=validatePublicParityMaterializationPoint(point);}catch{pending=undefined;}},clear(){if(!first)pending=undefined;},capture(error:unknown){if(first||complete||!pending||error===null||!['object','function'].includes(typeof error))return;first=pending;let records=materializationFailures.get(error as object);if(!records){records=new Map();materializationFailures.set(error as object,records);}if(!records.has(key))records.set(key,first);},complete(){complete=true;pending=undefined;}});}
+export function extractPublicParityMaterializationFailure(error:unknown,expected:PublicParityExpectedManifest):PublicParityMaterializationPoint|undefined{if(error===null||!['object','function'].includes(typeof error))return;try{return materializationFailures.get(error as object)?.get(publicParityMaterializationBinding(expected));}catch{return undefined;}}
 export function createPublicParityOwnedComposition(input: PublicParityOwnedCompositionOptions) {
     const options = capture(input), binding: PublicParityCompositionAdmission = Object.freeze({ admission: options.admission, pool: options.pool, signal: options.signal, personas: options.personas, placePins: options.placePins, auth: options.auth, authConfig: options.authConfig, storage: options.storage, operation: 'public-people-fixture' });
     const pending = new Set<Promise<unknown>>(), clients = new Set<PoolClient>(), lists = new Map<string, AllocatedList>(), entities = new Map<string, AllocatedEntity>(), items = new Map<string, AllocatedItem>(), mediaIds = new Set<string>(), sessionTokens = new Set<string>();
@@ -164,6 +168,8 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
         db.release();
     } }
     const context = () => ({ requestId: randomUUID(), idempotencyKey: randomUUID() }), actor = (owner: Owner) => options.personas[owner].actor;
+    let materialization:ReturnType<typeof createMaterializationCheckpoint>|undefined;
+    const markMaterialization=(operation:PublicParityMaterializationPoint['operation'],category:PublicParityMaterializationPoint['category']=null,ordinal:number|null=null)=>{if(phase==='resetting')materialization?.mark({operation,category,ordinal});};
     const recommendations = new RecommendationService(pool), profiles = new ProfileService(pool);
     const row = async (sql: string, args: unknown[]) => { const result = await pool.query(sql, args); if (result.rows.length !== 1)
         throw refuse(); return result.rows[0] as Record<string, any>; };
@@ -262,16 +268,22 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
                 for (const owner of ['ownerA', 'ownerB'] as const)
                     revisions.set(owner + graph.category, await categoryRevision(owner, graph.category));
                 for (const source of graph.lists) {
+                    markMaterialization('list',graph.category,graph.lists.indexOf(source));
                     await makeList(source as ListSeed);
                     revisions.set(source.owner + graph.category, await categoryRevision(source.owner, graph.category));
                 }
                 for (const source of graph.items)
-                    if (source.entityKey && !entities.has(source.entityKey))
+                    if (source.entityKey && !entities.has(source.entityKey)) {
+                        markMaterialization('entity',graph.category,graph.items.indexOf(source));
                         await makeEntity({ key: source.entityKey, title: source.title, details: source.details, suppressed: false, category: graph.category });
-                for (const source of graph.items)
+                    }
+                for (const source of graph.items) {
+                    markMaterialization('item',graph.category,graph.items.indexOf(source));
                     await makeItem(source as ItemSeed, graph.category);
+                }
             }
             for (const link of plan.links) {
+                markMaterialization('link',link.category,plan.links.indexOf(link));
                 const child = lists.get(link.childCollectionKey)!, parent = lists.get(link.parentCollectionKey)!;
                 await recommendations.locationLink(actor('ownerA'), child.id, { expectedChildRevision: await listRevision(child.id, 'ownerA'), locationCollectionId: parent.id, expectedLocationRevision: await listRevision(parent.id, 'ownerA') }, context(), true);
             }
@@ -285,8 +297,10 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
                 await makeItem({ ...source, control: null, details: plan.entities.find(entity => entity.key === source.entityKey)!.details }, 'people');
         }
         for (const list of lists.values())
-            if (list.seed.archived)
+            if (list.seed.archived) {
+                markMaterialization('archive',list.seed.category,list.seed.displayOrder);
                 await recommendations.archiveCollection(actor(list.seed.owner), list.id, { expectedRevision: await listRevision(list.id, list.seed.owner) }, context());
+            }
     }
     async function captureReceiptBaseline() { const rows = await pool.query("SELECT id FROM application_command_receipts WHERE account_id=ANY($1::uuid[]) AND operation IN('createCollection','createRecommendation','resolvePersonEntity')", [['ownerA', 'ownerB'].map(owner => actor(owner as Owner).accountId)]); for (const row of rows.rows)
         baselineReceipts.add(String(row.id)); }
@@ -353,7 +367,9 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
             const target = [...items.values()].find(value => value.category === category && value.seed.owner === 'ownerA' && value.seed.control === null);
             if (!target)
                 throw refuse();
+            markMaterialization('media-upload',category,mediaIds.size);
             const media = await upload('recommendation', png, 'image/png');
+            markMaterialization('media-attachment',category,[...mediaIds].indexOf(media.id));
             await recommendations.updateRecommendation(actor('ownerA'), target.id, { expectedRevision: Number((await row('SELECT revision FROM recommendations WHERE id=$1 AND account_id=$2', [target.id, actor('ownerA').accountId])).revision), mediaIds: [media.id] }, context());
             if (category === 'movies') {
                 const second = [...items.values()].find(value => value.category === category && value.seed.owner === 'ownerA' && value.seed.control === null && value.id !== target.id);
@@ -366,7 +382,9 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
             const target = [...lists.values()].find(value => value.seed.category === category && value.seed.owner === 'ownerA' && value.seed.control === null);
             if (!target)
                 throw refuse();
+            markMaterialization('media-upload',category,mediaIds.size);
             const media = await upload('collection', png, 'image/png');
+            markMaterialization('media-attachment',category,[...mediaIds].indexOf(media.id));
             if (category === 'guides') {
                 const revision = Number(await categoryRevision('ownerA', 'guides'));
                 await transaction(db => attachGuideCover(db, target.id, actor('ownerA').accountId, revision, media.id));
@@ -377,20 +395,29 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
         const section = [...items.values()].find(value => value.category === 'guides' && value.seed.owner === 'ownerA' && value.seed.control === null);
         if (!section)
             throw refuse();
-        const photo = await upload('guide', png, 'image/png'), nativeSection = await row('SELECT title,description,blocks FROM guide_sections WHERE id=$1 AND collection_id=$2 AND account_id=$3', [section.id, section.collectionId, actor('ownerA').accountId]), blocks = guideSectionBlocksSchema.parse(nativeSection.blocks);
+        markMaterialization('media-upload','guides',mediaIds.size);
+        const photo = await upload('guide', png, 'image/png');
+        markMaterialization('media-attachment','guides',[...mediaIds].indexOf(photo.id));
+        const nativeSection = await row('SELECT title,description,blocks FROM guide_sections WHERE id=$1 AND collection_id=$2 AND account_id=$3', [section.id, section.collectionId, actor('ownerA').accountId]), blocks = guideSectionBlocksSchema.parse(nativeSection.blocks);
         if (blocks.timeline.morning.length !== 1 || blocks.timeline.morning[0].source !== 'manual' || blocks.timeline.morning[0].verified || blocks.timeline.morning[0].photos.length)
             throw refuse();
         blocks.timeline.morning[0].photos.push({ mediaId: photo.id, fileName: 'parity.png', width: 8, height: 8, aspectRatio: '1:1' });
+        markMaterialization('media-attachment','guides',[...mediaIds].indexOf(photo.id));
         const revision = Number(await categoryRevision('ownerA', 'guides'));
         await transaction(db => updateGuideSection(db, section.collectionId, actor('ownerA').accountId, revision, section.id, { title: nativeSection.title, description: nativeSection.description, blocks: guideSectionBlocksSchema.parse(blocks) }));
+        materialization?.clear();
         guard();
         const video = await retain(readFile(videoUrl));
         guard();
         if (video.length !== 1440 || createHash('sha256').update(video).digest('hex') !== videoHash)
             throw refuse();
-        const media = await upload('feed', video, 'video/mp4'), profile = await profiles.getMyProfile(actor('ownerA'));
+        markMaterialization('media-upload',null,mediaIds.size);
+        const media = await upload('feed', video, 'video/mp4');
+        markMaterialization('media-attachment',null,[...mediaIds].indexOf(media.id));
+        const profile = await profiles.getMyProfile(actor('ownerA'));
         if (profile.feedItems.length)
             throw refuse();
+        markMaterialization('media-attachment',null,[...mediaIds].indexOf(media.id));
         await profiles.updateAccount(actor('ownerA'), { expectedRevision: profile.revision, feedItems: [{ mediaId: media.id, externalUrl: null, source: 'manual', type: 'video', caption: 'Public parity video', details: { fileName: 'parity.mp4', width: 16, height: 16, aspectRatio: '1:1' } }] }, context());
     }
     async function snapshotMedia() {
@@ -449,6 +476,7 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
         }
         const categories: any[] = [];
         for (const category of 'categories' in plan ? plan.categories.map(graph => graph.category) : ['people'] as const) {
+            markMaterialization('snapshot',category);
             const graphPlan = 'categories' in plan ? plan.categories.find(graph => graph.category === category) : null, categoryVisible: any = {}, accountRevisions: any = {};
             for (const owner of ['ownerA', 'ownerB'] as const) {
                 const native = await row("SELECT s.is_public,coalesce(c.revision::text,'0') content_revision,p.revision pin_revision FROM account_category_settings s LEFT JOIN account_category_content_state c ON c.account_id=s.account_id AND c.category=s.category LEFT JOIN account_category_pin_state p ON p.account_id=s.account_id AND p.category=s.category WHERE s.account_id=$1 AND s.category=$2", [actor(owner).accountId, category]);
@@ -485,6 +513,7 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
             const facet = graphPlan?.catalogFacet;
             categories.push({ category, categoryVisible, accountRevisions, traversal: graphPlan?.traversal ?? null, catalogFacet: facet ? { ...facet, providerId: 'providerId' in facet ? facet.providerId : null, entityIds: Object.fromEntries((['ownerA', 'ownerB'] as const).map(owner => [owner, [...new Set(nativeItems.filter(item => item.accountId === actor(owner).accountId && item.control === null && !item.archived && item.publicationState === 'published' && nativeLists.some(list => list.id === item.collectionId && list.visibility === 'public' && list.publicationState === 'published' && !list.archived)).map(item => item.entityId))]])) } : null, lists: nativeLists, entities: nativeEntities, items: nativeItems });
         }
+        markMaterialization('snapshot');
         const links = expected.family === 'public-parity' ? (await pool.query('SELECT account_id,location_collection_id,child_collection_id,child_category FROM collection_location_links WHERE account_id=$1 ORDER BY CASE child_category WHEN $$products$$ THEN 0 WHEN $$people$$ THEN 1 ELSE 2 END,child_collection_id', [actor('ownerA').accountId])).rows.map(value => ({ accountId: value.account_id, locationCollectionId: value.location_collection_id, childCollectionId: value.child_collection_id, childCategory: value.child_category })) : [];
         const taxonomy: any = { people: null, places: null };
         for (const category of expected.family === 'public-parity' ? ['people', 'places'] as const : ['people'] as const) {
@@ -492,6 +521,7 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
             taxonomy[category] = { state: native.state, version: Number(native.version), defaultLocale: native.default_locale, termCount: native.term_count, mappingCount: native.mapping_count, inputHash: native.input_hash, ...(category === 'people' ? { positiveSector: 'unavailable-input-configured-empty' } : {}) };
         }
         const result = { ...expected, stage, personas, categories, links, media: await snapshotMedia(), taxonomy };
+        markMaterialization('issued-validation');
         return stage === 'issued' ? publicParityIssuedManifestSchema.parse({ expected, manifest: result }) : publicParityObservationSchema.parse({ expected, observation: result });
     }
     async function retire() { if (!databaseValidated)
@@ -543,16 +573,24 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
     } }
     return Object.freeze({ async reset(raw: PublicParityExpectedManifest): Promise<PublicParityMaterializedReset> { if (phase !== 'idle')
             throw refuse(); const identity = publicParityExpectedManifestSchema.parse(raw); guard(); phase = 'resetting'; expected = identity; try {
+            try{materialization=identity.family==='public-parity'?createMaterializationCheckpoint(identity):undefined;}catch{materialization=undefined;}
+            markMaterialization('prepare');
             await prepare(identity);
+            materialization?.clear();
             await materialize(identity);
+            markMaterialization('place-pins','places');
             await configurePlacesPins();
+            materialization?.clear();
             await attachMedia();
+            markMaterialization('receipt-baseline');
             await captureReceiptBaseline();
+            markMaterialization('snapshot');
             issued = await snapshot('issued') as PublicParityIssuedManifest;
             const sessions = {} as Record<Owner, {
                 cookie: string;
             }>;
             for (const owner of ['ownerA', 'ownerB'] as const) {
+                markMaterialization('session',null,['ownerA','ownerB'].indexOf(owner));
                 guard();
                 const auth = await retain(options.auth.$context);
                 guard();
@@ -565,13 +603,16 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
                 sessions[owner] = { cookie: `${auth.authCookies.sessionToken.name}=${session.token}.${createHmac('sha256', options.authConfig.secret).update(session.token).digest('base64')}` };
             }
             if(identity.family==='public-parity'&&identity.caseId==='Public parity: logout and account replacement cannot reuse another account public cache') {
+                markMaterialization('session-rotation');
                 const oldToken=ownerSessionTokens.get('ownerA'); if(!oldToken)throw refuse();
                 rotateOwnerA=createPublicParitySessionRotation(async()=>{const rows=await pool.query('SELECT id FROM auth_session WHERE token=$1 AND user_id=$2',[oldToken,actor('ownerA').userId]);return rows.rows.length===0;},async()=>{const native=await row('SELECT a.status,a.onboarding_status,m.role FROM creator_accounts a JOIN account_memberships m ON m.account_id=a.id WHERE a.id=$1 AND m.user_id=$2',[actor('ownerA').accountId,actor('ownerA').userId]);if(native.role!=='owner'||native.status!=='active'||native.onboarding_status!=='complete')throw refuse();},async()=>{guard();const auth=await retain(options.auth.$context);guard();const session=await retain(auth.internalAdapter.createSession(actor('ownerA').userId,false));if(!session||session.token===oldToken)throw refuse();sessionTokens.add(session.token);guard();return Object.freeze({cookie:`${auth.authCookies.sessionToken.name}=${session.token}.${createHmac('sha256',options.authConfig.secret).update(session.token).digest('base64')}`});});
             }
+            materialization?.complete();
             phase = 'issued';
             return Object.freeze({ manifest: issued, sessions: Object.freeze(sessions) });
         }
         catch (error) {
+            try{materialization?.capture(error);}catch{/* Passive source evidence preserves the original failure. */}
             phase = 'failed';
             throw error;
         } }, async observe(): Promise<PublicParityPrivateObservation> { if (phase !== 'issued')

@@ -1,0 +1,267 @@
+{
+  "version": 1,
+  "evidence": "selected-local-apps-enrichment-protected-browser-run",
+  "selectedLane": {
+    "name": "apps-enrichment",
+    "status": "passed"
+  },
+  "provenance": {
+    "commit": "2967db42671ec546fff353a8aee673e0eb46b0e3",
+    "sourceHash": "69d2c033e6568a0901482ef7b57cc5e43ff279fb618323c5832690627028a57c",
+    "manifestHash": "276bb0aca15f0db7c67081e34d407fec7b2d19e811981146140fdb3da6fa5348",
+    "dirty": false
+  },
+  "receiptHashes": {
+    "rootQualificationSha256": "6316198a09d175b281306e28e6d2b6e4b90006f0e7214839b8d95162d105d83b",
+    "nativeReceiptSha256": "7f5fac48dce79287c401bcfc3aeea3995c15d91b176699d8ab6c6665b93ef92b"
+  },
+  "sourceHashEntries": 2181,
+  "counts": {
+    "discovered": 4,
+    "executed": 4,
+    "passed": 4,
+    "failed": 0,
+    "retries": 0,
+    "errors": 0
+  },
+  "projects": [
+    "apps-desktop",
+    "apps-mobile"
+  ],
+  "config": "explorers-earth/e2e/replatform/apps-enrichment.playwright.config.ts",
+  "spec": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+  "discovery": [
+    {
+      "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+      "titlePath": [
+        "Apps enrichment: explicit approved source choices and selected-field acceptance survive reload"
+      ],
+      "project": "apps-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+      "titlePath": [
+        "Apps enrichment: disable same-source re-enable and different-source rebind preserve manual values"
+      ],
+      "project": "apps-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+      "titlePath": [
+        "Apps enrichment: explicit approved source choices and selected-field acceptance survive reload"
+      ],
+      "project": "apps-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+      "titlePath": [
+        "Apps enrichment: disable same-source re-enable and different-source rebind preserve manual values"
+      ],
+      "project": "apps-mobile",
+      "repeat": 0
+    }
+  ],
+  "results": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+        "titlePath": [
+          "Apps enrichment: explicit approved source choices and selected-field acceptance survive reload"
+        ],
+        "project": "apps-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+        "titlePath": [
+          "Apps enrichment: disable same-source re-enable and different-source rebind preserve manual values"
+        ],
+        "project": "apps-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+        "titlePath": [
+          "Apps enrichment: explicit approved source choices and selected-field acceptance survive reload"
+        ],
+        "project": "apps-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+        "titlePath": [
+          "Apps enrichment: disable same-source re-enable and different-source rebind preserve manual values"
+        ],
+        "project": "apps-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    }
+  ],
+  "child": {
+    "status": 0,
+    "signal": null
+  },
+  "cleanup": {
+    "status": "passed"
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  },
+  "authority": {
+    "owned": true,
+    "database": "music_uat_0aea352aad2e9bd4a753f47205479c12",
+    "containerId": "c9d910aecf17a784bf361c16b906d376719fda8fc0444d737726ca12689ebb52",
+    "imageId": "sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81"
+  },
+  "qualificationProviderBudget": {
+    "basis": "reviewed source policy bound by the recorded source provenance; not independently serialized wire counters",
+    "maxActualGets": 8,
+    "maxReservedBodyBytes": 16777216,
+    "maxDurationMs": 600000,
+    "observedWireCounts": null,
+    "originalTask7BudgetUnchanged": {
+      "maxActualGets": 6,
+      "maxReservedBodyBytes": 12582912,
+      "maxDurationMs": 120000
+    }
+  },
+  "qualificationTiming": {
+    "caseTimeoutMs": 120000,
+    "compoundReset": "remaining case budget",
+    "nativeRefreshTimeoutMs": 60000,
+    "observeTimeoutMs": 15000,
+    "nativeHttpTimeoutMs": 15000,
+    "maxJsonBytes": 65536
+  },
+  "tools": {
+    "node": "24.21.0",
+    "npm": "11.19.0",
+    "playwright": "1.61.1",
+    "chromium": "149.0.7827.55",
+    "lockHashes": {
+      "root": "0d1ac98c4c1a9e78ef7f4c4c39828e1b495f9e0b7473a0f43d0adf5173eb8748",
+      "tunes": "9a84227e2a067033c1945f314c2f087d322639d1b0966fc3e1a447a040f337b5",
+      "explorers-earth": "ea8be30dff688682d0b8be439cf26ebb3f8c8d419dce9d803396a80e3ed3f9c0",
+      "tunes/auth-runtime": "b7065dfb274cce760d0f8c1a42cb271f770d54832ad623272caacf7cb155ad9d"
+    }
+  },
+  "timing": {
+    "rootStartedAt": "2026-10-14T02:45:48.813Z",
+    "rootEndedAt": "2026-10-14T02:50:57.598Z",
+    "nativeStartedAt": "2026-10-14T02:45:54.474Z",
+    "nativeEndedAt": "2026-10-14T02:50:56.678Z"
+  },
+  "readiness": {
+    "deliveredSlice": "incomplete",
+    "overallMilestone": "incomplete",
+    "fullParity": "incomplete",
+    "releaseEligible": false
+  },
+  "pending": [
+    {
+      "ticket": "2.4",
+      "obligation": "Configured deployed Google callback and consent evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.4",
+      "obligation": "Analytics acceptance",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.5",
+      "obligation": "Unified QA deployment, image/schema and trusted producer evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "4/5",
+      "obligation": "Remaining canonical category producer families and their own acceptance evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "6.1-6.3",
+      "obligation": "Music mapped-owner HTTP/socket and feature parity",
+      "status": "pending"
+    },
+    {
+      "ticket": "7.1/7.2",
+      "obligation": "Cross-category consumers and all nine categories",
+      "status": "pending"
+    },
+    {
+      "ticket": "8.1-8.4",
+      "obligation": "Removal, rename, exact QA digest promotion and deployment",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.1/5.2",
+      "obligation": "Places/link16 proposed inventory awaits independent source review and actual protected execution; provider photo/gallery closure, taxonomy/pins and hosted acceptance remain pending",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.3/5.4",
+      "obligation": "Apps manual8 awaits integrated owned fixture and protected native execution; provider enrichment, taxonomy and complete public pagination remain independently pending",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.5/5.6",
+      "obligation": "Guides complete16 awaits independently reviewed clean exact-head discovery and protected owned native execution; Public32 and new feature acceptance remain pending",
+      "status": "pending"
+    }
+  ],
+  "limits": [
+    "Auth is one Chromium desktop project",
+    "Profile uses two viewport cases in one desktop project; 390px is not a mobile device project",
+    "Books has desktop and mobile Chromium projects",
+    "Lifecycle is one Chromium desktop project; provider simulation is not deployed Google acceptance",
+    "The stable delivered-auth-profile-books CLI scope is a compatibility identifier; actual scope includes Movies desktop/mobile Chromium in its separate exact24-identity lane, not live TMDB or deployed QA qualification.",
+    "Places and place-links append16 proposed local identities; Maps selection and Google REST are simulated with no provider photo import. Linked arrays are bounded12, Places traversal53 is distinct from all-category parity.",
+    "Apps adds eight manual desktop/mobile Chromium identities; native source integration and protected execution remain unqualified; no nightly provider fetch, scheduler or complete public pagination evidence.",
+    "Guides adds sixteen complete desktop/mobile Chromium source identities; clean frozen exact-head discovery and protected native execution remain unqualified. Public32 and new feature obligations remain mandatory."
+  ],
+  "producer": "selected local owned-fixture evidence; delivered slice and hosted release remain incomplete"
+}

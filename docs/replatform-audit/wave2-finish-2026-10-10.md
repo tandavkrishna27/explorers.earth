@@ -13,6 +13,24 @@ The following entries are newest first; the original checkpoint was at clean `aa
 
 Subsequent concrete source repairs and actual results:
 
+- Real Apps enrichment at clean `2967db42` passed all four identities without
+  retries or errors and with positive owned/artifact cleanup. Its sanitized
+  exact-source receipt is saved under `receipts/wave2-apps-enrichment-2967db42`.
+  This selected pass leaves the overall milestone/full parity incomplete and
+  release eligibility false; it does not qualify later source revisions.
+- People at that source again completed nine epochs; its mobile cold-entry
+  checkpoint reports title-visible, no matching shell/detail response, and one
+  page error. Guides reached owner-list/category-reads. Reviewed direct finite
+  Guide guard/read classification and authenticated public materialization
+  checkpoints preserve existing operations/assertions/budgets. The new public
+  diagnostic joins explicit tracked source custody. Integrated checks passed
+  547 Root contracts without skips, 229 backend and 94 frontend checks; the
+  branch compiler exposed test-helper API typings, repaired and independently
+  reviewed before commit. Fresh real qualification is still required.
+- The retained failed Apps fixture at `5709080a` was separately recovered after
+  exact ownership/closed-tree/zero-session witnesses and confirmed resource
+  absence. Its original failed receipt remains failed.
+
 - Real runs at clean `5709080a` remain failed, not acceptance. People completed
   nine epochs (all six desktop and three mobile), then failed the mobile public
   cold-entry body. Apps retained actual provider-refresh passes on desktop and
