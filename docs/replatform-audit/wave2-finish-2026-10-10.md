@@ -13,6 +13,24 @@ The following entries are newest first; the original checkpoint was at clean `aa
 
 Subsequent concrete source repairs and actual results:
 
+- The current reviewed compound-reset amendment uses the existing remaining
+  120-second browser case budget for reset acknowledgement, replacing its
+  15-second ceiling. Refresh remains 60 seconds, observation and native HTTP
+  remain 15 seconds, and total case/lane/provider budgets remain unchanged.
+  This is an explicit allocation change, not a passing qualification receipt.
+- Apps reset preparation now replaces five redundant GETs with one strictly
+  allocated owned read, preserving both real canonical disable commands and
+  remaining custody checks. The quiet run at 64a5385b advanced to recommendation
+  readback but still exceeded the whole-reset acknowledgement allowance.
+- Actual People at 3a7a8794 still reached the final desktop sector case; Guides
+  advanced past the corrected conflict navigation to complete-page traversal.
+  Reviewed finite sector HTTP/traversal checkpoints now preserve actual first
+  failures without extra requests, altered assertions or changed Guide business
+  fingerprint. Fresh integrated checks passed 539 Root contracts without skips,
+  189 backend contracts, 88 frontend checks and scoped types. Real runs remain
+  required, and neither remote CI nor Wave 2 is cleared.
+
+
 - The current reviewed batch adds an exact Sector accessible label, two real
   Journey returns before case 2 Add Day/Stop checks, and passive actual HTTP
   status/existing-deadline evidence for the Apps reset. Guide business fingerprint

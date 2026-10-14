@@ -1,11 +1,13 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type APIResponse } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import {z} from 'zod/v3';
 import {apiErrorSchema} from '../../../tunes/shared/explorersContract';
 import { PEOPLE_CASES } from '../../../tunes/scripts/public-parity-browser-support';
-import { BASE, qualificationClient, runOwnedCase, graph, target, cold, categoryURL, genericURL, patch, editable, browserAcknowledgement, noPrivateData, unavailableInput, consume } from './public-parity-spec-support';
+import { BASE, qualificationClient, runOwnedCase, graph, target, cold, categoryURL, genericURL, patch, editable, browserAcknowledgement, noPrivateData, unavailableInput, consume, type Scope } from './public-parity-spec-support';
+import {PUBLIC_PARITY_QUALIFICATION_POLICY,type PeopleSectorHttpOperation} from './public-parity-controller';
 function renderedPeopleNoteText(html:string){const template=document.createElement('template');template.innerHTML=html;return (template.content.textContent??'').replace(/\s+/g,' ').trim();}
 function ownerNotFoundEvidence(body:unknown){const {error}=apiErrorSchema.parse(body);z.string().uuid().parse(error.requestId);expect(error.code).toBe('NOT_FOUND');expect(error.message).toBe('Resource unavailable');return {code:error.code,message:error.message};}
+async function peopleSectorHttp(scope:Scope,operation:PeopleSectorHttpOperation,request:()=>Promise<APIResponse>,expectedStatus:number){return scope.client.trackProducer(async()=>{let actualStatus:number|undefined;try{const reply=await request();actualStatus=reply.status();return await consume(reply,expectedStatus);}catch(error){try{scope.client.capturePeopleSectorFailure(error,operation,actualStatus);}catch{/* Passive status capture preserves the original failure. */}throw error;}});}
 const client = qualificationClient();
 for (const [index, title] of PEOPLE_CASES.entries())
     test(title, async ({ browser }, info) => runOwnedCase(client, browser, info, async (scope) => {
@@ -125,14 +127,14 @@ for (const [index, title] of PEOPLE_CASES.entries())
                 await scope.client.trackProducer(() => page.goto(`/recommendations/people/${list.id}/add`));
                 await expect(page.getByLabel('Sector', { exact: true })).toBeVisible();
                 await expect(page.getByLabel('Sector', { exact: true }).locator('option')).toHaveCount(1);
-                const catalog = (await scope.read(owner, '/catalog/taxonomy?category=people&limit=24')).body;
+                const catalog = (await peopleSectorHttp(scope,'catalog-read',()=>owner.request.get(BASE+'/catalog/taxonomy?category=people&limit=24',{headers:{},timeout:Math.min(scope.client.remainingMs(),PUBLIC_PARITY_QUALIFICATION_POLICY.contextMs)}),200)).body;
                 expect(catalog).toMatchObject({ state: 'CONFIGURED', catalogVersion: 1, defaultLocale: 'en', items: [], nextCursor: null });
                 for (const row of people.items)
                     expect((await editable(scope, owner, 'recommendations', row.id) as any).peopleSector).toMatchObject({ catalogState: 'CONFIGURED', catalogVersion: 1, sector: null, selectionUnavailable: false });
-                await scope.read(anonymous, `${BASE}/profiles/${a.handle}/recommendations/people/sectors/no-configured-sector`, 404);
+                await peopleSectorHttp(scope,'unknown-sector-read',()=>anonymous.request.get(`${BASE}/profiles/${a.handle}/recommendations/people/sectors/no-configured-sector`,{headers:{},timeout:Math.min(scope.client.remainingMs(),PUBLIC_PARITY_QUALIFICATION_POLICY.contextMs)}),404);
                 unavailableInput(info, 'people-configured-empty-positive-sector-unavailable');
                 const row = people.items[0], current: any = await editable(scope, owner, 'recommendations', row.id);
-                await scope.client.trackProducer(async () => consume(await owner.request.patch(`${BASE}/recommendations/${row.id}`, { headers: { Origin: scope.manifest.origin, 'Idempotency-Key': randomUUID() }, data: { expectedRevision: current.revision, peopleSectorTermId: randomUUID() } }), 422));
+                await peopleSectorHttp(scope,'unknown-assignment-patch',()=>owner.request.patch(`${BASE}/recommendations/${row.id}`, { headers: { Origin: scope.manifest.origin, 'Idempotency-Key': randomUUID() }, data: { expectedRevision: current.revision, peopleSectorTermId: randomUUID() } }),422);
                 expect(await editable(scope, owner, 'recommendations', row.id)).toEqual(current);
                 break;
             }
