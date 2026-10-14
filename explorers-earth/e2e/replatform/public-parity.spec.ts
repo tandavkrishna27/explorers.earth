@@ -348,8 +348,18 @@ for (const [index, title] of PUBLIC_PARITY_CASES.entries())
             case 13: {
                 const page = await cold(scope, anonymous, `/${a.handle}/people`, list.title);
                 await expect(page.getByRole('navigation').first()).toBeVisible();
-                for (const name of ['Places', 'Movies', 'Books', 'Games', 'Guides', 'Apps', 'Products', 'People'])
-                    await expect(page.getByRole('link', { name, exact: true }).first()).toBeVisible();
+                // Public navigation is slot-limited: computePinnedNavTabIds emits at most
+                // MAX_NAV_SLOTS (5) ids, profile first, the rest chosen by pinned order then
+                // list-count rank. Asserting all eight categories at once contradicts that
+                // constraint; the pinned-order behaviour is asserted below.
+                {
+                    const nav = page.getByRole('navigation').first();
+                    await expect(nav.getByRole('link')).toHaveCount(5);
+                    const labels = await nav.getByRole('link').allTextContents();
+                    expect(labels[0].trim()).toBe('Profile');
+                    const categories = ['Places', 'Movies', 'Books', 'Games', 'Guides', 'Apps', 'Products', 'People'];
+                    expect(labels.slice(1).map(label => label.trim()).every(label => categories.includes(label))).toBe(true);
+                }
                 const me = (await scope.read(owner, '/me')).body.account;
                 await account(scope, owner, { categories: me.categories.map((row: any) => ({ ...row, pinnedOrder: row.category === 'people' ? 0 : null })), themeSettings: { ...me.themeSettings, preset: 'cinematic-dark' } });
                 await pin(scope, owner, 'people', list.id, positive.id);
