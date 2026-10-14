@@ -13,6 +13,21 @@ The following entries are newest first; the original checkpoint was at clean `aa
 
 Subsequent concrete source repairs and actual results:
 
+- Public at clean `ec5afec6` completed seven epochs, including the amended
+  withdrawal case, before failing the account-replacement public-cache case.
+  Its exact failed receipt remains failed; the next actual cause is under review.
+- Guides at that source passed owner-list/detail/reload and reached public
+  detail UI, where the old tracker close asserted five responses against six
+  attempts. Actual public detail and category hooks/gateway StrictMode reproduce
+  one original no-response abort while current 53 Guides/sections render. The
+  reviewed exact public-detail/category scopes retain six attempts and admit
+  only the correlated native signal cancellation; completed UI pages remain
+  12/12/12/12/5 and explicit API limit24 assertions remain separate and unchanged.
+  Only two observer installs/two factories change. Business f9179ce0 reverses
+  category to 628f2d, detail to 8c9b943a, then the full historical chain. Integrated
+  25 regressions, 46 native guards, scoped types and all 550 Root contracts with
+  zero skips passed. Fresh complete Guides/public runs remain required.
+
 - Guides at clean `a58a7ba6` advanced past owner-list but failed owner-reload.
   The actual selected hook/adapter regression reproduces the original abort
   while all current 53 sections render. The reviewed explicit selected-guide

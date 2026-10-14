@@ -2,7 +2,10 @@ import {isProxy} from 'node:util/types';
 import type {Page, Request, Response} from '@playwright/test';
 import {ownerSnapshotSchema} from '../../../tunes/shared/explorersOwnerContentContract';
 
-type Options=Readonly<{origin:string;selectedGuideId:string;scope?:'owner-content'|'selected-guide'}>;
+type OwnerOptions=Readonly<{origin:string;selectedGuideId:string;scope?:'owner-content'|'selected-guide'}>;
+type PublicDetailOptions=Readonly<{origin:string;scope:'public-detail';publicPath:string}>;
+type PublicCategoryOptions=Readonly<{origin:string;scope:'public-category';publicPath:string}>;
+type Options=OwnerOptions|PublicDetailOptions|PublicCategoryOptions;
 export type GuidesOwnerRead=Readonly<{url:URL;body:unknown}>;
 type Proof=Readonly<{found:boolean;group:number|null;aborted:boolean}>;
 type Attempt={url:URL;ordinal:number;response?:Response;finished:boolean;failed:boolean;work:Promise<GuidesOwnerRead>;proof?:Proof;failureStage?:'headers'|'status'|'body'|'bound'|'finished'|'terminal'|'json';disposition?:'completed'|'native-aborted'};
@@ -10,13 +13,13 @@ const refuse=()=>Error('Guides original owner read proof refused');
 function own(input:unknown){if(!input||typeof input!=='object'||isProxy(input)||![Object.prototype,null].includes(Object.getPrototypeOf(input)))throw refuse();const descriptors=Object.getOwnPropertyDescriptors(input);if(Reflect.ownKeys(descriptors).some(k=>typeof k!=='string')||Object.values(descriptors).some(d=>!d.enumerable||!Object.hasOwn(d,'value')))throw refuse();return Object.fromEntries(Object.entries(descriptors).map(([k,d])=>[k,d.value]));}
 const proofKey='__guidesOriginalFetchSignalProofV1';
 function admitted(raw:Options):Options{
- const input=own(raw) as unknown as Options;if(!['origin,selectedGuideId','origin,scope,selectedGuideId'].includes(Object.keys(input).sort().join(','))||Object.hasOwn(input,'scope')&&!['owner-content','selected-guide'].includes(input.scope!))throw refuse();
- if(typeof input.origin!=='string'||typeof input.selectedGuideId!=='string')throw refuse();
- if(!/^http:\/\/127\.0\.0\.1:[1-9][0-9]{3,4}$/.test(input.origin)||!(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/).test(input.selectedGuideId))throw refuse();
+ const input=own(raw) as unknown as Options;if(typeof input.origin!=='string'||!/^http:\/\/127\.0\.0\.1:[1-9][0-9]{3,4}$/.test(input.origin))throw refuse();
+ if((input.scope==='public-detail'||input.scope==='public-category')){if(Object.keys(input).sort().join(',')!=='origin,publicPath,scope'||typeof input.publicPath!=='string'||!(input.scope==='public-detail'?/^\/api\/explorers\/v1\/profiles\/[a-z0-9][a-z0-9_-]{2,39}\/recommendations\/guides\/[a-z0-9][a-z0-9-]{0,199}$/:/^\/api\/explorers\/v1\/profiles\/[a-z0-9][a-z0-9_-]{2,39}\/recommendations\/guides$/).test(input.publicPath))throw refuse();}
+ else{if(!['origin,selectedGuideId','origin,scope,selectedGuideId'].includes(Object.keys(input).sort().join(','))||Object.hasOwn(input,'scope')&&!['owner-content','selected-guide'].includes(input.scope!))throw refuse();if(typeof input.selectedGuideId!=='string'||!(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/).test(input.selectedGuideId))throw refuse();}
  return Object.freeze({...input});
 }
 function selected(url:URL,options:Options){
- if(url.origin!==options.origin)return false;
+ if(url.origin!==options.origin)return false;if((options.scope==='public-detail'||options.scope==='public-category'))return url.pathname===options.publicPath;
  const base='/api/explorers/v1';
  if(url.pathname===`${base}/collections`||url.pathname===`${base}/recommendations`)return url.searchParams.get('category')==='guides';
  return [`${base}/categories/guides/content-snapshot`,`${base}/categories/guides/content-snapshot/validate`,`${base}/categories/guides/memberships`,`${base}/collections/${options.selectedGuideId}/guide`].includes(url.pathname);
@@ -25,10 +28,10 @@ function selected(url:URL,options:Options){
 /** Observe original signals; never replace fetch arguments or its returned Promise. */
 export async function installGuidesOwnerFetchObserver(page:Page,input:Options):Promise<void>{
  const options=admitted(input);
- await page.addInitScript(({origin,selectedGuideId})=>{
+ await page.addInitScript(({origin,selectedGuideId,publicPath})=>{
   const key='__guidesOriginalFetchSignalProofV1',original=globalThis.fetch,aborted=Object.getOwnPropertyDescriptor(AbortSignal.prototype,'aborted')!.get!;
   const records=new Map<string,{group:number|null;signal:AbortSignal|null}>(),ordinals=new Map<string,number>(),signals=new WeakMap<AbortSignal,number>();let groups=0,overflow=false;
-  const eligible=(url:URL)=>{const base='/api/explorers/v1';return url.origin===origin&&((url.pathname===`${base}/collections`||url.pathname===`${base}/recommendations`)?url.searchParams.get('category')==='guides':[`${base}/categories/guides/content-snapshot`,`${base}/categories/guides/content-snapshot/validate`,`${base}/categories/guides/memberships`,`${base}/collections/${selectedGuideId}/guide`].includes(url.pathname));};
+  const eligible=(url:URL)=>{const base='/api/explorers/v1';return url.origin===origin&&(publicPath?url.pathname===publicPath:((url.pathname===`${base}/collections`||url.pathname===`${base}/recommendations`)?url.searchParams.get('category')==='guides':[`${base}/categories/guides/content-snapshot`,`${base}/categories/guides/content-snapshot/validate`,`${base}/categories/guides/memberships`,`${base}/collections/${selectedGuideId}/guide`].includes(url.pathname)));};
   Object.defineProperty(globalThis,key,{enumerable:false,configurable:false,writable:false,value:Object.freeze({read(queries:ReadonlyArray<{url:string;ordinal:number}>){
    if(overflow||queries.length>512)return queries.map(()=>({found:false,group:null,aborted:false}));
    return queries.map(query=>{const record=records.get(JSON.stringify([query.url,query.ordinal]));if(!record||record.signal===null)return {found:false,group:null,aborted:false};try{return {found:true,group:record.group,aborted:aborted.call(record.signal)===true};}catch{return {found:false,group:null,aborted:false};}});
@@ -48,7 +51,7 @@ export async function installGuidesOwnerFetchObserver(page:Page,input:Options):P
    }catch{/* Unknown signals never grant cancellation admission. */}
    return Reflect.apply(original,this,args);
   };
- },options);
+ },{origin:options.origin,selectedGuideId:(options.scope==='public-detail'||options.scope==='public-category')?null:options.selectedGuideId,publicPath:(options.scope==='public-detail'||options.scope==='public-category')?options.publicPath:null});
 }
 
 /** All attempts remain owned until terminal observation; only proven aborts may be unqualified. */
@@ -77,7 +80,7 @@ export function createGuidesOwnerReadTracker(page:Page,input:Options){
    // Aborting a signal after a completed group never erases its positive evidence.
    for(const i of members){records[i].disposition='completed';qualified.push((settled[i] as PromiseFulfilledResult<GuidesOwnerRead>).value);}
   }
-  if(options.scope==='selected-guide')return qualified.sort((a,b)=>records.findIndex(r=>r.url===a.url)-records.findIndex(r=>r.url===b.url));
+  if(options.scope==='selected-guide'||(options.scope==='public-detail'||options.scope==='public-category'))return qualified.sort((a,b)=>records.findIndex(r=>r.url===a.url)-records.findIndex(r=>r.url===b.url));
   const opening=qualified.filter(r=>r.url.pathname==='/api/explorers/v1/categories/guides/content-snapshot'),validations=qualified.filter(r=>r.url.pathname==='/api/explorers/v1/categories/guides/content-snapshot/validate');
   if(opening.length!==2||validations.length!==2)throw refuse();const tokens=new Set<string>();for(const row of opening){const snapshot=ownerSnapshotSchema.parse(row.body);if(tokens.has(snapshot.snapshotToken))throw refuse();tokens.add(snapshot.snapshotToken);const closing=validations.filter(v=>v.url.searchParams.get('snapshotToken')===snapshot.snapshotToken);if(closing.length!==1||JSON.stringify(ownerSnapshotSchema.parse(closing[0].body))!==JSON.stringify(snapshot))throw refuse();}
   const category=qualified.filter(r=>r.url.pathname!=='/api/explorers/v1/collections/'+options.selectedGuideId+'/guide');if(category.some(r=>!r.url.pathname.endsWith('/content-snapshot')&&!tokens.has(r.url.searchParams.get('snapshotToken')??'')))throw refuse();
