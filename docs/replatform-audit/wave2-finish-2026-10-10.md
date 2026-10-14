@@ -12,6 +12,25 @@ The following supersedes the older pending-status bullets below. Wave 2 remains 
 The following entries are newest first; the original checkpoint was at clean `aa3738f3`.
 
 Subsequent concrete source repairs and actual results:
+- Actual clean42ce5a94 Guides advanced owner-list/detail/reload, then failed at
+  case4 public-detail-ui with no read-oracle capsule. The original failure stays
+  failed; it does not establish a read-body cause. Source integrity passed and
+  service-children/control cleanup remains failed. A separate read-only exact
+  inspection found zero Original-root native processes and zero exact-source
+  labeled containers; private-directory state remains unknown.
+- Analytics now retains the existing ten-case producer discovery/execution and
+  original owned cleanup outcome in an exclusive physical receipt. It explicitly
+  reports legacy executed-source custody and always qualified:false, pending a
+  separately reviewed full source/dependency/native freeze. Exact owned secret
+  cleanup permits its existing verified empty tombstone; the private directory
+  must be absent. The generated Vite cache uses the existing owned disposable
+  tree, leaving the original Books config and product behavior unchanged.
+- The existing analytics CI matrix now supplies the exact receipt argument with
+  aligned TMPDIR and requires the retained artifact. Root parsed the workflow
+  and independent review cleared its lane/argv/artifact mapping. Fresh integrated
+  analytics27, actual transitive types and C0 types, all555 Root contracts with
+  zero skips, and10 resource-free companion contracts passed. The actual
+  analytics producer has not yet run; no qualification or hosted success claimed.
 - Actual clean407bb001 Guides failed at case4 owner-list/category-reads with the
   first read-body checkpoint (11 attempts, 10 responses, 9 finished, 2 native
   failures). That first-error latch can hide a later owning supersession guard;

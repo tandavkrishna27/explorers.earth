@@ -149,11 +149,29 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
         run: docker pull postgres:15-alpine
       - name: Run owned real-stack lane
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane }}
+        if: ${{ matrix.lane != 'analytics' && (github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane) }}
         working-directory: tunes
         run: ${{ matrix.command }} --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15
         env:
           CI: true
+      - name: Run owned analytics producer with retained evidence
+        if: ${{ matrix.lane == 'analytics' && (github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane) }}
+        working-directory: tunes
+        run: |
+          receipt="$RUNNER_TEMP/replatform-e2e-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-analytics/analytics"
+          mkdir -p "$receipt"
+          npx tsx scripts/analytics-browser-fixture.ts --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15 --receipt "$receipt"
+        env:
+          CI: true
+          TMPDIR: ${{ runner.temp }}
+      - name: Upload retained analytics producer evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ always() && matrix.lane == 'analytics' && (github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == matrix.lane) }}
+        with:
+          name: replatform-analytics-producer-receipt
+          path: ${{ runner.temp }}/replatform-e2e-${{ github.run_id }}-${{ github.run_attempt }}-analytics/analytics/qualification.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload real-stack evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()

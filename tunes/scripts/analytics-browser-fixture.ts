@@ -1,9 +1,11 @@
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { spawn, spawnSync, execFileSync, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync,lstatSync,realpathSync,type BigIntStats } from 'node:fs';
+import {isNativeError,isProxy} from 'node:util/types';
 import { tmpdir } from 'node:os';
 import { join, resolve, relative, isAbsolute } from 'node:path';
+import {pathToFileURL} from 'node:url';
 import pg from 'pg';
 import { createCanonicalApp } from '../server/auth/canonicalApp';
 import { resolveExplorersAuthConfig } from '../server/auth/betterAuth';
@@ -19,12 +21,11 @@ import { prepareFixtureMusicTokenSecret, cleanupFixtureMusicTokenSecret } from '
 import { readSecureMusicSecretFile } from '../server/config/secure-music-secret-file';
 import { stopProtectedChild } from './protected-browser-receipt';
 
-import {fingerprint,assertUnchanged,validateDiscovery,validateExecution} from './analytics-browser-contract.mjs';
+import {fingerprint,assertUnchanged,validateDiscovery,validateExecution,parseAnalyticsReceiptArguments,createAnalyticsReceipt} from './analytics-browser-contract.mjs';
 const root = resolve(import.meta.dirname, '../..');
 const frontend = resolve(root, 'explorers-earth');
 const initialSource=fingerprint(root);
-if (JSON.stringify(process.argv.slice(2)) !== JSON.stringify(['--ack', MUSIC_UAT_DATABASE_ACK]))
-  throw new Error('Browser E2E requires exact disposable PostgreSQL acknowledgement');
+const receiptDirectory=parseAnalyticsReceiptArguments(process.argv.slice(2),MUSIC_UAT_DATABASE_ACK);
 for (const key of ['DATABASE_URL', 'DATABASE_URL_TEST', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'GATE_PROD',
   'MUSIC_DEPLOY_PRODUCTION', 'MUSIC_DEPLOY_PROD']) {
   if (process.env[key]) throw new Error('Ambient database or Docker authority is forbidden');
@@ -35,8 +36,11 @@ const runId = randomBytes(16).toString('hex');
 const runtimeRole = `books_browser_${runId.slice(0,12)}`;
 const database = `music_uat_${runId}`;
 const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', windowsHide: true }).trim();
-const disposable = mkdtempSync(join(tmpdir(), 'explorers-books-e2e-'));
-const passwordFile = prepareFixtureMusicTokenSecret(root);
+const receipt=createAnalyticsReceipt({directory:receiptDirectory,commit,source:initialSource,nodeVersion:process.version});
+let receiptBoundary:'bootstrap'|'discovery'|'execution'|'source'|'cleanup'='bootstrap';
+let disposable='';
+let passwordFile='';
+let privateDirectoryIdentity:BigIntStats|undefined,secretIdentity:BigIntStats|undefined;
 let authority: OwnedUatDatabaseAuthority | undefined;
 let db: pg.Pool | undefined;
 let runtime:pg.Pool|undefined;
@@ -94,7 +98,17 @@ async function seedBooks(pool:pg.Pool,accountId:string,name:string){
     }
   }
 }
+function analyticsPathAbsent(path:string):boolean{try{lstatSync(path);return false;}catch(error){if(typeof error==='object'&&error!==null&&!isProxy(error)&&isNativeError(error)&&Object.getOwnPropertyDescriptor(error,'code')?.value==='ENOENT')return true;throw error;}}
+function captureAnalyticsCleanupPath(path:string,kind:'directory'|'secret'):BigIntStats{const stat=lstatSync(path,{bigint:true});if(stat.isSymbolicLink()||realpathSync(path)!==resolve(path)||(kind==='directory'?!stat.isDirectory():!stat.isFile()||stat.nlink!==1n))throw Error('Analytics exact cleanup handle refused');return stat;}
+function assertAnalyticsCleanupIdentity(path:string,expected:BigIntStats|undefined,kind:'directory'|'secret'):BigIntStats{const current=captureAnalyticsCleanupPath(path,kind);if(!expected||expected.dev!==current.dev||expected.ino!==current.ino)throw Error('Analytics acquired cleanup handle changed');return current;}
+function analyticsViteConfiguration(){
+  return {file:join(disposable,'analytics.vite.config.mjs'),source:'import base from '+JSON.stringify(pathToFileURL(join(frontend,'e2e/replatform/books.vite.config.ts')).href)+';\nexport default {...base,cacheDir:'+JSON.stringify(join(disposable,'vite-cache'))+'};\n'};
+}
 async function main(): Promise<number> {
+  disposable=mkdtempSync(join(tmpdir(), 'explorers-books-e2e-'));
+  privateDirectoryIdentity=captureAnalyticsCleanupPath(disposable,'directory');
+  passwordFile=prepareFixtureMusicTokenSecret(root);
+  secretIdentity=captureAnalyticsCleanupPath(passwordFile,'secret');
   const password = await readSecureMusicSecretFile(passwordFile, { mode: 'fixture' });
   const pgPort = await freePort(56000, 60999);
   const apiPort = await freePort(54000, 55999);
@@ -150,8 +164,10 @@ async function main(): Promise<number> {
   });
   const fixturePath = join(disposable, 'sessions.json');
   writeFileSync(fixturePath, JSON.stringify({ origin, personas,observerToken }), { mode: 0o600 });
+  const viteConfig=analyticsViteConfiguration();
+  writeFileSync(viteConfig.file,viteConfig.source,{mode:0o600,flag:'wx'});
   vite = spawn(process.execPath, [resolve(frontend, 'node_modules/vite/bin/vite.js'),
-    '--config', 'e2e/replatform/books.vite.config.ts'], {
+    '--config', viteConfig.file], {
     cwd: frontend, windowsHide: true, stdio: 'inherit', env: { ...process.env,
       BOOKS_E2E_LOCAL_AUTHORITY: 'owned-disposable-pg15', BOOKS_E2E_WEB_PORT: String(webPort),
       BOOKS_E2E_API_PORT: String(apiPort) },
@@ -159,18 +175,24 @@ async function main(): Promise<number> {
   await waitFor(origin);
   let browserArgs = ['--config=e2e/replatform/analytics.playwright.config.ts', '--retries=0','--workers=1','--forbid-only',`--output=${join(disposable,'artifacts')}`];
   const browserEnv = { ...process.env, BOOKS_E2E_FIXTURE_PATH: fixturePath, PLAYWRIGHT_EXTERNAL_BASE_URL: origin };
+  receiptBoundary='discovery';
   const discovery=spawnSync(process.execPath,[resolve(frontend,'node_modules/@playwright/test/cli.js'),'test',...browserArgs,'--list','--reporter=json'],{cwd:frontend,windowsHide:true,env:browserEnv,encoding:'utf8'});
   if(discovery.status!==0)throw new Error('Analytics discovery failed');
-  validateDiscovery(JSON.parse(discovery.stdout));
+  const discoveryReport=JSON.parse(discovery.stdout);try{receipt.discovery(discoveryReport);}catch{/* Existing validator retains its original failure. */}
+  validateDiscovery(discoveryReport);
   const executionReport=join(disposable,'execution.json');
+  receiptBoundary='execution';
   browser = spawn(process.execPath, [resolve(frontend, 'node_modules/@playwright/test/cli.js'),
     'test', ...browserArgs, '--reporter=json,line'], {
     cwd: frontend, windowsHide: true, stdio: 'inherit', env: { ...process.env,
       BOOKS_E2E_FIXTURE_PATH: fixturePath,
       PLAYWRIGHT_JSON_OUTPUT_NAME:executionReport, PLAYWRIGHT_EXTERNAL_BASE_URL: origin },
   });
-  const exitCode = await new Promise<number>((done) => browser!.once('exit', (code) => done(code ?? 1)));
-  validateExecution(JSON.parse(readFileSync(executionReport,'utf8')),exitCode);
+  let browserSignal:NodeJS.Signals|null=null,browserCode:number|null=null;
+  const exitCode = await new Promise<number>((done) => browser!.once('exit', (code,signal) => {browserSignal=signal;browserCode=code;done(code ?? 1);}));
+  const executedReport=JSON.parse(readFileSync(executionReport,'utf8'));try{receipt.execution(executedReport,browserCode,browserSignal);}catch{/* Existing validator retains its original failure. */}
+  validateExecution(executedReport,exitCode);
+  receiptBoundary='source';
   assertUnchanged(initialSource,fingerprint(root));
   process.stdout.write(`Analytics source attestation: ${Object.keys(initialSource).length} files unchanged; ten cases passed.\n`);
   return exitCode;
@@ -181,7 +203,8 @@ process.once('SIGTERM', signal);
 try {
   process.exitCode = await main();
 } catch (error) {
-  process.stderr.write(`Analytics E2E fixture failed: ${error instanceof Error ? error.message.replaceAll(disposable, '<fixture>') : 'unknown'}\n`);
+  receipt.failure(receiptBoundary);
+  process.stderr.write(`Analytics E2E fixture failed: ${error instanceof Error ? (disposable?error.message.replaceAll(disposable, '<fixture>'):error.message) : 'unknown'}\n`);
   process.exitCode = 1;
 } finally {
   const failures: string[] = [];
@@ -195,12 +218,17 @@ try {
     if (authority) { const password = await readSecureMusicSecretFile(passwordFile, { mode: 'fixture' });
       await stopOwnedUatDatabase(authority, { dropDatabase: (owned) => dropOwnedDatabase(owned, password) }); }
   });
-  await cleanup('fixture secret', () => cleanupFixtureMusicTokenSecret(root, passwordFile));
+  await cleanup('fixture secret', () => {if(!passwordFile)return;if(!analyticsPathAbsent(passwordFile))assertAnalyticsCleanupIdentity(passwordFile,secretIdentity,'secret');cleanupFixtureMusicTokenSecret(root,passwordFile);if(!analyticsPathAbsent(passwordFile)&&assertAnalyticsCleanupIdentity(passwordFile,secretIdentity,'secret').size!==0n)throw Error('Analytics exact secret authority remains');});
   await cleanup('private fixture directory', () => {
+    if(!disposable)return;
     const relativeTemp = relative(resolve(tmpdir()), resolve(disposable));
     if (!relativeTemp || relativeTemp.startsWith('..') || isAbsolute(relativeTemp) || !relativeTemp.startsWith('explorers-books-e2e-')) throw new Error('Fixture cleanup escaped its owned temporary directory');
+    if(!analyticsPathAbsent(disposable))assertAnalyticsCleanupIdentity(disposable,privateDirectoryIdentity,'directory');
     rmSync(resolve(disposable), { recursive: true, force: true });
+    if(!analyticsPathAbsent(disposable))throw Error('Analytics exact private fixture remains');
   });
+  let finalSource:ReturnType<typeof fingerprint>|undefined;try{finalSource=fingerprint(root);}catch{receipt.failure('source');}
+  try{receipt.finish({source:finalSource,cleanupFailures:failures,interrupted});}catch{failures.push('retained analytics receipt');}
   if (failures.length) { process.exitCode = 1; process.stderr.write(`Owned Analytics cleanup/qualification failed: ${failures.join(', ')}\n`); }
   if (interrupted) process.exitCode = 130;
   if (process.connected) process.disconnect();
