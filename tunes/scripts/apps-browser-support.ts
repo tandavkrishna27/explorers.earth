@@ -416,12 +416,12 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
                 entityId: string;
             }[];
             for (const [i, name] of (['ownerA', 'ownerB'] as const).entries())
-                await q("INSERT INTO collections(id,account_id,category,title,slug,display_order,visibility,publication_state) VALUES($1,$2,'apps',$3,$4,$5,'private','draft')", [collectionIds[i], personas[name].accountId, 'Enrichment ' + name + ' ' + next, 'enrichment-' + name.toLowerCase() + '-' + next, next]);
+                await q("INSERT INTO collections(id,account_id,category,title,slug,display_order,visibility,publication_state) VALUES($1,$2,'apps',$3,$4,$5,'public','published')", [collectionIds[i], personas[name].accountId, 'Enrichment ' + name + ' ' + next, 'enrichment-' + name.toLowerCase() + '-' + next, next]);
             for (const [i, role] of (['website', 'apple', 'foreign-control'] as const).entries()) {
                 const owner = i === 2 ? 'ownerB' : 'ownerA', entityId = randomUUID(), rid = randomUUID(), collectionId = collectionIds[i === 2 ? 1 : 0];
                 await q("INSERT INTO entities(id,kind,title,origin) VALUES($1,'app',$2,'manual')", [entityId, 'Manual enrichment app ' + next + ' ' + role]);
                 await q('INSERT INTO app_entity_details(entity_id,app_url,developer,logo_url,description,download_url,price_tier,platforms) VALUES($1,$2,$3,NULL,$4,NULL,$5,$6)', [entityId, 'https://apps.example.invalid/manual-' + next + '-' + role, 'Manual developer ' + role, 'Manual description ' + role, 'Paid', ['Web']]);
-                await q("INSERT INTO recommendations(id,account_id,category,entity_id,publication_state) VALUES($1,$2,'apps',$3,'draft')", [rid, personas[owner].accountId, entityId]);
+                await q("INSERT INTO recommendations(id,account_id,category,entity_id,publication_state) VALUES($1,$2,'apps',$3,'published')", [rid, personas[owner].accountId, entityId]);
                 await q("INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order) VALUES($1,$2,$3,'apps',$4)", [collectionId, rid, personas[owner].accountId, i === 2 ? 0 : i]);
                 allocations.push({ role, collectionId, id: rid, entityId });
             }

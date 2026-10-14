@@ -6,6 +6,12 @@ import {tmpdir} from 'node:os';
 import {createRequire} from 'node:module';
 import * as contract from './replatform-e2e.mjs';
 import {retainGuidesBrowserReportFailure} from '../tunes/scripts/guides-browser-report-diagnostic.mjs';
+test('tip operation and acknowledgement remain finite and bound to the actual tip producer',()=>{
+ const lane=manifest().lanes.find(l=>l.name==='guides'),base={version:1,epoch:2,caseIndex:1,project:'guides-desktop',repeat:0,action:'fail',kind:'unknown',matcher:'unknown',line:null,column:null,stage:'unknown',producerStage:'tip-edit'},sectionAck={seen:1,matched:false,lastStatus:200,fields:{fieldSet:true,revision:true,title:true,description:true,blocks:false}},line=v=>'Guides native case failed [guides-native-failure-v1:'+JSON.stringify(v)+']';
+ for(const tipOperation of ['tips-tab','tip-row','open-editor','editor-visible','fill-tip','submit-update','await-ack','verify-persisted']){const value={...base,sectionAck,tipOperation};assert.deepEqual(contract.decodeGuidesNativeFailureLine(line(value),lane),value);}
+ for(const changed of [{tipOperation:'private'},{producerStage:'section-edit'},{caseIndex:0},{action:'observe'},{sectionOperation:'await-ack'},{raw:'private'}])assert.equal(contract.decodeGuidesNativeFailureLine(line({...base,sectionAck,tipOperation:'await-ack',...changed}),lane),undefined);
+ assert.equal(contract.decodeGuidesNativeFailureLine(line({...base,sectionAck,tipOperation:'await-ack'}).replace('"tipOperation":"await-ack"','"tipOperation":"await-ack","tipOperation":"await-ack"'),lane),undefined);
+});
 const pageFamilies=['auth-session','me','content-snapshot','content-validate','collections','recommendations','memberships','top-picks','guide-editable','guide-aggregate'];
 const pageCapsule=()=>({version:1,epoch:1,caseIndex:3,project:'guides-desktop',repeat:0,stage:'initial-detail',pageErrors:1,overflow:false,families:Object.fromEntries(pageFamilies.map(f=>[f,{seen:0,lastStatus:null}])),dom:{expectedHeading:0,loadFailure:1,earthLoader:0}});
 const pageLine=value=>'Guides page failed [guides-page-failure-v1:'+JSON.stringify(value)+']';

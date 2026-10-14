@@ -188,9 +188,25 @@ async function guideErrorEvidence(response:Response|APIResponse,status:number,co
  expect(value.error.code).toBe(code);expect(value.error.message).toBe(message);expect(typeof value.error.requestId).toBe('string');expect(value.error.requestId.length).toBeGreaterThan(0);
  return {code:value.error.code as string,message:value.error.message as string};
 }
-async function openNativeTip(page:Page,placeName:string,text:string){
- await page.getByText('Tips',{exact:true}).click();const row=page.getByRole('heading',{level:4,name:placeName,exact:true}).locator('..');await expect(row).toHaveCount(1);await row.getByRole('button',{name:'Edit tip',exact:true}).click();
- const modal=page.getByRole('heading',{level:2,name:'Edit Tip',exact:true}).locator('../../../..');await expect(modal).toBeVisible();await modal.getByRole('textbox').fill(text);return modal;
+async function openNativeTip(page:Page,placeName:string,text:string,tipDiagnostics?:Pick<ReturnType<typeof createGuidesHarnessClient>,'markTipOperation'|'clearTipOperation'>){
+ try{tipDiagnostics?.markTipOperation('tips-tab');}catch{}
+ await page.getByText('Tips',{exact:true}).click();
+ try{tipDiagnostics?.clearTipOperation('tips-tab');}catch{}
+ const row=page.getByRole('heading',{level:4,name:placeName,exact:true}).locator('..');
+ try{tipDiagnostics?.markTipOperation('tip-row');}catch{}
+ await expect(row).toHaveCount(1);
+ try{tipDiagnostics?.clearTipOperation('tip-row');}catch{}
+ try{tipDiagnostics?.markTipOperation('open-editor');}catch{}
+ await row.getByRole('button',{name:'Edit tip',exact:true}).click();
+ try{tipDiagnostics?.clearTipOperation('open-editor');}catch{}
+ const modal=page.getByRole('heading',{level:2,name:'Edit Tip',exact:true}).locator('../../../..');
+ try{tipDiagnostics?.markTipOperation('editor-visible');}catch{}
+ await expect(modal).toBeVisible();
+ try{tipDiagnostics?.clearTipOperation('editor-visible');}catch{}
+ try{tipDiagnostics?.markTipOperation('fill-tip');}catch{}
+ await modal.getByRole('textbox').fill(text);
+ try{tipDiagnostics?.clearTipOperation('fill-tip');}catch{}
+ return modal;
 }
 function tipCommand(current:GuideAggregateDto,sectionId:string,text:string):SectionCommand{
  const section=current.sections.find(s=>s.id===sectionId)!;expect(section).toBeDefined();const blocks=structuredClone(section.blocks);blocks.timeline.morning[0].tips=text;
@@ -208,9 +224,10 @@ test(GUIDES_CASES[1],async({browser},info)=>{
    // The expected complete snapshot describes the permitted delta. The command
    // itself is always submitted by the retained editor using the original UI.
    const finishNative=async(response:Response,expected:GuideAggregateDto,target?:string)=>{
+    try{harness.clearTipOperation('await-ack');}catch{}try{harness.markTipOperation('verify-persisted');}catch{}
     try{harness.clearSectionOperation('await-ack');}catch{}try{harness.markSectionOperation('verify-persisted');}catch{}
     assertOriginalGuideCommandKey(response,keys);const actual=guideAggregateDtoSchema.parse((await browserBody(response)).guide);assertEditorAggregate(expected,actual,target);const after:Observation=await harness.observe();assertEditorPersistedScope(observed,after,actual,target);observed=after;current=actual;
-    try{await expect(page.getByRole('heading',{level:1,name:guide.title,exact:true})).toBeVisible();}catch(transportPrimaryError){try{harness.captureFailure(transportPrimaryError);if(transportPageDiagnostic&&harness.capturedFailure()?.producerStage==='transport-edit'){try{const transportCapsule=await transportPageDiagnostic.sealFailure();if(transportCapsule)harness.capturePageFailure(transportCapsule);}catch{/* Passive transport inspection preserves the primary failure. */}finally{try{harness.capturePageSeal(transportPageDiagnostic.sealOutcome());}catch{/* Passive transport outcome preserves the primary failure. */}}}}catch{/* Passive transport capture preserves the primary failure. */}throw transportPrimaryError;}await page.getByText('Journey',{exact:true}).click();await expect(page.getByRole('button',{name:'+ Add Day/Stop',exact:true})).toBeVisible();await reloadGuides(page);await expect(page.getByRole('heading',{level:1,name:guide.title,exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'+ Add Day/Stop',exact:true})).toBeVisible();expect(await aggregate(owner!.request,guide.id)).toEqual(actual);expect(await harness.observe()).toEqual(after);try{harness.clearSectionOperation('verify-persisted');}catch{}
+    try{await expect(page.getByRole('heading',{level:1,name:guide.title,exact:true})).toBeVisible();}catch(transportPrimaryError){try{harness.captureFailure(transportPrimaryError);if(transportPageDiagnostic&&harness.capturedFailure()?.producerStage==='transport-edit'){try{const transportCapsule=await transportPageDiagnostic.sealFailure();if(transportCapsule)harness.capturePageFailure(transportCapsule);}catch{/* Passive transport inspection preserves the primary failure. */}finally{try{harness.capturePageSeal(transportPageDiagnostic.sealOutcome());}catch{/* Passive transport outcome preserves the primary failure. */}}}}catch{/* Passive transport capture preserves the primary failure. */}throw transportPrimaryError;}await page.getByText('Journey',{exact:true}).click();await expect(page.getByRole('button',{name:'+ Add Day/Stop',exact:true})).toBeVisible();await reloadGuides(page);await expect(page.getByRole('heading',{level:1,name:guide.title,exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'+ Add Day/Stop',exact:true})).toBeVisible();expect(await aggregate(owner!.request,guide.id)).toEqual(actual);expect(await harness.observe()).toEqual(after);try{harness.clearSectionOperation('verify-persisted');}catch{}try{harness.clearTipOperation('verify-persisted');}catch{}
    };
    try{harness.clearProducerStage('initial-load');}catch{}
    try{harness.markProducerStage('section-edit');}catch{}
@@ -237,7 +254,7 @@ test(GUIDES_CASES[1],async({browser},info)=>{
    await page.getByText('Budget',{exact:true}).click();const budgetRow=page.getByRole('row').filter({has:page.getByText(current.sections[0].blocks.budget.morning[0].name,{exact:true})});await expect(budgetRow).toHaveCount(1);await budgetRow.getByRole('button',{name:'Edit budget',exact:true}).click();const budgetModal=page.getByRole('heading',{level:3,name:'Edit Budget',exact:true}).locator('../../..');await budgetModal.locator('#currency-amount-input').fill('321.45');expected=structuredClone(current);Object.assign(expected.sections[0].blocks.budget.morning[0],{budgetAmount:'321.45',budgetCurrency:'INR',customBudget:null});ack=sectionAcknowledgement(page,guide.id,sectionId,{revision:current.revision,title,description,blocks:expected.sections[0].blocks});await budgetModal.getByRole('button',{name:'Save Budget',exact:true}).click();await finishNative(await ack,expected,sectionId);
    try{harness.clearProducerStage('budget-edit');}catch{}
    try{harness.markProducerStage('tip-edit');}catch{}
-   const tip='सुबह जल्दी आएँ — café ₹100.00',tipModal=await openNativeTip(page,current.sections[0].blocks.timeline.morning[0].name,tip);expected=structuredClone(current);expected.sections[0].blocks.timeline.morning[0].tips=tip;ack=sectionAcknowledgement(page,guide.id,sectionId,{revision:current.revision,title,description,blocks:expected.sections[0].blocks});await tipModal.getByRole('button',{name:'Save Changes',exact:true}).click();await expect(page.getByRole('heading',{name:'Edit Tip',exact:true})).toHaveCount(0);await finishNative(await ack,expected,sectionId);
+   const tip='सुबह जल्दी आएँ — café ₹100.00',tipModal=await openNativeTip(page,current.sections[0].blocks.timeline.morning[0].name,tip,harness);expected=structuredClone(current);expected.sections[0].blocks.timeline.morning[0].tips=tip;ack=sectionAcknowledgement(page,guide.id,sectionId,{revision:current.revision,title,description,blocks:expected.sections[0].blocks},harness.observeSectionAck);try{harness.markTipOperation('submit-update');}catch{}await tipModal.getByRole('button',{name:'Save Changes',exact:true}).click();await expect(page.getByRole('heading',{name:'Edit Tip',exact:true})).toHaveCount(0);try{harness.clearTipOperation('submit-update');}catch{}try{harness.markTipOperation('await-ack');}catch{}await finishNative(await ack,expected,sectionId);
    try{harness.clearProducerStage('tip-edit');}catch{}
    try{harness.markProducerStage('general-tips-edit');}catch{}
    await page.getByText('Tips',{exact:true}).click();await page.getByRole('button',{name:'Edit guides and packaging tips',exact:true}).click();const general=page.getByRole('heading',{level:2,name:'Edit General Guides and Packaging Tips',exact:true}).locator('../../../..'),richText='यात्रा के लिए café — पानी साथ रखें',rich=general.locator('.ql-editor[contenteditable="true"]');await rich.fill(richText);await rich.press('ControlOrMeta+A');await general.locator('button.ql-bold').click();await expect(rich.locator('strong')).toHaveText(richText);await general.getByPlaceholder('e.g., adventure, family-friendly, budget',{exact:true}).fill('संस्मरण');await general.getByRole('button',{name:'Add',exact:true}).click();expected=structuredClone(current);expected.details.tipsNotes=[{type:'paragraph',children:[{type:'text',text:richText,bold:true}]}];expected.details.tags.push('संस्मरण');let detailsAck=detailsAcknowledgement(page,guide.id,{revision:current.revision,details:expected.details});await general.getByRole('button',{name:'Save Changes',exact:true}).click();await expect(page.getByRole('heading',{name:'Edit General Guides and Packaging Tips',exact:true})).toHaveCount(0);await finishNative(await detailsAck,expected);await page.getByText('Tips',{exact:true}).click();await expect(page.getByText(richText,{exact:true})).toBeVisible();await expect(page.getByText('संस्मरण',{exact:true})).toBeVisible();

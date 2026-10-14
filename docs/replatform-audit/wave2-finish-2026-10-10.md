@@ -13,6 +13,19 @@ Latest actual checkpoint at clean `aa3738f3`:
 
 Subsequent concrete source repairs and actual results:
 
+- Actual People at cda27650 passed its first body and observation, then failed
+  retirement at epoch 1; owned cleanup passed. Actual Apps passed raw source
+  admission but result verification refused: the native worker receipt had zero
+  eligible items, jobs and requests because fixture lists/items were drafts.
+  The reviewed enrichment-only seed now creates public published lists/items,
+  preserving production eligibility and the original manual Apps lane.
+- Reviewed finite tip operation/ACK and authenticated retirement checkpoints
+  preserve original actions, errors, assertions and budgets. Guides business
+  fingerprint remains 075755c0. Integrated checks passed 190 backend, 74 frontend
+  and 30 Root/Place-link tests; scoped types passed. These are source checks,
+  not actual browser qualification. The next real runs remain required.
+
+
 - Actual Guides at clean a57ba6e0 advanced to tip-edit, then failed with an
   unsettled harness command; source remained intact and service/control cleanup
   failed. The reviewed GeneralTips repair decodes one HTML layer into canonical
