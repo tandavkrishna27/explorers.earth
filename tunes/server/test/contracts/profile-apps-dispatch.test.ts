@@ -22,6 +22,10 @@ describe('Apps profile entry dispatch ordering',()=>{
   const s=entry(async()=>{throw Error('private body');},{stage:'execution',category:'refusal',enrichmentReset:{state:'pending',stage:'collection-readback',nativePhase:'native-http',sourceProofMs:15000,caseIndex:1,project:'apps-desktop',repeat:0,epoch:2}});
   await s.execute();expect(s.write).toHaveBeenCalledWith('Apps owned fixture failed: stage=execution; category=refusal; enrichmentResetState=pending; enrichmentResetStage=collection-readback; enrichmentResetCaseIndex=1; enrichmentResetProject=apps-desktop; enrichmentResetRepeat=0; enrichmentResetEpoch=2; enrichmentResetNativePhase=native-http; enrichmentResetSourceProofMs=15000\n');
  });
+ it('prints only captured numeric native response and affirmative existing deadline evidence',async()=>{
+  const s=entry(async()=>{throw Error('private response body');},{stage:'execution',category:'refusal',enrichmentReset:{state:'failed',stage:'collection-readback',nativePhase:'native-http',sourceProofMs:5,nativeStatus:429,nativeDeadlineExpired:true,caseIndex:1,project:'apps-desktop',repeat:0,epoch:2}});
+  await s.execute();expect(s.write).toHaveBeenCalledWith('Apps owned fixture failed: stage=execution; category=refusal; enrichmentResetState=failed; enrichmentResetStage=collection-readback; enrichmentResetCaseIndex=1; enrichmentResetProject=apps-desktop; enrichmentResetRepeat=0; enrichmentResetEpoch=2; enrichmentResetNativePhase=native-http; enrichmentResetSourceProofMs=5; enrichmentResetNativeStatus=429; enrichmentResetNativeDeadlineExpired=true\n');
+ });
  it('surfaces only the branded finite diagnostic without raw error content',async()=>{
   const s=entry(async()=>{throw Error('private capability and cookie');},{stage:'migrate',category:'refusal'});
   await s.execute();expect(s.process.exitCode).toBe(1);expect(s.write).toHaveBeenCalledWith('Apps owned fixture failed: stage=migrate; category=refusal\n');expect(s.legacy).not.toHaveBeenCalled();

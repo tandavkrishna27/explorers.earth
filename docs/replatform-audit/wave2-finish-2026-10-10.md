@@ -9,9 +9,21 @@ focused local evidence and remaining acceptance. Wave 2 is **open**.
 
 The following supersedes the older pending-status bullets below. Wave 2 remains open.
 
-Latest actual checkpoint at clean `aa3738f3`:
+The following entries are newest first; the original checkpoint was at clean `aa3738f3`.
 
 Subsequent concrete source repairs and actual results:
+
+- The current reviewed batch adds an exact Sector accessible label, two real
+  Journey returns before case 2 Add Day/Stop checks, and passive actual HTTP
+  status/existing-deadline evidence for the Apps reset. Guide business fingerprint
+  is 8de87f36, with exact two-call predecessor 075755c0 and prior 74ffc54d.
+  Every original conflict, draft, persistence and authorization assertion remains.
+  Fresh integrated checks passed all 535 Root contracts without skips, 42 backend
+  contracts, three frontend regressions, scoped types and the production build.
+  The next Apps run will use an exclusive quiet workload fence to compare its
+  HTTP readback under unchanged guards and deadlines; no environmental cause is
+  claimed from a passing or failing comparison alone.
+
 
 - Actual People at a7ef2ba1 completed three epochs; its next case exposed a
   missing website-only public profile link. The reviewed public projection now

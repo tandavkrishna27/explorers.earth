@@ -192,7 +192,7 @@ export default function AddPersonPage() {
 
     <label className="block">Full Name<input value={name} onChange={event => setName(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
     <label className="block">Sector
-     <select value={sectorId} onChange={event=>{setSectorId(event.target.value);setSectorTouched(true);}} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3">
+     <select aria-label="Sector" value={sectorId} onChange={event=>{setSectorId(event.target.value);setSectorTouched(true);}} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3">
       <option value="">No sector</option>
       {existingSector&&!catalog?.items.some(item=>item.id===existingSector.id)&&<option value={existingSector.id} disabled>{existingSector.label??existingSector.slug} (unavailable)</option>}
       {catalog?.items.filter(item=>item.category==='people'&&item.parentId===null).map(item=><option key={item.id} value={item.id}>{item.label}</option>)}

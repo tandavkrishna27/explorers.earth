@@ -144,13 +144,13 @@ const controllerDiagnostics=new WeakMap<object,()=>AppsControllerDiagnostic|unde
 export type AppsEnrichmentRefreshDiagnostic=Readonly<{stage:import('./apps-enrichment-native-runtime').AppsEnrichmentRefreshStage;caseIndex:0|1;project:'apps-desktop'|'apps-mobile';repeat:0;epoch:number}>;
 const enrichmentRefreshDiagnostics=new WeakMap<object,()=>AppsEnrichmentRefreshDiagnostic|undefined>();
 export type AppsEnrichmentResetStage='pending-drain'|'prior-binding-read'|'prior-binding-disable'|'owner-seed'|'row-seed'|'collection-readback'|'recommendation-readback'|'reset-validate'|'response-write';
-export type AppsEnrichmentResetDiagnostic=Readonly<{state:'pending'|'failed';stage:AppsEnrichmentResetStage;nativePhase?:'native-custody'|'native-http'|'native-json';sourceProofMs?:number;caseIndex:0|1;project:'apps-desktop'|'apps-mobile';repeat:0;epoch:number}>;
+export type AppsEnrichmentResetDiagnostic=Readonly<{state:'pending'|'failed';stage:AppsEnrichmentResetStage;nativePhase?:'native-custody'|'native-http'|'native-json';sourceProofMs?:number;nativeStatus?:number;nativeDeadlineExpired?:true;caseIndex:0|1;project:'apps-desktop'|'apps-mobile';repeat:0;epoch:number}>;
 const enrichmentResetDiagnostics=new WeakMap<object,()=>AppsEnrichmentResetDiagnostic|undefined>();
 export function extractAppsEnrichmentResetDiagnostic(value:unknown):AppsEnrichmentResetDiagnostic|undefined{return value!==null&&(typeof value==='object'||typeof value==='function')?enrichmentResetDiagnostics.get(value as object)?.():undefined;}
 function createAppsEnrichmentResetCheckpoint(tuple:Pick<AppsEnrichmentResetDiagnostic,'caseIndex'|'project'|'repeat'|'epoch'>){
  let stage:AppsEnrichmentResetStage='pending-drain',nativePhase:AppsEnrichmentResetDiagnostic['nativePhase'],first:AppsEnrichmentResetDiagnostic|undefined,cleared=false;
- const snapshot=(busy:boolean,sourceProofMs?:number):AppsEnrichmentResetDiagnostic|undefined=>first??(!cleared&&busy?Object.freeze({...tuple,state:'pending' as const,stage,...(nativePhase?{nativePhase}:{}),...(nativePhase&&Number.isFinite(sourceProofMs)?{sourceProofMs:Math.min(15000,Math.max(0,Math.floor(sourceProofMs!)))}:{})}):undefined);
- return {stage(value:AppsEnrichmentResetStage){if(first||cleared)return;stage=value;nativePhase=undefined;},native(value:NonNullable<AppsEnrichmentResetDiagnostic['nativePhase']>){if(!first&&!cleared)nativePhase=value;},snapshot,fail(_error:unknown,sourceProofMs?:number){if(!first&&!cleared){const value=snapshot(true,sourceProofMs)!;first=Object.freeze({...value,state:'failed'});}},clear(){cleared=true;}};
+ const snapshot=(busy:boolean,sourceProofMs?:number,nativeStatus?:number,nativeDeadlineExpired?:boolean):AppsEnrichmentResetDiagnostic|undefined=>{const http=nativePhase==='native-http'||nativePhase==='native-json';return first??(!cleared&&busy?Object.freeze({...tuple,state:'pending' as const,stage,...(nativePhase?{nativePhase}:{}),...(http&&Number.isFinite(sourceProofMs)?{sourceProofMs:Math.min(15000,Math.max(0,Math.floor(sourceProofMs!)))}:{}),...(http&&Number.isInteger(nativeStatus)&&nativeStatus!>=100&&nativeStatus!<=599?{nativeStatus}:{}),...(http&&nativeDeadlineExpired===true?{nativeDeadlineExpired:true as const}:{})}):undefined);};
+ return {stage(value:AppsEnrichmentResetStage){if(first||cleared)return;stage=value;nativePhase=undefined;},native(value:NonNullable<AppsEnrichmentResetDiagnostic['nativePhase']>){if(!first&&!cleared)nativePhase=value;},snapshot,fail(_error:unknown,sourceProofMs?:number,nativeStatus?:number,nativeDeadlineExpired?:boolean){if(!first&&!cleared){const value=snapshot(true,sourceProofMs,nativeStatus,nativeDeadlineExpired)!;first=Object.freeze({...value,state:'failed'});}},clear(){cleared=true;}};
 }
 export function extractAppsEnrichmentRefreshDiagnostic(value:unknown):AppsEnrichmentRefreshDiagnostic|undefined{return value!==null&&(typeof value==='object'||typeof value==='function')?enrichmentRefreshDiagnostics.get(value as object)?.():undefined;}
 function captureAppsEnrichmentRefreshFailure(active:unknown,stage:unknown,first?:AppsEnrichmentRefreshDiagnostic):AppsEnrichmentRefreshDiagnostic|undefined{
@@ -350,7 +350,7 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
     const capability = randomBytes(32).toString('hex'), host = new URL(options.origin).host;
     let active: import('./apps-enrichment-browser-support').AppsEnrichmentReset | undefined, epoch = 0, busy = false, closed = false, poisoned = false, caseDeadline = 0, caseTimer: ReturnType<typeof setTimeout> | undefined;
     let refreshDiagnostic:AppsEnrichmentRefreshDiagnostic|undefined;
-    let resetCheckpoint:ReturnType<typeof createAppsEnrichmentResetCheckpoint>|undefined,resetSourceProofMs:number|undefined;
+    let resetCheckpoint:ReturnType<typeof createAppsEnrichmentResetCheckpoint>|undefined,resetSourceProofMs:number|undefined,resetNativeStatus:number|undefined,resetNativeDeadline:AbortSignal|undefined;
     const seenIdentities = new Set<string>(), ackPending = new Set<Promise<unknown>>(), acks = new Map<string, {
         admission: import('./apps-enrichment-browser-support').AppsEnrichmentWorkerAdmission;
         key: string;
@@ -362,7 +362,7 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
     } if (closed || poisoned || state.signal.aborted)
         throw fail('enrichment custody'); };
     const q = (text: string, values: unknown[] = []) => retain(state.query(text, values));
-    async function native(person: 'ownerA' | 'ownerB', url: string, method = 'GET', body?: unknown) { if(busy){resetSourceProofMs=undefined;resetCheckpoint?.native('native-custody');fixture.clearAppsEnrichmentSourceProof(state);}guard();if(busy){resetSourceProofMs=fixture.extractAppsEnrichmentSourceProof(state);resetCheckpoint?.native('native-http');} return retain((async () => { const response = await fetch(options.apiOrigin + url, { method, headers: { Cookie: options.personas[person].cookie, Origin: options.origin, ...(body ? { 'Content-Type': 'application/json', 'Idempotency-Key': randomUUID() } : {}) }, body: body ? JSON.stringify(body) : undefined, redirect: 'error', signal: AbortSignal.any([state.signal, AbortSignal.timeout(15000)]) }); const reader = response.body?.getReader(); if (!reader)
+    async function native(person: 'ownerA' | 'ownerB', url: string, method = 'GET', body?: unknown) { if(busy){resetSourceProofMs=undefined;resetNativeStatus=undefined;resetNativeDeadline=undefined;resetCheckpoint?.native('native-custody');fixture.clearAppsEnrichmentSourceProof(state);}guard();if(busy){resetSourceProofMs=fixture.extractAppsEnrichmentSourceProof(state);resetCheckpoint?.native('native-http');} return retain((async () => { const deadlineSignal=AbortSignal.timeout(15000);if(busy)resetNativeDeadline=deadlineSignal;const response = await fetch(options.apiOrigin + url, { method, headers: { Cookie: options.personas[person].cookie, Origin: options.origin, ...(body ? { 'Content-Type': 'application/json', 'Idempotency-Key': randomUUID() } : {}) }, body: body ? JSON.stringify(body) : undefined, redirect: 'error', signal: AbortSignal.any([state.signal, deadlineSignal]) }); if(busy)resetNativeStatus=response.status;const reader = response.body?.getReader(); if (!reader)
         throw fail('enrichment response'); const bytes: Buffer[] = []; let size = 0; try {
         for (;;) {
             const next = await reader.read();
@@ -459,7 +459,7 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
             resetCheckpoint?.stage('response-write');return active;
         }
         catch (error) {
-            resetCheckpoint?.fail(error,resetSourceProofMs);
+            resetCheckpoint?.fail(error,resetSourceProofMs,resetNativeStatus,resetNativeDeadline?.aborted);
             poisoned = true;
             throw fail('enrichment reset');
         }
@@ -578,12 +578,12 @@ export async function createAppsEnrichmentControl(options: AppsControlOptions, t
         if(resetResponse)resetCheckpoint?.clear();
     }
     catch (error) {
-        if(resetResponse)resetCheckpoint?.fail(error,resetSourceProofMs);
+        if(resetResponse)resetCheckpoint?.fail(error,resetSourceProofMs,resetNativeStatus,resetNativeDeadline?.aborted);
         res.statusCode = 403;
         res.setHeader('Content-Type', 'application/json');
         res.end('{"error":"owned Apps enrichment control denied"}');
     } return true; }
     const control={ capability, handle, observeNativeAck, verifyNativeAdmission, async close() { closed = true; if (caseTimer)
             clearTimeout(caseTimer); await runtime.close(); if (poisoned)
-            throw fail('enrichment cleanup'); } };enrichmentRefreshDiagnostics.set(control,()=>refreshDiagnostic);enrichmentResetDiagnostics.set(control,()=>resetCheckpoint?.snapshot(busy,resetSourceProofMs));return control;
+            throw fail('enrichment cleanup'); } };enrichmentRefreshDiagnostics.set(control,()=>refreshDiagnostic);enrichmentResetDiagnostics.set(control,()=>resetCheckpoint?.snapshot(busy,resetSourceProofMs,resetNativeStatus,resetNativeDeadline?.aborted));return control;
 }
