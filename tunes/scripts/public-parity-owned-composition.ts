@@ -25,7 +25,7 @@ import { readManualGamePresentation } from '../server/repositories/gameManualRep
 import { loadReviewedTaxonomyInputs, reviewedTaxonomyInputDirectory } from './taxonomy-owned-import';
 import { applyTaxonomyCatalogImport } from '../server/services/taxonomyCatalogImport';
 import { bookEntityDetailsSchema } from '../shared/explorersBookContract';
-import { movieDetailsSchema } from '../shared/explorersMovieContract';
+import { movieDetailsSchema,movieTermSchema } from '../shared/explorersMovieContract';
 import { appEntityDetailsSchema } from '../shared/explorersAppContract';
 import { productEntityDetailsSchema } from '../shared/explorersProductContract';
 import { personEntityDetailsSchema } from '../shared/explorersPersonContract';
@@ -125,6 +125,7 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
         receiptId: string;
         accountId: string;
     }>();
+    let movieFixtureTerm:string|undefined;
     let databaseValidated = false;
     let phase: 'idle' | 'resetting' | 'issued' | 'observing' | 'retiring' | 'failed' = 'idle', expected: PublicParityExpectedManifest | undefined, issued: PublicParityIssuedManifest | undefined;
     function guard() { options.verifyAdmission(binding); if (options.signal.aborted)
@@ -245,6 +246,7 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
     let revisions = new Map<string, string>();
     const categoryRevisionValue = (owner: Owner, category: Category) => { const value = revisions.get(owner + category); if (value === undefined)
         throw refuse(); return value; };
+    async function movieFixtureTermId(){if(movieFixtureTerm)return movieFixtureTerm;const result=await pool.query("SELECT t.id,t.category,t.slug,t.active,x.label,m.external_kind,m.provider_genre_id FROM movie_provider_genre_terms m JOIN taxonomy_terms t ON t.id=m.term_id JOIN taxonomy_term_translations x ON x.term_id=t.id AND x.locale='en' WHERE m.external_kind='movie' AND m.provider_genre_id=18 AND t.category='movies' AND t.active AND t.slug='drama' AND x.label='Drama' LIMIT 2");if(result.rows.length!==1)throw refuse();const value=result.rows[0];if(value.category!=='movies'||value.slug!=='drama'||value.label!=='Drama'||value.active!==true||value.external_kind!=='movie'||!['18',18].includes(value.provider_genre_id))throw refuse();const term=movieTermSchema.parse({id:value.id,category:value.category,slug:value.slug,label:value.label,position:0});if(term.id!==term.id.toLowerCase())throw refuse();movieFixtureTerm=term.id;return term.id;}
     async function makeItem(seed: ItemSeed, category: Category) { const parent = lists.get(seed.collectionKey); if (!parent)
         throw refuse(); const accountId = actor(seed.owner).accountId; let id: string, entityId: string | null = null; if (category === 'guides') {
         id = await transaction(db => createGuideSection(db, parent.id, accountId, Number(categoryRevisionValue(seed.owner, 'guides')), { title: seed.title, description: null, blocks: guideSectionBlocksSchema.parse(seed.details), position: seed.displayOrder }));
@@ -258,7 +260,7 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
         const taxonomy = category === 'places' ? (await pool.query("SELECT c.id child,p.id parent FROM taxonomy_terms c JOIN taxonomy_terms p ON p.id=c.parent_id WHERE c.category='places' AND c.active AND p.active ORDER BY c.position,c.id LIMIT 1")).rows[0] : null;
         if (category === 'places' && !taxonomy)
             throw refuse();
-        const created = await recommendations.createRecommendation(actor(seed.owner), { category, entityId, collectionId: parent.id, expectedCollectionRevision: await listRevision(parent.id, seed.owner), publicationState: seed.publicationState, userRating: null, note: null, ...(category === 'people' ? { peopleSectorTermId: null } : {}), ...(taxonomy ? { placesTaxonomy: { categoryTermId: taxonomy.parent, subcategoryTermId: taxonomy.child } } : {}) }, context());
+        const created = await recommendations.createRecommendation(actor(seed.owner), { category, entityId, collectionId: parent.id, expectedCollectionRevision: await listRevision(parent.id, seed.owner), publicationState: seed.publicationState, userRating: null, note: null, ...(category === 'movies' ? { movieTermIds:[await movieFixtureTermId()] } : {}), ...(category === 'people' ? { peopleSectorTermId: null } : {}), ...(taxonomy ? { placesTaxonomy: { categoryTermId: taxonomy.parent, subcategoryTermId: taxonomy.child } } : {}) }, context());
         id = created.id;
     } items.set(seed.key, { id, seed, category, collectionId: parent.id, entityId }); revisions.set(seed.owner + category, await categoryRevision(seed.owner, category)); }
     async function materialize(identity: PublicParityExpectedManifest) {
@@ -561,6 +563,7 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
         baselineReceipts.clear();
         lineage.clear();
         revisions = new Map();
+        movieFixtureTerm=undefined;
         databaseValidated = false;
         expected = undefined;
         issued = undefined;

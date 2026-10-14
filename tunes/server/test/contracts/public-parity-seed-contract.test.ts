@@ -115,3 +115,5 @@ it('matches actual public Guides response windows when request limit is 24',asyn
 });
 
 it('Guide photo lineage starts from an explicit manual unverified fixture activity',()=>{const guide=buildPublicParitySeedPlan(PUBLIC_PARITY_CASES[0]).categories.find(c=>c.category==='guides')!;const row=guide.items[0].details as any;expect(row.timeline.morning[0]).toMatchObject({localId:'public-parity-photo-activity',placeId:'public-parity-manual-place',source:'manual',verified:false,geometry:null,formattedAddress:null,photos:[]})});
+
+it('manual Movie fixture facts carry no fabricated provider genres while the required Drama owner facet stays positive',async()=>{const {emptyMovieDetails}=await import('../../../shared/explorersMovieContract'),plan=buildPublicParitySeedPlan(PUBLIC_PARITY_CASES[14]),movies=plan.categories.find(row=>row.category==='movies')!;for(const row of movies.items)expect(row.details).toEqual(emptyMovieDetails());expect(movies.catalogFacet).toEqual({kind:'genre',label:'Drama',slug:'drama',providerId:18,source:'tmdb-reference'});expect(movies.items.filter(row=>row.control===null&&row.owner==='ownerA').length).toBeGreaterThan(0);});

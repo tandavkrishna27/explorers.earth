@@ -39,7 +39,7 @@ const subject='Public parity fixture subject';
 function typedDetails(category:Category,index:number){
  switch(category){
   case 'books':return bookEntityDetailsSchema.parse({...emptyBookDetails(),subjects:[subject]});
-  case 'movies':return movieDetailsSchema.parse({...emptyMovieDetails(),genres:[{providerGenreId:18,name:'Drama'}]});
+  case 'movies':return movieDetailsSchema.parse(emptyMovieDetails());
   case 'games':return manualGamePresentationSchema.parse({version:'explorers-manual-game/v1',origin:'manual',providerExternalId:null,providerFacts:null,images:[],coverMediaId:null});
   case 'apps':return appEntityDetailsSchema.parse({appUrl:`https://example.com/fixture-app-${index}`,developer:'Fixture developer',logoUrl:null,description:'Fixture app',downloadUrl:null,priceTier:'Free',platforms:['Fixture platform']});
   case 'products':return productEntityDetailsSchema.parse({productUrl:`https://example.com/fixture-product-${index}`,brand:'Fixture brand',logoUrl:null,description:'Fixture product',specifications:{},imageUrls:[]});

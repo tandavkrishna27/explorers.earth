@@ -13,6 +13,16 @@ The following entries are newest first; the original checkpoint was at clean `aa
 
 Subsequent concrete source repairs and actual results:
 
+- Real People at clean `57dfc193` passed all twelve identities. The earlier
+  mobile cold-page error did not recur; no claim is made that its diagnostic
+  repaired a product defect. The selected receipt remains milestone-incomplete.
+- The public Movie fixture amendment keeps provider facts empty for manual
+  entities and applies the strict active Drama reference term through the native
+  owner recommendation command. Missing/duplicate/inactive/wrong/invalid term
+  mappings refuse before that command. All existing positive genre assertions
+  remain. Integrated 32 focused checks and the branch scoped compiler passed;
+  actual public qualification is next, not yet passed.
+
 - Public at clean `8460e645` failed its first Movie entity materialization;
   canonical manual-origin Movie details prohibit nonempty provider genres.
   A truthful manual-details/owner-selected taxonomy repair is under review.
