@@ -68,7 +68,7 @@ async function privateHelper(operation: string, file?: string, input?: string): 
   const helper = path.resolve(import.meta.dirname, 'music-local-private-files.ps1');
   const result = await runLocalProcess('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', helper, operation, ...(file ? [file] : [])], input);
   try { const value = JSON.parse(result.stdout); if (result.exitCode !== 0 || value.ok !== true) throw new Error(); return value; }
-  catch { throw new Error('LOCAL_MUSIC_PRIVATE_FILE_REFUSED'); }
+  catch (cause) { throw new Error('LOCAL_MUSIC_PRIVATE_FILE_REFUSED', { cause }); }
 }
 export async function localMusicOsIdentity(): Promise<LocalOsIdentity> {
   const result = await privateHelper('identity');
@@ -102,5 +102,5 @@ export async function readLocalPrivateSecret(file: string, options: { maxBytes?:
     await assertLocalPrivatePath(file);
     await assertLocalPrivatePath(path.dirname(file));
     return secret;
-  } catch { throw new Error('LOCAL_MUSIC_PRIVATE_FILE_REFUSED'); }
+  } catch (cause) { throw new Error('LOCAL_MUSIC_PRIVATE_FILE_REFUSED', { cause }); }
 }
