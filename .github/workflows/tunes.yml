@@ -96,6 +96,13 @@ jobs:
           cache-dependency-path: tunes/package-lock.json
       - name: Check retired Strapi dependencies (ticket 8.1a)
         run: node scripts/check-retired-dependencies.mjs
+      # A separate step, deliberately: `Test Tunes` runs the whole tunes tree, including the
+      # contract suites that read explorers-earth sources and resolve @playwright/test and a
+      # CSS asset out of explorers-earth/node_modules. Two contracts
+      # (music-migration-contract, music-image-ci-tests) pin that step's script to exactly
+      # `npm ci` then the authority runner, so the install belongs here rather than inside it.
+      - name: Install explorers-earth dependencies for the cross-boundary contracts
+        run: npm ci --prefix explorers-earth
       - name: Test Tunes
         working-directory: tunes
         env:
@@ -105,10 +112,6 @@ jobs:
           STRAPI_ANALYTICS_ACCESS_TOKEN: fixture-analytics-token
         run: |
           npm ci --legacy-peer-deps
-          # This runs the whole tunes tree, including the contract suites that read
-          # explorers-earth sources and resolve @playwright/test and a CSS asset out of
-          # explorers-earth/node_modules.
-          npm ci --prefix ../explorers-earth
           node node_modules/tsx/dist/cli.mjs scripts/music-image-ci-tests.ts
       - name: Verify owned image test cleanup
         if: ${{ always() }}
