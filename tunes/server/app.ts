@@ -33,13 +33,13 @@ export function sanitizedRequestLogTarget(request: Pick<Request, "path">): strin
  *   setupVite / serveStatic
  *   server.listen(...)                                               request(app)...
  */
-export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig, localProfile?: ValidatedLocalMusicProfile, apiOnly = false): Promise<{
+export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig, localProfile?: ValidatedLocalMusicProfile, apiOnly = false, combined = false): Promise<{
   app: express.Express;
   server: Server;
   shutdown?: () => Promise<void>;
 }> {
   try {
-    return await composeApp(musicIdentityConfig, localProfile, apiOnly);
+    return await composeApp(musicIdentityConfig, localProfile, apiOnly, combined);
   } catch (error) {
     if (localProfile || apiOnly) return failAfterLocalMusicOwnedCleanup(error, {
       closeSessionStore: closeLocalSessionStore,
@@ -49,7 +49,7 @@ export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig,
   }
 }
 
-async function composeApp(musicIdentityConfig: MusicIdentityRuntimeConfig, localProfile: ValidatedLocalMusicProfile | undefined, apiOnly: boolean): Promise<Awaited<ReturnType<typeof createApp>>> {
+async function composeApp(musicIdentityConfig: MusicIdentityRuntimeConfig, localProfile: ValidatedLocalMusicProfile | undefined, apiOnly: boolean, combined = false): Promise<Awaited<ReturnType<typeof createApp>>> {
   installSafeConsole();
   if (localProfile) {
     assertValidatedLocalMusicProfile(localProfile, process.env);
@@ -80,6 +80,22 @@ async function composeApp(musicIdentityConfig: MusicIdentityRuntimeConfig, local
     next();
   });
   setupMusicIdentityBodylessPreflight(app);
+  /*
+   * Platform fixture combined startup. The canonical route graph is delegated in
+   * HERE, and nowhere later, for two reasons:
+   *   - it is after the declared-content-length guard above, so an oversized body
+   *     is still refused by Music before any canonical handler sees it;
+   *   - it is before `contentBodyParser()`, because Better Auth has to consume the
+   *     original request stream. A delegate appended after `createApp` would read
+   *     an already-drained body on a real auth POST.
+   * It also precedes `registerRoutes`, so the canonical `/api/auth` handler wins
+   * over `setupMusicSurfaceBoundary`, which otherwise answers that retired prefix
+   * 410 from inside the Music route registry.
+   */
+  if (combined) {
+    const { createCanonicalDelegate } = await import("./auth/canonicalDelegate");
+    app.use(await createCanonicalDelegate(pool, process.env));
+  }
   app.use(contentBodyParser());
   app.use(express.urlencoded({ extended: false, limit: "64kb" }));
   app.use(cookieParser(process.env.COOKIE_SECRET || 'dev-only-cookie-secret'));

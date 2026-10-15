@@ -11,7 +11,12 @@ async function main(): Promise<void> {
       return { server: started.httpServer, shutdown: started.shutdown };
     })
     : await import("./config/music-startup").then(({ startMusicServer }) =>
-      startMusicServer(process.env, { apiOnly: true }));
+      // `combined` keeps the Music startup (its listener carries Socket.IO) and
+      // delegates the canonical route graph into it ahead of the body parsers.
+      // `legacy-music` keeps passing exactly `{ apiOnly: true }`, unchanged.
+      startMusicServer(process.env, mode === "combined"
+        ? { apiOnly: true, combined: true }
+        : { apiOnly: true }));
   for (const signal of ["SIGINT", "SIGTERM"] as const) process.once(signal, () => {
     void shutdown().then(() => { process.exitCode = 0; }, (error) => {
       console.error("API shutdown failed:", error);

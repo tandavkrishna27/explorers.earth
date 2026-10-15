@@ -21,7 +21,7 @@ import {
 type Environment = Record<string, string | undefined>;
 
 export interface MusicServerRuntime {
-  createApp: (config: MusicIdentityRuntimeConfig, localProfile?: ValidatedLocalMusicProfile, apiOnly?: boolean) => Promise<{
+  createApp: (config: MusicIdentityRuntimeConfig, localProfile?: ValidatedLocalMusicProfile, apiOnly?: boolean, combined?: boolean) => Promise<{
     app: Express;
     server: Server;
     shutdown?: () => Promise<void>;
@@ -32,6 +32,12 @@ export interface MusicServerRuntime {
 
 export interface MusicStartupDependencies extends MusicIdentityConfigDependencies {
   apiOnly?: boolean;
+  /**
+   * Platform fixture only. Delegates the canonical route graph into the Music app
+   * on this same listener; see `server/auth/canonicalDelegate.ts`. Absent or false
+   * leaves the Music composition exactly as it was.
+   */
+  combined?: boolean;
   loadRuntime?: () => Promise<MusicServerRuntime>;
   ensureAnalyticsSchema?: () => Promise<void>;
   resolveDatabaseConnection?: typeof resolveMusicDatabaseConnection;
@@ -131,7 +137,7 @@ export async function startMusicServer(
     const runtime = await (dependencies.loadRuntime ?? loadProductionRuntime)();
     if (ownedProfile) await assertActiveOwnedBrowserMusicRuntime(ownedProfile, environment);
     appCreationStarted = true;
-    constructed = await runtime.createApp(config, undefined, dependencies.apiOnly === true);
+    constructed = await runtime.createApp(config, undefined, dependencies.apiOnly === true, dependencies.combined === true);
     const { app, server } = constructed;
     if (dependencies.apiOnly) {
       app.use((req, res) => res.status(404).json({ error: { code: "NOT_FOUND", message: "Route not found" } }));

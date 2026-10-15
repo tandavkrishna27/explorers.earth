@@ -30,18 +30,29 @@ function heredoc(source: string, opener: string): string {
 }
 
 describe("Music deployment authority files", () => {
-  it("selects legacy API startup for every Compose service using the Tunes API image", () => {
-    for (const [file, serviceNames] of [
-      ["docker-compose.yml", ["tunes-blue", "tunes-green"]],
-      ["docker-compose.music-test.yml", ["tunes"]],
-      ["docker-compose.replatform.yml", ["tunes"]],
+  /*
+   * Every Compose service running the Tunes API image must use the image's default
+   * entrypoint and select its startup mode explicitly, and the expected mode is
+   * pinned per file rather than accepted from a set — a service that drifts to a
+   * different startup still fails here.
+   *
+   * The disposable platform fixture is `combined`: it starts the Music runtime and
+   * delegates the canonical route graph into the same listener, so fixture ingress
+   * mounts both route graphs. Production blue/green and the Music test compose stay
+   * on `legacy-music`.
+   */
+  it("selects the pinned API startup for every Compose service using the Tunes API image", () => {
+    for (const [file, serviceNames, expectedMode] of [
+      ["docker-compose.yml", ["tunes-blue", "tunes-green"], "legacy-music"],
+      ["docker-compose.music-test.yml", ["tunes"], "legacy-music"],
+      ["docker-compose.replatform.yml", ["tunes"], "combined"],
     ] as const) {
       const compose = parseYaml(read(file));
       for (const name of serviceNames) {
         const service = compose.services[name];
         expect(service, `${file}:${name}`).toBeDefined();
         expect(service.command, `${file}:${name} must use the API image default entrypoint`).toBeUndefined();
-        expect(selectApiMode(service.environment), `${file}:${name}`).toBe("legacy-music");
+        expect(selectApiMode(service.environment), `${file}:${name}`).toBe(expectedMode);
       }
     }
   });

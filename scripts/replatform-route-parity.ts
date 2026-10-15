@@ -91,6 +91,18 @@ const CANONICAL_PATHS = new Set(CANONICAL_ROUTES.map((probe) => probe.path));
  * the legacy composition mounts only analytics and public-profile routes from the
  * Explorers set, so these five are genuinely absent there.
  */
+/*
+ * Historical note, kept because the sentence below is a pinned contract.
+ *
+ * The fixture compose now runs `EXPLORERS_API_MODE: combined`, which starts the
+ * Music runtime and delegates the canonical route graph into it on one listener
+ * (`server/auth/canonicalDelegate.ts`), and nginx routes `/health/live`,
+ * `/api/auth` and `/api/explorers/v1/` to Tunes instead of to Strapi. The text of
+ * `INVARIANT_NOTE` still names `legacy-music` because
+ * `platform-route-parity.test.ts` asserts on that exact phrase as the diagnosis
+ * the operator must see; it describes the composition this invariant was written
+ * against, not necessarily the one in the compose file today.
+ */
 const INVARIANT_NOTE =
   "Ticket 1.2's route-graph invariant requires the platform fixture runtime to mount the same "
   + "canonical route graph as production. As of 2026-10-08 the fixture starts "
