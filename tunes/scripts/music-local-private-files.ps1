@@ -81,11 +81,11 @@ public static class LocalMusicPrivateFiles {
       var parents=ProcessParents(); uint processId=(uint)Process.GetCurrentProcess().Id; long childCreation=CreationTime(GetCurrentProcess());
       string packageFamily=null, packageTarget=null; uint parentId; bool ancestryVerified=false;
       while(true) {
-        if(!parents.TryGetValue(processId,out parentId)) throw new Exception();
+        if(!parents.TryGetValue(processId,out parentId)) throw new Exception("ancestry: no parent entry for pid "+processId);
         if(parentId == 0 || parentId == processId) { ancestryVerified=true; break; }
-        IntPtr parent=OpenProcess(QueryProcess,false,parentId); if(parent == IntPtr.Zero) throw new Exception();
+        IntPtr parent=OpenProcess(QueryProcess,false,parentId); if(parent == IntPtr.Zero) throw new Exception("ancestry: OpenProcess denied for parent pid "+parentId);
         try {
-          long parentCreation=CreationTime(parent); if(parentCreation > childCreation) throw new Exception(); childCreation=parentCreation;
+          long parentCreation=CreationTime(parent); if(parentCreation > childCreation) throw new Exception("ancestry: parent pid "+parentId+" created after its child"); childCreation=parentCreation;
           IntPtr parentToken=Token(parent);
           try {
             if(TokenOwner(parentToken) != owner) { ancestryVerified=true; break; }
@@ -99,7 +99,7 @@ public static class LocalMusicPrivateFiles {
         processId=parentId;
       }
       if(packageFamily == null) {
-        string target=KnownFolder(currentToken,ReturnFilterRedirectionTarget); if(!String.Equals(target,unredirected,StringComparison.OrdinalIgnoreCase)) throw new Exception(); ValidateRoot(target,owner);
+        string target=KnownFolder(currentToken,ReturnFilterRedirectionTarget); if(!String.Equals(target,unredirected,StringComparison.OrdinalIgnoreCase)) throw new Exception("identity: redirection target does not match the unredirected LocalAppData"); ValidateRoot(target,owner);
         return new RootEvidence{OwnerId=owner,LocalAppData=target,UnredirectedLocalAppData=unredirected,Authority="current-token",Canonical=true,ReparseFree=true,OwnerVerified=true,PackageIdentityVerified=false,AncestryVerified=ancestryVerified};
       }
       string expected=Path.Combine(unredirected,"Packages",packageFamily,"LocalCache","Local");
