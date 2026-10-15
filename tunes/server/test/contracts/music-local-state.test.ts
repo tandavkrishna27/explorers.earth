@@ -121,7 +121,7 @@ describe.skipIf(process.platform !== 'win32')('real Windows private-file helper 
   }, 120000);
   it('provides a read-only host root probe with sanitized metadata only', async () => {
     const helper = path.resolve(import.meta.dirname, '../../../scripts/music-local-private-files.ps1');
-    const result = await state.runLocalProcess('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', helper, 'identity-probe']);
+    const result = await state.runLocalProcess('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', helper, 'identity-probe']);
     expect(result.exitCode).toBe(0);
     const probe = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(probe).toEqual({ ok: true, authority: expect.stringMatching(/^(current-token|packaged-ancestor)$/), canonical: true, reparseFree: true, ownerVerified: true, packageIdentityVerified: expect.any(Boolean), ancestryVerified: true });
