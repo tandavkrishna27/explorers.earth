@@ -507,7 +507,11 @@ for (const category of categories) {
       await expect(owner.page.getByRole('checkbox', { name: `Pin ${category.label}`, exact: true })).not.toBeChecked();
       await owner.page.goto('/recommendations'); await card.evaluate(element => element.scrollIntoView({ block: 'center', behavior: 'instant' })); await card.getByTitle('Category options').click();
       const pinAction = owner.page.getByRole('button', { name: 'Pin to Public Nav (Max 5)', exact: true }); await pinAction.focus(); await pinAction.press('Enter');
-      await expect.poll(() => state.account.pinned_nav_tabs).toEqual(['public_profile', other, category.field]);
+      // 30s: this polls a SERVER write that follows a keyboard-activated pin, and the default
+      // 12s budget expired under load -- the same lane passed this test in the sibling run of
+      // the identical commit, so it is a latency bound, not a behavioural assertion. The
+      // expected tab list is unchanged.
+      await expect.poll(() => state.account.pinned_nav_tabs, { timeout: 30000 }).toEqual(['public_profile', other, category.field]);
       await guest.page.goto(`/${fixtureUser.username}`);
       await expect(guest.page.getByRole('link', { name: category.route[0].toUpperCase() + category.route.slice(1), exact: true })).toBeVisible();
     } finally { await closeFixture(owner); await closeFixture(guest); }
