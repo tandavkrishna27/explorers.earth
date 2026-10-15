@@ -4,10 +4,32 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createHmac } from 'node:crypto';
 import { EventEmitter } from 'node:events';
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { GUIDES_CASES, GUIDES_PROJECTS, buildGuidesSeedPlan } from '../../../scripts/guides-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment, validateLifecycleControl, assertLifecycleResults, assertProviderCode, assertOwnedCleanup, classifyLifecycleRequest, LIFECYCLE_CASES, LIFECYCLE_FONT_QUERIES } from '../../../scripts/lifecycle-browser-guards';
 const ack = 'TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
+// HARNESS GATE (not a product assertion). Some cases below drive a real PowerShell 7 host,
+// selected explicitly through GUIDES_POWERSHELL_EXECUTABLE. This file used to hardcode one
+// developer's machine paths, so on every other host -- CI included -- those cases failed with
+// ENOENT in a way that read as lifecycle product defects. Rule, as in
+// guides-bootstrap-contract.test.ts: executable genuinely unavailable => LOUD, reasoned skip;
+// variable set and naming a real file => the cases run and FAIL for real if the subject is wrong.
+// Gating is per CASE, not per describe: these describes also hold pure-JS cases that spawn
+// nothing and pass on any platform, and skipping those would lose real coverage.
+const configuredPwsh = process.env.GUIDES_POWERSHELL_EXECUTABLE;
+const pwshUnavailable = ((): string | undefined => {
+    if (process.platform !== 'win32') return `host platform is ${process.platform}, and the native PowerShell cases in this file are Windows-only`;
+    if (!configuredPwsh) return 'GUIDES_POWERSHELL_EXECUTABLE is unset, so no PowerShell 7 host was selected for the native lifecycle cases';
+    try { if (!statSync(configuredPwsh).isFile()) return 'GUIDES_POWERSHELL_EXECUTABLE is set but does not name a regular file'; }
+    catch { return 'GUIDES_POWERSHELL_EXECUTABLE is set but the executable it names is not present on this host'; }
+    return undefined;
+})();
+// A loud skip is right on a developer machine but WRONG in the lane that exists to exercise
+// these cases: there, an unavailable host must fail, or the gate silently never runs again.
+if (pwshUnavailable && process.env.LIFECYCLE_BROWSER_GATE_REQUIRED) throw new Error(`LIFECYCLE_BROWSER_GATE_REQUIRED is set, so the native lifecycle cases must execute, but ${pwshUnavailable}`);
+if (pwshUnavailable) console.warn(`[SKIP] lifecycle-browser-support.test.ts native PowerShell cases: ${pwshUnavailable}. Harness gate unavailable - this is NOT a passing lifecycle product contract and NOT a product defect.`);
+const nativeIt = pwshUnavailable ? it.skip : it;
+const pwsh = configuredPwsh as string;
 describe('owned lifecycle browser boundary', () => {
     it('locally intercepts the exact current bootstrap typography without widening font authority', () => {
         const bootstrap = readFileSync(new URL('../../../../explorers-earth/src/bootstrap.ts', import.meta.url), 'utf8');
@@ -93,10 +115,10 @@ describe('owned lifecycle browser boundary', () => {
 
 describe('Guides parent job contract', () => {
     const cases = ['assign-before-resume', 'create-failure', 'assign-failure', 'resume-failure', 'process-wait-timeout', 'job-query-failure', 'nonzero-active', 'abort-stuck-fixture', 'abort-pending-command', 'finish-nonzero-fixture', 'exit-handshake', 'handle-release-failure'];
-    for (const caseName of cases) it(`runs the actual fixed native runner: ${caseName}`, () => {
+    for (const caseName of cases) nativeIt(`runs the actual fixed native runner: ${caseName}`, () => {
         const script = fileURLToPath(new URL('../../../scripts/guides-windows-job.ps1', import.meta.url));
         const source = `$ErrorActionPreference='Stop'\n. '${script.replaceAll("'", "''")}' -DefinitionsOnly\n[Console]::Out.WriteLine([GuidesJob.ContractCases]::Run('${caseName}'))`;
-        const output = execFileSync('C:/Users/TK/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(source, 'utf16le').toString('base64')], { encoding: 'utf8', shell: false, windowsHide: true, timeout: 30000, maxBuffer: 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+        const output = execFileSync(pwsh, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(source, 'utf16le').toString('base64')], { encoding: 'utf8', shell: false, windowsHide: true, timeout: 30000, maxBuffer: 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
         const lines = output.trim().split(/\r?\n/);
         expect(lines).toHaveLength(1);
         const result = JSON.parse(lines[0]);
@@ -156,7 +178,9 @@ describe('Guides parent job contract', () => {
         const probe = fileURLToPath(new URL('./fixtures/guides-parent-import-probe.mjs', import.meta.url));
         const environment = { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH, TEMP: process.env.TEMP, TMP: process.env.TMP, NODE_ENV: 'test' };
         let result: string;
-        try { result = execFileSync('C:/Users/TK/AppData/Local/Temp/explorers-wave1-tools/node-v24.21.0-win-x64/node.exe', [probe], { cwd: root, encoding: 'utf8', shell: false, windowsHide: true, timeout: 20000, maxBuffer: 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'], env: { ...environment, TSX_DISABLE_CACHE: '1' } }); }
+        // process.execPath is the Node already running this suite. The previous literal was
+        // one developer's temp toolchain directory, which exists on no other host.
+        try { result = execFileSync(process.execPath, [probe], { cwd: root, encoding: 'utf8', shell: false, windowsHide: true, timeout: 20000, maxBuffer: 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'], env: { ...environment, TSX_DISABLE_CACHE: '1' } }); }
         catch (error) { const failure = error as { code?: string; status?: number; stderr?: Buffer }; throw new Error(`Import probe cwd=${root} probeBytes=${readFileSync(probe).length} code=${failure.code} status=${failure.status} stderr=${String(failure.stderr ?? '').slice(0, 4096)}`); }
         expect(result.trim()).toBe('{"ok":true,"target":"supervision","applicationResourceCalls":0,"toolIpcDenied":1}');
     }, 30000);
@@ -489,7 +513,7 @@ describe('Guides R1 review regressions', () => {
     function definitions(source: string) {
         const script = fileURLToPath(new URL('../../../scripts/guides-windows-job.ps1', import.meta.url));
         const literal = `$ErrorActionPreference='Stop'\n. '${script.replaceAll("'", "''")}' -DefinitionsOnly\n${source}`;
-        return JSON.parse(execFileSync('C:/Users/TK/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(literal, 'utf16le').toString('base64')], {encoding:'utf8',shell:false,windowsHide:true,timeout:30000,maxBuffer:1024*1024,stdio:['ignore','pipe','pipe']}).trim());
+        return JSON.parse(execFileSync(pwsh, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(literal, 'utf16le').toString('base64')], {encoding:'utf8',shell:false,windowsHide:true,timeout:30000,maxBuffer:1024*1024,stdio:['ignore','pipe','pipe']}).trim());
     }
     it('uses the retained owned fixture role with maintenance database postgres in the real production Client configuration', async () => {
         const configurations: any[] = [], effects: string[] = [];
@@ -515,11 +539,11 @@ describe('Guides R1 review regressions', () => {
             expect(effects).toEqual(['guarded-connect','guarded-end']);expect(fake.events).not.toContain('launcher');
         } finally {vi.doUnmock('node:fs');vi.doUnmock('pg');vi.resetModules();}
     },1000);
-    it('settles real dispatcher ownership before immediate next command or exit while the sender task tail remains pending', () => {
+    nativeIt('settles real dispatcher ownership before immediate next command or exit while the sender task tail remains pending', () => {
         const result=definitions('[Console]::Out.WriteLine([GuidesJob.Wire]::ReplyTailRegression())');
         expect(result).toMatchObject({passed:true,overlapRefused:true,exitAdmitted:true,successorAdmitted:true,tailPending:true,priorityKeptOwnership:true,productionConstructors:0,productionEntries:0});
     },30000);
-    it.each(['protocol','release'])('retains an after-job-empty %s drain failure and refuses handlesClosed', stage => {
+    nativeIt.each(['protocol','release'])('retains an after-job-empty %s drain failure and refuses handlesClosed', stage => {
         const result=definitions(`$n=[GuidesJob.ScriptedNative]::new(); $r=[GuidesJob.JobRunner]::new($n); $null=$r.Launch([GuidesJob.Launch]@{Slot='fixture'},[Environment]::TickCount64+1000); $null=$r.Finish([Environment]::TickCount64+1000,$true); $n.RecordDrainFailure('${stage}'); $n.RecordDrainFailure('${stage === 'protocol' ? 'release' : 'protocol'}'); $failure=$null; try{$r.Exit()}catch{$failure=$_.Exception.InnerException.Stage}; [Console]::Out.WriteLine((@{stage=$failure;empty=$r.Empty;closed=$r.Closed;failed=$r.Failed;constructors=[GuidesJob.ProductionNative]::ConstructionCount;entries=[GuidesJob.ProductionNative]::EntryCount}|ConvertTo-Json -Compress))`);
         expect(result).toEqual({stage,empty:true,closed:false,failed:true,constructors:0,entries:0});
     },30000);
@@ -530,10 +554,10 @@ describe('Guides coordinated worker bootstrap ABI', () => {
         const {createGuidesParentSupervisor}=await import('../../../scripts/guides-parent-supervision');const fake=guidesScripted({badEpoch:true}),supervisor=createGuidesParentSupervisor(fake.input,fake.dependencies);
         await expect(supervisor.run()).rejects.toThrow();await supervisor.dispose();expect(fake.frames.filter(frame=>frame.type==='launch-worker')).toHaveLength(1);expect(fake.frames.some(frame=>frame.type==='start-worker-result')).toBe(false);
     },1000);
-    it('conveys only parent-derived canonical fixture and worker epochs through the real launcher environment builder', () => {
+    nativeIt('conveys only parent-derived canonical fixture and worker epochs through the real launcher environment builder', () => {
         const script=fileURLToPath(new URL('../../../scripts/guides-windows-job.ps1',import.meta.url));
         const literal=`$ErrorActionPreference='Stop'\n. '${script.replaceAll("'", "''")}' -DefinitionsOnly\n[Console]::Out.WriteLine([GuidesJob.Wire]::EpochEnvironmentRegression())`;
-        const result=JSON.parse(execFileSync('C:/Users/TK/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe',['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(literal,'utf16le').toString('base64')],{encoding:'utf8',shell:false,windowsHide:true,timeout:30000,maxBuffer:1024*1024,stdio:['ignore','pipe','pipe']}).trim());
+        const result=JSON.parse(execFileSync(pwsh,['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(literal,'utf16le').toString('base64')],{encoding:'utf8',shell:false,windowsHide:true,timeout:30000,maxBuffer:1024*1024,stdio:['ignore','pipe','pipe']}).trim());
         expect(result).toEqual({fixture:'0',workers:Array.from({length:16},(_,i)=>String(i+1)),reservedOverridesRefused:3,invalidEpochsRefused:5,productionConstructors:0,productionEntries:0});
     },30000);
     it.each([['listener','drain','authority','custody','storage'],['listener','custody'],['storage'],[]].map(failures=>({failures})))('preserves the actual ordered controller cleanup metadata: %j',async ({failures})=>{

@@ -96,12 +96,18 @@ jobs:
           # unless the Guides bootstrap gate actually executed.
           GUIDES_BOOTSTRAP_GATE_REQUIRED: "1"
           PUBLIC_PARITY_WINDOWS_JOB_REQUIRED: "1"
+          # Same contract for the native lifecycle cases: lifecycle-browser-support now
+          # resolves its PowerShell host from GUIDES_POWERSHELL_EXECUTABLE (resolved by the
+          # preflight step above) instead of a committed personal path, and refuses to skip
+          # when this is set -- so this lane cannot go green unless those cases really ran.
+          LIFECYCLE_BROWSER_GATE_REQUIRED: "1"
         run: >-
           npm test --prefix tunes -- --run
           server/test/contracts/music-reconciliation-workflow.test.ts
           server/test/contracts/music-documentation-contract.test.ts
           server/test/contracts/music-openapi-contract.test.ts
           server/test/contracts/guides-bootstrap-contract.test.ts
+          server/test/contracts/lifecycle-browser-support.test.ts
           server/test/contracts/public-parity-windows-job.test.ts
           server/test/contracts/music-local-state.test.ts
           server/test/contracts/music-cli-contract-authority.test.ts
