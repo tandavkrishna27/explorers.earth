@@ -180,5 +180,9 @@ describe("real Profile consecutive save interleaving", () => {
         if (!assertionFailed && cleanupFailure) throw cleanupFailure;
       }
     },
+    // Five real Profile render/save interleavings per case, against real query and save
+    // hooks. Vitest's default 5s budget is not a correctness bound here and was exceeded on
+    // loaded CI runners, failing ~half of runs with a render timeout rather than an assertion.
+    30_000,
   );
 });

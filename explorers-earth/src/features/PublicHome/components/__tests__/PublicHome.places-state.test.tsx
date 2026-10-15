@@ -233,7 +233,9 @@ describe("PublicHome Places category states", () => {
     }
     expect(screen.getAllByRole("button", { name: "See All ➔" })).toHaveLength(53);
     expect(screen.getAllByTestId("place-card")).toHaveLength(1);
-  });
+  // Renders 53 projected locations; Vitest's default 5s budget is not a correctness
+  // bound here and was exceeded on loaded CI runners, timing out instead of asserting.
+  }, 30_000);
 
   it("renders a valid empty location detail with the existing recommendation empty view", async () => {
     state.places.data = { recommendationLists: [list("hyderabad", "Hyderabad", [])] };

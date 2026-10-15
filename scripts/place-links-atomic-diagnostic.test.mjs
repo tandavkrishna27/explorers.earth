@@ -46,7 +46,10 @@ const replayProbeClick=`if(category==='products' && info.project.name==='place-l
   setPlaceLinksAtomicBoundary(info,category,phase,readiness);
 }`;
 const probeBlock=(kind,code)=>`// BEGIN PLACE LINKS REPLAY ${kind} PROBE\n${code}\n// END PLACE LINKS REPLAY ${kind} PROBE\n`;
-function actualProbe(kind){const source=readFileSync(resolve(frozen.file),'utf8'),start=`// BEGIN PLACE LINKS REPLAY ${kind} PROBE\n`,end=`// END PLACE LINKS REPLAY ${kind} PROBE`;assert.equal(source.split(start).length,2,'actual diagnostic probe exists: '+kind);const body=source.slice(source.indexOf(start)+start.length,source.indexOf(end));return ts.transpileModule(body,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}}).outputText;}
+// The probe markers are matched with a trailing newline, and the spec has mixed line
+// endings, so a CRLF marker line never matched the LF form -- the probe read as absent.
+// Normalized to LF here, same `git-crlf-to-lf` policy as the digests above.
+function actualProbe(kind){const source=readFileSync(resolve(frozen.file),'utf8').replaceAll('\r\n','\n'),start=`// BEGIN PLACE LINKS REPLAY ${kind} PROBE\n`,end=`// END PLACE LINKS REPLAY ${kind} PROBE`;assert.equal(source.split(start).length,2,'actual diagnostic probe exists: '+kind);const body=source.slice(source.indexOf(start)+start.length,source.indexOf(end));return ts.transpileModule(body,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}}).outputText;}
 const card=(patch={})=>({version:1,category:'products',phase:'fresh',boundary:'fresh-response',body:'caught',cleanup:'completed',elapsed:'under-one',remaining:'sixty-plus',...patch});
 const marker=c=>prefix+[c.category,c.phase,c.boundary,c.body,c.cleanup,c.elapsed,c.remaining].join('|')+']';
 function parse(source){const sf=ts.createSourceFile('place-links.spec.ts',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);assert.equal(sf.parseDiagnostics.length,0,'valid source syntax');const printer=ts.createPrinter({removeComments:true});return {sf,print:n=>printer.printNode(ts.EmitHint.Unspecified,n,sf),full:()=>printer.printFile(sf)};}
