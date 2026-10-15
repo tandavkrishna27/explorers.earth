@@ -65,8 +65,16 @@ export function resolveLocalMusicOsIdentityEvidence(value: unknown): LocalOsIden
 }
 async function privateHelper(operation: string, file?: string, input?: string): Promise<Record<string, unknown>> {
   if (process.platform !== 'win32') throw new Error('LOCAL_MUSIC_PLATFORM_UNSUPPORTED');
+  // -ExecutionPolicy Bypass is required because this is the only PowerShell entry point in
+  // the repo invoked as `-File <script.ps1>`; the others use -Command or -EncodedCommand,
+  // which script-file execution policy does not gate. A Restricted policy blocks the file
+  // before its first line, so the script's own try/catch never runs: stderr carries the
+  // refusal (and is deliberately discarded), stdout is EMPTY and the exit status is 1.
+  // That is exactly what CI reported at every stage of this diagnosis -- first as a JSON
+  // SyntaxError, then `exited 1`, then `exited 1: no reason supplied`. Bypass changes no
+  // assertion in the helper; every ACL, ancestry and path check it makes is untouched.
   const helper = path.resolve(import.meta.dirname, 'music-local-private-files.ps1');
-  const result = await runLocalProcess('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', helper, operation, ...(file ? [file] : [])], input);
+  const result = await runLocalProcess('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', helper, operation, ...(file ? [file] : [])], input);
   // Check the exit status BEFORE parsing. Parsing first turned every helper failure into a
   // generic `SyntaxError: Unexpected end of JSON input` -- which is exactly what CI reported
   // once the cause was attached -- and discarded the exit code, the one fact that separates a
