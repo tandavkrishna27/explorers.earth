@@ -155,7 +155,33 @@ services:
       MUSIC_FEATURE_COHORT_VERSION: fixture-owner-workspace-v1
       MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: "100"
       MUSIC_EXPECTED_MIGRATION_ID: 0056_explorers_app_enrichment_jobs
-      EXPLORERS_MEDIA_ENVIRONMENT: local
+      # Media configuration the CANONICAL app accepts, not `local`.
+      #
+      # This service runs NODE_ENV=production (set by tunes/Dockerfile:44), and
+      # resolveObjectStorage (tunes/server/services/objectStorage.ts:183-184) admits `local`
+      # only when NODE_ENV !== 'production'; otherwise it throws "Explicit QA or production
+      # media environment is required". That guard is deliberate and is pinned by
+      # explorers-object-storage.test.ts:12 -- a production-mode process must never serve
+      # media off the filesystem -- so it must be SATISFIED here, never bypassed.
+      #
+      # Before EXPLORERS_API_MODE=combined this never fired: legacy-music mode never
+      # constructed the canonical app, so nothing in the fixture called resolveObjectStorage.
+      # Combined mode constructs it inside this container (canonicalDelegate.ts:54 ->
+      # canonicalApp.ts:111 -> media.ts:42), which imports a boot-time media requirement.
+      # The result was the `tunes` container exiting 1 before it listened, surfacing only as
+      # the compose-level `dependency failed to start` that the classifier labels
+      # `cause=service-health`.
+      #
+      # The endpoint is the discard port, so no live S3 call can ever succeed and these are
+      # not credentials. Same pattern as tunes/scripts/.book-image-harness.ts:27.
+      EXPLORERS_DEPLOYMENT_TIER: qa
+      EXPLORERS_MEDIA_ENVIRONMENT: qa
+      EXPLORERS_MEDIA_S3_BUCKET: replatform-fixture-only
+      EXPLORERS_MEDIA_S3_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_ACCESS_KEY_ID: fixture-no-live-authority
+      AWS_SECRET_ACCESS_KEY: fixture-no-live-authority-secret-not-a-credential
+      AWS_ENDPOINT_URL_S3: http://127.0.0.1:9
       MUSIC_RECONCILIATION_ENABLED: "false"
       MUSIC_RECONCILIATION_MAX_ROWS: "0"
     depends_on:

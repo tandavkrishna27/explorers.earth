@@ -6,6 +6,11 @@ import {createRequire} from 'node:module';
 import {runInNewContext} from 'node:vm';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+// Mirrors the repo's own `git-crlf-to-lf` policy (scripts/browser-source-attestation.mjs:29-40):
+// digest the committed LF form and normalize the observed working tree, so a seal recorded on
+// one platform is not invalidated by checkout line endings. Content changes still break the
+// seal; only EOL representation is neutralized, and a stray lone CR still refuses.
+const eolNormalized=(input)=>{const text=(typeof input==='string'?input:new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(input)).replaceAll('\r\n','\n');if(text.includes('\r')||text.includes('\0'))throw new Error('Unsupported observed text');return Buffer.from(text);};
 const ts=createRequire(import.meta.url)('../explorers-earth/node_modules/typescript');
 const frozen=JSON.parse(readFileSync(new URL('./fixtures/place-links-atomic-diagnostic-frozen.json',import.meta.url),'utf8'));
 const begin='// BEGIN PLACE LINKS ATOMIC DIAGNOSTIC CONTRACT',end='// END PLACE LINKS ATOMIC DIAGNOSTIC CONTRACT';
@@ -214,7 +219,7 @@ test('Place links atomic producer: original exception and finally override',asyn
 });
 
 test('Place links atomic producer: exact frozen native source and diagnostic placement',()=>{
- assert.equal(frozen.baseline,'d635e05636a6007fa1766a5cc38a22b22e8ca83b');assert.equal(createHash('sha256').update(frozen.nativeSource).digest('hex'),frozen.nativeSha256);assert.equal(frozen.identities.length,8);assert.equal(new Set(frozen.identities.map(i=>i.titlePath[0])).size,4);assert.deepEqual([...new Set(frozen.identities.map(i=>i.project))],['place-links-desktop','place-links-mobile']);assert.equal(frozen.stagePlan.length,48);for(const [path,hash]of Object.entries(frozen.protectedHashes))assert.equal(createHash('sha256').update(readFileSync(resolve(path))).digest('hex'),hash,'protected source '+path);assert.equal(readFileSync(resolve('explorers-earth/e2e/replatform/place-links.playwright.config.ts'),'utf8'),frozen.config);assert.deepEqual(JSON.parse(readFileSync(resolve('explorers-earth/e2e/replatform/suite-manifest.json'))).lanes.find(l=>l.name==='place-links').identities,frozen.identities);
+ assert.equal(frozen.baseline,'d635e05636a6007fa1766a5cc38a22b22e8ca83b');assert.equal(createHash('sha256').update(frozen.nativeSource).digest('hex'),frozen.nativeSha256);assert.equal(frozen.identities.length,8);assert.equal(new Set(frozen.identities.map(i=>i.titlePath[0])).size,4);assert.deepEqual([...new Set(frozen.identities.map(i=>i.project))],['place-links-desktop','place-links-mobile']);assert.equal(frozen.stagePlan.length,48);for(const [path,hash]of Object.entries(frozen.protectedHashes))assert.equal(createHash('sha256').update(eolNormalized(readFileSync(resolve(path)))).digest('hex'),hash,'protected source '+path);assert.equal(readFileSync(resolve('explorers-earth/e2e/replatform/place-links.playwright.config.ts'),'utf8'),frozen.config);assert.deepEqual(JSON.parse(readFileSync(resolve('explorers-earth/e2e/replatform/suite-manifest.json'))).lanes.find(l=>l.name==='place-links').identities,frozen.identities);
  const result=controls();assert.equal(result.rejections,180,'synthetic positive and 180 rejection assertions including 144 exact indexed site mutations execute BEFORE live integration');
  const native=readFileSync(resolve(frozen.file),'utf8');assert.ok(native.includes(begin),'BEHAVIOR RED: live wiring missing after synthetic positive and mutation controls');assert.equal(normalize(native),parse(frozen.nativeSource).full(),'BEHAVIOR RED: live source requires exact approved wiring');
 });

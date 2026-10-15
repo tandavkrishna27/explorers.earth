@@ -166,7 +166,10 @@ async function complete(category:string,persona=manifest.personas.ownerA) {
     ['memberships',`/categories/${category}/memberships`,{collectionStatus:'all',recommendationStatus:'active'}],
   ] as const) {
     const rows:Dto[]=[],seen=new Set<string>();let cursor:string|undefined;
-    for (;;) {
+    // This loop form is frozen: scripts/place-links-atomic-diagnostic.test.mjs compares the
+    // printed AST of this spec against a recorded nativeSource, so rewriting it as for(;;)
+    // changes protected source. The loop is unconditional by design and breaks internally.
+    do {
       const search=new URLSearchParams({...params,limit:'24',snapshotToken:snapshot.snapshotToken,...(cursor?{cursor}:{})});
       const page=await json(`${route}?${search}`,persona);
       expect(page.snapshot===snapshot.revision && page.snapshotToken===snapshot.snapshotToken && page.expiresAt===snapshot.expiresAt).toBe(true);
@@ -174,7 +177,8 @@ async function complete(category:string,persona=manifest.personas.ownerA) {
       if(page.nextCursor===null) break;
       expect(typeof page.nextCursor==='string' && page.items.length>0 && !seen.has(page.nextCursor)).toBe(true);
       cursor=page.nextCursor;seen.add(cursor!);
-    }
+    // eslint-disable-next-line no-constant-condition
+    } while(true);
     streams[key]=rows;
   }
   expect(streams.collections.every(row=>row.accountId===persona.accountId && row.category===category)

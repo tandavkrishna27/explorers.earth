@@ -309,6 +309,19 @@ function sanitizeLogValue(value: unknown, depth = 0): unknown {
       .replace(/("?(?:password|secret|token|cookie|email|otp|guestUrl|room)"?\s*[:=]\s*)"?[^,"}\s]+/gi, "$1[REDACTED]")
       .replace(/\b(room|guestUrl|capability)\s+[A-Za-z0-9_-]{8,}/gi, "$1 [REDACTED]");
   }
+  // An Error's `message` and `stack` are non-enumerable, so without this branch the
+  // object branch below renders every thrown Error as `{}`. That made a fixture container's
+  // boot failure completely unreportable -- `Failed to start API: {}` -- and cost two CI
+  // round trips to identify. Fields still go through the string sanitizer above, so
+  // redaction of emails, bearer tokens and secret-shaped pairs continues to apply.
+  if (value instanceof Error) {
+    return {
+      name: value.name,
+      message: sanitizeLogValue(value.message, depth + 1),
+      stack: sanitizeLogValue(value.stack, depth + 1),
+      ...(value.cause === undefined ? {} : { cause: sanitizeLogValue(value.cause, depth + 1) }),
+    };
+  }
   if (Array.isArray(value)) return value.map((entry) => sanitizeLogValue(entry, depth + 1));
   if (value && typeof value === "object") {
     const safe: Record<string, unknown> = {};
