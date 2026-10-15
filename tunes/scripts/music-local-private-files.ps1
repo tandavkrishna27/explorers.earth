@@ -151,4 +151,12 @@ public static class LocalMusicPrivateFiles {
     'inspect' { [LocalMusicPrivateFiles]::Inspect($TargetPath); '{"ok":true}' }
     default { throw 'invalid operation' }
   }
-} catch { [Console]::Out.WriteLine('{"ok":false}'); exit 1 }
+} catch {
+  # Pass through ONLY the prefixes this script writes itself (see IdentityEvidence), so a
+  # raw system error or anything that could carry credentials is reported as unclassified
+  # rather than echoed. stderr is still never retained by the caller.
+  $m = [string]$_.Exception.Message
+  $r = if ($m -match '^(ancestry|identity): ') { $m } else { 'unclassified' }
+  [Console]::Out.WriteLine((@{ ok = $false; reason = $r } | ConvertTo-Json -Compress))
+  exit 1
+}

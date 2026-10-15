@@ -76,7 +76,7 @@ async function privateHelper(operation: string, file?: string, input?: string): 
     if (result.exitCode !== 0) throw new Error(`helper '${operation}' exited ${result.exitCode}`);
     if (!result.stdout) throw new Error(`helper '${operation}' produced no output`);
     const value = JSON.parse(result.stdout);
-    if (value.ok !== true) throw new Error(`helper '${operation}' did not report ok`);
+    if (value.ok !== true) throw new Error(`helper '${operation}' did not report ok: ${typeof value.reason === 'string' ? value.reason : 'no reason supplied'}`);
     return value;
   }
   catch (cause) { throw new Error('LOCAL_MUSIC_PRIVATE_FILE_REFUSED', { cause }); }
