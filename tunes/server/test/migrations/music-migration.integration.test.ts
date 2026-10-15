@@ -623,18 +623,24 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     const { reuse, numericLockWaiters } = await resources.withClient(pool, async (deleting: pg.PoolClient) => {
       await deleting.query("BEGIN");
       await deleting.query("SELECT finalize_music_identity_deletion($1,$2,$3)", [original.id, "delete-numeric-lock-old", "numeric-race"]);
+      // The settlement handler is attached HERE, not at the assertion below. This query is
+      // deliberately not awaited so it blocks on the advisory lock, and its rejection becomes
+      // possible the moment the COMMIT a few lines down releases that lock -- several awaits
+      // before a handler used to be attached. When the rejection won that race Node reported
+      // an unhandled rejection and vitest exited non-zero with every test passing (686/0).
+      // The awaited value below is unchanged.
       const reuse = pool.query(`INSERT INTO users
         (id,username,password,guest_url,venue_name,strapi_user_document_id,strapi_account_document_id,
          guest_capability_hash,lifecycle_operation_id)
         VALUES ($1,'numeric-lock-reuse','disabled','numeric-lock-reuse-slug','Venue',
-          'person-numeric-lock-new','account-numeric-lock-new',$2,'provision-numeric-lock-new')`, [original.id, "7".repeat(64)]);
+          'person-numeric-lock-new','account-numeric-lock-new',$2,'provision-numeric-lock-new')`, [original.id, "7".repeat(64)]).then(() => ({ accepted: true, message: "" }), (error: Error) => ({ accepted: false, message: error.message }));
       await new Promise((resolve) => setTimeout(resolve, 100));
       const numericLockWaiters = (await pool.query<{ count: number }>(`SELECT count(*)::int AS count FROM pg_locks
         WHERE locktype='advisory' AND NOT granted AND database=(SELECT oid FROM pg_database WHERE datname=current_database())`)).rows[0].count;
       await deleting.query("COMMIT");
       return { reuse, numericLockWaiters };
     });
-    const reuseResult = await reuse.then(() => ({ accepted: true, message: "" }), (error: Error) => ({ accepted: false, message: error.message }));
+    const reuseResult = await reuse;
     expect(numericLockWaiters).toBeGreaterThanOrEqual(1);
     expect(reuseResult).toMatchObject({ accepted: false });
     expect(reuseResult.message).toMatch(/retired|tombstone/i);
