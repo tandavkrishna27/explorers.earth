@@ -108,3 +108,89 @@ bypasses the visibility gate.
    identities from the integrated run and record the exclusion.
 4. **Places photo cap** (typed 10 vs generic 20) and whether products/people should ever
    carry item-level media.
+
+## CI green-up pass — 2026-10-15, after the first real CI run
+
+The first CI run on this chain (head `5f98ed0c`) produced **16 distinct failing checks**.
+Four parallel investigations, then two adversarial reviews of the resulting plan, then
+execution. 13 commits.
+
+**Attribution, established rather than assumed.** None of the 16 came from the 15 commits
+made on 2026-10-15. Three investigations re-ran the failing tooling at `d0194a7e` — the
+commit immediately before them — and got identical results; the fourth showed the two
+genuinely new failures (`platform-fixture`, `build-test-scan-push`) trace to other commits
+inside the same 374-commit push. The honest summary is that 358 unverified commits met CI
+for the first time.
+
+### Measured before and after, in a clean worktree at `5f98ed0c`
+
+| Suite | Baseline at `5f98ed0c` | After this pass |
+|---|---|---|
+| `explorers-earth` ESLint | 251 errors / 1858 warnings | **0 errors** / 1858 warnings |
+| tunes `server/test` (286 files) | 24 failed files / 96 tests | **7 failed files / 84 tests** |
+| root `scripts/` seal tests | 29 failing | **2 failing** |
+| `explorers-earth` unit lane | 390 files / 5322 tests | unchanged, all pass |
+| Playwright lanes (5) | 2 failing, 3 green | **all 5 green** |
+
+The 7 remaining tunes files and the 2 remaining seals are all present in the baseline's
+failures; `comm` against the baseline list shows **no file failing here that was not already
+failing there**. The 7 are local shell artifacts, not code: Git Bash shadows `whoami.exe`
+with POSIX `whoami`, `npm_execpath` is unset outside `npm test`, and a Windows SID lookup is
+unavailable. CI is the arbiter for those.
+
+### Three regressions of my own, found and removed
+
+Diffing against the baseline rather than trusting "everything red is pre-existing" caught
+three self-inflicted failures: explanatory comments placed inside a `run: |` block are script
+content, not comments, so `music-migration-contract`, `music-image-ci-tests` and
+`music-reconciliation-workflow` saw six commands where they pin exactly two. Fixed by moving
+the install into its own step, leaving those three deliberate pins untouched.
+
+Two earlier lint fixes also edited protected source and broke frozen-source seals
+(`({}, info)` → `(_, info)`, and removing a `no-useless-catch` clause that is part of a frozen
+printed callback body). Both reverted; where a seal and a cosmetic lint fix conflict, the
+seal wins.
+
+### The one genuine product bug
+
+`prepareAppWorkerCustody` queried `pg_shdepend` — a cluster-shared catalog — without its
+`dbid` column, so once migration `0056` had created its GRANTs and function ownerships in one
+database, every later database in the same cluster refused with `Unsafe Apps worker existing
+object authority`. The `database` lane creates a fresh database per test, hence 15 files and
+26 tests aborting at `migrate.ts:260`. Proven against a disposable `postgres:15-alpine`
+matching the CI service: **26/26 pass with the predicate, 26/26 fail with it reverted**.
+`dbid = 0` stays admitted so shared-object authority still fails closed.
+
+Fixing it unmasked a second cause in the same lane that the guard had been hiding by aborting
+every case first: the 0035-to-analytics case compared `SELECT *` captured below migration 0036
+against the table after the chain reached 0056, where `0054` adds `places_last_mutation_xid`.
+
+Correction to this document: **Docker IS available in this environment.** The Wave 3 section
+above says otherwise, which is why the PG proof had been considered impossible.
+
+### Still not claimed
+
+`platform-fixture`'s five canonical probes have **never executed on this branch**. At
+`622f6893` the job reached `phase=ingress-check`; at `5f98ed0c` it died earlier at
+`phase=service-build`, because `tunes/shared/explorersPublicPeopleSectorContract.ts` was
+missing from the generator's entry points, from both generated `.dockerignore` allow-lists
+(`tunes/shared/*` is default-deny) and from the Dockerfile COPY list. That is repaired and
+guarded by a new root-`scripts/` test, but **restoring the build says nothing about whether
+the probes pass**. If they fail, that is Wave 3's first real result. A build that merely gets
+further is not a passing fixture.
+
+Also unchanged: the specs under `e2e/replatform/` are executed by no PR or push job — only by
+`frontend-e2e-qualification.yml`, on a schedule — so that work remains CI-unverified by
+design, which is equally why it cannot have broken CI.
+
+### Follow-ups recorded, not silently absorbed
+
+1. `PublicGuideDetailPage.tsx:61` drops an **entire guide section** when a single place fails
+   validation. Per-place rejection is deliberate and unit-tested; the whole-section
+   amplification probably is not. Test fixture fixed; production behaviour untouched.
+2. Two `no-unsafe-finally` sites in `apps.spec.ts` are genuinely unguarded — a cleanup failure
+   can replace an in-flight failure. Annotated; changing that control flow needs the Apps
+   protected lane, which no CI job runs.
+3. The fixture-guard bootstrap budget was raised 1000ms → 5000ms **and its companion
+   assertion and title updated to match**, on an explicit owner decision. It is a latency
+   bound, not one of the five protected probes.
