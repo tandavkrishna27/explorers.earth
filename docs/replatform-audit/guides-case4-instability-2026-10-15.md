@@ -42,9 +42,12 @@ times), then failed again.
 - **Byte budgets.** `JOINT_PAGE_BYTES` 4MB, `JOINT_TOTAL_BYTES` 64MB, `JOINT_REQUESTS`
   1000, against a fan-out of a few hundred KB over ~18 requests.
 - **Snapshot expiry.** `expires: now+600000` (10 minutes); the case runs in seconds.
-- **`completeCategory` abandonment.** A run with the fail-code probe in place recorded
-  `error: null, consoleLines: []` for the owner-list phase, so neither the 401 branch
-  nor the mid-stream validation path fired.
+- **`completeCategory` abandonment — NOT eliminated in general.** One run with the
+  fail-code probe recorded `error: null, consoleLines: []` for the owner-list phase, so
+  neither the 401 branch nor the validation path fired IN THAT RUN. But that run passed
+  the owner-list phase, so it did not reproduce the category-reads failure. The 2-native-
+  failure signature at `category-reads` therefore remains UNEXPLAINED; the probe simply
+  did not catch it.
 
 ## The oracle semantics that matter here
 
