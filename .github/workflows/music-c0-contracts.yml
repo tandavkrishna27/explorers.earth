@@ -101,6 +101,10 @@ jobs:
           # preflight step above) instead of a committed personal path, and refuses to skip
           # when this is set -- so this lane cannot go green unless those cases really ran.
           LIFECYCLE_BROWSER_GATE_REQUIRED: "1"
+          # Apps private custody is Windows ACL/path semantics end to end, so it skips off
+          # win32 and would otherwise run in no CI job at all. Named below with this flag set
+          # so the Windows lane is where it actually executes.
+          APPS_PRIVATE_CUSTODY_GATE_REQUIRED: "1"
         run: >-
           npm test --prefix tunes -- --run
           server/test/contracts/music-reconciliation-workflow.test.ts
@@ -108,6 +112,7 @@ jobs:
           server/test/contracts/music-openapi-contract.test.ts
           server/test/contracts/guides-bootstrap-contract.test.ts
           server/test/contracts/lifecycle-browser-support.test.ts
+          server/test/contracts/apps-private-custody.test.ts
           server/test/contracts/public-parity-windows-job.test.ts
           server/test/contracts/music-local-state.test.ts
           server/test/contracts/music-cli-contract-authority.test.ts

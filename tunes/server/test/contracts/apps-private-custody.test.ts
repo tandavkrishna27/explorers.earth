@@ -9,7 +9,25 @@ import {registerAppsPrivateDirectory,inspectAppsPrivateDescendant} from '../../.
 const root='C:\\Temp\\explorers-profile-e2e-'+ 'a'.repeat(32), child=path.join(root,'owned-media'),file=path.join(child,'object');
 function add(p:string,directory:boolean,protectedAcl=true,inherited=false){fake.stats.set(p,{dev:1n,ino:BigInt(fake.stats.size+1),uid:0n,mode:0n,nlink:1n,isSymbolicLink:()=>false,isDirectory:()=>directory,isFile:()=>!directory});fake.rows.set(p,{path:p,owner:true,protected:protectedAcl,hash:'a'.repeat(64),rules:['current','system','admin'].map(principal=>({principal,allow:true,full:true,inherited,inheritance:directory?3:0,propagation:0}))});}
 beforeEach(()=>{fake.rows.clear();fake.stats.clear();fake.calls=0;fake.alias='';fake.failure=false;fake.hostile=false;fake.getters=0;for(let p=root;;p=path.dirname(p)){add(p,true);if(p===path.dirname(p))break;}add(child,true);add(file,false,false,true);add(String.raw`C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`,false);});
-describe('actual native privacy inspection closure with complete metadata/FS adapters',()=>{
+// HARNESS GATE (not a product assertion). This suite is win32-semantics-bound end to end, and
+// not merely in its fixtures: `node:os.tmpdir` is mocked to 'C:\Temp', every fixture path is a
+// C: drive path, and the module under test -- scripts/apps-private-custody.ts -- itself calls
+// path.isAbsolute, path.resolve(target)===target, path.sep and path.dirname against those
+// inputs. On Linux `path.isAbsolute('C:\Temp\x')` is false, so the production guard refuses by
+// design and 15 of 16 cases fail for a reason that is not a product defect. Injecting
+// path.win32 into the transpiled closure (which this file also does, correctly) cannot fix
+// that, because the imported production module resolves its own node:path.
+// Unlike the public-parity controller, platform-neutrality is NOT available here: only a
+// literal was Windows-specific there, whereas the subject here is Windows ACL custody.
+// So: loud, reasoned skip off win32, and the Windows CI lane names this file with
+// APPS_PRIVATE_CUSTODY_GATE_REQUIRED set, so it cannot silently stop running.
+const appsCustodyUnavailable = process.platform !== 'win32'
+ ? `host platform is ${process.platform}, and Apps private custody is Windows ACL/path semantics end to end`
+ : undefined;
+if(appsCustodyUnavailable&&process.env.APPS_PRIVATE_CUSTODY_GATE_REQUIRED)throw new Error(`APPS_PRIVATE_CUSTODY_GATE_REQUIRED is set, so this gate must execute, but ${appsCustodyUnavailable}`);
+if(appsCustodyUnavailable)console.warn(`[SKIP] apps-private-custody.test.ts: ${appsCustodyUnavailable}. Harness gate unavailable - this is NOT a passing Apps privacy contract and NOT a product defect.`);
+const appsCustodySuite = appsCustodyUnavailable ? describe.skip : describe;
+appsCustodySuite(`actual native privacy inspection closure with complete metadata/FS adapters${appsCustodyUnavailable?` [SKIPPED - ${appsCustodyUnavailable}]`:''}`,()=>{
  it('actual closed createDirectory registers root then both strictly inspected children',async()=>{
   const fs=await vi.importActual<typeof import('node:fs')>('node:fs'),source=path.resolve(import.meta.dirname,'../../../scripts/apps-browser-fixture.ts'),ast=ts.createSourceFile(source,fs.readFileSync(source,'utf8'),ts.ScriptTarget.Latest,true);let method:ts.MethodDeclaration|undefined,inspection:ts.FunctionDeclaration|undefined;function find(n:ts.Node){if(ts.isMethodDeclaration(n)&&n.name.getText(ast)==='createDirectory')method=n;if(ts.isFunctionDeclaration(n)&&n.name?.text==='inspect')inspection=n;ts.forEachChild(n,find);}find(ast);
   const printer=ts.createPrinter(),code=ts.transpileModule(`let nativeUnknown=false;const nativeGuard=()=>{},latchUnknown=()=>{nativeUnknown=true;};${printer.printNode(ts.EmitHint.Unspecified,inspection!,ast)};return {${printer.printNode(ts.EmitHint.Unspecified,method!,ast)},unknown:()=>nativeUnknown};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;

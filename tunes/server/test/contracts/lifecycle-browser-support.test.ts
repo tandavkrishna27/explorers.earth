@@ -29,6 +29,13 @@ const pwshUnavailable = ((): string | undefined => {
 if (pwshUnavailable && process.env.LIFECYCLE_BROWSER_GATE_REQUIRED) throw new Error(`LIFECYCLE_BROWSER_GATE_REQUIRED is set, so the native lifecycle cases must execute, but ${pwshUnavailable}`);
 if (pwshUnavailable) console.warn(`[SKIP] lifecycle-browser-support.test.ts native PowerShell cases: ${pwshUnavailable}. Harness gate unavailable - this is NOT a passing lifecycle product contract and NOT a product defect.`);
 const nativeIt = pwshUnavailable ? it.skip : it;
+// A second, narrower gate: a few cases spawn no PowerShell but still assert Windows-only
+// artifacts -- the pinned compiler allowance names `@esbuild/win32-x64`, and the Guides
+// fixture's parent/abort path raises its `service-children` failure label off a native
+// Windows job. Those cannot pass on Linux for reasons that are not product defects.
+const windowsOnly = process.platform !== 'win32' ? `host platform is ${process.platform}, and this case asserts Windows-only native artifacts` : undefined;
+if (windowsOnly) console.warn(`[SKIP] lifecycle-browser-support.test.ts Windows-only cases: ${windowsOnly}. NOT a passing lifecycle product contract and NOT a product defect.`);
+const windowsIt = windowsOnly ? it.skip : it;
 const pwsh = configuredPwsh as string;
 describe('owned lifecycle browser boundary', () => {
     it('locally intercepts the exact current bootstrap typography without widening font authority', () => {
@@ -173,7 +180,7 @@ describe('Guides parent job contract', () => {
         expect(() => createGuidesParentSupervisor({ ...input, custody: [{ kind: 'root' as const, path: 'C:\\', dev: '1', ino: '2' }] }, adapters(events))).toThrow();
         expect(events).toEqual([]);
     });
-    it('imports the real parent through pinned tsImport with zero application effects and only the locked compiler allowance', () => {
+    windowsIt('imports the real parent through pinned tsImport with zero application effects and only the locked compiler allowance', () => {
         const root = fileURLToPath(new URL('../../../../', import.meta.url)).replace(/[\\/]$/, '');
         const probe = fileURLToPath(new URL('./fixtures/guides-parent-import-probe.mjs', import.meta.url));
         const environment = { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH, TEMP: process.env.TEMP, TMP: process.env.TMP, NODE_ENV: 'test' };
@@ -515,7 +522,7 @@ describe('Guides R1 review regressions', () => {
         const literal = `$ErrorActionPreference='Stop'\n. '${script.replaceAll("'", "''")}' -DefinitionsOnly\n${source}`;
         return JSON.parse(execFileSync(pwsh, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(literal, 'utf16le').toString('base64')], {encoding:'utf8',shell:false,windowsHide:true,timeout:30000,maxBuffer:1024*1024,stdio:['ignore','pipe','pipe']}).trim());
     }
-    it('uses the retained owned fixture role with maintenance database postgres in the real production Client configuration', async () => {
+    windowsIt('uses the retained owned fixture role with maintenance database postgres in the real production Client configuration', async () => {
         const configurations: any[] = [], effects: string[] = [];
         vi.resetModules();
         vi.doMock('node:fs', async () => {
