@@ -138,7 +138,8 @@ async function equalMissing(pathname:string,missing:string,persona:PlacesPersona
   expect(foreign.status).toBe(404);expect(absent.status).toBe(404);
   same(normalized(await foreign.json()),normalized(await absent.json()));
 }
-test.beforeEach(async (_,info)=>{manifest=await control('reset',info) as PlacesManifest;});
+// eslint-disable-next-line no-empty-pattern -- the empty fixture pattern is frozen: root scripts/ seal tests assert this spec's exact source text, so `_` breaks them.
+test.beforeEach(async ({},info)=>{manifest=await control('reset',info) as PlacesManifest;});
 
 function recordPublicPages(page:Page,pathname:string,detail:boolean) {
   type RecordedPage={offset:number;limit:number;ids:string[];requestCursor?:string|null;terminal?:boolean;nextCursor?:string|null};

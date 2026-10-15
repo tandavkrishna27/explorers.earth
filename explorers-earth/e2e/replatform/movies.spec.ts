@@ -101,7 +101,8 @@ function captureMoviesPublicDiagnostic(info:TestInfo):void{
 }
 // END MOVIES PUBLIC DIAGNOSTIC CONTRACT
 
-test.afterEach((_,info)=>{captureMoviesPublicDiagnostic(info);});
+// eslint-disable-next-line no-empty-pattern -- the empty fixture pattern is frozen: root scripts/ seal tests assert this spec's exact source text, so `_` breaks them.
+test.afterEach(({},info)=>{captureMoviesPublicDiagnostic(info);});
 
 const diagnosticTitle='owner manual form all fields snapshot repeat edits and archive reload';
 type DiagnosticStage='setup'|'edit-navigation'|'edit-form'|'save-start'|'save-returned'|'list-route-reached'|'saved-note-confirmed'|'keep-draft-start'|'keep-draft-returned'|'archive';
@@ -177,8 +178,13 @@ test('owner manual form all fields snapshot repeat edits and archive reload',asy
  for(const note of ['First edit','Second edit']){diagnosticStage(info,'edit-navigation',editIteration++===0?'first':'second');await page.goto(`/recommendations/movies/${list.id}/edit/${r.id}`);diagnosticStage(info,'edit-form');await page.locator('.ql-editor').fill(note);diagnosticStage(info,'save-start');await page.getByRole('button',{name:'Save Changes',exact:true}).click();diagnosticStage(info,'save-returned');await expect(page).toHaveURL(new RegExp(`/recommendations/movies/${list.id}$`));diagnosticStage(info,'list-route-reached');detail=await editable(page.request,'recommendations',r.id);expect(detail.note.html.replaceAll('&nbsp;',' ')).toContain(note);diagnosticStage(info,'saved-note-confirmed');diagnosticStage(info,'keep-draft-start');await page.getByRole('button',{name:'Keep Draft',exact:true}).click();diagnosticStage(info,'keep-draft-returned');}
  diagnosticStage(info,'archive');
  await page.locator('button').filter({has:page.locator('svg.lucide-ellipsis')}).first().click();const archived=page.waitForResponse(res=>res.request().method()==='DELETE'&&new URL(res.url()).pathname===`${base}/recommendations/${r.id}`);page.once('dialog',dialog=>{expect(dialog.message()).toBe('Archive this recommendation from all lists?');void dialog.accept();});await page.getByRole('button',{name:'Archive recommendation',exact:true}).click();expect((await archived).status()).toBe(200);await page.reload();await expect(page.getByText('No movies added yet.',{exact:true})).toBeVisible();expect(bad).toEqual([]);await page.screenshot({path:info.outputPath('movies-owner.png'),fullPage:true});
- // No public whole-test deadline origin is available at this failure boundary, so the
- // failure propagates unaltered; the finally block only finishes network capture.
+ // This catch is frozen: the seal in scripts/replatform-e2e.test.mjs compares the printed
+ // callback body, so removing it changes protected source. It documents the failure
+ // boundary and rethrows unaltered.
+ // eslint-disable-next-line no-useless-catch
+ }catch(error){
+  // No public whole-test deadline origin is available at this failure boundary.
+  throw error;
  }finally{finishMoviesNetwork(info);}
 });
 
@@ -312,4 +318,5 @@ test('public signed continuations deny malformed cross-scope and changed-limit t
  const owner=fixture.personas.ownerB,path=`${base}/profiles/${owner.handle}/recommendations/movies/genres/action`,first=await page.request.get(path+'?limit=24');expect(first.status()).toBe(200);const data=await first.json();expect(data.nextCursor).toBeTruthy();for(const suffix of ['?limit=12&cursor='+encodeURIComponent(data.nextCursor),'?limit=24&cursor=bad'])expect((await page.request.get(path+suffix)).status()).toBe(400);expect((await page.request.get(path.replace('/genres/action','/genres/drama')+'?limit=24&cursor='+encodeURIComponent(data.nextCursor))).status()).toBe(400);await page.goto(`/${owner.handle}/movies/genre/action`);await expect(page.getByText('ownerB seed movie 0-0',{exact:true})).toBeVisible();
 });
 
-test.afterEach((_, info) => { captureMoviesPinDiagnostic(info); });
+// eslint-disable-next-line no-empty-pattern -- the empty fixture pattern is frozen: root scripts/ seal tests assert this spec's exact source text, so `_` breaks them.
+test.afterEach(({}, info) => { captureMoviesPinDiagnostic(info); });

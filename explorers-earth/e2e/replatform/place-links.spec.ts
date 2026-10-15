@@ -243,7 +243,8 @@ async function equalMissing(pathname:string,missing:string,persona:PlacesPersona
   expect(foreign.status).toBe(404);expect(absent.status).toBe(404);
   same(normalized(await foreign.json()),normalized(await absent.json()));
 }
-test.beforeEach(async (_,info)=>{manifest=await control('reset',info) as PlacesManifest;});
+// eslint-disable-next-line no-empty-pattern -- the empty fixture pattern is frozen: root scripts/ seal tests assert this spec's exact source text, so `_` breaks them.
+test.beforeEach(async ({},info)=>{manifest=await control('reset',info) as PlacesManifest;});
 
 function child(category:'products'|'people') {
   return manifest.collections.find(c=>c.accountId===manifest.personas.ownerA.accountId && c.category===category && c.title===`Owned ${category==='products'?'Products':'People'}`)!;
@@ -604,4 +605,5 @@ test('Place links: stale and foreign link commands preserve both lists',async ({
   transport.assertExpected();expect(transport.observations.length).toBe(0);
 });
 
-test.afterEach((_,info)=>{finalizePlaceLinksAtomicDiagnostic(info);capturePlaceLinksAtomicDiagnostic(info);});
+// eslint-disable-next-line no-empty-pattern -- the empty fixture pattern is frozen: root scripts/ seal tests assert this spec's exact source text, so `_` breaks them.
+test.afterEach(({},info)=>{finalizePlaceLinksAtomicDiagnostic(info);capturePlaceLinksAtomicDiagnostic(info);});

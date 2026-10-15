@@ -389,7 +389,8 @@ function observeSettingsReadiness(page: Page, info: TestInfo) {
 }
 // END SETTINGS READINESS DIAGNOSTIC
 
-test.afterEach((_, info) => {
+// eslint-disable-next-line no-empty-pattern -- the empty fixture pattern is frozen: root scripts/ seal tests assert this spec's exact source text, so `_` breaks them.
+test.afterEach(({}, info) => {
   captureProfileDiagnostic(info);
   nativeBoundaryObservers.get(info)?.finish(info);
   captureProfileSecondSave(info);
