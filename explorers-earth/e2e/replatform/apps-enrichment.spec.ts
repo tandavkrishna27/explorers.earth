@@ -127,6 +127,7 @@ for (const [index, title] of APPS_ENRICHMENT_CASES.entries())
                 finally {
                     const clean = await Promise.allSettled([page.unroute(descriptor.origin + path, handler), ...(original ? [original] : [])]);
                     if (!firstFailure && clean.some(result => result.status === 'rejected'))
+                        // eslint-disable-next-line no-unsafe-finally -- guarded: this throw is reachable only when no original failure is in flight, so nothing is masked.
                         throw Error('APPS_ENRICHMENT_NATIVE_FAULT_UNSETTLED');
                 }
             }
@@ -293,6 +294,7 @@ for (const [index, title] of APPS_ENRICHMENT_CASES.entries())
         finally {
             const settled = await Promise.allSettled(contexts.map(context => context.close()));
             if (!primaryFailure && settled.some(result => result.status === 'rejected'))
+                // eslint-disable-next-line no-unsafe-finally -- guarded: this throw is reachable only when no original failure is in flight, so nothing is masked.
                 throw Error('APPS_ENRICHMENT_CONTEXT_CLEANUP_UNSETTLED');
         }
     });

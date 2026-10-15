@@ -86,6 +86,7 @@ test(GUIDES_CASES[3],async({browser},info)=>{
   await settleGuidesBootstrap(page);await harness.closeContext(owner);owner=undefined;await harness.closeContext(guest);guest=undefined;await harness.retire();completed=true;
  }catch(error){harness.captureFailure(error);if(harness.capturedFailure()?.stage==='initial-detail'){try{const capsule=await pageDiagnostic?.sealFailure();if(capsule)harness.capturePageFailure(capsule);}catch{/* Passive refusal preserves the original failure. */}finally{try{harness.capturePageSeal(pageDiagnostic?.sealOutcome()??'unattached');}catch{/* Passive outcome refusal preserves the original failure. */}}}throw error;}finally{
   pageDiagnostic?.detach();
+  // eslint-disable-next-line no-unsafe-finally -- containment-first, deliberate: on the failure path a cleanup failure raises a containment error in place of the in-flight failure, because a leaked protected fixture context is the more severe condition.
   if(!completed){const closed=await Promise.allSettled([owner,guest].filter((c):c is BrowserContext=>!!c).map(c=>harness.closeContext(c)));await harness.fail();if(closed.some(r=>r.status==='rejected'))throw Error('Guides source case containment failed');}
  }
 });
@@ -273,6 +274,7 @@ test(GUIDES_CASES[1],async({browser},info)=>{
    await page.getByRole('button',{name:'Edit Journey Route',exact:true}).click();const journey=page.getByRole('heading',{level:2,name:'Edit Journey Route',exact:true}).locator('../../../..'),middle=journey.getByText('वाराणसी café',{exact:true}).locator('../../..');await expect(middle).toHaveCount(1);await middle.getByRole('button').last().click();await middle.getByRole('button',{name:'Set date',exact:true}).click();await journey.locator('input[type="date"]').fill('2026-10-12');expected=structuredClone(current);if(!('isMultiCity' in expected.details.place))throw Error('Journey fixture missing');expected.details.place.intermediateCities[0].hasDate=true;expected.details.place.intermediateCities[0].date='2026-10-12';detailsAck=detailsAcknowledgement(page,guide.id,{revision:current.revision,details:expected.details});await journey.getByRole('button',{name:'Save Changes',exact:true}).click();await expect(page.getByRole('heading',{name:'Edit Journey Route',exact:true})).toHaveCount(0);await finishNative(await detailsAck,expected);await page.getByRole('button',{name:'Edit Journey Route',exact:true}).click();await expect(page.locator('input[type="date"]')).toHaveValue('2026-10-12');await page.getByRole('heading',{name:'Edit Journey Route',exact:true}).locator('../../../..').getByRole('button',{name:'Cancel',exact:true}).click();expect(keys.size).toBe(7);
    try{harness.clearProducerStage('journey-edit');}catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}
   });await settleGuidesBootstrap(page);await harness.closeContext(owner);owner=undefined;await harness.retire();completed=true;
+ // eslint-disable-next-line no-unsafe-finally -- containment-first, deliberate: on the failure path a cleanup failure raises a containment error in place of the in-flight failure, because a leaked protected fixture context is the more severe condition.
  }catch(error){harness.captureFailure(error);throw error;}finally{transportPageDiagnostic?.detach();if(!completed){const closed=await Promise.allSettled([owner].filter((c):c is BrowserContext=>!!c).map(c=>harness.closeContext(c)));await harness.fail();if(closed.some(r=>r.status==='rejected'))throw Error('Guides source case containment failed');}}
 });
 
@@ -302,6 +304,7 @@ test(GUIDES_CASES[2],async({browser},info)=>{
    expect(await harness.observe()).toEqual(unchanged);
   });
   await settleGuidesBootstrap(page);await settleGuidesBootstrap(other);await harness.closeContext(first);first=undefined;await harness.closeContext(second);second=undefined;await harness.retire();completed=true;
+ // eslint-disable-next-line no-unsafe-finally -- containment-first, deliberate: on the failure path a cleanup failure raises a containment error in place of the in-flight failure, because a leaked protected fixture context is the more severe condition.
  }catch(error){harness.captureFailure(error);throw error;}finally{if(!completed){const closed=await Promise.allSettled([first,second].filter((c):c is BrowserContext=>!!c).map(c=>harness.closeContext(c)));await harness.fail();if(closed.some(r=>r.status==='rejected'))throw Error('Guides source case containment failed');}}
 });
 
@@ -395,6 +398,7 @@ test(GUIDES_CASES[4],async({browser},info)=>{
    expect(await harness.observe()).toEqual(baseline);
    try{harness.clearTraversalOperation('final-observation');}catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}
   });await settleGuidesBootstrap(page);await harness.closeContext(owner);owner=undefined;await harness.closeContext(guest);guest=undefined;await harness.retire();completed=true;
+ // eslint-disable-next-line no-unsafe-finally -- containment-first, deliberate: on the failure path a cleanup failure raises a containment error in place of the in-flight failure, because a leaked protected fixture context is the more severe condition.
  }catch(error){harness.captureFailure(error);throw error;}finally{if(!completed){const closed=await Promise.allSettled([owner,guest].filter((c):c is BrowserContext=>!!c).map(c=>harness.closeContext(c)));await harness.fail();if(closed.some(r=>r.status==='rejected'))throw Error('Guides source case containment failed');}}
 });
 
@@ -434,6 +438,7 @@ test(GUIDES_CASES[0],async({browser},info)=>{
    const reloaded=original('GET',path=>path===`${base}/collections/${collection.id}/guide`);await reloadGuides(page);expect(guideAggregateDtoSchema.parse((await browserBody(await reloaded)).guide)).toEqual(guide);await expect(page.getByRole('heading',{level:1,name:title,exact:true})).toBeVisible();await expect(page.getByText(description,{exact:true})).toBeVisible();expect(await harness.observe()).toEqual(after);
    await page.getByRole('button',{name:'Edit Guide',exact:true}).click();await expect(page.getByPlaceholder('Search for a location',{exact:true})).toHaveValue('कोलकाता');await expect(page.getByRole('combobox')).toHaveValue('Itinerary');await page.getByRole('button',{name:'Next',exact:true}).click();for(const category of categories)await expect(page.getByRole('button',{name:`Remove ${category}`,exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Remove October',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'3 Days',exact:true})).toHaveClass(/bg-dashboard-accent/);await page.getByPlaceholder('Select budget type...',{exact:true}).click();await page.getByRole('button',{name:'Budget',exact:true}).click();await page.getByRole('button',{name:'Next',exact:true}).click();await expect(page.getByPlaceholder('Enter guide title',{exact:true})).toHaveValue(title);await expect(page.locator('[contenteditable="true"]')).toHaveText(description);expect(await harness.observe()).toEqual(after);
   });await settleGuidesBootstrap(page);await harness.closeContext(owner);owner=undefined;await harness.retire();completed=true;
+ // eslint-disable-next-line no-unsafe-finally -- containment-first, deliberate: on the failure path a cleanup failure raises a containment error in place of the in-flight failure, because a leaked protected fixture context is the more severe condition.
  }catch(error){harness.captureFailure(error);throw error;}finally{if(!completed){const closed=await Promise.allSettled([owner].filter((c):c is BrowserContext=>!!c).map(c=>harness.closeContext(c)));await harness.fail();if(closed.some(r=>r.status==='rejected'))throw Error('Guides creation containment failed');}}
 });
 
@@ -484,6 +489,7 @@ test(GUIDES_CASES[5],async({browser},info)=>{
  }finally{if(failure)await failure.settleHandlers();try{await waiters.finish(!submissionComplete);}finally{if(failure)await failure.close();}}
  }
  });await settleGuidesBootstrap(page);await harness.closeContext(owner);owner=undefined;if(guest){await harness.closeContext(guest);guest=undefined;}await harness.retire();completed=true;
+ // eslint-disable-next-line no-unsafe-finally -- containment-first, deliberate: on the failure path a cleanup failure raises a containment error in place of the in-flight failure, because a leaked protected fixture context is the more severe condition.
  }catch(error){harness.captureFailure(error);throw error;}finally{if(!completed){const closed=await Promise.allSettled([owner,guest].filter((c):c is BrowserContext=>!!c).map(c=>harness.closeContext(c)));await harness.fail();if(closed.some(r=>r.status==='rejected'))throw Error('Guides cover containment failed');}}
 });
 
@@ -564,6 +570,7 @@ test(GUIDES_CASES[6],async({browser},info)=>{
  await consume(await guest.request.get(`${base}/profiles/${manifest.personas.ownerA.handle}/recommendations/guides/${target.slug}`),async r=>{expect(r.status()).toBe(200);const body=await r.json();expect(body.guides).toHaveLength(1);expect(body.guides[0].documentId).toBe(target.id);expect(body.guides[0].guide_sections[0]).toEqual({documentId:sectionId,Title:section.title,Sequence:1,Description:section.description,Timeline:blocks.timeline,Transport:blocks.transport,Stay:blocks.stay,Recommendation_Activity:blocks.activities,Budget:blocks.budget,Map_Details:blocks.mapDetails,Packing_List:blocks.packingList.items,Pre_Tasks:blocks.preTasks.items,Section_tags:blocks.tags});});
  expect(await harness.observe()).toEqual(after);expect(counts).toEqual(Object.fromEntries([...Object.values(GUIDES_PROVIDER_PATHS).map(path=>[`GET ${path}`,1]),[`POST ${base}/media`,1],[`PATCH ${base}/collections/${target.id}/guide/sections/${sectionId}`,1]]));native.off('request',onRequest);
  });await settleGuidesBootstrap(native);await custody.finish();for(const context of [...contexts])await close(context);await harness.retire();completed=true;
+ // eslint-disable-next-line no-unsafe-finally -- containment-first, deliberate: on the failure path a cleanup failure raises a containment error in place of the in-flight failure, because a leaked protected fixture context is the more severe condition.
  }catch(error){harness.captureFailure(error);throw error;}finally{if(!completed){const closed=await Promise.allSettled([...contexts].map(close));try{if(page)custody?.own(Promise.all([...guidesBootstraps.get(page)!.records.values()].map(record=>record.work)));await custody?.settleFailure();}finally{await harness.fail();}if(closed.some(r=>r.status==='rejected'))throw Error('Guides photo import containment failed');}}
 });
 test(GUIDES_CASES[7],async({browser},info)=>{
@@ -588,5 +595,6 @@ test(GUIDES_CASES[7],async({browser},info)=>{
  // ancestor withdrawal and restoration use the original owner session authority.
  await restoreAccount({publicProfile:false});await cold(false,false,[]);await restoreAccount({publicProfile:true});await cold(true,true,[a.id,b.id]);
  });await settleGuidesBootstrap(page);await custody.finish();for(const context of [...contexts])await close(context);await harness.retire();completed=true;
+ // eslint-disable-next-line no-unsafe-finally -- containment-first, deliberate: on the failure path a cleanup failure raises a containment error in place of the in-flight failure, because a leaked protected fixture context is the more severe condition.
  }catch(error){harness.captureFailure(error);throw error;}finally{if(!completed){const closed=await Promise.allSettled([...contexts].map(close));try{if(publicationPage)custody?.own(Promise.all([...guidesBootstraps.get(publicationPage)!.records.values()].map(record=>record.work)));await custody?.settleFailure();}finally{await harness.fail();}if(closed.some(r=>r.status==='rejected'))throw Error('Guides publication containment failed');}}
 });

@@ -148,7 +148,12 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
   }, [openKebabMenuId]);
 
   // Explicitly accept the entered label; no provider identity or coordinates are inferred.
-  const useEnteredLocation = (value: string, select: (place: google.maps.places.PlaceResult) => void) => {
+  // Renamed from `useEnteredLocation`: this is a plain event handler -- it validates the
+  // typed location and calls `select` -- and calls no hooks. The `use` prefix made
+  // react-hooks/rules-of-hooks treat it as a hook and (correctly, given the name) reject
+  // its five call sites inside callbacks. Renaming fixes the lie; no render behaviour
+  // changes, and no hook order is touched.
+  const applyEnteredLocation = (value: string, select: (place: google.maps.places.PlaceResult) => void) => {
     const label = value.trim();
     // eslint-disable-next-line no-control-regex -- deliberate input validation: this guard exists to REFUSE control characters, so the pattern must name them.
     if (!label || label.length > 500 || /[\u0000-\u001f\u007f]/.test(value) || /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(value)) {
@@ -414,7 +419,7 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
               />
               <button
                 type="button"
-                onClick={() => useEnteredLocation(locationDisplayValue, handlePlaceSelect)}
+                onClick={() => applyEnteredLocation(locationDisplayValue, handlePlaceSelect)}
                 className="mt-2 text-sm font-poppins text-dashboard-accent hover:underline"
               >
                 Use entered location
@@ -446,7 +451,7 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
                 />
               <button
                 type="button"
-                onClick={() => useEnteredLocation(fromLocationDisplayValue, handleFromPlaceSelect)}
+                onClick={() => applyEnteredLocation(fromLocationDisplayValue, handleFromPlaceSelect)}
                 className="mt-2 text-sm font-poppins text-dashboard-accent hover:underline"
               >
                 Use entered location
@@ -476,7 +481,7 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
                 />
               <button
                 type="button"
-                onClick={() => useEnteredLocation(toLocationDisplayValue, handleToPlaceSelect)}
+                onClick={() => applyEnteredLocation(toLocationDisplayValue, handleToPlaceSelect)}
                 className="mt-2 text-sm font-poppins text-dashboard-accent hover:underline"
               >
                 Use entered location
@@ -579,7 +584,7 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
                               />
               <button
                 type="button"
-                onClick={() => useEnteredLocation(editingCityDisplay, (place) => handleUpdateIntermediateCity(city.id, place))}
+                onClick={() => applyEnteredLocation(editingCityDisplay, (place) => handleUpdateIntermediateCity(city.id, place))}
                 className="mt-2 text-sm font-poppins text-dashboard-accent hover:underline"
               >
                 Use entered location
@@ -729,7 +734,7 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
                 />
               <button
                 type="button"
-                onClick={() => useEnteredLocation(newIntermediateCityDisplay, handleAddIntermediateCity)}
+                onClick={() => applyEnteredLocation(newIntermediateCityDisplay, handleAddIntermediateCity)}
                 className="mt-2 text-sm font-poppins text-dashboard-accent hover:underline"
               >
                 Use entered location

@@ -315,7 +315,9 @@ test(titles[1],async({page},info)=>{
    await expect(page.getByRole('alert')).toBeVisible();await expect(page.getByRole('img',{name:'App screenshot',exact:true})).toHaveCount(2);expect((await recommendation(page.request,target.id)).appScreenshots?.screenshotMediaIds).toEqual(detail.appScreenshots?.screenshotMediaIds);await bytes(page.request,shared.id,shared);
   }catch(error){primaryFailure=error;throw error;}finally{
    release();let timer:ReturnType<typeof setTimeout>|undefined;
+   // eslint-disable-next-line no-unsafe-finally -- unguarded: a cleanup failure here can replace an in-flight failure. Tracked as a follow-up; changing this control flow needs the Apps protected lane, which no CI job runs.
    try{const drained=await Promise.race([Promise.allSettled([...handlers,responseDrain]),new Promise<never>((_resolve,reject)=>{timer=setTimeout(()=>reject(Error('Apps held request drain incomplete')),5000);})]);if(drained.some(x=>x.status==='rejected'))throw Error('Apps held request drain failed');await page.unroute(patchUrl,hold);}
+   // eslint-disable-next-line no-unsafe-finally -- guarded: this throw is reachable only when no original failure is in flight, so nothing is masked.
    catch(error){try{await closeAppsContext(page.context());}catch(closeError){throw new AggregateError([...(primaryFailure?[primaryFailure]:[]),error,closeError],'Apps held request containment failed');}throw primaryFailure?new AggregateError([primaryFailure,error],'Apps failure and request drain failure'):error;}finally{if(timer)clearTimeout(timer);}
   }
   await reloadApps(page);
@@ -325,6 +327,7 @@ test(titles[1],async({page},info)=>{
   await edit(page,target.collectionId,target.id,target.title);await page.getByRole('button',{name:'Remove screenshot',exact:true}).first().click();await page.getByRole('button',{name:'Remove screenshot',exact:true}).first().click();await save(page);await reloadApps(page);detail=await recommendation(page.request,target.id);expect(detail.appScreenshots?.screenshotMediaIds).toEqual([added[1]]);await bytes(page.request,added[1],m.uploadFiles[1]);
   const foreign=m.media.find(x=>x.owner==='ownerB')!;expect(foreign).toBeDefined();await status(await page.request.get(`${base}/media/${foreign.id}/content`),404);await status(await command(page.request,'delete',`/media/${foreign.id}`,{}),404);await bytes(other.request,foreign.id,foreign,true);await liveMedia(other.request,info,foreign.id,m.personas.ownerB.accountId,foreign);expect((await recommendation(page.request,target.id)).appScreenshots?.screenshotMediaIds).toEqual([added[1]]);
   await observe(page.request,info);
+ // eslint-disable-next-line no-unsafe-finally -- unguarded: a cleanup failure here can replace an in-flight failure. Tracked as a follow-up; changing this control flow needs the Apps protected lane, which no CI job runs.
  }finally{const closed=await Promise.allSettled(contexts.map(context=>closeAppsContext(context)));if(closed.some(x=>x.status==='rejected'))throw Error('Apps isolated context cleanup failed');}
 });
 

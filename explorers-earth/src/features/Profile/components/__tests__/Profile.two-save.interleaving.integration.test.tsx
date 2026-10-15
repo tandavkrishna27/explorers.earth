@@ -176,6 +176,7 @@ describe("real Profile consecutive save interleaving", () => {
         try { unmount?.(); } catch (cleanupError) { cleanupFailure ??= cleanupError; }
         try { client.clear(); } catch (cleanupError) { cleanupFailure ??= cleanupError; }
         // The original assertion remains the reported failure if cleanup also errs.
+        // eslint-disable-next-line no-unsafe-finally -- guarded: this throw is reachable only when no original failure is in flight, so nothing is masked.
         if (!assertionFailed && cleanupFailure) throw cleanupFailure;
       }
     },
