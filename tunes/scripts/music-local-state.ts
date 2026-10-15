@@ -73,7 +73,15 @@ async function privateHelper(operation: string, file?: string, input?: string): 
   // killed child from a helper that refused. Operation name and exit code are metadata, not
   // credentials; the child's stdout and stderr are still never surfaced.
   try {
-    if (result.exitCode !== 0) throw new Error(`helper '${operation}' exited ${result.exitCode}`);
+    if (result.exitCode !== 0) {
+      // The helper writes {ok:false,reason} to stdout AND exits non-zero, so read the reason
+      // before refusing. Checking the status first was right -- it stopped a helper failure
+      // reading as a JSON SyntaxError -- but on its own it then hid the reason, which is the
+      // fact worth having.
+      let reason = 'no reason supplied';
+      try { const reported: unknown = JSON.parse(result.stdout); if (reported && typeof reported === 'object' && typeof (reported as { reason?: unknown }).reason === 'string') reason = (reported as { reason: string }).reason; } catch { /* stdout was not JSON; the exit status below is all we have. */ }
+      throw new Error(`helper '${operation}' exited ${result.exitCode}: ${reason}`);
+    }
     if (!result.stdout) throw new Error(`helper '${operation}' produced no output`);
     const value = JSON.parse(result.stdout);
     if (value.ok !== true) throw new Error(`helper '${operation}' did not report ok: ${typeof value.reason === 'string' ? value.reason : 'no reason supplied'}`);
