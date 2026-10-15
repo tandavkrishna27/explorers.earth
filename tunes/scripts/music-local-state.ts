@@ -67,7 +67,18 @@ async function privateHelper(operation: string, file?: string, input?: string): 
   if (process.platform !== 'win32') throw new Error('LOCAL_MUSIC_PLATFORM_UNSUPPORTED');
   const helper = path.resolve(import.meta.dirname, 'music-local-private-files.ps1');
   const result = await runLocalProcess('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', helper, operation, ...(file ? [file] : [])], input);
-  try { const value = JSON.parse(result.stdout); if (result.exitCode !== 0 || value.ok !== true) throw new Error(); return value; }
+  // Check the exit status BEFORE parsing. Parsing first turned every helper failure into a
+  // generic `SyntaxError: Unexpected end of JSON input` -- which is exactly what CI reported
+  // once the cause was attached -- and discarded the exit code, the one fact that separates a
+  // killed child from a helper that refused. Operation name and exit code are metadata, not
+  // credentials; the child's stdout and stderr are still never surfaced.
+  try {
+    if (result.exitCode !== 0) throw new Error(`helper '${operation}' exited ${result.exitCode}`);
+    if (!result.stdout) throw new Error(`helper '${operation}' produced no output`);
+    const value = JSON.parse(result.stdout);
+    if (value.ok !== true) throw new Error(`helper '${operation}' did not report ok`);
+    return value;
+  }
   catch (cause) { throw new Error('LOCAL_MUSIC_PRIVATE_FILE_REFUSED', { cause }); }
 }
 export async function localMusicOsIdentity(): Promise<LocalOsIdentity> {
