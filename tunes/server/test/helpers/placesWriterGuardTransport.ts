@@ -41,7 +41,11 @@ export function createWriterGuardTransport(options:Options){
  function bootstrap(install:()=>void=()=>{}){
   if(options.collection)return;if(bootstrapped||closed)reject();bootstrapped=true;
   try{validateBinding();const began=now();write(paths[0]!,JSON.stringify({version:1,nonce,kind:'entered'}));install();if(now()-began>=5000)reject();const readyAt=now();write(paths[1]!,JSON.stringify({version:1,nonce,kind:'ready'}));if(now()-began>=5000)reject();ready=true;return readyAt;}
-  catch{closed=true;throw Error('Fixture guard bootstrap');}
+  catch(error){closed=true;// Attach the cause: this catch previously discarded it, so a bootstrap failure in CI
+  // reported only 'Fixture guard bootstrap' and could not be told apart from a
+  // validateBinding refusal, a write failure, or the timing budget. The message is
+  // unchanged, so assertions on it still hold.
+  throw new Error('Fixture guard bootstrap',{cause:error});}
  }
  function admit(caseId:string){if(closed||!ready||!ids.has(caseId))reject();}
  return {bootstrap,admit,failStop,admitted:()=>ready&&!closed};
