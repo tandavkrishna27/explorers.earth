@@ -48,6 +48,17 @@ jobs:
           cache: npm
           cache-dependency-path: tunes/package-lock.json
       - run: npm ci --prefix tunes --legacy-peer-deps
+      # These two installs used to sit below, just above `node --test`. They are needed
+      # HERE: the C0 scope reaches explorers-earth sources transitively through
+      # `server/test/contracts/guides-*.test.ts`, which import the real harness
+      # (`guides-harness-client`) and the real frontend types (`travelModeConfig`). Without
+      # `explorers-earth/node_modules` the typecheck below reports TS2307 for `react`,
+      # `dompurify`, `zod/v3` and `@playwright/test` - errors that read as source defects
+      # but are a missing install. Narrowing the C0 scope instead would mean excluding all
+      # of `explorers-earth/**`, which is most of what those contract tests exist to check.
+      # The `node --test` cases further down need them too; see the comment there.
+      - run: npm ci
+      - run: npm ci --prefix explorers-earth
       - run: npm run music:types:scoped
       - run: npm run music:types:baseline
       # The repository's own script tests - 232 cases that ran on no lane. Only
@@ -59,7 +70,9 @@ jobs:
       # A glob rather than a list, deliberately: a named list is what went stale in the
       # `database` job's pinned selector, and `node --test` accepts patterns.
       #
-      # The three steps above it are the correction to a claim I made when first gating
+      # The root and explorers-earth installs (now near the top of this job, because the
+      # typecheck needs them too) plus the playwright step below are the correction to a
+      # claim I made when first gating
       # this: that no install was needed because "every import is a local sibling module".
       # That is true of the tests' own imports and false of the code they exercise.
       # `snapshotSource` in `replatform-e2e.mjs` hashes `node_modules/.package-lock.json`
@@ -74,8 +87,6 @@ jobs:
       # sets `ignore-scripts`, so the tunes install above already covers it.
       #
       # `git show HEAD:` works on the default shallow checkout, which one case relies on.
-      - run: npm ci
-      - run: npm ci --prefix explorers-earth
       - run: npx --prefix explorers-earth playwright install --with-deps chromium
       - run: node --test "scripts/*.test.mjs" "scripts/*.test.cjs"
 
@@ -109,6 +120,13 @@ jobs:
           cache: npm
           cache-dependency-path: tunes/package-lock.json
       - run: npm ci --prefix tunes --legacy-peer-deps
+      # Several of these contract suites read explorers-earth sources and resolve
+      # `@playwright/test` and a CSS asset out of `explorers-earth/node_modules` at RUNTIME,
+      # not just at typecheck: `public-parity-spec-contract` imports
+      # `public-parity-spec-support`, and `guides-native-diagnostic` requires
+      # `explorers-earth/node_modules/@playwright/test` and
+      # `react-vertical-timeline-component/style.min.css` by path.
+      - run: npm ci --prefix explorers-earth
       # The whole tree, deliberately, and as one argument so this can never go stale.
       #
       # It was `server/test/contracts` alone, which left **79 of 176** tunes unit files in no

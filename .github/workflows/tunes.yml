@@ -105,6 +105,10 @@ jobs:
           STRAPI_ANALYTICS_ACCESS_TOKEN: fixture-analytics-token
         run: |
           npm ci --legacy-peer-deps
+          # This runs the whole tunes tree, including the contract suites that read
+          # explorers-earth sources and resolve @playwright/test and a CSS asset out of
+          # explorers-earth/node_modules.
+          npm ci --prefix ../explorers-earth
           node node_modules/tsx/dist/cli.mjs scripts/music-image-ci-tests.ts
       - name: Verify owned image test cleanup
         if: ${{ always() }}

@@ -62,6 +62,11 @@ jobs:
             tunes/package-lock.json
       - run: npm ci
       - run: npm ci --prefix tunes
+      # Must precede BOTH the Linux contracts run below and `music:types:scoped` at the end
+      # of this job: several C0 contract suites read explorers-earth sources and resolve
+      # `react`, `dompurify`, `zod/v3` and `@playwright/test` out of
+      # `explorers-earth/node_modules`, at runtime as well as at typecheck.
+      - run: npm ci --prefix explorers-earth
       - name: Prove public JSON command on Node 24.21.0
         run: node node_modules/tsx/dist/cli.mjs tunes/scripts/music-cli.ts fixtures:capture --format json
       - if: runner.os == 'Linux'
