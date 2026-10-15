@@ -24,7 +24,7 @@ function retainProfileDiagnostic(info: TestInfo, snapshot: ProfileDiagnosticSnap
   try {
     if (info.errors.some(error => typeof error.message === 'string' && error.message.includes('[profile-diagnostic-v1:'))) return;
     info.errors.push({ message: `[profile-diagnostic-v1:${snapshot.category}|${snapshot.stage}|${snapshot.publishPoll}|${snapshot.hidePoll}]` });
-  } catch {}
+  } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */}
 }
 function captureProfileDiagnostic(info: TestInfo): void {
   try {
@@ -33,7 +33,7 @@ function captureProfileDiagnostic(info: TestInfo): void {
     if (!snapshot) return;
     profileDiagnosticSeen.add(info);
     retainProfileDiagnostic(info, snapshot);
-  } catch {}
+  } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */}
 }
 // END PROFILE DIAGNOSTIC CONTRACT
 
@@ -49,9 +49,9 @@ async function disposeNativeInteraction(info: TestInfo, discardIncomplete = fals
   nativeInteractionHandles.delete(info);
   if (!active) return;
   if (discardIncomplete) nativeInteractions.delete(info);
-  try { await active.observer.evaluate(observer => observer.dispose()); } catch {}
-  try { await active.observer.dispose(); } catch {}
-  try { await active.input?.dispose(); } catch {}
+  try { await active.observer.evaluate(observer => observer.dispose()); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
+  try { await active.observer.dispose(); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
+  try { await active.input?.dispose(); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
 }
 async function observeNativeInteraction(control: ReturnType<Page['getByRole']>, info: TestInfo, category: NativeBoundary['category'], action: NativeBoundary['action'], phase: 'before' | 'after') {
   try {
@@ -80,8 +80,8 @@ async function observeNativeInteraction(control: ReturnType<Page['getByRole']>, 
         });
         nativeInteractionHandles.set(info, { input, observer });
       } catch {
-        try { await observer?.dispose(); } catch {}
-        try { await input.dispose(); } catch {}
+        try { await observer?.dispose(); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
+        try { await input.dispose(); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
         return;
       }
     }
@@ -112,14 +112,14 @@ function observeNativeBoundary(page: Page, origin: string) {
       if (current.request !== 'absent') { current.request = 'uncertain'; current.response = 'uncertain'; }
       else current.request = 'present';
       admitted.set(event, current);
-    } catch {}
+    } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */}
   };
   const outcome = (event: object, value: NativeBoundary['response']) => {
     if (sealed || !current || admitted.get(event) !== current) return;
     if (current.request === 'uncertain' || current.response !== 'none') { current.request = 'uncertain'; current.response = 'uncertain'; }
     else current.response = value;
   };
-  const response = (event: Response) => { try { const status = event.status(); outcome(event.request(), status >= 200 && status < 300 ? '2xx' : status === 409 ? '409' : 'other'); } catch {} };
+  const response = (event: Response) => { try { const status = event.status(); outcome(event.request(), status >= 200 && status < 300 ? '2xx' : status === 409 ? '409' : 'other'); } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */} };
   const failed = (event: Request) => outcome(event, 'transport');
   page.on('request', request); page.on('response', response); page.on('requestfailed', failed);
   const seal = () => {
@@ -135,13 +135,13 @@ function observeNativeBoundary(page: Page, origin: string) {
       seal();
       const interaction = nativeInteractions.get(info);
       if (interaction && profileDiagnosticIdentity(info) && ['failed', 'timedOut', 'interrupted'].includes(info.status ?? '')) {
-        try { info.errors.push({ message: `[profile-native-interaction-v1:${interaction.category}|${interaction.action}|${interaction.beforeChecked}|${interaction.afterChecked}|${interaction.beforePending}|${interaction.afterPending}|${interaction.centerTargetsInput}|${interaction.centerTargetsLabel}|${interaction.changeReceived}]` }); } catch {}
+        try { info.errors.push({ message: `[profile-native-interaction-v1:${interaction.category}|${interaction.action}|${interaction.beforeChecked}|${interaction.afterChecked}|${interaction.beforePending}|${interaction.afterPending}|${interaction.centerTargetsInput}|${interaction.centerTargetsLabel}|${interaction.changeReceived}]` }); } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */}
       }
       const progress = profileDiagnosticStates.get(info);
       const stages = current?.action === 'publish' ? ['publish-click', 'publish-poll', 'published-checked'] : ['hide-click', 'hide-poll', 'hidden-unchecked'];
       if (current && progress?.category === current.category && stages.includes(progress.stage)
         && profileDiagnosticIdentity(info) && ['failed', 'timedOut', 'interrupted'].includes(info.status ?? '')) {
-        try { info.errors.push({ message: `[profile-native-boundary-v1:${current.category}|${current.action}|${current.request}|${current.response}]` }); } catch {}
+        try { info.errors.push({ message: `[profile-native-boundary-v1:${current.category}|${current.action}|${current.request}|${current.response}]` }); } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */}
       }
     },
   };
@@ -156,7 +156,7 @@ function captureProfileSecondSave(info: TestInfo): void {
   try {
     if (marker && ['failed', 'timedOut', 'interrupted'].includes(info.status ?? '')
       && info.errors.some(error => typeof error.message === 'string' && error.message.length > 0 && !/\[[a-z0-9-]+-v\d+:/.test(error.message))) info.errors.push({ message: marker });
-  } catch {}
+  } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */}
 }
 type SecondSaveFlag = '0' | '1' | 'u';
 type SecondSaveStatus = 'absent' | 'pending' | '2xx' | '409' | 'other' | 'transport' | 'u';
@@ -194,10 +194,10 @@ async function observeProfileSecondSave(page: Page, info: TestInfo, origin: stri
       const status = item.status();
       const finite = status >= 200 && status < 300 ? '2xx' : status === 409 ? '409' : 'other';
       if (ordinal === 1) patch1 = finite; else patch2 = finite;
-    } catch {}
+    } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */}
   };
   const failed = (item: Request) => {
-    try { if (!sealed) { if (requests.get(item) === 1) patch1 = 'transport'; else if (requests.get(item) === 2) patch2 = 'transport'; } } catch {}
+    try { if (!sealed) { if (requests.get(item) === 1) patch1 = 'transport'; else if (requests.get(item) === 2) patch2 = 'transport'; } } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */}
   };
   try {
     handle = await page.evaluateHandle(({ firstName, secondName }) => {
@@ -229,12 +229,12 @@ async function observeProfileSecondSave(page: Page, info: TestInfo, origin: stri
     page.on('request', request); page.on('response', response); page.on('requestfailed', failed);
   } catch {
     sealed = true;
-    try { page.off('request', request); } catch {}
-    try { page.off('response', response); } catch {}
-    try { page.off('requestfailed', failed); } catch {}
+    try { page.off('request', request); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
+    try { page.off('response', response); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
+    try { page.off('requestfailed', failed); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
     requests.clear(); firstRevision = undefined;
-    try { await handle?.evaluate(observer => observer.dispose()); } catch {}
-    try { await handle?.dispose(); } catch {}
+    try { await handle?.evaluate(observer => observer.dispose()); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
+    try { await handle?.dispose(); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
     return;
   }
   return {
@@ -242,19 +242,19 @@ async function observeProfileSecondSave(page: Page, info: TestInfo, origin: stri
     async finish(businessFailed: boolean) {
       if (sealed) return;
       sealed = true;
-      try { page.off('request', request); } catch {}
-      try { page.off('response', response); } catch {}
-      try { page.off('requestfailed', failed); } catch {}
+      try { page.off('request', request); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
+      try { page.off('response', response); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
+      try { page.off('requestfailed', failed); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
       try {
         if (businessFailed && phase !== 'first') {
           const unavailable = { editBeforeBusy: 'u', editAfterBusy: 'u', saveBeforeBusy: 'u', saveAfterBusy: 'u', inputAtClick: 'u' };
           const state = await handle?.evaluate(observer => observer.snapshot()).catch(() => unavailable) ?? unavailable;
-          try { profileSecondSavePending.set(info, `[profile-second-save-v1:${phase}|${patch1}|${patch2}|${requestName}|${revisionAdvanced}|u|${state.editBeforeBusy}|${state.editAfterBusy}|${state.saveBeforeBusy}|${state.saveAfterBusy}|${state.inputAtClick}]`); } catch {}
+          try { profileSecondSavePending.set(info, `[profile-second-save-v1:${phase}|${patch1}|${patch2}|${requestName}|${revisionAdvanced}|u|${state.editBeforeBusy}|${state.editAfterBusy}|${state.saveBeforeBusy}|${state.saveAfterBusy}|${state.inputAtClick}]`); } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */}
         }
-      } catch {} finally {
+      } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */} finally {
         requests.clear(); firstRevision = undefined;
-        try { await handle?.evaluate(observer => observer.dispose()); } catch {}
-        try { await handle?.dispose(); } catch {}
+        try { await handle?.evaluate(observer => observer.dispose()); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
+        try { await handle?.dispose(); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
       }
     },
   };
@@ -286,7 +286,7 @@ async function captureProfileOnboarding(page: Page, info: TestInfo): Promise<voi
   try {
     const snapshot = await Promise.race([page.evaluate(profileOnboardingProjection), new Promise<typeof unavailable>(resolve => { timer = setTimeout(() => resolve(unavailable), 900); })]).catch(() => unavailable);
     info.errors.push({ message: `[profile-onboarding-v1:${snapshot.step}|${snapshot.phone}|${snapshot.fieldError}|${snapshot.footer}]` });
-  } catch {} finally { if (timer !== undefined) clearTimeout(timer); }
+  } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */} finally { if (timer !== undefined) clearTimeout(timer); }
 }
 // END PROFILE ONBOARDING DIAGNOSTIC
 
@@ -301,7 +301,7 @@ function captureSettingsReadiness(info: TestInfo): void {
     if (marker && ['failed', 'timedOut', 'interrupted'].includes(info.status ?? '')
       && info.errors.some(error => typeof error.message === 'string' && error.message.length > 0 && !/\[[a-z0-9-]+-v\d+:/.test(error.message))
       && !info.errors.some(error => error.message?.includes('[settings-readiness-v1:'))) info.errors.push({ message: marker });
-  } catch {}
+  } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */}
 }
 function observeSettingsReadiness(page: Page, info: TestInfo) {
   const ordinal = (settingsReadinessOrdinals.get(info) ?? 0) + 1;
@@ -326,7 +326,7 @@ function observeSettingsReadiness(page: Page, info: TestInfo) {
         if (category === 'books' || category === 'movies' || category === 'games') key = category;
       }
       if (key) { admitted.set(item, key); counts[key].admitted = Math.min(2, counts[key].admitted + 1); counts[key].status = 'pending'; }
-    } catch {}
+    } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */}
   };
   const outcome = (item: Request, status: string) => {
     if (sealed) return;
@@ -337,15 +337,15 @@ function observeSettingsReadiness(page: Page, info: TestInfo) {
     if (status === 'transport') counts[key].failed = Math.min(2, counts[key].failed + 1);
     counts[key].status = status;
   };
-  const response = (item: Response) => { try { const status = item.status(); outcome(item.request(), status >= 200 && status < 300 ? '2xx' : status === 401 || status === 403 ? 'denied' : status === 409 ? '409' : 'other'); } catch {} };
+  const response = (item: Response) => { try { const status = item.status(); outcome(item.request(), status >= 200 && status < 300 ? '2xx' : status === 401 || status === 403 ? 'denied' : status === 409 ? '409' : 'other'); } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */} };
   const failed = (item: Request) => outcome(item, 'transport');
   let networkSample = 'observed';
   try { page.on('request', request); page.on('response', response); page.on('requestfailed', failed); } catch { networkSample = 'u'; }
   const seal = () => {
     sealed = true;
-    try { page.off('request', request); } catch {}
-    try { page.off('response', response); } catch {}
-    try { page.off('requestfailed', failed); } catch {}
+    try { page.off('request', request); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
+    try { page.off('response', response); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
+    try { page.off('requestfailed', failed); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
     admitted.clear();
   };
   if (networkSample === 'u') seal();
@@ -380,7 +380,7 @@ function observeSettingsReadiness(page: Page, info: TestInfo) {
             opener ? flag(opener.getAttribute('aria-expanded') === 'true') : 'u', typeof loaded === 'boolean' ? flag(!loaded) : 'u',
             flag(document.querySelector('[role="alert"]') !== null), flag(document.querySelector('[role="status"]') !== null), flag(location.hash === '#public-navigation'), input ? flag(hidden) : 'u'];
         });
-      } catch {}
+      } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */}
       const bucket = (count: number) => count === 0 ? '0' : count === 1 ? '1' : 'many';
       const network = families.flatMap(key => [bucket(counts[key].admitted), bucket(counts[key].settled), bucket(counts[key].failed), counts[key].status]);
       settingsReadinessPending.set(info, `[settings-readiness-v1:${['initial-open', '1', stage, ...dom, 'u', 'u', 'u', 'u', 'u', 'u', networkSample, ...network].join('|')}]`);
@@ -389,7 +389,7 @@ function observeSettingsReadiness(page: Page, info: TestInfo) {
 }
 // END SETTINGS READINESS DIAGNOSTIC
 
-test.afterEach(({}, info) => {
+test.afterEach((_, info) => {
   captureProfileDiagnostic(info);
   nativeBoundaryObservers.get(info)?.finish(info);
   captureProfileSecondSave(info);
@@ -655,7 +655,7 @@ async function openNavigation(page: Page) {
     readiness.phase();
     await expect(page.getByRole('checkbox', { name: 'Auto-pin navigation tabs', exact: true })).toBeEnabled();
   } catch (error) { failed = true; throw error; }
-  finally { try { await readiness.finish(failed); } catch {} }
+  finally { try { await readiness.finish(failed); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */} }
 }
 async function createNavigationList(page: Page, category: 'books' | 'movies' | 'games') {
   const response = await page.request.post(`${fixture.origin}${navigationBase}/collections`, {

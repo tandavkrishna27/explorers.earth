@@ -247,7 +247,7 @@ export function waitOwnedResponseGate(signal: AbortSignal, gate: Promise<void>, 
         let done = false;
         let timer: ReturnType<typeof setTimeout>;
         const finish = (error?: Error) => { if (done)
-            return; done = true; clearTimeout(timer); signal.removeEventListener('abort', abort); context.off('close', close); error ? reject(error) : resolve(); };
+            return; done = true; clearTimeout(timer); signal.removeEventListener('abort', abort); context.off('close', close); if (error) reject(error); else resolve(); };
         const abort = () => finish(Error('PUBLIC_PARITY_GATE_ABORTED')), close = () => finish(Error('PUBLIC_PARITY_GATE_CONTEXT_CLOSED'));
         timer = setTimeout(() => finish(Error('PUBLIC_PARITY_GATE_DEADLINE')), budgetMs);
         signal.addEventListener('abort', abort, { once: true });

@@ -52,7 +52,7 @@ export async function installGuidesOwnerFetchObserver(page:Page,input:Options):P
      if((method===undefined||Object.hasOwn(method,'value')&&method.value==='GET')&&(!signal||Object.hasOwn(signal,'value'))){
       const url=new URL(input,location.origin),base='/api/explorers/v1';if(url.origin===origin&&(publicPath?url.pathname===publicPath:((url.pathname===`${base}/collections`||url.pathname===`${base}/recommendations`)?url.searchParams.get('category')==='guides':[`${base}/categories/guides/content-snapshot`,`${base}/categories/guides/content-snapshot/validate`,`${base}/categories/guides/memberships`,`${base}/collections/${selectedGuideId}/guide`].includes(url.pathname)))){
        const ordinal=ordinals.get(url.href)??0;ordinals.set(url.href,ordinal+1);if(records.size>=512)overflow=true;
-       else{let native:AbortSignal|null=null,group:number|null=null;try{if(signal&&aborted.call(signal.value)===false){native=signal.value;group=signals.get(native!)??++groups;signals.set(native!,group!);}}catch{}
+       else{let native:AbortSignal|null=null,group:number|null=null;try{if(signal&&aborted.call(signal.value)===false){native=signal.value;group=signals.get(native!)??++groups;signals.set(native!,group!);}}catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}
         records.set(JSON.stringify([url.href,ordinal]),{group,signal:native});}
       }
      }

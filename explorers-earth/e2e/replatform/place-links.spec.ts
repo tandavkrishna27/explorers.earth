@@ -13,8 +13,8 @@ function placeLinksAtomicIdentity(info:TestInfo):boolean {
     && info.project.name==='place-links-desktop' && info.repeatEachIndex===0 && info.retry===0;
 }
 function placeLinksAtomicDisable(info:TestInfo):void {
-  try { placeLinksAtomicEmitted.add(info); } catch {}
-  try { placeLinksAtomicStates.delete(info); } catch {}
+  try { placeLinksAtomicEmitted.add(info); } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */}
+  try { placeLinksAtomicStates.delete(info); } catch {/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
 }
 function placeLinksAtomicTake(info:TestInfo):PlaceLinksAtomicState|undefined {
   const state=placeLinksAtomicStates.get(info);
@@ -166,7 +166,7 @@ async function complete(category:string,persona=manifest.personas.ownerA) {
     ['memberships',`/categories/${category}/memberships`,{collectionStatus:'all',recommendationStatus:'active'}],
   ] as const) {
     const rows:Dto[]=[],seen=new Set<string>();let cursor:string|undefined;
-    do {
+    for (;;) {
       const search=new URLSearchParams({...params,limit:'24',snapshotToken:snapshot.snapshotToken,...(cursor?{cursor}:{})});
       const page=await json(`${route}?${search}`,persona);
       expect(page.snapshot===snapshot.revision && page.snapshotToken===snapshot.snapshotToken && page.expiresAt===snapshot.expiresAt).toBe(true);
@@ -174,7 +174,7 @@ async function complete(category:string,persona=manifest.personas.ownerA) {
       if(page.nextCursor===null) break;
       expect(typeof page.nextCursor==='string' && page.items.length>0 && !seen.has(page.nextCursor)).toBe(true);
       cursor=page.nextCursor;seen.add(cursor!);
-    } while(true);
+    }
     streams[key]=rows;
   }
   expect(streams.collections.every(row=>row.accountId===persona.accountId && row.category===category)
@@ -243,7 +243,7 @@ async function equalMissing(pathname:string,missing:string,persona:PlacesPersona
   expect(foreign.status).toBe(404);expect(absent.status).toBe(404);
   same(normalized(await foreign.json()),normalized(await absent.json()));
 }
-test.beforeEach(async ({},info)=>{manifest=await control('reset',info) as PlacesManifest;});
+test.beforeEach(async (_,info)=>{manifest=await control('reset',info) as PlacesManifest;});
 
 function child(category:'products'|'people') {
   return manifest.collections.find(c=>c.accountId===manifest.personas.ownerA.accountId && c.category===category && c.title===`Owned ${category==='products'?'Products':'People'}`)!;
@@ -418,7 +418,7 @@ const replay=createResponse();setPlaceLinksAtomicBoundary(info,category,phase,'r
 if(category==='products' && info.project.name==='place-links-desktop') {
   placeLinksReplayClickProbe=true;
   setPlaceLinksAtomicBoundary(info,category,phase,'replay-click-probe');
-  void replay.then(response=>{try{if(response.status()===201)setPlaceLinksAtomicBoundary(info,category,phase,'replay-click-receipt');}catch{}},()=>{});
+  void replay.then(response=>{try{if(response.status()===201)setPlaceLinksAtomicBoundary(info,category,phase,'replay-click-receipt');}catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}},()=>{});
   let readiness='replay-click-unavailable';
   try {readiness=await submit.evaluate(element=>{
     try {
@@ -437,7 +437,7 @@ if(category==='products' && info.project.name==='place-links-desktop') {
       if(hit.closest('.dashboard-header'))return 'replay-click-blocked-header';
       return 'replay-click-visible-blocked';
     } catch {return 'replay-click-unavailable';}
-  });}catch{}
+  });}catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}
   setPlaceLinksAtomicBoundary(info,category,phase,readiness);
 }
 // END PLACE LINKS REPLAY CLICK PROBE
@@ -604,4 +604,4 @@ test('Place links: stale and foreign link commands preserve both lists',async ({
   transport.assertExpected();expect(transport.observations.length).toBe(0);
 });
 
-test.afterEach(({},info)=>{finalizePlaceLinksAtomicDiagnostic(info);capturePlaceLinksAtomicDiagnostic(info);});
+test.afterEach((_,info)=>{finalizePlaceLinksAtomicDiagnostic(info);capturePlaceLinksAtomicDiagnostic(info);});

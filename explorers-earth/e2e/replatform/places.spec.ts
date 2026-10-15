@@ -61,7 +61,7 @@ async function complete(category:string,persona=manifest.personas.ownerA) {
     ['memberships',`/categories/${category}/memberships`,{collectionStatus:'all',recommendationStatus:'active'}],
   ] as const) {
     const rows:Dto[]=[],seen=new Set<string>();let cursor:string|undefined;
-    do {
+    for (;;) {
       const search=new URLSearchParams({...params,limit:'24',snapshotToken:snapshot.snapshotToken,...(cursor?{cursor}:{})});
       const page=await json(`${route}?${search}`,persona);
       expect(page.snapshot===snapshot.revision && page.snapshotToken===snapshot.snapshotToken && page.expiresAt===snapshot.expiresAt).toBe(true);
@@ -69,7 +69,7 @@ async function complete(category:string,persona=manifest.personas.ownerA) {
       if(page.nextCursor===null) break;
       expect(typeof page.nextCursor==='string' && page.items.length>0 && !seen.has(page.nextCursor)).toBe(true);
       cursor=page.nextCursor;seen.add(cursor!);
-    } while(true);
+    }
     streams[key]=rows;
   }
   expect(streams.collections.every(row=>row.accountId===persona.accountId && row.category===category)
@@ -138,7 +138,7 @@ async function equalMissing(pathname:string,missing:string,persona:PlacesPersona
   expect(foreign.status).toBe(404);expect(absent.status).toBe(404);
   same(normalized(await foreign.json()),normalized(await absent.json()));
 }
-test.beforeEach(async ({},info)=>{manifest=await control('reset',info) as PlacesManifest;});
+test.beforeEach(async (_,info)=>{manifest=await control('reset',info) as PlacesManifest;});
 
 function recordPublicPages(page:Page,pathname:string,detail:boolean) {
   type RecordedPage={offset:number;limit:number;ids:string[];requestCursor?:string|null;terminal?:boolean;nextCursor?:string|null};
@@ -500,7 +500,7 @@ async function advertisedPinsTransport(listId:string,persona=manifest.personas.o
 async function ownerListMembers(listId:string,persona=manifest.personas.ownerA) {
   const snapshot=await json('/categories/places/content-snapshot',persona);
   const rows:Dto[]=[],seen=new Set<string>();let cursor:string|undefined,metadata:Dto|undefined,pages=0;
-  do {
+  for (;;) {
     const search=new URLSearchParams({category:'places',collectionId:listId,status:'active',limit:'24',
       snapshotToken:snapshot.snapshotToken,...(cursor?{cursor}:{})});
     const page=await json(`/recommendations?${search}`,persona);pages++;
@@ -511,7 +511,7 @@ async function ownerListMembers(listId:string,persona=manifest.personas.ownerA) 
     if(page.nextCursor===null)break;
     expect(typeof page.nextCursor==='string' && page.items.length>0 && !seen.has(page.nextCursor)).toBe(true);
     cursor=page.nextCursor;seen.add(cursor!);
-  } while(true);
+  }
   expect(new Set(rows.map(row=>row.id)).size).toBe(rows.length);
   // Per-row place pin state is served on the owner MEMBERSHIP projection as
   // `placePinPosition`, because a place pin is collection-local (collection_place_pins).
@@ -519,7 +519,7 @@ async function ownerListMembers(listId:string,persona=manifest.personas.ownerA) 
   // a different feature, and is null for every row here by design. Read the designed source.
   const positionOf=new Map<string,number>(),members=new Set<string>(),memberSeen=new Set<string>();
   let memberCursor:string|undefined;
-  do {
+  for (;;) {
     // The category is specified by the route alone; repeating it in the query is refused.
     const search=new URLSearchParams({collectionStatus:'all',recommendationStatus:'active',
       limit:'24',snapshotToken:snapshot.snapshotToken,...(memberCursor?{cursor:memberCursor}:{})});
@@ -539,7 +539,7 @@ async function ownerListMembers(listId:string,persona=manifest.personas.ownerA) 
     if(page.nextCursor===null)break;
     expect(typeof page.nextCursor==='string' && page.items.length>0 && !memberSeen.has(page.nextCursor)).toBe(true);
     memberCursor=page.nextCursor;memberSeen.add(memberCursor!);
-  } while(true);
+  }
   // Closure: the paged recommendation traversal and this list's memberships are the same rows.
   expect(members.size===rows.length && rows.every(row=>members.has(row.id))).toBe(true);
   const boundary=rows.findIndex(row=>!positionOf.has(row.id));
@@ -796,8 +796,8 @@ async function capturePlacesPinDiagnostic(page:Page,info:TestInfo,phase:PlacesPi
       }),new Promise<undefined>(resolve=>{timer=setTimeout(()=>resolve(undefined),1000);})]);
       if(captured)observation=captured;
     }
-  } catch {} finally {if(timer!==undefined)clearTimeout(timer);}
-  try {info.errors.push({message:`[places-pin-diagnostic-v1:${phase}|${elapsedBucket}|${observation.ownerState}|${observation.action}|${observation.cardCount}|${owner}|${observation.sample}]`});} catch {}
+  } catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */} finally {if(timer!==undefined)clearTimeout(timer);}
+  try {info.errors.push({message:`[places-pin-diagnostic-v1:${phase}|${elapsedBucket}|${observation.ownerState}|${observation.action}|${observation.cardCount}|${owner}|${observation.sample}]`});} catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */}
 }
 
 test('Places: additive complete70 resource refusal and session replacement keep the returned fence authoritative',async ({page},info)=>{

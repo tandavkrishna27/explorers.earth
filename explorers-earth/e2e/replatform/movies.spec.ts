@@ -28,8 +28,8 @@ function observeMoviesNetwork(page:Page,stage:()=>string){
 }
 const moviesNetworkObservers=new WeakMap<TestInfo,ReturnType<typeof observeMoviesNetwork>>();
 const moviesNetworkReceipts=new WeakMap<TestInfo,unknown>();
-function beginMoviesNetwork(page:Page,info:TestInfo,stage:()=>string){try{const path=info.titlePath;if(!Array.isArray(path)||path.length!==2||path[0]!=='movies.spec.ts'||path[1]!==info.title||!['owner manual form all fields snapshot repeat edits and archive reload','category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection'].includes(info.title)||!['movies-mobile','movies-desktop'].includes(info.project.name)||info.repeatEachIndex!==0||info.retry!==0||resolve(info.file)!==fileURLToPath(import.meta.url))return;if(!moviesNetworkObservers.has(info))moviesNetworkObservers.set(info,observeMoviesNetwork(page,stage));}catch{}}
-function finishMoviesNetwork(info:TestInfo){try{const observer=moviesNetworkObservers.get(info);if(observer){moviesNetworkReceipts.set(info,observer.finish());moviesNetworkObservers.delete(info);}}catch{}}
+function beginMoviesNetwork(page:Page,info:TestInfo,stage:()=>string){try{const path=info.titlePath;if(!Array.isArray(path)||path.length!==2||path[0]!=='movies.spec.ts'||path[1]!==info.title||!['owner manual form all fields snapshot repeat edits and archive reload','category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection'].includes(info.title)||!['movies-mobile','movies-desktop'].includes(info.project.name)||info.repeatEachIndex!==0||info.retry!==0||resolve(info.file)!==fileURLToPath(import.meta.url))return;if(!moviesNetworkObservers.has(info))moviesNetworkObservers.set(info,observeMoviesNetwork(page,stage));}catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}}
+function finishMoviesNetwork(info:TestInfo){try{const observer=moviesNetworkObservers.get(info);if(observer){moviesNetworkReceipts.set(info,observer.finish());moviesNetworkObservers.delete(info);}}catch{/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}}
 function moviesNetworkSuffix(info:TestInfo){try{const receipt=moviesNetworkReceipts.get(info);return receipt?'|'+Buffer.from(JSON.stringify(receipt),'utf8').toString('base64url'):'';}catch{return '';}}
 // END MOVIES NETWORK DIAGNOSTIC CONTRACT
 
@@ -52,10 +52,10 @@ function beginMoviesPinDiagnostic(page:Page,info:TestInfo):void{
   const failed=(value:any)=>{try{if(state.inert||state.request!=='one'||value!==state.requestRef||state.transport==='ambiguous')return;if(state.transport==='response'){state.transport='ambiguous';state.status='unavailable';}else state.transport='failed';}catch{unavailable();}};
   state.listeners=[{event:'request',callback:request,attempted:false},{event:'response',callback:response,attempted:false},{event:'requestfailed',callback:failed,attempted:false}];
   try{for(const listener of state.listeners){listener.attempted=true;page.on(listener.event,listener.callback);}state.request='none';state.transport='unseen';}catch{unavailable();}
- }catch{}
+ }catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}
 }
 function setMoviesPinDiagnosticStage(info:TestInfo,stage:typeof moviesPinStages[number]):void{
- try{const state=moviesPinDiagnosticStates.get(info);if(state&&!state.sealed&&moviesPinDiagnosticIdentity(info)&&moviesPinStages.includes(stage))state.stage=stage;}catch{}
+ try{const state=moviesPinDiagnosticStates.get(info);if(state&&!state.sealed&&moviesPinDiagnosticIdentity(info)&&moviesPinStages.includes(stage))state.stage=stage;}catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}
 }
 function freezeMoviesPinDiagnostic(info:TestInfo):void{
  try{
@@ -63,11 +63,11 @@ function freezeMoviesPinDiagnostic(info:TestInfo):void{
   state.frozen=true;state.inert=true;state.requestRef=undefined;
   try{if(state.page?.isClosed()!==false){state.request='unavailable';state.transport='unavailable';state.status='unavailable';}}catch{state.request='unavailable';state.transport='unavailable';state.status='unavailable';}
   const page=state.page;state.page=undefined;const listeners=state.listeners;state.listeners=[];
-  for(const listener of listeners)if(listener.attempted){try{page?.off(listener.event,listener.callback);}catch{}}
- }catch{}
+  for(const listener of listeners)if(listener.attempted){try{page?.off(listener.event,listener.callback);}catch{/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}}
+ }catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}
 }
 function finalizeMoviesPinDiagnostic(info:TestInfo):void{
- try{finishMoviesNetwork(info);freezeMoviesPinDiagnostic(info);const state=moviesPinDiagnosticStates.get(info);if(state?.frozen)state.sealed=true;}catch{}
+ try{finishMoviesNetwork(info);freezeMoviesPinDiagnostic(info);const state=moviesPinDiagnosticStates.get(info);if(state?.frozen)state.sealed=true;}catch{/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}
 }
 function captureMoviesPinDiagnostic(info:TestInfo):void{
  try{
@@ -76,7 +76,7 @@ function captureMoviesPinDiagnostic(info:TestInfo):void{
   const errors=info.errors;if(errors.some(error=>typeof error.message==='string'&&error.message.includes('[movies-pin-diagnostic-v1:')))return;
   const cells=status==='interrupted'?[state.stage,'unavailable','unavailable','unavailable']:[state.stage,state.request,state.transport,state.status],message='[movies-pin-diagnostic-v1:'+cells.join('|')+moviesNetworkSuffix(info)+']';if(Buffer.byteLength(message,'utf8')>4096)return;
   errors.push({message});moviesPinDiagnosticSeen.add(info);
- }catch{}
+ }catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}
 }
 // END MOVIES PIN DIAGNOSTIC CONTRACT
 // BEGIN MOVIES PUBLIC DIAGNOSTIC CONTRACT
@@ -97,11 +97,11 @@ function captureMoviesPublicDiagnostic(info:TestInfo):void{
   if(!stage||!moviesPublicDiagnosticIdentity(info)||!['failed','timedOut','interrupted'].includes(info.status??'')||moviesPublicDiagnosticSeen.has(info))return;
   if(info.errors.some(error=>typeof error.message==='string'&&error.message.includes('movies-public-diagnostic-v1:')))return;
   info.errors.push({message:'[movies-public-diagnostic-v1:'+stage+']'});moviesPublicDiagnosticSeen.add(info);
- }catch{}
+ }catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}
 }
 // END MOVIES PUBLIC DIAGNOSTIC CONTRACT
 
-test.afterEach(({},info)=>{captureMoviesPublicDiagnostic(info);});
+test.afterEach((_,info)=>{captureMoviesPublicDiagnostic(info);});
 
 const diagnosticTitle='owner manual form all fields snapshot repeat edits and archive reload';
 type DiagnosticStage='setup'|'edit-navigation'|'edit-form'|'save-start'|'save-returned'|'list-route-reached'|'saved-note-confirmed'|'keep-draft-start'|'keep-draft-returned'|'archive';
@@ -313,4 +313,4 @@ test('public signed continuations deny malformed cross-scope and changed-limit t
  const owner=fixture.personas.ownerB,path=`${base}/profiles/${owner.handle}/recommendations/movies/genres/action`,first=await page.request.get(path+'?limit=24');expect(first.status()).toBe(200);const data=await first.json();expect(data.nextCursor).toBeTruthy();for(const suffix of ['?limit=12&cursor='+encodeURIComponent(data.nextCursor),'?limit=24&cursor=bad'])expect((await page.request.get(path+suffix)).status()).toBe(400);expect((await page.request.get(path.replace('/genres/action','/genres/drama')+'?limit=24&cursor='+encodeURIComponent(data.nextCursor))).status()).toBe(400);await page.goto(`/${owner.handle}/movies/genre/action`);await expect(page.getByText('ownerB seed movie 0-0',{exact:true})).toBeVisible();
 });
 
-test.afterEach(({}, info) => { captureMoviesPinDiagnostic(info); });
+test.afterEach((_, info) => { captureMoviesPinDiagnostic(info); });

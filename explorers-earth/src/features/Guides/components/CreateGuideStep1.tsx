@@ -150,6 +150,7 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
   // Explicitly accept the entered label; no provider identity or coordinates are inferred.
   const useEnteredLocation = (value: string, select: (place: google.maps.places.PlaceResult) => void) => {
     const label = value.trim();
+    // eslint-disable-next-line no-control-regex -- deliberate input validation: this guard exists to REFUSE control characters, so the pattern must name them.
     if (!label || label.length > 500 || /[\u0000-\u001f\u007f]/.test(value) || /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(value)) {
       setError("Enter a location of 1–500 characters without control characters");
       return;

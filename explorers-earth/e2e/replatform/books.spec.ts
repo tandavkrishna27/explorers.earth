@@ -38,9 +38,9 @@ function beginBooksLostCreateDiagnostic(page:Page,info:TestInfo,recommendationId
  const state:BooksLostCreateState=Object.assign(snapshot,{request:undefined,response:undefined,id:undefined,closed:false,detach:()=>{}});
  const matches=(request:any)=>{try{const id=recommendationId();if(typeof id!=='string'||request.method()!=='POST')return false;const url=new URL(request.url());if(url.origin!==fixture.origin||url.pathname!==`${base}/recommendations/${id}/book-covers`)return false;return true;}catch{return false;}};
  const request=(handle:any)=>{if(state.closed||!matches(handle)||state.request===handle)return;if(state.request){Object.assign(snapshot,{importRequest:'multiple',importTransport:'ambiguous',importStatus:'unavailable',importBody:'ambiguous',importCover:'unavailable',importThumbnail:'unavailable'});state.response=undefined;return;}state.request=handle;state.id=recommendationId();Object.assign(snapshot,{importRequest:'one',importTransport:'pending',importBody:'unavailable',importCover:'unavailable',importThumbnail:'unavailable'});};
- const response=(handle:any)=>{if(state.closed||snapshot.importRequest!=='one'||state.response)return;try{if(handle.request()!==state.request)return;state.response=handle;const status=handle.status();const category=typeof status!=='number'||!Number.isFinite(status)?'other':status>=100&&status<200?'informational':status>=200&&status<300?'success':status>=300&&status<400?'redirect':status>=400&&status<500?'client-error':status>=500&&status<600?'server-error':'other';Object.assign(snapshot,{importTransport:'response',importStatus:category});}catch{}};
+ const response=(handle:any)=>{if(state.closed||snapshot.importRequest!=='one'||state.response)return;try{if(handle.request()!==state.request)return;state.response=handle;const status=handle.status();const category=typeof status!=='number'||!Number.isFinite(status)?'other':status>=100&&status<200?'informational':status>=200&&status<300?'success':status>=300&&status<400?'redirect':status>=400&&status<500?'client-error':status>=500&&status<600?'server-error':'other';Object.assign(snapshot,{importTransport:'response',importStatus:category});}catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}};
  const failed=(handle:any)=>{if(!state.closed&&snapshot.importRequest==='one'&&handle===state.request&&!state.response)snapshot.importTransport='failed';};
- state.detach=()=>{state.closed=true;for(const [event,listener]of [['request',request],['response',response],['requestfailed',failed]] as const){try{page.off(event,listener);}catch{}}};
+ state.detach=()=>{state.closed=true;for(const [event,listener]of [['request',request],['response',response],['requestfailed',failed]] as const){try{page.off(event,listener);}catch{/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}}};
  booksLostCreateStates.set(info,state);try{page.on('request',request);page.on('response',response);page.on('requestfailed',failed);}catch{state.detach();snapshot.sample='unavailable';}
 }
 function setBooksLostCreateStage(info:TestInfo,stage:string):void{
@@ -50,14 +50,14 @@ function projectBooksLostCreateSlots(info:TestInfo,phase:'copied'|'final',value:
  const state=booksLostCreateStates.get(info);if(!state||state.closed||!['copied','final'].includes(phase))return;
  const shape=(input:unknown,keys:string[])=>{if(!input||typeof input!=='object'||![Object.prototype,Object.getPrototypeOf({}),null].includes(Object.getPrototypeOf(input)))return undefined;const own=Reflect.ownKeys(input);if(own.length!==keys.length||own.some(k=>typeof k!=='string'||!keys.includes(k)))return undefined;const d=Object.getOwnPropertyDescriptors(input);return keys.every(k=>d[k]&&'value'in d[k])?d:undefined;};
  const slot=(input:unknown,key:'cover'|'thumbnail')=>{try{if(input!==null){const d=shape(input,['id','url','mimeType','size','alternativeText','caption']);if(!d||['id','url','mimeType'].some(k=>typeof d[k].value!=='string')||typeof d.size.value!=='number'||['alternativeText','caption'].some(k=>d[k].value!==null&&typeof d[k].value!=='string'))return 'unavailable';}const parsed=bookCoversSchema.shape[key].safeParse(input);return parsed.success?(parsed.data===null?'absent':'present'):'unavailable';}catch{return 'unavailable';}};
- let cover='unavailable',thumbnail='unavailable';try{if(value&&typeof value==='object'){const d=Object.getOwnPropertyDescriptor(value,'bookCovers');if(d&&'value'in d){const container=shape(d.value,['cover','thumbnail']);if(container){cover=slot(container.cover.value,'cover');thumbnail=slot(container.thumbnail.value,'thumbnail');}}}}catch{}
+ let cover='unavailable',thumbnail='unavailable';try{if(value&&typeof value==='object'){const d=Object.getOwnPropertyDescriptor(value,'bookCovers');if(d&&'value'in d){const container=shape(d.value,['cover','thumbnail']);if(container){cover=slot(container.cover.value,'cover');thumbnail=slot(container.thumbnail.value,'thumbnail');}}}}catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}
  Object.assign(state,{[`${phase}Cover`]:cover,[`${phase}Thumbnail`]:thumbnail});
 }
 async function captureBooksLostCreateDiagnostic(page:Page,info:TestInfo):Promise<void>{
  const state=booksLostCreateStates.get(info),keys=['stage','importRequest','importTransport','importStatus','importBody','importCover','importThumbnail','copiedCover','copiedThumbnail','finalCover','finalThumbnail','sample'];
  const snapshot=state?{version:1,...Object.fromEntries(keys.map(k=>[k,(state as any)[k]]))} as BooksLostCreateSnapshot:undefined;
  const failed=['failed','timedOut','interrupted'].includes(info.status??''),seen=booksLostCreateSeen.has(info);let response:any,id:string|undefined;
- if(state){if(failed){response=state.response;id=state.id;}try{state.detach();}catch{}finally{state.closed=true;state.request=undefined;state.response=undefined;state.id=undefined;state.detach=()=>{};booksLostCreateStates.delete(info);booksLostCreateSeen.add(info);}}
+ if(state){if(failed){response=state.response;id=state.id;}try{state.detach();}catch{/* Best-effort teardown: a cleanup failure must not mask the real outcome. */}finally{state.closed=true;state.request=undefined;state.response=undefined;state.id=undefined;state.detach=()=>{};booksLostCreateStates.delete(info);booksLostCreateSeen.add(info);}}
  if(!['failed','timedOut','interrupted'].includes(info.status ?? ''))return;
  if(!snapshot||!booksLostCreateIdentity(info)||seen)return;
  try{
@@ -70,14 +70,14 @@ async function captureBooksLostCreateDiagnostic(page:Page,info:TestInfo):Promise
     if('value'in result){
      const shape=(input:unknown,alternatives:string[][])=>{if(!input||typeof input!=='object'||![Object.prototype,Object.getPrototypeOf({}),null].includes(Object.getPrototypeOf(input)))return undefined;const own=Reflect.ownKeys(input),keys=alternatives.find(keys=>own.length===keys.length&&own.every(k=>typeof k==='string'&&keys.includes(k)));if(!keys)return undefined;const d=Object.getOwnPropertyDescriptors(input);return keys.every(k=>d[k]&&'value'in d[k])?d:undefined;};
      const slot=(input:unknown)=>{const d=shape(input,[['status'],['status','media']]);if(!d)return false;if(d.status.value==='fallback')return !d.media;if(d.status.value!=='copied'||!d.media)return false;const media=shape(d.media.value,[['id','url','mimeType','size','alternativeText','caption']]);return Boolean(media&&['id','url','mimeType'].every(k=>typeof media[k].value==='string')&&typeof media.size.value==='number'&&['alternativeText','caption'].every(k=>media[k].value===null||typeof media[k].value==='string'));};
-     let valid=false;try{const envelope=shape(result.value,[['coverImport']]);if(envelope){const imported=shape(envelope.coverImport.value,[['id','revision','slots']]);if(imported&&typeof imported.id.value==='string'&&typeof imported.revision.value==='number'){const slots=shape(imported.slots.value,[['cover','thumbnail']]);if(slots&&slot(slots.cover.value)&&slot(slots.thumbnail.value)){const parsed=bookCoverImportResultSchema.safeParse(envelope.coverImport.value);if(parsed.success&&parsed.data.id===id){snapshot.importBody='valid';snapshot.importCover=parsed.data.slots.cover.status;snapshot.importThumbnail=parsed.data.slots.thumbnail.status;valid=true;}}}}}catch{}
+     let valid=false;try{const envelope=shape(result.value,[['coverImport']]);if(envelope){const imported=shape(envelope.coverImport.value,[['id','revision','slots']]);if(imported&&typeof imported.id.value==='string'&&typeof imported.revision.value==='number'){const slots=shape(imported.slots.value,[['cover','thumbnail']]);if(slots&&slot(slots.cover.value)&&slot(slots.thumbnail.value)){const parsed=bookCoverImportResultSchema.safeParse(envelope.coverImport.value);if(parsed.success&&parsed.data.id===id){snapshot.importBody='valid';snapshot.importCover=parsed.data.slots.cover.status;snapshot.importThumbnail=parsed.data.slots.thumbnail.status;valid=true;}}}}}catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}
      if(!valid)snapshot.importBody='invalid';
     }
-   }catch{}finally{if(timer!==undefined)clearTimeout(timer);}
+   }catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}finally{if(timer!==undefined)clearTimeout(timer);}
   }
   const canonical=canonicalBooksLostCreateDiagnostic(snapshot);
   const marker=`[books-lost-create-diagnostic-v1:${keys.map(k=>(canonical as any)[k]).join('|')}]`;if(Buffer.byteLength(marker,'utf8')<=768)info.errors.push({message:marker});
- }catch{}
+ }catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}
 }
 // END BOOKS LOST CREATE DIAGNOSTIC CONTRACT
 test.afterEach(async ({page},info)=>{await captureBooksLostCreateDiagnostic(page,info);});
@@ -153,12 +153,12 @@ function canonicalBooksDiagnostic(stage:BooksDiagnosticStage,projection:unknown)
  return {version:1,stage,ownerState:d.ownerState.value,button:d.button.value,route:d.route.value,sample:d.sample.value};
 }
 function retainBooksDiagnostic(info:TestInfo,snapshot:BooksDiagnosticSnapshot){
- try{const message='[books-diagnostic-v1:'+snapshot.stage+'|'+snapshot.ownerState+'|'+snapshot.button+'|'+snapshot.route+'|'+snapshot.sample+']';if(!info.errors.some(e=>e.message?.includes('[books-diagnostic-v1:')))info.errors.push({message});}catch{}
+ try{const message='[books-diagnostic-v1:'+snapshot.stage+'|'+snapshot.ownerState+'|'+snapshot.button+'|'+snapshot.route+'|'+snapshot.sample+']';if(!info.errors.some(e=>e.message?.includes('[books-diagnostic-v1:')))info.errors.push({message});}catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}
 }
 async function captureBooksDiagnostic(page:Page,info:TestInfo){
  if(!booksDiagnosticIdentity(info)||!booksDiagnosticStages.has(info)||!['failed','timedOut','interrupted'].includes(info.status??'')||booksDiagnosticSeen.has(info))return;
  booksDiagnosticSeen.add(info);const stage=booksDiagnosticStages.get(info)!;let projection:unknown;let timer:ReturnType<typeof setTimeout>|undefined;
- try{if(!page.isClosed())projection=await Promise.race([page.evaluate(projectBooksDiagnostic),new Promise(resolve=>{timer=setTimeout(()=>resolve(undefined),1000);})]);}catch{}finally{if(timer!==undefined)clearTimeout(timer);}
+ try{if(!page.isClosed())projection=await Promise.race([page.evaluate(projectBooksDiagnostic),new Promise(resolve=>{timer=setTimeout(()=>resolve(undefined),1000);})]);}catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}finally{if(timer!==undefined)clearTimeout(timer);}
  retainBooksDiagnostic(info,canonicalBooksDiagnostic(stage,projection));
 }
 // END BOOKS DIAGNOSTIC CONTRACT
@@ -229,8 +229,8 @@ async function captureBooksCoverDiagnostic(page:Page,info:TestInfo,slot:'one'|'t
    },title),new Promise<undefined>(resolve=>{timer=setTimeout(()=>resolve(undefined),1000);})]);
    if(captured)observation=captured;
   }
- }catch{}finally{if(timer!==undefined)clearTimeout(timer);}
- try{info.errors.push({message:`[books-cover-diagnostic-v1:${slot}|${observation.ownerState}|${observation.titleCount}|${observation.titleVisible}|${statuses.map(category).join('|')}|223-115|${observation.sample}]`});}catch{}
+ }catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}finally{if(timer!==undefined)clearTimeout(timer);}
+ try{info.errors.push({message:`[books-cover-diagnostic-v1:${slot}|${observation.ownerState}|${observation.titleCount}|${observation.titleVisible}|${statuses.map(category).join('|')}|223-115|${observation.sample}]`});}catch{/* Best-effort instrumentation: its own failure must not replace the result under test. */}
 }
 
 test('cover success, one-slot failure and both fallback remain distinct real API Add outcomes',async({page},info)=>{

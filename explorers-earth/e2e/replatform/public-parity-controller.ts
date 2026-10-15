@@ -76,7 +76,8 @@ function origin(value: unknown) {
     return value as string;
 }
 function canonical(value: unknown) {
-    if (typeof value !== 'string' || value.length < 1 || value.length > 1024 || /[\x00-\x1f\x7f]/.test(value) || !path.isAbsolute(value) || path.resolve(value) !== value || process.platform === 'win32' && (/[\/].*[\/]/.test(value) && value.includes('/') || value.slice(2).includes(':') || value.slice(3).split('\\').some(p => !p || /[. ]$/.test(p))))
+    // eslint-disable-next-line no-control-regex -- deliberate input validation: this guard exists to REFUSE control characters, so the pattern must name them.
+    if (typeof value !== 'string' || value.length < 1 || value.length > 1024 || /[\x00-\x1f\x7f]/.test(value) || !path.isAbsolute(value) || path.resolve(value) !== value || process.platform === 'win32' && (/[/].*[/]/.test(value) && value.includes('/') || value.slice(2).includes(':') || value.slice(3).split('\\').some(p => !p || /[. ]$/.test(p))))
         denied();
     return value;
 }
@@ -269,7 +270,7 @@ export function readPublicParityDescriptor(file: string, filesystem: FileSystem,
             try {
                 filesystem.closeSync(fd);
             }
-            catch { }
+            catch {/* Best-effort instrumentation: its own failure must not replace the result under test. */ }
         denied();
     }
 }
