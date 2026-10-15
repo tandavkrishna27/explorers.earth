@@ -20,7 +20,14 @@ export async function prepareAppWorkerCustody(client:Pick<PoolClient,'query'>):P
  const authorityDependencies=await client.query(`SELECT true AS unsafe FROM pg_catalog.pg_shdepend d
  JOIN pg_catalog.pg_roles r ON r.oid=d.refobjid
  WHERE d.refclassid='pg_catalog.pg_authid'::pg_catalog.regclass AND r.rolname=ANY($1::text[])
- AND d.deptype IN ('a','o','i') LIMIT 1`,[[...roles]]);
+ AND d.deptype IN ('a','o','i')
+ -- pg_shdepend is a cluster-shared catalog. Without this predicate the guard sees
+ -- authority these roles hold in *other* databases of the same cluster, so the second
+ -- database ever migrated through 0056 fails closed: 0056 creates GRANTs (deptype 'a')
+ -- and function ownerships (deptype 'o') that sealAppWorkerCustody never drops.
+ -- dbid=0 is retained deliberately: shared-object authority must still refuse.
+ AND (d.dbid=0 OR d.dbid=(SELECT oid FROM pg_catalog.pg_database WHERE datname=pg_catalog.current_database()))
+ LIMIT 1`,[[...roles]]);
  if(authorityDependencies.rows.length)throw new Error('Unsafe Apps worker existing object authority');
  // Names are fixed source-owned capabilities, never external login identifiers.
  for(const role of missing)await client.query(`CREATE ROLE ${role} NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS`);

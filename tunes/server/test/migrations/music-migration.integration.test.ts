@@ -65,10 +65,16 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     await migrateMusicDatabase(pool,{migrations:prior,testOnlyExpectedIds:prior.map(m=>m.id)});
     const account=(await pool.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
     await pool.query("INSERT INTO account_category_content_state(account_id,category,revision) VALUES($1,'books',7)",[account]);
-    const before=await pool.query('SELECT * FROM account_category_content_state WHERE account_id=$1',[account]);
+    // Explicit columns, not SELECT *: `before` is captured below 0036 while the chain under
+    // test runs on to 0056, and 0054 adds `places_last_mutation_xid` to this table. A
+    // SELECT * comparison therefore failed on unrelated schema growth rather than on the
+    // thing this case asserts -- that the upgrade does not advance content revisions. The
+    // table's full shape is covered by the runtime table manifest contract.
+    const contentState='SELECT account_id,category,revision FROM account_category_content_state WHERE account_id=$1';
+    const before=await pool.query(contentState,[account]);
     await expect(verifyMusicDatabase(pool)).rejects.toThrow();
     expect((await migrateMusicDatabase(pool)).appliedIds).toEqual(['0036_explorers_analytics_events','0037_explorers_movies_provider_context','0038_explorers_movie_media','0039_music_venue_account_ownership','0040_canonical_music_venue_provisioning','0041_canonical_music_venue_release','0042_canonical_music_venue_release_function','0043_explorers_apps_provider_context','0044_explorers_products_offer_context','0045_explorers_people_catalog','0046_explorers_places_catalog','0047_explorers_place_photo_media','0048_explorers_place_location_aggregate','0049_explorers_collection_location_links','0050_explorers_guide_sections','0051_explorers_launch_controls','0052_canonical_music_numeric_retirement','0053_explorers_taxonomy_catalogs','0054_explorers_place_individual_pins','0055_explorers_app_enrichment','0056_explorers_app_enrichment_jobs']);
-    expect((await pool.query('SELECT * FROM account_category_content_state WHERE account_id=$1',[account])).rows).toEqual(before.rows);
+    expect((await pool.query(contentState,[account])).rows).toEqual(before.rows);
     expect((await pool.query("SELECT to_regclass('analytics_events') AS events,to_regclass('analytics_event_receipts') AS receipts")).rows[0]).toEqual({events:'analytics_events',receipts:'analytics_event_receipts'});
     await verifyMusicDatabase(pool);expect((await migrateMusicDatabase(pool)).appliedIds).toEqual([]);
   });
