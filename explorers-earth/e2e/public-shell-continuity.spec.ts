@@ -261,7 +261,13 @@ test('real toast photo viewer guide map portal and cold Earth obey the public st
     __typename: 'GuideSection', documentId: 'guide-section-map', Title: 'Map day', Sequence: 1,
     Description: 'A mapped day',
     Timeline: {
-      morning: [{ place_id: 'fixture-map-place', name: 'Fixture map place', formatted_address: 'Fixture City', geometry: { location: { lat: 26.9124, lng: 75.7873 } }, photos: [] }],
+      // `id` is required: 24b942c0 made convertPublicGuideSection reject a place without one
+      // (legacyPlace returns undefined), and normalizeRenderableGuide drops the WHOLE section
+      // when conversion fails. Without it this guide rendered with no sections, so
+      // hasPlacesForMap was false, the Map View button never existed, and the click below
+      // timed out. The production rejection is deliberate and unit-tested
+      // (publicGuidePhotoViewModel.test.ts); only this fixture was stale.
+      morning: [{ id: 'fixture-map-entry', place_id: 'fixture-map-place', name: 'Fixture map place', formatted_address: 'Fixture City', geometry: { location: { lat: 26.9124, lng: 75.7873 } }, photos: [] }],
       afternoon: [], evening: [],
     },
     Transport: null, Stay: null, Recommendation_Activity: null, Map_Details: null,

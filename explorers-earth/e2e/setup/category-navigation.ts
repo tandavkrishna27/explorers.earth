@@ -368,10 +368,34 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
         const publicLists = state.lists[category.root].filter((list) => list.Visibility === true && list.visibility === true);
         const limit = Number(url.searchParams.get('limit') ?? 12);
         const cursor = url.searchParams.get('cursor');
-        const offset = cursor && /^o(?:0|[1-9][0-9]{0,4})$/.test(cursor) ? Number(cursor.slice(1)) : 0;
+        // Places cursors are opaque and SIGNED on the real gateway --
+        // postgresPublicProfileGateway passes movieCursorSecret into publicPlacesProjection --
+        // so the client validates `<token>.<signature>`. Accept that shape on the way in.
+        const offset = cursor && /^o(?:0|[1-9][0-9]{0,4})(?:\.[-_A-Za-z0-9]+)?$/.test(cursor)
+          ? Number(cursor.slice(1).split('.')[0]) : 0;
         const relation = recommendationRelationByRoute[category.route];
+        // 343df2dd made publicProfilePagination reject any places payload without a full
+        // canonical envelope on the list parent, and this harness served none of those fields,
+        // so every places response threw PUBLIC_PROFILE_INVALID_RESPONSE. `served` is how many
+        // rows this response carries, which is what decides whether a next cursor exists.
+        const placesEnvelope = (list: Record<string, unknown>, served: number) => {
+          const total = Array.isArray(list[relation]) ? (list[relation] as unknown[]).length : 0;
+          return {
+            collection_revision: String(state.revision),
+            category_content_revision: String(state.revision),
+            eligibility_fingerprint: 'f'.repeat(64),
+            eligible_item_count: total,
+            eligible_pin_count: 0,
+            recommended_places_next_cursor: served < total ? `o${served}.fixture` : null,
+          };
+        };
         const pageList = (list: Record<string, unknown>) => ({
           ...(category.route === 'places' ? project(placesSelection, list) : list),
+          // Spread AFTER the projection: project() keeps only selected fields, so the envelope
+          // has to be added on top or it is stripped.
+          ...(category.route === 'places'
+            ? placesEnvelope(list, match[2] ? offset + limit : Math.min(24, Array.isArray(list[relation]) ? (list[relation] as unknown[]).length : 0))
+            : {}),
           ...(match[2] && relation && Array.isArray(list[relation])
             ? { [relation]: (category.route === 'places' ? project(placesSelection, list)[relation] : list[relation]).slice(offset, offset + limit) }
             : Array.isArray(list[relation])

@@ -398,7 +398,11 @@ test('public category pages read every recommendation type through the unauthent
 test('public Places pagination requests one bounded unauthenticated detail page', async ({ browser, baseURL }) => {
   const state = fixtureState();
   const list = state.lists.recommendationLists[0]!;
-  list.recommended_places = Array.from({ length: 24 }, (_, index) => ({
+  // 36, not 24. This case asserts "one bounded unauthenticated detail page", which requires a
+  // second page to exist -- and under the canonical envelope a collection of exactly 24 has
+  // `recommended_places_next_cursor: null`, so no second request may be issued at all. The old
+  // 24-item fixture made the test's own assertion unsatisfiable regardless of the harness.
+  list.recommended_places = Array.from({ length: 36 }, (_, index) => ({
     documentId: `paging-place-${index + 1}`,
     Recommendation_Type: 'place',
     Media: [],
@@ -425,7 +429,10 @@ test('public Places pagination requests one bounded unauthenticated detail page'
     await visitor.page.goto(`/${fixtureUser.username}/places/public-places`);
     await expect(visitor.page.getByText('Paging Place 24', { exact: true })).toBeVisible();
     await visitor.page.getByRole('button', { name: 'Load more places', exact: true }).scrollIntoViewIfNeeded();
-    await expect.poll(() => requests.some((request) => request.search === '?limit=24&cursor=o24')).toBe(true);
+    // The cursor is server-minted and signed: usePublicProfileDetail's readNext takes the
+    // places cursor from the gateway-provided movieCursors and only falls back to `o${offset}`
+    // for non-places categories, so the bare `o24` form was never reachable here.
+    await expect.poll(() => requests.some((request) => request.search === '?limit=24&cursor=o24.fixture')).toBe(true);
     expect(requests.every((request) => request.authorization === undefined)).toBe(true);
   } finally {
     await closeFixture(visitor);

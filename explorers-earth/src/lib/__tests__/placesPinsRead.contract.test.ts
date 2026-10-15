@@ -11,8 +11,8 @@ const tuple={pinBucket:0 as const,sortPosition:13,id:'cccccccc-cccc-4ccc-8ccc-cc
 const secret='synthetic-test-only-secret-32-bytes';
 describe('Places authenticated tuple continuation',()=>{
  it('compatibility HTTP adapter maps Places READ_LIMIT while retaining other-category error behavior without listening',async()=>{
-  const handlers=new Map<string,Function>();
-  setupExplorersPublicProfileRoutes({use:vi.fn(),get:(path:string,handler:Function)=>{handlers.set(path,handler);}} as never,{category:async()=>{throw new PublicPlaceReadLimit();},detail:async()=>{throw new PublicPlaceReadLimit();}});
+  const handlers=new Map<string,(...args: unknown[]) => unknown>();
+  setupExplorersPublicProfileRoutes({use:vi.fn(),get:(path:string,handler:(...args: unknown[]) => unknown)=>{handlers.set(path,handler);}} as never,{category:async()=>{throw new PublicPlaceReadLimit();},detail:async()=>{throw new PublicPlaceReadLimit();}});
   for(const [path,category,code] of [['/api/explorers/v1/profiles/:username/recommendations/:category','places','READ_LIMIT'],['/api/explorers/v1/profiles/:username/recommendations/:category/:slug','places','READ_LIMIT'],['/api/explorers/v1/profiles/:username/recommendations/:category','books','UNAVAILABLE']] as const){
    const response:any={status:vi.fn(()=>response),json:vi.fn(()=>response)};
    await handlers.get(path)!({params:{username:'alice',category,slug:'synthetic'},query:{},get:()=>''},response);
@@ -20,8 +20,8 @@ describe('Places authenticated tuple continuation',()=>{
   }
  });
  it('canonical HTTP adapter exposes only closed READ_LIMIT classification and preserves conflicts/other failures without listening',async()=>{
-  const handlers=new Map<string,Function>();
-  const router={use:vi.fn(),all:vi.fn(),post:vi.fn(),get:(path:string,handler:Function)=>{handlers.set(path,handler);}};
+  const handlers=new Map<string,(...args: unknown[]) => unknown>();
+  const router={use:vi.fn(),all:vi.fn(),post:vi.fn(),get:(path:string,handler:(...args: unknown[]) => unknown)=>{handlers.set(path,handler);}};
   setupExplorersPublicContentRoutes({use:vi.fn()} as never,{} as never,secret,(()=>router) as never);
   const read=handlers.get('/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations')!;
   for(const [category,failure,status,code] of [['places',new PublicPlaceReadLimit(),503,'READ_LIMIT'],['places',new PublicContentFailure(409),409,'PAGE_CHANGED'],['books',new PublicPlaceReadLimit(),503,'UNAVAILABLE'],['places',Error('synthetic private SQL detail'),503,'UNAVAILABLE']] as const){
