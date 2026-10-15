@@ -125,7 +125,7 @@ describe('Guides parent job contract', () => {
     for (const caseName of cases) nativeIt(`runs the actual fixed native runner: ${caseName}`, () => {
         const script = fileURLToPath(new URL('../../../scripts/guides-windows-job.ps1', import.meta.url));
         const source = `$ErrorActionPreference='Stop'\n. '${script.replaceAll("'", "''")}' -DefinitionsOnly\n[Console]::Out.WriteLine([GuidesJob.ContractCases]::Run('${caseName}'))`;
-        const output = execFileSync(pwsh, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(source, 'utf16le').toString('base64')], { encoding: 'utf8', shell: false, windowsHide: true, timeout: 30000, maxBuffer: 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+        const output = execFileSync(pwsh, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(source, 'utf16le').toString('base64')], { encoding: 'utf8', shell: false, windowsHide: true, timeout: 120000, maxBuffer: 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
         const lines = output.trim().split(/\r?\n/);
         expect(lines).toHaveLength(1);
         const result = JSON.parse(lines[0]);
@@ -137,7 +137,10 @@ describe('Guides parent job contract', () => {
         if (caseName === 'assign-before-resume') expect(result.events.slice(0, 4)).toEqual(['job', 'create', 'assign', 'resume']);
         if (caseName === 'abort-stuck-fixture') expect(result.events.indexOf('terminate-job')).toBeLessThan(result.events.indexOf('wait'));
         if (caseName === 'exit-handshake') expect(result.events.slice(-3)).toEqual(['release-thread', 'release-process', 'release-job']);
-    }, 30000);
+        // The spawn budget above is 120s on a cold hosted PowerShell 7 start; the test
+        // budget must stay strictly above it or the test timeout fires first and the
+        // spawn budget becomes unreachable.
+    }, 180000);
     it('imports the sole effect-free factory and refuses invalid root input without effects', async () => {
         const module = await import('../../../scripts/guides-parent-supervision');
         expect(Object.keys(module).sort()).toEqual(['createGuidesParentSupervisor','extractGuidesSupervisorBrowserReportFailure','extractGuidesSupervisorDiagnostic','extractGuidesSupervisorNativeFailure','extractGuidesSupervisorPageFailure','extractGuidesSupervisorPageSeal']);

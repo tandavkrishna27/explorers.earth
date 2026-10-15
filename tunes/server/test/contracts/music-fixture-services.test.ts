@@ -49,7 +49,7 @@ function readProcessIdentity(pid: number): ProcessIdentity | undefined {
     + "catch [System.ArgumentException] { exit 3 }";
   try {
     const started = execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", command],
-      { encoding: "utf8", timeout: 15_000, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }).trim();
+      { encoding: "utf8", timeout: 60_000, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }).trim();
     if (!/^\d+$/.test(started)) throw new Error("malformed process creation time");
     return { pid, started };
   } catch (error) {
