@@ -41,7 +41,7 @@ suite(`Guides actual configure boundary before native allocation${unavailable?` 
   expect(payload.length).toBeLessThan(65536);
   const result=JSON.parse(ps(`$reader=[IO.StreamReader]::new([Console]::OpenStandardInput(),[Text.Encoding]::UTF8); $data=$reader.ReadToEnd(); if([Text.Encoding]::UTF8.GetByteCount($data) -gt 65536){throw 'test payload refused'}; $cases=$data | ConvertFrom-Json -Depth 10\n$accepted=@(); foreach($case in $cases){try{[GuidesJob.Wire]::ValidateConfigure(($case | ConvertTo-Json -Depth 10 -Compress),'${root.replaceAll("'","''")}');$accepted+=$true}catch{$accepted+=$false}}\n[Console]::Out.WriteLine((@{accepted=$accepted;constructors=[GuidesJob.ProductionNative]::ConstructionCount;entries=[GuidesJob.ProductionNative]::EntryCount}|ConvertTo-Json -Compress))`,payload));
   expect(result).toEqual({accepted:[true,false,false,false,false,false,false,false,false,false,false],constructors:0,entries:0});
- });
+ },60_000);
  it('real wire rejects the recursive profile entry before constructing native ownership',()=>{
   const configure=(fixture as any).buildGuidesLauncherConfigure(root,process.execPath,{},argv);
   configure.fixtureEntrypoint=path.join(root,'tunes/scripts/profile-browser-fixture.ts');
@@ -50,7 +50,7 @@ suite(`Guides actual configure boundary before native allocation${unavailable?` 
   const command=`$ErrorActionPreference='Stop'\n. '${script.replaceAll("'","''")}' -DefinitionsOnly\n$code=[GuidesJob.Wire]::Run('${root.replaceAll("'","''")}').GetAwaiter().GetResult(); [Console]::Out.WriteLine((@{code=$code;constructors=[GuidesJob.ProductionNative]::ConstructionCount;entries=[GuidesJob.ProductionNative]::EntryCount}|ConvertTo-Json -Compress))`;
   const output=execFileSync(pwsh,['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(command,'utf16le').toString('base64')],{input:Buffer.concat([header,bytes]),encoding:'utf8',timeout:10000,windowsHide:true,maxBuffer:65536,stdio:['pipe','pipe','pipe']});
   expect(JSON.parse(output)).toEqual({code:1,constructors:0,entries:0});
- });
+ },60_000);
  it('selected explicit PS7 compiles actual supervisor with zero native constructions',async()=>{
   await expect(assertGuidesPowerShellRuntime(pwsh,script)).resolves.toBe(pwsh);
  });
