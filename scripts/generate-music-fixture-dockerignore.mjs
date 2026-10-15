@@ -34,6 +34,7 @@ const sharedContractEntryPoints = [
   "tunes/shared/explorersPlacePinsFraming.ts",
   "tunes/shared/explorersProductContract.ts",
   "tunes/shared/explorersPersonContract.ts",
+  "tunes/shared/explorersPublicPeopleSectorContract.ts",
   "tunes/shared/explorersPlaceContract.ts",
   "tunes/shared/explorersPlaceLinkContract.ts",
   // Ticket 5.3. explorersApiClient is in this context and imports the guide contract, so

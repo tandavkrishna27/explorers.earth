@@ -38,6 +38,7 @@ COPY tunes/shared/explorersPlacePinsContract.ts /workspace/tunes/shared/explorer
 COPY tunes/shared/explorersPlacePinsFraming.ts /workspace/tunes/shared/explorersPlacePinsFraming.ts
 COPY tunes/shared/explorersProductContract.ts /workspace/tunes/shared/explorersProductContract.ts
 COPY tunes/shared/explorersPersonContract.ts /workspace/tunes/shared/explorersPersonContract.ts
+COPY tunes/shared/explorersPublicPeopleSectorContract.ts /workspace/tunes/shared/explorersPublicPeopleSectorContract.ts
 COPY tunes/shared/explorersPlaceContract.ts /workspace/tunes/shared/explorersPlaceContract.ts
 COPY tunes/shared/explorersPlaceLinkContract.ts /workspace/tunes/shared/explorersPlaceLinkContract.ts
 COPY tunes/shared/explorersGuideContract.ts /workspace/tunes/shared/explorersGuideContract.ts

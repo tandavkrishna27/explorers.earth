@@ -1152,6 +1152,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !tunes/shared/explorersPlacePinsFraming.ts
 !tunes/shared/explorersProductContract.ts
 !tunes/shared/explorersPublicContentContract.ts
+!tunes/shared/explorersPublicPeopleSectorContract.ts
 !tunes/shared/explorersRichNoteContract.ts
 !tunes/shared/explorersSearchContract.ts
 !tunes/shared/explorersTaxonomyContract.ts
