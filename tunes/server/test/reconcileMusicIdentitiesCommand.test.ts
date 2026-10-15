@@ -514,7 +514,7 @@ describe("music reconciliation checkpoints", () => {
       await writeMusicReconciliationCheckpoint(path, checkpoint());
       execFileSync("icacls.exe", [directory, "/grant", "*S-1-1-0:(OI)(CI)(IO)(W)"], { windowsHide: true });
       const output = execFileSync("powershell.exe", [
-        "-NoProfile", "-NonInteractive", "-File",
+        "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File",
         join(import.meta.dirname, "../../scripts/windows-write-through.ps1"),
         "inspect-security", directory,
       ], { encoding: "utf8", windowsHide: true });
