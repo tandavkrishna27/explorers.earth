@@ -250,13 +250,6 @@ for (const [index, title] of PUBLIC_PARITY_CASES.entries())
                 break;
             }
             case 10: {
-                // This is the first public load of this epoch's freshly launched API process
-                // and it fans out ~11 resolveAccount reads against a cold pool. The browser
-                // aborts each read at 15000ms while the assertion budget is also exactly
-                // 15000ms, with no retry anywhere on the cold-entry path, so a single slow
-                // read renders NotFound and the title never appears. Assert the same positive
-                // API read case 0 uses first: it proves more, adds no retry, runs on the
-                // harness budget, and leaves the browser load inside its own.
                 expect((await scope.read(anonymous, categoryURL(a.handle, 'people'))).body).toBeTruthy();
                 const page = await cold(scope, anonymous, `/${a.handle}/people/${list.slug}`, list.title), changed = `pp-${scope.manifest.runId.slice(0, 10)}-new`, final = `pp-${scope.manifest.runId.slice(0, 10)}-end`;
                 await account(scope, owner, { handle: changed });

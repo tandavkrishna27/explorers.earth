@@ -49,7 +49,11 @@ async function ownerRead<T>(path:string,query:Record<string,unknown>,schema:z.Zo
     const body=strict?await strictOwnerResponse(response,initial.generation):await responseBody<unknown>(response,initial.generation);
     if(controller.signal.aborted||!isCurrent()) throw new DOMException('Owner changed','AbortError');
     const parsed=schema.safeParse(body);if(!parsed.success){if(strict)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid Book response');throw parsed.error;}return parsed.data;
-  } finally {unsubscribe();signal?.removeEventListener('abort',stop);}
+  // Abandoning a read must abort the controller that owns its transport. strictOwnerResponse
+  // cancels the response body on its budget exits, which kills the request natively, so
+  // without this the cancellation has no owner and nothing can explain why the read stopped.
+  // Aborting after a completed read cancels nothing.
+  } finally {unsubscribe();signal?.removeEventListener('abort',stop);stop();}
 }
 async function strictOwnerResponse(response:Response,generation:number):Promise<unknown>{
  const limit=4*1024*1024;if(Number(response.headers.get('Content-Length'))>limit){await response.body?.cancel();throw new ExplorersApiError(413,'RESOURCE_TOO_LARGE','Book response exceeds the byte bound');}
@@ -309,7 +313,9 @@ async function completeCategory(input:Pick<OwnerCollectionsRequest,'category'|'s
   } catch(error) {
     if(error instanceof ExplorersApiError) throw error;
     check();throw new ExplorersApiError(503,'UNAVAILABLE','Unable to read complete category content');
-  } finally {unsubscribe();signal?.removeEventListener('abort',stop);}
+  // Same rule as ownerRead: the 401 and byte-budget exits cancel the response body, so the
+  // owning controller is aborted on every exit rather than dropped un-aborted.
+  } finally {unsubscribe();signal?.removeEventListener('abort',stop);stop();}
 }
 
 export function handleExpiredSession(response: Response, generation: number) {
