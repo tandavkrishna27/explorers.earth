@@ -7,6 +7,11 @@ import {toGuideSection,toCanonicalSectionBlocks} from '../../../../explorers-ear
 import {guideSectionBlocksSchema} from '../../../shared/explorersGuideContract';
 import {calculateDistance} from '../../../../explorers-earth/src/features/Guides/utils/distanceCalculator';
 import {calculateTravelTime} from '../../../../explorers-earth/src/features/Guides/utils/travelModeConfig';
+// handleSubmit calls guideDescriptionText, and this harness compiles that initializer with
+// new Function(...Object.keys(context)), so the binding has to be injected or every case dies
+// with a ReferenceError that reads as a form defect. The sibling
+// GuideSectionForm.description.test.ts already injects it this way.
+import {guideDescriptionText} from '../../../../explorers-earth/src/utils/guideDescriptionText';
 
 const file=resolve(import.meta.dirname,'../../../..','explorers-earth/src/features/Guides/components/GuideSectionForm.tsx');
 function actual(names:string[],context:Record<string,unknown>){
@@ -24,7 +29,7 @@ function fixture(){
 }
 async function submit(initialData:ReturnType<typeof fixture>['initialData'],overrides:Record<string,unknown>={}){
  let saved:any;
- const context={initialData,sectionId:'section',title:'Edited title',description:'',morningPlaces:initialData.Timeline.morning,afternoonPlaces:initialData.Timeline.afternoon,eveningPlaces:initialData.Timeline.evening,transportSegments:initialData.Transport.segments,stayAccommodations:initialData.Stay.accommodations,activityPlaces:initialData.Recommendation_Activity.activities,pendingActivityUploadsRef:{current:[]},isMultiCityGuide:false,selectedLocation:'',sequence:1,htmlToBlocks:()=>[],setLoading:()=>{},onLoadingChange:undefined,onSuccess:undefined,toast:{success:()=>{},error:()=>{}},saveSection:async (_:string,data:unknown)=>{saved=data;},calculateDistance,calculateTravelTime,...overrides};
+ const context={initialData,sectionId:'section',title:'Edited title',description:'',morningPlaces:initialData.Timeline.morning,afternoonPlaces:initialData.Timeline.afternoon,eveningPlaces:initialData.Timeline.evening,transportSegments:initialData.Transport.segments,stayAccommodations:initialData.Stay.accommodations,activityPlaces:initialData.Recommendation_Activity.activities,pendingActivityUploadsRef:{current:[]},isMultiCityGuide:false,selectedLocation:'',sequence:1,htmlToBlocks:()=>[],setLoading:()=>{},onLoadingChange:undefined,onSuccess:undefined,toast:{success:()=>{},error:()=>{}},saveSection:async (_:string,data:unknown)=>{saved=data;},calculateDistance,calculateTravelTime,guideDescriptionText,...overrides};
  const functions=actual(['generateCompleteTransportSegments','handleSubmit'],context);
  await functions.handleSubmit({preventDefault(){}});
  expect(saved).toBeDefined();return saved;
