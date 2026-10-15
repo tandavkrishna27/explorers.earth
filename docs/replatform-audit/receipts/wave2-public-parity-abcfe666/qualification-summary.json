@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "kind": "sanitized-derived-qualification-summary",
+  "originalQualificationSha256": "232cb4b0f3d6fa4d26f1f626165a1244aaa836e376d8a6bc1b64a9ffec7219b4",
+  "originalReceiptSha256": "5e41d5c7afc357063a81c1e5668bfff35be96f8f8697047cbaff8c5f60f40773",
+  "lane": {
+    "name": "public-parity",
+    "status": "passed"
+  },
+  "identities": 32,
+  "provenance": {
+    "commit": "abcfe666b0a05ac474e1535143906c1e132c1c0c",
+    "sourceHash": "cdb5dc556e6e6905f58ade57b4a73b227810d5d8adc67ddc955682c8e9e35a88",
+    "manifestHash": "276bb0aca15f0db7c67081e34d407fec7b2d19e811981146140fdb3da6fa5348",
+    "dirty": false
+  },
+  "deliveredSlice": "incomplete",
+  "releaseEligible": false,
+  "execution": {
+    "results": 32,
+    "errors": 0,
+    "attempts": 32,
+    "nonPassed": 0,
+    "retries": 0
+  },
+  "projects": [
+    "public-parity-desktop",
+    "public-parity-mobile"
+  ],
+  "playwright": "1.61.1",
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  },
+  "cleanup": {
+    "status": "passed"
+  },
+  "authorityOwned": true,
+  "probesInSource": 0
+}
