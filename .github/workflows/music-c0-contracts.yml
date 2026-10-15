@@ -97,7 +97,10 @@ jobs:
       # material is involved; this is paths only, and it turns that diagnosis into a fact.
       - name: Report the runner temp-root canonical shape
         if: runner.os == 'Windows'
-        run: node -e "const os=require('os'),fs=require('fs');const t=os.tmpdir();console.log(JSON.stringify({TEMP:process.env.TEMP,RUNNER_TEMP:process.env.RUNNER_TEMP,tmpdir:t,realpath:fs.realpathSync(t),canonical:fs.realpathSync(t)===t}))"
+        # Walks every ANCESTOR, because assertCanonicalLocalPath checks realpath identity at
+        # each level: the leaf can report canonical while an intermediate (C:\Users\RUNNER~1)
+        # does not, which is what the first, leaf-only probe missed.
+        run: node -e "const os=require('os'),fs=require('fs'),path=require('path');const walk=(label,root)=>{if(!root)return console.log(JSON.stringify({label,root:null}));const out=[];for(let c=path.resolve(root);;c=path.dirname(c)){let rp=null,err=null;try{rp=fs.realpathSync(c)}catch(e){err=e.code}out.push({c,rp,ok:rp===c,err});if(c===path.dirname(c))break}console.log(JSON.stringify({label,root,ancestors:out}))};walk('tmpdir',os.tmpdir());walk('RUNNER_TEMP',process.env.RUNNER_TEMP)"
       - if: runner.os == 'Windows'
         env:
           # Belt and braces: the test refuses to skip when this is set, so the lane cannot go green

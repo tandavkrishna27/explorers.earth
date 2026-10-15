@@ -12,7 +12,13 @@ import { startMusicServer } from '../../config/music-startup';
 // (music-local-state.ts:77-84) require realpath identity for the path and its ancestors, so
 // a bare tmpdir() made all 24 cases in this lane refuse for a reason that is not a product
 // defect. Canonicalize once, as music-cli-contract-authority.test.ts:22 already does.
-const temporaryRoot = realpathSync(tmpdir());
+// REFINED after a CI probe: realpathSync does NOT expand 8.3 short names, so the LEAF of
+// tmpdir() reports canonical on the runner (probe output: tmpdir and its realpath both
+// C:\Users\RUNNER~1\AppData\Local\Temp).
+// assertCanonicalLocalPath checks identity at EVERY ancestor, and that is where
+// C:\Users\RUNNER~1 fails. RUNNER_TEMP (D:\a\_temp) has no
+// short-name component, so it is preferred where present.
+const temporaryRoot = realpathSync(process.env.RUNNER_TEMP ?? tmpdir());
 describe('owned browser Music opaque admission', () => {
   it('rejects plain serialized and cloned profiles before production loading', async () => {
     const plain = { kind: 'owned-browser-music/v1' } as ValidatedOwnedBrowserMusicProfile;
