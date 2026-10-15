@@ -90,6 +90,14 @@ jobs:
           $resolved = $item.FullName
           if ($resolved -ne [IO.Path]::GetFullPath($resolved) -or $resolved.Contains('/')) { throw 'GUIDES_GATE_PREFLIGHT_FAILED: resolved pwsh path is not canonical' }
           "GUIDES_POWERSHELL_EXECUTABLE=$resolved" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      # Prints the temp-root shape the Windows custody predicates depend on. Both
+      # secure-music-secret-file.ts:227-228 and assertCanonicalLocalPath require
+      # realpath identity, and a non-canonical TEMP (an 8.3 short-name component, or a
+      # junction) makes them refuse for a reason that is not a product defect. No secret
+      # material is involved; this is paths only, and it turns that diagnosis into a fact.
+      - name: Report the runner temp-root canonical shape
+        if: runner.os == 'Windows'
+        run: node -e "const os=require('os'),fs=require('fs');const t=os.tmpdir();console.log(JSON.stringify({TEMP:process.env.TEMP,RUNNER_TEMP:process.env.RUNNER_TEMP,tmpdir:t,realpath:fs.realpathSync(t),canonical:fs.realpathSync(t)===t}))"
       - if: runner.os == 'Windows'
         env:
           # Belt and braces: the test refuses to skip when this is set, so the lane cannot go green

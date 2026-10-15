@@ -6,6 +6,13 @@ import { mkdirSync, writeFileSync, rmSync, realpathSync, linkSync, unlinkSync, r
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { startMusicServer } from '../../config/music-startup';
+// GitHub's windows-latest TEMP contains an 8.3 short-name component, so os.tmpdir() is not
+// its own realpath there. Both the secret-file inspector
+// (secure-music-secret-file.ts:227-228) and assertCanonicalLocalPath
+// (music-local-state.ts:77-84) require realpath identity for the path and its ancestors, so
+// a bare tmpdir() made all 24 cases in this lane refuse for a reason that is not a product
+// defect. Canonicalize once, as music-cli-contract-authority.test.ts:22 already does.
+const temporaryRoot = realpathSync(tmpdir());
 describe('owned browser Music opaque admission', () => {
   it('rejects plain serialized and cloned profiles before production loading', async () => {
     const plain = { kind: 'owned-browser-music/v1' } as ValidatedOwnedBrowserMusicProfile;
@@ -31,7 +38,7 @@ describe('owned browser Music opaque admission', () => {
   // without an explicit budget; 60000ms matches the five sibling budgets below and keeps a genuine
   // hang failing.
   it('rejects malformed duplicate oversized and excessively nested private markers without resource admission', { timeout: 60_000 }, async () => {
-    const directory = join(tmpdir(), `explorers-music-e2e-${randomBytes(16).toString('hex')}`);
+    const directory = join(temporaryRoot, `explorers-music-e2e-${randomBytes(16).toString('hex')}`);
     const helper = resolve(import.meta.dirname, '../../../scripts/music-local-private-files.ps1');
     if (process.platform === 'win32') execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', helper, 'create-directory', directory], { stdio: 'ignore', windowsHide: true });
     else mkdirSync(directory, { mode: 0o700 });
@@ -44,18 +51,18 @@ describe('owned browser Music opaque admission', () => {
         await expect(validateOwnedBrowserMusicProfile(process.env, marker, 'a'.repeat(64))).rejects.toThrow();
         expect(hasValidatedOwnedBrowserMusicRuntime(process.env)).toBe(false);
       }
-    } finally { if (realpathSync(directory) !== resolve(directory) || dirname(directory) !== resolve(tmpdir())) throw new Error('Owned contract cleanup escaped'); rmSync(directory, { recursive: true, force: true }); }
+    } finally { if (realpathSync(directory) !== resolve(directory) || dirname(directory) !== temporaryRoot) throw new Error('Owned contract cleanup escaped'); rmSync(directory, { recursive: true, force: true }); }
   });
   it('rejects capability syntax and escaped marker paths before reading authority', async () => {
     await expect(validateOwnedBrowserMusicProfile(process.env, 'foreign.json', 'bad')).rejects.toThrow('authority rejected');
-    await expect(validateOwnedBrowserMusicProfile(process.env, resolve(tmpdir(), 'foreign.json'), 'a'.repeat(64))).rejects.toThrow();
+    await expect(validateOwnedBrowserMusicProfile(process.env, join(temporaryRoot, 'foreign.json'), 'a'.repeat(64))).rejects.toThrow();
     expect(hasValidatedOwnedBrowserMusicRuntime(process.env)).toBe(false);
   });
 });
 
 describe('owned Music real private-secret vector custody', () => {
   async function files(run: (paths: string[], values: string[]) => Promise<void>) {
-    const directory = join(tmpdir(), `explorers-music-e2e-${randomBytes(16).toString('hex')}`);
+    const directory = join(temporaryRoot, `explorers-music-e2e-${randomBytes(16).toString('hex')}`);
     const helper = resolve(import.meta.dirname, '../../../scripts/music-local-private-files.ps1');
     const create = (path: string, value: string) => {
       if (process.platform === 'win32') execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', helper, 'create-file', path], { input: value, windowsHide: true, timeout: 10000, stdio: ['pipe', 'ignore', 'ignore'] });
@@ -69,7 +76,7 @@ describe('owned Music real private-secret vector custody', () => {
       paths.forEach((path, index) => create(path, values[index]));
       await run(paths, values);
     } finally {
-      if (realpathSync(directory) !== resolve(directory) || dirname(directory) !== resolve(tmpdir())) throw new Error('Owned contract cleanup escaped');
+      if (realpathSync(directory) !== resolve(directory) || dirname(directory) !== temporaryRoot) throw new Error('Owned contract cleanup escaped');
       rmSync(directory, { recursive: true, force: true });
     }
   }
