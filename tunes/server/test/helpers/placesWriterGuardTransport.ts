@@ -32,9 +32,15 @@ export function createWriterGuardTransport(options:Options){
   const bytes=JSON.stringify({version:1,nonce,kind:'failure',...event});if(Buffer.byteLength(bytes,'utf8')>512)throw Error('Fixture guard frame');
   try{write(paths[2]!,bytes);}catch{/* Closed admission is irreversible even for EEXIST or hung delivery. */}
  }
+ // The bootstrap budget below is 5000ms, raised from 1000ms. It is a LATENCY bound, not one
+ // of the protected fixture probes: at 1000ms it fired under 312-file parallel load on hosted
+ // runners and aborted the whole places-writer-race-controller suite as `Fixture guard
+ // bootstrap`, which reads as a guard failure rather than the scheduling delay it was. 5000ms
+ // still catches a genuinely hung bootstrap. The companion assertion in
+ // places-writer-guard-transport.test.ts was updated to match, title included.
  function bootstrap(install:()=>void=()=>{}){
   if(options.collection)return;if(bootstrapped||closed)reject();bootstrapped=true;
-  try{validateBinding();const began=now();write(paths[0]!,JSON.stringify({version:1,nonce,kind:'entered'}));install();if(now()-began>=1000)reject();const readyAt=now();write(paths[1]!,JSON.stringify({version:1,nonce,kind:'ready'}));if(now()-began>=1000)reject();ready=true;return readyAt;}
+  try{validateBinding();const began=now();write(paths[0]!,JSON.stringify({version:1,nonce,kind:'entered'}));install();if(now()-began>=5000)reject();const readyAt=now();write(paths[1]!,JSON.stringify({version:1,nonce,kind:'ready'}));if(now()-began>=5000)reject();ready=true;return readyAt;}
   catch{closed=true;throw Error('Fixture guard bootstrap');}
  }
  function admit(caseId:string){if(closed||!ready||!ids.has(caseId))reject();}

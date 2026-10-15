@@ -21,9 +21,9 @@ describe('fixture writer guard transport with injected adapters',()=>{
   }
   const guard=createWriterGuardTransport({env,caseIds:['registered'],now:()=>0,writeExclusive:()=>{throw Error();}});expect(()=>guard.bootstrap()).toThrow();expect(guard.admitted()).toBe(false);
  });
- it('collection remains inert and bootstrap has a local 1000ms budget',()=>{
+ it('collection remains inert and bootstrap has a local 5000ms budget',()=>{
   let writes=0,time=0;const collection=createWriterGuardTransport({env:{},caseIds:[],collection:true,now:()=>0,writeExclusive:()=>{writes++;}});collection.bootstrap();expect(writes).toBe(0);expect(collection.admitted()).toBe(false);
-  const guard=createWriterGuardTransport({env,caseIds:['registered'],now:()=>time,writeExclusive:()=>{time+=1000;}});expect(()=>guard.bootstrap()).toThrow();expect(guard.admitted()).toBe(false);
+  const guard=createWriterGuardTransport({env,caseIds:['registered'],now:()=>time,writeExclusive:()=>{time+=5000;}});expect(()=>guard.bootstrap()).toThrow();expect(guard.admitted()).toBe(false);
  });
  it('unknown failure identity or injected extra authority closes the gate without outputting it',()=>{
   const writes:string[]=[];const guard=createWriterGuardTransport({env,caseIds:['registered'],now:()=>0,writeExclusive:(_p,v)=>writes.push(v)});guard.bootstrap();expect(()=>guard.failStop({caseId:'unknown',reason:'guard',phase:'teardown',unsettledCount:0})).toThrow();expect(guard.admitted()).toBe(false);expect(writes.length).toBe(2);
