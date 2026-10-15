@@ -222,7 +222,7 @@ export async function rateWindow(scope: Scope, context: BrowserContext, windowMs
                 clearTimeout(timer);
             signal.removeEventListener('abort', aborted);
             context.off('close', closed);
-            error ? reject(error) : resolve();
+            if (error) reject(error); else resolve();
         };
         const aborted = () => finish(Error('PUBLIC_PARITY_RATE_WINDOW_ABORTED')), closed = () => finish(Error('PUBLIC_PARITY_RATE_WINDOW_CONTEXT_CLOSED'));
         const tick = () => {
@@ -245,6 +245,9 @@ export function waitOwnedResponseGate(signal: AbortSignal, gate: Promise<void>, 
         throw Error('PUBLIC_PARITY_GATE_BUDGET_REFUSED');
     return new Promise((resolve, reject) => {
         let done = false;
+        // `timer` and `finish` are mutually recursive: `finish` clears `timer`, and `timer`'s
+        // callback calls `finish`, so one of the two must be declared before it is assigned.
+        // eslint-disable-next-line prefer-const
         let timer: ReturnType<typeof setTimeout>;
         const finish = (error?: Error) => { if (done)
             return; done = true; clearTimeout(timer); signal.removeEventListener('abort', abort); context.off('close', close); if (error) reject(error); else resolve(); };

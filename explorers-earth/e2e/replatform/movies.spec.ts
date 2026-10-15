@@ -177,9 +177,8 @@ test('owner manual form all fields snapshot repeat edits and archive reload',asy
  for(const note of ['First edit','Second edit']){diagnosticStage(info,'edit-navigation',editIteration++===0?'first':'second');await page.goto(`/recommendations/movies/${list.id}/edit/${r.id}`);diagnosticStage(info,'edit-form');await page.locator('.ql-editor').fill(note);diagnosticStage(info,'save-start');await page.getByRole('button',{name:'Save Changes',exact:true}).click();diagnosticStage(info,'save-returned');await expect(page).toHaveURL(new RegExp(`/recommendations/movies/${list.id}$`));diagnosticStage(info,'list-route-reached');detail=await editable(page.request,'recommendations',r.id);expect(detail.note.html.replaceAll('&nbsp;',' ')).toContain(note);diagnosticStage(info,'saved-note-confirmed');diagnosticStage(info,'keep-draft-start');await page.getByRole('button',{name:'Keep Draft',exact:true}).click();diagnosticStage(info,'keep-draft-returned');}
  diagnosticStage(info,'archive');
  await page.locator('button').filter({has:page.locator('svg.lucide-ellipsis')}).first().click();const archived=page.waitForResponse(res=>res.request().method()==='DELETE'&&new URL(res.url()).pathname===`${base}/recommendations/${r.id}`);page.once('dialog',dialog=>{expect(dialog.message()).toBe('Archive this recommendation from all lists?');void dialog.accept();});await page.getByRole('button',{name:'Archive recommendation',exact:true}).click();expect((await archived).status()).toBe(200);await page.reload();await expect(page.getByText('No movies added yet.',{exact:true})).toBeVisible();expect(bad).toEqual([]);await page.screenshot({path:info.outputPath('movies-owner.png'),fullPage:true});
- }catch(error){
-  // No public whole-test deadline origin is available at this failure boundary.
-  throw error;
+ // No public whole-test deadline origin is available at this failure boundary, so the
+ // failure propagates unaltered; the finally block only finishes network capture.
  }finally{finishMoviesNetwork(info);}
 });
 

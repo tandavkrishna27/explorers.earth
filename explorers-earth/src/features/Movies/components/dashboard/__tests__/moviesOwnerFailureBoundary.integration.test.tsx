@@ -23,5 +23,5 @@ it.each(['accepted','rejected'] as const)('actual edit-return owner boundary: %s
    expect(slot.snapshot).toMatchObject({phase:'initial-category',cause:'unavailable',list:'error',visibility:'unavailable',guard:'fresh',signal:'present',prompt:'closed'});
    expect(screen.queryByRole('button',{name:'Keep Draft'})).toBeNull();
   }
- }finally{server.close();view?.unmount();g.release();try{await act(async()=>server.drain());}finally{c.restore();old?Object.defineProperty(globalThis,'__moviesOwnerDiagnostic',old):Reflect.deleteProperty(globalThis,'__moviesOwnerDiagnostic');}}
+ }finally{server.close();view?.unmount();g.release();try{await act(async()=>server.drain());}finally{c.restore();if(old)Object.defineProperty(globalThis,'__moviesOwnerDiagnostic',old);else Reflect.deleteProperty(globalThis,'__moviesOwnerDiagnostic');}}
 });

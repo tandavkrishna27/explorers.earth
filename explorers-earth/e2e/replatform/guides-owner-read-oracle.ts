@@ -71,6 +71,10 @@ export function createGuidesOwnerReadTracker(page:Page,input:Options){
   const url=new URL(request.url());if(request.method()!=='GET'||!selected(url,options)||options.scope==='selected-guide'&&url.pathname!=='/api/explorers/v1/collections/'+options.selectedGuideId+'/guide')return;if(sealed||attempts.size>=512){overflow=true;return;}
   const ordinal=ordinals.get(url.href)??0;ordinals.set(url.href,ordinal+1);let headers!:(response:Response)=>void,headerFailure!:(error:unknown)=>void,terminal!:()=>void,terminalFailure!:(error:unknown)=>void;
   const response=new Promise<Response>((resolve,reject)=>{headers=resolve;headerFailure=reject;}),end=new Promise<void>((resolve,reject)=>{terminal=resolve;terminalFailure=reject;});void response.catch(()=>{});void end.catch(()=>{});
+  // `attempt` cannot be const: the object literal assigned to it contains an
+  // immediately-invoked async closure that reads `attempt`, so a single-declaration const
+  // would be read inside its own temporal dead zone.
+  // eslint-disable-next-line prefer-const
   let attempt!:Attempt;attempt={url,ordinal,finished:false,failed:false,work:(async()=>{let stage:NonNullable<Attempt['failureStage']>='headers';try{const original=await response;stage='status';if(original.status()!==200)throw refuse();stage='body';const bytes=await original.body();stage='bound';if(bytes.length>4*1024*1024)throw refuse();stage='finished';if(await original.finished()!==null)throw refuse();stage='terminal';await end;stage='json';return {url,body:JSON.parse(bytes.toString('utf8')) as unknown};}catch(error){attempt.failureStage=stage;latch(error,('read-'+stage) as GuidesReadOracle['check'],[...attempts.values()].indexOf(attempt));throw error;}})()};void attempt.work.catch(()=>{});
   Object.assign(attempt,{headers,headerFailure,terminal,terminalFailure});attempts.set(request,attempt);
  };

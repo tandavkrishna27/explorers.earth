@@ -646,16 +646,21 @@ export const explorersApiClient = {
     return result;
    } catch(error){
     if(parent===undefined)throw error;
+    // `thrown` rather than reassigning the caught binding (no-ex-assign): rebinding `error`
+    // in place makes the original rejection unrecoverable for anything later in the block and
+    // hides which value is actually being propagated. Behaviour is unchanged -- the
+    // custody-lost branch still substitutes a 409 and that is what gets mapped and rethrown.
+    let thrown:unknown=error;
     let failure:GuardedParentCreateFailure;
     if(lost()){
      issuedDetails.delete(parent);
-     error=new ExplorersApiError(409,'CONFLICT','Content command cancelled or owner changed');failure={kind:'custody-lost'};
+     thrown=new ExplorersApiError(409,'CONFLICT','Content command cancelled or owner changed');failure={kind:'custody-lost'};
     } else if(!dispatched)failure={kind:'local-rejection'};
-    else if(error instanceof ExplorersApiError&&validatedServerErrors.has(error)&&[401,403,404,409,422].includes(error.status)){
-     issuedDetails.delete(parent);failure={kind:'server-refusal',status:error.status,code:error.code};
+    else if(thrown instanceof ExplorersApiError&&validatedServerErrors.has(thrown)&&[401,403,404,409,422].includes(thrown.status)){
+     issuedDetails.delete(parent);failure={kind:'server-refusal',status:thrown.status,code:thrown.code};
     } else failure={kind:'uncertain'};
-    if(error!==null&&(typeof error==='object'||typeof error==='function'))guardedParentCreateFailures.set(error,Object.freeze(failure));
-    throw error;
+    if(thrown!==null&&(typeof thrown==='object'||typeof thrown==='function'))guardedParentCreateFailures.set(thrown,Object.freeze(failure));
+    throw thrown;
    }
   },
   async updateMyCollection(observed:CollectionObservation,patch:Omit<UpdateCollectionInput,'expectedRevision'>,key:string,signal?:AbortSignal) {

@@ -47,5 +47,5 @@ export function context(){
  const original=useAuthStore.getState(),storage=localStorage.getItem('auth-storage');
  useAuthStore.setState({accountId:account,generation:10,isAuthenticated:true,status:'active-complete',user:{id:id(9),documentId:account,username:'fixture',email:'fixture@example.invalid',blocked:false}});
  const query=new QueryClient({defaultOptions:{queries:{retry:false}}});
- return {wrap:(element:React.ReactNode)=>createElement(QueryClientProvider,{client:query},createElement(MemoryRouter,{initialEntries:[{pathname:`/recommendations/movies/${list}`,state:{justAddedRecommendation:true}}]},element)),restore:()=>{cleanup();query.clear();useAuthStore.setState(original,true);storage===null?localStorage.removeItem('auth-storage'):localStorage.setItem('auth-storage',storage);vi.unstubAllGlobals();}};
+ return {wrap:(element:React.ReactNode)=>createElement(QueryClientProvider,{client:query},createElement(MemoryRouter,{initialEntries:[{pathname:`/recommendations/movies/${list}`,state:{justAddedRecommendation:true}}]},element)),restore:()=>{cleanup();query.clear();useAuthStore.setState(original,true);if(storage===null)localStorage.removeItem('auth-storage');else localStorage.setItem('auth-storage',storage);vi.unstubAllGlobals();}};
 }

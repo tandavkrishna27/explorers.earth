@@ -12,9 +12,9 @@ describe('Movies observer hook acceptance fences',()=>{
   const pending=gate(),observer=vi.fn();vi.mocked(readMoviesOwnerContent).mockReturnValue(pending.promise);
   const hook=renderHook(()=>useMoviesOwner(undefined,true,observer));
   try{expect(observer.mock.calls.map(c=>c[0])).toEqual([{owner:'pending'}]);expect(readMoviesOwnerContent).toHaveBeenCalledWith(expect.any(AbortSignal),expect.any(Function));
-   await act(async()=>{state==='accepted'?pending.resolve(content):pending.reject(Error('synthetic'));await pending.promise.catch(()=>{});});
+   await act(async()=>{if(state==='accepted')pending.resolve(content);else pending.reject(Error('synthetic'));await pending.promise.catch(()=>{});});
    expect(observer.mock.calls.map(c=>c[0])).toEqual([{owner:'pending'},{owner:state}]);expect(hook.result.current.loading).toBe(false);
-   state==='accepted'?expect(hook.result.current.content).toBe(content):expect(hook.result.current.error?.message).toBe('synthetic');
+   if(state==='accepted')expect(hook.result.current.content).toBe(content);else expect(hook.result.current.error?.message).toBe('synthetic');
   }finally{pending.resolve(content);await pending.promise.catch(()=>{});hook.unmount();}
  });
  it.each([['disabled',false,'owner'],['no-account',true,undefined]] as const)('observes %s without acquiring a request',async(state,enabled,accountId)=>{

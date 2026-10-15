@@ -268,7 +268,8 @@ export function guidesFixtureBytes(id: keyof typeof FIXTURES) {
 }
 function nativePost(url: string, headers: Record<string, string>, body: string): Promise<Reply> {
     return new Promise((resolve, reject) => {
-        let ended = false, closed = false, failure = false, status = 0, parts: Buffer[] = [], size = 0, received: Record<string, string> = {};
+        let ended = false, closed = false, failure = false, status = 0, size = 0;
+        const parts: Buffer[] = [], received: Record<string, string> = {};
         const finish = () => {
             if (!closed)
                 return;

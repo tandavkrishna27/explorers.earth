@@ -26,7 +26,7 @@ it.each(requests)('People %s rejects an oversized declared body before materiali
  expect(await promptly(outcome)).toBe('PUBLIC_PROFILE_READ_LIMIT');expect(json).not.toHaveBeenCalled();expect(cancel).toHaveBeenCalledOnce();expect(body.locked).toBe(false);
 });
 it('People streaming byte limit cancels and releases before reading the tail or invoking response.json',async()=>{
- let reads=0;const cancel=vi.fn();const body=new ReadableStream<Uint8Array>({pull(controller){reads++;controller.enqueue(new TextEncoder().encode(reads===1?'\{"value":"'+'x'.repeat(4*1024*1024):'"}'));if(reads===2)controller.close();},cancel},{highWaterMark:0});
+ let reads=0;const cancel=vi.fn();const body=new ReadableStream<Uint8Array>({pull(controller){reads++;controller.enqueue(new TextEncoder().encode(reads===1?'{"value":"'+'x'.repeat(4*1024*1024):'"}'));if(reads===2)controller.close();},cancel},{highWaterMark:0});
  const response=new Response(body),json=vi.spyOn(response,'json');const client=createPublicProfileGatewayClient('https://public.example',vi.fn().mockResolvedValue(response));
  const outcome=client.category('reader','people').then(()=> 'accepted',error=>error.message);expect(await outcome).toBe('PUBLIC_PROFILE_READ_LIMIT');expect(reads).toBe(1);expect(cancel).toHaveBeenCalledOnce();expect(body.locked).toBe(false);expect(json).not.toHaveBeenCalled();
 });

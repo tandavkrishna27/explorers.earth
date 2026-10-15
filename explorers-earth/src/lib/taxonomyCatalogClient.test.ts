@@ -22,7 +22,7 @@ it('names an invalid catalog response so the picker can report a useful retry er
  await expect(explorersApiClient.getCompleteTaxonomyCatalog({category:'people'})).rejects.toThrow('Invalid taxonomy catalog response');
 });
 it.each(['version','duplicate','cursor','order','locale','category','unknown'])('rejects a %s invalid continuation without returning partial options',async kind=>{
- let second:any=page([item(2)]);
+ const second:any=page([item(2)]);
  if(kind==='version')second.catalogVersion=4;
  if(kind==='duplicate')second.items=[item(1)];
  if(kind==='cursor')second.nextCursor='next';
