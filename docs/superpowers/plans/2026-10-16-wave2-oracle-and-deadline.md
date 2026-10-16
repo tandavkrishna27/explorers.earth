@@ -160,3 +160,65 @@ Then copy the resulting `qualification.json` into `docs/replatform-audit/receipt
 | Lowering people/games to 12s breaks an untested abort path | Step 3 reads the error mapping first and runs the full api suite |
 | Retiming looks like laundering a flake | It is the opposite: the bound moves *below* the assertion budget so a product failure becomes attributable. Task B's commit must say this, and the tripwire update must be explicit |
 | Task A cannot be validated end to end here | True — the lane needs Node 24.21.0 on Windows. The decoder, oracle and host-contract suites all run here and cover the shape; the lane run is Task C's handoff |
+
+---
+
+# CORRECTION to commit c91efbb7 (2026-10-17)
+
+That commit's message overstates its own effect in two ways. The code is sound; the
+justification was not. Recorded here because a pushed commit message cannot be amended.
+
+**1. "The assertion reports a product failure with a cause attached" — false.**
+`cold()` (`public-parity-spec-support.ts:89`) asserts
+`expect(getByText(title)).toBeVisible()`. If the people read fails, the title never
+appears and the assertion still fails **as a timeout**, just later. What the change
+actually buys is slack, and a DOM that has settled into its error state by the time the
+assertion gives up. Not a different class of error message.
+
+**2. Raising the harness budget cannot rescue a read slower than the client's own bound.**
+The client aborts people/games reads at 15000ms (`publicProfileGatewayClient.ts:78`)
+regardless of what Playwright will wait for. So:
+
+| Read completes at | Before | After |
+|---|---|---|
+| 14.5s | ~0.5s left to observe -> flake | 10.5s slack -> passes |
+| 17s | client aborts at 15s -> fails | client still aborts at 15s -> still fails, slower |
+
+The change therefore fixes the zero-slack **observation window** -- which is what
+`receipts/wave2-public-parity-abcfe666/README.md` actually describes -- and nothing more.
+That is plausibly case 10's real mechanism, but the commit presented it as resolving the
+collision outright.
+
+**3. The `people` lane raise was precautionary, not corrective.** It does use `cold()`
+(2 call sites in `people.spec.ts`), but its only receipt is 12/12 passing with no recorded
+flake. Raised for symmetry with public-parity; the commit did not say so.
+
+What still holds: harness-only, ships nothing to users, breaks no pin, and reversing away
+from lowering the client bound to 12000 was right -- that would have aborted a 14.5s read
+that currently succeeds, turning a pass into a failure.
+
+## games, now settled with arithmetic rather than deferred
+
+`c91efbb7` left `games` alone pending an expect-chain count. Counted: its worst test awaits
+**6** assertions, against a per-test budget of **120000** (not the 900000 the other two
+lanes have). So public-parity's 25000 would give 6 x 25000 = 150s and could convert an
+assertion failure into an opaque test timeout -- exactly the confusion being removed.
+
+One nuance in the other direction: a test aborts at its **first** failing assertion, so six
+full timeouts cannot normally co-occur. The pathological case is six slow-but-passing
+assertions. 18000 survives that (6 x 18000 = 108s, 12s spare) while still sitting above the
+15000 client abort, so the separation exists. Raised to 18000.
+
+## What remains, in dependency order
+
+1. **Measure the people/games read latency.** Still the decisive missing fact; all three
+   timing values above are reasoned, not measured. Until someone has it, the choice between
+   raising the harness budget and lowering the client bound rests on argument.
+2. **A Windows host on Node exactly 24.21.0, or a Windows CI lane.** This is the real
+   blocker. `guides` and `public-parity` cannot be executed anywhere today -- not locally
+   (this host runs 24.14.0, and `replatform-e2e.mjs:805` demands exact equality), and not in
+   CI (the only `--lane` job is `apps` on ubuntu; the sole `windows-latest` runner does unit
+   contracts only). Every claim about these lanes, including today's, is unverified until
+   this exists. It is a spend decision at 2x billing.
+3. **Re-scope the Guides case-4 oracle work** to carry the failing URL and per-attempt abort
+   state, not a group-level boolean -- see the review findings above.
