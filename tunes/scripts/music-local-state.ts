@@ -17,7 +17,7 @@ export function validateLocalManifestPath(file: string, root: string): string {
     || parts.length !== 2 || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(parts[0]) || parts[1] !== 'manifest.json') throw new Error('LOCAL_MUSIC_STATE_PATH');
   return path.dirname(file);
 }
-export async function runLocalProcess(executable: string, args: string[], input?: string): Promise<{ stdout: string; exitCode: number; stderr: string }> {
+export async function runLocalProcess(executable: string, args: string[], input?: string): Promise<{ stdout: string; exitCode: number; stderr: string; spawnError: string }> {
   return await new Promise((resolve) => {
     const child = spawn(executable, args, { shell: false, windowsHide: true, env: localMusicOsEnvironment(process.env), stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = ''; let overflow = false;
@@ -34,8 +34,12 @@ export async function runLocalProcess(executable: string, args: string[], input?
     let stderr = '';
     if (process.env.MUSIC_LOCAL_STATE_STDERR === '1') child.stderr.on('data', (data: Buffer) => { if (stderr.length < 4096) stderr += data.toString('utf8'); });
     else child.stderr.resume();
-    child.on('error', () => { clearTimeout(timer); resolve({ stdout: '', exitCode: 1, stderr }); });
-    child.on('close', (code) => { clearTimeout(timer); resolve({ stdout: overflow ? '' : stdout, exitCode: overflow ? 1 : code ?? 1, stderr }); });
+    // A spawn failure and a child that produced nothing were indistinguishable: both arrived as
+    // empty stdout with exit 1, which is why CI could only ever say `no reason supplied`. The
+    // error's code (ENOENT, EACCES, EPERM) is a syscall outcome, not credential-bearing, so it
+    // is kept; the message is not, so it is not.
+    child.on('error', (error: NodeJS.ErrnoException) => { clearTimeout(timer); resolve({ stdout: '', exitCode: 1, stderr, spawnError: error.code ?? 'unknown' }); });
+    child.on('close', (code) => { clearTimeout(timer); resolve({ stdout: overflow ? '' : stdout, exitCode: overflow ? 1 : code ?? 1, stderr, spawnError: '' }); });
     child.stdin.on('error', () => undefined);
     child.stdin.end(input);
   });
@@ -99,6 +103,9 @@ async function privateHelper(operation: string, file?: string, input?: string): 
       try { const reported: unknown = JSON.parse(result.stdout); if (reported && typeof reported === 'object' && typeof (reported as { reason?: unknown }).reason === 'string') reason = (reported as { reason: string }).reason; } catch { /* stdout was not JSON; the exit status below is all we have. */ }
       // The stderr tail appears only when MUSIC_LOCAL_STATE_STDERR=1 was set deliberately;
       // otherwise it is empty and this message is byte-identical to before.
+      // A spawn failure is reported as its own cause rather than as a helper refusal, because the
+      // helper never ran at all in that case.
+      if (result.spawnError) throw new Error(`helper '${operation}' could not be started: ${result.spawnError}`);
       throw new Error(`helper '${operation}' exited ${result.exitCode}: ${reason}${result.stderr ? ` | stderr: ${result.stderr.trim()}` : ''}`);
     }
     if (!result.stdout) throw new Error(`helper '${operation}' produced no output`);

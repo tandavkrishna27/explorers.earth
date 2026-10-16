@@ -143,7 +143,12 @@ describe('installed suite hook bootstrap boundary',()=>{
  let collected:string[]=[],frames:{kind:string}[]=[],guard:ReturnType<typeof createWriterGuardTransport>;
  beforeAll(async({},suite)=>{
   collected=collectedWriterCaseIds(suite);
-  guard=createWriterGuardTransport({env:{PLACE_PINS_GUARD_NONCE:'a'.repeat(32),PLACE_PINS_GUARD_ENTERED_PATH:'C:/inert/writer-entered.json',PLACE_PINS_GUARD_READY_PATH:'C:/inert/writer-ready.json',PLACE_PINS_GUARD_FAILURE_PATH:'C:/inert/writer-failure.json'},caseIds:[...collected,...writerSuiteFrames],now:()=>0,writeExclusive:(_path,bytes)=>{frames.push(JSON.parse(bytes));}});
+  // These paths must be absolute on BOTH platforms. `C:/inert/...` is absolute under
+  // path.win32 but NOT under path.posix, so validateBinding rejected on Linux and this
+  // suite's beforeAll aborted as `Fixture guard bootstrap` -- deterministically, on every
+  // Linux run, while passing on Windows. A leading-slash path is absolute under both.
+  // The paths stay inert: writeExclusive is stubbed and nothing touches the filesystem.
+  guard=createWriterGuardTransport({env:{PLACE_PINS_GUARD_NONCE:'a'.repeat(32),PLACE_PINS_GUARD_ENTERED_PATH:'/inert/writer-entered.json',PLACE_PINS_GUARD_READY_PATH:'/inert/writer-ready.json',PLACE_PINS_GUARD_FAILURE_PATH:'/inert/writer-failure.json'},caseIds:[...collected,...writerSuiteFrames],now:()=>0,writeExclusive:(_path,bytes)=>{frames.push(JSON.parse(bytes));}});
   expect(guard.bootstrap()).toBe(0);
  });
  describe('collected leaves',()=>{
