@@ -24,7 +24,7 @@ describe("public profile gateway client", () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ username: "tk2727" }), { status: 200 }));
     const client = createPublicProfileGatewayClient("https://localtunes.example", fetchImpl);
     await client.shell("tk2727");
-    expect(fetchImpl).toHaveBeenCalledWith("https://localtunes.example/api/explorers/v1/profiles/tk2727", { cache: "no-cache", headers: { Accept: "application/json" }, signal: undefined });
+    expect(fetchImpl).toHaveBeenCalledWith("https://localtunes.example/api/explorers/v1/profiles/tk2727", { cache: "no-cache", headers: { Accept: "application/json" }, signal: expect.any(AbortSignal) });
   });
 
   it("uses a cached ETag and returns its cached body for a 304 response", async () => {
@@ -116,4 +116,26 @@ it('Games declared body limit denies before awaiting a stalled stream',async()=>
  const stream=new ReadableStream<Uint8Array>({pull:()=>new Promise(()=>{}),cancel:()=>new Promise(()=>{})}),client=createPublicProfileGatewayClient('https://localtunes.example',vi.fn().mockResolvedValue(new Response(stream,{status:200,headers:{'content-length':String(4*1024*1024+1)}})));
  const result=client.category('owner','games').then(()=> 'accepted',error=>error.message);
  expect(await Promise.race([result,new Promise(resolve=>setTimeout(()=>resolve('still pending'),30))])).toBe('PUBLIC_PROFILE_READ_LIMIT');
+});
+
+it("bounds a hung shell read at 12s instead of waiting for a fetch that never settles", async () => {
+  // The shell read had NO deadline: gamesUsername === undefined && !people yielded an
+  // undefined signal, so a hung fetch left identity.status at "loading" and the cold-entry
+  // overlay up until the window regained focus. 12s sits deliberately below the replatform
+  // lanes' 15000ms expect budget, so a product failure stays distinguishable from a
+  // harness timeout. Driven by firing the scheduled callback rather than with fake timers,
+  // because other cases in this file rely on real setTimeout.
+  const promptly = <T,>(work: Promise<T>) =>
+    Promise.race([work, new Promise<string>((resolve) => setTimeout(() => resolve("still pending"), 30))]);
+  const timers = vi.spyOn(globalThis, "setTimeout");
+  const fetchImpl = vi.fn(() => new Promise<Response>(() => {}));
+  const client = createPublicProfileGatewayClient("https://public.example", fetchImpl);
+  const outcome = client.shell("someone").then(() => "accepted", (error: Error) => error.message);
+  await Promise.resolve(); await Promise.resolve();
+  const deadline = timers.mock.calls.find(([, delay]) => delay === 12_000);
+  expect(deadline).toBeDefined();
+  (deadline![0] as () => void)();
+  expect(await promptly(outcome)).toBe("PUBLIC_PROFILE_ABORTED");
+  expect(fetchImpl.mock.calls[0][1].signal.aborted).toBe(true);
+  timers.mockRestore();
 });
