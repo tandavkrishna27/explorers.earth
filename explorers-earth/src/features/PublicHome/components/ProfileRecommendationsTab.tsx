@@ -12,6 +12,7 @@ import {
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toUrlSlug } from "../../../utils/formatAddress";
+import { isCanonicalMediaPath } from "../../../lib/canonicalMedia";
 import { publicGuideSlug } from "../../../utils/publicGuideSlug";
 import {
   isRecommendationCategoryVisible,
@@ -43,7 +44,6 @@ export interface PublicRecommendationAccountData {
   public_apps?: string;
   public_products?: string;
   public_people?: string;
-  localtunes_public?: string;
   [key: string]: unknown;
 }
 
@@ -92,10 +92,27 @@ const resolveCoverUrl = (
 ) => {
   if (!path || path === "null" || path === "undefined") return undefined;
   if (path.startsWith("http") || path.startsWith("data:")) return path;
+  /*
+   * Before either rewrite below. Every canonical projection emits this shape for a cover
+   * (`publicBooksProjection.ts:62`, `publicMoviesProjection.ts:89`,
+   * `publicAppsProjection.ts:81`, `publicProductsProjection.ts:95,119`,
+   * `publicPeopleProjection.ts:97,121`, `publicGuidesProjection.ts:94`) and it is
+   * same-origin and already complete. It used to fall through: onto TMDB's host on the
+   * movie shelf and onto the Strapi origin everywhere else, so on the canonical runtime
+   * every cover on a public profile was fetched from the wrong host. That route is also
+   * where media visibility is applied, so the gate went unreached as well.
+   */
+  if (isCanonicalMediaPath(path)) return path;
   if (type === "movie" && !path.startsWith("/uploads/")) {
     return `https://image.tmdb.org/t/p/w185${path.startsWith("/") ? path : `/${path}`}`;
   }
   if (path.startsWith("/")) {
+    /*
+     * Legacy only, and deliberately kept. `routes/index.ts:181` still serves this tab
+     * through `StrapiPublicProfileGateway`, whose media URLs are Strapi `/uploads/...`
+     * paths, so this is live until that runtime retires with step 12 - unlike the Places
+     * shelf, which resolves through `publicPlaceMedia.ts` and no longer admits this shape.
+     */
     const backend =
       import.meta.env.VITE_REST_API_URL?.replace("/api", "") ||
       "http://localhost:1337";

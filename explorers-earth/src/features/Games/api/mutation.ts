@@ -71,17 +71,6 @@ export const UPDATE_GAME_LIST = gql`
 `;
 
 // ─────────────────────────────────────────────────────────────
-// Mutation 2.3 — Delete Game List
-// ─────────────────────────────────────────────────────────────
-export const DELETE_GAME_LIST = gql`
-  mutation DeleteGameList($documentId: ID!) {
-    deleteGameList(documentId: $documentId) {
-      documentId
-    }
-  }
-`;
-
-// ─────────────────────────────────────────────────────────────
 // Mutation 2.4 — Create Recommended Game
 // ─────────────────────────────────────────────────────────────
 export const CREATE_RECOMMENDED_GAME = gql`
@@ -185,17 +174,6 @@ export const UPDATE_RECOMMENDED_GAME = gql`
       pin_order
       display_order
       user_recommendation_note
-    }
-  }
-`;
-
-// ─────────────────────────────────────────────────────────────
-// Mutation 2.6 — Delete Recommended Game
-// ─────────────────────────────────────────────────────────────
-export const DELETE_RECOMMENDED_GAME = gql`
-  mutation DeleteRecommendedGame($documentId: ID!) {
-    deleteRecommendedGame(documentId: $documentId) {
-      documentId
     }
   }
 `;

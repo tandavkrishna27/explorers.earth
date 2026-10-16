@@ -1,0 +1,418 @@
+{
+  "version": 1,
+  "lane": "books",
+  "provenance": {
+    "commit": "99db82b8edda2f503d173a3cbcc2864f7d6fe280",
+    "sourceHash": "f88c955534b6b431b4f69c62def37b531b165ee89f232047fc369e57106990d8",
+    "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+    "dirty": false
+  },
+  "results": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "owner form create, Add with all fields, publication, repeat edits and archive reload"
+        ],
+        "project": "books-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "timedOut",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "anonymous later list, complete subject children, full eligible hero and modal"
+        ],
+        "project": "books-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "cover success, one-slot failure and both fallback remain distinct real API Add outcomes"
+        ],
+        "project": "books-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "fresh privacy gates, real bytes, altered owner denial and stale revision retention"
+        ],
+        "project": "books-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "15 across lists, rejected 16th, staged unpin plus immediate reorder and explicit Save"
+        ],
+        "project": "books-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "snapshot transport failure keeps Add draft and successful retry creates one recommendation"
+        ],
+        "project": "books-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "Add retry after pin transport failure patches changed draft without duplicate creation or covers"
+        ],
+        "project": "books-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "committed create with lost response replays original receipt and retains cover identity"
+        ],
+        "project": "books-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "delayed canonical catalog continuation cannot append after query change or search unmount"
+        ],
+        "project": "books-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "unsent invalid buy URL can be corrected and saved once"
+        ],
+        "project": "books-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "owner form create, Add with all fields, publication, repeat edits and archive reload"
+        ],
+        "project": "books-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "anonymous later list, complete subject children, full eligible hero and modal"
+        ],
+        "project": "books-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "cover success, one-slot failure and both fallback remain distinct real API Add outcomes"
+        ],
+        "project": "books-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "fresh privacy gates, real bytes, altered owner denial and stale revision retention"
+        ],
+        "project": "books-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "15 across lists, rejected 16th, staged unpin plus immediate reorder and explicit Save"
+        ],
+        "project": "books-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "snapshot transport failure keeps Add draft and successful retry creates one recommendation"
+        ],
+        "project": "books-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "Add retry after pin transport failure patches changed draft without duplicate creation or covers"
+        ],
+        "project": "books-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "committed create with lost response replays original receipt and retains cover identity"
+        ],
+        "project": "books-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "delayed canonical catalog continuation cannot append after query change or search unmount"
+        ],
+        "project": "books-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "unsent invalid buy URL can be corrected and saved once"
+        ],
+        "project": "books-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    }
+  ],
+  "child": {
+    "status": 1,
+    "signal": null
+  },
+  "diagnostics": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "owner form create, Add with all fields, publication, repeat edits and archive reload"
+        ],
+        "project": "books-desktop",
+        "repeat": 0
+      },
+      "kind": "timeout",
+      "matcher": "unknown",
+      "locations": []
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/books.spec.ts",
+        "titlePath": [
+          "owner form create, Add with all fields, publication, repeat edits and archive reload"
+        ],
+        "project": "books-desktop",
+        "repeat": 0
+      },
+      "kind": "timeout",
+      "matcher": "toBe",
+      "locations": [
+        {
+          "line": 54,
+          "column": 62
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "status": "passed"
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  }
+}

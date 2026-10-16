@@ -52,10 +52,16 @@ export interface TransportSegment {
   toPlaceId: string;
   /** Selected travel mode */
   mode: TravelMode;
-  /** Distance in kilometers */
-  distanceKm: number;
-  /** Estimated travel time in minutes */
-  estimatedMinutes: number;
+  /**
+   * Distance in kilometers, or null when it was never measured.
+   *
+   * Ticket 5.3: these were non-nullable, so the canonical null had to become 0 on the way
+   * in - and "distance unknown" rendered as "0 km". The round-trip test caught it. Null
+   * means unknown; zero means two stops at the same spot.
+   */
+  distanceKm: number | null;
+  /** Estimated travel time in minutes, or null when it was never estimated. */
+  estimatedMinutes: number | null;
 }
 
 /**
@@ -146,6 +152,15 @@ export interface ActivityData {
  * Budget place information (minimal data for budget tracking)
  */
 export interface BudgetPlace {
+  /**
+   * The timeline entry this price belongs to.
+   *
+   * Ticket 5.3: a budget row is a projection of a timeline entry, and place_id alone
+   * cannot identify it - a day that visits the same cafe twice has two entries with one
+   * place_id. Keying by the entry handle is what lets the canonical contract check that
+   * every priced entry is actually in the section.
+   */
+  localId: string;
   /** Google Places unique place identifier */
   place_id: string;
   /** Name of the place */

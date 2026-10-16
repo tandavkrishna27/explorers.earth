@@ -1,9 +1,10 @@
+import { readCanonicalNavigationContent, type NavigationContent } from './canonicalNavigationContent';
 import { createContext, useContext, useLayoutEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react';
-import { useApolloClient, type ApolloClient } from '@apollo/client';
+import { explorersApiClient } from '../../lib/explorersApiClient';
 import useAuthStore from '../../store/store';
 import { createAccountNavigationWriter, NavigationError, type AccountNavigationWriter, type MusicPinVerifier, type NavigationOutcome, type Transaction } from './accountNavigationWriter';
-import { categoryNavigationAccountQuery, createCategoryNavigationApi, selectNavigationAccount, type NavigationUser } from './categoryNavigationApi';
-import { CATEGORY_IDS, planCategoryIntent, type CategoryId, type Eligibility, type GenericNavigationIntent, type IntentAuthority, type NavigationSnapshot } from './categoryNavigationPolicy';
+import { createCategoryNavigationApi } from './categoryNavigationApi';
+import { CATEGORY_IDS, planCategoryIntent, type CategoryId, type GenericNavigationIntent, type IntentAuthority, type NavigationSnapshot } from './categoryNavigationPolicy';
 import { publishPublicProfileInvalidation, type PublicProfileInvalidationAction, type PublicProfileInvalidationCategory } from '../PublicHome/api/publicProfileInvalidation';
 
 export type NavigationPendingOperation = Readonly<{
@@ -15,6 +16,7 @@ export type NavigationPendingOperation = Readonly<{
 
 type NavigationState = {
   snapshot?: NavigationSnapshot;
+  content?: NavigationContent;
   authority?: IntentAuthority;
   busy: boolean;
   pending: readonly NavigationPendingOperation[];
@@ -33,26 +35,25 @@ function isGenericIntent(value: unknown): value is GenericNavigationIntent {
     && !(intent.category === 'public_music' && (intent.action === 'publish' || intent.action === 'unpublish'));
 }
 
-function createNavigationController(client: ApolloClient<object>, verifier: () => MusicPinVerifier | undefined) {
+function createNavigationController(verifier: () => MusicPinVerifier | undefined) {
   let state: NavigationState = { busy: false, pending: [] };
   let generation = ++nextGeneration;
   let readSequence = 0;
   let nextOperationId = 0;
   let operations = 0;
   let mounted = false;
-  let observedAccount: string | undefined;
+  let observedSessionGeneration = useAuthStore.getState().generation;
   let stopAuth: (() => void) | undefined;
-  let stopCache: (() => void) | undefined;
   let channel: BroadcastChannel | undefined;
   const listeners = new Set<() => void>();
   const publish = (next: NavigationState) => { state = next; for (const listener of listeners) listener(); };
   const isCurrent = (origin: IntentAuthority) => {
     const auth = useAuthStore.getState();
-    return mounted && !!origin && auth.isAuthenticated && !auth.user?.blocked
-      && auth.user?.documentId === origin.userDocumentId && generation === origin.generation
+    return mounted && !!origin && auth.isAuthenticated && auth.status === 'active-complete' && auth.generation === observedSessionGeneration && !auth.user?.blocked
+      && auth.user?.id === origin.userDocumentId && auth.accountId === origin.accountDocumentId && generation === origin.generation
       && state.authority?.accountDocumentId === origin.accountDocumentId;
   };
-  const api = createCategoryNavigationApi({ client, isCurrent });
+  const api = createCategoryNavigationApi({ profile: explorersApiClient, isCurrent });
   const invalidate = () => {
     generation = ++nextGeneration; readSequence++; operations = 0;
     publish({ busy: false, pending: [] });
@@ -60,26 +61,27 @@ function createNavigationController(client: ApolloClient<object>, verifier: () =
   async function refresh() {
     if (!mounted || listeners.size === 0) return;
     const auth = useAuthStore.getState();
-    if (!auth.isAuthenticated || !auth.user?.documentId || auth.user.blocked) return;
-    const userDocumentId = auth.user.documentId;
+    if (!auth.isAuthenticated || auth.status !== 'active-complete' || !auth.user?.id || !auth.accountId || auth.user.blocked) return;
+    const sessionGeneration = auth.generation;
+    // Compatibility aliases: auth identity and canonical account, never Strapi subjects.
+    const scope = { userDocumentId: auth.user.id, accountDocumentId: auth.accountId };
     const startedGeneration = generation;
     const sequence = ++readSequence;
     try {
-      const snapshot = await api.readAccount(userDocumentId);
-      if (!mounted || listeners.size === 0 || generation !== startedGeneration || sequence !== readSequence) return;
-      observedAccount = snapshot.scope.accountDocumentId;
+      const snapshot = await api.readAccount(scope);
+      if (!mounted || listeners.size === 0 || generation !== startedGeneration || sequence !== readSequence
+        || useAuthStore.getState().generation !== sessionGeneration) return;
       const authority = Object.freeze({ ...snapshot.scope, generation });
       publish({ snapshot, authority, busy: operations > 0, pending: state.pending });
+      const content = await readCanonicalNavigationContent(scope, () => isCurrent(authority) && sequence === readSequence);
+      if (!isCurrent(authority) || sequence !== readSequence) return;
+      publish({ ...state, content });
     } catch (error) {
-      if (!mounted || listeners.size === 0 || generation !== startedGeneration || sequence !== readSequence) return;
-      publish({ ...state, error: error instanceof NavigationError ? error.message : 'Account could not be verified. Refresh to try again.' });
+      if (!mounted || listeners.size === 0 || generation !== startedGeneration || sequence !== readSequence
+        || useAuthStore.getState().generation !== sessionGeneration) return;
+      publish({ ...state, error: error instanceof NavigationError ? error.message : 'Category settings could not be loaded. Refresh to try again.' });
     }
   }
-  const refreshAfterInvalidation = () => {
-    invalidate();
-    // Observe every boundary event synchronously, then let the fresh read settle.
-    void refresh();
-  };
   // Focus/online/navigation-change events invalidate data, not session authority.
   const refreshActive = () => { void refresh(); };
   const broadcast = (origin: IntentAuthority) => {
@@ -113,35 +115,15 @@ function createNavigationController(client: ApolloClient<object>, verifier: () =
     if (event.key !== CHANNEL || !event.newValue) return;
     try { receive(JSON.parse(event.newValue)); } catch { /* Untrusted event. */ }
   };
-  const watchAccount = () => {
-    stopCache?.(); stopCache = undefined;
-    const userDocumentId = useAuthStore.getState().user?.documentId;
-    if (!userDocumentId) return;
-    stopCache = client.cache.watch<{ usersPermissionsUser?: NavigationUser }>({ query: categoryNavigationAccountQuery,
-      variables: { documentId: userDocumentId }, optimistic: false,
-      callback: ({ result }) => {
-        const user = result?.usersPermissionsUser;
-        // Partial category-header cache reads are not authoritative owner selection.
-        if (!user || !Array.isArray(user.accounts) || user.blocked === undefined || user.confirmed === undefined) return;
-        let nextAccount: string | undefined;
-        try { nextAccount = selectNavigationAccount(user, userDocumentId).documentId as string; } catch { /* Fail closed. */ }
-        if (observedAccount === nextAccount) return;
-        const previous = observedAccount;
-        observedAccount = nextAccount;
-        if (previous !== undefined || state.authority) refreshAfterInvalidation();
-      },
-    });
-  };
   function mount() {
     if (mounted) return;
     mounted = true;
     stopAuth = useAuthStore.subscribe((next, previous) => {
-      if (next.isAuthenticated === previous.isAuthenticated && next.user?.documentId === previous.user?.documentId
-        && next.user?.blocked === previous.user?.blocked && next.token === previous.token) return;
-      observedAccount = undefined;
-      invalidate(); watchAccount(); void refresh();
+      if (next.generation === previous.generation && next.isAuthenticated === previous.isAuthenticated && next.user?.id === previous.user?.id && next.accountId === previous.accountId && next.status === previous.status
+        && next.user?.blocked === previous.user?.blocked) return;
+      observedSessionGeneration = next.generation;
+      invalidate(); void refresh();
     });
-    watchAccount();
     try {
       if (typeof BroadcastChannel !== 'undefined') { channel = new BroadcastChannel(CHANNEL); channel.addEventListener('message', onMessage); }
     } catch { /* A disabled channel does not disable owner checks. */ }
@@ -155,11 +137,11 @@ function createNavigationController(client: ApolloClient<object>, verifier: () =
       const snapshot = await api.commit(origin, patch);
       if (!isCurrent(origin)) throw new NavigationError('blocked', 'Account changed. Reopen this control.');
       readSequence++;
-      publish({ snapshot, authority: state.authority, busy: operations > 0, pending: state.pending });
+      publish({ snapshot, authority: state.authority, content: state.content, busy: operations > 0, pending: state.pending });
       broadcast(origin);
       return snapshot;
     },
-  }, client);
+  }, explorersApiClient);
   const writer: AccountNavigationWriter = {
     async run(origin, work) {
       const captured = Object.freeze({ ...origin });
@@ -206,7 +188,6 @@ function createNavigationController(client: ApolloClient<object>, verifier: () =
     const captured = Object.freeze({ ...origin });
     return execute(captured, async (transaction) => {
       const snapshot = await transaction.read();
-      let eligibility: Eligibility = 'allowed';
       if (command.action === 'pin') {
         if (snapshot.visibility[command.category] !== 'Yes') return { kind: 'blocked', reason: 'not-public' };
         if (command.category === 'public_music') {
@@ -215,10 +196,11 @@ function createNavigationController(client: ApolloClient<object>, verifier: () =
           if (!transaction.isCurrent()) throw new NavigationError('blocked', 'Account changed. Reopen this control.');
           if (result !== 'public') return { kind: 'blocked', reason: result === 'not-public' ? 'not-public' : 'unknown' };
         }
-      } else if (command.action === 'publish') {
-        eligibility = await api.eligibility(command.category, captured);
       }
-      const plan = planCategoryIntent(snapshot, command, eligibility);
+      // No content-eligibility read at all now: neither visibility nor placement
+      // depends on current inventory, which also drops a round-trip from both paths.
+      // Music keeps its own publication verification above.
+      const plan = planCategoryIntent(snapshot, command);
       if (plan.kind === 'blocked') return plan;
       if (plan.kind === 'noop') return { kind: 'confirmed', snapshot };
       const confirmed = await transaction.commit(plan.patch);
@@ -247,7 +229,7 @@ function createNavigationController(client: ApolloClient<object>, verifier: () =
       return () => { listeners.delete(listener); if (listeners.size === 0) invalidate(); };
     },
     unmount() {
-      mounted = false; invalidate(); stopAuth?.(); stopCache?.();
+      mounted = false; invalidate(); stopAuth?.();
       channel?.removeEventListener('message', onMessage); channel?.close(); channel = undefined;
       window.removeEventListener('storage', onStorage); window.removeEventListener('focus', refreshActive); window.removeEventListener('online', refreshActive);
     },
@@ -257,10 +239,9 @@ function createNavigationController(client: ApolloClient<object>, verifier: () =
 const NavigationContext = createContext<ReturnType<typeof createNavigationController> | undefined>(undefined);
 
 export function CategoryNavigationProvider({ children, verifyMusicPin }: { children: ReactNode; verifyMusicPin?: MusicPinVerifier }) {
-  const client = useApolloClient();
   const verifier = useRef(verifyMusicPin);
   useLayoutEffect(() => { verifier.current = verifyMusicPin; }, [verifyMusicPin]);
-  const controller = useMemo(() => createNavigationController(client, () => verifier.current), [client]);
+  const controller = useMemo(() => createNavigationController(() => verifier.current), []);
   useLayoutEffect(() => { controller.mount(); return () => controller.unmount(); }, [controller]);
   return <NavigationContext.Provider value={controller}>{children}</NavigationContext.Provider>;
 }

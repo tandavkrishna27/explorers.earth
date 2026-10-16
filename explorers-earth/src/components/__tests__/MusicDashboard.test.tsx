@@ -27,14 +27,16 @@ const base = {
   error: null,
   refetch: vi.fn(),
 };
-const scope = { userDocumentId: "explorer-user-a", accountDocumentId: "explorer-account-a" };
+const ACCOUNT_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const ACCOUNT_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const scope = { userDocumentId: "explorer-user-a", accountDocumentId: ACCOUNT_A };
 const savedAccounts = new Map<string, () => Record<string, unknown>>();
 
 async function render(ui: ReactElement, profile?: 'Yes' | 'No') {
   const props = ui.props as { scope: typeof scope; data: typeof base };
   const accountKey = JSON.stringify(props.scope);
   const previous = savedAccounts.get(accountKey)?.();
-  loginSurface(props.scope.userDocumentId);
+  loginSurface(props.scope.userDocumentId, props.scope.accountDocumentId);
   // Preserve each test's publication response/failure spy; make later GETs expose
   // only successful backend responses so the real coordinator must verify them.
   vi.spyOn(musicWorkspaceClient, 'loadDashboard').mockImplementation(async () => {
@@ -49,7 +51,7 @@ async function render(ui: ReactElement, profile?: 'Yes' | 'No') {
   return { ...h, rerender(next: ReactElement) {
     const nextScope = (next.props as { scope: typeof scope }).scope;
     if (nextScope.userDocumentId !== props.scope.userDocumentId || nextScope.accountDocumentId !== props.scope.accountDocumentId) {
-      h.saved = { ...h.saved, documentId: nextScope.accountDocumentId }; loginSurface(nextScope.userDocumentId);
+      h.saved = { ...h.saved, documentId: nextScope.accountDocumentId }; loginSurface(nextScope.userDocumentId, nextScope.accountDocumentId);
     }
     h.rerenderChild(next);
   } };
@@ -533,7 +535,7 @@ describe("Music workspace UI", () => {
     fireEvent.click(screen.getByRole("button", { name: "Play Old account song" }));
     await act(async () => { await Promise.resolve(); });
 
-    view.rerender(<MusicDashboard data={newData} scope={{ userDocumentId: "explorer-user-b", accountDocumentId: "explorer-account-b" }} complete />);
+    view.rerender(<MusicDashboard data={newData} scope={{ userDocumentId: "explorer-user-b", accountDocumentId: ACCOUNT_B }} complete />);
     await waitFor(() => expect(oldSignal?.aborted).toBe(true));
     fireEvent.click(screen.getByRole("button", { name: "Play New account song" }));
     await waitFor(() => expect(requestedSongIds).toEqual([oldSong.id, newSong.id]));

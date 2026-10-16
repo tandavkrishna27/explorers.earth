@@ -25,6 +25,7 @@ describe("runtime table manifest", () => {
         'const result = sql`INSERT INTO real_inserts (id) VALUES (${id})`;',
         'db.query(`SELECT extract(epoch FROM expires_at), id FROM real_reads`);',
         'db.query<{ id: number }>(`WITH RECURSIVE incoming(id) AS (SELECT id FROM real_reads) SELECT * FROM incoming`);',
+        'db.query(`WITH eligible AS MATERIALIZED (SELECT id FROM real_reads), ranked AS NOT MATERIALIZED (SELECT id FROM eligible) SELECT * FROM ranked`);',
         'db.query(`SELECT * FROM ${table} ORDER BY id`);',
         'const TABLE_NAME = "real_constant"; db.query(`SELECT * FROM ${TABLE_NAME}`);',
         'db.query(`SELECT * FROM public.real_qualified`);',
@@ -58,6 +59,39 @@ describe("runtime table manifest", () => {
     expect(inventory.rawSqlTables).not.toContain("set");
   });
 
+  it("retains global taxonomy authority outside the account lifecycle manifest", () => {
+    const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "fixtures/db/music-runtime-table-manifest.json"), "utf8"));
+    for (const table of ["taxonomy_catalogs", "taxonomy_source_mappings", "taxonomy_legacy_slug_mappings", "taxonomy_import_receipts"]) {
+      expect(manifest.migrationChain.controlTables).toContain(table);
+      expect(manifest.tables.map((entry: { name: string }) => entry.name)).not.toContain(table);
+      expect(inventoryRuntimeTables(repositoryRoot).applicationTables).toContain(table);
+    }
+  });
+
+  it("discovers all Places0054 SQL relations and keeps private controls separate from personal runtime data", () => {
+    const inventory = inventoryRuntimeTables(repositoryRoot);
+    const sql = readFileSync(resolve(repositoryRoot, "tunes/migrations/0054_explorers_place_individual_pins.sql"), "utf8");
+    const names = [...sql.matchAll(/CREATE TABLE public\.([a-z_]+)/g)].map(match => match[1]);
+    expect(names).toEqual(["places_collection_mutation_state", "places_pin_validation_dirty", "places_chunk_validation_dirty", "collection_place_pins", "place_pin_drafts", "place_pin_draft_chunks", "place_pin_draft_items"]);
+    expect(inventory.migrationTables).toEqual(expect.arrayContaining(names));
+    const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "fixtures/db/music-runtime-table-manifest.json"), "utf8"));
+    const runtime = manifest.tables.map((entry: { name: string }) => entry.name);
+    for (const name of names.slice(0, 3)) {
+      expect(manifest.migrationChain.controlTables).toContain(name);
+      expect(runtime).not.toContain(name);
+      expect(manifest.controlTablePolicies).toContainEqual(expect.objectContaining({name, managedBy: "unmanaged-raw-sql", family: "security-audit"}));
+    }
+    for (const name of names.slice(3)) {
+      expect(manifest.tables).toContainEqual({ name, managedBy: "unmanaged-raw-sql", family: "user-content", lifecycle: "strip-on-deletion" });
+      expect(manifest.migrationChain.controlTables).not.toContain(name);
+    }
+    const input = {manifestTables: runtime, controlTables: manifest.migrationChain.controlTables, referencedTables: inventory.applicationTables, migratedTables: [...inventory.drizzleTables, ...inventory.migrationTables], unmanagedTables: manifest.tables.filter((entry: { managedBy: string }) => entry.managedBy === "unmanaged-raw-sql").map((entry: {name: string}) => entry.name)};
+    expect(() => validateRuntimeTableManifest(input)).not.toThrow();
+    for (const name of names) expect(() => validateRuntimeTableManifest({...input, manifestTables: runtime.filter((entry: string) => entry !== name), controlTables: input.controlTables.filter((entry: string) => entry !== name)})).toThrow();
+    expect(() => validateRuntimeTableManifest({...input, manifestTables: [...runtime, names[0]]})).toThrow(/both a runtime and control/);
+    expect(() => validateRuntimeTableManifest({...input, manifestTables: [...runtime, runtime[0]]})).toThrow(/duplicate/);
+    expect(() => validateRuntimeTableManifest({...input, controlTables: [...input.controlTables, input.controlTables[0]]})).toThrow(/duplicate/);
+  });
   it("validates the committed manifest against generated repository references", () => {
     const inventory = inventoryRuntimeTables(repositoryRoot);
     const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "fixtures/db/music-runtime-table-manifest.json"), "utf8"));
@@ -65,7 +99,7 @@ describe("runtime table manifest", () => {
       manifestTables: manifest.tables.map((entry: { name: string }) => entry.name),
       controlTables: manifest.migrationChain.controlTables,
       referencedTables: inventory.applicationTables,
-      migratedTables: inventory.drizzleTables,
+      migratedTables: [...inventory.drizzleTables, ...inventory.migrationTables],
       unmanagedTables: manifest.tables.filter((entry: { managedBy: string }) => entry.managedBy === "unmanaged-raw-sql").map((entry: { name: string }) => entry.name),
     })).not.toThrow();
   });

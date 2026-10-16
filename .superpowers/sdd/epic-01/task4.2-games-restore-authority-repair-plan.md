@@ -1,0 +1,27 @@
+# Games restore authority repair: exhaustive scope audit and finite plan
+
+Docs-only against immutable70223d54b92744c3943799e721918127cdba8f98. Preserve actual11PASS1FAIL restore-before-dump receipt;42b1native84/12blocked and107synthetic remain separate. No execution or amendment.
+
+## Exhaustive owned native12/helper/restore search
+Searched complete games.integration.test.ts, games-owned-postgres-authority.ts, its contract test, integration-global-setup.ts and music-qualification-postgres.ts for historical ports, current container/name literals, database URL, C10, loopback, Docker, pg_dump/psql and prepool validators.
+- Games integration143: sole remaining51642 predicate, restore environment-ID +fixedport gate; defective historical coupling.
+- Games integration10:51643 is synthetic auth/public origin for in-process Supertest/CSRF, not a PostgreSQL target or network resource. Preserve.
+- Integration15–16: actualHEAD and full C10/strictDB prepool. Preserve strengthened authority, capture admitted immutable container/target for later restore comparison.
+- Integration144–145: fresh owned restore DB identifier/comment and Docker exec command currently takes environment container directly. Repair to fresh attested returned container; source SQL identifier validation/15s64MiB child bounds unchanged.
+- Integration150/153: pg_dump source and psql destination are the only two native Docker restore calls; each must fresh re-attest immediately before child invocation. No other fixedPGports/container literal in native12.
+- Helper: no numeric fixtureport; actual C10 returned-port equality, fixed diagnostic containment, strict DB/role gate. Extend only test composition to expose admitted immutable identity and restore revalidation.
+- Contracts:51644/51645,synthetic64hex ID/aaaaaaa name are positive/negative fixture inputs, not live authority. Preserve.
+- Existing guards:music_fixture/music_migrator/postgres15 and reserved55432/disposable range/commit-ownedname are intentional C10 contracts. No modification. Docker socket/image/name/labels checks remain full live reads.
+
+## Smallest executable test scope: same three original-owned files
+1.games.integration.test.ts: beforeAll capture validated target +attested immutable container identity; restore replace old fixedport/env-only gate. Immediately before EACH pg_dump/psql Docker exec obtain actual current GitHEAD (bounded10s), invoke fresh full restore attestation/strictDB helper and compare against originally admitted container/target. Use returned immutable ID, never fallback/env-only ID. Preserve all12 identities/assertions, dump/body bounds, transactional restore, ownership comments and cleanup.
+2.games-owned-postgres-authority.ts: tiny composition extension returns admitted target +C10 immutable authority from existing full attestation (existing URL API preserved as wrapper). Restore validator fresh-attests then requires current target exactly equals captured target and container equals captured admitted ID; fixed safe exceptions/no rawcause. No global guard changes/new authority.
+3.games-owned-postgres-authority.test.ts: executable restore-preexec tests using actual existing attestation with injected synthetic native reads, inert spawn continuation spy. This avoids importing resourceful integration suite or source-text-only claimed proof.
+
+## Meaningful TDD
+RED approved51644 fails current original restore gate despite valid exact attestation. New preexec composition: unchanged exact currentHEAD authority admits spawn once; crosscommit/currentHEADchange,wrongDB/role,wrongtargetport,wrongcontainer,missing/UAT/partial/unattested/changedliveidentity and native-read failures deny BEFORE inert spawn. Mutate authority after original capture to prove revalidation, not cached initial proof. Two sequential invocations each perform four existing Docker attestation reads; a second-call changed container/image/label denies psql continuation. No real dumps/database/containers. Reject both wrongenvironment ID and changedliveinspection; test fixes no manufactured success.
+
+## Review/commit/runtime sequence
+Supported24.21 fresh owned topology; new+existing contracts,strict3/scoped/baseline and threehashrefreeze. Independent review before separate exactpathfollowupcommit;70223 immutable. Fresh followupHEAD controlledLF archive/current38/fourlocks and owned51644 C10, actualGames12 with cleanup after review allocation; stop firstfailure. No canonical82 or release/provider claim until prerequisite independentPASS. No infrastructure, assertion, grants, schema, helperprotocol or production source expansion.
+## Accepted precision implemented
+Capture Object.freeze immutable scalars: commit/containerId/imageId/full validated source target string +SHA256 target digest. No mutableURL retained. Fresh preexec compares EVERY scalar and revalidates originalmusic_fixture/music_migrator source; separate mutable localURL only describes restore destination. Each pg_dump/psql invocation reads actualHEAD bounded10s and full freshly attests before15s64MiB Docker child. New valid changed imageID receipt and attempted frozen-capture mutation tests required; source snapshot never serialized/logged because target contains credentials.

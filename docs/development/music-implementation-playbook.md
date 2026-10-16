@@ -39,7 +39,7 @@ the Explorers -> Tunes path.
 
 ## Safety sequence
 
-1. Run `music:doctor`; it checks Node >=22.12, npm/Compose availability,
+1. Run `music:doctor`; it checks Node ^24.21.0, npm/Compose availability,
    required files, typed/ranged control values, fixture version and gates, free
    ports/disk, and the exact disposable `DATABASE_URL_TEST` target. The same
    typed schema is invoked by Tunes startup whenever `MUSIC_MODE` is enabled.

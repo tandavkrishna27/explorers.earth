@@ -1,7 +1,15 @@
 # ADR-005: Canonical Music identity, migrations, and deployment authority
 
 ## Status
-Accepted
+Accepted (superseded in part by [ADR-006](006-canonical-music-identity-supersedes-strapi-proof.md))
+
+> Scope of the supersession (2026-10-05): ADR-006 replaces the identity-issuance
+> decision below — the bodyless proof boundary and the three distinct credential
+> scopes. Music owner provisioning and owner HTTP now go through a canonical
+> session route. Everything else in this ADR remains the current authority and is
+> unamended: the schema model, reviewed append-only SQL migrations with their
+> manifest and checksums, no schema creation at startup, and build, promotion and
+> rollback bound to immutable image digests.
 
 ## Context
 

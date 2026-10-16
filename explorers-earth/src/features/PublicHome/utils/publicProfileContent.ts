@@ -1,3 +1,7 @@
+import {gamesPublicPageSchema} from '../../../../../tunes/shared/explorersGameOwnerContract';
+import type {GameList,RecommendedGame} from '../../Games/types';
+import {mergePublicPage,type PublicProfilePageSize} from '../api/publicProfilePagination';
+import type {PublicPagePayload} from '../api/usePublicPagedResource';
 import DOMPurify from "dompurify";
 
 const PUBLIC_RICH_TEXT_TAGS = [
@@ -96,7 +100,7 @@ const retainSafeQuillFormatting = (template: HTMLTemplateElement) => {
     const backgroundColor = parsedStyle.style.getPropertyValue("background-color").trim();
 
     element.removeAttribute("style");
-    if (element.tagName !== "SPAN") return;
+    if (!["SPAN", "STRONG", "B", "EM", "I", "U", "S"].includes(element.tagName)) return;
 
     if (isSafeQuillColor(color)) element.style.color = color;
     if (isSafeQuillColor(backgroundColor)) {
@@ -231,4 +235,38 @@ export function sanitizePublicRichText(raw: unknown): string {
   });
 
   return template.innerHTML;
+}
+
+/** Public DTO adaptation has no owner observation/completion authority. */
+export function adaptPublicGamesPage(value:unknown,username:string){
+ const page=gamesPublicPageSchema.parse(value);
+ const game=(row:typeof page.topPicks[number]):RecommendedGame=>({documentId:row.id,entity_id:row.entityId,igdb_id:null,igdb_slug:null,title:row.title??'Untitled game',cover_url:row.gamePresentation.images[0]?.url??null,cover_url_large:row.gamePresentation.images[0]?.url??null,igdb_image_id:null,summary:null,release_date:null,release_year:null,igdb_rating:null,igdb_rating_count:null,genres:null,platforms:null,developer:null,publisher:null,game_modes:null,screenshot_ids:null,igdb_url:null,user_recommendation_note:row.note?.html??'',user_rating:row.userRating,is_pinned:page.topPicks.some(pin=>pin.id===row.id&&pin.collection.id===row.collection.id),pin_order:page.topPicks.find(pin=>pin.id===row.id&&pin.collection.id===row.collection.id)?.pinPosition??null,display_order:row.displayOrder,media_details:null,game_list:{documentId:row.collection.id,List_Name:row.collection.title,slug:row.collection.slug},game_categories:null,Media:row.gamePresentation.images.map(image=>({documentId:image.mediaId,url:image.url}))});
+ const gameLists=page.gameLists.map(list=>({documentId:list.id,List_Name:list.title,list_description:list.description,slug:list.slug,Visibility:true,cover_image:list.coverUrl?{url:list.coverUrl,alternativeText:null}:null,display_order:list.displayOrder,top_picks_heading:list.heading,recommended_games:list.recommendations.map(row=>game(row)),account:{documentId:'',username},nextCursor:list.nextCursor} satisfies GameList&{nextCursor:string|null}));
+ return {version:page.version,gameLists,topPicks:page.topPicks.map(row=>game(row)),nextCursor:page.nextCursor};
+}
+export function gamePageCursor(raw:unknown,detail:boolean):string|null{
+ const page=raw as any,cursor=detail?page?.gameLists?.[0]?.nextCursor:page?.nextCursor;
+ if(cursor!==null&&(typeof cursor!=='string'||!cursor||new TextEncoder().encode(cursor).length>2048))throw Error('PUBLIC_PROFILE_INVALID_RESPONSE');return cursor;
+}
+export function mergeGamePage(previous:PublicPagePayload,next:PublicPagePayload,detail:boolean,pageSize:PublicProfilePageSize):PublicPagePayload{
+ const merged=mergePublicPage(previous,next,'games',detail,pageSize),cursor=gamePageCursor(next,detail);
+ return detail?{...merged,gameLists:[{...(merged.gameLists[0] as object),nextCursor:cursor}]} as PublicPagePayload:{...merged,nextCursor:cursor} as unknown as PublicPagePayload;
+}
+export async function completeGamesPreviews(raw:unknown,read:(slug:string,cursor:string)=>Promise<unknown>):Promise<PublicPagePayload>{
+ const data=raw as any;if(!data||!Array.isArray(data.gameLists)||data.gameLists.length>24)throw Error('PUBLIC_PROFILE_INVALID_RESPONSE');
+ let bytes=new TextEncoder().encode(JSON.stringify(data)).length,requests=0;const lists=[];
+ if(bytes>64*1024*1024)throw Error('PUBLIC_PROFILE_PAGINATION_LIMIT');
+ for(const list of data.gameLists){
+  if(!list||typeof list.documentId!=='string'||typeof list.slug!=='string'||!Array.isArray(list.recommended_games))throw Error('PUBLIC_PROFILE_INVALID_RESPONSE');
+  const rows=[...list.recommended_games],seen=new Set<string>();let cursor=gamePageCursor({gameLists:[list]},true);
+  while(cursor!==null){
+   if(seen.has(cursor)||++requests>1000)throw Error('PUBLIC_PROFILE_PAGINATION_LIMIT');seen.add(cursor);
+   const page=await read(list.slug,cursor) as any;bytes+=new TextEncoder().encode(JSON.stringify(page)).length;
+   if(bytes>64*1024*1024)throw Error('PUBLIC_PROFILE_PAGINATION_LIMIT');
+   const next=page?.gameLists?.[0];if(!next||page.gameLists.length!==1||next.documentId!==list.documentId||!Array.isArray(next.recommended_games))throw Error('PUBLIC_PROFILE_INVALID_RESPONSE');
+   cursor=gamePageCursor(page,true);if(!next.recommended_games.length&&cursor!==null)throw Error('PUBLIC_PROFILE_INVALID_RESPONSE');rows.push(...next.recommended_games);
+  }
+  lists.push({...list,recommended_games:rows,nextCursor:null});
+ }
+ return {...data,gameLists:lists};
 }

@@ -273,7 +273,6 @@
       "message": "This account has been deactivated.",
       "reactivateLink": "Click here to reactivate your account →"
     },
-    "claimAccount": "Claim Account?",
     "confirmPassword": "确认密码",
     "confirmPasswordPlaceholder": "请重新输入您的密码",
     "email": "邮箱",

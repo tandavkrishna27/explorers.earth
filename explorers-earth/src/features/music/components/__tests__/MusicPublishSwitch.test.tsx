@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MusicPublishSwitch } from '../MusicPublishSwitch';
 import { useCategoryNavigation } from '../../../navigation/CategoryNavigationProvider';
 import { musicBackend, musicPublishHarness, readyMusic } from '../../__tests__/musicPublishHarness';
+import { writtenPins, writtenVisibility } from '../../../navigation/__tests__/surfaceHarness';
 import { musicIdentityCoordinator } from '../../musicApi';
 import useAuthStore from '../../../../store/store';
 import { MusicClientError } from '../../../../lib/localTunesApiClient';
@@ -18,7 +19,12 @@ describe('Music controlled publication switch', () => {
     control.focus(); await userEvent.keyboard('[Space]');
     await waitFor(() => expect(control).toHaveAttribute('aria-checked', 'true'));
     await userEvent.click(control); await waitFor(() => expect(control).toHaveAttribute('aria-checked', 'false'));
-    expect(h.writes.map(write => write.variables.data)).toEqual([{ public_music: 'Yes' }, { public_music: 'No', pinned_nav_tabs: ['public_profile', 'public_books'] }]);
+    expect(h.writes).toHaveLength(2);
+    // On publishes Music; Off takes it private and touches no other pin.
+    expect(writtenVisibility(h.writes[0].variables.input, 'public_music')).toBe(true);
+    expect(writtenPins(h.writes[0].variables.input)).toEqual(['public_profile', 'public_music', 'public_books']);
+    expect(writtenVisibility(h.writes[1].variables.input, 'public_music')).toBe(false);
+    expect(writtenPins(h.writes[1].variables.input)).toEqual(['public_profile', 'public_books']);
     expect(backend.publish.mock.calls.map(call => call[0])).toEqual(['public', 'private']);
     expect(control).toHaveAttribute('aria-describedby'); expect(control).toHaveClass('h-11', 'w-11');
   });
@@ -28,14 +34,17 @@ describe('Music controlled publication switch', () => {
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false'); fireEvent.click(revoke);
     await screen.findByText('Music is private.');
     expect(backend.publish.mock.calls.map(call => call[0])).toEqual(['private']);
-    expect(h.writes.every(write => write.variables.data.public_music !== 'Yes')).toBe(true);
+    expect(h.writes.every(write => writtenVisibility(write.variables.input, 'public_music') !== true)).toBe(true);
   });
   it('removes only the saved Music target on deliberate Off even while automatic pinning is enabled', async () => {
     const backend = musicBackend('public');
     const h = musicPublishHarness(<PublicationSwitch />, { public_music: 'Yes', auto_pinning: true, pinned_nav_tabs: ['public_profile', 'public_books', 'public_music', 'public_games'] }); await h.ready();
     const control = screen.getByRole('switch'); await waitFor(() => expect(control).toBeChecked());
     fireEvent.click(control); await screen.findByText('Music is private.');
-    expect(h.writes.map(write => write.variables.data)).toEqual([{ public_music: 'No', pinned_nav_tabs: ['public_profile', 'public_books', 'public_games'] }]);
+    expect(h.writes).toHaveLength(1);
+    // Only the saved Music pin is removed, even with automatic pinning on.
+    expect(writtenVisibility(h.writes[0].variables.input, 'public_music')).toBe(false);
+    expect(writtenPins(h.writes[0].variables.input)).toEqual(['public_profile', 'public_books', 'public_games']);
     expect(h.saved.auto_pinning).toBe(true); expect(backend.publish.mock.calls.map(call => call[0])).toEqual(['private']);
   });
   it('shows a keyboard-accessible failure and resumes the same uncertain command key', async () => {

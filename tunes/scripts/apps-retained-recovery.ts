@@ -1,0 +1,224 @@
+import {writeSync} from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+import {tmpdir} from 'node:os';
+import {createHash,randomUUID} from 'node:crypto';
+import {isIP} from 'node:net';
+
+const ACK='APPS_EXACT_RETAINED_RECOVERY_V1';
+const ENDPOINT='npipe:////./pipe/dockerDesktopLinuxEngine';
+const IMAGE='sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81';
+// Fresh recovery authority reviewed independently against original terminal parents
+// and immutable source checkpoints. These checkpoints preceded Vite/Playwright.
+const RUNS=Object.freeze([
+ Object.freeze({runId:'b1b0579261e7d0ffd2c3410bc77b5d5d',commit:'420e13c6895d0ae70d4c997b7244167db0079bce',containerId:'06f3d43b95e1b58c3cf417371735845dfc05a318ac12be4516a87172ae5a82af',port:57181,secretName:'current-b7e028133a9ddbaa592f51dac56e5b9b'}),
+ Object.freeze({runId:'956d55c6591e17c3fa056d49d11c37b7',commit:'aa735d7e1ad0640f30f8f22a928a2e41675f6cd5',containerId:'e62389a614340f604cfd0c7c639bb009682e9ca58be4d1de697a4c68dca982e3',port:59450,secretName:'current-6c19df9181633a022588752c25ca1674'}),
+ Object.freeze({runId:'18aa5a94ef2987a1a41c5efff13203d5',commit:'476f95c46aadc9c823eacadea2177c21c99ff808',containerId:'4e1f7d73771c70566ed917b4182cc4e0ac4226490a27be47698a878cbc30b999',port:60447,secretName:'current-a395fe8b9b8ece45e040769fbc10deee'}),
+ Object.freeze({runId:'260554db707fba544c6c33653de9309e',commit:'78a96006c69f5e96b15101ff593500e065af25da',containerId:'7ee950915c48941d248b7b94d3c8bc43e68eec082a58588a5cfd1f90980acf37',port:58740,secretName:'current-01055c0914e5f05d11438b10f6430c0b'}),
+ Object.freeze({runId:'15d78356f0b72af0106e295a62e7e313',commit:'886e583429328d885e82008683f04ddef16db434',containerId:'f90119b89bd65f44211d10de1b5e4e24c01fac634b5e32d09e5f2e4eb838b53c',port:60147,secretName:'current-18111cc5ff80789c1389f0e55a0acccc'}),
+ Object.freeze({runId:'039063c49a5a6bc8eb02ec6171b0f31c',commit:'fdb23ce1f1c8cdf8a71c0af84dac9ea26c99a1ea',containerId:'7b15990214102805ee2c2b77d6200bd8dde711bba95ef55a026ec890f1858067',port:56605,secretName:'current-3ca774fb02ea7db83937f40e59bcc5b7'}),
+ Object.freeze({runId:'760c2880dfba07898ad363a794833427',commit:'4677dac0f8d0e01be3f572f56c727cd1516a6fb4',containerId:'978f6efa8e377a7db1a834c9169c15473cd952248532fb4dc5ea7989d79fa58c',port:58103,secretName:'current-60dabffb95e3449939566c8a0b89b1a8'}),
+ Object.freeze({runId:'d20340d756eb2ce90d1c828149964479',commit:'701f74cad80906e6f526566ca5aa864d0247185d',containerId:'12da8641d7f9661ebb48e38887b8e38cf5f8e01e5aed335418673c60c20d2b60',port:59904,secretName:'current-e70bb821cb918b8ca07570578a3d7ae0'}),
+ Object.freeze({runId:'59310ab84faad2c2c9cfb339533d349e',commit:'564d667afae1d4177d56b93d9dd642b23b5f29f3',containerId:'813359737d6d9b22455b8ddf564e51e57f366f48ac9876f6f49e51b858c6d50e',port:60896,secretName:'current-97d88807de8ac1dd0f77f5fe35eea3e3'}),
+ Object.freeze({runId:'6417d8f5e596be6f8de6cd2f8e279018',commit:'94766f5165439175ebbb6d34dbc71f63b7b438f1',containerId:'61649b34e279f2f3b46cb98f08a3562f0be61d453f06f2cd008159ac1594124e',port:60244,secretName:'current-68dea4231036b52f6b09b5efe8b88b4a'}),
+ Object.freeze({runId:'48e12e0faa356e85186ddc490cad74fd',commit:'0448184e58ca447ebdd63ecb29b9863bdced8138',containerId:'9b0db39241b9009ae01d15af780dcc98afc95f98c48321629aa871c45c2c1725',port:57809,secretName:'current-20e928b4f8dc55029fa92860c297cee7'}),
+ Object.freeze({runId:'af123e393a4990370dc979a141c7b77c',commit:'54a12111c97fb0cb3e0289789a79c94362c947bd',containerId:'315e8cdab1ed1b06257024f7b463710321e224ead2b11244c32e6c2985a46414',port:60323,secretName:'current-6a703238a3b8b424c122605a39531bb0'}),
+ Object.freeze({runId:'600696f35eaf0e4dbfd43964e05fe32a',commit:'8d75f5c58e403c04f65dc46b1547902734c29ca3',containerId:'05846dc6889b208b67cece6c4270418cd6492b732288a92b26e7caa30362d23e',port:60084,secretName:'current-7fe4fc911bc5075109f87e8b1213757f'}),
+ Object.freeze({runId:'09d1e404c035eb1d1e1b18381a1172d4',commit:'da090a6346cdc2d70867b174e202ad3e41fe84f9',containerId:'87bc2b4d62ee1c1558f8c05087bd00fbd21db2080e3e0af38b607fd8368da475',port:60008,secretName:'current-0625adae58c0952f4dab5d16e3cab3ea'}),
+ Object.freeze({runId:'d82cbb1ebcf97dc7b13fec4a24772586',commit:'3ad67fd28fffb76f9bed4527098073e1ec3dda2f',containerId:'e46505ca36f8a3ba4bbcf2656f9c7851bbe7d5da7b155873fa20cb4ac0875533',port:59167,secretName:'current-f61e975ed64c8282b0d93e12de36e0f4'}),
+ Object.freeze({runId:'19e741557d793f6e8499570ea3265f85',commit:'21201da319c47efe73446f9c1b30b047932a7558',containerId:'01241adad884669c6e3f48396fdc11f18dc07bbbc9e6bceb27ea1c18329d06ca',port:59077,secretName:'current-9a5fa10bcce791e7fb494abce251fd5a'}),
+ Object.freeze({runId:'ed4825d92eda95eb13bb1c2d14388533',commit:'686b6c1edba15149dfef7674bacf649d7e478657',containerId:'da0ca347095c26048b84d4f9a2942ae90140ee11433e355830923683523a6e70',port:60814,secretName:'current-a1ed81fceef8603b119aa5dd32c7af4a'}),
+]);
+type Run=typeof RUNS[number];
+type Admin={query(sql:string,values?:unknown[]):Promise<{rows:Record<string,unknown>[]}>;end():Promise<void>};
+type Custody={verify():Promise<void>;removeChildren():Promise<void>;removeRoot():Promise<void>;eraseSecret():Promise<void>};
+type Lease={release():Promise<void>};
+type Dependencies={platform:string;argv:string[];environment:Record<string,string|undefined>;root:string;temporaryRoot:string;clock:{now():number;setTimeout(fn:()=>void,ms:number):unknown;clearTimeout(timer:unknown):void};preflight():Promise<void>;inspect(run:Run):Promise<unknown>;capture(run:Run):Promise<Custody>;lease(custody:Custody):Promise<Lease>;openAdmin(run:Run):Promise<Admin>;stop(run:Run):Promise<void>;remove(run:Run):Promise<void>;absent(run:Run):Promise<boolean>};
+const KEYS=['platform','argv','environment','root','temporaryRoot','clock','preflight','inspect','capture','lease','openAdmin','stop','remove','absent'];
+type FailureStage='validate'|'preflight'|'inspect'|'capture'|'lease'|'admin'|'witness'|'drop'|'db-absence'|'admin-close'|'stop'|'container-absence'|'children'|'root'|'secret'|'lease-release';
+const failureStages=new WeakMap<object,FailureStage>();
+type StopCategory='timeout'|'spawn-error'|'stdin-error'|'overflow'|'signal'|'nonzero'|'output-mismatch';
+type StopDiagnostic=Readonly<{category:StopCategory;child:string;signal:'unknown'|'none'|'SIGTERM'|'SIGKILL'|'other';bytes?:number;fullHexId?:boolean;expectedMatch?:boolean}>;
+const stopDiagnostics=new WeakMap<object,StopDiagnostic>();
+function stopDiagnosticLine(failure:object){const d=stopDiagnostics.get(failure);return d?' stop='+d.category+' child='+d.child+' signal='+d.signal+(d.bytes===undefined?'':' bytes='+d.bytes+' fullHexId='+d.fullHexId+' expectedMatch='+d.expectedMatch):'';}
+class Refusal extends Error{constructor(){super('APPS_RETAINED_RECOVERY_FAILED');}}
+function requireValue(value:unknown):asserts value{if(!value)throw new Refusal();}
+function database(run:Run){return `music_uat_${run.runId}`;}
+function secret(root:string,run:Run){return path.win32.join(root,'.artifacts','music-token-secrets',run.secretName);}
+function validateInspect(value:unknown,run:Run,root:string,running=true){
+ const observation=value as any,x=observation?.container,c=x?.Config,h=x?.HostConfig,pinned=observation?.image;
+ requireValue(pinned?.Id===IMAGE&&Array.isArray(pinned.Config?.Env));
+ requireValue(x?.Id===run.containerId&&x.Name===`/explorers-music-uat-db-${run.runId}`&&x.Image===IMAGE&&c?.Image===IMAGE);
+ const labels={'com.explorers.music.fixture':'true','com.explorers.music.project':'explorers-music-fixture','com.explorers.music.uat-database':'true','com.explorers.music.uat-run':run.runId,'com.explorers.music.database':database(run),'com.explorers.music.commit':run.commit};
+ requireValue(c.Labels&&Object.keys(c.Labels).length===6&&Object.entries(labels).every(([key,v])=>c.Labels[key]===v));
+ requireValue(Array.isArray(c.Env)&&c.Env.every((v:unknown)=>typeof v==='string'));
+ const env=new Map<string,string>();for(const item of c.Env){const at=item.indexOf('=');requireValue(at>0&&!env.has(item.slice(0,at)));env.set(item.slice(0,at),item.slice(at+1));}
+ requireValue(env.get('POSTGRES_USER')==='music_migrator'&&env.get('POSTGRES_DB')===database(run)&&env.get('POSTGRES_PASSWORD_FILE')==='/run/secrets/music-uat-database-password');
+ requireValue([...env.keys()].every(key=>['PATH','GOSU_VERSION','LANG','PG_MAJOR','PG_VERSION','PG_SHA256','DOCKER_PG_LLVM_DEPS','PGDATA','POSTGRES_USER','POSTGRES_DB','POSTGRES_PASSWORD_FILE'].includes(key)));
+ const defaults=pinned.Config.Env as unknown[];requireValue(defaults.every(v=>typeof v==='string'&&!/^POSTGRES_/.test(v)));
+ requireValue(JSON.stringify([...c.Env].sort())===JSON.stringify([...defaults,`POSTGRES_USER=music_migrator`,`POSTGRES_DB=${database(run)}`,'POSTGRES_PASSWORD_FILE=/run/secrets/music-uat-database-password'].sort()));
+ requireValue(JSON.stringify(c.Entrypoint)==='["docker-entrypoint.sh"]'&&JSON.stringify(c.Cmd)==='["postgres"]');
+ const health=c.Healthcheck;requireValue(JSON.stringify(health?.Test)===JSON.stringify(['CMD-SHELL',`pg_isready -U music_migrator -d ${database(run)} -h 127.0.0.1 -p 5432`])&&health.Interval===1000000000&&health.Timeout===5000000000&&health.Retries===30);
+ requireValue(h?.AutoRemove===true&&h.Privileged===false&&h.ReadonlyRootfs===false&&h.NetworkMode==='bridge'&&h.PidMode===''&&h.IpcMode==='private'&&h.RestartPolicy?.Name==='no'&&h.RestartPolicy.MaximumRetryCount===0);
+ requireValue([h.CapAdd,h.CapDrop,h.Binds].every(v=>v===null||Array.isArray(v)&&v.length===0)&&Array.isArray(h.Devices)&&h.Devices.length===0);
+ requireValue(Object.keys(h.PortBindings??{}).join(',')==='5432/tcp'&&h.PortBindings['5432/tcp'].length===1&&h.PortBindings['5432/tcp'][0].HostIp==='127.0.0.1'&&h.PortBindings['5432/tcp'][0].HostPort===String(run.port));
+ const ports=x.NetworkSettings?.Ports;requireValue(Object.keys(ports??{}).join(',')==='5432/tcp'&&(!running&&ports['5432/tcp']===null||Array.isArray(ports['5432/tcp'])&&ports['5432/tcp'].length===1&&ports['5432/tcp'][0].HostIp==='127.0.0.1'&&ports['5432/tcp'][0].HostPort===String(run.port)));
+ const networks=x.NetworkSettings?.Networks;requireValue(Object.keys(networks??{}).join(',')==='bridge');const address=networks.bridge?.IPAddress;
+ requireValue(!running&&address===''||typeof address==='string'&&isIP(address)===4&&/^(?:10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(address));
+ const tmp=h.Tmpfs;requireValue(Object.keys(tmp??{}).join(',')==='/var/lib/postgresql/data'&&typeof tmp['/var/lib/postgresql/data']==='string'&&tmp['/var/lib/postgresql/data'].split(',').sort().join(',')===['rw','noexec','nosuid','size=2147483648'].sort().join(','));
+ requireValue(Array.isArray(x.Mounts));const binds=x.Mounts.filter((m:any)=>m.Type==='bind');requireValue(binds.length===1&&binds[0].RW===false&&binds[0].Destination==='/run/secrets/music-uat-database-password'&&binds[0].Source===secret(root,run));
+ requireValue(x.Mounts.every((m:any)=>m===binds[0]||m.Type==='tmpfs'&&m.Destination==='/var/lib/postgresql/data'));
+ requireValue(running?x.State?.Running===true&&x.State.Health?.Status==='healthy':x.State?.Running===false);
+ return address as string;
+}
+/** No resource allocation during construction/import. Complete injected adapters are synthetic. */
+export function createAppsRetainedRecovery(dependencies?:Dependencies){
+ const synthetic=dependencies!==undefined,d=synthetic?dependencies!:nativeDependencies();let stage:FailureStage='validate';let retained:Promise<{runId:string;status:'recovered';evidence:'native'|'synthetic';qualification:false}>|undefined;
+ return{run(){return retained??=execute().catch(original=>{const failure=new Refusal();failureStages.set(failure,stage);if(stage==='stop'&&original&&typeof original==='object'){const diagnostic=stopDiagnostics.get(original);if(diagnostic)stopDiagnostics.set(failure,diagnostic);}throw failure;});}};
+ async function execute(){
+  requireValue(d&&Object.keys(d).sort().join(',')===KEYS.sort().join(',')&&d.clock&&['now','setTimeout','clearTimeout'].every(k=>typeof (d.clock as any)[k]==='function')&&KEYS.filter(k=>!['platform','argv','environment','root','temporaryRoot','clock'].includes(k)).every(k=>typeof (d as any)[k]==='function'));
+  requireValue(d.platform==='win32'&&Array.isArray(d.argv)&&d.argv.length===4&&d.argv[0]==='--recover-run'&&d.argv[2]==='--ack'&&d.argv[3]===ACK);
+  const selected=RUNS.find(item=>item.runId===d.argv[1]);requireValue(selected);const run:Run=selected;
+  requireValue(!Object.entries(d.environment).some(([key,value])=>value!==undefined&&(/^(?:DOCKER_|MUSIC_C10_STANDALONE_POSTGRES_|(?:APPS|REPLATFORM)_E2E_)/i.test(key)||['DATABASE_URL','DATABASE_URL_TEST','NODE_OPTIONS','NODE_CHANNEL_FD','NODE_PATH'].includes(key)||key==='NODE_ENV'&&value==='production')));
+  requireValue([d.root,d.temporaryRoot].every(file=>path.win32.isAbsolute(file)&&path.win32.resolve(file)===file&&!file.startsWith('\\\\')&&!/[\x00-\x1f\x7f]/.test(file)));
+  const seventeenth=run.runId==='ed4825d92eda95eb13bb1c2d14388533',sixteenth=run.runId==='19e741557d793f6e8499570ea3265f85',fifteenth=run.runId==='d82cbb1ebcf97dc7b13fec4a24772586',fourteenth=run.runId==='09d1e404c035eb1d1e1b18381a1172d4',thirteenth=run.runId==='600696f35eaf0e4dbfd43964e05fe32a',twelfth=run.runId==='af123e393a4990370dc979a141c7b77c',eleventh=run.runId==='48e12e0faa356e85186ddc490cad74fd',tenth=run.runId==='6417d8f5e596be6f8de6cd2f8e279018',ninth=run.runId==='59310ab84faad2c2c9cfb339533d349e',eighth=run.runId==='d20340d756eb2ce90d1c828149964479',seventh=run.runId==='760c2880dfba07898ad363a794833427',sixth=run.runId==='039063c49a5a6bc8eb02ec6171b0f31c',fifth=run.runId==='15d78356f0b72af0106e295a62e7e313',fourth=run.runId==='260554db707fba544c6c33653de9309e'||fifth||sixth||seventh||eighth||ninth||tenth||eleventh||twelfth||thirteenth||fourteenth||fifteenth||sixteenth||seventeenth;
+  const originals=new Set<Promise<unknown>>(),deadline=d.clock.now()+(fourth?1200000:600000);
+  async function bounded<T>(operation:()=>Promise<T>,budget=15000,destructive=false){const remaining=Math.floor(deadline-d.clock.now());requireValue(remaining>0&&(!destructive||remaining>=budget));const original=Promise.resolve().then(operation);originals.add(original);original.then(()=>originals.delete(original),()=>originals.delete(original));let timer:unknown;try{return await Promise.race([original,new Promise<never>((_,reject)=>{timer=d.clock.setTimeout(()=>reject(new Refusal()),Math.min(remaining,budget));})]);}finally{d.clock.clearTimeout(timer);}}
+  stage='preflight';await bounded(()=>d.preflight(),60000);stage='inspect';const address=validateInspect(await bounded(()=>d.inspect(run)),run,d.root);
+  stage='capture';const custody=await bounded(()=>d.capture(run),60000);stage='capture';await bounded(()=>custody.verify(),60000);
+  stage='lease';const lease=await bounded(()=>d.lease(custody),fourth?60000:15000,true);stage='capture';await bounded(()=>custody.verify(),60000);
+  stage='admin';const admin=await bounded(()=>d.openAdmin(run));
+  async function witness(){stage='witness';
+   const result=await bounded(()=>admin.query("SELECT current_user AS role,current_database() AS maintenance,current_setting('server_version_num')::int AS version,current_setting('max_prepared_transactions')::int AS maxprepared,(SELECT rolsuper FROM pg_roles WHERE rolname=current_user) AS superuser,(SELECT count(*)::int FROM pg_stat_activity WHERE backend_type='client backend' AND pid<>pg_backend_pid()) AS clients,(SELECT count(*)::int FROM pg_prepared_xacts) AS prepared,host(inet_server_addr()) AS \"serverAddress\",inet_server_port() AS \"serverPort\""));
+   const row=result.rows[0];requireValue(result.rows.length===1&&row.role==='music_migrator'&&row.maintenance==='postgres'&&row.superuser===true&&Number.isInteger(row.version)&&Number(row.version)>=150000&&Number(row.version)<160000&&row.maxprepared===0&&row.clients===0&&row.prepared===0&&row.serverPort===5432&&row.serverAddress===address);
+   const oid=await bounded(()=>admin.query('SELECT oid::int AS oid FROM pg_database WHERE datname=$1',[database(run)]));requireValue(oid.rows.length===1&&Number.isSafeInteger(oid.rows[0].oid)&&Number(oid.rows[0].oid)>0);return oid.rows[0].oid;
+  }
+  const oid=await witness();stage='inspect';requireValue(validateInspect(await bounded(()=>d.inspect(run)),run,d.root)===address);stage='capture';await bounded(()=>custody.verify(),60000);requireValue(await witness()===oid);
+  requireValue(originals.size===0);stage='drop';await bounded(()=>admin.query(`DROP DATABASE "${database(run)}"`),15000,true);
+  stage='db-absence';const absent=await bounded(()=>admin.query('SELECT 1 FROM pg_database WHERE datname=$1',[database(run)]));requireValue(absent.rows.length===0);
+  stage='admin-close';await bounded(()=>admin.end(),15000,true);
+  stage='inspect';requireValue(validateInspect(await bounded(()=>d.inspect(run)),run,d.root)===address);stage='capture';await bounded(()=>custody.verify(),60000);stage='stop';await bounded(()=>d.stop(run),45000,true);
+  stage='container-absence';if(!await bounded(()=>d.absent(run))){validateInspect(await bounded(()=>d.inspect(run)),run,d.root,false);await bounded(()=>d.remove(run),15000,true);requireValue(await bounded(()=>d.absent(run)));}
+  requireValue(originals.size===0);stage='capture';await bounded(()=>custody.verify(),60000);stage='children';await bounded(()=>custody.removeChildren(),fourth?600000:60000,true);stage='root';await bounded(()=>custody.removeRoot(),15000,true);stage='secret';await bounded(()=>custody.eraseSecret(),15000,true);stage='lease-release';await bounded(()=>lease.release(),15000,true);
+  return{runId:run.runId,status:'recovered' as const,evidence:synthetic?'synthetic' as const:'native' as const,qualification:false as const};
+ }
+}
+
+/** Fresh authority for the fixed absent runs. Does not resume or attest original recovery. */
+export function createAppsAbsentRetainedFinalizer(dependencies?:Dependencies){
+ const synthetic=dependencies!==undefined,d=dependencies??nativeDependencies(true);let stage:FailureStage='validate';
+ let retained:Promise<{runId:string;status:'finalized_existing_files';evidence:'native'|'synthetic';qualification:false}>|undefined;
+ return{run(){return retained??=execute().catch(()=>{const failure=new Refusal();failureStages.set(failure,stage);throw failure;});}};
+ async function execute(){
+  requireValue(d&&Object.keys(d).sort().join(',')===KEYS.sort().join(',')&&d.clock&&['now','setTimeout','clearTimeout'].every(k=>typeof (d.clock as any)[k]==='function')&&KEYS.filter(k=>!['platform','argv','environment','root','temporaryRoot','clock'].includes(k)).every(k=>typeof (d as any)[k]==='function'));
+  const selected=RUNS.find(item=>item.runId===d.argv?.[1]);requireValue(selected);const run:Run=selected;const acknowledgment=run===RUNS[0]?'APPS_B1_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[1]?'APPS_956_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[2]?'APPS_18AA_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[3]?'APPS_2605_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[4]?'APPS_15D7_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[5]?'APPS_0390_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[6]?'APPS_760C_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[7]?'APPS_D203_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[8]?'APPS_5931_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[9]?'APPS_6417_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[10]?'APPS_48E1_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[11]?'APPS_AF12_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[12]?'APPS_6006_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[13]?'APPS_09D1_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[14]?'APPS_D82C_ABSENT_RETAINED_FINALIZATION_V1':run===RUNS[15]?'APPS_19E7_ABSENT_RETAINED_FINALIZATION_V1':'APPS_ED48_ABSENT_RETAINED_FINALIZATION_V1';requireValue(d.platform==='win32'&&Array.isArray(d.argv)&&d.argv.length===4&&d.argv[0]==='--finish-absent-retained-run'&&d.argv[1]===run.runId&&d.argv[2]==='--ack'&&d.argv[3]===acknowledgment);
+  requireValue(!Object.entries(d.environment).some(([key,value])=>value!==undefined&&(/^(?:DOCKER_|MUSIC_C10_STANDALONE_POSTGRES_|(?:APPS|REPLATFORM)_E2E_)/i.test(key)||['DATABASE_URL','DATABASE_URL_TEST','NODE_OPTIONS','NODE_CHANNEL_FD','NODE_PATH'].includes(key)||key==='NODE_ENV'&&value==='production')));
+  requireValue([d.root,d.temporaryRoot].every(file=>path.win32.isAbsolute(file)&&path.win32.resolve(file)===file&&!file.startsWith('\\\\')&&!/[\x00-\x1f\x7f]/.test(file)));
+  const seventeenth=run.runId==='ed4825d92eda95eb13bb1c2d14388533',sixteenth=run.runId==='19e741557d793f6e8499570ea3265f85',fifteenth=run.runId==='d82cbb1ebcf97dc7b13fec4a24772586',fourteenth=run.runId==='09d1e404c035eb1d1e1b18381a1172d4',thirteenth=run.runId==='600696f35eaf0e4dbfd43964e05fe32a',twelfth=run.runId==='af123e393a4990370dc979a141c7b77c',eleventh=run.runId==='48e12e0faa356e85186ddc490cad74fd',tenth=run.runId==='6417d8f5e596be6f8de6cd2f8e279018',ninth=run.runId==='59310ab84faad2c2c9cfb339533d349e',eighth=run.runId==='d20340d756eb2ce90d1c828149964479',seventh=run.runId==='760c2880dfba07898ad363a794833427',sixth=run.runId==='039063c49a5a6bc8eb02ec6171b0f31c',fifth=run.runId==='15d78356f0b72af0106e295a62e7e313',fourth=run.runId==='260554db707fba544c6c33653de9309e'||fifth||sixth||seventh||eighth||ninth||tenth||eleventh||twelfth||thirteenth||fourteenth||fifteenth||sixteenth||seventeenth;
+  const originals=new Set<Promise<unknown>>(),deadline=d.clock.now()+(fourth?1200000:300000);
+  async function bounded<T>(operation:()=>Promise<T>,budget=60000){requireValue(deadline-d.clock.now()>=budget);const original=Promise.resolve().then(operation);originals.add(original);original.then(()=>originals.delete(original),()=>originals.delete(original));let timer:unknown;try{return await Promise.race([original,new Promise<never>((_,reject)=>{timer=d.clock.setTimeout(()=>reject(new Refusal()),budget);})]);}finally{d.clock.clearTimeout(timer);}}
+  async function absent(){stage='container-absence';requireValue(await bounded(()=>d.absent(run),30000));requireValue(originals.size===0);}
+  stage='preflight';await bounded(()=>d.preflight());await absent();stage='capture';const custody=await bounded(()=>d.capture(run));await absent();stage='capture';await bounded(()=>custody.verify());stage='lease';const lease=await bounded(()=>d.lease(custody),fourth?90000:60000);
+  for(const [next,operation] of [['children',()=>custody.removeChildren()],['root',()=>custody.removeRoot()],['secret',()=>custody.eraseSecret()],['lease-release',()=>lease.release()]] as const){await absent();stage=next;await bounded(operation,fourth&&next==='children'?600000:60000);requireValue(originals.size===0);}
+  return{runId:run.runId,status:'finalized_existing_files' as const,evidence:synthetic?'synthetic' as const:'native' as const,qualification:false as const};
+ }
+}
+function nativeDependencies(existingLeaseMode=false):Dependencies{
+ const root=path.resolve(fileURLToPath(new URL('../../',import.meta.url))),temporaryRoot=tmpdir();
+ const ps='C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',docker='C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe',helper=path.join(root,'tunes/scripts/music-local-private-files.ps1');
+ const states=new WeakMap<Custody,{run:Run;directory:string;verify():Promise<void>;beforeRemoval():Promise<void>;remaining:Set<string>;identities:Map<string,string>;lease?:string}>();
+ const fs=()=>import('node:fs/promises');let unknown=false;
+ const guarded=existingLeaseMode||(process.argv.length===6&&process.argv[2]==='--recover-run'&&['18aa5a94ef2987a1a41c5efff13203d5','260554db707fba544c6c33653de9309e','15d78356f0b72af0106e295a62e7e313','039063c49a5a6bc8eb02ec6171b0f31c','760c2880dfba07898ad363a794833427','d20340d756eb2ce90d1c828149964479','59310ab84faad2c2c9cfb339533d349e','6417d8f5e596be6f8de6cd2f8e279018','48e12e0faa356e85186ddc490cad74fd','af123e393a4990370dc979a141c7b77c','600696f35eaf0e4dbfd43964e05fe32a','09d1e404c035eb1d1e1b18381a1172d4','d82cbb1ebcf97dc7b13fec4a24772586','19e741557d793f6e8499570ea3265f85','ed4825d92eda95eb13bb1c2d14388533'].includes(process.argv[3])&&process.argv[4]==='--ack'&&process.argv[5]==='APPS_EXACT_RETAINED_RECOVERY_V1');
+ const environment=()=>Object.fromEntries(['SystemRoot','WINDIR','PATH','TEMP','TMP','USERPROFILE','LOCALAPPDATA','APPDATA'].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]!]]));
+ async function command(executable:string,args:string[],budget:number,input?:string,maxBytes=1048576,diagnoseStop=false){
+  if(guarded)requireValue(!unknown);const {spawn}=await import('node:child_process');if(guarded)requireValue(!unknown);
+  return await new Promise<string>((resolve,reject)=>{
+   let first:Refusal|undefined,category:StopCategory|undefined;
+   function failure(kind:StopCategory,closedCode?:unknown,closedSignal?:unknown,closeObserved=false){first??=new Refusal();category??=kind;if(diagnoseStop){const closed=Number.isInteger(closedCode)&&Number(closedCode)>=0&&Number(closedCode)<=2147483647;stopDiagnostics.set(first,Object.freeze({category,child:closed?String(closedCode):'unknown',signal:closeObserved?(closedSignal===null?'none':closedSignal==='SIGTERM'?'SIGTERM':closedSignal==='SIGKILL'?'SIGKILL':'other'):'unknown'}));}return first;}
+   let child:ReturnType<typeof spawn>;try{child=spawn(executable,args,{shell:false,windowsHide:true,cwd:root,env:environment(),stdio:['pipe','pipe','pipe']});}catch{unknown=true;reject(failure('spawn-error'));return;}let output='',bad=false;
+   const timer=setTimeout(()=>{unknown=true;bad=true;const error=failure('timeout');try{child.kill();}catch{}reject(error);},budget);
+   child.once('error',()=>{unknown=true;bad=true;reject(failure('spawn-error'));});child.stdout!.on('data',(bytes:Buffer)=>{if(Buffer.byteLength(output)+bytes.length>maxBytes){unknown=true;bad=true;failure('overflow');try{child.kill();}catch{}}else output+=bytes.toString('utf8');});child.stderr!.resume();child.stdin!.on('error',()=>{unknown=true;bad=true;failure('stdin-error');});child.stdin!.end(input);
+   child.once('close',(code,signal)=>{clearTimeout(timer);if(bad||code!==0||signal!==null){unknown=true;reject(failure(signal!==null?'signal':'nonzero',code,signal,true));}else resolve(output.trim());});
+  });
+ }
+ async function privatePath(file:string){requireValue(await command(ps,['-NoLogo','-NoProfile','-NonInteractive','-File',helper,'inspect',file],10000,undefined,4096)==='{"ok":true}');}
+ async function physical(file:string,directory:boolean,trustedExecutable=false){
+  requireValue(path.isAbsolute(file)&&path.resolve(file)===file&&!file.startsWith('\\\\')&&!/[\x00-\x1f\x7f]/.test(file)&&!file.slice(path.parse(file).root.length).includes(':'));
+  const f=await fs();for(let current=file;;current=path.dirname(current)){const stat=await f.lstat(current);requireValue(!stat.isSymbolicLink()&&await f.realpath(current)===current);if(current===path.dirname(current))break;}
+  const stat=await f.lstat(file,{bigint:true});requireValue(directory?stat.isDirectory():stat.isFile()&&(stat.nlink===1n||(trustedExecutable&&[process.execPath,ps,docker].includes(file)&&stat.nlink>0n)));return stat;
+ }
+ async function identity(file:string,directory:boolean){const s=await physical(file,directory);return[s.dev,s.ino,s.mode,s.uid,s.gid,...(directory?[]:[s.size,s.nlink,s.mtimeNs,s.ctimeNs])].map(String).join(':');}
+ const args=(tail:string[])=>['--host',ENDPOINT,...tail];
+ async function absent(run:Run){const id=await command(docker,args(['container','ls','--all','--no-trunc','--filter',`id=${run.containerId}`,'--format','{{.ID}}']),15000);const label=await command(docker,args(['container','ls','--all','--no-trunc','--filter',`label=com.explorers.music.uat-run=${run.runId}`,'--format','{{.ID}}']),15000);requireValue([id,label].every(value=>value===''||value===run.containerId));return id===''&&label==='';}
+ return{platform:process.platform,argv:process.argv.slice(2),environment:process.env,root,temporaryRoot,clock:{now:()=>performance.now(),setTimeout:(fn,ms)=>setTimeout(()=>{if(guarded)unknown=true;fn();},ms),clearTimeout:timer=>clearTimeout(timer as ReturnType<typeof setTimeout>)},
+  async preflight(){requireValue(process.versions.node==='24.21.0');for(const file of[process.execPath,ps,docker])await physical(file,false,true);await physical(helper,false);requireValue(createHash('sha256').update(await(await fs()).readFile(helper)).digest('hex')==='d35c7b8a92813890d5074a9088ff6d690610322deb0684d0c52b26774a5ff764');requireValue(/^5\.1\.\d+\.\d+$/.test(await command(ps,['-NoLogo','-NoProfile','-NonInteractive','-Command','$PSVersionTable.PSVersion.ToString()'],10000,undefined,4096)));},
+  async inspect(run){const image=JSON.parse(await command(docker,args(['image','inspect','--format','{{json .}}',IMAGE]),15000));const container=JSON.parse(await command(docker,args(['inspect','--type','container','--format','{{json .}}',run.containerId]),15000));return{image,container};},
+  async capture(run){
+   if(existingLeaseMode)requireValue(RUNS.some(candidate=>candidate.runId===run.runId&&candidate.containerId===run.containerId&&candidate.secretName===run.secretName)&&await absent(run));
+   const f=await fs(),directory=path.join(temporaryRoot,`explorers-profile-e2e-${run.runId}`),children=['apps-fixture-files','owned-media'];
+   const seventeenth=run.runId==='ed4825d92eda95eb13bb1c2d14388533',sixteenth=run.runId==='19e741557d793f6e8499570ea3265f85',fifteenth=run.runId==='d82cbb1ebcf97dc7b13fec4a24772586',fourteenth=run.runId==='09d1e404c035eb1d1e1b18381a1172d4',thirteenth=run.runId==='600696f35eaf0e4dbfd43964e05fe32a',twelfth=run.runId==='af123e393a4990370dc979a141c7b77c',eleventh=run.runId==='48e12e0faa356e85186ddc490cad74fd',tenth=run.runId==='6417d8f5e596be6f8de6cd2f8e279018',ninth=run.runId==='59310ab84faad2c2c9cfb339533d349e',eighth=run.runId==='d20340d756eb2ce90d1c828149964479',seventh=run.runId==='760c2880dfba07898ad363a794833427',sixth=run.runId==='039063c49a5a6bc8eb02ec6171b0f31c',fifth=run.runId==='15d78356f0b72af0106e295a62e7e313',fourth=run.runId==='260554db707fba544c6c33653de9309e'||fifth||sixth||seventh||eighth||ninth||tenth||eleventh||twelfth||thirteenth||fourteenth||fifteenth||sixteenth||seventeenth;
+   // Exact metadata inventory from the terminal, independently inspected run.
+   // No artifact content is read and no recursive removal is authorized.
+   const cases:readonly (readonly [string,bigint])[]=seventeenth?[['apps-Apps-manual-list-and--be8a4-ate-edit-archive-and-reload-apps-desktop',34645n],['apps-Apps-manual-list-and--be8a4-ate-edit-archive-and-reload-apps-mobile',34082n]]:twelfth||thirteenth||fourteenth||fifteenth||sixteenth?[]:ninth||tenth||eleventh?[
+    ['apps-Apps-manual-category--2140e-in-and-limit-survive-reload-apps-desktop',21452n],
+    ['apps-Apps-manual-category--2140e-in-and-limit-survive-reload-apps-mobile',21452n],
+    ['apps-Apps-manual-Keep-Draf-81066-rawal-preserve-public-state-apps-desktop',21454n],
+    ['apps-Apps-manual-Keep-Draf-81066-rawal-preserve-public-state-apps-mobile',21454n],
+    ['apps-Apps-manual-list-and--be8a4-ate-edit-archive-and-reload-apps-mobile',21459n],
+    ['apps-Apps-manual-ordered-o-697af-sibility-enforce-real-bytes-apps-desktop',21461n],
+    ['apps-Apps-manual-ordered-o-697af-sibility-enforce-real-bytes-apps-mobile',21461n],
+   ]:eighth?[]:seventh?[
+    ['apps-Apps-manual-category--2140e-in-and-limit-survive-reload-apps-mobile',46355n],
+   ]:sixth?[
+    ['apps-Apps-manual-category--2140e-in-and-limit-survive-reload-apps-mobile',38802n],
+    ['apps-Apps-manual-list-and--be8a4-ate-edit-archive-and-reload-apps-desktop',36149n],
+    ['apps-Apps-manual-list-and--be8a4-ate-edit-archive-and-reload-apps-mobile',35556n],
+   ]:fifth?[
+    ['apps-Apps-manual-category--2140e-in-and-limit-survive-reload-apps-mobile',38502n],
+    ['apps-Apps-manual-list-and--be8a4-ate-edit-archive-and-reload-apps-desktop',36961n],
+    ['apps-Apps-manual-list-and--be8a4-ate-edit-archive-and-reload-apps-mobile',36277n],
+   ]:fourth?[
+    ['apps-Apps-manual-category--2140e-in-and-limit-survive-reload-apps-desktop',3869n],
+    ['apps-Apps-manual-category--2140e-in-and-limit-survive-reload-apps-mobile',3240n],
+    ['apps-Apps-manual-Keep-Draf-81066-rawal-preserve-public-state-apps-desktop',6449n],
+    ['apps-Apps-manual-Keep-Draf-81066-rawal-preserve-public-state-apps-mobile',5850n],
+    ['apps-Apps-manual-list-and--be8a4-ate-edit-archive-and-reload-apps-desktop',38415n],
+    ['apps-Apps-manual-list-and--be8a4-ate-edit-archive-and-reload-apps-mobile',37816n],
+    ['apps-Apps-manual-ordered-o-697af-sibility-enforce-real-bytes-apps-desktop',38120n],
+    ['apps-Apps-manual-ordered-o-697af-sibility-enforce-real-bytes-apps-mobile',37557n],
+   ]:[];
+   const ownedFiles=run.runId==='18aa5a94ef2987a1a41c5efff13203d5'||fourth?[{name:'sessions.json',size:793n},{name:'protected.playwright.config.mjs',size:597n}]:[];
+   if(fourth)ownedFiles.push({name:'protected-discovery.json',size:seventeenth?9028n:sixteenth?9027n:fifteenth?9028n:twelfth||thirteenth||fourteenth?9027n:eleventh?9016n:ninth||tenth?9027n:seventh||eighth?9028n:fifth?9027n:9017n},{name:'protected-execution.json',size:seventeenth?18133n:sixteenth?12761n:fifteenth?12762n:fourteenth?12761n:twelfth||thirteenth?12762n:tenth||eleventh?58380n:ninth?58379n:eighth?12761n:seventh?20934n:sixth?47030n:fifth?60576n:50191n},{name:'browser-output/.last-run.json',size:seventeenth?145n:twelfth||thirteenth||fourteenth||fifteenth||sixteenth?45n:ninth||tenth||eleventh?390n:eighth?45n:seventh?96n:fifth||sixth?194n:439n},...cases.map(([name,size])=>({name:`browser-output/${name}/error-context.md`,size})));
+   if(ninth||tenth||eleventh)ownedFiles.push({name:eleventh?'owned-media/local/88092a64-2da5-4b00-a59d-08a3bf00207e/ff77c681-b6eb-41b0-a5ce-b3876e40a22d':tenth?'owned-media/local/7c2eceb3-4467-47be-a276-ff0d08b11edd/de0bbf67-bac0-4b36-abb4-6a60323bdd7e':'owned-media/local/228d9bca-d000-4200-bf55-18b54b64758b/1a37ee05-2061-4d85-8324-1ce6bbf50c25',size:70n});
+   const directoryNames=ninth||tenth||eleventh?[...children,'browser-output',...cases.map(([name])=>`browser-output/${name}`),'owned-media/local',eleventh?'owned-media/local/88092a64-2da5-4b00-a59d-08a3bf00207e':tenth?'owned-media/local/7c2eceb3-4467-47be-a276-ff0d08b11edd':'owned-media/local/228d9bca-d000-4200-bf55-18b54b64758b']:fourth?[...children,'browser-output',...cases.map(([name])=>`browser-output/${name}`),'owned-media/local',seventeenth?'owned-media/local/1d3887d8-b4ff-4b33-b45c-47963f1c3809':sixteenth?'owned-media/local/6126fb5a-fc06-4400-bfa5-346d67c7fde6':fifteenth?'owned-media/local/693272fa-ea9b-4a2a-8bfa-96a8e8c45387':fourteenth?'owned-media/local/58d87479-c173-420e-97e5-54fd73421b5a':thirteenth?'owned-media/local/09f2242c-228e-47ad-9196-c1dfdb42d5d5':twelfth?'owned-media/local/304434ef-9ebc-463a-9328-f58c359dd0ba':eighth?'owned-media/local/6677ba8b-4bf0-41b3-b874-3315de73ec33':seventh?'owned-media/local/2492592e-660d-4c66-b8c5-54c144ec0d51':sixth?'owned-media/local/52bb7005-0d68-4fb7-b2d3-3bb3a85afb82':fifth?'owned-media/local/7932d49d-d1ac-487b-81cf-769fe0b3cc75':'owned-media/local/9c767fef-2a78-4642-b1ce-1020363fbca8',seventeenth?'owned-media/local/4220f8f5-4947-4ac1-be1c-da82c4794bb2':sixteenth?'owned-media/local/6767745f-5d6b-47e7-90c3-229dc89e82aa':fifteenth?'owned-media/local/c58512e7-c2d1-4895-89ed-bd434addff74':fourteenth?'owned-media/local/bca6f88a-edb6-42fa-a26f-80d3f471ebe3':thirteenth?'owned-media/local/edf65cbe-9d1a-49cc-8c47-33b823beb450':twelfth?'owned-media/local/3175ae34-9880-4d8d-a0a0-a767d2ddce10':eighth?'owned-media/local/9bf6f4b4-e6e5-4daf-8281-d8babf9f38e4':seventh?'owned-media/local/cae34eaa-91c6-4965-801e-7d6a08d8a8d9':sixth?'owned-media/local/83272c1d-bd97-4a2d-923a-2b9ec5ec84d1':fifth?'owned-media/local/b72ebf82-bb6d-4ad6-88c4-1e239d52d541':'owned-media/local/b3a8f2b1-846d-43ab-ba1a-e33543c21e9c']:children;
+   const directories=[directory,...directoryNames.map(name=>path.join(directory,name))];
+   const files=new Map(ownedFiles.map(entry=>[path.join(directory,entry.name),entry.size]));
+   const remaining=new Set<string>([...directories,...files.keys(),secret(root,run)]),identities=new Map<string,string>();
+   async function exactDirectory(file:string){const expected=[...remaining].filter(entry=>path.dirname(entry)===file).map(entry=>path.basename(entry)).sort();requireValue(JSON.stringify((await f.readdir(file)).sort())===JSON.stringify(expected));}
+   await exactDirectory(directory);
+   const privacy=ownedFiles.length?await import('./apps-private-custody'):undefined;
+   if(privacy)for(const target of[directory,...children.map(name=>path.join(directory,name))]){await privatePath(target);await physical(target,true);privacy.registerAppsPrivateDirectory(target);}
+   async function scopedPrivate(file:string){const descendant=fourth&&(files.has(file)||directories.includes(file))&&file!==directory&&!children.some(name=>file===path.join(directory,name))&&file!==path.join(directory,'sessions.json');if(descendant||files.has(file)&&path.basename(file)==='protected.playwright.config.mjs'){requireValue(privacy);if(privacy.inspectAppsPrivateDescendant(file))return;}await privatePath(file);}
+   const isFile=(file:string)=>file===secret(root,run)||file===state?.lease||files.has(file);
+   for(const file of remaining){const regular=file===secret(root,run)||files.has(file);await scopedPrivate(file);identities.set(file,await identity(file,!regular));if(files.has(file))requireValue((await physical(file,false)).size===files.get(file));else if(!regular)await exactDirectory(file);for(let parent=path.dirname(file);;parent=path.dirname(parent)){if(!identities.has(parent))identities.set(parent,await identity(parent,true));if(parent===path.dirname(parent))break;}}
+   await privatePath(path.dirname(secret(root,run)));
+   const verify=async()=>{
+    requireValue(!unknown);if(existingLeaseMode)requireValue(await absent(run));requireValue(!unknown);for(const [file,old] of identities)requireValue(await identity(file,!isFile(file))===old);
+    for(const file of remaining)await scopedPrivate(file);await privatePath(path.dirname(secret(root,run)));
+    for(const file of remaining)if(!isFile(file))await exactDirectory(file);if(guarded)requireValue(!unknown);
+   };
+   async function beforeRemoval(){if(ownedFiles.length&&!existingLeaseMode)requireValue(await absent(run));await verify();if(guarded)requireValue(!unknown);}
+   const state={run,directory,verify,beforeRemoval,remaining,identities,lease:undefined as string|undefined};
+   const removalDirectories=fourth?directories.filter(file=>file!==directory).sort((a,b)=>b.split(path.sep).length-a.split(path.sep).length):children.map(name=>path.join(directory,name));
+   const custody:Custody={verify,async removeChildren(){for(const entry of ownedFiles){const file=path.join(directory,entry.name);await beforeRemoval();if(guarded)requireValue(!unknown);await f.unlink(file);remaining.delete(file);identities.delete(file);}for(const file of removalDirectories){await beforeRemoval();if(guarded)requireValue(!unknown);await f.rmdir(file);remaining.delete(file);identities.delete(file);}},async removeRoot(){await beforeRemoval();requireValue((await f.readdir(directory)).length===0);if(guarded)requireValue(!unknown);await f.rmdir(directory);remaining.delete(directory);identities.delete(directory);},async eraseSecret(){await beforeRemoval();const {cleanupFixtureMusicTokenSecret}=await import('./music-fixture-secret');const before=await physical(secret(root,run),false);if(guarded)requireValue(!unknown);cleanupFixtureMusicTokenSecret(root,secret(root,run));const after=await physical(secret(root,run),false);requireValue(after.size===0n&&after.dev===before.dev&&after.ino===before.ino);identities.set(secret(root,run),await identity(secret(root,run),false));}};
+   states.set(custody,state);return custody;
+  },
+  async lease(custody){const state=states.get(custody);requireValue(state);await state.verify();const file=path.join(path.dirname(secret(root,state.run)),'.apps-retained-recovery-'+state.run.runId+'.lock');if(existingLeaseMode){await privatePath(file);requireValue((await physical(file,false)).size===36n);}else{const text=randomUUID();requireValue(await command(ps,['-NoLogo','-NoProfile','-NonInteractive','-File',helper,'create-file',file],10000,text,4096)==='{"ok":true}');}state.lease=file;state.identities.set(file,await identity(file,false));state.remaining.add(file);await privatePath(file);const f=await fs(),handle=await f.open(file,'r');if(existingLeaseMode){const held=await handle.stat({bigint:true}),fresh=await physical(file,false);requireValue(held.dev===fresh.dev&&held.ino===fresh.ino&&held.nlink===1n&&held.size===36n);await state.verify();}return{async release(){await state.beforeRemoval();const stat=await handle.stat({bigint:true}),expected=await physical(file,false);requireValue(stat.dev===expected.dev&&stat.ino===expected.ino);if(guarded)requireValue(!unknown);await handle.close();await state.beforeRemoval();if(guarded)requireValue(!unknown);await f.unlink(file);state.remaining.delete(file);state.identities.delete(file);}};},
+  async openAdmin(run){const {readSecureMusicSecretFile}=await import('../server/config/secure-music-secret-file');await privatePath(secret(root,run));const password=await readSecureMusicSecretFile(secret(root,run),{mode:'fixture',maxBytes:512});const {default:pg}=await import('pg');const client=new pg.Client({host:'127.0.0.1',port:run.port,user:'music_migrator',database:'postgres',password,connectionTimeoutMillis:3000,statement_timeout:10000,query_timeout:12000,application_name:'apps_exact_retained_recovery'});await client.connect();return{async query(text,values){return await client.query({text,values});},async end(){await client.end();}};},
+  async stop(run){const output=await command(docker,args(['stop','--timeout','10',run.containerId]),45000,undefined,1048576,true);if(output!==run.containerId){const failure=new Refusal();stopDiagnostics.set(failure,Object.freeze({category:'output-mismatch',child:'0',signal:'none',bytes:Buffer.byteLength(output),fullHexId:/^[a-f0-9]{64}$/.test(output),expectedMatch:false}));throw failure;}},
+  async remove(run){requireValue(await command(docker,args(['rm',run.containerId]),15000)===run.containerId);},
+  async absent(run){return await absent(run);},
+ };
+}
+// Direct failure terminates this process only; it does not attest descendant settlement or authorize retained-resource disposal.
+if(process.argv[1]&&pathToFileURL(path.resolve(process.argv[1])).href===import.meta.url)void (process.argv[2]==='--finish-absent-retained-run'?createAppsAbsentRetainedFinalizer():createAppsRetainedRecovery()).run().then(result=>{process.stdout.write(JSON.stringify(result)+'\n');},failure=>{try{const stage=failureStages.get(failure)??'unknown';writeSync(2,'APPS_RETAINED_RECOVERY_FAILED '+stage+(stage==='stop'?stopDiagnosticLine(failure):'')+'\n');}finally{process.exit(1);}});

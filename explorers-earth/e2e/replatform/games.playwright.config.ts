@@ -1,0 +1,3 @@
+import {defineConfig} from '@playwright/test';
+if(!process.env.GAMES_E2E_FIXTURE_PATH||!process.env.PLAYWRIGHT_EXTERNAL_BASE_URL?.startsWith('http://127.0.0.1:'))throw new Error('Games requires its owned fixture');
+export default defineConfig({testDir:'.',outputDir:process.env.GAMES_E2E_ARTIFACT_DIR,testMatch:'games.spec.ts',fullyParallel:false,workers:1,retries:0,repeatEach:1,forbidOnly:true,timeout:120000,expect:{timeout:15000},reporter:'line',use:{baseURL:process.env.PLAYWRIGHT_EXTERNAL_BASE_URL,headless:true,trace:'off',video:'off',screenshot:'off'},projects:[{name:'games-desktop',use:{browserName:'chromium',viewport:{width:1365,height:900}}},{name:'games-mobile',use:{browserName:'chromium',viewport:{width:390,height:844},isMobile:true,hasTouch:true}}]});

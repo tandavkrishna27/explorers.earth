@@ -73,17 +73,6 @@ export const UPDATE_PERSON_LIST = gql`
 `;
 
 // ─────────────────────────────────────────────────────────────
-// Mutation 2.3 — Delete Person List
-// ─────────────────────────────────────────────────────────────
-export const DELETE_PERSON_LIST = gql`
-  mutation DeletePersonList($documentId: ID!) {
-    deletePersonList(documentId: $documentId) {
-      documentId
-    }
-  }
-`;
-
-// ─────────────────────────────────────────────────────────────
 // Mutation 2.4 — Create Recommended Person
 // ─────────────────────────────────────────────────────────────
 export const CREATE_RECOMMENDED_PERSON = gql`
@@ -190,17 +179,6 @@ export const UPDATE_RECOMMENDED_PERSON = gql`
         documentId
         Category_name
       }
-    }
-  }
-`;
-
-// ─────────────────────────────────────────────────────────────
-// Mutation 2.6 — Delete Recommended Person
-// ─────────────────────────────────────────────────────────────
-export const DELETE_RECOMMENDED_PERSON = gql`
-  mutation DeleteRecommendedPerson($documentId: ID!) {
-    deleteRecommendedPerson(documentId: $documentId) {
-      documentId
     }
   }
 `;

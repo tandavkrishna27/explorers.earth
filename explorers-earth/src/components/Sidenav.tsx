@@ -11,41 +11,24 @@ import Analytics from "../assets/icons/Analytics";
 import { useDashboardTheme } from "../contexts/DashboardThemeContext";
 import { Tooltip } from "react-tooltip";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery, gql } from "@apollo/client";
+import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 import LogoutIcon from "../assets/icons/LogoutIcon";
 import { LogoFull, LogoIcon } from "../assets/icons/EoeLogo";
 import useAuthStore from "../store/store";
 import { IMAGE_CONFIG } from "../config";
 import { useLogout } from "../hooks/useLogout";
 
-const SIDEBAR_ACCOUNT_QUERY = gql`
-  query SidebarAccount($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      accounts {
-        documentId
-        Account_Name
-        profile_picture {
-          url
-        }
-      }
-    }
-  }
-`;
-
 const Sidebar = () => {
   const { t } = useTranslation();
   const { isSidebarOpen: isOpen } = useDashboardTheme();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const handleLogout = useLogout();
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
-  const { data: acctData } = useQuery(SIDEBAR_ACCOUNT_QUERY, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-  });
+  const { data: account } = useCanonicalAccount({ skip: !isAuthenticated });
   const avatarUrl =
-    acctData?.usersPermissionsUser?.accounts?.[0]?.profile_picture?.url ||
+    account?.profileImage?.url ||
     IMAGE_CONFIG.defaultImages.profile;
 
   // Close the account popover on any outside click
@@ -142,7 +125,7 @@ const Sidebar = () => {
             />
             {isOpen && (
               <span className="text-sm font-medium text-dashboard truncate max-w-[150px] text-left">
-                {user?.username || "Account"}
+                {account?.displayName || account?.handle || "Account"}
               </span>
             )}
           </button>
@@ -165,7 +148,7 @@ const Sidebar = () => {
                   />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-dashboard truncate">
-                      {user?.username || "User"}
+                      {account?.displayName || account?.handle || "User"}
                     </p>
                     <p className="text-xs text-dashboard-muted">Account</p>
                   </div>
@@ -175,7 +158,7 @@ const Sidebar = () => {
                     type="button"
                     onClick={() => {
                       setShowAccountMenu(false);
-                      if (user?.username) navigate(`/${user.username}`);
+                      if (account?.handle) navigate(`/${account.handle}`);
                     }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-dashboard hover:bg-dashboard-muted transition-colors"
                   >

@@ -164,6 +164,15 @@ describe("PublicLayout route readiness", () => {
           recommendationLists: [{
             documentId: "list-1",
             slug: "paris",
+            // The pinned-reader fence publicPlacesProjection emits on every list
+            // (tunes/server/publicProfile/publicPlacesProjection.ts:154), shaped by
+            // publicPlacePinsReadSchema. completePlacesPreviews refuses a list without it.
+            collection_revision: "1",
+            category_content_revision: "0",
+            eligibility_fingerprint: "a".repeat(64),
+            eligible_item_count: 1,
+            eligible_pin_count: 0,
+            recommended_places_next_cursor: null,
             recommended_places: [{
               documentId: "place-1",
               Place_Details: { Geometry: { lat: 17.385, lng: 78.4867 } },

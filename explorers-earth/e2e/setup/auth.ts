@@ -6,21 +6,58 @@ interface MockAuthenticationOptions {
   user?: { id: string; documentId: string; username: string; email: string; blocked: boolean };
 }
 
+// The canonical session the application actually verifies. `authClient.refresh()`
+// reads GET /api/auth/get-session, and it deletes the legacy `auth-storage` blob
+// this helper injects before doing so, so the localStorage injection below can no
+// longer authenticate a fixture page on its own. Matches the cookie name the
+// canonical fixtures in `category-navigation.ts` use.
+const SESSION_COOKIE = 'better-auth.session_token';
+const SESSION_VALUE = 'fixture-canonical-session';
+const SESSION_ID = 'fixture-canonical-session-id';
+
 export async function setupMockAuthentication(context: BrowserContext, options: MockAuthenticationOptions = {}) {
   const token = options.token ?? 'mock-jwt-token-xyz';
   const user = options.user ?? {
     id: 'mock-user-123', documentId: 'mock-user-123', username: 'testuser', email: 'test@explorers.earth', blocked: false,
   };
   // Populate storage state / session data to skip login
+  const cookieDomain = options.cookieDomain ?? 'localhost';
+  const cookieAttributes = { domain: cookieDomain, path: '/', expires: -1, secure: false, sameSite: 'Lax' as const };
   await context.addCookies([
-    {
-      name: 'token',
-      value: token,
-      domain: options.cookieDomain ?? 'localhost',
-      path: '/',
-    }
+    { name: 'token', value: token, ...cookieAttributes },
+    { name: SESSION_COOKIE, value: SESSION_VALUE, ...cookieAttributes, httpOnly: true },
   ]);
-  
+
+  // The session is tracked here rather than read back off each request's Cookie
+  // header. On WebKit an intercepted request reports `headerValue('cookie')` as null
+  // even though the page holds the cookie and the browser would send it, so a
+  // cookie-reading fixture reported every WebKit page as signed out and Music was
+  // never provisioned. Chromium and Firefox were unaffected, which is why this only
+  // ever failed the webkit-music-visual project.
+  let signedOut = false;
+  await context.route('**/api/auth/get-session', async route => {
+    if (route.request().method() !== 'GET') return route.abort('blockedbyclient');
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(signedOut
+        ? null
+        : { user: { id: user.documentId, email: user.email }, session: { id: SESSION_ID } }),
+    });
+  });
+
+  // Signing out really ends the session, so a later verification reports a
+  // signed-out browser. This is the fixture's only way to represent that, given the
+  // Cookie header is not observable on every engine.
+  await context.route('**/api/auth/sign-out', async route => {
+    if (route.request().method() !== 'POST') return route.abort('blockedbyclient');
+    signedOut = true;
+    return route.fulfill({
+      status: 200, contentType: 'application/json', body: '{}',
+      headers: { 'set-cookie': `${SESSION_COOKIE}=; Path=/; Max-Age=0` },
+    });
+  });
+
   // Inject localStorage login state safely
   await context.addInitScript(({ fixtureToken, fixtureUser }) => {
     try {

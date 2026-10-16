@@ -12,6 +12,18 @@ export interface MusicIdentityProjection {
   sessionVersion: number;
 }
 
+/**
+ * ADR-008. What a canonical credential subject resolves to. Deliberately separate
+ * from MusicIdentityProjection, which keeps its non-optional Strapi fields: a
+ * canonically owned venue has none, and widening that type would push
+ * "there may be no Strapi id" into all 44 of its call sites.
+ */
+export interface CanonicalMusicVenue {
+  musicUserId: number;
+  sessionVersion: number;
+  identityStatus: MusicIdentityProjection["identityStatus"];
+}
+
 export interface MusicIdentityNotPresentProjection {
   identityStatus: "not_present";
   strapiUserDocumentId: string;
@@ -113,6 +125,8 @@ export class StaleLifecycleOperationError extends Error {
 }
 
 type TransactionPool = Pick<Pool, "query" | "connect">;
+
+const CANONICAL_ACCOUNT_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 
 function projection(row: {
   id: number;
@@ -394,6 +408,68 @@ export class MusicIdentityRepository {
       [strapiUserDocumentId],
     );
     return result.rows[0]?.present === true;
+  }
+
+  /**
+   * ADR-008. Resolves a canonical account subject to the venue row it owns, through
+   * the account_music_identity mapping rather than any Strapi column.
+   *
+   * The tombstone check is not hardcoded to false. ADR-007's ownership constraint is
+   * an OR, so a venue may carry a legacy Strapi id *and* a canonical mapping, and a
+   * tombstone recorded against those legacy ids still applies to it. A venue with no
+   * legacy ids simply matches nothing, which is accurate rather than assumed.
+   */
+  /**
+   * Ticket 6.1, step 5 obligation 4. Whether the canonical session that minted a Music
+   * credential is still live for that user.
+   *
+   * The predicate is deliberately the one `authorizeOperation` already applies to owner
+   * HTTP - the row exists, belongs to this user, and has not expired - so the two
+   * transports cannot disagree about whether somebody is logged in. `session_version` is
+   * NOT compared here: that column is the canonical session's counter, while a Music
+   * credential's `sessionVersion` is the venue's, and comparing the two would reject every
+   * credential.
+   */
+  async isCanonicalSessionLive(sessionId: string, userId: string): Promise<boolean> {
+    const result = await this.pool.query<{ live: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM auth_session
+          WHERE id=$1 AND user_id=$2
+            AND expires_at>(clock_timestamp() AT TIME ZONE 'UTC')
+       ) AS live`, [sessionId, userId]);
+    return result.rows[0]?.live === true;
+  }
+
+  async resolveCanonicalCredentialSubject(accountId: string): Promise<{
+    venue?: CanonicalMusicVenue;
+    tombstoned: boolean;
+  }> {
+    if (!CANONICAL_ACCOUNT_PATTERN.test(accountId)) {
+      // Never reaches the database with an uncast subject.
+      return { venue: undefined, tombstoned: false };
+    }
+    const result = await this.pool.query<{
+      id: number | null;
+      identity_status: MusicIdentityProjection["identityStatus"] | null;
+      session_version: number | null;
+      tombstoned: boolean;
+    }>(`SELECT u.id,u.identity_status,u.session_version,
+        EXISTS(SELECT 1 FROM music_identity_tombstones t
+          WHERE (u.strapi_user_document_id IS NOT NULL
+                 AND t.strapi_user_document_id=u.strapi_user_document_id)
+             OR (u.strapi_account_document_id IS NOT NULL
+                 AND t.strapi_account_document_id=u.strapi_account_document_id)) AS tombstoned
+      FROM account_music_identity m
+      JOIN users u ON u.id=m.music_user_id
+      WHERE m.account_id=$1::uuid`, [accountId]);
+    const row = result.rows[0];
+    if (!row?.id || !row.identity_status || !row.session_version) {
+      return { venue: undefined, tombstoned: false };
+    }
+    return {
+      venue: { musicUserId: row.id, sessionVersion: row.session_version, identityStatus: row.identity_status },
+      tombstoned: row.tombstoned === true,
+    };
   }
 
   async resolveCredentialSubject(strapiUserDocumentId: string): Promise<{

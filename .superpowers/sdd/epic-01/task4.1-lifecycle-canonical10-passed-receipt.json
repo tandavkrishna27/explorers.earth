@@ -1,0 +1,86 @@
+{
+  "version": "canonical-lifecycle-browser/v1",
+  "sourceCommit": "0c0b1075d7b577e95dbd6fdb3556f2635e3ec250",
+  "runId": "11322dc423748f2b714c8a8fe2cfca9b",
+  "sourceHashes": {
+    "tunes/scripts/profile-browser-fixture.ts": "4ae891d5f25969e979f0c8120a2c3172848e0bdf6d72685020341711df04ae2a",
+    "tunes/scripts/lifecycle-browser-support.ts": "0bf375915457db47420429d51761f19f2e52f0e7f86e6e8c95029da3def8aa39",
+    "tunes/scripts/lifecycle-browser-guards.ts": "2a71ce2ebf388eab960f4825f4f67108eefb2ba6b452a1bbf558d2ec4730cf9d",
+    "tunes/server/auth/recoveryCallback.ts": "051ca68b3f59099b8e9d5f426c43bdd73adab3cdd14220e98535b13ef3c784c9",
+    "tunes/package.json": "c838a655fdf4a7e43a2d7240215024681839237dfefc7ea4d666c0a233852554",
+    "explorers-earth/e2e/replatform/lifecycle.spec.ts": "60553101aff9e9d17a628ac23c27fe9e5e86d1fe4c09509eceb22927e199e5ab",
+    "explorers-earth/e2e/replatform/lifecycle.playwright.config.ts": "3e55dda1eb976bf66efb9709392bced36bb175451cc057eae4b2026f1f4ab1bd"
+  },
+  "discovered": [
+    "active Settings requires trimmed feedback and retries one durable submission",
+    "foreign feedback and stale revision cannot delete an active owner",
+    "UI deactivation revokes both tabs and the old session",
+    "UI deletion is cancelled by a real Google recovery callback",
+    "recovery proof expires and cannot grant ordinary authority",
+    "concurrent recovery completes exactly once and rejects replay",
+    "wrong provider identity cannot recover a retained account",
+    "terminal maintenance preserves tombstone and denies recovery",
+    "foreign and absent origins cannot mutate lifecycle state",
+    "delayed old lifecycle response cannot navigate a new owner"
+  ],
+  "results": [
+    {
+      "title": "active Settings requires trimmed feedback and retries one durable submission",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "foreign feedback and stale revision cannot delete an active owner",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "UI deactivation revokes both tabs and the old session",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "UI deletion is cancelled by a real Google recovery callback",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "recovery proof expires and cannot grant ordinary authority",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "concurrent recovery completes exactly once and rejects replay",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "wrong provider identity cannot recover a retained account",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "terminal maintenance preserves tombstone and denies recovery",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "foreign and absent origins cannot mutate lifecycle state",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "delayed old lifecycle response cannot navigate a new owner",
+      "status": "passed",
+      "retry": 0
+    }
+  ],
+  "provider": "simulated validateAuthorizationCode/getUserInfo only",
+  "runtime": "separate protected lifecycle_runtime",
+  "postgres": {
+    "database": "music_uat_11322dc423748f2b714c8a8fe2cfca9b",
+    "containerId": "4cb7419d2c2b1da8a5a0995be6cab04fb675825fc7855530f6969f81ce8d1134",
+    "imageId": "sha256:fceb6f86328c36f2438fae3b851b0cc57c4a7e69a58c866d9ce24281f2cf0c9c"
+  },
+  "cleanup": "owned database dropped; attested container removed; pools/control/children closed; secret removed"
+}

@@ -22,8 +22,12 @@ export default defineConfig({
     'import.meta.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify('fixture-google-maps-key'),
     'import.meta.env.VITE_GOOGLE_BOOKS_API_KEY': JSON.stringify('fixture-google-books-key'),
     'import.meta.env.VITE_TMDB_API_KEY': JSON.stringify('fixture-tmdb-key'),
-    'import.meta.env.VITE_IGDB_CLIENT_ID': JSON.stringify(''),
-    'import.meta.env.VITE_IGDB_CLIENT_SECRET': JSON.stringify(''),
+    // Ticket 4.2:38 requires that VITE_IGDB_CLIENT_SECRET usage disappear from runtime
+    // browser code *and build inputs*. These two were the last build-input declarations
+    // anywhere in the repository, and an empty value does not satisfy the obligation - a
+    // declared browser build input for a provider client secret is the thing forbidden,
+    // whatever it is set to. Nothing reads them: `games.spec.ts` mocks the Twitch/IGDB
+    // endpoints at the network level instead. Guarded by `igdbBuildInput.test.ts`.
     'import.meta.env.VITE_PUBLIC_ACCESS_TOKEN': JSON.stringify('fixture-public-token'),
     'import.meta.env.VITE_FULL_ACCESS_TOKEN': JSON.stringify('fixture-full-token'),
   },

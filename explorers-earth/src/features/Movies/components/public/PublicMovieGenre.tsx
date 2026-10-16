@@ -1,21 +1,17 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link, useOutletContext, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import type { RecommendedMovie } from "../../types";
-import { slugToGenreName, getGenreNames, deduplicateMovies, genreToSlug } from "../../utils/movieHelpers";
+import { slugToGenreName, deduplicateMovies } from "../../utils/movieHelpers";
 import MoviePosterCard from "./MoviePosterCard";
 import MovieDetailModal from "./MovieDetailModal";
 import MoviePosterSkeleton from "./MoviePosterSkeleton";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
-import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
-import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
-import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
-
-type RenderableMovieList = { recommended_movies: RecommendedMovie[] };
-const isRenderableMovieList = (value: unknown): value is RenderableMovieList =>
-  isNonNullObject(value) && Array.isArray(value.recommended_movies);
+import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice } from "../../../PublicHome/components/PublicRouteContentState";
+import { usePublicMovieGenre } from "../../api/usePublicMovieGenre";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
 
 const PublicMovieGenre = () => {
   const { username, genreSlug } = useParams<{ username: string; genreSlug: string }>();
@@ -24,47 +20,14 @@ const PublicMovieGenre = () => {
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const genreName = slugToGenreName(genreSlug ?? "");
-  usePublicHeaderDescriptor(genreSlug ? {
-    navigationKey: location.key,
-    title: genreName,
-    url: window.location.href,
-    analyticsContext: "movies-genre-header",
-    analyticsMetadata: { genre: genreSlug },
-  } : undefined);
-
-  const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
-  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
-  const { data: moviesData, loading: moviesLoading, error: moviesError, refetch: refetchMovies } = usePublicRecommendationCategory(username, "movies", accountData?.public_movie === "Yes");
-
-  const loading = userLoading || moviesLoading;
-  const queryError = userError || moviesError;
-  const rawLists = moviesData?.movieLists;
-  const lists = (Array.isArray(rawLists) ? rawLists : []).filter(isRenderableMovieList);
-  const completeCollection = Array.isArray(rawLists) && rawLists.every(isRenderableMovieList);
-  const hasUsableData = queryError ? lists.length > 0 : completeCollection;
-
-  useEffect(() => {
-    if (!loading || hasUsableData) {
-      outletContext?.setIsPageLoaded?.(true);
-    }
-  }, [hasUsableData, loading, outletContext]);
-
-  const handleRetry = async () => {
-    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchMovies : undefined);
-  };
-
-  const allMovies: RecommendedMovie[] = useMemo(() => {
-    return deduplicateMovies(lists.flatMap((list) => list.recommended_movies.filter(isNonNullObject) as RecommendedMovie[]));
-  }, [lists]);
-
-  const filteredMovies = useMemo(() => {
-    return allMovies.filter(movie => {
-      const slugs = getGenreNames(movie.genres).map(g => genreToSlug(g));
-      return slugs.includes(genreSlug ?? "");
-    });
-  }, [allMovies, genreSlug]);
-
+  const page=usePublicMovieGenre(username,genreSlug,{enabled:true});
+  const {data:moviesData,loading,error:queryError,refetch}=page;
+  const genreName=isNonNullObject(moviesData?.genre)&&typeof moviesData.genre.genre_name==='string'?moviesData.genre.genre_name:slugToGenreName(genreSlug??'');
+  const filteredMovies=deduplicateMovies((Array.isArray(moviesData?.recommended_movies)?moviesData.recommended_movies.filter(isNonNullObject):[]) as unknown as RecommendedMovie[]);
+  const hasUsableData=Array.isArray(moviesData?.recommended_movies);
+  usePublicHeaderDescriptor(genreSlug?{navigationKey:location.key,title:genreName,url:window.location.href,analyticsContext:'movies-genre-header',analyticsMetadata:{genre:genreSlug}}:undefined);
+  useEffect(()=>{if(!loading||hasUsableData)outletContext?.setIsPageLoaded?.(true);},[hasUsableData,loading,outletContext]);
+  const handleRetry=()=>refetch();
   const handleMovieClick = (movie: RecommendedMovie) => {
     setSelectedMovie(movie);
     setModalOpen(true);
@@ -141,6 +104,8 @@ const PublicMovieGenre = () => {
         </div>
         )}
       </div>
+
+      {hasUsableData && <PublicScrollContinuation label="Movies" hasMore={page.hasMore} loadingMore={page.loadingMore} loadMoreError={page.loadMoreError} loadMore={page.loadMore} />}
 
       <MovieDetailModal
         movie={selectedMovie}

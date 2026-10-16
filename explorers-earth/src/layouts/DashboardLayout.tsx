@@ -86,7 +86,7 @@ const DashboardLayout = () => {
 
   const handleScroll = () => {
     if (!scrollContainerRef.current) return;
-    
+
     const currentScrollTop = scrollContainerRef.current.scrollTop;
     const scrollDelta = currentScrollTop - lastScrollTop.current;
 
@@ -96,7 +96,7 @@ const DashboardLayout = () => {
         // Scrolling down - hide header to give more space
         document.body.classList.add('hide-dashboard-header');
       } else if (scrollDelta < 0) {
-        // Scrolling up - the user specifically asked to keep it hidden 
+        // Scrolling up - the user specifically asked to keep it hidden
         // to avoid clipping the tab switcher on large screens
         document.body.classList.add('hide-dashboard-header');
       }
@@ -124,14 +124,12 @@ const DashboardLayout = () => {
           <div className="dashboard-content relative flex flex-col bg-dashboard-bg min-w-0">
             <RouteLoader />
             <Header />
-            <div 
+            <div
               ref={scrollContainerRef}
               className="flex-1 overflow-auto pt-[72px] md:pt-[54px]"
               onScroll={handleScroll}
             >
-              <CategoryNavigationProvider verifyMusicPin={verifyMusicPin}>
-                <MusicPublishProvider><Outlet /></MusicPublishProvider>
-              </CategoryNavigationProvider>
+              {location.pathname.startsWith("/recommendations/books") ? <Outlet /> : <CategoryNavigationProvider verifyMusicPin={verifyMusicPin}><MusicPublishProvider><Outlet /></MusicPublishProvider></CategoryNavigationProvider>}
             </div>
           </div>
         </div>

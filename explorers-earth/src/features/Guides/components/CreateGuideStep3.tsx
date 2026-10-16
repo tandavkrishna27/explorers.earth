@@ -8,7 +8,6 @@ interface CreateGuideStep3Props {
   initialDescription?: string;
   initialMedia?: File | null;
   initialMediaPreview?: string | null;
-  isAIGenerated?: boolean;
   isFetchingLocationImage?: boolean;
   onBack: () => void;
   onSubmit: (data: {
@@ -27,7 +26,6 @@ const CreateGuideStep3: React.FC<CreateGuideStep3Props> = ({
   initialDescription = "",
   initialMedia = null,
   initialMediaPreview = null,
-  isAIGenerated = false,
   isFetchingLocationImage = false,
   onBack,
   onSubmit,
@@ -238,14 +236,10 @@ const CreateGuideStep3: React.FC<CreateGuideStep3Props> = ({
                 isSubmitting
                   ? isEditMode
                     ? "Updating Guide..."
-                    : isAIGenerated
-                      ? "Creating Guide..."
-                      : "Creating Guide..."
+                    : "Creating Guide..."
                   : isEditMode
                     ? "Update Guide"
-                    : isAIGenerated
-                      ? "Create & View Guide"
-                      : "Create Guide"
+                    : "Create Guide"
               }
               onClickHandler={handleSubmit}
               isLoading={isSubmitting}

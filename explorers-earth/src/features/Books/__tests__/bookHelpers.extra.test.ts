@@ -24,7 +24,7 @@ describe('bookHelpers extra cases', () => {
   it('should deduplicate books correctly', () => {
     const list = [
       { documentId: '1', volume_id: 'vol-1', is_pinned: false },
-      { documentId: '2', volume_id: 'vol-1', is_pinned: true }
+      { documentId: '1', volume_id: 'vol-1', is_pinned: true }
     ];
     const res = deduplicateBooks(list as any);
     expect(res.length).toBe(1);

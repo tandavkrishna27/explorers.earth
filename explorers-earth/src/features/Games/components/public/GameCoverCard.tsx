@@ -12,6 +12,7 @@ interface GameCoverCardProps {
 const GameCoverCard = ({ coverUrl, title, onClick }: GameCoverCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const imageUrl = buildCoverUrl(coverUrl);
+  const [failedUrl, setFailedUrl] = useState<string>();
 
   return (
     <motion.button
@@ -27,10 +28,11 @@ const GameCoverCard = ({ coverUrl, title, onClick }: GameCoverCardProps) => {
           isHovered ? "rotate-y-[-10deg]" : ""
         }`}
       >
-        {imageUrl ? (
+        {imageUrl && imageUrl !== failedUrl ? (
           <>
             <img
               src={imageUrl}
+              onError={() => setFailedUrl(imageUrl)}
               alt={title}
               className="w-full h-full object-cover rounded-xl"
             />

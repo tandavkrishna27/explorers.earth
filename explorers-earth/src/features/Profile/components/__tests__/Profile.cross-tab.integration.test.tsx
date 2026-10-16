@@ -17,7 +17,22 @@ const { get, mutationSubmit, post, translationLanguage } = vi.hoisted(() => ({
 vi.mock("sonner", () => ({
   toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn() },
 }));
+vi.mock("../../api/useCanonicalAccount", () => ({
+  useCanonicalAccount: () => ({ data: { id: "account-1", handle: "tinoue",
+    onboardingStatus: "complete", revision: 1 }, isLoading: false, error: null, refetch: vi.fn() }),
+}));
+vi.mock("../../api/profileClient", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../../api/profileClient")>(),
+  toProfileViewModel: () => ({ documentId: "account-1", Account_Name: "Tinoue", Account_Type: "personal",
+    mobile_number: "1234567890", Bio: "Original bio", Addresss: {}, Primary_Address: {},
+    Feed_Data: [{ id: "existing-media", url: "/existing.jpg", type: "image" }],
+    social_media: { futureSocial: { keep: true }, theme_settings: { preset: "cinematic-dark", futureTheme: { keep: true } } } }),
+}));
 vi.mock("axios", () => ({ default: { get, post } }));
+vi.mock("../../../../lib/explorersApiClient", () => ({ explorersApiClient: {
+  createMedia: (...args: unknown[]) => post(...args).then((result: any) => result.data[0]),
+  deleteMedia: vi.fn(),
+} }));
 vi.mock("../../../../utils/aspectRatioUtils", () => ({
   detectMediaAspectRatio: vi.fn().mockResolvedValue({
     aspectRatio: "4:5", width: 800, height: 1000,
@@ -116,7 +131,7 @@ vi.mock("../../../../hooks/useProfileWalkthrough", () => ({
   }),
 }));
 vi.mock("../../../../store/useSetupStore", () => ({
-  default: () => ({ isProfileComplete: true, isRecommendationsComplete: true, setSetupStatus: vi.fn() }),
+  default: () => ({ isProfileComplete: true, isRecommendationsComplete: true, setSetupStatus: vi.fn(), bindAccount: vi.fn() }),
 }));
 vi.mock("../../../../utils/setupStatusCalculations", () => ({ calculateIsProfileComplete: () => true }));
 vi.mock("../../../../components/ImageCropper", () => ({ default: () => null }));
@@ -282,7 +297,7 @@ describe("Profile editor cross-tab save boundary", () => {
       preset: "cinematic-dark",
       futureTheme: { keep: true },
     });
-  });
+  }, 15_000); // The real editor render and keyboard reorder finish under targeted coverage, but contend with the full CI suite.
 
   it("keeps Profile, Gallery, and Appearance mounted through a failed save and retry", async () => {
     const { container } = render(<Profile />);
@@ -401,7 +416,7 @@ describe("Profile editor cross-tab save boundary", () => {
         { id: "existing-media", url: "/existing.jpg", type: "image" },
         {
           id: "feed-uploaded-gallery-edit",
-          documentId: "gallery-edit-doc",
+          documentId: "gallery-edit",
           url: "/gallery-edit.jpg",
           fileName: "gallery-edit.jpg",
           type: "image",

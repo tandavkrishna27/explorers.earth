@@ -1,3 +1,4 @@
+import { mapsBrowserKey } from "../lib/publicRuntimeConfig";
 import { memo, useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { AdvancedMarker, Map, MapCameraChangedEvent, Pin, useMap } from "@vis.gl/react-google-maps";
@@ -127,7 +128,7 @@ const InteractiveMap = memo(({ locations, onToggleExpand, defaultMapTypeId = "ro
         locations.map(async (loc) => {
           try {
             const response = await fetch(
-              `https://maps.googleapis.com/maps/api/geocode/json?latlng=${loc.lat},${loc.lng}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`
+              `https://maps.googleapis.com/maps/api/geocode/json?latlng=${loc.lat},${loc.lng}&key=${mapsBrowserKey()}`
             );
             const data = await response.json();
 

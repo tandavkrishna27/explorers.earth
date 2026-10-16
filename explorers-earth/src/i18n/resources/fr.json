@@ -273,7 +273,6 @@
       "message": "This account has been deactivated.",
       "reactivateLink": "Click here to reactivate your account →"
     },
-    "claimAccount": "Réclamer un compte ?",
     "confirmPassword": "Confirmer le mot de passe",
     "confirmPasswordPlaceholder": "Ressaisissez votre mot de passe",
     "email": "E-mail",

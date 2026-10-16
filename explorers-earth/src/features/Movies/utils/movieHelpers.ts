@@ -11,7 +11,7 @@ const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
 
 export function buildImageUrl(path: string | null | undefined, size: string): string {
   if (!path) return "";
-  if (path.startsWith("http")) return path;
+  if (/^https?:\/\//.test(path) || path.startsWith('/api/')) return path;
   return `${TMDB_IMAGE_BASE}/${size}${path}`;
 }
 
@@ -95,7 +95,7 @@ export function generateSlug(name: string): string {
 // Format helpers
 // ─────────────────────────────────────────────────────────────
 export function formatRuntime(minutes: number | null | undefined): string {
-  if (!minutes) return "";
+  if (minutes == null) return "";
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (h === 0) return `${m}m`;
@@ -104,7 +104,7 @@ export function formatRuntime(minutes: number | null | undefined): string {
 }
 
 export function formatRating(rating: number | null | undefined): string {
-  if (!rating) return "";
+  if (rating == null) return "";
   return rating.toFixed(1);
 }
 
@@ -134,11 +134,11 @@ export function extractNoteText(note: any): string {
 export function deduplicateMovies<T extends { documentId: string; tmdb_id?: string; is_pinned?: boolean; pin_order?: number | null; user_rating?: number | null; user_recommendation_note?: any }>(movies: T[] | null | undefined): T[] {
   if (!movies || !Array.isArray(movies)) return [];
   
-  // Group by tmdb_id (if available) or fallback to documentId
+  // Provider identifiers are facts; recommendation IDs define card identity.
   const groups = new Map<string, T[]>();
   for (const m of movies) {
     if (!m) continue;
-    const key = m.tmdb_id || m.documentId;
+    const key = m.documentId;
     if (!key) continue;
     if (!groups.has(key)) {
       groups.set(key, []);

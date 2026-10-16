@@ -7,6 +7,9 @@ const prSafeTestMatch = /\.spec\.ts$/;
 const musicFixtureTestMatch = /music-(?:fixture-fullstack|public-contract)\.spec\.ts$/;
 const musicLiveTestMatch = /(?:music-fixture-fullstack|music-public-contract|profile-theme)\.spec\.ts$/;
 const musicVisualTestMatch = /(?:music|music-accessibility|profile-presentation-visual)\.spec\.ts$/;
+// Ticket 6.2 ":33" requires the owner Music journey at desktop and mobile. Every other
+// Music project is a desktop device, so the owner workspace had no mobile coverage.
+const musicOwnerMobileTestMatch = /music-fullstack\.spec\.ts$/;
 
 export default defineConfig({
   testDir: './e2e',
@@ -53,6 +56,11 @@ export default defineConfig({
       name: 'webkit-music-visual',
       testMatch: musicVisualTestMatch,
       use: { ...devices['Desktop Safari'], headless: true },
+    },
+    {
+      name: 'chromium-music-owner-mobile',
+      testMatch: musicOwnerMobileTestMatch,
+      use: { ...devices['Pixel 7'], headless: true },
     },
   ],
   webServer: externalBaseUrl ? undefined : {

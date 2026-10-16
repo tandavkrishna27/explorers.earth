@@ -91,3 +91,16 @@ describe('gameHelpers', () => {
     });
   });
 });
+
+describe('native Games identity and zero provenance',()=>{
+ it('preserves a provider rating zero distinctly from absence',()=>{expect(formatRating(0)).toBe('0.0');expect(formatRating(null)).toBe('');});
+ it('never merges distinct recommendation UUIDs sharing a provider ID',()=>{const rows=[{documentId:'a',igdb_id:42},{documentId:'b',igdb_id:42}];expect(deduplicateGames(rows)).toEqual(rows);});
+ /*
+  * The id is a uuid because `media_assets.id` is a `uuid` column and every projection
+  * interpolates it directly, so `/api/explorers/v1/media/owned/content` was never a
+  * shape the server can emit. It passed while `buildCoverUrl` matched the route by
+  * prefix; the exact shared match in `src/lib/canonicalMedia.ts` refuses it, which is
+  * the point of the exact match.
+  */
+ it('keeps canonical media on its authenticated native route',()=>{expect(buildCoverUrl('/api/explorers/v1/media/11111111-1111-4111-8111-111111111111/content')).toBe('/api/explorers/v1/media/11111111-1111-4111-8111-111111111111/content');});
+});

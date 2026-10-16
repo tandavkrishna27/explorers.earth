@@ -1,8 +1,10 @@
 import { NavigationStatus } from "../../../navigation/NavigationStatus";
-import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
+import { useBooksNavigation as useCategoryNavigation } from "../../api/useBooksNavigation";
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
+import { explorersApiClient } from "../../../../lib/explorersApiClient";
+import { useBooksOwnerContent } from "../../api/useBooksOwnerContent";
+import { updateBookList as saveBookList, booksCommandKey } from "../../api/booksClient";
 import { motion } from "framer-motion";
 import {
   BookOpen, Plus, Star, ChevronRight,
@@ -11,11 +13,10 @@ import {
 import { AddIcon } from "../../../../assets/icons/AddIcon";
 import { toast } from "sonner";
 import useAuthStore from "../../../../store/store";
-import { BOOK_LISTS_BY_ACCOUNT } from "../../api/query";
-import { CREATE_BOOK_LIST, UPDATE_BOOK_LIST } from "../../api/mutation";
+
 import { generateSlug, deduplicateBooks, buildCoverUrl } from "../../utils/bookHelpers";
 import type { BookList, RecommendedBook } from "../../types";
-import { gql } from "@apollo/client";
+
 import TopReadsHero from "../public/TopReadsHero";
 import TopReadsMobileHero from "../public/TopReadsMobileHero";
 import TopReadsManager from "./TopReadsManager";
@@ -25,21 +26,7 @@ import SwitchButton from "../../../../components/ui/SwitchButton";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { CategoryEmptyState } from "../../../../components/CategoryEmptyState";
 
-// Query to get exact account documentId from the usersPermissionsUser relation
-const MY_ACCOUNT = gql`
-  query MyAccountForBooks($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      accounts {
-        documentId
-        public_books
-        public_recommendations
-        public_movie
-        public_games
-        public_music
-      }
-    }
-  }
-`;
+
 
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -52,8 +39,6 @@ import { AnimatePresence } from "framer-motion";
 export const CreateBookListModal = ({
   open,
   onClose,
-  accountDocumentId,
-  currentListCount,
   onCreated,
   username,
   defaultListName,
@@ -66,13 +51,14 @@ export const CreateBookListModal = ({
   username: string;
   defaultListName?: string;
 }) => {
-  const [createBookList, { loading }] = useMutation(CREATE_BOOK_LIST);
+  const [loading, setLoading] = useState(false);
+  const generation=useAuthStore(state=>state.generation);
 
   const formik = useFormik({
-    initialValues: { 
-      List_Name: defaultListName || "", 
-      list_description: "", 
-      slug: defaultListName ? generateSlug(defaultListName) : "" 
+    initialValues: {
+      List_Name: defaultListName || "",
+      list_description: "",
+      slug: defaultListName ? generateSlug(defaultListName) : ""
     },
     enableReinitialize: true,
     validationSchema: Yup.object({
@@ -81,23 +67,16 @@ export const CreateBookListModal = ({
     }),
     onSubmit: async (values, { resetForm }) => {
       try {
-        const result = await createBookList({
-          variables: {
-            List_Name: values.List_Name,
-            list_description: values.list_description || null,
-            slug: values.slug || generateSlug(values.List_Name),
-            visibility: false,
-            display_order: currentListCount,
-            account: accountDocumentId,
-          },
-          refetchQueries: [BOOK_LISTS_BY_ACCOUNT],
-        });
+        setLoading(true);
+        const result = await explorersApiClient.createMyCollection({category:"books",title:values.List_Name,description:values.list_description || null,slug:values.slug || generateSlug(values.List_Name),visibility:"private",publicationState:"draft"},booksCommandKey());
+        if(useAuthStore.getState().generation!==generation)return;
         toast.success("Book list created!");
         resetForm();
-        onCreated(result?.data?.createBookList?.documentId);
+        onCreated(result.id);
         onClose();
       } catch (e) {
-        toast.error("Failed to create list. Please try again.");
+        if(useAuthStore.getState().generation===generation)toast.error("Failed to create list. Please try again.");
+      } finally { if(useAuthStore.getState().generation===generation)setLoading(false);
       }
     },
   });
@@ -331,20 +310,10 @@ const BooksHome = () => {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const { data: myAccountData } = useQuery(MY_ACCOUNT, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-  });
-  const accountDocumentId = myAccountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
-
-
-
-
-  const { data, loading, refetch } = useQuery(BOOK_LISTS_BY_ACCOUNT, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const accountDocumentId = useAuthStore(state => state.accountId);
+  const generation=useAuthStore(state=>state.generation);
+  useEffect(()=>{setShowCreateModal(false);setShowManageTopReads(false);setSelectedBook(null);setDropdownOpen(false);setTogglingId(null);},[generation]);
+  const { data, loading, error, refetch } = useBooksOwnerContent();
 
   useEffect(() => {
     if (!loading) {
@@ -352,7 +321,7 @@ const BooksHome = () => {
     }
   }, [loading]);
 
-  const [updateBookList] = useMutation(UPDATE_BOOK_LIST);
+
 
   const handleVisibilityToggle = () => {
     const origin = navigation.authority;
@@ -368,7 +337,7 @@ const BooksHome = () => {
 
   const topReads = useMemo(() => {
     return deduplicateBooks(allBooks.filter((b: any) => b.is_pinned))
-      .sort((a: any, b: any) => (a.pin_order || 999) - (b.pin_order || 999));
+      .sort((a: any, b: any) => (a.pin_order ?? 999) - (b.pin_order ?? 999) || a.documentId.localeCompare(b.documentId));
   }, [allBooks]);
 
   const handleBookClick = (book: any) => {
@@ -380,22 +349,8 @@ const BooksHome = () => {
     if (!list) return;
     setTogglingId(documentId);
     try {
-      await updateBookList({
-        variables: { documentId, visibility: !currentVisibility },
-        optimisticResponse: {
-          updateBookList: {
-            __typename: "BookList",
-            documentId: list.documentId,
-            List_Name: list.List_Name,
-            list_description: list.list_description,
-            slug: list.slug,
-            visibility: !currentVisibility,
-            display_order: list.display_order,
-            top_reads_heading: list.top_reads_heading || null,
-          }
-        },
-        refetchQueries: [BOOK_LISTS_BY_ACCOUNT],
-      });
+      await saveBookList(documentId,{visibility:!currentVisibility});
+      await refetch();
     } catch {
       toast.error("Failed to update visibility.");
     } finally {
@@ -406,6 +361,7 @@ const BooksHome = () => {
   return (
     <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto">
       <NavigationStatus navigation={navigation} />
+      {error && <div role="alert">{error.message} <button onClick={() => void refetch()}>Retry</button></div>}
       {/* Desktop view header */}
       <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4">
         {/* Left: Public switch */}
@@ -515,9 +471,9 @@ const BooksHome = () => {
           {topReads.length > 0 ? (
             <div className="mb-8">
               <div className="hidden lg:block">
-                <TopReadsHero 
-                  books={topReads} 
-                  onBookClick={handleBookClick} 
+                <TopReadsHero
+                  books={topReads}
+                  onBookClick={handleBookClick}
                   showManageButton={true}
                   onManageClick={() => setShowManageTopReads(true)}
                 />
@@ -576,6 +532,7 @@ const BooksHome = () => {
       {/* Modals */}
       {accountDocumentId && (
         <CreateBookListModal
+          key={generation}
           open={showCreateModal}
           onClose={() => setShowCreateModal(false)}
           accountDocumentId={accountDocumentId}

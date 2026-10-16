@@ -6,6 +6,9 @@ import {
   verifyAnalyticsAccountOwnership,
 } from "../explorers-analytics-adapters";
 import { AnalyticsPublishDispatchError, type NormalizedExplorersAnalyticsEvent } from "../explorers-analytics-service";
+it('loads the production geoip data and resolves a public address through the default adapter',()=>{
+  expect(resolveCountryFromIp('8.8.8.8')).toBe('US');
+});
 
 const payload: NormalizedExplorersAnalyticsEvent = {
   eventId: "evt-adapter-0001",

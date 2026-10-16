@@ -1,10 +1,20 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createPublicMusicAnalyticsClient,
   type PublicMusicProductEvent,
 } from "../publicMusicAnalytics";
 
 describe("public Music product analytics", () => {
+  beforeEach(()=>localStorage.setItem('explorers-cookie-consent',JSON.stringify({analytics:true})));
+  it('stops pending polls after consent withdrawal',async()=>{
+    const transport=vi.fn(async()=>new Response(null,{status:202}));
+    const client=createPublicMusicAnalyticsClient('https://localtunes.example',transport,{sleep:async()=>{localStorage.clear();}});
+    await expect(client.track({publicSlug:'public-owner',eventId:'event-12345678',event:{name:'playlist_opened'}})).rejects.toThrow('consent');expect(transport).toHaveBeenCalledTimes(1);
+  });
+  it('rejects a successful response without committed receipt',async()=>{
+    const client=createPublicMusicAnalyticsClient('https://localtunes.example',vi.fn(async()=>new Response(null,{status:201})));
+    await expect(client.track({publicSlug:'public-owner',eventId:'event-12345678',event:{name:'playlist_opened'}})).rejects.toThrow('receipt');
+  });
   it.each<PublicMusicProductEvent>([
     { name: "navigation_opened", route: "friendly" },
     { name: "section_opened", section: "queue" },
@@ -17,7 +27,7 @@ describe("public Music product analytics", () => {
   ])("serializes the normalized $name event without resource identity", async (event) => {
     const capability = "C".repeat(43);
     const publicSlug = "private-public-slug";
-    const fetchImpl = vi.fn(async () => new Response(null, { status: 201 }));
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({status:"committed",duplicate:false}), { status: 201 }));
     const client = createPublicMusicAnalyticsClient("https://localtunes.example", fetchImpl as typeof fetch);
 
     await client.track({
@@ -59,7 +69,7 @@ describe("public Music product analytics", () => {
   });
 
   it("uses friendly Account descriptor only as URL authority", async () => {
-    const fetchImpl = vi.fn(async () => new Response(null, { status: 201 }));
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({status:"committed",duplicate:false}), { status: 201 }));
     const client = createPublicMusicAnalyticsClient("https://localtunes.example", fetchImpl as typeof fetch);
     await client.track({ accountDocumentId: "account-friendly-1", eventId: "event-friendly-1", event: { name: "unavailable", reason: "not_public" } });
     expect(fetchImpl.mock.calls[0][0]).toBe("https://localtunes.example/api/explorers/analytics/music-account/account-friendly-1/events");
@@ -69,7 +79,7 @@ describe("public Music product analytics", () => {
   it("polls an in-flight receipt with the identical event body until it is committed", async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(new Response(null, { status: 202 }))
-      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify({status:"committed",duplicate:true}), { status: 200 }));
     const sleep = vi.fn(async () => undefined);
     const client = createPublicMusicAnalyticsClient("https://localtunes.example", fetchImpl as typeof fetch, { sleep });
     await client.track({ publicSlug: "public-owner", eventId: "event-12345678", event: { name: "playlist_opened" } });
@@ -81,7 +91,7 @@ describe("public Music product analytics", () => {
   it("retries one ambiguous transport failure with the identical event body", async () => {
     const fetchImpl = vi.fn()
       .mockRejectedValueOnce(new TypeError("connection reset"))
-      .mockResolvedValueOnce(new Response(null, { status: 201 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify({status:"committed",duplicate:false}), { status: 201 }));
     const sleep = vi.fn(async () => undefined);
     const client = createPublicMusicAnalyticsClient("https://localtunes.example", fetchImpl as typeof fetch, { sleep });
     await client.track({ publicSlug: "public-owner", eventId: "event-12345678", event: { name: "playlist_opened" } });

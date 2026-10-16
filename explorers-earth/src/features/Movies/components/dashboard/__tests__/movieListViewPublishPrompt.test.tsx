@@ -18,32 +18,10 @@ vi.mock("../../../../../components/ListVisibilityModal", () => ({
   },
 }));
 
-vi.mock("@apollo/client", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@apollo/client")>();
-  return {
-    ...actual,
-    useMutation: () => [vi.fn(), { loading: false }],
-    useQuery: () => ({
-      data: {
-        movieLists: [
-          {
-            documentId: "list_1",
-            List_Name: "My Sci-Fi",
-            list_description: null,
-            slug: "my-sci-fi",
-            Visibility: false, // draft → prompt should open once items exist
-            display_order: 0,
-            top_picks_heading: null,
-            recommended_movies: listState.movies,
-          },
-        ],
-      },
-      loading: false,
-      refetch: vi.fn(),
-    }),
-  };
-});
-
+vi.mock('../../../api/explorersAdapter', () => ({
+ useMoviesOwner: () => ({data:{movieLists:[{documentId:'list_1',List_Name:'My Sci-Fi',list_description:null,slug:'my-sci-fi',Visibility:false,display_order:0,top_picks_heading:null,recommended_movies:listState.movies}]},loading:false,refetch:vi.fn()}),
+ changeMovieList:vi.fn(),archiveMovieList:vi.fn(),archiveMovie:vi.fn(),toggleMoviePin:vi.fn(),
+}));
 import MovieListView from "../MovieListView";
 
 const renderView = (state: { justCreatedList?: boolean; justAddedRecommendation?: boolean }) =>

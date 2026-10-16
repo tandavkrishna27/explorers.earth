@@ -10,8 +10,10 @@ vi.mock("../../../store/store", () => ({
   default: () => ({ user: { username: "qa" }, token: "t" }),
 }));
 vi.mock("../../../features/Profile/components/AddressInput", () => ({
-  default: () => null,
+  default: (props: any) => <input aria-label="Location" disabled={props.disabled} value={props.initalValue} readOnly />,
 }));
+const toastError = vi.hoisted(() => vi.fn());
+vi.mock("sonner", () => ({ toast: { error: toastError } }));
 
 import AddLocationModal from "../AddLocationModal";
 
@@ -62,5 +64,55 @@ describe("AddLocationModal submit contract (BUG-5)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe("canonical location edit identity", () => {
+  const initialValues = { documentId: "location-a", listName: "Fixture Zero City", placeUrl: "fixture-zero-city", placeId: "provider-city" };
+  const self = { documentId: "location-a", slug: "fixture-zero-city", List_Name_Details: { place_id: "provider-city" } };
+  beforeEach(() => vi.clearAllMocks());
+
+  it("enables the share slug while keeping geography disabled", () => {
+    render(<AddLocationModal {...baseProps} initialValues={initialValues} onClose={vi.fn()} onSubmit={vi.fn()} />);
+    expect(screen.getByPlaceholderText("Enter the Name to a create a Shareable link")).toBeEnabled();
+    expect(screen.getByLabelText("Location")).toBeDisabled();
+  });
+
+  it("submits a changed slug without treating the same native row as a duplicate", async () => {
+    const submit = vi.fn().mockResolvedValue(true);
+    const close = vi.fn();
+    render(<AddLocationModal {...baseProps} initialValues={initialValues} existingPlaces={[self]} onClose={close} onSubmit={submit} />);
+    fireEvent.change(screen.getByPlaceholderText("Enter the Name to a create a Shareable link"), { target: { value: "edited-fixture-city" } });
+    fireEvent.change(screen.getByPlaceholderText("Enter a note related to your Recommendation"), { target: { value: "updated note" } });
+    fireEvent.change(screen.getByPlaceholderText("Enter URL (Youtube / Instagram)"), { target: { value: "https://example.com/social" } });
+    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ placeUrl: "edited-fixture-city", listName: initialValues.listName, placeId: initialValues.placeId, note: "updated note", recommendationSocialLink: "https://example.com/social" })));
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["other-slug", "fixture-zero-city"])("refuses another native row with the same provider even at slug %s", async (slug) => {
+    const submit = vi.fn();
+    const close = vi.fn();
+    render(<AddLocationModal {...baseProps} initialValues={initialValues} existingPlaces={[self, { ...self, documentId: "location-b", slug }]} onClose={close} onSubmit={submit} />);
+    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith("toast.error.locationAlreadyExists"));
+    expect(submit).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it("does not treat missing native IDs as self identity", async () => {
+    const submit = vi.fn();
+    render(<AddLocationModal {...baseProps} initialValues={{ ...initialValues, documentId: undefined }} existingPlaces={[{ ...self, documentId: undefined }]} onClose={vi.fn()} onSubmit={submit} />);
+    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    await waitFor(() => expect(toastError).toHaveBeenCalled());
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it("requires a nonempty share slug", async () => {
+    const submit = vi.fn();
+    render(<AddLocationModal {...baseProps} initialValues={{ ...initialValues, placeUrl: "" }} onClose={vi.fn()} onSubmit={submit} />);
+    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    await screen.findByText("Url name is Required");
+    expect(submit).not.toHaveBeenCalled();
   });
 });

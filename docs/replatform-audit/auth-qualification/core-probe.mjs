@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
+import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import * as schema from './generated-auth.ts';
+const pool=new Pool({connectionString:'postgresql://probe:local-probe-only@127.0.0.1:52108/auth_probe'});
+const results=[];
+try {
+ const db=drizzle(pool,{schema});
+ const auth=betterAuth({baseURL:'http://localhost:3999',secret:randomBytes(48).toString('base64'),database:drizzleAdapter(db,{provider:'pg',schema}),user:{modelName:'auth_user'},session:{modelName:'auth_session'},account:{modelName:'auth_account'},verification:{modelName:'auth_verification'},emailAndPassword:{enabled:false},socialProviders:{google:{clientId:'qualification-placeholder',clientSecret:'qualification-placeholder'}}});
+ const ctx=await auth.$context;
+ const user=await ctx.internalAdapter.createUser({name:'Probe',email:'probe@example.invalid',emailVerified:true});
+ assert.equal(typeof user.id,'string'); results.push('adapter creates text user ID');
+ const account=await ctx.internalAdapter.createAccount({userId:user.id,providerId:'google',accountId:'fixture-google-subject'});
+ assert.equal(account.userId,user.id);results.push('Google-shaped provider account persists (no live Google call)');
+ const session=await ctx.internalAdapter.createSession(user.id,false);
+ assert.equal((await ctx.internalAdapter.findSession(session.token)).user.id,user.id);results.push('adapter session create and read');
+ await ctx.internalAdapter.deleteSession(session.token);
+ assert.equal(await ctx.internalAdapter.findSession(session.token),null);results.push('adapter session revocation');
+ await pool.query('CREATE UNIQUE INDEX auth_account_provider_subject_uq ON auth_account(provider_id,account_id)');
+ try {await pool.query('INSERT INTO auth_account(id,account_id,provider_id,user_id,updated_at) VALUES($1,$2,$3,$4,now())',['duplicate','fixture-google-subject','google',user.id]);assert.fail('duplicate provider accepted');}catch(e){assert.equal(e.code,'23505');}results.push('explicit provider-subject uniqueness rejects duplicate');
+ try {await pool.query('INSERT INTO auth_session(id,expires_at,token,updated_at,user_id) VALUES($1,now(),$2,now(),$3)',['orphan','unused-fixture-token','missing']);assert.fail('orphan accepted');}catch(e){assert.equal(e.code,'23503');}results.push('orphan session FK rejected');
+ const session2=await ctx.internalAdapter.createSession(user.id,false);
+ await pool.query('DELETE FROM auth_user WHERE id=$1',[user.id]);
+ assert.equal((await pool.query('SELECT count(*)::int n FROM auth_account WHERE user_id=$1',[user.id])).rows[0].n,0);
+ assert.equal((await pool.query('SELECT count(*)::int n FROM auth_session WHERE user_id=$1',[user.id])).rows[0].n,0);results.push('generated user cascade verified for provider account and session');
+ const columns=await pool.query("SELECT table_name,column_name,data_type,is_nullable,column_default FROM information_schema.columns WHERE table_schema='public' ORDER BY table_name,ordinal_position");
+ assert.equal(columns.rows.length,34);results.push('catalog has 4 auth tables and 34 columns');
+ const {writeFileSync}=await import('node:fs');writeFileSync('probe-results.json',JSON.stringify({passed:results.length,results,columns:columns.rows},null,2));
+ console.log(JSON.stringify({passed:results.length,results},null,2));
+} finally {await pool.end();}

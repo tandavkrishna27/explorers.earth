@@ -21,6 +21,11 @@ export interface BookList {
 }
 
 export interface RecommendedBook {
+  entity_id?: string;
+  isbn_10?: string | null;
+  published_date?: string | null;
+  language_tag?: string | null;
+  ratings_count?: number | null;
   documentId: string;
   volume_id: string;
   title: string;
@@ -60,6 +65,16 @@ export interface BuyLink {
   url: string;
   logo?: string; // logo identifier e.g. "google-books", "amazon", "custom"
 }
+
+export type BookFormSelection = Pick<RecommendedBook,
+  'volume_id' | 'title' | 'subtitle' | 'authors' | 'subjects' | 'publisher' |
+  'page_count' | 'google_rating' | 'description' | 'preview_link'> & {
+  year: string;
+  cover_url: string;
+  cover_url_large: string;
+  isbn_13: string;
+  google_books_buy_link: string | null;
+};
 
 export interface BookCategory {
   documentId: string;

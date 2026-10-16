@@ -90,7 +90,7 @@ describe("public profile gateway client", () => {
   it.each(["places", "movies", "books", "games", "guides", "apps", "products", "people"] as const)(
     "routes %s through the versioned gateway instead of a direct CMS endpoint",
     async (category) => {
-      const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
+      const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify(category==='games'?{version:'explorers-manual-games-page/v1',gameLists:[],topPicks:[],nextCursor:null}:{}), { status: 200 }));
       const client = createPublicProfileGatewayClient("https://localtunes.example", fetchImpl);
 
       await client.category("tk2727", category);
@@ -101,4 +101,19 @@ describe("public profile gateway client", () => {
       );
     },
   );
+});
+
+const nativeGamesPage={version:'explorers-manual-games-page/v1',gameLists:[],topPicks:[],nextCursor:null};
+it('Games never exposes warm cached privacy authority and clears a fresh denied page',async()=>{const fetchImpl=vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(nativeGamesPage),{status:200,headers:{etag:'"games-v1"'}})).mockResolvedValueOnce(new Response('{}',{status:404}));const client=createPublicProfileGatewayClient('https://localtunes.example',fetchImpl);expect(await client.category('owner','games')).toMatchObject({gameLists:[]});expect(client.peekCategory('owner','games')).toBeUndefined();await expect(client.category('owner','games')).rejects.toThrow('PUBLIC_PROFILE_404');});
+it('Games strict public projection rejects provider-fact forgery and old compatibility empty responses',async()=>{for(const page of [{gameLists:[]},{...nativeGamesPage,authority:true}]){const client=createPublicProfileGatewayClient('https://localtunes.example',vi.fn().mockResolvedValue(new Response(JSON.stringify(page),{status:200})));await expect(client.category('owner','games')).rejects.toThrow();}});
+it('Games bounded response denies oversized bytes before JSON projection',async()=>{const client=createPublicProfileGatewayClient('https://localtunes.example',vi.fn().mockResolvedValue(new Response('x'.repeat(4*1024*1024+1),{status:200})));await expect(client.category('owner','games')).rejects.toThrow('PUBLIC_PROFILE_READ_LIMIT');});
+it('Games caller abort settles a stalled native body even when stream cancellation never acknowledges',async()=>{
+ const controller=new AbortController(),stream=new ReadableStream<Uint8Array>({pull:()=>new Promise(()=>{}),cancel:()=>new Promise(()=>{})}),client=createPublicProfileGatewayClient('https://localtunes.example',vi.fn().mockResolvedValue(new Response(stream,{status:200})));
+ const work=client.category('owner','games',controller.signal).then(()=> 'accepted',error=>error.message);await Promise.resolve();controller.abort();
+ expect(await Promise.race([work,new Promise(resolve=>setTimeout(()=>resolve('still pending'),30))])).toBe('PUBLIC_PROFILE_ABORTED');
+});
+it('Games declared body limit denies before awaiting a stalled stream',async()=>{
+ const stream=new ReadableStream<Uint8Array>({pull:()=>new Promise(()=>{}),cancel:()=>new Promise(()=>{})}),client=createPublicProfileGatewayClient('https://localtunes.example',vi.fn().mockResolvedValue(new Response(stream,{status:200,headers:{'content-length':String(4*1024*1024+1)}})));
+ const result=client.category('owner','games').then(()=> 'accepted',error=>error.message);
+ expect(await Promise.race([result,new Promise(resolve=>setTimeout(()=>resolve('still pending'),30))])).toBe('PUBLIC_PROFILE_READ_LIMIT');
 });

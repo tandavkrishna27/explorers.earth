@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { AuthoritativeAbsence } from "../workers/musicLifecycleWorker";
-import { cancelResponseBody, readBoundedResponseBody } from "./strapiIdentityGateway";
+import { cancelResponseBody, readBoundedResponseBody } from "./upstreamResponseBody";
 
 const documentId = z.string().trim().min(1).max(512);
 const record = z.object({ documentId }).strict();

@@ -1,0 +1,17 @@
+{
+  "sourceCommit": "701f74cad80906e6f526566ca5aa864d0247185d",
+  "runId": "d20340d756eb2ce90d1c828149964479",
+  "evidence": "native",
+  "qualification": false,
+  "expected": 8,
+  "unexpected": 0,
+  "flaky": 0,
+  "skipped": 0,
+  "phase": "cleanup",
+  "category": "deadline",
+  "sourceIntact": true,
+  "originalParentExitCode": 1,
+  "diagnosis": "Cleanup deadline confirmed; exact step not retained by current generic diagnostic",
+  "processClosure": "Exact guarded owner-only termination followed by original parent close",
+  "retainedRecovery": "Pending independently reviewed exact eighth-run recovery"
+}

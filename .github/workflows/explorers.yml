@@ -1,16 +1,18 @@
 name: Deploy Explorers Frontend
 
 on:
-  workflow_run:
-    workflows: ["CI Pipeline"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    # Legacy static deployment has no recorded immutable artifact digest or
+    # source-revision verification. Keep it unavailable until the release
+    # workflow owned by Epic 8 replaces this path.
+    if: ${{ false }}
 
     steps:
       - uses: actions/checkout@v4
@@ -34,8 +36,6 @@ jobs:
           echo "VITE_RAZORPAY_KEY_ID_PROD=${{ secrets.VITE_RAZORPAY_KEY_ID_PROD }}" >> .env
           echo "VITE_INSTAGRAM_API_URL=${{ secrets.VITE_INSTAGRAM_API_URL }}" >> .env
           echo "VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY }}" >> .env
-          echo "VITE_IGDB_CLIENT_ID=${{ secrets.VITE_IGDB_CLIENT_ID }}" >> .env
-          echo "VITE_IGDB_CLIENT_SECRET=${{ secrets.VITE_IGDB_CLIENT_SECRET }}" >> .env
           echo "VITE_TMDB_API_KEY=${{ secrets.VITE_TMDB_API_KEY }}" >> .env
           echo "VITE_TMDB_ACCESS_TOKEN=${{ secrets.VITE_TMDB_ACCESS_TOKEN }}" >> .env
           echo "VITE_GOOGLE_BOOKS_API_KEY=${{ secrets.VITE_GOOGLE_BOOKS_API_KEY }}" >> .env

@@ -5,7 +5,6 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { useQuery } from "@apollo/client";
 import {
   MapPin, Music, Film, BookOpen, Gamepad2,
   ChevronRight, Smartphone, ShoppingBag, Users,
@@ -15,7 +14,6 @@ import {
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
-import { getPublicCategoryListCountsQuery } from "../features/PublicHome/api/query";
 import { computePinnedNavTabIds, getNavSlotExclusion, getVisibleNavTabIds } from "../utils/navPinning";
 import MusicNavLimitNotice from "../components/MusicNavLimitNotice";
 import { publicMusicClient } from "../features/music/publicMusicClient";
@@ -891,31 +889,29 @@ const RecommendationsHub = () => {
     }
     return () => controller.abort();
   }, [account?.documentId, account?.public_music]);
-  const accountDocumentId = account?.documentId;
 
   // Counts are display-only auto-ranking inputs. Publication eligibility is
   // freshly checked by the shared writer after the explicit owner action.
-  const {
-    data: listCountsData,
-  } = useQuery(getPublicCategoryListCountsQuery, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    // Refresh display ranking when returning from a list flow.
-    fetchPolicy: "cache-and-network",
-  });
-
+  //
+  // These come from the canonical owner-content read now, not the legacy
+  // PublicCategoryListCounts query, which asked Strapi for an account's lists and
+  // is one of the four operations the contained E2E fixture denies outright.
+  // A category whose canonical producer does not exist yet contributes 0: we will
+  // not claim a count we have no canonical source for, and Settings already
+  // labels those categories "No content".
+  const canonicalCounts = navigation.content?.counts;
   const countMap: Record<string, number> = useMemo(() => ({
-    public_recommendations: listCountsData?.recommendationLists?.length ?? 0,
-    public_movie:           listCountsData?.movieLists?.length ?? 0,
-    public_books:           listCountsData?.bookLists?.length ?? 0,
-    public_games:           listCountsData?.gameLists?.length ?? 0,
-    public_apps:            listCountsData?.appLists?.length ?? 0,
-    public_products:        listCountsData?.productLists?.length ?? 0,
-    public_people:          listCountsData?.personLists?.length ?? 0,
-    public_guides:          listCountsData?.guides?.length ?? 0,
+    public_recommendations: canonicalCounts?.public_recommendations ?? 0,
+    public_movie:           canonicalCounts?.public_movie ?? 0,
+    public_books:           canonicalCounts?.public_books ?? 0,
+    public_games:           canonicalCounts?.public_games ?? 0,
+    public_apps:            canonicalCounts?.public_apps ?? 0,
+    public_products:        canonicalCounts?.public_products ?? 0,
+    public_people:          canonicalCounts?.public_people ?? 0,
+    public_guides:          canonicalCounts?.public_guides ?? 0,
     public_music:           0,
     public_profile:         0,
-  }), [listCountsData]);
+  }), [canonicalCounts]);
 
   // Effective public-nav state, derived exactly like PublicNav (the live nav).
   const visibleSet = useMemo(() => getVisibleNavTabIds(account), [account]);

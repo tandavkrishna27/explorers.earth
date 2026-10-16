@@ -4,11 +4,9 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import {useGuideEditing} from '../../context/GuideEditingProvider';
 import { motion, AnimatePresence } from "framer-motion";
 import { Reorder } from "framer-motion";
-import { useMutation } from "@apollo/client";
-import { UPDATE_GUIDE_MUTATION } from "../../api/mutations";
-import { GET_GUIDE_BY_ID_QUERY } from "../../api/queries";
 import { toast } from "sonner";
 import AddressInput from "../../../Profile/components/AddressInput";
 import Button from "../../../../components/ui/Button";
@@ -49,15 +47,8 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
   const [openKebabMenuId, setOpenKebabMenuId] = useState<string | null>(null);
   const kebabRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  const [updateGuide, { loading }] = useMutation(UPDATE_GUIDE_MUTATION, {
-    refetchQueries: [
-      {
-        query: GET_GUIDE_BY_ID_QUERY,
-        variables: { documentId: guide.documentId },
-      },
-    ],
-    awaitRefetchQueries: true,
-  });
+  const {saveDetails} = useGuideEditing();
+  const [loading, setLoading] = useState(false);
 
   // Initialize form data from guide
   useEffect(() => {
@@ -76,12 +67,12 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
               name: ending.Place_Name,
               formatted_address: ending.Place_Address,
               place_id: ending.Place_Id,
-              geometry: {
+              ...(ending.Geometry == null ? {} : {geometry: {
                 location: {
-                  lat: () => ending.Geometry?.lat || 0,
-                  lng: () => ending.Geometry?.lng || 0,
+                  lat: () => ending.Geometry.lat,
+                  lng: () => ending.Geometry.lng,
                 } as google.maps.LatLng,
-              } as google.maps.places.PlaceGeometry,
+              } as google.maps.places.PlaceGeometry}),
             } as google.maps.places.PlaceResult;
             setArrivalPlace(endingPlaceObj);
             setArrivalDisplay(ending.Place_Name || ending.Place_Address || "");
@@ -94,12 +85,12 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
               name: starting.Place_Name,
               formatted_address: starting.Place_Address,
               place_id: starting.Place_Id,
-              geometry: {
+              ...(starting.Geometry == null ? {} : {geometry: {
                 location: {
-                  lat: () => starting.Geometry?.lat || 0,
-                  lng: () => starting.Geometry?.lng || 0,
+                  lat: () => starting.Geometry.lat,
+                  lng: () => starting.Geometry.lng,
                 } as google.maps.LatLng,
-              } as google.maps.places.PlaceGeometry,
+              } as google.maps.places.PlaceGeometry}),
             } as google.maps.places.PlaceResult;
             setDeparturePlace(startingPlaceObj);
             setDepartureDisplay(starting.Place_Name || starting.Place_Address || "");
@@ -112,12 +103,12 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
               name: city.Place_Name,
               formatted_address: city.Place_Address,
               place_id: city.Place_Id,
-              geometry: {
+              ...(city.Geometry == null ? {} : {geometry: {
                 location: {
-                  lat: () => city.Geometry?.lat || 0,
-                  lng: () => city.Geometry?.lng || 0,
+                  lat: () => city.Geometry.lat,
+                  lng: () => city.Geometry.lng,
                 } as google.maps.LatLng,
-              } as google.maps.places.PlaceGeometry,
+              } as google.maps.places.PlaceGeometry}),
             } as google.maps.places.PlaceResult,
             displayValue: city.Place_Name || city.Place_Address || "",
             hasDate: city.hasDate || false,
@@ -157,10 +148,10 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
       Place_Id: place.place_id || "",
       Place_Name: place.name || "",
       Place_Address: place.formatted_address || "",
-      Geometry: {
-        lat: place.geometry?.location?.lat() || 0,
-        lng: place.geometry?.location?.lng() || 0,
-      },
+      Geometry: place.geometry?.location ? {
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+      } : null,
     };
   };
 
@@ -264,13 +255,12 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
         isMultiCity: true,
       };
 
-      await updateGuide({
-        variables: {
-          documentId: guide.documentId,
-          data: {
-            Place_Details: placeDetails,
-          },
-        },
+      // The route is the guide's place for a multi-city guide, stored in the shape the
+      // journey display reads. Reducing it to a single point would drop the route.
+      setLoading(true);
+      await saveDetails({
+        place: {...placeDetails, isMultiCity: true as const},
+        multiCity: true,
       });
 
       toast.success("Journey route updated successfully!");
@@ -279,6 +269,8 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
     } catch (error) {
       console.error("Error updating journey route:", error);
       toast.error("Failed to update journey route");
+    } finally {
+      setLoading(false);
     }
   };
 

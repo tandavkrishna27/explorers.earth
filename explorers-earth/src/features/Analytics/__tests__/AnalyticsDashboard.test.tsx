@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useCanonicalAccount } from '../../Profile/api/useCanonicalAccount';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useQuery } from '@apollo/client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import useAuthStore from '../../../store/store';
 import {
   readExplorersAnalyticsEvents,
@@ -13,9 +13,10 @@ const chartSpies = vi.hoisted(() => ({
   topCountries: vi.fn(),
 }));
 
+vi.mock('../../Profile/api/useCanonicalAccount', () => ({ useCanonicalAccount: vi.fn() }));
 vi.mock('@apollo/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@apollo/client')>();
-  return { ...actual, useQuery: vi.fn() };
+  return { ...actual };
 });
 
 vi.mock('react-i18next', () => ({
@@ -64,10 +65,12 @@ const customControlStates: Array<[string, ExplorersAnalyticsRecord[]]> = [
 ];
 
 describe('AnalyticsDashboard data boundary', () => {
-  const queryMock = vi.mocked(useQuery);
+  const accountMock = vi.mocked(useCanonicalAccount);
   const readEvents = vi.mocked(readExplorersAnalyticsEvents);
 
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-01T12:00:00.000Z'));
     vi.clearAllMocks();
     useAuthStore.setState({
       isAuthenticated: true,
@@ -80,26 +83,11 @@ describe('AnalyticsDashboard data boundary', () => {
         blocked: false,
       },
     });
-    const accountQueryResult = {
-      data: {
-        usersPermissionsUser: {
-          accounts: [{
-            documentId: 'account-1',
-            Account_Name: 'TK Explorer',
-            Account_Type: 'personal',
-            mobile_number: '+919999999999',
-          }],
-        },
-      },
-      loading: false,
-      error: undefined,
-    } as any;
-    queryMock.mockImplementation((query: any) => {
-      if (operationName(query) === 'GetAccountId') {
-        return accountQueryResult;
-      }
-      throw new Error(`Unexpected analytics GraphQL operation: ${operationName(query)}`);
-    });
+    accountMock.mockReturnValue({
+      data: { id: 'account-1', onboardingStatus: 'complete' },
+      isPending: false,
+      error: null,
+    } as any);
     readEvents.mockResolvedValue([
       {
         Account_Id: 'account-1',
@@ -119,6 +107,10 @@ describe('AnalyticsDashboard data boundary', () => {
     ]);
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('requests only the signed-in account and selected date range from Local Tunes', async () => {
     render(<AnalyticsDashboard />);
 
@@ -132,44 +124,19 @@ describe('AnalyticsDashboard data boundary', () => {
     expect(requestedDuration).toBeGreaterThanOrEqual(29 * 24 * 60 * 60 * 1000);
     expect(requestedDuration).toBeLessThan(30 * 24 * 60 * 60 * 1000);
 
-    const queriedOperations = queryMock.mock.calls.map(([query]) => operationName(query));
-    expect(new Set(queriedOperations)).toEqual(new Set(['GetAccountId']));
+    // This used to bound the dashboard's GraphQL operations to exactly one - the account
+    // lookup - so no other Strapi read could leak out. That set is now empty: the account
+    // comes from the canonical hook and the component issues no GraphQL at all, which is
+    // the stronger version of the same guarantee.
+    expect(accountMock).toHaveBeenCalled();
   });
 
-  it('uses the only completed account when an incomplete row is returned first', async () => {
-    queryMock.mockImplementation((query: any) => {
-      if (operationName(query) === 'GetAccountId') {
-        return {
-          data: {
-            usersPermissionsUser: {
-              accounts: [
-                {
-                  documentId: 'provisioning-account',
-                  Account_Name: 'Provisioning',
-                  Account_Type: 'personal',
-                  mobile_number: '',
-                },
-                {
-                  documentId: 'account-1',
-                  Account_Name: 'TK Explorer',
-                  Account_Type: 'personal',
-                  mobile_number: '+919999999999',
-                },
-              ],
-            },
-          },
-          loading: false,
-          error: undefined,
-        } as any;
-      }
-      throw new Error(`Unexpected analytics GraphQL operation: ${operationName(query)}`);
-    });
-
-    render(<AnalyticsDashboard />);
-
-    await waitFor(() => expect(readEvents).toHaveBeenCalledTimes(1));
-    expect(readEvents.mock.calls[0][0].accountId).toBe('account-1');
-  });
+  // Removed with ticket 3.4: "uses the only completed account when an incomplete row is
+  // returned first". That case selected the completed account out of a Strapi list via
+  // selectCompletedAccount. Canonically one owner has one account and useCanonicalAccount
+  // returns it directly, so there is no list to select from and no incomplete row to come
+  // first - the scenario cannot occur. Keeping it would have left a duplicate of the case
+  // above under a name that no longer described anything.
 
   it('uses the coarse country supplied by the server without client IP resolution', async () => {
     render(<AnalyticsDashboard />);
@@ -185,7 +152,7 @@ describe('AnalyticsDashboard data boundary', () => {
 
   it('does not request analytics until authentication and account scope are ready', async () => {
     useAuthStore.setState({ isAuthenticated: false, token: null, user: null });
-    queryMock.mockReturnValue({ data: undefined, loading: false, error: undefined } as any);
+    accountMock.mockReturnValue({ data: undefined, isPending: false, error: null } as any);
 
     render(<AnalyticsDashboard />);
     await Promise.resolve();

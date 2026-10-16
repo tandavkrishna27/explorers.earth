@@ -1,0 +1,4 @@
+[
+ {"id":42,"name":"Fixture Game","slug":"fixture-game","cover":{"image_id":"fixture_cover"},"summary":"Synthetic deterministic fact","storyline":null,"first_release_date":0,"total_rating":0,"total_rating_count":0,"genres":[{"id":9001,"name":"Fixture genre, not seed authority"}],"platforms":[{"id":6,"name":"PC (Microsoft Windows)"}],"game_modes":[],"involved_companies":[{"id":1,"developer":true,"publisher":false,"company":{"id":7,"name":"First fixture developer"}},{"id":2,"developer":true,"publisher":true,"company":{"id":8,"name":"Second fixture developer"}}],"screenshots":[{"image_id":"z_first"},{"image_id":"a_second"}],"url":"https://www.igdb.com/games/fixture-game","release_dates":[{"id":1,"date":0,"y":1970,"m":1,"d":1,"date_format":{"id":1,"format":"YYYYMMMMDD"},"release_region":{"id":8,"region":"worldwide"}}]},
+ {"id":43,"name":"Unknown facts","slug":"unknown-facts"}
+]

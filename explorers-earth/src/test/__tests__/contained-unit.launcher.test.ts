@@ -35,13 +35,10 @@ const expectedEnv = {
   VITE_API_URL: 'http://127.0.0.1:9/graphql',
   VITE_REST_API_URL: 'http://127.0.0.1:9/api',
   VITE_PAYMENT_API_URL: 'http://127.0.0.1:9',
-  VITE_GEMINI_API_URL: 'http://127.0.0.1:9',
   VITE_INSTAGRAM_API_URL: 'http://127.0.0.1:9',
   VITE_PUBLIC_PROFILE_GATEWAY_URL: 'http://127.0.0.1:9',
   VITE_LOCAL_TUNES_API_URL: 'https://music.invalid',
   VITE_BASE_URL: 'https://app.invalid',
-  VITE_IGDB_CLIENT_ID: 'test-client-id',
-  VITE_IGDB_CLIENT_SECRET: 'test-client-secret',
   VITE_PUBLIC_ACCESS_TOKEN: '',
   VITE_GOOGLE_MAPS_API_KEY: '',
   VITE_GOOGLE_CUSTOM_SEARCH_API_KEY: '',
@@ -149,7 +146,15 @@ describe('synthetic environment and canonical config', () => {
         else if (/\.(?:ts|tsx)$/.test(entry.name)
           && !/^contained-unit\.(?:policy|launcher)\.test\.ts$/.test(entry.name)) {
           const source = await fs.readFile(absolute, 'utf8');
-          for (const match of source.matchAll(/\bVITE_[A-Z0-9_]+\b/g)) discovered.add(match[0]);
+          for (const match of source.matchAll(/\bVITE_[A-Z0-9_]+\b/g)) {
+            if (match[0] === 'VITE_IGDB_CLIENT_SECRET') {
+              expect(path.relative(root, absolute).split('\\').join('/')).toBe('src/features/music/__tests__/replatformLocalVite.test.ts');
+              expect(source).toContain('expect(config.env.VITE_IGDB_CLIENT_SECRET).toBeUndefined()');
+              expect(source).not.toContain('import.meta.env.VITE_IGDB_CLIENT_SECRET');
+              continue;
+            }
+            discovered.add(match[0]);
+          }
         }
       }
     }

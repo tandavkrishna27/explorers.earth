@@ -2,7 +2,6 @@ import { NavigationStatus } from "../../../navigation/NavigationStatus";
 import type { IntentAuthority } from "../../../navigation/categoryNavigationPolicy";
 import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
 import { useState, useMemo, useEffect } from "react";
-import { useQuery, useMutation, gql } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, ShoppingBag, Star, ChevronRight, Loader2, X, ChevronDown } from "lucide-react";
@@ -11,8 +10,8 @@ import * as Yup from "yup";
 import { toast } from "sonner";
 
 import useAuthStore from "../../../../store/store";
-import { PRODUCT_LISTS_BY_ACCOUNT } from "../../api/query";
-import { CREATE_PRODUCT_LIST, UPDATE_PRODUCT_LIST } from "../../api/mutation";
+import { useProductsCommands } from "../../api/query";
+import { useProductsOwner } from "../../hooks/useProductsOwner";
 import type { ProductList, RecommendedProduct } from "../../types";
 import { deduplicateProducts, buildImageUrl, generateSlug, formatPrice } from "../../utils/productHelpers";
 import { getCurrentDomain } from "../../../../utils/getCurrentDomain";
@@ -27,29 +26,10 @@ import ProductTopPicksHero from "../public/ProductTopPicksHero";
 import ProductTopPicksMobileHero from "../public/ProductTopPicksMobileHero";
 import ProductTopPicksManager from "./ProductTopPicksManager";
 
-const MY_ACCOUNT = gql`
-  query MyAccountForProducts($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      accounts {
-        documentId
-        Account_Name
-        public_products
-        public_recommendations
-        public_movie
-        public_books
-        public_music
-        public_games
-        public_apps
-      }
-    }
-  }
-`;
 
 export const CreateProductListModal = ({
   open,
   onClose,
-  accountDocumentId,
-  currentListCount,
   onCreated,
   username,
   defaultListName,
@@ -62,7 +42,7 @@ export const CreateProductListModal = ({
   username: string;
   defaultListName?: string;
 }) => {
-  const [createProductList, { loading }] = useMutation(CREATE_PRODUCT_LIST);
+  const commands = useProductsCommands(), loading = commands.loading;
 
   const formik = useFormik({
     initialValues: { 
@@ -77,20 +57,10 @@ export const CreateProductListModal = ({
     }),
     onSubmit: async (values, { resetForm }) => {
       try {
-        const result = await createProductList({
-          variables: {
-            List_Name: values.List_Name,
-            list_description: values.list_description || null,
-            slug: values.slug || generateSlug(values.List_Name),
-            Visibility: false,
-            display_order: currentListCount,
-            account: accountDocumentId,
-          },
-          refetchQueries: [PRODUCT_LISTS_BY_ACCOUNT],
-        });
+        const result = await commands.createList({ title: values.List_Name, description: values.list_description || null, slug: values.slug || generateSlug(values.List_Name) });
         toast.success("Product list created!");
         resetForm();
-        onCreated(result?.data?.createProductList?.documentId);
+        onCreated(result.id);
         onClose();
       } catch {
         toast.error("Failed to create list. Please try again.");
@@ -289,23 +259,17 @@ const ProductsHome = () => {
     origin?: IntentAuthority; defaultValue: boolean;
   } | null>(null);
 
-  const { data: accountData } = useQuery(MY_ACCOUNT, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-  });
-  const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
+  const accountDocumentId = useAuthStore(state => state.accountId), ownerGeneration = useAuthStore(state => state.generation);
+  useEffect(() => { setShowCreateModal(false); setShowManageTopPicks(false); setSelectedProduct(null); setDropdownOpen(false); }, [accountDocumentId, ownerGeneration]);
 
-  const { data, loading, refetch } = useQuery(PRODUCT_LISTS_BY_ACCOUNT, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const { data, loading, error, refetch } = useProductsOwner();
 
   useEffect(() => {
     if (!loading) (window as any).__dashboardLoaded = true;
   }, [loading]);
 
-  const [updateProductList] = useMutation(UPDATE_PRODUCT_LIST);
+  const commands = useProductsCommands();
+  const updateProductList = ({ variables }: { variables: { documentId: string; Visibility: boolean }; optimisticResponse?: unknown; refetchQueries?: unknown[] }) => commands.updateList(variables.documentId, { visibility: variables.Visibility ? 'public' : 'private', publicationState: variables.Visibility ? 'published' : 'draft' });
 
   const handleVisibilityToggle = () => {
     const origin = navigation.authority;
@@ -342,7 +306,6 @@ const ProductsHome = () => {
             top_products_heading: list.top_products_heading || null,
           },
         },
-        refetchQueries: [PRODUCT_LISTS_BY_ACCOUNT],
       });
     } catch {
       toast.error("Failed to update visibility.");
@@ -354,6 +317,7 @@ const ProductsHome = () => {
   return (
     <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto">
       <NavigationStatus navigation={navigation} />
+      {error && <p role="alert">Products could not be loaded. <button onClick={refetch}>Retry</button></p>}
       {/* Desktop Header */}
       <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4">
         <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">

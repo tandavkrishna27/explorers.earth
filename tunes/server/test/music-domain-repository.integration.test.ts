@@ -974,6 +974,121 @@ describePg("C6 owner predicates on real PostgreSQL 15", () => {
     ]) await expect(domain.resolvePublicDescriptor(accountDocumentId)).resolves.toBeUndefined();
   });
 
+  it("resolves a canonically provisioned owner by canonical account ID, and fails closed for an unmapped one", async () => {
+    // Break caught: ADR-007 leaves strapi_account_document_id NULL on a canonically
+    // provisioned venue, so a Strapi-only descriptor lookup can never resolve one and
+    // every Google-only owner's public Music page is unreachable. The legacy arm is
+    // exercised by the cases above, which also prove the canonical comparison does not
+    // coerce $1 to uuid - that would raise 22P02 on each of those string IDs.
+    // The venue is built exactly the way accountMusicRepository provisions one - both
+    // Strapi columns NULL from the start - rather than by releasing them on an existing
+    // row, which enforce_music_identity_immutability() rejects outright. Ownership is
+    // recorded in the same transaction so the venue is never momentarily unowned.
+    const publicSlug = "c6-canonical-descriptor-slug";
+    const client = await pool.connect();
+    let accountId: string;
+    let musicUserId: number;
+    try {
+      await client.query("BEGIN");
+      accountId = (await client.query("INSERT INTO creator_accounts DEFAULT VALUES RETURNING id")).rows[0].id as string;
+      musicUserId = (await client.query(
+        `INSERT INTO users(username,password,email,guest_url,venue_name,
+           strapi_user_document_id,strapi_account_document_id,guest_capability_hash)
+         VALUES($1,NULL,NULL,$2,'Explorers Music',NULL,NULL,$3) RETURNING id`,
+        [`explorers-music-${accountId}`, publicSlug,
+          createHash("sha256").update(`canonical-${accountId}`).digest("hex")],
+      )).rows[0].id as number;
+      await client.query(
+        "INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)",
+        [accountId, musicUserId],
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+    const unmapped = (await pool.query(
+      "INSERT INTO creator_accounts DEFAULT VALUES RETURNING id",
+    )).rows[0].id as string;
+    await pool.query(
+      "UPDATE users SET guest_discoverable=true,public_snapshot_revision=12 WHERE id=$1",
+      [musicUserId],
+    );
+
+    // The premise: this owner carries no Strapi account id at all, so the legacy arm of
+    // the descriptor query cannot reach it on any input.
+    expect((await pool.query(
+      "SELECT strapi_account_document_id AS legacy FROM users WHERE id=$1", [musicUserId],
+    )).rows[0].legacy).toBeNull();
+
+    await expect(domain.resolvePublicDescriptor(accountId)).resolves.toEqual({
+      mode: "public", publicSlug, revision: 12,
+    });
+    await expect(domain.resolvePublicDescriptor(unmapped)).resolves.toBeUndefined();
+  });
+
+  it("admits a canonical venue without a Strapi lifecycle operation and still refuses a half external identity", async () => {
+    // Break caught: migration 0040's guard writes a Strapi-keyed provision operation for
+    // a canonical venue, whose strapi document id columns are NOT NULL, so every
+    // canonical provisioning fails with 23502 and no Google-only owner can get a venue.
+    // Break caught: skipping the mirror also skips the numeric tombstone check, which is
+    // what stops a retired numeric Music user id being reused.
+    // Break caught: a venue carrying exactly one Strapi column is admitted and then
+    // treated as whichever kind the reader assumes.
+    const insertVenue = (client: pg.PoolClient, accountId: string, columns: {
+      strapiUser?: string | null; strapiAccount?: string | null;
+    } = {}) => client.query<{ id: number }>(
+      `INSERT INTO users(username,password,email,guest_url,venue_name,
+         strapi_user_document_id,strapi_account_document_id,guest_capability_hash)
+       VALUES($1,NULL,NULL,$2,'Explorers Music',$3,$4,$5) RETURNING id`,
+      [`explorers-music-${accountId}`, `slug-${accountId}`.slice(0, 60),
+        columns.strapiUser ?? null, columns.strapiAccount ?? null,
+        createHash("sha256").update(`guard-${accountId}`).digest("hex")]);
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const accountId = (await client.query("INSERT INTO creator_accounts DEFAULT VALUES RETURNING id")).rows[0].id as string;
+      const musicUserId = (await insertVenue(client, accountId)).rows[0].id;
+      await client.query("INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)", [accountId, musicUserId]);
+      await client.query("COMMIT");
+
+      // No Strapi-keyed provision operation exists for it, and its own lifecycle column
+      // says so rather than claiming a completed operation it never had.
+      expect((await pool.query(
+        "SELECT count(*)::int AS rows FROM music_identity_lifecycle_operations WHERE music_user_id=$1",
+        [musicUserId],
+      )).rows[0].rows).toBe(0);
+      const venue = (await pool.query(
+        "SELECT lifecycle_state AS state,lifecycle_operation_id AS operation FROM users WHERE id=$1",
+        [musicUserId],
+      )).rows[0];
+      expect(venue.state).toBe("none");
+      // The column is a foreign key into that same table, so "no operation" has to mean
+      // NULL rather than an invented id.
+      expect(venue.operation).toBeNull();
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    // Exactly one Strapi column is neither a legacy nor a canonical identity.
+    const half = await pool.connect();
+    try {
+      await half.query("BEGIN");
+      const accountId = (await half.query("INSERT INTO creator_accounts DEFAULT VALUES RETURNING id")).rows[0].id as string;
+      await expect(insertVenue(half, accountId, { strapiAccount: `c6-half-${accountId}` }))
+        .rejects.toMatchObject({ message: expect.stringContaining("external identity must be complete or absent") });
+    } finally {
+      await half.query("ROLLBACK");
+      half.release();
+    }
+  });
+
   it("fails closed only while another User document ID collides with a live public Account document ID", async () => {
     // Break caught: cross-column namespace corruption turns stable Account discovery into ambiguous authority.
     const target = await identities.ensureIdentity(identityInput("descriptor-cross-column-target"));

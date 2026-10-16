@@ -1,0 +1,452 @@
+{
+  "base": "2f57782f2b3144688bad9ec00bd9884cb20cc90e",
+  "historicalManifest": "5649afccb6e19e1af6dc355193d99e8337f23663b841b4a77345519e1ee85339",
+  "baselineCount": 102,
+  "deltaCount": 2,
+  "overlaps": [],
+  "count": 104,
+  "files": [
+    {
+      "sha256": "7519ee0b5bef31a78688682598efe357b7f6f7ef0b44b105c392d9dc0e4bd623",
+      "path": ".dockerignore"
+    },
+    {
+      "sha256": "2874566678aca50007c1da826edf9d262f7c4a02d60abfebfb63cdde5f9c023c",
+      "path": ".github/workflows/explorers.yml"
+    },
+    {
+      "path": "docs/architecture/music-authorization-matrix.json",
+      "sha256": "29f3ed01377d58d069b91d492e8b8c71c1eca8314094e2f96cca801ad4248326"
+    },
+    {
+      "path": "docs/architecture/music-runtime-surface-inventory.json",
+      "sha256": "fc23c8711d3c5f510ce44ef1e82de02fefe121eaa1b0c697d61cde4479bb6565"
+    },
+    {
+      "sha256": "129eb65a5d86dff85806ba7dbb05506478f21ec7b9247fbc20fa92b836574e57",
+      "path": "explorers-earth/Dockerfile.music-fixture"
+    },
+    {
+      "sha256": "38926a823ce7b11f47fdad10a3898fe62f3fac74b8c45756da43dd883160caba",
+      "path": "explorers-earth/Dockerfile.music-fixture.dockerignore"
+    },
+    {
+      "path": "explorers-earth/e2e/replatform/books.spec.ts",
+      "sha256": "9f267f6e466cb37795cec06ca1a7c0a91851537d276f8d0ce948482c76138889"
+    },
+    {
+      "path": "explorers-earth/e2e/replatform/games.playwright.config.ts",
+      "sha256": "f86520c5a67e433d8b56d18e9e0a2b09c8e2aaba43f42538decf25b6009a137c"
+    },
+    {
+      "path": "explorers-earth/e2e/replatform/games.spec.ts",
+      "sha256": "0cf5a12e932c0c3e9dbc0a035f7f21411d5dfa1340ba432cf525a8e96ec8667a"
+    },
+    {
+      "path": "explorers-earth/e2e/replatform/suite-manifest.json",
+      "sha256": "00d0842caf01008872b8211492ac714f9cf92dd266945ceeb72df1484fe36f5b"
+    },
+    {
+      "sha256": "5fa4171360cbc725026e5814af6efba6b2ac1b66862f3ece840b60611d2dda75",
+      "path": "explorers-earth/scripts/contained-unit-env.cjs"
+    },
+    {
+      "path": "explorers-earth/src/features/Books/api/__tests__/booksClient.test.ts",
+      "sha256": "36eac2ef32873389fb28222e9609e5e827f5d23f2afb1963bb70ad691c24db26"
+    },
+    {
+      "path": "explorers-earth/src/features/Books/api/__tests__/useBooksOwnerContent.test.tsx",
+      "sha256": "e4cec9c08ea564f7fc4e56644774424c1eba9bc146f78cf68de19b87990edec0"
+    },
+    {
+      "path": "explorers-earth/src/features/Books/api/booksClient.ts",
+      "sha256": "c4b5d1ddf67f2b9df38718f6e7e65fe503007c11535c416617de5ff0501c328e"
+    },
+    {
+      "path": "explorers-earth/src/features/Books/api/useBooksOwnerContent.ts",
+      "sha256": "d7035704a828055bc4438d489d3eccedc7b7eb0b5d804eb03f7fea481b5051b1"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/__tests__/gameHelpers.extra.test.ts",
+      "sha256": "7478390d3dfa99eea5f0a4c890a4d0a4fc507f72bad522b41e5a93a80c507581"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/__tests__/gameHelpers.test.ts",
+      "sha256": "fc3422486944866da5e2771f0f0e06e07d3343b9b9dad8b842348db9c28a84cd"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/api/__tests__/explorersAdapter.test.ts",
+      "sha256": "a4ab31c3c9e236b1d5423b6630e63356f289d40ca862bf4998b31d89e0a0c099"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/api/__tests__/gamesClient.test.ts",
+      "sha256": "d584967706f47884b5e85521b5ba84a7360a33254257c039282136bd7475488f"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/api/__tests__/gamesViewModel.test.ts",
+      "sha256": "f2d420d1c524258e0c95731cba30b62fcccac2ed13231cb8099f77de775a7aed"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/api/__tests__/listVars.test.ts",
+      "sha256": "2e6bb0fbd804621030b0c941ea62d54a7d4666450fc80376f064b3bc1edbc6af",
+      "privateSha256": "2e6bb0fbd804621030b0c941ea62d54a7d4666450fc80376f064b3bc1edbc6af"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/api/explorersAdapter.ts",
+      "sha256": "59fafbcb7af54e2f863206dc228357a9f2458c815c33863bf111f1ebce10f4a8"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/api/gamesClient.ts",
+      "sha256": "f6f90153d04a6e31bf03ebbd5d32f91945d26628a1d9081488f32eaac353892e"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/api/gamesViewModel.ts",
+      "sha256": "9f79f4f7f5bae270df171a8cfa2a497417b19a2f672c2fee735d865d83d17bee"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/api/mutation.ts",
+      "sha256": "58dff4b07e56c6d82c402b158a08f2f23920b5cc064746cc0ed0d3325705b22c",
+      "privateSha256": "58dff4b07e56c6d82c402b158a08f2f23920b5cc064746cc0ed0d3325705b22c"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/api/query.ts",
+      "sha256": "27defeec2627c1f88944fa0f56ac8324a90d5a340906c4f71def922dc692d169",
+      "privateSha256": "27defeec2627c1f88944fa0f56ac8324a90d5a340906c4f71def922dc692d169"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/dashboard/__tests__/createGameListNavigation.test.tsx",
+      "sha256": "e15c8b32a56a0cbbeddaff535e86c9dcf5bf5197a730d52bbc098d78e85da28b",
+      "privateSha256": "e15c8b32a56a0cbbeddaff535e86c9dcf5bf5197a730d52bbc098d78e85da28b"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/dashboard/__tests__/gamesAsyncFences.test.tsx",
+      "sha256": "41cb2db4a2e62c32625edd382cab82d6e5c558c5ceb82ed7ebae919df956ddce",
+      "privateSha256": "41cb2db4a2e62c32625edd382cab82d6e5c558c5ceb82ed7ebae919df956ddce"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/dashboard/__tests__/manualGameFlow.test.tsx",
+      "sha256": "b664671741bb50b01f4dbc6560e13371868dc6e7f3c352d17d56932e03958322",
+      "privateSha256": "b664671741bb50b01f4dbc6560e13371868dc6e7f3c352d17d56932e03958322"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/dashboard/AddGamePage.tsx",
+      "sha256": "78f3dd3215fd7d53fd42f933b8290ec0e859b799aff19f1706d0af40282b34fd",
+      "privateSha256": "78f3dd3215fd7d53fd42f933b8290ec0e859b799aff19f1706d0af40282b34fd"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/dashboard/GameListView.tsx",
+      "sha256": "7fa6cfbe7ee9f87b831ad60a9e479cf944d034d65ba95518ae2c01c9b240a684",
+      "privateSha256": "7fa6cfbe7ee9f87b831ad60a9e479cf944d034d65ba95518ae2c01c9b240a684"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/dashboard/GamesHome.tsx",
+      "sha256": "12fb1c9a74372f8b1ff7b11a4ae3a2c5811512ec77854a5ea9b611ca71fa7ca2",
+      "privateSha256": "12fb1c9a74372f8b1ff7b11a4ae3a2c5811512ec77854a5ea9b611ca71fa7ca2"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/dashboard/TopGamesManager.tsx",
+      "sha256": "f29ce812bb080b4ef05fc547aaa4570d70feee580351347b3a3b3915b5f8095a",
+      "privateSha256": "f29ce812bb080b4ef05fc547aaa4570d70feee580351347b3a3b3915b5f8095a"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/public/__tests__/manualGamesPublic.test.tsx",
+      "sha256": "4ed2885e74814d06a56039fe526ac0729723cd4f59ece14081e21c1253243c3c",
+      "privateSha256": "4ed2885e74814d06a56039fe526ac0729723cd4f59ece14081e21c1253243c3c"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/public/GameCarouselRow.tsx",
+      "sha256": "1716a53fb0b5b4068edd07cb507264a2340af9ddd7649cbfdaff4ad09bbf135c",
+      "privateSha256": "1716a53fb0b5b4068edd07cb507264a2340af9ddd7649cbfdaff4ad09bbf135c"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/public/GameCoverCard.tsx",
+      "sha256": "7b0abc650160dbeb7babd14d484c468c9140acbcee3dc24e9a1c159984cc38a7",
+      "privateSha256": "7b0abc650160dbeb7babd14d484c468c9140acbcee3dc24e9a1c159984cc38a7"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/public/GameDetailModal.tsx",
+      "sha256": "2112ac75df2f1603e15f7d6e1a2ba6cf11d8d4a1feac89e097e36f3879e730fd",
+      "privateSha256": "2112ac75df2f1603e15f7d6e1a2ba6cf11d8d4a1feac89e097e36f3879e730fd"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/public/GenreBrowse.tsx",
+      "sha256": "619cd3ce1b08b3e118974dcf0fd43859996cea0af8cebd0120bec7798155bab0",
+      "privateSha256": "619cd3ce1b08b3e118974dcf0fd43859996cea0af8cebd0120bec7798155bab0"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/public/PublicGames.tsx",
+      "sha256": "02275156265113ffefed2570f7d74b00ff82af8b8864569ffc662ac540a30c53",
+      "privateSha256": "02275156265113ffefed2570f7d74b00ff82af8b8864569ffc662ac540a30c53"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/public/PublicGamesGenre.tsx",
+      "sha256": "36684b3c29e62b59dbb0dc7237b1d90aa4ea6691c64c53af52ab67746fdcd908",
+      "privateSha256": "36684b3c29e62b59dbb0dc7237b1d90aa4ea6691c64c53af52ab67746fdcd908"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/public/PublicGamesList.tsx",
+      "sha256": "2184f944b0261311e5030c8ced2e50437af6d9b0c8e7bdff378d2cc36f04e504",
+      "privateSha256": "2184f944b0261311e5030c8ced2e50437af6d9b0c8e7bdff378d2cc36f04e504"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/public/TopGamesHero.tsx",
+      "sha256": "8b1affcdb6426fa5ac5f649bb4d129a92fe7d780da8d18be425dcf5cc8edd0ec",
+      "privateSha256": "8b1affcdb6426fa5ac5f649bb4d129a92fe7d780da8d18be425dcf5cc8edd0ec"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/components/public/TopGamesMobileHero.tsx",
+      "sha256": "f373516fa85ded5747cba9788be633250fcf9d645763ae6a5b9c39f9b4106804",
+      "privateSha256": "f373516fa85ded5747cba9788be633250fcf9d645763ae6a5b9c39f9b4106804"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/hooks/__tests__/useGamesOwner.test.tsx",
+      "sha256": "f93ed2c2514f07fcab20653b10f6a4c2ad0b587b85d3b1ff968575b74c2b2695"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/hooks/useGamesOwner.ts",
+      "sha256": "5d14ebfb030d338eb3f91665d6d55dca9181e9b7cc6a246bf9df3dba4bb11ea9"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/index.ts",
+      "sha256": "4b9bb0d6dc30c9a7790d2689df88c53ddea38b35708a8fe7d83028323536b508",
+      "privateSha256": "4b9bb0d6dc30c9a7790d2689df88c53ddea38b35708a8fe7d83028323536b508"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/types/index.ts",
+      "sha256": "085089f04964792e41b7925e60d3130df4dfc95b2e4f80bfbe654652590e41f6"
+    },
+    {
+      "path": "explorers-earth/src/features/Games/utils/gameHelpers.ts",
+      "sha256": "ec9f785d0507057906cc42d0d48a5a2e0a67521ec93cbf174d4b641c84ba1a2a"
+    },
+    {
+      "path": "explorers-earth/src/features/Movies/api/__tests__/moviesClient.test.ts",
+      "sha256": "4185e7f202468a7891d3d4b873fc941f70f0d0287401c308795caa67a1a1885f"
+    },
+    {
+      "path": "explorers-earth/src/features/Movies/api/moviesClient.ts",
+      "sha256": "aa20cfc80f4ad898e8e81aed413e2c256f20e8e8c7eeb523c682be2da77aee25"
+    },
+    {
+      "path": "explorers-earth/src/features/navigation/__tests__/categoryNavigationSurfaces.test.tsx",
+      "sha256": "fe9c4a98be1daf5d97e0c2984a3935505a01039e8479645be7993f790dc6f4a9",
+      "privateSha256": "fe9c4a98be1daf5d97e0c2984a3935505a01039e8479645be7993f790dc6f4a9"
+    },
+    {
+      "path": "explorers-earth/src/features/PublicHome/api/__tests__/publicProfileGatewayClient.test.ts",
+      "sha256": "b4e4a1ab60624568e56997c0566bb4cba3de8b76d3fdc20ce5b12bb08e18b754"
+    },
+    {
+      "path": "explorers-earth/src/features/PublicHome/api/__tests__/usePublicProfileDetail.test.tsx",
+      "sha256": "7e7e379ab21edeccad0a0df7cceb2f459c9c73680cce2b1b9940c27d87e43f2a"
+    },
+    {
+      "path": "explorers-earth/src/features/PublicHome/api/__tests__/usePublicRecommendationCategory.test.tsx",
+      "sha256": "b3b96b163428711e7e5938ee84ae0c346cf378ed0a8661dc86f98fb49bebd6bd"
+    },
+    {
+      "path": "explorers-earth/src/features/PublicHome/api/publicProfileGatewayClient.ts",
+      "sha256": "b1486dc48c30a7d883b32401fba29b1b1b103683ade4b5a1fa09930a5a79a5b7"
+    },
+    {
+      "path": "explorers-earth/src/features/PublicHome/api/usePublicProfileDetail.ts",
+      "sha256": "b263c389978a68da1ba800137495647e10cb03b1c86236df1a76e09df5b1b9d9"
+    },
+    {
+      "path": "explorers-earth/src/features/PublicHome/api/usePublicRecommendationCategory.ts",
+      "sha256": "df9e4ea6dce8c9498123a98e1a7c658ad7e95c839656d2a8d009e257eed9c015"
+    },
+    {
+      "path": "explorers-earth/src/features/PublicHome/components/__tests__/PublicScrollContinuation.books-race.test.tsx",
+      "sha256": "19084d642979dd00735666513caf4e3621018886817e51345bc9473d37c3c62a"
+    },
+    {
+      "path": "explorers-earth/src/features/PublicHome/utils/__tests__/publicProfileContent.test.ts",
+      "sha256": "5a2542cb2adf7ba64da17c373018c5799703f77645e69207b50adc9538d99e33"
+    },
+    {
+      "path": "explorers-earth/src/features/PublicHome/utils/publicProfileContent.ts",
+      "sha256": "e34c3ae0d12ff6b5b02e568321af698eecf8435689394e5e73119904128a88aa"
+    },
+    {
+      "sha256": "d6537094ea61db072243058ea0a9d4966f8730c19d28651b6b8e81bc138057fb",
+      "path": "explorers-earth/src/lib/__tests__/ownerSharedBundle.test.ts"
+    },
+    {
+      "path": "explorers-earth/src/lib/explorersApiClient.test.ts",
+      "sha256": "ebbf79a948807255cc0418ba9e2b4264df3e2b598f0fb4f17a2108f5e8a8734c"
+    },
+    {
+      "path": "explorers-earth/src/lib/explorersApiClient.ts",
+      "sha256": "defd4ca927117f396cfb21a79aad13804413c600024dc0ca9176358d55e8910d"
+    },
+    {
+      "path": "explorers-earth/src/pages/__tests__/Home.analytics.test.tsx",
+      "sha256": "a0b5da317725d1973af6a8ea77c0480ac3dcf91a47c0baff6013a68336c17de7",
+      "privateSha256": "a0b5da317725d1973af6a8ea77c0480ac3dcf91a47c0baff6013a68336c17de7"
+    },
+    {
+      "path": "explorers-earth/src/pages/Home.tsx",
+      "sha256": "a15260820dbdffce66e1f684487b134caddb9b99ae714fcac7c2fb1beba05e0b",
+      "privateSha256": "a15260820dbdffce66e1f684487b134caddb9b99ae714fcac7c2fb1beba05e0b"
+    },
+    {
+      "sha256": "c0295172d016133f27c24729703614f409c6d530746f237f3c566170c378fff1",
+      "path": "explorers-earth/src/services/__tests__/igdbService.extra.test.ts"
+    },
+    {
+      "sha256": "e2411bb3cb6bf3542b7447581996aa8770ea28b928340917ddb947ca83425c28",
+      "path": "explorers-earth/src/services/__tests__/igdbService.test.ts"
+    },
+    {
+      "sha256": "3201cecd1817622810fbe24d5768e81e3f3a37084fd326b9d73ac981a664a6f7",
+      "path": "explorers-earth/src/services/igdbService.ts"
+    },
+    {
+      "sha256": "26264118f4cc61cbbdfe9dd92905129ef2ab77b053a47b1cf9571349811daf0c",
+      "path": "explorers-earth/src/test/__tests__/contained-unit.environment.test.ts"
+    },
+    {
+      "sha256": "56abcdf2f364dfcad5cc8e630a2199b1487e9ae367d9db931540cf195ae6c351",
+      "path": "explorers-earth/src/test/__tests__/contained-unit.launcher.test.ts"
+    },
+    {
+      "sha256": "515b2b6982bedfaaf380bd06bbce839f917b9407d82022266a355b1217cbc1b4",
+      "path": "explorers-earth/src/test/setup.ts"
+    },
+    {
+      "sha256": "d9b27163725aef6a5fa130ff457f5626e30ff64bfb963f15e3886f0ead4d5bfc",
+      "path": "explorers-earth/vite.config.ts"
+    },
+    {
+      "sha256": "96dcda45d0e3132c8cece9b3c9d8d184ea6a89073b43dd9faf0f2ca22e5e3cda",
+      "path": "scripts/generate-music-fixture-dockerignore.mjs"
+    },
+    {
+      "path": "scripts/replatform-e2e.mjs",
+      "sha256": "acb66147d787f62208f847227870c81ea4ff7452faf78730dd3749fb71ee6580"
+    },
+    {
+      "path": "scripts/replatform-e2e.test.mjs",
+      "sha256": "5c0dd1125aeb8284f7ef26d038d7b40441dc0b3789e5dbe4fe3c3a70dbb5b6df"
+    },
+    {
+      "path": "tunes/scripts/games-browser-fixture.ts",
+      "sha256": "3a79c9c109c14cd61ab7b34bab724f5269dbee0c25157d7dc49f798df6ffbc2d"
+    },
+    {
+      "path": "tunes/server/application/catalog.ts",
+      "sha256": "3acbd948ab050c7e7d5ad7081ef031001bcf4fd826b74cf4689bd1cf875aa6b1"
+    },
+    {
+      "path": "tunes/server/application/ownerContent.ts",
+      "sha256": "f445a4abcaedfb6adc5f7080532209133060608aff5d81bbf7698cb763acb2a7"
+    },
+    {
+      "path": "tunes/server/application/publicContent.ts",
+      "sha256": "d733f01a235e225099b449966869fe19709466818b8ffdeb075b364b2729b4ce"
+    },
+    {
+      "path": "tunes/server/application/recommendations.ts",
+      "sha256": "3abd7cf4be8131b533f7eba21e655c22afd769b2da7fc9c86175bd802942ead7"
+    },
+    {
+      "path": "tunes/server/auth/canonicalApp.ts",
+      "sha256": "18caa6185889f2490a48afe86d286d84ece5ffcca77934f34acee6364a752df1"
+    },
+    {
+      "path": "tunes/server/policies/musicSurfacePolicy.ts",
+      "sha256": "031ac9225c523be6ab9bf5b18c96f3618ae87768c60a1e67e988dba7ca39b6e1"
+    },
+    {
+      "path": "tunes/server/publicProfile/postgresPublicProfileGateway.ts",
+      "sha256": "b8f6531d40cc9b15633208ae2eec9e2ce9c16fbd1017247f7226502a58128247"
+    },
+    {
+      "path": "tunes/server/publicProfile/publicGamesProjection.ts",
+      "sha256": "5a65560670794ddaa741c215e908204c4da1d8f4cdedc5eabff4b840a4fe1823"
+    },
+    {
+      "path": "tunes/server/publicProfile/publicProfileContract.ts",
+      "sha256": "39066c321b6f78f369a82442c2dd36fee3008f75a2ab4b0b7b681a3ca7ee0ca1"
+    },
+    {
+      "path": "tunes/server/publicProfile/publicProfileService.ts",
+      "sha256": "9839fdc16c719da57a5b3347520f96290a8df1ae9329adb92ed44ef6204b9f45"
+    },
+    {
+      "path": "tunes/server/repositories/explorersRecommendationRepository.ts",
+      "sha256": "db2d5c3d68096af69189984632d980f5278852567386eb3414ed0b64f0fdf122"
+    },
+    {
+      "path": "tunes/server/repositories/gameManualRepository.ts",
+      "sha256": "def4ec276738d841d7d83a3761562d27ac9d33a60428bc95070d2108a9383e9a"
+    },
+    {
+      "path": "tunes/server/repositories/mediaRepository.ts",
+      "sha256": "4c8a3fd5c51ad1c73051979167e2a60dbfec133a32f76eae7cfc019be14090be"
+    },
+    {
+      "path": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "sha256": "7b8db8e62e12342b163ff5df2e8037679a1798b76569c16c57de4c47cb5874ca"
+    },
+    {
+      "path": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "sha256": "1b53beae0eb12e89453c13113993056b1c4d6996bbbb9f885349bf73522e2520"
+    },
+    {
+      "path": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "sha256": "c6cb64039b14e275c398af206f6565bf843647ab187e7f41178c8374d3cd30de"
+    },
+    {
+      "sha256": "be7d21cb3de25046c8a12dc92332dece773fb6f9f4c1226fa98aa41646ee9161",
+      "path": "tunes/server/test/contracts/api-only-build.test.ts"
+    },
+    {
+      "path": "tunes/server/test/contracts/music-authorization-matrix.test.ts",
+      "sha256": "4bc56afcb44816eb9fa589e1f9f984961bc794b4164976a42d335d72a7dc2a95"
+    },
+    {
+      "sha256": "91eea3d8f7ceb33747b2a9ec4d02c864f59a1b98eaa5157e106f0f132aa94da3",
+      "path": "tunes/server/test/contracts/music-fixture-services.test.ts"
+    },
+    {
+      "path": "tunes/server/test/contracts/runtime-surface-inventory.test.ts",
+      "sha256": "fbe07e2d7c8830cc7f02e950a897aa3e40aa303f470e18433201ba9a6d0ccffc"
+    },
+    {
+      "path": "tunes/server/test/explorers/games.integration.test.ts",
+      "sha256": "a7541feec177c89af15d52568cfa25b0d18a0aceae87eda21b913953387c549a"
+    },
+    {
+      "path": "tunes/server/test/explorers/games.test.ts",
+      "sha256": "b05e81317d8b1eb06a4011213eeaa8f2ae7e8e8eb3158f9f072e0090d5779919"
+    },
+    {
+      "path": "tunes/server/test/game-public-projection-budget.test.ts",
+      "sha256": "17d66218c961541086d54e8fd3916db1c3c07fee1444746f1de016bcbc234141"
+    },
+    {
+      "path": "tunes/server/test/games-public-gateway.integration.test.ts",
+      "sha256": "7d223b9108541b1ca9c7261b184964467fc16d3815881a3504a02aa94cb362ab"
+    },
+    {
+      "path": "tunes/shared/explorersContract.ts",
+      "sha256": "5b6f21b5a8bae8c01de152064f7504cb5c4095e1659cc243330a7f9325bc3ad7"
+    },
+    {
+      "path": "tunes/shared/explorersGameOwnerContract.ts",
+      "sha256": "9777c5400f3c9ede2e69bfb2e66a9914990d1ba4642ede7b54367ecd464380c6"
+    },
+    {
+      "path": "tunes/shared/explorersOwnerContentContract.ts",
+      "sha256": "ea90fdbfbc51783e28c7682abb16781d479bccee1a357e62658fdbab91da46a2"
+    },
+    {
+      "path": "tunes/shared/explorersPublicContentContract.ts",
+      "sha256": "493fdcb8789ce6db0648a0d0a78be852cb4ef95c73e93f8d237ecbe1a3acd012"
+    }
+  ],
+  "previousManifestSha256": "0fd05ca2a356015334666c98874d5c725ddd90d659fe86935b208227210ccbd1",
+  "normalization": "five authorized sourceEOF removals across two steps, one curateddocEOF; no internalbytes changed; native82 binds historicalb76"
+}

@@ -2,7 +2,6 @@ import { NavigationStatus } from "../../../navigation/NavigationStatus";
 import type { IntentAuthority } from "../../../navigation/categoryNavigationPolicy";
 import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
 import { useState, useRef, useMemo, useEffect } from "react";
-import { useQuery, useMutation, gql } from "@apollo/client";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Smartphone, Star, ChevronRight, Loader2, X, ChevronDown } from "lucide-react";
@@ -11,8 +10,8 @@ import * as Yup from "yup";
 import { toast } from "sonner";
 
 import useAuthStore from "../../../../store/store";
-import { APP_LISTS_BY_ACCOUNT } from "../../api/query";
-import { CREATE_APP_LIST, UPDATE_APP_LIST } from "../../api/mutation";
+import { useAppsCommands } from "../../api/query";
+import { useAppsOwner } from "../../hooks/useAppsOwner";
 import type { AppList, RecommendedApp } from "../../types";
 import { deduplicateApps, buildLogoUrl, generateSlug, getPriceTierColor } from "../../utils/appHelpers";
 import { getCurrentDomain } from "../../../../utils/getCurrentDomain";
@@ -27,22 +26,6 @@ import AppTopPicksHero from "../public/AppTopPicksHero";
 import AppTopPicksMobileHero from "../public/AppTopPicksMobileHero";
 import AppTopPicksManager from "./AppTopPicksManager";
 
-const MY_ACCOUNT = gql`
-  query MyAccountForApps($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      accounts {
-        documentId
-        Account_Name
-        public_apps
-        public_recommendations
-        public_movie
-        public_books
-        public_music
-        public_games
-      }
-    }
-  }
-`;
 
 // ─────────────────────────────────────────────────────────────
 // Create List Modal
@@ -50,8 +33,6 @@ const MY_ACCOUNT = gql`
 export const CreateAppListModal = ({
   open,
   onClose,
-  accountDocumentId,
-  currentListCount,
   onCreated,
   username,
   defaultListName,
@@ -64,7 +45,7 @@ export const CreateAppListModal = ({
   username: string;
   defaultListName?: string;
 }) => {
-  const [createAppList, { loading }] = useMutation(CREATE_APP_LIST);
+  const commands = useAppsCommands(), loading = commands.loading;
 
   const formik = useFormik({
     initialValues: { 
@@ -79,20 +60,10 @@ export const CreateAppListModal = ({
     }),
     onSubmit: async (values, { resetForm }) => {
       try {
-        const result = await createAppList({
-          variables: {
-            List_Name: values.List_Name,
-            list_description: values.list_description || null,
-            slug: values.slug || generateSlug(values.List_Name),
-            Visibility: false,
-            display_order: currentListCount,
-            account: accountDocumentId,
-          },
-          refetchQueries: [APP_LISTS_BY_ACCOUNT],
-        });
+        const result = await commands.createList({ title: values.List_Name, description: values.list_description || null, slug: values.slug || generateSlug(values.List_Name) });
         toast.success("App list created!");
         resetForm();
-        onCreated(result?.data?.createAppList?.documentId);
+        onCreated(result.id);
         onClose();
       } catch {
         toast.error("Failed to create list. Please try again.");
@@ -332,11 +303,8 @@ const AppsHome = () => {
     defaultValue: boolean;
   } | null>(null);
 
-  const { data: accountData } = useQuery(MY_ACCOUNT, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-  });
-  const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
+  const accountDocumentId = useAuthStore(state => state.accountId), ownerGeneration = useAuthStore(state => state.generation);
+  useEffect(() => { setShowCreateModal(false); setShowManageTopPicks(false); setSelectedApp(null); setDropdownOpen(false); }, [accountDocumentId, ownerGeneration]);
 
   const promptedLocation = useRef<string | null>(null);
   useEffect(() => {
@@ -356,11 +324,7 @@ const AppsHome = () => {
     }
   }, [location.state, location.key, navigation.authority, navigation.snapshot]);
 
-  const { data, loading, refetch } = useQuery(APP_LISTS_BY_ACCOUNT, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const { data, loading, error, refetch } = useAppsOwner();
 
   useEffect(() => {
     if (!loading) {
@@ -368,7 +332,8 @@ const AppsHome = () => {
     }
   }, [loading]);
 
-  const [updateAppList] = useMutation(UPDATE_APP_LIST);
+  const commands = useAppsCommands();
+  const updateAppList = ({ variables }: { variables: { documentId: string; Visibility: boolean }; optimisticResponse?: unknown; refetchQueries?: unknown[] }) => commands.updateList(variables.documentId, { visibility: variables.Visibility ? 'public' : 'private', publicationState: variables.Visibility ? 'published' : 'draft' });
 
   const handleVisibilityToggle = () => {
     const origin = navigation.authority;
@@ -406,7 +371,6 @@ const AppsHome = () => {
             top_apps_heading: list.top_apps_heading || null,
           },
         },
-        refetchQueries: [APP_LISTS_BY_ACCOUNT],
       });
     } catch {
       toast.error("Failed to update visibility.");
@@ -418,6 +382,7 @@ const AppsHome = () => {
   return (
     <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto">
       <NavigationStatus navigation={navigation} />
+      {error && <p role="alert">Apps could not be loaded. <button onClick={refetch}>Retry</button></p>}
       {/* Desktop Header */}
       <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4">
         <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
@@ -524,19 +489,19 @@ const AppsHome = () => {
           ) : (
             /* Empty Placeholder banner */
             allApps.length > 0 && (
-              <div
+              <button type="button"
                 onClick={() => setShowManageTopPicks(true)}
                 className="w-full flex items-center justify-between p-4 rounded-[14px] border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-300 cursor-pointer mb-6"
               >
-                <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-[#fbbf24] font-poppins">
-                  <span className="text-amber-400">★</span> Manage Top Picks ({topPicks.length}/{deduplicateApps(allApps).length})
-                </div>
-                <div className="flex items-center text-amber-500">
+                <span className="flex items-center gap-2 text-xs md:text-sm font-bold text-[#fbbf24] font-poppins">
+                  <span aria-hidden="true" className="text-amber-400">★</span> Manage Top Picks ({topPicks.length}/{deduplicateApps(allApps).length})
+                </span>
+                <span className="flex items-center text-amber-500">
                   <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
-                </div>
-              </div>
+                </span>
+              </button>
             )
           )}
 

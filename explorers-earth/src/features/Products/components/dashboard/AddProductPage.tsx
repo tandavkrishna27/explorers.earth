@@ -1,744 +1,237 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
-import {
-  ArrowLeft, Star, Loader2, Check, ShoppingBag, Link as LinkIcon,
-  AlertCircle, Plus, Trash2, Upload, X,
-} from "lucide-react";
-import { toast } from "sonner";
-import axios from "axios";
-import useAuthStore from "../../../../store/store";
-import { PRODUCTS_BY_LIST, PRODUCT_CATEGORIES, productsByListVars, refetchProductsByList } from "../../api/query";
-import { CREATE_RECOMMENDED_PRODUCT, UPDATE_RECOMMENDED_PRODUCT } from "../../api/mutation";
-import {
-  deduplicateProducts, buildImageUrl, generateSlug, formatPrice,
-} from "../../utils/productHelpers";
-import type { RecommendedProduct, ProductCategory } from "../../types";
-import TiptapEditor from "../../../Favorites/components/TiptapEditor";
-import {
-  generateProductUploadPath,
-  generateRandomFileName,
-  sanitizeUsername,
-} from "../../../../utils/uploadPathGenerator";
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Loader2, ShoppingBag, X } from 'lucide-react';
+import { toast } from 'sonner';
+import useAuthStore from '../../../../store/store';
+import type { RecommendationObservation } from '../../../../lib/explorersApiClient';
+import { ProductsClient, type ManualProductIntent } from '../../api/productsClient';
+import { useProductsCommands } from '../../api/query';
+import { invalidateProducts, useProductsOwner } from '../../hooks/useProductsOwner';
+import { SUPPORTED_CURRENCIES, productAmountSchema, amountScale, currencyMinorUnits, type SupportedCurrency } from '../../../../../../tunes/shared/explorersProductContract';
+import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
+import TiptapEditor from '../../../Favorites/components/TiptapEditor';
 
-// Currencies offered by the currency <select>. A scraped currency outside this
-// set can't be represented, so we drop it and fall back to the default.
-const ALLOWED_CURRENCIES = ["USD", "EUR", "GBP", "INR", "JPY", "AUD", "CAD", "SGD"];
+const CURRENCIES = Object.keys(SUPPORTED_CURRENCIES) as SupportedCurrency[];
 
-const UrlScrapePanel = ({
-  onScraped,
-}: {
-  onScraped: (data: Partial<RecommendedProduct>) => void;
-}) => {
-  const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+/**
+ * Ticket 4.4. Native Products add/edit page.
+ *
+ * Three things the Strapi version did are gone rather than ported:
+ *
+ *  - The paste-a-link step posted to /api/products/scrape-link. The dev proxy still
+ *    forwards that path to the Tunes server, but the server has no such route, so the
+ *    step called a dead endpoint and discarded the draft when it failed. With no
+ *    enrichment there is nothing to auto-fill and nothing to flag as unverified, which is
+ *    what the scraped-price guard existed for; manual entry is now the only path and is
+ *    preserved by construction.
+ *  - Images came back from the scraper as external URLs to select. Owner imagery is media
+ *    through the native route; imageUrls remain in the contract for approved provider
+ *    images, and no provider exists for Products.
+ *  - The category selector read a Strapi taxonomy with no canonical replacement, and the
+ *    projection serves product_category as null.
+ *
+ * Price is a text field, not type="number". The amount is an exact decimal string all the
+ * way to numeric(20,6), and routing it through a JS number would be the one place a float
+ * could round an owner's price. The currency's minor units bound the precision, so "19.90"
+ * is accepted as USD and refused as JPY.
+ *
+ * The product URL is the shared entity's identity and is excluded from the override
+ * vocabulary, so editing an existing recommendation cannot change it.
+ */
+export default function AddProductPage() {
+ const { listId, productId } = useParams<{ listId: string; productId?: string }>();
+ const location = useLocation(), navigate = useNavigate();
+ const generation = useAuthStore(state => state.generation), accountId = useAuthStore(state => state.accountId);
+ const scope = JSON.stringify([generation, accountId, location.pathname, listId, productId]);
+ const currentScope = useRef(scope); currentScope.current = scope;
+ const active = useRef(0), controller = useRef<AbortController>();
+ const owner = useProductsOwner(undefined, true), commands = useProductsCommands();
 
-  const handleScrape = async () => {
-    if (!url.trim()) return;
-    setLoading(true);
-    setError("");
-    try {
-      const resp = await fetch(
-        `/api/products/scrape-link`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) }
-      );
-      if (!resp.ok) throw new Error("Scrape failed");
-      const data = await resp.json();
-      onScraped({ ...data, product_url: url });
-      toast.success("Product metadata fetched!");
-    } catch {
-      setError("Could not retrieve link details — fill in the details below.");
-      onScraped({ product_url: url });
-    } finally {
-      setLoading(false);
+ const [existingId, setExistingId] = useState('');
+ const existingProducts = [...new Map((owner.content?.view.lists.flatMap(list => list.recommended_products) ?? []).filter(product => !owner.content?.view.lists.find(list => list.documentId === listId)?.recommended_products.some(member => member.documentId === product.documentId)).map(product => [product.documentId, product])).values()];
+
+ const [title, setTitle] = useState(''), [productUrl, setProductUrl] = useState('');
+ const [brand, setBrand] = useState(''), [logoUrl, setLogoUrl] = useState('');
+ const [description, setDescription] = useState(''), [buyUrl, setBuyUrl] = useState('');
+ const [price, setPrice] = useState(''), [currency, setCurrency] = useState<SupportedCurrency | ''>('');
+ const [specifications, setSpecifications] = useState<{ key: string; value: string }[]>([]);
+ const [note, setNote] = useState(''), [rating, setRating] = useState<number | null>(null);
+ const [media, setMedia] = useState<{ id: string; url: string }[]>([]), [pending, setPending] = useState(0);
+ const [saving, setSaving] = useState(false), [error, setError] = useState('');
+ const initialized = useRef(''), draftObservation = useRef<RecommendationObservation>();
+ const intent = useRef<{ scope: string; signature: string; value: ManualProductIntent }>();
+ const updateKey = useRef<{ signature: string; key: string }>();
+ const mounted = useRef(true);
+
+ useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); active.current++; }; }, []);
+ useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setProductUrl(''); setBrand(''); setLogoUrl(''); setDescription(''); setBuyUrl(''); setPrice(''); setCurrency(''); setSpecifications([]); setNote(''); setRating(null); setMedia([]); setPending(0); setSaving(false); setError(''); setExistingId(''); }, [scope]);
+
+ useEffect(() => {
+  if (!productId || !owner.content || initialized.current === scope) return;
+  const product = owner.content.view.lists.find(list => list.documentId === listId)?.recommended_products.find(row => row.documentId === productId);
+  const observed = owner.content.details.get(productId);
+  if (!product || !observed) return;
+  initialized.current = scope; draftObservation.current = observed;
+  setTitle(product.title); setProductUrl(product.product_url); setBrand(product.brand ?? '');
+  setLogoUrl(product.logo_url ?? ''); setDescription(product.description ?? ''); setBuyUrl(product.buy_url ?? '');
+  // The exact decimal is read back from the observation, not from the display number.
+  const offer = observed.detail.category === 'products' ? observed.detail.productOffer : undefined;
+  setPrice(offer?.price ?? ''); setCurrency((offer?.currencyCode as SupportedCurrency | null) ?? '');
+  setSpecifications(Object.entries(product.specifications ?? {}).map(([key, value]) => ({ key, value })));
+  setNote(typeof product.user_recommendation_note === 'string' ? product.user_recommendation_note : '');
+  setRating(product.user_rating);
+ }, [owner.content, scope, productId, listId]);
+
+ const valid = (captured: string, operation?: number) => mounted.current && currentScope.current === captured && (operation === undefined || active.current === operation);
+ const assertCurrent = (captured: string, operation: number) => { if (!valid(captured, operation) || controller.current?.signal.aborted) throw new Error('Product owner or route changed'); };
+ const blank = (value: string) => { const trimmed = value.trim(); return trimmed === '' ? null : trimmed; };
+
+ // Reported before any command is dispatched, so an impossible amount never reaches the
+ // transport and the draft is never discarded to find out.
+ const priceProblem = (() => {
+  const trimmed = price.trim();
+  if (trimmed === '') return undefined;
+  if (!productAmountSchema.safeParse(trimmed).success) return 'Enter an amount like 19.90, with no currency symbol.';
+  if (currency !== '' && amountScale(trimmed) > currencyMinorUnits(currency)) return `${currency} does not have that many decimal places.`;
+  return undefined;
+ })();
+
+ const attachExisting = async () => {
+  const captured = scope;
+  try { await commands.membership(existingId, listId!, true); if (valid(captured)) navigate(`/recommendations/products/${listId}`); }
+  catch (failure) { if (valid(captured)) setError(failure instanceof Error ? failure.message : 'Product could not be added'); }
+ };
+
+ const upload = async (files: File[]) => {
+  const captured = scope; setPending(value => value + files.length); setError('');
+  for (const file of files) {
+   if (!valid(captured)) return;
+   try { const result = await ProductsClient.upload(file, crypto.randomUUID()); if (!valid(captured)) return; setMedia(value => [...value, { id: result.id, url: `/api/explorers/v1/media/${result.id}/content` }]); }
+   catch (failure) { if (valid(captured)) setError(failure instanceof Error ? failure.message : 'Upload failed'); }
+   finally { if (valid(captured)) setPending(value => value - 1); }
+  }
+ };
+
+ const save = async () => {
+  if (!listId || pending || saving || !title.trim() || !productUrl.trim() || priceProblem || (productId && initialized.current !== scope)) return;
+  const captured = scope, operation = ++active.current; controller.current?.abort(); controller.current = new AbortController(); const signal = controller.current.signal;
+  setSaving(true); setError('');
+  try {
+   const specs = Object.fromEntries(specifications.filter(entry => entry.key.trim() && entry.value.trim()).map(entry => [entry.key.trim(), entry.value.trim()]));
+   const facts = { brand: blank(brand), logoUrl: blank(logoUrl), description: blank(description), specifications: specs, imageUrls: [] as string[] };
+   // An empty amount is unknown, never zero; an empty currency stays unknown.
+   const offer = { price: blank(price), currencyCode: currency === '' ? null : currency, buyUrl: blank(buyUrl) };
+   const draft = { title: title.trim(), productUrl: productUrl.trim(), ...facts, offer, note: richNoteFromEditor(note), userRating: rating, mediaIds: media.map(item => item.id) };
+   const signature = JSON.stringify(draft);
+   assertCurrent(captured, operation);
+   if (productId) {
+    const observed = owner.content?.details.get(productId);
+    if (!observed || draftObservation.current !== observed) throw new Error('Reload the product before saving');
+    if (updateKey.current?.signature !== signature) updateKey.current = { signature, key: crypto.randomUUID() };
+    assertCurrent(captured, operation);
+    // productUrl is absent here on purpose: it is not in the override vocabulary.
+    await ProductsClient.updateRecommendation(observed, { displayOverrides: { title: draft.title, ...facts }, note: draft.note, userRating: rating, mediaIds: draft.mediaIds, productOffer: offer }, updateKey.current.key, signal);
+    assertCurrent(captured, operation);
+   } else {
+    if (intent.current?.scope !== captured || intent.current.signature !== signature) {
+     const parent = await ProductsClient.observeCollection(listId, signal); assertCurrent(captured, operation);
+     intent.current = { scope: captured, signature, value: ProductsClient.prepareManualIntent(parent, draft) };
     }
-  };
+    assertCurrent(captured, operation); await ProductsClient.createManual(intent.current.value, signal); assertCurrent(captured, operation);
+   }
+   invalidateProducts(); toast.success('Product saved'); navigate(`/recommendations/products/${listId}`, { state: { justAddedRecommendation: true } });
+  } catch (failure) { if (valid(captured, operation)) setError(failure instanceof Error ? failure.message : 'Product could not be saved'); }
+  finally { if (valid(captured, operation)) setSaving(false); }
+ };
 
-  return (
-    <div className="space-y-3">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <LinkIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://amazon.com/dp/... or store.apple.com/..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500 transition-colors"
-            onKeyDown={(e) => e.key === "Enter" && handleScrape()}
-          />
-        </div>
-        <button
-          onClick={handleScrape}
-          disabled={loading || !url.trim()}
-          className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2 disabled:opacity-50"
-        >
-          {loading ? <Loader2 size={14} className="animate-spin" /> : "Fetch"}
-        </button>
-      </div>
-      {error && (
-        <div className="flex items-center gap-2 text-xs text-amber-400/80 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2">
-          <AlertCircle size={12} /> {error}
-        </div>
-      )}
-    </div>
-  );
-};
+ // Edit controls require the actual complete owner observation. A loaded draft stays
+ // owned by its original observation across refreshes and never rebases.
+ if (productId && initialized.current !== scope) {
+  return <div className="min-h-screen text-dashboard p-4" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+   <button aria-label="Back to product list" onClick={() => navigate(`/recommendations/products/${listId}`)}><ArrowLeft size={20} /></button>
+   <h1 className="font-semibold">Edit Product</h1>
+   {owner.loading ? <p role="status">Loading product…</p> : <div role="alert"><p>{owner.error?.message || 'Product could not be loaded. Refresh before editing.'}</p><button onClick={owner.refetch}>Retry loading product</button></div>}
+  </div>;
+ }
 
-const SpecificationsEditor = ({
-  specs,
-  onChange,
-}: {
-  specs: Record<string, string>;
-  onChange: (newSpecs: Record<string, string>) => void;
-}) => {
-  const entries = Object.entries(specs);
+ return <div className="min-h-screen text-dashboard">
+  <header className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3">
+   <button aria-label="Back to product list" onClick={() => navigate(`/recommendations/products/${listId}`)}><ArrowLeft size={20} /></button>
+   <h1 className="font-semibold">{productId ? 'Edit Product' : 'Add Product'}</h1>
+  </header>
+  <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-6" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+   {!productId && existingProducts.length > 0 && <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-3">
+    <label className="block">Existing product
+     <select value={existingId} onChange={event => setExistingId(event.target.value)} disabled={commands.loading} className="block w-full bg-dashboard-muted rounded-xl p-3">
+      <option value="">Select a product</option>
+      {existingProducts.map(product => <option key={product.documentId} value={product.documentId}>{product.title}</option>)}
+     </select>
+    </label>
+    <button disabled={!existingId || commands.loading} onClick={attachExisting}>Add existing product to this list</button>
+   </section>}
 
-  const handleAdd = () => onChange({ ...specs, "": "" });
+   <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-5">
+    <h2 className="font-semibold flex gap-2"><ShoppingBag size={18} />{productId ? 'My Product' : 'Add manually'}</h2>
+    {productId && owner.loading && <p role="status">Loading product…</p>}
+    {owner.error && <p role="alert">{owner.error.message}</p>}
 
-  const handleChange = (oldKey: string, newKey: string, val: string) => {
-    const updated: Record<string, string> = {};
-    for (const [k, v] of Object.entries(specs)) {
-      updated[k === oldKey ? newKey : k] = k === oldKey ? val : v;
-    }
-    onChange(updated);
-  };
+    <label className="block">Title<input value={title} onChange={event => setTitle(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    <label className="block">Product URL
+     <input value={productUrl} onChange={event => setProductUrl(event.target.value)} disabled={saving || Boolean(productId)} placeholder="https://example.com/widget" className="block w-full bg-dashboard-muted rounded-xl p-3" />
+    </label>
+    {productId
+     ? <p className="text-sm text-dashboard-muted">The product URL identifies the product itself and is shared with everyone who recommends it, so it cannot be changed here.</p>
+     : <p className="text-sm text-dashboard-muted">Details are not fetched automatically. Fill in whatever you know; nothing you type is discarded.</p>}
 
-  const handleDelete = (key: string) => {
-    const updated = { ...specs };
-    delete updated[key];
-    onChange(updated);
-  };
+    <label className="block">Brand<input value={brand} onChange={event => setBrand(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    <label className="block">Logo URL<input value={logoUrl} onChange={event => setLogoUrl(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
 
-  return (
-    <div className="space-y-2">
-      {entries.map(([key, val], i) => (
-        <div key={i} className="flex gap-2">
-          <input
-            type="text"
-            value={key}
-            onChange={(e) => handleChange(key, e.target.value, val)}
-            placeholder="Key (e.g. Color)"
-            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50"
-          />
-          <input
-            type="text"
-            value={val}
-            onChange={(e) => handleChange(key, key, e.target.value)}
-            placeholder="Value (e.g. Space Grey)"
-            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50"
-          />
-          <button onClick={() => handleDelete(key)} className="p-2 rounded-lg bg-red-900/20 text-red-400 hover:bg-red-900/40 transition-colors">
-            <Trash2 size={12} />
-          </button>
-        </div>
-      ))}
-      <button type="button" onClick={handleAdd} className="flex items-center gap-2 text-xs text-emerald-400/70 hover:text-emerald-400 transition-colors">
-        <Plus size={12} /> Add spec
-      </button>
-    </div>
-  );
-};
+    <label className="block">Price
+     {/* Text, not number: the amount stays an exact decimal string end to end. */}
+     <input value={price} inputMode="decimal" onChange={event => setPrice(event.target.value)} disabled={saving} placeholder="79.99" className="block w-full bg-dashboard-muted rounded-xl p-3" />
+    </label>
+    <label className="block">Currency
+     <select value={currency} onChange={event => setCurrency(event.target.value as SupportedCurrency | '')} disabled={saving} className="block bg-dashboard-muted p-2">
+      <option value="">Unknown</option>
+      {CURRENCIES.map(code => <option key={code} value={code}>{code}</option>)}
+     </select>
+    </label>
+    {priceProblem && <p role="alert">{priceProblem}</p>}
+    <p className="text-sm text-dashboard-muted">An empty price means unknown, not free. Leave the currency as Unknown rather than guessing one.</p>
 
-const AddProductPage = () => {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const redirectBack = searchParams.get("redirectBack");
-  const { listId, productId } = useParams<{ listId: string; productId: string }>();
-  const { user, token } = useAuthStore();
-  const isEdit = !!productId;
+    <label className="block">Buy / Affiliate URL<input value={buyUrl} onChange={event => setBuyUrl(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    <label className="block">Description<textarea value={description} onChange={event => setDescription(event.target.value)} disabled={saving} rows={3} className="block w-full bg-dashboard-muted rounded-xl p-3 resize-none" /></label>
 
-  const [step, setStep] = useState<"url" | "form">(isEdit ? "form" : "url");
-  const [formData, setFormData] = useState<Partial<RecommendedProduct>>({
-    currency: "USD",
-    images: [],
-    specifications: {},
-    product_category: [] as unknown as RecommendedProduct["product_category"],
-  });
-  const [note, setNote] = useState<any>(null);
-  const [userRating, setUserRating] = useState<number | null>(null);
-  const [isPinned, setIsPinned] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
-  // Scraped images from platform (shown as selectable grid)
-  const [scrapedImages, setScrapedImages] = useState<{ url: string; selected: boolean }[]>([]);
-  // Persistent flag: a scrape auto-filled price/currency the user should verify.
-  // Scraped prices are frequently wrong (installment/EMI widgets, locale-naive
-  // parsing), so we never silently trust them (BUG-6).
-  const [priceUnverified, setPriceUnverified] = useState(false);
-  // Manual file uploads → S3
-  const [existingSnapshots, setExistingSnapshots] = useState<{ id: string; url: string }[]>([]);
-  const [newSnapshots, setNewSnapshots] = useState<File[]>([]);
+    <fieldset><legend>Specifications</legend>
+     {specifications.map((entry, index) => <div key={index} className="flex gap-2">
+      <input aria-label={`Specification key ${index + 1}`} value={entry.key} disabled={saving} onChange={event => setSpecifications(value => value.map((row, at) => at === index ? { ...row, key: event.target.value } : row))} placeholder="Key (e.g. Color)" className="bg-dashboard-muted rounded-xl p-2" />
+      <input aria-label={`Specification value ${index + 1}`} value={entry.value} disabled={saving} onChange={event => setSpecifications(value => value.map((row, at) => at === index ? { ...row, value: event.target.value } : row))} placeholder="Value (e.g. Space Grey)" className="bg-dashboard-muted rounded-xl p-2" />
+      <button aria-label={`Remove specification ${index + 1}`} disabled={saving} onClick={() => setSpecifications(value => value.filter((_row, at) => at !== index))}><X size={16} /></button>
+     </div>)}
+     <button disabled={saving || specifications.length >= 200} onClick={() => setSpecifications(value => [...value, { key: '', value: '' }])}>Add specification</button>
+    </fieldset>
 
-  const { data: listData } = useQuery(PRODUCTS_BY_LIST, {
-    variables: productsByListVars(listId!),
-    skip: !listId,
-  });
+    <label className="block">Your rating
+     <select value={rating ?? ''} onChange={event => setRating(event.target.value ? Number(event.target.value) : null)} disabled={saving} className="block bg-dashboard-muted p-2">
+      <option value="">No rating</option>
+      {Array.from({ length: 10 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}
+     </select>
+    </label>
 
-  const { data: categoryData } = useQuery(PRODUCT_CATEGORIES);
-  const categories: ProductCategory[] = categoryData?.productCategories ?? [];
+    <div><h3>My Thoughts</h3><TiptapEditor value={note} onChange={setNote} placeholder="Share why you recommend this product..." /></div>
 
-  const existingProduct: RecommendedProduct | null = isEdit
-    ? (deduplicateProducts(listData?.productLists?.[0]?.recommended_products ?? []).find(
-        (p) => p.documentId === productId
-      ) as RecommendedProduct | undefined) ?? null
-    : null;
+    <label className="block">Snapshots<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>
+    {pending > 0 && <p role="status">Uploading snapshots…</p>}
+    <div className="flex flex-wrap gap-3">{media.map(item => <div key={item.id}>
+     <img className="w-24 h-24 object-cover rounded" src={item.url} alt="Product snapshot" />
+     <button aria-label="Remove snapshot" disabled={saving} onClick={() => setMedia(value => value.filter(row => row.id !== item.id))}><X size={16} /></button>
+    </div>)}</div>
 
-  useEffect(() => {
-    if (isEdit && existingProduct) {
-      setFormData({
-        product_url: existingProduct.product_url,
-        title: existingProduct.title,
-        brand: existingProduct.brand ?? "",
-        price: existingProduct.price ?? undefined,
-        currency: existingProduct.currency ?? "USD",
-        buy_url: existingProduct.buy_url ?? "",
-        logo_url: existingProduct.logo_url ?? "",
-        description: existingProduct.description ?? "",
-        specifications: existingProduct.specifications ?? {},
-        images: existingProduct.images ?? [],
-      });
-      setNote(existingProduct.user_recommendation_note);
-      setUserRating(existingProduct.user_rating);
-      setIsPinned(existingProduct.is_pinned);
-      setSelectedCategories(existingProduct.product_category ? [existingProduct.product_category.documentId] : []);
-      // Populate existing snapshots from saved images (exclude logo)
-      if (existingProduct.images && existingProduct.images.length > 0) {
-        setExistingSnapshots(
-          existingProduct.images.map((url: string, i: number) => ({ id: `existing_${i}`, url }))
-        );
-      }
-    }
-  }, [isEdit, existingProduct?.documentId]);
-
-  const [createProduct] = useMutation(CREATE_RECOMMENDED_PRODUCT);
-  const [updateProduct] = useMutation(UPDATE_RECOMMENDED_PRODUCT);
-
-  const handleUrlScraped = useCallback((data: Partial<RecommendedProduct>) => {
-    // Separate scraped images from form data — we'll show them as a selectable grid.
-    // Also pull price/currency out so we can validate them instead of trusting
-    // them verbatim (scrapers often grab an installment price or wrong currency).
-    const { images: scrapedImgs, price: scrapedPrice, currency: scrapedCurrency, ...rest } = data as any;
-
-    // Accept a scraped price only if it's a positive finite number.
-    const priceNum = Number(scrapedPrice);
-    const safePrice = Number.isFinite(priceNum) && priceNum > 0 ? priceNum : undefined;
-
-    // Accept a scraped currency only if the <select> can represent it.
-    const safeCurrency =
-      typeof scrapedCurrency === "string" && ALLOWED_CURRENCIES.includes(scrapedCurrency)
-        ? scrapedCurrency
-        : undefined;
-
-    setFormData((prev) => {
-      // Currency: use a supported scraped currency; if the scrape sent an
-      // UNSUPPORTED one, fall back to USD (do NOT keep a stale prior currency —
-      // e.g. EUR then XYZ must become USD); if the scrape sent no currency at
-      // all, keep the user's current choice.
-      let nextCurrency = prev.currency ?? "USD";
-      if (scrapedCurrency !== undefined) {
-        nextCurrency = safeCurrency ?? "USD";
-      }
-      return {
-        ...prev,
-        ...rest,
-        // Preserve the existing image-selection flow.
-        images: [],
-        // Only overwrite the price when the scraped value is usable; otherwise
-        // keep whatever was already there.
-        price: safePrice ?? prev.price,
-        currency: nextCurrency,
-      };
-    });
-
-    // Whenever a scrape supplies ANY price/currency signal, the displayed value
-    // is a scraped one the user should verify. Recompute per scrape but NEVER
-    // clear here: a rescrape that omits price/currency must keep a prior
-    // unverified price flagged (only editing the PRICE field clears it).
-    const scrapeSignalledPriceOrCurrency =
-      scrapedPrice !== undefined || scrapedCurrency !== undefined;
-    setPriceUnverified((prev) => scrapeSignalledPriceOrCurrency || prev);
-
-    if (Array.isArray(scrapedImgs) && scrapedImgs.length > 0) {
-      setScrapedImages(scrapedImgs.map((url: string) => ({ url, selected: true })));
-    } else {
-      setScrapedImages([]);
-    }
-    setStep("form");
-  }, []);
-
-  const uploadUrlToS3 = async (imageUrl: string, label: string, titleForSlug: string, silent: boolean = false): Promise<string> => {
-    try {
-      if (!silent) {
-        toast.loading(`Uploading ${label}...`, { id: `upload-${label}` });
-      }
-      const res = await axios.get(imageUrl, { responseType: "blob" });
-      const blob: Blob = res.data;
-      const fileType = blob.type || "image/jpeg";
-      const ext = fileType.split("/")[1] || "jpg";
-
-      const usernameStr = sanitizeUsername(user?.username || "user");
-      const slugBase = generateSlug(titleForSlug || "product");
-      const randomFileName = generateRandomFileName(`${label}.${ext}`);
-      const fullS3Path = generateProductUploadPath(usernameStr, listId!, slugBase, randomFileName);
-      const directoryPath = fullS3Path.substring(0, fullS3Path.lastIndexOf("/"));
-
-      const fd = new FormData();
-      fd.append("files", new File([blob], randomFileName, { type: fileType }));
-      fd.append("path", directoryPath);
-
-      const uploadRes = await axios.post(
-        `${import.meta.env.VITE_REST_API_URL}/upload`,
-        fd,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        }
-      );
-
-      if (!silent) {
-        toast.success(`${label} uploaded!`, { id: `upload-${label}` });
-      }
-      if (uploadRes.data?.[0]?.url) return uploadRes.data[0].url;
-    } catch (err) {
-      console.error(`S3 upload failed for ${label}:`, err);
-      if (!silent) {
-        toast.error(`Could not upload ${label}, using original URL.`, { id: `upload-${label}` });
-      }
-    }
-    return imageUrl;
-  };
-
-  // Truncate strings to fit Strapi's VARCHAR(255) column limit
-  const trunc = (val: string | undefined | null, max = 255): string | undefined =>
-    val ? val.slice(0, max) : val ?? undefined;
-
-  const handleSave = async () => {
-    if (!formData.title?.trim()) { toast.error("Product title is required."); return; }
-    if (!formData.product_url?.trim()) { toast.error("Product URL is required."); return; }
-
-    setSaving(true);
-    const existingProducts = deduplicateProducts(listData?.productLists?.[0]?.recommended_products ?? []);
-    const displayOrder = isEdit ? existingProduct?.display_order ?? 0 : existingProducts.length;
-
-    try {
-      let finalLogoUrl = formData.logo_url || "";
-      // Start with existing snapshots (already on S3)
-      let uploadedSnapshots: { id: string; url: string }[] = [...existingSnapshots];
-
-      if (!isEdit) {
-        // Upload selected scraped images to S3
-        const selectedScraped = scrapedImages.filter((img) => img.selected);
-        if (selectedScraped.length > 0) {
-          toast.loading("Uploading images...", { id: "upload-scraped" });
-          const scrapedUploads = await Promise.all(
-            selectedScraped.map(async (img, idx) => {
-              try {
-                const s3Url = await uploadUrlToS3(img.url, `scraped_${idx}`, formData.title || "product", true);
-                return { id: `scraped_${Date.now()}_${idx}`, url: s3Url };
-              } catch {
-                return null;
-              }
-            })
-          );
-          const validUploads = scrapedUploads.filter(Boolean) as { id: string; url: string }[];
-          uploadedSnapshots = [...uploadedSnapshots, ...validUploads];
-          toast.success("Images uploaded!", { id: "upload-scraped" });
-        }
-
-        // Upload logo to S3 — if empty, use first uploaded scraped image
-        if (finalLogoUrl && finalLogoUrl.startsWith("http")) {
-          finalLogoUrl = await uploadUrlToS3(finalLogoUrl, "logo", formData.title || "product");
-        } else if (!finalLogoUrl && uploadedSnapshots.length > 0) {
-          // Use the first scraped image's S3 URL as logo
-          finalLogoUrl = uploadedSnapshots[0].url;
-        }
-      }
-
-      // Upload any manually selected snapshot files to S3
-      if (newSnapshots.length > 0) {
-        toast.loading("Uploading snapshots...", { id: "upload-snapshots" });
-        try {
-          const manualUploads = await Promise.all(
-            newSnapshots.map(async (file, idx) => {
-              try {
-                const usernameStr = sanitizeUsername(user?.username || "user");
-                const slugBase = generateSlug(formData.title || "product");
-                const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-                const randomFileName = generateRandomFileName(safeName);
-                const fullS3Path = generateProductUploadPath(usernameStr, listId!, slugBase, randomFileName);
-                const directoryPath = fullS3Path.substring(0, fullS3Path.lastIndexOf("/"));
-
-                const fd = new FormData();
-                fd.append("files", file, randomFileName);
-                fd.append("path", directoryPath);
-
-                const uploadRes = await axios.post(
-                  `${import.meta.env.VITE_REST_API_URL}/upload`,
-                  fd,
-                  {
-                    headers: {
-                      "Content-Type": "multipart/form-data",
-                      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
-                  }
-                );
-                if (uploadRes.data?.[0]?.url) {
-                  return { id: `snap_${Date.now()}_${idx}`, url: uploadRes.data[0].url };
-                }
-                return null;
-              } catch (e) {
-                console.error("Snapshot upload failed:", e);
-                return null;
-              }
-            })
-          );
-          uploadedSnapshots = [...uploadedSnapshots, ...manualUploads.filter(Boolean) as { id: string; url: string }[]];
-          toast.success("Snapshots uploaded!", { id: "upload-snapshots" });
-        } catch {
-          toast.error("Some snapshots failed to upload.", { id: "upload-snapshots" });
-        }
-      }
-
-      const finalImages = uploadedSnapshots.map((s) => s.url);
-
-      if (isEdit && productId) {
-        await updateProduct({
-          variables: {
-            documentId: productId,
-            title: trunc(formData.title),
-            brand: trunc(formData.brand),
-            price: formData.price,
-            currency: trunc(formData.currency),
-            buy_url: trunc(formData.buy_url),
-            logo_url: trunc(formData.logo_url),
-            description: trunc(formData.description),
-            specifications: formData.specifications,
-            images: finalImages,
-            user_recommendation_note: note,
-            user_rating: userRating,
-            is_pinned: isPinned,
-            product_category: selectedCategories[0] || null,
-          },
-          refetchQueries: refetchProductsByList(listId!),
-        });
-        toast.success("Product updated!");
-      } else {
-        await createProduct({
-          variables: {
-            product_url: trunc(formData.product_url),
-            title: trunc(formData.title),
-            brand: trunc(formData.brand),
-            price: formData.price,
-            currency: trunc(formData.currency),
-            buy_url: trunc(formData.buy_url),
-            logo_url: trunc(finalLogoUrl),
-            description: trunc(formData.description),
-            specifications: formData.specifications || {},
-            images: finalImages,
-            user_recommendation_note: note,
-            user_rating: userRating,
-            is_pinned: isPinned,
-            pin_order: isPinned ? existingProducts.filter((p) => p.is_pinned).length : null,
-            display_order: displayOrder,
-            product_list: listId,
-            product_category: selectedCategories[0] || null,
-          },
-          refetchQueries: refetchProductsByList(listId!),
-        });
-        toast.success("Product added!");
-      }
-      if (redirectBack) {
-        navigate(redirectBack, { state: { refetch: true, justAddedRecommendation: true } });
-      } else {
-        navigate(`/recommendations/products/${listId}`, { state: { refetch: true, justAddedRecommendation: true } });
-      }
-    } catch (e: any) {
-      console.error(e);
-      toast.error("Failed to save product.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => step === "form" && !isEdit ? setStep("url") : (redirectBack ? navigate(redirectBack) : navigate(`/recommendations/products/${listId}`))}
-          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <h1 className="text-lg font-bold text-dashboard">
-          {isEdit ? "Edit Product" : step === "url" ? "Add Product via URL" : "Product Details"}
-        </h1>
-      </div>
-
-      {/* Step: URL paste */}
-      {step === "url" && (
-        <div className="space-y-6">
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-900/20 to-teal-900/10 border border-emerald-800/20">
-            <p className="text-sm font-semibold text-white mb-1">Paste a product link</p>
-            <p className="text-xs text-white/40 mb-4">We'll fetch the product name, image, and price automatically. Works best with Amazon, Apple Store, and other major retailers.</p>
-            <UrlScrapePanel onScraped={handleUrlScraped} />
-          </div>
-          <div className="text-center">
-            <button onClick={() => setStep("form")} className="text-xs text-white/30 hover:text-white/60 transition-colors">
-              Skip — enter details manually
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step: Form */}
-      {step === "form" && (
-        <div className="space-y-5">
-          {/* Preview */}
-          <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
-            <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/5 flex-shrink-0">
-              {formData.logo_url ? (
-                <img src={buildImageUrl(formData.logo_url)} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center"><ShoppingBag size={24} className="text-white/20" /></div>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-white truncate">{formData.title || "Product Name"}</p>
-              <p className="text-xs text-white/40 truncate">{formData.brand || "Brand"}</p>
-              {formData.price && <p className="text-sm font-bold text-emerald-400 mt-0.5">{formatPrice(formData.price, formData.currency)}</p>}
-            </div>
-          </div>
-
-          {/* Fields */}
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Product URL *</label>
-              <input type="url" value={formData.product_url || ""} onChange={(e) => setFormData((p) => ({ ...p, product_url: e.target.value }))} placeholder="https://amazon.com/..." className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Title *</label>
-              <input type="text" value={formData.title || ""} onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))} placeholder="Product name" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Brand</label>
-              <input type="text" value={formData.brand || ""} onChange={(e) => setFormData((p) => ({ ...p, brand: e.target.value }))} placeholder="e.g. Keychron, Sony" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50" />
-            </div>
-            <div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Price</label>
-                  <input type="number" step="0.01" min="0" value={formData.price ?? ""} onChange={(e) => { setPriceUnverified(false); setFormData((p) => ({ ...p, price: e.target.value ? parseFloat(e.target.value) : undefined })); }} placeholder="79.99" className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50 ${priceUnverified ? "border-amber-500/60" : "border-white/10"}`} />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Currency</label>
-                  <select value={formData.currency || "USD"} onChange={(e) => setFormData((p) => ({ ...p, currency: e.target.value }))} className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 ${priceUnverified ? "border-amber-500/60" : "border-white/10"}`}>
-                    {ALLOWED_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-              </div>
-              {priceUnverified && (
-                <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-400">
-                  <AlertCircle size={13} className="shrink-0" />
-                  Unverified — please double-check the price and currency from the link.
-                </p>
-              )}
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Buy / Affiliate URL</label>
-              <input type="url" value={formData.buy_url || ""} onChange={(e) => setFormData((p) => ({ ...p, buy_url: e.target.value }))} placeholder="Custom affiliate or buy link..." className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Description</label>
-              <textarea value={formData.description || ""} onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))} placeholder="Brief product description..." rows={3} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50 resize-none" />
-            </div>
-
-            {/* Specs */}
-            <div>
-              <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Specifications</label>
-              <SpecificationsEditor specs={formData.specifications || {}} onChange={(s) => setFormData((p) => ({ ...p, specifications: s }))} />
-            </div>
-
-            {/* Categories */}
-            {categories.length > 0 && (
-              <div>
-                <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Categories</label>
-                <div className="flex flex-wrap gap-2">
-                  {categories.map((cat) => {
-                    const selected = selectedCategories.includes(cat.documentId);
-                    return (
-                      <button
-                        key={cat.documentId}
-                        type="button"
-                        onClick={() => setSelectedCategories(selected ? [] : [cat.documentId])}
-                        className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${selected ? "border-emerald-500/60 bg-emerald-500/20 text-emerald-300" : "border-white/10 bg-white/5 text-white/50 hover:border-white/20"}`}
-                      >
-                        {cat.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Rating — 10 stars matching movie form */}
-            <div>
-              <label className="text-sm font-semibold text-dashboard mb-2 block">
-                Your Rating {userRating ? `(${userRating}/10)` : "(optional)"}
-              </label>
-              <div className="flex gap-1.5 flex-wrap">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setUserRating(userRating === star ? null : star)}
-                    className={`p-1 transition-all hover:scale-110 active:scale-95 ${userRating && userRating >= star ? "text-yellow-400" : "text-white/20 hover:text-white/40"}`}
-                  >
-                    <Star size={24} fill={userRating && userRating >= star ? "currentColor" : "none"} />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Scraped Images — selectable grid */}
-            {scrapedImages.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">Media from Platform</label>
-                  <div className="flex gap-3 text-xs">
-                    <button type="button" onClick={() => setScrapedImages((imgs) => imgs.map((img) => ({ ...img, selected: true })))} className="text-emerald-400/70 hover:text-emerald-400 transition-colors">Select All</button>
-                    <button type="button" onClick={() => setScrapedImages((imgs) => imgs.map((img) => ({ ...img, selected: false })))} className="text-white/30 hover:text-white/50 transition-colors">Deselect All</button>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {scrapedImages.map((img, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setScrapedImages((imgs) => imgs.map((m, idx) => idx === i ? { ...m, selected: !m.selected } : m))}
-                      className={`relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 transition-all ${
-                        img.selected
-                          ? "ring-2 ring-emerald-500 ring-offset-1 ring-offset-black/50 opacity-100"
-                          : "opacity-35 grayscale"
-                      }`}
-                    >
-                      <img src={img.url} alt={`media-${i}`} className="w-full h-full object-cover" />
-                      {img.selected && (
-                        <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-                          <Check size={10} className="text-white" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[11px] text-white/30 mt-2">{scrapedImages.filter((i) => i.selected).length} of {scrapedImages.length} selected</p>
-              </div>
-            )}
-
-            {/* Pin */}
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-              <Star size={16} className={isPinned ? "text-amber-400" : "text-white/30"} fill={isPinned ? "currentColor" : "none"} />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-white">Pin to Top Picks</p>
-                <p className="text-xs text-white/40">Appears in your featured section</p>
-              </div>
-              <button type="button" onClick={() => setIsPinned((p) => !p)} className={`w-10 h-6 rounded-full transition-all ${isPinned ? "bg-amber-500" : "bg-white/10"}`}>
-                <div className={`w-4 h-4 rounded-full bg-white mx-1 transition-transform ${isPinned ? "translate-x-4" : ""}`} />
-              </button>
-            </div>
-
-            {/* Additional Media — manual file uploads */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-semibold text-dashboard">Manual Snapshots from Product (Optional)</label>
-              </div>
-              <div className="flex flex-col gap-3">
-                {/* Existing Snapshots */}
-                {existingSnapshots.length > 0 && (
-                  <div className="flex flex-wrap gap-3 mb-2">
-                    {existingSnapshots.map((snap) => (
-                      <div key={snap.id} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group">
-                        <img
-                          src={snap.url.startsWith("http") ? snap.url : `${import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337"}${snap.url}`}
-                          className="w-full h-full object-cover"
-                          alt="Snapshot"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setExistingSnapshots((prev) => prev.filter((s) => s.id !== snap.id))}
-                          className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* New Snapshots Preview */}
-                {newSnapshots.length > 0 && (
-                  <div className="flex flex-wrap gap-3 mb-2">
-                    {newSnapshots.map((file, i) => (
-                      <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group border border-white/10">
-                        <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt="New Snapshot preview" />
-                        <button
-                          type="button"
-                          onClick={() => setNewSnapshots((prev) => prev.filter((_, idx) => idx !== i))}
-                          className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Upload Button */}
-                <label className="w-full md:w-auto self-start cursor-pointer flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 border-dashed rounded-xl px-5 py-3 text-sm text-white/70 transition-colors">
-                  <Upload size={16} className="text-white/50" />
-                  <span>Upload Images</span>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        setNewSnapshots((prev) => [...prev, ...Array.from(e.target.files!)]);
-                      }
-                    }}
-                  />
-                </label>
-              </div>
-            </div>
-
-            {/* Note */}
-            <div>
-              <label className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 block">Your Note (optional)</label>
-              <TiptapEditor value={note ?? ""} onChange={setNote} placeholder="Share why you recommend this product..." />
-            </div>
-          </div>
-
-          {/* Save */}
-          <div className="flex gap-3 pt-4 border-t border-white/10">
-            <button onClick={() => navigate(`/recommendations/products/${listId}`)} className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-sm text-white/70 font-medium transition-colors">Cancel</button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-sm text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-              {isEdit ? "Save Changes" : "Add to List"}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default AddProductPage;
+    {error && <p role="alert">{error}</p>}
+    <button onClick={save} disabled={saving || pending > 0 || !title.trim() || !productUrl.trim() || Boolean(priceProblem) || Boolean(productId && initialized.current !== scope)} className="bg-dashboard-accent text-white rounded-xl px-5 py-3">
+     {saving && <Loader2 className="inline animate-spin mr-2" size={16} />}Save product
+    </button>
+   </section>
+  </div>
+ </div>;
+}

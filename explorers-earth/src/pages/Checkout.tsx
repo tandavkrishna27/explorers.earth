@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useMutation } from '@apollo/client';
-import { gql } from '@apollo/client';
 import { toast } from 'sonner';
 import { EarthLoader } from '../components/EarthLoader';
 import { Check, ArrowLeft, CreditCard, AlertCircle, Shield, Lock, Zap, Calendar, Users, Sparkles } from 'lucide-react';
@@ -23,33 +21,16 @@ import { createUserSubscriptionPlan, getSongLimits, updateSongLimit as updateSon
 import { MUSIC_SUBSCRIPTION_FLOWS_ENABLED, MusicSubscriptionUnavailable } from '../components/MusicSubscriptionContainment';
 
 
-const UPDATE_USER_IS_SUBSCRIBED_MUTATION = gql`
-  mutation UpdateUsersPermissionsUser($id: ID!, $data: UsersPermissionsUserInput!) {
-    updateUsersPermissionsUser(id: $id, data: $data) {
-      data {
-        documentId
-        is_subscribed
-        razorpay_customer_id
-      }
-    }
-  }
-`;
+const subscriptionWriteUnavailable = () => {
+  // Ticket 7.3 / step 9. The Strapi subscription write is gone and no canonical
+  // subscription state exists to replace it - decision D1 owns whether monetization returns
+  // and in what shape. Until then this throws rather than silently succeeding, so that
+  // flipping MUSIC_SUBSCRIPTION_FLOWS_ENABLED without porting the flow fails loudly instead
+  // of writing to a retired backend.
+  throw new Error('Music subscription changes are unavailable');
+};
 
 
-const CREATE_ACCOUNT_MUTATION = gql`
-  mutation createAccount($data: AccountInput!) {
-    createAccount(data: $data) {
-      documentId
-      Account_Name
-      Account_Type
-      username
-      Bio
-      Addresss
-      mobile_number
-      Primary_Address
-    }
-  }
-`;
 
 interface SubscriptionPlan {
   documentId: string;
@@ -100,8 +81,6 @@ const ActiveCheckout = () => {
   const [mounted, setMounted] = useState(false);
   const [paymentMode, setPaymentMode] = useState<'DEV' | 'PROD'>('DEV');
 
-  const [updateUserIsSubscribed] = useMutation(UPDATE_USER_IS_SUBSCRIBED_MUTATION);
-  const [createAccount] = useMutation(CREATE_ACCOUNT_MUTATION);
 
   useEffect(() => {
     setMounted(true);
@@ -210,50 +189,10 @@ const ActiveCheckout = () => {
         throw new Error('Primary address is required');
       }
 
-      // Format phone number to E.164 format
-      let formattedPhoneNumber = formData.mobile_number;
-      try {
-        const phoneNumber = parsePhoneNumberFromString(formData.mobile_number);
-        if (phoneNumber && phoneNumber.isValid()) {
-          formattedPhoneNumber = phoneNumber.format('E.164');
-        }
-      } catch (error) {
-        console.warn('Could not format phone number:', error);
-      }
-
-      const primaryAddressObject = {
-        address: formData.primaryAddress,
-      };
-      const addressObject = {
-        address: formData.address || "",
-        streetName: formData.streetName || "",
-        city: formData.city || "",
-        state: formData.state || "",
-        country: formData.country || "",
-        postalCode: formData.postalCode || "",
-      };
-
-      const accountResponse = await createAccount({
-        variables: {
-          data: {
-            Account_Name: formData.accountName,
-            Account_Type: formData.accountType,
-            Primary_Address: JSON.stringify(primaryAddressObject),
-            Addresss: JSON.stringify(addressObject),
-            Bio: formData.bio || "",
-            mobile_number: formattedPhoneNumber,
-            username: formData.username || authUser.username || "user",
-            users_permissions_users: authUser.documentId,
-          },
-        },
-      });
-
-      if (!accountResponse.data?.createAccount) {
-        throw new Error("Failed to create account");
-      }
-
-      accountDocId = accountResponse.data.createAccount.documentId;
-      console.log('Account created successfully');
+      // Account creation on the checkout path was a Strapi createAccount. Canonically the
+      // account is provisioned at authentication, so there is nothing for this to create;
+      // the refusal above is the whole behaviour.
+      subscriptionWriteUnavailable();
     }
 
     // Update is_subscribed to true and razorpay_customer_id if available
@@ -265,12 +204,7 @@ const ActiveCheckout = () => {
       userUpdateData.razorpay_customer_id = razorpayCustomerId;
     }
 
-    await updateUserIsSubscribed({
-      variables: {
-        id: authUser.id,
-        data: userUpdateData,
-      },
-    });
+    subscriptionWriteUnavailable();
 
   };
 
@@ -358,12 +292,7 @@ const ActiveCheckout = () => {
         userUpdateData.razorpay_customer_id = razorpayData.razorpay_customer_id;
       }
 
-      await updateUserIsSubscribed({
-        variables: {
-          id: authUser.id,
-          data: userUpdateData,
-        },
-      });
+      subscriptionWriteUnavailable();
     }
 
     // Step 4: Store selected plan in localStorage

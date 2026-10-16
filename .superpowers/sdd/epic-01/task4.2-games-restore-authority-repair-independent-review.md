@@ -1,0 +1,9 @@
+# Games restore authority repair independent review
+
+PASS for frozen three-source repair, pending scoped inventory/cached review and separate follow-up commit. Independent supported Node24.21 exact authority/lane selectors116 PASS, zero failures/skips (d0d9ee). Initial source-read subcommands used duplicate tunes prefix and failed; corrected reads150ede inspected actual source, not counted as verification. No PG/Docker resources executed.
+
+All primary/private raw hashes match: integration d6af56dde8295df6ee87c64e91c9d50f5a7114032a7a617f40f587b05dc89725; helper221728be805834828d319133d149f883eaf02b12dbb78e765d1098e6b309acc5; contract0a94d1c4f9261add7e8f7e9f02f16606337329d442e84888b2383045490cd6a8.
+
+Capture is frozen scalar commit/container/image/full target/digest. Both native calls route through invoke which resolves actual currentHEAD, freshly executes existing full C10 attestation and strict DB validation, compares every scalar to initial capture, then uses returned container ID. Mutable destination URL is separate. Native15s/64MiB bounds, fixed child/attestation errors and no raw causes preserved; current38/populated rows/runtime grants/comment-owned cleanup assertions unchanged. Historical51642 literal absent from integration/helper; fixture ports and synthetic auth origin intentional.
+
+Meaningful tests exercise actual attestation composition, two fresh calls, immutable capture/destination separation, changed second-call authority and internally consistent changed valid image digest rejection before inert child. Existing hostile authority/read phases remain. No global guard or production source change. Synthetic116 does not qualify live native12. Preserve70223 and prior11/1 actual restore failure; separate newHEAD archive/current38/fourlocks/full authority actual12, then canonical82 prerequisite review required before push. No historical rootcause beyond demonstrated fixed restore predicate or provider/fullparity claim.

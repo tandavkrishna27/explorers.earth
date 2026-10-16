@@ -6,6 +6,7 @@ import { deduplicateBooks } from "../../utils/bookHelpers";
 import type { BookList, RecommendedBook } from "../../types";
 import BookCoverCard from "./BookCoverCard";
 import BookDetailModal from "./BookDetailModal";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
@@ -22,7 +23,7 @@ const PublicBookList = () => {
     book: null,
   });
 
-  const page = usePublicProfileDetail(username, "books", listSlug);
+  const page = usePublicProfileDetail(username, "books", listSlug, { pageSize:24 });
   const { data, loading, error, refetch } = page;
 
   const rawList = (Array.isArray(data?.bookLists) ? data.bookLists : []).find(
@@ -49,21 +50,23 @@ const PublicBookList = () => {
   } : undefined);
   const books: RecommendedBook[] = deduplicateBooks(rawList?.recommended_books);
 
+  const analytics = useTrackAnalytics({ ...createAnalyticsOptions.books(rawList?.account?.documentId || '', username, rawList?.documentId), ready: hasUsableData });
   const handleBookClick = useCallback((book: RecommendedBook) => {
     setModalState({ open: true, book });
-  }, []);
+    analytics.trackClick('book-card', { id: book.documentId, listId: book.book_list?.documentId || rawList?.documentId, title: book.title });
+  }, [analytics, rawList?.documentId]);
 
   const pinnedBooks = books.filter((b) => b.is_pinned);
   const restBooks = books.filter((b) => !b.is_pinned);
 
   const pageTitle = rawList ? `${rawList.List_Name} | ${username}'s Book List | explorers` : `Book List | explorers`;
-  const metaDescription = rawList?.list_description 
-    ? rawList.list_description 
-    : rawList 
+  const metaDescription = rawList?.list_description
+    ? rawList.list_description
+    : rawList
       ? `Explore the curated book list "${rawList.List_Name}" containing ${books.length}${page.hasMore ? "+" : ""} books recommended by ${username} on explorers.`
       : "Explore book recommendations on explorers.";
 
-  const seoKeywords = rawList 
+  const seoKeywords = rawList
     ? [`${rawList.List_Name}`, `${username} books`, "book list", "explorers"]
     : ["book list", "explorers"];
 
@@ -162,7 +165,7 @@ const PublicBookList = () => {
         <PublicScrollContinuation {...page} label="books" className="mt-6" />
       </div>
 
-      <BookDetailModal
+      <BookDetailModal onTrackClick={analytics.trackClick}
         book={modalState.book}
         open={modalState.open}
         onClose={() => setModalState({ open: false, book: null })}

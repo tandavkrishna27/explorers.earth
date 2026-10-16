@@ -58,8 +58,8 @@ $authorities = @(
 )
 
 $nodeVersionLines = @(& $nodePath --version 2>$null)
-if ($LASTEXITCODE -ne 0 -or $nodeVersionLines.Count -ne 1 -or [string]$nodeVersionLines[0] -cne "v22.12.0") {
-  [Console]::Error.WriteLine("trusted native Node version must be exactly v22.12.0")
+if ($LASTEXITCODE -ne 0 -or $nodeVersionLines.Count -ne 1 -or [string]$nodeVersionLines[0] -cne "v24.21.0") {
+  [Console]::Error.WriteLine("trusted native Node version must be exactly v24.21.0")
   exit 78
 }
 

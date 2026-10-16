@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { IMAGE_TEST_COMMANDS } from "../../../scripts/music-image-ci-tests";
 
 const repositoryRoot = resolve(import.meta.dirname, "../../../..");
 const read = (path: string) => readFileSync(resolve(repositoryRoot, path), "utf8");
@@ -148,8 +149,18 @@ describe("Music reconciliation automation contract", () => {
     const testStep = tunes.jobs["build-test-scan-push"].steps.find((step: any) => step.name === "Test Tunes");
     expect(testStep.env.MUSIC_C8_POSTGRES_TEST).toBe("1");
     expect(testStep.env.STRAPI_ANALYTICS_ACCESS_TOKEN).toBe("fixture-analytics-token");
-    expect(testStep.run).toContain("npm run test:music-c8:coverage");
-    expect(testStep.run).toContain("npm run test:music-c8:repository-coverage");
+    expect(testStep.run.trim().split("\n")).toEqual([
+      "npm ci --legacy-peer-deps",
+      "node node_modules/tsx/dist/cli.mjs scripts/music-image-ci-tests.ts",
+    ]);
+    expect(IMAGE_TEST_COMMANDS).toEqual([
+      ["test", "--", "--maxWorkers=2"],
+      ["run", "test:integration"],
+      ["run", "test:music-c8:coverage"],
+      ["run", "test:music-c8:repository-coverage"],
+      ["run", "music:types:scoped"],
+      ["run", "music:types:baseline"],
+    ]);
 
     const c0 = parseYaml(read(".github/workflows/music-c0-contracts.yml"));
     expect(c0.on.pull_request.paths).toContain("package.json");
@@ -159,15 +170,18 @@ describe("Music reconciliation automation contract", () => {
       "npm ci --prefix tunes",
     ]));
     expect(c0.jobs.contracts.steps.findIndex((step: any) => step.run === "npm ci"))
-      .toBeLessThan(c0.jobs.contracts.steps.findIndex((step: any) => step.name === "Prove public JSON command on Node 22.12"));
-    expect(c0.jobs.contracts.steps.find((step: any) => step.name === "Prove public JSON command on Node 22.12").run)
+      .toBeLessThan(c0.jobs.contracts.steps.findIndex((step: any) => step.name === "Prove public JSON command on Node 24.21.0"));
+    expect(c0.jobs.contracts.steps.find((step: any) => step.name === "Prove public JSON command on Node 24.21.0").run)
       .toBe("node node_modules/tsx/dist/cli.mjs tunes/scripts/music-cli.ts fixtures:capture --format json");
     expect(c0.jobs.contracts.steps.find((step: any) => step.run?.includes("docker compose")).run)
       .toContain("--env-file .env.music.test.example");
-    const windowsContracts = c0.jobs.contracts.steps.find((step: any) => step.if === "runner.os == 'Windows'");
+    const windowsContracts = c0.jobs.contracts.steps.find((step: any) => step.if === "runner.os == 'Windows'" && step.run?.includes("npm test --prefix tunes"));
     expect(windowsContracts.run).toContain("music-reconciliation-workflow.test.ts");
     expect(windowsContracts.run).toContain("music-documentation-contract.test.ts");
     expect(windowsContracts.run).toContain("music-openapi-contract.test.ts");
+    for (const contract of ['music-local-state.test.ts', 'music-cli-contract-authority.test.ts', 'music-owned-browser-profile.test.ts', 'music-fixture-services.test.ts']) {
+      expect(windowsContracts.run).toContain(contract);
+    }
     expect(tunes.on.pull_request.paths).toEqual(expect.arrayContaining([".env.music.example", ".env.music.test.example"]));
     expect(tunes.on.push.paths).toEqual(expect.arrayContaining([".env.music.example", ".env.music.test.example"]));
   });

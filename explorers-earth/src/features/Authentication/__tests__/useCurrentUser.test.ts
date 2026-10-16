@@ -1,145 +1,50 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useQuery } from '@apollo/client';
 import useAuthStore from '../../../store/store';
+import { useCanonicalAccount } from '../../Profile/api/useCanonicalAccount';
 import { useCurrentUser, useUserForOnboarding } from '../hooks/useCurrentUser';
 
-vi.mock('@apollo/client', () => ({
-  useQuery: vi.fn(),
-  gql: (strings: TemplateStringsArray, ...values: any[]) => String.raw({ raw: strings }, ...values),
-}));
+vi.mock('../../../store/store', () => ({ default: vi.fn() }));
+vi.mock('../../Profile/api/useCanonicalAccount', () => ({ useCanonicalAccount: vi.fn() }));
+const account = { id: '00000000-0000-4000-8000-000000000001', handle: 'john', onboardingStatus: 'complete',
+  displayName: 'John', accountType: 'Creator', bioPlain: null, additionalAddresses: [], primaryAddress: null,
+  publicAddress: null, socialLinks: [], themeSettings: {}, profileImage: undefined, backgroundImage: undefined,
+  mobileNumber: null, mobileNumberVisible: false, publicProfile: true, autoPinning: true, revision: 1, feedItems: [] };
 
-vi.mock('../../../store/store', () => ({
-  default: vi.fn(),
-}));
-
-describe('useCurrentUser hook', () => {
-  const mockRefetch = vi.fn();
-
+describe('useCurrentUser canonical account', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector) =>
+      selector({ user: { id: 'auth-user', username: 'stale-google-name', email: 'j@example.invalid' } }));
+    (useCanonicalAccount as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: account, isPending: false, isFetching: false, error: null, refetch: vi.fn(),
+    });
   });
 
-  it('skips query if not authenticated', () => {
-    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      user: null,
-      isAuthenticated: false,
-      token: null,
-    });
-    
-    (useQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      data: null,
-      loading: false,
-      error: null,
-      refetch: mockRefetch,
-    });
-
-    renderHook(() => useCurrentUser());
-
-    expect(useQuery).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        skip: true,
-      })
-    );
-  });
-
-  it('skips query if skipQuery option is true', () => {
-    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      user: { documentId: 'doc_1', username: 'john' },
-      isAuthenticated: true,
-      token: 'token_1',
-    });
-    
-    (useQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      data: null,
-      loading: false,
-      error: null,
-      refetch: mockRefetch,
-    });
-
-    renderHook(() => useCurrentUser({ skipQuery: true }));
-
-    expect(useQuery).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        skip: true,
-      })
-    );
-  });
-
-  it('runs query if authenticated and skipQuery is false', () => {
-    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      user: { documentId: 'doc_1', username: 'john' },
-      isAuthenticated: true,
-      token: 'token_1',
-    });
-    
-    (useQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      data: { usersPermissionsUser: { username: 'john' } },
-      loading: false,
-      error: null,
-      refetch: mockRefetch,
-    });
-
+  it('uses the canonical handle and account instead of the Google display name', () => {
     const { result } = renderHook(() => useCurrentUser());
-
-    expect(useQuery).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        skip: false,
-        variables: { documentId: 'doc_1' }
-      })
-    );
-
-    expect(result.current.user).toEqual({ username: 'john' });
     expect(result.current.username).toBe('john');
-    expect(result.current.isUsernameSynced).toBe(true);
-    expect(result.current.isReady).toBeTruthy();
-    expect(result.current.isEmpty).toBeFalsy();
+    expect(result.current.user?.accounts[0].documentId).toBe(account.id);
+    expect(result.current.isReady).toBe(true);
   });
 
-  it('detects desynced username', () => {
-    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      user: { documentId: 'doc_1', username: 'old_john' },
-      isAuthenticated: true,
-      token: 'token_1',
-    });
-    
-    (useQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      data: { usersPermissionsUser: { username: 'new_john' } },
-      loading: false,
-      error: null,
-      refetch: mockRefetch,
-    });
+  it('passes skip through to the account query', () => {
+    renderHook(() => useCurrentUser({ skipQuery: true }));
+    expect(useCanonicalAccount).toHaveBeenCalledWith({ skip: true });
+  });
 
+  it('uses the same canonical account for onboarding', () => {
+    const { result } = renderHook(() => useUserForOnboarding());
+    expect(result.current.user?.onboardingStatus).toBe('complete');
+    expect(useCanonicalAccount).toHaveBeenCalledWith({ skip: false });
+  });
+
+  it('reports unavailable data without guessing incomplete onboarding', () => {
+    (useCanonicalAccount as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: undefined, isPending: false, isFetching: false, error: Error('offline'), refetch: vi.fn(),
+    });
     const { result } = renderHook(() => useCurrentUser());
-
-    expect(result.current.username).toBe('new_john'); // falls back to fetched data
-    expect(result.current.isUsernameSynced).toBe(false);
-  });
-
-  it('uses onboarding query when onboardingOnly is true', () => {
-    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      user: { documentId: 'doc_1', username: 'john' },
-      isAuthenticated: true,
-      token: 'token_1',
-    });
-    
-    (useQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      data: { usersPermissionsUser: { username: 'john', email: 'j@j.com' } },
-      loading: false,
-      error: null,
-      refetch: mockRefetch,
-    });
-
-    renderHook(() => useUserForOnboarding());
-
-    expect(useQuery).toHaveBeenCalledWith(
-      expect.anything(), // GET_USER_FOR_ONBOARDING
-      expect.objectContaining({
-        skip: false,
-      })
-    );
+    expect(result.current.isReady).toBe(false);
+    expect(result.current.error).toBeTruthy();
   });
 });

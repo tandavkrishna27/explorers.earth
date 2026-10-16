@@ -1,0 +1,2 @@
+{"timeUtc":"2026-10-09T18:56:42.6147663+00:00","commit":"42a5524e80071742745b3195077282a5f6305d37","containerIdPrefix":"bb5bdbcd0327","running":true,"oomKilled":false,"capacityKiB":2097152,"usedKiB":457904,"availableKiB":1639248}
+{"timeUtc":"2026-10-09T18:57:17.2442300+00:00","commit":"42a5524e80071742745b3195077282a5f6305d37","containerIdPrefix":"bb5bdbcd0327","running":true,"oomKilled":false,"capacityKiB":2097152,"usedKiB":270136,"availableKiB":1827016}

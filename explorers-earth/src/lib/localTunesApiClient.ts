@@ -34,8 +34,15 @@ export class MusicClientError extends Error {
 
 export interface LocalTunesApiClientDependencies {
   baseUrl: string;
+  /** Music-origin transport. Rejects a relative path, so the canonical route cannot use it. */
   fetchImpl?: typeof fetch;
-  getStrapiBearer: () => Promise<string | undefined>;
+  /**
+   * Same-origin transport for the canonical session route (ADR-006). Separate from
+   * fetchImpl because the two have different origins and different authority: this one
+   * carries the session cookie and no bearer. Defaults to the ambient fetch, resolved
+   * at call time so a test may stub the global.
+   */
+  sessionFetchImpl?: typeof fetch;
   now?: () => number;
   refreshWindowMs?: number;
   delay?: (milliseconds: number, signal: AbortSignal) => Promise<void>;
@@ -50,7 +57,10 @@ export interface LocalTunesApiClient {
 }
 
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/;
-const STRAPI_PROOF_PATTERN = /^[A-Za-z0-9._~-]{16,4096}$/;
+// ADR-006: Music owner provisioning is reached through this canonical route, which
+// consumes requireActor and the canonical session cookie. There is no Strapi proof,
+// no bearer, and no client-supplied account identifier - the subject is the Actor.
+const CANONICAL_MUSIC_ENSURE = "/api/explorers/v1/music/identity/ensure";
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 type MusicIdentityErrorAction = "authenticate" | "complete_onboarding" | "contact_support" | "retry" | "none";
 interface MusicIdentityErrorPolicy {
@@ -90,6 +100,8 @@ export const MUSIC_IDENTITY_RELIABILITY_CONTRACT = Object.freeze({
 
 export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDependencies): LocalTunesApiClient {
   const fetchImpl = dependencies.fetchImpl ?? fetch;
+  // Late-bound so a stubbed global fetch is honoured per call.
+  const sessionFetch: typeof fetch = (input, init) => (dependencies.sessionFetchImpl ?? fetch)(input, init);
   const now = dependencies.now ?? Date.now;
   const refreshWindowMs = dependencies.refreshWindowMs ?? MUSIC_IDENTITY_RELIABILITY_CONTRACT.refreshWindowMs;
   const delay = dependencies.delay ?? ((milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
@@ -124,12 +136,11 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
     const deadline = setTimeout(() => controller.abort(DEADLINE_ABORT), MUSIC_IDENTITY_RELIABILITY_CONTRACT.deadlineMs);
     const flight = (async () => {
       try {
-        const proof = await abortable(Promise.resolve(dependencies.getStrapiBearer()), controller.signal);
-        if (!proof || !STRAPI_PROOF_PATTERN.test(proof)) throw new Error("proof unavailable");
         for (let attempt = 1; ; attempt += 1) {
-          const response = await abortable(Promise.resolve(fetchImpl(`${baseUrl}/api/music/identity/ensure`, {
+          const response = await abortable(Promise.resolve(sessionFetch(CANONICAL_MUSIC_ENSURE, {
             method: "POST",
-            headers: { Authorization: `Bearer ${proof}` },
+            credentials: "include",
+            cache: "no-store",
             signal: controller.signal,
           })), controller.signal);
           if (response.status !== 200) {
@@ -261,15 +272,15 @@ export function createLocalTunesApiClient(dependencies: LocalTunesApiClientDepen
 async function containedEnsureError(response: Response, signal: AbortSignal): Promise<MusicClientError> {
   const requestIdHeader = response.headers.get("x-request-id");
   const requestId = requestIdHeader && REQUEST_ID_PATTERN.test(requestIdHeader) ? requestIdHeader : undefined;
-  const fallback = () => new MusicClientError(
-    response.status === 401 ? "AUTH_REQUIRED" : response.status === 400 ? "REQUEST_INVALID" : "AUTH_UNAVAILABLE",
-    response.status,
-    response.status === 401 ? "Music authorization is required." : "Music authorization is temporarily unavailable.",
-    undefined,
-    undefined,
-    false,
-    requestId,
-  );
+  const refused = response.status === 401 || response.status === 403 || response.status === 404;
+  const invalid = response.status === 400 || response.status === 409;
+  const code: MusicClientErrorCode = refused ? "AUTH_REQUIRED" : invalid ? "REQUEST_INVALID" : "AUTH_UNAVAILABLE";
+  const message = refused
+    ? "Music authorization is required."
+    : invalid
+      ? "Music owner provisioning was refused."
+      : "Music authorization is temporarily unavailable.";
+  const fallback = () => new MusicClientError(code, response.status, message, undefined, undefined, false, requestId);
   try {
     const body = await abortable(Promise.resolve(response.json()), signal) as unknown;
     const validated = validateEnsureErrorEnvelope(body, response.status, requestId);
@@ -279,12 +290,14 @@ async function containedEnsureError(response: Response, signal: AbortSignal): Pr
     if (retryAfterHeader && !/^[1-9][0-9]*$/.test(retryAfterHeader)) return fallback();
     const retryAfterSeconds = retryAfterHeader ? Number(retryAfterHeader) : undefined;
     return new MusicClientError(
-      response.status === 401 ? "AUTH_REQUIRED" : "AUTH_UNAVAILABLE",
+      code,
       response.status,
-      response.status === 401 ? "Music authorization is required." : "Music authorization is temporarily unavailable.",
+      message,
       retryAfterSeconds,
       validated.code,
-      validated.retryable,
+      // A refusal or a conflict is settled: the server does not get to ask for a retry
+      // of a decision about who the owner is.
+      refused || invalid ? false : validated.retryable,
       requestId,
     );
   } catch (cause) {

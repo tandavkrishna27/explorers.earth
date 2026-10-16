@@ -1,9 +1,8 @@
-import { gql, useQuery } from "@apollo/client";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 import MusicDashboard from "../components/MusicDashboard";
 import SEO from "../components/SEO";
-import { selectExplorerAccountState, type ExplorerAccountCandidate } from "../features/music/musicIdentityCoordinator";
+import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 import {
   selectMusicSurfaceState,
   type MusicEntitlement,
@@ -25,22 +24,6 @@ export function resolveOwnerWorkspaceExposure(exposed: boolean, localPreview: bo
   return localPreview || exposed;
 }
 
-const musicPageEligibilityQuery = gql`
-  query MusicPageEligibility($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      documentId
-      provider
-      confirmed
-      accounts {
-        documentId
-        Account_Name
-        Account_Type
-        mobile_number
-        public_music
-      }
-    }
-  }
-`;
 
 const actionLabels = {
   check_status: "Check status",
@@ -72,23 +55,30 @@ function entitlementFrom(data: TunesDashboardData): MusicEntitlement {
   return data.entitlement.state;
 }
 
+/**
+ * Ticket 6.x / step 8. Whether this Explorer has an account Music can be set up for.
+ *
+ * This used to read `usersPermissionsUser` from Strapi and infer the answer from three
+ * fields being non-empty - Account_Name, Account_Type, mobile_number - plus `provider` and
+ * `confirmed`. Canonically all five of those are one column: `onboarding_status`. The
+ * account itself records whether onboarding finished, so there is nothing to infer.
+ *
+ * The provider and confirmation checks are gone for a different reason: the canonical
+ * profile read only answers for an authenticated Google user at all - `canonicalApp`
+ * refuses with 403 unless an `auth_account` row with `provider_id='google'` exists - so an
+ * unverified or non-Google identity never produces an account here to judge.
+ *
+ * "unknown" is kept and still distinct from "incomplete". It is the answer while the read
+ * is in flight or has failed, and conflating it with "incomplete" would tell a creator with
+ * a finished account to go and finish it every time the network blinked.
+ */
 export function onboardingFromEligibility(eligibility: {
-  loading: boolean;
+  isPending: boolean;
   error?: unknown;
-  data?: { usersPermissionsUser?: {
-    provider?: string | null;
-    confirmed?: boolean | null;
-    accounts?: ExplorerAccountCandidate[] | null;
-  } | null } | null;
+  data?: { onboardingStatus?: string | null } | null;
 }): MusicOnboarding {
-  if (eligibility.loading || eligibility.error || !eligibility.data?.usersPermissionsUser
-      || !Array.isArray(eligibility.data.usersPermissionsUser.accounts)) return "unknown";
-  if (eligibility.data.usersPermissionsUser.confirmed === false
-      && eligibility.data.usersPermissionsUser.provider !== "google") return "incomplete";
-  const selection = selectExplorerAccountState(eligibility.data.usersPermissionsUser.accounts, { authoritative: true });
-  if (selection.kind === "selected") return "complete";
-  if (selection.kind === "incomplete") return "incomplete";
-  return "unknown";
+  if (eligibility.isPending || eligibility.error || !eligibility.data) return "unknown";
+  return eligibility.data.onboardingStatus === "complete" ? "complete" : "incomplete";
 }
 
 export function MusicPageContent({
@@ -178,21 +168,20 @@ export function MusicPageContent({
 }
 
 const MusicPage = () => {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, accountId } = useAuthStore();
   const navigate = useNavigate();
   const statusRef = useRef<HTMLDivElement>(null);
-  const eligibility = useQuery(musicPageEligibilityQuery, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-    fetchPolicy: "cache-and-network",
-    errorPolicy: "all",
-  });
-  const selection = selectExplorerAccountState(eligibility.data?.usersPermissionsUser?.accounts, {
-    authoritative: !eligibility.loading && !eligibility.error && Array.isArray(eligibility.data?.usersPermissionsUser?.accounts),
-  });
-  const scope = selection.kind === "selected" && user?.documentId ? {
+  const eligibility = useCanonicalAccount();
+  const onboardingComplete = onboardingFromEligibility(eligibility) === "complete";
+  // The owner scope must be keyed on the canonical account id. AuthSyncManager
+  // reconciles Music provisioning with that id, and musicIdentityCoordinator.isReadyFor()
+  // compares `userDocumentId:accountDocumentId` against the key the reconcile completed
+  // with - so a Strapi document id here could never match, which left every Music
+  // publication control disabled. The eligibility read decides *whether* this Explorer has
+  // a usable account; the store supplies its id.
+  const scope = onboardingComplete && user?.documentId && accountId ? {
     userDocumentId: user.documentId,
-    accountDocumentId: selection.account.documentId,
+    accountDocumentId: accountId,
   } : undefined;
   const data = useTunesDashboard(scope);
   const [ownerWorkspace, setOwnerWorkspace] = useState(false);

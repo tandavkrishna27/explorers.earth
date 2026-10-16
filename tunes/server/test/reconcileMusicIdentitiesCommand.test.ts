@@ -297,7 +297,9 @@ describe("music reconciliation checkpoints", () => {
     }
   });
 
-  it("revalidates pathname identity after descriptor read and atomic write replacement", async () => {
+  // Harness budget, not a product relaxation. Real filesystem + Windows ACL work: 3312ms measured
+  // in isolation, over the 5000ms default under full-sweep load. 30000ms keeps a genuine hang failing.
+  it("revalidates pathname identity after descriptor read and atomic write replacement", { timeout: 30_000 }, async () => {
     const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-checkpoint-post-race-"));
     const readPath = join(directory, "read.json");
     const readReplacement = join(directory, "read-replacement.json");
@@ -512,7 +514,7 @@ describe("music reconciliation checkpoints", () => {
       await writeMusicReconciliationCheckpoint(path, checkpoint());
       execFileSync("icacls.exe", [directory, "/grant", "*S-1-1-0:(OI)(CI)(IO)(W)"], { windowsHide: true });
       const output = execFileSync("powershell.exe", [
-        "-NoProfile", "-NonInteractive", "-File",
+        "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File",
         join(import.meta.dirname, "../../scripts/windows-write-through.ps1"),
         "inspect-security", directory,
       ], { encoding: "utf8", windowsHide: true });
@@ -552,7 +554,9 @@ describe("music reconciliation checkpoints", () => {
     expect(() => assertMusicReconciliationResume(checkpoint(), context, "snapshot-2")).toThrow(/source snapshot/i);
   });
 
-  it("atomically marks only an in-progress checkpoint interrupted", async () => {
+  // Harness budget, not a product relaxation. 4007ms measured in isolation, over the 5000ms default
+  // under full-sweep load. 30000ms keeps a genuine hang failing.
+  it("atomically marks only an in-progress checkpoint interrupted", { timeout: 30_000 }, async () => {
     const directory = await mkdtemp(join(tmpdir(), "music-reconciliation-interrupt-"));
     const path = join(directory, "checkpoint.json");
     await writeMusicReconciliationCheckpoint(path, checkpoint({ state: "scanning", review: undefined, report: undefined }));
@@ -646,7 +650,9 @@ describe("reconcileMusicIdentities", () => {
     expect(saved.report?.scanNonce).toBe(observedNonce);
   });
 
-  it("persists scanning and reviewed checkpoints around a default dry-run", async () => {
+  // Harness budget, not a product relaxation. 3211ms measured in isolation, over the 5000ms default
+  // under full-sweep load. 30000ms keeps a genuine hang failing.
+  it("persists scanning and reviewed checkpoints around a default dry-run", { timeout: 30_000 }, async () => {
     const directory = await mkdtemp(join(tmpdir(), "music-reconcile-command-"));
     const path = join(directory, "checkpoint.json");
     const report = checkpoint().report!;
@@ -671,7 +677,10 @@ describe("reconcileMusicIdentities", () => {
     expect(await readMusicReconciliationCheckpoint(path)).toMatchObject({ state: "reviewed", source, review: { source } });
   });
 
-  it("requires a reviewed resume artifact for apply and pins its source", async () => {
+  // Harness budget, not a product relaxation. 4363ms measured in isolation (the worst case in this
+  // file without an explicit budget), over the 5000ms default under full-sweep load. 30000ms is ~6.9x
+  // that measurement and keeps a genuine hang failing.
+  it("requires a reviewed resume artifact for apply and pins its source", { timeout: 30_000 }, async () => {
     const directory = await mkdtemp(join(tmpdir(), "music-reconcile-apply-"));
     const resumePath = join(directory, "review.json");
     const checkpointPath = join(directory, "apply.json");

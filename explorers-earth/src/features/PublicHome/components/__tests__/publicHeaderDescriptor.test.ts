@@ -45,6 +45,7 @@ describe("getPublicHeaderFallback", () => {
       text: `Check out ${title}!`,
       url: `https://explorers.earth${expectedPath}?utm_campaign=Launch+Day`,
       analyticsContext,
+      ...(analyticsContext === 'books-header' ? { analyticsReady: false } : {}),
     });
     expect(JSON.parse(JSON.stringify(descriptor))).toEqual(descriptor);
   });

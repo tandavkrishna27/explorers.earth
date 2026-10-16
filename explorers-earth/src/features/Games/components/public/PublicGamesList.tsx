@@ -25,6 +25,8 @@ const PublicGamesList = () => {
     game: null,
   });
 
+  useEffect(() => setModalState({ open: false, game: null }), [username, listSlug]);
+
   const page = usePublicProfileDetail(username, "games", listSlug);
   const { data, loading, error, refetch } = page;
 

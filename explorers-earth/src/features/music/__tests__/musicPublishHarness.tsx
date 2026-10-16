@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { canonicalAccountFixture } from '../../../test/canonicalAccountFixture';
 import { vi } from 'vitest';
 import { surfaceHarness, loginSurface } from '../../navigation/__tests__/surfaceHarness';
 import { musicApi, musicIdentityCoordinator } from '../musicApi';
@@ -6,7 +7,7 @@ import { musicWorkspaceClient } from '../../../hooks/useTunesDashboard';
 import { publicMusicClient, PublicMusicError } from '../publicMusicClient';
 import type { MusicPublicationMode } from '../musicWorkspaceClient';
 
-export async function readyMusic(userDocumentId = 'u1', accountDocumentId = 'a1') {
+export async function readyMusic(userDocumentId = 'u1', accountDocumentId = canonicalAccountFixture().id) {
   vi.spyOn(musicApi, 'ensureIdentity').mockResolvedValue({} as never);
   await musicIdentityCoordinator.reconcile({ provider: 'google', authenticated: true, verified: true, userDocumentId, account: { documentId: accountDocumentId } });
 }

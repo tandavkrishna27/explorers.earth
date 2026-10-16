@@ -9,9 +9,9 @@ vi.mock("react-router-dom", async (importOriginal) => {
   return { ...actual, useNavigate: () => navigateSpy };
 });
 
-const createFn = vi.fn(async () => ({
-  data: { createGameList: { documentId: "game-1" } },
-}));
+const createFn = vi.hoisted(() => vi.fn(async () => ({ id: 'game-1' })));
+vi.mock('../../../api/gamesClient', () => ({ GamesClient: { createCollection: createFn } }));
+vi.mock('../../../hooks/useGamesOwner', () => ({ useGamesOwner: () => ({ data: { gameLists: [] }, loading: false, refetch: vi.fn() }), invalidateGames: vi.fn() }));
 import GamesHome from "../GamesHome";
 
 describe("GamesHome create-list navigation (BUG-3)", () => {
@@ -23,7 +23,7 @@ describe("GamesHome create-list navigation (BUG-3)", () => {
 
   it("navigates into the newly created list with justCreatedList state", async () => {
     const h = surfaceHarness(<GamesHome />, { initial: { documentId: "acc-1", public_games: "No" },
-      respond: name => name === "CreateGameList" ? createFn().then(result => result.data) : undefined,
+      respond: name => name === "CreateGameList" ? Promise.resolve({}) : undefined,
     });
     await h.ready();
 

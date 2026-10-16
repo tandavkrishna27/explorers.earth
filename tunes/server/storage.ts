@@ -46,6 +46,8 @@ import {
   systemSettings,
   type SystemSetting,
   type InsertSystemSetting,
+  emailSuppressions,
+  normalizeSuppressionEmail,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray, count, gte, lt, gt, lte, or, like, isNotNull, isNull } from "drizzle-orm";
@@ -188,6 +190,9 @@ export interface IStorage {
   getEmailTemplateByName(name: string): Promise<EmailTemplate | undefined>;
   updateEmailTemplate(id: number, updates: Partial<EmailTemplate>): Promise<EmailTemplate>;
   deleteEmailTemplate(id: number): Promise<void>;
+
+  // Email suppression (decision D2). Honoured before every send.
+  isEmailSuppressed(email: string): Promise<boolean>;
 
   // Email logs methods
   createEmailLog(log: InsertEmailLog): Promise<EmailLog>;
@@ -1958,6 +1963,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Email logs methods
+  /**
+   * Whether this address has asked not to be contacted. Decision D2, 2026-10-08.
+   *
+   * Deliberately throws rather than returning false when the query itself fails. The caller
+   * is deciding whether to send, and "the database was unreachable" is not evidence that
+   * somebody consented - failing closed is the only answer that cannot violate an opt-out.
+   */
+  async isEmailSuppressed(email: string): Promise<boolean> {
+    const normalized = normalizeSuppressionEmail(email);
+    if (!normalized) return false;
+    const [row] = await db.select({ id: emailSuppressions.id })
+      .from(emailSuppressions)
+      .where(eq(emailSuppressions.email, normalized))
+      .limit(1);
+    return row !== undefined;
+  }
+
   async createEmailLog(log: InsertEmailLog): Promise<EmailLog> {
     console.log('Creating email log:', { recipient: log.recipient, subject: log.subject });
     try {

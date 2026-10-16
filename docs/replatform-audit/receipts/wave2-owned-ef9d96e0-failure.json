@@ -1,0 +1,17 @@
+{
+  "sourceCommit": "ef9d96e0b47dc6d8d049a6c3bf14cae94c5dc559",
+  "outcome": "failed",
+  "files": { "total": 22, "passed": 21, "failed": 1 },
+  "tests": { "total": 249, "passed": 243, "failed": 6, "skipped": 0 },
+  "coverTests": { "total": 7, "passed": 1, "failed": 6 },
+  "priorRegisteredTestsPassed": 242,
+  "legacySnapshotFailures": 0,
+  "firstCoverFailure": "404 refusal carried an Express weak JSON-error validator; test incorrectly required no ETag header",
+  "nativeExit": 1,
+  "ownedUatContainersAbsentAfterExecution": true,
+  "sourceCleanAfterExecution": true,
+  "passingFinalizedProducerEnvelope": false,
+  "databaseDropPositivelyProven": false,
+  "releaseEligible": false,
+  "evidenceLimits": "Observed counts are from the sanitized child log. Six cases stopped at the refusal-header assertion, so later phases are not established. Snapshot cases passed, but the whole owned producer failed."
+}

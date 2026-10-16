@@ -6,6 +6,8 @@ Strapi is the authority for the authenticated Explorer and the selected Account.
 
 The machine-readable authorities are the generated [runtime surface inventory](music-runtime-surface-inventory.json), the [authorization matrix](music-authorization-matrix.json), the runtime-table manifest in `fixtures/db/music-runtime-table-manifest.json`, and the OpenAPI document served by Tunes at `GET /api-docs`. This document explains the model; it does not override those artifacts.
 
+Canonical Explorer authentication and recovery-start rows in the matrix carry `flowAccess` with `grantsApplicationAuthority: false`. Suspended and pending-deletion identities may enter those provider/recovery flows; that access does not authorize `/api/explorers/v1/me`, Music owner/content routes, or retired legacy auth paths. The recovery intent is signed and short-lived; OAuth state and the consumed recovery proof provide the one-use boundaries.
+
 ## Five independent axes
 
 | Axis | Meaning | Authority | What it must not imply |
@@ -52,6 +54,6 @@ Guest Socket.IO and REST operations have an exact allowlist. Guests may read all
 
 ## Runtime facts and debt
 
-The supported runtime is Node 22.12 or newer. Both clients run React 18.3. Tunes runs Express 5.2 while still carrying `@types/express` 4.17 definitions; that type-definition mismatch is known debt, not evidence that the runtime is Express 4. New Music modules must remain clean under the scoped type gate and the normalized repository diagnostic baseline.
+The supported runtime is Node 24.21.0 (24.x). Both clients run React 18.3. Tunes runs Express 5.2 while still carrying `@types/express` 4.17 definitions; that type-definition mismatch is known debt, not evidence that the runtime is Express 4. New Music modules must remain clean under the scoped type gate and the normalized repository diagnostic baseline.
 
 The standalone native-session login/logout/check/CSRF endpoints are an explicit exception for a separately opened Tunes experience. Secure cookies, origin and CSRF validation, rotation on login, and logout invalidation apply. Native session state is never an embedded Explorer fallback and never substitutes for the Music credential on canonical owner routes.

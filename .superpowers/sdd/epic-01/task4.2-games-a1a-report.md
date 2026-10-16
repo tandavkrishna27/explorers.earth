@@ -1,0 +1,33 @@
+# Games4.2 A1a pure-contract report
+
+Review-ready, NOT committed or pushed. Base fa82fb54d94f36b1b31fc9217c838d2f8c6d4f95. Only approved seven new source/test/fixture paths plus owned plan/report changed; existing release parser, dependencies, schema/migrations, routes/registration, frontend, CI, provider credentials and media are untouched.
+
+Delivered: strict typed IGDB-selected fact/query profile; fixed server query construction with escaped literal and no caller syntax authority; raw total_rating/total_rating_count0/null and explicit display conversion; UTC epoch0; full provider names/company/screenshot order; current date_format/release_region provenance with bounded legacy compatibility and contradiction denial; source identity mismatch denial and independent mapped results. Pure byte parser checks64KiB before fatal UTF8 decode, unchanged backend strict JSON64KiB/depth32, then independent Gamesdepth8/node20000 traversal before Zod projection. Fixed GameContractFailure message/code no raw cause/payload. This is NOT4MiB/runtime/native allocation qualification and grants no operational authority.
+
+TDD receipts (all absolute under C:/Users/TK/.codex/tmp): games-a1a-red.json18 intended assertions failed/21passed (export stubs present, no import/fixture errors). Initial green attempt had a schema construction loader error text(...).url; repaired before acceptance, not counted as meaningful red. games-a1a-edge-red.json4 intended failures/21passed proved inherited date-format lookup/malformed-helper error before scoped repair; games-a1a-green3.json44PASS. Added exact65536byte positive plus accessor/cycle/nonplain negatives; final clean A1a46PASS. Generic depth/node rejection tests are negative obligations, not individually demonstrated first-cause mutants.
+
+Fresh private committed checkout plus ONLY seven byte-identical overlays: C:/Users/TK/.codex/tmp/games-a1a-clean-ac692d6b7577. Independent owned npm ci engine-strict logs games-a1a-root-ci.log33packages and games-a1a-backend-ci.log779packages with actual auth-runtime postinstall24packages; no root-transitive compiler/Vitest. Existing npm audit/install-script warnings retained, no approval/security settings changed. Backend Vitest4.1.9, Node24.21.0.
+
+Actual tunes cwd command: node node_modules/vitest/vitest.mjs run server/test/game-catalog-contracts.test.ts server/test/game-provider-query.test.ts server/test/movie-catalog.test.ts server/test/contracts/music-authorization-matrix.test.ts server/test/contracts/runtime-surface-inventory.test.ts server/test/contracts/music-forbidden-authority-search.test.ts --reporter=json --outputFile=C:/Users/TK/.codex/tmp/games-a1a-clean-tests.json. Result100PASS/0fail/0skip across6files (A1a46 +retained Movie30 +matrix/inventory/authority24). Direct paths games-a1a-clean-tests.json/.log retained.
+
+Owned strict new-file compilation: node node_modules/typescript/bin/tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --strict --skipLibCheck --types node shared/explorersGameContract.ts server/services/gameCatalogContracts.ts =>exit0; games-a1a-clean-strict.log. Existing music:types:scoped=>exit0, games-a1a-clean-scoped.log; scope does not automatically register Games, so explicit compilation required. Broad music:types:baseline=>wrapper0/current142/resolved103/compiler2, games-a1a-clean-baseline.log. Initial explicit strict TS18046/7006 repaired locally before clean freeze; no compiler target/baseline allowance change.
+
+Seven primary/private SHA256 bindings at C:/Users/TK/.codex/tmp/games-a1a-seven-hashes.json, mismatch0. New files remain untracked intentionally until independent review; no scratch/secrets staged. Exact selected inventory passes without adding a provider/route. diffcheck0.
+
+Unexecuted/unqualified: A1b authoritative complete genre snapshot/translations/seeds; runtime IGDB token/single-process quota/native settlement/250page/cache contract; production schema/detail/owner/public registration; durable cross-key lineage/media memory/refcounts; browser credential removal and all Games real API/PG/storage/desktop/mobile/public/Home/UAT; live IGDB/QA/full parity/release. Production provider operation remains unavailable. Larger parser requires separate review, no new custom parser. Controller owns subsequent exact shared allocations/migration reservation; A1a is only deterministic preparation.
+
+
+Final refinement preserved an explicit year-only release when first_release_date is absent (matching null-date record, provider order, no invented day). Meaningful games-a1a-year-red.json1FAIL before repair; final source-bound games-a1a-clean-final-tests.json101PASS/0fail/0skip (A1a47+Movie30+inventory24). Prior100 receipt remains historical. Final strict/scoped/baseline logs use games-a1a-clean-final-*.log; final binding below supersedes prior two affected hashes.
+
+
+Independent finding repair: exact present matching date0 record missing both date_format/category reproduced1FAIL/29PASS in games-a1a-missing-precision-red.json. Repair marks source provenance timestamp-only while release precision remains unknown; matching timestamp-only record now produces1970-01-01/1970. Explicit current unknown/TBD and legacyTBD still suppress day/year absent explicit y; unmatched record remainsunknown and existing year-only/contradiction policies retained. No fabricated release precision. Clean games-a1a-missing-precision-clean-green.json105PASS/0fail/0skip (A1a51+Movie30+inventory24), clean strict/scoped/baseline logs games-a1a-missing-precision-clean-*.log. Existing101 receipt remains historical. Only three of approvedseven files repaired; no new source scope or commit/push. Allseven primary/private bindings mismatch0; updated exactfreeze below for independent rereview.
+
+## Exact repaired frozen seven-path hashes
+
+- `tunes/shared/explorersGameContract.ts` SHA256 `6f74eaca6a66be3dc448f794a437be630d5ebe24c1d350270e271f470a0b0d92`.
+- `tunes/server/services/gameCatalogContracts.ts` SHA256 `b3fdb0600227f0b3e9bb2d4e02538e65b226801f2f6e616ab243dcbf5c4256ea`.
+- `tunes/server/test/game-catalog-contracts.test.ts` SHA256 `ddc3e9a00afdfedbde641197e3562781b4ab3ba69898eab28a9412368a108fc5`.
+- `tunes/server/test/game-provider-query.test.ts` SHA256 `74da9f85530ae6061f50bf1c0120660b4fc6c9bc902486924aabdd7133d6c4c7`.
+- `tunes/server/test/contracts/fixtures/igdb-contract/positive.json` SHA256 `2847eaae26f424e39e5cb39725c827fbb51eb7e274ccabf04ae83b36f841d23c`.
+- `tunes/server/test/contracts/fixtures/igdb-contract/negative.json` SHA256 `202758230d47759d5f326f7ad0b8ad94f1ac5c441aecca3b1d6d2092844c6e99`.
+- `tunes/server/test/contracts/fixtures/igdb-contract/README.md` SHA256 `999ded5143c0609cd244145b2d361f5319b506bd6eb92f50cd59bb3b7b48d924`.

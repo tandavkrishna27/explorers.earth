@@ -1,0 +1,5 @@
+Connecting to database... (Is Neon: false)
+Database initialized successfully
+Initializing session store with PostgreSQL
+Session store initialized successfully
+Resend Config: { apiKeySet: false, senderEmailSet: false }

@@ -1,0 +1,14 @@
+[
+  {
+    "path": "tunes/server/test/explorers/games.integration.test.ts",
+    "sha256": "d6af56dde8295df6ee87c64e91c9d50f5a7114032a7a617f40f587b05dc89725"
+  },
+  {
+    "path": "tunes/server/test/helpers/games-owned-postgres-authority.ts",
+    "sha256": "221728be805834828d319133d149f883eaf02b12dbb78e765d1098e6b309acc5"
+  },
+  {
+    "path": "tunes/server/test/contracts/games-owned-postgres-authority.test.ts",
+    "sha256": "0a94d1c4f9261add7e8f7e9f02f16606337329d442e84888b2383045490cd6a8"
+  }
+]

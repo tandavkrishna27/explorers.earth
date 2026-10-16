@@ -1,7 +1,7 @@
 import { NavigationStatus } from "../../../navigation/NavigationStatus";
 import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
 import { useState, useMemo, useEffect } from "react";
-import { useMutation, useQuery } from "@apollo/client";
+import { useMoviesOwner, createMovieList as createNativeMovieList, changeMovieList } from "../../api/explorersAdapter";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Film, Star, ChevronRight, Loader2, X, ChevronDown } from "lucide-react";
@@ -11,12 +11,12 @@ import * as Yup from "yup";
 import { toast } from "sonner";
 
 import useAuthStore from "../../../../store/store";
-import { MOVIE_LISTS_BY_ACCOUNT } from "../../api/query";
-import { CREATE_MOVIE_LIST, UPDATE_MOVIE_LIST } from "../../api/mutation";
+
+
 import type { MovieList } from "../../types";
 import { deduplicateMovies } from "../../utils/movieHelpers";
 import { generateSlug, buildPosterUrl } from "../../utils/movieHelpers";
-import { gql } from "@apollo/client";
+
 import SwitchButton from "../../../../components/ui/SwitchButton";
 import { getCurrentDomain } from "../../../../utils/getCurrentDomain";
 import TopPicksHero from "../public/TopPicksHero";
@@ -28,29 +28,12 @@ import Switch from "../../../../components/ui/Switch";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { CategoryEmptyState } from "../../../../components/CategoryEmptyState";
 
-// Query to get account documentId
-const MY_ACCOUNT = gql`
-  query MyAccountForMovies($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      accounts {
-        documentId
-        Account_Name
-        public_movie
-        public_recommendations
-        public_books
-        public_games
-        public_music
-      }
-    }
-  }
-`;
+
 
 // Create List Modal
 export const CreateMovieListModal = ({
   open,
   onClose,
-  accountDocumentId,
-  currentListCount,
   onCreated,
   username,
   defaultListName,
@@ -63,7 +46,7 @@ export const CreateMovieListModal = ({
   username: string;
   defaultListName?: string;
 }) => {
-  const [createMovieList, { loading }] = useMutation(CREATE_MOVIE_LIST);
+  const [loading, setLoading] = useState(false);
 
   const formik = useFormik({
     initialValues: { 
@@ -78,22 +61,12 @@ export const CreateMovieListModal = ({
     }),
     onSubmit: async (values, { resetForm }) => {
       try {
-        const result = await createMovieList({
-          variables: {
-            List_Name: values.List_Name,
-            list_description: values.list_description || null,
-            slug: values.slug || generateSlug(values.List_Name),
-            Visibility: false,
-            display_order: currentListCount,
-            account: accountDocumentId,
-          },
-          refetchQueries: [MOVIE_LISTS_BY_ACCOUNT],
-        });
-        toast.success("Movie list created!");
+        setLoading(true); const result = await createNativeMovieList({List_Name:values.List_Name,list_description:values.list_description||null,slug:values.slug||generateSlug(values.List_Name)});
+        setLoading(false); toast.success("Movie list created!");
         resetForm();
-        onCreated(result?.data?.createMovieList?.documentId);
+        onCreated(result.id);
         onClose();
-      } catch (e: any) {
+      } catch (e: any) { setLoading(false);
         if (e.message && e.message.includes("must be unique")) {
           formik.setFieldError("slug", "This URL is already taken. Please try another one.");
         } else {
@@ -327,7 +300,7 @@ const MoviesHome = () => {
   const navigation = useCategoryNavigation();
   const categoryVisible = navigation.snapshot?.visibility.public_movie === "Yes";
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, accountId: accountDocumentId } = useAuthStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showManageTopPicks, setShowManageTopPicks] = useState(false);
@@ -335,20 +308,7 @@ const MoviesHome = () => {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Get account documentId
-  const { data: accountData } = useQuery(MY_ACCOUNT, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-  });
-  const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
-
-
-  // Fetch movie lists
-  const { data, loading, refetch } = useQuery(MOVIE_LISTS_BY_ACCOUNT, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const { data, loading, error, refetch } = useMoviesOwner();
 
   useEffect(() => {
     if (!loading) {
@@ -356,7 +316,7 @@ const MoviesHome = () => {
     }
   }, [loading]);
 
-  const [updateMovieList] = useMutation(UPDATE_MOVIE_LIST);
+  const updateMovieList = async ({variables}:{variables:{documentId:string;Visibility:boolean};optimisticResponse?:unknown;refetchQueries?:unknown[]}) => changeMovieList(variables.documentId,{visibility:variables.Visibility});
 
   const handleVisibilityToggle = () => {
     const origin = navigation.authority;
@@ -371,7 +331,7 @@ const MoviesHome = () => {
   }, [lists]);
 
   const topPicks = useMemo(() => {
-    return deduplicateMovies(allMovies.filter((m: any) => m.is_pinned)).sort((a: any, b: any) => (a.pin_order || 999) - (b.pin_order || 999));
+    return deduplicateMovies(allMovies.filter((m: any) => m.is_pinned)).sort((a: any, b: any) => (a.pin_order ?? 999) - (b.pin_order ?? 999));
   }, [allMovies]);
 
   const handleMovieClick = (movie: any) => {
@@ -397,7 +357,7 @@ const MoviesHome = () => {
             top_picks_heading: list.top_picks_heading || null,
           }
         },
-        refetchQueries: [MOVIE_LISTS_BY_ACCOUNT],
+
       });
     } catch {
       toast.error("Failed to update visibility.");
@@ -473,6 +433,7 @@ const MoviesHome = () => {
       </div>
 
       {/* Loading state */}
+      {error && <p role="alert">Movies could not be loaded. <button onClick={refetch}>Retry</button></p>}
       {(loading || !accountDocumentId) && lists.length === 0 ? (
         <div className="space-y-6">
           {/* Hero skeleton — Desktop */}

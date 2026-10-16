@@ -6000,7 +6000,9 @@ test("browser-inert profile batch uses the real fixture documents for abort disc
     return matches[0]!;
   };
   const profileQuery = document("src/features/Profile/api/query.ts", "UsersPermissionsUser");
-  const updateMutation = document("src/features/Profile/hooks/useUpdateProfile.ts", "UpdateAccount");
+  // Ticket 3.4 took the profile save off GraphQL, so the UpdateAccount document now comes
+  // from Settings - the last surface that issues one.
+  const updateMutation = document("src/features/Settings/api/mutation.ts", "UpdateAccount");
   const publicQuery = document("src/features/PublicHome/api/query.ts", "PublicProfileData");
   const username = "e2e-public-music-profile-contract-owner";
   const controller = createFixtureProfileController({

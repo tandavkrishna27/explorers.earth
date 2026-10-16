@@ -4,12 +4,11 @@
  */
 
 import React, { useState } from "react";
+import {useGuideEditing} from '../../context/GuideEditingProvider';
 import { useNavigate } from "react-router-dom";
-import { useMutation } from "@apollo/client";
 import { toast } from "sonner";
 import EditIcon from "../../../../assets/icons/EditIcon";
 import SwitchButton from "../../../../components/ui/SwitchButton";
-import { UPDATE_GUIDE_MUTATION } from "../../api/mutations";
 import type { Guide } from "../../types";
 
 interface GuideHeaderProps {
@@ -22,39 +21,24 @@ const GuideHeader: React.FC<GuideHeaderProps> = ({ guide, guideId, onVisibilityC
   const navigate = useNavigate();
   const [isPublished, setIsPublished] = useState<boolean>(guide.Visibility || false);
 
-  // Mutation to update guide visibility
-  const [updateGuide, { loading: isUpdating }] = useMutation(UPDATE_GUIDE_MUTATION, {
-    onCompleted: () => {
-      toast.success(isPublished ? "Guide published" : "Guide unpublished");
-      if (onVisibilityChange) {
-        onVisibilityChange();
-      }
-    },
-    onError: (error) => {
-      toast.error(`Failed to update visibility: ${error.message}`);
-      // Revert the optimistic update
-      setIsPublished(!isPublished);
-    },
-  });
+  const {setPublished} = useGuideEditing();
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  // Handle visibility toggle
+  // Optimistic, then reverted on failure. Unpublishing also unpins, which the server does
+  // in its own transaction rather than this component doing it as a second write.
   const handleVisibilityToggle = async () => {
-    // Optimistic update
     const newVisibility = !isPublished;
     setIsPublished(newVisibility);
-
+    setIsUpdating(true);
     try {
-      await updateGuide({
-        variables: {
-          documentId: guideId,
-          data: {
-            Visibility: newVisibility,
-          },
-        },
-      });
-    } catch (error) {
-      // Error is handled in onError callback
-      console.error("Error updating guide visibility:", error);
+      await setPublished(newVisibility);
+      toast.success(newVisibility ? "Guide published" : "Guide unpublished");
+      onVisibilityChange?.();
+    } catch (error: any) {
+      setIsPublished(!newVisibility);
+      toast.error(`Failed to update visibility: ${error?.message ?? "unknown error"}`);
+    } finally {
+      setIsUpdating(false);
     }
   };
 

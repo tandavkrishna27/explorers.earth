@@ -1,0 +1,24 @@
+# Native Games exact-authority port repair plan
+
+Docs-only proposal against42b1ed734bb3f1a18b3f530c591d2df3fcd83bd4. Preserve native84PASS/12notexecuted/exit1 and all cleanup receipts. No resource execution, implementation, amendment or push in this stage.
+
+## Exact proposed original-test-only ownership (three paths)
+- Existing tunes/server/test/explorers/games.integration.test.ts: replace only historical loopback51642 check with reusable Games test preflight BEFORE pool creation/runtime-role provisioning.
+- New tunes/server/test/helpers/games-owned-postgres-authority.ts: tiny test-only composition of existing immutable C10 attestation and database-target validator; no alternate authority protocol.
+- New tunes/server/test/contracts/games-owned-postgres-authority.test.ts: meaningful pure/adversarial preflight tests with injected read-only Docker transport and explicit expected source commit. No PG or Docker mutations.
+
+This three-path request is required to test executable preflight without importing the integration suite and accidentally registering its PG beforeAll. No changes to integration-global-setup.ts, music-qualification-postgres.ts, migration, application, grants, cleanup or fixture guards.
+
+## Existing source contracts reused unchanged
+attestC10StandalonePostgresAuthority(environment,expectedCommit,{dockerRead}) from scripts/music-qualification-postgres.ts validates exact acknowledgement, disposable port,64hex container ID,40hex commit, forbidden ambient Docker/production authority, source-commit equality, local Docker socket, live healthy exact container, canonical commit-owned name, postgres15 image ID, ownership/commit labels and sole127.0.0.1 port mapping. A parsed environment is NOT proof.
+validateIntegrationDatabaseTarget(rawTarget,environment) from server/test/integration-global-setup.ts validates postgresql protocol, exact127.0.0.1 authority port, music_fixture database, music_migrator role, nonempty password, and no query/hash. Games helper additionally requires C10 exclusively (UAT or combined/missing authority denied), preventing validator fallback55432 from admitting unattested input.
+
+## Executable algorithm
+Require explicit C3 and C5 flags plus nonempty DATABASE_URL_TEST. Determine actual expected source commit using bounded10s git rev-parse HEAD from the executing source cwd in original suite (do not trust an environment commit). Invoke helper with actual commit. Helper rejects any UAT authority keys/presence, requires nonundefined full C10 attestation, then validates exact database URL and checks target port equals the returned attested port. Return validated URL only after every check succeeds. Only then construct admin pool and provision existing owned runtime role. Production authority helpers remain unchanged. No connection string/password is logged or serialized.
+
+## TDD regression obligations
+First meaningful RED: validated synthetic Docker reads model exact42b1-owned healthy PG15 at approved51644; current fixed51642 predicate rejects it before pool construction. New executable helper must admit exactly that target after complete attestation, not merely parse its environment.
+Negatives: missing/partial acknowledgement, arbitrary target port despite valid authority, malformed/reserved/out-of-range port, no authority/default55432, UAT/dual authority, source/label commit mismatch, wrong container ID/name/image/imageID/ownership/health, nonlocal Docker socket, extra or wildcard binding, wrong DB/role/protocol/host, empty password, query/hash, ambient production/Docker authority, failed or malformed Docker reads. All rejection paths assert no pool/provision continuation. Existing helper contract cases supplement rather than replace these composition tests. Secret-bearing values never appear in snapshots/errors.
+
+## Qualification and follow-up commit
+Supported Node24.21, physically owned locked backend/root/auth dependencies. Run new executable tests plus existing music-qualification-lanes/database-target contract coverage; strict compile affected helper/test/integration source and scoped/baseline; preserve first RED and exact commands/counts. Freeze three hashes for independent review. A separate reviewed follow-up commit is required;42b1 immutable. No native/UAT until controller allocates the new committed-source facility plan. After repair review/commit, fresh exact archive and guarded current-commit PG authority on approved available loopback port must execute all12Games owner cases; remaining native84 receipt may only be reused if precise unchanged source/input evidence is approved. Canonical82 remains gated by committed prerequisites review.

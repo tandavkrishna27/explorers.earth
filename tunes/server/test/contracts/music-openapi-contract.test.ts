@@ -61,6 +61,17 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(documentedOperations()).toEqual(liveCanonicalOperations());
   });
 
+  it("documents the historical Explorer bearer analytics read separately from Music credentials", () => {
+    const operation = (MUSIC_OPENAPI_DOCUMENT.paths as Record<string, any>)["/api/explorers/analytics/events"]?.get;
+    expect(operation).toBeDefined();
+    expect(operation.security).toEqual([{ explorerProof: [] }]);
+    expect(operation.parameters.filter((p: any) => p.in === "query").map((p: any) => p.name).sort()).toEqual(["accountId", "fromDate", "timeZone", "toDate"]);
+    expect(operation.parameters.filter((p: any) => p.in === "query").every((p: any) => p.required)).toBe(true);
+    expect(Object.keys(operation.responses).sort()).toEqual(["200", "400", "403", "502"]);
+    expect(operation.description).toContain("93");
+    expect(operation.description).toContain("7.2");
+  });
+
   it("declares exact path parameters, status codes, schemas, and request correlation", () => {
     for (const { path, operation } of operations()) {
       for (const name of [...path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1])) {
@@ -78,7 +89,8 @@ describe("Music OpenAPI 3.1 executable contract", () => {
 
   it("documents C5, origin, guest header, publication, and entitlement semantics", () => {
     for (const { method, path, operation } of operations()) {
-      const isIdentityBoundary = path.includes("/identity/ensure") || path.includes("/identity/lifecycle/");
+      const isHistoricalAnalytics = path === "/api/explorers/analytics/events" && method === "get";
+      const isIdentityBoundary = isHistoricalAnalytics || path.includes("/identity/ensure") || path.includes("/identity/lifecycle/");
       const isPublic = path === "/api/music/public-profile/{accountDocumentId}"
         || path === "/api/music/public-resource/v1/{publicSlug}"
         || path === "/api/explorers/analytics/music/{publicSlug}/events"
@@ -297,6 +309,9 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       repository,
       resolvePrincipal: async () => ({ musicUserId: 11, subject: "subject", accountDocumentId: "account", sessionVersion: 1 }),
       allowedOrigins: ["https://explorers.example"],
+      // Ticket 6.3. Required: the socket accepts only a handshake ticket, so every
+      // composition serving the Music surface must be able to mint one.
+      mintSocketTicket: () => ({ token: "openapi.socket.ticket", expiresAt: 1760000060 }),
       requestIdFactory: () => "openapi-success-request",
       now: () => new Date("2026-08-14T10:00:01.000Z"),
       publicRateLimited: () => false,

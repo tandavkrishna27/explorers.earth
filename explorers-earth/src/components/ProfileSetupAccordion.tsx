@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "./ui/Button";
 import { IMAGE_CONFIG } from "../config";
+import { isCanonicalMediaPath } from "../lib/canonicalMedia";
 
 interface ProfileSetupAccordionProps {
   account: any;
@@ -63,10 +64,15 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
   const resolveProfileImageUrl = (url: string | null | undefined): string => {
     if (!url) return IMAGE_CONFIG.defaultImages.profile;
     if (url.startsWith("http")) return url;
-    if (url.startsWith("/uploads/")) {
-      const backendUrl = import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337";
-      return `${backendUrl}${url}`;
-    }
+    /*
+     * Ticket 7.1. `resolveAccount` emits `profile_picture.url` as the canonical media
+     * route, so this is the live case here, not the legacy one - without this the
+     * onboarding card fetched the profile picture from the Strapi origin.
+     *
+     * The two branches below were identical (`/uploads/` and any other `/` path both
+     * concatenated the same base), so they are now one.
+     */
+    if (isCanonicalMediaPath(url)) return url;
     if (url.startsWith("/")) {
       const backendUrl = import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337";
       return `${backendUrl}${url}`;

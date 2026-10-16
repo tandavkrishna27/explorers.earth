@@ -1,102 +1,59 @@
-import { act, render, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import useAuthStore from "../../store/store";
 import { getMusicCredential, setMusicCredential } from "../../lib/musicCredentialStore";
 import Login from "../Login";
 import GoogleAuthRedirect from "../GoogleAuthRedirect";
 
-const doubles = vi.hoisted(() => ({
-  navigate: vi.fn(),
-  loginMutation: vi.fn(),
-  axiosGet: vi.fn(),
-  loginSubmit: undefined as undefined | ((values: any, helpers: any) => Promise<void>),
-}));
-
-vi.mock("@apollo/client", () => ({
-  ApolloError: class ApolloError extends Error { graphQLErrors = []; },
-  gql: (parts: TemplateStringsArray) => parts.join(""),
-  useMutation: () => [doubles.loginMutation, { loading: false }],
-}));
-vi.mock("axios", () => ({
-  default: { get: doubles.axiosGet },
-  AxiosError: class AxiosError extends Error { response?: unknown; },
-}));
-vi.mock("react-router-dom", () => ({
-  useNavigate: () => doubles.navigate,
-  useLocation: () => ({ search: "?access_token=google-strapi-jwt" }),
-}));
-vi.mock("../../features/Authentication/data", () => ({
-  getLoginFormFields: () => [], loginInitialValues: {}, createLoginValidationSchema: () => ({}),
-}));
-vi.mock("../../features/Authentication/components/AuthForm", () => ({
-  default: (props: { onSubmit: (values: any, helpers: any) => Promise<void> }) => {
-    doubles.loginSubmit = props.onSubmit;
-    return <div data-testid="login-form" />;
-  },
-}));
-vi.mock("../../features/Authentication/api/mutation", () => ({ loginQuery: {} }));
-vi.mock("../../components/EarthLoader", () => ({ EarthLoader: () => <div data-testid="loader" /> }));
 vi.mock("../../components/SEO", () => ({ default: () => null }));
-vi.mock("../../components/auth/AuthLayout", () => ({ default: () => null }));
-vi.mock("../../components/auth/AuthShell", () => ({ default: ({ children }: { children: unknown }) => <>{children}</> }));
-vi.mock("../../hooks/useToast", () => ({ default: () => ({ toast: vi.fn(), toastError: vi.fn() }) }));
-vi.mock("../../config/featureFlags", () => ({ isManualAuthEnabled: () => true }));
-vi.mock("../../utils/getCurrentDomain", () => ({ createCanonicalUrl: () => "https://explorers.example/login" }));
-vi.mock("../../utils/geoHelpers", () => ({ createWebPageGEOData: () => ({}) }));
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: "en" } }) }));
+vi.mock("../../components/auth/AuthLayout", () => ({ default: ({ onGoogle }: { onGoogle: () => void }) =>
+  <button type="button" onClick={onGoogle}>Continue with Google</button> }));
+vi.mock("../../components/EarthLoader", () => ({ EarthLoader: () => <div>Verifying account</div> }));
+vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (_key: string, fallback?: string) => fallback ?? _key }) }));
 
-const priorUser = {
-  id: "account-a", documentId: "subject-a", username: "alpha", email: "alpha@example.invalid",
-  blocked: false, token: "strapi-a",
+const priorUser = { id: "user-a", documentId: "account-a", username: "alpha", email: "alpha@example.invalid",
+  blocked: false, token: "legacy-fixture" };
+const signInA = () => {
+  useAuthStore.getState().login(priorUser);
+  setMusicCredential({ token: "account-a.music.credential", expiresAt: Date.now() + 60_000 });
 };
+const mount = (path: string) => render(<MemoryRouter initialEntries={[path]}><Routes>
+  <Route path="/login" element={<Login />} />
+  <Route path="/google-auth/callback" element={<GoogleAuthRedirect />} />
+  <Route path="/home" element={<div>Home</div>} />
+  <Route path="/onboarding" element={<div>Onboarding</div>} />
+</Routes></MemoryRouter>);
 
-beforeEach(() => {
-  useAuthStore.getState().logout();
-  localStorage.clear();
-  doubles.navigate.mockReset();
-  doubles.loginMutation.mockReset();
-  doubles.axiosGet.mockReset();
-  doubles.loginSubmit = undefined;
-  vi.spyOn(console, "log").mockImplementation(() => undefined);
-});
+beforeEach(() => { sessionStorage.clear(); useAuthStore.getState().logout(); localStorage.clear(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
-afterEach(() => vi.restoreAllMocks());
-
-describe("real login paths replace Music authority centrally", () => {
-  it("clears account A credential during the password Login handler without a preceding logout", async () => {
-    useAuthStore.getState().login(priorUser);
-    setMusicCredential({ token: "account-a.music.credential", expiresAt: Date.now() + 60_000 });
-    doubles.loginMutation.mockResolvedValue({ data: { login: {
-      jwt: "strapi-b", user: {
-        id: "account-b", documentId: "subject-b", username: "bravo", email: "bravo@example.invalid", blocked: false,
-      },
-    } } });
-    render(<Login />);
-
-    vi.useFakeTimers();
-    await act(async () => {
-      const submitted = doubles.loginSubmit?.(
-        { username: "bravo", password: "password-b" },
-        { setErrors: vi.fn(), setSubmitting: vi.fn() },
-      );
-      await vi.runAllTimersAsync();
-      await submitted;
-    });
-    vi.useRealTimers();
-
-    expect(useAuthStore.getState().user?.documentId).toBe("subject-b");
+describe("Google login replaces Music authority centrally", () => {
+  it("fences account A at sign-in initiation before any provider response", async () => {
+    signInA();
+    let finish!: (response: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => { finish = resolve; })));
+    mount("/login");
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
+    expect(useAuthStore.getState().status).toBe("loading");
     expect(getMusicCredential()).toBeUndefined();
+    await act(async () => finish(new Response(JSON.stringify({ url: "https://accounts.google.com/" }), { status: 200 })));
   });
-
-  it("clears account A credential during Google redirect login without a preceding logout", async () => {
-    useAuthStore.getState().login(priorUser);
-    setMusicCredential({ token: "account-a.music.credential", expiresAt: Date.now() + 60_000 });
-    doubles.axiosGet.mockResolvedValue({ data: {
-      id: "account-b", documentId: "subject-b", username: "bravo", email: "bravo@example.invalid", blocked: false,
-    } });
-
-    render(<GoogleAuthRedirect />);
-    await waitFor(() => expect(useAuthStore.getState().user?.documentId).toBe("subject-b"));
+  it("ignores a legacy callback token and accepts only the verified cookie session", async () => {
+    signInA();
+    const fetcher = vi.fn(async (path: string) => path === "/api/auth/get-session"
+      ? new Response(JSON.stringify({ user: { id: "user-b" }, session: { id: "session-b" } }), { status: 200 })
+      : new Response(JSON.stringify({ account: { id: "account-b", handle: "bravo", onboardingStatus: "complete", revision: 1 } }), { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+    mount("/google-auth/callback?access_token=legacy-strapi-jwt");
+    await waitFor(() => expect(screen.getByText("Home")).toBeInTheDocument());
+    // The verified session supplies the user subject; the canonical account id lives in
+    // accountId, not in user.documentId, which is the user's own document id.
+    expect(useAuthStore.getState().accountId).toBe("account-b");
+    expect(useAuthStore.getState().user?.id).toBe("user-b");
+    expect(useAuthStore.getState().user?.documentId).toBe("user-b");
+    expect(useAuthStore.getState().token).toBeNull();
     expect(getMusicCredential()).toBeUndefined();
+    expect(fetcher.mock.calls.every(([path]) => !String(path).includes("legacy-strapi-jwt"))).toBe(true);
   });
 });

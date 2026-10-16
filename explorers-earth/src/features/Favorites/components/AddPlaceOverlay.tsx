@@ -19,8 +19,10 @@ type InstagramMode = "place" | "person";
 interface AddPlaceOverlayProps {
     isOpen: boolean;
     onClose: () => void;
+    // A manually entered place has no provider id, and the native DTO says so rather
+    // than substituting an internal id for one.
     existingRecommendations?: Array<{
-        Place_Details: { Place_Id: string; Place_Name: string; Title: string };
+        Place_Details: { Place_Id: string | null; Place_Name: string; Title: string };
     }>;
     selectedLocationCoords?: { lat: number; lng: number } | null;
     onPlaceAdded?: () => void;

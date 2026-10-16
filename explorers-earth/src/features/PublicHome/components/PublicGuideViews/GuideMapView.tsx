@@ -1,3 +1,4 @@
+import { selectGuidePlaceThumbnail } from "../../utils/publicGuidePhotoViewModel";
 import { usePublicCategoryThemeStyles } from "../PublicCategoryThemeContext";
 import React, { memo, useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
@@ -355,41 +356,8 @@ const GuideMapView = memo(({
     setTargetZoom(undefined);
   }, [filteredPlaces]);
 
-  // Helper function to get S3 image from guide data by place_id
-  const getS3ImageForPlace = useMemo(() => {
-    const imageMap: Record<string, string | null> = {};
 
-    // Iterate through all sections to find activity photos
-    sections.forEach((section) => {
-      if (section.Recommendation_Activity?.activities) {
-        section.Recommendation_Activity.activities.forEach((activity: any) => {
-          if (activity.place_id && activity.photos && activity.photos.length > 0) {
-            // Use first photo from S3
-            const firstPhoto = activity.photos[0];
-            if (firstPhoto.url) {
-              imageMap[activity.place_id] = firstPhoto.url;
-            }
-          }
-        });
-      }
-    });
-
-    return imageMap;
-  }, [sections]);
-
-  // Get image URL for a place - prioritize S3 images from guide data
-  const getPlaceImage = useCallback((place: any): string => {
-    if (!place?.place_id) return "https://placehold.co/400x400";
-
-    // First check S3 images from guide data
-    const s3Image = getS3ImageForPlace[place.place_id];
-    if (s3Image) {
-      return s3Image;
-    }
-
-    // Fallback to placeholder
-    return "https://placehold.co/400x400";
-  }, [getS3ImageForPlace]);
+  const getPlaceImage = useCallback((place: unknown): string => selectGuidePlaceThumbnail(place, sections)?.url ?? "https://placehold.co/400x400", [sections]);
 
   // Handle marker click - show InfoWindow (like recommendations map)
   const handleMarkerClick = useCallback((placeWithCoords: PlaceWithCoords, event?: any) => {

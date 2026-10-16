@@ -34,7 +34,7 @@ describe('bookHelpers', () => {
     it('extracts unique subjects', () => {
       const arr1 = ['Action', 'Drama'];
       const arr2 = ['Action', 'Comedy'];
-      
+
       const unique = extractUniqueSubjects([arr1, arr2, null]);
       expect(unique).toEqual(['Action', 'Comedy', 'Drama']); // sorted
     });
@@ -95,7 +95,7 @@ describe('bookHelpers', () => {
       expect(deduplicateBooks(null)).toEqual([]);
     });
 
-    it('deduplicates and merges by volume_id', () => {
+    it('deduplicates repeated recommendation memberships', () => {
       const books = [
         {
           documentId: 'doc_1',
@@ -107,7 +107,7 @@ describe('bookHelpers', () => {
           publisher: 'Publisher A',
         },
         {
-          documentId: 'doc_2',
+          documentId: 'doc_1',
           volume_id: 'vol_A',
           title: 'Interstellar',
           is_pinned: false,
@@ -132,11 +132,15 @@ describe('bookHelpers', () => {
       expect(buildCoverUrl('http://example.com/cover.jpg')).toBe('http://example.com/cover.jpg');
     });
 
-    it('prefixes strapi relative paths', () => {
-      const expectedBase =
-        import.meta.env.VITE_REST_API_URL?.replace('/api', '') || 'http://localhost:1337';
-
-      expect(buildCoverUrl('/uploads/cover.jpg')).toBe(`${expectedBase}/uploads/cover.jpg`);
+    it('retains canonical same-origin media paths', () => {
+      // The id is a uuid because `media_assets.id` is a `uuid` column and the book-cover
+      // projection interpolates it directly (`bookCovers.ts:5`), so `/media/asset/content`
+      // was never a shape the server can emit. It passed while this helper matched the
+      // route by prefix; the exact shared match in `lib/canonicalMedia.ts` refuses it.
+      expect(buildCoverUrl('/api/explorers/v1/media/11111111-1111-4111-8111-111111111111/content')).toBe('/api/explorers/v1/media/11111111-1111-4111-8111-111111111111/content');
+      expect(buildCoverUrl('/uploads/cover.jpg')).toBe('');
+      // And a non-uuid id under the same prefix is not media.
+      expect(buildCoverUrl('/api/explorers/v1/media/asset/content')).toBe('');
     });
 
     it('handles empty', () => {

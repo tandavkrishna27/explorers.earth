@@ -1,20 +1,37 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { category, categoryPage, peekCategory } = vi.hoisted(() => ({ category: vi.fn(), categoryPage: vi.fn(), peekCategory: vi.fn() }));
+const { category, categoryPage, peekCategory,detailPage } = vi.hoisted(() => ({ category: vi.fn(), categoryPage: vi.fn(), peekCategory: vi.fn(),detailPage:vi.fn() }));
 
 vi.mock("../publicProfileGatewayClient", () => ({
-  publicProfileGatewayClient: { category, categoryPage, peekCategory },
+  publicProfileGatewayClient: { category, categoryPage, peekCategory,detailPage },
 }));
 
 import { usePublicRecommendationCategory } from "../usePublicRecommendationCategory";
 import { publishPublicProfileInvalidation } from "../publicProfileInvalidation";
+it('completes every Places preview using the addressed list cursor before exposing the category',async()=>{
+ const placeList=(name:string,start:number,count:number,cursor:string|null)=>({documentId:name,slug:name,collection_revision:'4',eligibility_fingerprint:'a'.repeat(64),category_content_revision:'9',eligible_item_count:26,eligible_pin_count:14,recommended_places:Array.from({length:count},(_,i)=>({documentId:`${name}-${start+i}`})),recommended_places_next_cursor:cursor});
+ category.mockResolvedValueOnce({recommendationLists:[placeList('synthetic-one',0,12,'one.first'),placeList('synthetic-two',0,12,'two.first')]});
+ detailPage.mockImplementation(async(_username,_category,slug,query)=>({recommendationLists:[placeList(slug,query.cursor.endsWith('first')?12:24,query.cursor.endsWith('first')?12:2,query.cursor.endsWith('first')?`${slug==='synthetic-one'?'one':'two'}.last`:null)]}));
+ const {result}=renderHook(()=>usePublicRecommendationCategory('alice','places',true));
+ await waitFor(()=>expect(result.current.loading).toBe(false));
+ expect(result.current.error).toBeNull();expect(result.current.data?.recommendationLists).toHaveLength(2);
+ for(const list of result.current.data!.recommendationLists as any[])expect(list.recommended_places).toHaveLength(26);
+ expect(detailPage.mock.calls.map(call=>[call[2],call[3].cursor])).toEqual([['synthetic-one','one.first'],['synthetic-one','one.last'],['synthetic-two','two.first'],['synthetic-two','two.last']]);
+});
+it('uses the actual signed Games category cursor rather than fabricated offset authority',async()=>{
+ category.mockResolvedValueOnce({gameLists:Array.from({length:12},(_,i)=>({documentId:'g'+i,slug:'g'+i,recommended_games:[],nextCursor:null})),topPicks:[],nextCursor:'signed.games'});
+ categoryPage.mockImplementationOnce(async(_username,_category,query)=>{if(query.cursor!=='signed.games')throw Error('PUBLIC_PROFILE_400');return{gameLists:[{documentId:'last',slug:'last',recommended_games:[],nextCursor:null}],topPicks:[],nextCursor:null};});
+ const {result}=renderHook(()=>usePublicRecommendationCategory('reader','games',true));await waitFor(()=>expect(result.current.loading).toBe(false));await act(()=>result.current.loadMore());
+ expect(categoryPage).toHaveBeenLastCalledWith('reader','games',{limit:12,cursor:'signed.games'},expect.any(AbortSignal),false);expect(result.current.hasMore).toBe(false);
+});
 
 describe("usePublicRecommendationCategory", () => {
   beforeEach(() => {
     category.mockReset();
     categoryPage.mockReset();
     peekCategory.mockReset();
+    detailPage.mockReset();
   });
 
   it("uses the server gateway only for an enabled public category", async () => {
@@ -98,7 +115,7 @@ describe("usePublicRecommendationCategory", () => {
     category.mockResolvedValue({ appLists: [] });
     const { rerender } = renderHook(
       ({ username, category: categoryName, enabled }) => usePublicRecommendationCategory(username, categoryName, enabled),
-      { initialProps: { username: "alice", category: "apps" as const, enabled: false } },
+      { initialProps: { username: "alice", category: "apps" as "apps"|"books", enabled: false } },
     );
 
     act(() => publishPublicProfileInvalidation({ accountDocumentId: "account-alice", username: "alice", category: "public_apps", action: "publish", eventId: "alice-hidden-apps" }));
@@ -143,4 +160,23 @@ describe("usePublicRecommendationCategory", () => {
     expect(categoryPage).toHaveBeenNthCalledWith(3, "alice", "apps", { limit: 12, cursor: "o24" }, expect.any(AbortSignal), true);
     expect(result.current.data?.appLists).not.toContainEqual({ documentId: "unpublished" });
   });
+});
+it('completes Games child previews with their independent signed limit12 cursor',async()=>{
+ category.mockResolvedValueOnce({gameLists:[{documentId:'g',slug:'g',recommended_games:[{documentId:'first'}],nextCursor:'signed.child'}],topPicks:[],nextCursor:null});
+ detailPage.mockResolvedValueOnce({gameLists:[{documentId:'g',slug:'g',recommended_games:[{documentId:'last'}],nextCursor:null}]});
+ const {result}=renderHook(()=>usePublicRecommendationCategory('reader','games',true));await waitFor(()=>expect(result.current.loading).toBe(false));
+ expect(detailPage).toHaveBeenCalledWith('reader','games','g',{limit:12,cursor:'signed.child'},expect.any(AbortSignal),false);
+ expect((result.current.data as any).gameLists[0].recommended_games.map((row:any)=>row.documentId)).toEqual(['first','last']);expect(result.current.hasMore).toBe(false);
+});
+it('denies a Games child continuation crossing collection identity rather than appending it',async()=>{
+ category.mockResolvedValueOnce({gameLists:[{documentId:'g',slug:'g',recommended_games:[],nextCursor:'signed.child'}],topPicks:[],nextCursor:null});
+ detailPage.mockResolvedValueOnce({gameLists:[{documentId:'wrong',slug:'wrong',recommended_games:[{documentId:'bad'}],nextCursor:null}]});
+ const {result}=renderHook(()=>usePublicRecommendationCategory('reader','games',true));await waitFor(()=>expect(result.current.loading).toBe(false));expect(result.current.error).toBeTruthy();expect(result.current.data).toBeUndefined();
+});
+
+it('uses signed Movie category cursors and stops on authoritative null',async()=>{
+ category.mockResolvedValueOnce({movieLists:Array.from({length:12},(_,i)=>({documentId:'l'+i,slug:'list'+i,recommended_movies:[],recommended_movies_next_cursor:null})),topPicks:[],nextCursor:'signed.category'});
+ categoryPage.mockResolvedValueOnce({movieLists:[{documentId:'last',slug:'last',recommended_movies:[],recommended_movies_next_cursor:null}],topPicks:[],nextCursor:null});
+ const {result}=renderHook(()=>usePublicRecommendationCategory('reader','movies',true));await waitFor(()=>expect(result.current.loading).toBe(false));await act(()=>result.current.loadMore());
+ expect(categoryPage).toHaveBeenLastCalledWith('reader','movies',{limit:12,cursor:'signed.category'},expect.any(AbortSignal),false);expect(result.current.hasMore).toBe(false);
 });

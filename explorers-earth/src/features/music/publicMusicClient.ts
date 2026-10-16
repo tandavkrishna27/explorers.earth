@@ -1,3 +1,4 @@
+import { runtimeOrigin } from "../../lib/publicRuntimeConfig";
 import { z } from "zod";
 import { createMusicDevelopmentFetch } from "./musicDevelopmentTransport";
 import { publicMusicObservability, type PublicMusicObservability } from "./publicMusicObservability";
@@ -309,7 +310,7 @@ export function createPublicMusicClient(baseUrl: string, observability: PublicMu
   };
 }
 
-const musicBaseUrl = import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth";
+const musicBaseUrl = runtimeOrigin(import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth");
 const getPublicMusicClient = () => createPublicMusicClient(musicBaseUrl, undefined,
   createMusicDevelopmentFetch(fetch, import.meta.env.DEV, musicBaseUrl));
 export const publicMusicClient: ReturnType<typeof createPublicMusicClient> = {

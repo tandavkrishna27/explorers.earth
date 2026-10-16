@@ -14,13 +14,20 @@ import {
   blocksToHtml,
 } from "../../../../utils/strapiBlocksConverter";
 import type { Guide } from "../../types";
+import {guideDescriptionText} from '../../../../utils/guideDescriptionText';
+import {encode} from 'html-entities';
 
 interface EditGeneralTipsModalProps {
   isOpen: boolean;
   onClose: () => void;
   guide: Guide;
   guideId: string;
-  updateGuide: any; // Mutation function from useMutation
+  /**
+   * Saves the guide's tips and tags. Ticket 5.3: a typed callback rather than an Apollo
+   * mutation function, so this editor cannot compose a write of its own - the page owns
+   * the revision every write states.
+   */
+  saveTips: (input: {tipsNotes: unknown; tags: string[]}) => Promise<void>;
   onSuccess?: () => void;
 }
 
@@ -28,8 +35,7 @@ const EditGeneralTipsModal: React.FC<EditGeneralTipsModalProps> = ({
   isOpen,
   onClose,
   guide,
-  guideId,
-  updateGuide,
+  saveTips,
   onSuccess,
 }) => {
   const [tipsNotes, setTipsNotes] = useState("");
@@ -44,7 +50,10 @@ const EditGeneralTipsModal: React.FC<EditGeneralTipsModalProps> = ({
         if (typeof guide.Tips_Notes === "string") {
           setTipsNotes(guide.Tips_Notes);
         } else if (Array.isArray(guide.Tips_Notes)) {
-          const htmlContent = blocksToHtml(guide.Tips_Notes);
+          const htmlContent = blocksToHtml(guide.Tips_Notes.map(block => Array.isArray(block.children) ? ({...block,
+            children: block.children.map((child:any) => typeof child.text === 'string'
+              ? {...child,text:encode(child.text,{mode:'specialChars'})} : child),
+          }) : block));
           setTipsNotes(htmlContent);
         }
       } else {
@@ -81,17 +90,12 @@ const EditGeneralTipsModal: React.FC<EditGeneralTipsModalProps> = ({
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const tipsBlocks = htmlToBlocks(tipsNotes);
+      const tipsBlocks = htmlToBlocks(tipsNotes).map(block => Array.isArray(block.children) ? ({...block,
+        children: block.children.map((child:any) => typeof child.text === 'string'
+          ? {...child,text:guideDescriptionText(child.text)} : child),
+      }) : block);
 
-      await updateGuide({
-        variables: {
-          documentId: guideId,
-          data: {
-            Tips_Notes: tipsBlocks,
-            Guide_Tags: tags,
-          },
-        },
-      });
+      await saveTips({tipsNotes: tipsBlocks, tags});
 
       toast.success("Tips saved successfully!");
       onSuccess?.();

@@ -1,0 +1,563 @@
+{
+  "version": 1,
+  "lane": "games",
+  "provenance": {
+    "commit": "6d679c7078b93c76db180a97be73568d8be495b8",
+    "sourceHash": "da967de46d19c76a3cf52caf3d835c6885ff767bbd9876aba8fcd6ed147027fa",
+    "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+    "dirty": false
+  },
+  "config": "explorers-earth/e2e/replatform/games.playwright.config.ts",
+  "spec": "explorers-earth/e2e/replatform/games.spec.ts",
+  "projects": [
+    "games-desktop",
+    "games-mobile"
+  ],
+  "discovery": [
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: Home creates a native list and distinct same-title recommendations"
+      ],
+      "project": "games-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: note and creator rating survive edit and reload without provider facts"
+      ],
+      "project": "games-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: complete owner pages preserve memberships reorder and pin position zero"
+      ],
+      "project": "games-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: Keep draft and Publish preserve keyboard decision and public state"
+      ],
+      "project": "games-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: ready uploaded cover and gallery bytes enforce owner public and foreign attachment"
+      ],
+      "project": "games-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: provider unavailable preserves draft and forbids browser credential authority"
+      ],
+      "project": "games-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: anonymous category and list continuation reveal later rows and terminal state"
+      ],
+      "project": "games-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: ancestor hide archive and suspension deny fresh and inflight public bytes"
+      ],
+      "project": "games-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: two anonymous contexts and username transition never reuse private or late rows"
+      ],
+      "project": "games-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: account and route changes fence every deferred save continuation"
+      ],
+      "project": "games-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: Home creates a native list and distinct same-title recommendations"
+      ],
+      "project": "games-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: note and creator rating survive edit and reload without provider facts"
+      ],
+      "project": "games-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: complete owner pages preserve memberships reorder and pin position zero"
+      ],
+      "project": "games-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: Keep draft and Publish preserve keyboard decision and public state"
+      ],
+      "project": "games-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: ready uploaded cover and gallery bytes enforce owner public and foreign attachment"
+      ],
+      "project": "games-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: provider unavailable preserves draft and forbids browser credential authority"
+      ],
+      "project": "games-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: anonymous category and list continuation reveal later rows and terminal state"
+      ],
+      "project": "games-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: ancestor hide archive and suspension deny fresh and inflight public bytes"
+      ],
+      "project": "games-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: two anonymous contexts and username transition never reuse private or late rows"
+      ],
+      "project": "games-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/games.spec.ts",
+      "titlePath": [
+        "Games manual: account and route changes fence every deferred save continuation"
+      ],
+      "project": "games-mobile",
+      "repeat": 0
+    }
+  ],
+  "results": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: Home creates a native list and distinct same-title recommendations"
+        ],
+        "project": "games-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: note and creator rating survive edit and reload without provider facts"
+        ],
+        "project": "games-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: complete owner pages preserve memberships reorder and pin position zero"
+        ],
+        "project": "games-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: Keep draft and Publish preserve keyboard decision and public state"
+        ],
+        "project": "games-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: ready uploaded cover and gallery bytes enforce owner public and foreign attachment"
+        ],
+        "project": "games-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: provider unavailable preserves draft and forbids browser credential authority"
+        ],
+        "project": "games-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: anonymous category and list continuation reveal later rows and terminal state"
+        ],
+        "project": "games-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: ancestor hide archive and suspension deny fresh and inflight public bytes"
+        ],
+        "project": "games-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: two anonymous contexts and username transition never reuse private or late rows"
+        ],
+        "project": "games-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: account and route changes fence every deferred save continuation"
+        ],
+        "project": "games-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: Home creates a native list and distinct same-title recommendations"
+        ],
+        "project": "games-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: note and creator rating survive edit and reload without provider facts"
+        ],
+        "project": "games-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: complete owner pages preserve memberships reorder and pin position zero"
+        ],
+        "project": "games-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: Keep draft and Publish preserve keyboard decision and public state"
+        ],
+        "project": "games-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: ready uploaded cover and gallery bytes enforce owner public and foreign attachment"
+        ],
+        "project": "games-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: provider unavailable preserves draft and forbids browser credential authority"
+        ],
+        "project": "games-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: anonymous category and list continuation reveal later rows and terminal state"
+        ],
+        "project": "games-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: ancestor hide archive and suspension deny fresh and inflight public bytes"
+        ],
+        "project": "games-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: two anonymous contexts and username transition never reuse private or late rows"
+        ],
+        "project": "games-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/games.spec.ts",
+        "titlePath": [
+          "Games manual: account and route changes fence every deferred save continuation"
+        ],
+        "project": "games-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "cleanup": {
+    "status": "passed"
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  },
+  "authority": {
+    "owned": true,
+    "database": "music_uat_db2f7e1ffbf2ca80bfbf0ac886a9aa54",
+    "containerId": "9ab2aac35ff727fd04febeb971e403161504a9b416de19fc7f45dac698f55273",
+    "imageId": "sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81"
+  },
+  "child": {
+    "status": 0,
+    "signal": null
+  },
+  "startedAt": "2026-10-10T06:41:02.730Z",
+  "endedAt": "2026-10-10T06:45:23.100Z",
+  "playwright": "1.61.1"
+}

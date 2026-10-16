@@ -99,6 +99,21 @@ const defaults: Record<keyof typeof integerBounds, string> = {
 
 type Environment = Record<string, string | undefined>;
 
+/**
+ * ADR-008. The canonical API app issues Music credentials, so it needs the token
+ * configuration and nothing else - notably not STRAPI_URL. It goes through the same
+ * resolver as the Music app so the live-mode rule that the secret must come from a
+ * secure file, not an inline environment variable, is enforced identically.
+ */
+export async function resolveCanonicalMusicTokenConfiguration(
+  environment: Environment,
+  dependencies: MusicIdentityConfigDependencies = {},
+): Promise<MusicTokenConfiguration> {
+  const mode = environment.MUSIC_MODE;
+  if (mode !== "live" && mode !== "fixture") throw new Error("MUSIC_MODE must be live or fixture");
+  return resolveMusicTokenConfiguration(environment, mode, dependencies);
+}
+
 export async function resolveMusicIdentityRuntimeConfig(
   environment: Environment,
   dependencies: MusicIdentityConfigDependencies = {},

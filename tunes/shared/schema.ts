@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean, jsonb, bigint, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, jsonb, bigint, primaryKey, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -55,8 +55,10 @@ export const users = pgTable("users", {
   reconciliationMismatchCount: integer("reconciliation_mismatch_count").notNull().default(0),
   // Points to the migration-owned music_identity_lifecycle_operations control
   // table. It remains raw-repository-owned so legacy Drizzle insert/update
-  // shapes cannot gain a lifecycle-operation mass-assignment surface.
-  lifecycleOperationId: text("lifecycle_operation_id").notNull(),
+  // shapes cannot gain a lifecycle-operation mass-assignment surface. Nullable
+  // since migration 0040: a canonically provisioned venue has no Strapi-keyed
+  // lifecycle operation to reference, and the legacy path still supplies one.
+  lifecycleOperationId: text("lifecycle_operation_id"),
   lifecycleState: text("lifecycle_state").notNull().default("none").$type<"none" | "requested" | "running" | "completed" | "failed" | "cancelled">(),
   lifecycleAttemptCount: integer("lifecycle_attempt_count").notNull().default(0),
   lifecycleLastAttemptAt: timestamp("lifecycle_last_attempt_at", { withTimezone: true }),
@@ -322,15 +324,53 @@ export const emailLogs = pgTable("email_logs", {
   recipient: text("recipient").notNull(),
   subject: text("subject").notNull(),
   templateId: integer("template_id").references(() => emailTemplates.id),
-  status: text("status").notNull(), // sent, delivered, bounced, failed
+  status: text("status").notNull(), // pending, sent, delivered, bounced, failed, suppressed
   errorMessage: text("error_message"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deliveredAt: timestamp("delivered_at"),
   apiTokenId: integer("api_token_id").references(() => apiTokens.id),
-  messageId: text("message_id"), // AWS SES message ID
+  messageId: text("message_id"), // Resend message id
   metadata: jsonb("metadata").default({}),
   isTest: boolean("is_test").default(false),
   variables: text("variables")
+});
+
+/**
+ * Addresses that must not be contacted. Decision D2, 2026-10-08. DDL lives in
+ * migration 0051; this is the access definition for the one sender that exists.
+ *
+ * Keyed on the ADDRESS, not an account: a bounce, a complaint and an unsubscribe click all
+ * arrive carrying nothing but an address, and an address that never had an account can
+ * still land here.
+ *
+ * `email` is always stored normalised - lower(btrim(...)) - and the migration enforces it
+ * with a CHECK, so writes must normalise before inserting or the send-time lookup will
+ * never match the row. Use `normalizeSuppressionEmail`.
+ *
+ * There is no UPDATE or DELETE grant for the runtime role. Un-suppressing an address is the
+ * one operation here that can cause mail to reach somebody who asked for none.
+ */
+export const emailSuppressions = pgTable("email_suppressions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull(),
+  reason: text("reason").notNull(), // unsubscribe, bounce, complaint, manual
+  source: text("source"),
+  suppressedAt: timestamp("suppressed_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/**
+ * The single normalisation rule for a suppression address. Migration 0051 enforces the same
+ * rule as a CHECK, so this is the only shape that can be written.
+ */
+export function normalizeSuppressionEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+export const insertEmailSuppressionSchema = createInsertSchema(emailSuppressions).pick({
+  email: true,
+  reason: true,
+  source: true,
 });
 
 // Add relations
@@ -524,6 +564,8 @@ export type UserProfile = typeof userProfiles.$inferSelect;
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
 export type ApiToken = typeof apiTokens.$inferSelect;
 export type InsertApiToken = z.infer<typeof insertApiTokenSchema>;
+export type EmailSuppression = typeof emailSuppressions.$inferSelect;
+export type InsertEmailSuppression = z.infer<typeof insertEmailSuppressionSchema>;
 export type EmailTemplate = typeof emailTemplates.$inferSelect;
 export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
 export type EmailLog = typeof emailLogs.$inferSelect;

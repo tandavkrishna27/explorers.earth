@@ -12,13 +12,11 @@ const MAX_PROFILE_JSON_BYTES = 48 * 1024;
 const MAX_CAPTURED_PROFILE_SNAPSHOTS = 128;
 
 const operationSources = [
-  ["explorers-earth/src/components/AuthSyncManager.tsx", ["MusicIdentityEligibility"]],
-  ["explorers-earth/src/pages/Music.tsx", ["MusicPageEligibility"]],
-  ["explorers-earth/src/components/ProtectedRoute.tsx", ["CheckOnboardingStatus"]],
-  ["explorers-earth/src/components/Sidenav.tsx", ["SidebarAccount"]],
-  ["explorers-earth/src/components/Header.tsx", ["user"]],
-  ["explorers-earth/src/features/Profile/api/query.ts", ["UsersPermissionsUser"]],
-  ["explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts", ["UpdateAccount"]],
+  ["tunes/scripts/legacy-profile-fixture-documents.txt", ["MusicIdentityEligibility"]],
+  // Retired from the UI in step 8; the pre-migration snapshot still restores through it.
+  ["tunes/scripts/legacy-profile-fixture-documents.txt", ["MusicPageEligibility"]],
+  // Retired UI readers remain fixtures for the pre-migration Music identity snapshot.
+  ["tunes/scripts/legacy-profile-fixture-documents.txt", ["CheckOnboardingStatus", "SidebarAccount", "user", "UsersPermissionsUser"]],
   ["explorers-earth/src/features/Settings/api/mutation.ts", ["UsersPermissionsUser", "UpdateAccount"]],
   ["explorers-earth/src/features/PublicHome/api/query.ts", ["PublicCategoryListCounts", "PublicAccountBasic", "PublicProfileData"]],
 ] as const;

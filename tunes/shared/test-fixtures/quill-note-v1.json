@@ -1,0 +1,89 @@
+{
+  "quillVersion": "2.0.3",
+  "emojiVersion": "0.1.2",
+  "html": "<h2><strong style=\"color: rgb(230, 0, 0); background-color: rgb(255, 255, 0);\"><em><s><u>हैलो café</u></s></em></strong></h2><p><span class=\"ql-emojiblot\" data-name=\"grinning\">﻿<span contenteditable=\"false\"><span class=\"ap ap-grinning\">😀</span></span>﻿</span></p><ol><li data-list=\"ordered\"><span class=\"ql-ui\" contenteditable=\"false\"></span>First</li><li data-list=\"bullet\"><span class=\"ql-ui\" contenteditable=\"false\"></span>Second</li></ol>",
+  "ops": [
+    {
+      "attributes": {
+        "underline": true,
+        "strike": true,
+        "italic": true,
+        "color": "#e60000",
+        "background": "#ffff00",
+        "bold": true
+      },
+      "insert": "हैलो café"
+    },
+    {
+      "attributes": {
+        "header": 2
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": {
+        "emoji": "grinning"
+      }
+    },
+    {
+      "insert": "\nFirst"
+    },
+    {
+      "attributes": {
+        "list": "ordered"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "Second"
+    },
+    {
+      "attributes": {
+        "list": "bullet"
+      },
+      "insert": "\n"
+    }
+  ],
+  "reloadedOps": [
+    {
+      "attributes": {
+        "underline": true,
+        "strike": true,
+        "italic": true,
+        "background": "#ffff00",
+        "color": "#e60000",
+        "bold": true
+      },
+      "insert": "हैलो café"
+    },
+    {
+      "attributes": {
+        "header": 2
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": {
+        "emoji": "grinning"
+      }
+    },
+    {
+      "insert": "\nFirst"
+    },
+    {
+      "attributes": {
+        "list": "ordered"
+      },
+      "insert": "\n"
+    },
+    {
+      "insert": "Second"
+    },
+    {
+      "attributes": {
+        "list": "bullet"
+      },
+      "insert": "\n"
+    }
+  ]
+}

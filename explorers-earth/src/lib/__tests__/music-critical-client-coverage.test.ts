@@ -62,7 +62,6 @@ describe("local Tunes client critical edge coverage", () => {
     setMusicCredential(credential);
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
-      getStrapiBearer: async () => "unused-proof-with-entropy",
     });
     client.setAuthority(undefined);
     await expect(client.request({ method: "GET", path: "/api/music/identity/current" }))
@@ -75,27 +74,26 @@ describe("local Tunes client critical edge coverage", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => proof,
       now: () => NOW,
     });
     await expect(client.ensureIdentity()).rejects.toMatchObject({ code: "AUTH_UNAVAILABLE" });
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("rejects an authority generation changed while acquiring Strapi proof", async () => {
-    const proof = deferred<string>();
+  it("rejects an authority generation changed while the canonical ensure is in flight", async () => {
+    const ensure = deferred<Response>();
     const fetchImpl = vi.fn();
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: () => proof.promise,
+      sessionFetchImpl: () => ensure.promise,
       now: () => NOW,
     });
     client.setAuthority("user-a");
     const pending = client.ensureIdentity();
     await Promise.resolve();
     client.setAuthority("user-b");
-    proof.resolve("strapi-proof-with-enough-entropy");
+    ensure.resolve(ensureResponse());
     await expect(pending).rejects.toMatchObject({ code: "AUTH_REQUIRED" });
     expect(fetchImpl).not.toHaveBeenCalled();
   });
@@ -110,7 +108,6 @@ describe("local Tunes client critical edge coverage", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl: async () => json(body),
-      getStrapiBearer: async () => "strapi-proof-with-enough-entropy",
       now: () => NOW,
     });
     await expect(client.ensureIdentity()).rejects.toMatchObject({ code: "AUTH_UNAVAILABLE" });
@@ -122,7 +119,6 @@ describe("local Tunes client critical edge coverage", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl: async () => ({ status: 200, json: () => body.promise }) as Response,
-      getStrapiBearer: async () => "strapi-proof-with-enough-entropy",
       now: () => NOW,
     });
     client.setAuthority("user-a");
@@ -141,7 +137,7 @@ describe("local Tunes client critical edge coverage", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "unused-proof-with-entropy",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
     });
     await client.request({
@@ -168,7 +164,6 @@ describe("local Tunes client critical edge coverage", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl: async (_input, init) => { signal = init?.signal as AbortSignal; return pendingResponse.promise; },
-      getStrapiBearer: async () => "unused-proof-with-entropy",
       now: () => NOW,
     });
     client.setAuthority("user-a");
@@ -189,7 +184,7 @@ describe("local Tunes client critical edge coverage", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "unused-proof-with-entropy",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
     });
     await expect(client.request({ method: "GET", path: "/api/music/current" })).resolves.toBe(invalidJson);
@@ -203,7 +198,7 @@ describe("local Tunes client critical edge coverage", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "unused-proof-with-entropy",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
     });
     await expect(client.request({ method: "GET", path: "/api/music/current" })).resolves.toBe(response);
@@ -217,16 +212,16 @@ describe("local Tunes client critical edge coverage", () => {
     { path: "/path", method: "POST", idempotencyKey: "short" },
   ])("rejects invalid request shape %# before credential or fetch", async (input) => {
     const fetchImpl = vi.fn();
-    const bearer = vi.fn();
+    const sessionFetchImpl = vi.fn();
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: bearer,
+      sessionFetchImpl,
       now: () => NOW,
     });
     await expect(client.request(input as never)).rejects.toMatchObject({ code: "REQUEST_INVALID" });
     expect(fetchImpl).not.toHaveBeenCalled();
-    expect(bearer).not.toHaveBeenCalled();
+    expect(sessionFetchImpl).not.toHaveBeenCalled();
   });
 
   it("fails closed when ensure response decoding throws", async () => {
@@ -235,7 +230,7 @@ describe("local Tunes client critical edge coverage", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl: async () => response,
-      getStrapiBearer: async () => "strapi-proof-with-enough-entropy",
+      sessionFetchImpl: async () => response,
       now: () => NOW,
     });
     await expect(client.ensureIdentity()).rejects.toMatchObject({
@@ -250,7 +245,6 @@ describe("local Tunes client critical edge coverage", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl: async () => new Response("not-json", { status: 503 }),
-      getStrapiBearer: async () => "strapi-proof-with-enough-entropy",
       now: () => NOW,
     });
     await expect(client.ensureIdentity()).rejects.toMatchObject({
@@ -277,7 +271,7 @@ describe("local Tunes client critical edge coverage", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl: async () => json(body, status, headers),
-      getStrapiBearer: async () => "strapi-proof-with-enough-entropy",
+      sessionFetchImpl: async () => json(body, status, headers),
       now: () => NOW,
       delay: async () => undefined,
     });
@@ -294,7 +288,6 @@ describe("local Tunes client critical edge coverage", () => {
     expect(() => createLocalTunesApiClient({
       baseUrl,
       fetchImpl: vi.fn(),
-      getStrapiBearer: async () => undefined,
       now: () => NOW,
     })).toThrow(expect.objectContaining({ code: "REQUEST_INVALID" }));
   });

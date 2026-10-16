@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { motion, Reorder } from "framer-motion";
-import { useMutation } from "@apollo/client";
+
 import { X, Trophy, Minus, Loader2, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { UPDATE_RECOMMENDED_GAME } from "../../api/mutation";
+import { useGamesCommands, useGamesCallerCustody } from "../../api/query";
 import type { RecommendedGame } from "../../types";
 import { buildCoverUrl } from "../../utils/gameHelpers";
 
@@ -19,7 +19,8 @@ const TopGamesManager = ({ games, allGames, onClose, onRefetch }: TopGamesManage
     [...games].sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999))
   );
   const [saving, setSaving] = useState(false);
-  const [updateGame] = useMutation(UPDATE_RECOMMENDED_GAME);
+  const commands = useGamesCommands();
+  const beginEffects = useGamesCallerCustody();
 
   const unpinnedGames = allGames.filter(
     (g) => !pinnedGames.find((pg) => pg.documentId === g.documentId)
@@ -42,7 +43,7 @@ const TopGamesManager = ({ games, allGames, onClose, onRefetch }: TopGamesManage
     setPinnedGames(prev => {
       const next = [...prev];
       [next[index - 1], next[index]] = [next[index], next[index - 1]];
-      syncOrder(next);
+
       return next;
     });
   };
@@ -52,60 +53,27 @@ const TopGamesManager = ({ games, allGames, onClose, onRefetch }: TopGamesManage
     setPinnedGames(prev => {
       const next = [...prev];
       [next[index + 1], next[index]] = [next[index], next[index + 1]];
-      syncOrder(next);
+
       return next;
     });
   };
 
-  const syncOrder = async (orderToSync: RecommendedGame[]) => {
-    try {
-      for (let i = 0; i < orderToSync.length; i++) {
-        await updateGame({
-          variables: {
-            documentId: orderToSync[i].documentId,
-            is_pinned: true,
-            pin_order: i,
-          },
-        });
-      }
-      onRefetch();
-    } catch {
-      toast.error("Failed to auto-save new order.");
-    }
-  };
-
   const handleSave = async () => {
+    const current = beginEffects();
     setSaving(true);
     try {
-      // Save pinned games with their new order
-      for (let i = 0; i < pinnedGames.length; i++) {
-        await updateGame({
-          variables: {
-            documentId: pinnedGames[i].documentId,
-            is_pinned: true,
-            pin_order: i,
-          },
-        });
-      }
-      // Unpin games that were pinned before but are now removed
-      for (const g of unpinnedGames) {
-        if (games.find((pg) => pg.documentId === g.documentId)) {
-          await updateGame({
-            variables: {
-              documentId: g.documentId,
-              is_pinned: false,
-              pin_order: null,
-            },
-          });
-        }
-      }
+      const pins = pinnedGames.map(game => { if (!game.game_list?.documentId) throw new Error('Game membership unavailable'); return { recommendationId: game.documentId, collectionId: game.game_list.documentId }; });
+      await commands.savePins(pins);
+      if (!current()) return;
       toast.success("Top Picks updated!");
+      if (!current()) return;
       onRefetch();
+      if (!current()) return;
       onClose();
     } catch {
-      toast.error("Failed to save. Please try again.");
+      if (current()) toast.error("Failed to save. Please try again.");
     } finally {
-      setSaving(false);
+      if (current()) setSaving(false);
     }
   };
 
@@ -158,20 +126,21 @@ const TopGamesManager = ({ games, allGames, onClose, onRefetch }: TopGamesManage
                     <Reorder.Item
                       key={game.documentId}
                       value={game}
-                      onDragEnd={() => syncOrder(pinnedGames)}
                       className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0 bg-[#0d1117] cursor-grab active:cursor-grabbing"
                     >
                       <div className="flex flex-col items-center gap-1 flex-shrink-0">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleMoveUp(i); }}
-                          disabled={i === 0}
+                          aria-label={`Move ${game.title} up`}
+                          disabled={saving || i === 0}
                           className="text-white/20 hover:text-white disabled:opacity-0 transition-colors p-0.5"
                         >
                           <ChevronUp size={12} />
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleMoveDown(i); }}
-                          disabled={i === pinnedGames.length - 1}
+                          aria-label={`Move ${game.title} down`}
+                          disabled={saving || i === pinnedGames.length - 1}
                           className="text-white/20 hover:text-white disabled:opacity-0 transition-colors p-0.5"
                         >
                           <ChevronDown size={12} />
@@ -187,11 +156,12 @@ const TopGamesManager = ({ games, allGames, onClose, onRefetch }: TopGamesManage
                       </div>
                       <div className="flex-1 min-w-0 pointer-events-none">
                         <p className="text-sm text-white truncate">{game.title}</p>
-                        <p className="text-xs text-white/40 truncate">{game.developer}</p>
+                        <p className="text-xs text-white/40 truncate">{game.game_list?.List_Name || game.developer}</p>
                       </div>
                       <button
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => { e.stopPropagation(); handleUnpin(game); }}
+                        aria-label={`Unpin ${game.title}`} disabled={saving}
                         className="text-white/30 hover:text-red-400 transition-colors flex-shrink-0 mx-2"
                       >
                         <Minus size={16} />
@@ -212,9 +182,9 @@ const TopGamesManager = ({ games, allGames, onClose, onRefetch }: TopGamesManage
                   const coverUrl = buildCoverUrl(game.cover_url_large || game.cover_url);
                   return (
                     <button
-                      key={game.documentId}
+                      key={`${game.documentId}:${game.game_list?.documentId}`}
                       onClick={() => handlePin(game)}
-                      disabled={pinnedGames.length >= 15}
+                      disabled={saving || pinnedGames.length >= 15}
                       className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0 w-full text-left hover:bg-white/3 rounded transition-colors disabled:opacity-40"
                     >
                       <div className="w-8 h-10 flex-shrink-0 rounded overflow-hidden bg-white/5">

@@ -1,7 +1,6 @@
 import { NavigationStatus } from "../../../navigation/NavigationStatus";
 import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
 import { useState, useMemo, useEffect } from "react";
-import { useQuery, useMutation, gql } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Gamepad2, Star, ChevronRight, Loader2, X, ChevronDown } from "lucide-react";
@@ -10,8 +9,9 @@ import * as Yup from "yup";
 import { toast } from "sonner";
 
 import useAuthStore from "../../../../store/store";
-import { GAME_LISTS_BY_ACCOUNT } from "../../api/query";
-import { CREATE_GAME_LIST, UPDATE_GAME_LIST } from "../../api/mutation";
+import { useGamesCommands } from "../../api/query";
+import { useGamesOwner } from "../../hooks/useGamesOwner";
+
 import type { GameList, RecommendedGame } from "../../types";
 import { deduplicateGames, buildCoverUrl, generateSlug } from "../../utils/gameHelpers";
 import { getCurrentDomain } from "../../../../utils/getCurrentDomain";
@@ -25,28 +25,10 @@ import { AddIcon } from "../../../../assets/icons/AddIcon";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { CategoryEmptyState } from "../../../../components/CategoryEmptyState";
 
-const MY_ACCOUNT = gql`
-  query MyAccountForGames($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      accounts {
-        documentId
-        Account_Name
-        public_games
-        public_recommendations
-        public_movie
-        public_books
-        public_music
-      }
-    }
-  }
-`;
-
 // Create List Modal
 export const CreateGameListModal = ({
   open,
   onClose,
-  accountDocumentId,
-  currentListCount,
   onCreated,
   username,
   defaultListName,
@@ -59,7 +41,7 @@ export const CreateGameListModal = ({
   username: string;
   defaultListName?: string;
 }) => {
-  const [createGameList, { loading }] = useMutation(CREATE_GAME_LIST);
+  const commands = useGamesCommands(), loading = commands.loading;
 
   const formik = useFormik({
     initialValues: { 
@@ -74,20 +56,10 @@ export const CreateGameListModal = ({
     }),
     onSubmit: async (values, { resetForm }) => {
       try {
-        const result = await createGameList({
-          variables: {
-            List_Name: values.List_Name,
-            list_description: values.list_description || null,
-            slug: values.slug || generateSlug(values.List_Name),
-            Visibility: false,
-            display_order: currentListCount,
-            account: accountDocumentId,
-          },
-          refetchQueries: [GAME_LISTS_BY_ACCOUNT],
-        });
+        const result = await commands.createList({ title: values.List_Name, description: values.list_description || null, slug: values.slug || generateSlug(values.List_Name) });
         toast.success("Game list created!");
         resetForm();
-        onCreated(result?.data?.createGameList?.documentId);
+        onCreated(result.id);
         onClose();
       } catch (e) {
         toast.error("Failed to create list. Please try again.");
@@ -318,19 +290,12 @@ const GamesHome = () => {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const { data: accountData } = useQuery(MY_ACCOUNT, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-  });
-  const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
+  const accountDocumentId = useAuthStore(state => state.accountId), ownerGeneration = useAuthStore(state => state.generation);
+  useEffect(() => { setShowCreateModal(false); setShowManageTopGames(false); setSelectedGame(null); setDropdownOpen(false); }, [accountDocumentId, ownerGeneration]);
 
 
 
-  const { data, loading, refetch } = useQuery(GAME_LISTS_BY_ACCOUNT, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const { data, loading, error, refetch } = useGamesOwner();
 
   useEffect(() => {
     if (!loading) {
@@ -338,7 +303,8 @@ const GamesHome = () => {
     }
   }, [loading]);
 
-  const [updateGameList] = useMutation(UPDATE_GAME_LIST);
+  const commands = useGamesCommands();
+  const updateGameList = ({ variables }: { variables: { documentId: string; Visibility: boolean }; optimisticResponse?: unknown; refetchQueries?: unknown[] }) => commands.updateList(variables.documentId, { visibility: variables.Visibility ? 'public' : 'private', publicationState: variables.Visibility ? 'published' : 'draft' });
 
   const handleVisibilityToggle = () => {
     const origin = navigation.authority;
@@ -354,7 +320,7 @@ const GamesHome = () => {
 
   const topPicks = useMemo(() => {
     return deduplicateGames(allGames.filter((g: any) => g.is_pinned))
-      .sort((a: any, b: any) => (a.pin_order || 999) - (b.pin_order || 999));
+      .sort((a: any, b: any) => (a.pin_order ?? 999) - (b.pin_order ?? 999));
   }, [allGames]);
 
   const handleToggleVisibility = async (documentId: string, currentVisibility: boolean) => {
@@ -376,7 +342,7 @@ const GamesHome = () => {
             top_picks_heading: list.top_picks_heading || null,
           }
         },
-        refetchQueries: [GAME_LISTS_BY_ACCOUNT],
+        refetchQueries: [],
       });
     } catch {
       toast.error("Failed to update visibility.");
@@ -388,6 +354,7 @@ const GamesHome = () => {
   return (
     <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto">
       <NavigationStatus navigation={navigation} />
+      {error && <p role="alert">Games could not be loaded. <button onClick={refetch}>Retry</button></p>}
       {/* Desktop view header */}
       <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4">
         {/* Left: Public switch */}

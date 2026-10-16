@@ -1,0 +1,28 @@
+{
+  "kind": "writer execution-summary receipt from retained tool transcript; not native Vitest JSON/raw log",
+  "sourceBindingManifest": "task4.1-movies-package-b-private-closure.json",
+  "sourceBindingManifestSha256AtReceipt": "119a1e15d360bc0fd143b765901dcb93537af62ede6a3e4617d615c4077e4b15",
+  "baseHead": "0c0b1075d7b577e95dbd6fdb3556f2635e3ec250",
+  "privatePath": "C:\\Users\\TK\\.codex\\tmp\\movies-b-qualification-36301b7c8cf5",
+  "pg": {
+    "toolSession": 28501,
+    "exitCode": 0,
+    "passed": 141,
+    "skipped": 3,
+    "filesPassed": 7,
+    "filesSkipped": 1,
+    "durationSeconds": 86.84,
+    "actualC5Flag": true,
+    "restoreSkippedBecause": "C11 requires UAT authority"
+  },
+  "restore": {
+    "exitCode": 0,
+    "passed": 3,
+    "skipped": 0,
+    "durationSeconds": 9.11,
+    "authority": "fresh strict owned UAT58038",
+    "cleanup": "owned container/database removed"
+  },
+  "rawLogsRetained": false,
+  "limitation": "Earlier raw install and PG/restore logs were not persisted; exact tool transcript outputs and source-bound summaries retained, topology readback separately verifies current ownership."
+}

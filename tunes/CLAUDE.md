@@ -10,7 +10,7 @@ Real-time collaborative music playlist management platform for venues. Venue own
 
 **Database**: PostgreSQL + Drizzle ORM 0.39 (@neondatabase/serverless for connection)
 
-**Integrations**: YouTube Data API v3, Spotify API (import), Razorpay (payments), AWS SES (email), Google Gemini (AI), Nodemailer, Puppeteer
+**Integrations**: YouTube Data API v3, Spotify API (import), Razorpay (payments), Resend (email)
 
 ## Directory Structure
 
@@ -50,20 +50,16 @@ server/
 │   ├── youtubeRoutes.ts        # YouTube search
 │   ├── paymentRoutes.ts        # Razorpay webhooks
 │   ├── emailRoutes.ts          # Email templates & sending
-│   ├── geminiRoutes.ts         # AI recommendations
 │   ├── instagramRoutes.ts      # Instagram webhooks
-│   ├── strapiRoutes.ts         # Strapi CMS sync
 │   ├── subscriptionRoutes.ts   # Subscription management
 │   ├── pageRoutes.ts           # CMS page content
 │   ├── reactivationRoutes.ts   # Account reactivation endpoints
 │   └── legacyRemainingRoutes.ts # Consolidated legacy endpoints
 ├── controllers/                # Business logic controllers
 ├── services/
-│   ├── email-service.ts        # AWS SES email delivery
-│   ├── gemini-service.ts       # Google Gemini AI
+│   ├── email-service.ts        # Resend email delivery (REST API)
 │   ├── reactivation-service.ts # Account reactivation logic/service
 │   ├── spotify-playlist-import.ts # Spotify playlist import
-│   ├── strapi-service.ts       # Strapi CMS integration
 │   ├── system-settings-service.ts # App-wide config
 │   ├── youtube-playlist-import.ts # YouTube playlist import
 │   └── user-sync-service.ts    # User data sync
@@ -120,7 +116,7 @@ npm run music:db:verify -- --mode fixture --target test
 ## API
 
 - REST endpoints under `/api/` — see Swagger docs at `/api-docs`
-- Key route groups: auth, playlists, admin, youtube, payment, email, gemini
+- Key route groups: auth, playlists, admin, youtube, payment, email
 - Pattern: routes -> (optional controller) -> storage/service layer
 
 ## Common Tasks

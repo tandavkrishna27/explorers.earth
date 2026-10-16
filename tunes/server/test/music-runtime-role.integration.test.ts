@@ -9,6 +9,7 @@ import { migrateMusicDatabase } from "../db/migrate";
 import { MusicIdentityRepository } from "../repositories/musicIdentityRepository";
 import { startMusicServer } from "../config/music-startup";
 import { EXPECTED_MUSIC_MIGRATION_CHAIN } from "../../shared/music-migration-contract";
+import { CURRENT_MIGRATION_MARKER } from "../deployment/music-deployment";
 
 const ownerTarget = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
 const enabled = process.env.MUSIC_C5_POSTGRES_TEST === "1";
@@ -235,6 +236,9 @@ describePg("C5 least-privilege Music runtime database authority", () => {
       "UPDATE music_publication_operation_archive SET request_mode=request_mode WHERE false",
       "DELETE FROM music_publication_operation_archive WHERE false",
       "DELETE FROM music_identity_tombstones",
+      "UPDATE canonical_music_numeric_retirements SET retired_at=clock_timestamp()",
+      "DELETE FROM canonical_music_numeric_retirements",
+      "TRUNCATE canonical_music_numeric_retirements",
       "DELETE FROM music_reactivation_tokens",
       "CREATE TABLE music_identity_tombstones_recreated(id integer)",
       "UPDATE music_schema_migrations SET checksum=repeat('0',64)",
@@ -615,6 +619,7 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     const journalBefore = (await owner.query("SELECT id,checksum,schema_checksum FROM music_schema_migrations ORDER BY id")).rows;
     const tunesRoot = resolve(import.meta.dirname, "../..");
     const tsxCli = join(tunesRoot, "node_modules", "tsx", "dist", "cli.mjs");
+    const databaseAuthority = new URL(ownerTarget);
     let failure: { status?: number; stdout?: string; stderr?: string } | undefined;
     try {
       execFileSync(process.execPath, [tsxCli, "server/deployment/run-migration-gate.ts"], {
@@ -623,8 +628,8 @@ describePg("C5 least-privilege Music runtime database authority", () => {
         env: {
           ...process.env,
           MUSIC_MODE: "fixture",
-          MUSIC_DATABASE_HOST: "127.0.0.1",
-          MUSIC_DATABASE_PORT: "55432",
+          MUSIC_DATABASE_HOST: databaseAuthority.hostname,
+          MUSIC_DATABASE_PORT: databaseAuthority.port,
           MUSIC_DATABASE_NAME: databaseName,
           MUSIC_DATABASE_USER: gateOwnerRole,
           MUSIC_DATABASE_PASSWORD_FILE: gateOwnerPasswordPath,
@@ -632,7 +637,7 @@ describePg("C5 least-privilege Music runtime database authority", () => {
           MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: runtimePasswordPath,
           MUSIC_IMAGE_DIGEST: `sha256:${"a".repeat(64)}`,
           MUSIC_IMAGE_COMMIT: "a".repeat(40),
-          MUSIC_MIGRATION_MARKER: "0017_publication_idempotency_key_retirement",
+          MUSIC_MIGRATION_MARKER: CURRENT_MIGRATION_MARKER,
           MUSIC_GATE_ATTESTATION_KEY: "hostile-gate-key-at-least-32-characters",
           MUSIC_GATE_ATTESTATION_PATH: attestation,
         },
@@ -646,6 +651,7 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     expect((await owner.query("SELECT id,checksum,schema_checksum FROM music_schema_migrations ORDER BY id")).rows)
       .toEqual(journalBefore);
     const output = `${failure?.stdout ?? ""}${failure?.stderr ?? ""}`;
+    expect(output).toContain("runtime capability role has unsafe attributes or membership");
     for (const forbidden of [gateOwnerPassword, runtimePassword, gateOwnerRole, runtimeUser]) {
       expect(output).not.toContain(forbidden);
     }

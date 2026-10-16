@@ -1,0 +1,12 @@
+import {it,expect} from 'vitest';
+import {resolveAppProviderOwnerChoices} from '../../config/app-provider-configuration';
+import {websiteProviderIdentity} from '../../application/appEnrichmentProviderCore.mjs';
+import {websiteAdapterVersion} from '../../application/appEnrichmentWebsiteAdapter';
+const parsingPolicy={maxInputBytes:100,maxHtmlNodes:100,maxHtmlDepth:10,maxJsonLdBlocks:1,maxJsonBytes:100,maxJsonDepth:10,maxJsonTokens:100};
+const isolationPolicy={maxOldGenerationSizeMb:16,maxYoungGenerationSizeMb:4,stackSizeMb:1,maxConcurrentDecoders:1,cleanupTimeoutMs:100};
+const identity=websiteProviderIdentity('https://example.test/');
+const limits={leaseDurationMs:1000,heartbeatIntervalMs:100,maxAttempts:3,retryMinDelayMs:10,retryMaxDelayMs:100,retryAfterMaxMs:100,jobConcurrency:1,maxJobsPerRun:1,maxRequestsPerRun:1,maxBytesPerRun:100,maxRuntimeMs:2000,authorityTimeoutMs:100,authorityCleanupTimeoutMs:100,maxCostUnitsPerRun:1,costUnitsPerRequest:1,retentionDays:7};
+const data={configuration:{sources:[{identity,approvalRevision:1,adapterVersion:websiteAdapterVersion(parsingPolicy,isolationPolicy),allowedFields:['title','description'],canonicalUrlPolicyVersion:'website-url-v1',canonicalUrl:'https://example.test/',fetch:{contentProfile:'html-utf8',allowedHosts:['example.test'],redirectPolicy:'deny',timeoutMs:100,maxBytes:100,maxRedirects:0,maxRequests:1},limits}],choiceLabels:[{identity,label:'Example website'}]},parsingPolicy,isolationPolicy};
+it('absent operator configuration leaves sources unavailable',()=>{expect(resolveAppProviderOwnerChoices({})).toEqual([]);});
+it('validates the complete same worker registry before exposing owner choices without executing decoders',()=>{const choices=resolveAppProviderOwnerChoices({EXPLORERS_APPS_PROVIDER_CONFIGURATION:JSON.stringify(data)});expect(choices).toEqual([{identity,label:'Example website',sourceUrl:'https://example.test/'}]);expect(Object.isFrozen(choices)).toBe(true);});
+it('refuses malformed or incomplete supplied operator configuration',()=>{for(const raw of ['', '{',JSON.stringify({...data,configuration:{choiceLabels:[]}}),JSON.stringify({...data,configuration:{sources:null,choiceLabels:[]}}),JSON.stringify({...data,extra:true}),JSON.stringify({...data,isolationPolicy:undefined}),JSON.stringify({...data,configuration:{...data.configuration,choiceLabels:[]}}),' '.repeat(1048577)])expect(()=>resolveAppProviderOwnerChoices({EXPLORERS_APPS_PROVIDER_CONFIGURATION:raw})).toThrow('Invalid App provider operator configuration');});

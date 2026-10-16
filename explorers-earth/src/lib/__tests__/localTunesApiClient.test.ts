@@ -16,6 +16,16 @@ function json(body: unknown, status = 200, headers?: Record<string, string>): Re
   });
 }
 
+/**
+ * One stub for both transports. In production the canonical ensure is same-origin and
+ * the Music calls are cross-origin, but where a case already drove the ensure through
+ * its own stub, letting that stub answer both keeps its assertions about counts,
+ * ordering and responses meaningful.
+ */
+function bothTransports(impl: typeof fetch) {
+  return { fetchImpl: impl, sessionFetchImpl: impl };
+}
+
 function ensureResponse(credential = freshCredential): Response {
   return json({
     version: "music-identity/v1",
@@ -85,13 +95,53 @@ afterEach(() => {
 });
 
 describe("local Tunes API client", () => {
+  it.each([
+    ["no credential at all", {}],
+    ["a non-string token", { token: 41, expiresAt: NOW + 600_000 }],
+    ["a fractional expiry", { token: "t", expiresAt: NOW + 0.5 }],
+    ["an already-passed expiry", { token: "t", expiresAt: NOW - 1 }],
+  ])("fails closed when a successful ensure carries %s", async (_label, credential) => {
+    // A 200 that does not carry a usable credential must be refused and must leave
+    // nothing behind; it is the one response shape a caller cannot see for itself.
+    const fetchImpl = vi.fn(async () => json({
+      version: "music-identity/v1", identity: { musicUserId: 41, status: "active" }, credential,
+    }));
+    const client = createLocalTunesApiClient({
+      baseUrl: "https://music.example",
+      fetchImpl,
+      sessionFetchImpl: fetchImpl,
+      now: () => NOW,
+    });
+
+    await expect(client.ensureIdentity()).rejects.toMatchObject({ code: "AUTH_UNAVAILABLE" });
+    expect(getMusicCredential(NOW)).toBeUndefined();
+  });
+
+  it("sends the canonical ensure through the ambient fetch when no session transport is injected", async () => {
+    // This is the production path: musicApi injects only the Music transport, so the
+    // canonical same-origin route must fall back to the ambient fetch - and must not
+    // be routed through the Music-origin transport, which rejects a relative path.
+    const ambient = vi.fn(async () => ensureResponse());
+    vi.stubGlobal("fetch", ambient);
+    const fetchImpl = vi.fn(async () => json({ ok: true }));
+    const client = createLocalTunesApiClient({ baseUrl: "https://music.example", fetchImpl, now: () => NOW });
+
+    await client.ensureIdentity();
+
+    expect(ambient).toHaveBeenCalledWith("/api/explorers/v1/music/identity/ensure", expect.objectContaining({
+      method: "POST",
+      credentials: "include",
+    }));
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it("prevents conditional browser caching for canonical authenticated JSON reads", async () => {
     setMusicCredential(freshCredential);
     const fetchImpl = vi.fn(async () => json({ queueRevision: 1 }));
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
     });
 
@@ -112,16 +162,19 @@ describe("local Tunes API client", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "http://localhost:55173",
       fetchImpl,
-      getStrapiBearer: async () => "fixture-proof-123456",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
     });
 
     await client.ensureIdentity();
 
-    expect(fetchImpl).toHaveBeenCalledWith("http://localhost:55173/api/music/identity/ensure", expect.objectContaining({
+    // ADR-006: the canonical route is same-origin and relative, whatever the Music
+    // origin is, and carries cookie authority with no bearer at all.
+    expect(fetchImpl).toHaveBeenCalledWith("/api/explorers/v1/music/identity/ensure", expect.objectContaining({
       method: "POST",
-      headers: { Authorization: "Bearer fixture-proof-123456" },
+      credentials: "include",
     }));
+    expect(fetchImpl.mock.calls[0]?.[1]?.headers).toBeUndefined();
   });
 
   it.each([
@@ -134,7 +187,7 @@ describe("local Tunes API client", () => {
     expect(() => createLocalTunesApiClient({
       baseUrl: "http://localhost:55173",
       fetchImpl,
-      getStrapiBearer: async () => "unused-proof",
+      sessionFetchImpl: fetchImpl,
     })).toThrow(expect.objectContaining({ code: "REQUEST_INVALID" }));
     expect(fetchImpl).not.toHaveBeenCalled();
   });
@@ -150,7 +203,7 @@ describe("local Tunes API client", () => {
     setMusicCredential(freshCredential);
     let error: unknown;
     try {
-      createLocalTunesApiClient({ baseUrl, fetchImpl, getStrapiBearer: async () => "unused-proof" });
+      createLocalTunesApiClient({ baseUrl, fetchImpl, sessionFetchImpl: fetchImpl});
     } catch (caught) {
       error = caught;
     }
@@ -166,41 +219,41 @@ describe("local Tunes API client", () => {
       setMusicCredential(freshCredential);
       const fetchImpl = vi.fn();
       expect(() => createLocalTunesApiClient({
-        baseUrl, fixtureMode: true, fetchImpl, getStrapiBearer: async () => "unused-proof", now: () => NOW,
+        baseUrl, fixtureMode: true, fetchImpl, sessionFetchImpl: fetchImpl, now: () => NOW,
       } as never)).toThrow(expect.objectContaining({ code: "REQUEST_INVALID" }));
       expect(fetchImpl).not.toHaveBeenCalled();
     },
   );
 
-  it("coalesces 50 initial refreshes and keeps proof B on ensure and credential C on local calls", async () => {
+  it("coalesces 50 initial refreshes onto one ensure and uses the minted credential on local calls", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       calls.push({ url, init });
-      if (url.endsWith("/api/music/identity/ensure")) {
+      if (url.endsWith("/music/identity/ensure")) {
         await new Promise((resolve) => setTimeout(resolve, 10));
         return ensureResponse();
       }
       return json({ ok: true });
     });
-    const getStrapiBearer = vi.fn(async () => "authoritative-strapi-proof");
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer,
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
     });
     const responses = await Promise.all(Array.from({ length: 50 }, () => client.request({ method: "GET", path: "/api/music/identity/current" })));
     expect(responses.every(({ status }) => status === 200)).toBe(true);
     expect(calls.filter(({ url }) => url.endsWith("/ensure"))).toHaveLength(1);
     expect(calls.filter(({ url }) => url.endsWith("/current"))).toHaveLength(50);
-    expect(calls.find(({ url }) => url.endsWith("/ensure"))?.init).toMatchObject({
-      method: "POST", headers: { Authorization: "Bearer authoritative-strapi-proof" },
-    });
+    const ensure = calls.find(({ url }) => url.endsWith("/ensure"));
+    expect(ensure?.url).toBe("/api/explorers/v1/music/identity/ensure");
+    expect(ensure?.init).toMatchObject({ method: "POST", credentials: "include" });
+    // Cookie authority on the ensure, and the minted credential on the Music calls.
+    expect(ensure?.init?.headers).toBeUndefined();
     expect(calls.filter(({ url }) => url.endsWith("/current"))[0].init).toMatchObject({
       headers: { Authorization: `Bearer ${freshCredential.token}` },
     });
-    expect(getStrapiBearer).toHaveBeenCalledTimes(1);
   });
 
   it("exposes one bodyless single-flight automatic ensure without a downstream owner request", async () => {
@@ -208,16 +261,18 @@ describe("local Tunes API client", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
     });
     await Promise.all(Array.from({ length: 25 }, () => client.ensureIdentity()));
     expect(fetchImpl).toHaveBeenCalledTimes(1);
-    expect(fetchImpl).toHaveBeenCalledWith("https://music.example/api/music/identity/ensure", expect.objectContaining({
+    expect(fetchImpl).toHaveBeenCalledWith("/api/explorers/v1/music/identity/ensure", expect.objectContaining({
       method: "POST",
-      headers: { Authorization: "Bearer authoritative-strapi-proof" },
+      credentials: "include",
       signal: expect.any(AbortSignal),
     }));
+    // No bearer on the canonical route: the subject comes from the server-side Actor.
+    expect(fetchImpl.mock.calls.every(([, init]) => !(init?.headers as Record<string, string> | undefined)?.Authorization)).toBe(true);
   });
 
   it("forces one bodyless single-flight snapshot refresh even while credential C is still fresh", async () => {
@@ -226,16 +281,18 @@ describe("local Tunes API client", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
     });
     await Promise.all(Array.from({ length: 12 }, () => client.refreshIdentity()));
     expect(fetchImpl).toHaveBeenCalledTimes(1);
-    expect(fetchImpl).toHaveBeenCalledWith("https://music.example/api/music/identity/ensure", expect.objectContaining({
+    expect(fetchImpl).toHaveBeenCalledWith("/api/explorers/v1/music/identity/ensure", expect.objectContaining({
       method: "POST",
-      headers: { Authorization: "Bearer authoritative-strapi-proof" },
+      credentials: "include",
       signal: expect.any(AbortSignal),
     }));
+    // No bearer on the canonical route: the subject comes from the server-side Actor.
+    expect(fetchImpl.mock.calls.every(([, init]) => !(init?.headers as Record<string, string> | undefined)?.Authorization)).toBe(true);
     expect(getMusicCredential(NOW)).toEqual(rotatedCredential);
   });
 
@@ -246,7 +303,7 @@ describe("local Tunes API client", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
       refreshWindowMs: 60_000,
     });
@@ -272,7 +329,7 @@ describe("local Tunes API client", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
       delay: async (milliseconds) => { elapsedMs += milliseconds; },
     });
@@ -302,7 +359,7 @@ describe("local Tunes API client", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
       delay: async (milliseconds) => {
         observedDelayMs = milliseconds;
@@ -331,7 +388,7 @@ describe("local Tunes API client", () => {
       const client = createLocalTunesApiClient({
         baseUrl: "https://music.example",
         fetchImpl,
-        getStrapiBearer: async () => "authoritative-strapi-proof",
+        sessionFetchImpl: fetchImpl,
         now: () => NOW,
       });
       const outcome = client.ensureIdentity();
@@ -350,11 +407,10 @@ describe("local Tunes API client", () => {
     let abortAuthority = () => undefined;
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
-      fetchImpl: async () => identityErrorResponse(500, "INTERNAL_ERROR", {
+      ...bothTransports(async () => identityErrorResponse(500, "INTERNAL_ERROR", {
         retryable: true,
         action: "retry",
-      }),
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      })),
       now: () => NOW,
       delay: async () => { abortAuthority(); },
     });
@@ -367,8 +423,7 @@ describe("local Tunes API client", () => {
   it("fails a malformed 400 ensure response closed as request-invalid", async () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
-      fetchImpl: async () => json({ error: { code: "REQUEST_INVALID" } }, 400),
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      ...bothTransports(async () => json({ error: { code: "REQUEST_INVALID" } }, 400)),
       now: () => NOW,
     });
 
@@ -395,7 +450,7 @@ describe("local Tunes API client", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
       delay: async (milliseconds) => { elapsedMs += milliseconds; },
     });
@@ -410,13 +465,12 @@ describe("local Tunes API client", () => {
   it("drops an unsafe response request ID from the contained UI error", async () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
-      fetchImpl: async () => json({
+      ...bothTransports(async () => json({
         version: "music-error/v1",
         error: {
           code: "AUTH_INVALID", message: "Contained.", action: "authenticate", retryable: false, requestId: "safe-body-id",
         },
-      }, 401, { "x-request-id": "unsafe/request-id" }),
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      }, 401, { "x-request-id": "unsafe/request-id" })),
       now: () => NOW,
     });
 
@@ -446,7 +500,7 @@ describe("local Tunes API client", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
       delay: async () => undefined,
     });
@@ -460,7 +514,7 @@ describe("local Tunes API client", () => {
   it("fails a fully shaped non-string identity code closed", async () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
-      fetchImpl: async () => json({
+      ...bothTransports(async () => json({
         version: "music-error/v1",
         error: {
           code: 503,
@@ -469,8 +523,7 @@ describe("local Tunes API client", () => {
           retryable: true,
           requestId: "non-string-code",
         },
-      }, 503, { "retry-after": "1", "x-request-id": "non-string-code" }),
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      }, 503, { "retry-after": "1", "x-request-id": "non-string-code" })),
       now: () => NOW,
     });
 
@@ -504,7 +557,7 @@ describe("local Tunes API client", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
       delay: async () => undefined,
     });
@@ -522,7 +575,7 @@ describe("local Tunes API client", () => {
       const client = createLocalTunesApiClient({
         baseUrl: "https://music.example",
         fetchImpl,
-        getStrapiBearer: async () => "authoritative-strapi-proof",
+        sessionFetchImpl: fetchImpl,
         now: () => NOW,
       });
       let outcome: unknown = "pending";
@@ -549,8 +602,7 @@ describe("local Tunes API client", () => {
       } as Response;
       const client = createLocalTunesApiClient({
         baseUrl: "https://music.example",
-        fetchImpl: async () => response,
-        getStrapiBearer: async () => "authoritative-strapi-proof",
+        ...bothTransports(async () => response),
         now: () => NOW,
       });
       let outcome: unknown = "pending";
@@ -574,7 +626,7 @@ describe("local Tunes API client", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
       delay: async () => {
         delayEntered.resolve();
@@ -606,7 +658,7 @@ describe("local Tunes API client", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
       delay: async () => undefined,
     });
@@ -635,11 +687,11 @@ describe("local Tunes API client", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl,
-      getStrapiBearer: async () => "authoritative-strapi-proof",
+      sessionFetchImpl: fetchImpl,
       now: () => NOW,
     });
     const error = await client.ensureIdentity().catch((cause) => cause);
-    expect(error).toMatchObject({ code: "AUTH_UNAVAILABLE", upstreamCode: "IDENTITY_CONFLICT", retryable: false });
+    expect(error).toMatchObject({ code: "REQUEST_INVALID", upstreamCode: "IDENTITY_CONFLICT", retryable: false });
     expect(error.message).not.toContain("sensitive upstream detail");
   });
 
@@ -657,7 +709,7 @@ describe("local Tunes API client", () => {
       return localAttempt === 1 ? expiredResponse() : json({ ok: true });
     });
     const client = createLocalTunesApiClient({
-      baseUrl: "https://music.example", fetchImpl, getStrapiBearer: async () => "strapi-proof-with-enough-entropy", now: () => NOW,
+      baseUrl: "https://music.example", fetchImpl, sessionFetchImpl: fetchImpl, now: () => NOW,
     });
     const operation = client.request({ method, path: "/api/music/owner-action", idempotencyKey });
     if (succeeds) await expect(operation).resolves.toMatchObject({ status: 200 });
@@ -671,7 +723,7 @@ describe("local Tunes API client", () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => String(input).endsWith("/ensure")
       ? ensureResponse(rotatedCredential) : expiredResponse());
     const client = createLocalTunesApiClient({
-      baseUrl: "https://music.example", fetchImpl, getStrapiBearer: async () => "strapi-proof-with-enough-entropy", now: () => NOW,
+      baseUrl: "https://music.example", fetchImpl, sessionFetchImpl: fetchImpl, now: () => NOW,
     });
     await expect(client.request({ method: "GET", path: "/api/music/identity/current" }))
       .rejects.toMatchObject({ code: "AUTH_REQUIRED" });
@@ -689,7 +741,7 @@ describe("local Tunes API client", () => {
         return tokenResponse(code);
       });
       const client = createLocalTunesApiClient({
-        baseUrl: "https://music.example", fetchImpl, getStrapiBearer: async () => "strapi-proof-with-enough-entropy", now: () => NOW,
+        baseUrl: "https://music.example", fetchImpl, sessionFetchImpl: fetchImpl, now: () => NOW,
       });
 
       await expect(client.request({ method: "GET", path: "/api/music/dashboard" })).rejects.toMatchObject({
@@ -712,7 +764,7 @@ describe("local Tunes API client", () => {
       return signals.length === 1 ? a.promise : b.promise;
     });
     const client = createLocalTunesApiClient({
-      baseUrl: "https://music.example", fetchImpl, getStrapiBearer: async () => "strapi-proof-with-enough-entropy", now: () => NOW,
+      baseUrl: "https://music.example", fetchImpl, sessionFetchImpl: fetchImpl, now: () => NOW,
     });
 
     client.setAuthority("user-a:account-a");
@@ -741,8 +793,7 @@ describe("local Tunes API client", () => {
     let ensureCall = 0;
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
-      fetchImpl: (input) => String(input).endsWith("/ensure") ? (++ensureCall === 1 ? a.promise : b.promise) : Promise.resolve(json({ ok: true })),
-      getStrapiBearer: async () => "strapi-proof-with-enough-entropy",
+      ...bothTransports((input) => String(input).endsWith("/ensure") ? (++ensureCall === 1 ? a.promise : b.promise) : Promise.resolve(json({ ok: true }))),
       now: () => NOW,
     });
     client.setAuthority("user-a:account-a");
@@ -766,7 +817,7 @@ describe("local Tunes API client", () => {
     const localFetch = vi.fn(async () => json({ ok: true }));
     const noGateway = vi.fn(async () => { throw new Error("upstream unavailable sentinel"); });
     const available = createLocalTunesApiClient({
-      baseUrl: "https://music.example", fetchImpl: localFetch, getStrapiBearer: noGateway, now: () => NOW,
+      baseUrl: "https://music.example", fetchImpl: localFetch, sessionFetchImpl: localFetch, now: () => NOW,
     });
     await expect(available.request({ method: "GET", path: "/api/music/identity/current" })).resolves.toMatchObject({ status: 200 });
     expect(noGateway).not.toHaveBeenCalled();
@@ -776,7 +827,7 @@ describe("local Tunes API client", () => {
     const unavailable = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl: async () => { mutations += 1; return json({ ok: true }); },
-      getStrapiBearer: noGateway,
+      sessionFetchImpl: async () => { throw new Error("canonical session unreachable"); },
       now: () => NOW,
     });
     const failure = unavailable.request({ method: "POST", path: "/api/music/owner-action", body: { action: "change" } });
@@ -792,7 +843,6 @@ describe("local Tunes API client", () => {
     const client = createLocalTunesApiClient({
       baseUrl: "https://music.example",
       fetchImpl: async (input) => { urls.push(String(input)); throw new Error("network contained"); },
-      getStrapiBearer: async () => "strapi-proof-with-enough-entropy",
       now: () => NOW,
     });
     const error = await client.request({ method: "GET", path: "/api/music/identity/current" }).catch((caught) => caught);
@@ -807,7 +857,7 @@ describe("local Tunes API client", () => {
     setMusicCredential(freshCredential);
     const pending = deferred<Response>(); let transportSignal: AbortSignal | undefined;
     const client = createLocalTunesApiClient({
-      baseUrl: "https://music.example", now: () => NOW, getStrapiBearer: async () => "unused",
+      baseUrl: "https://music.example", now: () => NOW,
       fetchImpl: vi.fn((_input, init) => { transportSignal = init?.signal as AbortSignal; return pending.promise; }),
     });
     const controller = new AbortController();
@@ -822,7 +872,7 @@ describe("local Tunes API client", () => {
   it("fails closed before transport when the caller signal is already aborted", async () => {
     setMusicCredential(freshCredential);
     const fetchImpl = vi.fn(async () => json({ ok: true }));
-    const client = createLocalTunesApiClient({ baseUrl: "https://music.example", now: () => NOW, getStrapiBearer: async () => "unused", fetchImpl });
+    const client = createLocalTunesApiClient({ baseUrl: "https://music.example", now: () => NOW, sessionFetchImpl: fetchImpl, fetchImpl });
     const controller = new AbortController(); controller.abort();
     await expect(client.request({ method: "GET", path: "/api/music/features", signal: controller.signal })).rejects.toBeInstanceOf(MusicClientError);
     expect(fetchImpl).not.toHaveBeenCalled();

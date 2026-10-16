@@ -1,6 +1,15 @@
-import { createHash } from "node:crypto";
 import { z } from "zod";
 import { MusicIdentityError } from "../../shared/musicError";
+import type { ResolvedStrapiIdentity } from "./resolvedIdentity";
+// Ticket 8.1a: these moved to neutral modules so the canonical closure no longer
+// imports a Strapi-named file. The gateway still uses all four.
+import {
+  cancelResponseBody,
+  MalformedUpstreamBodyError,
+  readBoundedResponseBody,
+  withDeadline,
+} from "./upstreamResponseBody";
+import { fingerprintStrapiProof } from "./proofFingerprint";
 
 const boundedString = z.string().trim().min(1).max(512);
 const strapiUserSchema = z.object({
@@ -36,16 +45,9 @@ const MAX_ACCOUNT_PAGES = 10;
 const MAX_ACCOUNT_TOTAL = ACCOUNT_PAGE_SIZE * MAX_ACCOUNT_PAGES;
 const MAX_JSON_BODY_BYTES = 128 * 1024;
 
-export interface ResolvedStrapiIdentity {
-  userDocumentId: string;
-  accountDocumentId: string;
-  username: string;
-  email: string;
-  provider: "local" | "google";
-  accountName: string;
-  accountType: string;
-  accountMobile: string;
-}
+// Ticket 8.1a: the DTO now lives in a neutral module so consumers need not import a
+// Strapi-named file for a type. Re-exported because the gateway is still its producer.
+export type { ResolvedStrapiIdentity };
 
 export interface ResolvedStrapiUser {
   userDocumentId: string;
@@ -81,13 +83,6 @@ class AdmissionLimitError extends Error {
   constructor() {
     super("bounded upstream admission refused");
     this.name = "AdmissionLimitError";
-  }
-}
-
-class MalformedUpstreamBodyError extends RangeError {
-  constructor() {
-    super("bounded upstream response is malformed");
-    this.name = "MalformedUpstreamBodyError";
   }
 }
 
@@ -160,10 +155,6 @@ class GatewayUnavailableError extends MusicIdentityError {
   constructor(retryAfterSeconds: number, readonly countsTowardCircuit: boolean) {
     super("UPSTREAM_UNAVAILABLE", 503, "Music identity is temporarily unavailable.", "retry", true, retryAfterSeconds);
   }
-}
-
-export function fingerprintStrapiProof(proof: string): string {
-  return createHash("sha256").update(proof, "utf8").digest("hex");
 }
 
 export class StrapiIdentityGateway {
@@ -521,67 +512,6 @@ export class StrapiIdentityGateway {
       if (entry.expiresAt <= now) this.cache.delete(key);
     });
     while (this.cache.size > 1_024) this.cache.delete(this.cache.keys().next().value as string);
-  }
-}
-
-async function withDeadline<T>(operation: Promise<T>, timeoutMs: number, controller: AbortController): Promise<T> {
-  let timer: NodeJS.Timeout | undefined;
-  try {
-    return await Promise.race([
-      operation,
-      new Promise<T>((_, reject) => {
-        timer = setTimeout(() => {
-          controller.abort();
-          reject(new Error("deadline exceeded"));
-        }, timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
-
-export async function cancelResponseBody(response: Response): Promise<void> {
-  if (!response.body || response.body.locked) return;
-  try { await response.body.cancel(); }
-  catch { /* the connection is already unusable; there is nothing left to drain */ }
-}
-
-export async function readBoundedResponseBody(
-  response: Response,
-  maximumBytes: number,
-  timeoutMs: number,
-  controller: AbortController,
-): Promise<string> {
-  if (!response.body) return "";
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  const startedAt = Date.now();
-  try {
-    while (true) {
-      const remaining = timeoutMs - (Date.now() - startedAt);
-      if (remaining <= 0) throw new Error("deadline exceeded");
-      const next = await withDeadline(reader.read(), remaining, controller);
-      if (next.done) break;
-      length += next.value.byteLength;
-      if (length > maximumBytes) throw new MalformedUpstreamBodyError();
-      chunks.push(next.value);
-    }
-  } catch (error) {
-    try { await reader.cancel(); } catch { /* already aborted */ }
-    throw error;
-  }
-  const body = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(body);
-  } catch {
-    throw new MalformedUpstreamBodyError();
   }
 }
 

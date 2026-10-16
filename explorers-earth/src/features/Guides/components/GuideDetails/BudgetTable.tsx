@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useMutation } from "@apollo/client";
+import {useGuideEditing} from '../../context/GuideEditingProvider';
 import { toast } from "sonner";
 import { BudgetPlace, BudgetData } from "../../types/guideSectionTypes";
 import { parseBudget } from "../../utils/guideDataParser";
@@ -7,8 +7,6 @@ import { getBudgetDisplayText } from "../../utils/priceLevelUtils";
 import BudgetIcon from "../../../../assets/icons/BudgetIcon";
 import EditIcon from "../../../../assets/icons/EditIcon";
 import BudgetInputModal from "../BudgetInputModal";
-import { UPDATE_GUIDE_SECTION_MUTATION } from "../../api/mutations";
-import { GET_GUIDE_BY_ID_QUERY } from "../../api/queries";
 
 interface BudgetTableProps {
   guide: {
@@ -35,17 +33,7 @@ interface BudgetItem {
 
 const BudgetTable: React.FC<BudgetTableProps> = ({ guide }) => {
   const [editingBudget, setEditingBudget] = useState<BudgetItem | null>(null);
-  const [updateSection] = useMutation(UPDATE_GUIDE_SECTION_MUTATION, {
-    refetchQueries: guide.documentId
-      ? [
-          {
-            query: GET_GUIDE_BY_ID_QUERY,
-            variables: { documentId: guide.documentId },
-          },
-        ]
-      : [],
-    awaitRefetchQueries: true,
-  });
+  const {getSection, saveSection} = useGuideEditing();
 
   const budgetItems = useMemo(() => {
     const sections = guide.guide_sections || [];
@@ -166,17 +154,13 @@ const BudgetTable: React.FC<BudgetTableProps> = ({ guide }) => {
           : existingBudget.evening || [],
       };
 
-      // Convert to JSON string
-      const budgetString = JSON.stringify(updatedBudget);
-
-      // Update the section
-      await updateSection({
-        variables: {
-          documentId: editingBudget.sectionId,
-          data: {
-            Budget: budgetString,
-          },
-        },
+      // Only the budget block changes; the save keeps every other block as it is.
+      const target = getSection(editingBudget.sectionId);
+      if (!target) throw new Error("That part of the guide is no longer there. Refresh and try again.");
+      await saveSection(editingBudget.sectionId, {
+        title: target.Title,
+        description: target.Description ?? null,
+        Budget: updatedBudget,
       });
 
       if (budget) {
@@ -251,17 +235,13 @@ const BudgetTable: React.FC<BudgetTableProps> = ({ guide }) => {
           : existingBudget.evening || [],
       };
 
-      // Convert to JSON string
-      const budgetString = JSON.stringify(updatedBudget);
-
-      // Update the section
-      await updateSection({
-        variables: {
-          documentId: editingBudget.sectionId,
-          data: {
-            Budget: budgetString,
-          },
-        },
+      // Only the budget block changes; the save keeps every other block as it is.
+      const target = getSection(editingBudget.sectionId);
+      if (!target) throw new Error("That part of the guide is no longer there. Refresh and try again.");
+      await saveSection(editingBudget.sectionId, {
+        title: target.Title,
+        description: target.Description ?? null,
+        Budget: updatedBudget,
       });
 
       if (amount > 0) {

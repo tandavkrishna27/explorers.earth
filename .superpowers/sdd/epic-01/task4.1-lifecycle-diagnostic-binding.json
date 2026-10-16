@@ -1,0 +1,23 @@
+{
+  "acceptance": false,
+  "canonicalHash": "491c48e17a2579e9b9dbe3ec64af3c01b8b8f7bb71e0fd58381b8ceb32d870f8",
+  "overlayHash": "f212f1b4a2e557e80ce0d5febee7615f01386c018f74c6d2d2aa09f268166623",
+  "path": "tunes/scripts/lifecycle-browser-support.ts",
+  "fields": [
+    "phase",
+    "sqlState",
+    "classification",
+    "acceptance"
+  ],
+  "semantics": "original403catch preserved; no payload/messages",
+  "result": {
+    "acceptance": false,
+    "failed": 10,
+    "prepareFailed": false,
+    "diagnosticEvents": 0,
+    "phase": "afterEach-egress",
+    "classification": "external-font-request",
+    "source": "explorers-earth/src/bootstrap.ts:8",
+    "cleanup": "normal"
+  }
+}

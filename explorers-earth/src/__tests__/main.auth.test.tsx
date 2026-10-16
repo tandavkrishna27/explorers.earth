@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { createHttpLink } from "@apollo/client";
 
 const harness = vi.hoisted(() => ({
   contextCallback: undefined as
@@ -82,7 +83,7 @@ describe("Apollo authorization headers", () => {
     expect(result.headers).toEqual({ accept: "application/json" });
   });
 
-  it("forwards the authenticated visitor's session token", () => {
+  it("never forwards an old qrtoken to retained Strapi Apollo calls", () => {
     localStorage.setItem("qrtoken", "session-token");
 
     const result = harness.contextCallback!(
@@ -90,9 +91,10 @@ describe("Apollo authorization headers", () => {
       { headers: { accept: "application/json" } },
     );
 
-    expect(result.headers).toEqual({
-      accept: "application/json",
-      authorization: "Bearer session-token",
-    });
+    expect(result.headers).toEqual({ accept: "application/json" });
+  });
+
+  it("omits browser cookies from retained Strapi Apollo requests", () => {
+    expect(createHttpLink).toHaveBeenCalledWith(expect.objectContaining({ credentials: "omit" }));
   });
 });

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link, useOutletContext, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import type { MovieList, RecommendedMovie } from "../../types";
-import { deduplicateMovies } from "../../utils/movieHelpers";
+import { deduplicateMovies, buildPosterUrl } from "../../utils/movieHelpers";
 import MoviePosterCard from "./MoviePosterCard";
 import MovieDetailModal from "./MovieDetailModal";
 import MoviePosterSkeleton from "./MoviePosterSkeleton";
@@ -64,7 +64,7 @@ const PublicMovieList = () => {
     ? [`${list.List_Name}`, `${username} movies`, `${list.slug}`, "movie list", "explorers"]
     : ["movie list", "explorers"];
 
-  const listImage = list?.cover_image?.url || (movies[0]?.poster_path ? `https://image.tmdb.org/t/p/w500${movies[0].poster_path}` : undefined);
+  const listImage = list?.cover_image?.url || (movies[0]?.poster_path ? buildPosterUrl(movies[0].poster_path, "w500") : undefined);
 
   return (
     <>

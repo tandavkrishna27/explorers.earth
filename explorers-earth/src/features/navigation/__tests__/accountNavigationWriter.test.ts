@@ -3,7 +3,7 @@ import { createAccountNavigationWriter } from '../accountNavigationWriter';
 import type { NavigationSnapshot } from '../categoryNavigationPolicy';
 
 const origin = { userDocumentId: 'u1', accountDocumentId: 'a1', generation: 1 };
-const snapshot = { scope: origin, savedPins: [], autoPinning: false, visibility: {} } as NavigationSnapshot;
+const snapshot = { scope: origin, revision: 1, categories: [], savedPins: [], autoPinning: false, visibility: {} } as NavigationSnapshot;
 const deferred = () => { let resolve!: () => void; const promise = new Promise<void>((r) => { resolve = r; }); return { promise, resolve }; };
 
 describe('account navigation writer', () => {

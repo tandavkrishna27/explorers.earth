@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import { gql, useQuery, useMutation } from "@apollo/client";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -8,30 +7,11 @@ import Button from "../../../components/ui/Button";
 import Modal from "../../../components/ui/Modal";
 import Accordion from "../../../components/ui/Accordian";
 import useAuthStore from "../../../store/store";
+import { MUSIC_SUBSCRIPTION_FLOWS_ENABLED } from "../../../components/MusicSubscriptionContainment";
 import { isFreePlan } from "../../../services/paymentService";
 import { Check, Sparkles, Zap, Crown, X, AlertCircle, Package } from "lucide-react";
 import { getSubscriptionPlans, getSubscriptionPlanById, getUserSubscriptionPlans, getSongLimits, updateSongLimit as updateSongLimitAPI, createSongLimit, createUserSubscriptionPlan } from "../../../services/subscriptionService";
 
-const getUserAccountQuery = gql`
-  query UsersPermissionsUser($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      username
-      email
-      razorpay_customer_id
-    }
-  }
-`;
-
-const UPDATE_USER_IS_SUBSCRIBED_MUTATION = gql`
-  mutation UpdateUsersPermissionsUser($id: ID!, $data: UsersPermissionsUserInput!) {
-    updateUsersPermissionsUser(id: $id, data: $data) {
-      data {
-        documentId
-        is_subscribed
-      }
-    }
-  }
-`;
 
 interface SubscriptionPlan {
     documentId: string;
@@ -100,12 +80,10 @@ const BillingTab = () => {
     const [hasOpenedCurrentPlan, setHasOpenedCurrentPlan] = useState(false);
     const [hasOpenedBrowsePlans, setHasOpenedBrowsePlans] = useState(false);
 
-    // Query user data
-    const { data: _userData } = useQuery(getUserAccountQuery, {
-        variables: { documentId: authUser?.documentId },
-        skip: !authUser?.documentId,
-        fetchPolicy: 'cache-and-network'
-    });
+    // The Strapi read that used to be here fetched username, email and
+    // razorpay_customer_id on every render into `_userData` and **never read it** - the
+    // underscore was the only hint. It is deleted rather than ported: there is nothing to
+    // port a read to when nothing consumes it.
 
     // Query subscription plans - enabled when Usage Dashboard or Current Plan is opened
     const { data: subscriptionData, isLoading: subscriptionsLoading, error: subscriptionsError, refetch: refetchSubscriptions } = useReactQuery({
@@ -115,8 +93,6 @@ const BillingTab = () => {
         staleTime: 5 * 60 * 1000,
         refetchOnWindowFocus: false,
     });
-
-    const [updateUserIsSubscribed] = useMutation(UPDATE_USER_IS_SUBSCRIBED_MUTATION);
 
     // Get latest subscription
     const activeSubscription = subscriptionData && subscriptionData.length > 0
@@ -240,12 +216,25 @@ const BillingTab = () => {
 
     const handleUpgrade = async (plan: SubscriptionPlan) => {
         if (!authUser?.id || !authUser?.documentId) { toast.error("User information not available"); return; }
+        // Step 9. This was the one subscription entrance still writing to Strapi. The other
+        // two - Checkout and SubscriptionPlans - are already unreachable behind
+        // MUSIC_SUBSCRIPTION_FLOWS_ENABLED, and a paid plan here navigates into Checkout,
+        // which refuses. Only the free-plan branch escaped, so it set is_subscribed on a
+        // backend being retired while the paid path next to it was closed.
+        //
+        // This applies the containment that is already in force; it does not decide D1.
+        // There is no canonical subscription state to port to - updateAccountInputSchema has
+        // no is_subscribed - so deciding what a subscription means canonically is the
+        // owner's call, and it cannot be made by writing to Strapi in the meantime.
+        if (!MUSIC_SUBSCRIPTION_FLOWS_ENABLED) {
+            toast.error("Subscription changes are temporarily unavailable.");
+            return;
+        }
         if (!isFreePlan(plan)) { navigate('/checkout', { state: { plan, fromSettings: true } }); return; }
         try {
             const { start_date, end_date } = calculateSubscriptionDates(plan.duration);
             const subscriptionResponse = await createUserSubscriptionPlan({ user_id: authUser.documentId, plan_id: plan.documentId, start_date, end_date });
             if (!subscriptionResponse) throw new Error("Failed to create subscription entry");
-            await updateUserIsSubscribed({ variables: { id: authUser.id, data: { is_subscribed: true } } });
             await refetchSubscriptions();
             await refetchPlanDetails();
             if (authUser?.username) {

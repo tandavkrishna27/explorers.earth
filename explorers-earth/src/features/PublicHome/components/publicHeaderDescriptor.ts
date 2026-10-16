@@ -8,6 +8,7 @@ export type PublicHeaderShareDescriptor = {
   text?: string;
   url: string;
   analyticsContext: string;
+  analyticsReady?: boolean;
   analyticsMetadata?: PublicHeaderAnalyticsMetadata;
 };
 
@@ -125,5 +126,6 @@ export const getPublicHeaderFallback = ({
     text: `Check out ${title}!`,
     url: `${getOrigin(origin)}${appendAttributionParamsToPath(canonicalPathname, search)}`,
     analyticsContext: `${category && ROUTE_LABELS[category] ? category : "profile"}-header`,
+    ...(category === 'books' ? { analyticsReady: false } : {}),
   };
 };

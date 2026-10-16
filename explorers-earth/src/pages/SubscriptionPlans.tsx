@@ -1,5 +1,3 @@
-import { useMutation } from "@apollo/client";
-import { gql } from "@apollo/client";
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
@@ -14,16 +12,14 @@ import { getSubscriptionPlans, getUserSubscriptionPlans, getSongLimits, updateSo
 import { MUSIC_SUBSCRIPTION_FLOWS_ENABLED, MusicSubscriptionUnavailable } from "../components/MusicSubscriptionContainment";
 
 
-const UPDATE_USER_IS_SUBSCRIBED_MUTATION = gql`
-  mutation UpdateUsersPermissionsUser($id: ID!, $data: UsersPermissionsUserInput!) {
-    updateUsersPermissionsUser(id: $id, data: $data) {
-      data {
-        documentId
-        is_subscribed
-      }
-    }
-  }
-`;
+const subscriptionWriteUnavailable = () => {
+  // Ticket 7.3 / step 9. The Strapi subscription write is gone and no canonical
+  // subscription state exists to replace it - decision D1 owns whether monetization returns
+  // and in what shape. Until then this throws rather than silently succeeding, so that
+  // flipping MUSIC_SUBSCRIPTION_FLOWS_ENABLED without porting the flow fails loudly instead
+  // of writing to a retired backend.
+  throw new Error('Music subscription changes are unavailable');
+};
 
 interface SubscriptionPlan {
   documentId: string;
@@ -91,7 +87,6 @@ const ActiveSubscriptionPlans = ({
     refetchOnWindowFocus: false,
   });
 
-  const [updateUserIsSubscribed] = useMutation(UPDATE_USER_IS_SUBSCRIBED_MUTATION);
 
   const plans: SubscriptionPlan[] = plansData || [];
 
@@ -319,14 +314,7 @@ const ActiveSubscriptionPlans = ({
       // Step 2: Store selected plan in localStorage
       localStorage.setItem('selectedSubscriptionPlan', selectedPlan);
 
-      await updateUserIsSubscribed({
-        variables: {
-          id: authUser.id,
-          data: {
-            is_subscribed: true
-          }
-        }
-      });
+      subscriptionWriteUnavailable();
 
       toast.success("Subscription activated successfully!");
 

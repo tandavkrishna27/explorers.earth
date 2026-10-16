@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "kind": "owned-database-red-diagnostic-only",
+  "qualification": "failed",
+  "releaseEligible": false,
+  "commit": "8cb2c8a5c46d030ddb7feb6c053009ae14f486a4",
+  "nativeExit": 1,
+  "observed": {
+    "files": 23,
+    "passedFiles": 22,
+    "failedFiles": 1,
+    "tests": 301,
+    "passedTests": 290,
+    "failedTests": 11
+  },
+  "failedIdentities": [
+    "FAIL  server/test/explorers-recommendation-api.integration.test.ts > Places native client renames title and share slug, preserves aggregates, reloads and enforces public gates",
+    "FAIL  server/test/explorers-recommendation-api.integration.test.ts > Places guarded PATCH replays exactly once, rejects changed body and stale revision, and permits unchanged slug",
+    "FAIL  server/test/explorers-recommendation-api.integration.test.ts > Places unique slug collisions include archived rows and roll back all command state; other owners and categories are independent",
+    "FAIL  server/test/explorers-recommendation-api.integration.test.ts > Places foreign and archived targets deny edits; invalid cover rolls back slug, fields, resource/category revision and receipt",
+    "FAIL  server/test/explorers-recommendation-api.integration.test.ts > guarded stored guides rejects slug without writes and ordinary omitted slug works",
+    "FAIL  server/test/explorers-recommendation-api.integration.test.ts > guarded stored movies rejects slug without writes and ordinary omitted slug works",
+    "FAIL  server/test/explorers-recommendation-api.integration.test.ts > guarded stored books rejects slug without writes and ordinary omitted slug works",
+    "FAIL  server/test/explorers-recommendation-api.integration.test.ts > guarded stored games rejects slug without writes and ordinary omitted slug works",
+    "FAIL  server/test/explorers-recommendation-api.integration.test.ts > guarded stored apps rejects slug without writes and ordinary omitted slug works",
+    "FAIL  server/test/explorers-recommendation-api.integration.test.ts > guarded stored products rejects slug without writes and ordinary omitted slug works",
+    "FAIL  server/test/explorers-recommendation-api.integration.test.ts > guarded stored people rejects slug without writes and ordinary omitted slug works"
+  ],
+  "classification": {
+    "fixtureSqlErrorSeen": false,
+    "invalidContentCommandSeen": true,
+    "statusAssertions": [
+      "expected 422 to be 200",
+      "expected 422 to be 409",
+      "expected 422 to be 404"
+    ],
+    "trustedRepositoryResolvedInsteadOfRejected": true
+  },
+  "firstFailure": {
+    "file": "explorers-earth/src/lib/explorersApiClient.ts",
+    "line": 274,
+    "kind": "strict-client-command-validation"
+  },
+  "cleanup": {
+    "ownedContainerAbsent": true,
+    "databaseDropReceipt": "not retained; producer has a passing-only envelope"
+  },
+  "limits": "Not a UAT passing envelope. Actual native regression failures justify a Places-only contract repair; browser acceptance and fresh owned GREEN remain required."
+}

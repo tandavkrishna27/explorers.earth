@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { motion, Reorder } from "framer-motion";
-import { useMutation } from "@apollo/client";
 import { X, Star, Minus, Loader2, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { UPDATE_RECOMMENDED_PERSON } from "../../api/mutation";
+import { usePeopleCommands, usePeopleCallerCustody } from "../../api/query";
 import type { RecommendedPerson } from "../../types";
 import { buildImageUrl } from "../../utils/personHelpers";
 import { Users } from "lucide-react";
@@ -25,7 +24,8 @@ const PersonTopPicksManager = ({
     [...people].sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999))
   );
   const [saving, setSaving] = useState(false);
-  const [updatePerson] = useMutation(UPDATE_RECOMMENDED_PERSON);
+  const commands = usePeopleCommands();
+  const beginEffects = usePeopleCallerCustody();
 
   const unpinnedPeople = allPeople.filter(
     (p) => !pinnedPeople.find((pp) => pp.documentId === p.documentId)
@@ -48,7 +48,6 @@ const PersonTopPicksManager = ({
     setPinnedPeople((prev) => {
       const next = [...prev];
       [next[index - 1], next[index]] = [next[index], next[index - 1]];
-      syncOrder(next);
       return next;
     });
   };
@@ -58,58 +57,32 @@ const PersonTopPicksManager = ({
     setPinnedPeople((prev) => {
       const next = [...prev];
       [next[index + 1], next[index]] = [next[index], next[index + 1]];
-      syncOrder(next);
       return next;
     });
   };
 
-  const syncOrder = async (orderToSync: RecommendedPerson[]) => {
-    try {
-      for (let i = 0; i < orderToSync.length; i++) {
-        await updatePerson({
-          variables: {
-            documentId: orderToSync[i].documentId,
-            is_pinned: true,
-            pin_order: i,
-          },
-        });
-      }
-      onRefetch();
-    } catch {
-      toast.error("Failed to auto-save new order.");
-    }
-  };
-
+  // The whole pin set is written in one command, so the order is the array order and an
+  // unpin needs no separate pass. The Strapi path wrote one mutation per row and could
+  // leave the set half-applied; reordering is now local until Save.
   const handleSave = async () => {
+    const current = beginEffects();
     setSaving(true);
     try {
-      for (let i = 0; i < pinnedPeople.length; i++) {
-        await updatePerson({
-          variables: {
-            documentId: pinnedPeople[i].documentId,
-            is_pinned: true,
-            pin_order: i,
-          },
-        });
-      }
-      for (const p of unpinnedPeople) {
-        if (people.find((pp) => pp.documentId === p.documentId)) {
-          await updatePerson({
-            variables: {
-              documentId: p.documentId,
-              is_pinned: false,
-              pin_order: null,
-            },
-          });
-        }
-      }
+      const pins = pinnedPeople.map((person) => {
+        if (!person.person_list?.documentId) throw new Error("Person membership unavailable");
+        return { recommendationId: person.documentId, collectionId: person.person_list.documentId };
+      });
+      await commands.savePins(pins);
+      if (!current()) return;
       toast.success("Top picks updated!");
+      if (!current()) return;
       onRefetch();
+      if (!current()) return;
       onClose();
     } catch {
-      toast.error("Failed to save. Please try again.");
+      if (current()) toast.error("Failed to save. Please try again.");
     } finally {
-      setSaving(false);
+      if (current()) setSaving(false);
     }
   };
 
@@ -157,7 +130,6 @@ const PersonTopPicksManager = ({
                   <Reorder.Item
                     key={person.documentId}
                     value={person}
-                    onDragEnd={() => syncOrder(pinnedPeople)}
                     className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0 bg-[#0d1117] cursor-grab active:cursor-grabbing"
                   >
                     <div className="flex flex-col items-center gap-1 flex-shrink-0">

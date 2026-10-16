@@ -4,6 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearPublicMusicAnalyticsReceiptsForTests, usePublicMusicProductAnalytics } from "../publicMusicAnalytics";
 
 describe("usePublicMusicProductAnalytics", () => {
+  it('freezes the minimal event and attribution after ambiguous acknowledgement',async()=>{
+    const track=vi.fn().mockRejectedValueOnce(new Error('lost')).mockResolvedValueOnce(undefined);
+    const hook=renderHook(()=>usePublicMusicProductAnalytics({publicSlug:'public-owner',route:'direct',client:{track}}));
+    const event={name:'request_submitted',outcome:'accepted'} as const;
+    await act(async()=>{await hook.result.current(event,'immutable-occurrence-123');});
+    const initial=JSON.stringify(track.mock.calls[0][0]);sessionStorage.clear();window.history.replaceState({},'', '/alice/music?utm_source=changed');
+    await act(async()=>{await hook.result.current({name:'request_submitted',outcome:'forbidden'},'immutable-occurrence-123');});
+    expect(JSON.stringify(track.mock.calls[1][0])).toBe(initial);expect(initial).not.toContain('timestamp');
+  });
   it("delivers consented default-client events through the Music proxy in development", async () => {
     vi.stubEnv("DEV", true);
     const requests: string[] = [];

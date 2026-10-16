@@ -9,6 +9,11 @@ import useAuthStore from '../../../store/store';
 import { StrictMode } from 'react';
 import { queryClient } from '../../../lib/queryClient';
 import { musicWorkspaceQueryKey } from '../../../hooks/useTunesDashboard';
+import { writtenPins, writtenVisibility } from '../../navigation/__tests__/surfaceHarness';
+import { canonicalAccountFixture } from '../../../test/canonicalAccountFixture';
+// The account musicPublishHarness signs in as. Cross-tab signals are matched against it,
+// so a legacy 'a1' id was simply ignored and the published state never arrived.
+const ACCOUNT = canonicalAccountFixture().id;
 let latest: ReturnType<typeof useMusicPublish>;
 function Consumer({ label = 'first', ready = true }: { label?: string; ready?: boolean }) {
   const { authority } = useCategoryNavigation();
@@ -35,7 +40,9 @@ describe('scoped Music publication registry', () => {
     expect(screen.getByRole('button', { name: 'second publish' })).toBeDisabled();
     expect(backend.publish).toHaveBeenCalledTimes(1);
     await act(async () => finish()); await screen.findByText('second:published');
-    expect(h.writes.map(write => write.variables.data)).toEqual([{ public_music: 'Yes' }]);
+    expect(h.writes).toHaveLength(1);
+    expect(writtenVisibility(h.writes[0].variables.input, 'public_music')).toBe(true);
+    expect(writtenPins(h.writes[0].variables.input)).toEqual(['public_profile', 'public_books']);
   });
   it('refuses a new origin while the old identity still globally reports ready', async () => {
     await readyMusic(); const backend = musicBackend();
@@ -70,7 +77,7 @@ describe('scoped Music publication registry', () => {
     expect(backend.dashboard).toHaveBeenCalledTimes(2);
     // Tab A completes after B's focus read; only its final storage signal arrives.
     backend.mode = 'public';
-    await act(async () => window.dispatchEvent(new StorageEvent('storage', { key: 'explorers-music-publication-verified/v1', newValue: JSON.stringify({ version: 1, accountDocumentId: 'a1', eventId: 'tab-a-complete' }) })));
+    await act(async () => window.dispatchEvent(new StorageEvent('storage', { key: 'explorers-music-publication-verified/v1', newValue: JSON.stringify({ version: 1, accountDocumentId: ACCOUNT, eventId: 'tab-a-complete' }) })));
     await screen.findByText('first:published'); await screen.findByText('second:published');
     expect(backend.dashboard).toHaveBeenCalledTimes(3);
     expect(h.writes).toEqual([]); expect(backend.publish).not.toHaveBeenCalled();
@@ -83,7 +90,7 @@ describe('scoped Music publication registry', () => {
     await act(async () => window.dispatchEvent(new Event('focus')));
     await waitFor(() => expect(backend.dashboard).toHaveBeenCalledTimes(2));
     backend.mode = 'public';
-    await act(async () => window.dispatchEvent(new StorageEvent('storage', { key: 'explorers-music-publication-verified/v1', newValue: JSON.stringify({ version: 1, accountDocumentId: 'a1', eventId: 'tab-a-complete' }) })));
+    await act(async () => window.dispatchEvent(new StorageEvent('storage', { key: 'explorers-music-publication-verified/v1', newValue: JSON.stringify({ version: 1, accountDocumentId: ACCOUNT, eventId: 'tab-a-complete' }) })));
     await act(async () => finish({ queueRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: 'private', publicSlug: 'public-slug-123' } }));
     await screen.findByText('first:published');
     expect(backend.dashboard).toHaveBeenCalledTimes(3); expect(h.writes).toEqual([]);
@@ -95,9 +102,9 @@ describe('scoped Music publication registry', () => {
     await act(async () => signal('another-account'));
     expect(backend.dashboard).toHaveBeenCalledTimes(1);
     h.rerenderChild(<Consumer ready={false} />);
-    await act(async () => signal('a1'));
+    await act(async () => signal(ACCOUNT));
     expect(backend.dashboard).toHaveBeenCalledTimes(1);
-    h.unmount(); await act(async () => signal('a1'));
+    h.unmount(); await act(async () => signal(ACCOUNT));
     expect(backend.dashboard).toHaveBeenCalledTimes(1); expect(h.writes).toEqual([]);
   });
   it('rejects a retained callback after its consumer loses readiness even if another consumer stays ready', async () => {
@@ -135,8 +142,8 @@ describe('scoped Music publication registry', () => {
       expect(notification).not.toHaveBeenCalled(); expect(invalidate).not.toHaveBeenCalled();
       await act(async () => finish()); await screen.findByText('first:published');
       expect(notification).toHaveBeenCalledTimes(1);
-      expect((notification.mock.calls[0][0] as CustomEvent).detail).toEqual({ version: 1, accountDocumentId: 'a1', eventId: expect.any(String) });
-      expect(invalidate).toHaveBeenCalledWith({ queryKey: musicWorkspaceQueryKey({ userDocumentId: 'u1', accountDocumentId: 'a1' }) });
+      expect((notification.mock.calls[0][0] as CustomEvent).detail).toEqual({ version: 1, accountDocumentId: ACCOUNT, eventId: expect.any(String) });
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: musicWorkspaceQueryKey({ userDocumentId: 'u1', accountDocumentId: ACCOUNT }) });
       // The originating entry is already verified; its own event must not queue
       // another read against the same writer or recursively notify itself.
       await act(async () => {});

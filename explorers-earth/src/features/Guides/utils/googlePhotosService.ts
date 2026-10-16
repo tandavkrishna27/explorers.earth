@@ -3,7 +3,7 @@
  * Handles fetching photos from Google Places API for activities
  */
 
-import axios from "axios";
+import { browserPlacesProvider } from "../../../lib/browserPlacesProvider";
 
 export interface PlacePhoto {
   name: string;
@@ -30,23 +30,16 @@ export const fetchGooglePlacePhotos = async (
 ): Promise<FetchedPhoto[]> => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   
-  if (!apiKey) {
+  if (browserPlacesProvider.kind === "google-sdk" && !apiKey) {
     console.error("Google Maps API key not found");
     return [];
   }
 
   try {
     // Fetch place details including photos using Places API (New)
-    const detailsUrl = `https://places.googleapis.com/v1/places/${placeId}`;
-    
-    const response = await axios.get(detailsUrl, {
-      headers: {
-        'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'photos',
-      },
-    });
+    const data = await browserPlacesProvider.details(placeId, "photos", undefined, apiKey);
 
-    const photos = response.data?.photos || [];
+    const photos = data?.photos || [];
     
     if (photos.length === 0) {
       console.warn(`No photos found for place ${placeId}`);
@@ -60,7 +53,7 @@ export const fetchGooglePlacePhotos = async (
     const photoPromises = limitedPhotos.map(async (photo: PlacePhoto) => {
       try {
         // Use maxWidthPx=800 for good quality while keeping file size reasonable
-        const photoUrl = `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=800&key=${apiKey}`;
+        const photoUrl = browserPlacesProvider.photoUrl(photo.name, apiKey);
         
         // Calculate aspect ratio
         const aspectRatio = photo.widthPx && photo.heightPx 

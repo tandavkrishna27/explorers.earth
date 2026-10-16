@@ -1,0 +1,590 @@
+{
+  "locale": "ar",
+  "terms": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "تاريخ السريان: 10 يونيو 2025",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "يرجى قراءة هذه الشروط والأحكام (\"الشروط\" و \"الشروط والأحكام\") بعناية قبل استخدام تطبيق الويب explorers.earth، الذي يمكن الوصول إليه على [your app URL] (\"الخدمة\")، والذي تديره [Your Company Name] (\"نحن\" أو \"لنا\" أو \"لدينا\").",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "من خلال الوصول إلى الخدمة أو استخدامها، فإنك توافق على الالتزام بهذه الشروط. إذا كنت لا توافق على أي جزء من الشروط، فلا يجوز لك الوصول إلى الخدمة.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "1. استخدام الخدمة",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "يوفر explorers.earth توصيات مخصصة ومبنية على الموقع وميزات ذات صلة. أنت توافق على استخدام الخدمة فقط لأغراض قانونية ووفقًا لهذه الشروط.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "يجب عليك عدم:",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "استخدام الخدمة بأي طريقة تنتهك القوانين أو اللوائح المعمول بها.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "التدخل في سلامة الخدمة أو أدائها أو تعطيلها.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "محاولة الوصول غير المصرح به إلى أي جزء من الخدمة.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "2. حسابات المستخدمين",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "للوصول إلى ميزات معينة، قد تحتاج إلى تسجيل حساب. أنت مسؤول عن الحفاظ على سرية بيانات اعتماد حسابك وعن جميع الأنشطة التي تحدث تحت حسابك.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "أنت توافق على تقديم معلومات دقيقة وكاملة أثناء التسجيل وتحديث معلوماتك.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "3. ميزات الموقع والتوصيات",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "يعتمد explorers.earth على بيانات الموقع لتقديم توصيات ذات صلة. باستخدامك للخدمة، فإنك توافق على جمعنا واستخدامنا لمعلومات موقعك وفقًا لسياسة الخصوصية الخاصة بنا.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "لا يتم ضمان دقة التوصيات المستندة إلى الموقع وقد تختلف بناءً على توفر البيانات وتفضيلات المستخدم.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "4. الملكية الفكرية",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "جميع محتويات وميزات ووظائف الخدمة - بما في ذلك على سبيل المثال لا الحصر الشعارات والنصوص والرسومات والبرامج والبيانات - هي ملكية حصرية لـ explorers.earth أو المرخصين لها وهي محمية بموجب حقوق النشر والعلامات التجارية والقوانين الأخرى المعمول بها.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "لا يجوز لك إعادة إنتاج أو توزيع أو تعديل أو إنشاء أعمال مشتقة من أي جزء من الخدمة دون إذن كتابي صريح منا.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "5. خدمات الطرف الثالث",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "قد يتضمن explorers.earth روابط أو عمليات تكامل مع خدمات أو واجهات برمجة تطبيقات تابعة لجهات خارجية. نحن لسنا مسؤولين عن محتوى أو سياسات أو ممارسات هذه الخدمات التابعة لجهات خارجية.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "يتم استخدام هذه الخدمات على مسؤوليتك الخاصة وتخضع لشروط وسياسات مقدمي الخدمات المعنيين.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "6. تحديد المسؤولية",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "إلى أقصى حد يسمح به القانون المعمول به، لن يكون explorers.earth مسؤولاً عن أي أضرار غير مباشرة أو عرضية أو خاصة أو تبعية أو تأديبية - بما في ذلك خسارة الأرباح أو البيانات أو السمعة الطيبة - التي تنشأ عن استخدامك للخدمة أو عدم قدرتك على استخدامها.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "يتم توفير الخدمة على أساس \"كما هي\" و \"كما هي متاحة\" دون أي ضمانات من أي نوع، سواء كانت صريحة أو ضمنية.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "7. الإنهاء",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "يجوز لنا تعليق أو إنهاء وصولك إلى الخدمة وفقًا لتقديرنا المطلق، دون إشعار مسبق أو مسؤولية، لأي سبب - بما في ذلك انتهاك هذه الشروط.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "عند الإنهاء، سيتوقف حقك في استخدام الخدمة على الفور.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "8. التغييرات على هذه الشروط",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "نحن نحتفظ بالحق في تحديث أو تعديل هذه الشروط في أي وقت. سيتم نشر التغييرات على هذه الصفحة مع تاريخ سريان معدل. استمرارك في استخدام الخدمة بعد نشر التغييرات يشكل موافقتك على الشروط الجديدة.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "9. القانون الحاكم",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "تخضع هذه الشروط وتفسر وفقًا لقوانين [Your Country/State]، دون اعتبار لأحكام تعارض القوانين فيها.",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "10. اتصل بنا",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "إذا كان لديك أي أسئلة حول هذه الشروط، يرجى الاتصال بنا:",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "📧 البريد الإلكتروني: [your contact email]",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "text": "🌐 الموقع الإلكتروني: [your app URL]",
+          "type": "text"
+        }
+      ]
+    }
+  ],
+  "privacy": [],
+  "cookies": [],
+  "faqs": [
+    {
+      "Question": "ما هو explorers.earth؟",
+      "Answer": "يتيح لك explorers.earth إنشاء أدلة سفر بسيطة ومشاركتها باستخدام الروابط ورموز QR.أضف أماكن ونصائح وخرائط وصورًا - وشاركها في أي مكان.",
+      "Sequence": 1
+    },
+    {
+      "Question": "من يمكنه إنشاء دليل على explorers.earth؟",
+      "Answer": "أي شخص - مسافرون، محليون، أصحاب نفوذ، مضيفون، مقاهي، فنادق، أو شركات.",
+      "Sequence": 2
+    },
+    {
+      "Question": "هل explorers.earth مجاني للاستخدام؟",
+      "Answer": "نعم.explorers.earth مجاني إلى الأبد.يمكنك إنشاء رمز الاستجابة السريعة الخاص بك وإضافة توصيات غير محدودة وتتبع التحليلات الأساسية دون أي تكلفة.تتوفر الميزات المميزة للشركات والتحليلات المتقدمة من خلال خططنا المدفوعة.",
+      "Sequence": 3
+    },
+    {
+      "Question": "هل أحتاج إلى تنزيل تطبيق؟",
+      "Answer": "لا، يعمل explorers.earth بشكل كامل في متصفحك — امسح ضوئيًا أو اضغط عليه وستكون جاهزًا للاستخدام.",
+      "Sequence": 4
+    },
+    {
+      "Question": "هل يمكنني تعديل الدليل الخاص بي بعد النشر؟",
+      "Answer": "نعم.يمكنك تحديث دليلك في أي وقت، وسيظل رمز الاستجابة السريعة الخاص بك كما هو.",
+      "Sequence": 5
+    },
+    {
+      "Question": "أين يمكنني مشاركة دليلي المحلي؟",
+      "Answer": "غرف Instagram أو WhatsApp أو Airbnb أو مواقع الويب أو القوائم أو الملصقات أو بطاقات العمل أو في أي مكان يمكن عرض رمز الاستجابة السريعة فيه.",
+      "Sequence": 6
+    },
+    {
+      "Question": "ما هي الألحان المحلية؟",
+      "Answer": "إن Local Tunes هي ميزة داخل explorers.earth تتيح لك إضافة قوائم تشغيل Spotify/Apple/YouTube Music إلى أدلةك - مما يمنح الأماكن طابعها الخاص ومزاجها الخاص.",
+      "Sequence": 7
+    },
+    {
+      "Question": "هل أحتاج إلى حساب منفصل لـ Local Tunes؟",
+      "Answer": "لا. يعمل حساب explorers.earth الخاص بك مع كل من explorers.earth وLocalTunes.",
+      "Sequence": 8
+    },
+    {
+      "Question": "ما هي تكلفة الألحان المحلية؟",
+      "Answer": "لدى LocalTunes خطة مجانية واشتراك بقيمة 300 روبية شهريًا (مع خصم 10% على الفواتير السنوية) تقدم قوائم تشغيل وتحليلات وميزات متقدمة غير محدودة.",
+      "Sequence": 9
+    },
+    {
+      "Question": "هل رموز QR دائمة؟",
+      "Answer": "نعم.بمجرد إنشائه، لن يتغير رمز الاستجابة السريعة الخاص بك أبدًا — حتى عند تحديث دليلك.",
+      "Sequence": 10
+    }
+  ]
+}

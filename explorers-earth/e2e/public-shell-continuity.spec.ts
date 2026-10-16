@@ -261,7 +261,14 @@ test('real toast photo viewer guide map portal and cold Earth obey the public st
     __typename: 'GuideSection', documentId: 'guide-section-map', Title: 'Map day', Sequence: 1,
     Description: 'A mapped day',
     Timeline: {
-      morning: [{ place_id: 'fixture-map-place', name: 'Fixture map place', formatted_address: 'Fixture City', geometry: { location: { lat: 26.9124, lng: 75.7873 } }, photos: [] }],
+      // `id` is required: 24b942c0 made convertPublicGuideSection reject a place without one
+      // (legacyPlace returns undefined). This fixture needs it either way -- a rejected place
+      // is now skipped rather than deleting its whole section, but a section whose only place
+      // was rejected still leaves morning empty, so hasPlacesForMap would be false, the Map
+      // View button would not exist, and the click below would time out exactly as before.
+      // The production rejection is deliberate and unit-tested
+      // (publicGuidePhotoViewModel.test.ts); only this fixture was stale.
+      morning: [{ id: 'fixture-map-entry', place_id: 'fixture-map-place', name: 'Fixture map place', formatted_address: 'Fixture City', geometry: { location: { lat: 26.9124, lng: 75.7873 } }, photos: [] }],
       afternoon: [], evening: [],
     },
     Transport: null, Stay: null, Recommendation_Activity: null, Map_Details: null,

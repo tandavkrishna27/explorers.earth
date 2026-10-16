@@ -1,3 +1,4 @@
+import { isCanonicalMediaPath } from "../../../lib/canonicalMedia";
 // ============================================================
 // Products Utilities — slug, format helpers, rich text
 // ============================================================
@@ -143,6 +144,10 @@ export function deduplicateProducts<
 export function buildImageUrl(imageUrl: string | null | undefined): string {
   if (!imageUrl) return "";
   if (imageUrl.startsWith("http")) return imageUrl;
+  // Ticket 7.1: a canonical media URL is same-origin and already complete. Without this
+  // it falls into the Strapi-origin branch below and the image is fetched from the wrong
+  // host. See `src/lib/canonicalMedia.ts` for why this rule lives in one place.
+  if (isCanonicalMediaPath(imageUrl)) return imageUrl;
   if (imageUrl.startsWith("/")) {
     const base =
       import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337";

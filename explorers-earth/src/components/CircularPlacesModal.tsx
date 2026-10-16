@@ -13,7 +13,8 @@ interface Place {
     thumbnail?: string;
   };
   Visibility: boolean;
-  imageUrl: string;
+  // A list has no thumbnail until its cover media is set.
+  imageUrl?: string;
   documentId?: string;
 }
 

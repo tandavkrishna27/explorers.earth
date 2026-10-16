@@ -1,0 +1,3 @@
+import {defineConfig} from '@playwright/test';
+if(!process.env.BOOKS_E2E_FIXTURE_PATH||!process.env.PLAYWRIGHT_EXTERNAL_BASE_URL?.startsWith('http://127.0.0.1:'))throw new Error('Books requires its owned fixture');
+export default defineConfig({testDir:'.',testMatch:'books.spec.ts',fullyParallel:false,workers:1,retries:0,timeout:120000,expect:{timeout:15000},reporter:'line',use:{baseURL:process.env.PLAYWRIGHT_EXTERNAL_BASE_URL,headless:true,trace:'retain-on-failure',screenshot:'only-on-failure'},projects:[{name:'books-desktop',use:{browserName:'chromium',viewport:{width:1365,height:900}}},{name:'books-mobile',use:{browserName:'chromium',viewport:{width:390,height:844},isMobile:true,hasTouch:true}}]});

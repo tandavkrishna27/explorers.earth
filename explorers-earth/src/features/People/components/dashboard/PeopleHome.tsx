@@ -2,7 +2,6 @@ import { NavigationStatus } from "../../../navigation/NavigationStatus";
 import type { IntentAuthority } from "../../../navigation/categoryNavigationPolicy";
 import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
 import { useState, useMemo, useEffect } from "react";
-import { useQuery, useMutation, gql } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Users, Star, ChevronRight, Loader2, X, ChevronDown } from "lucide-react";
@@ -11,8 +10,8 @@ import * as Yup from "yup";
 import { toast } from "sonner";
 
 import useAuthStore from "../../../../store/store";
-import { PERSON_LISTS_BY_ACCOUNT } from "../../api/query";
-import { CREATE_PERSON_LIST, UPDATE_PERSON_LIST } from "../../api/mutation";
+import { usePeopleCommands } from "../../api/query";
+import { usePeopleOwner } from "../../hooks/usePeopleOwner";
 import type { PersonList, RecommendedPerson } from "../../types";
 import { deduplicatePeople, buildImageUrl, generateSlug } from "../../utils/personHelpers";
 import { getCurrentDomain } from "../../../../utils/getCurrentDomain";
@@ -27,30 +26,10 @@ import PersonTopPicksHero from "../public/PersonTopPicksHero";
 import PersonTopPicksMobileHero from "../public/PersonTopPicksMobileHero";
 import PersonTopPicksManager from "./PersonTopPicksManager";
 
-const MY_ACCOUNT = gql`
-  query MyAccountForPeople($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      accounts {
-        documentId
-        Account_Name
-        public_people
-        public_recommendations
-        public_movie
-        public_books
-        public_music
-        public_games
-        public_apps
-        public_products
-      }
-    }
-  }
-`;
 
 export const CreatePersonListModal = ({
   open,
   onClose,
-  accountDocumentId,
-  currentListCount,
   onCreated,
   username,
   defaultListName,
@@ -63,7 +42,7 @@ export const CreatePersonListModal = ({
   username: string;
   defaultListName?: string;
 }) => {
-  const [createPersonList, { loading }] = useMutation(CREATE_PERSON_LIST);
+  const commands = usePeopleCommands(), loading = commands.loading;
 
   const formik = useFormik({
     initialValues: { 
@@ -78,20 +57,10 @@ export const CreatePersonListModal = ({
     }),
     onSubmit: async (values, { resetForm }) => {
       try {
-        const result = await createPersonList({
-          variables: {
-            List_Name: values.List_Name,
-            list_description: values.list_description || null,
-            slug: values.slug || generateSlug(values.List_Name),
-            Visibility: false,
-            display_order: currentListCount,
-            account: accountDocumentId,
-          },
-          refetchQueries: [PERSON_LISTS_BY_ACCOUNT],
-        });
+        const result = await commands.createList({ title: values.List_Name, description: values.list_description || null, slug: values.slug || generateSlug(values.List_Name) });
         toast.success("People list created!");
         resetForm();
-        onCreated(result?.data?.createPersonList?.documentId);
+        onCreated(result.id);
         onClose();
       } catch {
         toast.error("Failed to create list. Please try again.");
@@ -284,23 +253,17 @@ const PeopleHome = () => {
     origin?: IntentAuthority; defaultValue: boolean;
   } | null>(null);
 
-  const { data: accountData } = useQuery(MY_ACCOUNT, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-  });
-  const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
+  const accountDocumentId = useAuthStore(state => state.accountId), ownerGeneration = useAuthStore(state => state.generation);
+  useEffect(() => { setShowCreateModal(false); setShowManageTopPicks(false); setSelectedPerson(null); setDropdownOpen(false); }, [accountDocumentId, ownerGeneration]);
 
-  const { data, loading, refetch } = useQuery(PERSON_LISTS_BY_ACCOUNT, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const { data, loading, error, refetch } = usePeopleOwner();
 
   useEffect(() => {
     if (!loading) (window as any).__dashboardLoaded = true;
   }, [loading]);
 
-  const [updatePersonList] = useMutation(UPDATE_PERSON_LIST);
+  const commands2 = usePeopleCommands();
+  const updatePersonList = ({ variables }: { variables: { documentId: string; Visibility: boolean }; optimisticResponse?: unknown; refetchQueries?: unknown[] }) => commands2.updateList(variables.documentId, { visibility: variables.Visibility ? 'public' : 'private', publicationState: variables.Visibility ? 'published' : 'draft' });
 
   const handleVisibilityToggle = () => {
     const origin = navigation.authority;
@@ -337,7 +300,6 @@ const PeopleHome = () => {
             top_people_heading: list.top_people_heading || null,
           },
         },
-        refetchQueries: [PERSON_LISTS_BY_ACCOUNT],
       });
     } catch {
       toast.error("Failed to update visibility.");
@@ -349,6 +311,7 @@ const PeopleHome = () => {
   return (
     <div className="px-2 md:px-6 pt-2 pb-24 md:pb-6 max-w-4xl mx-auto">
       <NavigationStatus navigation={navigation} />
+      {error && <p role="alert">People could not be loaded. <button onClick={refetch}>Retry</button></p>}
       {/* Desktop Header */}
       <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4">
         <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">

@@ -63,6 +63,12 @@ vi.mock("../services/musicReconciliationSuspensionListener", () => ({
 }));
 // This route-security suite is DB-free; the PostgreSQL notification transport
 // has its own listener tests and must not connect during app composition here.
+// DB-free HTTP containment has no background-retention database authority.
+// Real immediate/non-overlapping retention and shutdown are tested separately.
+vi.mock("../application/analyticsMaintenance", () => ({
+  startAnalyticsMaintenance: vi.fn(() => vi.fn(async () => undefined)),
+}));
+
 vi.mock("../services/musicPublicChangeListener", () => ({
   startMusicPublicChangeListener: vi.fn(async () => ({ stop: vi.fn(async () => undefined) })),
 }));
@@ -229,6 +235,7 @@ describe("C1 containment floor under the C6 principal boundary", () => {
     ["POST", "/api/people/scrape-profile"],
     ["POST", "/api/products/scrape-link"],
     ["GET", "/api/proxy-image"],
+    ["GET", "/itunes-api/search"],
     ["GET", "/api"],
     ["GET", "/api/verify-email?token=removed"],
   ])("never leaves a removed family as an unregistered 404: %s %s", async (method, path) => {

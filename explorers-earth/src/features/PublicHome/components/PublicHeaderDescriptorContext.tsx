@@ -42,6 +42,7 @@ const descriptorFingerprint = (descriptor: PublicHeaderShareDescriptor): string 
   text: descriptor.text,
   url: descriptor.url,
   analyticsContext: descriptor.analyticsContext,
+  analyticsReady: descriptor.analyticsReady,
   analyticsMetadata: descriptor.analyticsMetadata
     ? Object.fromEntries(Object.entries(descriptor.analyticsMetadata).sort(([a], [b]) => a.localeCompare(b)))
     : undefined,
@@ -65,6 +66,7 @@ const sanitizeDescriptor = (descriptor: PublicHeaderShareDescriptor): PublicHead
     ...(descriptor.text === undefined ? {} : { text: descriptor.text }),
     url: descriptor.url,
     analyticsContext: descriptor.analyticsContext,
+    ...(typeof descriptor.analyticsReady === "boolean" ? { analyticsReady: descriptor.analyticsReady } : {}),
     ...(analyticsMetadata && Object.keys(analyticsMetadata).length > 0 ? { analyticsMetadata } : {}),
   };
 };

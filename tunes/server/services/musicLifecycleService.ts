@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { fingerprintStrapiProof, type ResolvedStrapiIdentity } from "./strapiIdentityGateway";
+import { fingerprintStrapiProof } from "./proofFingerprint";
+import type { ResolvedStrapiIdentity } from "./resolvedIdentity";
 import type { MusicIdentityProjection } from "../repositories/musicIdentityRepository";
 import { MusicIdentityError } from "../../shared/musicError";
 

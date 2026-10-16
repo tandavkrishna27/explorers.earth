@@ -106,7 +106,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
     }
     if (movie.media_details?.imageDetails) {
       movie.media_details.imageDetails.forEach((snap: any, index: number) => {
-        const url = snap.url.startsWith('http') ? snap.url : (snap.url.startsWith('/') ? `${import.meta.env.VITE_REST_API_URL?.replace('/api', '') || 'http://localhost:1337'}${snap.url}` : snap.url);
+        const url = snap.url;
         items.push({
           id: `snap-${index}`,
           url,
@@ -203,7 +203,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
               <div ref={contentRef} className="flex-1 pb-24 md:pb-6 w-full">
                 <div className="flex gap-4 px-5 -mt-16 relative z-10">
                   {/* Poster */}
-                  <div 
+                  <div
                     onClick={() => handleImageClick("poster")}
                     className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-[color:var(--category-border,rgba(255,255,255,0.1))] shadow-2xl cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                   >
@@ -290,10 +290,10 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                       <p className="text-xs font-semibold text-[color:var(--category-text,#eab308)] uppercase tracking-wider">Creator's Rating</p>
                       <div className="flex gap-1 flex-wrap justify-end">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(star => (
-                          <Star 
-                            key={star} 
-                            size={16} 
-                            fill={movie.user_rating! >= star ? "currentColor" : "none"} 
+                          <Star
+                            key={star}
+                            size={16}
+                            fill={movie.user_rating! >= star ? "currentColor" : "none"}
                             className={movie.user_rating! >= star ? "text-[color:var(--category-rating,#facc15)]" : "text-[color:var(--category-muted,rgba(255,255,255,0.2))]"}
                           />
                         ))}
@@ -317,10 +317,10 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                             <div key={c.id} className="flex flex-col flex-shrink-0 w-20 gap-1 rounded-xl">
                               <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border border-[color:var(--category-border,rgba(255,255,255,0.1))] bg-[var(--category-card,#1a2332)]">
                                 {c.profile_path ? (
-                                  <img 
-                                    src={c.profile_path.startsWith('http') ? c.profile_path : (c.profile_path.startsWith('/') ? `${import.meta.env.VITE_REST_API_URL?.replace('/api', '') || 'http://localhost:1337'}${c.profile_path}` : `https://image.tmdb.org/t/p/w185${c.profile_path}`)} 
-                                    className="w-full h-full object-cover" 
-                                    alt="" 
+                                  <img
+                                    src={buildPosterUrl(c.profile_path, 'w185')}
+                                    className="w-full h-full object-cover"
+                                    alt=""
                                   />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center text-[color:var(--category-muted,rgba(255,255,255,0.2))]">
@@ -358,15 +358,15 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                         </button>
                         <div ref={snapshotsScrollRef} className="flex overflow-x-auto pb-4 -mx-5 px-5 gap-3 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                           {movie.media_details.imageDetails.map((snap: any, i: number) => (
-                            <div 
-                              key={snap.id} 
+                            <div
+                              key={snap.id}
                               onClick={() => handleImageClick("snap", i)}
                               className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-[color:var(--category-border,rgba(255,255,255,0.1))] bg-[var(--category-card,#1a2332)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                             >
-                              <img 
-                                src={snap.url.startsWith('http') ? snap.url : (snap.url.startsWith('/') ? `${import.meta.env.VITE_REST_API_URL?.replace('/api', '') || 'http://localhost:1337'}${snap.url}` : snap.url)} 
-                                className="w-full h-full object-cover" 
-                                alt="Snapshot" 
+                              <img
+                                src={snap.url}
+                                className="w-full h-full object-cover"
+                                alt="Snapshot"
                               />
                             </div>
                           ))}
@@ -422,7 +422,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                     <div>
                       <p className="text-xs font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.5))] uppercase tracking-wider mb-3">Photos</p>
                       <div className="relative">
-                        <div 
+                        <div
                           onClick={() => handleImageClick("photo", photoIndex)}
                           className="aspect-video rounded-xl overflow-hidden bg-[var(--category-card,rgba(255,255,255,0.05))] cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200"
                         >

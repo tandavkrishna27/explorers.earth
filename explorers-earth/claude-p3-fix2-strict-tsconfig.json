@@ -1,0 +1,20 @@
+{
+  "//": "Terminating strict typecheck for the P3 pin UI/client work: the WHOLE explorers-earth src under tsconfig.app.json semantics, PLUS PlacePinsEditor.contract.test.tsx, which tsconfig.app.json's exclude would otherwise skip. All seven reviewed files are checked, with no alias, no stub and no skipped file.",
+  "//location": "This file sits beside tsconfig.app.json ON PURPOSE, not under .replatform-local/. TypeScript resolves default typeRoots and default @types auto-inclusion relative to the config file in use, so a copy under .replatform-local/ silently loses explorers-earth/node_modules/@types (e.g. @types/google.maps -> 125 spurious TS2503/TS2304). Sitting here, every default resolves exactly as the canonical build resolves it. Logs stay under .replatform-local/.",
+  "//why-no-overrides": "No compilerOptions overrides beyond noEmit/incremental. paths, types, typeRoots and lib are all INHERITED. The author's review configs overrode all four, and two of those overrides caused the reported OOM and the spurious diagnostics:",
+  "//cause-1-paths": "paths:{} REPLACES tsconfig.app.json's 'zod/v3' -> ./node_modules/zod/v3 mapping. explorersApiClient.ts:16 imports { z } from 'zod/v3'. Installed zod in explorers-earth is 4.3.6. CORRECTED (the earlier wording here was wrong): without the mapping, 'zod/v3' does NOT resolve through zod 4's package exports to the v4 type barrel. --traceResolution shows it resolving UPWARD OUT OF THE APP, to tunes/node_modules/zod/v3 at 3.25.76. The broken arm's program therefore contains TWO structurally distinct zod v3 type identities at once (3.25.76 from the hoisted tunes copy, and 4.3.6 reached through the app's own zod), and it is the structural comparison between those two independent ZodType hierarchies across this schema chain that expands until the heap dies. The conclusion is unchanged - a harness defect, not a defect in explorersApiClient.ts, and no source annotation is needed - but there is NO zod-v4 generic-inference pathology to go hunting for.",
+  "//cause-2-lib": "lib:[\"ES2024\",...] is rejected by TS 5.6.3 (TS6046 - no lib.es2024 ships) and silently falls back, so the author's configs never meant what they said. Inheriting tsconfig.app.json's ES2020 is correct.",
+  "//scope-note": "EXACTLY one test file is added to the app graph, and it is added through \"files\" rather than through \"include\": TypeScript applies \"exclude\" only to \"include\", never to \"files\", so the inherited exclude (which covers src/**/*.test.tsx) stays fully in force and no OTHER test file can drift into this program. The previous revision instead dropped src/**/*.test.tsx from the exclude override, which silently also admitted src/features/Settings/components/AccountDeletionLifecyclePanel.test.tsx - harmless today, but a future unrelated .test.tsx with a strict error would have reddened this config for reasons unrelated to Places.",
+  "//scope-note-measured": "Including the repo's whole test tree surfaces 547 PRE-EXISTING errors unrelated to this work (tsconfig.app.json deliberately excludes src/**/__tests__/** and src/**/*.test.{ts,tsx}). Reproduce the figure exactly: take THIS file, replace the \"files\"/\"exclude\" handling with \"exclude\": [] (so tsconfig.app.json's exclude is overridden to nothing) and leave everything else - include:[\"src\"], the inherited compilerOptions, noEmit, incremental:false - untouched, then run `node node_modules/typescript/lib/tsc.js -p claude-p3-fix2-strict-tsconfig.json` from explorers-earth/ with TypeScript 5.6.3 and `--max-old-space-size=8192`, and count lines matching 'error TS'. The count includes diagnostics in ../tunes/** files reached by import from the admitted tests. The earlier figure recorded here (608) was wrong.",
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false
+  },
+  "files": [
+    "src/features/Favorites/components/PlacePinsEditor.contract.test.tsx"
+  ],
+  "include": [
+    "src"
+  ]
+}

@@ -12,6 +12,11 @@ export default defineConfig({
     // controller in ../tunes. Resolve its bare GraphQL import from this
     // package's declared dependency; CI installs packages independently.
     alias: [{
+      // The shared API schema uses Zod 3; the frontend's declared Zod 4
+      // package provides that compatibility export in isolated frontend CI.
+      find: /^zod\/v3$/,
+      replacement: require.resolve('zod/v3'),
+    }, {
       find: /^graphql$/,
       replacement: resolve(fileURLToPath(new URL('./', import.meta.url)), 'node_modules/graphql/index.mjs'),
     }],
@@ -21,6 +26,15 @@ export default defineConfig({
   plugins: [react()],
   server: { host: '127.0.0.1', proxy: {} },
   test: {
+    // Vitest's default is 5000ms, which this config never set deliberately. Three separate
+    // render-heavy integration files flaked against it on loaded CI runners -- Profile
+    // two-save interleaving, PublicHome places-state, and movies top-picks staging -- each
+    // time passing in the sibling run of the identical commit. Raising it cannot turn a
+    // passing test into a failing one: a vitest timeout only ever FAILS a test, so nothing
+    // passes because of one. In-test values and fake timers are unaffected, and 30s is still
+    // a bound, so a genuinely hung test is still reported.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     pool: 'forks',
     open: false,
     api: process.argv.includes('--ui') ? { host: '127.0.0.1' } : false,

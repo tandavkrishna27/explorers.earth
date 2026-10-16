@@ -1,6 +1,4 @@
 import { useLocation, useNavigate, Link } from "react-router-dom";
-import { useMutation } from "@apollo/client";
-import { forgotPasswordMutation } from "../features/Authentication/api/mutation";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,13 +12,27 @@ const MailIcon = () => (
   </svg>
 );
 
+/**
+ * Ticket 2.4. Password authentication does not exist canonically - betterAuth.ts sets
+ * emailAndPassword: {enabled: false} and Login offers only Google - so there is no
+ * canonical operation for this page to call, and the Strapi one it used to call reset
+ * credentials that no sign-in path would have accepted.
+ *
+ * The page already redirects to Google sign-in (ENABLE_MANUAL_AUTH is false), which is the
+ * visible change ticket 2.4 line 45 records as agreed. The effect that redirects runs a
+ * frame after the first render, so this makes the resend path refuse by construction.
+ */
+const manualAuthUnavailable = () => {
+  throw new Error('Password reset is unavailable. Please continue with Google.');
+};
+
 const ResetLinkSent = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const email = location.state?.email as string | undefined;
 
-  const [forgotPassword, { loading }] = useMutation(forgotPasswordMutation);
+  const loading = false;
 
   // Cooldown state
   const [cooldown, setCooldown] = useState(0);
@@ -43,28 +55,15 @@ const ResetLinkSent = () => {
   }, [cooldown]);
 
   const handleResend = async () => {
-    // The email is only held in router state; if it's gone (e.g. a refresh),
-    // send the user back to request a fresh link instead of failing silently.
+    // The email is only held in router state; if it's gone (e.g. a refresh), send the user
+    // back rather than failing silently. Kept because it is the one branch here that is
+    // about navigation rather than about the retired mutation.
     if (!email) {
       toast.error(t('toast.error.emailNotFound'));
       navigate("/forgot-password");
       return;
     }
-
-    try {
-      const response = await forgotPassword({
-        variables: { email },
-      });
-
-      if (response.data.forgotPassword.ok) {
-        toast.success(t('toast.success.resetLinkResent'));
-        setCooldown(30); // Start 30 sec cooldown
-      } else {
-        toast.error(t('toast.error.resetLinkResendFailed'));
-      }
-    } catch {
-      toast.error(t('toast.error.resetLinkResendFailed'));
-    }
+    manualAuthUnavailable();
   };
 
   return (

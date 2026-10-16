@@ -45,7 +45,7 @@ function fixture(profile: Snapshot['profile'] = 'No', mode: MusicPublicationMode
                 return;
             }
             const latest = await tx.read();
-            const decision = planCategoryIntent(latest, { category: 'public_music', action: 'unpublish' }, 'allowed');
+            const decision = planCategoryIntent(latest, { category: 'public_music', action: 'unpublish' });
             if (decision.kind === 'write') {
                 await tx.commit(decision.patch);
                 if (decision.cleanupPending)

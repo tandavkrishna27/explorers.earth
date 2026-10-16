@@ -13,13 +13,21 @@ import { Route, Routes } from 'react-router-dom';
 import { PublicMusicAvailabilityProvider, usePublicMusicAvailability } from '../../music/PublicMusicAvailabilityProvider';
 const usePublicProfileShell = vi.hoisted(() => vi.fn());
 vi.mock('../../PublicHome/api/usePublicProfileShell', () => ({ usePublicProfileShell }));
+vi.mock('../../Profile/api/useCanonicalAccount', () => ({ useCanonicalAccount: () => ({
+  data: { id: '11111111-1111-4111-8111-111111111111', revision: 1 }, isLoading: false,
+}) }));
 vi.mock('../components/ProfileAccountSettings', () => ({ default: () => null }));
 vi.mock('../components/BillingTab', () => ({ default: () => null }));
 vi.mock('../components/LanguageSelector', () => ({ default: () => null, LANGUAGES: [{ code: 'en', name: 'English' }] }));
 vi.mock('react-player', () => ({ default: () => null }));
 const dashboard = { playlists: [], dashboard: { queueRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: 'private' as const, publicSlug: 'public-slug-123' } },
   entitlement: { state: 'included' as const, coreRead: true, coreMutation: true, paidMutation: false, maxAgeSeconds: 600 }, isLoading: false, error: null, refetch: vi.fn() };
-const musicPage = <MusicDashboard data={dashboard} scope={{ userDocumentId: 'u1', accountDocumentId: 'a1' }} complete />;
+const musicPage = <MusicDashboard data={dashboard} scope={{ userDocumentId: 'u1', accountDocumentId: '11111111-1111-4111-8111-111111111111' }} complete />;
+function canonicalWrite(visibility:Record<string,string>, pins:string[], expectedRevision=1) {
+  const fields=['public_recommendations','public_music','public_guides','public_movie','public_books','public_games','public_apps','public_products','public_people'];
+  const categories=['places','music','guides','movies','books','games','apps','products','people'];
+  return {input:{expectedRevision,categories:categories.map((category,displayOrder)=>({category,displayOrder,isPublic:(visibility[fields[displayOrder]]??'Yes')==='Yes',pinnedOrder:pins.includes(fields[displayOrder])?pins.indexOf(fields[displayOrder])-1:null}))}};
+}
 const openVisibility = () => fireEvent.click(screen.getByRole('button', { name: /Public Visibility/i }));
 const control = () => screen.getByRole('switch', { name: 'Music public visibility' });
 const musicPin = () => screen.getByRole('checkbox', { name: 'Pin Music Tab' });
@@ -56,7 +64,7 @@ describe('Settings unified Music visibility', () => {
     expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_music', 'public_books']);
     await waitFor(() => expect(musicPin()).toBeEnabled()); fireEvent.click(musicPin());
     await waitFor(() => expect(musicPin()).not.toBeChecked());
-    expect(h.writes.map(write => write.variables.data)).toEqual([{ pinned_nav_tabs: ['public_profile', 'public_books'] }]);
+    expect(h.writes.map(write => write.variables)).toEqual([canonicalWrite({}, ['public_profile', 'public_books'])]);
     expect(h.saved.public_music).toBe('Yes'); expect(backend.publish).not.toHaveBeenCalled();
   });
   it.each([
@@ -77,7 +85,7 @@ describe('Settings unified Music visibility', () => {
     expect(h.saved.pinned_nav_tabs).toEqual(pins); expect(h.writes).toEqual([]);
     if (pinned && profile === 'No') {
       fireEvent.click(musicPin()); await waitFor(() => expect(musicPin()).not.toBeChecked());
-      expect(h.writes.map(write => write.variables.data)).toEqual([{ pinned_nav_tabs: ['public_profile', 'public_books'] }]);
+      expect(h.writes.map(write => write.variables)).toEqual([canonicalWrite({public_music:profile}, ['public_profile', 'public_books'])]);
       expect(h.saved.public_music).toBe('No');
     }
     expect(backend.publish).not.toHaveBeenCalled();
@@ -152,7 +160,7 @@ describe('Settings unified Music visibility', () => {
     expect(status).toBeVisible(); expect(status).not.toHaveClass('sr-only'); expect(control()).not.toBeChecked();
     fireEvent.click(recover); await waitFor(() => expect(control()).toBeEnabled());
     expect(backend.publish.mock.calls.map(call => call[0])).toEqual(['private']);
-    expect(h.writes.map(write => write.variables.data)).toEqual([{ public_music: 'No', pinned_nav_tabs: ['public_profile', 'public_books'] }]);
+    expect(h.writes.map(write => write.variables)).toEqual([canonicalWrite({public_music:'No'}, ['public_profile', 'public_books'])]);
     expect(within(screen.getByRole('region', { name: 'Public visibility settings' })).queryByText('Public Visibility')).not.toBeInTheDocument();
   });
   it.each(['Settings', 'Music'])('publishes from %s and verifies On/Off after navigating to the other surface', async surface => {
@@ -177,8 +185,8 @@ describe('Settings unified Music visibility', () => {
     await waitFor(() => expect(control()).toBeEnabled());
     expect(control()).not.toBeChecked();
     expect(h.writes.map(write => write.variables)).toEqual([
-      { documentId: 'a1', data: { public_music: 'Yes' } },
-      { documentId: 'a1', data: { public_music: 'No', pinned_nav_tabs: ['public_profile', 'public_books'] } },
+      canonicalWrite({public_music:'Yes'}, ['public_profile','public_music','public_books']),
+      canonicalWrite({public_music:'No'}, ['public_profile','public_books'],2),
     ]);
     expect(backend.publish.mock.calls.map(call => call[0])).toEqual(['public', 'private']);
     expect(playlists).not.toHaveBeenCalled(); expect(guests).not.toHaveBeenCalled();
@@ -211,7 +219,7 @@ describe('Settings unified Music visibility', () => {
     await screen.findByRole('dialog', { name: 'Unpublish Books' });
     fireEvent.click(screen.getByRole('button', { name: 'Unpublish Books' }));
     await waitFor(() => expect(h.writes).toHaveLength(1));
-    expect(h.writes[0].variables.data).toEqual({ public_books: 'No', pinned_nav_tabs: ['public_profile', 'public_music'] });
+    expect(h.writes[0].variables).toEqual(canonicalWrite({public_books:'No',public_music:'No'}, ['public_profile','public_music']));
     expect(ensure).not.toHaveBeenCalled(); expect(backend.publish).not.toHaveBeenCalled();
     if (problem !== 'outage') expect(backend.dashboard).not.toHaveBeenCalled();
   });
@@ -225,7 +233,7 @@ describe('Settings unified Music visibility', () => {
     else {
       await waitFor(() => expect(pin).toBeEnabled()); fireEvent.click(pin);
       if (mode === 'outage') { expect(await screen.findByRole('alert')).toHaveTextContent(/Could not verify publication/i); expect(h.writes).toEqual([]); }
-      else { await waitFor(() => expect(pin).toBeChecked()); expect(h.writes.map(write => write.variables.data)).toEqual([{ pinned_nav_tabs: ['public_profile', 'public_books', 'public_music'] }]); }
+      else { await waitFor(() => expect(pin).toBeChecked()); expect(h.writes.map(write => write.variables)).toEqual([canonicalWrite({}, ['public_profile','public_books','public_music'])]); }
     }
     expect(backend.publish).not.toHaveBeenCalled();
   });
@@ -233,7 +241,7 @@ describe('Settings unified Music visibility', () => {
     await readyMusic(); const backend = musicBackend();
     const refetch = vi.fn().mockResolvedValue(undefined);
     usePublicProfileShell.mockImplementation(() => ({
-      data: { documentId: 'a1', username: 'owner', public_music: backend.mode === 'public' ? 'Yes' : 'No' },
+      data: { documentId: '11111111-1111-4111-8111-111111111111', username: 'owner', public_music: backend.mode === 'public' ? 'Yes' : 'No' },
       loading: false, error: null, refetch,
     }));
     let finish!: () => void;

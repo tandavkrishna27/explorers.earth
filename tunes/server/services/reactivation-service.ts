@@ -18,7 +18,7 @@ import { emailService } from './email-service';
 import { systemSettingsService } from './system-settings-service';
 import { storage } from '../storage';
 import type { MusicIdentityRepository } from '../repositories/musicIdentityRepository';
-import { cancelResponseBody, readBoundedResponseBody } from './strapiIdentityGateway';
+import { cancelResponseBody, readBoundedResponseBody } from './upstreamResponseBody';
 
 // ─── Reactivation email template (self-seeding) ───────────────────────────────
 

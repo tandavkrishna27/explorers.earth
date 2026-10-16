@@ -56,8 +56,8 @@ function policyFor(text: string): string {
   return policies.length ? policies.join("+") : "none";
 }
 
-function classificationFor(method: string, path: string, priorClassification: string): string {
-  const decision = decisionForRoute({ method, path, classification: priorClassification });
+function classificationFor(method: string, path: string, priorClassification: string, source: string): string {
+  const decision = decisionForRoute({ method, path, classification: priorClassification, source });
   const classifications: Record<MusicSurfaceDecision, string> = {
     public: "public",
     "strapi-identity": "strapi-identity-boundary",
@@ -69,11 +69,17 @@ function classificationFor(method: string, path: string, priorClassification: st
     "admin-tombstone": "admin-tombstone",
     "owner-or-guest": "c5-or-guest-handshake",
     unclassified: "unclassified",
+    "explorers-auth": "canonical-explorers-auth",
+    "explorers-owner": "canonical-explorers-owner",
+    "explorers-recovery": "canonical-explorers-recovery",
   };
   return classifications[decision];
 }
 
 function ownerFor(path: string, classification: string): string {
+  if(path==='/api/explorers/analytics/events')return classification==='public'?'consent+live-canonical-public-target':'historical-strapi-bearer-owner-until-7.2';
+  if(path==='/api/explorers/analytics/summary')return 'verified-Actor+analytics:read+current-session-lifecycle';
+  if (path === "/api/explorers/v1/media/:id/content" && classification === "public") return "owner-or-visible-public-profile-attachment";
   if (path === "/api/explorers/analytics/music-account/:accountDocumentId/events") return "active-local-binding-from-account-descriptor";
   if (path === "/api/music/identity/ensure") return "authoritative-strapi-user+selected-account";
   if (path.startsWith("/api/music/identity/lifecycle/")) return "authoritative-strapi-user+stored-account-binding";
@@ -85,6 +91,18 @@ function ownerFor(path: string, classification: string): string {
     : "hashed-guest-capability";
   if (classification === "admin-tombstone" || classification === "tombstone") return "none-fail-closed";
   if (classification === "native-session") return "native-session-only";
+  if (classification === "canonical-explorers-owner") return "verified-google-session+active-initial-account-binding";
+  if (classification === "canonical-explorers-auth") return "better-auth-session-or-provider-flow";
+  if (classification === "canonical-explorers-recovery") {
+    if (path === "/api/explorers/v1/recovery/start") return "trusted-origin+signed-short-lived-recovery-intent";
+    // /recovery/status is read-only observation and is deliberately NOT single-use: ticket
+    // 2.4 package L0 requires it to report a completed recovery and a terminal deletion,
+    // neither of which is observable while the proof must be unconsumed. It stays bound to
+    // the same Google-issued proof and to its original five-minute expiry, and writes
+    // nothing. The transition route below keeps the single-use gate.
+    if (path === "/api/explorers/v1/recovery/status") return "google-bound-recovery-proof-within-expiry-read-only";
+    return "single-use-google-bound-recovery-proof";
+  }
   return "none";
 }
 
@@ -120,13 +138,14 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
           const method = node.expression.name.text.toLowerCase();
           const target = node.expression.expression.getText(sourceFile);
           const path = literal(node.arguments[0]);
-          if (["get", "post", "put", "patch", "delete", "use", "all"].includes(method) && path?.startsWith("/")) {
+          if (["get", "head", "post", "put", "patch", "delete", "use", "all"].includes(method) && path?.startsWith("/")) {
             const middleware = node.arguments.slice(1, -1).map((argument) => argument.getText(sourceFile)).join(" ");
             const routePolicy = policyFor(middleware);
             const legacyClassification = routePolicy !== "none" ? "authenticated" : "handler-authorization-unknown";
-            const classification = classificationFor(method.toUpperCase(), path, legacyClassification);
+            const classification = classificationFor(method.toUpperCase(), path, legacyClassification, source);
             let policy = routePolicy;
-            if (classification === "public") policy = "explicit-public-contract";
+            if (classification === "public") policy = path === "/api/explorers/v1/media/:id/content"
+              ? "ready-media+owner-or-live-public-profile-or-book-recommendation-attachment" : "explicit-public-contract";
             else if (path === "/{*musicRetiredPath}") policy = "normalized-executable-retirement-matcher";
             else if (classification === "local-music-owner") policy = "c5-principal+local-lifecycle+owner-sql";
             else if (classification === "paid-local-music-owner") policy = "c5-principal+local-lifecycle+fresh-entitlement+owner-sql";
@@ -136,6 +155,10 @@ export function inventoryRuntimeSurfaces(repositoryRoot: string): RuntimeSurface
               ? "c5-mint-boundary"
               : "authoritative-strapi-bearer+immutable-binding+lifecycle-state";
             else if (classification === "native-session") policy = "standalone-native-only";
+            else if (classification === "canonical-explorers-auth") policy = "better-auth-handler+trusted-origin-for-mutations";
+            else if (classification === "canonical-explorers-owner") policy = "better-auth-session+google-provider+active-initial-account-binding";
+            else if (classification === "canonical-explorers-recovery") policy = path === "/api/explorers/v1/recovery/start"
+              ? "trusted-origin+signed-short-lived-recovery-intent" : "google-bound-five-minute-proof+origin-on-mutation";
             routes.push({ method: method.toUpperCase(), path, classification, ownerSource: ownerFor(path, classification), policy, lifecycle: lifecycleFor(path, method.toUpperCase()), source, line });
           }
           const event = literal(node.arguments[0]);

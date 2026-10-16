@@ -116,9 +116,7 @@ const MobileLayout = () => {
           <Header />
           <RouteLoader />
           <main className="pt-16">
-            <CategoryNavigationProvider verifyMusicPin={verifyMusicPin}>
-              <MusicPublishProvider><Outlet /></MusicPublishProvider>
-            </CategoryNavigationProvider>
+            {location.pathname.startsWith("/recommendations/books") ? <Outlet /> : <CategoryNavigationProvider verifyMusicPin={verifyMusicPin}><MusicPublishProvider><Outlet /></MusicPublishProvider></CategoryNavigationProvider>}
           </main>
           <Navbar />
         </div>

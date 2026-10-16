@@ -273,7 +273,6 @@
       "message": "This account has been deactivated.",
       "reactivateLink": "Click here to reactivate your account →"
     },
-    "claimAccount": "Claim Account?",
     "confirmPassword": "ยืนยันรหัสผ่าน",
     "confirmPasswordPlaceholder": "กรอกรหัสผ่านของคุณอีกครั้ง",
     "email": "อีเมล",

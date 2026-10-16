@@ -1,20 +1,12 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import tmdbService from '../tmdbService';
-
-describe('tmdbService Error & Formatting States', () => {
-  it('should handle extractYear helper', () => {
+describe('provider display helpers', () => {
+  it('formats display dates without network access', () => {
     expect(tmdbService.extractYear('2026-07-08')).toBe('2026');
     expect(tmdbService.extractYear(undefined)).toBe('');
   });
-
-  it('should handle invalid HTTP response statuses in tmdbService.getMovieDetails', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-      statusText: 'Not Found',
-      json: async () => ({ status_message: 'Not Found' })
-    } as unknown as Response);
-
-    await expect(tmdbService.getMovieDetails('invalid-id')).rejects.toThrow('TMDB API error: Not Found');
+  it('keeps owned backdrop and logo routes unchanged', () => {
+    expect(tmdbService.buildBackdropUrl('/api/explorers/v1/media/back/content')).toBe('/api/explorers/v1/media/back/content');
+    expect(tmdbService.buildLogoUrl('/api/explorers/v1/media/logo/content')).toBe('/api/explorers/v1/media/logo/content');
   });
 });

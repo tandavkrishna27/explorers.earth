@@ -6,9 +6,24 @@ export interface MusicWorkspaceShellProps {
   loading?: boolean; stale?: boolean; empty?: boolean;
 }
 
+/**
+ * Decision D1, 2026-10-08. Guest song requests are capped at this many per venue per
+ * calendar month, and the surface is labelled beta while that holds.
+ *
+ * The number is stated rather than hidden behind the word "beta": an owner who hits the
+ * ceiling mid-month should have been able to see it coming. The server is the authority
+ * (MONTHLY_GUEST_REQUEST_CAP in musicDomainRepository) and refuses with a 429 naming the
+ * same figure; this is the copy, not the control.
+ */
+const MONTHLY_GUEST_REQUEST_CAP = 100;
+
 export function MusicWorkspaceShell({ player, search, queue, history, guestControls, loading = false, stale = false, empty = false }: MusicWorkspaceShellProps) {
   const searchRegion = useRef<HTMLElement>(null);
   return <div role="region" aria-label="Music workspace" aria-readonly={stale || undefined} className="relative max-w-full overflow-x-hidden pb-4 md:pb-0">
+    <p className="mb-3 flex flex-wrap items-center gap-2 text-sm text-dashboard-light">
+      <span className="rounded-full border border-dashboard px-2 py-0.5 text-xs font-semibold uppercase tracking-wide">Beta</span>
+      <span>Guests can request up to {MONTHLY_GUEST_REQUEST_CAP} songs a month.</span>
+    </p>
     {loading && <p role="status" aria-live="polite" className="mb-3 text-sm text-dashboard-light">Refreshing Music…</p>}
     {stale && <p role="status" className="mb-3 rounded-xl border border-dashboard p-3 text-sm text-dashboard-light">Showing saved Music. Changes are unavailable until the connection returns.</p>}
     <section ref={searchRegion} id="music-search-region" aria-label="Music search region" className="rounded-2xl border border-dashboard bg-dashboard-sidebar p-4 md:p-5">{search}</section>

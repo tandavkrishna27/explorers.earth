@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
+
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, MoreVertical, Trash2,
@@ -11,11 +11,9 @@ import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import Accordion from "../../../../components/ui/Accordian";
 import useAuthStore from "../../../../store/store";
-import { GAMES_BY_LIST, gamesByListVars } from "../../api/query";
-import {
-  UPDATE_GAME_LIST, DELETE_GAME_LIST,
-  TOGGLE_GAME_PIN, DELETE_RECOMMENDED_GAME,
-} from "../../api/mutation";
+import { useGamesCommands, useGamesCallerCustody } from "../../api/query";
+import { useGamesOwner } from "../../hooks/useGamesOwner";
+
 import { deduplicateGames, buildCoverUrl, extractNoteText } from "../../utils/gameHelpers";
 import type { RecommendedGame, GameList } from "../../types";
 import TopGamesManager from "./TopGamesManager";
@@ -129,20 +127,26 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [updateGameList, { loading: isUpdating }] = useMutation(UPDATE_GAME_LIST);
-  const [deleteGameList] = useMutation(DELETE_GAME_LIST);
+  const commands = useGamesCommands(), isUpdating = commands.loading;
+  const beginEffects = useGamesCallerCustody();
+  const updateGameList = ({ variables }: { variables: { documentId: string; Visibility?: boolean; List_Name?: string; list_description?: string | null }; optimisticResponse?: unknown; refetchQueries?: unknown[] }) => commands.updateList(variables.documentId, { ...(variables.Visibility === undefined ? {} : { visibility: variables.Visibility ? 'public' : 'private', publicationState: variables.Visibility ? 'published' : 'draft' }), ...(variables.List_Name === undefined ? {} : { title: variables.List_Name }), ...(variables.list_description === undefined ? {} : { description: variables.list_description }) });
+  const deleteGameList = ({ variables }: { variables: { documentId: string } }) => commands.archiveList(variables.documentId);
 
   const shareUrl = `${VITE_BASE_URL}/${list.account?.username ?? "user"}/games/${list.slug}`;
 
   const handleCopyUrl = async () => {
-    await navigator.clipboard.writeText(shareUrl);
+    const current = beginEffects();
+    try { await navigator.clipboard.writeText(shareUrl); } catch { if (current()) toast.error("Failed to copy list URL."); return; }
+    if (!current()) return;
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => { if (current()) setCopied(false); }, 2000);
   };
 
   const handleToggleVisibility = async () => {
+    const current = beginEffects();
     try {
       if (!list.Visibility && list.recommended_games?.length === 0) {
+        if (!current()) return;
         toast.error("Add at least one game before publishing.");
         return;
       }
@@ -161,21 +165,28 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
           }
         }
       });
+      if (!current()) return;
       toast.success(list.Visibility ? "List set to Draft." : "List published!");
+      if (!current()) return;
       onRefetch();
     } catch {
+      if (!current()) return;
       toast.error("Failed to update visibility.");
     }
   };
 
   const handleDeleteList = async () => {
-    if (!window.confirm(`Delete "${list.List_Name}"? This cannot be undone.`)) return;
+    const current = beginEffects();
+    if (!window.confirm(`Archive "${list.List_Name}"? Recommendations in other lists are preserved.`)) return;
     try {
       await deleteGameList({ variables: { documentId: list.documentId } });
-      toast.success("List deleted.");
+      if (!current()) return;
+      toast.success("List archived.");
+      if (!current()) return;
       navigate("/recommendations/games");
     } catch {
-      toast.error("Failed to delete list.");
+      if (!current()) return;
+      toast.error("Failed to archive list.");
     }
   };
 
@@ -189,7 +200,7 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
               className="flex flex-row text-center gap-2 items-center rounded-md font-poppins w-full text-sm border border-white px-4 py-3 hover:border-gray-500 text-white hover:text-gray-500 justify-center font-medium transition-all duration-300"
             >
               <Trash2 size={16} />
-              <span>Delete</span>
+              <span>Archive list</span>
             </button>
 
             {isEditing ? (
@@ -199,9 +210,12 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
                   <input
                     defaultValue={list.List_Name}
                     onBlur={async (e) => {
+                      const current = beginEffects();
                       if (e.target.value && e.target.value !== list.List_Name) {
-                        await updateGameList({ variables: { documentId: list.documentId, List_Name: e.target.value } });
+                        try { await updateGameList({ variables: { documentId: list.documentId, List_Name: e.target.value } }); } catch { if (current()) toast.error("Failed to update list name."); return; }
+                        if (!current()) return;
                         toast.success("List name updated.");
+                        if (!current()) return;
                         onRefetch();
                       }
                     }}
@@ -214,9 +228,12 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
                     defaultValue={list.list_description || ""}
                     rows={3}
                     onBlur={async (e) => {
+                      const current = beginEffects();
                       if (e.target.value !== (list.list_description || "")) {
-                        await updateGameList({ variables: { documentId: list.documentId, list_description: e.target.value } });
+                        try { await updateGameList({ variables: { documentId: list.documentId, list_description: e.target.value } }); } catch { if (current()) toast.error("Failed to update description."); return; }
+                        if (!current()) return;
                         toast.success("Description updated.");
+                        if (!current()) return;
                         onRefetch();
                       }
                     }}
@@ -309,26 +326,25 @@ const GameListView = () => {
     open: false,
     game: null,
   });
-  const { user } = useAuthStore();
+  const { user, accountId, generation } = useAuthStore();
+  useEffect(() => { setShowTopGamesManager(false); setDeleteTarget(null); setListVisibilityPrompt(null); setModalState({ open: false, game: null }); }, [accountId, generation, location.pathname]);
 
   const handleOpenModal = (game: RecommendedGame) => {
-    console.log("Opening modal for game:", game.title);
     setModalState({ open: true, game });
   };
 
-  const { data, loading, refetch } = useQuery(GAMES_BY_LIST, {
-    variables: gamesByListVars(listId ?? ""),
-    skip: !listId,
-    fetchPolicy: "cache-and-network",
-  });
+  const { data, content, loading, error, refetch } = useGamesOwner(listId, Boolean(listId));
 
-  const [toggleGamePin] = useMutation(TOGGLE_GAME_PIN);
-  const [deleteRecommendedGame] = useMutation(DELETE_RECOMMENDED_GAME);
-  const [updateGameList, { loading: isUpdating }] = useMutation(UPDATE_GAME_LIST);
+  const toggleGamePin = ({ variables }: { variables: { documentId: string; is_pinned: boolean; pin_order: number | null } }) => commands.pin(variables.documentId, listId!, variables.is_pinned);
+  const deleteRecommendedGame = ({ variables }: { variables: { documentId: string } }) => commands.membership(variables.documentId, listId!, false);
+  const commands = useGamesCommands(), isUpdating = commands.loading;
+  const beginEffects = useGamesCallerCustody();
+  const updateGameList = ({ variables }: { variables: { documentId: string; Visibility?: boolean; List_Name?: string; list_description?: string | null }; optimisticResponse?: unknown; refetchQueries?: unknown[] }) => commands.updateList(variables.documentId, { ...(variables.Visibility === undefined ? {} : { visibility: variables.Visibility ? 'public' : 'private', publicationState: variables.Visibility ? 'published' : 'draft' }), ...(variables.List_Name === undefined ? {} : { title: variables.List_Name }), ...(variables.list_description === undefined ? {} : { description: variables.list_description }) });
 
   const rawList = data?.gameLists?.[0];
   const games: RecommendedGame[] = deduplicateGames(rawList?.recommended_games);
-  const pinnedGames = games.filter((b) => b.is_pinned);
+  const allCategoryGames = content?.view.lists.flatMap(candidate => candidate.recommended_games) ?? [];
+  const pinnedGames = deduplicateGames(allCategoryGames.filter((b) => b.is_pinned));
   const pinnedCount = pinnedGames.length;
 
   const list: GameList | null = rawList
@@ -359,8 +375,10 @@ const GameListView = () => {
   }, [location.state, location.pathname, list?.documentId, games.length, navigate]);
 
   const handlePinToggle = async (game: RecommendedGame) => {
+    const current = beginEffects();
     const willPin = !game.is_pinned;
-    if (willPin && pinnedCount >= 15) {
+    if (willPin && pinnedCount >= 15 && !pinnedGames.some(pinned => pinned.documentId === game.documentId)) {
+      if (!current()) return;
       toast.error("Max 15 top picks allowed.");
       return;
     }
@@ -373,17 +391,21 @@ const GameListView = () => {
           pin_order: willPin ? pinnedCount : null,
         },
       });
+      if (!current()) return;
       refetch();
     } catch {
+      if (!current()) return;
       toast.error("Failed to update pin.");
     } finally {
-      setPinningId(null);
+      if (current()) setPinningId(null);
     }
   };
 
   const handleToggleVisibility = async () => {
+    const current = beginEffects();
     if (!list) return;
     if (!list.Visibility && games.length === 0) {
+      if (!current()) return;
       toast.error("Add at least one game before publishing.");
       return;
     }
@@ -403,28 +425,40 @@ const GameListView = () => {
           }
         }
       });
+      if (!current()) return;
       toast.success(list.Visibility ? "List set to Draft." : "List published!");
+      if (!current()) return;
       refetch();
     } catch {
+      if (!current()) return;
       toast.error("Failed to update visibility.");
     }
   };
 
+  const handleRecommendationPublication = async (game: RecommendedGame, published: boolean) => {
+    const current = beginEffects(); try { await commands.publishRecommendation(game.documentId, published); if (!current()) return; toast.success(published ? 'Game published.' : 'Game kept as draft.'); } catch { if (!current()) return; toast.error('Game publication could not be saved. Please retry.'); } };
+
   const handleDelete = async () => {
+    const current = beginEffects();
     if (!deleteTarget) return;
     setDeleting(true);
     try {
       await deleteRecommendedGame({ variables: { documentId: deleteTarget.documentId } });
+      if (!current()) return;
       toast.success("Game removed.");
+      if (!current()) return;
       setDeleteTarget(null);
+      if (!current()) return;
       refetch();
     } catch {
+      if (!current()) return;
       toast.error("Failed to delete game.");
     } finally {
-      setDeleting(false);
+      if (current()) setDeleting(false);
     }
   };
 
+  if (error && !list) return <p role="alert">Games could not be loaded. <button onClick={refetch}>Retry</button></p>;
   if (loading && !list) {
     return (
       <div className="p-6 space-y-4 max-w-3xl mx-auto">
@@ -483,6 +517,7 @@ const GameListView = () => {
             <AddIcon size="5" /> Add Game
           </button>
 
+<p className="text-xs text-dashboard-muted mb-3">Draft games stay private. Game publication applies across your published lists.</p>
           {games.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">
               <Gamepad2 size={40} className="text-white/15 mb-3" />
@@ -491,15 +526,14 @@ const GameListView = () => {
           ) : (
             <div className="space-y-0">
               {games.map((game) => (
-                <GameRow
-                  key={game.documentId}
+                <div key={game.documentId}><GameRow
                   game={game}
                   onPinToggle={handlePinToggle}
                   onEdit={(g) => navigate(`/recommendations/games/${listId}/edit/${g.documentId}`)}
                   onDelete={(g) => setDeleteTarget(g)}
                   onClick={() => handleOpenModal(game)}
                   isPinning={pinningId === game.documentId}
-                />
+                /><div className="flex items-center justify-between gap-3 pb-3 text-xs text-dashboard-muted"><span>Recommendation is {content?.details.get(game.documentId)?.detail.publicationState === 'published' ? 'Published' : 'Draft'}</span><button disabled={commands.loading || !content?.details.has(game.documentId)} onClick={() => handleRecommendationPublication(game, content?.details.get(game.documentId)?.detail.publicationState !== 'published')} className="text-dashboard-accent">{content?.details.get(game.documentId)?.detail.publicationState === 'published' ? `Keep ${game.title} as draft` : `Publish ${game.title}`}</button></div></div>
               ))}
             </div>
           )}
@@ -518,7 +552,7 @@ const GameListView = () => {
         {showTopGamesManager && (
           <TopGamesManager
             games={pinnedGames}
-            allGames={games}
+            allGames={allCategoryGames}
             onClose={() => setShowTopGamesManager(false)}
             onRefetch={refetch}
           />
@@ -565,13 +599,17 @@ const GameListView = () => {
           listName={listVisibilityPrompt.listName}
           categoryName="Games"
           onConfirm={async () => {
+              const current = beginEffects();
             try {
               await updateGameList({
                 variables: { documentId: list.documentId, Visibility: true },
               });
+              if (!current()) return;
               refetch();
+              if (!current()) return;
               toast.success(`"${list.List_Name}" published!`);
             } catch {
+              if (!current()) return;
               toast.error("Failed to update visibility.");
             }
           }}

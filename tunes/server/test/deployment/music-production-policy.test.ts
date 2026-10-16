@@ -66,7 +66,7 @@ describe("production environment policy preflight", () => {
     ["an unexpected sole protected branch", { deployment_branch_policy: { protected_branches: true, custom_branch_policies: false } }, [{ name: "release", protected: true }], { name: "main", protected: true }],
     ["unprotected-main", { deployment_branch_policy: { protected_branches: true, custom_branch_policies: false } }, [], { name: "main", protected: false }],
   ])("refuses %s protected-main policy", async (_case, environmentPolicy, protectedBranches, branch) => {
-    // Production break caught: GATE_PROD opens while the external environment
+    // Production break caught: a release starts while the external environment
     // admits branch-authored workflow copies or main itself is unprotected.
     const verify = await loadVerifier();
     const boundary = requestFor({ environmentPolicy, protectedBranches, branch });

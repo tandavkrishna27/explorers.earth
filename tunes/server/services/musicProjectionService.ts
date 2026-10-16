@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { MusicIdentityProjection } from "../repositories/musicIdentityRepository";
-import type { ResolvedStrapiIdentity, StrapiIdentityGateway } from "./strapiIdentityGateway";
-import { fingerprintStrapiProof } from "./strapiIdentityGateway";
+import type { IdentityResolverPort, ResolvedStrapiIdentity } from "./resolvedIdentity";
+import { fingerprintStrapiProof } from "./proofFingerprint";
 import { MusicIdentityError } from "../../shared/musicError";
 
 export interface EnsureMusicIdentityInput extends ResolvedStrapiIdentity {
@@ -23,7 +23,7 @@ export class MusicProjectionService {
   private peakInflight = 0;
 
   constructor(
-    private readonly gateway: Pick<StrapiIdentityGateway, "resolve"> & Partial<Pick<StrapiIdentityGateway, "clear">>,
+    private readonly gateway: IdentityResolverPort,
     private readonly repository: ProjectionRepository,
     private readonly maxInflight = 32,
   ) {

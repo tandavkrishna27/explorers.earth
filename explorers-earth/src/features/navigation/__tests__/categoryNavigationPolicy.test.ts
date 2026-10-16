@@ -34,7 +34,7 @@ describe('planCategoryIntent', () => {
   it.each(stateConfigurations)(
     'publishes $category from $visibility / saved=$saved / auto=$autoPinning without changing pins',
     ({ category, visibility, saved, autoPinning }) => {
-      const result = planCategoryIntent(snapshotFor(category, visibility, saved, autoPinning), { category, action: 'publish' }, 'allowed');
+      const result = planCategoryIntent(snapshotFor(category, visibility, saved, autoPinning), { category, action: 'publish' });
 
       expect(result).toEqual(visibility === 'Yes'
         ? { kind: 'noop' }
@@ -45,7 +45,7 @@ describe('planCategoryIntent', () => {
   it.each(stateConfigurations)(
     'unpublishes $category from $visibility / saved=$saved / auto=$autoPinning by removing only its saved pin',
     ({ category, visibility, saved, autoPinning }) => {
-      const result = planCategoryIntent(snapshotFor(category, visibility, saved, autoPinning), { category, action: 'unpublish' }, 'allowed');
+      const result = planCategoryIntent(snapshotFor(category, visibility, saved, autoPinning), { category, action: 'unpublish' });
 
       if (visibility === 'No' && !saved) {
         expect(result).toEqual({ kind: 'noop' });
@@ -60,7 +60,7 @@ describe('planCategoryIntent', () => {
   it.each(stateConfigurations)(
     'unpins $category from $visibility / saved=$saved / auto=$autoPinning without changing publication',
     ({ category, visibility, saved, autoPinning }) => {
-      const result = planCategoryIntent(snapshotFor(category, visibility, saved, autoPinning), { category, action: 'unpin' }, 'allowed');
+      const result = planCategoryIntent(snapshotFor(category, visibility, saved, autoPinning), { category, action: 'unpin' });
 
       expect(result).toEqual(saved
         ? { kind: 'write', patch: { pinned_nav_tabs: [PROFILE] } }
@@ -71,7 +71,7 @@ describe('planCategoryIntent', () => {
   it.each(stateConfigurations)(
     'pins $category from $visibility / saved=$saved / auto=$autoPinning without publishing it',
     ({ category, visibility, saved, autoPinning }) => {
-      const result = planCategoryIntent(snapshotFor(category, visibility, saved, autoPinning), { category, action: 'pin' }, 'allowed');
+      const result = planCategoryIntent(snapshotFor(category, visibility, saved, autoPinning), { category, action: 'pin' });
 
       if (saved) {
         expect(result).toEqual({ kind: 'noop' });
@@ -92,69 +92,71 @@ describe('planCategoryIntent', () => {
       savedPins: ['public_profile', 'public_music', 'public_books'],
     };
 
-    expect(planCategoryIntent(snapshot, { category: 'public_books', action: 'unpublish' }, 'allowed'))
+    expect(planCategoryIntent(snapshot, { category: 'public_books', action: 'unpublish' }))
       .toEqual({ kind: 'write', patch: { public_books: 'No', pinned_nav_tabs: ['public_profile', 'public_music'] } });
-    expect(planCategoryIntent(snapshot, { category: 'public_books', action: 'unpin' }, 'allowed'))
+    expect(planCategoryIntent(snapshot, { category: 'public_books', action: 'unpin' }))
       .toEqual({ kind: 'write', patch: { pinned_nav_tabs: ['public_profile', 'public_music'] } });
     expect(planCategoryIntent({ ...snapshot, visibility: { ...snapshot.visibility, public_games: 'No' } },
-      { category: 'public_games', action: 'pin' }, 'not-public')).toEqual({ kind: 'blocked', reason: 'not-public' });
+      { category: 'public_games', action: 'pin' })).toEqual({ kind: 'blocked', reason: 'not-public' });
   });
 
-  it.each([
-    ['publish', 'not-public', { kind: 'blocked', reason: 'not-public' }],
-    ['publish', 'no-content', { kind: 'blocked', reason: 'no-content' }],
-    ['publish', 'unknown', { kind: 'blocked', reason: 'unknown' }],
-    ['pin', 'not-public', { kind: 'blocked', reason: 'not-public' }],
-    ['pin', 'no-content', { kind: 'blocked', reason: 'no-content' }],
-    ['pin', 'unknown', { kind: 'blocked', reason: 'unknown' }],
-  ] as const)('blocks a new %s when eligibility is %s', (action, eligibility, expected) => {
-    expect(planCategoryIntent(snapshotFor('public_books', 'Yes', false, false), { category: 'public_books', action }, eligibility))
-      .toEqual(expected);
+  // Content no longer reaches this decision at all: planCategoryIntent takes no
+  // eligibility, so an owner may publish and pin a category whose producer we have
+  // not built. Previously both blocked, which made our own gap look like the
+  // owner's control failing. Settings still labels such a category "No content".
+  it('permits publishing a category with no content behind it', () => {
+    expect(planCategoryIntent(snapshotFor('public_books', 'No', false, false), { category: 'public_books', action: 'publish' }))
+      .toEqual({ kind: 'write', patch: { public_books: 'Yes' } });
+  });
+
+  it('permits a new pin for a visible category with no content behind it', () => {
+    expect(planCategoryIntent(snapshotFor('public_books', 'Yes', false, false), { category: 'public_books', action: 'pin' }))
+      .toEqual({ kind: 'write', patch: { pinned_nav_tabs: ['public_profile', 'public_books'] } });
   });
 
   it('allows explicit cleanup despite an unknown availability read', () => {
     const saved = snapshotFor('public_books', 'No', true, true);
-    expect(planCategoryIntent(saved, { category: 'public_books', action: 'unpublish' }, 'unknown'))
+    expect(planCategoryIntent(saved, { category: 'public_books', action: 'unpublish' }))
       .toEqual({ kind: 'write', patch: { public_books: 'No', pinned_nav_tabs: [PROFILE] } });
-    expect(planCategoryIntent(saved, { category: 'public_books', action: 'unpin' }, 'unknown'))
+    expect(planCategoryIntent(saved, { category: 'public_books', action: 'unpin' }))
       .toEqual({ kind: 'write', patch: { pinned_nav_tabs: [PROFILE] } });
   });
 
   it('uses five slots including Profile, with one- and four-slot additions still available', () => {
     const base = snapshotFor('public_books', 'Yes', false, false);
-    expect(planCategoryIntent(base, { category: 'public_books', action: 'pin' }, 'allowed'))
+    expect(planCategoryIntent(base, { category: 'public_books', action: 'pin' }))
       .toEqual({ kind: 'write', patch: { pinned_nav_tabs: ['public_profile', 'public_books'] } });
     expect(planCategoryIntent({ ...base, savedPins: ['public_profile', 'public_music', 'public_guides', 'public_movie'] },
-      { category: 'public_books', action: 'pin' }, 'allowed'))
+      { category: 'public_books', action: 'pin' }))
       .toEqual({ kind: 'write', patch: { pinned_nav_tabs: ['public_profile', 'public_music', 'public_guides', 'public_movie', 'public_books'] } });
     expect(planCategoryIntent({ ...base, savedPins: ['public_profile', 'public_music', 'public_guides', 'public_movie', 'public_games'] },
-      { category: 'public_books', action: 'pin' }, 'allowed'))
+      { category: 'public_books', action: 'pin' }))
       .toEqual({ kind: 'blocked', reason: 'slot-limit' });
   });
 
   it('does not repair overfull, duplicate, or unknown legacy arrays while removing only the requested target', () => {
     const base = snapshotFor('public_books', 'No', false, false);
     const legacy = ['public_profile', 'unknown', 'public_music', 'public_books', 'public_music', 'public_guides'];
-    expect(planCategoryIntent({ ...base, savedPins: legacy }, { category: 'public_books', action: 'unpublish' }, 'allowed'))
+    expect(planCategoryIntent({ ...base, savedPins: legacy }, { category: 'public_books', action: 'unpublish' }))
       .toEqual({ kind: 'write', patch: { public_books: 'No', pinned_nav_tabs: ['public_profile', 'unknown', 'public_music', 'public_music', 'public_guides'] } });
     expect(planCategoryIntent({ ...base, visibility: { ...base.visibility, public_books: 'Yes' }, savedPins: ['public_profile', 'public_music', 'public_guides', 'public_movie', 'public_games', 'public_apps'] },
-      { category: 'public_books', action: 'pin' }, 'allowed')).toEqual({ kind: 'blocked', reason: 'slot-limit' });
+      { category: 'public_books', action: 'pin' })).toEqual({ kind: 'blocked', reason: 'slot-limit' });
     expect(planCategoryIntent({ ...base, visibility: { ...base.visibility, public_books: 'Yes' }, savedPins: ['public_profile', 'public_music', 'public_music'] },
-      { category: 'public_books', action: 'pin' }, 'allowed')).toEqual({ kind: 'blocked', reason: 'invalid-pins' });
+      { category: 'public_books', action: 'pin' })).toEqual({ kind: 'blocked', reason: 'invalid-pins' });
     expect(planCategoryIntent({ ...base, visibility: { ...base.visibility, public_books: 'Yes' }, savedPins: ['public_profile', 'unknown'] },
-      { category: 'public_books', action: 'pin' }, 'allowed')).toEqual({ kind: 'blocked', reason: 'invalid-pins' });
+      { category: 'public_books', action: 'pin' })).toEqual({ kind: 'blocked', reason: 'invalid-pins' });
   });
 
   it('initializes fresh null or empty pin storage without inventing cleanup', () => {
     const base = snapshotFor('public_books', 'No', false, false);
     for (const savedPins of [null, []]) {
       expect(planCategoryIntent({ ...base, visibility: { ...base.visibility, public_books: 'Yes' }, savedPins },
-        { category: 'public_books', action: 'unpublish' }, 'unknown'))
+        { category: 'public_books', action: 'unpublish' }))
         .toEqual({ kind: 'write', patch: { public_books: 'No' } });
       expect(planCategoryIntent({ ...base, visibility: { ...base.visibility, public_books: 'Yes' }, savedPins },
-        { category: 'public_books', action: 'pin' }, 'allowed'))
+        { category: 'public_books', action: 'pin' }))
         .toEqual({ kind: 'write', patch: { pinned_nav_tabs: ['public_profile', 'public_books'] } });
-      expect(planCategoryIntent({ ...base, savedPins }, { category: 'public_books', action: 'unpin' }, 'unknown'))
+      expect(planCategoryIntent({ ...base, savedPins }, { category: 'public_books', action: 'unpin' }))
         .toEqual({ kind: 'noop' });
     }
   });
@@ -162,11 +164,11 @@ describe('planCategoryIntent', () => {
   it('keeps visibility cleanup safe when pin storage is malformed', () => {
     const base = snapshotFor('public_books', 'No', false, false);
     for (const savedPins of [['public_profile', 12], { tabs: ['public_books'] }, undefined]) {
-      expect(planCategoryIntent({ ...base, savedPins }, { category: 'public_books', action: 'unpublish' }, 'unknown'))
+      expect(planCategoryIntent({ ...base, savedPins }, { category: 'public_books', action: 'unpublish' }))
         .toEqual({ kind: 'write', patch: { public_books: 'No' }, cleanupPending: true });
       expect(planCategoryIntent({ ...base, visibility: { ...base.visibility, public_books: 'Yes' }, savedPins },
-        { category: 'public_books', action: 'pin' }, 'allowed')).toEqual({ kind: 'blocked', reason: 'invalid-pins' });
-      expect(planCategoryIntent({ ...base, savedPins }, { category: 'public_books', action: 'unpin' }, 'unknown'))
+        { category: 'public_books', action: 'pin' })).toEqual({ kind: 'blocked', reason: 'invalid-pins' });
+      expect(planCategoryIntent({ ...base, savedPins }, { category: 'public_books', action: 'unpin' }))
         .toEqual({ kind: 'blocked', reason: 'invalid-pins' });
     }
   });
@@ -176,9 +178,9 @@ describe('planCategoryIntent', () => {
       ...snapshotFor('public_books', 'Yes', true, true),
       savedPins: Object.freeze(['public_profile', 'public_music', 'public_books']),
     };
-    expect(planCategoryIntent(snapshot, { category: 'public_profile' as CategoryId, action: 'unpin' }, 'allowed'))
+    expect(planCategoryIntent(snapshot, { category: 'public_profile' as CategoryId, action: 'unpin' }))
       .toEqual({ kind: 'blocked', reason: 'invalid-pins' });
-    expect(planCategoryIntent(snapshot, { category: 'public_books', action: 'unpin' }, 'unknown'))
+    expect(planCategoryIntent(snapshot, { category: 'public_books', action: 'unpin' }))
       .toEqual({ kind: 'write', patch: { pinned_nav_tabs: ['public_profile', 'public_music'] } });
     expect(snapshot.savedPins).toEqual(['public_profile', 'public_music', 'public_books']);
   });

@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, Reorder } from "framer-motion";
-import { useMutation } from "@apollo/client";
+import { explorersApiClient } from "../../../../lib/explorersApiClient";
+import { readMoviesOwnerContent, moviesCommandKey } from "../../api/moviesClient";
+import { invalidateMovies } from "../../api/explorersAdapter";
 import { X, Star, Minus, Loader2, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { UPDATE_RECOMMENDED_MOVIE } from "../../api/mutation";
+
 import type { RecommendedMovie } from "../../types";
 import { buildPosterUrl } from "../../utils/movieHelpers";
 
@@ -26,15 +28,18 @@ const TopPicksManager = ({
     [...movies].sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999))
   );
   const [saving, setSaving] = useState(false);
-  const [updateMovie] = useMutation(UPDATE_RECOMMENDED_MOVIE);
+  const busy=useRef(false);
+
 
   const unpinnedMovies = allMovies.filter(m => !pinnedMovies.find(pm => pm.documentId === m.documentId));
 
   const handleUnpin = (movie: RecommendedMovie) => {
+    if(busy.current)return;
     setPinnedMovies(prev => prev.filter(m => m.documentId !== movie.documentId));
   };
 
   const handlePin = (movie: RecommendedMovie) => {
+    if(busy.current)return;
     if (pinnedMovies.length >= 15) {
       toast.error("Max 15 top picks allowed.");
       return;
@@ -42,79 +47,18 @@ const TopPicksManager = ({
     setPinnedMovies(prev => [...prev, movie]);
   };
 
-  const handleMoveUp = (index: number) => {
-    if (index === 0) return;
-    setPinnedMovies(prev => {
-      const next = [...prev];
-      [next[index - 1], next[index]] = [next[index], next[index - 1]];
-      syncOrder(next);
-      return next;
-    });
+  const persist = async (order:RecommendedMovie[], exact:boolean) => {
+    const content=await readMoviesOwnerContent();
+    const pins=order.map(movie=>{const saved=content.observation.topPicks?.find(pin=>pin.recommendationId===movie.documentId);const members=content.observation.memberships.filter(member=>member.recommendationId===movie.documentId&&!member.collectionArchived&&!member.recommendationArchived);const member=members.find(value=>value.collectionId===saved?.collectionId)??members[0];if(!member)throw Error('Movie membership changed. Refresh and try again.');return {recommendationId:movie.documentId,collectionId:member.collectionId};});
+    if(exact)await explorersApiClient.setMyCategoryTopPicks(content.observation,pins,moviesCommandKey());
+    else await explorersApiClient.upsertMyCategoryTopPickOrder(content.observation,pins,moviesCommandKey());
+    invalidateMovies();
   };
-
-  const handleMoveDown = (index: number) => {
-    if (index === pinnedMovies.length - 1) return;
-    setPinnedMovies(prev => {
-      const next = [...prev];
-      [next[index + 1], next[index]] = [next[index], next[index + 1]];
-      syncOrder(next);
-      return next;
-    });
-  };
-
-  const syncOrder = async (orderToSync: RecommendedMovie[]) => {
-    try {
-      for (let i = 0; i < orderToSync.length; i++) {
-        await updateMovie({
-          variables: {
-            documentId: orderToSync[i].documentId,
-            is_pinned: true,
-            pin_order: i,
-          },
-        });
-      }
-      onRefetch();
-    } catch {
-      toast.error("Failed to auto-save new order.");
-    }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      // Save pin states for pinned movies
-      for (let i = 0; i < pinnedMovies.length; i++) {
-        await updateMovie({
-          variables: {
-            documentId: pinnedMovies[i].documentId,
-            is_pinned: true,
-            pin_order: i,
-          },
-        });
-      }
-      // Unpin the rest
-      for (const m of unpinnedMovies) {
-        if (movies.find(pm => pm.documentId === m.documentId)) {
-          // was pinned, now unpinned
-          await updateMovie({
-            variables: {
-              documentId: m.documentId,
-              is_pinned: false,
-              pin_order: null,
-            },
-          });
-        }
-      }
-      toast.success("Top picks updated!");
-      onRefetch();
-      onClose();
-    } catch {
-      toast.error("Failed to save. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
+  const syncOrder=async(order:RecommendedMovie[])=>{if(busy.current)return;busy.current=true;setSaving(true);try{await persist(order,false);onRefetch();}catch{toast.error('Failed to save order. Your staged selection is preserved.');}finally{busy.current=false;setSaving(false);}};
+  const move=(index:number,offset:number)=>{if(saving||index+offset<0||index+offset>=pinnedMovies.length)return;const next=[...pinnedMovies];[next[index],next[index+offset]]=[next[index+offset],next[index]];setPinnedMovies(next);void syncOrder(next);};
+  const handleMoveUp=(index:number)=>move(index,-1);
+  const handleMoveDown=(index:number)=>move(index,1);
+  const handleSave=async()=>{if(busy.current)return;busy.current=true;setSaving(true);try{await persist(pinnedMovies,true);toast.success('Top picks updated!');onRefetch();onClose();}catch{toast.error('Failed to save. Your staged selection is preserved.');}finally{busy.current=false;setSaving(false);}};
   return (
     <motion.div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex items-end md:items-center justify-center md:p-4"
@@ -165,14 +109,14 @@ const TopPicksManager = ({
                     <div className="flex flex-col items-center gap-1 flex-shrink-0">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleMoveUp(i); }}
-                        disabled={i === 0}
+                        disabled={saving || i === 0}
                         className="text-white/20 hover:text-white disabled:opacity-0 transition-colors p-0.5"
                       >
                         <ChevronUp size={12} />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleMoveDown(i); }}
-                        disabled={i === pinnedMovies.length - 1}
+                        disabled={saving || i === pinnedMovies.length - 1}
                         className="text-white/20 hover:text-white disabled:opacity-0 transition-colors p-0.5"
                       >
                         <ChevronDown size={12} />

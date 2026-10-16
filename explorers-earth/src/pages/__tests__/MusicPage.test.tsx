@@ -26,17 +26,26 @@ describe("Music page state hierarchy", () => {
     render(<MusicPageContent authenticated onboarding="complete" data={ready} ownerWorkspace onAction={vi.fn()} />);
     expect(screen.getByTestId("music-content")).toHaveAttribute("data-complete", "true");
   });
-  it("treats eligibility errors and partial/cache-and-network results as unknown until authoritative recovery", () => {
+  // The eligibility read is the canonical account now, so the five Strapi fields this used
+  // to infer completeness from - Account_Name, Account_Type, mobile_number, provider and
+  // confirmed - are one column, onboarding_status. The provider and confirmation cases are
+  // gone because the canonical profile read refuses a non-Google identity outright, so one
+  // never reaches here to be judged.
+  //
+  // What is kept, and is the reason this case exists: "unknown" stays distinct from
+  // "incomplete" while the read is pending or failed. Collapsing them would tell a creator
+  // with a finished account to go and finish it every time the network blinked.
+  it("treats a pending or failed eligibility read as unknown, never as incomplete", () => {
     const select = (MusicPageModule as any).onboardingFromEligibility;
     expect(typeof select).toBe("function");
-    const complete = { documentId: "account-ready", Account_Name: "Ready", Account_Type: "Personal", mobile_number: "+10000000001" };
-    expect(select({ loading: false, error: new Error("network"), data: undefined })).toBe("unknown");
-    expect(select({ loading: false, error: new Error("partial"), data: { usersPermissionsUser: { accounts: [{ ...complete, mobile_number: "" }] } } })).toBe("unknown");
-    expect(select({ loading: false, error: null, data: { usersPermissionsUser: null } })).toBe("unknown");
-    expect(select({ loading: false, error: null, data: { usersPermissionsUser: { accounts: [] } } })).toBe("incomplete");
-    expect(select({ loading: false, error: null, data: { usersPermissionsUser: { provider: "local", confirmed: false, accounts: [complete] } } })).toBe("incomplete");
-    expect(select({ loading: false, error: null, data: { usersPermissionsUser: { provider: "google", confirmed: false, accounts: [complete] } } })).toBe("complete");
-    expect(select({ loading: false, error: null, data: { usersPermissionsUser: { accounts: [complete] } } })).toBe("complete");
+    expect(select({ isPending: true, error: null, data: undefined })).toBe("unknown");
+    expect(select({ isPending: false, error: new Error("network"), data: undefined })).toBe("unknown");
+    // Error wins over retained data: a stale account must not be read as authoritative.
+    expect(select({ isPending: false, error: new Error("partial"), data: { onboardingStatus: "complete" } })).toBe("unknown");
+    expect(select({ isPending: false, error: null, data: null })).toBe("unknown");
+    expect(select({ isPending: false, error: null, data: { onboardingStatus: "incomplete" } })).toBe("incomplete");
+    expect(select({ isPending: false, error: null, data: {} })).toBe("incomplete");
+    expect(select({ isPending: false, error: null, data: { onboardingStatus: "complete" } })).toBe("complete");
   });
 
   it("keeps the stable Music title and exactly one polite inline setup status immediately below it", () => {

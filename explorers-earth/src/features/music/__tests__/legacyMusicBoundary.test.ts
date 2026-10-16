@@ -56,7 +56,8 @@ describe("retired browser Music authority boundary", () => {
 
   it("hands completed onboarding back to the sole eligibility observer without a second ensure trigger", () => {
     const onboarding = readFileSync(resolve(process.cwd(), "src/pages/OnBoarding.tsx"), "utf8");
-    expect(onboarding).toContain('include: ["MusicIdentityEligibility"]');
+    expect(onboarding).toContain('const refetch = canonicalAccount.refetch');
+    expect(onboarding).toMatch(/await explorersApiClient\.updateAccount\([\s\S]*?onboardingStatus: "complete"[\s\S]*?await refetch\(\);[\s\S]*?navigate\("\/home"\)/);
     expect(onboarding).not.toContain("musicIdentityCoordinator.");
     expect(onboarding).not.toContain("ensureIdentity");
   });

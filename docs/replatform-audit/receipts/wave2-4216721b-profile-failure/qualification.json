@@ -1,0 +1,236 @@
+{
+  "version": 1,
+  "scope": "delivered-auth-profile-books",
+  "scopeContents": [
+    "auth",
+    "profile",
+    "books",
+    "lifecycle",
+    "movies",
+    "games",
+    "music",
+    "places",
+    "place-links"
+  ],
+  "scopeCompatibilityIdentifier": true,
+  "deliveredSlice": "failed",
+  "overallMilestone": "incomplete",
+  "fullParity": "incomplete",
+  "releaseEligible": false,
+  "provenance": {
+    "commit": "4216721b6f33d043b815629ee949f52fca2016ad",
+    "sourceHash": "ffe815278366f9860d8970cd93ec9d2969ff555e650057d8f620bce6ec7fce3d",
+    "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+    "dirty": false
+  },
+  "children": [
+    {
+      "lane": "auth",
+      "status": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "lane": "profile",
+      "status": 1,
+      "signal": null,
+      "error": null,
+      "failure": {
+        "version": 1,
+        "lane": "profile",
+        "provenance": {
+          "commit": "4216721b6f33d043b815629ee949f52fca2016ad",
+          "sourceHash": "ffe815278366f9860d8970cd93ec9d2969ff555e650057d8f620bce6ec7fce3d",
+          "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+          "dirty": false
+        },
+        "results": [
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+              "titlePath": [
+                "canonical onboarding and profile round-trip at 1365px"
+              ],
+              "project": "chromium-pr-safe",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "expected",
+            "attempts": [
+              {
+                "status": "passed",
+                "retry": 0
+              }
+            ]
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+              "titlePath": [
+                "canonical onboarding and profile round-trip at 390px"
+              ],
+              "project": "chromium-pr-safe",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "expected",
+            "attempts": [
+              {
+                "status": "passed",
+                "retry": 0
+              }
+            ]
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+              "titlePath": [
+                "canonical navigation: native Books Movies and Games publish and hide through verified owner preferences"
+              ],
+              "project": "chromium-pr-safe",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "unexpected",
+            "attempts": [
+              {
+                "status": "failed",
+                "retry": 0
+              }
+            ]
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+              "titlePath": [
+                "canonical navigation: external account preference refresh preserves all nine saved rows"
+              ],
+              "project": "chromium-pr-safe",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "expected",
+            "attempts": [
+              {
+                "status": "passed",
+                "retry": 0
+              }
+            ]
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+              "titlePath": [
+                "canonical navigation: external revision contention reports conflict without replay or lost profile update"
+              ],
+              "project": "chromium-pr-safe",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "expected",
+            "attempts": [
+              {
+                "status": "passed",
+                "retry": 0
+              }
+            ]
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+              "titlePath": [
+                "canonical navigation: a foreign signed owner cannot read content or mutate another owner preference scope"
+              ],
+              "project": "chromium-pr-safe",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "expected",
+            "attempts": [
+              {
+                "status": "passed",
+                "retry": 0
+              }
+            ]
+          }
+        ],
+        "child": {
+          "status": 1,
+          "signal": null
+        },
+        "diagnostics": [
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+              "titlePath": [
+                "canonical navigation: native Books Movies and Games publish and hide through verified owner preferences"
+              ],
+              "project": "chromium-pr-safe",
+              "repeat": 0
+            },
+            "kind": "timeout",
+            "matcher": "toBeChecked",
+            "locations": [
+              {
+                "line": 275,
+                "column": 128
+              }
+            ]
+          }
+        ],
+        "cleanup": {
+          "status": "passed"
+        },
+        "artifacts": {
+          "trace": "off",
+          "video": "off",
+          "screenshot": "off",
+          "cleanup": "passed"
+        }
+      }
+    }
+  ],
+  "error": "Protected lane or qualification contract failed",
+  "pending": [
+    {
+      "ticket": "2.4",
+      "obligation": "Configured deployed Google callback and consent evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.4",
+      "obligation": "Analytics acceptance",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.5",
+      "obligation": "Unified QA deployment, image/schema and trusted producer evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "4/5",
+      "obligation": "Remaining canonical category producer families and their own acceptance evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "6.1-6.3",
+      "obligation": "Music mapped-owner HTTP/socket and feature parity",
+      "status": "pending"
+    },
+    {
+      "ticket": "7.1/7.2",
+      "obligation": "Cross-category consumers and all nine categories",
+      "status": "pending"
+    },
+    {
+      "ticket": "8.1-8.4",
+      "obligation": "Removal, rename, exact QA digest promotion and deployment",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.1/5.2",
+      "obligation": "Places/link16 proposed inventory awaits independent source review and actual protected execution; provider photo/gallery closure, taxonomy/pins and hosted acceptance remain pending",
+      "status": "pending"
+    }
+  ]
+}

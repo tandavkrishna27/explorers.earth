@@ -1,8 +1,10 @@
+import { isCanonicalRuntime, getPublicRuntimeConfig } from "../lib/publicRuntimeConfig";
 /**
  * Get the current domain dynamically
  * Works both in browser and during server-side rendering
  */
 export const getCurrentDomain = () => {
+  if (isCanonicalRuntime()) return getPublicRuntimeConfig().origin;
   // Check if we're in a browser environment
   if (typeof window !== 'undefined') {
     const protocol = window.location.protocol;

@@ -8,7 +8,7 @@ import {
 } from "../../shared/musicError";
 import type { MusicIdentityProjection } from "../repositories/musicIdentityRepository";
 import type { BoundedIdentityRateLimiter } from "../middleware/identityRateLimit";
-import { fingerprintStrapiProof } from "../services/strapiIdentityGateway";
+import { fingerprintStrapiProof } from "../services/proofFingerprint";
 import {
   createMusicPrincipalMiddleware,
   MusicPrincipalError,

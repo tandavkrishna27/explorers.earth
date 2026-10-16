@@ -1,0 +1,13 @@
+
+> rest-express@1.0.0 build:api
+> node scripts/clean-api-dist.mjs && esbuild server/api.ts server/deployment/run-migration-gate.ts server/deployment/run-registration-compat.ts server/deployment/run-production-graph-smoke.ts --platform=node --packages=external --external:#auth-runtime --bundle --splitting --format=esm --outbase=server --outdir=dist/server
+
+
+  dist\server\chunk-KRCMDZ5J.js             528.8kb
+  dist\server\canonicalStartup-74OEWJJV.js  258.6kb
+  dist\server\chunk-4FLKZ2FO.js             115.5kb
+  dist\server\chunk-OJPZ4ZEH.js             110.5kb
+  dist\server\chunk-5NFH43P5.js              52.9kb
+  ...and 20 more output files...
+
+Done in 44ms

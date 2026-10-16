@@ -3,9 +3,9 @@ export type KeyValuePair = { [key: string]: any };
 export type SaveTerminalStatus = "saved" | "failed" | "cancelled";
 
 export type ProfileSaveResult =
-  | { status: "saved" }
+  | { status: "saved"; committedRevision?: number }
   | { status: "failed" }
-  | { status: "deferred"; completion: Promise<SaveTerminalStatus> };
+  | { status: "deferred"; completion: Promise<SaveTerminalStatus>; committedRevision?: number };
 
 export type ProfileSubmit = (
   values: KeyValuePair,
@@ -13,7 +13,7 @@ export type ProfileSubmit = (
 
 export interface DeferredProfileSave {
   result: Extract<ProfileSaveResult, { status: "deferred" }>;
-  settle: (status: SaveTerminalStatus) => void;
+  settle: (status: SaveTerminalStatus, committedRevision?: number) => void;
 }
 
 export const awaitProfileSaveTerminal = async (
@@ -28,11 +28,13 @@ export function createDeferredProfileSave(): DeferredProfileSave {
     resolveCompletion = resolve;
   });
 
+  const result: DeferredProfileSave["result"] = { status: "deferred", completion };
   return {
-    result: { status: "deferred", completion },
-    settle: (status) => {
+    result,
+    settle: (status, committedRevision) => {
       if (settled) return;
       settled = true;
+      if (status === "saved") result.committedRevision = committedRevision;
       resolveCompletion(status);
     },
   };

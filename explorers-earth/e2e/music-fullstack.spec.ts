@@ -27,9 +27,13 @@ for (const provider of ["google", "local"] as const) {
     await expect(page.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Create your first playlist" })).toBeVisible();
     expect(audit.ensureCalls()).toBe(1);
-    const ensure = audit.requests.find(({ path }) => path === "/api/music/identity/ensure");
+    // ADR-006: provisioning is a same-origin canonical command whose authority is the
+    // session cookie. It carries no bearer at all, where it previously sent the Strapi
+    // JWT as proof - asserting the absence is what proves the proof exchange is gone.
+    const ensure = audit.requests.find(({ path }) => path === "/api/explorers/v1/music/identity/ensure");
     expect(ensure).toMatchObject({ method: "POST", xUsername: undefined });
-    expect(ensure?.authorization).toBe("Bearer mock-jwt-token-xyz");
+    expect(ensure?.authorization).toBeUndefined();
+    expect(audit.requests.some(({ path }) => path === "/api/music/identity/ensure")).toBe(false);
     const owner = audit.requests.find(({ path }) => path === "/api/playlists");
     expect(owner?.authorization).toBe(`Bearer ${audit.credential}`);
     expect(owner?.xUsername).toBeUndefined();

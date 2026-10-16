@@ -1,3 +1,4 @@
+import { isCanonicalMediaPath } from "../../../lib/canonicalMedia";
 // ============================================================
 // Game Utilities — slug, format helpers, rich text
 // ============================================================
@@ -52,7 +53,7 @@ export function parseGenres(genres: unknown): string[] {
 // Format rating
 // ─────────────────────────────────────────────────────────────
 export function formatRating(rating: number | null | undefined): string {
-  if (!rating) return "";
+  if (rating === null || rating === undefined) return "";
   return rating.toFixed(1);
 }
 
@@ -79,16 +80,16 @@ export function extractNoteText(note: any): string {
 // ─────────────────────────────────────────────────────────────
 // Deduplicate games (fixes Draft & Publish duplication from Strapi)
 // ─────────────────────────────────────────────────────────────
-export function deduplicateGames<T extends { documentId: string; igdb_id?: number; is_pinned?: boolean; pin_order?: number | null; user_rating?: number | null; user_recommendation_note?: any }>(
+export function deduplicateGames<T extends { documentId: string; igdb_id?: number | null; is_pinned?: boolean; pin_order?: number | null; user_rating?: number | null; user_recommendation_note?: any }>(
   games: T[] | null | undefined
 ): T[] {
   if (!games || !Array.isArray(games)) return [];
   
-  // Group by igdb_id (if available) or fallback to documentId
+  // Recommendation UUID is editorial identity; provider IDs never merge owners or memberships.
   const groups = new Map<string | number, T[]>();
   for (const g of games) {
     if (!g) continue;
-    const key = g.igdb_id !== undefined && g.igdb_id !== null ? g.igdb_id : g.documentId;
+    const key = g.documentId;
     if (key === undefined || key === null) continue;
     if (!groups.has(key)) {
       groups.set(key, []);
@@ -145,6 +146,14 @@ export function buildCoverUrl(coverUrl: string | null | undefined): string {
   if (!coverUrl) return "";
   // If it's already an absolute URL (S3, IGDB), use as-is
   if (coverUrl.startsWith("http")) return coverUrl;
+  /*
+   * Ticket 7.1. This builder already handled the canonical route, so unlike its four
+   * siblings it was not broken - but it matched by prefix
+   * (`startsWith("/api/explorers/v1/media/")`), which also accepts a non-uuid id and
+   * anything appended after `/content`. Replaced with the exact shared match so all five
+   * agree, and so nothing else under that prefix can be returned as media.
+   */
+  if (isCanonicalMediaPath(coverUrl)) return coverUrl;
   // If it's a Strapi relative path, prefix with the REST API URL
   if (coverUrl.startsWith("/")) {
     const base =

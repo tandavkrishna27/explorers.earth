@@ -1,0 +1,59 @@
+import {beforeEach,describe,expect,it,vi} from 'vitest';
+import path from 'node:path';
+import ts from 'typescript';
+const fake=vi.hoisted(()=>({rows:new Map<string,any>(),stats:new Map<string,any>(),calls:0,alias:'',failure:false,hostile:false,getters:0}));
+vi.mock('node:os',()=>({tmpdir:()=> 'C:\\Temp'}));
+vi.mock('node:fs',()=>({lstatSync:(p:string)=>{const s=fake.stats.get(p);if(!s)throw Error('missing');return s;},realpathSync:(p:string)=>p===fake.alias?p.toUpperCase():p}));
+vi.mock('node:child_process',()=>({execFileSync:(_exe:string,args:string[],options:any)=>{fake.calls++;expect(options.timeout).toBe(10000);expect(options.maxBuffer).toBe(32768);expect(options.stdio).toEqual(['ignore','pipe','pipe']);expect(Object.keys(options.env).sort()).toEqual(['SystemRoot','TEMP','TMP']);expect(args.at(-1)!.length).toBeLessThanOrEqual(30000);const code=Buffer.from(args.at(-1)!,'base64').toString('utf16le');expect(code).toContain("$ProgressPreference='SilentlyContinue'");if(fake.hostile)throw Object.defineProperties({},{message:{get(){fake.getters++;return 'PRIVATE';}},stderr:{get(){fake.getters++;return 'PRIVATE';}},stack:{get(){fake.getters++;return 'PRIVATE';}}});if(fake.failure)throw Error('owned process unknown');const encoded=/FromBase64String\('([^']+)'\)/.exec(code)![1];return JSON.stringify(JSON.parse(Buffer.from(encoded,'base64').toString()).map((p:string)=>fake.rows.get(p)));}}));
+import {registerAppsPrivateDirectory,inspectAppsPrivateDescendant} from '../../../scripts/apps-private-custody';
+const root='C:\\Temp\\explorers-profile-e2e-'+ 'a'.repeat(32), child=path.join(root,'owned-media'),file=path.join(child,'object');
+function add(p:string,directory:boolean,protectedAcl=true,inherited=false){fake.stats.set(p,{dev:1n,ino:BigInt(fake.stats.size+1),uid:0n,mode:0n,nlink:1n,isSymbolicLink:()=>false,isDirectory:()=>directory,isFile:()=>!directory});fake.rows.set(p,{path:p,owner:true,protected:protectedAcl,hash:'a'.repeat(64),rules:['current','system','admin'].map(principal=>({principal,allow:true,full:true,inherited,inheritance:directory?3:0,propagation:0}))});}
+beforeEach(()=>{fake.rows.clear();fake.stats.clear();fake.calls=0;fake.alias='';fake.failure=false;fake.hostile=false;fake.getters=0;for(let p=root;;p=path.dirname(p)){add(p,true);if(p===path.dirname(p))break;}add(child,true);add(file,false,false,true);add(String.raw`C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`,false);});
+// HARNESS GATE (not a product assertion). This suite is win32-semantics-bound end to end, and
+// not merely in its fixtures: `node:os.tmpdir` is mocked to 'C:\Temp', every fixture path is a
+// C: drive path, and the module under test -- scripts/apps-private-custody.ts -- itself calls
+// path.isAbsolute, path.resolve(target)===target, path.sep and path.dirname against those
+// inputs. On Linux `path.isAbsolute('C:\Temp\x')` is false, so the production guard refuses by
+// design and 15 of 16 cases fail for a reason that is not a product defect. Injecting
+// path.win32 into the transpiled closure (which this file also does, correctly) cannot fix
+// that, because the imported production module resolves its own node:path.
+// Unlike the public-parity controller, platform-neutrality is NOT available here: only a
+// literal was Windows-specific there, whereas the subject here is Windows ACL custody.
+// So: loud, reasoned skip off win32, and the Windows CI lane names this file with
+// APPS_PRIVATE_CUSTODY_GATE_REQUIRED set, so it cannot silently stop running.
+const appsCustodyUnavailable = process.platform !== 'win32'
+ ? `host platform is ${process.platform}, and Apps private custody is Windows ACL/path semantics end to end`
+ : undefined;
+if(appsCustodyUnavailable&&process.env.APPS_PRIVATE_CUSTODY_GATE_REQUIRED)throw new Error(`APPS_PRIVATE_CUSTODY_GATE_REQUIRED is set, so this gate must execute, but ${appsCustodyUnavailable}`);
+if(appsCustodyUnavailable)console.warn(`[SKIP] apps-private-custody.test.ts: ${appsCustodyUnavailable}. Harness gate unavailable - this is NOT a passing Apps privacy contract and NOT a product defect.`);
+const appsCustodySuite = appsCustodyUnavailable ? describe.skip : describe;
+appsCustodySuite(`actual native privacy inspection closure with complete metadata/FS adapters${appsCustodyUnavailable?` [SKIPPED - ${appsCustodyUnavailable}]`:''}`,()=>{
+ it('actual closed createDirectory registers root then both strictly inspected children',async()=>{
+  const fs=await vi.importActual<typeof import('node:fs')>('node:fs'),source=path.resolve(import.meta.dirname,'../../../scripts/apps-browser-fixture.ts'),ast=ts.createSourceFile(source,fs.readFileSync(source,'utf8'),ts.ScriptTarget.Latest,true);let method:ts.MethodDeclaration|undefined,inspection:ts.FunctionDeclaration|undefined;function find(n:ts.Node){if(ts.isMethodDeclaration(n)&&n.name.getText(ast)==='createDirectory')method=n;if(ts.isFunctionDeclaration(n)&&n.name?.text==='inspect')inspection=n;ts.forEachChild(n,find);}find(ast);
+  const printer=ts.createPrinter(),code=ts.transpileModule(`let nativeUnknown=false;const nativeGuard=()=>{},latchUnknown=()=>{nativeUnknown=true;};${printer.printNode(ts.EmitHint.Unspecified,inspection!,ast)};return {${printer.printNode(ts.EmitHint.Unspecified,method!,ast)},unknown:()=>nativeUnknown};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+  const fresh=path.join('C:\\Temp','explorers-profile-e2e-'+ 'b'.repeat(32)),targets=[fresh,path.join(fresh,'owned-media'),path.join(fresh,'apps-fixture-files')],events:string[]=[];
+  for(const target of targets)add(target,true);
+  // path.win32, not path: the closure under test is given {platform:'win32'}, so it must also
+  // be given the win32 path implementation. With the real node:path, POSIX join/dirname
+  // semantics applied to 'C:\Temp\...' on Linux -- one relative segment -- and the win32
+  // branches were never really exercised there. Injecting it makes them run on any host.
+  const actual=new Function('path','process','canonical','privateOperation','remember','registerAppsPrivateDirectory','inspectAppsPrivateDescendant','Refusal',code)(path.win32,{platform:'win32'},async()=>{},async(operation:string,target:string)=>{events.push(operation+':'+target);if(operation==='inspect'&&!fake.rows.get(target).protected)throw Error('strict privacy refused');},async(target:string)=>{events.push('remember:'+target);return{path:target};},registerAppsPrivateDirectory,inspectAppsPrivateDescendant,class extends Error{});
+  for(const target of targets)await expect(actual.createDirectory(target)).resolves.toEqual({path:target});expect(actual.unknown()).toBe(false);for(const target of targets)expect(events.indexOf('inspect:'+target)).toBeLessThan(events.indexOf('remember:'+target));
+  const foreign=path.join(fresh,'foreign');add(foreign,true);await expect(actual.createDirectory(foreign)).rejects.toThrow();expect(actual.unknown()).toBe(true);expect(events).not.toContain('remember:'+foreign);
+ });
+ it('actual runner inspection closure avoids the old strict descendant rejection and propagates privacy refusal without fallback',async()=>{
+  const fs=await vi.importActual<typeof import('node:fs')>('node:fs');const source=path.resolve(import.meta.dirname,'../../../scripts/apps-browser-fixture.ts'),ast=ts.createSourceFile(source,fs.readFileSync(source,'utf8'),ts.ScriptTarget.Latest,true);let fn:ts.FunctionDeclaration|undefined;function find(n:ts.Node){if(ts.isFunctionDeclaration(n)&&n.name?.text==='inspect')fn=n;ts.forEachChild(n,find);}find(ast);const code=ts.transpileModule(ts.createPrinter().printNode(ts.EmitHint.Unspecified,fn!,ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+  let strict=0;const build=(privacy:(p:string)=>boolean)=>new Function('canonical','privateOperation','inspectAppsPrivateDescendant',`let nativeUnknown=false;const nativeGuard=()=>{},latchUnknown=()=>{nativeUnknown=true;};${code};return {inspect,unknown:()=>nativeUnknown};`)(async()=>{},async()=>{strict++;throw Error('strict inherited rejection');},privacy);
+  await expect(build(()=>false).inspect(file)).rejects.toThrow('strict inherited rejection');expect(strict).toBe(1);
+  registerAppsPrivateDirectory(root);registerAppsPrivateDirectory(child);await expect(build(inspectAppsPrivateDescendant).inspect(file)).resolves.toBeUndefined();expect(strict).toBe(1);
+  fake.rows.get(file).owner=false;const actual=build(inspectAppsPrivateDescendant);await expect(actual.inspect(file)).rejects.toThrow();expect(actual.unknown()).toBe(true);expect(strict).toBe(1);
+ });
+ it('accepts wholly inherited private descendants after captured protected roots',()=>{registerAppsPrivateDirectory(root);registerAppsPrivateDirectory(child);expect(inspectAppsPrivateDescendant(file)).toBe(true);expect(fake.calls).toBeGreaterThan(0);});
+ it('accepts independently protected private descendants',()=>{registerAppsPrivateDirectory(root);registerAppsPrivateDirectory(child);fake.rows.get(file).protected=true;for(const r of fake.rows.get(file).rules)r.inherited=false;expect(inspectAppsPrivateDescendant(file)).toBe(true);});
+ it.each(['foreign','deny','duplicate','owner','flags','ancestorAcl','identity'])('refuses %s',change=>{registerAppsPrivateDirectory(root);registerAppsPrivateDirectory(child);const row=fake.rows.get(file);if(change==='foreign')row.rules[0].principal='foreign';if(change==='deny')row.rules[0].allow=false;if(change==='duplicate')row.rules[0].principal='admin';if(change==='owner')row.owner=false;if(change==='flags')row.rules[0].inheritance=3;if(change==='ancestorAcl')fake.rows.get(root).hash='b'.repeat(64);if(change==='identity')fake.stats.get(child).ino=999n;expect(()=>inspectAppsPrivateDescendant(file)).toThrow();});
+ it('does not extend privacy authority outside registered root',()=>{registerAppsPrivateDirectory(root);expect(inspectAppsPrivateDescendant('C:\\Temp\\foreign')).toBe(false);});
+ it('rejects case aliases and process uncertainty without fallback',()=>{registerAppsPrivateDirectory(root);registerAppsPrivateDirectory(child);fake.alias=file;expect(()=>inspectAppsPrivateDescendant(file)).toThrow();fake.alias='';fake.failure=true;expect(()=>inspectAppsPrivateDescendant(file)).toThrow('Apps private custody refused');});
+ it('normalizes a foreign process rejection without touching error getters',()=>{registerAppsPrivateDirectory(root);registerAppsPrivateDirectory(child);fake.hostile=true;expect(()=>inspectAppsPrivateDescendant(file)).toThrow('Apps private custody refused');expect(fake.getters).toBe(0);});
+ it('revalidates registered roots before returning to the strict owner inspector',()=>{registerAppsPrivateDirectory(root);expect(inspectAppsPrivateDescendant(root)).toBe(false);fake.rows.get(root).hash='c'.repeat(64);expect(()=>inspectAppsPrivateDescendant(root)).toThrow();});
+ it('allows owner-approved file recreation without pretending historical identity persists',()=>{registerAppsPrivateDirectory(root);registerAppsPrivateDirectory(child);expect(inspectAppsPrivateDescendant(file)).toBe(true);fake.stats.get(file).ino=123n;expect(inspectAppsPrivateDescendant(file)).toBe(true);});
+});

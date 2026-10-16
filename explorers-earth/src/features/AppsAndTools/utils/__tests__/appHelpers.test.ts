@@ -8,8 +8,6 @@ import {
   formatRating,
   deduplicateApps,
   buildLogoUrl,
-  mapItunesKindToPlatforms,
-  itunesPriceTier,
   extractUniqueCategories,
   extractNoteText,
 } from '../appHelpers';
@@ -49,17 +47,6 @@ describe('appHelpers unit tests', () => {
   it('should construct valid logo icon URLs', () => {
     expect(buildLogoUrl('/icons/a.png')).toContain('/icons/a.png');
     expect(buildLogoUrl('https://img.com/a.png')).toBe('https://img.com/a.png');
-  });
-
-  it('should map iTunes kind properties to standard platform tags', () => {
-    expect(mapItunesKindToPlatforms('mac-software')).toEqual(['macOS']);
-    expect(mapItunesKindToPlatforms('software')).toEqual(['iOS', 'iPadOS']);
-    expect(mapItunesKindToPlatforms('other')).toEqual(['Web']);
-  });
-
-  it('should determine iTunes price tiers', () => {
-    expect(itunesPriceTier(0)).toBe('Free');
-    expect(itunesPriceTier(4.99)).toBe('Paid');
   });
 
   // Additional 3+ tests to satisfy min 10 requirement:

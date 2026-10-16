@@ -13,12 +13,12 @@ describe("explorers public profile routes", () => {
     const { request } = await loopback.open({ app });
     await request.get("/api/explorers/v1/profiles/tk2727").expect(200).expect({ username: "tk2727", public_profile: "Yes" });
   });
-  it("caches the public shell with the same validator contract as categories", async () => {
+  it("revalidates the public shell without downstream storage", async () => {
     const app = express();
     setupExplorersPublicProfileRoutes(app, { shell: async () => ({ username: "tk2727", public_profile: "Yes" }), category: async () => undefined });
     const { request } = await loopback.open({ app });
     const first = await request.get("/api/explorers/v1/profiles/tk2727").expect(200);
-    expect(first.headers["cache-control"]).toContain("max-age=30");
+    expect(first.headers["cache-control"]).toBe("no-store");
     await request.get("/api/explorers/v1/profiles/tk2727").set("If-None-Match", first.headers.etag).expect(304);
   });
   it("returns the same safe 404 for an unavailable category", async () => {
@@ -29,12 +29,12 @@ describe("explorers public profile routes", () => {
     expect(response.body).toEqual({ version: "explorers-public-error/v1", error: { code: "NOT_FOUND" } });
   });
 
-  it("sets public caching headers for an allowed category", async () => {
+  it("prevents downstream caching for an allowed category", async () => {
     const app = express();
     setupExplorersPublicProfileRoutes(app, { category: async () => ({ lists: [] }) });
     const { request } = await loopback.open({ app });
     const response = await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(200);
-    expect(response.headers["cache-control"]).toContain("max-age=30");
+    expect(response.headers["cache-control"]).toBe("no-store");
     expect(response.headers.etag).toBeDefined();
   });
 
@@ -91,7 +91,7 @@ describe("explorers public profile routes", () => {
     const { request } = await loopback.open({ app });
     const response = await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps?limit=24").set("Cache-Control", "no-cache").expect(200);
     expect(category).toHaveBeenCalledWith("tk2727", "apps", 24, { bypassCache: true });
-    expect(response.headers["cache-control"]).toContain("max-age=30");
+    expect(response.headers["cache-control"]).toBe("no-store");
   });
 
   it("passes a bounded cursor through to the category reader", async () => {

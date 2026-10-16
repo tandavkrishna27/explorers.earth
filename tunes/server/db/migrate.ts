@@ -3,6 +3,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Pool, PoolClient } from "pg";
 import { EXPECTED_MUSIC_MIGRATION_CHAIN, EXPECTED_MUSIC_MIGRATION_ID } from "../../shared/music-migration-contract";
+import {prepareAppWorkerCustody,sealAppWorkerCustody} from './app-enrichment-worker-custody';
 
 const JOURNAL_TABLE = "music_schema_migrations";
 const ADVISORY_LOCK_KEY = 7_346_283_104;
@@ -256,7 +257,9 @@ export async function migrateMusicDatabase(pool: Pick<Pool, "connect">, options:
     for (const migration of migrations.slice(state.appliedIds.length)) {
       await client.query("BEGIN");
       try {
+        if(migration.id==='0056_explorers_app_enrichment_jobs')await prepareAppWorkerCustody(client);
         await client.query(migration.sql);
+        if(migration.id==='0056_explorers_app_enrichment_jobs')await sealAppWorkerCustody(client);
         const fingerprint = await schemaFingerprint(client);
         await client.query(
           `INSERT INTO ${JOURNAL_TABLE}(id,checksum,schema_checksum) VALUES ($1,$2,$3)`,

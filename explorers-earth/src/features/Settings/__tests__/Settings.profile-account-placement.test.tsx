@@ -3,41 +3,60 @@ import type { ReactElement } from "react";
 import { readyMusic } from "../../music/__tests__/musicPublishHarness";
 import { musicIdentityCoordinator } from "../../music/musicApi";
 import { musicWorkspaceClient } from "../../../hooks/useTunesDashboard";
-import { loginSurface, surfaceAccount, surfaceHarness } from "../../navigation/__tests__/surfaceHarness";
-import { categoryNavigationAccountQuery } from "../../navigation/categoryNavigationApi";
+import { loginSurface, surfaceAccount, surfaceHarness, writtenPins } from "../../navigation/__tests__/surfaceHarness";
 import { createInstance } from "i18next";
 import { I18nextProvider } from "react-i18next";
 import english from "../../../i18n/resources/en.json";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import useAuthStore from "../../../store/store";
+import { canonicalAccountFixture } from "../../../test/canonicalAccountFixture";
+import { explorersApiClient } from "../../../lib/explorersApiClient";
+vi.mock("../../Profile/api/useCanonicalAccount", () => ({ useCanonicalAccount: () => ({
+  data: { id: navigation.accountId, revision: 1 }, isLoading: false,
+}) }));
 
 const preference = vi.hoisted(() => ({ value: "Yes" as string | undefined }));
+const SECOND_ACCOUNT = "22222222-2222-4222-8222-222222222222";
+// writtenPins reads the canonical categories payload as a pin order, so these
+// assertions stay legible while checking what the client actually sends.
+const lastWrittenPins = () => writtenPins(navigation.mutate.mock.lastCall![0]);
 const translations = createInstance();
 const initialAccount = () => surfaceAccount({ documentId: navigation.accountId, pinned_nav_tabs: navigation.pins, auto_pinning: navigation.auto, public_music: preference.value ?? null, public_books: navigation.booksPublic });
-async function render(ui: ReactElement, options: { settingsResponse?: Promise<unknown> } = {}) {
+async function render(ui: ReactElement, options: { deferProfile?: Promise<unknown> } = {}) {
   const wrapped = (child: ReactElement) => <I18nextProvider i18n={translations}>{child}</I18nextProvider>;
-  const h = surfaceHarness(wrapped(ui), { initial: initialAccount(), respond: (name, variables) => {
-    if (name === "SettingsAccount" && options.settingsResponse) return options.settingsResponse;
-    if (name !== "UpdateTabVisibility") return undefined;
-    return navigation.mutate({ variables }).then((result: any) => {
-      const changed = result.data?.updateAccount;
-      if (changed?.documentId === h.saved.documentId) h.saved = { ...h.saved, ...changed };
-      return { updateAccount: changed ? { ...h.saved, ...changed } : null };
-    });
-  } });
+  const h = surfaceHarness(wrapped(ui), { initial: initialAccount(), deferProfile: options.deferProfile });
+  // Saving a pin is a canonical PATCH now, not the UpdateTabVisibility mutation, so the
+  // controllable seam is explorersApiClient.updateAccount. navigation.mutate observes
+  // every canonical write: resolving undefined lets the harness commit it normally, while
+  // resolving a DTO, hanging or throwing stands in for the server's own answer.
+  // vi.spyOn is idempotent, so re-spying would hand back the harness's own spy and
+  // recurse; wrap the implementation it already installed instead.
+  const write = vi.mocked(explorersApiClient.updateAccount);
+  const commitWrite = write.getMockImplementation()!;
+  write.mockImplementation(async input => {
+    const supplied = await navigation.mutate(input);
+    return supplied === undefined ? commitWrite(input) : supplied;
+  });
   await act(async () => { if (vi.isFakeTimers()) await vi.advanceTimersByTimeAsync(0); });
-  await h.ready();
-  await waitFor(() => expect(musicWorkspaceClient.loadDashboard).toHaveBeenCalled());
-  return { ...h, async rerender(next: ReactElement) {
+  const settle = async () => {
+    await h.ready();
+    await waitFor(() => expect(musicWorkspaceClient.loadDashboard).toHaveBeenCalled());
+  };
+  // A deferred profile read is the point of those cases, so they settle themselves.
+  if (!options.deferProfile) await settle();
+  return { ...h, settle, async rerender(next: ReactElement) {
     if (h.saved.documentId !== navigation.accountId) {
       await act(async () => readyMusic("u1", navigation.accountId));
       h.saved = initialAccount();
-      await act(async () => h.client.cache.writeQuery({ query: categoryNavigationAccountQuery, variables: { documentId: "u1" },
-        data: { usersPermissionsUser: { __typename: "UsersPermissionsUser", documentId: "u1", provider: "google", confirmed: true, blocked: false, accounts: [h.saved] } } }));
     }
     h.rerenderChild(wrapped(next));
     await h.ready();
+    // Switching accounts resets the panel to collapsed, so reopen it before looking for
+    // the pin; a new account inheriting the previous one's open panel would be the bug.
+    if (!screen.queryByRole("checkbox", { name: "Pin Music Tab" })) {
+      fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
+    }
     await waitFor(() => expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeEnabled());
   } };
 }
@@ -58,17 +77,24 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 beforeEach(async () => {
   await translations.init({ lng: "en", fallbackLng: "en", resources: { en: { translation: english }, ar: { translation: { music: { publication: { label: "ظهور الموسيقى" } } } } }, interpolation: { escapeValue: false } });
   navigation.pins = ["public_profile"];
-  navigation.auto = false; navigation.accountId = "account-1"; navigation.booksPublic = "Yes";
-  navigation.mutate.mockReset().mockImplementation(({ variables }) => Promise.resolve({ data: { updateAccount: { documentId: variables.documentId, ...variables.data } } }));
+  navigation.auto = false; navigation.booksPublic = "Yes";
+  // Must match the account loginSurface() signs in as. It was "account-1", a legacy
+  // style id, so the Music coordinator reconciled against an account the canonical
+  // store had never heard of, never reached "ready", and left useTunesDashboard
+  // disabled — which is why every case in this file timed out waiting for
+  // loadDashboard rather than failing on its own assertion.
+  navigation.accountId = canonicalAccountFixture().id;
+  navigation.mutate.mockReset().mockResolvedValue(undefined);
   navigation.refetch.mockReset().mockResolvedValue({ data: {} });
   navigation.discover.mockReset().mockResolvedValue({ version: "music-public-descriptor/v1", publication: { mode: "public", publicSlug: "test-slug", revision: 1 } });
   sessionStorage.clear();
   musicIdentityCoordinator.reset();
-  await readyMusic("u1", "account-1");
   let mode = "public";
   vi.spyOn(musicWorkspaceClient, "loadDashboard").mockImplementation(async () => ({ queueRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode, publicSlug: "test-slug" } } as never));
   vi.spyOn(musicWorkspaceClient, "setPublication").mockImplementation(async next => { mode = next; return { version: "music-publication/v1", publication: { mode: next, publicSlug: "test-slug" } }; });
   loginSurface();
+  // After sign-in: reconciling before it leaves the coordinator with no account.
+  await readyMusic("u1", navigation.accountId);
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: 404 })));
 });
 
@@ -91,6 +117,93 @@ vi.mock("../components/LanguageSelector", () => ({
 }));
 
 import Settings from "../Settings";
+
+describe("native Games interaction dispatch probe", () => {
+  it.each(["input", "visual-label", "keyboard"] as const)("dispatches the actual Games control via %s", async method => {
+    const user = userEvent.setup();
+    const h = surfaceHarness(<I18nextProvider i18n={translations}><Settings /></I18nextProvider>, { initial: { ...initialAccount(), public_games: "No" } });
+    await h.ready();
+    await user.click(screen.getByRole("button", { name: /Public Visibility/i }));
+    const control = screen.getByRole("checkbox", { name: "Games Tab", exact: true });
+    expect(control).not.toBeChecked(); expect(control).toBeEnabled();
+    const change = vi.fn(); control.addEventListener("change", change);
+    if (method === "keyboard") { control.focus(); await user.keyboard("[Space]"); }
+    else await user.click(method === "input" ? control : control.nextElementSibling!);
+    await waitFor(() => expect(h.saved.public_games).toBe("Yes"));
+    expect(change).toHaveBeenCalledTimes(1);
+    expect(control).toBeChecked(); expect(h.writes).toHaveLength(1);
+    control.removeEventListener("change", change);
+  });
+
+  it("separates a delivered Games change from a held pretransport read and a queued write", async () => {
+    const h = surfaceHarness(<I18nextProvider i18n={translations}><Settings /></I18nextProvider>, { initial: { ...initialAccount(), public_games: "No" } });
+    await h.ready();
+    fireEvent.click(screen.getByRole("button", { name: /Public Visibility/i }));
+    const games = screen.getByRole("checkbox", { name: "Games Tab", exact: true });
+    const books = screen.getByRole("checkbox", { name: "Books Tab", exact: true });
+    const read = vi.mocked(explorersApiClient.getMyProfile);
+    const original = read.getMockImplementation()!;
+    let release!: () => void;
+    const gate = new Promise<void>(done => { release = done; });
+    read.mockImplementationOnce(async () => { await gate; return original(); });
+    const change = vi.fn(); games.addEventListener("change", change);
+    fireEvent.click(books);
+    await act(async () => { await Promise.resolve(); });
+    fireEvent.click(games);
+    await act(async () => { await Promise.resolve(); });
+    expect(change).toHaveBeenCalledTimes(1);
+    expect(h.navigation.pending.map(operation => operation.category)).toEqual(["public_books", "public_games"]);
+    expect(games).toBeDisabled(); expect(games).not.toBeChecked();
+    expect(h.writes).toHaveLength(0);
+    await act(async () => { release(); await gate; });
+    await waitFor(() => expect(h.writes).toHaveLength(2));
+    await waitFor(() => expect(games).toBeChecked());
+    expect(h.navigation.pending).toHaveLength(0);
+    games.removeEventListener("change", change);
+  });
+
+  it("produces no PATCH for a delivered Games change whose authoritative read is already public", async () => {
+    const h = surfaceHarness(<I18nextProvider i18n={translations}><Settings /></I18nextProvider>, { initial: { ...initialAccount(), public_games: "No" } });
+    await h.ready();
+    fireEvent.click(screen.getByRole("button", { name: /Public Visibility/i }));
+    const games = screen.getByRole("checkbox", { name: "Games Tab", exact: true });
+    expect(games).not.toBeChecked();
+    h.saved = { ...h.saved, public_games: "Yes" };
+    const change = vi.fn(); games.addEventListener("change", change);
+    fireEvent.click(games);
+    await waitFor(() => expect(games).toBeChecked());
+    expect(change).toHaveBeenCalledTimes(1);
+    expect(h.navigation.pending).toHaveLength(0);
+    expect(h.writes).toHaveLength(0);
+    games.removeEventListener("change", change);
+  });
+
+  it("blocks a delivered Games change after session generation invalidates a held read", async () => {
+    const h = surfaceHarness(<I18nextProvider i18n={translations}><Settings /></I18nextProvider>, { initial: { ...initialAccount(), public_games: "No" } });
+    await h.ready();
+    fireEvent.click(screen.getByRole("button", { name: /Public Visibility/i }));
+    const games = screen.getByRole("checkbox", { name: "Games Tab", exact: true });
+    const generation = useAuthStore.getState().generation;
+    const read = vi.mocked(explorersApiClient.getMyProfile);
+    const original = read.getMockImplementation()!;
+    let release!: () => void;
+    const gate = new Promise<void>(done => { release = done; });
+    read.mockImplementationOnce(async () => { await gate; return original(); });
+    const change = vi.fn(); games.addEventListener("change", change);
+    fireEvent.click(games);
+    await act(async () => { await Promise.resolve(); });
+    expect(change).toHaveBeenCalledTimes(1);
+    expect(h.navigation.pending).toHaveLength(1);
+    expect(h.writes).toHaveLength(0);
+    act(() => useAuthStore.getState().logout());
+    expect(useAuthStore.getState().generation === generation).toBe(false);
+    await act(async () => { release(); await gate; });
+    expect(h.navigation.authority).toBeUndefined();
+    expect(h.navigation.pending).toHaveLength(0);
+    expect(h.writes).toHaveLength(0);
+    games.removeEventListener("change", change);
+  });
+});
 
 describe("Settings moved profile data placement", async () => {
   it("provides visible keyboard focus on Music visibility and the pin's visible switch", async () => {
@@ -136,19 +249,17 @@ describe("Settings moved profile data placement", async () => {
       vi.useRealTimers();
     }
   });
-  it("rolls back to the captured confirmed value even if stale query data arrives during a failed save", async () => {
+  it("rolls back to the captured confirmed value when the save fails", async () => {
+    // This case also used to push stale Apollo data mid-flight. Settings no longer reads
+    // the account through Apollo at all - categoryNavigationSurfaces.test.tsx:353 asserts
+    // that no SettingsAccount query is issued - so that clause had no path left to
+    // exercise and was dropped rather than faked. The rollback invariant it guarded stays.
     let reject!: (reason: unknown) => void;
     navigation.mutate.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
-    const view = await render(<Settings />);
+    await render(<Settings />);
     fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Pin Music Tab" }));
     await waitFor(() => expect(navigation.mutate).toHaveBeenCalledTimes(1));
-    const settingsQuery = [...view.client.getObservableQueries().values()].find(query => query.queryName === "SettingsAccount")!;
-    const olderData = settingsQuery.getCurrentResult().data;
-    await act(async () => view.client.cache.writeQuery({ query: settingsQuery.options.query, variables: settingsQuery.variables,
-      data: { ...olderData, usersPermissionsUser: { ...olderData.usersPermissionsUser,
-        accounts: [{ ...olderData.usersPermissionsUser.accounts[0], pinned_nav_tabs: ["public_profile", "public_music"] }] } } }));
-    expect(settingsQuery.getCurrentResult().data.usersPermissionsUser.accounts[0].pinned_nav_tabs).toEqual(["public_profile", "public_music"]);
     expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeDisabled();
     await act(async () => reject(new Error("save failed")));
     expect(await screen.findByRole("alert")).toHaveTextContent(/save/i);
@@ -165,10 +276,12 @@ describe("Settings moved profile data placement", async () => {
     await user.click(books);
     await waitFor(() => expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeEnabled());
     await user.click(screen.getByRole("checkbox", { name: "Pin Music Tab" }));
-    await waitFor(() => expect(navigation.mutate).toHaveBeenLastCalledWith({ variables: { documentId: "account-1", data: { pinned_nav_tabs: ["public_profile", "public_recommendations", "public_guides", "public_apps", "public_music"] } } }));
+    await waitFor(() => expect(lastWrittenPins()).toEqual(["public_profile", "public_recommendations", "public_guides", "public_apps", "public_music"]));
   });
   it("does not call an empty mutation acknowledgement a confirmed save", async () => {
-    navigation.mutate.mockResolvedValue({ data: { updateAccount: null } });
+    // Canonically, an empty acknowledgement is a response that never advanced the
+    // revision — the client must not treat it as a confirmed save.
+    navigation.mutate.mockImplementation(() => explorersApiClient.getMyProfile());
     await render(<Settings />);
     fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Pin Music Tab" }));
@@ -195,7 +308,7 @@ describe("Settings moved profile data placement", async () => {
     await user.pointer([{ keys: "[TouchA>]", target: pin }, { keys: "[/TouchA]" }]);
     expect(pin).not.toBeChecked();
     expect(navigation.mutate).toHaveBeenCalledTimes(1);
-    expect(navigation.mutate).toHaveBeenCalledWith({ variables: { documentId: "account-1", data: { pinned_nav_tabs: ["public_profile"] } } });
+    expect(lastWrittenPins()).toEqual(["public_profile"]);
   });
   it("switches translated Music labels live with English fallback, RTL direction and narrow wrapping", async () => {
     await render(<Settings />);
@@ -236,7 +349,8 @@ describe("Settings moved profile data placement", async () => {
     fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Pin Music Tab" }));
     await waitFor(() => expect(navigation.mutate).toHaveBeenCalledTimes(1));
-    navigation.accountId = "account-2";
+    navigation.accountId = SECOND_ACCOUNT;
+    loginSurface("u1", SECOND_ACCOUNT);
     fireEvent.click(screen.getByRole("tab", { name: "Billing" }));
     fireEvent.click(screen.getByRole("tab", { name: "Account" }));
     await view.rerender(<Settings />);
@@ -250,16 +364,14 @@ describe("Settings moved profile data placement", async () => {
   });
   it("opens and focuses public navigation after account data arrives through the hash link", async () => {
     window.history.replaceState(null, "", "/settings#public-navigation");
-    let deliverAccount!: (data: unknown) => void;
-    const settingsResponse = new Promise<unknown>(resolve => { deliverAccount = resolve; });
-    const view = await render(<Settings />, { settingsResponse });
-    const settingsQuery = [...view.client.getObservableQueries().values()].find(query => query.queryName === "SettingsAccount")!;
-    expect(view.requests.some(request => request.name === "SettingsAccount")).toBe(true);
-    expect(settingsQuery.getCurrentResult().loading).toBe(true);
+    let deliverAccount!: () => void;
+    const deferProfile = new Promise<void>(resolve => { deliverAccount = resolve; });
+    // The account now arrives from the canonical profile read, so that is what is withheld.
+    const view = await render(<Settings />, { deferProfile });
     expect(screen.queryByRole("checkbox", { name: "Pin Music Tab" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Pinned Navigation Tabs" })).not.toHaveFocus();
-    await act(async () => deliverAccount({ usersPermissionsUser: { __typename: "UsersPermissionsUser", documentId: "u1", accounts: [{ ...initialAccount(), Addresss: null }] } }));
-    await waitFor(() => expect(settingsQuery.getCurrentResult().loading).toBe(false));
+    await act(async () => { deliverAccount(); await deferProfile; });
+    await view.settle();
     const heading = await screen.findByRole("heading", { name: "Pinned Navigation Tabs" });
     await waitFor(() => expect(heading).toHaveFocus());
     expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeInTheDocument();
@@ -270,7 +382,7 @@ describe("Settings moved profile data placement", async () => {
     await screen.findByText("Music is public.");
     fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Pin Music Tab" }));
-    await waitFor(() => expect(navigation.mutate).toHaveBeenCalledWith({ variables: { documentId: "account-1", data: { pinned_nav_tabs: ["public_profile", "public_music"] } } }));
+    await waitFor(() => expect(lastWrittenPins()).toEqual(["public_profile", "public_music"]));
     await waitFor(() => expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeChecked());
     expect(navigation.mutate).toHaveBeenCalledTimes(1);
   });
@@ -297,24 +409,19 @@ describe("Settings moved profile data placement", async () => {
     await waitFor(() => expect(pin).toBeChecked());
     expect(await screen.findByRole("alert")).toHaveTextContent(/save/i);
   });
-  it("serializes whole-array saves and ignores older query data after confirmation", async () => {
+  it("serializes whole-array saves", async () => {
+    // The "ignores older query data after confirmation" clause went with the Apollo
+    // account path (see the rollback case above); serialization is what stays observable.
     let finish!: (value: unknown) => void;
     navigation.mutate.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
-    const view = await render(<Settings />);
+    await render(<Settings />);
     fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Pin Music Tab" }));
     expect(screen.getByRole("checkbox", { name: "Pin Places Tab" })).toBeDisabled();
     fireEvent.click(screen.getByRole("checkbox", { name: "Pin Places Tab" }));
     await waitFor(() => expect(navigation.mutate).toHaveBeenCalledTimes(1));
-    await act(async () => finish({ data: { updateAccount: { documentId: "account-1", pinned_nav_tabs: ["public_profile", "public_music"] } } }));
+    await act(async () => finish(undefined));
     await waitFor(() => expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeChecked());
-    const settingsQuery = [...view.client.getObservableQueries().values()].find(query => query.queryName === "SettingsAccount")!;
-    const confirmedData = settingsQuery.getCurrentResult().data;
-    await act(async () => view.client.cache.writeQuery({ query: settingsQuery.options.query, variables: settingsQuery.variables,
-      data: { ...confirmedData, usersPermissionsUser: { ...confirmedData.usersPermissionsUser,
-        accounts: [{ ...confirmedData.usersPermissionsUser.accounts[0], pinned_nav_tabs: ["public_profile"] }] } } }));
-    expect(settingsQuery.getCurrentResult().data.usersPermissionsUser.accounts[0].pinned_nav_tabs).toEqual(["public_profile"]);
-    expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Pin Places Tab" })).toBeEnabled();
     expect(navigation.mutate).toHaveBeenCalledTimes(1);
   });
@@ -370,4 +477,26 @@ describe("Settings moved profile data placement", async () => {
     expect(screen.getByTestId("existing-billing")).toBeInTheDocument();
     expect(screen.queryByTestId("moved-account")).not.toBeInTheDocument();
   });
+});
+
+it.each([/Public Visibility/i, /Language Preference/i])("ignores detached panel delayed scrolling for %s", async (panel) => {
+  const view = await render(<Settings />);
+  const pending: Array<() => void> = [];
+  const originalTimeout = window.setTimeout.bind(window);
+  const timer = vi.spyOn(window, "setTimeout").mockImplementation(((handler: TimerHandler, delay?: number, ...args: unknown[]) => {
+    if (delay === 100 && typeof handler === "function") {
+      pending.push(() => handler(...args));
+      return 0;
+    }
+    return originalTimeout(handler, delay, ...args);
+  }) as typeof window.setTimeout);
+  const scrollBy = vi.spyOn(window, "scrollBy").mockImplementation(() => {});
+  const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ top: 0, bottom: 2000, left: 0, right: 300, height: 2000, width: 300, x: 0, y: 0, toJSON: () => ({}) });
+  try {
+    fireEvent.click(screen.getByRole("button", { name: panel }));
+    expect(pending).toHaveLength(1);
+    view.unmount();
+    act(() => { pending.forEach(callback => callback()); });
+    expect(scrollBy).not.toHaveBeenCalled();
+  } finally { timer.mockRestore(); scrollBy.mockRestore(); rect.mockRestore(); }
 });

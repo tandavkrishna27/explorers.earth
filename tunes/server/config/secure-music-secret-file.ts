@@ -182,7 +182,11 @@ function inspectWindowsSecretSecurities(
   const output = options.windowsSecurityInspection
     ? options.windowsSecurityInspection(paths)
     : execFileSync("powershell.exe", [
-        "-NoProfile", "-NonInteractive", "-File", helper, "inspect-security", ...paths,
+        // -ExecutionPolicy Bypass: a Restricted policy refuses a -File script before its
+        // first line, so this returns EMPTY output and the line-count check below then
+        // reports the secret file as insecure -- a refusal that is really "the inspector
+        // never ran". Reproduced both directions locally. No inspection is relaxed.
+        "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", helper, "inspect-security", ...paths,
       ], {
         encoding: "utf8",
         windowsHide: true,

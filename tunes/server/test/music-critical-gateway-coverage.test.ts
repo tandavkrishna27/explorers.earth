@@ -2,13 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import { MusicIdentityError } from "../../shared/musicError";
 import {
   StrapiIdentityGateway,
-  cancelResponseBody,
-  fingerprintStrapiProof,
   parseRetryAfterMs,
-  readBoundedResponseBody,
   type ResolvedStrapiIdentity,
   type StrapiIdentityGatewayOptions,
 } from "../services/strapiIdentityGateway";
+// Ticket 8.1a: these four are no longer the gateway's; the closure imported them and
+// that is the only reason a Strapi-named file was inside it.
+import { cancelResponseBody, readBoundedResponseBody } from "../services/upstreamResponseBody";
+import { fingerprintStrapiProof } from "../services/proofFingerprint";
 
 const user = {
   documentId: "user-doc-1",

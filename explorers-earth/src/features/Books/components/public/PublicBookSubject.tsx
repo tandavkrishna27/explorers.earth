@@ -5,11 +5,13 @@ import { deduplicateBooks, slugToSubjectName } from "../../utils/bookHelpers";
 import type { RecommendedBook } from "../../types";
 import BookCoverCard from "./BookCoverCard";
 import BookDetailModal from "./BookDetailModal";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
 import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
 import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
 import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
 
 const isRenderableBook = (value: unknown): value is RecommendedBook =>
@@ -31,12 +33,13 @@ const PublicBookSubject = () => {
     book: null,
   });
 
-  const { data, loading: booksLoading, error: booksError, refetch: refetchBooks } = usePublicRecommendationCategory(
+  const page = usePublicRecommendationCategory(
     username,
     "books",
     accountData?.public_books === "Yes",
   );
 
+  const {data,loading:booksLoading,error:booksError,refetch:refetchBooks}=page;
   const loading = userLoading || booksLoading;
   const queryError = userError || booksError;
   const rawLists = data?.bookLists;
@@ -59,7 +62,7 @@ const PublicBookSubject = () => {
     await settlePublicRouteRetries(refetchUser, accountData?.public_books === "Yes" ? refetchBooks : undefined);
   }, [accountData?.public_books, refetchBooks, refetchUser]);
 
-  usePublicHeaderDescriptor(subjectSlug ? {
+  usePublicHeaderDescriptor(subjectSlug && hasUsableData && accountData?.public_books === "Yes" ? {
     navigationKey: location.key,
     title: `${subjectName} Books`,
     url: window.location.href,
@@ -75,9 +78,11 @@ const PublicBookSubject = () => {
     )
   );
 
+  const analytics = useTrackAnalytics({ ...createAnalyticsOptions.books(typeof accountData?.documentId === 'string' ? accountData.documentId : '', username), ready: hasUsableData && accountData?.public_books === 'Yes' });
   const handleBookClick = useCallback((book: RecommendedBook) => {
     setModalState({ open: true, book });
-  }, []);
+    analytics.trackClick('book-card', { id: book.documentId, listId: book.book_list?.documentId, title: book.title });
+  }, [analytics]);
 
   const pageTitle = `${subjectName} Books | ${username}'s Book List | explorers`;
   const metaDescription = `Explore ${subjectBooks.length} book${subjectBooks.length !== 1 ? "s" : ""} on ${subjectName} recommended by ${username} on explorers.`;
@@ -121,7 +126,7 @@ const PublicBookSubject = () => {
           </div>
         ) : queryError && !hasUsableData ? (
           <PublicRouteErrorState title="Book subject unavailable" error={queryError} onRetry={handleRetry} />
-        ) : subjectBooks.length === 0 ? (
+        ) : subjectBooks.length === 0 && !page.hasMore ? (
           <p className="text-center text-[color:var(--category-muted,rgba(255,255,255,0.3))] py-16">No books found for this subject.</p>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
@@ -132,7 +137,8 @@ const PublicBookSubject = () => {
         )}
       </div>
 
-      <BookDetailModal
+      <PublicScrollContinuation {...page} label="book lists" />
+      <BookDetailModal onTrackClick={analytics.trackClick}
         book={modalState.book}
         open={modalState.open}
         onClose={() => setModalState({ open: false, book: null })}

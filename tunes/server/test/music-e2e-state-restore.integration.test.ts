@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { migrateMusicDatabase } from "../db/migrate";
@@ -23,6 +23,19 @@ const fixtureDatabase = "music_fixture";
 let admin: pg.Pool | undefined;
 let fixture: pg.Pool | undefined;
 let containerId = "";
+let revisionAccount='';
+const nativeReplayTables = [
+  'recommendation_app_screenshots', 'product_recommendation_context', 'place_recommendation_context',
+  'recommendation_place_photos', 'place_collection_details', 'collection_location_links',
+  'guide_collection_details', 'guide_sections', 'guide_section_photos',
+] as const;
+
+async function nativeRows() {
+  return Promise.all(nativeReplayTables.map(async table => ({
+    table, rows: (await fixture!.query(`SELECT to_jsonb(row) AS value FROM public.${table} row ORDER BY to_jsonb(row)::text`)).rows,
+  })));
+}
+
 
 function databaseUrl(name: string) {
   const target = new URL(process.env.DATABASE_URL_TEST ?? "");
@@ -51,6 +64,11 @@ function hash() {
     .join("\n");
   return createHash("sha256").update(normalized).digest("hex");
 }
+function replay(operation:{file:string;args:string[];input:Buffer}) {
+  const result=spawnSync(operation.file,operation.args,{input:operation.input,windowsHide:true,maxBuffer:4*1024*1024});
+  if(result.status!==0) console.error(result.stderr?.toString('utf8'));
+  return result;
+}
 
 describePg("owned PostgreSQL transactional Music E2E restore", () => {
   beforeAll(async () => {
@@ -73,6 +91,68 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     await fixture.query("INSERT INTO playlists(user_id,name,is_visible_to_guests) SELECT id,$1,true FROM users WHERE username=$2", [
       "Restore qualification", "e2e-public-music-restore-owner",
     ]);
+    revisionAccount=(await fixture.query('INSERT INTO creator_accounts DEFAULT VALUES RETURNING id')).rows[0].id;
+    const entity=(await fixture.query("INSERT INTO entities(kind,title,origin) VALUES('book','Restore catalog','manual') RETURNING id")).rows[0].id;
+    const list=(await fixture.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'books','Restore list',$2,0) RETURNING id",[revisionAccount,randomUUID()])).rows[0].id;
+    await fixture.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,'guides','Restore guide',$2,0)",[revisionAccount,randomUUID()]);
+    const item=(await fixture.query("INSERT INTO recommendations(account_id,category,entity_id) VALUES($1,'books',$2) RETURNING id",[revisionAccount,entity])).rows[0].id;
+    const other=(await fixture.query("INSERT INTO recommendations(account_id,category,entity_id) VALUES($1,'books',$2) RETURNING id",[revisionAccount,entity])).rows[0].id;
+    await fixture.query("INSERT INTO book_entity_details(entity_id,authors,isbn_10,published_date_text) VALUES($1,ARRAY['Restored author'],'123456789X','2024-03')",[entity]);
+    await fixture.query('INSERT INTO book_recommendation_context(recommendation_id,account_id,buy_links) VALUES($1,$2,$3)',[item,revisionAccount,JSON.stringify([{name:'Restored shop',url:'https://shop.example/book'}])]);
+    await fixture.query('INSERT INTO recommendation_display_overrides(recommendation_id,account_id,display_values) VALUES($1,$3,$4),($2,$3,$5)',[item,other,revisionAccount,{title:null},{}]);
+    await fixture.query('UPDATE recommendations SET note=$2::jsonb WHERE id=$1',[item,JSON.stringify({version:1,format:'quill-html',html:'<p>ðŸ˜€ Restored author note</p>'})]);
+    await fixture.query("INSERT INTO collection_items VALUES($1,$2,$3,'books',0,now())",[list,item,revisionAccount]);
+    await fixture.query("INSERT INTO account_category_pin_state VALUES($1,'books',7)",[revisionAccount]);
+    await fixture.query("INSERT INTO category_recommendation_pins VALUES($1,'books',$2,$3,0)",[revisionAccount,item,list]);
+    for(const purpose of ['collection','recommendation']) {
+      const media=(await fixture.query(`INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256)
+        VALUES($1,$2,'ready','image/png',1,now(),decode(repeat('00',32),'hex')) RETURNING id`,[revisionAccount,purpose])).rows[0].id;
+      await fixture.query(purpose==='collection'?"INSERT INTO collection_media VALUES($1,$2,'cover',$3,now())":"INSERT INTO recommendation_media VALUES($1,$2,$3,0,now())",[purpose==='collection'?list:item,revisionAccount,media]);
+    }
+    const cover=(await fixture.query("SELECT media_id FROM recommendation_media WHERE recommendation_id=$1",[item])).rows[0].media_id;
+    await fixture.query("INSERT INTO recommendation_book_covers(recommendation_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3),($1,$2,'thumbnail',$3)",[item,revisionAccount,cover]);
+    const analytics=(await fixture.query("INSERT INTO analytics_events(account_id,client_event_id,event_type,page,category,collection_id,recommendation_id,occurred_at,canonical_path,consent_version) VALUES($1,'restore-analytics','view','public-books','books',$2,$3,now(),'/restore/books','explorers-analytics-v1') RETURNING id",[revisionAccount,list,item])).rows[0].id;
+    await fixture.query("INSERT INTO analytics_event_receipts(account_id,client_event_id,input_hash,event_id) VALUES($1,'restore-analytics',decode(repeat('00',32),'hex'),$2)",[revisionAccount,analytics]);
+    await fixture.query("INSERT INTO analytics_event_receipts(account_id,client_event_id,input_hash,retired_at) VALUES($1,'restore-retired',decode(repeat('01',32),'hex'),now())",[revisionAccount]);
+    const movie=(await fixture.query("INSERT INTO entities(kind,title,origin) VALUES('movie','Restored TV facts','manual') RETURNING id")).rows[0].id;
+    await fixture.query("INSERT INTO movie_entity_details(entity_id,media_type,runtime_minutes,season_count) VALUES($1,'tv',0,0)",[movie]);
+    const movieRec=(await fixture.query("INSERT INTO recommendations(account_id,category,entity_id) VALUES($1,'movies',$2) RETURNING id",[revisionAccount,movie])).rows[0].id;
+    await fixture.query("INSERT INTO movie_recommendation_context(recommendation_id,account_id,selected_provider_ids) VALUES($1,$2,'{}')",[movieRec,revisionAccount]);
+    const genre=(await fixture.query("SELECT id FROM taxonomy_terms WHERE category='movies' AND slug='animation'")).rows[0].id;
+    await fixture.query("INSERT INTO recommendation_taxonomy(recommendation_id,account_id,category,term_id,position) VALUES($1,$2,'movies',$3,0)",[movieRec,revisionAccount,genre]);
+    const providerMovie=(await fixture.query("INSERT INTO entities(kind,title,origin) VALUES('movie','Restored provider Movie','provider') RETURNING id")).rows[0].id;
+    await fixture.query("INSERT INTO entity_identifiers(entity_id,provider,external_kind,external_id,fetched_at,source_url) VALUES($1,'tmdb','movie','42',to_timestamp(1700000000),'https://api.themoviedb.org/3/movie/42')",[providerMovie]);
+    await fixture.query("INSERT INTO movie_entity_details(entity_id,media_type,poster_url,backdrop_url) VALUES($1,'movie','https://image.tmdb.org/t/p/w780/poster.jpg','https://image.tmdb.org/t/p/w1280/backdrop.jpg')",[providerMovie]);
+    const providerRec=(await fixture.query("INSERT INTO recommendations(account_id,category,entity_id) VALUES($1,'movies',$2) RETURNING id",[revisionAccount,providerMovie])).rows[0].id;
+    const providerImage=(await fixture.query("INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256) VALUES($1,'recommendation','ready','image/png',8,now(),decode(repeat('00',32),'hex')) RETURNING id",[revisionAccount])).rows[0].id;
+    await fixture.query("INSERT INTO media_objects(media_id,variant,storage_environment,object_key,mime_type,byte_size,content_sha256) VALUES($1,'original','local',$2,'image/png',8,decode(repeat('00',32),'hex'))",[providerImage,`local/${revisionAccount}/${providerImage}`]);
+    await fixture.query("INSERT INTO recommendation_movie_media(recommendation_id,account_id,source_entity_id,source_external_kind,source_external_id,source_fetched_at,source_mapping_version,slot,slot_index,media_id) VALUES($1,$2,$3,'movie','42',1700000000000,1,'poster',0,$4),($1,$2,$3,'movie','42',1700000000000,1,'backdrop',1,$4)",[providerRec,revisionAccount,providerMovie,providerImage]);
+    // Populate every native replay exception, including the deferred guide photo registry.
+    const nativeRecommendations: Record<string, string> = {};
+    for (const [kind, category] of [['app', 'apps'], ['product', 'products'], ['place', 'places']]) {
+      const nativeEntity = (await fixture.query("INSERT INTO entities(kind,title,origin) VALUES($1,'Restore native catalog','manual') RETURNING id", [kind])).rows[0].id;
+      nativeRecommendations[category] = (await fixture.query('INSERT INTO recommendations(account_id,category,entity_id) VALUES($1,$2,$3) RETURNING id', [revisionAccount, category, nativeEntity])).rows[0].id;
+    }
+    await fixture.query('INSERT INTO recommendation_app_screenshots(recommendation_id,account_id,slot_index,media_id) VALUES($1,$2,0,$3)', [nativeRecommendations.apps, revisionAccount, providerImage]);
+    await fixture.query("INSERT INTO product_recommendation_context(recommendation_id,account_id,price,currency_code) VALUES($1,$2,0,'INR')", [nativeRecommendations.products, revisionAccount]);
+    await fixture.query('INSERT INTO place_recommendation_context(recommendation_id,account_id) VALUES($1,$2)', [nativeRecommendations.places, revisionAccount]);
+    await fixture.query('INSERT INTO recommendation_place_photos(recommendation_id,account_id,slot_index,media_id) VALUES($1,$2,0,$3)', [nativeRecommendations.places, revisionAccount, providerImage]);
+    const nativeCollections: Record<string, string> = {};
+    for (const category of ['places', 'products']) {
+      nativeCollections[category] = (await fixture.query("INSERT INTO collections(account_id,category,title,slug,display_order) VALUES($1,$2,'Restore native list',$3,0) RETURNING id", [revisionAccount, category, randomUUID()])).rows[0].id;
+    }
+    await fixture.query('INSERT INTO place_collection_details(collection_id,account_id) VALUES($1,$2)', [nativeCollections.places, revisionAccount]);
+    await fixture.query("INSERT INTO collection_location_links(child_collection_id,account_id,child_category,location_collection_id) VALUES($1,$2,'products',$3)", [nativeCollections.products, revisionAccount, nativeCollections.places]);
+    const guide = (await fixture.query("SELECT id FROM collections WHERE account_id=$1 AND category='guides'", [revisionAccount])).rows[0].id;
+    await fixture.query('INSERT INTO guide_collection_details(collection_id,account_id) VALUES($1,$2)', [guide, revisionAccount]);
+    const guideImage = (await fixture.query("INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256) VALUES($1,'guide','ready','image/png',1,now(),decode(repeat('00',32),'hex')) RETURNING id", [revisionAccount])).rows[0].id;
+    await fixture.query('BEGIN');
+    try {
+      const section = (await fixture.query("INSERT INTO guide_sections(collection_id,account_id,display_order,block_version,title,blocks) VALUES($1,$2,0,'guide-section-blocks/v1','Restore section',$3) RETURNING id", [guide, revisionAccount, {photos: [{mediaId: guideImage}]}])).rows[0].id;
+      await fixture.query('INSERT INTO guide_section_photos(section_id,account_id,media_id) VALUES($1,$2,$3)', [section, revisionAccount, guideImage]);
+      await fixture.query('COMMIT');
+    } catch (error) { await fixture.query('ROLLBACK'); throw error; }
+    await fixture.query("UPDATE account_category_content_state SET revision=revision+123 WHERE account_id=$1",[revisionAccount]);
   });
 
   afterAll(async () => {
@@ -96,12 +176,70 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     expect(hash()).not.toBe(baselineHash);
     const restored = runMusicFixtureRestoreTransaction({
       containerId, dataDump: baselineData, snapshotHash: baselineHash, captureHash: hash,
-      execute: (operation) => spawnSync(operation.file, operation.args, {
-        input: operation.input, windowsHide: true, maxBuffer: 4 * 1024 * 1024,
-      }),
+      execute: replay,
     });
     expect(restored).toEqual({ ok: true, beforeHash: baselineHash, afterHash: baselineHash });
     expect(hash()).toBe(baselineHash);
+  });
+
+  it('preserves nonempty category counters exactly and advances after replay',async()=>{
+    const analytics=(await fixture!.query('SELECT * FROM analytics_events ORDER BY id')).rows,receipts=(await fixture!.query('SELECT * FROM analytics_event_receipts ORDER BY client_event_id')).rows;expect(analytics).toHaveLength(1);expect(receipts).toHaveLength(2);
+    expect((await fixture!.query("SELECT media_type,runtime_minutes,season_count FROM movie_entity_details WHERE media_type='tv'")).rows).toEqual([{media_type:'tv',runtime_minutes:0,season_count:0}]);
+    expect((await fixture!.query('SELECT selected_provider_ids FROM movie_recommendation_context')).rows).toEqual([{selected_provider_ids:[]}]);
+    expect((await fixture!.query('SELECT position FROM recommendation_taxonomy')).rows).toEqual([{position:0}]);
+    const movieMedia=(await fixture!.query('SELECT * FROM recommendation_movie_media ORDER BY recommendation_id,slot_index')).rows;expect(movieMedia).toHaveLength(2);expect(new Set(movieMedia.map(row=>row.media_id)).size).toBe(1);
+    const bookFacts=(await fixture!.query('SELECT * FROM book_entity_details')).rows;
+    const bookCovers=(await fixture!.query('SELECT * FROM recommendation_book_covers ORDER BY recommendation_id,slot')).rows;expect(bookCovers).toHaveLength(2);
+    const bookContexts=(await fixture!.query('SELECT * FROM book_recommendation_context')).rows;
+    const overrides=(await fixture!.query('SELECT recommendation_id,display_values FROM recommendation_display_overrides WHERE account_id=$1 ORDER BY recommendation_id',[revisionAccount])).rows;
+    expect(overrides.map(row=>row.display_values)).toEqual(expect.arrayContaining([{title:null},{}]));
+    const notes=(await fixture!.query('SELECT id,note FROM recommendations WHERE account_id=$1 ORDER BY id',[revisionAccount])).rows;
+    const before=(await fixture!.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1 ORDER BY category',[revisionAccount])).rows;
+    expect(before.map(row => row.category)).toEqual(['apps','books','guides','movies','places','products']);
+    for (const row of before) expect(BigInt(row.revision)).toBeGreaterThan(100n);
+    const native = await nativeRows();
+    for (const entry of native) expect(entry.rows, entry.table).toHaveLength(1);
+    const data=dump(true),snapshot=hash();
+    expect((await fixture!.query('SELECT * FROM recommendation_book_covers ORDER BY recommendation_id,slot')).rows).toEqual(bookCovers);
+    await fixture!.query("UPDATE collections SET heading='Before restore',revision=revision+1 WHERE account_id=$1",[revisionAccount]);
+    const result=runMusicFixtureRestoreTransaction({containerId,dataDump:data,snapshotHash:snapshot,captureHash:hash,
+      execute:replay});
+    expect(result).toEqual({ok:true,beforeHash:snapshot,afterHash:snapshot});
+    expect((await fixture!.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1 ORDER BY category',[revisionAccount])).rows).toEqual(before);
+    expect((await fixture!.query('SELECT id,note FROM recommendations WHERE account_id=$1 ORDER BY id',[revisionAccount])).rows).toEqual(notes);
+    expect((await fixture!.query('SELECT recommendation_id,display_values FROM recommendation_display_overrides WHERE account_id=$1 ORDER BY recommendation_id',[revisionAccount])).rows).toEqual(overrides);
+    expect((await fixture!.query('SELECT * FROM analytics_events ORDER BY id')).rows).toEqual(analytics);expect((await fixture!.query('SELECT * FROM analytics_event_receipts ORDER BY client_event_id')).rows).toEqual(receipts);
+    expect((await fixture!.query('SELECT * FROM recommendation_movie_media ORDER BY recommendation_id,slot_index')).rows).toEqual(movieMedia);
+    expect((await fixture!.query('SELECT * FROM book_entity_details')).rows).toEqual(bookFacts);
+    expect((await fixture!.query('SELECT * FROM book_recommendation_context')).rows).toEqual(bookContexts);
+    expect((await fixture!.query('SELECT * FROM recommendation_book_covers ORDER BY recommendation_id,slot')).rows).toEqual(bookCovers);
+    expect(await nativeRows()).toEqual(native);
+    await fixture!.query("UPDATE collections SET heading='After restore' WHERE account_id=$1 AND category='books'",[revisionAccount]);
+    const next=(await fixture!.query("SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category='books'",[revisionAccount])).rows[0].revision;
+    expect(BigInt(next)).toBeGreaterThan(BigInt(before.find(row=>row.category==='books')!.revision));
+    // Every new table resumes ordinary counter advancement after the exact replay.
+    for (const table of nativeReplayTables) {
+      const counters = async () => (await fixture!.query('SELECT category,revision::text FROM account_category_content_state WHERE account_id=$1 ORDER BY category', [revisionAccount])).rows;
+      const prior = await counters();
+      if (table === 'guide_section_photos') {
+        await fixture!.query('BEGIN');
+        try {
+          const photo = (await fixture!.query('DELETE FROM guide_section_photos WHERE account_id=$1 RETURNING *', [revisionAccount])).rows[0];
+          await fixture!.query('INSERT INTO guide_section_photos(section_id,account_id,media_id) VALUES($1,$2,$3)', [photo.section_id, photo.account_id, photo.media_id]);
+          await fixture!.query('COMMIT');
+        } catch (error) { await fixture!.query('ROLLBACK'); throw error; }
+      } else {
+        await fixture!.query(`UPDATE public.${table} SET account_id=account_id WHERE account_id=$1`, [revisionAccount]);
+      }
+      const after = await counters();
+      const categories = table === 'collection_location_links' ? ['places','products']
+        : [table === 'recommendation_app_screenshots' ? 'apps'
+          : table === 'product_recommendation_context' ? 'products'
+          : table.startsWith('guide_') ? 'guides' : 'places'];
+      for (const category of categories) expect(BigInt(after.find(row => row.category === category)!.revision), `${table}: ${category}`)
+        .toBeGreaterThan(BigInt(prior.find(row => row.category === category)!.revision));
+    }
+
   });
 
   it("rolls an injected mid-replay failure back to the pre-attempt mutated hash", async () => {

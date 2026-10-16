@@ -130,14 +130,14 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
     }
 
     // Extract city name and get place_id
-    const cityName = isEditing ? values.listName : extractCityName(places);
+    const cityName = isEditing ? initialValues.listName : extractCityName(places);
     const currentPlaceId = isEditing ? (initialValues?.placeId || null) : places?.place_id;
     
     // Check for duplicates by place_id (exclude current location when editing)
     if (existingPlaces && existingPlaces.length > 0) {
       const isDuplicate = existingPlaces.some((place) => {
         // Skip duplicate check for the current location when editing
-        if (isEditing && place?.slug === values.placeUrl) {
+        if (isEditing && initialValues?.documentId && place?.documentId === initialValues.documentId) {
           return false;
         }
         
@@ -308,9 +308,8 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                   <Field
                     name="placeUrl"
                     type="text"
-                    disabled={isEditing}
                     placeholder="Enter the Name to a create a Shareable link"
-                    className={`w-full dt-input ${isEditing ? 'cursor-not-allowed' : ''}`}
+                    className="w-full dt-input"
                   />
                 </div>
                 {errors.placeUrl && touched.placeUrl && (

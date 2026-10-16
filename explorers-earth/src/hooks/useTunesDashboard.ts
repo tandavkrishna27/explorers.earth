@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { useQuery, type QueryClient } from "@tanstack/react-query";
-import { musicApi, musicIdentityCoordinator } from "../features/music/musicApi";
+import { musicApi, musicIdentityCoordinator, musicJson } from "../features/music/musicApi";
 import { subscribeToOwnerMusic } from "../features/music/ownerMusicLiveClient";
 import { getMusicCredential, subscribeMusicCredential } from "../lib/musicCredentialStore";
 import {
@@ -91,6 +91,7 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
     getMusicCredential,
     () => undefined,
   );
+  const hasCredential = credential !== undefined;
   const query = useQuery({
     queryKey: scope ? musicWorkspaceQueryKey(scope) : ["music-workspace", "no-user", "no-account"],
     queryFn: () => musicWorkspaceClient.load(),
@@ -104,9 +105,14 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
     }
   }, [query.error]);
   useEffect(() => {
-    if (identityStatus !== "ready" || !scope || !credential?.token) return;
+    if (identityStatus !== "ready" || !scope || !hasCredential) return;
     const subscription = subscribeToOwnerMusic({
-      token: credential.token,
+      // Ticket 6.3. One purpose-limited ticket per connection attempt. The socket no
+      // longer rides the owner HTTP credential, so its lifetime is no longer tied to
+      // that credential's rotation and a rotation no longer tears the connection down.
+      mintTicket: async () => (await musicJson<{ ticket: { token: string } }>(
+        "POST", "/api/music/socket-ticket",
+      )).ticket.token,
       initialRevision: query.data?.dashboard.queueRevision ?? 0,
       onInvalidate: async () => {
         const result = await query.refetch();
@@ -114,7 +120,10 @@ export function useTunesDashboard(scope?: MusicWorkspaceScope): TunesDashboardDa
       },
     });
     return () => subscription.unsubscribe();
-  }, [credential?.token, identityStatus, scope?.accountDocumentId, scope?.userDocumentId]);
+    // Keyed on whether a credential exists rather than on its value: minting a ticket is
+    // an owner HTTP call, so the socket still waits for owner authority, but a routine
+    // credential rotation no longer tears down and rebuilds the connection.
+  }, [hasCredential, identityStatus, scope?.accountDocumentId, scope?.userDocumentId]);
   const visibleData = query.error && isTerminalWorkspaceFailure(query.error) ? undefined : query.data;
   const dashboard = visibleData?.dashboard ?? null;
   return {

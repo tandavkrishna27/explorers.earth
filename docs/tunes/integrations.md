@@ -87,7 +87,7 @@
 
 **Purpose**: Content management and song limit tracking.
 
-**Service**: `server/services/strapi-service.ts`
+**Service**: removed 2026-10-09 (ticket 8.1b). `server/services/strapi-service.ts`, `server/routes/strapiRoutes.ts` and `server/jwt-auth-middleware.ts` were unreachable from every entrypoint - canonical startup, legacy music startup, `server/index.ts`, `server/api.ts` and all three deployment entries - and had no importer anywhere in the repository.
 
 **Configuration**:
 - `STRAPI_URL` / `STRAPI_ACCESS_TOKEN` env vars

@@ -1,0 +1,179 @@
+{
+  "version": 1,
+  "kind": "sanitized-derived-qualification-summary",
+  "originalReceiptSha256": "6ca75f348cebe39b3bebc01226002ed7d6aa6d185237a7ff7dbbb2c484ff31f1",
+  "commit": "f8215c98896ed4a8cb923265735c6e511e62590d",
+  "worktreeClean": true,
+  "manifestSha256": "852e39978906d7108467b754cf251156b4cffc92383c7816f179005a60d14d41",
+  "nodeVersion": "v24.21.0",
+  "image": "postgres@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81",
+  "tests": {
+    "status": "passed",
+    "reporterPresent": true,
+    "reportValid": true,
+    "failureReasons": [],
+    "suite": "Apps local actual PostgreSQL providers",
+    "protocol": "apps-local-provider-finite-v1",
+    "runReason": "passed",
+    "cases": [
+      {
+        "name": "Apps local actual PostgreSQL providers > Apps local actual: real website and Apple bodies through native daily scheduled producer",
+        "status": "passed",
+        "retry": 0,
+        "errors": []
+      },
+      {
+        "name": "Apps local actual PostgreSQL providers > Apps local actual: explicit owner acceptance preserves unselected manual values",
+        "status": "passed",
+        "retry": 0,
+        "errors": []
+      },
+      {
+        "name": "Apps local actual PostgreSQL providers > Apps local actual: same UTC day duplicate invocation reuses exact durable jobs",
+        "status": "passed",
+        "retry": 0,
+        "errors": []
+      },
+      {
+        "name": "Apps local actual PostgreSQL providers > Apps local actual: explicit opt-out fences stale acceptance and scheduled fetching",
+        "status": "passed",
+        "retry": 0,
+        "errors": []
+      },
+      {
+        "name": "Apps local actual PostgreSQL providers > Apps local actual: explicit re-enable rebind retires the prior source generation",
+        "status": "passed",
+        "retry": 0,
+        "errors": []
+      },
+      {
+        "name": "Apps local actual PostgreSQL providers > Apps local actual: stop aborts and drains a real leased invocation before dispatch",
+        "status": "passed",
+        "retry": 0,
+        "errors": []
+      },
+      {
+        "name": "Apps local actual PostgreSQL providers > Apps local actual: natural lease expiry restart recovers and renews before publication",
+        "status": "passed",
+        "retry": 0,
+        "errors": []
+      },
+      {
+        "name": "Apps local actual PostgreSQL providers > Apps local actual: final dedup retention and stop drain close owned resources",
+        "status": "passed",
+        "retry": 0,
+        "errors": []
+      }
+    ],
+    "modules": [
+      {
+        "identity": "expected",
+        "state": "passed",
+        "errors": 0
+      }
+    ],
+    "hooks": [
+      {
+        "name": "beforeAll",
+        "status": "completed"
+      },
+      {
+        "name": "beforeEach",
+        "status": "completed"
+      },
+      {
+        "name": "afterEach",
+        "status": "completed"
+      },
+      {
+        "name": "beforeEach",
+        "status": "completed"
+      },
+      {
+        "name": "afterEach",
+        "status": "completed"
+      },
+      {
+        "name": "beforeEach",
+        "status": "completed"
+      },
+      {
+        "name": "afterEach",
+        "status": "completed"
+      },
+      {
+        "name": "beforeEach",
+        "status": "completed"
+      },
+      {
+        "name": "afterEach",
+        "status": "completed"
+      },
+      {
+        "name": "beforeEach",
+        "status": "completed"
+      },
+      {
+        "name": "afterEach",
+        "status": "completed"
+      },
+      {
+        "name": "beforeEach",
+        "status": "completed"
+      },
+      {
+        "name": "afterEach",
+        "status": "completed"
+      },
+      {
+        "name": "beforeEach",
+        "status": "completed"
+      },
+      {
+        "name": "afterEach",
+        "status": "completed"
+      },
+      {
+        "name": "beforeEach",
+        "status": "completed"
+      },
+      {
+        "name": "afterEach",
+        "status": "completed"
+      },
+      {
+        "name": "afterAll",
+        "status": "completed"
+      }
+    ],
+    "counts": {
+      "extra": 0,
+      "moduleErrors": 0,
+      "suiteErrors": 0,
+      "unhandledErrors": 0,
+      "contractErrors": 0
+    }
+  },
+  "pgCaseCount": 8,
+  "portableCaseCount": 0,
+  "sourceIntact": true,
+  "cleanup": {
+    "status": "passed",
+    "exactIdAbsent": true,
+    "exactOwnershipAbsent": true,
+    "exactOwnedAnonymousVolumesAbsent": true
+  },
+  "workerCleanup": {
+    "status": "passed",
+    "unresolved": []
+  },
+  "monitorCleanup": {
+    "status": "passed",
+    "unresolvedCount": 0
+  },
+  "supervisionFailed": false,
+  "appsLocalProviderQualified": true,
+  "browserHttpAcceptance": false,
+  "hostedAcceptance": false,
+  "finishedAt": "2026-10-13T19:27:16.563Z"
+}

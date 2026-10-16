@@ -749,7 +749,7 @@ describe("Music documentation publication contract", () => {
     expect(guide).toContain("Linux qualification host");
     expect(guide).toContain("/usr/bin/node --version");
     expect(guide).toContain("/usr/bin/sha256sum");
-    expect(guide).toContain("22982235e1b71fa8850f82edd09cdae7e3f32df1764a9ec298c72d25ef2c164f");
+    expect(guide).toContain("fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6");
     expect(guide).toContain("macOS is not a supported release-qualification host");
   });
 
@@ -792,22 +792,42 @@ describe("Music documentation publication contract", () => {
 });
 
 describe("Music CI publication order", () => {
-  it("runs docs contracts on every change and gates release layers in dependency order", () => {
+  it("installs shared fixture runtime dependencies before frontend unit discovery", () => {
+    const frontend = parseYaml(read(".github/workflows/ci.yml"));
+    const steps = frontend.jobs["unit-tests"].steps;
+    const install = steps.findIndex((step: { run?: string }) => step.run === "npm ci --prefix ../tunes --legacy-peer-deps");
+    const discovery = steps.findIndex((step: { run?: string }) => step.run === "npm run test:coverage");
+    expect(install).toBeGreaterThan(-1);
+    expect(discovery).toBeGreaterThan(install);
+  });
+
+  it("triggers image and native contracts for their root context and generator dependencies", () => {
+    const image = parseYaml(read(".github/workflows/tunes.yml"));
+    const native = parseYaml(read(".github/workflows/music-c0-contracts.yml"));
+    for (const event of ["pull_request", "push"]) {
+      for (const dependency of [".dockerignore", "scripts/generate-music-fixture-dockerignore.mjs"]) {
+        expect(image.on[event].paths).toContain(dependency);
+        expect(native.on[event].paths).toContain(dependency);
+      }
+      for (const dependency of ["scripts/image-ci-disk.sh", "scripts/image-ci-disk.test.cjs", "scripts/image-ci-report.cjs", "docs/architecture/music-runtime-surface-inventory.json"]) {
+        expect(image.on[event].paths).toContain(dependency);
+      }
+    }
+  });
+
+  it("runs every isolated Music validation lane and retains the nightly browser edge", () => {
     const path = resolve(root, ".github/workflows/test.yml");
     const workflow = existsSync(path) ? parseYaml(read(".github/workflows/test.yml")) : {};
     expect(workflow.on).toEqual(expect.objectContaining({ pull_request: expect.anything(), push: expect.anything() }));
     expect(workflow.on).not.toHaveProperty("paths-ignore");
     expect(workflow.jobs?.["docs-contracts"]).not.toHaveProperty("needs");
     expect(workflow.jobs?.static).not.toHaveProperty("needs");
-    expect(workflow.jobs?.["unit-coverage"]?.needs).toBe("static");
+    expect(workflow.jobs?.["unit-coverage"]).not.toHaveProperty("needs");
     expect(workflow.jobs?.["unit-coverage"]?.["runs-on"]).toBe("ubuntu-24.04");
-    expect(workflow.jobs?.contracts?.needs).toBe("unit-coverage");
-    expect(workflow.jobs?.database?.needs).toBe("contracts");
-    expect(workflow.jobs?.security?.needs).toBe("database");
-    expect(workflow.jobs?.frontend?.needs).toBe("security");
-    expect(workflow.jobs?.browser?.needs).toBe("frontend");
+    for (const name of ["contracts", "database", "security", "frontend", "browser", "image-deploy-contract"]) {
+      expect(workflow.jobs?.[name]).not.toHaveProperty("needs");
+    }
     expect(workflow.jobs?.["load-chaos"]?.needs).toBe("browser");
-    expect(workflow.jobs?.["image-deploy-contract"]?.needs).toEqual(["browser", "load-chaos"]);
     const imageSteps = JSON.stringify(workflow.jobs?.["image-deploy-contract"]?.steps ?? []);
     for (const path of MUSIC_QUALIFICATION_TASKS["release-rehearsal"].npmArgs.filter((value) => value.startsWith("server/test/deployment/"))) {
       expect(imageSteps).toContain(path);
@@ -823,10 +843,10 @@ describe("Music CI publication order", () => {
     });
     const steps = JSON.stringify(workflow.jobs?.["load-chaos"]?.steps ?? []);
     expect(steps).toContain("music-release-launcher.sh nightly");
-    expect(steps).toContain("node-v22.12.0-linux-x64.tar.xz");
-    expect(steps).toContain("22982235e1b71fa8850f82edd09cdae7e3f32df1764a9ec298c72d25ef2c164f");
+    expect(steps).toContain("node-v24.21.0-linux-x64.tar.xz");
+    expect(steps).toContain("fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6");
     expect(steps).toContain("/usr/bin/sha256sum");
-    expect(steps).toContain("/opt/explorers-music-node-v22.12.0/lib/node_modules/npm/bin/npm-cli.js");
+    expect(steps).toContain("/opt/explorers-music-node-v24.21.0/lib/node_modules/npm/bin/npm-cli.js");
     expect(steps).toContain("PLAYWRIGHT_BROWSERS_PATH");
     expect(steps).toContain("playwright install --with-deps chromium");
     expect(steps).toContain("/opt/explorers-music-playwright");
@@ -881,7 +901,7 @@ describe("POSIX native launcher environment rejection", () => {
       expect(result.status, `${name}: ${result.stderr}`).toBe(78);
       expect(result.stderr).toContain("native Music release launcher rejected Node startup authority");
     }
-  });
+  }, 60_000);
 
   it("uses a prefix-complete NODE_* predicate on platforms where the POSIX launcher cannot execute", () => {
     // Windows CI may not expose a POSIX shell, so retain parity with the behavior test above.
@@ -902,13 +922,13 @@ describe("POSIX native launcher environment rejection", () => {
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
-  });
+  }, 60_000);
 
   it("pins protected Linux tool paths and a native nightly mode", () => {
     const launcher = read("tunes/scripts/music-release-launcher.sh");
     expect(launcher).toContain("node_path=/usr/bin/node");
     expect(launcher).toContain("sha256_path=/usr/bin/sha256sum");
-    expect(launcher).toContain("npm_cli_path=/opt/explorers-music-node-v22.12.0/lib/node_modules/npm/bin/npm-cli.js");
+    expect(launcher).toContain("npm_cli_path=/opt/explorers-music-node-v24.21.0/lib/node_modules/npm/bin/npm-cli.js");
     expect(launcher).toContain("npm_cli_sha256=8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7");
     expect(launcher).toContain("playwright_path=/opt/explorers-music-playwright");
     expect(launcher).toContain("browser_manifest_path=/opt/explorers-music-playwright/.chromium-executable.sha256");

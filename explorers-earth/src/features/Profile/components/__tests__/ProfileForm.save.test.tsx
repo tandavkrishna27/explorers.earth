@@ -33,6 +33,13 @@ const { settingsQuery } = vi.hoisted(() => ({
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
 }));
+vi.mock("../../api/useCanonicalAccount", () => ({
+  useCanonicalAccount: () => ({ data: { id: "00000000-0000-4000-8000-000000000001", handle: "settings-user",
+    displayName: "Settings account", accountType: "Personal", onboardingStatus: "complete", revision: 1,
+    bioPlain: "Settings bio", primaryAddress: {}, additionalAddresses: [], publicAddress: null, feedItems: [],
+    socialLinks: [], themeSettings: {}, mobileNumber: "+919999999999", mobileNumberVisible: false,
+    publicProfile: true, autoPinning: true }, isLoading: false, error: null, refetch: vi.fn() }),
+}));
 vi.mock("@apollo/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@apollo/client")>();
   return { ...actual, useQuery: () => settingsQuery };
@@ -68,16 +75,18 @@ const renderForm = ({
   onFormDirtyChange = vi.fn(),
   onRegisterSubmit = vi.fn(),
   surface,
+  externalRevisionAdvance,
 }: {
   onSubmit: ReturnType<typeof vi.fn>;
   onFormDirtyChange?: ReturnType<typeof vi.fn>;
   onRegisterSubmit?: ReturnType<typeof vi.fn>;
   surface?: "contained" | "flat";
+  externalRevisionAdvance?: { accountId: string; fromRevision: number; toRevision: number };
 }) => {
   render(
     <ProfileForm
       {...({
-        initialValues: { accountName: "Original" },
+        initialValues: { accountName: "Original", documentId: "settings-account", revision: 1 },
         onSubmit,
         formFields,
         setPlaces: vi.fn(),
@@ -85,6 +94,7 @@ const renderForm = ({
         onFormDirtyChange,
         onRegisterSubmit,
         surface,
+        externalRevisionAdvance,
       } as never)}
     />,
   );
@@ -119,6 +129,49 @@ describe("ProfileForm save outcomes", () => {
     await waitFor(() =>
       expect(onFormDirtyChange).toHaveBeenLastCalledWith(false),
     );
+  });
+
+  it("uses each committed revision for consecutive saves in the same mounted form", async () => {
+    const onSubmit = vi.fn()
+      .mockResolvedValueOnce({ status: "saved", committedRevision: 2 })
+      .mockResolvedValueOnce({ status: "saved", committedRevision: 3 });
+    const { onRegisterSubmit } = renderForm({ onSubmit });
+    await makeDirty();
+    await act(async () => { await onRegisterSubmit.mock.calls.at(-1)?.[0](); });
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Edited again" } });
+    await act(async () => { await onRegisterSubmit.mock.calls.at(-1)?.[0](); });
+    expect(onSubmit.mock.calls.map(([values]) => values.revision)).toEqual([1, 2]);
+    expect(onSubmit.mock.calls[1][0].accountName).toBe("Edited again");
+  });
+
+  it("preserves edits typed during a deferred save and advances its committed revision", async () => {
+    const deferred = createDeferredProfileSave();
+    const onSubmit = vi.fn().mockResolvedValueOnce(deferred.result)
+      .mockResolvedValueOnce({ status: "saved", committedRevision: 3 });
+    const { onRegisterSubmit, onFormDirtyChange } = renderForm({ onSubmit });
+    await makeDirty();
+    let pending!: Promise<unknown>;
+    act(() => { pending = onRegisterSubmit.mock.calls.at(-1)?.[0](); });
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Typed during save" } });
+    await act(async () => { deferred.settle("saved", 2); await pending; });
+    expect(screen.getByRole("textbox")).toHaveValue("Typed during save");
+    expect(onFormDirtyChange).toHaveBeenLastCalledWith(true);
+    await act(async () => { await onRegisterSubmit.mock.calls.at(-1)?.[0](); });
+    expect(onSubmit.mock.calls[1][0]).toMatchObject({ accountName: "Typed during save", revision: 2 });
+  });
+
+  it("advances the mounted form after its own avatar save", async () => {
+    const onSubmit = vi.fn().mockResolvedValue({ status: "saved", committedRevision: 3 });
+    const { rerender } = render(<ProfileForm {...({ initialValues: { accountName: "Original",
+      documentId: "settings-account", revision: 1 }, onSubmit, formFields, setPlaces: vi.fn(),
+      DetectLocation: vi.fn() } as never)} />);
+    rerender(<ProfileForm {...({ initialValues: { accountName: "Original",
+      documentId: "settings-account", revision: 1 }, onSubmit, formFields, setPlaces: vi.fn(),
+      DetectLocation: vi.fn(), externalRevisionAdvance: { accountId: "settings-account",
+        fromRevision: 1, toRevision: 2 } } as never)} />);
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "After avatar" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "dashboard.profile.common.saveAndPublish" })); });
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ revision: 2, accountName: "After avatar" }));
   });
 
   it.each(["failed", "cancelled"] as const)(

@@ -1,3 +1,4 @@
+import type { AccountDto } from '../../../../tunes/shared/explorersContract';
 export const CATEGORY_IDS = [
   'public_recommendations', 'public_music', 'public_guides', 'public_movie',
   'public_books', 'public_games', 'public_apps', 'public_products', 'public_people',
@@ -12,6 +13,8 @@ export type GenericNavigationIntent =
   | { category: 'public_music'; action: 'pin' | 'unpin' };
 export type NavigationSnapshot = {
   scope: Scope;
+  revision: number;
+  categories: AccountDto['categories'];
   visibility: Record<CategoryId, 'Yes' | 'No' | null>;
   savedPins: unknown;
   autoPinning: boolean;
@@ -37,10 +40,6 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((id) => typeof id === 'string');
 }
 
-function eligibilityBlock(eligibility: Eligibility): PolicyResult | null {
-  return eligibility === 'allowed' ? null : { kind: 'blocked', reason: eligibility };
-}
-
 function canSafelyAppend(savedPins: string[]): boolean {
   if (savedPins[0] !== PROFILE_TAB) return false;
   const knownIds = new Set<string>([PROFILE_TAB, ...CATEGORY_IDS]);
@@ -50,7 +49,6 @@ function canSafelyAppend(savedPins: string[]): boolean {
 export function planCategoryIntent(
   snapshot: NavigationSnapshot,
   intent: CategoryIntent,
-  eligibility: Eligibility,
 ): PolicyResult {
   if (!isCategoryId(intent.category)) return { kind: 'blocked', reason: 'invalid-pins' };
 
@@ -59,8 +57,12 @@ export function planCategoryIntent(
   const savedPins = snapshot.savedPins;
 
   if (action === 'publish') {
-    const blocked = eligibilityBlock(eligibility);
-    if (blocked) return blocked;
+    // Visibility is the owner's declared intent and does not depend on current
+    // inventory. Content eligibility deliberately does NOT gate this: a category
+    // whose producer is not built yet ('unknown') or which is simply empty
+    // ('no-content') must still be togglable, or our unbuilt backends would present
+    // as the owner's control being broken. Emptiness is a display concern, handled
+    // on the public side, and Settings already labels a category "No content".
     return visibility === 'Yes'
       ? { kind: 'noop' }
       : { kind: 'write', patch: { [category]: 'Yes' } };
@@ -100,8 +102,10 @@ export function planCategoryIntent(
   // A saved target is already a placement preference; this is not a new pin.
   if (isStringArray(savedPins) && savedPins.includes(category)) return { kind: 'noop' };
 
-  const blocked = eligibilityBlock(eligibility);
-  if (blocked) return blocked;
+  // Pinning is not gated on content either, for the same reason: an owner may place
+  // a category we have not built a producer for yet. Visibility is still required -
+  // a pinned tab the owner has hidden would contradict itself - and the slot limit
+  // and Music's own publication verification below are unchanged.
   if (visibility !== 'Yes') return { kind: 'blocked', reason: 'not-public' };
   if (snapshot.autoPinning) return { kind: 'blocked', reason: 'manual-required' };
 

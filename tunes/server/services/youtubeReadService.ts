@@ -1,5 +1,5 @@
 import { MusicIdentityError } from "../../shared/musicError";
-import { cancelResponseBody, readBoundedResponseBody } from "./strapiIdentityGateway";
+import { cancelResponseBody, readBoundedResponseBody } from "./upstreamResponseBody";
 
 interface SearchInput { query: string; pageToken?: string; }
 

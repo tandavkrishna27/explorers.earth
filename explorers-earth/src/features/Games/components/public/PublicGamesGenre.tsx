@@ -12,6 +12,8 @@ import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settl
 import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
 import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
 
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
+
 type RenderableGameList = { recommended_games: RecommendedGame[] };
 const isRenderableGameList = (value: unknown): value is RenderableGameList =>
   isNonNullObject(value) && Array.isArray(value.recommended_games);
@@ -25,9 +27,11 @@ const PublicGamesGenre = () => {
 
   const genreName = slugToGenreName(genreSlug ?? "");
 
+  useEffect(() => { setSelectedGame(null); setModalOpen(false); }, [username, genreSlug]);
   const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
   const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
-  const { data: gamesData, loading: gamesLoading, error: gamesError, refetch: refetchGames } = usePublicRecommendationCategory(username, "games", accountData?.public_games === "Yes");
+  const query = usePublicRecommendationCategory(username, "games", accountData?.public_games === "Yes");
+  const { data: gamesData, loading: gamesLoading, error: gamesError, refetch: refetchGames } = query;
 
   const loading = userLoading || gamesLoading;
   const queryError = userError || gamesError;
@@ -152,6 +156,7 @@ const PublicGamesGenre = () => {
         )}
       </div>
 
+      <PublicScrollContinuation {...query} label="game lists" />
       <GameDetailModal
         game={selectedGame}
         open={modalOpen}

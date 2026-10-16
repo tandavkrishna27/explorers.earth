@@ -1,3 +1,4 @@
+import { selectGuidePlaceThumbnail } from "../../utils/publicGuidePhotoViewModel";
 import { memo, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { parseTimeline } from "../../../Guides/utils/guideDataParser";
@@ -154,41 +155,8 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
     [guide?.Description],
   );
 
-  // Helper function to get S3 image from guide data by place_id
-  const getS3ImageForPlace = useMemo(() => {
-    const imageMap: Record<string, string | null> = {};
 
-    // Iterate through all sections to find activity photos
-    sections.forEach((section) => {
-      if (section.Recommendation_Activity?.activities) {
-        section.Recommendation_Activity.activities.forEach((activity: any) => {
-          if (activity.place_id && activity.photos && activity.photos.length > 0) {
-            // Use first photo from S3
-            const firstPhoto = activity.photos[0];
-            if (firstPhoto.url) {
-              imageMap[activity.place_id] = firstPhoto.url;
-            }
-          }
-        });
-      }
-    });
-
-    return imageMap;
-  }, [sections]);
-
-  // Get image URL for a place - prioritize S3 images from guide data
-  const getPlaceImage = (place: any): string => {
-    if (!place?.place_id) return "https://placehold.co/400x400";
-
-    // First check S3 images from guide data
-    const s3Image = getS3ImageForPlace[place.place_id];
-    if (s3Image) {
-      return s3Image;
-    }
-
-    // Fallback to placeholder
-    return "https://placehold.co/400x400";
-  };
+  const getPlaceImage = (place: unknown): string => selectGuidePlaceThumbnail(place, sections)?.url ?? "https://placehold.co/400x400";
 
   // Filter days based on selected tab
   const displayedDays = useMemo(() => {
@@ -551,7 +519,9 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                   </svg>
-                                  <span className="whitespace-nowrap">{transportInfo.distanceKm.toFixed(1)} km</span>
+                                  {transportInfo.distanceKm !== null && (
+                                    <span className="whitespace-nowrap">{transportInfo.distanceKm.toFixed(1)} km</span>
+                                  )}
                                 </div>
 
                                 {/* Center - Dynamic Transport Icon */}

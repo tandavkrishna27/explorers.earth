@@ -1,3 +1,4 @@
+import { runtimeOrigin } from "../../lib/publicRuntimeConfig";
 export type PublicMusicProductEvent =
   | { name: "navigation_opened"; route: "friendly" | "direct" }
   | { name: "section_opened"; section: "player" | "request" | "queue" | "playlists" | "history" }
@@ -12,7 +13,7 @@ import { createMusicDevelopmentFetch } from "./musicDevelopmentTransport";
 import { useCallback } from "react";
 import type { UTMParameters } from "../../utils/urlHelpers";
 import { getSessionAttributionUtmParams } from "../../utils/urlHelpers";
-import { createAnalyticsEventId, hasAnalyticsConsent } from "../../services/explorersAnalyticsClient";
+import { assertCommittedAnalyticsReceipt, createAnalyticsEventId, hasAnalyticsConsent } from "../../services/explorersAnalyticsClient";
 
 const eventSchema = z.discriminatedUnion("name", [
   z.object({ name: z.literal("navigation_opened"), route: z.enum(["friendly", "direct"]) }).strict(),
@@ -77,6 +78,7 @@ export function createPublicMusicAnalyticsClient(
       let pendingPoll = 0;
       let transientRetries = 0;
       while (true) {
+        if (!hasAnalyticsConsent()) throw new Error('Analytics consent withdrawn');
         let response: Response;
         try {
           response = await fetchImpl(url, {
@@ -92,7 +94,7 @@ export function createPublicMusicAnalyticsClient(
           await sleep(250);
           continue;
         }
-        if (response.ok && response.status !== 202) return;
+        if (response.ok && response.status !== 202) { await assertCommittedAnalyticsReceipt(response); return; }
         if (response.status !== 202 || pendingPoll === 7) {
           throw new Error(`Public Music analytics request failed with ${response.status}`);
         }
@@ -104,10 +106,11 @@ export function createPublicMusicAnalyticsClient(
 }
 
 type AnalyticsClient = ReturnType<typeof createPublicMusicAnalyticsClient>;
-type DeliveryRecord = { eventId: string; state: "pending" | "retry" | "committed" };
+type DeliveryInput = Parameters<AnalyticsClient["track"]>[0];
+type DeliveryRecord = { eventId: string; input: DeliveryInput; state: "pending" | "retry" | "committed" };
 const memoryDeliveries = new Map<string, DeliveryRecord>();
 const MAX_OCCURRENCE_RECEIPTS = 256;
-const DEFAULT_LOCAL_TUNES_URL = import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth";
+const DEFAULT_LOCAL_TUNES_URL = runtimeOrigin(import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth");
 const defaultClient: AnalyticsClient = {
   async track(input) {
     return createPublicMusicAnalyticsClient(DEFAULT_LOCAL_TUNES_URL,
@@ -157,24 +160,18 @@ export function usePublicMusicProductAnalytics({
     const hasAccount = typeof accountDocumentId === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(accountDocumentId);
     if (hasSlug === hasAccount || !hasAnalyticsConsent()) return;
     if (!/^.{8,128}$/.test(occurrenceId)) return;
-    const key = occurrenceId;
+    const key = JSON.stringify([publicSlug, accountDocumentId, capability, route, occurrenceId]);
     const existing = memoryDeliveries.get(key);
     if (existing?.state === "pending" || existing?.state === "committed") return;
     if (!reserveDeliverySlot(key)) return;
     const eventId = existing?.eventId ?? createAnalyticsEventId();
-    writeDelivery(key, { eventId, state: "pending" });
+    const input: DeliveryInput = existing?.input ?? JSON.parse(JSON.stringify({ publicSlug, accountDocumentId, capability, eventId, event, attribution: getSessionAttributionUtmParams() }));
+    writeDelivery(key, { eventId, input, state: "pending" });
     try {
-      await client.track({
-        publicSlug,
-        accountDocumentId,
-        capability,
-        eventId,
-        event,
-        attribution: getSessionAttributionUtmParams(),
-      });
-      writeDelivery(key, { eventId, state: "committed" });
+      await client.track(input);
+      writeDelivery(key, { eventId, input, state: "committed" });
     } catch {
-      writeDelivery(key, { eventId, state: "retry" });
+      writeDelivery(key, { eventId, input, state: "retry" });
     }
   }, [accountDocumentId, capability, client, publicSlug, route]);
 }

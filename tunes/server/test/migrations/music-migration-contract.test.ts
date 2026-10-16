@@ -4,6 +4,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { createRequire } from "node:module";
+import { IMAGE_TEST_COMMANDS, imageTestEnvironment } from "../../../scripts/music-image-ci-tests";
+import { parseC10StandalonePostgresAuthority, validateC10StandalonePostgresInspect } from "../../../scripts/music-qualification-postgres";
 import {
   DEPLOYABLE_MUSIC_MIGRATION_MARKERS,
   EXPECTED_MUSIC_MIGRATION_ID,
@@ -23,7 +25,7 @@ const { load: parseYaml } = require("js-yaml") as { load(source: string): any };
 
 describe("Music migration authority contracts", () => {
   it("retains the append-only database-owned publication clock before durable reactivation and archive authority", () => {
-    expect(EXPECTED_MUSIC_MIGRATION_ID).toBe("0021_explorers_analytics_receipts");
+    expect(EXPECTED_MUSIC_MIGRATION_ID).toBe("0056_explorers_app_enrichment_jobs");
     const migration = loadMusicMigrations().find(({ id }) => id === "0013_publication_operation_database_clock");
     expect(migration?.id).toBe("0013_publication_operation_database_clock");
     expect(migration?.sql).toMatch(/CREATE OR REPLACE FUNCTION enforce_music_publication_operation_immutability/i);
@@ -58,6 +60,19 @@ describe("Music migration authority contracts", () => {
       "0019_queue_visibility_control",
       "0020_public_snapshot_revision",
       "0021_explorers_analytics_receipts",
+      "0022_explorers_identity",
+      "0023_explorers_authorization",
+      "0024_explorers_profile_media",
+      "0025_explorers_media_attachment_guard",
+      "0026_explorers_media_slot_compatibility",
+      "0027_explorers_lifecycle",
+      "0028_explorers_recovery_proof_retention",
+      "0029_explorers_recommendations",
+      "0030_explorers_media_purpose_guard",
+      "0031_explorers_content_revision",
+      "0032_explorers_owner_page_indexes",
+      "0033_explorers_recommendation_display_overrides",
+      "0034_explorers_books_provider_context", "0035_explorers_book_cover_import", "0036_explorers_analytics_events", "0037_explorers_movies_provider_context", "0038_explorers_movie_media", "0039_music_venue_account_ownership", "0040_canonical_music_venue_provisioning", "0041_canonical_music_venue_release", "0042_canonical_music_venue_release_function", "0043_explorers_apps_provider_context", "0044_explorers_products_offer_context", "0045_explorers_people_catalog", "0046_explorers_places_catalog", "0047_explorers_place_photo_media", "0048_explorers_place_location_aggregate", "0049_explorers_collection_location_links", "0050_explorers_guide_sections", "0051_explorers_launch_controls", "0052_canonical_music_numeric_retirement", "0053_explorers_taxonomy_catalogs", "0054_explorers_place_individual_pins", "0055_explorers_app_enrichment", "0056_explorers_app_enrichment_jobs",
     ]);
     expect(EXPECTED_MUSIC_MIGRATION_ID).toBe(migrations.at(-1)?.id);
     expect(migrations.every(({ checksum }) => /^[a-f0-9]{64}$/.test(checksum))).toBe(true);
@@ -92,7 +107,8 @@ describe("Music migration authority contracts", () => {
   });
 
   it("moves the existing analytics receipt schema into one append-only admin migration", () => {
-    const migration = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations")).at(-1);
+    const migration = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"))
+      .find(({ id }) => id === "0021_explorers_analytics_receipts");
     expect(migration).toMatchObject({
       id: "0021_explorers_analytics_receipts",
       checksum: "1affade4f5e897896bf1ba939f1975963b26d6c67ee131d5e83fef9af7bfb3ee",
@@ -178,14 +194,42 @@ describe("Music migration authority contracts", () => {
       "0019_queue_visibility_control",
       "0020_public_snapshot_revision",
       "0021_explorers_analytics_receipts",
+      "0022_explorers_identity",
+      "0023_explorers_authorization",
+      "0024_explorers_profile_media",
+      "0025_explorers_media_attachment_guard",
+      "0026_explorers_media_slot_compatibility",
+      "0027_explorers_lifecycle",
+      "0028_explorers_recovery_proof_retention",
+      "0029_explorers_recommendations",
+      "0030_explorers_media_purpose_guard",
+      "0031_explorers_content_revision",
+      "0032_explorers_owner_page_indexes",
+      "0033_explorers_recommendation_display_overrides",
+      "0034_explorers_books_provider_context", "0035_explorers_book_cover_import", "0036_explorers_analytics_events", "0037_explorers_movies_provider_context", "0038_explorers_movie_media", "0039_music_venue_account_ownership", "0040_canonical_music_venue_provisioning", "0041_canonical_music_venue_release", "0042_canonical_music_venue_release_function", "0043_explorers_apps_provider_context", "0044_explorers_products_offer_context", "0045_explorers_people_catalog", "0046_explorers_places_catalog", "0047_explorers_place_photo_media", "0048_explorers_place_location_aggregate", "0049_explorers_collection_location_links", "0050_explorers_guide_sections", "0051_explorers_launch_controls", "0052_canonical_music_numeric_retirement", "0053_explorers_taxonomy_catalogs", "0054_explorers_place_individual_pins", "0055_explorers_app_enrichment", "0056_explorers_app_enrichment_jobs",
     ]);
-    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+    expect(DEPLOYABLE_MUSIC_MIGRATION_MARKERS.map(musicMigrationMarkerRank)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55]);
+    expect(musicMigrationMarkerRank("0053_explorers_taxonomy_catalogs")).toBe(52);
+    expect(musicMigrationMarkerRank("0054_explorers_place_individual_pins")).toBe(53);
+    expect(musicMigrationMarkerRank("0055_explorers_app_enrichment")).toBe(54);
+    expect(musicMigrationMarkerRank("0056_explorers_app_enrichment_jobs")).toBe(55);
     expect(musicMigrationMarkerRank("9999_unknown")).toBeUndefined();
   });
 
   it("declares every manifested runtime table and the durable identity tombstone", () => {
     const manifest = JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")) as { tables: Array<{ name: string }> };
-    expect(manifest.tables).toHaveLength(27);
+    expect(manifest.tables).toHaveLength(101);
+    const placesTables = ["places_collection_mutation_state", "places_pin_validation_dirty", "places_chunk_validation_dirty", "collection_place_pins", "place_pin_drafts", "place_pin_draft_chunks", "place_pin_draft_items"];
+    const placesSql = read("tunes/migrations/0054_explorers_place_individual_pins.sql");
+    expect([...placesSql.matchAll(/CREATE TABLE public\.([a-z_]+)/g)].map((match) => match[1])).toEqual(placesTables);
+    for (const name of placesTables.slice(3)) expect(manifest.tables).toContainEqual(expect.objectContaining({ name, managedBy: "unmanaged-raw-sql" }));
+    const controls = JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")).migrationChain.controlTables;
+    for (const name of placesTables.slice(0, 3)) expect(controls).toContain(name);
+    expect(JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")).controlTablePolicies).toEqual([
+      { name: "places_collection_mutation_state", managedBy: "unmanaged-raw-sql", family: "security-audit", lifecycle: "cascade-on-collection-deletion" },
+      { name: "places_pin_validation_dirty", managedBy: "unmanaged-raw-sql", family: "security-audit", lifecycle: "transaction-final-validation-delete" },
+      { name: "places_chunk_validation_dirty", managedBy: "unmanaged-raw-sql", family: "security-audit", lifecycle: "transaction-final-validation-delete" },
+    ]);
     expect((JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")) as { migrationChain: { controlTables: string[] } })
       .migrationChain.controlTables).toContain("music_credential_revocation_operations");
     expect((JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")) as { migrationChain: { controlTables: string[] } })
@@ -193,7 +237,7 @@ describe("Music migration authority contracts", () => {
     expect((JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")) as { migrationChain: { controlTables: string[] } })
       .migrationChain.controlTables).toContain("music_publication_operation_archive");
     const sql = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations")).map((migration) => migration.sql).join("\n");
-    for (const { name } of manifest.tables) expect(sql).toMatch(new RegExp(`CREATE TABLE(?: IF NOT EXISTS)? \\"?${name}\\"?`, "i"));
+    for (const { name } of manifest.tables) expect(sql).toMatch(new RegExp(`CREATE TABLE(?: IF NOT EXISTS)? (?:public\\.)?\\"?${name}\\"?`, "i"));
     expect(sql).toMatch(/CREATE TABLE music_identity_tombstones/i);
     expect(sql).toContain("strapi_user_document_id");
     expect(sql).toContain("strapi_account_document_id");
@@ -252,11 +296,36 @@ describe("Music migration authority contracts", () => {
   });
 
   it("runs the PostgreSQL 15 integration chain in authoritative image CI", () => {
-    const workflow = read(".github/workflows/tunes.yml");
-    expect(workflow).toMatch(/image:\s*postgres:15-alpine/);
-    expect(workflow).toContain("MUSIC_C3_POSTGRES_TEST: \"1\"");
-    expect(workflow).toContain("DATABASE_URL_TEST: postgresql://music_migrator:music@127.0.0.1:55432/music_fixture");
-    expect(workflow).toContain("npm run test:integration");
+    const job = parseYaml(read(".github/workflows/tunes.yml")).jobs["build-test-scan-push"];
+    const step = job.steps.find((candidate: any) => candidate.name === "Test Tunes");
+    expect(step.workingDirectory ?? step["working-directory"]).toBe("tunes");
+    expect(step.run.trim().split(/\r?\n/).map((line: string) => line.trim())).toEqual([
+      "npm ci --legacy-peer-deps",
+      "node node_modules/tsx/dist/cli.mjs scripts/music-image-ci-tests.ts",
+    ]);
+    expect(job.services).toBeUndefined();
+    expect(job.env?.DATABASE_URL_TEST).toBeUndefined();
+    expect(step.env.DATABASE_URL_TEST).toBeUndefined();
+    expect(IMAGE_TEST_COMMANDS[1]).toEqual(["run", "test:integration"]);
+    const authority = { port: 51643, containerId: "a".repeat(64), commit: "b".repeat(40),
+      imageId: `sha256:${"c".repeat(64)}`, contextHost: "unix:///var/run/docker.sock", owned: true as const };
+    const environment = imageTestEnvironment({}, authority, "fixture-password");
+    expect(environment.MUSIC_C3_POSTGRES_TEST).toBe("1");
+    expect(environment.DATABASE_URL_TEST).toBe("postgresql://music_migrator:fixture-password@127.0.0.1:51643/music_fixture");
+    expect(environment.MUSIC_C10_STANDALONE_POSTGRES_ACK).toBe("C10_LABELED_LOCAL_PG15");
+    expect(parseC10StandalonePostgresAuthority(environment)).toEqual({
+      port: authority.port, containerId: authority.containerId, commit: authority.commit,
+    });
+    const inspect = { Id: authority.containerId, Name: `/music-c10-qualification-${authority.commit.slice(0, 7)}-pg15`,
+      Image: authority.imageId, Config: { Image: "postgres:15-alpine", Labels: {
+        "com.explorers.music.c10-qualification": "true", "com.explorers.music.owner": "task10",
+        "com.explorers.music.commit": authority.commit } }, State: { Running: true, Health: { Status: "healthy" } },
+      HostConfig: { PortBindings: { "5432/tcp": [{ HostIp: "127.0.0.1", HostPort: String(authority.port) }] } } };
+    expect(validateC10StandalonePostgresInspect(authority, { ...authority, inspect }).imageId).toBe(authority.imageId);
+    expect(() => validateC10StandalonePostgresInspect(authority, { ...authority,
+      inspect: { ...inspect, Config: { ...inspect.Config, Image: "postgres:16-alpine" } } })).toThrow(/owned PG15/);
+    expect(() => parseC10StandalonePostgresAuthority({ ...environment, MUSIC_C10_STANDALONE_POSTGRES_PORT: "55432" })).toThrow(/reserved/);
+    expect(() => imageTestEnvironment({ DATABASE_URL_TEST: environment.DATABASE_URL_TEST }, authority, "fixture-password")).toThrow(/ambient/);
   });
 
   it("permits a loopback-only Strapi host-port override for full fixture rehearsal", () => {
@@ -302,7 +371,7 @@ describe("Music migration authority contracts", () => {
 
   it("rejects any non-production chain before opening a database connection", async () => {
     const production = loadMusicMigrations(resolve(repositoryRoot, "tunes/migrations"));
-    const appended = createMigrationDefinition("0022_unapproved", "SELECT 1;\n");
+    const appended = createMigrationDefinition(`${String(Number(production.at(-1)!.id.slice(0,4))+1).padStart(4,'0')}_unapproved`, "SELECT 1;\n");
     const connect = vi.fn();
     await expect(migrateMusicDatabase({ connect } as never, { migrations: [...production, appended] }))
       .rejects.toThrow(/exact production migration chain/i);

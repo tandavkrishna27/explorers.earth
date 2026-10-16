@@ -68,13 +68,8 @@ const PublicMovies = () => {
     return deduplicateMovies(lists.flatMap(list => list.recommended_movies ?? []));
   }, [lists]);
 
-  // Pinned movies (Top Picks)
-  const topPicks = useMemo(() => {
-    return allMovies
-      .filter(m => m.is_pinned)
-      .sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999));
-  }, [allMovies]);
-
+  // The backend supplies the complete category-wide pins independently of list pages.
+  const topPicks = useMemo(()=>deduplicateMovies((Array.isArray(movieData?.topPicks)?movieData.topPicks.filter(isNonNullObject):[]) as unknown as RecommendedMovie[]).sort((a,b)=>(a.pin_order??999)-(b.pin_order??999)),[movieData?.topPicks]);
   const handleMovieClick = useCallback((movie: RecommendedMovie) => {
     setSelectedMovie(movie);
     setModalOpen(true);

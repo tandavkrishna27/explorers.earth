@@ -1,34 +1,40 @@
-import { useMutation } from "@apollo/client";
 import {
   FormValues,
   registerInitialValues,
   getRegisterFormFields,
   createRegisterValidationSchema,
 } from "../features/Authentication/data";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import AuthForm from "../features/Authentication/components/AuthForm";
 import AuthLayout from "../components/auth/AuthLayout";
 import AuthShell from "../components/auth/AuthShell";
-import { registerQuery } from "../features/Authentication/api/mutation";
 import { EarthLoader } from "../components/EarthLoader";
-import useEmailStore from "../store/useEmailStore";
-import { ApolloError } from "@apollo/client";
 import { FormikHelpers } from "formik";
 import { useState, useEffect, useMemo } from "react";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import { createWebPageGEOData } from "../utils/geoHelpers";
 import { useTranslation } from "react-i18next";
-import useToast from "../hooks/useToast";
 import { isManualAuthEnabled } from "../config/featureFlags";
+
+/**
+ * Ticket 2.4. Password authentication does not exist canonically - betterAuth.ts sets
+ * emailAndPassword: {enabled: false} and Login offers only Google - so there is no
+ * canonical operation for this page to call, and the Strapi one it used to call created
+ * credentials that no sign-in path would have accepted.
+ *
+ * The page already renders Google-only (ENABLE_MANUAL_AUTH is false), which is the visible
+ * change ticket 2.4 line 45 records as agreed. This makes the submit path refuse by
+ * construction rather than merely be unrendered.
+ */
+const manualAuthUnavailable = () => {
+  throw new Error('Password sign-up is unavailable. Please continue with Google.');
+};
 
 const Auth = () => {
   const { t, i18n } = useTranslation();
-  const [register, { loading }] = useMutation(registerQuery);
-  const navigate = useNavigate();
+  const loading = false;
   const location = useLocation();
-  const { setEmail } = useEmailStore();
-  const { toastSuccess, toastError } = useToast();
 
   // Create validation schema that updates when language changes
   const validationSchema = useMemo(() => {
@@ -62,99 +68,12 @@ const Auth = () => {
 
   const handleSubmit = async (
     values: FormValues,
-    formikHelpers: FormikHelpers<FormValues>
+    _formikHelpers: FormikHelpers<FormValues>
   ) => {
+    // The form state is still kept, so a redirect back from Google does not lose what was
+    // typed; the credential creation is what is gone.
     setFormState(values);
-    try {
-      // Create user in explorers/Strapi only
-      const response = await register({
-        variables: {
-          input: {
-            email: values.email,
-            password: values.password,
-            username: values.username,
-          },
-        },
-      });
-
-      if (response.data) {
-        setEmail({ email: values.email as string });
-        toastSuccess(t("toast.success.registrationSuccessful"));
-        // navigate to the email verification page
-        navigate("/email-verification");
-      }
-    } catch (err: unknown) {
-      let errorMessage = t("toast.error.registrationFailed");
-      let shouldNavigateToVerification = false;
-
-      if (err instanceof ApolloError) {
-        const serverError = err.graphQLErrors?.[0]?.message;
-
-        if (serverError) {
-          // Map server errors to localized messages
-          if (
-            serverError.toLowerCase().includes("username") &&
-            serverError.toLowerCase().includes("already exists")
-          ) {
-            errorMessage = t("toast.error.usernameAlreadyExists");
-            formikHelpers.setErrors({
-              username: t("auth.validations.username.alreadyExists"),
-            });
-          } else if (
-            serverError.toLowerCase().includes("email") &&
-            serverError.toLowerCase().includes("already exists")
-          ) {
-            errorMessage = t("toast.error.emailAlreadyExists");
-            formikHelpers.setErrors({
-              email: t("auth.validations.email.alreadyExists"),
-            });
-          } else if (serverError.toLowerCase().includes("invalid email")) {
-            errorMessage = t("toast.error.invalidEmailFormat");
-            formikHelpers.setErrors({
-              email: t("auth.validations.email.invalidFormat"),
-            });
-          } else if (
-            serverError.toLowerCase().includes("password") &&
-            serverError.toLowerCase().includes("weak")
-          ) {
-            errorMessage = t("toast.error.passwordTooWeak");
-            formikHelpers.setErrors({
-              password: t("auth.validations.password.required"),
-            });
-          } else if (
-            serverError.toLowerCase().includes("email") &&
-            serverError.toLowerCase().includes("confirmation") &&
-            serverError.toLowerCase().includes("send")
-          ) {
-            // User created successfully but email confirmation failed to send
-            errorMessage = t("toast.error.emailConfirmationSendingFailed");
-            shouldNavigateToVerification = true;
-            setEmail({ email: values.email as string });
-          } else if (serverError.toLowerCase().includes("validation")) {
-            errorMessage = t("toast.error.validationError");
-          } else if (serverError.toLowerCase().includes("network")) {
-            errorMessage = t("toast.error.networkError");
-          } else if (serverError.toLowerCase().includes("server")) {
-            errorMessage = t("toast.error.serverError");
-          } else {
-            errorMessage = t("toast.error.registrationFailed");
-          }
-        }
-
-        toastError(errorMessage);
-
-        // If user was created but email confirmation failed, navigate to verification page
-        if (shouldNavigateToVerification) {
-          navigate("/email-verification");
-        }
-
-        formikHelpers.setSubmitting(false);
-      } else {
-        toastError(errorMessage, { id: "register-error" });
-      }
-
-      console.error(err);
-    }
+    manualAuthUnavailable();
   };
 
   const handleGoogleSignUp = () => {
@@ -249,9 +168,6 @@ const Auth = () => {
                       {t("auth.login")}
                     </a>
                   </div>
-                  <a href="/claimaccount" className="text-dashboard-accent underline text-xs">
-                    Claim Existing Account?
-                  </a>
                 </div>
               }
             />
@@ -273,7 +189,6 @@ const Auth = () => {
           switchCta={t("auth.login")}
           switchTo="/login"
           secureLabel={t("auth.secureSignIn", "Secure sign-in")}
-          helpers={[{ label: t("auth.claimAccount", "Claim account"), to: "/claimaccount" }]}
         />
       )}
     </>

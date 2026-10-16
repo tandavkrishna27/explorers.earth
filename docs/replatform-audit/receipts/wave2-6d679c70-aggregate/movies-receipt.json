@@ -1,0 +1,667 @@
+{
+  "version": 1,
+  "lane": "movies",
+  "provenance": {
+    "commit": "6d679c7078b93c76db180a97be73568d8be495b8",
+    "sourceHash": "da967de46d19c76a3cf52caf3d835c6885ff767bbd9876aba8fcd6ed147027fa",
+    "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+    "dirty": false
+  },
+  "config": "explorers-earth/e2e/replatform/movies.playwright.config.ts",
+  "spec": "explorers-earth/e2e/replatform/movies.spec.ts",
+  "projects": [
+    "movies-desktop",
+    "movies-mobile"
+  ],
+  "discovery": [
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "owner manual form all fields snapshot repeat edits and archive reload"
+      ],
+      "project": "movies-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "canonical both-kind provider search resolves typed facts and copies original cast slots"
+      ],
+      "project": "movies-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "anonymous category later list complete hero and modal preserve zero fields"
+      ],
+      "project": "movies-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "global TMDB taxonomy and signed genre continuation include later list memberships"
+      ],
+      "project": "movies-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "optional provider image failures and immutable replay remain separate from manual snapshots"
+      ],
+      "project": "movies-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "real copied bytes respect fresh list privacy on GET HEAD and conditional reads"
+      ],
+      "project": "movies-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "foreign owner denial and original edit observation preserve an unsaved stale draft"
+      ],
+      "project": "movies-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection"
+      ],
+      "project": "movies-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "delayed real canonical search continuation cannot append after query replacement"
+      ],
+      "project": "movies-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "manual television zero season is typed and does not acquire provider authority"
+      ],
+      "project": "movies-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "provider source replacement retires old copied assets while retaining a uploaded snapshot"
+      ],
+      "project": "movies-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "public signed continuations deny malformed cross-scope and changed-limit tokens"
+      ],
+      "project": "movies-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "owner manual form all fields snapshot repeat edits and archive reload"
+      ],
+      "project": "movies-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "canonical both-kind provider search resolves typed facts and copies original cast slots"
+      ],
+      "project": "movies-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "anonymous category later list complete hero and modal preserve zero fields"
+      ],
+      "project": "movies-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "global TMDB taxonomy and signed genre continuation include later list memberships"
+      ],
+      "project": "movies-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "optional provider image failures and immutable replay remain separate from manual snapshots"
+      ],
+      "project": "movies-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "real copied bytes respect fresh list privacy on GET HEAD and conditional reads"
+      ],
+      "project": "movies-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "foreign owner denial and original edit observation preserve an unsaved stale draft"
+      ],
+      "project": "movies-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection"
+      ],
+      "project": "movies-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "delayed real canonical search continuation cannot append after query replacement"
+      ],
+      "project": "movies-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "manual television zero season is typed and does not acquire provider authority"
+      ],
+      "project": "movies-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "provider source replacement retires old copied assets while retaining a uploaded snapshot"
+      ],
+      "project": "movies-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "titlePath": [
+        "public signed continuations deny malformed cross-scope and changed-limit tokens"
+      ],
+      "project": "movies-mobile",
+      "repeat": 0
+    }
+  ],
+  "results": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "owner manual form all fields snapshot repeat edits and archive reload"
+        ],
+        "project": "movies-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "canonical both-kind provider search resolves typed facts and copies original cast slots"
+        ],
+        "project": "movies-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "anonymous category later list complete hero and modal preserve zero fields"
+        ],
+        "project": "movies-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "global TMDB taxonomy and signed genre continuation include later list memberships"
+        ],
+        "project": "movies-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "optional provider image failures and immutable replay remain separate from manual snapshots"
+        ],
+        "project": "movies-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "real copied bytes respect fresh list privacy on GET HEAD and conditional reads"
+        ],
+        "project": "movies-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "foreign owner denial and original edit observation preserve an unsaved stale draft"
+        ],
+        "project": "movies-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection"
+        ],
+        "project": "movies-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "delayed real canonical search continuation cannot append after query replacement"
+        ],
+        "project": "movies-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "manual television zero season is typed and does not acquire provider authority"
+        ],
+        "project": "movies-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "provider source replacement retires old copied assets while retaining a uploaded snapshot"
+        ],
+        "project": "movies-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "public signed continuations deny malformed cross-scope and changed-limit tokens"
+        ],
+        "project": "movies-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "owner manual form all fields snapshot repeat edits and archive reload"
+        ],
+        "project": "movies-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "canonical both-kind provider search resolves typed facts and copies original cast slots"
+        ],
+        "project": "movies-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "anonymous category later list complete hero and modal preserve zero fields"
+        ],
+        "project": "movies-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "global TMDB taxonomy and signed genre continuation include later list memberships"
+        ],
+        "project": "movies-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "optional provider image failures and immutable replay remain separate from manual snapshots"
+        ],
+        "project": "movies-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "real copied bytes respect fresh list privacy on GET HEAD and conditional reads"
+        ],
+        "project": "movies-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "foreign owner denial and original edit observation preserve an unsaved stale draft"
+        ],
+        "project": "movies-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection"
+        ],
+        "project": "movies-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "delayed real canonical search continuation cannot append after query replacement"
+        ],
+        "project": "movies-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "manual television zero season is typed and does not acquire provider authority"
+        ],
+        "project": "movies-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "provider source replacement retires old copied assets while retaining a uploaded snapshot"
+        ],
+        "project": "movies-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+        "titlePath": [
+          "public signed continuations deny malformed cross-scope and changed-limit tokens"
+        ],
+        "project": "movies-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "cleanup": {
+    "status": "passed"
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  },
+  "authority": {
+    "owned": true,
+    "database": "music_uat_1452971ee4dd7e072ad001aabb81f67b",
+    "containerId": "835ed606f83753e90c30500be4358248bf500055c56891f876749849f207a563",
+    "imageId": "sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81"
+  },
+  "child": {
+    "status": 0,
+    "signal": null
+  },
+  "startedAt": "2026-10-10T06:38:38.952Z",
+  "endedAt": "2026-10-10T06:40:59.001Z",
+  "playwright": "1.61.1"
+}

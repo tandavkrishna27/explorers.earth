@@ -56,7 +56,11 @@ describe("live profile order contract against the real appearance component", ()
     const account = controller.account();
     const raw = (account.social_media as { theme_settings: ThemeSettingsWire }).theme_settings;
     raw.recommendations = { layout: "shelves", categoryOrder: [...LEGACY], retainedFutureKey: "preserved" };
-    const source = readFileSync(resolve(__dirname, "../../hooks/useUpdateProfile.ts"), "utf8");
+    // The profile save no longer ships a GraphQL document (ticket 3.4), so this reads the
+    // one UpdateAccount mutation the app still has: Settings, which stays on Apollo until
+    // the password flows it sits beside are decided. When that goes, this round-trip has no
+    // real document left to use and the fixture needs seeding directly instead.
+    const source = readFileSync(resolve(__dirname, "../../../Settings/api/mutation.ts"), "utf8");
     const documents = [...source.matchAll(/gql`([\s\S]*?)`/g)]
       .map((match) => match[1]).filter((query) => /mutation\s+UpdateAccount\b/.test(query));
     expect(documents).toHaveLength(1);

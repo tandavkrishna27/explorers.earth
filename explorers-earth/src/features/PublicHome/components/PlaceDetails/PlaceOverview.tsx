@@ -9,8 +9,6 @@ import Tab from "../../../../components/ui/Tab";
 import Overview from "./Details/Overview";
 import MediaGallery from "./Details/MediaGallery";
 import Address from "./Details/Address";
-import { useQuery } from "@apollo/client";
-import { placeDetailsQuery } from "../../api/query";
 import { EarthLoader } from "../../../../components/EarthLoader";
 import SEO from "../../../../components/SEO";
 import { useParams } from "react-router-dom";
@@ -50,15 +48,13 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
     const startYRef = useRef(0);
     const currentYRef = useRef(0);
 
-    const { data, loading } = useQuery(placeDetailsQuery, {
-      variables: {
-        documentId: placeId,
-      },
-      fetchPolicy: "network-only",
-      skip: Boolean(publicPlace),
-    });
+    // Ticket 5.1/5.3. No fetch. The public caller already passed the place in - the
+    // query was skipped whenever it did - and the owner dashboard holds it in its own
+    // canonical read, so a second fetch here was asking the server for something the
+    // caller was already holding.
+    const loading = false;
 
-    const fetchedPlace: any = publicPlace ?? data?.recommendedPlace;
+    const fetchedPlace: any = publicPlace;
     const isPersonType = fetchedPlace?.Recommendation_Type === "person";
     const googleRating = fetchedPlace?.google_rating ?? fetchedPlace?.Place_Details?.Rating;
     const googleRatingText = googleRating ? (googleRating * 2).toFixed(1) : null;
@@ -139,7 +135,7 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
     const { username } = useParams();
 
     // Generate GEO data for individual place pages
-    const placeData: any = publicPlace ?? data?.recommendedPlace;
+    const placeData: any = publicPlace;
     const placeName = isPersonType
       ? placeData?.Contact_Name || "Person"
       : (placeData?.Place_Details?.Place_Name || "Place");
@@ -361,7 +357,7 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
 
             {/* Bottom: Category */}
             <div className="text-xs md:text-sm text-dashboard-light font-medium mt-1">
-              {fetchedPlace?.recommendation_category.Category_Name}
+              {fetchedPlace?.recommendation_category?.Category_Name}
             </div>
           </div>
 

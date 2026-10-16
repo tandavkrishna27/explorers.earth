@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
 
@@ -12,6 +12,7 @@ export interface RuntimeTableManifestInput {
 
 export interface RuntimeTableInventory {
   drizzleTables: string[];
+  migrationTables: string[];
   rawSqlTables: string[];
   applicationTables: string[];
   systemTables: string[];
@@ -81,15 +82,28 @@ function sqlStatements(file: string, source: string): string[] {
 }
 
 export function inventoryRuntimeTables(repositoryRoot: string): RuntimeTableInventory {
-  const schema = readFileSync(join(repositoryRoot, "tunes", "shared", "schema.ts"), "utf8");
+  const shared = join(repositoryRoot, "tunes", "shared");
+  const schema = ["schema.ts", "authSchema.ts", "explorersSchema.ts"]
+    .map((file) => join(shared, file))
+    .filter((file) => existsSync(file))
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
   const drizzleTables = sorted([...schema.matchAll(/pgTable\(\s*["']([a-z_][a-z0-9_]*)["']/g)].map((match) => match[1]));
+  // Database-owned relations and private trigger queues are runtime authority
+  // even when application code has no direct grant or query for them.
+  const migrations = join(repositoryRoot, "tunes", "migrations");
+  const migrationTables = existsSync(migrations) ? sorted(readdirSync(migrations)
+    .filter(file => /^\d{4}_[a-z0-9_]+\.sql$/.test(file)).flatMap(file => {
+      const sql = readFileSync(join(migrations, file), "utf8").replace(/--[^\n]*|\/\*[\s\S]*?\*\//g, " ");
+      return [...sql.matchAll(/\bCREATE TABLE(?: IF NOT EXISTS)?\s+(?:public\.)?"?([a-z_][a-z0-9_]*)"?/gi)].map(match => match[1]);
+    })) : [];
   const rawSqlTables = new Set<string>();
   for (const file of sourceFiles(join(repositoryRoot, "tunes", "server"))) {
     const source = readFileSync(file, "utf8");
     const statements = sqlStatements(file, source);
     for (const statement of statements) {
       const commonTableExpressions = new Set(
-        [...statement.matchAll(/(?:\bWITH\s+(?:RECURSIVE\s+)?|,\s*)([a-z_][a-z0-9_]*)\s*(?:\([^)]*\)\s*)?AS\s*\(/gi)].map((match) => match[1].toLowerCase()),
+        [...statement.matchAll(/(?:\bWITH\s+(?:RECURSIVE\s+)?|,\s*)([a-z_][a-z0-9_]*)\s*(?:\([^)]*\)\s*)?AS\s*(?:(?:NOT\s+)?MATERIALIZED\s*)?\(/gi)].map((match) => match[1].toLowerCase()),
       );
       for (const match of statement.matchAll(/\b(?:DELETE\s+FROM|FROM|JOIN|UPDATE(?!\s+(?:OF|SKIP|SET)\b)|INTO)\s+(?:LATERAL\s+)?(?:"?public"?\.)?["']?([a-z_][a-z0-9_]*)["']?/gi)) {
         const table = match[1].toLowerCase();
@@ -108,13 +122,15 @@ export function inventoryRuntimeTables(repositoryRoot: string): RuntimeTableInve
   const applicationRawSqlTables = sorted([...rawSqlTables].filter((table) => !systemTables.includes(table)));
   return {
     drizzleTables,
+    migrationTables,
     rawSqlTables: applicationRawSqlTables,
-    applicationTables: sorted([...drizzleTables, ...applicationRawSqlTables]),
+    applicationTables: sorted([...drizzleTables, ...migrationTables, ...applicationRawSqlTables]),
     systemTables,
   };
 }
 
 export function validateRuntimeTableManifest(input: RuntimeTableManifestInput): void {
+  if (new Set(input.manifestTables).size !== input.manifestTables.length || new Set(input.controlTables ?? []).size !== (input.controlTables ?? []).length) throw new Error("duplicate runtime table manifest entry");
   const unmanaged = new Set(input.unmanagedTables ?? []);
   const controls = new Set(input.controlTables ?? []);
   for (const table of controls) if (input.manifestTables.includes(table)) throw new Error(`${table} cannot be both a runtime and control table`);

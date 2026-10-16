@@ -6,11 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PlaceOverview from "../PlaceOverview";
 import { PublicCategoryThemeProvider } from "../../PublicCategoryThemeContext";
 
-const useQuery = vi.hoisted(() => vi.fn());
-
-vi.mock("@apollo/client", () => ({ useQuery }));
-vi.mock("../../../api/query", () => ({ placeDetailsQuery: {} }));
-vi.mock("../Details/Overview", () => ({ default: () => <div>Overview content</div> }));
 vi.mock("../Details/MediaGallery", () => ({ default: () => <div>Media content</div> }));
 vi.mock("../Details/Address", () => ({ default: () => <div>Address content</div> }));
 
@@ -55,12 +50,16 @@ function renderOverview({
   category = false,
   scrollLockOwner,
   strict = false,
+  place: placeOverride,
 }: {
   isPublicProfile?: boolean;
   variables?: CSSProperties;
   category?: boolean;
   scrollLockOwner?: "self" | "wrapper";
   strict?: boolean;
+  // The component takes the place from its caller now, so each case supplies one rather
+  // than changing what a query mock returns.
+  place?: Record<string, unknown>;
 } = {}) {
   const onClose = vi.fn();
   const style = variables as CSSProperties;
@@ -74,6 +73,7 @@ function renderOverview({
               element={(
                 <PlaceOverview
                   placeId="place-1"
+                  publicPlace={placeOverride ?? place}
                   isPublicProfile={isPublicProfile}
                   onClose={onClose}
                   scrollLockOwner={scrollLockOwner}
@@ -98,16 +98,15 @@ describe("PlaceOverview public theme surface", () => {
     expect(panel.style.getPropertyValue('--border-card')).toBe('var(--category-control-border)');
   });
   it("uses a contrast-safe category rating while preserving the default yellow rating", () => {
-    useQuery.mockReturnValue({ data: { recommendedPlace: { ...place, user_rating: 8 } }, loading: false });
-    renderOverview({ category: true });
+    renderOverview({ category: true, place: { ...place, user_rating: 8 } });
     expect(screen.getByText("Creator's Rating:").style.color).toBe('var(--category-rating)');
   });
   beforeEach(() => {
-    useQuery.mockReturnValue({ data: { recommendedPlace: place }, loading: false });
     document.body.style.overflow = "";
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     document.body.style.overflow = "";
   });
 
@@ -154,14 +153,43 @@ describe("PlaceOverview public theme surface", () => {
     expect(container.querySelector('[data-tab-surface="public-profile"]')).toBeInTheDocument();
   });
 
+  it.each([undefined, null])("keeps the public detail and contact actions usable with %s taxonomy", (recommendationCategory) => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    const { container, onClose } = renderOverview({
+      place: {
+        ...place,
+        recommendation_category: recommendationCategory,
+        Contact_Number: "+914012345678",
+        Places_Social_Link: "https://example.com/charminar",
+      },
+    });
+
+    expect(container.querySelector("[data-public-place-detail]")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Charminar" })).toBeInTheDocument();
+    const call = screen.getByText("Call").parentElement!.querySelector("button")!;
+    const website = screen.getByText("Website").parentElement!.querySelector("button")!;
+    expect(call).toBeEnabled();
+    expect(website).toBeEnabled();
+    fireEvent.click(call);
+    expect(open).toHaveBeenCalledWith("tel:+914012345678", "_self");
+    fireEvent.click(website);
+    expect(open).toHaveBeenCalledWith("https://example.com/charminar", "_blank", "noopener,noreferrer");
+    fireEvent.click(screen.getByRole("button", { name: "Close place details" }));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("continues to show a supplied category name", () => {
+    renderOverview();
+    expect(screen.getByText("Landmark")).toBeInTheDocument();
+  });
   it("preserves public tab switching", () => {
     renderOverview();
-    expect(screen.getByText("Overview content")).toBeInTheDocument();
+    expect(screen.getByText("Call")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Media" }));
 
     expect(screen.getByText("Media content")).toBeInTheDocument();
-    expect(screen.queryByText("Overview content")).not.toBeInTheDocument();
+    expect(screen.queryByText("Call")).not.toBeInTheDocument();
   });
 
   it("keeps dashboard callers on dashboard styling", () => {
@@ -174,53 +202,39 @@ describe("PlaceOverview public theme surface", () => {
   });
 
   it("uses a saved Place_Details photo for the hero when imageDetails is empty", () => {
-    useQuery.mockReturnValue({
-      data: {
-        recommendedPlace: {
-          ...place,
-          Media: [],
-          media_details: { imageDetails: [] },
-          Place_Details: {
-            ...place.Place_Details,
-            Photos: ["https://saved-media.s3.amazonaws.com/place-photo.jpg"],
-          },
-        },
+    renderOverview({ place: {
+      ...place,
+      Media: [],
+      media_details: { imageDetails: [] },
+      Place_Details: {
+        ...place.Place_Details,
+        Photos: ["/api/explorers/v1/media/55555555-5555-4555-8555-555555555555/content"],
       },
-      loading: false,
-    });
-
-    renderOverview();
+    } });
 
     expect(screen.getByAltText("Place")).toHaveAttribute(
       "src",
-      "https://saved-media.s3.amazonaws.com/place-photo.jpg",
+      "/api/explorers/v1/media/55555555-5555-4555-8555-555555555555/content",
     );
   });
 
   it("uses the next valid saved Place_Details photo for SEO when imageDetails is untrusted", async () => {
-    useQuery.mockReturnValue({
-      data: {
-        recommendedPlace: {
-          ...place,
-          Media: [],
-          media_details: {
-            imageDetails: [{ url: "https://images.example/untrusted.jpg" }],
-          },
-          Place_Details: {
-            ...place.Place_Details,
-            Photos: ["https://saved-media.s3.amazonaws.com/seo-photo.jpg"],
-          },
-        },
+    renderOverview({ place: {
+      ...place,
+      Media: [],
+      media_details: {
+        imageDetails: [{ url: "https://images.example/untrusted.jpg" }],
       },
-      loading: false,
-    });
-
-    renderOverview();
+      Place_Details: {
+        ...place.Place_Details,
+        Photos: ["/api/explorers/v1/media/66666666-6666-4666-8666-666666666666/content"],
+      },
+    } });
 
     await waitFor(() => {
       expect(document.head.querySelector('meta[property="og:image"]')).toHaveAttribute(
         "content",
-        "https://saved-media.s3.amazonaws.com/seo-photo.jpg",
+        "/api/explorers/v1/media/66666666-6666-4666-8666-666666666666/content",
       );
     });
   });

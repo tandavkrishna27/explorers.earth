@@ -273,7 +273,6 @@
       "message": "This account has been deactivated.",
       "reactivateLink": "Click here to reactivate your account →"
     },
-    "claimAccount": "Claim Account?",
     "confirmPassword": "パスワード確認",
     "confirmPasswordPlaceholder": "パスワードを再入力してください",
     "email": "メールアドレス",

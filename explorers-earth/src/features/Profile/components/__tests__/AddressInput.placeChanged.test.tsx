@@ -164,7 +164,7 @@ describe("AddressInput place_changed (BUG-4)", () => {
     expect(appliedIds).toEqual(["B"]);
     expect(appliedIds).not.toContain("A");
     // onChange (final value) likewise reflects only B.
-    expect(onChange).toHaveBeenLastCalledWith("B, India");
-    expect(onChange).not.toHaveBeenCalledWith("A, India");
+    expect(onChange).toHaveBeenLastCalledWith("B, India", "selection");
+    expect(onChange.mock.calls.map(([value]) => value)).not.toContain("A, India");
   });
 });

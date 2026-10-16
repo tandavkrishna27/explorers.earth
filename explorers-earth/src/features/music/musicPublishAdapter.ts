@@ -1,4 +1,3 @@
-import type { ApolloClient, NormalizedCacheObject } from '@apollo/client';
 import type { MusicPublicationOwnerScope } from './musicPublicationCommandRegistry';
 import type { createMusicWorkspaceClient } from './musicWorkspaceClient';
 import type { Transaction } from '../navigation/accountNavigationWriter';
@@ -7,7 +6,6 @@ import type { Ports } from './musicPublishCoordinator';
 import { publicMusicClient } from './publicMusicClient';
 import { MusicClientError } from '../../lib/localTunesApiClient';
 export type AdapterInput = {
-    client: ApolloClient<NormalizedCacheObject>;
     workspace: ReturnType<typeof createMusicWorkspaceClient>;
     scope: MusicPublicationOwnerScope;
     origin: IntentAuthority;
@@ -56,7 +54,7 @@ export function createMusicPublishAdapter(input: AdapterInput): Ports {
                 return;
             }
             const latest = assertAccount(await transaction.read());
-            const decision = planCategoryIntent(latest, { category: 'public_music', action: 'unpublish' }, 'allowed');
+            const decision = planCategoryIntent(latest, { category: 'public_music', action: 'unpublish' });
             if (decision.kind === 'write') {
                 const saved = assertAccount(await transaction.commit(decision.patch));
                 if (saved.visibility.public_music !== 'No' || (decision.patch.pinned_nav_tabs !== undefined

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  adaptPublicGamesPage,
   normalizePublicEmailHref,
   normalizePublicWebHref,
   sanitizePublicRichText,
@@ -124,4 +125,17 @@ describe("public profile content policy", () => {
     expect(template.content.querySelector("[onmouseover]")).toBeNull();
     expect(result).not.toMatch(/expression|javascript:|position|background-image/i);
   });
+});
+
+it('adapts strictly bounded public manual Games without synthetic provider identity or source-ID merging',()=>{
+ const id='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000-000000000002';const row={id,entityId:id,kind:'game',collection:{id,title:'Games',slug:'games'},title:'Same',userRating:null,note:null,gamePresentation:{version:'explorers-manual-game/v1',origin:'manual',providerExternalId:null,providerFacts:null,images:[],coverMediaId:null},displayOrder:0,pinPosition:0};
+ const value=adaptPublicGamesPage({version:'explorers-manual-games-page/v1',gameLists:[{id,title:'Games',description:null,slug:'games',heading:null,displayOrder:0,coverMediaId:null,coverUrl:null,recommendations:[row,{...row,id:other}],nextCursor:'signed'}],topPicks:[row],nextCursor:null},'reader');
+ expect(value.gameLists[0].recommended_games).toHaveLength(2);expect(value.gameLists[0].recommended_games[0]).toMatchObject({igdb_id:null,igdb_rating:null,release_date:null,pin_order:0});expect(value.gameLists[0].nextCursor).toBe('signed');
+});
+it('public shared recommendation pin preserves selected collection ancestry',()=>{
+ const id='00000000-0000-4000-8000-000000000001',a='00000000-0000-4000-8000-000000000002',b='00000000-0000-4000-8000-000000000003';
+ const row={id,entityId:id,kind:'game',collection:{id:a,title:'A',slug:'a'},title:'Shared',userRating:null,note:null,gamePresentation:{version:'explorers-manual-game/v1',origin:'manual',providerExternalId:null,providerFacts:null,images:[],coverMediaId:null},displayOrder:0,pinPosition:0};
+ const list=(collection:string,title:string)=>({id:collection,title,description:null,slug:title.toLowerCase(),heading:null,displayOrder:0,coverMediaId:null,coverUrl:null,recommendations:[{...row,collection:{id:collection,title,slug:title.toLowerCase()}}],nextCursor:null});
+ const value=adaptPublicGamesPage({version:'explorers-manual-games-page/v1',gameLists:[list(a,'A'),list(b,'B')],topPicks:[row],nextCursor:null},'reader');
+ expect(value.gameLists[0].recommended_games[0]).toMatchObject({is_pinned:true,pin_order:0});expect(value.gameLists[1].recommended_games[0]).toMatchObject({is_pinned:false,pin_order:null});expect(value.topPicks[0].game_list?.documentId).toBe(a);
 });

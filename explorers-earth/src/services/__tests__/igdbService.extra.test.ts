@@ -1,46 +1,8 @@
-import axios from 'axios';
-import { beforeEach, describe, it, expect, vi } from 'vitest';
-import igdbService, { IgdbError } from '../igdbService';
-
-vi.mock('axios');
-
-describe('igdbService transforming and details error scenarios', () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it('should transform raw IGDB result correctly', () => {
-    const rawItem = {
-      id: 123,
-      slug: 'zelda-totk',
-      name: 'Tears of the Kingdom',
-      cover: { image_id: 'img123' },
-      summary: 'Epic adventure game',
-      first_release_date: 1683849600,
-      total_rating: 96.2,
-      total_rating_count: 500,
-      genres: [{ name: 'Adventure' }, { name: 'RPG' }],
-      platforms: [{ name: 'Nintendo Switch' }]
-    };
-
-    const transformed = igdbService.transformIgdbResult(rawItem as any);
-    expect(transformed.igdb_id).toBe(123);
-    expect(transformed.title).toBe('Tears of the Kingdom');
-    expect(transformed.release_year).toBe('2023');
-    expect(transformed.igdb_rating).toBe(9.6);
-  });
-
-  it('should throw an IgdbError on detail fetching HTTP errors', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.mocked(axios.post).mockRejectedValueOnce(new Error('synthetic IGDB HTTP failure'));
-    try {
-      const request = igdbService.getGameDetails(123);
-      await expect(request).rejects.toBeInstanceOf(IgdbError);
-      await expect(request).rejects.toThrow('Failed to fetch game details.');
-      expect(axios.post).toHaveBeenCalledWith('/igdb-api/v4/games',
-        expect.stringContaining('where id = 123;'), expect.objectContaining({
-          headers: expect.objectContaining({ 'Client-ID': 'test-client-id' }),
-        }));
-    } finally {
-      consoleError.mockRestore();
-    }
-  });
-});
+import {it,expect} from 'vitest';import {readFileSync} from 'node:fs';import {resolve} from 'node:path';import service from '../igdbService';
+it('pure mapping retains provider fixture zero values without acquiring authority',()=>{const value=service.transformIgdbResult({id:42,name:'Game',first_release_date:0,total_rating:0,total_rating_count:0} as any);expect(value).toMatchObject({igdb_id:42,release_date:'1970-01-01',release_year:'1970',igdb_rating:0,igdb_rating_count:0});});
+it('service source contains no browser credentials/token/proxy/transport implementation',()=>{const source=readFileSync(resolve(process.cwd(),'src/services/igdbService.ts'),'utf8');for(const forbidden of ['import.meta.env','axios','getAccessToken','mock-igdb-token','/twitch-api','/igdb-api','tokenExpiresAt'])expect(source).not.toContain(forbidden);});it('production helper JS and sourcemap contain no browser credential or token transport',async()=>{
+ const {build}=await import('vite');const key=['VITE','IGDB','CLIENT','SECRET'].join('_'),sentinel='SYNTHETIC_GAME_SECRET_SENTINEL';
+ const output=await build({configFile:false,envDir:false,logLevel:'silent',define:{['import.meta.env.'+key]:JSON.stringify(sentinel)},build:{write:false,minify:false,sourcemap:true,lib:{entry:resolve(process.cwd(),'src/services/igdbService.ts'),formats:['es']}}});
+ const files=(Array.isArray(output)?output:[output]).flatMap(result=>'output' in result?result.output:[]);expect(files.some(file=>file.fileName.endsWith('.map'))).toBe(true);
+ for(const file of files){const text=file.type==='chunk'?file.code:String(file.source);for(const forbidden of [sentinel,key,['VITE','IGDB','CLIENT','ID'].join('_'),'mock-igdb-token','/twitch-api','/igdb-api','oauth2/token','client_secret='])expect(text).not.toContain(forbidden);}
+},30000);

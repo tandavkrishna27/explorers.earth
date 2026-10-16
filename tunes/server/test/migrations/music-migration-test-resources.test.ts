@@ -7,10 +7,14 @@ import {
 
 describe("music migration integration test resources", () => {
   it("derives synthetic migration IDs from the greatest checked-in sequence", () => {
+    const greatestSequence = [...EXPECTED_MUSIC_MIGRATION_CHAIN]
+      .map((id) => Number(id.split("_")[0]))
+      .sort((left, right) => right - left)[0];
+    const expectedPrefix = String(greatestSequence + 1).padStart(4, "0");
     expect(nextSyntheticMusicMigrationId(
       EXPECTED_MUSIC_MIGRATION_CHAIN,
       "deliberate_failure",
-    )).toBe("0022_deliberate_failure");
+    )).toBe(`${expectedPrefix}_deliberate_failure`);
     expect(nextSyntheticMusicMigrationId(
       ["0001_first", "0009_current", "0004_older"],
       "unapproved",

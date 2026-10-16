@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "scope": "delivered-auth-profile-books",
+  "scopeContents": [
+    "apps"
+  ],
+  "scopeCompatibilityIdentifier": true,
+  "selectedLane": {
+    "name": "apps",
+    "status": "failed"
+  },
+  "deliveredSlice": "incomplete",
+  "overallMilestone": "incomplete",
+  "fullParity": "incomplete",
+  "releaseEligible": false,
+  "provenance": {
+    "commit": "420e13c6895d0ae70d4c997b7244167db0079bce",
+    "sourceHash": "dad3cd930070c9c54d3fae39af564c6a3bb319ab84bd58b631d1c8ad8129585d",
+    "manifestHash": "fe94a6013b2f83bf96e3799929a4b8d61e8ae245328afe1abc3f3cc0c38eb14a",
+    "dirty": false
+  },
+  "children": [
+    {
+      "lane": "apps",
+      "status": 1,
+      "signal": null,
+      "error": null,
+      "lifecycleFailure": {
+        "version": 1,
+        "lane": "apps",
+        "provenance": {
+          "commit": "420e13c6895d0ae70d4c997b7244167db0079bce",
+          "sourceHash": "dad3cd930070c9c54d3fae39af564c6a3bb319ab84bd58b631d1c8ad8129585d",
+          "manifestHash": "fe94a6013b2f83bf96e3799929a4b8d61e8ae245328afe1abc3f3cc0c38eb14a",
+          "dirty": false
+        },
+        "phase": "startup",
+        "interrupted": false,
+        "sourceIntact": true,
+        "cleanup": {
+          "status": "failed",
+          "failures": [
+            "control",
+            "private-directory"
+          ]
+        },
+        "artifacts": {
+          "trace": "off",
+          "video": "off",
+          "screenshot": "off",
+          "cleanup": "passed"
+        },
+        "counts": {
+          "discovered": null,
+          "executed": null,
+          "passed": null,
+          "failed": null,
+          "skipped": null,
+          "attempts": null
+        }
+      }
+    }
+  ],
+  "error": "Protected lane or qualification contract failed",
+  "pending": [
+    {
+      "ticket": "2.4",
+      "obligation": "Configured deployed Google callback and consent evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.4",
+      "obligation": "Analytics acceptance",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.5",
+      "obligation": "Unified QA deployment, image/schema and trusted producer evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "4/5",
+      "obligation": "Remaining canonical category producer families and their own acceptance evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "6.1-6.3",
+      "obligation": "Music mapped-owner HTTP/socket and feature parity",
+      "status": "pending"
+    },
+    {
+      "ticket": "7.1/7.2",
+      "obligation": "Cross-category consumers and all nine categories",
+      "status": "pending"
+    },
+    {
+      "ticket": "8.1-8.4",
+      "obligation": "Removal, rename, exact QA digest promotion and deployment",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.1/5.2",
+      "obligation": "Places/link16 proposed inventory awaits independent source review and actual protected execution; provider photo/gallery closure, taxonomy/pins and hosted acceptance remain pending",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.3/5.4",
+      "obligation": "Apps manual8 awaits integrated owned fixture and protected native execution; provider enrichment, taxonomy and complete public pagination remain independently pending",
+      "status": "pending"
+    }
+  ]
+}

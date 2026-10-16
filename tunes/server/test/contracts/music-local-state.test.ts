@@ -1,10 +1,24 @@
 import { describe, expect, it, vi } from 'vitest';
 import { link, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import * as state from '../../../scripts/music-local-state';
 import { defaultLocalMusicDependencies } from '../../../scripts/music-local';
+// GitHub's windows-latest TEMP contains an 8.3 short-name component, so os.tmpdir() is not
+// its own realpath there. Both the secret-file inspector
+// (secure-music-secret-file.ts:227-228) and assertCanonicalLocalPath
+// (music-local-state.ts:77-84) require realpath identity for the path and its ancestors, so
+// a bare tmpdir() made all 24 cases in this lane refuse for a reason that is not a product
+// defect. Canonicalize once, as music-cli-contract-authority.test.ts:22 already does.
+// REFINED after a CI probe: realpathSync does NOT expand 8.3 short names, so the LEAF of
+// tmpdir() reports canonical on the runner (probe output: tmpdir and its realpath both
+// C:\Users\RUNNER~1\AppData\Local\Temp).
+// assertCanonicalLocalPath checks identity at EVERY ancestor, and that is where
+// C:\Users\RUNNER~1 fails. RUNNER_TEMP (D:\a\_temp) has no
+// short-name component, so it is preferred where present.
+const temporaryRoot = realpathSync(process.env.RUNNER_TEMP ?? tmpdir());
 vi.mock('node:child_process', async (original) => {
   const actual = await original<typeof import('node:child_process')>();
   return { ...actual, execFileSync: vi.fn(actual.execFileSync) };
@@ -100,17 +114,29 @@ describe.skipIf(process.platform !== 'win32')('real Windows private-file helper 
     } finally {
       vi.unstubAllEnvs();
     }
-  }, 30000);
+  // 600s, deliberately ABOVE runLocalProcess's own 120s child kill
+  // (see the bound in music-local-state.ts). With both equal the two deadlines race, so a
+  // slow child can never surface as its own assertion -- it presents as an opaque vitest
+  // timeout instead. Raised with that bound: on the hosted Windows runner these cases were
+  // dying at 120006ms and 128331ms against the old 120s budget while comparable cases
+  // passed at 88178ms, so the budget was cutting off work that was still progressing.
+  }, 600000);
   it('provides a read-only host root probe with sanitized metadata only', async () => {
     const helper = path.resolve(import.meta.dirname, '../../../scripts/music-local-private-files.ps1');
-    const result = await state.runLocalProcess('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', helper, 'identity-probe']);
+    const result = await state.runLocalProcess('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', helper, 'identity-probe']);
     expect(result.exitCode).toBe(0);
     const probe = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(probe).toEqual({ ok: true, authority: expect.stringMatching(/^(current-token|packaged-ancestor)$/), canonical: true, reparseFree: true, ownerVerified: true, packageIdentityVerified: expect.any(Boolean), ancestryVerified: true });
     expect(result.stdout).not.toMatch(/S-1-|[A-Z]:\\|packageFamily|localAppData/i);
-  }, 30000);
+  // 600s, deliberately ABOVE runLocalProcess's own 120s child kill
+  // (see the bound in music-local-state.ts). With both equal the two deadlines race, so a
+  // slow child can never surface as its own assertion -- it presents as an opaque vitest
+  // timeout instead. Raised with that bound: on the hosted Windows runner these cases were
+  // dying at 120006ms and 128331ms against the old 120s budget while comparable cases
+  // passed at 88178ms, so the budget was cutting off work that was still progressing.
+  }, 600000);
   it('reads protected JSON metadata and rejects a hardlinked receipt without exposing its content', async () => {
-    const temp = await mkdtemp(path.join(tmpdir(), 'music-private-json-'));
+    const temp = await mkdtemp(path.join(temporaryRoot, 'music-private-json-'));
     try {
       const dir = path.join(temp, 'private'); await state.createLocalPrivateDirectory(dir);
       const file = path.join(dir, 'receipt.json');
@@ -119,9 +145,15 @@ describe.skipIf(process.platform !== 'win32')('real Windows private-file helper 
       await link(file, path.join(dir, 'alias.json'));
       await expect(defaultLocalMusicDependencies.io.readJson(file)).rejects.toThrow(/^LOCAL_MUSIC_/);
     } finally { await rm(temp, { recursive: true, force: true }); }
-  }, 30000);
+  // 600s, deliberately ABOVE runLocalProcess's own 120s child kill
+  // (see the bound in music-local-state.ts). With both equal the two deadlines race, so a
+  // slow child can never surface as its own assertion -- it presents as an opaque vitest
+  // timeout instead. Raised with that bound: on the hosted Windows runner these cases were
+  // dying at 120006ms and 128331ms against the old 120s budget while comparable cases
+  // passed at 88178ms, so the budget was cutting off work that was still progressing.
+  }, 600000);
   it('creates exclusive owner-only state, verifies secure reader, never overwrites a secret', async () => {
-    const temp = await mkdtemp(path.join(tmpdir(), 'music-private-acl-'));
+    const temp = await mkdtemp(path.join(temporaryRoot, 'music-private-acl-'));
     const dir = path.join(temp, 'private');
     try {
       await state.createLocalPrivateDirectory(dir);
@@ -140,9 +172,15 @@ describe.skipIf(process.platform !== 'win32')('real Windows private-file helper 
       expect(await readFile(file, 'utf8')).toBe('generated_test_sentinel_1234567890');
       await expect(state.createLocalPrivateDirectory(dir)).rejects.toThrow(/^LOCAL_MUSIC_/);
     } finally { await rm(temp, { recursive: true, force: true }); }
-  }, 30000);
+  // 600s, deliberately ABOVE runLocalProcess's own 120s child kill
+  // (see the bound in music-local-state.ts). With both equal the two deadlines race, so a
+  // slow child can never surface as its own assertion -- it presents as an opaque vitest
+  // timeout instead. Raised with that bound: on the hosted Windows runner these cases were
+  // dying at 120006ms and 128331ms against the old 120s budget while comparable cases
+  // passed at 88178ms, so the budget was cutting off work that was still progressing.
+  }, 600000);
   it('permits a bounded 512-character server-only reader token without relaxing default secret limits', async () => {
-    const temp = await mkdtemp(path.join(tmpdir(), 'music-private-reader-token-'));
+    const temp = await mkdtemp(path.join(temporaryRoot, 'music-private-reader-token-'));
     const dir = path.join(temp, 'private');
     try {
       await state.createLocalPrivateDirectory(dir);
@@ -152,9 +190,15 @@ describe.skipIf(process.platform !== 'win32')('real Windows private-file helper 
       await expect(state.readLocalPrivateSecret(file)).rejects.toThrow(/^LOCAL_MUSIC_/);
       await expect(state.readLocalPrivateSecret(file, { maxBytes: 512 })).resolves.toBe(token);
     } finally { await rm(temp, { recursive: true, force: true }); }
-  }, 30000);
+  // 600s, deliberately ABOVE runLocalProcess's own 120s child kill
+  // (see the bound in music-local-state.ts). With both equal the two deadlines race, so a
+  // slow child can never surface as its own assertion -- it presents as an opaque vitest
+  // timeout instead. Raised with that bound: on the hosted Windows runner these cases were
+  // dying at 120006ms and 128331ms against the old 120s budget while comparable cases
+  // passed at 88178ms, so the budget was cutting off work that was still progressing.
+  }, 600000);
   it.each(['file', 'parent', 'inherited'])('rejects broad read authority on %s', async (kind) => {
-    const temp = await mkdtemp(path.join(tmpdir(), 'music-private-acl-'));
+    const temp = await mkdtemp(path.join(temporaryRoot, 'music-private-acl-'));
     const dir = path.join(temp, 'private');
     try {
       await state.createLocalPrivateDirectory(dir);
@@ -167,5 +211,11 @@ describe.skipIf(process.platform !== 'win32')('real Windows private-file helper 
       execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `$ErrorActionPreference='Stop'; $acl=[System.IO.${api}]::GetAccessControl('${literal}'); ${operation}; [System.IO.${api}]::SetAccessControl('${literal}',$acl)`], { windowsHide: true, env: state.localMusicOsEnvironment(process.env), stdio: 'pipe' });
       await expect(state.readLocalPrivateSecret(file)).rejects.toThrow(/^LOCAL_MUSIC_/);
     } finally { await rm(temp, { recursive: true, force: true }); }
-  }, 30000);
+  // 600s, deliberately ABOVE runLocalProcess's own 120s child kill
+  // (see the bound in music-local-state.ts). With both equal the two deadlines race, so a
+  // slow child can never surface as its own assertion -- it presents as an opaque vitest
+  // timeout instead. Raised with that bound: on the hosted Windows runner these cases were
+  // dying at 120006ms and 128331ms against the old 120s budget while comparable cases
+  // passed at 88178ms, so the budget was cutting off work that was still progressing.
+  }, 600000);
 });

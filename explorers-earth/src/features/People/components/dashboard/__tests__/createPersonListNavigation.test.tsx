@@ -9,9 +9,9 @@ vi.mock("react-router-dom", async (importOriginal) => {
   return { ...actual, useNavigate: () => navigateSpy };
 });
 
-const createFn = vi.fn(async () => ({
-  data: { createPersonList: { documentId: "person-1" } },
-}));
+const createFn = vi.hoisted(() => vi.fn(async () => ({ id: 'person-1' })));
+vi.mock('../../../api/peopleClient', () => ({ PeopleClient: { createCollection: createFn } }));
+vi.mock('../../../hooks/usePeopleOwner', () => ({ usePeopleOwner: () => ({ data: { personLists: [] }, loading: false, refetch: vi.fn() }), invalidatePeople: vi.fn() }));
 import PeopleHome from "../PeopleHome";
 
 describe("PeopleHome create-list navigation (BUG-3)", () => {
@@ -23,7 +23,7 @@ describe("PeopleHome create-list navigation (BUG-3)", () => {
 
   it("navigates into the newly created list with justCreatedList state", async () => {
     const h = surfaceHarness(<PeopleHome />, { initial: { documentId: "acc-1", public_people: "No" },
-      respond: name => name === "CreatePersonList" ? createFn().then(result => result.data) : undefined,
+      respond: name => name === "CreatePersonList" ? Promise.resolve({}) : undefined,
     });
     await h.ready();
 

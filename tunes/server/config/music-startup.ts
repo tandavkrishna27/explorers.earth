@@ -8,6 +8,7 @@ import {
 } from "./music-identity-config";
 import { resolveMusicDatabaseConnection } from "./music-database-config";
 import type { MusicDatabaseConnection } from "./music-database-config";
+import { assertOwnedBrowserMusicProfile, activateOwnedBrowserMusicRuntime, assertActiveOwnedBrowserMusicRuntime, type ValidatedOwnedBrowserMusicProfile } from './music-owned-browser-profile';
 import {
   LOCAL_MUSIC_TARGET,
   assertValidatedLocalMusicProfile,
@@ -20,7 +21,7 @@ import {
 type Environment = Record<string, string | undefined>;
 
 export interface MusicServerRuntime {
-  createApp: (config: MusicIdentityRuntimeConfig, localProfile?: ValidatedLocalMusicProfile) => Promise<{
+  createApp: (config: MusicIdentityRuntimeConfig, localProfile?: ValidatedLocalMusicProfile, apiOnly?: boolean, combined?: boolean) => Promise<{
     app: Express;
     server: Server;
     shutdown?: () => Promise<void>;
@@ -30,6 +31,13 @@ export interface MusicServerRuntime {
 }
 
 export interface MusicStartupDependencies extends MusicIdentityConfigDependencies {
+  apiOnly?: boolean;
+  /**
+   * Platform fixture only. Delegates the canonical route graph into the Music app
+   * on this same listener; see `server/auth/canonicalDelegate.ts`. Absent or false
+   * leaves the Music composition exactly as it was.
+   */
+  combined?: boolean;
   loadRuntime?: () => Promise<MusicServerRuntime>;
   ensureAnalyticsSchema?: () => Promise<void>;
   resolveDatabaseConnection?: typeof resolveMusicDatabaseConnection;
@@ -51,7 +59,7 @@ export function fixtureUsesAttestedAnalyticsSchema(environment: Environment): bo
   return true;
 }
 
-async function loadProductionRuntime(): Promise<MusicServerRuntime> {
+export async function loadProductionRuntime(): Promise<MusicServerRuntime> {
   const [{ createApp }, { serveStatic }] = await Promise.all([
     import("../app"),
     import("../runtime"),
@@ -59,7 +67,7 @@ async function loadProductionRuntime(): Promise<MusicServerRuntime> {
   return {
     createApp,
     serveStatic,
-    setupVite: async (app, server) => (await import("../vite")).setupVite(app, server),
+    setupVite: async () => { throw new Error("Combined development serving must be supplied by the web entrypoint"); },
   };
 }
 
@@ -97,36 +105,70 @@ export async function createValidatedApp(
 export async function startMusicServer(
   environment: Environment,
   dependencies: MusicStartupDependencies = {},
-): Promise<{ app: Express; server: Server; config: MusicIdentityRuntimeConfig }> {
-  const config = await validateMusicStartupEnvironment(environment, dependencies);
-  const fixtureSkipsAnalyticsDdl = fixtureUsesAttestedAnalyticsSchema(environment);
-  if (dependencies.ensureAnalyticsSchema) await dependencies.ensureAnalyticsSchema();
-  else {
-    const [{ pool }, { EXPLORERS_ANALYTICS_SCHEMA_MARKER, verifyExplorersAnalyticsSchema }] = await Promise.all([
-      import("../db"),
-      import("../startup/explorers-analytics-migration"),
-    ]);
-    await verifyExplorersAnalyticsSchema(pool, fixtureSkipsAnalyticsDdl
-      ? environment.MUSIC_FIXTURE_ANALYTICS_SCHEMA_MARKER
-      : EXPLORERS_ANALYTICS_SCHEMA_MARKER);
+  ownedProfile?: ValidatedOwnedBrowserMusicProfile,
+): Promise<{ app: Express; server: Server; config: MusicIdentityRuntimeConfig; shutdown: () => Promise<void> }> {
+  let deactivateOwned: (() => void) | undefined;
+  let config: MusicIdentityRuntimeConfig;
+  if (ownedProfile) {
+    if (dependencies.apiOnly !== true || Object.keys(dependencies).some(key => key !== 'apiOnly')) throw new Error('Owned browser startup requires unmodified production composition');
+    await assertOwnedBrowserMusicProfile(ownedProfile, environment);
+    config = await resolveMusicIdentityRuntimeConfig(environment);
+    const connection = await resolveMusicDatabaseConnection(environment, 'runtime');
+    await verifyMusicRuntimeDatabaseConnection(connection, environment.MUSIC_DATABASE_MIGRATOR_USER ?? '');
+    await assertOwnedBrowserMusicProfile(ownedProfile, environment);
+    deactivateOwned = activateOwnedBrowserMusicRuntime(ownedProfile, environment, connection.connectionString);
+  } else config = await validateMusicStartupEnvironment(environment, dependencies);
+  let earlyPool: { end: () => Promise<void> } | undefined;
+  let appCreationStarted = false;
+  let constructed: Awaited<ReturnType<MusicServerRuntime["createApp"]>>;
+  try {
+    const fixtureSkipsAnalyticsDdl = fixtureUsesAttestedAnalyticsSchema(environment);
+    if (ownedProfile) await assertActiveOwnedBrowserMusicRuntime(ownedProfile, environment);
+    if (dependencies.ensureAnalyticsSchema) await dependencies.ensureAnalyticsSchema();
+    else {
+      const { pool } = await import("../db");
+      earlyPool = pool;
+      const { EXPLORERS_ANALYTICS_SCHEMA_MARKER, verifyExplorersAnalyticsSchema } = await import("../startup/explorers-analytics-migration");
+      await verifyExplorersAnalyticsSchema(pool, fixtureSkipsAnalyticsDdl
+        ? environment.MUSIC_FIXTURE_ANALYTICS_SCHEMA_MARKER
+        : EXPLORERS_ANALYTICS_SCHEMA_MARKER);
+    }
+    if (ownedProfile) await assertActiveOwnedBrowserMusicRuntime(ownedProfile, environment);
+    const runtime = await (dependencies.loadRuntime ?? loadProductionRuntime)();
+    if (ownedProfile) await assertActiveOwnedBrowserMusicRuntime(ownedProfile, environment);
+    appCreationStarted = true;
+    constructed = await runtime.createApp(config, undefined, dependencies.apiOnly === true, dependencies.combined === true);
+    const { app, server } = constructed;
+    if (dependencies.apiOnly) {
+      app.use((req, res) => res.status(404).json({ error: { code: "NOT_FOUND", message: "Route not found" } }));
+    } else if (app.get("env") === "development") await runtime.setupVite(app, server);
+    else runtime.serveStatic(app);
+  } catch (error) {
+    if (dependencies.apiOnly && !appCreationStarted) await earlyPool?.end().catch(() => undefined);
+    deactivateOwned?.();
+    throw error;
   }
-  const runtime = await (dependencies.loadRuntime ?? loadProductionRuntime)();
-  const { app, server } = await runtime.createApp(config);
-  if (app.get("env") === "development") await runtime.setupVite(app, server);
-  else runtime.serveStatic(app);
+  const { app, server, shutdown } = constructed;
 
-  const port = dependencies.port ?? Number.parseInt(environment.PORT ?? "5000", 10);
-  if (!Number.isInteger(port) || port < 0 || port > 65_535) throw new Error("PORT must be a valid TCP port");
-  const host = dependencies.host ?? "0.0.0.0";
-  await new Promise<void>((resolve, reject) => {
-    const onError = (error: Error) => reject(error);
-    server.once("error", onError);
-    server.listen(port, host, () => {
-      server.off("error", onError);
-      resolve();
+  try {
+    if (ownedProfile) await assertActiveOwnedBrowserMusicRuntime(ownedProfile, environment);
+    const port = dependencies.port ?? Number.parseInt(environment.PORT ?? "5000", 10);
+    if (!Number.isInteger(port) || port < 0 || port > 65_535) throw new Error("PORT must be a valid TCP port");
+    const host = ownedProfile ? '127.0.0.1' : dependencies.host ?? "0.0.0.0";
+    await new Promise<void>((resolve, reject) => {
+      const onError = (error: Error) => reject(error);
+      server.once("error", onError);
+      server.listen(port, host, () => {
+        server.off("error", onError);
+        resolve();
+      });
     });
-  });
-  return { app, server, config };
+  } catch (error) {
+    await shutdown?.().catch(() => undefined);
+    deactivateOwned?.();
+    throw error;
+  }
+  return { app, server, config, shutdown: async () => { try { await (shutdown ?? (() => closeServer(server)))(); } finally { deactivateOwned?.(); } } };
 }
 
 async function validateLocalStartupEnvironment(

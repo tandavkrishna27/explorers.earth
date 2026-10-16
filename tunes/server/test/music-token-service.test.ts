@@ -177,4 +177,119 @@ describe("scoped Music token service", () => {
     }).token.split(".")[0], "base64url").toString("utf8"));
     expect(mintedHeader.kid).toBe("music-current-2026-08");
   });
+
+  it("mints a canonical credential whose subject is the account and whose kind is explicit", () => {
+    // ADR-008. The subject is the canonical account id, and the kind is carried as a
+    // claim so no reader has to guess from the subject's shape.
+    const minted = service().mintCanonical({ accountId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", musicUserId: 41, sessionVersion: 3 });
+    const claims = service().verify(minted.token);
+    expect(claims.sub).toBe("6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411");
+    expect(claims.subjectKind).toBe("canonical-account");
+    expect(claims.sessionVersion).toBe(3);
+    expect(minted.expiresAt).toBe((NOW_SECONDS + 600) * 1_000);
+  });
+
+  it("mints a socket ticket that no HTTP surface accepts, and a credential the socket refuses", () => {
+    // Ticket 6.3. Before this the handshake consumed the same 600-second bearer as owner
+    // HTTP, so a leaked handshake value was ten minutes of full owner access. The
+    // separation only holds if it is refused in both directions, which is what this
+    // asserts: a ticket is not a credential and a credential is not a ticket.
+    const ticket = service().mintSocketTicket({ subject: "strapi-user-document-id", sessionVersion: 7 });
+    const credential = service().mint({
+      id: 41, strapiUserDocumentId: "strapi-user-document-id", strapiAccountDocumentId: "strapi-account",
+      identityStatus: "active", sessionVersion: 7,
+    });
+
+    const claims = service().verifySocketTicket(ticket.token);
+    expect(claims.purpose).toBe("music-socket");
+    expect(claims.sub).toBe("strapi-user-document-id");
+    expect(claims.sessionVersion).toBe(7);
+
+    expectTokenError(() => service().verify(ticket.token), "TOKEN_INVALID");
+    expectTokenError(() => service().verifySocketTicket(credential.token), "TOKEN_INVALID");
+  });
+
+  it("gives a socket ticket its own short lifetime without touching the pinned credential lifetime", () => {
+    // The configured lifetime is pinned to exactly 600 seconds by configuration
+    // validation, so the ticket's 60 seconds is a constant rather than a setting.
+    const ticket = service().mintSocketTicket({ subject: "strapi-user-document-id", sessionVersion: 7 });
+    expect(ticket.expiresAt).toBe((NOW_SECONDS + 60) * 1_000);
+    // Expiry bites at exp plus the 15-second configured skew, not at exp.
+    expectTokenError(() => service({}, NOW_SECONDS + 75).verifySocketTicket(ticket.token), "TOKEN_EXPIRED");
+    expect(service({}, NOW_SECONDS + 74).verifySocketTicket(ticket.token).purpose).toBe("music-socket");
+  });
+
+  it("carries the canonical subject kind on a socket ticket when the owner is canonical", () => {
+    const ticket = service().mintSocketTicket({
+      subject: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", sessionVersion: 3, subjectKind: "canonical-account",
+    });
+    const claims = service().verifySocketTicket(ticket.token);
+    expect(claims.subjectKind).toBe("canonical-account");
+    expect(claims.purpose).toBe("music-socket");
+  });
+
+  it.each([
+    ["a legacy subject that is not a document id", { subject: "", sessionVersion: 7 }],
+    ["a canonical kind with a non-uuid subject", { subject: "strapi-user", sessionVersion: 7, subjectKind: "canonical-account" as const }],
+    ["a zero session version", { subject: "strapi-user-document-id", sessionVersion: 0 }],
+    ["a fractional session version", { subject: "strapi-user-document-id", sessionVersion: 1.5 }],
+  ])("refuses to mint a socket ticket for %s", (_label, input) => {
+    expectTokenError(() => service().mintSocketTicket(input), "TOKEN_INVALID");
+  });
+
+  it("keeps a legacy credential free of the canonical kind", () => {
+    const minted = service().mint({
+      id: 41, strapiUserDocumentId: "strapi-user-document-id", strapiAccountDocumentId: "strapi-account",
+      identityStatus: "active", sessionVersion: 7,
+    });
+    expect(service().verify(minted.token).subjectKind).toBeUndefined();
+  });
+
+  it.each([
+    ["not a uuid", { accountId: "strapi-user-document-id", musicUserId: 41, sessionVersion: 3 }],
+    ["a non-v4 uuid", { accountId: "6f1a9c42-0d3b-1f27-9d61-2e8c5b7a4411", musicUserId: 41, sessionVersion: 3 }],
+    ["a zero venue id", { accountId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", musicUserId: 0, sessionVersion: 3 }],
+    ["a fractional venue id", { accountId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", musicUserId: 1.5, sessionVersion: 3 }],
+    ["a zero session version", { accountId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", musicUserId: 41, sessionVersion: 0 }],
+    ["a fractional session version", { accountId: "6f1a9c42-0d3b-4f27-9d61-2e8c5b7a4411", musicUserId: 41, sessionVersion: 1.5 }],
+  ])("refuses to mint a canonical credential for %s", (_label, input) => {
+    expectTokenError(() => service().mintCanonical(input), "TOKEN_INVALID");
+  });
+
+  it.each([
+    ["an unrecognised subject kind", { subjectKind: "strapi-user" }],
+    ["a canonical kind over a non-uuid subject", { subjectKind: "canonical-account" }],
+  ])("rejects %s", (_label, overrides) => {
+    // The second case is the attack this claim exists to stop: claiming canonical
+    // provenance for a subject that is not a canonical account id.
+    const token = rawToken({ alg: "HS256", kid: "music-current-2026-08" }, validClaims(overrides));
+    expectTokenError(() => service().verify(token), "TOKEN_INVALID");
+  });
+
+  it("refuses a purpose it does not recognise, and a ticket lifetime that is not exactly its own", () => {
+    // The purpose claim decides which lifetime is exact, so an unrecognised value must be
+    // refused before it can select one, and a 'music-socket' token minted with the
+    // credential window must not pass as a ticket.
+    const unknownPurpose = rawToken({ alg: "HS256", kid: "music-current-2026-08" },
+      validClaims({ purpose: "music-admin" }));
+    expectTokenError(() => service().verify(unknownPurpose), "TOKEN_INVALID");
+    expectTokenError(() => service().verifySocketTicket(unknownPurpose), "TOKEN_INVALID");
+
+    const stretched = rawToken({ alg: "HS256", kid: "music-current-2026-08" },
+      validClaims({ purpose: "music-socket" }));
+    expectTokenError(() => service().verifySocketTicket(stretched), "TOKEN_INVALID");
+  });
+
+  it("still refuses a claim it does not recognise at all", () => {
+    // Optionality is granted to one named claim; it does not loosen strictness.
+    const token = rawToken({ alg: "HS256", kid: "music-current-2026-08" }, validClaims({ scope: "all" }));
+    expectTokenError(() => service().verify(token), "TOKEN_INVALID");
+  });
+
+  it("still requires every mandatory claim", () => {
+    const claims = validClaims();
+    delete claims.sessionVersion;
+    const token = rawToken({ alg: "HS256", kid: "music-current-2026-08" }, claims);
+    expectTokenError(() => service().verify(token), "TOKEN_INVALID");
+  });
 });

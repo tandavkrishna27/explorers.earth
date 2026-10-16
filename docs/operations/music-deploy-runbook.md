@@ -26,11 +26,9 @@ string is placed in remote command text.
 
 `docker-compose.yml` is the sole production authority,
 `docker-compose.music-test.yml` is the sole disposable authority, and
-`tunes/docker-compose.yml` is intentionally non-runnable. `GATE_PROD` remains
-closed until external rehearsal evidence and production approval exist. This
-task does not authorize opening it or running any production command below.
+`tunes/docker-compose.yml` is intentionally non-runnable. Production deployment requires external rehearsal evidence and independent approval in the protected `tunes-production` environment. This task does not authorize running any production command below.
 
-Before `GATE_PROD` can open, repository administrators must configure the
+Before a production release, repository administrators must configure the
 `tunes-production` environment deployment branch policy to **protected branches only**
 (`protected_branches=true`, `custom_branch_policies=false`), and main must be the sole protected branch.
 GitHub then also refuses a tag or fork whose name matches protected `main`.
@@ -49,8 +47,7 @@ environment-scoped only; repository- or organization-scoped copies of those new
 credentials are forbidden. The
 YAML check is not the security boundary: a branch can edit its own YAML, while
 the external environment policy cannot be bypassed by that branch copy.
-`GATE_PROD must remain closed` if the API check is unavailable, the policy is
-absent or different, or `main` is not protected.
+The protected environment reviewer must not approve a release if the API check is unavailable, the policy is absent or different, or `main` is not protected.
 
 ## C3-C9 same-image migration gate
 
@@ -82,7 +79,7 @@ migrated the database. All new images use
 real migration gate. Because production catalog/row-count and restore evidence
 are still absent, an existing unversioned database is a conflict: there is no
 automatic baseline adoption, username/email matching, or authorized production
-migration path. `GATE_PROD` remains closed.
+migration path. Production release remains unauthorized.
 
 Deletion replay is resource-bound at this schema epoch: finalized lifecycle and
 tombstone history records the retired numeric `users.id` without a foreign key
@@ -362,8 +359,7 @@ The Tunes application mounts only the runtime credential and independently
 authenticates and checks the restricted role before importing routes or binding
 a listener. It never mounts or reads the migrator credential. The database
 container and gate mount the migrator credential; only the gate additionally
-mounts the runtime credential. For an existing environment, keep `GATE_PROD`
-closed until an operator has backed up the database, confirmed the configured
+mounts the runtime credential. For an existing environment, defer production approval until an operator has backed up the database, confirmed the configured
 migrator is the actual database/schema owner with role-create authority, and
 confirmed that an existing proposed runtime role is either absent or already
 has exactly the safe attributes above. Missing files, legacy inline
@@ -548,7 +544,7 @@ current/optional previous Music token, lifecycle proof, reconciliation, session,
 cookie, Strapi access/JWT, and gate authorities. Production configuration must
 provide `STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST` and
 `STRAPI_RECONCILIATION_TOKEN_FILE_HOST`; an absent path, inaccessible file, alias,
-or unsafe file metadata fails the deployment while `GATE_PROD` remains closed.
+or unsafe file metadata fails the deployment before promotion.
 These privileged database and deployment authorities are never mounted into the
 application. The application independently compares every authority available in
 its own least-privilege runtime view.
@@ -625,11 +621,11 @@ For an identity or ownership incident, set the server kill switch, verify
 `/api/music-entry/status` reports both new and legacy entries disabled, and then
 use only an allowed retained digest if rollback is necessary.
 
-## Rehearsal evidence required before GATE_PROD
+## Rehearsal evidence required before production approval
 
 ### Authorized canary contract
 
-A canary is a separate production mutation and remains closed until `GATE_PROD` is explicitly authorized. When authorized, deploy only the already-attested candidate digest to the approved bounded cohort after preflight, backup/restore proof, migration attestation, readiness, permanent security floor, and schema-floor checks pass. Exercise one Google and one email identity, rename stability, owner content, private/unlisted/public publication, lifecycle suspension/reactivation, and report-only reconciliation. Monitor sanitized error codes, latency, rate/circuit state, compatibility usage, lifecycle/reconciliation anomalies, and database saturation for one full approved cycle.
+A canary is a separate production mutation and requires explicit independent production approval. When authorized, deploy only the already-attested candidate digest to the approved bounded cohort after preflight, backup/restore proof, migration attestation, readiness, permanent security floor, and schema-floor checks pass. Exercise one Google and one email identity, rename stability, owner content, private/unlisted/public publication, lifecycle suspension/reactivation, and report-only reconciliation. Monitor sanitized error codes, latency, rate/circuit state, compatibility usage, lifecycle/reconciliation anomalies, and database saturation for one full approved cycle.
 
 Abort the canary by setting the server kill switch, preserving the previous general route, and using only an authenticated retained digest at or above both floors. Do not roll back a schema marker, remove a tombstone, weaken an owner predicate, paste a capability, or convert reconciliation to production apply. Promotion requires recorded zero compatibility use, no unsafe error/identity leakage, stable readiness, and independent operator approval.
 
@@ -667,7 +663,7 @@ returned by the registry API. It generates a private in-memory policy adapter
 whose image allowlist contains only those captured digests, then delegates to
 the shared deployment engine. The adapter is never written as a caller-editable
 policy file. The rehearsal does not invoke the production wrapper or workflow,
-a remote registry, `GATE_PROD`, a production endpoint, or the active source
+a remote registry, production deployment, a production endpoint, or the active source
 `.env.music.test`. Matching disposable labels remain mandatory for cleanup.
 
 Run the bounded local proof with:
@@ -680,7 +676,7 @@ C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -NoProfile -No
 
 On the protected Linux qualification host, use the native launcher with its
 minimal environment. It accepts only the checksum-pinned Node/npm authority at
-`/usr/bin/node` and `/opt/explorers-music-node-v22.12.0`, plus the root-protected
+`/usr/bin/node` and `/opt/explorers-music-node-v24.21.0`, plus the root-protected
 Playwright Chromium authority at `/opt/explorers-music-playwright`; missing,
 tampered, group/world-writable, or caller-selected tools fail before Node.
 macOS and user-writable/nvm Node installations are not qualification authority:
@@ -705,7 +701,7 @@ owners, OCI mismatches, journal/state/security-floor/schema-floor tamper, an old
 C2 image against the C3 schema, and duplicate/malformed/
 truncated/reordered manifests.
 
-Before `GATE_PROD` can open, retain the protected-workflow image/deployment
+Before production approval, retain the protected-workflow image/deployment
 contract evidence. A disposable real-Docker rehearsal may supplement that
 evidence, but cannot replace it or authorize production. It should show:
 

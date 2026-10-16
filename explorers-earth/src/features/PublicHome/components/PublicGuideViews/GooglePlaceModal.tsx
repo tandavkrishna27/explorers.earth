@@ -1,3 +1,4 @@
+import { selectGuidePlaceGallery } from "../../utils/publicGuidePhotoViewModel";
 import { FC, memo, useState, useEffect, useRef, type CSSProperties } from "react";
 import { usePublicCategoryThemeStyles } from "../PublicCategoryThemeContext";
 import CrossIcon from "../../../../assets/icons/CrossIcon";
@@ -28,31 +29,6 @@ const GooglePlaceModal: FC<GooglePlaceModalProps> = memo(
     const startYRef = useRef(0);
     const currentYRef = useRef(0);
 
-    // Helper function to get S3 images from guide data by place_id
-    const getS3ImagesForPlace = (placeId: string): Array<{ url: string; alt?: string }> => {
-      const imageDetails: Array<{ url: string; alt?: string }> = [];
-
-      // Iterate through all sections to find activity photos
-      sections.forEach((section) => {
-        if (section.Recommendation_Activity?.activities) {
-          section.Recommendation_Activity.activities.forEach((activity: any) => {
-            if (activity.place_id === placeId && activity.photos && activity.photos.length > 0) {
-              // Add all photos from S3
-              activity.photos.forEach((photo: any) => {
-                if (photo.url) {
-                  imageDetails.push({
-                    url: photo.url,
-                    alt: place.name || "Place",
-                  });
-                }
-              });
-            }
-          });
-        }
-      });
-
-      return imageDetails;
-    };
 
     // Fetch detailed place information and transform to match PlaceOverview format
     useEffect(() => {
@@ -62,7 +38,7 @@ const GooglePlaceModal: FC<GooglePlaceModalProps> = memo(
         setLoading(true);
         try {
           // First, try to get S3 images from guide data
-          const s3Images = getS3ImagesForPlace(place.place_id);
+          const s3Images = selectGuidePlaceGallery(place, sections).map(photo => ({ url: photo.url, alt: place.name || "Place" }));
 
           // Get location coordinates from place
           const lat = place.geometry?.location

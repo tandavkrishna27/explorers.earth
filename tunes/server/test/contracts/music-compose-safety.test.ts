@@ -79,11 +79,24 @@ describe("Music Compose ownership safety", () => {
       "explorers-earth/src/features/music/components/MusicSectionTabs.tsx",
       "explorers-earth/src/features/music/components/MusicSectionTabs.css",
       "explorers-earth/src/features/music/components/musicPlaybackCommand.ts",
+      "tunes/shared/explorersOwnerContentContract.ts",
+      "tunes/shared/explorersSearchContract.ts",
+      "tunes/shared/explorersPublicContentContract.ts",
+      "tunes/shared/explorersBookContract.ts",
+      "tunes/shared/explorersBookCoverContract.ts",
     ]));
     expect(manifest).not.toEqual(expect.arrayContaining([
       "explorers-earth/src/features/music/components/__tests__/MusicSectionTabs.test.tsx",
       "explorers-earth/src/features/music/components/__tests__/MusicPlaylistCollection.test.tsx",
     ]));
+    const dockerfile = readFileSync(resolve(repositoryRoot, "explorers-earth/Dockerfile.music-fixture"), "utf8");
+    for (const source of manifest.filter((file) => file.startsWith("tunes/shared/"))) {
+      expect(dockerfile).toContain(`COPY ${source} /workspace/${source}`);
+      const contract = readFileSync(resolve(repositoryRoot, source), "utf8");
+      for (const dependency of contract.matchAll(/from\s+['"]\.\/(\w+)['"]/g)) {
+        expect(manifest).toContain(`tunes/shared/${dependency[1]}.ts`);
+      }
+    }
   });
 
   it("rejects a cleartext Music fixture origin from a production bundle", () => {

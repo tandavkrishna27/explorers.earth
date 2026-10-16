@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, MoreVertical, Trash2, Loader2, Smartphone, Pencil, Copy, Check, Share2, Download
@@ -10,8 +9,8 @@ import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import Accordion from "../../../../components/ui/Accordian";
 import useAuthStore from "../../../../store/store";
-import { APPS_BY_LIST, appsByListVars } from "../../api/query";
-import { UPDATE_APP_LIST, DELETE_APP_LIST, TOGGLE_APP_PIN, DELETE_RECOMMENDED_APP } from "../../api/mutation";
+import { useAppsCommands, useAppsCallerCustody } from "../../api/query";
+import { useAppsOwner } from "../../hooks/useAppsOwner";
 import { deduplicateApps, buildLogoUrl, extractNoteText, getPriceTierColor } from "../../utils/appHelpers";
 import type { RecommendedApp, AppList } from "../../types";
 import Switch from "../../../../components/ui/Switch";
@@ -138,16 +137,13 @@ const AppListView = () => {
     listName: string;
   } | null>(null);
 
-  const { data, loading, refetch } = useQuery(APPS_BY_LIST, {
-    variables: appsByListVars(listId!),
-    skip: !listId,
-    fetchPolicy: "cache-and-network",
-  });
-
-  const [updateAppList, { loading: isUpdating }] = useMutation(UPDATE_APP_LIST);
-  const [deleteAppList, { loading: deletingList }] = useMutation(DELETE_APP_LIST);
-  const [togglePin] = useMutation(TOGGLE_APP_PIN);
-  const [deleteApp] = useMutation(DELETE_RECOMMENDED_APP);
+  const { data, content, loading, refetch } = useAppsOwner(listId, Boolean(listId));
+  const commands = useAppsCommands(), isUpdating = commands.loading, deletingList = commands.loading;
+  const beginEffects = useAppsCallerCustody();
+  const updateAppList = ({ variables }: { variables: { documentId?: string; Visibility?: boolean; List_Name?: string; list_description?: string | null }; optimisticResponse?: unknown; refetchQueries?: unknown[] }) => commands.updateList(variables.documentId!, { ...(variables.Visibility === undefined ? {} : { visibility: variables.Visibility ? 'public' : 'private', publicationState: variables.Visibility ? 'published' : 'draft' }), ...(variables.List_Name === undefined ? {} : { title: variables.List_Name }), ...(variables.list_description === undefined ? {} : { description: variables.list_description }) });
+  const deleteAppList = ({ variables }: { variables: { documentId: string } }) => commands.archiveList(variables.documentId);
+  const togglePin = ({ variables }: { variables: { documentId: string; is_pinned: boolean; pin_order: number | null }; refetchQueries?: unknown[] }) => commands.pin(variables.documentId, listId!, variables.is_pinned);
+  const deleteApp = ({ variables }: { variables: { documentId: string }; refetchQueries?: unknown[] }) => commands.membership(variables.documentId, listId!, false);
 
   const listData: AppList | null = data?.appLists?.[0] ?? null;
   const apps = deduplicateApps(listData?.recommended_apps ?? []);
@@ -188,6 +184,7 @@ const AppListView = () => {
       toast.error("Add at least one app before publishing.");
       return;
     }
+    const current = beginEffects();
     try {
       await updateAppList({
         variables: { documentId: listData.documentId, Visibility: !listData.Visibility },
@@ -203,11 +200,11 @@ const AppListView = () => {
             top_apps_heading: listData.top_apps_heading || null,
           }
         },
-        refetchQueries: [{ query: APPS_BY_LIST, variables: appsByListVars(listId!) }],
       });
+      if (!current()) return;
       toast.success(listData.Visibility ? "List set to draft." : "List published!");
     } catch {
-      toast.error("Failed to update visibility.");
+      if (current()) toast.error("Failed to update visibility.");
     }
   };
 
@@ -216,45 +213,60 @@ const AppListView = () => {
       toast.error("Max 15 pinned apps allowed.");
       return;
     }
+    const current = beginEffects();
     setPinningId(app.documentId);
     const pinnedApps = apps.filter((a) => a.is_pinned && a.documentId !== app.documentId);
     const newPinOrder = app.is_pinned ? null : pinnedApps.length;
     try {
       await togglePin({
         variables: { documentId: app.documentId, is_pinned: !app.is_pinned, pin_order: newPinOrder },
-        refetchQueries: [{ query: APPS_BY_LIST, variables: appsByListVars(listId!) }],
       });
     } catch {
-      toast.error("Failed to update pin.");
+      if (current()) toast.error("Failed to update pin.");
     } finally {
-      setPinningId(null);
+      if (current()) setPinningId(null);
     }
   };
 
   const handleDelete = async (app: RecommendedApp) => {
     if (!window.confirm(`Delete "${app.title}"?`)) return;
+    const current = beginEffects();
     setDeletingId(app.documentId);
     try {
       await deleteApp({
         variables: { documentId: app.documentId },
-        refetchQueries: [{ query: APPS_BY_LIST, variables: appsByListVars(listId!) }],
       });
+      if (!current()) return;
       toast.success("App removed.");
     } catch {
-      toast.error("Failed to delete app.");
+      if (current()) toast.error("Failed to delete app.");
     } finally {
-      setDeletingId(null);
+      if (current()) setDeletingId(null);
+    }
+  };
+
+  const handleRecommendationPublication = async (app: RecommendedApp, published: boolean) => {
+    const current = beginEffects();
+    try {
+      await commands.publishRecommendation(app.documentId, published);
+      if (!current()) return;
+      toast.success(published ? 'App published.' : 'App kept as draft.');
+    } catch {
+      if (!current()) return;
+      toast.error('App publication could not be saved. Please retry.');
     }
   };
 
   const handleDeleteList = async () => {
     if (!listData) return;
+    const current = beginEffects();
     try {
       await deleteAppList({ variables: { documentId: listData.documentId } });
+      if (!current()) return;
       toast.success("List deleted.");
       navigate("/recommendations/apps");
     } catch {
-      toast.error("Failed to delete list.");
+      if (current()) toast.error("Failed to delete list.");
     }
   };
 
@@ -351,6 +363,18 @@ const AppListView = () => {
                       onDelete={handleDelete}
                       isPinning={pinningId === app.documentId}
                     />
+                    {/* A published list serves only published recommendations, so the row
+                        carries its own publication state rather than inheriting the list's. */}
+                    <div className="flex items-center justify-between gap-3 pb-3 text-xs text-dashboard-muted">
+                      <span>Recommendation is {content?.details.get(app.documentId)?.detail.publicationState === 'published' ? 'Published' : 'Draft'}</span>
+                      <button
+                        disabled={commands.loading || !content?.details.has(app.documentId)}
+                        onClick={() => handleRecommendationPublication(app, content?.details.get(app.documentId)?.detail.publicationState !== 'published')}
+                        className="text-dashboard-accent"
+                      >
+                        {content?.details.get(app.documentId)?.detail.publicationState === 'published' ? `Keep ${app.title} as draft` : `Publish ${app.title}`}
+                      </button>
+                    </div>
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -381,7 +405,7 @@ const AppListView = () => {
                         defaultValue={listData?.List_Name}
                         onBlur={async (e) => {
                           if (e.target.value && e.target.value !== listData?.List_Name) {
-                            await updateAppList({ variables: { documentId: listData?.documentId, List_Name: e.target.value }, refetchQueries: [{ query: APPS_BY_LIST, variables: appsByListVars(listId!) }] });
+                            await updateAppList({ variables: { documentId: listData?.documentId, List_Name: e.target.value } });
                             toast.success("List name updated.");
                           }
                         }}
@@ -395,7 +419,7 @@ const AppListView = () => {
                         rows={3}
                         onBlur={async (e) => {
                           if (e.target.value !== (listData?.list_description ?? "")) {
-                            await updateAppList({ variables: { documentId: listData?.documentId, list_description: e.target.value }, refetchQueries: [{ query: APPS_BY_LIST, variables: appsByListVars(listId!) }] });
+                            await updateAppList({ variables: { documentId: listData?.documentId, list_description: e.target.value } });
                             toast.success("Description updated.");
                           }
                         }}
@@ -543,7 +567,6 @@ const AppListView = () => {
             try {
               await updateAppList({
                 variables: { documentId: listData.documentId, Visibility: true },
-                refetchQueries: [{ query: APPS_BY_LIST, variables: appsByListVars(listId!) }],
               });
               refetch();
               toast.success(`"${listData.List_Name}" published!`);

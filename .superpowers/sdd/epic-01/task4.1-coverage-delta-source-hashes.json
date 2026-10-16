@@ -1,0 +1,21 @@
+{
+  "acceptance": false,
+  "files": {
+    "tunes/server/test/movies-public-gateway.integration.test.ts": "b3ad7fac95be1bc9774beedcd018f6e4e330be4772d7030f022463dff3ec4721",
+    "tunes/server/test/movie-media-import.integration.test.ts": "e3f8b9980b48faaaee1d048c12378a8d7c471b8d7346bbed5b196902131f6727",
+    "explorers-earth/e2e/replatform/movies.spec.ts": "3c82367d117698a4fd693b0a6820bf197a25647592fa516cf6fd8744ef8049df"
+  },
+  "actualPG": {
+    "tests": 51,
+    "passed": 51,
+    "skipped": 0,
+    "files": 2
+  },
+  "focusedBrowser": {
+    "tests": 4,
+    "passed": 4,
+    "skipped": 0,
+    "duration": "37.0s"
+  },
+  "full24and62": "not rerun after delta; pending independent review/refreeze"
+}

@@ -1,0 +1,5706 @@
+{
+  "version": "explorers-taxonomy-import/v1",
+  "catalogVersion": 1,
+  "category": "places",
+  "defaultLocale": "en",
+  "terms": [
+    {
+      "id": "c94206aa-6699-51b4-8724-cbf76b6e9a77",
+      "category": "places",
+      "slug": "food-and-drink--acai-shop",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 0,
+      "active": true,
+      "labels": {
+        "en": "Acai Shop"
+      }
+    },
+    {
+      "id": "80c326ed-0537-5ecb-bee6-566ec4183841",
+      "category": "places",
+      "slug": "finance--accounting",
+      "parentId": "8596ec99-7276-5dbb-b03d-ba02e3f9629c",
+      "position": 1,
+      "active": true,
+      "labels": {
+        "en": "Accounting"
+      }
+    },
+    {
+      "id": "81c725cb-58f8-5667-a6a1-7d533916369d",
+      "category": "places",
+      "slug": "entertainment-and-recreation--adventure-sports-center",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 2,
+      "active": true,
+      "labels": {
+        "en": "Adventure Sports Center"
+      }
+    },
+    {
+      "id": "277482ae-42ef-5543-918b-52634b336cc1",
+      "category": "places",
+      "slug": "food-and-drink--afghani-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 3,
+      "active": true,
+      "labels": {
+        "en": "Afghani Restaurant"
+      }
+    },
+    {
+      "id": "5cc04d64-fb6e-5808-96d2-17923e5564fa",
+      "category": "places",
+      "slug": "food-and-drink--african-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 4,
+      "active": true,
+      "labels": {
+        "en": "African Restaurant"
+      }
+    },
+    {
+      "id": "c9ccce62-487b-5cd4-9f91-0e6286e163ce",
+      "category": "places",
+      "slug": "transportation--airport",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 5,
+      "active": true,
+      "labels": {
+        "en": "Airport"
+      }
+    },
+    {
+      "id": "89683445-211c-5207-a037-b1c7e494c4bd",
+      "category": "places",
+      "slug": "transportation--airstrip",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 6,
+      "active": true,
+      "labels": {
+        "en": "Airstrip"
+      }
+    },
+    {
+      "id": "db515b86-02d6-5b3a-b343-659f10cd55b7",
+      "category": "places",
+      "slug": "food-and-drink--american-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 7,
+      "active": true,
+      "labels": {
+        "en": "American Restaurant"
+      }
+    },
+    {
+      "id": "0fcd082a-3402-508c-99e2-1747782c2750",
+      "category": "places",
+      "slug": "entertainment-and-recreation--amphitheatre",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 8,
+      "active": true,
+      "labels": {
+        "en": "Amphitheatre"
+      }
+    },
+    {
+      "id": "0224151e-787d-5a22-adda-83293c4d79b0",
+      "category": "places",
+      "slug": "entertainment-and-recreation--amusement-center",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 9,
+      "active": true,
+      "labels": {
+        "en": "Amusement Center"
+      }
+    },
+    {
+      "id": "5d334328-1b6d-5b86-a3dc-bcc3098b40ed",
+      "category": "places",
+      "slug": "entertainment-and-recreation--amusement-park",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 10,
+      "active": true,
+      "labels": {
+        "en": "Amusement Park"
+      }
+    },
+    {
+      "id": "32b945eb-b24a-5e32-9e7f-76785d1fb362",
+      "category": "places",
+      "slug": "housing--apartment",
+      "parentId": "f65cd2d8-2477-59f2-84ec-06e6a2820876",
+      "position": 11,
+      "active": true,
+      "labels": {
+        "en": "Apartment"
+      }
+    },
+    {
+      "id": "dac6111b-9381-594b-901b-0a0e581f60b8",
+      "category": "places",
+      "slug": "entertainment-and-recreation--aquarium",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 12,
+      "active": true,
+      "labels": {
+        "en": "Aquarium"
+      }
+    },
+    {
+      "id": "f88d8d17-1b23-57c1-b001-dae9cf727a9c",
+      "category": "places",
+      "slug": "sports--arena",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 13,
+      "active": true,
+      "labels": {
+        "en": "Arena"
+      }
+    },
+    {
+      "id": "daf832b2-9d96-521f-965d-8e90c647573d",
+      "category": "places",
+      "slug": "culture--art-gallery",
+      "parentId": "4cfde7ed-7f45-52e6-a49e-45fdeec77b60",
+      "position": 14,
+      "active": true,
+      "labels": {
+        "en": "Art Gallery"
+      }
+    },
+    {
+      "id": "a1d43f56-2db8-55f7-aafb-c458e14b9d45",
+      "category": "places",
+      "slug": "culture--art-studio",
+      "parentId": "4cfde7ed-7f45-52e6-a49e-45fdeec77b60",
+      "position": 15,
+      "active": true,
+      "labels": {
+        "en": "Art Studio"
+      }
+    },
+    {
+      "id": "c7782b2f-5f71-5af7-8fcd-2a51546025b3",
+      "category": "places",
+      "slug": "shopping--asian-grocery-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 16,
+      "active": true,
+      "labels": {
+        "en": "Asian Grocery Store"
+      }
+    },
+    {
+      "id": "9a3d0aaa-d82f-5461-9a96-5420362b0ea6",
+      "category": "places",
+      "slug": "food-and-drink--asian-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 17,
+      "active": true,
+      "labels": {
+        "en": "Asian Restaurant"
+      }
+    },
+    {
+      "id": "e3c49a20-427e-5bda-a096-3c1f3cfb7c54",
+      "category": "places",
+      "slug": "services--astrologer",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 18,
+      "active": true,
+      "labels": {
+        "en": "Astrologer"
+      }
+    },
+    {
+      "id": "579fa269-1027-5d59-9d50-4a946a64c2b6",
+      "category": "places",
+      "slug": "sports--athletic-field",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 19,
+      "active": true,
+      "labels": {
+        "en": "Athletic Field"
+      }
+    },
+    {
+      "id": "f3582f31-b82d-5884-b733-c7999388d4dc",
+      "category": "places",
+      "slug": "finance--atm",
+      "parentId": "8596ec99-7276-5dbb-b03d-ba02e3f9629c",
+      "position": 20,
+      "active": true,
+      "labels": {
+        "en": "ATM"
+      }
+    },
+    {
+      "id": "52079e96-4743-5a3d-82c7-8afda5ecc645",
+      "category": "places",
+      "slug": "culture--auditorium",
+      "parentId": "4cfde7ed-7f45-52e6-a49e-45fdeec77b60",
+      "position": 21,
+      "active": true,
+      "labels": {
+        "en": "Auditorium"
+      }
+    },
+    {
+      "id": "eff6e0a2-337d-525a-97ea-fdc1a5e69537",
+      "category": "places",
+      "slug": "shopping--auto-parts-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 22,
+      "active": true,
+      "labels": {
+        "en": "Auto Parts Store"
+      }
+    },
+    {
+      "id": "268436a1-39da-5c91-a568-13cb8ad4eed1",
+      "category": "places",
+      "slug": "automotive",
+      "parentId": null,
+      "position": 23,
+      "active": true,
+      "labels": {
+        "en": "Automotive"
+      }
+    },
+    {
+      "id": "0843adde-f253-5e01-82c0-696e759cc891",
+      "category": "places",
+      "slug": "food-and-drink--bagel-shop",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 24,
+      "active": true,
+      "labels": {
+        "en": "Bagel Shop"
+      }
+    },
+    {
+      "id": "918d7233-7455-524c-8ed3-addabc6f23d5",
+      "category": "places",
+      "slug": "food-and-drink--bakery",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 25,
+      "active": true,
+      "labels": {
+        "en": "Bakery"
+      }
+    },
+    {
+      "id": "9c83b0c9-268e-5ee7-bb3f-5acf5b7a082f",
+      "category": "places",
+      "slug": "finance--bank",
+      "parentId": "8596ec99-7276-5dbb-b03d-ba02e3f9629c",
+      "position": 26,
+      "active": true,
+      "labels": {
+        "en": "Bank"
+      }
+    },
+    {
+      "id": "3c0059b8-8c5f-50f7-925a-e0f2354323ee",
+      "category": "places",
+      "slug": "entertainment-and-recreation--banquet-hall",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 27,
+      "active": true,
+      "labels": {
+        "en": "Banquet Hall"
+      }
+    },
+    {
+      "id": "f9e012a0-9611-5e5f-bb7b-694dfb43361e",
+      "category": "places",
+      "slug": "food-and-drink--bar",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 28,
+      "active": true,
+      "labels": {
+        "en": "Bar"
+      }
+    },
+    {
+      "id": "96be84ea-be6d-5861-90a2-6ef57acb0586",
+      "category": "places",
+      "slug": "food-and-drink--bar-and-grill",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 29,
+      "active": true,
+      "labels": {
+        "en": "Bar and Grill"
+      }
+    },
+    {
+      "id": "f42dec3e-3ed0-530a-97c8-9c42d5f54791",
+      "category": "places",
+      "slug": "entertainment-and-recreation--barbecue-area",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 30,
+      "active": true,
+      "labels": {
+        "en": "Barbecue Area"
+      }
+    },
+    {
+      "id": "f1756320-a87f-5d13-b9a7-6c40ba355988",
+      "category": "places",
+      "slug": "food-and-drink--barbecue-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 31,
+      "active": true,
+      "labels": {
+        "en": "Barbecue Restaurant"
+      }
+    },
+    {
+      "id": "7a8260e0-7041-5ce0-bce2-ff999dd06af7",
+      "category": "places",
+      "slug": "services--barber-shop",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 32,
+      "active": true,
+      "labels": {
+        "en": "Barber Shop"
+      }
+    },
+    {
+      "id": "179e2782-bc1c-56b2-993b-50b694f258fc",
+      "category": "places",
+      "slug": "natural-features--beach",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 33,
+      "active": true,
+      "labels": {
+        "en": "Beach"
+      }
+    },
+    {
+      "id": "9bd31d98-8478-5a3c-84ae-fbf28380c7a3",
+      "category": "places",
+      "slug": "services--beautician",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 34,
+      "active": true,
+      "labels": {
+        "en": "Beautician"
+      }
+    },
+    {
+      "id": "707f05cd-6b4a-52a8-b844-1a3efeff62a4",
+      "category": "places",
+      "slug": "services--beauty-salon",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 35,
+      "active": true,
+      "labels": {
+        "en": "Beauty Salon"
+      }
+    },
+    {
+      "id": "110a1fce-f073-5be9-8694-a5b4fbe3bd28",
+      "category": "places",
+      "slug": "lodging--bed-and-breakfast",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 36,
+      "active": true,
+      "labels": {
+        "en": "Bed and Breakfast"
+      }
+    },
+    {
+      "id": "33ddb51d-b016-5897-a64d-86745e776eca",
+      "category": "places",
+      "slug": "shopping--bicycle-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 37,
+      "active": true,
+      "labels": {
+        "en": "Bicycle Store"
+      }
+    },
+    {
+      "id": "739ba719-1926-5130-860f-a0d2c12cc0fa",
+      "category": "places",
+      "slug": "housing--boarding-house",
+      "parentId": "f65cd2d8-2477-59f2-84ec-06e6a2820876",
+      "position": 38,
+      "active": true,
+      "labels": {
+        "en": "Boarding House"
+      }
+    },
+    {
+      "id": "c87616f4-822b-5254-a7c3-baea6ca974c3",
+      "category": "places",
+      "slug": "services--body-art-service",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 39,
+      "active": true,
+      "labels": {
+        "en": "Body Art Service"
+      }
+    },
+    {
+      "id": "fc6ef8b2-c59a-58d1-969f-80d196313ea1",
+      "category": "places",
+      "slug": "shopping--book-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 40,
+      "active": true,
+      "labels": {
+        "en": "Book Store"
+      }
+    },
+    {
+      "id": "20db5e87-4bc2-52ea-ac05-0b135acc18cf",
+      "category": "places",
+      "slug": "entertainment-and-recreation--botanical-garden",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 41,
+      "active": true,
+      "labels": {
+        "en": "Botanical Garden"
+      }
+    },
+    {
+      "id": "251b3ce7-96ee-56bb-aa8b-53067b8a5177",
+      "category": "places",
+      "slug": "natural-features--botanical-garden",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 42,
+      "active": true,
+      "labels": {
+        "en": "botanical garden"
+      }
+    },
+    {
+      "id": "c9eb3687-5cc8-5ba4-ab7c-8813dfd95085",
+      "category": "places",
+      "slug": "entertainment-and-recreation--bowling-alley",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 43,
+      "active": true,
+      "labels": {
+        "en": "Bowling Alley"
+      }
+    },
+    {
+      "id": "90a4809b-d3b6-5afa-8fe1-66b41b018f0c",
+      "category": "places",
+      "slug": "food-and-drink--brazilian-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 44,
+      "active": true,
+      "labels": {
+        "en": "Brazilian Restaurant"
+      }
+    },
+    {
+      "id": "2e575631-5e3e-5762-9766-0a70b42011f2",
+      "category": "places",
+      "slug": "food-and-drink--breakfast-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 45,
+      "active": true,
+      "labels": {
+        "en": "Breakfast Restaurant"
+      }
+    },
+    {
+      "id": "649fc343-15c5-5908-8ddb-2b6abe42cad5",
+      "category": "places",
+      "slug": "food-and-drink--brunch-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 46,
+      "active": true,
+      "labels": {
+        "en": "Brunch Restaurant"
+      }
+    },
+    {
+      "id": "fcf9ff8e-170a-5060-a070-ae3671ca27d2",
+      "category": "places",
+      "slug": "lodging--budget-japanese-inn",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 47,
+      "active": true,
+      "labels": {
+        "en": "Budget Japanese Inn"
+      }
+    },
+    {
+      "id": "23f9693e-ca6e-5d4c-a1bd-4f4f0a8f4819",
+      "category": "places",
+      "slug": "food-and-drink--buffet-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 48,
+      "active": true,
+      "labels": {
+        "en": "Buffet Restaurant"
+      }
+    },
+    {
+      "id": "e07af48b-2df3-53af-8d6e-bc9ecadbc5c5",
+      "category": "places",
+      "slug": "transportation--bus-station",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 49,
+      "active": true,
+      "labels": {
+        "en": "Bus Station"
+      }
+    },
+    {
+      "id": "7af6534e-dc62-549e-956b-21a53f3ae3a0",
+      "category": "places",
+      "slug": "transportation--bus-stop",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 50,
+      "active": true,
+      "labels": {
+        "en": "Bus Stop"
+      }
+    },
+    {
+      "id": "a8585f5f-70b1-5a32-8c71-31a7938fd7f6",
+      "category": "places",
+      "slug": "business",
+      "parentId": null,
+      "position": 51,
+      "active": true,
+      "labels": {
+        "en": "Business"
+      }
+    },
+    {
+      "id": "d4488ebd-52b7-5c80-85b5-ace0d5c91c20",
+      "category": "places",
+      "slug": "shopping--butcher-shop",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 52,
+      "active": true,
+      "labels": {
+        "en": "Butcher Shop"
+      }
+    },
+    {
+      "id": "9887239e-132a-5f71-b8f8-0ea220645f51",
+      "category": "places",
+      "slug": "cafe",
+      "parentId": null,
+      "position": 53,
+      "active": true,
+      "labels": {
+        "en": "Cafe"
+      }
+    },
+    {
+      "id": "00f72784-215d-5e79-afa6-a280034c5021",
+      "category": "places",
+      "slug": "food-and-drink--cafe",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 54,
+      "active": true,
+      "labels": {
+        "en": "Cafe"
+      }
+    },
+    {
+      "id": "336f4d25-56d3-511d-802c-a0eb15d2b00d",
+      "category": "places",
+      "slug": "food-and-drink--cafeteria",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 55,
+      "active": true,
+      "labels": {
+        "en": "Cafeteria"
+      }
+    },
+    {
+      "id": "c3de84ab-6981-5625-bc3b-109ce0022aa8",
+      "category": "places",
+      "slug": "lodging--campground",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 56,
+      "active": true,
+      "labels": {
+        "en": "Campground"
+      }
+    },
+    {
+      "id": "4312852f-67e2-59ba-b50c-95dba1c1d80f",
+      "category": "places",
+      "slug": "lodging--camping-cabin",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 57,
+      "active": true,
+      "labels": {
+        "en": "Camping Cabin"
+      }
+    },
+    {
+      "id": "43592df9-9fd6-5978-aea7-e1fadc53af39",
+      "category": "places",
+      "slug": "food-and-drink--candy-store",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 58,
+      "active": true,
+      "labels": {
+        "en": "Candy Store"
+      }
+    },
+    {
+      "id": "61468242-a10d-5b4e-b469-12c50a6da459",
+      "category": "places",
+      "slug": "automotive--car-dealer",
+      "parentId": "268436a1-39da-5c91-a568-13cb8ad4eed1",
+      "position": 59,
+      "active": true,
+      "labels": {
+        "en": "Car Dealer"
+      }
+    },
+    {
+      "id": "46834e3d-970e-5916-954b-e9040b86a300",
+      "category": "places",
+      "slug": "automotive--car-rental",
+      "parentId": "268436a1-39da-5c91-a568-13cb8ad4eed1",
+      "position": 60,
+      "active": true,
+      "labels": {
+        "en": "Car Rental"
+      }
+    },
+    {
+      "id": "0f08df5a-7c94-593c-a7e5-6aacef195d2f",
+      "category": "places",
+      "slug": "automotive--car-repair",
+      "parentId": "268436a1-39da-5c91-a568-13cb8ad4eed1",
+      "position": 61,
+      "active": true,
+      "labels": {
+        "en": "Car Repair"
+      }
+    },
+    {
+      "id": "eb25a57c-9c69-5cc1-8b5f-cef981829db7",
+      "category": "places",
+      "slug": "automotive--car-wash",
+      "parentId": "268436a1-39da-5c91-a568-13cb8ad4eed1",
+      "position": 62,
+      "active": true,
+      "labels": {
+        "en": "Car Wash"
+      }
+    },
+    {
+      "id": "a557f309-e9db-5580-880d-515450f0e2ec",
+      "category": "places",
+      "slug": "entertainment-and-recreation--casino",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 63,
+      "active": true,
+      "labels": {
+        "en": "Casino"
+      }
+    },
+    {
+      "id": "229cbe7e-0993-5d5a-a00c-dbd91192a6a8",
+      "category": "places",
+      "slug": "food-and-drink--cat-cafe",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 64,
+      "active": true,
+      "labels": {
+        "en": "Cat Cafe"
+      }
+    },
+    {
+      "id": "d0d91303-61f6-5e97-a711-2ef2a648795a",
+      "category": "places",
+      "slug": "services--catering-service",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 65,
+      "active": true,
+      "labels": {
+        "en": "Catering Service"
+      }
+    },
+    {
+      "id": "eb704553-58a8-5365-9b61-25b7c4606ae6",
+      "category": "places",
+      "slug": "natural-features--cave",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 66,
+      "active": true,
+      "labels": {
+        "en": "cave"
+      }
+    },
+    {
+      "id": "a10c6702-2ca7-5eb9-8878-96ac01ec1781",
+      "category": "places",
+      "slug": "shopping--cell-phone-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 67,
+      "active": true,
+      "labels": {
+        "en": "Cell Phone Store"
+      }
+    },
+    {
+      "id": "1b2faaa8-d9af-50e0-9838-d0da3408864e",
+      "category": "places",
+      "slug": "services--cemetery",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 68,
+      "active": true,
+      "labels": {
+        "en": "Cemetery"
+      }
+    },
+    {
+      "id": "57c5bef0-01b2-58c3-91a4-e989b6d5ae93",
+      "category": "places",
+      "slug": "services--child-care-agency",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 69,
+      "active": true,
+      "labels": {
+        "en": "Child Care Agency"
+      }
+    },
+    {
+      "id": "b1edbd3b-a7f4-5168-8dc1-e1e6d0ba33af",
+      "category": "places",
+      "slug": "entertainment-and-recreation--children-s-camp",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 70,
+      "active": true,
+      "labels": {
+        "en": "Children's Camp"
+      }
+    },
+    {
+      "id": "1a0ba361-5f3a-58f4-81a0-60bf8e1506c9",
+      "category": "places",
+      "slug": "food-and-drink--chinese-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 71,
+      "active": true,
+      "labels": {
+        "en": "Chinese Restaurant"
+      }
+    },
+    {
+      "id": "238d726e-71f2-557e-9d1c-69f2140e728c",
+      "category": "places",
+      "slug": "food-and-drink--chocolate-factory",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 72,
+      "active": true,
+      "labels": {
+        "en": "Chocolate Factory"
+      }
+    },
+    {
+      "id": "ba4930d1-a60c-5643-92eb-3ad2cb14e303",
+      "category": "places",
+      "slug": "food-and-drink--chocolate-shop",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 73,
+      "active": true,
+      "labels": {
+        "en": "Chocolate Shop"
+      }
+    },
+    {
+      "id": "af6c02bd-ea07-55f6-a139-e0a2691dcc7b",
+      "category": "places",
+      "slug": "places-of-worship--church",
+      "parentId": "4f5656a7-b51c-5593-8ce6-9401533fda33",
+      "position": 74,
+      "active": true,
+      "labels": {
+        "en": "Church"
+      }
+    },
+    {
+      "id": "03a14dd8-ea0d-5880-a170-b32d1bc445c8",
+      "category": "places",
+      "slug": "government--city-hall",
+      "parentId": "8a3bce44-786c-5098-9f91-e04d12b9e97c",
+      "position": 75,
+      "active": true,
+      "labels": {
+        "en": "City Hall"
+      }
+    },
+    {
+      "id": "65e8367a-bb14-5f53-82b0-5d8be47632ee",
+      "category": "places",
+      "slug": "health-and-wellness--clinic",
+      "parentId": "7436ca06-a58a-5412-90b8-d0652a40af90",
+      "position": 76,
+      "active": true,
+      "labels": {
+        "en": "Clinic"
+      }
+    },
+    {
+      "id": "662734a3-e213-5a55-9755-08f7f4cc1d91",
+      "category": "places",
+      "slug": "shopping--clothing-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 77,
+      "active": true,
+      "labels": {
+        "en": "Clothing Store"
+      }
+    },
+    {
+      "id": "514b2237-735f-5b40-9cad-18daa84eed41",
+      "category": "places",
+      "slug": "food-and-drink--coffee-shop",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 78,
+      "active": true,
+      "labels": {
+        "en": "Coffee Shop"
+      }
+    },
+    {
+      "id": "a239f031-a00f-5a86-804a-aeeab27798c7",
+      "category": "places",
+      "slug": "entertainment-and-recreation--comedy-club",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 79,
+      "active": true,
+      "labels": {
+        "en": "Comedy Club"
+      }
+    },
+    {
+      "id": "ff7aa896-31d3-5f46-b258-c96a2ea3e1ef",
+      "category": "places",
+      "slug": "entertainment-and-recreation--community-center",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 80,
+      "active": true,
+      "labels": {
+        "en": "Community Center"
+      }
+    },
+    {
+      "id": "db3d1919-ad5a-586e-9ab3-492d12570a1d",
+      "category": "places",
+      "slug": "entertainment-and-recreation--concert-hall",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 81,
+      "active": true,
+      "labels": {
+        "en": "Concert Hall"
+      }
+    },
+    {
+      "id": "88971432-3eeb-54e6-b3e9-a0349daf65d7",
+      "category": "places",
+      "slug": "food-and-drink--confectionery",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 82,
+      "active": true,
+      "labels": {
+        "en": "Confectionery"
+      }
+    },
+    {
+      "id": "844bba2e-a065-5af8-a8f6-c4f09c04188b",
+      "category": "places",
+      "slug": "services--consultant",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 83,
+      "active": true,
+      "labels": {
+        "en": "Consultant"
+      }
+    },
+    {
+      "id": "9bf5ed9c-0914-5d06-b251-933772f6c186",
+      "category": "places",
+      "slug": "shopping--convenience-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 84,
+      "active": true,
+      "labels": {
+        "en": "Convenience Store"
+      }
+    },
+    {
+      "id": "190a3647-640c-57e6-9c7a-b85710e5b9ae",
+      "category": "places",
+      "slug": "entertainment-and-recreation--convention-center",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 85,
+      "active": true,
+      "labels": {
+        "en": "Convention Center"
+      }
+    },
+    {
+      "id": "22bfcd98-a6bd-5eb2-9fd9-49ba42bbe6ad",
+      "category": "places",
+      "slug": "business--corporate-office",
+      "parentId": "a8585f5f-70b1-5a32-8c71-31a7938fd7f6",
+      "position": 86,
+      "active": true,
+      "labels": {
+        "en": "Corporate Office"
+      }
+    },
+    {
+      "id": "615a66af-9f4e-5626-ab93-b0f045ea741e",
+      "category": "places",
+      "slug": "lodging--cottage",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 87,
+      "active": true,
+      "labels": {
+        "en": "Cottage"
+      }
+    },
+    {
+      "id": "2b00fe95-7b59-55ed-8d0e-198fb9f1c955",
+      "category": "places",
+      "slug": "services--courier-service",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 88,
+      "active": true,
+      "labels": {
+        "en": "Courier Service"
+      }
+    },
+    {
+      "id": "bc3ed9d5-9139-591c-83a1-0af5ba168246",
+      "category": "places",
+      "slug": "government--courthouse",
+      "parentId": "8a3bce44-786c-5098-9f91-e04d12b9e97c",
+      "position": 89,
+      "active": true,
+      "labels": {
+        "en": "Courthouse"
+      }
+    },
+    {
+      "id": "92797ce0-6890-503b-aab9-c0b442becc27",
+      "category": "places",
+      "slug": "entertainment-and-recreation--cultural-center",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 90,
+      "active": true,
+      "labels": {
+        "en": "Cultural Center"
+      }
+    },
+    {
+      "id": "6b0c177e-d7b4-50db-84cc-6144969d6696",
+      "category": "places",
+      "slug": "culture--cultural-landmark",
+      "parentId": "4cfde7ed-7f45-52e6-a49e-45fdeec77b60",
+      "position": 91,
+      "active": true,
+      "labels": {
+        "en": "Cultural Landmark"
+      }
+    },
+    {
+      "id": "4cfde7ed-7f45-52e6-a49e-45fdeec77b60",
+      "category": "places",
+      "slug": "culture",
+      "parentId": null,
+      "position": 92,
+      "active": true,
+      "labels": {
+        "en": "Culture"
+      }
+    },
+    {
+      "id": "647b6b8e-9f99-53e0-8d52-af15dd4d580b",
+      "category": "places",
+      "slug": "entertainment-and-recreation--cycling-park",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 93,
+      "active": true,
+      "labels": {
+        "en": "Cycling Park"
+      }
+    },
+    {
+      "id": "e2ba876c-995e-5c15-bdc5-fcf098b24dc0",
+      "category": "places",
+      "slug": "entertainment-and-recreation--dance-hall",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 94,
+      "active": true,
+      "labels": {
+        "en": "Dance Hall"
+      }
+    },
+    {
+      "id": "bebd225c-9863-50ed-b3e8-033b281e7278",
+      "category": "places",
+      "slug": "food-and-drink--deli",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 95,
+      "active": true,
+      "labels": {
+        "en": "Deli"
+      }
+    },
+    {
+      "id": "0c75abbb-9446-5a45-8ba2-9753310fb80f",
+      "category": "places",
+      "slug": "health-and-wellness--dentist",
+      "parentId": "7436ca06-a58a-5412-90b8-d0652a40af90",
+      "position": 96,
+      "active": true,
+      "labels": {
+        "en": "Dentist"
+      }
+    },
+    {
+      "id": "7a0e538e-9abe-5917-b168-5262449ba714",
+      "category": "places",
+      "slug": "shopping--department-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 97,
+      "active": true,
+      "labels": {
+        "en": "Department Store"
+      }
+    },
+    {
+      "id": "22e665ed-5077-59c7-b463-635e70bcc4ac",
+      "category": "places",
+      "slug": "food-and-drink--dessert-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 98,
+      "active": true,
+      "labels": {
+        "en": "Dessert Restaurant"
+      }
+    },
+    {
+      "id": "6d96fcb0-ce79-54df-a18e-8b229971e3bb",
+      "category": "places",
+      "slug": "food-and-drink--dessert-shop",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 99,
+      "active": true,
+      "labels": {
+        "en": "Dessert Shop"
+      }
+    },
+    {
+      "id": "a6106d66-b0c0-5403-a540-66812ffb6009",
+      "category": "places",
+      "slug": "food-and-drink--diner",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 100,
+      "active": true,
+      "labels": {
+        "en": "Diner"
+      }
+    },
+    {
+      "id": "9398cc6e-4e3b-580f-84f4-9c6c3045ab44",
+      "category": "places",
+      "slug": "shopping--discount-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 101,
+      "active": true,
+      "labels": {
+        "en": "Discount Store"
+      }
+    },
+    {
+      "id": "2fc09638-7f23-574a-b0d0-3de46a31b2e7",
+      "category": "places",
+      "slug": "food-and-drink--dog-cafe",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 102,
+      "active": true,
+      "labels": {
+        "en": "Dog Cafe"
+      }
+    },
+    {
+      "id": "9cc8f77c-aea2-5b1b-8779-6c5af7797bc4",
+      "category": "places",
+      "slug": "entertainment-and-recreation--dog-park",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 103,
+      "active": true,
+      "labels": {
+        "en": "Dog Park"
+      }
+    },
+    {
+      "id": "3f17f851-74a3-5518-9224-d3676a3ebeed",
+      "category": "places",
+      "slug": "food-and-drink--donut-shop",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 104,
+      "active": true,
+      "labels": {
+        "en": "Donut Shop"
+      }
+    },
+    {
+      "id": "f2a99459-1f9d-5b4b-a616-f3c870f6505f",
+      "category": "places",
+      "slug": "housing--dormitory",
+      "parentId": "f65cd2d8-2477-59f2-84ec-06e6a2820876",
+      "position": 105,
+      "active": true,
+      "labels": {
+        "en": "Dormitory"
+      }
+    },
+    {
+      "id": "f354b34e-fcd0-50ef-88bb-cab0eff41a2c",
+      "category": "places",
+      "slug": "education",
+      "parentId": null,
+      "position": 106,
+      "active": true,
+      "labels": {
+        "en": "Education"
+      }
+    },
+    {
+      "id": "ac068244-1297-5716-b040-81f4af1a8e57",
+      "category": "places",
+      "slug": "automotive--electric-vehicle-charging-station",
+      "parentId": "268436a1-39da-5c91-a568-13cb8ad4eed1",
+      "position": 107,
+      "active": true,
+      "labels": {
+        "en": "Electric Vehicle Charging Station"
+      }
+    },
+    {
+      "id": "4d68d81e-02eb-54f9-9277-982ea2427765",
+      "category": "places",
+      "slug": "services--electrician",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 108,
+      "active": true,
+      "labels": {
+        "en": "Electrician"
+      }
+    },
+    {
+      "id": "805e7a72-47e4-5f08-9f8c-9601d94ea7e7",
+      "category": "places",
+      "slug": "shopping--electronics-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 109,
+      "active": true,
+      "labels": {
+        "en": "Electronics Store"
+      }
+    },
+    {
+      "id": "5726434c-4419-5756-a5b9-1994811c9804",
+      "category": "places",
+      "slug": "government--embassy",
+      "parentId": "8a3bce44-786c-5098-9f91-e04d12b9e97c",
+      "position": 110,
+      "active": true,
+      "labels": {
+        "en": "Embassy"
+      }
+    },
+    {
+      "id": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "category": "places",
+      "slug": "entertainment-and-recreation",
+      "parentId": null,
+      "position": 111,
+      "active": true,
+      "labels": {
+        "en": "Entertainment and Recreation"
+      }
+    },
+    {
+      "id": "86fbb209-edaf-56ba-aeb0-0436c7883ddf",
+      "category": "places",
+      "slug": "entertainment-and-recreation--event-venue",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 112,
+      "active": true,
+      "labels": {
+        "en": "Event Venue"
+      }
+    },
+    {
+      "id": "cebacaae-d41a-565b-8ffe-d95c049d3025",
+      "category": "places",
+      "slug": "lodging--extended-stay-hotel",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 113,
+      "active": true,
+      "labels": {
+        "en": "Extended Stay Hotel"
+      }
+    },
+    {
+      "id": "4d4732c4-f1f0-5eaf-8b56-5132fb6171d6",
+      "category": "places",
+      "slug": "facilities",
+      "parentId": null,
+      "position": 114,
+      "active": true,
+      "labels": {
+        "en": "Facilities"
+      }
+    },
+    {
+      "id": "9abe9525-b2fa-5e9f-8cef-d670958a4d63",
+      "category": "places",
+      "slug": "business--farm",
+      "parentId": "a8585f5f-70b1-5a32-8c71-31a7938fd7f6",
+      "position": 115,
+      "active": true,
+      "labels": {
+        "en": "Farm"
+      }
+    },
+    {
+      "id": "64585c7b-0bb9-5657-b26a-78b13e2c3d87",
+      "category": "places",
+      "slug": "lodging--farmstay",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 116,
+      "active": true,
+      "labels": {
+        "en": "Farmstay"
+      }
+    },
+    {
+      "id": "4f5feb69-9e88-557e-b2b7-bf22a915730e",
+      "category": "places",
+      "slug": "food-and-drink--fast-food-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 117,
+      "active": true,
+      "labels": {
+        "en": "Fast Food Restaurant"
+      }
+    },
+    {
+      "id": "2b16b755-6070-522f-8632-c1c0127ec2a3",
+      "category": "places",
+      "slug": "entertainment-and-recreation--ferris-wheel",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 118,
+      "active": true,
+      "labels": {
+        "en": "Ferris Wheel"
+      }
+    },
+    {
+      "id": "81e8b358-1543-5c1d-aec1-73d0a24a6b17",
+      "category": "places",
+      "slug": "transportation--ferry-terminal",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 119,
+      "active": true,
+      "labels": {
+        "en": "Ferry Terminal"
+      }
+    },
+    {
+      "id": "8596ec99-7276-5dbb-b03d-ba02e3f9629c",
+      "category": "places",
+      "slug": "finance",
+      "parentId": null,
+      "position": 120,
+      "active": true,
+      "labels": {
+        "en": "Finance"
+      }
+    },
+    {
+      "id": "bd6c6f64-dc53-5cf7-9776-89a065e4b59a",
+      "category": "places",
+      "slug": "food-and-drink--fine-dining-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 121,
+      "active": true,
+      "labels": {
+        "en": "Fine Dining Restaurant"
+      }
+    },
+    {
+      "id": "df904ef6-ca6b-528b-9f4f-53e9dbcdeb1e",
+      "category": "places",
+      "slug": "government--fire-station",
+      "parentId": "8a3bce44-786c-5098-9f91-e04d12b9e97c",
+      "position": 122,
+      "active": true,
+      "labels": {
+        "en": "Fire Station"
+      }
+    },
+    {
+      "id": "101a9187-2cd4-55ff-ab12-8831e5db04e0",
+      "category": "places",
+      "slug": "sports--fishing-charter",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 123,
+      "active": true,
+      "labels": {
+        "en": "Fishing Charter"
+      }
+    },
+    {
+      "id": "5bb46c13-b2d0-5a62-aec9-28d680980349",
+      "category": "places",
+      "slug": "sports--fishing-pond",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 124,
+      "active": true,
+      "labels": {
+        "en": "Fishing Pond"
+      }
+    },
+    {
+      "id": "5e1228d5-88b7-5bcd-8ac1-ca6bc8266ecf",
+      "category": "places",
+      "slug": "sports--fitness-center",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 125,
+      "active": true,
+      "labels": {
+        "en": "Fitness Center"
+      }
+    },
+    {
+      "id": "d19cc099-60ba-5f6b-ba08-f6d52da1b2ca",
+      "category": "places",
+      "slug": "services--florist",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 126,
+      "active": true,
+      "labels": {
+        "en": "Florist"
+      }
+    },
+    {
+      "id": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "category": "places",
+      "slug": "food-and-drink",
+      "parentId": null,
+      "position": 127,
+      "active": true,
+      "labels": {
+        "en": "Food and Drink"
+      }
+    },
+    {
+      "id": "766c7671-0a19-5079-b818-a0483d62cd31",
+      "category": "places",
+      "slug": "food-and-drink--food-court",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 128,
+      "active": true,
+      "labels": {
+        "en": "Food Court"
+      }
+    },
+    {
+      "id": "b9763ee9-ce35-536c-995b-12cbfa599348",
+      "category": "places",
+      "slug": "services--food-delivery",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 129,
+      "active": true,
+      "labels": {
+        "en": "Food Delivery"
+      }
+    },
+    {
+      "id": "cdfb7016-4bc1-53fa-a0dd-940c9b896f81",
+      "category": "places",
+      "slug": "shopping--food-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 130,
+      "active": true,
+      "labels": {
+        "en": "Food Store"
+      }
+    },
+    {
+      "id": "29aac214-c2c9-5539-92b1-0f9a55e131b3",
+      "category": "places",
+      "slug": "services--foot-care",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 131,
+      "active": true,
+      "labels": {
+        "en": "Foot Care"
+      }
+    },
+    {
+      "id": "f4e311cf-ca21-5768-9966-568f434ed4cc",
+      "category": "places",
+      "slug": "food-and-drink--french-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 132,
+      "active": true,
+      "labels": {
+        "en": "French Restaurant"
+      }
+    },
+    {
+      "id": "c79ea892-5626-58be-ab19-b8369a9a58df",
+      "category": "places",
+      "slug": "services--funeral-home",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 133,
+      "active": true,
+      "labels": {
+        "en": "Funeral Home"
+      }
+    },
+    {
+      "id": "ad5be750-ad95-5428-bd5f-444564335c87",
+      "category": "places",
+      "slug": "shopping--furniture-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 134,
+      "active": true,
+      "labels": {
+        "en": "Furniture Store"
+      }
+    },
+    {
+      "id": "668dccd6-5b4c-5632-bf1d-bd41d2f276a3",
+      "category": "places",
+      "slug": "entertainment-and-recreation--garden",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 135,
+      "active": true,
+      "labels": {
+        "en": "Garden"
+      }
+    },
+    {
+      "id": "4ab6b2ce-0c8d-5df2-a64b-552782bcf8fe",
+      "category": "places",
+      "slug": "automotive--gas-station",
+      "parentId": "268436a1-39da-5c91-a568-13cb8ad4eed1",
+      "position": 136,
+      "active": true,
+      "labels": {
+        "en": "Gas Station"
+      }
+    },
+    {
+      "id": "11f877ff-2ca1-58e3-a28b-e6d6cbed7972",
+      "category": "places",
+      "slug": "geographical-areas",
+      "parentId": null,
+      "position": 137,
+      "active": true,
+      "labels": {
+        "en": "Geographical Areas"
+      }
+    },
+    {
+      "id": "dbd5d0a5-1f10-5bf8-87d2-e75b17988f56",
+      "category": "places",
+      "slug": "shopping--gift-shop",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 138,
+      "active": true,
+      "labels": {
+        "en": "Gift Shop"
+      }
+    },
+    {
+      "id": "41742c72-9c9d-5c45-a797-0233c666454a",
+      "category": "places",
+      "slug": "sports--golf-course",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 139,
+      "active": true,
+      "labels": {
+        "en": "Golf Course"
+      }
+    },
+    {
+      "id": "8a3bce44-786c-5098-9f91-e04d12b9e97c",
+      "category": "places",
+      "slug": "government",
+      "parentId": null,
+      "position": 140,
+      "active": true,
+      "labels": {
+        "en": "Government"
+      }
+    },
+    {
+      "id": "c73be59a-fa0a-5400-99b3-5d3bc28c9c13",
+      "category": "places",
+      "slug": "government--government-office",
+      "parentId": "8a3bce44-786c-5098-9f91-e04d12b9e97c",
+      "position": 141,
+      "active": true,
+      "labels": {
+        "en": "Government Office"
+      }
+    },
+    {
+      "id": "51a5aa3d-5dea-5f87-a130-5731cd4fafdf",
+      "category": "places",
+      "slug": "food-and-drink--greek-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 142,
+      "active": true,
+      "labels": {
+        "en": "Greek Restaurant"
+      }
+    },
+    {
+      "id": "9e592c19-5957-5ebd-9328-8a2b54d8e600",
+      "category": "places",
+      "slug": "shopping--grocery-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 143,
+      "active": true,
+      "labels": {
+        "en": "Grocery Store"
+      }
+    },
+    {
+      "id": "edf0e069-08b6-52aa-8abd-35b1e2b0a9a5",
+      "category": "places",
+      "slug": "lodging--guest-house",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 144,
+      "active": true,
+      "labels": {
+        "en": "Guest House"
+      }
+    },
+    {
+      "id": "3e270033-d688-5b42-bcd8-97411c270d44",
+      "category": "places",
+      "slug": "housing--guest-house",
+      "parentId": "f65cd2d8-2477-59f2-84ec-06e6a2820876",
+      "position": 145,
+      "active": true,
+      "labels": {
+        "en": "Guest House"
+      }
+    },
+    {
+      "id": "4972610f-c9d4-51ed-b473-dd1c2dfe9326",
+      "category": "places",
+      "slug": "sports--gym",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 146,
+      "active": true,
+      "labels": {
+        "en": "Gym"
+      }
+    },
+    {
+      "id": "dea55cf2-e7cb-57d1-919e-c28b0e34f79f",
+      "category": "places",
+      "slug": "services--hair-care",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 147,
+      "active": true,
+      "labels": {
+        "en": "Hair Care"
+      }
+    },
+    {
+      "id": "61c470aa-64a6-5a24-962a-f3c6af4f8686",
+      "category": "places",
+      "slug": "services--hair-salon",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 148,
+      "active": true,
+      "labels": {
+        "en": "Hair Salon"
+      }
+    },
+    {
+      "id": "05e61d9e-4132-53ad-8fae-a0650417a507",
+      "category": "places",
+      "slug": "food-and-drink--hamburger-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 149,
+      "active": true,
+      "labels": {
+        "en": "Hamburger Restaurant"
+      }
+    },
+    {
+      "id": "d7be9d5d-ea7b-580b-a095-e32f7792b078",
+      "category": "places",
+      "slug": "shopping--hardware-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 150,
+      "active": true,
+      "labels": {
+        "en": "Hardware Store"
+      }
+    },
+    {
+      "id": "7436ca06-a58a-5412-90b8-d0652a40af90",
+      "category": "places",
+      "slug": "health-and-wellness",
+      "parentId": null,
+      "position": 151,
+      "active": true,
+      "labels": {
+        "en": "Health and Wellness"
+      }
+    },
+    {
+      "id": "347fc461-2915-5973-8bcb-07d7f518099d",
+      "category": "places",
+      "slug": "transportation--heliport",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 152,
+      "active": true,
+      "labels": {
+        "en": "Heliport"
+      }
+    },
+    {
+      "id": "484dd871-441e-515f-a88d-6237255688e2",
+      "category": "places",
+      "slug": "natural-features--hidden-gem",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 153,
+      "active": true,
+      "labels": {
+        "en": "hidden gem"
+      }
+    },
+    {
+      "id": "67c92c30-5402-519a-a851-8caeeb5cba95",
+      "category": "places",
+      "slug": "entertainment-and-recreation--hiking-area",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 154,
+      "active": true,
+      "labels": {
+        "en": "Hiking Area"
+      }
+    },
+    {
+      "id": "7a099aa4-e99e-5fc3-b522-0df9896a29d2",
+      "category": "places",
+      "slug": "natural-features--hiking-trail",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 155,
+      "active": true,
+      "labels": {
+        "en": "hiking trail"
+      }
+    },
+    {
+      "id": "c05dc2fc-7189-55c3-85d6-3cc543cbd70d",
+      "category": "places",
+      "slug": "natural-features--hill-station",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 156,
+      "active": true,
+      "labels": {
+        "en": "hill station"
+      }
+    },
+    {
+      "id": "7dc2d348-fc6b-5942-bd58-1349c9dbdec0",
+      "category": "places",
+      "slug": "places-of-worship--hindu-temple",
+      "parentId": "4f5656a7-b51c-5593-8ce6-9401533fda33",
+      "position": 157,
+      "active": true,
+      "labels": {
+        "en": "Hindu Temple"
+      }
+    },
+    {
+      "id": "4ed3e42c-a350-5129-9f1c-97204cff0707",
+      "category": "places",
+      "slug": "entertainment-and-recreation--historical-landmark",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 158,
+      "active": true,
+      "labels": {
+        "en": "Historical Landmark"
+      }
+    },
+    {
+      "id": "223029c2-946c-540a-afb7-88739099fd6f",
+      "category": "places",
+      "slug": "culture--historical-place",
+      "parentId": "4cfde7ed-7f45-52e6-a49e-45fdeec77b60",
+      "position": 159,
+      "active": true,
+      "labels": {
+        "en": "Historical Place"
+      }
+    },
+    {
+      "id": "df572f5c-d02a-5522-b160-81a945463442",
+      "category": "places",
+      "slug": "shopping--home-goods-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 160,
+      "active": true,
+      "labels": {
+        "en": "Home Goods Store"
+      }
+    },
+    {
+      "id": "b2896b88-344c-5fb5-9db2-c8ea25f45203",
+      "category": "places",
+      "slug": "shopping--home-improvement-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 161,
+      "active": true,
+      "labels": {
+        "en": "Home Improvement Store"
+      }
+    },
+    {
+      "id": "5608d3ff-ebe8-538c-9389-184d3476acaa",
+      "category": "places",
+      "slug": "movies-shows--horror",
+      "parentId": "1ba21088-057a-59ac-a960-a309ad10b449",
+      "position": 162,
+      "active": true,
+      "labels": {
+        "en": "Horror"
+      }
+    },
+    {
+      "id": "5b6723fa-b7d6-5738-a3ae-1f14e535573e",
+      "category": "places",
+      "slug": "health-and-wellness--hospital",
+      "parentId": "7436ca06-a58a-5412-90b8-d0652a40af90",
+      "position": 163,
+      "active": true,
+      "labels": {
+        "en": "Hospital"
+      }
+    },
+    {
+      "id": "9d73dd20-5cca-57be-8c1b-8fdee543deb2",
+      "category": "places",
+      "slug": "hostel",
+      "parentId": null,
+      "position": 164,
+      "active": true,
+      "labels": {
+        "en": "Hostel"
+      }
+    },
+    {
+      "id": "05657bb0-e3fe-549a-b8c0-8ad3eca0b7a6",
+      "category": "places",
+      "slug": "housing--hostel",
+      "parentId": "f65cd2d8-2477-59f2-84ec-06e6a2820876",
+      "position": 165,
+      "active": true,
+      "labels": {
+        "en": "Hostel"
+      }
+    },
+    {
+      "id": "9e9aef83-3d0e-56f9-8507-d3d762036efe",
+      "category": "places",
+      "slug": "lodging--hostel",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 166,
+      "active": true,
+      "labels": {
+        "en": "Hostel"
+      }
+    },
+    {
+      "id": "63bff82b-9090-50ba-b17f-7378c547fd6e",
+      "category": "places",
+      "slug": "lodging--hotel",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 167,
+      "active": true,
+      "labels": {
+        "en": "Hotel"
+      }
+    },
+    {
+      "id": "f65cd2d8-2477-59f2-84ec-06e6a2820876",
+      "category": "places",
+      "slug": "housing",
+      "parentId": null,
+      "position": 168,
+      "active": true,
+      "labels": {
+        "en": "Housing"
+      }
+    },
+    {
+      "id": "f40f0606-a008-50e8-8156-b5f9e1297d00",
+      "category": "places",
+      "slug": "food-and-drink--ice-cream-shop",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 169,
+      "active": true,
+      "labels": {
+        "en": "Ice Cream Shop"
+      }
+    },
+    {
+      "id": "97b83c47-2d28-5a49-be0e-68133fec909a",
+      "category": "places",
+      "slug": "sports--ice-skating-rink",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 170,
+      "active": true,
+      "labels": {
+        "en": "Ice Skating Rink"
+      }
+    },
+    {
+      "id": "26bca44c-b361-5a02-899a-1c26fb948ecb",
+      "category": "places",
+      "slug": "food-and-drink--indian-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 171,
+      "active": true,
+      "labels": {
+        "en": "Indian Restaurant"
+      }
+    },
+    {
+      "id": "7a839399-36c1-5db6-9f84-39b6f99dad31",
+      "category": "places",
+      "slug": "food-and-drink--indonesian-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 172,
+      "active": true,
+      "labels": {
+        "en": "Indonesian Restaurant"
+      }
+    },
+    {
+      "id": "ee837cec-fe42-5493-832f-460603af2ab8",
+      "category": "places",
+      "slug": "lodging--inn",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 173,
+      "active": true,
+      "labels": {
+        "en": "Inn"
+      }
+    },
+    {
+      "id": "0967bf8d-e64f-5958-b08e-88d6820224ce",
+      "category": "places",
+      "slug": "services--insurance-agency",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 174,
+      "active": true,
+      "labels": {
+        "en": "Insurance Agency"
+      }
+    },
+    {
+      "id": "31f09952-58d4-5aec-8222-4c7e4ff10319",
+      "category": "places",
+      "slug": "transportation--international-airport",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 175,
+      "active": true,
+      "labels": {
+        "en": "International Airport"
+      }
+    },
+    {
+      "id": "2a04808a-af3b-5ee1-a964-f9456c04f74d",
+      "category": "places",
+      "slug": "entertainment-and-recreation--internet-cafe",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 176,
+      "active": true,
+      "labels": {
+        "en": "Internet Cafe"
+      }
+    },
+    {
+      "id": "7e760d96-cc7b-5a02-8e2d-794546e399b9",
+      "category": "places",
+      "slug": "natural-features--island",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 177,
+      "active": true,
+      "labels": {
+        "en": "island"
+      }
+    },
+    {
+      "id": "a8e245d9-aec0-5e64-9416-da087aacc0a1",
+      "category": "places",
+      "slug": "food-and-drink--italian-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 178,
+      "active": true,
+      "labels": {
+        "en": "Italian Restaurant"
+      }
+    },
+    {
+      "id": "5870b320-9fbc-5891-8d8a-c1ac26544a51",
+      "category": "places",
+      "slug": "lodging--japanese-inn",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 179,
+      "active": true,
+      "labels": {
+        "en": "Japanese Inn"
+      }
+    },
+    {
+      "id": "2ef73acd-011d-5d38-af54-f8cb2f8a9072",
+      "category": "places",
+      "slug": "food-and-drink--japanese-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 180,
+      "active": true,
+      "labels": {
+        "en": "Japanese Restaurant"
+      }
+    },
+    {
+      "id": "14368f11-dbea-54a8-ab5d-ffeb8b685b90",
+      "category": "places",
+      "slug": "shopping--jewelry-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 181,
+      "active": true,
+      "labels": {
+        "en": "Jewelry Store"
+      }
+    },
+    {
+      "id": "74325ef2-2898-53cc-ad77-ce77eafda740",
+      "category": "places",
+      "slug": "food-and-drink--juice-shop",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 182,
+      "active": true,
+      "labels": {
+        "en": "Juice Shop"
+      }
+    },
+    {
+      "id": "3339a9e1-731e-5ea3-bb87-ed5c20a17158",
+      "category": "places",
+      "slug": "entertainment-and-recreation--karaoke",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 183,
+      "active": true,
+      "labels": {
+        "en": "Karaoke"
+      }
+    },
+    {
+      "id": "6ea481f5-a9eb-55be-969c-2b556a524ea7",
+      "category": "places",
+      "slug": "food-and-drink--korean-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 184,
+      "active": true,
+      "labels": {
+        "en": "Korean Restaurant"
+      }
+    },
+    {
+      "id": "8f09cf4d-b232-5564-8d93-b95e0634b722",
+      "category": "places",
+      "slug": "natural-features--lake",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 185,
+      "active": true,
+      "labels": {
+        "en": "lake"
+      }
+    },
+    {
+      "id": "55acf8c8-91b9-561a-b605-771fbb6798ff",
+      "category": "places",
+      "slug": "services--laundry",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 186,
+      "active": true,
+      "labels": {
+        "en": "Laundry"
+      }
+    },
+    {
+      "id": "34fb0053-47fb-56e3-b5a1-3272cb71b059",
+      "category": "places",
+      "slug": "services--lawyer",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 187,
+      "active": true,
+      "labels": {
+        "en": "Lawyer"
+      }
+    },
+    {
+      "id": "ed927351-c22f-5acf-83cf-ab517ff5d02c",
+      "category": "places",
+      "slug": "food-and-drink--lebanese-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 188,
+      "active": true,
+      "labels": {
+        "en": "Lebanese Restaurant"
+      }
+    },
+    {
+      "id": "0d83691b-dd3e-586a-a224-b88602326350",
+      "category": "places",
+      "slug": "education--library",
+      "parentId": "f354b34e-fcd0-50ef-88bb-cab0eff41a2c",
+      "position": 189,
+      "active": true,
+      "labels": {
+        "en": "Library"
+      }
+    },
+    {
+      "id": "464f6d7d-2d82-5cfb-893e-a5116454056c",
+      "category": "places",
+      "slug": "transportation--light-rail-station",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 190,
+      "active": true,
+      "labels": {
+        "en": "Light Rail Station"
+      }
+    },
+    {
+      "id": "9e0cb009-0e07-534f-ad2d-f59312480e8b",
+      "category": "places",
+      "slug": "shopping--liquor-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 191,
+      "active": true,
+      "labels": {
+        "en": "Liquor Store"
+      }
+    },
+    {
+      "id": "92d2335c-0394-5269-8ce8-7f6e53b6b733",
+      "category": "places",
+      "slug": "government--local-government-office",
+      "parentId": "8a3bce44-786c-5098-9f91-e04d12b9e97c",
+      "position": 192,
+      "active": true,
+      "labels": {
+        "en": "Local Government Office"
+      }
+    },
+    {
+      "id": "650db47e-ef01-5e0e-8acf-e471d71e7af4",
+      "category": "places",
+      "slug": "locality",
+      "parentId": null,
+      "position": 193,
+      "active": true,
+      "labels": {
+        "en": "Locality"
+      }
+    },
+    {
+      "id": "1a19c08d-e778-566b-9bba-2453879b661b",
+      "category": "places",
+      "slug": "services--locksmith",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 194,
+      "active": true,
+      "labels": {
+        "en": "Locksmith"
+      }
+    },
+    {
+      "id": "ccae9605-fbd9-5dc2-8253-1ee8707d0a4f",
+      "category": "places",
+      "slug": "lodging--lodging",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 195,
+      "active": true,
+      "labels": {
+        "en": "Lodging"
+      }
+    },
+    {
+      "id": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "category": "places",
+      "slug": "lodging",
+      "parentId": null,
+      "position": 196,
+      "active": true,
+      "labels": {
+        "en": "Lodging"
+      }
+    },
+    {
+      "id": "094661b2-10e6-5abb-b487-809be7bb8c31",
+      "category": "places",
+      "slug": "services--makeup-artist",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 197,
+      "active": true,
+      "labels": {
+        "en": "Makeup Artist"
+      }
+    },
+    {
+      "id": "e0d120db-7e01-5609-9dfe-08a985a03da9",
+      "category": "places",
+      "slug": "entertainment-and-recreation--marina",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 198,
+      "active": true,
+      "labels": {
+        "en": "Marina"
+      }
+    },
+    {
+      "id": "5fa7d549-6610-5797-b80a-50d977f279d6",
+      "category": "places",
+      "slug": "shopping--market",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 199,
+      "active": true,
+      "labels": {
+        "en": "Market"
+      }
+    },
+    {
+      "id": "35d9008c-3e06-56dd-9d3a-59ccee9075ab",
+      "category": "places",
+      "slug": "food-and-drink--meal-delivery",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 200,
+      "active": true,
+      "labels": {
+        "en": "Meal Delivery"
+      }
+    },
+    {
+      "id": "b7f05eed-2685-5472-80c1-48187612a725",
+      "category": "places",
+      "slug": "food-and-drink--meal-takeaway",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 201,
+      "active": true,
+      "labels": {
+        "en": "Meal Takeaway"
+      }
+    },
+    {
+      "id": "ae813a23-db35-52ab-a61a-2ecee8c06996",
+      "category": "places",
+      "slug": "food-and-drink--mediterranean-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 202,
+      "active": true,
+      "labels": {
+        "en": "Mediterranean Restaurant"
+      }
+    },
+    {
+      "id": "a4dbcffc-7f22-54f2-b151-a6319ef1e01a",
+      "category": "places",
+      "slug": "food-and-drink--mexican-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 203,
+      "active": true,
+      "labels": {
+        "en": "Mexican Restaurant"
+      }
+    },
+    {
+      "id": "727d09cd-932e-58d4-bc97-fdbbd3ae4815",
+      "category": "places",
+      "slug": "food-and-drink--middle-eastern-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 204,
+      "active": true,
+      "labels": {
+        "en": "Middle Eastern Restaurant"
+      }
+    },
+    {
+      "id": "aa193411-2457-55f2-a2e1-1a26a8b97ac5",
+      "category": "places",
+      "slug": "lodging--mobile-home-park",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 205,
+      "active": true,
+      "labels": {
+        "en": "Mobile Home Park"
+      }
+    },
+    {
+      "id": "36ff1bc2-142b-530c-babf-59aadab2c613",
+      "category": "places",
+      "slug": "culture--monument",
+      "parentId": "4cfde7ed-7f45-52e6-a49e-45fdeec77b60",
+      "position": 206,
+      "active": true,
+      "labels": {
+        "en": "Monument"
+      }
+    },
+    {
+      "id": "3da89d8a-9fab-5cab-928d-d0cbb81791cf",
+      "category": "places",
+      "slug": "places-of-worship--mosque",
+      "parentId": "4f5656a7-b51c-5593-8ce6-9401533fda33",
+      "position": 207,
+      "active": true,
+      "labels": {
+        "en": "Mosque"
+      }
+    },
+    {
+      "id": "adaed2ee-b4b8-59c8-ac27-b1727c8d98a5",
+      "category": "places",
+      "slug": "lodging--motel",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 208,
+      "active": true,
+      "labels": {
+        "en": "Motel"
+      }
+    },
+    {
+      "id": "57a7be4d-6a6c-5143-94b4-e728768d0991",
+      "category": "places",
+      "slug": "housing--motel",
+      "parentId": "f65cd2d8-2477-59f2-84ec-06e6a2820876",
+      "position": 209,
+      "active": true,
+      "labels": {
+        "en": "Motel"
+      }
+    },
+    {
+      "id": "f4fb25f1-c55b-5abf-85e1-626177fcb765",
+      "category": "places",
+      "slug": "entertainment-and-recreation--movie-rental",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 210,
+      "active": true,
+      "labels": {
+        "en": "Movie Rental"
+      }
+    },
+    {
+      "id": "4cbbb2ce-abd9-5e7d-93aa-e88c0e95343e",
+      "category": "places",
+      "slug": "entertainment-and-recreation--movie-theater",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 211,
+      "active": true,
+      "labels": {
+        "en": "Movie Theater"
+      }
+    },
+    {
+      "id": "1ba21088-057a-59ac-a960-a309ad10b449",
+      "category": "places",
+      "slug": "movies-shows",
+      "parentId": null,
+      "position": 212,
+      "active": true,
+      "labels": {
+        "en": "Movies&Shows"
+      }
+    },
+    {
+      "id": "a1888ba1-7fd0-50af-b538-6b2f7c5e89ec",
+      "category": "places",
+      "slug": "services--moving-company",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 213,
+      "active": true,
+      "labels": {
+        "en": "Moving Company"
+      }
+    },
+    {
+      "id": "0a6377f5-1890-5214-8847-b0c524f33b32",
+      "category": "places",
+      "slug": "culture--museum",
+      "parentId": "4cfde7ed-7f45-52e6-a49e-45fdeec77b60",
+      "position": 214,
+      "active": true,
+      "labels": {
+        "en": "Museum"
+      }
+    },
+    {
+      "id": "8ffb6fd2-6219-583b-b64c-04e67e15e308",
+      "category": "places",
+      "slug": "services--nail-salon",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 215,
+      "active": true,
+      "labels": {
+        "en": "Nail Salon"
+      }
+    },
+    {
+      "id": "039cf382-bef0-533f-84ce-58491c70e612",
+      "category": "places",
+      "slug": "entertainment-and-recreation--national-park",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 216,
+      "active": true,
+      "labels": {
+        "en": "National Park"
+      }
+    },
+    {
+      "id": "6d915dee-82df-59f2-b515-ff67f5f3a465",
+      "category": "places",
+      "slug": "natural-features--national-park",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 217,
+      "active": true,
+      "labels": {
+        "en": "national park"
+      }
+    },
+    {
+      "id": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "category": "places",
+      "slug": "natural-features",
+      "parentId": null,
+      "position": 218,
+      "active": true,
+      "labels": {
+        "en": "Natural Features"
+      }
+    },
+    {
+      "id": "b585fde9-7d20-576a-959a-e2f7b074e160",
+      "category": "places",
+      "slug": "natural-features--natural-spring",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 219,
+      "active": true,
+      "labels": {
+        "en": "natural spring"
+      }
+    },
+    {
+      "id": "b820e779-55d2-55bb-a738-6872b2fba253",
+      "category": "places",
+      "slug": "natural-features--nature-reserve",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 220,
+      "active": true,
+      "labels": {
+        "en": "nature reserve"
+      }
+    },
+    {
+      "id": "7d022e99-6ec6-5ac6-9656-f5c9cd741cec",
+      "category": "places",
+      "slug": "government--neighborhood-police-station-japan-only",
+      "parentId": "8a3bce44-786c-5098-9f91-e04d12b9e97c",
+      "position": 221,
+      "active": true,
+      "labels": {
+        "en": "Neighborhood Police Station (Japan only)"
+      }
+    },
+    {
+      "id": "43fc6541-97cc-57f1-8101-c563cdc530f5",
+      "category": "places",
+      "slug": "entertainment-and-recreation--night-club",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 222,
+      "active": true,
+      "labels": {
+        "en": "Night Club"
+      }
+    },
+    {
+      "id": "b1ad2af9-6800-56aa-9a12-4860f7d932de",
+      "category": "places",
+      "slug": "entertainment-and-recreation--observation-deck",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 223,
+      "active": true,
+      "labels": {
+        "en": "Observation Deck"
+      }
+    },
+    {
+      "id": "361d1e44-c019-5d63-8bfa-5571adcd1353",
+      "category": "places",
+      "slug": "entertainment-and-recreation--off-roading-area",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 224,
+      "active": true,
+      "labels": {
+        "en": "Off-Roading Area"
+      }
+    },
+    {
+      "id": "b5bd9e37-2eb5-5ab1-8095-43f43c3570a4",
+      "category": "places",
+      "slug": "entertainment-and-recreation--opera-house",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 225,
+      "active": true,
+      "labels": {
+        "en": "Opera House"
+      }
+    },
+    {
+      "id": "c9e5874e-1c3a-5892-ae9e-1461be7e4d56",
+      "category": "places",
+      "slug": "others--others",
+      "parentId": "a0612615-6f2c-5258-8b6b-795bd2590b4e",
+      "position": 226,
+      "active": true,
+      "labels": {
+        "en": "Others"
+      }
+    },
+    {
+      "id": "a0612615-6f2c-5258-8b6b-795bd2590b4e",
+      "category": "places",
+      "slug": "others",
+      "parentId": null,
+      "position": 227,
+      "active": true,
+      "labels": {
+        "en": "Others"
+      }
+    },
+    {
+      "id": "eb8624b1-93ff-532d-a4bd-d92145843332",
+      "category": "places",
+      "slug": "services--painter",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 228,
+      "active": true,
+      "labels": {
+        "en": "Painter"
+      }
+    },
+    {
+      "id": "c93afc1b-a4b2-5907-a0fa-0024bb749a58",
+      "category": "places",
+      "slug": "entertainment-and-recreation--park",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 229,
+      "active": true,
+      "labels": {
+        "en": "Park"
+      }
+    },
+    {
+      "id": "bd24ecbb-6abd-5785-bf0f-8a45eac52e29",
+      "category": "places",
+      "slug": "transportation--park-and-ride",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 230,
+      "active": true,
+      "labels": {
+        "en": "Park and Ride"
+      }
+    },
+    {
+      "id": "148387af-8e34-5b4c-b558-d9ca445b633b",
+      "category": "places",
+      "slug": "automotive--parking",
+      "parentId": "268436a1-39da-5c91-a568-13cb8ad4eed1",
+      "position": 231,
+      "active": true,
+      "labels": {
+        "en": "Parking"
+      }
+    },
+    {
+      "id": "65a857cb-3051-5656-b3c5-9796aa64c303",
+      "category": "places",
+      "slug": "culture--performing-arts-theater",
+      "parentId": "4cfde7ed-7f45-52e6-a49e-45fdeec77b60",
+      "position": 232,
+      "active": true,
+      "labels": {
+        "en": "Performing Arts Theater"
+      }
+    },
+    {
+      "id": "131b527b-64ec-5d9f-870d-4df86a4ae3e8",
+      "category": "places",
+      "slug": "shopping--pet-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 233,
+      "active": true,
+      "labels": {
+        "en": "Pet Store"
+      }
+    },
+    {
+      "id": "94f050bc-36ec-594c-bd1f-5d7c063bf5c8",
+      "category": "places",
+      "slug": "health-and-wellness--pharmacy",
+      "parentId": "7436ca06-a58a-5412-90b8-d0652a40af90",
+      "position": 234,
+      "active": true,
+      "labels": {
+        "en": "Pharmacy"
+      }
+    },
+    {
+      "id": "8212ac52-b459-5bea-a954-cd8650385bc5",
+      "category": "places",
+      "slug": "entertainment-and-recreation--philharmonic-hall",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 235,
+      "active": true,
+      "labels": {
+        "en": "Philharmonic Hall"
+      }
+    },
+    {
+      "id": "dd067779-54e8-55b2-ad71-91f6d03fe4d1",
+      "category": "places",
+      "slug": "entertainment-and-recreation--picnic-ground",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 236,
+      "active": true,
+      "labels": {
+        "en": "Picnic Ground"
+      }
+    },
+    {
+      "id": "2a5b565e-44de-53a3-925a-ef605ef5f838",
+      "category": "places",
+      "slug": "food-and-drink--pizza-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 237,
+      "active": true,
+      "labels": {
+        "en": "Pizza Restaurant"
+      }
+    },
+    {
+      "id": "4f5656a7-b51c-5593-8ce6-9401533fda33",
+      "category": "places",
+      "slug": "places-of-worship",
+      "parentId": null,
+      "position": 238,
+      "active": true,
+      "labels": {
+        "en": "Places of Worship"
+      }
+    },
+    {
+      "id": "a61d894d-297c-5ad8-9902-e92f7e72b68e",
+      "category": "places",
+      "slug": "entertainment-and-recreation--planetarium",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 239,
+      "active": true,
+      "labels": {
+        "en": "Planetarium"
+      }
+    },
+    {
+      "id": "04b995f4-4dc2-5d2b-a528-ea32feec647b",
+      "category": "places",
+      "slug": "sports--playground",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 240,
+      "active": true,
+      "labels": {
+        "en": "Playground"
+      }
+    },
+    {
+      "id": "f930df6a-ea2e-5fdd-a023-abf7ad4df8b1",
+      "category": "places",
+      "slug": "entertainment-and-recreation--plaza",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 241,
+      "active": true,
+      "labels": {
+        "en": "Plaza"
+      }
+    },
+    {
+      "id": "4e1721b1-b0c9-5aa9-9f9e-b8112481fe2f",
+      "category": "places",
+      "slug": "services--plumber",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 242,
+      "active": true,
+      "labels": {
+        "en": "Plumber"
+      }
+    },
+    {
+      "id": "a8cda922-accf-5cb7-bcb2-8085aab3c86a",
+      "category": "places",
+      "slug": "government--police",
+      "parentId": "8a3bce44-786c-5098-9f91-e04d12b9e97c",
+      "position": 243,
+      "active": true,
+      "labels": {
+        "en": "Police"
+      }
+    },
+    {
+      "id": "07402edb-f2b7-5425-89f0-c17e5d4bf9c7",
+      "category": "places",
+      "slug": "others--political",
+      "parentId": "a0612615-6f2c-5258-8b6b-795bd2590b4e",
+      "position": 244,
+      "active": true,
+      "labels": {
+        "en": "Political"
+      }
+    },
+    {
+      "id": "d1ce10d6-b170-5b38-ae1d-f057906ad587",
+      "category": "places",
+      "slug": "government--post-office",
+      "parentId": "8a3bce44-786c-5098-9f91-e04d12b9e97c",
+      "position": 245,
+      "active": true,
+      "labels": {
+        "en": "Post Office"
+      }
+    },
+    {
+      "id": "03ccd124-3a3d-5127-a9a3-b86396b4fed8",
+      "category": "places",
+      "slug": "education--preschool",
+      "parentId": "f354b34e-fcd0-50ef-88bb-cab0eff41a2c",
+      "position": 246,
+      "active": true,
+      "labels": {
+        "en": "Preschool"
+      }
+    },
+    {
+      "id": "42435c59-d46f-50e1-a69d-30736b4b9d3f",
+      "category": "places",
+      "slug": "education--primary-school",
+      "parentId": "f354b34e-fcd0-50ef-88bb-cab0eff41a2c",
+      "position": 247,
+      "active": true,
+      "labels": {
+        "en": "Primary School"
+      }
+    },
+    {
+      "id": "cc978f49-2dd8-5865-b749-4c73517ab8bf",
+      "category": "places",
+      "slug": "lodging--private-guest-room",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 248,
+      "active": true,
+      "labels": {
+        "en": "Private Guest Room"
+      }
+    },
+    {
+      "id": "2f1c1adf-c30f-5a10-8420-261985cc92cd",
+      "category": "places",
+      "slug": "natural-features--protected-forest",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 249,
+      "active": true,
+      "labels": {
+        "en": "protected forest"
+      }
+    },
+    {
+      "id": "034925ae-ef38-5bdd-97f8-43c6f70978d2",
+      "category": "places",
+      "slug": "services--psychic",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 250,
+      "active": true,
+      "labels": {
+        "en": "Psychic"
+      }
+    },
+    {
+      "id": "85f4f944-60f9-5781-bceb-3e4bcd45e966",
+      "category": "places",
+      "slug": "food-and-drink--pub",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 251,
+      "active": true,
+      "labels": {
+        "en": "Pub"
+      }
+    },
+    {
+      "id": "10be418d-6eb2-5bfa-b434-db9dc5cad569",
+      "category": "places",
+      "slug": "facilities--public-bath",
+      "parentId": "4d4732c4-f1f0-5eaf-8b56-5132fb6171d6",
+      "position": 252,
+      "active": true,
+      "labels": {
+        "en": "Public Bath"
+      }
+    },
+    {
+      "id": "3a93fe42-0a84-5269-962c-59e5a132e14e",
+      "category": "places",
+      "slug": "facilities--public-bathroom",
+      "parentId": "4d4732c4-f1f0-5eaf-8b56-5132fb6171d6",
+      "position": 253,
+      "active": true,
+      "labels": {
+        "en": "Public Bathroom"
+      }
+    },
+    {
+      "id": "4e877453-7ded-5606-8d54-f9b03b7e4005",
+      "category": "places",
+      "slug": "food-and-drink--ramen-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 254,
+      "active": true,
+      "labels": {
+        "en": "Ramen Restaurant"
+      }
+    },
+    {
+      "id": "cafb5130-4693-556f-b3a4-bbc3e0943e98",
+      "category": "places",
+      "slug": "business--ranch",
+      "parentId": "a8585f5f-70b1-5a32-8c71-31a7938fd7f6",
+      "position": 255,
+      "active": true,
+      "labels": {
+        "en": "Ranch"
+      }
+    },
+    {
+      "id": "d7a8d774-2016-5972-b501-a98c03bcb8c1",
+      "category": "places",
+      "slug": "services--real-estate-agency",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 256,
+      "active": true,
+      "labels": {
+        "en": "Real Estate Agency"
+      }
+    },
+    {
+      "id": "2fac7155-8a30-533a-9c9f-5ccfc389866c",
+      "category": "places",
+      "slug": "housing--residential-building",
+      "parentId": "f65cd2d8-2477-59f2-84ec-06e6a2820876",
+      "position": 257,
+      "active": true,
+      "labels": {
+        "en": "Residential Building"
+      }
+    },
+    {
+      "id": "d419af48-ffa3-5f49-b0f5-5cbb6eae4d4d",
+      "category": "places",
+      "slug": "lodging--resort-hotel",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 258,
+      "active": true,
+      "labels": {
+        "en": "Resort Hotel"
+      }
+    },
+    {
+      "id": "bc9f2ec0-cb60-5fb4-9d1b-69cf48186ead",
+      "category": "places",
+      "slug": "automotive--rest-stop",
+      "parentId": "268436a1-39da-5c91-a568-13cb8ad4eed1",
+      "position": 259,
+      "active": true,
+      "labels": {
+        "en": "Rest Stop"
+      }
+    },
+    {
+      "id": "87b854ac-dce5-5239-8b79-fdbbb3260691",
+      "category": "places",
+      "slug": "food-and-drink--restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 260,
+      "active": true,
+      "labels": {
+        "en": "Restaurant"
+      }
+    },
+    {
+      "id": "06ef8506-87e5-5770-9a5e-d179abe4b112",
+      "category": "places",
+      "slug": "restaurant",
+      "parentId": null,
+      "position": 261,
+      "active": true,
+      "labels": {
+        "en": "restaurant"
+      }
+    },
+    {
+      "id": "9a96a6ba-361c-5380-8891-6747807c26ae",
+      "category": "places",
+      "slug": "natural-features--river",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 262,
+      "active": true,
+      "labels": {
+        "en": "river"
+      }
+    },
+    {
+      "id": "57af68c5-f9c3-54b6-b5c9-453e30ca598b",
+      "category": "places",
+      "slug": "entertainment-and-recreation--roller-coaster",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 263,
+      "active": true,
+      "labels": {
+        "en": "Roller Coaster"
+      }
+    },
+    {
+      "id": "e4fc26de-c739-554d-9111-e6b7a3057e3c",
+      "category": "places",
+      "slug": "services--roofing-contractor",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 264,
+      "active": true,
+      "labels": {
+        "en": "Roofing Contractor"
+      }
+    },
+    {
+      "id": "349f035d-e723-580f-965f-dd99764b0076",
+      "category": "places",
+      "slug": "lodging--rv-park",
+      "parentId": "ebc18260-705e-5a66-9405-ca855d5745c4",
+      "position": 265,
+      "active": true,
+      "labels": {
+        "en": "RV Park"
+      }
+    },
+    {
+      "id": "62f3b531-94e5-521a-96ac-09dd0264f50c",
+      "category": "places",
+      "slug": "food-and-drink--sandwich-shop",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 266,
+      "active": true,
+      "labels": {
+        "en": "Sandwich Shop"
+      }
+    },
+    {
+      "id": "074c094b-62f1-5225-8722-8507ec03dc75",
+      "category": "places",
+      "slug": "natural-features--scenic-overlook",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 267,
+      "active": true,
+      "labels": {
+        "en": "scenic overlook"
+      }
+    },
+    {
+      "id": "601e5e3b-d6dd-569f-9045-6357e1265e65",
+      "category": "places",
+      "slug": "natural-features--scenic-point",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 268,
+      "active": true,
+      "labels": {
+        "en": "scenic point"
+      }
+    },
+    {
+      "id": "3ca6ca53-7ad2-5c72-b5d3-9789bd0fc498",
+      "category": "places",
+      "slug": "culture--sculpture",
+      "parentId": "4cfde7ed-7f45-52e6-a49e-45fdeec77b60",
+      "position": 269,
+      "active": true,
+      "labels": {
+        "en": "Sculpture"
+      }
+    },
+    {
+      "id": "42823cc9-95a7-5959-876a-0a482f372e24",
+      "category": "places",
+      "slug": "food-and-drink--seafood-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 270,
+      "active": true,
+      "labels": {
+        "en": "Seafood Restaurant"
+      }
+    },
+    {
+      "id": "6b0ee321-9021-5346-a517-4e1e7e128149",
+      "category": "places",
+      "slug": "education--secondary-school",
+      "parentId": "f354b34e-fcd0-50ef-88bb-cab0eff41a2c",
+      "position": 271,
+      "active": true,
+      "labels": {
+        "en": "Secondary School"
+      }
+    },
+    {
+      "id": "637de6a9-807d-55e0-a057-46a997875aae",
+      "category": "places",
+      "slug": "services",
+      "parentId": null,
+      "position": 272,
+      "active": true,
+      "labels": {
+        "en": "Services"
+      }
+    },
+    {
+      "id": "96536c2c-2f65-59c4-b25f-b2d96a0086af",
+      "category": "places",
+      "slug": "shopping--shoe-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 273,
+      "active": true,
+      "labels": {
+        "en": "Shoe Store"
+      }
+    },
+    {
+      "id": "1366028d-13de-5584-9344-5c64cafd7356",
+      "category": "places",
+      "slug": "shopping",
+      "parentId": null,
+      "position": 274,
+      "active": true,
+      "labels": {
+        "en": "Shopping"
+      }
+    },
+    {
+      "id": "e0a7ecc7-b441-57c3-96a1-5ea8f53951d0",
+      "category": "places",
+      "slug": "shopping--shopping-mall",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 275,
+      "active": true,
+      "labels": {
+        "en": "Shopping Mall"
+      }
+    },
+    {
+      "id": "d2ac46a5-f4a3-54ac-950b-c2124660ef98",
+      "category": "places",
+      "slug": "housing--single-family-house",
+      "parentId": "f65cd2d8-2477-59f2-84ec-06e6a2820876",
+      "position": 276,
+      "active": true,
+      "labels": {
+        "en": "Single-Family House"
+      }
+    },
+    {
+      "id": "777a59b8-3d43-542e-af27-f9768c742230",
+      "category": "places",
+      "slug": "entertainment-and-recreation--skateboard-park",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 277,
+      "active": true,
+      "labels": {
+        "en": "Skateboard Park"
+      }
+    },
+    {
+      "id": "b69eefb9-01d7-5009-94e4-b85a0b138747",
+      "category": "places",
+      "slug": "sports--ski-resort",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 278,
+      "active": true,
+      "labels": {
+        "en": "Ski Resort"
+      }
+    },
+    {
+      "id": "513cb688-8a2d-53c9-acfe-e83fd71e54d1",
+      "category": "places",
+      "slug": "food-and-drink--spanish-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 279,
+      "active": true,
+      "labels": {
+        "en": "Spanish Restaurant"
+      }
+    },
+    {
+      "id": "0bcbd9c1-b28f-5b67-9e64-08e4635980bb",
+      "category": "places",
+      "slug": "shopping--sporting-goods-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 280,
+      "active": true,
+      "labels": {
+        "en": "Sporting Goods Store"
+      }
+    },
+    {
+      "id": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "category": "places",
+      "slug": "sports",
+      "parentId": null,
+      "position": 281,
+      "active": true,
+      "labels": {
+        "en": "Sports"
+      }
+    },
+    {
+      "id": "4a14da84-d969-5e62-81c8-0dd64f5d68cd",
+      "category": "places",
+      "slug": "sports--sports-activity-location",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 282,
+      "active": true,
+      "labels": {
+        "en": "Sports Activity Location"
+      }
+    },
+    {
+      "id": "2a08b379-68b2-523a-bb7a-a14c6f606ab1",
+      "category": "places",
+      "slug": "sports--sports-club",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 283,
+      "active": true,
+      "labels": {
+        "en": "Sports Club"
+      }
+    },
+    {
+      "id": "2331a37b-d98c-5ef9-a826-f293b4b7153d",
+      "category": "places",
+      "slug": "sports--sports-coaching",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 284,
+      "active": true,
+      "labels": {
+        "en": "Sports Coaching"
+      }
+    },
+    {
+      "id": "0975604c-4def-5857-a13b-ec80e90a41b3",
+      "category": "places",
+      "slug": "sports--sports-complex",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 285,
+      "active": true,
+      "labels": {
+        "en": "Sports Complex"
+      }
+    },
+    {
+      "id": "6dcad638-81f9-5a33-b1dd-34cd58d25b25",
+      "category": "places",
+      "slug": "facilities--stable",
+      "parentId": "4d4732c4-f1f0-5eaf-8b56-5132fb6171d6",
+      "position": 286,
+      "active": true,
+      "labels": {
+        "en": "Stable"
+      }
+    },
+    {
+      "id": "0f3e12d4-9fd2-5a27-b091-2d9d9510a48a",
+      "category": "places",
+      "slug": "sports--stadium",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 287,
+      "active": true,
+      "labels": {
+        "en": "Stadium"
+      }
+    },
+    {
+      "id": "d0544d53-9281-5a9f-9967-7146e6515469",
+      "category": "places",
+      "slug": "entertainment-and-recreation--state-park",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 288,
+      "active": true,
+      "labels": {
+        "en": "State Park"
+      }
+    },
+    {
+      "id": "6b3bec12-c22f-5e92-98bf-798371f185c3",
+      "category": "places",
+      "slug": "food-and-drink--steak-house",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 289,
+      "active": true,
+      "labels": {
+        "en": "Steak House"
+      }
+    },
+    {
+      "id": "be398727-400b-5272-9664-30ea01b414a2",
+      "category": "places",
+      "slug": "services--storage",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 290,
+      "active": true,
+      "labels": {
+        "en": "Storage"
+      }
+    },
+    {
+      "id": "9e1c363e-8c53-57a2-a440-b18fc7f46198",
+      "category": "places",
+      "slug": "shopping--store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 291,
+      "active": true,
+      "labels": {
+        "en": "Store"
+      }
+    },
+    {
+      "id": "312b354b-cfde-59e5-a082-48357b661988",
+      "category": "places",
+      "slug": "transportation--subway-station",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 292,
+      "active": true,
+      "labels": {
+        "en": "Subway Station"
+      }
+    },
+    {
+      "id": "9a50eaa1-4901-5e7a-8758-dd866647762a",
+      "category": "places",
+      "slug": "services--summer-camp-organizer",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 293,
+      "active": true,
+      "labels": {
+        "en": "Summer Camp Organizer"
+      }
+    },
+    {
+      "id": "b2a773f7-b016-5055-bc6c-6346bdaa6948",
+      "category": "places",
+      "slug": "shopping--supermarket",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 294,
+      "active": true,
+      "labels": {
+        "en": "Supermarket"
+      }
+    },
+    {
+      "id": "b90766c3-a870-5376-ba10-e0d2a769ab29",
+      "category": "places",
+      "slug": "food-and-drink--sushi-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 295,
+      "active": true,
+      "labels": {
+        "en": "Sushi Restaurant"
+      }
+    },
+    {
+      "id": "8c915cbb-c136-5837-bbbf-02d89886aa12",
+      "category": "places",
+      "slug": "sports--swimming-pool",
+      "parentId": "1711fa25-3e32-5c24-9ee1-053f2c437080",
+      "position": 296,
+      "active": true,
+      "labels": {
+        "en": "Swimming Pool"
+      }
+    },
+    {
+      "id": "4b3d4058-1e71-51a8-b57a-710de18b3818",
+      "category": "places",
+      "slug": "places-of-worship--synagogue",
+      "parentId": "4f5656a7-b51c-5593-8ce6-9401533fda33",
+      "position": 297,
+      "active": true,
+      "labels": {
+        "en": "Synagogue"
+      }
+    },
+    {
+      "id": "c74125a0-c25b-5159-9c96-efa2dca4a217",
+      "category": "places",
+      "slug": "services--tailor",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 298,
+      "active": true,
+      "labels": {
+        "en": "Tailor"
+      }
+    },
+    {
+      "id": "a27afd14-e4fc-588e-b35f-81c1ee8942a8",
+      "category": "places",
+      "slug": "transportation--taxi-stand",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 299,
+      "active": true,
+      "labels": {
+        "en": "Taxi Stand"
+      }
+    },
+    {
+      "id": "8e827f84-0dc1-582f-a254-54935774b313",
+      "category": "places",
+      "slug": "food-and-drink--tea-house",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 300,
+      "active": true,
+      "labels": {
+        "en": "Tea House"
+      }
+    },
+    {
+      "id": "b197d0b9-c87b-5e1b-8fd9-eb432f0f3e87",
+      "category": "places",
+      "slug": "services--telecommunications-service-provider",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 301,
+      "active": true,
+      "labels": {
+        "en": "Telecommunications Service Provider"
+      }
+    },
+    {
+      "id": "4793c696-7944-583c-a34a-d5f841264b96",
+      "category": "places",
+      "slug": "food-and-drink--thai-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 302,
+      "active": true,
+      "labels": {
+        "en": "Thai Restaurant"
+      }
+    },
+    {
+      "id": "801910fd-7b52-5836-a99b-a6dfacd15ca0",
+      "category": "places",
+      "slug": "movies-shows--thriller",
+      "parentId": "1ba21088-057a-59ac-a960-a309ad10b449",
+      "position": 303,
+      "active": true,
+      "labels": {
+        "en": "Thriller"
+      }
+    },
+    {
+      "id": "16d8e308-0784-50a7-8730-330371313a7d",
+      "category": "places",
+      "slug": "services--tour-agency",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 304,
+      "active": true,
+      "labels": {
+        "en": "Tour Agency"
+      }
+    },
+    {
+      "id": "d2e8d30e-dfcc-5afa-8ab3-4d83c1f927fc",
+      "category": "places",
+      "slug": "entertainment-and-recreation--tourist-attraction",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 305,
+      "active": true,
+      "labels": {
+        "en": "Tourist Attraction"
+      }
+    },
+    {
+      "id": "1f1da6e6-207d-571a-9043-c2e8d1f2d84b",
+      "category": "places",
+      "slug": "services--tourist-information-center",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 306,
+      "active": true,
+      "labels": {
+        "en": "Tourist Information Center"
+      }
+    },
+    {
+      "id": "33f38491-98de-5478-9f27-1ea5942761a0",
+      "category": "places",
+      "slug": "transportation--train-station",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 307,
+      "active": true,
+      "labels": {
+        "en": "Train Station"
+      }
+    },
+    {
+      "id": "0c75b900-2120-56bb-ad1d-9cc6bcca119f",
+      "category": "places",
+      "slug": "transportation--transit-depot",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 308,
+      "active": true,
+      "labels": {
+        "en": "Transit Depot"
+      }
+    },
+    {
+      "id": "84db0d1c-014c-5550-9a15-b93132409f88",
+      "category": "places",
+      "slug": "transportation--transit-station",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 309,
+      "active": true,
+      "labels": {
+        "en": "Transit Station"
+      }
+    },
+    {
+      "id": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "category": "places",
+      "slug": "transportation",
+      "parentId": null,
+      "position": 310,
+      "active": true,
+      "labels": {
+        "en": "Transportation"
+      }
+    },
+    {
+      "id": "35a210ad-010c-531f-b85d-0f5b3b308e53",
+      "category": "places",
+      "slug": "services--travel-agency",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 311,
+      "active": true,
+      "labels": {
+        "en": "Travel Agency"
+      }
+    },
+    {
+      "id": "173788d3-9e9e-591d-98bf-d398f3b5c0c6",
+      "category": "places",
+      "slug": "natural-features--trekking-trail",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 312,
+      "active": true,
+      "labels": {
+        "en": "trekking trail"
+      }
+    },
+    {
+      "id": "517b13f6-bca7-54b8-8caa-82026eff1568",
+      "category": "places",
+      "slug": "transportation--truck-stop",
+      "parentId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c",
+      "position": 313,
+      "active": true,
+      "labels": {
+        "en": "Truck Stop"
+      }
+    },
+    {
+      "id": "55b6bdbc-f219-5fe6-b773-1552bfbe1424",
+      "category": "places",
+      "slug": "food-and-drink--turkish-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 314,
+      "active": true,
+      "labels": {
+        "en": "Turkish Restaurant"
+      }
+    },
+    {
+      "id": "5a641a67-3d1d-5740-a0c1-5a9b9e2bc4fc",
+      "category": "places",
+      "slug": "education--university",
+      "parentId": "f354b34e-fcd0-50ef-88bb-cab0eff41a2c",
+      "position": 315,
+      "active": true,
+      "labels": {
+        "en": "University"
+      }
+    },
+    {
+      "id": "d7b82475-373c-5c57-8192-06434690fa49",
+      "category": "places",
+      "slug": "health-and-wellness--urgent-care-center",
+      "parentId": "7436ca06-a58a-5412-90b8-d0652a40af90",
+      "position": 316,
+      "active": true,
+      "labels": {
+        "en": "Urgent Care Center"
+      }
+    },
+    {
+      "id": "2ce4172d-510e-5415-a031-9ec461394c33",
+      "category": "places",
+      "slug": "food-and-drink--vegan-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 317,
+      "active": true,
+      "labels": {
+        "en": "Vegan Restaurant"
+      }
+    },
+    {
+      "id": "3df8bcf6-f043-589f-b0b7-93685035361c",
+      "category": "places",
+      "slug": "food-and-drink--vegetarian-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 318,
+      "active": true,
+      "labels": {
+        "en": "Vegetarian Restaurant"
+      }
+    },
+    {
+      "id": "aa4c4052-c6a1-5e3c-a5df-fe5bc425e19d",
+      "category": "places",
+      "slug": "services--veterinary-care",
+      "parentId": "637de6a9-807d-55e0-a057-46a997875aae",
+      "position": 319,
+      "active": true,
+      "labels": {
+        "en": "Veterinary Care"
+      }
+    },
+    {
+      "id": "50abba46-f754-5e7d-851d-7b04b22afadd",
+      "category": "places",
+      "slug": "health-and-wellness--veterinary-clinic",
+      "parentId": "7436ca06-a58a-5412-90b8-d0652a40af90",
+      "position": 320,
+      "active": true,
+      "labels": {
+        "en": "Veterinary Clinic"
+      }
+    },
+    {
+      "id": "394630b8-fa71-5291-8b24-104087db7f36",
+      "category": "places",
+      "slug": "entertainment-and-recreation--video-arcade",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 321,
+      "active": true,
+      "labels": {
+        "en": "Video Arcade"
+      }
+    },
+    {
+      "id": "29243e9a-a3ec-5c2e-be0e-55d6543be429",
+      "category": "places",
+      "slug": "food-and-drink--vietnamese-restaurant",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 322,
+      "active": true,
+      "labels": {
+        "en": "Vietnamese Restaurant"
+      }
+    },
+    {
+      "id": "ddc3ecb2-7ad4-5453-b032-2e3940de36b5",
+      "category": "places",
+      "slug": "natural-features--viewpoint",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 323,
+      "active": true,
+      "labels": {
+        "en": "viewpoint"
+      }
+    },
+    {
+      "id": "140acb35-d544-5723-9d25-f1b0a6022824",
+      "category": "places",
+      "slug": "entertainment-and-recreation--visitor-center",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 324,
+      "active": true,
+      "labels": {
+        "en": "Visitor Center"
+      }
+    },
+    {
+      "id": "17e96443-2202-59b4-bc66-dbc6705da40b",
+      "category": "places",
+      "slug": "shopping--warehouse-store",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 325,
+      "active": true,
+      "labels": {
+        "en": "Warehouse Store"
+      }
+    },
+    {
+      "id": "0ae2268b-9ce4-5005-a36c-1f71ab109e4e",
+      "category": "places",
+      "slug": "entertainment-and-recreation--water-park",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 326,
+      "active": true,
+      "labels": {
+        "en": "Water Park"
+      }
+    },
+    {
+      "id": "d21e9e69-cad5-595a-b548-280ac591861f",
+      "category": "places",
+      "slug": "natural-features--waterfall",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 327,
+      "active": true,
+      "labels": {
+        "en": "waterfall"
+      }
+    },
+    {
+      "id": "1086ca35-4db3-512d-b069-2411866a1697",
+      "category": "places",
+      "slug": "entertainment-and-recreation--wedding-venue",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 328,
+      "active": true,
+      "labels": {
+        "en": "Wedding Venue"
+      }
+    },
+    {
+      "id": "01a77d9e-b59c-54b0-b950-a72026920deb",
+      "category": "places",
+      "slug": "shopping--wholesaler",
+      "parentId": "1366028d-13de-5584-9344-5c64cafd7356",
+      "position": 329,
+      "active": true,
+      "labels": {
+        "en": "Wholesaler"
+      }
+    },
+    {
+      "id": "a53c052c-8069-5ab1-b8b1-fb8cc534f10f",
+      "category": "places",
+      "slug": "entertainment-and-recreation--wildlife-park",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 330,
+      "active": true,
+      "labels": {
+        "en": "Wildlife Park"
+      }
+    },
+    {
+      "id": "ac57bb71-81a0-59bd-8217-fc3419f63327",
+      "category": "places",
+      "slug": "entertainment-and-recreation--wildlife-refuge",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 331,
+      "active": true,
+      "labels": {
+        "en": "Wildlife Refuge"
+      }
+    },
+    {
+      "id": "b68c81cb-8cca-537b-b45b-30245b561b1b",
+      "category": "places",
+      "slug": "natural-features--wildlife-sanctuary",
+      "parentId": "74c2d6f8-9980-55ee-9715-aeb5de13e691",
+      "position": 332,
+      "active": true,
+      "labels": {
+        "en": "wildlife sanctuary"
+      }
+    },
+    {
+      "id": "5f8c233e-c3e2-5815-9784-50013a0f158b",
+      "category": "places",
+      "slug": "food-and-drink--wine-bar",
+      "parentId": "7954b737-6c07-5ac5-afdf-5b921de08d29",
+      "position": 333,
+      "active": true,
+      "labels": {
+        "en": "Wine Bar"
+      }
+    },
+    {
+      "id": "0e1c94ef-ac4d-5a35-9287-0691651f1b74",
+      "category": "places",
+      "slug": "entertainment-and-recreation--zoo",
+      "parentId": "526d402a-bbb2-51ef-9748-27c5897fc94f",
+      "position": 334,
+      "active": true,
+      "labels": {
+        "en": "Zoo"
+      }
+    }
+  ],
+  "sourceMappings": [
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "mfo5m8vyrl6wttqdiiway8vt",
+      "termId": "c94206aa-6699-51b4-8724-cbf76b6e9a77"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "xzm9m094ju975ytaz9v7p7o0",
+      "termId": "80c326ed-0537-5ecb-bee6-566ec4183841"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "uxp3q1wkg2dk8rsfi8duzlyn",
+      "termId": "81c725cb-58f8-5667-a6a1-7d533916369d"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ss7ie9i7pxfyl6cr1pitk5jg",
+      "termId": "277482ae-42ef-5543-918b-52634b336cc1"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "lu8vyrf28occainuhoiejq2i",
+      "termId": "5cc04d64-fb6e-5808-96d2-17923e5564fa"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "nemovnuc6le05tm901vqvmen",
+      "termId": "c9ccce62-487b-5cd4-9f91-0e6286e163ce"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "c53ngjn2jrz1pv5clf7mthd0",
+      "termId": "89683445-211c-5207-a037-b1c7e494c4bd"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "r3qb78z8ky368cqcy76tbgmt",
+      "termId": "db515b86-02d6-5b3a-b343-659f10cd55b7"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "vrvfvn8r3u7c3kcugphigebg",
+      "termId": "0fcd082a-3402-508c-99e2-1747782c2750"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "c9wrthosg1db0eniybigjkj3",
+      "termId": "0224151e-787d-5a22-adda-83293c4d79b0"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "dxvdlxufqq9447v45lj65lfm",
+      "termId": "5d334328-1b6d-5b86-a3dc-bcc3098b40ed"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "u6uji04ds276aumexvf5s1wp",
+      "termId": "32b945eb-b24a-5e32-9e7f-76785d1fb362"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "jv8qu128ouv7fe2dgfbwuybm",
+      "termId": "dac6111b-9381-594b-901b-0a0e581f60b8"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "jwjrwz01exzyjsd20gki7l3j",
+      "termId": "f88d8d17-1b23-57c1-b001-dae9cf727a9c"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "quus5qx0ib99tsongqeymkdj",
+      "termId": "daf832b2-9d96-521f-965d-8e90c647573d"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "mcvo3t9mud6c0hexeguw7q2d",
+      "termId": "a1d43f56-2db8-55f7-aafb-c458e14b9d45"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "c3plx9oq4o2zvym2o9bmea2s",
+      "termId": "c7782b2f-5f71-5af7-8fcd-2a51546025b3"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "sgmhjl1bljxn3juqspt4zhfc",
+      "termId": "9a3d0aaa-d82f-5461-9a96-5420362b0ea6"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "zfit4ez7gb90lo8p1q7wktf8",
+      "termId": "e3c49a20-427e-5bda-a096-3c1f3cfb7c54"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "un1hvwybangdo6ugj83a7doc",
+      "termId": "579fa269-1027-5d59-9d50-4a946a64c2b6"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "zsz873fx89n005xh6oh6abpp",
+      "termId": "f3582f31-b82d-5884-b733-c7999388d4dc"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "zb8dg8pwksvd9kfztm8i0a7m",
+      "termId": "52079e96-4743-5a3d-82c7-8afda5ecc645"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "l7a829397izg9wkwlpuwru2c",
+      "termId": "eff6e0a2-337d-525a-97ea-fdc1a5e69537"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "wwsnpgxvt9qqk8i01p03s59c",
+      "termId": "268436a1-39da-5c91-a568-13cb8ad4eed1"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "sel5rcenco3b5cjima7yky91",
+      "termId": "0843adde-f253-5e01-82c0-696e759cc891"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "jdvi4mud4t1wyo0vivr5mpnc",
+      "termId": "918d7233-7455-524c-8ed3-addabc6f23d5"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "dnwfgnqqjqpqn3odwwkgcxqv",
+      "termId": "9c83b0c9-268e-5ee7-bb3f-5acf5b7a082f"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "b6n846fs208os4gvf3kn3cwb",
+      "termId": "3c0059b8-8c5f-50f7-925a-e0f2354323ee"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "y41e0h3szodwh3jgjnpuy9w6",
+      "termId": "f9e012a0-9611-5e5f-bb7b-694dfb43361e"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "q0ml57h6v6jni1keb4h3g0pi",
+      "termId": "96be84ea-be6d-5861-90a2-6ef57acb0586"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "dr5e6wzitrv9dnikwamf4hrv",
+      "termId": "f42dec3e-3ed0-530a-97c8-9c42d5f54791"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "asf7lr9c715adlryya9t12xa",
+      "termId": "f1756320-a87f-5d13-b9a7-6c40ba355988"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ojfqu08poy0mt661ux4nuoxl",
+      "termId": "7a8260e0-7041-5ce0-bce2-ff999dd06af7"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "xp6uepf1lujx55k6vpu6xhez",
+      "termId": "179e2782-bc1c-56b2-993b-50b694f258fc"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "a7yz35lyozsjfpeudgblnhrw",
+      "termId": "9bd31d98-8478-5a3c-84ae-fbf28380c7a3"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "os5hg8t5b36kguxfd48pruub",
+      "termId": "707f05cd-6b4a-52a8-b844-1a3efeff62a4"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "cj4telghdbs25px639m7ksqf",
+      "termId": "110a1fce-f073-5be9-8694-a5b4fbe3bd28"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "gdqk2spelutw91ipa4er83j9",
+      "termId": "33ddb51d-b016-5897-a64d-86745e776eca"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "cup8n0zh8rbfoyvyandpl8of",
+      "termId": "739ba719-1926-5130-860f-a0d2c12cc0fa"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ezu8q5mvqfbxdsrlk07mcdyb",
+      "termId": "c87616f4-822b-5254-a7c3-baea6ca974c3"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "dtrh1wu1va3d5c957oqr6p4c",
+      "termId": "fc6ef8b2-c59a-58d1-969f-80d196313ea1"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "cxd4osk1gv9yiacnc484rum9",
+      "termId": "20db5e87-4bc2-52ea-ac05-0b135acc18cf"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "tu1zw79hmlvtvow2kc3ag0lx",
+      "termId": "251b3ce7-96ee-56bb-aa8b-53067b8a5177"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "z954c0p9ri7b77m9aa1bq0jx",
+      "termId": "c9eb3687-5cc8-5ba4-ab7c-8813dfd95085"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "k70mone05zh6w88bm1jaxs8v",
+      "termId": "90a4809b-d3b6-5afa-8fe1-66b41b018f0c"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "lfpwdkcxpbznls42pb58757h",
+      "termId": "2e575631-5e3e-5762-9766-0a70b42011f2"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "l5f95peo40s50olhfae1wnfd",
+      "termId": "649fc343-15c5-5908-8ddb-2b6abe42cad5"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "o1cba61w7thgj2fub5qfnjzd",
+      "termId": "fcf9ff8e-170a-5060-a070-ae3671ca27d2"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "bd4xy1xkqx1732r777tpvglz",
+      "termId": "23f9693e-ca6e-5d4c-a1bd-4f4f0a8f4819"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "nn5wv9hl61gd4m5nvhlab6ga",
+      "termId": "e07af48b-2df3-53af-8d6e-bc9ecadbc5c5"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "rz1d6h2heeaqd4yslhup2gmp",
+      "termId": "7af6534e-dc62-549e-956b-21a53f3ae3a0"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "q9uspqtmoqgdt1ncfsnuf1yo",
+      "termId": "a8585f5f-70b1-5a32-8c71-31a7938fd7f6"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "r1m5p6p9lzdaaag5bsvktb4d",
+      "termId": "d4488ebd-52b7-5c80-85b5-ace0d5c91c20"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "gerh4msdjbp6kxha5jpqv7pd",
+      "termId": "9887239e-132a-5f71-b8f8-0ea220645f51"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "pgikc5p75yf2z6xg61jkty1a",
+      "termId": "00f72784-215d-5e79-afa6-a280034c5021"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "xwpsvmw158chag862sech3kc",
+      "termId": "336f4d25-56d3-511d-802c-a0eb15d2b00d"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ao6vivq3esdpxw5reudvjuu3",
+      "termId": "c3de84ab-6981-5625-bc3b-109ce0022aa8"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "gkn0rpn8tbj3d0meb95fn7vw",
+      "termId": "4312852f-67e2-59ba-b50c-95dba1c1d80f"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ibxkxgv7943roy7u4torzgez",
+      "termId": "43592df9-9fd6-5978-aea7-e1fadc53af39"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "sn1f5c92q758wd194n73ailf",
+      "termId": "61468242-a10d-5b4e-b469-12c50a6da459"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "vvwys0blpnljsz9i0zdymh61",
+      "termId": "46834e3d-970e-5916-954b-e9040b86a300"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "w212579fmltglrxghuigskwr",
+      "termId": "0f08df5a-7c94-593c-a7e5-6aacef195d2f"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "r5ts7mz94kbsuyp487eqwr5r",
+      "termId": "eb25a57c-9c69-5cc1-8b5f-cef981829db7"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "bjdf3qbl6f2apx1oreve9owk",
+      "termId": "a557f309-e9db-5580-880d-515450f0e2ec"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "shs362gad10jxrdl5n4m1nao",
+      "termId": "229cbe7e-0993-5d5a-a00c-dbd91192a6a8"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ai4buek2l918eq4m4c4vx1kr",
+      "termId": "d0d91303-61f6-5e97-a711-2ef2a648795a"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "yuzvpxb4sck07tbamxxju38p",
+      "termId": "eb704553-58a8-5365-9b61-25b7c4606ae6"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "p4o3swrub9fknxnzg1oxthh5",
+      "termId": "a10c6702-2ca7-5eb9-8878-96ac01ec1781"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "b741yq2zw8xb5qiz1tnnwaj7",
+      "termId": "1b2faaa8-d9af-50e0-9838-d0da3408864e"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "jftkkp1846y0tcu0dqaczcws",
+      "termId": "57c5bef0-01b2-58c3-91a4-e989b6d5ae93"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "f1hgnx43c60e61h8k2m86h4j",
+      "termId": "b1edbd3b-a7f4-5168-8dc1-e1e6d0ba33af"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "wy43p9u681g6wpcbf4sv6kwa",
+      "termId": "1a0ba361-5f3a-58f4-81a0-60bf8e1506c9"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "tqj9xf0icghwf55kxozxstc5",
+      "termId": "238d726e-71f2-557e-9d1c-69f2140e728c"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "lb24qc1wla2imijch9rf3lyl",
+      "termId": "ba4930d1-a60c-5643-92eb-3ad2cb14e303"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "oxpc9241rfs3roosrsp3ccx2",
+      "termId": "af6c02bd-ea07-55f6-a139-e0a2691dcc7b"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "i8sxqrmu2fun444t13ppmlx2",
+      "termId": "03a14dd8-ea0d-5880-a170-b32d1bc445c8"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "upjp2p86i689clj4qaz3f4e3",
+      "termId": "65e8367a-bb14-5f53-82b0-5d8be47632ee"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "totrq0m0n6rdcwm3t810csr7",
+      "termId": "662734a3-e213-5a55-9755-08f7f4cc1d91"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "p2kqhs1lxfdis06gbqf67190",
+      "termId": "514b2237-735f-5b40-9cad-18daa84eed41"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "na3yx3a0bstxwf0jdo9t41et",
+      "termId": "a239f031-a00f-5a86-804a-aeeab27798c7"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "zlj158ckq92lw61yy8e18wxs",
+      "termId": "ff7aa896-31d3-5f46-b258-c96a2ea3e1ef"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ziqoe68niwr9926ik1mna06p",
+      "termId": "db3d1919-ad5a-586e-9ab3-492d12570a1d"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ajvlebq245yezqqlrt9od569",
+      "termId": "88971432-3eeb-54e6-b3e9-a0349daf65d7"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "eeg81i57xnzegp1rfz0586te",
+      "termId": "844bba2e-a065-5af8-a8f6-c4f09c04188b"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "wnq0msk4okv7fs10c2tgb7iy",
+      "termId": "9bf5ed9c-0914-5d06-b251-933772f6c186"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "o6lztyioqjntj8ahnsd85bse",
+      "termId": "190a3647-640c-57e6-9c7a-b85710e5b9ae"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "e1dj1hyhu81x5bfediel9uy1",
+      "termId": "22bfcd98-a6bd-5eb2-9fd9-49ba42bbe6ad"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "qeocxc0m4t7tw23kxoqhbtgv",
+      "termId": "615a66af-9f4e-5626-ab93-b0f045ea741e"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "gwoowy1hwka62ybi7zopvexy",
+      "termId": "2b00fe95-7b59-55ed-8d0e-198fb9f1c955"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "spjnecmywwo4m7jmp9270clt",
+      "termId": "bc3ed9d5-9139-591c-83a1-0af5ba168246"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "smlqmm3b8yfj6y2hdie80o8i",
+      "termId": "92797ce0-6890-503b-aab9-c0b442becc27"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "fwv9w0kqhran02r47o645h1h",
+      "termId": "6b0c177e-d7b4-50db-84cc-6144969d6696"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "m2jk055n3qhurw52i2miuuz1",
+      "termId": "4cfde7ed-7f45-52e6-a49e-45fdeec77b60"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "jw3uvob626auo1xixoziqp0o",
+      "termId": "647b6b8e-9f99-53e0-8d52-af15dd4d580b"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "qgu179uasn9bku1u8bpz7zyd",
+      "termId": "e2ba876c-995e-5c15-bdc5-fcf098b24dc0"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "vs898ct0shpiuoszxtw34zqn",
+      "termId": "bebd225c-9863-50ed-b3e8-033b281e7278"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "teycpaj53iiucesxzohdhvlj",
+      "termId": "0c75abbb-9446-5a45-8ba2-9753310fb80f"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "rijbcuhavpunbotjfx846vj9",
+      "termId": "7a0e538e-9abe-5917-b168-5262449ba714"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "t97j9s1xry3ytg4l24o6k177",
+      "termId": "22e665ed-5077-59c7-b463-635e70bcc4ac"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "d24fgjt7090da4ye9xpf51ix",
+      "termId": "6d96fcb0-ce79-54df-a18e-8b229971e3bb"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "cltwdjnz9uu0987401vsy7mz",
+      "termId": "a6106d66-b0c0-5403-a540-66812ffb6009"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "rdpfuip7afdeewsd68pthpmk",
+      "termId": "9398cc6e-4e3b-580f-84f4-9c6c3045ab44"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "exe6thaj040lxqihsiyod3qg",
+      "termId": "2fc09638-7f23-574a-b0d0-3de46a31b2e7"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "arub88iwb6gr71mtkvvrcena",
+      "termId": "9cc8f77c-aea2-5b1b-8779-6c5af7797bc4"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ig5aar26ru2k1pqswgdcpz2b",
+      "termId": "3f17f851-74a3-5518-9224-d3676a3ebeed"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "hmlq41vg5zgdfftqweygjqam",
+      "termId": "f2a99459-1f9d-5b4b-a616-f3c870f6505f"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "z1gtgfhe7frf7m4kgvy5ima1",
+      "termId": "f354b34e-fcd0-50ef-88bb-cab0eff41a2c"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ez1v0r8qye9v6jaxd9u2iqut",
+      "termId": "ac068244-1297-5716-b040-81f4af1a8e57"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "kjfjqpvla90xpassth8vk6c7",
+      "termId": "4d68d81e-02eb-54f9-9277-982ea2427765"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "e9kdg8uvks84h2wlinklqy56",
+      "termId": "805e7a72-47e4-5f08-9f8c-9601d94ea7e7"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ejgsk1gowc3dbvloa4dfepdb",
+      "termId": "5726434c-4419-5756-a5b9-1994811c9804"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "xpi9wxv9phhajcy1mehtcfgw",
+      "termId": "526d402a-bbb2-51ef-9748-27c5897fc94f"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ggj8rwmvkekbdysbs1wnlkje",
+      "termId": "86fbb209-edaf-56ba-aeb0-0436c7883ddf"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "fwoe6o2ut3ktj98e4nbpd1af",
+      "termId": "cebacaae-d41a-565b-8ffe-d95c049d3025"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "zuxci8g2wq19ce8ljq44kn5i",
+      "termId": "4d4732c4-f1f0-5eaf-8b56-5132fb6171d6"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "dhsm2r3oz7xb95xr6s85ygxk",
+      "termId": "9abe9525-b2fa-5e9f-8cef-d670958a4d63"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "qr3la8tckprsqncjexjcpym1",
+      "termId": "64585c7b-0bb9-5657-b26a-78b13e2c3d87"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "zqhe6ezgn2a3fcyiwmlef8tc",
+      "termId": "4f5feb69-9e88-557e-b2b7-bf22a915730e"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "azlims8tbti48nzo1uo6wk0t",
+      "termId": "2b16b755-6070-522f-8632-c1c0127ec2a3"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ydsype85weuwz2nra2ytuleo",
+      "termId": "81e8b358-1543-5c1d-aec1-73d0a24a6b17"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "v23iqmo78i0voitps90uz15u",
+      "termId": "8596ec99-7276-5dbb-b03d-ba02e3f9629c"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "mkuz58b8kzmtzgk2mqxbx91n",
+      "termId": "bd6c6f64-dc53-5cf7-9776-89a065e4b59a"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "dm47wm5ucos4s4x17iiu397h",
+      "termId": "df904ef6-ca6b-528b-9f4f-53e9dbcdeb1e"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "dmpg0xx3084yxlzicle63bzx",
+      "termId": "101a9187-2cd4-55ff-ab12-8831e5db04e0"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "nd5yp3dtrxrcmme24ol9x4l5",
+      "termId": "5bb46c13-b2d0-5a62-aec9-28d680980349"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "zb6kyxcd2vdegcsgmallp33u",
+      "termId": "5e1228d5-88b7-5bcd-8ac1-ca6bc8266ecf"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "oxnp41skgfutzt5yig2bfbz3",
+      "termId": "d19cc099-60ba-5f6b-ba08-f6d52da1b2ca"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "ugu5xuhmp825pts0a03plpu8",
+      "termId": "7954b737-6c07-5ac5-afdf-5b921de08d29"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "qr9id1ougp2jpka81besvxbx",
+      "termId": "766c7671-0a19-5079-b818-a0483d62cd31"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "xhgj167xtrzh4e0gtetn58mh",
+      "termId": "b9763ee9-ce35-536c-995b-12cbfa599348"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "l6st8t54n6oh7hxir8mn0sj4",
+      "termId": "cdfb7016-4bc1-53fa-a0dd-940c9b896f81"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "swegy8mwwwe61jfc6lggl6ye",
+      "termId": "29aac214-c2c9-5539-92b1-0f9a55e131b3"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "uupjrlvbfjd7mrl7spdbz2tc",
+      "termId": "f4e311cf-ca21-5768-9966-568f434ed4cc"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "kzn94u3lj8n1472zt0sgijjg",
+      "termId": "c79ea892-5626-58be-ab19-b8369a9a58df"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "v9ih5heia9sh9p401uam7o3b",
+      "termId": "ad5be750-ad95-5428-bd5f-444564335c87"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "eyxlsztuocgg4hv2eze2gnvp",
+      "termId": "668dccd6-5b4c-5632-bf1d-bd41d2f276a3"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "mbbcrheaiingxckpk7nnjnxl",
+      "termId": "4ab6b2ce-0c8d-5df2-a64b-552782bcf8fe"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "hzhgoe9v3f2uwgl50vd7rppd",
+      "termId": "11f877ff-2ca1-58e3-a28b-e6d6cbed7972"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "vb01uztxohs9fl5xwp1zd9i6",
+      "termId": "dbd5d0a5-1f10-5bf8-87d2-e75b17988f56"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "xakdf3ky903sri8p3s9843qd",
+      "termId": "41742c72-9c9d-5c45-a797-0233c666454a"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "uwd5gfbe8c38eyoe88kihe5m",
+      "termId": "8a3bce44-786c-5098-9f91-e04d12b9e97c"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "jbgmmtq8te9kla3kvomyft75",
+      "termId": "c73be59a-fa0a-5400-99b3-5d3bc28c9c13"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "bq0vsuut8xt5dvixvz144cxn",
+      "termId": "51a5aa3d-5dea-5f87-a130-5731cd4fafdf"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "vwxkryywij8st6nxpfl3dnfl",
+      "termId": "9e592c19-5957-5ebd-9328-8a2b54d8e600"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "jwukn0gfn0n3gwzs87bq71y2",
+      "termId": "edf0e069-08b6-52aa-8abd-35b1e2b0a9a5"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "r6168byidh9o61axg4rgxk80",
+      "termId": "3e270033-d688-5b42-bcd8-97411c270d44"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "cvrehtgg7tjvmwfuz671mwgi",
+      "termId": "4972610f-c9d4-51ed-b473-dd1c2dfe9326"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "xvr9l1czvqosg2fonccxb6zw",
+      "termId": "dea55cf2-e7cb-57d1-919e-c28b0e34f79f"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "v1ms991e65d2yjsfp6xz34t3",
+      "termId": "61c470aa-64a6-5a24-962a-f3c6af4f8686"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "iih180pn2zra4lj1w6avsccd",
+      "termId": "05e61d9e-4132-53ad-8fae-a0650417a507"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "njyoksq6veq7z0bfs7xwfx96",
+      "termId": "d7be9d5d-ea7b-580b-a095-e32f7792b078"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "srduvvc1y4k4a4cnk5tbd8zo",
+      "termId": "7436ca06-a58a-5412-90b8-d0652a40af90"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "rzjitic29p7jk3a0u8zbneq4",
+      "termId": "347fc461-2915-5973-8bcb-07d7f518099d"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "y3ycfowkazkb2kt02lcve2w3",
+      "termId": "484dd871-441e-515f-a88d-6237255688e2"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "li6l2dzvs05wevr376zc1hkp",
+      "termId": "67c92c30-5402-519a-a851-8caeeb5cba95"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "z2xpytkuf07w1d5cz5xgg1c6",
+      "termId": "7a099aa4-e99e-5fc3-b522-0df9896a29d2"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "grfzt7zc65fz9jkmla2kbf4u",
+      "termId": "c05dc2fc-7189-55c3-85d6-3cc543cbd70d"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "kmi0gqlja4n9avn5248htmkp",
+      "termId": "7dc2d348-fc6b-5942-bd58-1349c9dbdec0"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "rv80ehs5nbjby82e92i8imzn",
+      "termId": "4ed3e42c-a350-5129-9f1c-97204cff0707"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "m3loq34jhzuuodbruhovhs34",
+      "termId": "223029c2-946c-540a-afb7-88739099fd6f"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "v26ilpjmcaafo4p1lvy77tep",
+      "termId": "df572f5c-d02a-5522-b160-81a945463442"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ac9xrnmd75s358xj1zvxfdpd",
+      "termId": "b2896b88-344c-5fb5-9db2-c8ea25f45203"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "te7p2re3r7tng96xnzumpwsk",
+      "termId": "5608d3ff-ebe8-538c-9389-184d3476acaa"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "wl707pm2ktapc02qyyc5duxs",
+      "termId": "5b6723fa-b7d6-5738-a3ae-1f14e535573e"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "p90r8lj81ceoa40lo5rlncnq",
+      "termId": "9d73dd20-5cca-57be-8c1b-8fdee543deb2"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "v2qncwoyx4fv0c7a0ydlysjq",
+      "termId": "05657bb0-e3fe-549a-b8c0-8ad3eca0b7a6"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "x6nabmida66gcxa03jq269jx",
+      "termId": "9e9aef83-3d0e-56f9-8507-d3d762036efe"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "d07iv24zqfphrdsiuzznhn5w",
+      "termId": "63bff82b-9090-50ba-b17f-7378c547fd6e"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "gqcr7dhiwabovvq3gdvvmdde",
+      "termId": "f65cd2d8-2477-59f2-84ec-06e6a2820876"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "oue4uls4lxxni0zh654na9jk",
+      "termId": "f40f0606-a008-50e8-8156-b5f9e1297d00"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "a6hlcfumlilrsaynb2t1t9hv",
+      "termId": "97b83c47-2d28-5a49-be0e-68133fec909a"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "lqb3pq37vlex1rvan9izosmn",
+      "termId": "26bca44c-b361-5a02-899a-1c26fb948ecb"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "akgwwgu833g2kvl5rfsoat91",
+      "termId": "7a839399-36c1-5db6-9f84-39b6f99dad31"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "bp7ebc8wel1bld8x4gcwjodv",
+      "termId": "ee837cec-fe42-5493-832f-460603af2ab8"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "yxc9a2tsfn2a4ohgx3ssy09p",
+      "termId": "0967bf8d-e64f-5958-b08e-88d6820224ce"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "qv4b2o4k0z1xgjerlq8i53cs",
+      "termId": "31f09952-58d4-5aec-8222-4c7e4ff10319"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "bm0582msvl7g8l6btu8xq5jx",
+      "termId": "2a04808a-af3b-5ee1-a964-f9456c04f74d"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "jpnwnftb9z0wzpi7109mffyo",
+      "termId": "7e760d96-cc7b-5a02-8e2d-794546e399b9"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "upb82izooaq9ica8ke4yzpb7",
+      "termId": "a8e245d9-aec0-5e64-9416-da087aacc0a1"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "oqm9o7wescznt0285brm7hwm",
+      "termId": "5870b320-9fbc-5891-8d8a-c1ac26544a51"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "kq0n7s4kaq81os0bw66dtp80",
+      "termId": "2ef73acd-011d-5d38-af54-f8cb2f8a9072"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "sh857o3v4p2hqmpjqx05fxpj",
+      "termId": "14368f11-dbea-54a8-ab5d-ffeb8b685b90"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "weklz6fc74w2bsnt681yvnwc",
+      "termId": "74325ef2-2898-53cc-ad77-ce77eafda740"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "t8xgq43we8v82nosmy24f548",
+      "termId": "3339a9e1-731e-5ea3-bb87-ed5c20a17158"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "uhjak92if91wbhdm8n9pu9a5",
+      "termId": "6ea481f5-a9eb-55be-969c-2b556a524ea7"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ug4kbdk1hcmneh1o88t70t62",
+      "termId": "8f09cf4d-b232-5564-8d93-b95e0634b722"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ialmp4rqhw0ajesgso8xlphe",
+      "termId": "55acf8c8-91b9-561a-b605-771fbb6798ff"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "t2g2q0youznna51kg8nzduhb",
+      "termId": "34fb0053-47fb-56e3-b5a1-3272cb71b059"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "jwfo2c065pf7s5bmf1piqf6e",
+      "termId": "ed927351-c22f-5acf-83cf-ab517ff5d02c"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "hsqg4uj76yqmhdmhfkv9wz0z",
+      "termId": "0d83691b-dd3e-586a-a224-b88602326350"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "rl19cckp7ydcpwagqo4fszxd",
+      "termId": "464f6d7d-2d82-5cfb-893e-a5116454056c"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ji4j0cijg5rdwtcel0v7ecbk",
+      "termId": "9e0cb009-0e07-534f-ad2d-f59312480e8b"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "j2cwvym7uo8zwngltztro34d",
+      "termId": "92d2335c-0394-5269-8ce8-7f6e53b6b733"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "g75xyqvtcc6gldv0zekegduh",
+      "termId": "650db47e-ef01-5e0e-8acf-e471d71e7af4"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "avtie854mbjzmjrne8vst4ft",
+      "termId": "1a19c08d-e778-566b-9bba-2453879b661b"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "n0pxhciyki2hjics4ktufy5k",
+      "termId": "ccae9605-fbd9-5dc2-8253-1ee8707d0a4f"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "pxmvmotxoaqpqprx9blmwbfi",
+      "termId": "ebc18260-705e-5a66-9405-ca855d5745c4"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "zin8z24cyqkxxbcs7q4cul3u",
+      "termId": "094661b2-10e6-5abb-b487-809be7bb8c31"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "zmxuuvt2pfzexcoozlq3ojdh",
+      "termId": "e0d120db-7e01-5609-9dfe-08a985a03da9"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "stu1726mm9j0tuddwz45myjc",
+      "termId": "5fa7d549-6610-5797-b80a-50d977f279d6"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "y3o07q70klykjmmye3ynb9ht",
+      "termId": "35d9008c-3e06-56dd-9d3a-59ccee9075ab"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ur5u02qarvzg3p4pfc90edud",
+      "termId": "b7f05eed-2685-5472-80c1-48187612a725"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "o43j33fd7oiufkaxstw15rp8",
+      "termId": "ae813a23-db35-52ab-a61a-2ecee8c06996"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "y4mywk2snrmhf5i2rq2c9a21",
+      "termId": "a4dbcffc-7f22-54f2-b151-a6319ef1e01a"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "kv7j22cgcendnvhkshc7zob4",
+      "termId": "727d09cd-932e-58d4-bc97-fdbbd3ae4815"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ba1ry9w3ews4avi6qomrd7kd",
+      "termId": "aa193411-2457-55f2-a2e1-1a26a8b97ac5"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "z0s4mlp0htelv1ga3524bv4q",
+      "termId": "36ff1bc2-142b-530c-babf-59aadab2c613"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "f7a34wv4984gva8diifcbfd1",
+      "termId": "3da89d8a-9fab-5cab-928d-d0cbb81791cf"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "iog5pg9j4lq25ed7u1tf172v",
+      "termId": "adaed2ee-b4b8-59c8-ac27-b1727c8d98a5"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "mv2iokj78aese2tzj8uclwny",
+      "termId": "57a7be4d-6a6c-5143-94b4-e728768d0991"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "lwh5xuwxqajpu6zp369zlca3",
+      "termId": "f4fb25f1-c55b-5abf-85e1-626177fcb765"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "e2n783krpm3pmibvs4rq6t8t",
+      "termId": "4cbbb2ce-abd9-5e7d-93aa-e88c0e95343e"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "tgeuegeobogltkwoujgtyjgh",
+      "termId": "1ba21088-057a-59ac-a960-a309ad10b449"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "dad8u2b4kgjnqz7fh7s29qd3",
+      "termId": "a1888ba1-7fd0-50af-b538-6b2f7c5e89ec"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "zspcyr3kjrcx5hse8nprh86n",
+      "termId": "0a6377f5-1890-5214-8847-b0c524f33b32"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "uqlmcrotpw9yxu4ry9vadqml",
+      "termId": "8ffb6fd2-6219-583b-b64c-04e67e15e308"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "uqox0okeb9xgt07omtsnm1we",
+      "termId": "039cf382-bef0-533f-84ce-58491c70e612"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "e03pw74zdc3li2ubs55ondi2",
+      "termId": "6d915dee-82df-59f2-b515-ff67f5f3a465"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "jj18kaw862hn3pik7dm3nlt0",
+      "termId": "74c2d6f8-9980-55ee-9715-aeb5de13e691"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "o7hsmqvfwpil6q0jji01ce5t",
+      "termId": "b585fde9-7d20-576a-959a-e2f7b074e160"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "r62aha65qef2zs1vyq89w44f",
+      "termId": "b820e779-55d2-55bb-a738-6872b2fba253"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ebwhbyq4jjstkiri3jqxiu3p",
+      "termId": "7d022e99-6ec6-5ac6-9656-f5c9cd741cec"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "gi0lreefdsrp6coigmltbdk1",
+      "termId": "43fc6541-97cc-57f1-8101-c563cdc530f5"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "w2ow5wyns56vgno09pbop1jo",
+      "termId": "b1ad2af9-6800-56aa-9a12-4860f7d932de"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "suj6cz0yp2hcm3ui2x15uehc",
+      "termId": "361d1e44-c019-5d63-8bfa-5571adcd1353"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "nxdyktfvjpofzqhsdp0e57cv",
+      "termId": "b5bd9e37-2eb5-5ab1-8095-43f43c3570a4"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "xu0b02fk4h7ftplwrm5d7cn2",
+      "termId": "c9e5874e-1c3a-5892-ae9e-1461be7e4d56"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "zvsdch6ue5qxmg27tw4i350r",
+      "termId": "a0612615-6f2c-5258-8b6b-795bd2590b4e"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "lfjnarp2ngrqltl0dybreieb",
+      "termId": "eb8624b1-93ff-532d-a4bd-d92145843332"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "o4kdrdrmd2ky7z5pk4kexke7",
+      "termId": "c93afc1b-a4b2-5907-a0fa-0024bb749a58"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "lkcqcldw7ws3n94qqe7bhejj",
+      "termId": "bd24ecbb-6abd-5785-bf0f-8a45eac52e29"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ovfjg5auvnzvrb9qj9fdpdt5",
+      "termId": "148387af-8e34-5b4c-b558-d9ca445b633b"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "plrbxp244l3v2sqydl6c1mia",
+      "termId": "65a857cb-3051-5656-b3c5-9796aa64c303"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "lgimbsi4ww2ad3nhw7uczht3",
+      "termId": "131b527b-64ec-5d9f-870d-4df86a4ae3e8"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "de49sycphzmout8p8ae815zu",
+      "termId": "94f050bc-36ec-594c-bd1f-5d7c063bf5c8"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "e5wnyd2wvnhiv30aiv6udj6d",
+      "termId": "8212ac52-b459-5bea-a954-cd8650385bc5"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "luugdjt3q2g6t1xwrzdbj21z",
+      "termId": "dd067779-54e8-55b2-ad71-91f6d03fe4d1"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "exb3zftut2xi1s3ni8qfluum",
+      "termId": "2a5b565e-44de-53a3-925a-ef605ef5f838"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "d6zxbvxi5mg68upt403jow48",
+      "termId": "4f5656a7-b51c-5593-8ce6-9401533fda33"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "w99ne5gjtzvnp4q0yzb0c864",
+      "termId": "a61d894d-297c-5ad8-9902-e92f7e72b68e"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "aon6v6ox9ai6273rlaww4io6",
+      "termId": "04b995f4-4dc2-5d2b-a528-ea32feec647b"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ynef0q1quhjueoer7xhpxgwb",
+      "termId": "f930df6a-ea2e-5fdd-a023-abf7ad4df8b1"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "vng5zc1y5h7b3rvadzb4vuwm",
+      "termId": "4e1721b1-b0c9-5aa9-9f9e-b8112481fe2f"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "tyw75ks6laicj6o8djdmrvnf",
+      "termId": "a8cda922-accf-5cb7-bcb2-8085aab3c86a"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "w4b6oky2mxyxb8nlue458nqg",
+      "termId": "07402edb-f2b7-5425-89f0-c17e5d4bf9c7"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ima4fhiyh72fpq7iz0hl0ywe",
+      "termId": "d1ce10d6-b170-5b38-ae1d-f057906ad587"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "dt48a463uz4zet26mox4jtso",
+      "termId": "03ccd124-3a3d-5127-a9a3-b86396b4fed8"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "vui844n2oigws416ls3umk8w",
+      "termId": "42435c59-d46f-50e1-a69d-30736b4b9d3f"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ddukio2ty0pwx8dznqawovk6",
+      "termId": "cc978f49-2dd8-5865-b749-4c73517ab8bf"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "t5uvteullsnk8sasqpar6wqc",
+      "termId": "2f1c1adf-c30f-5a10-8420-261985cc92cd"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "w29koqiamw2u6qbppw02wll0",
+      "termId": "034925ae-ef38-5bdd-97f8-43c6f70978d2"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "lme3gt00f4egxmzjb0dibinp",
+      "termId": "85f4f944-60f9-5781-bceb-3e4bcd45e966"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "vn7wtbiyzywltvlcy16g3phm",
+      "termId": "10be418d-6eb2-5bfa-b434-db9dc5cad569"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "uv1qo5hx1ylmn00j2biba3jn",
+      "termId": "3a93fe42-0a84-5269-962c-59e5a132e14e"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ezij05x4bs2njeqoundqxop4",
+      "termId": "4e877453-7ded-5606-8d54-f9b03b7e4005"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "kwjuen4vwonf8eor0ju24fev",
+      "termId": "cafb5130-4693-556f-b3a4-bbc3e0943e98"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ptmwi3lm98y7ipx9wp4wkztw",
+      "termId": "d7a8d774-2016-5972-b501-a98c03bcb8c1"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "gkv7od9hkxq8p9t1hhcheaev",
+      "termId": "2fac7155-8a30-533a-9c9f-5ccfc389866c"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "hkp0e52wyaxc8g841nihqmme",
+      "termId": "d419af48-ffa3-5f49-b0f5-5cbb6eae4d4d"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "qbqa6beqatyv6yq3w7g7ex0x",
+      "termId": "bc9f2ec0-cb60-5fb4-9d1b-69cf48186ead"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "oilh0b38r2jgq4w1t41rcxmj",
+      "termId": "87b854ac-dce5-5239-8b79-fdbbb3260691"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "bo9xp25o4l62qyp9efkgp5al",
+      "termId": "06ef8506-87e5-5770-9a5e-d179abe4b112"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "qzt4x690441q9kafxaope9ob",
+      "termId": "9a96a6ba-361c-5380-8891-6747807c26ae"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "i4vygp3e65jkuc8ngm7dovvo",
+      "termId": "57af68c5-f9c3-54b6-b5c9-453e30ca598b"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "oruxcwgxxzrlmkc3qgf7i29f",
+      "termId": "e4fc26de-c739-554d-9111-e6b7a3057e3c"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "z9rol2m2b42967h11bbcr2g0",
+      "termId": "349f035d-e723-580f-965f-dd99764b0076"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "w4eau3x5hvh0ac25u5m89zwf",
+      "termId": "62f3b531-94e5-521a-96ac-09dd0264f50c"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "zlv9fmmgzainp09q23bu9nh9",
+      "termId": "074c094b-62f1-5225-8722-8507ec03dc75"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "x3mki99b1enj8ztj0qum483i",
+      "termId": "601e5e3b-d6dd-569f-9045-6357e1265e65"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "o7fb5iac84cbdzhvertgu3xb",
+      "termId": "3ca6ca53-7ad2-5c72-b5d3-9789bd0fc498"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "tvuvsoc9h1aejvj9iapvb9xi",
+      "termId": "42823cc9-95a7-5959-876a-0a482f372e24"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "i64bqjxs8gwtfqcs6lq3372w",
+      "termId": "6b0ee321-9021-5346-a517-4e1e7e128149"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "kvlksjznor8qvdpze0196myx",
+      "termId": "637de6a9-807d-55e0-a057-46a997875aae"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "x82f8t2zyaaj80bg7rx10cmm",
+      "termId": "96536c2c-2f65-59c4-b25f-b2d96a0086af"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "smj6prrfo3jrtka3h20dqoo5",
+      "termId": "1366028d-13de-5584-9344-5c64cafd7356"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ykvqlsbop37q67wsof145gp3",
+      "termId": "e0a7ecc7-b441-57c3-96a1-5ea8f53951d0"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "qhmamxg1humvw1f6qol8z57c",
+      "termId": "d2ac46a5-f4a3-54ac-950b-c2124660ef98"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "rc9sutd5xqchleqmpinqm0eu",
+      "termId": "777a59b8-3d43-542e-af27-f9768c742230"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ary4dbyia7h42wi1ognsmg01",
+      "termId": "b69eefb9-01d7-5009-94e4-b85a0b138747"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "yo6hhxmdd9i7vw29hslnkqi2",
+      "termId": "513cb688-8a2d-53c9-acfe-e83fd71e54d1"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "dl37qs0kh7k2hqxoba4ons2a",
+      "termId": "0bcbd9c1-b28f-5b67-9e64-08e4635980bb"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "emvv7bm1bpq41jyxrxlae8ss",
+      "termId": "1711fa25-3e32-5c24-9ee1-053f2c437080"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "u21q6hy9dwmza5vyfjqkwvq7",
+      "termId": "4a14da84-d969-5e62-81c8-0dd64f5d68cd"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "epyvyfel3w3l6ff9bungs7xs",
+      "termId": "2a08b379-68b2-523a-bb7a-a14c6f606ab1"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "g3cxd15qkewmw6cqn0hbf2tv",
+      "termId": "2331a37b-d98c-5ef9-a826-f293b4b7153d"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "oa6i0rrf0idu3rf0613p0obf",
+      "termId": "0975604c-4def-5857-a13b-ec80e90a41b3"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "scbp1jm3av15cwd0bxnfg10c",
+      "termId": "6dcad638-81f9-5a33-b1dd-34cd58d25b25"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "r3iodydsppz4qp8sv3des5c8",
+      "termId": "0f3e12d4-9fd2-5a27-b091-2d9d9510a48a"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "lfg0mwylb2snwd7trh92sh0p",
+      "termId": "d0544d53-9281-5a9f-9967-7146e6515469"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "tr0jsjrhntab75aapv6q3qlz",
+      "termId": "6b3bec12-c22f-5e92-98bf-798371f185c3"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "spryfzs3622hf0drk9cnghtd",
+      "termId": "be398727-400b-5272-9664-30ea01b414a2"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "yi6lzv0jzf7af8k4xqftjpfv",
+      "termId": "9e1c363e-8c53-57a2-a440-b18fc7f46198"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "vbe3mc89ocibqv17i7puef4s",
+      "termId": "312b354b-cfde-59e5-a082-48357b661988"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "v00uzkuz5wrr4hjpysilnw0j",
+      "termId": "9a50eaa1-4901-5e7a-8758-dd866647762a"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "zn480eqkjzuykwtrhl86dobk",
+      "termId": "b2a773f7-b016-5055-bc6c-6346bdaa6948"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "it32e5mis92izi9poswlvt3a",
+      "termId": "b90766c3-a870-5376-ba10-e0d2a769ab29"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "g8npfo8dizwl5kunj6smgbsg",
+      "termId": "8c915cbb-c136-5837-bbbf-02d89886aa12"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "cvlx3lp87a2h6zcvvzzji217",
+      "termId": "4b3d4058-1e71-51a8-b57a-710de18b3818"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "swjrioregcd6pt5v6f78040b",
+      "termId": "c74125a0-c25b-5159-9c96-efa2dca4a217"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "q1c7lv6dh68233t5c2rs5uoy",
+      "termId": "a27afd14-e4fc-588e-b35f-81c1ee8942a8"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "p2f9kmro7suaz58ppuzxds0i",
+      "termId": "8e827f84-0dc1-582f-a254-54935774b313"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "r010aefrcrz15qnj5bb1rqk8",
+      "termId": "b197d0b9-c87b-5e1b-8fd9-eb432f0f3e87"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "jo9pqkwaf7ohjb25js0omo9e",
+      "termId": "4793c696-7944-583c-a34a-d5f841264b96"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "bg6vd7j6b5rg9srpznrtidqi",
+      "termId": "801910fd-7b52-5836-a99b-a6dfacd15ca0"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "f76xvjna0d1ytjwza414t7q1",
+      "termId": "16d8e308-0784-50a7-8730-330371313a7d"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "dva1oznoeafmf7lw92biksoh",
+      "termId": "d2e8d30e-dfcc-5afa-8ab3-4d83c1f927fc"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "gv1aavc2gc3luq0enve24etw",
+      "termId": "1f1da6e6-207d-571a-9043-c2e8d1f2d84b"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "c2lrrqxyb45sqnhkgn0lncxi",
+      "termId": "33f38491-98de-5478-9f27-1ea5942761a0"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "cv5n4avonlnawmnv8xqmjd7s",
+      "termId": "0c75b900-2120-56bb-ad1d-9cc6bcca119f"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "yj1ua3pfswfjswoe6abyxar1",
+      "termId": "84db0d1c-014c-5550-9a15-b93132409f88"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-categories",
+      "documentId": "bkk2xgmhdqdvhvvnp7cw2utj",
+      "termId": "1cf8257b-0bd7-5b1e-b369-5fc6c74eda4c"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "n2sflbfopt3k03chrh93a9at",
+      "termId": "35a210ad-010c-531f-b85d-0f5b3b308e53"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "zvofsxolhh1bonvs90af0jb1",
+      "termId": "173788d3-9e9e-591d-98bf-d398f3b5c0c6"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "m7j5ixjlpbi8365ba1wurmdx",
+      "termId": "517b13f6-bca7-54b8-8caa-82026eff1568"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "yf22xt1cttowansh293vf9k1",
+      "termId": "55b6bdbc-f219-5fe6-b773-1552bfbe1424"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "uc5q3aysoe10w7g2cjbvba0i",
+      "termId": "5a641a67-3d1d-5740-a0c1-5a9b9e2bc4fc"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "fea51muu3qa4njpggf3s24tv",
+      "termId": "d7b82475-373c-5c57-8192-06434690fa49"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "w0wjjzq7hilzksi1gpsikyz7",
+      "termId": "2ce4172d-510e-5415-a031-9ec461394c33"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "zoewet3hdawgqiil8ixpzpo4",
+      "termId": "3df8bcf6-f043-589f-b0b7-93685035361c"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "kp81nfxp6dfeu6yh2d4z4y8k",
+      "termId": "aa4c4052-c6a1-5e3c-a5df-fe5bc425e19d"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "v0btk6uf9m3ctxjj3yxstbn6",
+      "termId": "50abba46-f754-5e7d-851d-7b04b22afadd"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "wbyfuer2ki2i9lzqsh1bsjff",
+      "termId": "394630b8-fa71-5291-8b24-104087db7f36"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "epw2mrjomgdf2fq1zyfdwlfp",
+      "termId": "29243e9a-a3ec-5c2e-be0e-55d6543be429"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "df4oin4pf8tjbwvl98bzjl6c",
+      "termId": "ddc3ecb2-7ad4-5453-b032-2e3940de36b5"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "if0qe8yenpdueaqh59tkv9ks",
+      "termId": "140acb35-d544-5723-9d25-f1b0a6022824"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "i1mu4ou5ggasx4lysb5pqbjf",
+      "termId": "17e96443-2202-59b4-bc66-dbc6705da40b"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "jk86h4xmgxikfmrz3cqrkpoi",
+      "termId": "0ae2268b-9ce4-5005-a36c-1f71ab109e4e"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "o3t7ovazc2j1sly4612ijjzg",
+      "termId": "d21e9e69-cad5-595a-b548-280ac591861f"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "rkpblxphxtqfspzvl31cfwrk",
+      "termId": "1086ca35-4db3-512d-b069-2411866a1697"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ddk8gh38amuvu8o10c4bcbom",
+      "termId": "01a77d9e-b59c-54b0-b950-a72026920deb"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "w3j48i5fg41a37ofh3gae4ro",
+      "termId": "a53c052c-8069-5ab1-b8b1-fb8cc534f10f"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "sfbgwmux3dx4wfef8lh09o8n",
+      "termId": "ac57bb71-81a0-59bd-8217-fc3419f63327"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "d6tr1hmdx5omwxz5h16ezue7",
+      "termId": "b68c81cb-8cca-537b-b45b-30245b561b1b"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "siertg7jixo1hxvjdaiu0kq3",
+      "termId": "5f8c233e-c3e2-5815-9784-50013a0f158b"
+    },
+    {
+      "sourceHost": "api.localqr.earth",
+      "entityKind": "recommendation-sub-categories",
+      "documentId": "ydjfncpu1g0ju340641wldsl",
+      "termId": "0e1c94ef-ac4d-5a35-9287-0691651f1b74"
+    }
+  ],
+  "legacySlugMappings": []
+}

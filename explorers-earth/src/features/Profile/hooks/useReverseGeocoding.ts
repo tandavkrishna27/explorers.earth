@@ -1,3 +1,4 @@
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { useState } from "react";
 import axios from "axios";
 import { Places, AddressResult } from "../types/types";
@@ -15,7 +16,7 @@ export const useReverseGeocoding = () => {
       const { latitude, longitude } = await getCurrentLocation();
       const response = await axios.get(
         `${GOOGLE_GEOCODING_BASE_URL}?latlng=${latitude},${longitude}&key=${
-          import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+          mapsBrowserKey()
         }`
       );
       const locationData = response.data.results[0];

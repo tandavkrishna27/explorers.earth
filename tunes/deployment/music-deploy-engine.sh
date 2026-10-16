@@ -17,7 +17,7 @@ readonly compatibility_floor_schema="music-schema-floor-v2"
 readonly schema_epoch_schema="music-schema-epoch-v1"
 readonly journal_schema="music-transaction-v1"
 readonly legacy_marker="containment-no-schema-change"
-readonly production_current_marker="0021_explorers_analytics_receipts"
+readonly production_current_marker="0056_explorers_app_enrichment_jobs"
 readonly -a known_markers=(
   "$legacy_marker"
   "0002_identity_lifecycle"
@@ -39,6 +39,41 @@ readonly -a known_markers=(
   "0018_transactional_queue_replacement"
   "0019_queue_visibility_control"
   "0020_public_snapshot_revision"
+  "0021_explorers_analytics_receipts"
+  "0022_explorers_identity"
+  "0023_explorers_authorization"
+  "0024_explorers_profile_media"
+  "0025_explorers_media_attachment_guard"
+  "0026_explorers_media_slot_compatibility"
+  "0027_explorers_lifecycle"
+  "0028_explorers_recovery_proof_retention"
+  "0029_explorers_recommendations"
+  "0030_explorers_media_purpose_guard"
+  "0031_explorers_content_revision"
+  "0032_explorers_owner_page_indexes"
+  "0033_explorers_recommendation_display_overrides"
+  "0034_explorers_books_provider_context"
+  "0035_explorers_book_cover_import"
+  "0036_explorers_analytics_events"
+  "0037_explorers_movies_provider_context"
+  "0038_explorers_movie_media"
+  "0039_music_venue_account_ownership"
+  "0040_canonical_music_venue_provisioning"
+  "0041_canonical_music_venue_release"
+  "0042_canonical_music_venue_release_function"
+  "0043_explorers_apps_provider_context"
+  "0044_explorers_products_offer_context"
+  "0045_explorers_people_catalog"
+  "0046_explorers_places_catalog"
+  "0047_explorers_place_photo_media"
+  "0048_explorers_place_location_aggregate"
+  "0049_explorers_collection_location_links"
+  "0050_explorers_guide_sections"
+  "0051_explorers_launch_controls"
+  "0052_canonical_music_numeric_retirement"
+  "0053_explorers_taxonomy_catalogs"
+  "0054_explorers_place_individual_pins"
+  "0055_explorers_app_enrichment"
   "$production_current_marker"
 )
 current_marker="$production_current_marker"
@@ -66,6 +101,15 @@ marker_rank() {
 
 compatibility_marker_for() {
   case "$1" in
+    "0030_explorers_media_purpose_guard") printf '%s\n' "0029_explorers_recommendations" ;;
+    "0029_explorers_recommendations") printf '%s\n' "0028_explorers_recovery_proof_retention" ;;
+    "0028_explorers_recovery_proof_retention") printf '%s\n' "0027_explorers_lifecycle" ;;
+    "0027_explorers_lifecycle") printf '%s\n' "0026_explorers_media_slot_compatibility" ;;
+    "0026_explorers_media_slot_compatibility") printf '%s\n' "0025_explorers_media_attachment_guard" ;;
+    "0025_explorers_media_attachment_guard") printf '%s\n' "0024_explorers_profile_media" ;;
+    "0024_explorers_profile_media") printf '%s\n' "0023_explorers_authorization" ;;
+    "0023_explorers_authorization") printf '%s\n' "0022_explorers_identity" ;;
+    "0022_explorers_identity") printf '%s\n' "0021_explorers_analytics_receipts" ;;
     "0018_transactional_queue_replacement") printf '%s\n' "0017_publication_idempotency_key_retirement" ;;
     "0019_queue_visibility_control") printf '%s\n' "0018_transactional_queue_replacement" ;;
     "0021_explorers_analytics_receipts") printf '%s\n' "0020_public_snapshot_revision" ;;

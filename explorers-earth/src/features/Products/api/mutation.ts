@@ -73,17 +73,6 @@ export const UPDATE_PRODUCT_LIST = gql`
 `;
 
 // ─────────────────────────────────────────────────────────────
-// Mutation 2.3 — Delete Product List
-// ─────────────────────────────────────────────────────────────
-export const DELETE_PRODUCT_LIST = gql`
-  mutation DeleteProductList($documentId: ID!) {
-    deleteProductList(documentId: $documentId) {
-      documentId
-    }
-  }
-`;
-
-// ─────────────────────────────────────────────────────────────
 // Mutation 2.4 — Create Recommended Product
 // ─────────────────────────────────────────────────────────────
 export const CREATE_RECOMMENDED_PRODUCT = gql`
@@ -184,17 +173,6 @@ export const UPDATE_RECOMMENDED_PRODUCT = gql`
       pin_order
       display_order
       user_recommendation_note
-    }
-  }
-`;
-
-// ─────────────────────────────────────────────────────────────
-// Mutation 2.6 — Delete Recommended Product
-// ─────────────────────────────────────────────────────────────
-export const DELETE_RECOMMENDED_PRODUCT = gql`
-  mutation DeleteRecommendedProduct($documentId: ID!) {
-    deleteRecommendedProduct(documentId: $documentId) {
-      documentId
     }
   }
 `;

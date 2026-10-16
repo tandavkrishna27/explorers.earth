@@ -18,12 +18,12 @@ it("preserves the fixture owner identity transport in the production-built local
     calls.push(String(input));
     return new Response(JSON.stringify({ version: "music-identity/v1", identity: { musicUserId: 41, status: "active" }, credential: { token: "fixture.music.credential", expiresAt: Date.now() + 600_000 } }));
   });
-  const { default: store } = await import("../../../store/store");
-  store.setState({ token: "fixture-strapi-token-123456" });
   const { musicApi } = await import("../musicApi");
   musicApi.setAuthority("fixture-user");
-  try { await musicApi.ensureIdentity(); } finally { musicApi.logout(); store.setState({ token: null }); }
-  expect(calls).toEqual([`${fixtureOrigin}/api/music/identity/ensure`]);
+  try { await musicApi.ensureIdentity(); } finally { musicApi.logout(); }
+  // ADR-006: provisioning is a same-origin canonical route, so it is relative and
+  // does not go through the Music fixture origin at all.
+  expect(calls).toEqual(["/api/explorers/v1/music/identity/ensure"]);
 });
 
 it("preserves fixture public descriptor fetch", async () => {

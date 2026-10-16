@@ -51,7 +51,38 @@ const runtimeInventory = checkedRuntimeInventory();
 export const MUSIC_FIXTURE_TABLES = Object.freeze(runtimeInventory.tables);
 export const MUSIC_FIXTURE_MIGRATION_IDS = Object.freeze(runtimeInventory.migrationIds);
 
+const revisionTriggers = Object.freeze([
+  Object.freeze({table:'collection_place_pins',name:'collection_place_pins_revision',enabled:'O',type:29,function:'explorers_place_pins_revision'}),
+  ...['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_display_overrides','book_recommendation_context','recommendation_book_covers','recommendation_movie_media','movie_recommendation_context','recommendation_taxonomy','category_recommendation_pins','account_category_pin_state','recommendation_app_screenshots','product_recommendation_context','place_recommendation_context','recommendation_place_photos','place_collection_details','collection_location_links','guide_collection_details','guide_sections'].flatMap(table =>
+    [['insert',4],['update',16],['delete',8]].map(([event,type]) => Object.freeze({
+      table,name:`${table}_content_revision_${event}`,enabled:'O',type,
+      function:`explorers_content_revision_${event}`,
+    }))),
+  // Migration 0050 registers photos by immutable block membership: INSERT/DELETE only.
+  ...[['insert',4],['delete',8]].map(([event,type]) => Object.freeze({
+    table:'guide_section_photos',name:`guide_section_photos_content_revision_${event}`,enabled:'O',type,
+    function:`explorers_content_revision_${event}`,
+  })),
+  Object.freeze({table:'creator_accounts',name:'creator_accounts_content_revision_lifecycle',enabled:'O',type:17,function:'explorers_content_revision_lifecycle'}),
+]);
 export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
+  Object.freeze({ table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 }),
+  Object.freeze({ table: "account_music_identity", name: "account_music_identity_owner_retained", enabled: "O", type: 9 }),
+  Object.freeze({ table: "users", name: "users_music_venue_owned", enabled: "O", type: 21 }),
+  Object.freeze({ table: "canonical_music_numeric_retirements", name: "canonical_music_numeric_retirement_insert", enabled: "O", type: 7 }),
+  Object.freeze({ table: "canonical_music_numeric_retirements", name: "canonical_music_numeric_retirement_immutable", enabled: "O", type: 27 }),
+  Object.freeze({ table: "users", name: "users_music_numeric_id_immutable", enabled: "O", type: 19 }),
+  Object.freeze({ table: "auth_session", name: "auth_session_version_before_insert", enabled: "O", type: 7 }),
+  Object.freeze({ table: "collection_media", name: "collection_media_ready_guard", enabled: "O", type: 21 }),
+  Object.freeze({ table: "entities", name: "entity_recommendation_kind_guard", enabled: "O", type: 17 }),
+  Object.freeze({table:'entities',name:'entities_book_details_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'book_entity_details',name:'book_entity_details_kind_guard',enabled:'O',type:21}),
+  Object.freeze({table:'book_recommendation_context',name:'book_recommendation_context_category_guard',enabled:'O',type:21}),
+  Object.freeze({table:'recommendations',name:'recommendations_book_context_category_guard',enabled:'O',type:17}),
+  Object.freeze({table:'recommendation_book_covers',name:'recommendation_book_cover_ready_guard',enabled:'O',type:21}),
+  Object.freeze({table:'media_assets',name:'media_asset_book_cover_reverse_guard',enabled:'O',type:17}),
+  Object.freeze({table:'recommendations',name:'recommendation_book_cover_category_guard',enabled:'O',type:17}),
+  Object.freeze({ table: "media_assets", name: "media_asset_reference_guard", enabled: "O", type: 17 }),
   Object.freeze({ table: "music_credential_revocation_operations", name: "music_credential_revocation_history_immutability", enabled: "A", type: 27 }),
   Object.freeze({ table: "music_identity_lifecycle_operations", name: "music_lifecycle_operation_state", enabled: "O", type: 19 }),
   Object.freeze({ table: "music_identity_tombstones", name: "music_identity_tombstone_immutability", enabled: "O", type: 19 }),
@@ -59,15 +90,120 @@ export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
   Object.freeze({ table: "music_publication_operation_archive", name: "music_publication_operation_archive_immutability", enabled: "A", type: 27 }),
   Object.freeze({ table: "music_publication_operations", name: "music_publication_operation_immutability", enabled: "A", type: 31 }),
   Object.freeze({ table: "music_reactivation_tokens", name: "music_reactivation_token_identity_immutability", enabled: "O", type: 19 }),
+  Object.freeze({ table: "profile_feed_items", name: "profile_feed_ready_guard", enabled: "O", type: 21 }),
+  Object.freeze({ table: "profile_media", name: "profile_media_ready_guard", enabled: "O", type: 21 }),
+  Object.freeze({ table: "recommendation_media", name: "recommendation_media_ready_guard", enabled: "O", type: 21 }),
+  Object.freeze({ table: "recommendations", name: "recommendation_entity_kind_guard", enabled: "O", type: 21 }),
   Object.freeze({ table: "users", name: "users_music_identity_immutability", enabled: "O", type: 19 }),
   Object.freeze({ table: "users", name: "users_music_identity_insert", enabled: "O", type: 7 }),
   Object.freeze({ table: "users", name: "users_reject_unauthorized_music_identity_delete", enabled: "O", type: 11 }),
   Object.freeze({ table: "users", name: "users_retain_music_identity_tombstone", enabled: "O", type: 9 }),
-]);
+  Object.freeze({table:'recommendation_taxonomy',name:'recommendation_taxonomy_parent_lock',enabled:'O',type:31}),
+  Object.freeze({table:'recommendation_taxonomy',name:'recommendation_taxonomy_constraint',enabled:'O',type:29}),
+  Object.freeze({table:'movie_entity_details',name:'movie_details_constraint',enabled:'O',type:21}),
+  Object.freeze({table:'entities',name:'movie_details_entity_constraint',enabled:'O',type:17}),
+  Object.freeze({table:'entity_identifiers',name:'movie_details_identity_constraint',enabled:'O',type:29}),
+  Object.freeze({table:'movie_entity_provider_genres',name:'movie_genre_parent_lock',enabled:'O',type:31}),
+  Object.freeze({table:'movie_entity_provider_genres',name:'movie_genres_constraint',enabled:'O',type:29}),
+  Object.freeze({table:'movie_entity_details',name:'movie_genres_details_constraint',enabled:'O',type:21}),
+  Object.freeze({table:'recommendation_taxonomy',name:'recommendation_taxonomy_catalog_lock',enabled:'O',type:31}),
+  Object.freeze({table:'taxonomy_terms',name:'explorers_taxonomy_terms_shape',enabled:'O',type:29}),
+  Object.freeze({table:'recommendation_taxonomy',name:'explorers_taxonomy_assignments_shape',enabled:'O',type:29}),
+  Object.freeze({table:'taxonomy_catalogs',name:'explorers_taxonomy_catalog_labels',enabled:'O',type:29}),
+  Object.freeze({table:'taxonomy_term_translations',name:'explorers_taxonomy_translation_labels',enabled:'O',type:29}),
+  Object.freeze({table:'taxonomy_legacy_slug_mappings',name:'explorers_taxonomy_legacy_routes',enabled:'O',type:29}),
+  Object.freeze({table:'taxonomy_import_receipts',name:'taxonomy_import_receipt_immutable',enabled:'O',type:27}),
+  Object.freeze({table:'taxonomy_terms',name:'taxonomy_tree_lock',enabled:'O',type:23}),
+  Object.freeze({table:'taxonomy_terms',name:'taxonomy_tree_constraint',enabled:'O',type:21}),
+  Object.freeze({table:'movie_recommendation_context',name:'movie_context_constraint',enabled:'O',type:23}),
+  Object.freeze({table:'recommendations',name:'movie_context_replacement_constraint',enabled:'O',type:19}),
+  Object.freeze({table:'recommendation_movie_media',name:'movie_media_parent_lock',enabled:'O',type:31}),
+  Object.freeze({table:'recommendation_movie_media',name:'movie_media_source_guard',enabled:'O',type:29}),
+  Object.freeze({table:'recommendations',name:'movie_media_recommendation_reverse_guard',enabled:'O',type:17}),
+  Object.freeze({table:'media_assets',name:'movie_media_asset_reverse_guard',enabled:'O',type:17}),
+  Object.freeze({table:'entities',name:'movie_media_entity_reverse_guard',enabled:'O',type:17}),
+  Object.freeze({table:'movie_entity_details',name:'movie_media_facts_reverse_guard',enabled:'O',type:25}),
+  Object.freeze({table:'entity_identifiers',name:'movie_media_identity_reverse_guard',enabled:'O',type:25}),
+  // Deferred integrity guards from migrations 0043�0050 stay active during replay.
+  Object.freeze({table:'app_entity_details',name:'app_entity_details_kind_guard',enabled:'O',type:21}),
+  Object.freeze({table:'entities',name:'entities_app_details_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'recommendation_app_screenshots',name:'recommendation_app_screenshots_guard',enabled:'O',type:21}),
+  Object.freeze({table:'media_assets',name:'media_assets_app_screenshot_guard',enabled:'O',type:17}),
+  Object.freeze({table:'recommendations',name:'recommendations_app_screenshot_guard',enabled:'O',type:17}),
+  Object.freeze({table:'product_entity_details',name:'product_entity_details_kind_guard',enabled:'O',type:21}),
+  Object.freeze({table:'entities',name:'entities_product_details_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'person_entity_details',name:'person_entity_details_guard',enabled:'O',type:21}),
+  Object.freeze({table:'entities',name:'entities_person_details_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'place_entity_details',name:'place_entity_details_guard',enabled:'O',type:21}),
+  Object.freeze({table:'entities',name:'entities_place_details_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'place_recommendation_context',name:'place_recommendation_context_kind_guard',enabled:'O',type:21}),
+  Object.freeze({table:'recommendations',name:'recommendations_place_context_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'recommendation_place_photos',name:'recommendation_place_photos_guard',enabled:'O',type:21}),
+  Object.freeze({table:'media_assets',name:'media_assets_place_photo_guard',enabled:'O',type:17}),
+  Object.freeze({table:'recommendations',name:'recommendations_place_photo_guard',enabled:'O',type:17}),
+  Object.freeze({table:'place_collection_details',name:'place_collection_details_guard',enabled:'O',type:21}),
+  Object.freeze({table:'entities',name:'entities_place_collection_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'guide_sections',name:'guide_section_media_registry',enabled:'O',type:21}),
+  Object.freeze({table:'guide_section_photos',name:'guide_section_photo_registry',enabled:'O',type:13}),
+  Object.freeze({table:'media_assets',name:'guide_section_photo_asset_guard',enabled:'O',type:17}),
+  Object.freeze({table:'entities',name:'guide_location_entity_guard',enabled:'O',type:17}),
+  // Places0054 integrity and transaction-owned validation queues remain active.
+  Object.freeze({table:'collection_place_pins',name:'collection_place_pins_dirty',enabled:'O',type:29}),
+  Object.freeze({table:'collections',name:'places_collection_cleanup',enabled:'O',type:27}),
+  Object.freeze({table:'recommendations',name:'places_recommendation_cleanup',enabled:'O',type:27}),
+  Object.freeze({table:'collection_items',name:'places_membership_cleanup',enabled:'O',type:27}),
+  Object.freeze({table:'entities',name:'places_entity_cleanup',enabled:'O',type:27}),
+  Object.freeze({table:'collections',name:'places_collection_pins_dirty',enabled:'O',type:29}),
+  Object.freeze({table:'recommendations',name:'places_recommendation_pins_dirty',enabled:'O',type:29}),
+  Object.freeze({table:'collection_items',name:'places_membership_pins_dirty',enabled:'O',type:29}),
+  Object.freeze({table:'entities',name:'places_entity_pins_dirty',enabled:'O',type:25}),
+  Object.freeze({table:'places_pin_validation_dirty',name:'places_pin_validation_final',enabled:'O',type:5}),
+  Object.freeze({table:'place_pin_drafts',name:'place_pin_drafts_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'place_pin_draft_chunks',name:'place_pin_draft_chunks_immutable',enabled:'O',type:31}),
+  Object.freeze({table:'place_pin_draft_items',name:'place_pin_draft_items_immutable',enabled:'O',type:31}),
+  Object.freeze({table:'place_pin_draft_chunks',name:'place_pin_draft_chunks_dirty',enabled:'O',type:5}),
+  Object.freeze({table:'place_pin_draft_items',name:'place_pin_draft_items_dirty',enabled:'O',type:29}),
+  Object.freeze({table:'places_chunk_validation_dirty',name:'places_chunk_validation_final',enabled:'O',type:5}),
+  // Apps0055 immutability, identity and deferred current/receipt guards. tgtype is
+  // ROW(1)+BEFORE(2 when BEFORE)+INSERT(4)+UPDATE(16); a CREATE CONSTRAINT TRIGGER is AFTER
+  // and FOR EACH ROW, so it carries no BEFORE bit. None may be disabled by the runtime.
+  Object.freeze({table:'app_enrichment_generations',name:'app_enrichment_generation_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_generation_retirements',name:'app_enrichment_retirement_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_snapshots',name:'app_enrichment_snapshot_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_entitlements',name:'app_enrichment_entitlement_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_acceptances',name:'app_enrichment_acceptance_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_bindings',name:'app_enrichment_binding_identity_guard',enabled:'O',type:23}),
+  Object.freeze({table:'app_enrichment_bindings',name:'app_enrichment_binding_current_guard',enabled:'O',type:21}),
+  Object.freeze({table:'app_enrichment_generation_retirements',name:'app_enrichment_retired_current_guard',enabled:'O',type:5}),
+  Object.freeze({table:'app_enrichment_snapshots',name:'app_enrichment_snapshot_insert_guard',enabled:'O',type:7}),
+  Object.freeze({table:'app_enrichment_entitlements',name:'app_enrichment_entitlement_source_guard',enabled:'O',type:7}),
+  Object.freeze({table:'app_enrichment_acceptances',name:'app_enrichment_acceptance_admission_guard',enabled:'O',type:7}),
+  Object.freeze({table:'app_enrichment_acceptances',name:'app_enrichment_acceptance_receipt_guard',enabled:'O',type:5}),
+  Object.freeze({table:'recommendations',name:'app_enrichment_recommendation_replacement_guard',enabled:'O',type:17}),
+  Object.freeze({table:'entities',name:'app_enrichment_entity_origin_guard',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_source_approvals',name:'app_enrichment_source_approval_guard',enabled:'O',type:23}),
+  Object.freeze({table:'app_enrichment_job_candidates',name:'app_enrichment_job_candidate_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_jobs',name:'app_enrichment_job_identity_guard',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_worker_runs',name:'app_enrichment_worker_run_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_worker_run_authorities',name:'app_enrichment_worker_run_authority_immutable',enabled:'O',type:19}),
+  Object.freeze({table:'app_enrichment_retention_policy',name:'app_enrichment_retention_policy_guard',enabled:'O',type:23}),
+  ...revisionTriggers,
+// Deterministic CODE-POINT ordering, not localeCompare. Every name here is ASCII snake_case, but
+// ICU collation treats `_` as variable-weight punctuation, so pairs like place_pins vs
+// place_pin_draft_chunks can order differently between ICU versions and host locales. This array's
+// order is load-bearing: it is compared against array_agg(... ORDER BY class.relname,trigger.tgname)
+// below (:247). Those two columns are of type `name`, and in PostgreSQL `name` carries a hardcoded
+// C collation -- so the server side orders by BYTE VALUE regardless of the fixture database's
+// locale or ICU version. A code-point comparator removes the environment variance on this side AND
+// matches that guarantee exactly. Do NOT revert to localeCompare if the fixture is later initdb'd
+// with an ICU locale: the reason above does not depend on the database locale, so it still holds.
+].sort((a,b) => (a.table<b.table?-1:a.table>b.table?1:0)||(a.name<b.name?-1:a.name>b.name?1:0)));
 
 const replayTriggers = Object.freeze([
+  ...revisionTriggers.map(({table,name}) => Object.freeze({table,name,mode:'ENABLE'})),
   Object.freeze({ table: "users", name: "users_music_identity_insert", mode: "ENABLE" }),
   Object.freeze({ table: "music_identity_tombstones", name: "music_identity_tombstone_insert", mode: "ENABLE" }),
+  Object.freeze({ table: "canonical_music_numeric_retirements", name: "canonical_music_numeric_retirement_insert", mode: "ENABLE" }),
   Object.freeze({ table: "music_publication_operations", name: "music_publication_operation_immutability", mode: "ENABLE ALWAYS" }),
 ]);
 
@@ -105,12 +241,16 @@ const expectedTriggersSql = textArray(MUSIC_FIXTURE_TRIGGER_FINGERPRINTS.map(
   ({ table, name, enabled, type }) => `${table}|${name}|${enabled}|${type}`,
 ));
 const expectedMigrationsSql = textArray(expectedMigrationFingerprint());
+const expectedRevisionFunctionsSql = textArray(revisionTriggers.map(
+  ({table,name,function:fn}) => `${table}|${name}|${fn}`,
+).sort());
 
 const authoritySql = `DO $music_restore_authority$
 DECLARE
   actual_tables text[];
   actual_triggers text[];
   actual_migrations text[];
+  actual_revision_functions text[];
 BEGIN
   IF current_database() IS DISTINCT FROM 'music_fixture' OR current_user IS DISTINCT FROM 'music_migrator' THEN
     RAISE EXCEPTION USING ERRCODE='P0001', MESSAGE='fixture restore database authority mismatch';
@@ -128,6 +268,18 @@ BEGIN
     WHERE namespace.nspname='public' AND NOT trigger.tgisinternal;
   IF actual_triggers IS DISTINCT FROM ${expectedTriggersSql} THEN
     RAISE EXCEPTION USING ERRCODE='P0001', MESSAGE='fixture restore trigger authority mismatch';
+  END IF;
+  SELECT array_agg(format('%s|%s|%s',class.relname,trigger.tgname,procedure.proname) ORDER BY class.relname,trigger.tgname)
+    INTO actual_revision_functions FROM pg_catalog.pg_trigger trigger
+    JOIN pg_catalog.pg_class class ON class.oid=trigger.tgrelid
+    JOIN pg_catalog.pg_namespace namespace ON namespace.oid=class.relnamespace
+    JOIN pg_catalog.pg_proc procedure ON procedure.oid=trigger.tgfoid
+    JOIN pg_catalog.pg_namespace function_namespace ON function_namespace.oid=procedure.pronamespace
+    WHERE namespace.nspname='public' AND NOT trigger.tgisinternal
+      AND function_namespace.nspname='public' AND procedure.pronargs=0
+      AND (trigger.tgname LIKE '%_content_revision_%' OR trigger.tgname='collection_place_pins_revision');
+  IF actual_revision_functions IS DISTINCT FROM ${expectedRevisionFunctionsSql} THEN
+    RAISE EXCEPTION USING ERRCODE='P0001', MESSAGE='fixture restore revision function authority mismatch';
   END IF;
   SELECT array_agg(id || ':' || checksum ORDER BY id) INTO actual_migrations
     FROM public.music_schema_migrations;
@@ -198,7 +350,9 @@ export function buildMusicFixtureRestoreOperation({ containerId, dataDump }) {
   const input = Buffer.concat([
     Buffer.from(`${authoritySql}\n${disableReplayTriggersSql}\n${truncateSql}\n`),
     normalizedDump,
-    Buffer.from(`${enableReplayTriggersSql}\n${authoritySql}\n`),
+    // COPY queues existing deferred integrity guards. Validate them before ALTER
+    // TABLE re-enables the exact replay exceptions, still in this transaction.
+    Buffer.from(`SET CONSTRAINTS ALL IMMEDIATE;\n${enableReplayTriggersSql}\n${authoritySql}\n`),
   ]);
   return {
     file: dockerExecutable,

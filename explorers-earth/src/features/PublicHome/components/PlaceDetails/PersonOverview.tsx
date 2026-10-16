@@ -3,8 +3,6 @@ import CrossIcon from "../../../../assets/icons/CrossIcon";
 import Button from "../../../../components/ui/Button";
 import Tab from "../../../../components/ui/Tab";
 import MediaGallery from "./Details/MediaGallery";
-import { useQuery } from "@apollo/client";
-import { placeDetailsQuery } from "../../api/query";
 import { EarthLoader } from "../../../../components/EarthLoader";
 import SEO from "../../../../components/SEO";
 import { useParams } from "react-router-dom";
@@ -21,13 +19,21 @@ import YouTubeEmbed from "../../../../components/YoutubeEmbed";
 
 interface PersonOverviewProps {
   personId: string | null;
+  /**
+   * The person, supplied by the caller.
+   *
+   * Ticket 5.1/5.3: the caller has already found this person in the list it is rendering -
+   * that is how it knows the row is a person at all - so fetching it again here asked the
+   * server for something the caller was holding. PlaceOverview already worked this way.
+   */
+  person?: Record<string, unknown>;
   onClose: () => void;
   mobile?: string;
   personLink?: string;
   isPublicProfile?: boolean;
 }
 
-const PersonOverview: FC<PersonOverviewProps> = memo(({ personId, onClose, isPublicProfile = false }) => {
+const PersonOverview: FC<PersonOverviewProps> = memo(({ personId, onClose, isPublicProfile = false, person }) => {
   const [activeTab, setActiveTab] = useState("Overview");
 
   // Swipe-to-close functionality
@@ -36,14 +42,8 @@ const PersonOverview: FC<PersonOverviewProps> = memo(({ personId, onClose, isPub
   const startYRef = useRef(0);
   const currentYRef = useRef(0);
 
-  const { data, loading } = useQuery(placeDetailsQuery, {
-    variables: {
-      documentId: personId,
-    },
-    fetchPolicy: "network-only",
-  });
-
-  const fetchedPerson = data?.recommendedPlace;
+  const loading = false;
+  const fetchedPerson: any = person;
 
   // Prevent background scrolling when modal is open
   useEffect(() => {

@@ -1,25 +1,9 @@
-import { gql, useMutation } from "@apollo/client";
-import { useTranslation } from "react-i18next";
 import useAuthStore from "../../../store/store";
 import { readSocialVisibility } from "../config/socialVisibility";
 import type { KeyValuePair } from "../types/profileSave";
-import { mobileNumberField } from "./mobileNumberField";
+import { explorersApiClient } from "../../../lib/explorersApiClient";
 import { musicApi } from "../../music/musicApi";
-
-const getAccountTypeValue = (
-  key: unknown,
-  t: (key: string) => string,
-): string => {
-  const accountTypeMap: Record<string, string> = {
-    personal: t("dashboard.profile.publicProfile.accountTypes.personal"),
-    creator: t("dashboard.profile.publicProfile.accountTypes.creator"),
-    business: t("dashboard.profile.publicProfile.accountTypes.business"),
-  };
-  return (
-    accountTypeMap[String(key)] ||
-    t("dashboard.profile.publicProfile.accountTypes.personal")
-  );
-};
+import { toAccountUpdate, toProfileViewModel } from "../api/profileClient";
 
 export interface Visibility {
   Instagram?: boolean;
@@ -166,108 +150,50 @@ export function buildSocialMediaInput(
   };
 }
 
-const onboardingQuery = gql`
-  mutation createAccount($data: AccountInput!) {
-    createAccount(data: $data) {
-      Account_Name
-      Account_Type
-      username
-      Bio
-      Addresss
-    }
-  }
-`;
-
-const updateProfileMutation = gql`
-  mutation UpdateAccount($documentId: ID!, $data: AccountInput!) {
-    updateAccount(documentId: $documentId, data: $data) {
-      documentId
-      username
-      Bio
-      Addresss
-      Primary_Address
-      Account_Type
-      Account_Name
-      mobile_number
-      mobile_number_visibility
-      social_media
-      Public_Profile_Address
-      Feed_Data
-      profile_picture {
-        url
-        alternativeText
-      }
-      bg_picture {
-        url
-        alternativeText
-      }
-    }
-  }
-`;
-
-const updateUserMutation = gql`
-  mutation UpdateUsersPermissionsUser(
-    $id: ID!
-    $data: UsersPermissionsUserInput!
-  ) {
-    updateUsersPermissionsUser(id: $id, data: $data) {
-      data {
-        username
-      }
-    }
-  }
-`;
-
-const accountAddressInput = (values: KeyValuePair) => ({
-  streetNumber: values.streetNumber,
-  streetName: values.streetName,
-  postalCode: values.postalCode,
-  state: values.state,
-  city: values.city,
-  country: values.country,
-  address: values.address,
-});
-
+/**
+ * Ticket 3.4. Saving the profile.
+ *
+ * This held four paths: a canonical update, a Strapi createAccount for an owner with no
+ * account yet, a Strapi updateAccount for a non-UUID id, and a Strapi write mirroring the
+ * username onto usersPermissionsUser. Both callers - Profile and ProfileAccountSettings -
+ * already read the account through useCanonicalAccount, so the id reaching this hook is
+ * always a canonical UUID and the three Strapi paths were already unreachable.
+ *
+ * The create path is not replaced by a canonical equivalent, because canonically the
+ * client cannot create an account: ensureInitialAccount provisions one, with its category
+ * settings and presentation row, during authentication. An owner who is signed in has an
+ * account. So a missing id is not "create one" - it is a form submitted before its own
+ * snapshot arrived, and that is refused rather than guessed at.
+ *
+ * Two behaviours lived only in the removed code.
+ *
+ * The username write-back is kept, below, because it is load-bearing. Every public link
+ * and QR code in the dashboard is built from the auth store's user.username, not from the
+ * account query, so a rename that updates only the account leaves every one of those links
+ * pointing at the old handle until the next full reload. Nothing else in the app writes
+ * that field.
+ *
+ * musicApi.refreshIdentity() is kept, but only because the server side was fixed. It was
+ * inert when this hook was first migrated: it re-mints the credential against the ensure
+ * endpoint, and that endpoint returned early for an already-mapped account, so a renamed
+ * display name never reached Music - users.venue_name was written once, at provision, and
+ * nothing updated it afterwards. ensureMusicAccount now converges the venue name on reuse,
+ * which makes this call carry the rename it always looked like it carried. The call stays
+ * best-effort: a Music name one save stale must not fail an Explorers profile save.
+ */
 export const useUpdateProfile = (
   documentId: string | undefined,
   refetch: () => unknown | Promise<unknown>,
 ) => {
   const { user } = useAuthStore();
-  const { t } = useTranslation();
-  const [updateProfile] = useMutation(updateProfileMutation);
-  const [createAccount] = useMutation(onboardingQuery);
-  const [updateUser] = useMutation(updateUserMutation);
 
   const handleSubmit = async (values: KeyValuePair) => {
-    const socialMedia = buildSocialMediaInput(values);
-
-    if (!documentId) {
-      const response = await createAccount({
-        variables: {
-          data: {
-            Bio: values.bio,
-            Addresss: accountAddressInput(values),
-            Primary_Address: { address: values.primaryAddressCombined },
-            Public_Profile_Address: values.Public_Profile_Address || null,
-            Feed_Data: values.Feed_Data || [],
-            social_media: socialMedia,
-            Account_Type: getAccountTypeValue(values.accountType, t),
-            Account_Name: values.accountName,
-            username: values.username,
-            mobile_number_visibility: values.mobilenumberVisiblity,
-            mobile_number: values.mobilenumberLink,
-            users_permissions_users: user?.documentId,
-          },
-        },
-      });
-      const createdAccount = response.data?.createAccount;
-      if (!createdAccount) {
-        throw new Error("Profile creation was not confirmed");
-      }
-      void musicApi.refreshIdentity().catch(() => undefined);
-      await refetch();
-      return createdAccount;
-    }
+    if (!documentId || !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(documentId))
+      throw new Error("Profile form snapshot is unavailable");
+    // The snapshot the form was built from has to be the account being written, at the
+    // revision it was read at, or the update is a blind overwrite of someone else's edit.
+    if (values.documentId !== documentId || !Number.isSafeInteger(values.revision) || values.revision < 1)
+      throw new Error("Profile form snapshot is unavailable");
 
     const currentUsername = user?.username ?? "";
     const incomingUsername =
@@ -275,53 +201,21 @@ export const useUpdateProfile = (
     const usernameChanged = Boolean(
       incomingUsername && incomingUsername !== currentUsername,
     );
-    const response = await updateProfile({
-      variables: {
-        documentId,
-        data: {
-          Bio: values.bio,
-          Account_Name: values.accountName,
-          ...(usernameChanged ? { username: incomingUsername } : {}),
-          Addresss: accountAddressInput(values),
-          Primary_Address: { address: values.primaryAddressCombined },
-          Public_Profile_Address: values.Public_Profile_Address || null,
-          Feed_Data: values.Feed_Data || [],
-          social_media: socialMedia,
-          Account_Type: getAccountTypeValue(values.accountType, t),
-          mobile_number_visibility: values.mobilenumberVisiblity,
-          ...mobileNumberField(
-            typeof values.mobilenumberLink === "string"
-              ? values.mobilenumberLink
-              : undefined,
-          ),
-        },
-      },
-    });
-    const updatedAccount = response.data?.updateAccount;
-    if (!updatedAccount?.documentId) {
-      throw new Error("Profile update was not confirmed");
-    }
+
+    const updated = await explorersApiClient.updateAccount(toAccountUpdate(
+      { ...values, social_media: buildSocialMediaInput(values) }, { revision: values.revision },
+    ));
+
+    // After the account has accepted the handle, never before: a rejected save must not
+    // leave the store advertising a username the account does not have.
+    if (usernameChanged) useAuthStore.getState().updateUsername(incomingUsername);
+
+    // Best-effort, after the account has accepted the change: this propagates the new
+    // display name to the Music venue and must never turn a saved profile into a failure.
     void musicApi.refreshIdentity().catch(() => undefined);
 
-    if (user?.id && usernameChanged) {
-      await updateUser({
-        variables: {
-          id: user.id,
-          data: { username: incomingUsername },
-        },
-      });
-
-      const authStore = useAuthStore.getState();
-      authStore.login({
-        ...user,
-        username: incomingUsername,
-        token: authStore.token || "",
-      });
-
-    }
-
     await refetch();
-    return updatedAccount;
+    return toProfileViewModel(updated);
   };
 
   return { handleSubmit };

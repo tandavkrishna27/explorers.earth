@@ -1,0 +1,13 @@
+{
+  "sourceCommit": "54a12111c97fb0cb3e0289789a79c94362c947bd",
+  "runId": "af123e393a4990370dc979a141c7b77c",
+  "qualification": false,
+  "counts": {"discovered": 8, "executed": 8, "passed": 8, "failed": 0, "skipped": 0, "attempts": 8},
+  "originalExitCode": 1,
+  "diagnostic": {"stage": "cleanup", "category": "refusal", "cleanupStep": "request-drain"},
+  "sourceIntact": true,
+  "interrupted": false,
+  "guardedOwnerClosed": true,
+  "freshOwnerAndChildrenAbsent": true,
+  "exactRetainedRecovery": "pending"
+}

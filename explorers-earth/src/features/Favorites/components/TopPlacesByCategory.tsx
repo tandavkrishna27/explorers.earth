@@ -187,8 +187,10 @@ const CATEGORY_MAPPINGS = {
 interface TopPlacesByCategoryProps {
   selectedLocationName?: string;
   selectedLocationCoords?: { lat: number; lng: number } | null;
+  // A manually entered place has no provider id, and the native DTO says so rather
+  // than substituting an internal id for one.
   existingRecommendations?: Array<{
-    Place_Details: { Place_Id: string; Place_Name: string; Title: string };
+    Place_Details: { Place_Id: string | null; Place_Name: string; Title: string };
   }>;
   onPlaceAdded?: () => void;
   selectedCityVisibility?: boolean; // Deprecated: Visibility is no longer used for filtering - kept for backward compatibility

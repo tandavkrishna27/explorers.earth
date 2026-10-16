@@ -7,7 +7,7 @@
  * 
  * 1. Stay Field: Updates the accommodation in the Stay.accommodations array (matched by id)
  * 2. Timeline Field: Updates all occurrences in morning/afternoon/evening arrays (matched by id)
- * 3. Budget Field: Updates budget entries in corresponding periods (matched by place_id)
+ * 3. Budget Field: Updates budget entries in corresponding periods (matched by localId)
  * 
  * This ensures that:
  * - Editing from Stay tab updates Timeline tab (and vice versa)
@@ -18,9 +18,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useMutation, useApolloClient } from "@apollo/client";
-import { UPDATE_GUIDE_SECTION_MUTATION } from "../../api/mutations";
-import { GET_GUIDE_BY_ID_QUERY } from "../../api/queries";
+import {useGuideEditing} from '../../context/GuideEditingProvider';
 import { toast } from "sonner";
 import AddressInput from "../../../Profile/components/AddressInput";
 import Button from "../../../../components/ui/Button";
@@ -34,7 +32,6 @@ interface EditStayModalProps {
   stay: DayPlace;
   sectionId: string;
   sectionTitle: string;
-  guideId: string;
   onSuccess?: () => void;
 }
 
@@ -44,15 +41,13 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
   stay,
   sectionId,
   sectionTitle,
-  guideId,
   onSuccess,
 }) => {
   const [stayPlace, setStayPlace] = useState<google.maps.places.PlaceResult | null>(null);
   const [stayDisplay, setStayDisplay] = useState("");
   const [loading, setLoading] = useState(false);
-  const apolloClient = useApolloClient();
+  const {getSection, saveSection} = useGuideEditing();
 
-  const [updateSection] = useMutation(UPDATE_GUIDE_SECTION_MUTATION);
 
   // Initialize form with current stay data
   useEffect(() => {
@@ -116,17 +111,9 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
     setLoading(true);
 
     try {
-      // Fetch current section data to preserve other fields
-      const { data: guideData } = await apolloClient.query({
-        query: GET_GUIDE_BY_ID_QUERY,
-        variables: { documentId: guideId },
-        fetchPolicy: "network-only",
-      });
-
-      const section = guideData?.guide?.guide_sections?.find(
-        (s: any) => s.documentId === sectionId
-      );
-
+      // No re-fetch: the page holds every section at one revision, and the blocks arrive
+      // parsed rather than as JSON strings.
+      const section = getSection(sectionId);
       if (!section) {
         throw new Error("Section not found");
       }
@@ -140,6 +127,7 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
       }
       
       const updatedStay: DayPlace = {
+        ...stay, // Keep money, photos, notes and provenance unless explicitly edited.
         id: stay.id, // Preserve the original id - this is the key for syncing
         name: stayPlace.name || "",
         formatted_address: stayPlace.formatted_address || "",
@@ -180,7 +168,7 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
         accommodations,
       };
 
-      const stayString = JSON.stringify(updatedStayData);
+
 
       // ============================================
       // UPDATE TIMELINE FIELD (Sync with Timeline arrays)
@@ -206,89 +194,68 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
         evening: updateStayInArray(currentTimelineData.evening || []),
       };
 
-      const timelineString = JSON.stringify(updatedTimeline);
+
 
       // ============================================
       // UPDATE BUDGET FIELD (Sync budget entries)
       // ============================================
-      // Budget stores BudgetPlace objects keyed by place_id (not id)
-      // Budget entries correspond to Timeline entries, so we update Budget in periods
-      // where the stay appears in Timeline
+      // Budget rows belong to a local timeline entry; provider ids can be shared.
       const currentBudgetData = parseBudget(section.Budget);
-      const oldPlaceId = stay.place_id;
       const newPlaceId = updatedStay.place_id;
 
-      // Determine which periods contain this stay (by checking updated Timeline)
       const stayInMorning = updatedTimeline.morning.some((p) => p.id === stay.id);
       const stayInAfternoon = updatedTimeline.afternoon.some((p) => p.id === stay.id);
       const stayInEvening = updatedTimeline.evening.some((p) => p.id === stay.id);
 
-      // Helper to update budget entries in a specific period
       const updateBudgetInPeriod = (
         budgetPlaces: BudgetPlace[],
         hasStayInPeriod: boolean
       ): BudgetPlace[] => {
         if (!hasStayInPeriod) {
-          // Stay doesn't appear in this period, remove old entry if it exists
-          return budgetPlaces.filter((bp) => bp.place_id !== oldPlaceId);
+          return budgetPlaces.filter((bp) => bp.localId !== stay.id);
         }
 
-        // Stay appears in this period, update budget entry
-        const updated = budgetPlaces.filter((bp) => bp.place_id !== oldPlaceId);
-
-        // If the new place has price information, add/update it
-        if (newPlaceId && (updatedStay.priceLevel !== undefined || updatedStay.priceRange || updatedStay.customBudget)) {
-          const existingIndex = updated.findIndex((bp) => bp.place_id === newPlaceId);
-          const newBudgetPlace: BudgetPlace = {
-            place_id: newPlaceId,
-            name: updatedStay.name,
-            priceLevel: updatedStay.priceLevel,
-            priceRange: updatedStay.priceRange,
-            customBudget: updatedStay.customBudget,
-          };
-
-          if (existingIndex >= 0) {
-            // Update existing entry
-            updated[existingIndex] = newBudgetPlace;
-          } else {
-            // Add new entry
-            updated.push(newBudgetPlace);
-          }
+        const existingIndex = budgetPlaces.findIndex((bp) => bp.localId === stay.id);
+        const existing = budgetPlaces[existingIndex];
+        if (!newPlaceId || (!existing && updatedStay.priceLevel === undefined &&
+            !updatedStay.priceRange && !updatedStay.customBudget && updatedStay.budgetAmount === undefined)) {
+          return budgetPlaces;
         }
 
-        return updated;
+        const newBudgetPlace: BudgetPlace = {
+          priceLevel: updatedStay.priceLevel,
+          priceRange: updatedStay.priceRange,
+          customBudget: updatedStay.customBudget,
+          budgetAmount: updatedStay.budgetAmount,
+          budgetCurrency: updatedStay.budgetCurrency,
+          ...existing, // A location edit keeps this period's saved pricing metadata.
+          localId: updatedStay.id,
+          place_id: newPlaceId,
+          name: updatedStay.name,
+        };
+        if (existingIndex >= 0) {
+          return budgetPlaces.map((bp, index) => index === existingIndex ? newBudgetPlace : bp);
+        }
+        return [...budgetPlaces, newBudgetPlace];
       };
-
       const updatedBudget: BudgetData = {
         morning: updateBudgetInPeriod(currentBudgetData.morning || [], stayInMorning),
         afternoon: updateBudgetInPeriod(currentBudgetData.afternoon || [], stayInAfternoon),
         evening: updateBudgetInPeriod(currentBudgetData.evening || [], stayInEvening),
       };
 
-      const budgetString = JSON.stringify(updatedBudget);
 
-      // Update the section - preserve all other fields
-      // Stay, Timeline, and Budget fields are all updated to maintain perfect sync
-      await updateSection({
-        variables: {
-          documentId: sectionId,
-          data: {
-            Title: section.Title,
-            Description: section.Description,
-            Sequence: section.Sequence,
-            Timeline: timelineString, // Updated Timeline field (synced with Stay)
-            Transport: section.Transport,
-            Stay: stayString, // Updated Stay field
-            Recommendation_Activity: section.Recommendation_Activity,
-            Map_Details: section.Map_Details,
-            Budget: budgetString, // Updated Budget field (synced with Stay and Timeline)
-          },
-        },
-      });
 
-      // Refetch guide data to update UI
-      await apolloClient.refetchQueries({
-        include: [GET_GUIDE_BY_ID_QUERY],
+      // Stay, Timeline and Budget all move together: a stay shown in the timeline and
+      // priced in the budget is one fact in three places, and updating one of them alone
+      // is what makes a guide disagree with itself. Blocks not named here keep their
+      // current value, so nothing else is touched.
+      await saveSection(sectionId, {
+        title: section.Title,
+        description: section.Description ?? null,
+        Timeline: updatedTimeline,
+        Stay: updatedStayData,
+        Budget: updatedBudget,
       });
 
       toast.success("Stay updated successfully!");

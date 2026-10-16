@@ -282,22 +282,6 @@ test.beforeEach(async ({ context, page }) => {
       },
       recommendation_list: { documentId: 'place-list-123' },
     };
-    const claimablePlace = {
-      __typename: 'ClaimablePlaceProfile',
-      documentId: 'claimable-123',
-      Place_Id: 'mock-place-id',
-      Name: 'Eiffel Tower',
-      Address: 'Paris, France',
-      Lat: 48.8566,
-      Long: 2.3522,
-      Phone: null,
-      Website: null,
-      Meta_Data: {},
-      Recommendation_Count: 1,
-      Added_By_User: [],
-      Is_Claimed: false,
-      Claiming_Account: null,
-    };
 
     if (payload?.query?.includes('CheckOnboardingStatus') || payload?.query?.includes('MyAccount') || payload?.query?.toLowerCase().includes('userspermissionsuser')) {
       await route.fulfill({
@@ -479,40 +463,6 @@ test.beforeEach(async ({ context, page }) => {
             },
           },
         }),
-      });
-    } else if (payload?.query?.toLowerCase().includes('claimableplaceprofiles') || payload?.query?.toLowerCase().includes('findclaimableplaceprofile')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            claimablePlaceProfiles: []
-          }
-        })
-      });
-    } else if (payload?.query?.toLowerCase().includes('createclaimableplaceprofile')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            createClaimablePlaceProfile: {
-              ...claimablePlace,
-            }
-          }
-        })
-      });
-    } else if (payload?.query?.toLowerCase().includes('updateclaimableplaceprofile')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            updateClaimablePlaceProfile: {
-              ...claimablePlace,
-            }
-          }
-        })
       });
     } else {
       await route.fulfill({

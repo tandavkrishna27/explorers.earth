@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useMutation, useApolloClient } from "@apollo/client";
+import {useGuideEditing} from '../context/GuideEditingProvider';
+import {guideDescriptionText} from '../../../utils/guideDescriptionText';
 import { toast } from "sonner";
 import { Reorder } from "framer-motion";
 import TiptapEditor from "../../Favorites/components/TiptapEditor";
@@ -9,11 +10,6 @@ import {
   htmlToBlocks,
   blocksToHtml,
 } from "../../../utils/strapiBlocksConverter";
-import {
-  CREATE_GUIDE_SECTION_MUTATION,
-  UPDATE_GUIDE_SECTION_MUTATION,
-} from "../api/mutations";
-import { GET_GUIDE_BY_ID_QUERY } from "../api/queries";
 import ClockIcon from "../../../assets/icons/ClockIcon";
 import TransportationIcon from "../../../assets/icons/TransportationIcon";
 import StayIcon from "../../../assets/icons/StayIcon";
@@ -50,7 +46,6 @@ import { uploadActivityPhotos } from "../services/activityPhotoService";
 import MediaViewer from "../../../components/ui/MediaViewer";
 import { useMediaViewer } from "../../../hooks/useMediaViewer";
 import type { MediaItem } from "../../../components/ui/MediaViewer";
-import useAuthStore from "../../../store/store";
 import TopPlacesByCategory from "../../Favorites/components/TopPlacesByCategory";
 
 interface GuideSectionFormProps {
@@ -65,7 +60,6 @@ interface GuideSectionFormProps {
 }
 
 const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
-  guideDocumentId,
   sectionId,
   initialData,
   existingSections = [],
@@ -75,8 +69,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
   onCancel,
   onLoadingChange,
 }) => {
-  const apolloClient = useApolloClient();
-  const user = useAuthStore((state) => state.user);
+  const {addSection, saveSection} = useGuideEditing();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
@@ -169,8 +162,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
   const [selectedPeriod, setSelectedPeriod] = useState<"morning" | "afternoon" | "evening">("morning");
   const [tempTimelinePlace, setTempTimelinePlace] = useState<Places | null>(null);
 
-  const [createSection] = useMutation(CREATE_GUIDE_SECTION_MUTATION);
-  const [updateSection] = useMutation(UPDATE_GUIDE_SECTION_MUTATION);
+
 
   // Media viewer for activity photos - track which activity is being viewed
   const { isOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
@@ -466,8 +458,8 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
     // Check if segment already exists
     const existingSegment = transportSegments.find(
       (seg) =>
-        seg.fromPlaceId === fromPlace.place_id &&
-        seg.toPlaceId === toPlace.place_id
+        seg.fromPlaceId === fromPlace.id &&
+        seg.toPlaceId === toPlace.id
     );
 
     if (existingSegment) {
@@ -487,8 +479,8 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
       const estimatedMinutes = calculateTravelTime(distanceKm, defaultMode);
 
       return {
-        fromPlaceId: fromPlace.place_id,
-        toPlaceId: toPlace.place_id,
+        fromPlaceId: fromPlace.id,
+        toPlaceId: toPlace.id,
         mode: defaultMode,
         distanceKm,
         estimatedMinutes,
@@ -507,20 +499,21 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
     mode: TravelMode
   ) => {
     // Calculate distance
-    if (!fromPlace.geometry || !toPlace.geometry) return;
+    const existing = transportSegments.find(seg => seg.fromPlaceId === fromPlace.id && seg.toPlaceId === toPlace.id);
+    if ((!fromPlace.geometry || !toPlace.geometry) && !existing) return;
 
-    const distanceKm = calculateDistance(
+    const distanceKm = fromPlace.geometry && toPlace.geometry ? calculateDistance(
       fromPlace.geometry.location.lat,
       fromPlace.geometry.location.lng,
       toPlace.geometry.location.lat,
       toPlace.geometry.location.lng
-    );
+    ) : existing!.distanceKm;
 
-    const estimatedMinutes = calculateTravelTime(distanceKm, mode);
+    const estimatedMinutes = distanceKm === null ? null : calculateTravelTime(distanceKm, mode);
 
     const newSegment: TransportSegment = {
-      fromPlaceId: fromPlace.place_id,
-      toPlaceId: toPlace.place_id,
+      fromPlaceId: fromPlace.id,
+      toPlaceId: toPlace.id,
       mode,
       distanceKm,
       estimatedMinutes,
@@ -531,8 +524,8 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
       const filtered = prev.filter(
         (seg) =>
           !(
-            seg.fromPlaceId === fromPlace.place_id &&
-            seg.toPlaceId === toPlace.place_id
+            seg.fromPlaceId === fromPlace.id &&
+            seg.toPlaceId === toPlace.id
           )
       );
       return [...filtered, newSegment];
@@ -684,22 +677,19 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         // Show toast for activity detection
         toast.success("Activity found!");
 
-        setActivityPlaces((prev) => {
-          // Add with loading state for photos
-          const activityWithLoadingState = {
-            ...newPlace,
-            photosLoading: true,
-            photos: [],
-          };
+        // Keep the updater pure: React may replay it in StrictMode.
+        const activityWithLoadingState = {
+          ...newPlace,
+          photosLoading: true,
+          photos: [],
+        };
+        setActivityPlaces((prev) => [...prev, activityWithLoadingState]);
 
-          // Fetch and upload photos asynchronously, tracking the promise so
-          // handleSubmit can await it before persisting (prevents empty photos).
-          pendingActivityUploadsRef.current.push(
-            fetchAndUploadActivityPhotos(activityWithLoadingState)
-          );
-
-          return [...prev, activityWithLoadingState];
-        });
+        // Launch once from the event handler and retain the promise so submit
+        // can await the photos before persisting the activity.
+        pendingActivityUploadsRef.current.push(
+          fetchAndUploadActivityPhotos(activityWithLoadingState)
+        );
       }
     }
 
@@ -727,16 +717,8 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         return { place_id: activity.place_id, photos: [] };
       }
 
-      // Upload photos to Strapi S3
-      const username = user?.username || "user";
-      const sectionDocId = sectionId || "temp-section";
 
-      const uploadedPhotos = await uploadActivityPhotos(
-        photos,
-        username,
-        sectionDocId,
-        activity.place_id
-      );
+      const uploadedPhotos = await uploadActivityPhotos(photos);
 
       // Update activity with uploaded photos
       setActivityPlaces((prev) =>
@@ -786,6 +768,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
       removedPlace = eveningPlaces.find((p) => p.id === placeId);
       setEveningPlaces((prev) => prev.filter((p) => p.id !== placeId));
     }
+    setTransportSegments(prev => prev.filter(seg => seg.fromPlaceId !== placeId && seg.toPlaceId !== placeId));
 
     // Remove from Stay tab if it's an accommodation
     if (removedPlace && isAccommodation(removedPlace.types)) {
@@ -930,26 +913,34 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
    */
   const generateCompleteTransportSegments = (): TransportSegment[] => {
     const allPlaces = [...morningPlaces, ...afternoonPlaces, ...eveningPlaces];
-    const completeSegments: TransportSegment[] = [];
+    // A title, budget or mode edit must not invent connections that were absent.
+    if (initialData?.Timeline) {
+      const original = typeof initialData.Timeline === "string" ? JSON.parse(initialData.Timeline) : initialData.Timeline;
+      const route = (timeline: TimelineData) => [timeline.morning ?? [], timeline.afternoon ?? [], timeline.evening ?? []]
+        .map(places => places.map(place => ({id: place.id, geometry: place.geometry})));
+      if (JSON.stringify(route(original)) === JSON.stringify(route({morning: morningPlaces, afternoon: afternoonPlaces, evening: eveningPlaces}))) {
+        return transportSegments;
+      }
+    }
+    const localIds = new Set([...allPlaces, ...stayAccommodations, ...activityPlaces].map(place => place.id));
+    const completeSegments: TransportSegment[] = transportSegments.filter(seg => localIds.has(seg.fromPlaceId) && localIds.has(seg.toPlaceId));
 
     for (let i = 0; i < allPlaces.length - 1; i++) {
       const currentPlace = allPlaces[i];
       const nextPlace = allPlaces[i + 1];
 
-      // Check if geometry exists for both places
-      if (!currentPlace.geometry || !nextPlace.geometry) continue;
-
       // Check if a segment already exists
       const existingSegment = transportSegments.find(
         (seg) =>
-          seg.fromPlaceId === currentPlace.place_id &&
-          seg.toPlaceId === nextPlace.place_id
+          seg.fromPlaceId === currentPlace.id &&
+          seg.toPlaceId === nextPlace.id
       );
 
       if (existingSegment) {
-        // Use existing segment
-        completeSegments.push(existingSegment);
+        // Existing manual segments were retained above, including unknown distances.
+        continue;
       } else {
+        if (!currentPlace.geometry || !nextPlace.geometry) continue;
         // Create default segment with "drive" mode
         const distanceKm = calculateDistance(
           currentPlace.geometry.location.lat,
@@ -962,8 +953,8 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         const estimatedMinutes = calculateTravelTime(distanceKm, defaultMode);
 
         completeSegments.push({
-          fromPlaceId: currentPlace.place_id,
-          toPlaceId: nextPlace.place_id,
+          fromPlaceId: currentPlace.id,
+          toPlaceId: nextPlace.id,
           mode: defaultMode,
           distanceKm,
           estimatedMinutes,
@@ -998,8 +989,6 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         evening: eveningPlaces,
       };
 
-      const timelineString = JSON.stringify(timelineData);
-
       // Extract budget data from timeline places
       // Prioritize new currency format (budgetAmount/budgetCurrency) over customBudget, then Google API data
       const extractBudgetData = (places: any[]) => {
@@ -1011,6 +1000,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
             p.priceRange !== undefined
           )
           .map(p => ({
+            localId: p.id,
             place_id: p.place_id,
             name: p.name,
             priceLevel: p.priceLevel,
@@ -1027,8 +1017,27 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         afternoon: extractBudgetData(afternoonPlaces),
         evening: extractBudgetData(eveningPlaces),
       };
-
-      const budgetString = JSON.stringify(budgetData);
+      if (initialData?.Budget && initialData?.Timeline) {
+        const originalBudget = typeof initialData.Budget === "string" ? JSON.parse(initialData.Budget) : initialData.Budget;
+        const originalTimeline = typeof initialData.Timeline === "string" ? JSON.parse(initialData.Timeline) : initialData.Timeline;
+        for (const period of ["morning", "afternoon", "evening"] as const) {
+          const originalRows = extractBudgetData(originalTimeline[period] ?? []);
+          const currentPlaces = [...morningPlaces, ...afternoonPlaces, ...eveningPlaces, ...stayAccommodations, ...activityPlaces];
+          // Budget is independently stored and can differ from timeline metadata.
+          // Retain each untouched local entry, including zero and exact money.
+          const retained = (originalBudget[period] ?? []).filter((row: any) => {
+            const before = originalRows.find(p => p.localId === row.localId);
+            const after = budgetData[period].find(p => p.localId === row.localId);
+            return currentPlaces.some(p => p.id === row.localId) && JSON.stringify(before) === JSON.stringify(after);
+          });
+          const updated = budgetData[period];
+          budgetData[period] = (originalBudget[period] ?? []).flatMap((row: any) => {
+            const value = retained.find((p: any) => p.localId === row.localId) ?? updated.find(p => p.localId === row.localId);
+            return value ? [value] : [];
+          });
+          budgetData[period].push(...updated.filter(row => !(originalBudget[period] ?? []).some((p: any) => p.localId === row.localId)));
+        }
+      }
 
       // Generate complete transport segments (including defaults)
       const completeSegments = generateCompleteTransportSegments();
@@ -1038,14 +1047,10 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         segments: completeSegments,
       };
 
-      const transportString = JSON.stringify(transportData);
-
       // Prepare Stay JSON (accommodations)
       const stayData: StayData = {
         accommodations: stayAccommodations,
       };
-
-      const stayString = JSON.stringify(stayData);
 
       // Prepare Activity JSON (activities/attractions)
       // Wait for any in-flight activity photo uploads so we never persist an
@@ -1084,80 +1089,48 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
         activities: activitiesForSave,
       };
 
-      const activityString = JSON.stringify(activityData);
-
       // Prepare Map_Details with location for multi-city guides
-      let mapDetailsString = null;
-      if (isMultiCityGuide && selectedLocation) {
-        const mapDetails = {
-          location: selectedLocation,
-        };
-        mapDetailsString = JSON.stringify(mapDetails);
-      }
+      // Map_Details carries the chosen location for a multi-city stop.
+      const mapDetails = isMultiCityGuide && selectedLocation ? {location: selectedLocation} : initialData?.Map_Details ?? null;
+
+      // The form always composes the whole section, so create and update send the same
+      // blocks; only where they land differs.
+      const blocks = {
+        Timeline: timelineData,
+        Transport: transportData,
+        Stay: stayData,
+        Recommendation_Activity: activityData,
+        Budget: budgetData,
+        Map_Details: mapDetails,
+        Packing_List: initialData?.Packing_List ?? [],
+        Pre_Tasks: initialData?.Pre_Tasks ?? [],
+        Section_tags: initialData?.Section_tags ?? [],
+      };
+      // Description is rich blocks in the form and plain text on the section, so it is
+      // flattened rather than stored twice in two shapes.
+      const descriptionText = Array.isArray(descriptionBlocks)
+        ? guideDescriptionText(descriptionBlocks
+            .map((block: any) => (block.children ?? []).map((child: any) => child.text ?? "").join(""))
+            .join(String.fromCharCode(10)))
+            .trim() || null
+        : null;
 
       if (sectionId) {
-        // Update existing section
-        await updateSection({
-          variables: {
-            documentId: sectionId,
-            data: {
-              Title: title,
-              Description: descriptionBlocks,
-              Sequence: sequence,
-              Timeline: timelineString,
-              Transport: transportString,
-              Stay: stayString,
-              Recommendation_Activity: activityString,
-              Budget: budgetString,
-              Map_Details: mapDetailsString,
-            },
-          },
-        });
+        await saveSection(sectionId, {title, description: descriptionText, ...blocks});
         toast.success("Changes saved successfully!");
       } else {
-        // Validate location for multi-city guides
         if (isMultiCityGuide && !selectedLocation) {
           toast.error("Please select a location for this day/stop");
           setLoading(false);
           return;
         }
-
-        // Create new section
-        // First, fetch the guide's internal ID via REST API
-        const { getGuideById } = await import("../guideService");
-        const guideData = await getGuideById(guideDocumentId);
-
-        if (!guideData?.id) {
-          throw new Error("Unable to connect to guide");
-        }
-
-        // Create the section using GraphQL
-        const { data } = await createSection({
-          variables: {
-            data: {
-              Title: title,
-              Description: descriptionBlocks,
-              Sequence: sequence,
-              Timeline: timelineString,
-              Transport: transportString,
-              Stay: stayString,
-              Recommendation_Activity: activityString,
-              Budget: budgetString,
-              Map_Details: mapDetailsString,
-              guide: guideData.id,
-            },
-          },
-        });
-
-        if (data?.createGuideSection?.documentId) {
-          toast.success("Added to your guide!");
-        }
+        // No guide id and no REST lookup: Strapi needed its internal numeric id to build
+        // the relation, which is why this used to fetch the guide before every create.
+        // Sequence is 1-based in the form and the position is 0-based in storage.
+        await addSection({title, description: descriptionText, ...blocks},
+          Number.isFinite(sequence) && sequence > 0 ? sequence - 1 : undefined);
+        toast.success("Added to your guide!");
       }
-
-      // Refetch the guide data
-      await apolloClient.refetchQueries({
-        include: [GET_GUIDE_BY_ID_QUERY],
-      });
 
       if (onSuccess) {
         onSuccess();
@@ -2460,8 +2433,10 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
                               </div>
                               <div className="text-xs text-dashboard-light font-poppins">
                                 {segment
-                                  ? `${segment.distanceKm.toFixed(1)} km • ${segment.estimatedMinutes
-                                  } min`
+                                  ? [
+                                      segment.distanceKm === null ? null : `${segment.distanceKm.toFixed(1)} km`,
+                                      segment.estimatedMinutes === null ? null : `${segment.estimatedMinutes} min`,
+                                    ].filter(Boolean).join(" • ") || "Not set"
                                   : "Not set"}
                               </div>
                             </div>
@@ -2521,8 +2496,10 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
                               </div>
                               <div className="text-xs text-dashboard-light font-poppins">
                                 {segment
-                                  ? `${segment.distanceKm.toFixed(1)} km • ${segment.estimatedMinutes
-                                  } min`
+                                  ? [
+                                      segment.distanceKm === null ? null : `${segment.distanceKm.toFixed(1)} km`,
+                                      segment.estimatedMinutes === null ? null : `${segment.estimatedMinutes} min`,
+                                    ].filter(Boolean).join(" • ") || "Not set"
                                   : "Not set"}
                               </div>
                             </div>
@@ -2582,8 +2559,10 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
                               </div>
                               <div className="text-xs text-dashboard-light font-poppins">
                                 {segment
-                                  ? `${segment.distanceKm.toFixed(1)} km • ${segment.estimatedMinutes
-                                  } min`
+                                  ? [
+                                      segment.distanceKm === null ? null : `${segment.distanceKm.toFixed(1)} km`,
+                                      segment.estimatedMinutes === null ? null : `${segment.estimatedMinutes} min`,
+                                    ].filter(Boolean).join(" • ") || "Not set"
                                   : "Not set"}
                               </div>
                             </div>

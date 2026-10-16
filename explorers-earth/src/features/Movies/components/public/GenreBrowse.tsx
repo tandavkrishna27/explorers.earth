@@ -2,7 +2,6 @@ import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronRight, ChevronLeft } from "lucide-react";
-import { genreToSlug, extractUniqueGenres } from "../../utils/movieHelpers";
 import type { RecommendedMovie } from "../../types";
 
 interface GenreBrowseProps {
@@ -47,22 +46,22 @@ const GenreBrowse = ({ movies, username }: GenreBrowseProps) => {
       scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
-  const allGenreArrays = movies.map(m => m.genres);
-  const genres = extractUniqueGenres(allGenreArrays);
-
-  // Count movies per genre
+  // Browse uses assigned catalog terms, matching the canonical genre route.
+  const genreSlugs = new Map<string, string>();
   const genreCount: Record<string, number> = {};
-  for (const g of genres) {
-    genreCount[g] = movies.filter(m => {
-      const names = Array.isArray(m.genres)
-        ? m.genres.map((x: any) => typeof x === "string" ? x : x?.name).filter(Boolean)
-        : [];
-      return names.includes(g);
-    }).length;
+  for (const movie of movies) {
+    const counted = new Set<string>();
+    for (const term of movie.movie_categories ?? []) {
+      const slug = 'slug' in term && typeof term.slug === 'string' ? term.slug : undefined;
+      if (!slug || counted.has(term.genre_name)) continue;
+      counted.add(term.genre_name);
+      genreSlugs.set(term.genre_name, slug);
+      genreCount[term.genre_name] = (genreCount[term.genre_name] ?? 0) + 1;
+    }
   }
 
   // Only show genres with at least 1 movie
-  const visibleGenres = genres.filter(g => genreCount[g] > 0);
+  const visibleGenres = [...genreSlugs.keys()];
 
   if (visibleGenres.length === 0) return null;
 
@@ -107,7 +106,7 @@ const GenreBrowse = ({ movies, username }: GenreBrowseProps) => {
               transition={{ type: "spring", stiffness: 300 }}
             >
               <Link
-                to={`/${username}/movies/genre/${genreToSlug(genre)}`}
+                to={`/${username}/movies/genre/${genreSlugs.get(genre)}`}
                 className="relative flex flex-col justify-between h-24 rounded-xl overflow-hidden p-3 border border-[color:var(--category-border,rgba(255,255,255,0.1))] hover:border-[color:var(--category-focus,rgba(59,130,246,0.4))] transition-all group"
                 style={{
                   background: `var(--category-card,linear-gradient(135deg, ${gradient[0]}, ${gradient[1]}))`,

@@ -1,0 +1,11 @@
+{
+  "sourceCommit": "564d667afae1d4177d56b93d9dd642b23b5f29f3",
+  "runId": "59310ab84faad2c2c9cfb339533d349e",
+  "qualification": false,
+  "privateReportSummary": {"expected": 1, "unexpected": 7, "flaky": 0, "skipped": 0},
+  "firstObservedFailure": {"request": "fixture-reset", "expectedStatus": 200, "receivedStatus": 403, "operation": "unknown"},
+  "runner": {"stage": "execution", "category": "refusal", "sourceIntact": true, "interrupted": false, "originalExitCode": 1},
+  "guardedOwnerClosed": true,
+  "freshOwnerAndChildrenAbsent": true,
+  "exactRetainedRecovery": "pending"
+}

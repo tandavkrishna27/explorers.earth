@@ -1,0 +1,19 @@
+{
+  "sourceCommit": "fdb23ce1f1c8cdf8a71c0af84dac9ea26c99a1ea",
+  "runId": "039063c49a5a6bc8eb02ec6171b0f31c",
+  "evidence": "native",
+  "qualification": false,
+  "expected": 5,
+  "unexpected": 3,
+  "flaky": 0,
+  "skipped": 0,
+  "phase": "execution",
+  "sourceIntact": true,
+  "originalParentExitCode": 1,
+  "diagnoses": [
+    "Apps membership DELETE rejected by Games-only backend: expected 200, received 422, desktop and mobile",
+    "Mobile manager oracle samples loading state and later matches fifteen carousel buttons"
+  ],
+  "processClosure": "Exact guarded owner-only termination followed by original parent close and fresh known-process absence",
+  "retainedRecovery": "Pending independently reviewed exact sixth-run recovery"
+}

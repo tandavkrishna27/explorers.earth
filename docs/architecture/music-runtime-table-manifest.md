@@ -133,3 +133,71 @@ observed scheduler is the reactivation-service token cleanup interval. There is
 no C0 evidence of a separate job runner. Delete/block/reactivate endpoints are
 in legacy admin/user paths and `reactivationRoutes`; their Strapi lifecycle
 equivalence remains unproven and blocks live provisioning.
+
+
+## Category content revision foundation (0031)
+
+`account_category_content_state` retains at most eight data-free category/revision
+pairs on creator account tombstones. Runtime state privileges are SELECT-only;
+only four trigger functions mutate it. Seven content families each have INSERT,
+UPDATE and DELETE statement triggers; status transitions invalidate all categories.
+Supported writers lock account rows, sorted category keys (two-int namespace
+44031, hashtext of lowercase UUID plus colon plus category), then aggregates,
+proofs and operations. Arbitrary aggregate-first SQL may deadlock and aborts
+atomically. Guarded exact restore disables only the 22 revision triggers plus
+the three existing replay exceptions and restores revision triggers to mode O.
+Asset/provider triggers are excluded from the current ID-only owner projection.
+
+## Bounded owner pages (0032)
+
+The append-only `0032_explorers_owner_page_indexes` migration adds only four
+indexes: collection account/category/order/id, recommendation account/category/id,
+membership account/category/recommendation/collection, and selected-collection
+account/category/collection/order/recommendation. The manifest still has
+56 tables and the same trigger/function authority. Runtime content-state access
+remains SELECT-only under 0031; restore includes 0032 in its checksummed chain.
+Owner v2 reads obtain the constant category revision lookup in each short
+repeatable-read transaction. Separate membership pages and bounded media queries
+replace nested arrays. A shared opaque snapshot is validated after all streams
+by the future combined collector; that collector and UI adoption remain open.
+
+## Manual entities and sparse title overrides (0033)
+
+The append-only `0033_explorers_recommendation_display_overrides` migration adds
+`recommendation_display_overrides`, bringing the current manifest to 57 tables.
+Its composite recommendation/account FK cascades on terminal purge; shared catalog
+entities survive. Runtime receives companion SELECT/INSERT/UPDATE/DELETE and retains
+SELECT-only category counters. The three statement triggers derive scopes through
+the parent recommendation; moved rows invalidate both accounts. Exact restore now
+attests and temporarily disables 25 revision triggers and preserves sparse `{}`
+versus `{title:null}`. Capture obtains the same table list from this frozen manifest.
+
+Manual resolution accepts only six category/title variants, trims boundaries,
+requires 1–500 Unicode code points and rejects ASCII controls/lone surrogates.
+Normalized receipt replay returns the same identity; distinct keys create distinct
+identities, including equal titles. Overrides replace the whole sparse object;
+omitted PATCH preserves, `{}` inherits, and `{title:null}` explicitly clears.
+Canonical reads keep existing accepted text with codepoint bounds. Editable detail
+requires canonical entity plus sparse overrides and nullable effective title.
+The shared public-content v1 is an unadopted internal checkpoint: its coordinated
+nullable title change is permitted before released consumer adoption. Public
+projections expose effective title only; existing category screens still use their
+legacy gateway and are not qualified consumers of this contract.
+
+## Provider Book cover copying (0035)
+
+`recommendation_book_covers` owns the independent `cover` and `thumbnail` slots.
+Both composite foreign keys bind the recommendation and ready recommendation-purpose
+image to the same account; snapshots remain in `recommendation_media`. Deferred
+forward and reverse guards require Books, supported image MIME and at most 5 MiB.
+Cover writes participate in category revisions. Runtime receives relation CRUD,
+but cannot execute the guard function. Terminal recommendation purge cascades both
+slots before deleting their media objects; shared Book facts remain retained.
+
+The named owner command `/recommendations/:id/book-covers` accepts only an issued
+recommendation revision plus idempotency key. Trusted canonical provider facts
+supply exact approved `books.google.com` URLs. HTTPS connections pin a validated
+public DNS answer while preserving hostname/TLS verification; redirects are denied.
+Receipt progress is durable between short transactions, optional copy failures retain
+external fallback, and stale attachment leaves previous covers intact. Media reference
+counts, public ancestor byte gates and populated restore include both slots.

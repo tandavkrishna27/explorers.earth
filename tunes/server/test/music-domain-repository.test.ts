@@ -77,7 +77,7 @@ describe("MusicDomainRepository owner predicates", () => {
     const client = { async query(text: string, values: unknown[] = []) {
       const normalized = text.replace(/\s+/g, " ").trim(); calls.push(normalized);
       if (/^(?:BEGIN|COMMIT|ROLLBACK)|pg_advisory_xact_lock/.test(normalized)) return { rows: [], rowCount: 0 };
-      if (/SELECT id FROM users WHERE guest_url/.test(normalized)) return { rows: [{ id: 7 }], rowCount: 1 };
+      if (/SELECT id FROM users u WHERE guest_url/.test(normalized)) return { rows: [{ id: 7 }], rowCount: 1 };
       if (/SELECT id,allow_song_requests/.test(normalized)) return { rows: [{ id: 7, allow_song_requests: true, guest_discoverable: true, guest_capability_hash: null }], rowCount: 1 };
       if (/SELECT request_hash,response_body FROM music_owner_operations/.test(normalized)) return { rows: receipt ? [receipt] : [], rowCount: receipt ? 1 : 0 };
       if (/WITH ordered AS/.test(normalized)) return { rows: [], rowCount: 0 };
@@ -99,7 +99,10 @@ describe("MusicDomainRepository owner predicates", () => {
       .resolves.toEqual({ status: "conflict" });
     expect({ queueInserts, queueRevisions, publicRevisions, notifications }).toEqual({ queueInserts: 1, queueRevisions: 1, publicRevisions: 1, notifications: 1 });
     expect(calls.filter((text) => text === "COMMIT")).toHaveLength(3);
-    expect(calls.findIndex((text) => text.includes("SELECT id FROM users WHERE guest_url")))
+    const authorityReads = calls.filter(text => /SELECT id(?:,allow_song_requests,guest_discoverable,guest_capability_hash)? FROM users u WHERE guest_url/.test(text));
+    expect(authorityReads).toHaveLength(6);
+    for (const text of authorityReads) expect(text).toContain("WHERE ami.music_user_id=u.id AND ca.status IS DISTINCT FROM 'active'");
+    expect(calls.findIndex((text) => text.includes("SELECT id FROM users u WHERE guest_url")))
       .toBeLessThan(calls.findIndex((text) => text.includes("pg_advisory_xact_lock")));
     expect(calls.findIndex((text) => text.includes("pg_advisory_xact_lock")))
       .toBeLessThan(calls.findIndex((text) => text.includes("SELECT id,allow_song_requests") && text.includes("FOR UPDATE")));
@@ -673,7 +676,10 @@ describe("MusicDomainRepository owner predicates", () => {
     await expect(new MusicDomainRepository(resourceHarness.pool).resolveGuestResource("public-slug", capability)).resolves.toMatchObject({
       state: "private",
     });
-    expect(resourceHarness.calls[0].text.replace(/\s+/g, " ")).toMatch(/u\.guest_url=\$2 AND \(u\.guest_discoverable=true OR \(\$3::boolean AND u\.guest_capability_hash=\$1\)\)/);
+    expect(resourceHarness.calls[0].text).toContain("u.guest_url=$2");
+    expect(resourceHarness.calls[0].text).toMatch(/AND \(u\.guest_discoverable=true OR \(\$3::boolean AND u\.guest_capability_hash=\$1\)\)/);
+    expect(resourceHarness.calls[0].text).toContain("WHERE ami.music_user_id=u.id AND ca.status IS DISTINCT FROM 'active'");
+    expect(socketHarness.calls[0].text).toContain("WHERE ami.music_user_id=u.id AND ca.status IS DISTINCT FROM 'active'");
   });
 
   it("returns the complete safe public playlist product shape", async () => {
@@ -905,6 +911,29 @@ describe("MusicDomainRepository owner predicates", () => {
     expect(normalizedSql).toContain("AND NOT EXISTS ( SELECT 1 FROM users collision WHERE collision.strapi_user_document_id=$1 )");
     expect(normalizedSql).toContain("AND NOT EXISTS ( SELECT 1 FROM music_identity_tombstones tombstone WHERE tombstone.strapi_user_document_id=$1 OR tombstone.strapi_account_document_id=$1 )");
     expect(harness.calls[0].text).not.toMatch(/SELECT\s+u\.id\b/i);
+  });
+
+  it("resolves a canonically provisioned owner through account_music_identity without coercing the id to uuid", async () => {
+    // Break caught: ADR-007 leaves strapi_account_document_id NULL for a canonically
+    // provisioned venue, so a Strapi-only lookup can never resolve one and its public
+    // Music page stays permanently unreachable.
+    // Break caught: comparing the uuid column straight to $1 makes Postgres coerce a
+    // legacy Strapi document id to uuid and raise 22P02, which would fail every
+    // pre-0039 lookup instead.
+    const harness = recordingPool([{ publicSlug: "canonical-public-slug", revision: "4" }]);
+    const accountId = "11111111-2222-4333-8444-555555555555";
+
+    await expect(new MusicDomainRepository(harness.pool).resolvePublicDescriptor(accountId))
+      .resolves.toEqual({ mode: "public", publicSlug: "canonical-public-slug", revision: 4 });
+
+    expect(harness.calls[0].values).toEqual([accountId]);
+    const canonicalSql = harness.calls[0].text.replace(/\s+/g, " ");
+    expect(canonicalSql).toContain("WHERE (u.strapi_account_document_id=$1 OR EXISTS ( SELECT 1 FROM account_music_identity owner WHERE owner.music_user_id=u.id AND owner.account_id::text=$1 ))");
+    expect(canonicalSql).not.toContain("owner.account_id=$1");
+    // The canonical arm must not relax a single guard the legacy arm carries.
+    expect(canonicalSql).toContain("AND u.identity_status='active'");
+    expect(canonicalSql).toContain("AND u.guest_discoverable=true");
+    expect(canonicalSql).toContain("AND NOT EXISTS ( SELECT 1 FROM music_identity_tombstones tombstone WHERE tombstone.strapi_user_document_id=$1 OR tombstone.strapi_account_document_id=$1 )");
   });
 
   it("fails closed when stable Account descriptor lookup is absent, colliding, or malformed", async () => {

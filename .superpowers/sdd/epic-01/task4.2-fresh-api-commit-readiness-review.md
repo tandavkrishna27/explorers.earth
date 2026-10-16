@@ -1,0 +1,23 @@
+# Fresh API commit readiness review
+
+PASS for a curated fixture commit at HEAD 46eea549d0d2661424a3dd2b8d71cee38cc47f30, reviewed 2026-10-05. This review performed read-only evidence/source/index inspections and runtime version probes, with no test rerun, resources, source edit, stage, commit, or push. This report is the sole owned write.
+
+Evidence root: C:/Users/TK/.codex/tmp/games-restore-committed-46eea54-9e801f4f6f304ca08e96b6e6c1ad4024. Independently parsed persisted JSON: committed reproduction 3 passed/1 failed/0 skipped; targeted repair 14 passed/0 failed/0 skipped; corrected actual npm full run 3373 total, 3369 passed, 0 failed, 4 pending/skipped, 399 reporter suites passed, success true. Final log contains actual package test script `vitest run --maxWorkers=2 --reporter=json --outputFile=...` and JSON-written terminal receipt. Prior direct-node full result is 3368/1/4; its sole CLI failure is absent from corrected result. Exit0 is the retained executing writer's terminal receipt, consistent with final success JSON, rather than an exit code independently recovered from log text.
+
+Read actual scoped log (tsc project/no incremental), baseline log (142 current/103 resolved, comparator clean despite underlying compiler exit2), external one-file strict config (strict/noEmit/incrementalfalse and required ambient includes), and empty strict diagnostic log. Their exit0 terminal receipts are documented by the qualifying writer. Fresh qualification supersedes the earlier fixture verification's invocation/finite-check blockers. No global zero-diagnostic TypeScript claim is made.
+
+Explicit retained runtime executable version probes independently returned node v24.21.0 and npm 11.19.0. Dependency provenance has four physical owned roots, no direct-dependency mismatches, unchanged controlled locks. Independently re-counted installed-lock package entries 33/780/24/745 and re-hashed each source LF lock matching provenance; inspected all four install logs. No install repeated.
+
+The source diff is exactly one existing test file (+5/-2 lines). Canonical manual Game presentation matches the strict public schema and media consistency refinement. Positive Game validity is restored while every non-Book Book-addition denial remains, with added missing/malformed/unknown Game-presentation denials. Privacy, unsafe URL, and nested unknown-field assertions remain. No assertion weakening, schema, product, workflow, or gate edit occurs. Integration and executed private test SHA256 both equal 43ba90ad600b99a32bcf06d2313f8778c416f2edf1ae8b3a8105067b7b726a83. Raw integration bytes contain zero CR bytes: LF source frozen. Scoped diff-check exits0; index empty.
+
+Independently compared prior native and corrected native skipped identities: exact same four (group-writable checkpoint directory; real PostgreSQL 50-query pool burst; native termination signal; stubborn Unix process-group escalation). Inspected source Windows guards and explicit MUSIC_C10_POSTGRES_TEST facility guard. Hosted 19 skips and native 4 are platform discovery results; Windows ACL/private-file and launcher guards explain different enabled sets. No claim that 15 skips were waived or hosted parity closed. Historical canonical82/native12/contracts116 stay historical; hosted browser/provider/parity obligations remain open.
+
+## Exact proposed curated commit inventory
+
+- tunes/server/test/explorers-manual-overrides.test.ts
+- .superpowers/sdd/epic-01/task4.2-fresh-api-full-qualification.md
+- .superpowers/sdd/epic-01/task4.2-fresh-api-commit-readiness-review.md
+
+The two documents are necessary fresh qualification and independent approval receipts. They reside under ignored .superpowers, so a future writer must explicitly force-add only those exact docs. Prior handoff/fixture-verification/root-cause reports remain outside this smallest inventory; their historical content is already referenced by fresh qualification. Preserve raw LF for the source when staging and verify staged blob hash equals the frozen SHA256; Git warns of potential LF-to-CRLF working-copy conversion. Recheck exact staged names and diff before commit. No broad git add.
+
+Seven other dirty tracked paths are protected: checkpoint-fa82-frontend-unit-repair-review.md, task-2-2-report.md, task3.1-shared-search-report.md, task4.2-games-a1a-independent-review.md, task4.2-games-a2-independent-review.md (all under .superpowers/sdd/epic-01), explorers-earth/public/robots.txt, explorers-earth/public/sitemap.xml. All untracked scratch/evidence and remaining ignored files are protected. PASS is finite commit readiness only; no push, hosted rerun, release or full parity authority is granted here.

@@ -164,6 +164,7 @@ interface ProfileFormBaseProps {
   onRegisterSubmit?: (
     submit: (() => Promise<SaveTerminalStatus>) | null,
   ) => void;
+  externalRevisionAdvance?: { accountId: string; fromRevision: number; toRevision: number } | null;
   surface?: "contained" | "flat";
   actionsPlacement?: "fixed" | "inline";
 }
@@ -320,28 +321,50 @@ const ProfileFormActions: FC<{
   onRegisterSubmit?: ProfileFormProps["onRegisterSubmit"];
   submit: (
     values: KeyValuePair,
-    resetForm: (nextState?: { values: KeyValuePair }) => void,
+    commitRevision: (submitted: KeyValuePair, revision?: number) => boolean,
   ) => Promise<SaveTerminalStatus>;
+  externalRevisionAdvance?: ProfileFormProps["externalRevisionAdvance"];
   isSaving: boolean;
   placement: "fixed" | "inline";
-}> = ({ onRegisterSubmit, submit, isSaving, placement }) => {
+}> = ({ onRegisterSubmit, submit, externalRevisionAdvance, isSaving, placement }) => {
   const { t } = useTranslation();
-  const { values, resetForm } = useFormikContext<KeyValuePair>();
+  const { values, initialValues, resetForm, setValues } = useFormikContext<KeyValuePair>();
   const valuesRef = useRef(values);
-  const resetFormRef = useRef(resetForm);
+  const commitRevisionRef = useRef<(submitted: KeyValuePair, revision?: number) => boolean>(() => false);
   const submitRef = useRef(submit);
   const inFlightRef = useRef<Promise<SaveTerminalStatus> | null>(null);
 
   valuesRef.current = values;
-  resetFormRef.current = resetForm;
+  commitRevisionRef.current = (submitted, revision) => {
+    const latest = valuesRef.current;
+    const changedDuringSave = JSON.stringify(latest) !== JSON.stringify(submitted);
+    const baseline = { ...submitted, revision: revision ?? submitted.revision };
+    const next = changedDuringSave ? { ...latest, revision: baseline.revision } : baseline;
+    valuesRef.current = next;
+    resetForm({ values: baseline });
+    if (changedDuringSave) void setValues(next, false);
+    return changedDuringSave;
+  };
   submitRef.current = submit;
+
+  useEffect(() => {
+    if (!externalRevisionAdvance) return;
+    const { accountId, fromRevision, toRevision } = externalRevisionAdvance;
+    if (valuesRef.current.documentId === accountId && valuesRef.current.revision === fromRevision) {
+      const latest = valuesRef.current;
+      const next = { ...latest, revision: toRevision };
+      valuesRef.current = next;
+      resetForm({ values: { ...initialValues, revision: toRevision } });
+      if (JSON.stringify(latest) !== JSON.stringify(initialValues)) void setValues(next, false);
+    }
+  }, [externalRevisionAdvance, initialValues, resetForm, setValues]);
 
   const submitCurrentSnapshot = useCallback(() => {
     if (inFlightRef.current) return inFlightRef.current;
 
     const submission = submitRef.current(
       valuesRef.current,
-      resetFormRef.current,
+      commitRevisionRef.current,
     );
     inFlightRef.current = submission;
     void submission.then(
@@ -399,6 +422,7 @@ const ProfileFormSession: FC<ProfileFormProps> = memo(
     onFeedDataChange,
     onFeedAsyncStateChange,
     onRegisterSubmit,
+    externalRevisionAdvance,
     mode = "single",
     workspaces,
     activeWorkspace,
@@ -754,7 +778,7 @@ const ProfileFormSession: FC<ProfileFormProps> = memo(
     // Form submission handler
     const formHandleSubmit = async (
       values: KeyValuePair,
-      resetForm?: (nextState?: { values: KeyValuePair }) => void,
+      commitRevision?: (submitted: KeyValuePair, revision?: number) => boolean,
     ): Promise<SaveTerminalStatus> => {
       const pendingOperation = pendingFeedOperations.values().next().value;
       if (pendingOperation) {
@@ -796,8 +820,9 @@ const ProfileFormSession: FC<ProfileFormProps> = memo(
         const terminal = await awaitProfileSaveTerminal(result);
 
         if (terminal === "saved") {
-          resetDirtyState();
-          resetForm?.({ values });
+          const changedDuringSave = commitRevision?.(values, result.status === "saved" || result.status === "deferred"
+            ? result.committedRevision : undefined);
+          if (!changedDuringSave) resetDirtyState();
         }
 
         return terminal;
@@ -1487,6 +1512,7 @@ const ProfileFormSession: FC<ProfileFormProps> = memo(
               <ProfileFormActions
                 onRegisterSubmit={onRegisterSubmit}
                 submit={formHandleSubmit}
+                externalRevisionAdvance={externalRevisionAdvance}
                 isSaving={isSaving}
                 placement={actionsPlacement}
               />

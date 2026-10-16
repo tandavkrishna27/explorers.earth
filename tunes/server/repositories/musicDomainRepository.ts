@@ -16,6 +16,14 @@ END`;
 
 type QueryPool = Pick<Pool, "query" | "connect">;
 
+// A legacy venue without a canonical mapping retains its existing availability.
+// A mapped venue must still belong to an active canonical account; an orphan fails closed.
+const CANONICAL_PUBLIC_AVAILABILITY_SQL = `NOT EXISTS (
+  SELECT 1 FROM account_music_identity ami
+  LEFT JOIN creator_accounts ca ON ca.id=ami.account_id
+  WHERE ami.music_user_id=u.id AND ca.status IS DISTINCT FROM 'active'
+)`;
+
 const QUEUE_MUTATION_LOCK = 0x4d51;
 const SAVED_PLAYLIST_LOCK = 0x4d53;
 const PLAYLIST_COLLECTION_LOCK = 0x4d54;
@@ -57,6 +65,18 @@ export interface PublicMusicResource {
   recentlyPlayed: { items: PublicMusicSong[]; total: number; truncated: boolean };
   playlists: { items: PublicMusicPlaylist[]; total: number; truncated: boolean };
 }
+
+/**
+ * The monthly guest song request ceiling, per Music owner. Decision D1, 2026-10-08: TK set
+ * it at 100 per calendar month with the surface labelled beta.
+ *
+ * This is an abuse and cost control, not a billing surface. Every accepted request is a
+ * YouTube Data API call, so without a durable ceiling the launch has no bound on
+ * third-party spend. It is deliberately separate from the two limits beside it: the
+ * per-minute `recentForSource` check stops one client flooding, and the 500-row active
+ * queue check bounds how long a queue can get. Neither bounds a month's total.
+ */
+export const MONTHLY_GUEST_REQUEST_CAP = 100;
 
 export class MusicDomainRepository {
   private readonly publicIdHmacKey?: Buffer;
@@ -1018,6 +1038,7 @@ export class MusicDomainRepository {
   ): Promise<
     | { status: "completed"; replayed: boolean; response: { accepted: true } }
     | { status: "conflict" | "limit" | "forbidden" | "rate_limited" }
+    | { status: "quota_exceeded"; cap: number; retryAfterSeconds: number }
   > {
     assertCanonicalYouTubeVideoId(input.youtubeId);
     const operationFamily = "guest.song.request:";
@@ -1032,7 +1053,8 @@ export class MusicDomainRepository {
     try {
       await client.query("BEGIN");
       const resolved = (await client.query(
-        `SELECT id FROM users WHERE guest_url=$1 AND identity_status='active'
+        `SELECT id FROM users u WHERE guest_url=$1 AND identity_status='active'
+              AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}
            AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$2 AND guest_capability_revoked_at IS NULL))`,
         [publicSlug, capabilityHash, capabilityValid],
       )).rows[0];
@@ -1041,7 +1063,8 @@ export class MusicDomainRepository {
       await client.query("SELECT pg_advisory_xact_lock($1,$2)", [QUEUE_MUTATION_LOCK, musicUserId]);
       const owner = (await client.query(
         `SELECT id,allow_song_requests,guest_discoverable,guest_capability_hash
-           FROM users WHERE guest_url=$1 AND identity_status='active'
+           FROM users u WHERE guest_url=$1 AND identity_status='active'
+              AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}
               AND id=$4
               AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$2 AND guest_capability_revoked_at IS NULL))
            FOR UPDATE`,
@@ -1083,6 +1106,37 @@ export class MusicDomainRepository {
         "SELECT count(*)::integer AS count FROM songs WHERE user_id=$1 AND status IN ('queued','playing')", [musicUserId],
       )).rows[0]?.count ?? 0);
       if (activeCount >= 500) { await client.query("ROLLBACK"); return { status: "limit" }; }
+      /*
+       * The monthly cap. Decision D1.
+       *
+       * Counted by upsert-and-read rather than check-then-increment, so the count and the
+       * queue insert commit together or not at all. The ROLLBACK below therefore undoes the
+       * increment too: a refused request does not consume quota, which it would under a
+       * read followed by a separate write.
+       *
+       * Neither of the two tables that look like they already count this can. Rows in
+       * `music_owner_operations` expire after 24 hours and are swept by this very function,
+       * and `songs` churns as the queue plays, so one gives a daily figure and the other
+       * gives a queue length.
+       */
+      const monthlyCount = Number((await client.query(
+        `INSERT INTO music_request_quota(music_user_id,period_start,accepted_count)
+         VALUES ($1,date_trunc('month',transaction_timestamp())::date,1)
+         ON CONFLICT (music_user_id,period_start)
+         DO UPDATE SET accepted_count=music_request_quota.accepted_count+1,updated_at=now()
+         RETURNING accepted_count`,
+        [musicUserId],
+      )).rows[0]?.accepted_count ?? 0);
+      if (monthlyCount > MONTHLY_GUEST_REQUEST_CAP) {
+        // Seconds until the next calendar month, from the database clock rather than the
+        // node process, because the period boundary above is the database's.
+        const retryAfterSeconds = Math.max(1, Math.ceil(Number((await client.query(
+          `SELECT EXTRACT(EPOCH FROM (date_trunc('month',transaction_timestamp())
+             + interval '1 month' - transaction_timestamp())) AS seconds`,
+        )).rows[0]?.seconds ?? 3600)));
+        await client.query("ROLLBACK");
+        return { status: "quota_exceeded", cap: MONTHLY_GUEST_REQUEST_CAP, retryAfterSeconds };
+      }
       await client.query(
         `INSERT INTO songs(user_id,youtube_id,title,artist,thumbnail_url,position,status)
          VALUES ($1,$2,$3,$4,$5,$6,'queued')`,
@@ -1191,10 +1245,25 @@ export class MusicDomainRepository {
     revision: number;
   } | undefined> {
     const rows = (await this.pool.query(
+      // The descriptor id is the owner's account identifier, and after ADR-007 a
+      // canonically provisioned venue has NULL in strapi_account_document_id, so the
+      // legacy arm alone can never resolve one. The canonical arm joins through
+      // account_music_identity, as explorersAnalyticsEventRepository already does.
+      // account_id is compared as text deliberately: $1 is still a legacy Strapi
+      // document id for pre-0039 venues, and `account_id=$1` would make Postgres
+      // coerce that to uuid and raise 22P02, failing every legacy lookup.
+      // Canonical owners have no representable tombstone (ADR-008 decision 5), so the
+      // tombstone and collision guards below remain keyed on the Strapi columns.
       `SELECT u.guest_url AS "publicSlug",u.public_snapshot_revision AS revision
          FROM users u
-        WHERE u.strapi_account_document_id=$1
+        WHERE (u.strapi_account_document_id=$1
+               OR EXISTS (
+                 SELECT 1 FROM account_music_identity owner
+                  WHERE owner.music_user_id=u.id
+                    AND owner.account_id::text=$1
+               ))
           AND u.identity_status='active'
+          AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}
           AND u.guest_discoverable=true
           AND u.guest_url IS NOT NULL
           AND length(u.guest_url) BETWEEN 8 AND 128
@@ -1222,7 +1291,7 @@ export class MusicDomainRepository {
   async resolvePublicSnapshotRevision(musicUserId: number): Promise<number | undefined> {
     if (!Number.isSafeInteger(musicUserId) || musicUserId < 1) return undefined;
     const row = (await this.pool.query(
-      "SELECT public_snapshot_revision AS revision FROM users WHERE id=$1 AND identity_status='active'",
+      `SELECT public_snapshot_revision AS revision FROM users u WHERE id=$1 AND identity_status='active' AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}`,
       [musicUserId],
     )).rows[0];
     const revision = Number(row?.revision);
@@ -1244,7 +1313,7 @@ export class MusicDomainRepository {
                 u.allow_song_requests,u.allow_guest_play_on_device,u.allow_playlist_sharing,
                 u.allow_recently_played_visibility,u.allow_queue_visibility
            FROM users u
-          WHERE u.guest_url=$2
+          WHERE u.guest_url=$2 AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}
             AND (u.guest_discoverable=true OR ($3::boolean AND u.guest_capability_hash=$1))
           LIMIT 1`,
         [capabilityHash, publicSlug, capabilityValid],
@@ -1385,8 +1454,8 @@ export class MusicDomainRepository {
     const capabilityHash = capabilityValid ? hashGuestCapability(capability) : "0".repeat(64);
     const row = (await this.pool.query(
       `SELECT id,identity_status,guest_discoverable,guest_capability_hash,guest_capability_revoked_at
-         FROM users
-        WHERE guest_url=$2
+         FROM users u
+        WHERE guest_url=$2 AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}
           AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$1))
         LIMIT 1`,
       [capabilityHash, publicSlug, capabilityValid],
@@ -1432,7 +1501,7 @@ export class MusicDomainRepository {
         ) ORDER BY p.id) FILTER (WHERE p.id IS NOT NULL),'[]'::jsonb)
           FROM playlists p WHERE p.user_id=u.id AND p.is_visible_to_guests=true) AS visible_playlists
        FROM users u
-         WHERE u.guest_url=$2 AND (u.guest_discoverable=true OR ($3::boolean AND u.guest_capability_hash=$1))
+         WHERE u.guest_url=$2 AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL} AND (u.guest_discoverable=true OR ($3::boolean AND u.guest_capability_hash=$1))
        LIMIT 1`,
       [capabilityHash, publicSlug, capabilityValid],
     )).rows[0];
@@ -1475,8 +1544,9 @@ export class MusicDomainRepository {
   async resolveGuestSocketAuthority(capability: string) {
     if (!/^[A-Za-z0-9_-]{43}$/.test(capability)) return undefined;
     const row = (await this.pool.query(
-      `SELECT id,allow_song_requests,guest_capability_hash FROM users
-       WHERE guest_capability_hash=$1 AND guest_capability_revoked_at IS NULL AND identity_status='active'`,
+      `SELECT id,allow_song_requests,guest_capability_hash FROM users u
+       WHERE guest_capability_hash=$1 AND guest_capability_revoked_at IS NULL AND identity_status='active'
+         AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}`,
       [hashGuestCapability(capability)],
     )).rows[0];
     return row && verifyGuestCapability(capability, row.guest_capability_hash)
@@ -1488,8 +1558,9 @@ export class MusicDomainRepository {
     const capabilityValid = typeof capability === "string" && /^[A-Za-z0-9_-]{43}$/.test(capability);
     const capabilityHash = capabilityValid ? hashGuestCapability(capability) : null;
     const row = (await this.pool.query(
-      `SELECT id,allow_song_requests,guest_discoverable,guest_capability_hash FROM users
+      `SELECT id,allow_song_requests,guest_discoverable,guest_capability_hash FROM users u
        WHERE guest_url=$1 AND identity_status='active'
+         AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}
          AND (guest_discoverable=true OR ($3::boolean AND guest_capability_hash=$2 AND guest_capability_revoked_at IS NULL))`,
       [publicSlug, capabilityHash, capabilityValid],
     )).rows[0];
@@ -1505,6 +1576,7 @@ export class MusicDomainRepository {
       `SELECT DISTINCT u.guest_url AS "guestUrl",u.updated_at AS "updatedAt"
          FROM users u
         WHERE u.identity_status='active'
+          AND ${CANONICAL_PUBLIC_AVAILABILITY_SQL}
           AND u.guest_url IS NOT NULL
           AND u.guest_discoverable=true
           AND EXISTS (

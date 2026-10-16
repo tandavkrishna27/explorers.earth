@@ -39,6 +39,7 @@ export const RETIRED_MUSIC_ROUTE_RULES: readonly RetiredMusicRouteRule[] = [
   { family: "scrape", path: "/api/products", match: "prefix", classification: "tombstone" },
   { family: "scrape", path: "/api/people", match: "prefix", classification: "tombstone" },
   { family: "scrape", path: "/api/proxy-image", match: "prefix", classification: "tombstone" },
+  { family: "itunes", path: "/itunes-api", match: "prefix", classification: "tombstone" },
   { family: "scrape", path: "/apps", match: "prefix", classification: "tombstone" },
   { family: "scrape", path: "/products", match: "prefix", classification: "tombstone" },
   { family: "scrape", path: "/people", match: "prefix", classification: "tombstone" },

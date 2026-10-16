@@ -2,53 +2,12 @@ import * as Yup from "yup";
 import { Places } from "../../Profile/types/types";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
-type MediaItem = {
-  __typename: string;
-  url: string;
-};
-
-interface PlaceDetails {
-  Title: string;
-  Rating: number;
-  Place_Id: string;
-  Place_Name: string;
-  Geometry?: {
-    lat: number;
-    lng: number;
-  };
-  Place_Address?: string;
-  Rating_Count?: number;
-}
-
-type RecommendationSubCategory = {
-  __typename: string;
-  sub_category: string;
-  documentId: string;
-};
-
-type RecommendationCategory = {
-  Category_Name: string;
-  documentId: string;
-};
-
+import type { RecommendedPlaceView } from "../api/placesViewModel";
+// Ticket 5.1. The place as the owner view presents it. The Strapi-era types claimed every
+// field was populated; a manual place has no provider id or rating, a creator may have
+// disclosed no contact details, and an absent coordinate pair stays absent.
 interface FetchedPlace {
-  recommendedPlace: {
-    Contact_Name: string;
-    Contact_Number: string;
-    Media: MediaItem[];
-    recommendation_category: RecommendationCategory;
-    Place_Details: PlaceDetails;
-    Places_Social_Link: string | null;
-    Places_Website: string | null;
-    Users_Place_Note: string | null;
-    Users_Social_URL: string;
-    documentId: string;
-    media_details: string | null;
-    recommendation_sub_category: RecommendationSubCategory;
-    user_recommendation_note: string;
-    user_rating?: number | null;
-    google_rating?: number | null;
-  };
+  recommendedPlace: RecommendedPlaceView;
 }
 export const useRecommendationFields = ({
   places,
@@ -105,13 +64,12 @@ export const useRecommendationFields = ({
   const editInitialValues = useMemo(() => ({
     title: fetchedPlace?.recommendedPlace?.Place_Details?.Title || "",
     address: fetchedPlace?.recommendedPlace?.Place_Details?.Place_Address || "",
-    recommendation: "",
-    subcategory:
-      fetchedPlace?.recommendedPlace?.recommendation_sub_category
-        ?.documentId || "",
-    category:
-      fetchedPlace?.recommendedPlace?.recommendation_category
-        ?.documentId || "",
+    recommendation: fetchedPlace?.recommendedPlace.person_profile_url || "",
+    subcategory: fetchedPlace?.recommendedPlace.placesTaxonomy.subcategory?.id || "",
+    category: fetchedPlace?.recommendedPlace.placesTaxonomy.category?.id || "",
+    categoryLabel: fetchedPlace?.recommendedPlace.placesTaxonomy.category?.label,
+    subcategoryLabel: fetchedPlace?.recommendedPlace.placesTaxonomy.subcategory?.label,
+    taxonomyUnavailable: fetchedPlace?.recommendedPlace.placesTaxonomy.selectionUnavailable,
     contactName: fetchedPlace?.recommendedPlace?.Contact_Name || "",
     contactNumber: fetchedPlace?.recommendedPlace?.Contact_Number || "",
     socialLink:
@@ -132,7 +90,7 @@ export const useRecommendationFields = ({
 
   // validation schema for recommended Place - memoized to update when language changes
   const validationSchema = useMemo(() => Yup.object({
-    subcategory: Yup.string().required(t("dashboard.recommendations.addRecommendationForm.validationMessages.categoryRequired")),
+    subcategory: Yup.string(),
     recommendationLink: Yup.string(),
     reason: Yup.string(),
     // Address is required for places, optional for persons
@@ -193,13 +151,6 @@ export const useRecommendationFields = ({
         placeholder: recommendationType === "person"
           ? "Enter phone number (optional)"
           : t("dashboard.recommendations.addRecommendationForm.taggableFieldsPlaceholders.contactNumber"),
-      },
-      {
-        name: "subcategory",
-        label: "Category",
-        type: "dropdown",
-        placeholder: t("dashboard.recommendations.addRecommendationForm.taggableFieldsPlaceholders.category"),
-        isRequired: true,
       },
       {
         name: "socialLink",

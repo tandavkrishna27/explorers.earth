@@ -1,0 +1,426 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 2.75kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+#2 DONE 1.6s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 103B done
+#3 DONE 0.0s
+
+#4 [base 1/4] FROM public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+#4 resolve public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 0.0s done
+#4 DONE 0.0s
+
+#5 [base 2/4] WORKDIR /app
+#5 CACHED
+
+#6 [internal] load build context
+#6 transferring context: 8.60MB 0.6s done
+#6 DONE 0.8s
+
+#7 [base 3/4] RUN : "0c0b1075d7b577e95dbd6fdb3556f2635e3ec250" && apk upgrade --no-cache
+#7 1.051 (1/2) Upgrading libcrypto3 (3.5.8-r0 -> 3.5.9-r0)
+#7 1.202 (2/2) Upgrading libssl3 (3.5.8-r0 -> 3.5.9-r0)
+#7 1.243 OK: 10.9 MiB in 18 packages
+#7 DONE 1.3s
+
+#8 [base 4/4] RUN apk add --no-cache       chromium       nss       freetype       harfbuzz       ca-certificates       ttf-freefont
+#8 0.646 (  1/180) Installing ca-certificates (20260909-r0)
+#8 0.683 (  2/180) Installing chromium-angle (152.0.7977.82-r0)
+#8 0.719 (  3/180) Installing chromium-common (152.0.7977.82-r0)
+#8 0.758 (  4/180) Installing libexpat (2.8.5-r0)
+#8 0.775 (  5/180) Installing brotli-libs (1.2.0-r1)
+#8 0.816 (  6/180) Installing libbz2 (1.0.8-r6)
+#8 0.830 (  7/180) Installing libpng (1.6.59-r0)
+#8 0.852 (  8/180) Installing freetype (2.14.3-r0)
+#8 0.891 (  9/180) Installing fontconfig (2.17.1-r1)
+#8 0.925 ( 10/180) Installing libfontenc (1.1.9-r0)
+#8 0.934 ( 11/180) Installing mkfontscale (1.2.4-r0)
+#8 0.944 ( 12/180) Installing font-opensans (0_git20210927-r1)
+#8 1.093 ( 13/180) Installing libffi (3.5.2-r1)
+#8 1.104 ( 14/180) Installing libintl (1.0-r0)
+#8 1.117 ( 15/180) Installing libeconf (0.8.3-r0)
+#8 1.132 ( 16/180) Installing libblkid (2.42.3-r1)
+#8 1.156 ( 17/180) Installing libmount (2.42.3-r1)
+#8 1.177 ( 18/180) Installing pcre2 (10.49-r0)
+#8 1.210 ( 19/180) Installing glib (2.88.1-r1)
+#8 1.393 ( 20/180) Installing gobject-introspection (1.86.0-r1)
+#8 1.415 ( 21/180) Installing pkgconf (2.5.1-r0)
+#8 1.432 ( 22/180) Installing xz-libs (5.8.4-r0)
+#8 1.452 ( 23/180) Installing libxml2 (2.13.9-r2)
+#8 1.487 ( 24/180) Installing shared-mime-info (2.4-r7)
+#8 1.527 ( 25/180) Installing libxau (1.0.12-r0)
+#8 1.538 ( 26/180) Installing libmd (1.2.0-r0)
+#8 1.551 ( 27/180) Installing libbsd (0.12.2-r0)
+#8 1.564 ( 28/180) Installing libxdmcp (1.1.5-r1)
+#8 1.574 ( 29/180) Installing libxcb (1.17.0-r2)
+#8 1.604 ( 30/180) Installing libx11 (1.8.13-r0)
+#8 1.689 ( 31/180) Installing libxcomposite (0.4.7-r0)
+#8 1.700 ( 32/180) Installing libxfixes (6.0.2-r0)
+#8 1.707 ( 33/180) Installing libxrender (0.9.12-r0)
+#8 1.726 ( 34/180) Installing libxcursor (1.2.3-r0)
+#8 1.738 ( 35/180) Installing libxdamage (1.1.7-r0)
+#8 1.755 ( 36/180) Installing libxext (1.3.7-r0)
+#8 1.774 ( 37/180) Installing libxi (1.8.3-r0)
+#8 1.789 ( 38/180) Installing libxinerama (1.1.6-r0)
+#8 1.801 ( 39/180) Installing libxrandr (1.5.5-r0)
+#8 1.827 ( 40/180) Installing libatk-1.0 (2.60.5-r0)
+#8 1.843 ( 41/180) Installing dbus-libs (1.16.2-r2)
+#8 1.865 ( 42/180) Installing at-spi2-core-libs (2.60.5-r0)
+#8 1.887 ( 43/180) Installing libxtst (1.2.5-r0)
+#8 1.897 ( 44/180) Installing at-spi2-core (2.60.5-r0)
+#8 1.917 ( 45/180) Installing libatk-bridge-2.0 (2.60.5-r0)
+#8 1.956 ( 46/180) Installing pixman (0.46.4-r0)
+#8 2.075 ( 47/180) Installing cairo (1.18.4-r1)
+#8 2.148 ( 48/180) Installing cairo-gobject (1.18.4-r1)
+#8 2.188 ( 49/180) Installing avahi-libs (0.9_rc4-r0)
+#8 2.208 ( 50/180) Installing gmp (6.3.0-r4)
+#8 2.234 ( 51/180) Installing nettle (3.10.2-r0)
+#8 2.271 ( 52/180) Installing libunistring (1.4.2-r0)
+#8 2.337 ( 53/180) Installing libidn2 (2.3.8-r0)
+#8 2.353 ( 54/180) Installing libtasn1 (4.21.0-r0)
+#8 2.364 ( 55/180) Installing p11-kit (0.26.2-r0)
+#8 2.393 ( 56/180) Installing zstd-libs (1.5.7-r2)
+#8 2.437 ( 57/180) Installing gnutls (3.8.13-r0)
+#8 2.520 ( 58/180) Installing cups-libs (2.4.19-r0)
+#8 2.546 ( 59/180) Installing libepoxy (1.5.10-r1)
+#8 2.575 ( 60/180) Installing fribidi (1.0.16-r3)
+#8 2.586 ( 61/180) Installing libcap2 (2.78-r0)
+#8 2.595 ( 62/180) Installing bubblewrap (0.12.0-r0)
+#8 2.605 ( 63/180) Installing lcms2 (2.19-r0)
+#8 2.630 ( 64/180) Installing libseccomp (2.6.0-r2)
+#8 2.643 ( 65/180) Installing libglycin (2.1.5-r0)
+#8 2.732   Executing libglycin-2.1.5-r0.post-install
+#8 2.735   * glycin loaders got split into their individual subpackages.
+#8 2.735   * By default, only glycin-image-rs & glycin-svg are installed.
+#8 2.735   * Additional loader subpackages are glycin-heif, glycin-jxl & glycin-raw.
+#8 2.735   *
+#8 2.735   * To install all available loaders, install glycin-loaders-all.
+#8 2.735   *
+#8 2.735   * Also the glycin-thumbnailer got subpackaged and isn't installed by default.
+#8 2.735 ( 66/180) Installing glycin-image-rs (2.1.5-r0)
+#8 2.883 ( 67/180) Installing libdav1d (1.5.3-r0)
+#8 2.948 ( 68/180) Installing libxft (2.3.9-r0)
+#8 2.961 ( 69/180) Installing graphite2 (1.3.14-r6)
+#8 2.975 ( 70/180) Installing harfbuzz (13.2.1-r0)
+#8 3.043 ( 71/180) Installing pango (1.57.1-r0)
+#8 3.068 ( 72/180) Installing librsvg (2.62.3-r0)
+#8 3.204 ( 73/180) Installing glycin-svg (2.1.5-r0)
+#8 3.262 ( 74/180) Installing gdk-pixbuf (2.44.7-r1)
+#8 3.279 ( 75/180) Installing wayland-libs-client (1.25.0-r0)
+#8 3.289 ( 76/180) Installing wayland-libs-cursor (1.25.0-r0)
+#8 3.296 ( 77/180) Installing wayland-libs-egl (1.25.0-r0)
+#8 3.302 ( 78/180) Installing xkeyboard-config (2.47-r0)
+#8 3.363 ( 79/180) Installing libxkbcommon (1.13.1-r0)
+#8 3.385 ( 80/180) Installing gtk+3.0 (3.24.52-r0)
+#8 3.726 ( 81/180) Installing icu-data-full (78.1-r0)
+#8 4.744 ( 82/180) Installing llvm22-libs (22.1.3-r0)
+#8 9.886 ( 83/180) Installing spirv-tools (1.4.341.0-r0)
+#8 10.06 ( 84/180) Installing hwdata-pci (0.408-r0)
+#8 10.11 ( 85/180) Installing libpciaccess (0.19-r0)
+#8 10.12 ( 86/180) Installing libdrm (2.4.134-r0)
+#8 10.14 ( 87/180) Installing libelf (0.195-r0)
+#8 10.15 ( 88/180) Installing libxshmfence (1.3.3-r0)
+#8 10.16 ( 89/180) Installing mesa (26.1.6-r0)
+#8 11.30 ( 90/180) Installing mesa-gbm (26.1.6-r0)
+#8 11.30 ( 91/180) Installing mesa-dri-gallium (26.1.6-r0)
+#8 11.31 ( 92/180) Installing eudev-libs (3.2.14-r6)
+#8 11.32 ( 93/180) Installing libmagic (5.47-r2)
+#8 11.36 ( 94/180) Installing file (5.47-r2)
+#8 11.37 ( 95/180) Installing xprop (1.2.8-r0)
+#8 11.37 ( 96/180) Installing libice (1.1.2-r0)
+#8 11.39 ( 97/180) Installing libuuid (2.42.3-r1)
+#8 11.39 ( 98/180) Installing libsm (1.2.6-r0)
+#8 11.40 ( 99/180) Installing libxt (1.3.1-r0)
+#8 11.42 (100/180) Installing libxmu (1.3.1-r0)
+#8 11.43 (101/180) Installing xset (1.2.5-r1)
+#8 11.44 (102/180) Installing xdg-utils (1.2.1-r1)
+#8 11.46 (103/180) Installing libogg (1.3.6-r0)
+#8 11.46 (104/180) Installing libflac (1.4.3-r2)
+#8 11.48 (105/180) Installing alsa-lib (1.2.15.3-r0)
+#8 11.52 (106/180) Installing libSvtAv1Enc (4.1.0-r0)
+#8 11.74 (107/180) Installing aom-libs (3.14.1-r0)
+#8 11.98 (108/180) Installing libva (2.23.0-r0)
+#8 11.99 (109/180) Installing libvdpau (1.5-r4)
+#8 12.00 (110/180) Installing libvpl (2.15.0-r1)
+#8 12.02 (111/180) Installing ffmpeg-libavutil (8.1.2-r0)
+#8 12.06 (112/180) Installing libhwy (1.3.0-r0)
+#8 12.07 (113/180) Installing libjxl (0.11.2-r1)
+#8 12.16 (114/180) Installing lame-libs (3.100-r5)
+#8 12.18 (115/180) Installing opus (1.6.1-r0)
+#8 12.20 (116/180) Installing rav1e-libs (0.8.1-r0)
+#8 12.29 (117/180) Installing libgomp (15.2.0-r5)
+#8 12.31 (118/180) Installing soxr (0.1.3-r7)
+#8 12.32 (119/180) Installing ffmpeg-libswresample (8.1.2-r0)
+#8 12.33 (120/180) Installing libtheora (1.2.0-r1)
+#8 12.37 (121/180) Installing libvorbis (1.3.7-r2)
+#8 12.39 (122/180) Installing libvpx (1.15.2-r1)
+#8 12.49 (123/180) Installing libsharpyuv (1.6.0-r0)
+#8 12.50 (124/180) Installing libwebp (1.6.0-r0)
+#8 12.53 (125/180) Installing libwebpmux (1.6.0-r0)
+#8 12.54 (126/180) Installing x264-libs (0.164.3108-r1)
+#8 12.61 (127/180) Installing numactl (2.0.19-r0)
+#8 12.62 (128/180) Installing x265-libs (4.1-r0)
+#8 12.94 (129/180) Installing xvidcore (1.3.7-r2)
+#8 12.95 (130/180) Installing ffmpeg-libavcodec (8.1.2-r0)
+#8 13.66 (131/180) Installing libudfread (1.2.0-r1)
+#8 13.67 (132/180) Installing libbluray (1.4.0-r0)
+#8 13.69 (133/180) Installing libdvdcss (1.4.3-r0)
+#8 13.70 (134/180) Installing libdvdread (6.1.3-r2)
+#8 13.71 (135/180) Installing libdvdnav (6.1.1-r1)
+#8 13.72 (136/180) Installing mpg123-libs (1.33.5-r0)
+#8 13.74 (137/180) Installing libopenmpt (0.8.9-r0)
+#8 13.83 (138/180) Installing cjson (1.7.19-r1)
+#8 13.84 (139/180) Installing mbedtls3 (3.6.7-r0)
+#8 13.88 (140/180) Installing librist (0.2.15-r0)
+#8 13.89 (141/180) Installing libsrt (1.5.3-r1)
+#8 13.93 (142/180) Installing libssh (0.12.2-r0)
+#8 13.95 (143/180) Installing libsodium (1.0.22-r0)
+#8 13.98 (144/180) Installing libzmq (4.3.5-r2)
+#8 14.00 (145/180) Installing ffmpeg-libavformat (8.1.2-r0)
+#8 14.11 (146/180) Installing crc32c (1.1.2-r3)
+#8 14.12 (147/180) Installing double-conversion (3.4.0-r0)
+#8 14.13 (148/180) Installing harfbuzz-subset (13.2.1-r0)
+#8 14.18 (149/180) Installing libjpeg-turbo (3.1.3-r0)
+#8 14.20 (150/180) Installing minizip (1.3.2-r1)
+#8 14.21 (151/180) Installing nspr (4.38.2-r0)
+#8 14.23 (152/180) Installing sqlite-libs (3.53.4-r0)
+#8 14.30 (153/180) Installing nss (3.124-r0)
+#8 14.45 (154/180) Installing openh264 (2.6.0-r0)
+#8 14.51 (155/180) Installing libcamera-ipa (0.7.1-r1)
+#8 14.52 (156/180) Installing mesa-gles (26.1.6-r0)
+#8 14.53 (157/180) Installing mesa-egl (26.1.6-r0)
+#8 14.55 (158/180) Installing libunwind (1.8.3-r0)
+#8 14.56 (159/180) Installing yaml (0.2.5-r2)
+#8 14.58 (160/180) Installing libyuv (0.0.1928-r0)
+#8 14.63 (161/180) Installing libcamera (0.7.1-r1)
+#8 14.69 (162/180) Installing speexdsp (1.2.1-r2)
+#8 14.70 (163/180) Installing libuv (1.52.1-r0)
+#8 14.71 (164/180) Installing roc-toolkit-libs (0.4.0-r1)
+#8 14.75 (165/180) Installing abseil-cpp-raw-logging-internal (20250814.1-r0)
+#8 14.76 (166/180) Installing abseil-cpp-strings-internal (20250814.1-r0)
+#8 14.77 (167/180) Installing abseil-cpp-strings (20250814.1-r0)
+#8 14.78 (168/180) Installing webrtc-audio-processing-2 (2.1-r1)
+#8 14.82 (169/180) Installing pipewire-libs (1.6.8-r4)
+#8 15.02 (170/180) Installing libasyncns (0.8-r5)
+#8 15.03 (171/180) Installing libltdl (2.6.0-r1)
+#8 15.04 (172/180) Installing orc (0.4.41-r0)
+#8 15.06 (173/180) Installing libsndfile (1.2.2-r2)
+#8 15.09 (174/180) Installing tdb-libs (1.4.15-r1)
+#8 15.10 (175/180) Installing libpulse (17.0-r7)
+#8 15.15 (176/180) Installing libwebpdemux (1.6.0-r0)
+#8 15.15 (177/180) Installing libxslt (1.1.43-r3)
+#8 15.17 (178/180) Installing chromium (152.0.7977.82-r0)
+#8 27.16 (179/180) Installing encodings (1.1.0-r0)
+#8 27.23 (180/180) Installing font-freefont (20120503-r4)
+#8 27.58 Executing busybox-1.37.0-r31.trigger
+#8 27.59 Executing ca-certificates-20260909-r0.trigger
+#8 27.61 Executing fontconfig-2.17.1-r1.trigger
+#8 27.63 Executing mkfontscale-1.2.4-r0.trigger
+#8 27.65 Executing glib-2.88.1-r1.trigger
+#8 27.66 Executing shared-mime-info-2.4-r7.trigger
+#8 27.89 Executing gdk-pixbuf-2.44.7-r1.trigger
+#8 27.90 Executing gtk+3.0-3.24.52-r0.trigger
+#8 27.91 OK: 769.5 MiB in 198 packages
+#8 DONE 28.2s
+
+#9 [deps 1/3] COPY auth-runtime/package.json auth-runtime/package-lock.json auth-runtime/index.js auth-runtime/index.d.ts ./auth-runtime/
+#9 DONE 0.1s
+
+#10 [deps 2/3] COPY package.json package-lock.json ./
+#10 DONE 0.1s
+
+#11 [runner 1/8] RUN rm -rf /usr/local/lib/node_modules/npm     && rm -f /usr/local/bin/npm /usr/local/bin/npx
+#11 DONE 0.5s
+
+#12 [deps 3/3] RUN npm ci --engine-strict
+#12 ...
+
+#13 [prod-deps 3/4] RUN npm ci --omit=dev --engine-strict
+#13 4.580 npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+#13 ...
+
+#12 [deps 3/3] RUN npm ci --engine-strict
+#12 7.857 npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+#12 ...
+
+#13 [prod-deps 3/4] RUN npm ci --omit=dev --engine-strict
+#13 14.25 npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+#13 14.40 npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+#13 ...
+
+#12 [deps 3/3] RUN npm ci --engine-strict
+#12 14.93 npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+#12 15.09 npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+#12 17.18 npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+#12 17.19 npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+#12 ...
+
+#13 [prod-deps 3/4] RUN npm ci --omit=dev --engine-strict
+#13 23.89
+#13 23.89 > rest-express@1.0.0 postinstall
+#13 23.89 > npm ci --prefix auth-runtime --omit=dev
+#13 23.89
+#13 26.37
+#13 26.37 added 24 packages, and audited 25 packages in 2s
+#13 26.37
+#13 26.37 5 packages are looking for funding
+#13 26.37   run `npm fund` for details
+#13 26.37
+#13 26.37 found 0 vulnerabilities
+#13 26.45
+#13 26.45 added 641 packages, and audited 643 packages in 26s
+#13 26.45
+#13 26.45 81 packages are looking for funding
+#13 26.45   run `npm fund` for details
+#13 26.47
+#13 26.47 7 vulnerabilities (2 moderate, 5 high)
+#13 26.47
+#13 26.47 To address issues that do not require attention, run:
+#13 26.47   npm audit fix
+#13 26.47
+#13 26.47 To address all issues (including breaking changes), run:
+#13 26.47   npm audit fix --force
+#13 26.47
+#13 26.47 Run `npm audit` for details.
+#13 26.47 npm warn install-scripts 4 packages have install scripts not yet covered by allowScripts:
+#13 26.47 npm warn install-scripts   @scarf/scarf@1.4.0 (postinstall: node ./report.js)
+#13 26.47 npm warn install-scripts   bufferutil@4.0.8 (install: node-gyp-build)
+#13 26.47 npm warn install-scripts   puppeteer@25.8.0 (postinstall: node install.mjs)
+#13 26.47 npm warn install-scripts   esbuild@0.25.12 (postinstall: node install.js)
+#13 26.47 npm warn install-scripts
+#13 26.47 npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+#13 26.47 npm notice
+#13 26.47 npm notice New major version of npm available! 11.19.0 -> 12.2.0
+#13 26.47 npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+#13 26.47 npm notice To update run: npm install -g npm@12.2.0
+#13 26.47 npm notice
+#13 DONE 27.0s
+
+#12 [deps 3/3] RUN npm ci --engine-strict
+#12 ...
+
+#14 [prod-deps 4/4] RUN rm -rf node_modules/tsx node_modules/.bin/tsx
+#14 DONE 0.5s
+
+#12 [deps 3/3] RUN npm ci --engine-strict
+#12 ...
+
+#15 [runner 2/8] COPY --from=prod-deps /app/node_modules ./node_modules
+#15 DONE 3.0s
+
+#12 [deps 3/3] RUN npm ci --engine-strict
+#12 ...
+
+#16 [runner 3/8] COPY --from=prod-deps /app/auth-runtime ./auth-runtime
+#16 DONE 0.5s
+
+#12 [deps 3/3] RUN npm ci --engine-strict
+#12 32.49
+#12 32.49 > rest-express@1.0.0 postinstall
+#12 32.49 > npm ci --prefix auth-runtime --omit=dev
+#12 32.49
+#12 34.95
+#12 34.95 added 24 packages, and audited 25 packages in 2s
+#12 34.95
+#12 34.95 5 packages are looking for funding
+#12 34.95   run `npm fund` for details
+#12 34.95
+#12 34.95 found 0 vulnerabilities
+#12 35.05
+#12 35.05 added 781 packages, and audited 783 packages in 35s
+#12 35.05
+#12 35.05 111 packages are looking for funding
+#12 35.05   run `npm fund` for details
+#12 35.08
+#12 35.08 14 vulnerabilities (6 moderate, 8 high)
+#12 35.08
+#12 35.08 To address issues that do not require attention, run:
+#12 35.08   npm audit fix
+#12 35.08
+#12 35.08 To address all issues (including breaking changes), run:
+#12 35.08   npm audit fix --force
+#12 35.08
+#12 35.08 Run `npm audit` for details.
+#12 35.08 npm warn install-scripts 7 packages have install scripts not yet covered by allowScripts:
+#12 35.08 npm warn install-scripts   esbuild@0.25.12 (postinstall: node install.js)
+#12 35.08 npm warn install-scripts   @scarf/scarf@1.4.0 (postinstall: node ./report.js)
+#12 35.08 npm warn install-scripts   bufferutil@4.0.8 (install: node-gyp-build)
+#12 35.08 npm warn install-scripts   esbuild@0.25.12 (postinstall: node install.js)
+#12 35.08 npm warn install-scripts   esbuild@0.28.1 (postinstall: node install.js)
+#12 35.08 npm warn install-scripts   puppeteer@25.8.0 (postinstall: node install.mjs)
+#12 35.08 npm warn install-scripts   esbuild@0.25.12 (postinstall: node install.js)
+#12 35.08 npm warn install-scripts
+#12 35.08 npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+#12 35.08 npm notice
+#12 35.08 npm notice New major version of npm available! 11.19.0 -> 12.2.0
+#12 35.08 npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+#12 35.08 npm notice To update run: npm install -g npm@12.2.0
+#12 35.08 npm notice
+#12 DONE 35.4s
+
+#17 [builder 1/2] COPY . .
+#17 DONE 0.4s
+
+#18 [builder 2/2] RUN npm run build:api
+#18 0.341
+#18 0.341 > rest-express@1.0.0 build:api
+#18 0.341 > node scripts/clean-api-dist.mjs && esbuild server/api.ts server/deployment/run-migration-gate.ts server/deployment/run-registration-compat.ts server/deployment/run-production-graph-smoke.ts --platform=node --packages=external --external:#auth-runtime --bundle --splitting --format=esm --outbase=server --outdir=dist/server
+#18 0.341
+#18 0.396
+#18 0.396   dist/server/chunk-KRCMDZ5J.js                          528.8kb
+#18 0.396   dist/server/canonicalStartup-74OEWJJV.js               258.6kb
+#18 0.396   dist/server/chunk-4FLKZ2FO.js                          115.5kb
+#18 0.396   dist/server/chunk-OJPZ4ZEH.js                          110.5kb
+#18 0.396   dist/server/chunk-5NFH43P5.js                           52.9kb
+#18 0.396   dist/server/music-startup-O2HTXF6F.js                   40.1kb
+#18 0.396   dist/server/chunk-YW6WQUUS.js                           23.4kb
+#18 0.396   dist/server/chunk-22YYB3VX.js                           12.8kb
+#18 0.396   dist/server/chunk-4E4Z7ADX.js                           12.6kb
+#18 0.396   dist/server/chunk-SKW2GOQS.js                            9.0kb
+#18 0.396   dist/server/chunk-HCT2ILVM.js                            7.3kb
+#18 0.396   dist/server/chunk-NIEDHMJS.js                            5.8kb
+#18 0.396   dist/server/chunk-XBHYJUEZ.js                            3.3kb
+#18 0.396   dist/server/deployment/run-registration-compat.js        2.9kb
+#18 0.396   dist/server/deployment/run-migration-gate.js             2.8kb
+#18 0.396   dist/server/chunk-ZTWFOUM5.js                            2.7kb
+#18 0.396   dist/server/explorers-analytics-migration-4IPZ2UYO.js    1.7kb
+#18 0.396   dist/server/api.js                                       1.3kb
+#18 0.396   dist/server/chunk-FDUVALOO.js                            936b
+#18 0.396   dist/server/deployment/run-production-graph-smoke.js     647b
+#18 0.396   ...and 5 more output files...
+#18 0.396
+#18 0.396 ⚡ Done in 30ms
+#18 DONE 0.4s
+
+#19 [runner 4/8] COPY --from=builder /app/dist ./dist
+#19 DONE 0.1s
+
+#20 [runner 5/8] COPY package.json ./
+#20 DONE 0.1s
+
+#21 [runner 6/8] COPY drizzle.config.ts ./
+#21 DONE 0.1s
+
+#22 [runner 7/8] COPY shared ./shared
+#22 DONE 0.1s
+
+#23 [runner 8/8] COPY migrations ./migrations
+#23 DONE 0.1s
+
+#24 exporting to image
+#24 exporting layers
+#24 exporting layers 16.0s done
+#24 exporting manifest sha256:3ef8916bd2d4a4e98a41cfc62a1e5d59f38d4dc5ea9e850a361e7be8b0ff951c 0.0s done
+#24 exporting config sha256:b2af7d514dacd92c7312b71ec67fdd23b413ee77e23ca09a558d8e78976b3248 0.0s done
+#24 exporting attestation manifest sha256:d2c1e75ef16945f08a156b396ab526b1b3a479ba0564623c39bb75a608ba638c 0.1s done
+#24 exporting manifest list sha256:45a97b06f840e63df2070c1a1dfd8ea5766e9badf9c73ae9de4a0fdd712a9d2f
+#24 exporting manifest list sha256:45a97b06f840e63df2070c1a1dfd8ea5766e9badf9c73ae9de4a0fdd712a9d2f 0.0s done
+#24 naming to docker.io/library/explorers-movies-b-qualification:source150 done
+#24 unpacking to docker.io/library/explorers-movies-b-qualification:source150
+#24 unpacking to docker.io/library/explorers-movies-b-qualification:source150 10.0s done
+#24 DONE 26.2s

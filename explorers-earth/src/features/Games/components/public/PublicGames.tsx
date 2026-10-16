@@ -30,6 +30,8 @@ const PublicGames = () => {
     game: null,
   });
 
+  useEffect(() => setModalState({ open: false, game: null }), [username]);
+
   const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
   const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
   const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
@@ -69,10 +71,9 @@ const PublicGames = () => {
   }, [lists]);
 
   const topPicks = useMemo(() => {
-    return allGames
-      .filter((g) => g.is_pinned)
+    return (Array.isArray(data?.topPicks) ? data.topPicks : []).filter((value): value is RecommendedGame => isNonNullObject(value) && typeof value.documentId === 'string' && typeof value.title === 'string' && isNonNullObject(value.game_list))
       .sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999));
-  }, [allGames]);
+  }, [data?.topPicks]);
 
   const handleGameClick = useCallback((game: RecommendedGame) => {
     setModalState({ open: true, game });
@@ -152,7 +153,7 @@ const PublicGames = () => {
           <>
             {queryError && <PublicRoutePartialNotice message="Some game data is unavailable." />}
             {/* Empty state */}
-            {allGames.length === 0 ? (
+            {allGames.length === 0 && topPicks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <Gamepad2 size={48} className="text-[color:var(--category-muted,rgba(255,255,255,0.2))] mb-4" />
                 <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-lg font-medium">No games shared yet</p>

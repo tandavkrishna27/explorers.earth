@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, MoreVertical, Trash2, Loader2, ShoppingBag, Pencil, Copy, Check, Share2, Download
@@ -10,8 +9,8 @@ import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import Accordion from "../../../../components/ui/Accordian";
 import useAuthStore from "../../../../store/store";
-import { PRODUCTS_BY_LIST, productsByListVars } from "../../api/query";
-import { UPDATE_PRODUCT_LIST, DELETE_PRODUCT_LIST, TOGGLE_PRODUCT_PIN, DELETE_RECOMMENDED_PRODUCT } from "../../api/mutation";
+import { useProductsCommands, useProductsCallerCustody } from "../../api/query";
+import { useProductsOwner } from "../../hooks/useProductsOwner";
 import { deduplicateProducts, buildImageUrl, extractNoteText, formatPrice } from "../../utils/productHelpers";
 import type { RecommendedProduct, ProductList } from "../../types";
 import Switch from "../../../../components/ui/Switch";
@@ -137,16 +136,13 @@ const ProductListView = () => {
     listName: string;
   } | null>(null);
 
-  const { data, loading, refetch } = useQuery(PRODUCTS_BY_LIST, {
-    variables: productsByListVars(listId!),
-    skip: !listId,
-    fetchPolicy: "cache-and-network",
-  });
-
-  const [updateProductList, { loading: isUpdating }] = useMutation(UPDATE_PRODUCT_LIST);
-  const [deleteProductList, { loading: deletingList }] = useMutation(DELETE_PRODUCT_LIST);
-  const [togglePin] = useMutation(TOGGLE_PRODUCT_PIN);
-  const [deleteProduct] = useMutation(DELETE_RECOMMENDED_PRODUCT);
+  const { data, content, loading, refetch } = useProductsOwner(listId, Boolean(listId));
+  const commands = useProductsCommands(), isUpdating = commands.loading, deletingList = commands.loading;
+  const beginEffects = useProductsCallerCustody();
+  const updateProductList = ({ variables }: { variables: { documentId?: string; Visibility?: boolean; List_Name?: string; list_description?: string | null }; optimisticResponse?: unknown; refetchQueries?: unknown[] }) => commands.updateList(variables.documentId!, { ...(variables.Visibility === undefined ? {} : { visibility: variables.Visibility ? 'public' : 'private', publicationState: variables.Visibility ? 'published' : 'draft' }), ...(variables.List_Name === undefined ? {} : { title: variables.List_Name }), ...(variables.list_description === undefined ? {} : { description: variables.list_description }) });
+  const deleteProductList = ({ variables }: { variables: { documentId: string } }) => commands.archiveList(variables.documentId);
+  const togglePin = ({ variables }: { variables: { documentId: string; is_pinned: boolean; pin_order: number | null }; refetchQueries?: unknown[] }) => commands.pin(variables.documentId, listId!, variables.is_pinned);
+  const deleteProduct = ({ variables }: { variables: { documentId: string }; refetchQueries?: unknown[] }) => commands.membership(variables.documentId, listId!, false);
 
   const listData: ProductList | null = data?.productLists?.[0] ?? null;
   const products = deduplicateProducts(listData?.recommended_products ?? []);
@@ -187,6 +183,7 @@ const ProductListView = () => {
       toast.error("Add at least one product before publishing.");
       return;
     }
+    const current = beginEffects();
     try {
       await updateProductList({
         variables: { documentId: listData.documentId, Visibility: !listData.Visibility },
@@ -202,11 +199,11 @@ const ProductListView = () => {
             top_products_heading: listData.top_products_heading || null,
           }
         },
-        refetchQueries: [{ query: PRODUCTS_BY_LIST, variables: productsByListVars(listId!) }],
       });
+      if (!current()) return;
       toast.success(listData.Visibility ? "List set to draft." : "List published!");
     } catch {
-      toast.error("Failed to update visibility.");
+      if (current()) toast.error("Failed to update visibility.");
     }
   };
 
@@ -215,45 +212,60 @@ const ProductListView = () => {
       toast.error("Max 15 pinned products allowed.");
       return;
     }
+    const current = beginEffects();
     setPinningId(product.documentId);
     const pinnedProducts = products.filter((p) => p.is_pinned && p.documentId !== product.documentId);
     const newPinOrder = product.is_pinned ? null : pinnedProducts.length;
     try {
       await togglePin({
         variables: { documentId: product.documentId, is_pinned: !product.is_pinned, pin_order: newPinOrder },
-        refetchQueries: [{ query: PRODUCTS_BY_LIST, variables: productsByListVars(listId!) }],
       });
     } catch {
-      toast.error("Failed to update pin.");
+      if (current()) toast.error("Failed to update pin.");
     } finally {
-      setPinningId(null);
+      if (current()) setPinningId(null);
     }
   };
 
   const handleDelete = async (product: RecommendedProduct) => {
     if (!window.confirm(`Delete "${product.title}"?`)) return;
+    const current = beginEffects();
     setDeletingId(product.documentId);
     try {
       await deleteProduct({
         variables: { documentId: product.documentId },
-        refetchQueries: [{ query: PRODUCTS_BY_LIST, variables: productsByListVars(listId!) }],
       });
+      if (!current()) return;
       toast.success("Product removed.");
     } catch {
-      toast.error("Failed to delete product.");
+      if (current()) toast.error("Failed to delete product.");
     } finally {
-      setDeletingId(null);
+      if (current()) setDeletingId(null);
+    }
+  };
+
+  const handleRecommendationPublication = async (product: RecommendedProduct, published: boolean) => {
+    const current = beginEffects();
+    try {
+      await commands.publishRecommendation(product.documentId, published);
+      if (!current()) return;
+      toast.success(published ? 'Product published.' : 'Product kept as draft.');
+    } catch {
+      if (!current()) return;
+      toast.error('Product publication could not be saved. Please retry.');
     }
   };
 
   const handleDeleteList = async () => {
     if (!listData) return;
+    const current = beginEffects();
     try {
       await deleteProductList({ variables: { documentId: listData.documentId } });
+      if (!current()) return;
       toast.success("List deleted.");
       navigate("/recommendations/products");
     } catch {
-      toast.error("Failed to delete list.");
+      if (current()) toast.error("Failed to delete list.");
     }
   };
 
@@ -350,6 +362,18 @@ const ProductListView = () => {
                       onDelete={handleDelete}
                       isPinning={pinningId === product.documentId}
                     />
+                    {/* A published list serves only published recommendations, so the row
+                        carries its own publication state rather than inheriting the list's. */}
+                    <div className="flex items-center justify-between gap-3 pb-3 text-xs text-dashboard-muted">
+                      <span>Recommendation is {content?.details.get(product.documentId)?.detail.publicationState === 'published' ? 'Published' : 'Draft'}</span>
+                      <button
+                        disabled={commands.loading || !content?.details.has(product.documentId)}
+                        onClick={() => handleRecommendationPublication(product, content?.details.get(product.documentId)?.detail.publicationState !== 'published')}
+                        className="text-dashboard-accent"
+                      >
+                        {content?.details.get(product.documentId)?.detail.publicationState === 'published' ? `Keep ${product.title} as draft` : `Publish ${product.title}`}
+                      </button>
+                    </div>
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -380,7 +404,7 @@ const ProductListView = () => {
                         defaultValue={listData?.List_Name}
                         onBlur={async (e) => {
                           if (e.target.value && e.target.value !== listData?.List_Name) {
-                            await updateProductList({ variables: { documentId: listData?.documentId, List_Name: e.target.value }, refetchQueries: [{ query: PRODUCTS_BY_LIST, variables: productsByListVars(listId!) }] });
+                            await updateProductList({ variables: { documentId: listData?.documentId, List_Name: e.target.value } });
                             toast.success("List name updated.");
                           }
                         }}
@@ -394,7 +418,7 @@ const ProductListView = () => {
                         rows={3}
                         onBlur={async (e) => {
                           if (e.target.value !== (listData?.list_description ?? "")) {
-                            await updateProductList({ variables: { documentId: listData?.documentId, list_description: e.target.value }, refetchQueries: [{ query: PRODUCTS_BY_LIST, variables: productsByListVars(listId!) }] });
+                            await updateProductList({ variables: { documentId: listData?.documentId, list_description: e.target.value } });
                             toast.success("Description updated.");
                           }
                         }}
@@ -538,7 +562,6 @@ const ProductListView = () => {
             try {
               await updateProductList({
                 variables: { documentId: listData.documentId, Visibility: true },
-                refetchQueries: [{ query: PRODUCTS_BY_LIST, variables: productsByListVars(listId!) }],
               });
               refetch();
               toast.success(`"${listData.List_Name}" published!`);

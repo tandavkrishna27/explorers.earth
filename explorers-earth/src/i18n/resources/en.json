@@ -257,7 +257,9 @@
           "today": "No analytics data available for today. Please select a different time range to view your data."
         },
         "noDataMessage": "No analytics data found for your account. Analytics will appear here once people start viewing and interacting with your QR codes.",
-        "title": "No Analytics Data"
+        "title": "No Analytics Data",
+        "unavailableTitle": "Detailed Analytics Unavailable",
+        "unavailableMessage": "Detailed analytics are temporarily unavailable while we move this dashboard to our new platform. This does not mean your pages have had no visitors — your activity is still being recorded, and it will appear here once the move is complete."
       },
       "error": {
         "errorLabel": "Error:",
@@ -293,7 +295,6 @@
       "message": "This account has been deactivated.",
       "reactivateLink": "Click here to reactivate your account →"
     },
-    "claimAccount": "Claim Account?",
     "confirmPassword": "Confirm Password",
     "confirmPasswordPlaceholder": "Re-enter your password",
     "email": "Email",

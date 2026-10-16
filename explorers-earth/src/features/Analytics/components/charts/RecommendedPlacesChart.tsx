@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { usePlacesOwner } from '../../../Favorites/hooks/usePlacesOwner';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { useQuery } from '@apollo/client';
 import { PublicPageAnalyticsData } from '../../api/queries';
 import { useResponsiveChart } from '../../../../hooks/useResponsiveChart';
-import { recommendationListQuery } from '../../../Favorites/api/query';
 import EmptyState from '../EmptyState';
 
 interface RecommendedPlacesChartProps {
@@ -40,7 +39,9 @@ const RecommendedPlacesChart: React.FC<RecommendedPlacesChartProps> = ({ rawAnal
   const { showPieLabels, chartConfig } = useResponsiveChart();
 
   // Fetch recommendation lists to get location names by ID
-  const { data: recommendationListsData } = useQuery(recommendationListQuery);
+  // Ticket 5.1. recommendationLists is the Places category, and usePlacesOwner already
+  // returns exactly that key - the same swap Home needed.
+  const { data: recommendationListsData } = usePlacesOwner();
 
   // Create a map of Location_Id to List_Name for quick lookup
   const locationIdToNameMap = useMemo(() => {

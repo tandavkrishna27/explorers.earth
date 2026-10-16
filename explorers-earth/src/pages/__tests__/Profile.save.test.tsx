@@ -38,6 +38,14 @@ const { accountScope, harness, mutationSubmit, toastError, toastSuccess } = vi.h
 vi.mock("sonner", () => ({
   toast: { error: toastError, success: toastSuccess, warning: vi.fn() },
 }));
+vi.mock("../../features/Profile/api/useCanonicalAccount", () => ({
+  useCanonicalAccount: () => ({ data: { id: accountScope.current.documentId, handle: "tinoue",
+    onboardingStatus: "complete", revision: 1 }, isLoading: false, error: null, refetch: vi.fn() }),
+}));
+vi.mock("../../features/Profile/api/profileClient", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../../features/Profile/api/profileClient")>(),
+  toProfileViewModel: () => accountScope.current,
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -162,6 +170,7 @@ vi.mock("../../store/useSetupStore", () => ({
     isProfileComplete: true,
     isRecommendationsComplete: true,
     setSetupStatus: vi.fn(),
+    bindAccount: vi.fn(),
   }),
 }));
 vi.mock("../../utils/setupStatusCalculations", () => ({

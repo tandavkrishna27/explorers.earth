@@ -1,0 +1,50 @@
+{
+  "qualification": "finite local manual Games slice",
+  "hosted": "pending exact proposed commit",
+  "fullProviderParity": "open",
+  "releaseEligible": false,
+  "base": "2f57782f2b3144688bad9ec00bd9884cb20cc90e",
+  "dirty": true,
+  "sourceHash": "dcbb43b945321f03ca8f25350d756b366f1ca002efc412727b7258fa19ed9f81",
+  "source104Manifest": "b76b20edc744cfcf517e34b15df1fbe4e90c040c693bbc23d9f5bee6c2ec579e",
+  "canonical82": {
+    "laneCounts": {
+      "games": 20,
+      "movies": 24,
+      "profile": 2,
+      "lifecycle": 10,
+      "auth": 6,
+      "books": 20
+    },
+    "retry": 0,
+    "cleanup": "passed",
+    "passed": 82,
+    "skipped": 0,
+    "failed": 0,
+    "receiptSha256": "eab57e191f8c636c7699abd3730cc366c0870a796ab0257ade93a944d6cbae59",
+    "artifactProtection": "passed"
+  },
+  "frontend": {
+    "skipped": 0,
+    "failed": 0,
+    "build": 0,
+    "types": 0,
+    "passed": 4231,
+    "files": 309,
+    "lintWarnings": 1658,
+    "lintErrors": 0,
+    "node": "24.21.0"
+  },
+  "historicalFailureCauses": "unresolved",
+  "ownerRepair": {
+    "provedDefectFamilies": 2,
+    "files": 8
+  },
+  "pagingSynchronization": "proactive, not historical cause proof",
+  "diagnosticFailures": [
+    "CRLF transform preparation failure",
+    "zero-execution private Git inventory omission"
+  ],
+  "currentEOFOnlyManifest": "feba1db26339677c1350b7359260fac6c472270807b0b910f57dca0ea867b9f9",
+  "EOFOnlyDelta": "five source and one curated report terminal newline removals across two authorized corrections; prior82/sourceb76 remains historical; no tests repeated; committed qualification mandatory"
+}

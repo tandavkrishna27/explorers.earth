@@ -70,9 +70,7 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
   const lightboxMediaItems = useMemo(() => {
     if (!game) return [];
     const coverUrl = buildCoverUrl(game.cover_url_large || game.cover_url);
-    const screenshots = game.media_details?.imageDetails?.length 
-      ? game.media_details.imageDetails.map((img: any) => buildCoverUrl(img.url))
-      : (game.screenshot_ids?.map((id: string) => `https://images.igdb.com/igdb/image/upload/t_1080p/${id}.jpg`) || []);
+    const screenshots = (game.Media ?? []).map(image => buildCoverUrl(image.url)).filter(Boolean);
 
     const items: any[] = [];
     if (coverUrl && coverUrl !== FALLBACK_COVER) {
@@ -97,9 +95,7 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
   if (!game) return null;
 
   const coverUrl = buildCoverUrl(game.cover_url_large || game.cover_url);
-  const screenshots = game.media_details?.imageDetails?.length 
-    ? game.media_details.imageDetails.map((img: any) => buildCoverUrl(img.url))
-    : (game.screenshot_ids?.map((id: string) => `https://images.igdb.com/igdb/image/upload/t_1080p/${id}.jpg`) || []);
+  const screenshots = (game.Media ?? []).map(image => buildCoverUrl(image.url)).filter(Boolean);
 
   const backdropUrl = screenshots.length > 0 ? screenshots[0] : null;
   const noteText = extractNoteText(game.user_recommendation_note);

@@ -22,7 +22,7 @@ import {
   validateMusicTokenConfiguration,
   type MusicTokenConfiguration,
 } from "../services/musicTokenService";
-import { fingerprintStrapiProof } from "../services/strapiIdentityGateway";
+import { fingerprintStrapiProof } from "../services/proofFingerprint";
 
 const NOW = 1_800_000_000_000;
 const CURRENT_SECRET = Buffer.alloc(32, 0x41).toString("base64url");
@@ -240,13 +240,19 @@ describe("C5 principal critical coverage", () => {
 
   it("normalizes non-token verifier failures and rejects subject substitution", async () => {
     const verifierFailure = new MusicPrincipalService(
-      { verify: () => { throw new Error("unsafe dependency detail"); } },
+      {
+        verifyContext: () => { throw new Error("unsafe dependency detail"); },
+        acceptsSigningKey: () => true,
+      } as never,
       { resolveCredentialSubject: async () => ({ identity: activeIdentity, tombstoned: false }) },
     );
     await expect(verifierFailure.resolve("token")).rejects.toEqual(expect.objectContaining({ code: "TOKEN_INVALID" }));
 
     const subjectMismatch = new MusicPrincipalService(
-      { verify: () => ({ ...validPayload(), sub: "subject-claims" }) as never },
+      {
+        verifyContext: () => ({ claims: { ...validPayload(), sub: "subject-claims" }, kid: "current" }),
+        acceptsSigningKey: () => true,
+      } as never,
       { resolveCredentialSubject: async () => ({ identity: activeIdentity, tombstoned: false }) },
     );
     await expect(subjectMismatch.resolve("token")).rejects.toEqual(expect.objectContaining({ code: "TOKEN_REVOKED" }));

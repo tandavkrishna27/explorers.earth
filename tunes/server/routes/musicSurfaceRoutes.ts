@@ -48,6 +48,7 @@ interface CanonicalMusicRepository {
   addGuestSongIdempotent(publicSlug: string, capability: string | undefined, source: string, idempotencyKey: string, input: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }): Promise<
     | { status: "completed"; replayed: boolean; response: { accepted: true } }
     | { status: "conflict" | "limit" | "forbidden" | "rate_limited" }
+    | { status: "quota_exceeded"; cap: number; retryAfterSeconds: number }
   >;
   setPlaying(ownerId: number, songId: number | null, expectedRevision?: number, expectedPlaybackRevision?: number): Promise<unknown | null | undefined>;
   updateSongPosition(ownerId: number, songId: number, position: number): Promise<unknown | undefined>;
@@ -95,6 +96,17 @@ interface CanonicalMusicRepository {
 export interface CanonicalMusicRouteDependencies {
   repository: CanonicalMusicRepository;
   resolvePrincipal(token: string): Promise<MusicPrincipal>;
+  /**
+   * Ticket 6.3. Issues a short, purpose-limited handshake ticket for an already
+   * authenticated owner. Required: the socket accepts nothing else, so a composition that
+   * serves the socket without mounting this route leaves every owner unable to connect.
+   * It was optional once, and production did not pass it, which is exactly that outage.
+   */
+  mintSocketTicket(input: {
+    subject: string;
+    sessionVersion: number;
+    subjectKind?: MusicPrincipal["subjectKind"];
+  }): { token: string; expiresAt: number };
   requestIdFactory?: () => string;
   now?: () => Date;
   allowedOrigins: string[];
@@ -323,6 +335,26 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
         revision: result.response.revision,
         songs: result.response.songs.map(songDto),
       });
+    } catch (error) { next(error); }
+  }));
+
+  // Ticket 6.3. A handshake ticket is minted only for an owner who already proved a
+  // credential on this request, and it is never accepted in place of one: the socket
+  // takes tickets and every HTTP surface refuses them. Short-lived by construction, so
+  // the client asks again per connection attempt rather than holding one.
+  app.post("/api/music/socket-ticket", ...mutation(async (req, res, next) => {
+    try {
+      const principal = req.musicPrincipal!;
+      const ticket = dependencies.mintSocketTicket({
+        subject: principal.subject,
+        sessionVersion: principal.sessionVersion,
+        ...(principal.subjectKind ? { subjectKind: principal.subjectKind } : {}),
+        // Inherited, not re-derived: the handshake must be revocable by the same logout
+        // that revokes the credential it was minted from.
+        ...(principal.sessionId && principal.userId
+          ? { sessionId: principal.sessionId, userId: principal.userId } : {}),
+      });
+      res.status(200).json({ version: "music-socket-ticket/v1", ticket });
     } catch (error) { next(error); }
   }));
 
@@ -610,6 +642,18 @@ export function setupCanonicalMusicRoutes(app: Express, dependencies: CanonicalM
       else if (result.status === "limit") throw new MusicIdentityError("REQUEST_INVALID", 413, "The Music request queue is full.", "retry", true);
       else if (result.status === "forbidden") throw invalidGuestCapability();
       else if (result.status === "rate_limited") throw new MusicIdentityError("RATE_LIMITED", 429, "Too many Music requests.", "retry", true, 60);
+      // Decision D1's monthly ceiling. RATE_LIMITED rather than a new error code: a monthly
+      // cap is a rate limit, 429 is the right status for it, and reusing the code keeps the
+      // published error contract and the OpenAPI surface unchanged. Retry-After is the real
+      // time to the next calendar month, not a token minute - telling a guest to come back
+      // in sixty seconds when the limit resets in nine days would simply be false.
+      else if (result.status === "quota_exceeded") {
+        throw new MusicIdentityError(
+          "RATE_LIMITED", 429,
+          `This venue has reached its monthly limit of ${result.cap} song requests. Requests open again next month.`,
+          "retry", true, result.retryAfterSeconds,
+        );
+      }
       if (result.status !== "completed") throw invalidGuestCapability();
       if (result.replayed) res.setHeader("Idempotency-Replayed", "true");
       res.status(201).json(result.response);

@@ -31,6 +31,15 @@ export class MusicMigrationTestResources {
 
   trackPool<Pool extends EndablePool>(pool: Pool): Pool {
     this.pools.add(pool);
+    // pg emits 'error' on the POOL for its IDLE clients. These suites deliberately drop
+    // databases and terminate backends, so an idle client's socket receives "terminating
+    // connection due to administrator command"; with no listener that surfaces as an UNCAUGHT
+    // EXCEPTION and fails the whole run while every test passes (observed: 686 passed / 0
+    // failed, exit 1). Swallowing it is correct here -- the connection was terminated on
+    // purpose -- and queries in flight still reject to their callers.
+    // Capability-guarded: the resources contract test tracks fake pools that only have end().
+    const listenable = pool as unknown as { on?: (event: string, handler: (error: unknown) => void) => void };
+    if (typeof listenable.on === 'function') listenable.on('error', () => {});
     return pool;
   }
 

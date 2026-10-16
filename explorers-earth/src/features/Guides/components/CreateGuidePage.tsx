@@ -1,27 +1,24 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
 import { toast } from "sonner";
 import BackIcon from "../../../assets/icons/BackIcon";
 import Button from "../../../components/ui/Button";
 import CreateGuideStep1 from "./CreateGuideStep1";
 import CreateGuideStep2 from "./CreateGuideStep2";
 import CreateGuideStep3 from "./CreateGuideStep3";
-import { GET_GUIDE_BY_ID_QUERY, GET_USER_ACCOUNT_QUERY } from "../api/queries";
-import { CREATE_GUIDE_MUTATION, UPDATE_GUIDE_MUTATION, CREATE_GUIDE_SECTION_MUTATION, UPDATE_GUIDE_SECTION_MUTATION } from "../api/mutations";
-import useAuthStore from "../../../store/store";
-import { uploadGuideMedia } from "../guideService";
+import { useGuidesOwner } from "../hooks/useGuidesOwner";
+import { GuidesClient } from "../api/guidesClient";
+import { createGuide } from "../api/guideCreation";
+import { guideWizardDetails } from "../api/guideWizardDetails";
+import { explorersApiClient } from "../../../lib/explorersApiClient";
 import {
-  htmlToBlocks,
   blocksToHtml,
 } from "../../../utils/strapiBlocksConverter";
-import type { AIGeneratedGuide } from "../../../services/geminiService";
 import {
   fetchSingleCityLocationImage,
   fetchMultiCityLocationImage,
   type LocationImageResult
 } from "../services/locationImageService";
-import { enrichAIPlaces, extractLocationContext } from "../services/placeEnrichmentService";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 
@@ -81,7 +78,6 @@ const CreateGuidePage = ({
 }: CreateGuidePageProps) => {
   const navigate = useNavigate();
   const { guideId } = useParams();
-  const { user } = useAuthStore();
 
   // Step management - support 3 steps for Itinerary, 2 steps for Theme
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -115,11 +111,6 @@ const CreateGuidePage = ({
     }
   }, [defaultTitle]);
 
-  // AI-generated guide sections data
-  const [aiGeneratedSections, setAiGeneratedSections] = useState<AIGeneratedGuide["sections"] | null>(null);
-  // AI-generated guide-level tips and tags
-  const [aiGeneratedTipsNotes, setAiGeneratedTipsNotes] = useState<any>(null);
-  const [aiGeneratedGuideTags, setAiGeneratedGuideTags] = useState<string[] | null>(null);
 
   // Location image pre-fill state
 
@@ -128,33 +119,13 @@ const CreateGuidePage = ({
   // Calculate total steps based on guide type
   const totalSteps = formData.guideType === "Itinerary" ? 3 : 2;
 
-  // Queries and mutations
-  const { data: accountData } = useQuery(GET_USER_ACCOUNT_QUERY, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-  });
-
-  // Fetch existing guide data in edit mode
-  const { data: guideData, loading: guideLoading } = useQuery(
-    GET_GUIDE_BY_ID_QUERY,
-    {
-      variables: { documentId: guideId },
-      skip: type !== "edit" || !guideId,
-    }
-  );
-
-  const [createGuideMutation] = useMutation(CREATE_GUIDE_MUTATION);
-  const [createGuideSectionMutation] = useMutation(CREATE_GUIDE_SECTION_MUTATION);
-  const [updateGuideSectionMutation] = useMutation(UPDATE_GUIDE_SECTION_MUTATION);
-  const [updateGuideMutation] = useMutation(UPDATE_GUIDE_MUTATION, {
-    refetchQueries: [
-      {
-        query: GET_GUIDE_BY_ID_QUERY,
-        variables: { documentId: guideId },
-      },
-    ],
-    awaitRefetchQueries: true,
-  });
+  // No account lookup: the canonical owner read is already scoped to the signed-in owner.
+  // In edit mode this also supplies the observation every write states its revision from.
+  const isEdit = type === "edit" && !!guideId;
+  const {
+    guide: ownedGuide, observation, content, loading: guideLoading, refresh: refreshGuide,
+  } = useGuidesOwner(guideId, isEdit);
+  const guideData = ownedGuide ? { guide: ownedGuide } : undefined;
 
   // Pre-populate form when editing
   useEffect(() => {
@@ -220,12 +191,12 @@ const CreateGuidePage = ({
               // Rating fields are optional (for backward compatibility with old data)
               rating: startingDetails.Rating || undefined,
               user_ratings_total: startingDetails.Rating_Count || undefined,
-              geometry: {
+              ...(startingDetails.Geometry == null ? {} : {geometry: {
                 location: {
-                  lat: () => startingDetails.Geometry?.lat || 0,
-                  lng: () => startingDetails.Geometry?.lng || 0,
+                  lat: () => startingDetails.Geometry.lat,
+                  lng: () => startingDetails.Geometry.lng,
                 } as google.maps.LatLng,
-              } as google.maps.places.PlaceGeometry,
+              } as google.maps.places.PlaceGeometry}),
             };
           }
 
@@ -240,12 +211,12 @@ const CreateGuidePage = ({
               // Rating fields are optional (for backward compatibility with old data)
               rating: endingDetails.Rating || undefined,
               user_ratings_total: endingDetails.Rating_Count || undefined,
-              geometry: {
+              ...(endingDetails.Geometry == null ? {} : {geometry: {
                 location: {
-                  lat: () => endingDetails.Geometry?.lat || 0,
-                  lng: () => endingDetails.Geometry?.lng || 0,
+                  lat: () => endingDetails.Geometry.lat,
+                  lng: () => endingDetails.Geometry.lng,
                 } as google.maps.LatLng,
-              } as google.maps.places.PlaceGeometry,
+              } as google.maps.places.PlaceGeometry}),
             };
           }
 
@@ -259,12 +230,12 @@ const CreateGuidePage = ({
                 place_id: city.Place_Id,
                 rating: city.Rating || undefined,
                 user_ratings_total: city.Rating_Count || undefined,
-                geometry: {
-                  location: {
-                    lat: () => city.Geometry?.lat || 0,
-                    lng: () => city.Geometry?.lng || 0,
-                  } as google.maps.LatLng,
-                } as google.maps.places.PlaceGeometry,
+                ...(city.Geometry == null ? {} : {geometry: {
+                location: {
+                  lat: () => city.Geometry.lat,
+                  lng: () => city.Geometry.lng,
+                } as google.maps.LatLng,
+              } as google.maps.places.PlaceGeometry}),
               } as google.maps.places.PlaceResult,
               displayValue: city.Place_Name || city.Place_Address || "",
               hasDate: city.hasDate || false,
@@ -279,6 +250,11 @@ const CreateGuidePage = ({
             placeDetails.Place_Address ||
             "";
 
+          // Canonical single-place projections expose paired flat coordinates.
+          const coordinates = Number.isFinite(placeDetails.lat) && Number.isFinite(placeDetails.lng)
+            ? {lat: placeDetails.lat, lng: placeDetails.lng}
+            : Number.isFinite(placeDetails.Geometry?.lat) && Number.isFinite(placeDetails.Geometry?.lng)
+              ? placeDetails.Geometry : null;
           reconstructedPlace = {
             name: placeDetails.Place_Name,
             formatted_address: placeDetails.Place_Address,
@@ -286,12 +262,12 @@ const CreateGuidePage = ({
             // Rating fields are optional (for backward compatibility with old data)
             rating: placeDetails.Rating || undefined,
             user_ratings_total: placeDetails.Rating_Count || undefined,
-            geometry: {
-              location: {
-                lat: () => placeDetails.Geometry?.lat || 0,
-                lng: () => placeDetails.Geometry?.lng || 0,
-              } as google.maps.LatLng,
-            } as google.maps.places.PlaceGeometry,
+            ...(coordinates == null ? {} : {geometry: {
+                location: {
+                  lat: () => coordinates.lat,
+                  lng: () => coordinates.lng,
+                } as google.maps.LatLng,
+              } as google.maps.places.PlaceGeometry}),
           };
         }
       }
@@ -353,10 +329,10 @@ const CreateGuidePage = ({
       Place_Id: place.place_id || "",
       Place_Name: place.name || "",
       Place_Address: place.formatted_address || "",
-      Geometry: {
-        lat: place.geometry?.location?.lat() || 0,
-        lng: place.geometry?.location?.lng() || 0,
-      },
+      Geometry: place.geometry?.location ? {
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+      } : null,
     };
   };
 
@@ -466,33 +442,6 @@ const CreateGuidePage = ({
     setCurrentStep(3);
   };
 
-  /**
-   * Handle AI-generated guide data
-   */
-  const handleAIGeneration = (aiGuideData: AIGeneratedGuide) => {
-    // Store AI-generated sections for creating after guide is created
-    setAiGeneratedSections(aiGuideData.sections);
-
-    // Store AI-generated guide-level tips and tags
-    setAiGeneratedTipsNotes(aiGuideData.tipsNotes || null);
-    setAiGeneratedGuideTags(aiGuideData.guideTags || null);
-
-    // Pre-populate title, description AND Step 2 data from AI generation
-    setFormData((prev) => ({
-      ...prev,
-      title: aiGuideData.title,
-      description: aiGuideData.description,
-      // Preserve Step 2 data that was used for AI generation
-      numberOfDays: aiGuideData.numberOfDays || prev.numberOfDays,
-      categories: aiGuideData.categories || prev.categories,
-      bestTimeToVisit: aiGuideData.bestTimeToVisit || prev.bestTimeToVisit,
-      budgetType: aiGuideData.budgetType || prev.budgetType,
-    }));
-
-    // Move to Step 3
-    setCurrentStep(3);
-  };
-
   // Handle Step 2 back (from Itinerary details)
   const handleStep2Back = () => {
     setCurrentStep(1);
@@ -517,169 +466,83 @@ const CreateGuidePage = ({
     setIsSubmitting(true);
 
     try {
-      const accountDocumentId =
-        accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
-      const descriptionBlocks = htmlToBlocks(data.description);
+      const plainDescription = (data.description ?? "").replace(/<[^>]*>/g, "").trim() || null;
+
+      // The guide's place: a single point, or the whole route for a multi-city trip. The
+      // route form is why the contract models both - reducing it to a point drops it.
+      const placeSnapshot = formData.locationMode === "multi"
+        ? {
+            ending: formData.toLocation ? formatPlaceDetails(formData.toLocation) : null,
+            starting: formData.fromLocation ? formatPlaceDetails(formData.fromLocation) : null,
+            intermediateCities: formData.intermediateCities
+              .filter((city) => city.place)
+              .map((city) => ({
+                id: city.id,
+                ...formatPlaceDetails(city.place!),
+                hasDate: city.hasDate || false,
+                date: city.date || undefined,
+              })),
+            isMultiCity: true as const,
+          }
+        : formData.selectedPlace
+          ? (() => {
+              const place = formatPlaceDetails(formData.selectedPlace);
+              return {
+                name: place.Place_Name || null,
+                address: place.Place_Address || null,
+                placeId: place.Place_Id || null,
+                rating: null,
+                ratingsCount: null,
+                lat: place.Geometry?.lat ?? null,
+                lng: place.Geometry?.lng ?? null,
+              };
+            })()
+          : {};
+
+      const details = guideWizardDetails(formData, placeSnapshot);
 
       let resultDocumentId: string;
 
       if (type === "edit" && guideId) {
-        // Handle media upload first if there's new media
+        if (!observation) throw new Error("Guide could not be loaded. Refresh and try again.");
+        const list = content?.lists.get(guideId);
+        if (!list) throw new Error("Guide could not be loaded. Refresh and try again.");
+
+        // Title and description live on the collection; the guide's own fields live on the
+        // aggregate. Both are written, each through the command that owns it.
+        await explorersApiClient.updateMyCollection(list, {
+          title: data.title,
+          ...(plainDescription === null ? {} : {description: plainDescription}),
+        }, crypto.randomUUID());
+        let current = await GuidesClient.observeWholeGuide(guideId);
+        current = await GuidesClient.writeDetails(GuidesClient.prepareIntent(current),
+          guideWizardDetails(formData, placeSnapshot, current.aggregate.details));
+
+        // The cover is uploaded and only then attached, so a failed upload leaves the
+        // existing cover in place. The Strapi path deleted the old file first, which is
+        // why a failed upload used to leave a guide with no image at all.
         if (data.guideMedia) {
           try {
-            const { getGuideById } = await import("../guideService");
-            const guideWithId = await getGuideById(guideId);
-
-            if (guideWithId?.id) {
-              const existingMediaIds =
-                guideWithId?.Guide_Media?.map((media: any) => media.id).filter(
-                  Boolean
-                ) || [];
-
-              await uploadGuideMedia(
-                guideWithId.id,
-                guideId,
-                data.guideMedia,
-                user?.username || "user",
-                existingMediaIds
-              );
-            }
+            await GuidesClient.attachCover(GuidesClient.prepareIntent(current), data.guideMedia);
           } catch (uploadError) {
-            console.error("Media upload/deletion failed:", uploadError);
-            toast.warning(
-              "Media upload failed. The guide data will still be updated."
-            );
+            console.error("Media upload failed:", uploadError);
+            toast.warning("Media upload failed. The guide data was still updated.");
           }
         }
-
-        // Update existing guide data
-        // For single city: store single location (backward compatible)
-        // For multi city: store both locations in structured format within Place_Details
-        let placeDetails: any;
-        if (formData.locationMode === "multi") {
-          // Multi-city: store both locations in structured format with starting/ending keys
-          placeDetails = {
-            ending: formData.toLocation ? formatPlaceDetails(formData.toLocation) : null,
-            starting: formData.fromLocation ? formatPlaceDetails(formData.fromLocation) : null,
-            intermediateCities: formData.intermediateCities
-              .filter((city) => city.place)
-              .map((city) => ({
-                id: city.id,
-                ...formatPlaceDetails(city.place!),
-                hasDate: city.hasDate || false,
-                date: city.date || undefined,
-              })),
-            isMultiCity: true,
-          };
-        } else {
-          // Single city: store single location (backward compatible)
-          placeDetails = formData.selectedPlace
-            ? formatPlaceDetails(formData.selectedPlace)
-            : undefined;
-        }
-
-        const updateData: any = {
-          Title: data.title,
-          Description: descriptionBlocks,
-          Guide_Type: formData.guideType,
-          Place_Details: placeDetails,
-          Number_Of_Days: formData.numberOfDays || null,
-          Category: formData.categories && formData.categories.length > 0 ? formData.categories : null,
-          Best_Time_To_Visit: formData.bestTimeToVisit && formData.bestTimeToVisit.length > 0 ? JSON.stringify(formData.bestTimeToVisit) : null,
-          Budget_Type: formData.budgetType || null,
-          is_Multicity: formData.locationMode === "multi" ? true : false,
-          // Include AI-generated Tips_Notes and Guide_Tags if available
-          Tips_Notes: aiGeneratedTipsNotes !== null ? aiGeneratedTipsNotes : undefined,
-          Guide_Tags: aiGeneratedGuideTags !== null ? aiGeneratedGuideTags : undefined,
-        };
-
-        const result = await updateGuideMutation({
-          variables: {
-            documentId: guideId,
-            data: updateData,
-          },
-        });
-
-        resultDocumentId = result.data?.updateGuide?.documentId || guideId;
+        refreshGuide();
+        resultDocumentId = guideId;
         toast.success("Guide updated successfully!");
       } else {
-        // Create new guide
-        // For single city: store single location (backward compatible)
-        // For multi city: store both locations in structured format within Place_Details
-        let placeDetails: any;
-        if (formData.locationMode === "multi") {
-          // Multi-city: store both locations in structured format with starting/ending keys
-          placeDetails = {
-            ending: formData.toLocation ? formatPlaceDetails(formData.toLocation) : null,
-            starting: formData.fromLocation ? formatPlaceDetails(formData.fromLocation) : null,
-            intermediateCities: formData.intermediateCities
-              .filter((city) => city.place)
-              .map((city) => ({
-                id: city.id,
-                ...formatPlaceDetails(city.place!),
-                hasDate: city.hasDate || false,
-                date: city.date || undefined,
-              })),
-            isMultiCity: true,
-          };
-        } else {
-          // Single city: store single location (backward compatible)
-          placeDetails = formData.selectedPlace
-            ? formatPlaceDetails(formData.selectedPlace)
-            : undefined;
-        }
-
-        const createData: any = {
-          Title: data.title,
-          Description: descriptionBlocks,
-          Guide_Type: formData.guideType,
-          account: accountDocumentId,
-          Place_Details: placeDetails,
-          Number_Of_Days: formData.numberOfDays || null,
-          Category: formData.categories && formData.categories.length > 0 ? formData.categories : null,
-          Best_Time_To_Visit: formData.bestTimeToVisit && formData.bestTimeToVisit.length > 0 ? JSON.stringify(formData.bestTimeToVisit) : null,
-          Budget_Type: formData.budgetType || null,
-          is_Multicity: formData.locationMode === "multi" ? true : false,
-          // Include AI-generated Tips_Notes and Guide_Tags if available
-          Tips_Notes: aiGeneratedTipsNotes || null,
-          Guide_Tags: aiGeneratedGuideTags || null,
-        };
-
-        const result = await createGuideMutation({
-          variables: {
-            data: createData,
-          },
+        // One collection create, then writes against the guide it produced. The sections
+        // and the cover go with it, so the wizard has nothing left to arrange afterwards.
+        const created = await createGuide({
+          title: data.title,
+          description: plainDescription,
+          details,
+          sections: [],
+          cover: data.guideMedia ?? null,
         });
-
-        resultDocumentId = result.data?.createGuide?.documentId;
-
-        // Handle media upload for create
-        if (data.guideMedia && resultDocumentId) {
-          try {
-            const { getGuideById } = await import("../guideService");
-            const guideWithId = await getGuideById(resultDocumentId);
-
-            if (guideWithId?.id) {
-              await uploadGuideMedia(
-                guideWithId.id,
-                resultDocumentId,
-                data.guideMedia,
-                user?.username || "user"
-              );
-            }
-          } catch (uploadError) {
-            console.warn("Guide created but media upload failed:", uploadError);
-            toast.warning(
-              "Guide created, but media upload failed. You can try uploading it later."
-            );
-          }
-        }
-
-        // Create AI-generated guide sections if available
-        // NOTE: This uploads Google Place photos for each section — must complete before showing success toast
-        if (aiGeneratedSections && aiGeneratedSections.length > 0) {
-          await createAIGeneratedSections(resultDocumentId);
-        }
+        resultDocumentId = created.collectionId;
 
         // Show success toast only after ALL uploads (media + section photos) are complete
         toast.success("Guide created successfully!");
@@ -710,186 +573,6 @@ const CreateGuidePage = ({
       toast.error(`Failed to ${type === "edit" ? "update" : "create"} guide`);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  /**
-   * Create guide sections from AI-generated data
-   * Called after guide is successfully created
-   * Enriches AI place names with Google Places data before saving
-   */
-  const createAIGeneratedSections = async (guideDocumentId: string) => {
-    if (!aiGeneratedSections || aiGeneratedSections.length === 0) {
-      return;
-    }
-
-    // Extract location context for place enrichment
-    const locationContext = extractLocationContext({
-      locationMode: formData.locationMode,
-      locationDisplayValue: formData.locationDisplayValue,
-      toLocationDisplayValue: formData.toLocationDisplayValue,
-    });
-
-    try {
-      let successCount = 0;
-      const totalSections = aiGeneratedSections.length;
-
-      // Create each section sequentially
-      for (const section of aiGeneratedSections) {
-        try {
-          // Prepare section data
-          const sectionData: any = {
-            Title: section.title,
-            Sequence: section.sequence,
-            Description: section.description || "",
-            guide: guideDocumentId,
-          };
-
-          // Add Map_Details with location for multi-city guides
-          // Location identifies which city this section belongs to (starting/ending/intermediate)
-          if (formData.locationMode === "multi" && section.location) {
-            sectionData.Map_Details = {
-              location: section.location,
-            };
-          }
-
-          // If section has places, enrich them and organize by time slot
-          let enrichedPlaces: any[] = [];
-          if (section.places && section.places.length > 0) {
-            const timeline: any = {
-              morning: [],
-              afternoon: [],
-              evening: [],
-            };
-
-            // ENRICHMENT: Resolve AI place names to Google Places data
-            enrichedPlaces = await enrichAIPlaces(
-              section.places,
-              locationContext
-            );
-
-            // Distribute enriched places into time slots
-            enrichedPlaces.forEach((place, index) => {
-              const originalPlace = section.places?.[index];
-              const timeSlot = originalPlace?.timeSlot || "morning";
-
-              // Remove enrichment metadata before saving to database
-              const { isVerified, source, ...placeData } = place;
-
-              if (timeSlot === "morning" || timeSlot === "afternoon" || timeSlot === "evening") {
-                timeline[timeSlot].push(placeData);
-              } else {
-                // Default to morning if invalid time slot
-                timeline.morning.push(placeData);
-              }
-            });
-
-            // Only add Timeline if there are places
-            if (timeline.morning.length > 0 || timeline.afternoon.length > 0 || timeline.evening.length > 0) {
-              sectionData.Timeline = timeline;
-            }
-          }
-
-          // Create the section first to get sectionId
-          const createResult = await createGuideSectionMutation({
-            variables: {
-              data: sectionData,
-            },
-          });
-
-          const createdSectionId = createResult.data?.createGuideSection?.documentId;
-
-          // Fetch and upload photos for all places, then update section with Recommendation_Activity
-          if (createdSectionId && enrichedPlaces.length > 0) {
-            try {
-              const { fetchGooglePlacePhotos } = await import("../utils/googlePhotosService");
-              const { uploadActivityPhotos } = await import("../services/activityPhotoService");
-
-              // Get username for photo uploads
-              const username = user?.username || "user";
-              const activities: any[] = [];
-
-              // Process each enriched place
-              for (const place of enrichedPlaces) {
-                const { isVerified, source, ...placeData } = place;
-
-                if (placeData.place_id) {
-                  try {
-                    // Fetch photos from Google Places
-                    const photos = await fetchGooglePlacePhotos(placeData.place_id, 6);
-
-                    if (photos.length > 0) {
-                      // Upload photos to S3
-                      const uploadedPhotos = await uploadActivityPhotos(
-                        photos,
-                        username,
-                        createdSectionId,
-                        placeData.place_id
-                      );
-
-                      // Add to activities with uploaded photos
-                      activities.push({
-                        ...placeData,
-                        photos: uploadedPhotos,
-                        photosLoading: false,
-                      });
-                    } else {
-                      // No photos found, add place without photos
-                      activities.push({
-                        ...placeData,
-                        photos: [],
-                        photosLoading: false,
-                      });
-                    }
-                  } catch (error) {
-                    console.error(`Error fetching/uploading photos for place ${placeData.place_id}:`, error);
-                    // Add place without photos on error
-                    activities.push({
-                      ...placeData,
-                      photos: [],
-                      photosLoading: false,
-                    });
-                  }
-                }
-              }
-
-              // Update section with Recommendation_Activity if we have activities
-              if (activities.length > 0) {
-                await updateGuideSectionMutation({
-                  variables: {
-                    documentId: createdSectionId,
-                    data: {
-                      Recommendation_Activity: JSON.stringify({
-                        activities: activities,
-                      }),
-                    },
-                  },
-                });
-              }
-            } catch (error) {
-              console.error("Error processing photos for section:", error);
-              // Continue even if photo upload fails
-            }
-          }
-
-          successCount++;
-        } catch (sectionError) {
-          console.error(`Failed to create section "${section.title}":`, sectionError);
-          // Continue creating other sections even if one fails
-        }
-      }
-
-      if (successCount > 0) {
-        toast.success(`Created ${successCount} of ${totalSections} AI-generated guide sections`);
-      } else {
-        toast.warning("Guide created, but failed to create AI-generated sections. You can add them manually.");
-      }
-
-      // Clear AI-generated sections after creation
-      setAiGeneratedSections(null);
-    } catch (error) {
-      console.error("Error creating AI-generated sections:", error);
-      toast.warning("Guide created, but some AI-generated sections may not have been added.");
     }
   };
 
@@ -963,15 +646,8 @@ const CreateGuidePage = ({
             initialCategories={formData.categories}
             initialBestTimeToVisit={formData.bestTimeToVisit}
             initialBudgetType={formData.budgetType}
-            guideType={formData.guideType}
-            locationName={formData.locationDisplayValue}
-            locationType={formData.locationMode}
-            fromLocation={formData.fromLocation?.name || formData.fromLocationDisplayValue}
-            toLocation={formData.toLocation?.name || formData.toLocationDisplayValue}
-            intermediateCities={formData.intermediateCities.map((city) => city.place?.name || city.displayValue)}
             onBack={handleStep2Back}
             onNext={handleStep2Next}
-            onAIGenerate={type === "create" ? handleAIGeneration : undefined}
           />
         ) : (
           <CreateGuideStep3
@@ -979,7 +655,6 @@ const CreateGuidePage = ({
             initialDescription={formData.description}
             initialMedia={formData.guideMedia}
             initialMediaPreview={previewUrl}
-            isAIGenerated={aiGeneratedSections !== null}
 
             isFetchingLocationImage={isFetchingLocationImage}
             onBack={handleStep3Back}

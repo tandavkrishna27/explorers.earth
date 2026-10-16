@@ -4,14 +4,14 @@
  */
 
 import axios from "axios";
+import {explorersApiClient} from '../../../lib/explorersApiClient';
+import {mediaContentUrl} from '../api/guidesViewModel';
 import { 
   generateRandomFileName,
-  generateActivityPhotoPath 
 } from "../../../utils/uploadPathGenerator";
 import { FetchedPhoto } from "../utils/googlePhotosService";
 import type { UploadedActivityPhoto } from "../types/guideSectionTypes";
 
-const API_URL = import.meta.env.VITE_REST_API_URL || "/api";
 
 /**
  * Upload a single Google photo to Strapi S3 (internal helper)
@@ -25,14 +25,9 @@ const API_URL = import.meta.env.VITE_REST_API_URL || "/api";
  */
 const uploadActivityPhoto = async (
   photoUrl: string,
-  username: string,
-  sectionId: string,
-  placeId: string,
   photoIndex: number,
   photoMetadata: Pick<FetchedPhoto, 'width' | 'height' | 'aspectRatio'>
 ): Promise<UploadedActivityPhoto | null> => {
-  const token = localStorage.getItem("qrtoken");
-
   try {
     // Fetch the photo from Google
     const photoResponse = await axios.get(photoUrl, {
@@ -44,45 +39,17 @@ const uploadActivityPhoto = async (
     }
 
     const photoBlob = photoResponse.data;
-
-    // Generate structured path
     const fileName = generateRandomFileName(`activity-${photoIndex}.jpg`);
-    const structuredPath = generateActivityPhotoPath(
-      username,
-      sectionId,
-      placeId,
-      fileName
-    );
 
-    // Upload to Strapi S3
-    const formData = new FormData();
-    formData.append(
-      "files",
-      new File([photoBlob], fileName, { type: "image/jpeg" })
+    const media = await explorersApiClient.createMedia(
+      new File([photoBlob], fileName, { type: "image/jpeg" }),
+      "guide"
     );
-    formData.append("path", structuredPath);
-
-    const uploadResponse = await axios.post(
-      `${API_URL}/upload`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      }
-    );
-
-    const uploadedFile = uploadResponse.data?.[0];
-    
-    if (!uploadedFile?.url) {
-      throw new Error("Upload response missing URL");
-    }
 
     return {
-      id: `activity-photo-${uploadedFile.id}`,
-      documentId: uploadedFile.documentId,
-      url: uploadedFile.url,
+      id: `activity-photo-${media.id}`,
+      documentId: media.id,
+      url: mediaContentUrl(media.id),
       fileName,
       width: photoMetadata.width,
       height: photoMetadata.height,
@@ -95,18 +62,17 @@ const uploadActivityPhoto = async (
 };
 
 /**
- * Upload multiple activity photos in parallel
+ * Upload multiple activity photos in parallel.
+ *
+ * Ticket 5.3: no username, section id or place id any more. Those existed only to compose
+ * a storage path for Strapi's /upload, and the owned media endpoint decides its own keys -
+ * so the caller no longer has to thread a username through the UI to save a photo.
+ *
  * @param photos - Array of Google photos to upload
- * @param username - User's username
- * @param sectionId - Guide section document ID
- * @param placeId - Google Place ID
  * @returns Array of uploaded photo data
  */
 export const uploadActivityPhotos = async (
-  photos: FetchedPhoto[],
-  username: string,
-  sectionId: string,
-  placeId: string
+  photos: FetchedPhoto[]
 ): Promise<UploadedActivityPhoto[]> => {
   if (!photos || photos.length === 0) {
     return [];
@@ -116,9 +82,6 @@ export const uploadActivityPhotos = async (
   const uploadPromises = photos.map((photo, index) =>
     uploadActivityPhoto(
       photo.url,
-      username,
-      sectionId,
-      placeId,
       index,
       {
         width: photo.width,

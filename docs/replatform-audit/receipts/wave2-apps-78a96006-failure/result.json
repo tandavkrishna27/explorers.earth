@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "lane": "apps",
+  "sourceCommit": "78a96006c69f5e96b15101ff593500e065af25da",
+  "runId": "260554db707fba544c6c33653de9309e",
+  "evidence": "native",
+  "status": "failed",
+  "qualification": false,
+  "browserReport": { "expected": 0, "unexpected": 8, "flaky": 0, "skipped": 0 },
+  "lifecycle": { "phase": "execution", "interrupted": false, "sourceIntact": true, "cleanup": "failed" },
+  "originalParentExitCode": 1,
+  "ownedProcesses": "closed after exact identity verification; original parent closure observed",
+  "retainedResources": "database, container, exact root inventory and secret pending reviewed recovery",
+  "diagnosis": [
+    { "cause": "rating label contains option text and fails exact label selection", "identities": 4 },
+    { "cause": "Express JSON denial regenerates an ETag after removal", "identities": 2 },
+    { "cause": "zero-pin manager control is a clickable div instead of a button", "identities": 2 }
+  ],
+  "scope": "Sanitized summary of the protected report and lifecycle journal; raw browser failure contexts are not included."
+}

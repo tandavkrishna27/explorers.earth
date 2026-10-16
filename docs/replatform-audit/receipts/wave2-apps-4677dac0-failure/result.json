@@ -1,0 +1,13 @@
+{
+  "sourceCommit": "4677dac0f8d0e01be3f572f56c727cd1516a6fb4",
+  "runId": "760c2880dfba07898ad363a794833427",
+  "evidence": "native",
+  "qualification": false,
+  "expected": 7,
+  "unexpected": 1,
+  "flaky": 0,
+  "skipped": 0,
+  "originalParentExitCode": 1,
+  "diagnosis": "Mobile public hero oracle counts both hidden desktop and visible mobile artwork markers; persisted and reordered pins passed",
+  "processClosure": "Exact guarded owner-only termination, original parent closed, retained cleanup pending"
+}

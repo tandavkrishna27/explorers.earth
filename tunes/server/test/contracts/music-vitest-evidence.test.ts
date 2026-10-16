@@ -50,6 +50,25 @@ const commit = "0123456789abcdef0123456789abcdef01234567";
 const runId = "abcdef0123456789abcdef0123456789";
 
 describe("finalized Vitest evidence", () => {
+  it("accepts Vitest 4 suite counters that include nested describe blocks", () => {
+    const raw = JSON.parse(report(root, [[a, ["passed"]]])) as Record<string, any>;
+    raw.numTotalTestSuites = 2;
+    raw.numPassedTestSuites = 2;
+    raw.testResults[0].assertionResults[0].ancestorTitles = ["nested suite"];
+    expect(parseFinalizedVitestEvidence(JSON.stringify(raw), 0, root).fileCounts)
+      .toEqual({ selected: 1, passed: 1, failed: 0, skipped: 0 });
+  });
+  it("rejects false nested suite totals and failed-suite counters", () => {
+    const raw = JSON.parse(report(root, [[a, ["passed"]]])) as Record<string, any>;
+    raw.testResults[0].assertionResults[0].ancestorTitles = ["nested suite"];
+    raw.numTotalTestSuites = 3;
+    raw.numPassedTestSuites = 3;
+    expect(() => parseFinalizedVitestEvidence(JSON.stringify(raw), 0, root)).toThrow(/suite results disagree/);
+    raw.numTotalTestSuites = 2;
+    raw.numPassedTestSuites = 1;
+    raw.numFailedTestSuites = 1;
+    expect(() => parseFinalizedVitestEvidence(JSON.stringify(raw), 0, root)).toThrow(/suite status counts disagree/);
+  });
   it("rejects partial skipped assertions instead of promoting incomplete evidence", () => {
     expect(() => parseFinalizedVitestEvidence(
       report(root, [[a, ["passed", "skipped"]]]), 0, root,

@@ -170,3 +170,25 @@ attached_assets/
 # ----------------------------
 explorers environment/
 tunes environment/
+.replatform-local/
+
+# ----------------------------
+# Agent scratch, qualification receipts and isolated clones
+# ----------------------------
+# These accumulate during qualification runs and are not deliverables: run logs,
+# clean-path markers, source-hash snapshots, generated fixture seeds, ad-hoc edit
+# scripts and whole isolated repository copies. They were previously un-ignored,
+# so a `git add -A` would have published roughly seventy of them, including a
+# nested copy of the repository that shadows real paths and corrupts repo-wide
+# greps. Prefer staging deliberate paths over relying on -A.
+#
+# Two things under .superpowers are deliberately preserved: the durable
+# implementation ledger in sdd/ (which carries its own ignore rules) and the one
+# tracked source-hash receipt. Already-tracked files are unaffected by ignore
+# rules regardless; the negations keep that intent legible.
+/.superpowers/*
+!/.superpowers/sdd/
+!/.superpowers/movie-package-a-source-hashes.json
+tunes/.superpowers/
+tunes/.music-cli-contract-isolated-*/
+tunes/scripts/.*.ts

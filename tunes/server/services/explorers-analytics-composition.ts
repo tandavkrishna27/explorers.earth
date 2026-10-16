@@ -1,3 +1,4 @@
+import {createCanonicalAnalyticsDependencies} from '../routes/explorersCanonicalAnalyticsRoutes';
 import type { Request } from "express";
 import { pool } from "../db";
 import {
@@ -67,7 +68,7 @@ export async function resolveFriendlyMusicAnalyticsTarget(
   return { accountId: accountDocumentId, mode: "friendly" };
 }
 
-export function createExplorersAnalyticsDependencies(): ExplorersAnalyticsRouteDependencies {
+export function createLegacyExplorersAnalyticsDependencies(): ExplorersAnalyticsRouteDependencies {
   const strapiUrl = process.env.STRAPI_URL || "";
   const accessToken = resolveAnalyticsStrapiAccessToken();
   const service = new ExplorersAnalyticsService({
@@ -96,4 +97,9 @@ export function createExplorersAnalyticsDependencies(): ExplorersAnalyticsRouteD
     resolveFriendlyMusicAnalyticsTarget: (accountDocumentId) =>
       resolveFriendlyMusicAnalyticsTarget(pool, accountDocumentId),
   };
+}
+
+/** Canonical writes are local transactions; only historical GET loads legacy credentials. */
+export function createExplorersAnalyticsDependencies(): ExplorersAnalyticsRouteDependencies {
+ return createCanonicalAnalyticsDependencies(pool);
 }

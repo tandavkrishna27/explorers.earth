@@ -271,6 +271,31 @@ const paths = {
       description: "The server validates every playlist and saved song against the verified principal, replaces active queue rows in one transaction, increments the queue revision, and durably stores the exact result for replay for 24 hours. After the database-clock window has expired, the idempotency key may be reused.",
     }),
   },
+  "/api/music/socket-ticket": {
+    post: ownerOperation({
+      summary: "Mint a purpose-limited ticket for one Music socket handshake",
+      status: "200",
+      response: {
+        type: "object",
+        additionalProperties: false,
+        required: ["version", "ticket"],
+        properties: {
+          version: { type: "string", const: "music-socket-ticket/v1" },
+          ticket: {
+            type: "object",
+            additionalProperties: false,
+            required: ["token", "expiresAt"],
+            properties: {
+              token: { type: "string", minLength: 1 },
+              expiresAt: { type: "integer", minimum: 0, description: "Unix seconds at which the ticket expires." },
+            },
+          },
+        },
+      },
+      origin: true,
+      description: "Ticket 6.3. The ticket carries the purpose claim 'music-socket' and expires 60 seconds after issue, so it is far shorter-lived than a Music credential. Verification is asymmetric and exact: the credential verifier rejects any token carrying a purpose, and the socket verifier rejects any token without this exact purpose, so neither can be presented where the other is expected. A client mints one per connection attempt, including every reconnect, and never reuses one.",
+    }),
+  },
   "/api/music/dashboard": {
     get: ownerOperation({ summary: "Read private owner playback state", status: "200", response: ref("Dashboard") }),
   },
@@ -396,6 +421,24 @@ const paths = {
       },
       "x-publication-modes": ["public/discoverable", "unlisted capability; noindex/no-sitemap"],
       "x-max-encoded-bytes": 524288,
+    },
+  },
+  "/api/explorers/analytics/events": {
+    get: {
+      summary: "Read historical Explorer analytics for the bearer-owned account",
+      description: "Temporary historical Strapi read retained until Epic7.2; the authoritative Explorer bearer must own accountId. Inclusive fromDate/toDate calendar dates and an IANA timeZone form a window of at most93 calendar days. This is not the canonical Actor summary or Music credential flow.",
+      security: explorerSecurity,
+      parameters: [requestIdParameter,
+        {name:"accountId",in:"query",required:true,schema:{type:"string",minLength:1,maxLength:128}},
+        {name:"fromDate",in:"query",required:true,schema:{type:"string",format:"date"}},
+        {name:"toDate",in:"query",required:true,schema:{type:"string",format:"date"}},
+        {name:"timeZone",in:"query",required:true,schema:{type:"string"},description:"A valid IANA timezone; calendar dates must exist in this zone."}],
+      responses: {
+        "200": success("Historical scoped records; pagination is bounded to10000 records.",{type:"object",additionalProperties:false,required:["events"],properties:{events:{type:"array",maxItems:10000,items:{}}}}),
+        "400": success("Invalid account/date/timezone scope.",{type:"object",required:["message"],properties:{message:{type:"string"}}}),
+        "403": success("Authoritative bearer does not own the selected account.",{type:"object",required:["message"],properties:{message:{type:"string"}}}),
+        "502": success("Historical identity/read provider is unavailable.",{type:"object",required:["message"],properties:{message:{type:"string"}}}),
+      },
     },
   },
   "/api/explorers/analytics/music/{publicSlug}/events": {

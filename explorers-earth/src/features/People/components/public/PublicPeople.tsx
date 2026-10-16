@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import { Users } from "lucide-react";
-import { deduplicatePeople, extractUniqueCategories } from "../../utils/personHelpers";
-import type { RecommendedPerson, PersonList } from "../../types";
+import { publicPeopleLists, publicPeopleSectors } from "../../api/publicPeopleSectorViewModel";
+import { subscribePublicProfileInvalidation } from "../../../PublicHome/api/publicProfileInvalidation";
+import type { RecommendedPerson } from "../../types";
 import PersonCarouselRow from "./PersonCarouselRow";
 import PersonDetailModal from "./PersonDetailModal";
 import SEO from "../../../../components/SEO";
@@ -12,13 +13,10 @@ import PersonTopPicksMobileHero from "./PersonTopPicksMobileHero";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
 import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
-import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
+import { PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
 import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
 import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
 import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
-
-const isRenderablePersonList = (value: unknown): value is PersonList =>
-  isNonNullObject(value) && Array.isArray(value.recommended_people);
 
 const PublicPeople = () => {
   const { username } = useParams<{ username: string }>();
@@ -34,20 +32,17 @@ const PublicPeople = () => {
   const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
   const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
   const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
-  const query = usePublicRecommendationCategory(username, "people", accountData?.public_people === "Yes");
+  const eligible=accountData?.public_people === "Yes";
+  const query = usePublicRecommendationCategory(username, "people", eligible);
   const { data, loading: peopleLoading, error: peopleError, refetch: refetchPeople } = query;
 
   const loading = userLoading || peopleLoading;
-  const queryError = userError || peopleError;
-  const rawLists = data?.personLists;
-  const lists: PersonList[] = (Array.isArray(rawLists) ? rawLists : [])
-    .filter(isRenderablePersonList)
-    .map((list) => ({
-      ...list,
-      recommended_people: list.recommended_people.filter(isNonNullObject) as PersonList["recommended_people"],
-    }));
-  const completeCollection = Array.isArray(rawLists) && rawLists.every(isRenderablePersonList);
-  const hasUsableData = queryError ? lists.length > 0 : completeCollection;
+  const mapped=useMemo(()=>{try{return {lists:eligible&&data?publicPeopleLists(data):[],error:null};}catch(error){return {lists:[],error};}},[data,eligible]);
+  const lists=mapped.lists;
+  const queryError = userError || peopleError || mapped.error || (!userLoading&&!eligible?new Error('PUBLIC_PROFILE_404'):null);
+  const hasUsableData = Boolean(data)&&!mapped.error&&eligible;
+  useEffect(()=>{setModalState({open:false,person:null});},[username,eligible]);
+  useEffect(()=>subscribePublicProfileInvalidation(event=>{if(event.username.trim().toLowerCase()===username?.trim().toLowerCase()&&(event.category==='public_people'||event.category==='public_profile'))setModalState({open:false,person:null});}),[username]);
 
   useEffect(() => {
     if (!loading || hasUsableData) {
@@ -77,7 +72,7 @@ const PublicPeople = () => {
   }, [lists]);
 
   const allPeople = useMemo(() => {
-    return deduplicatePeople(lists.flatMap((l) => l.recommended_people ?? []));
+    return lists.flatMap((l) => l.recommended_people);
   }, [lists]);
 
   const topPicks = useMemo(() => {
@@ -87,7 +82,7 @@ const PublicPeople = () => {
   }, [allPeople]);
 
   const allCategories = useMemo(() => {
-    return extractUniqueCategories(allPeople.map((p) => p.people_category?.Category_name ? [p.people_category.Category_name] : []));
+    return publicPeopleSectors(allPeople);
   }, [allPeople]);
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
@@ -245,8 +240,8 @@ const PublicPeople = () => {
         </div>
 
         <PersonDetailModal
-          open={modalState.open}
-          person={modalState.person}
+          open={eligible && !peopleLoading && modalState.open}
+          person={eligible && !peopleLoading ? modalState.person : null}
           onClose={() => setModalState({ open: false, person: null })}
         />
       </div>

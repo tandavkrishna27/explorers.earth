@@ -504,3 +504,8 @@ describe("explorers analytics routes", () => {
     expect(readResponse.status).toBe(502);
   });
 });
+
+it('reports ingestion failure without logging private database error details',async()=>{
+ const log=vi.spyOn(console,'error').mockImplementation(()=>{}),fixture=buildApp();fixture.service.ingest.mockRejectedValue(Error('private database payload marker'));
+ try{const {request}=await loopback.open({app:fixture.app});expect((await request.post('/api/explorers/analytics/events').send(input)).status).toBe(502);expect(log).toHaveBeenCalledWith('Explorers analytics ingestion failed');}finally{log.mockRestore();await loopback.closeAll();}
+});

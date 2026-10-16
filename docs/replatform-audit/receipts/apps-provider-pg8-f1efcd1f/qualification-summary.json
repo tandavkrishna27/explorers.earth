@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "kind": "sanitized-derived-qualification-summary",
+  "originalReceiptSha256": "8b8ad38d3de0e5667efdbf645730d042d239f8d8762cde2034ca3dc95c967d90",
+  "commit": "f1efcd1f80a63db388737fb8623ce312ae57c23a",
+  "worktreeClean": true,
+  "manifestSha256": "d30df2181574f5e3500da385b92e072b339b235b4dd6977fccdb0ecdebab7538",
+  "nodeVersion": "v24.21.0",
+  "image": "postgres@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81",
+  "tests": {
+    "status": "passed",
+    "suite": "Apps local actual PostgreSQL providers",
+    "protocol": "apps-local-provider-finite-v1",
+    "runReason": "passed",
+    "failureReasons": [],
+    "caseCount": 8,
+    "nonPassed": 0
+  },
+  "cleanup": {
+    "status": "passed",
+    "exactIdAbsent": true,
+    "exactOwnershipAbsent": true,
+    "exactOwnedAnonymousVolumesAbsent": true,
+    "ownedAnonymousVolumes": [
+      "37c285cb802775397c10a6367c13cb4d523db83ac163bbdc7a6cb3c5dd358516"
+    ]
+  },
+  "sourceIntact": true,
+  "closure": {
+    "appsLocalProviderQualified": true
+  }
+}

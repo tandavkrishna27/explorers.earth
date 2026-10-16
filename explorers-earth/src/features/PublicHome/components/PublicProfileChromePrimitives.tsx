@@ -28,7 +28,7 @@ export function PublicProfileFixedHeader({ shareUrl, profileName, onTrackClick }
 
   const share = async () => {
     try {
-      onTrackClick("share-button", {
+      if (descriptor.analyticsReady !== false) onTrackClick("share-button", {
         context: descriptor.analyticsContext,
         ...descriptor.analyticsMetadata,
       });

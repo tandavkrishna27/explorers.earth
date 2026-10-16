@@ -1,0 +1,134 @@
+{
+  "version": "canonical-lifecycle-browser/v1",
+  "sourceCommit": "7f9495192e3c9bc07ab5e6638063e783a864aa10",
+  "runId": "8f2c8ca60f23b623129236bd305f3f84",
+  "sourceHashes": {
+    "tunes/scripts/profile-browser-fixture.ts": "3e22d64d28da5825193328dca0b2188b405398722c717cd1fd3d93e7d8c036e3",
+    "tunes/scripts/lifecycle-browser-support.ts": "e57c03eecbce9ec91d093f0dd9ff424fbaa8fd8dd3b73f0b3d73362037f38db8",
+    "tunes/scripts/lifecycle-browser-guards.ts": "ee346ba584a9081454c32d00b2cf27f865decc6e457bb7478a51fb3cba589f45",
+    "tunes/server/auth/recoveryCallback.ts": "9e8d61158190962536fd01736452bdb7db52620a2fa74ebf36a82485be6f63f3",
+    "tunes/package.json": "2ad7e9eb7560112672bf5a56f9939984a89770e09b89270bf17b5adfeefc8e14",
+    "explorers-earth/e2e/replatform/lifecycle.spec.ts": "a239f38bfd6eec8bc111266d3d56b33bb09be15b1c3f08e0a5d0338f561b3292",
+    "explorers-earth/e2e/replatform/lifecycle.playwright.config.ts": "ff565d5a1d2bc7ac75fd90fe18382e0b53962f8b2afc0df3d4f96ec66672804a"
+  },
+  "discovered": [
+    "active Settings requires trimmed feedback and retries one durable submission",
+    "foreign feedback and stale revision cannot delete an active owner",
+    "UI deactivation revokes both tabs and the old session",
+    "UI deletion is cancelled by a real Google recovery callback",
+    "recovery proof expires and cannot grant ordinary authority",
+    "concurrent recovery completes exactly once and rejects replay",
+    "wrong provider identity cannot recover a retained account",
+    "terminal maintenance preserves tombstone and denies recovery",
+    "foreign and absent origins cannot mutate lifecycle state",
+    "delayed old lifecycle response cannot navigate a new owner",
+    "held feedback cannot mutate navigate or log out verified replacement B",
+    "held feedback cannot mutate navigate or log out a fresh verified returning A session",
+    "held deletion completion preserves verified replacement B",
+    "held deletion completion preserves a fresh verified returning A session",
+    "held deactivation completion preserves verified replacement B",
+    "held deactivation completion preserves a fresh verified returning A session",
+    "held recovery completion preserves verified replacement B",
+    "held recovery completion preserves a fresh verified returning A session"
+  ],
+  "results": [
+    {
+      "title": "active Settings requires trimmed feedback and retries one durable submission",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "foreign feedback and stale revision cannot delete an active owner",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "UI deactivation revokes both tabs and the old session",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "UI deletion is cancelled by a real Google recovery callback",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "recovery proof expires and cannot grant ordinary authority",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "concurrent recovery completes exactly once and rejects replay",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "wrong provider identity cannot recover a retained account",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "terminal maintenance preserves tombstone and denies recovery",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "foreign and absent origins cannot mutate lifecycle state",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "delayed old lifecycle response cannot navigate a new owner",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "held feedback cannot mutate navigate or log out verified replacement B",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "held feedback cannot mutate navigate or log out a fresh verified returning A session",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "held deletion completion preserves verified replacement B",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "held deletion completion preserves a fresh verified returning A session",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "held deactivation completion preserves verified replacement B",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "held deactivation completion preserves a fresh verified returning A session",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "held recovery completion preserves verified replacement B",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "title": "held recovery completion preserves a fresh verified returning A session",
+      "status": "passed",
+      "retry": 0
+    }
+  ],
+  "provider": "simulated validateAuthorizationCode/getUserInfo only",
+  "runtime": "separate protected lifecycle_runtime",
+  "postgres": {
+    "database": "music_uat_8f2c8ca60f23b623129236bd305f3f84",
+    "containerId": "27ec5aa0e9204aa5a278925a25cc91efafafa2df3a33f0e857bc0ad1fc6c1a17",
+    "imageId": "sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81"
+  },
+  "cleanup": "owned database dropped; attested container removed; pools/control/children closed; secret removed"
+}

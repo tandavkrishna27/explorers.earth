@@ -1,0 +1,50 @@
+[
+  {
+    "viewport": "desktop",
+    "route": "about",
+    "status": 200,
+    "heading": "Explorers of Earth",
+    "layout": {
+      "clientWidth": 1440,
+      "scrollWidth": 1440
+    },
+    "errors": [],
+    "screenshot": "desktop/about.png"
+  },
+  {
+    "viewport": "desktop",
+    "route": "use-cases",
+    "status": 200,
+    "heading": "Different perspectives. One place to share them.",
+    "layout": {
+      "clientWidth": 1440,
+      "scrollWidth": 1440
+    },
+    "errors": [],
+    "screenshot": "desktop/use-cases.png"
+  },
+  {
+    "viewport": "mobile",
+    "route": "about",
+    "status": 200,
+    "heading": "Explorers of Earth",
+    "layout": {
+      "clientWidth": 390,
+      "scrollWidth": 390
+    },
+    "errors": [],
+    "screenshot": "mobile/about.png"
+  },
+  {
+    "viewport": "mobile",
+    "route": "use-cases",
+    "status": 200,
+    "heading": "Different perspectives. One place to share them.",
+    "layout": {
+      "clientWidth": 390,
+      "scrollWidth": 390
+    },
+    "errors": [],
+    "screenshot": "mobile/use-cases.png"
+  }
+]

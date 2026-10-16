@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "kind": "sanitized-owned-database-red-diagnostic",
+  "commit": "8e51b6d032001775d27e9eae6939835b92dbbb8f",
+  "nativeExit": 1,
+  "files": {"total": 24, "passed": 23, "failed": 1},
+  "tests": {"total": 325, "passed": 324, "failed": 1},
+  "failedTitles": ["guarded parent create HTTP links Products and People and gives equal foreign missing refusals without orphans"],
+  "observedClassifications": ["foreign-and-missing-both404-error-requestId-differs"],
+  "sqlFixtureErrorDetected": false,
+  "sourceHash": "375fee31c72d77a763ce26412a7d20017edefb8c69023e4181e4f5ae4e184e47",
+  "sourceCleanAndIntactObserved": true,
+  "ownedContainerAbsentObserved": true,
+  "evidenceLimits": "Not a passing UAT envelope. Database-drop receipt unavailable from the passing-only producer. Independent error-envelope diagnosis and fresh qualification remain required."
+}

@@ -1,5 +1,4 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { useApolloClient, type ApolloClient, type NormalizedCacheObject } from '@apollo/client';
 import { useAccountNavigationWriter } from '../navigation/CategoryNavigationProvider';
 import type { IntentAuthority } from '../navigation/categoryNavigationPolicy';
 import { createMusicPublishCoordinator, type Coordinator, type PublishOutcome, type PublishState } from './musicPublishCoordinator';
@@ -26,7 +25,6 @@ export function MusicPublishProvider({ children }: { children: ReactNode }) {
 export function useMusicPublish(origin: IntentAuthority | undefined, { ready }: { ready: boolean }) {
   const registry = useContext(RegistryContext);
   if (!registry) throw new Error('MusicPublishProvider is required.');
-  const client = useApolloClient() as ApolloClient<NormalizedCacheObject>;
   const shared = useAccountNavigationWriter();
   useSyncExternalStore(musicIdentityCoordinator.subscribe, musicIdentityCoordinator.getSnapshot, musicIdentityCoordinator.getSnapshot);
   const eligible = !!origin && ready && shared.isCurrent(origin) && musicIdentityCoordinator.isReadyFor(origin);
@@ -47,7 +45,7 @@ export function useMusicPublish(origin: IntentAuthority | undefined, { ready }: 
     let view: PublishState = { kind: 'loading' };
     const listeners = new Set<() => void>();
     const current = () => !disposed && consumers > 0 && shared.isCurrent(captured) && musicIdentityCoordinator.isReadyFor(captured) && (!requestingConsumer || requestingConsumer());
-    const coordinator = createMusicPublishCoordinator(transaction => createMusicPublishAdapter({ client, workspace: musicWorkspaceClient,
+    const coordinator = createMusicPublishCoordinator(transaction => createMusicPublishAdapter({ workspace: musicWorkspaceClient,
       origin: captured, scope: captured, transaction, isCurrent: current }), captured, createMusicPublishOperationStore(), shared.writer);
     const emit = () => {
       const state = coordinator.getSnapshot();
@@ -119,7 +117,7 @@ export function useMusicPublish(origin: IntentAuthority | undefined, { ready }: 
     };
     registry.set(key, created);
     return created;
-  }, [registry, client, origin?.userDocumentId, origin?.accountDocumentId, origin?.generation, eligible, shared.writer, shared.isCurrent, shared.refresh]);
+  }, [registry, origin?.userDocumentId, origin?.accountDocumentId, origin?.generation, eligible, shared.writer, shared.isCurrent, shared.refresh]);
   const subscribe = useCallback((listener: () => void) => entry ? entry.subscribe(listener) : noSubscription(), [entry]);
   const state = useSyncExternalStore(subscribe, entry?.getSnapshot ?? getUnavailable, entry?.getSnapshot ?? getUnavailable);
   const consumer = useRef({ eligible, entry, mounted: true });

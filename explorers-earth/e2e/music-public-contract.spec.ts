@@ -152,11 +152,17 @@ test.describe("PR-safe direct public Music routes", { tag: LIVE_READ_ONLY_TAG },
       await guestPage.goto(guestUrl);
       await expect(guestPage.getByRole("heading", { name: "Music", level: 1 })).toBeVisible();
       await expect(guestPage.getByText("Queued song")).toBeVisible();
-      expect(await guestPage.evaluate(() => ({
+      // The store persists nothing of the session now (`partialize: () => ({})`), so the
+      // auth-storage key exists as an empty envelope rather than being absent. What this
+      // case is actually protecting - that a logged-out guest page carries no owner
+      // authority - is asserted on the contents instead of the key's presence.
+      const guestStorage = await guestPage.evaluate(() => ({
         auth: localStorage.getItem("auth-storage"),
         user: localStorage.getItem("user"),
         session: localStorage.getItem("auth_session"),
-      }))).toEqual({ auth: null, user: null, session: null });
+      }));
+      expect(guestStorage).toMatchObject({ user: null, session: null });
+      expect(JSON.parse(guestStorage.auth ?? "null")?.state ?? {}).toEqual({});
       expect((await guestContext.cookies()).some(({ name }) => name === "token")).toBe(false);
       expect(guestAuthorizationHeaders).toEqual([]);
     } finally {

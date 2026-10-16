@@ -2,6 +2,11 @@ import { test as base, type Page, type TestInfo } from "@playwright/test";
 import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { canonicalCategoryAccount } from "../../src/test/canonicalAccountFixture";
+
+// Ensure accepts the canonical same-origin route (ADR-006/008) and the legacy
+// Music-origin path, because the full-stack fixtures still answer the latter.
+const ENSURE_ROUTE = /\/api\/(?:explorers\/v1\/)?music\/identity\/ensure$/;
 import {
   LIVE_PROFILE_BATCH_FAILURE_CODES,
   LIVE_PROFILE_BATCH_FAILURE_STAGES,
@@ -1010,6 +1015,60 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
   let releaseHeldEnsure!: () => void;
   const heldEnsure = new Promise<void>((resolveHeld) => { releaseHeldEnsure = resolveHeld; });
 
+  // The canonical account gates the dashboard independently of the Music
+  // eligibility/provider/lifecycle fault scenarios in this synthetic fixture. It has to
+  // be durable across read and write: publishing Music commits `public_music` through
+  // PATCH /api/explorers/v1/account and re-reads to confirm it, so a fixture that
+  // always replied with the seed would report the publication unconfirmed.
+  // An Explorer who cannot use Music must not get a Music identity provisioned, and
+  // under ADR-006 the canonical account is what says so: an unconfirmed profile and an
+  // absent Explorer account both mean onboarding is unfinished, which is exactly the
+  // "Finish your Explorer profile to use Music." state these cases render. The legacy
+  // `confirmed` flag and the GraphQL accounts list are the retiring Strapi expression of
+  // the same condition, so the canonical account is kept consistent with them here
+  // rather than letting the two disagree.
+  const canonicallyEligible = (options.confirmed ?? true) && (options.accounts ?? [completeMusicAccount]).length > 0;
+  let canonicalAccount = canonicalCategoryAccount({
+    handle: "testuser",
+    ...(canonicallyEligible ? {} : { onboardingStatus: "incomplete" as const }),
+  });
+
+  await page.route("**/api/explorers/v1/me", route => {
+    if (route.request().method() !== "GET" || new URL(route.request().url()).origin !== new URL(String(base.info().project.use.baseURL)).origin) return route.abort("blockedbyclient");
+    return route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ account: canonicalAccount }),
+    });
+  });
+
+  // The navigation client no longer issues the legacy UpdateTabVisibility mutation; it
+  // writes the whole canonical preference set through this one command.
+  await page.route("**/api/explorers/v1/account", async route => {
+    const request = route.request();
+    if (request.method() !== "PATCH") return route.abort("blockedbyclient");
+    const patch = request.postDataJSON() as {
+      expectedRevision?: number;
+      categories?: Array<{ category: string; isPublic: boolean; displayOrder: number; pinnedOrder: number | null }>;
+      autoPinning?: boolean;
+    };
+    if (patch.expectedRevision !== canonicalAccount.revision) {
+      return route.fulfill({
+        status: 409, contentType: "application/json",
+        body: JSON.stringify({ error: { code: "CONFLICT", message: "Fixture revision moved.", requestId: "music-qualification-account" } }),
+      });
+    }
+    canonicalAccount = {
+      ...canonicalAccount,
+      revision: canonicalAccount.revision + 1,
+      ...(patch.categories ? { categories: patch.categories.map(row => ({ ...row })) } : {}),
+      ...(patch.autoPinning === undefined ? {} : { autoPinning: patch.autoPinning }),
+    };
+    return route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ account: canonicalAccount }),
+    });
+  });
+
   await page.route("**/graphql", async (route) => {
     strapiCalls += 1;
     const payload = route.request().postDataJSON();
@@ -1045,7 +1104,7 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: {} }) });
   });
 
-  await page.route("**/api/music/identity/ensure", async (route) => {
+  await page.route(ENSURE_ROUTE, async (route) => {
     ensureCalls += 1;
     markEnsureStarted();
     requests.push({
@@ -1142,6 +1201,15 @@ export async function installMusicQualificationMocks(page: Page, options: MusicQ
       playedSongs: [],
       publication: { mode: publicationMode, publicSlug: "qualification-public" },
       guestControls: { allowSongRequests: false, allowGuestPlayOnDevice: false, allowPlaylistSharing: false, allowRecentlyPlayedVisibility: false, allowQueueVisibility: false },
+    }),
+  }));
+  // Ticket 6.3. One purpose-limited handshake ticket per connection attempt.
+  await page.route("**/api/music/socket-ticket", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      version: "music-socket-ticket/v1",
+      ticket: { token: "fixture.socket.ticket", expiresAt: Math.floor(Date.now() / 1000) + 60 },
     }),
   }));
   await page.route("**/api/music/entitlement", (route) => route.fulfill({
