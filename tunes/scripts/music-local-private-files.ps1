@@ -33,6 +33,12 @@ public static class LocalMusicPrivateFiles {
   [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)] static extern IntPtr CreateFileW(string name, uint access, uint share, IntPtr security, uint creation, uint flags, IntPtr template);
   [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)] static extern uint GetFinalPathNameByHandleW(IntPtr file, StringBuilder path, uint length, uint flags);
   public static string Owner { get { return WindowsIdentity.GetCurrent().User.Value; } }
+  // The SID Windows stamps as owner on objects THIS token creates. For an unelevated account it
+  // equals Owner above; for an elevated administrator it is the Administrators group instead.
+  // Used ONLY by ValidateRoot, for the one directory this helper does not create. Security()
+  // and Inspect() deliberately keep comparing to Owner, because the helper explicitly calls
+  // SetOwner(Owner) on everything it does create.
+  public static string TokenDefaultOwner { get { return WindowsIdentity.GetCurrent().Owner.Value; } }
   public sealed class RootEvidence {
     public string OwnerId, LocalAppData, UnredirectedLocalAppData, Authority, PackageFamily;
     public bool Canonical, ReparseFree, OwnerVerified, PackageIdentityVerified, AncestryVerified;
@@ -72,7 +78,20 @@ public static class LocalMusicPrivateFiles {
     if(string.IsNullOrWhiteSpace(value) || !Path.IsPathRooted(value) || value.StartsWith(@"\\") || value.IndexOf(',') >= 0 || Path.GetFullPath(value) != value) throw new Exception("identity: root path is not canonical");
     string root=Path.GetPathRoot(value); if(value.Substring(root.Length).IndexOf(':') >= 0 || !String.Equals(FinalDirectoryPath(value),value,StringComparison.OrdinalIgnoreCase)) throw new Exception("identity: root path final-path mismatch");
     for(var current=new DirectoryInfo(value); current != null; current=current.Parent) if((current.Attributes & FileAttributes.ReparsePoint) != 0) throw new Exception("identity: root path crosses a reparse point");
-    string actualOwner=Directory.GetAccessControl(value).GetOwner(typeof(SecurityIdentifier)).Value; if(actualOwner != owner) throw new Exception("identity: root owner mismatch");
+    // The root is the only object in the custody chain this helper does not create, so the
+    // property worth asserting about it is "owned by a principal whose authority this token
+    // already holds" -- which is the token's User SID OR the SID its own creations receive.
+    // Requiring User alone was wrong on any elevated host: measured on the hosted Windows
+    // runner, isAdmin=true, tokenUserEqualsTokenOwner=false, localAppDataOwnerMatchesUser=false
+    // and localAppDataOwnerMatchesOwner=TRUE -- the root is owned by exactly the SID this token
+    // stamps on its own directories, and the check refused it anyway. That hits every
+    // elevated-admin Windows developer, not only CI.
+    // This stays narrow on purpose: TokenDefaultOwner is one SID read from the LIVE token, not a
+    // static allowlist and not "any member of Administrators". A root owned by an unrelated
+    // third principal is still refused, and ValidateRoot is called only on the OS-created
+    // LocalAppData roots (:80, :102, :106), never on a directory this helper made.
+    string actualOwner=Directory.GetAccessControl(value).GetOwner(typeof(SecurityIdentifier)).Value;
+    if(actualOwner != owner && actualOwner != TokenDefaultOwner) throw new Exception("identity: root owner mismatch");
   }
   public static RootEvidence IdentityEvidence() {
     string owner=Owner; IntPtr currentToken=Token(GetCurrentProcess());
