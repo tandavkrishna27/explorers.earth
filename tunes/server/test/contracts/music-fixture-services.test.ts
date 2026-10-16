@@ -141,7 +141,15 @@ function observeFixture(child: ChildProcess, nonce: string) {
   };
   child.stderr?.setEncoding("utf8");
   child.stderr?.on("data", onStderr);
-  const ready = within(readiness, 5_000, "fixture readiness timeout")
+  // 60s, raised from 5s. This is a liveness wait on a live child, not an assertion about startup
+  // speed: nothing here asserts readiness WITHIN a budget, and a fixture that dies or fails to
+  // spawn is rejected immediately by onClose ("fixture exited before readiness") and onError, so
+  // this timeout only ever covers a child that is alive but slow to print its readiness line.
+  // Measured: this case failed at 6203ms on the hosted windows-latest runner while the same test
+  // passes on ubuntu-latest, in a lane whose total is ~845s and where lifecycle-browser-support
+  // alone takes 37s. Spawning Node, binding loopback and framing the first line simply costs more
+  // there. Raising the bound can only remove false reds; a genuinely hung fixture still fails.
+  const ready = within(readiness, 60_000, "fixture readiness timeout")
     .catch((error) => { throw withFixtureStderr(error, stderr); });
   void ready.catch(() => {});
   return {
