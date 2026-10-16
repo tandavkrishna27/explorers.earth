@@ -100,7 +100,14 @@ async function privateHelper(operation: string, file?: string, input?: string): 
       // reading as a JSON SyntaxError -- but on its own it then hid the reason, which is the
       // fact worth having.
       let reason = 'no reason supplied';
-      try { const reported: unknown = JSON.parse(result.stdout); if (reported && typeof reported === 'object' && typeof (reported as { reason?: unknown }).reason === 'string') reason = (reported as { reason: string }).reason; } catch { /* stdout was not JSON; the exit status below is all we have. */ }
+      // `no reason supplied` was itself ambiguous on the Windows runner: empty stdout, stdout that
+      // is not JSON, and JSON without a `reason` are three different faults and all three read
+      // the same. They are now named apart. Only the BYTE COUNT of stdout is reported, never its
+      // content, so an ownerId or path in it is still never surfaced.
+      if (!result.stdout) reason = 'no reason supplied (stdout empty)';
+      else try { const reported: unknown = JSON.parse(result.stdout); const value = (reported as { reason?: unknown } | null)?.reason;
+        reason = typeof value === 'string' ? value : `no reason supplied (parsed, no reason field, ${Buffer.byteLength(result.stdout, 'utf8')} bytes)`; }
+      catch { reason = `no reason supplied (stdout not JSON, ${Buffer.byteLength(result.stdout, 'utf8')} bytes)`; }
       // The stderr tail appears only when MUSIC_LOCAL_STATE_STDERR=1 was set deliberately;
       // otherwise it is empty and this message is byte-identical to before.
       // A spawn failure is reported as its own cause rather than as a helper refusal, because the
