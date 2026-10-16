@@ -65,42 +65,66 @@ export function createPublicProfileGatewayClient(baseUrl: string, fetchImpl: Fet
   const cache = new Map<string, { etag?: string; value: unknown }>();
   const categoryPath = (username: string, category: PublicCategory) =>
     `/api/explorers/v1/profiles/${encodeURIComponent(username)}/recommendations/${category}`;
-  const request = async (path: string, signal?: AbortSignal, bypassCache = false, gamesUsername?:string): Promise<unknown> => {
+  const request = async (path: string, signal?: AbortSignal, bypassCache = false, gamesUsername?:string, bounded = false): Promise<unknown> => {
     const url = `${origin}${path}`;
     const people = /\/recommendations\/people(?:\/|\?|$)/.test(path);
-    const boundedSignal=gamesUsername===undefined&&!people?undefined:AbortSignal.any([...(signal?[signal]:[]),AbortSignal.timeout(15000)]);
-    const cached = gamesUsername===undefined&&!people?cache.get(url):undefined;
-    const fetching = fetchImpl(url, {
-      // Owner-controlled visibility and pinning must not be hidden behind a
-      // browser's fresh/stale HTTP response after a public-page reload. This
-      // still permits conditional ETag validation and the gateway's cache.
-      cache: people ? "no-store" : "no-cache",
-      ...(people ? { credentials: "omit" as const } : {}),
-      signal:boundedSignal??signal,
-      headers: {
-        Accept: "application/json",
-        ...(cached?.etag ? { "If-None-Match": cached.etag } : {}),
-        ...(bypassCache ? { "Cache-Control": "no-cache" } : {}),
-      },
-    });
-    if(boundedSignal)void fetching.then(late=>{if(boundedSignal.aborted)void late.body?.cancel().catch(()=>{});},()=>{});
-    const response=people
-      ? await gameBounded(fetching,boundedSignal!).catch(()=>{throw Error(boundedSignal!.aborted?'PUBLIC_PROFILE_ABORTED':'PUBLIC_PROFILE_UNAVAILABLE');})
-      : boundedSignal?await gameBounded(fetching,boundedSignal):await fetching;
-    if (response.status === 304) {
-      if (cached) return cached.value;
-      if(people)void response.body?.cancel().catch(()=>{});
-      throw new Error("PUBLIC_PROFILE_304");
+    // Deliberately independent of the cache predicate below. Both used to be the SAME
+    // expression, so bounding a read also made it uncached -- and the shell is the most
+    // requested read in the product. `bounded` is opt-in per call site instead.
+    // AbortController + setTimeout rather than AbortSignal.any: `.any` needs Safari 17.4,
+    // there is no browserslist, and esbuild cannot polyfill a runtime API, so on the shell
+    // path that would hard-error every public profile on an older Safari.
+    const deadline = gamesUsername === undefined && !people && !bounded ? undefined : new AbortController();
+    const expiry = deadline ? setTimeout(() => deadline.abort(), bounded ? 12_000 : 15_000) : undefined;
+    // The caller-abort link is deliberately NOT torn down in the finally. AbortSignal.any
+    // produced a dependent signal that stayed linked for the caller signal's whole life, and
+    // publicPeopleTransport.test.ts:71 pins that: it aborts the caller AFTER the read settles
+    // and asserts the signal handed to fetch aborted too. Removing the listener broke it.
+    let forward: (() => void) | undefined;
+    if (deadline && signal) {
+      if (signal.aborted) deadline.abort();
+      else { forward = () => deadline.abort(); signal.addEventListener("abort", forward, { once: true }); }
     }
-    if (!response.ok) {if(gamesUsername!==undefined)cache.delete(url);if(people)void response.body?.cancel().catch(()=>{});throw new Error(`PUBLIC_PROFILE_${response.status}`);}
-    if (response.headers.get("content-type")?.toLowerCase().includes("text/html")) {
-      if(people)void response.body?.cancel().catch(()=>{});
-      throw new Error("PUBLIC_PROFILE_INVALID_RESPONSE");
+    const boundedSignal = deadline?.signal;
+    try {
+      const cached = gamesUsername===undefined&&!people?cache.get(url):undefined;
+      const fetching = fetchImpl(url, {
+        // Owner-controlled visibility and pinning must not be hidden behind a
+        // browser's fresh/stale HTTP response after a public-page reload. This
+        // still permits conditional ETag validation and the gateway's cache.
+        cache: people ? "no-store" : "no-cache",
+        ...(people ? { credentials: "omit" as const } : {}),
+        signal:boundedSignal??signal,
+        headers: {
+          Accept: "application/json",
+          ...(cached?.etag ? { "If-None-Match": cached.etag } : {}),
+          ...(bypassCache ? { "Cache-Control": "no-cache" } : {}),
+        },
+      });
+      if(boundedSignal)void fetching.then(late=>{if(boundedSignal.aborted)void late.body?.cancel().catch(()=>{});},()=>{});
+      const response=people
+        ? await gameBounded(fetching,boundedSignal!).catch(()=>{throw Error(boundedSignal!.aborted?'PUBLIC_PROFILE_ABORTED':'PUBLIC_PROFILE_UNAVAILABLE');})
+        : boundedSignal?await gameBounded(fetching,boundedSignal):await fetching;
+      if (response.status === 304) {
+        if (cached) return cached.value;
+        if(people)void response.body?.cancel().catch(()=>{});
+        throw new Error("PUBLIC_PROFILE_304");
+      }
+      if (!response.ok) {if(gamesUsername!==undefined)cache.delete(url);if(people)void response.body?.cancel().catch(()=>{});throw new Error(`PUBLIC_PROFILE_${response.status}`);}
+      if (response.headers.get("content-type")?.toLowerCase().includes("text/html")) {
+        if(people)void response.body?.cancel().catch(()=>{});
+        throw new Error("PUBLIC_PROFILE_INVALID_RESPONSE");
+      }
+      const value=gamesUsername!==undefined?await readGamesResponse(response,gamesUsername,boundedSignal!):people?await readPeopleResponse(response,boundedSignal!):bounded?await gameBounded(response.json(),boundedSignal!):await response.json();
+      const etag = response.headers.get("etag") ?? undefined;
+      if(gamesUsername===undefined&&!people)cache.set(url, { etag, value });
+      return value;
+    } finally {
+      // Seven exit paths and no previous finally: a bare setTimeout is ref'd (unlike
+      // AbortSignal.timeout), so clearing it anywhere else would leak a pending timer on
+      // every throw -- including PUBLIC_PROFILE_404, the most common outcome.
+      if (expiry !== undefined) clearTimeout(expiry);
     }
-    const value=gamesUsername!==undefined?await readGamesResponse(response,gamesUsername,boundedSignal!):people?await readPeopleResponse(response,boundedSignal!):await response.json();
-    const etag = response.headers.get("etag") ?? undefined;
-    if(gamesUsername===undefined&&!people)cache.set(url, { etag, value });
-    return value;
   };
   const pageQuery = (page: PublicProfilePage = {}): string => {
     const params = new URLSearchParams();
@@ -113,7 +137,7 @@ export function createPublicProfileGatewayClient(baseUrl: string, fetchImpl: Fet
     async peopleSectorPage(username:string,sectorSlug:string,page:PublicProfilePage={},signal?:AbortSignal):Promise<unknown>{return request(`${categoryPath(username,'people')}/sectors/${encodeURIComponent(sectorSlug)}${pageQuery(page)}`,signal);},
     async movieGenrePage(username:string,genreSlug:string,page:PublicProfilePage={},signal?:AbortSignal,bypassCache=false):Promise<unknown>{return request(`${categoryPath(username,'movies')}/genres/${encodeURIComponent(genreSlug)}${pageQuery(page)}`,signal,bypassCache);},
     async shell(username: string, signal?: AbortSignal, bypassCache = false): Promise<unknown> {
-      return request(`/api/explorers/v1/profiles/${encodeURIComponent(username)}`, signal, bypassCache);
+      return request(`/api/explorers/v1/profiles/${encodeURIComponent(username)}`, signal, bypassCache, undefined, true);
     },
     async category(username: string, category: PublicCategory, signal?: AbortSignal, bypassCache = false): Promise<unknown> {
       return request(categoryPath(username, category), signal, bypassCache,category==='games'?username:undefined);

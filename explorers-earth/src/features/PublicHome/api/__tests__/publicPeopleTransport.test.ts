@@ -31,12 +31,16 @@ it('People streaming byte limit cancels and releases before reading the tail or 
  const outcome=client.category('reader','people').then(()=> 'accepted',error=>error.message);expect(await outcome).toBe('PUBLIC_PROFILE_READ_LIMIT');expect(reads).toBe(1);expect(cancel).toHaveBeenCalledOnce();expect(body.locked).toBe(false);expect(json).not.toHaveBeenCalled();
 });
 it.each(['fetch','body'] as const)('People deadline settles a stalled %s without waiting for cancellation acknowledgment',async(stage)=>{
- const deadline=new AbortController();const timeout=vi.spyOn(AbortSignal,'timeout').mockReturnValue(deadline.signal);
+ // The deadline is an AbortController + setTimeout now, not AbortSignal.timeout, because
+ // .any needs Safari 17.4 and the shell read cannot require it. Drive it by firing the
+ // scheduled callback, and keep asserting 15000 so people/games are not silently retimed.
+ const timers=vi.spyOn(globalThis,'setTimeout');
  const cancel=vi.fn(()=>new Promise<void>(()=>{}));const body=new ReadableStream<Uint8Array>({pull:()=>new Promise(()=>{}),cancel},{highWaterMark:0});
  const fetchImpl=vi.fn().mockImplementation(()=>stage==='fetch'?new Promise(()=>{}):Promise.resolve(new Response(body)));
  const client=createPublicProfileGatewayClient('https://public.example',fetchImpl);const outcome=client.category('reader','people').then(()=> 'accepted',error=>error.message);
- await Promise.resolve();await Promise.resolve();deadline.abort();expect(await promptly(outcome)).toBe('PUBLIC_PROFILE_ABORTED');expect(timeout).toHaveBeenCalledWith(15000);expect(fetchImpl.mock.calls[0][1].signal.aborted).toBe(true);
+ await Promise.resolve();await Promise.resolve();const deadline=timers.mock.calls.find(([,delay])=>delay===15_000);expect(deadline).toBeDefined();(deadline![0] as ()=>void)();expect(await promptly(outcome)).toBe('PUBLIC_PROFILE_ABORTED');expect(fetchImpl.mock.calls[0][1].signal.aborted).toBe(true);
  if(stage==='body'){expect(cancel).toHaveBeenCalledOnce();expect(body.locked).toBe(false);}
+ timers.mockRestore();
 });
 it('People caller abort cancels and releases a stalled body even if cancellation never acknowledges',async()=>{
  const abort=new AbortController(),cancel=vi.fn(()=>new Promise<void>(()=>{}));const body=new ReadableStream<Uint8Array>({pull:()=>new Promise(()=>{}),cancel},{highWaterMark:0});
