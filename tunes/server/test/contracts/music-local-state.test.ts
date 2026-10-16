@@ -114,11 +114,13 @@ describe.skipIf(process.platform !== 'win32')('real Windows private-file helper 
     } finally {
       vi.unstubAllEnvs();
     }
-  // 120s, deliberately ABOVE runLocalProcess's own 30s child kill
-  // (music-local-state.ts:24). With both at 30000 the two deadlines raced, so a slow
-  // child could never surface as its own assertion -- it always presented as an opaque
-  // vitest timeout. The script's bound is unchanged; only the observation window grows.
-  }, 120000);
+  // 600s, deliberately ABOVE runLocalProcess's own 120s child kill
+  // (see the bound in music-local-state.ts). With both equal the two deadlines race, so a
+  // slow child can never surface as its own assertion -- it presents as an opaque vitest
+  // timeout instead. Raised with that bound: on the hosted Windows runner these cases were
+  // dying at 120006ms and 128331ms against the old 120s budget while comparable cases
+  // passed at 88178ms, so the budget was cutting off work that was still progressing.
+  }, 600000);
   it('provides a read-only host root probe with sanitized metadata only', async () => {
     const helper = path.resolve(import.meta.dirname, '../../../scripts/music-local-private-files.ps1');
     const result = await state.runLocalProcess('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', helper, 'identity-probe']);
@@ -126,11 +128,13 @@ describe.skipIf(process.platform !== 'win32')('real Windows private-file helper 
     const probe = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(probe).toEqual({ ok: true, authority: expect.stringMatching(/^(current-token|packaged-ancestor)$/), canonical: true, reparseFree: true, ownerVerified: true, packageIdentityVerified: expect.any(Boolean), ancestryVerified: true });
     expect(result.stdout).not.toMatch(/S-1-|[A-Z]:\\|packageFamily|localAppData/i);
-  // 120s, deliberately ABOVE runLocalProcess's own 30s child kill
-  // (music-local-state.ts:24). With both at 30000 the two deadlines raced, so a slow
-  // child could never surface as its own assertion -- it always presented as an opaque
-  // vitest timeout. The script's bound is unchanged; only the observation window grows.
-  }, 120000);
+  // 600s, deliberately ABOVE runLocalProcess's own 120s child kill
+  // (see the bound in music-local-state.ts). With both equal the two deadlines race, so a
+  // slow child can never surface as its own assertion -- it presents as an opaque vitest
+  // timeout instead. Raised with that bound: on the hosted Windows runner these cases were
+  // dying at 120006ms and 128331ms against the old 120s budget while comparable cases
+  // passed at 88178ms, so the budget was cutting off work that was still progressing.
+  }, 600000);
   it('reads protected JSON metadata and rejects a hardlinked receipt without exposing its content', async () => {
     const temp = await mkdtemp(path.join(temporaryRoot, 'music-private-json-'));
     try {
@@ -141,11 +145,13 @@ describe.skipIf(process.platform !== 'win32')('real Windows private-file helper 
       await link(file, path.join(dir, 'alias.json'));
       await expect(defaultLocalMusicDependencies.io.readJson(file)).rejects.toThrow(/^LOCAL_MUSIC_/);
     } finally { await rm(temp, { recursive: true, force: true }); }
-  // 120s, deliberately ABOVE runLocalProcess's own 30s child kill
-  // (music-local-state.ts:24). With both at 30000 the two deadlines raced, so a slow
-  // child could never surface as its own assertion -- it always presented as an opaque
-  // vitest timeout. The script's bound is unchanged; only the observation window grows.
-  }, 120000);
+  // 600s, deliberately ABOVE runLocalProcess's own 120s child kill
+  // (see the bound in music-local-state.ts). With both equal the two deadlines race, so a
+  // slow child can never surface as its own assertion -- it presents as an opaque vitest
+  // timeout instead. Raised with that bound: on the hosted Windows runner these cases were
+  // dying at 120006ms and 128331ms against the old 120s budget while comparable cases
+  // passed at 88178ms, so the budget was cutting off work that was still progressing.
+  }, 600000);
   it('creates exclusive owner-only state, verifies secure reader, never overwrites a secret', async () => {
     const temp = await mkdtemp(path.join(temporaryRoot, 'music-private-acl-'));
     const dir = path.join(temp, 'private');
@@ -166,11 +172,13 @@ describe.skipIf(process.platform !== 'win32')('real Windows private-file helper 
       expect(await readFile(file, 'utf8')).toBe('generated_test_sentinel_1234567890');
       await expect(state.createLocalPrivateDirectory(dir)).rejects.toThrow(/^LOCAL_MUSIC_/);
     } finally { await rm(temp, { recursive: true, force: true }); }
-  // 120s, deliberately ABOVE runLocalProcess's own 30s child kill
-  // (music-local-state.ts:24). With both at 30000 the two deadlines raced, so a slow
-  // child could never surface as its own assertion -- it always presented as an opaque
-  // vitest timeout. The script's bound is unchanged; only the observation window grows.
-  }, 120000);
+  // 600s, deliberately ABOVE runLocalProcess's own 120s child kill
+  // (see the bound in music-local-state.ts). With both equal the two deadlines race, so a
+  // slow child can never surface as its own assertion -- it presents as an opaque vitest
+  // timeout instead. Raised with that bound: on the hosted Windows runner these cases were
+  // dying at 120006ms and 128331ms against the old 120s budget while comparable cases
+  // passed at 88178ms, so the budget was cutting off work that was still progressing.
+  }, 600000);
   it('permits a bounded 512-character server-only reader token without relaxing default secret limits', async () => {
     const temp = await mkdtemp(path.join(temporaryRoot, 'music-private-reader-token-'));
     const dir = path.join(temp, 'private');
@@ -182,11 +190,13 @@ describe.skipIf(process.platform !== 'win32')('real Windows private-file helper 
       await expect(state.readLocalPrivateSecret(file)).rejects.toThrow(/^LOCAL_MUSIC_/);
       await expect(state.readLocalPrivateSecret(file, { maxBytes: 512 })).resolves.toBe(token);
     } finally { await rm(temp, { recursive: true, force: true }); }
-  // 120s, deliberately ABOVE runLocalProcess's own 30s child kill
-  // (music-local-state.ts:24). With both at 30000 the two deadlines raced, so a slow
-  // child could never surface as its own assertion -- it always presented as an opaque
-  // vitest timeout. The script's bound is unchanged; only the observation window grows.
-  }, 120000);
+  // 600s, deliberately ABOVE runLocalProcess's own 120s child kill
+  // (see the bound in music-local-state.ts). With both equal the two deadlines race, so a
+  // slow child can never surface as its own assertion -- it presents as an opaque vitest
+  // timeout instead. Raised with that bound: on the hosted Windows runner these cases were
+  // dying at 120006ms and 128331ms against the old 120s budget while comparable cases
+  // passed at 88178ms, so the budget was cutting off work that was still progressing.
+  }, 600000);
   it.each(['file', 'parent', 'inherited'])('rejects broad read authority on %s', async (kind) => {
     const temp = await mkdtemp(path.join(temporaryRoot, 'music-private-acl-'));
     const dir = path.join(temp, 'private');
@@ -201,9 +211,11 @@ describe.skipIf(process.platform !== 'win32')('real Windows private-file helper 
       execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `$ErrorActionPreference='Stop'; $acl=[System.IO.${api}]::GetAccessControl('${literal}'); ${operation}; [System.IO.${api}]::SetAccessControl('${literal}',$acl)`], { windowsHide: true, env: state.localMusicOsEnvironment(process.env), stdio: 'pipe' });
       await expect(state.readLocalPrivateSecret(file)).rejects.toThrow(/^LOCAL_MUSIC_/);
     } finally { await rm(temp, { recursive: true, force: true }); }
-  // 120s, deliberately ABOVE runLocalProcess's own 30s child kill
-  // (music-local-state.ts:24). With both at 30000 the two deadlines raced, so a slow
-  // child could never surface as its own assertion -- it always presented as an opaque
-  // vitest timeout. The script's bound is unchanged; only the observation window grows.
-  }, 120000);
+  // 600s, deliberately ABOVE runLocalProcess's own 120s child kill
+  // (see the bound in music-local-state.ts). With both equal the two deadlines race, so a
+  // slow child can never surface as its own assertion -- it presents as an opaque vitest
+  // timeout instead. Raised with that bound: on the hosted Windows runner these cases were
+  // dying at 120006ms and 128331ms against the old 120s budget while comparable cases
+  // passed at 88178ms, so the budget was cutting off work that was still progressing.
+  }, 600000);
 });

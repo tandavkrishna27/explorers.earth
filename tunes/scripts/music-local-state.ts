@@ -21,7 +21,16 @@ export async function runLocalProcess(executable: string, args: string[], input?
   return await new Promise((resolve) => {
     const child = spawn(executable, args, { shell: false, windowsHide: true, env: localMusicOsEnvironment(process.env), stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = ''; let overflow = false;
-    const timer = setTimeout(() => child.kill(), 30_000);
+    // 120s, raised from 30s. This is a LATENCY bound on one child, not one of the protected
+    // probes: every ACL, ancestry, owner and path assertion the helper makes is untouched.
+    // Measured on the hosted Windows runner, where each invocation costs tens of seconds:
+    // `provides a read-only host root probe` failed at 30042ms -- the old bound exactly -- and
+    // cases that pass there take 11736ms, 81913ms and 88178ms. A killed child resolves with
+    // empty stdout and empty stderr and exit 1, so the breach surfaced as
+    // `exited 1: no reason supplied (stdout empty)` and read as a helper refusal rather than
+    // the deadline it was. 120s still catches a genuinely hung child. Same reasoning as the
+    // places writer guard bootstrap budget (placesWriterGuardTransport.ts), raised 1000 -> 5000ms.
+    const timer = setTimeout(() => child.kill(), 120_000);
     child.stdout.on('data', (data: Buffer) => { if (stdout.length + data.length > 1024 * 1024) { overflow = true; stdout = ''; child.kill(); } else if (!overflow) stdout += data.toString('utf8'); });
     // External stderr may contain credentials or raw system errors. Never retain it.
     // MUSIC_LOCAL_STATE_STDERR is an explicit, opt-in diagnostic escape hatch: unset -- the
