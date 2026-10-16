@@ -288,7 +288,14 @@ test('friendly pending descriptor never redirects; failed account read Retry per
     await guest.page.reload();
     const retry = guest.page.getByRole('button', { name: 'Retry', exact: true }); await expect(retry).toBeVisible();
     const reads = state.reads.length; await retry.click();
-    await expect(guest.page.getByRole('heading', { name: 'Music', exact: true })).toBeVisible(); expect(state.reads.length).toBeGreaterThan(reads); expect(state.writes).toEqual([]);
+    // Explicit 30s window on THIS wait only, which stays well inside this test's own 90s budget
+    // (playwright.config.ts:17) so a slow read still fails as this assertion, not as a test timeout. Everything before it in this test -- including the
+    // Retry button becoming visible -- is unaffected, so the step that runs out of time is the
+    // gateway read that the Retry click starts. Observed: of two runs of this lane on the same
+    // commit one passed and one failed here against the 12s expect default, under 69 specs of
+    // parallel load. The assertion is unchanged and still has to come true; only the window for
+    // it grows, and the read-count and no-writes checks on the same line are untouched.
+    await expect(guest.page.getByRole('heading', { name: 'Music', exact: true })).toBeVisible({ timeout: 30000 }); expect(state.reads.length).toBeGreaterThan(reads); expect(state.writes).toEqual([]);
   } finally { release?.(); await closeFixture(guest); }
 });
 
