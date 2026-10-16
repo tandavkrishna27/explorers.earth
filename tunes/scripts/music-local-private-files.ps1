@@ -155,7 +155,16 @@ public static class LocalMusicPrivateFiles {
   # Pass through ONLY the prefixes this script writes itself (see IdentityEvidence), so a
   # raw system error or anything that could carry credentials is reported as unclassified
   # rather than echoed. stderr is still never retained by the caller.
-  $m = [string]$_.Exception.Message
+  # Unwrap before matching. PowerShell wraps an exception thrown inside a method call as
+  # `Exception calling "IdentityEvidence" with "0" argument(s): "ancestry: ..."`, so a regex
+  # anchored at ^ never matched and every real reason was reported as `unclassified` -- which is
+  # exactly what this diagnosis kept hitting. Walk to the innermost exception, whose Message is
+  # the one this script authored, and anchor the whitelist there. The whitelist itself is
+  # unchanged: only `ancestry:` and `identity:` prefixes this script writes are passed through,
+  # and anything else is still reported as unclassified rather than echoed.
+  $inner = $_.Exception
+  while ($null -ne $inner.InnerException) { $inner = $inner.InnerException }
+  $m = [string]$inner.Message
   $r = if ($m -match '^(ancestry|identity): ') { $m } else { 'unclassified' }
   [Console]::Out.WriteLine((@{ ok = $false; reason = $r } | ConvertTo-Json -Compress))
   exit 1

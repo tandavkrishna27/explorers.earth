@@ -116,6 +116,12 @@ jobs:
           # win32 and would otherwise run in no CI job at all. Named below with this flag set
           # so the Windows lane is where it actually executes.
           APPS_PRIVATE_CUSTODY_GATE_REQUIRED: "1"
+          # Opt-in diagnostic for music-local-state: capture the private-file helper's stderr tail
+          # (capped at 4 KiB) and attach it to the thrown message. The reason for this lane's Windows
+          # failures was discarded three times over -- as a JSON SyntaxError, then `exited 1`, then
+          # `exited 1: no reason supplied` -- because stderr is dropped by default. Inert off win32,
+          # where the helper refuses before spawning anything.
+          MUSIC_LOCAL_STATE_STDERR: "1"
         run: >-
           npm test --prefix tunes -- --run
           server/test/contracts/music-reconciliation-workflow.test.ts

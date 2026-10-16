@@ -17,16 +17,25 @@ export function validateLocalManifestPath(file: string, root: string): string {
     || parts.length !== 2 || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(parts[0]) || parts[1] !== 'manifest.json') throw new Error('LOCAL_MUSIC_STATE_PATH');
   return path.dirname(file);
 }
-export async function runLocalProcess(executable: string, args: string[], input?: string): Promise<{ stdout: string; exitCode: number }> {
+export async function runLocalProcess(executable: string, args: string[], input?: string): Promise<{ stdout: string; exitCode: number; stderr: string }> {
   return await new Promise((resolve) => {
     const child = spawn(executable, args, { shell: false, windowsHide: true, env: localMusicOsEnvironment(process.env), stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = ''; let overflow = false;
     const timer = setTimeout(() => child.kill(), 30_000);
     child.stdout.on('data', (data: Buffer) => { if (stdout.length + data.length > 1024 * 1024) { overflow = true; stdout = ''; child.kill(); } else if (!overflow) stdout += data.toString('utf8'); });
     // External stderr may contain credentials or raw system errors. Never retain it.
-    child.stderr.resume();
-    child.on('error', () => { clearTimeout(timer); resolve({ stdout: '', exitCode: 1 }); });
-    child.on('close', (code) => { clearTimeout(timer); resolve({ stdout: overflow ? '' : stdout, exitCode: overflow ? 1 : code ?? 1 }); });
+    // MUSIC_LOCAL_STATE_STDERR is an explicit, opt-in diagnostic escape hatch: unset -- the
+    // default, and every production path -- behaves exactly as before and the stream is drained
+    // without ever being read. It exists because this Windows failure has now been chased through
+    // three layers of discarded detail (a JSON SyntaxError, then `exited 1`, then
+    // `exited 1: no reason supplied`) and the remaining fact lives only on stderr. It is set on
+    // the Windows CI leg alone, whose only secret-bearing input is a synthetic fixture, and the
+    // capture is capped at 4 KiB so a hostile child cannot flood the log.
+    let stderr = '';
+    if (process.env.MUSIC_LOCAL_STATE_STDERR === '1') child.stderr.on('data', (data: Buffer) => { if (stderr.length < 4096) stderr += data.toString('utf8'); });
+    else child.stderr.resume();
+    child.on('error', () => { clearTimeout(timer); resolve({ stdout: '', exitCode: 1, stderr }); });
+    child.on('close', (code) => { clearTimeout(timer); resolve({ stdout: overflow ? '' : stdout, exitCode: overflow ? 1 : code ?? 1, stderr }); });
     child.stdin.on('error', () => undefined);
     child.stdin.end(input);
   });
@@ -88,7 +97,9 @@ async function privateHelper(operation: string, file?: string, input?: string): 
       // fact worth having.
       let reason = 'no reason supplied';
       try { const reported: unknown = JSON.parse(result.stdout); if (reported && typeof reported === 'object' && typeof (reported as { reason?: unknown }).reason === 'string') reason = (reported as { reason: string }).reason; } catch { /* stdout was not JSON; the exit status below is all we have. */ }
-      throw new Error(`helper '${operation}' exited ${result.exitCode}: ${reason}`);
+      // The stderr tail appears only when MUSIC_LOCAL_STATE_STDERR=1 was set deliberately;
+      // otherwise it is empty and this message is byte-identical to before.
+      throw new Error(`helper '${operation}' exited ${result.exitCode}: ${reason}${result.stderr ? ` | stderr: ${result.stderr.trim()}` : ''}`);
     }
     if (!result.stdout) throw new Error(`helper '${operation}' produced no output`);
     const value = JSON.parse(result.stdout);
