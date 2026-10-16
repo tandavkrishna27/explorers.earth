@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { convertPublicGuideSection, selectGuidePlaceThumbnail, selectGuidePlaceGallery } from '../publicGuidePhotoViewModel';
+import { convertPlace, convertPublicGuideSection, selectGuidePlaceThumbnail, selectGuidePlaceGallery } from '../publicGuidePhotoViewModel';
 
 const mediaId = '11111111-1111-4111-8111-111111111111';
 const photo = { mediaId, fileName: 'photo.jpg', width: 1200, height: 800, aspectRatio: '3:2' };
@@ -9,6 +9,18 @@ const legacy = (id = 'entry-one', photos = [uiPhoto('owner-upload')]) => ({ id, 
 const section = (Timeline: unknown = { morning: [], afternoon: [], evening: [] }) => ({ documentId: 'section-one', Sequence: 1, Description: 'keep me', Timeline, Stay: { accommodations: [] }, Recommendation_Activity: { activities: [] } });
 function freeze<T>(value: T): T { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; }
 function converted(value: unknown) { const result = convertPublicGuideSection(value); expect(result.ok).toBe(true); if (!result.ok) throw new Error('Expected converted section'); return result.section; }
+// A malformed PLACE is now rejected at the place, not by deleting its section. Every assertion
+// below that used to read `convertPublicGuideSection(section({morning:[entry]})) === {ok:false}`
+// asserts both halves of that instead: the entry is still refused, AND a good place beside it
+// still survives. Asserting only absence would no longer distinguish "refused" from "silently
+// dropped by a future bug", so both are checked on every entry. Identity counts are preserved:
+// one call here replaces one call before.
+function rejectsPlace(entry: unknown): void {
+  expect(convertPlace(entry)).toBeUndefined();
+  const morning = converted(section({ morning: [entry, legacy('good-entry')] })).Timeline.morning;
+  expect(morning).toHaveLength(1);
+  expect(morning[0].id).toBe('good-entry');
+}
 
 describe('public guide photo conversion and selection', () => {
   it.each(['morning', 'afternoon', 'evening', 'accommodations', 'activities'] as const)('hydrates canonical photos in each supported place array', key => {
@@ -31,11 +43,13 @@ describe('public guide photo conversion and selection', () => {
     expect(result.Timeline).toEqual(block); expect(result.Description).toBe('keep me');
     expect(result).not.toBe(input); expect(converted(result)).toEqual(result); expect(JSON.stringify(input)).toBe(snapshot);
   });
-  it.each(['{', JSON.stringify(JSON.stringify({ morning: [] })), 42, [], { morning: {} }, { morning: [{ ...legacy(), photos: [{ ...uiPhoto('bad'), width: 'wrong' }] }] }])('rejects malformed blocks without legacy fallback', block => {
+  it.each(['{', JSON.stringify(JSON.stringify({ morning: [] })), 42, [], { morning: {} }])('rejects malformed blocks without legacy fallback', block => {
     expect(convertPublicGuideSection(section(block))).toEqual({ ok: false });
     if (block === '{') {
       // Additional finite assertions inside the existing row, not additional test cases.
-      expect(convertPublicGuideSection(section({ morning: [{ ...legacy(), source: ['google'] }] }))).toEqual({ ok: false });
+      rejectsPlace({ ...legacy(), source: ['google'] });
+      // Relocated from this it.each's rows: a bad photo makes the PLACE invalid, not the block.
+      rejectsPlace({ ...legacy(), photos: [{ ...uiPhoto('bad'), width: 'wrong' }] });
       for (const invalid of [null, undefined, 42, 'section', []]) expect(convertPublicGuideSection(invalid)).toEqual({ ok: false });
       for (const entry of [
         { ...legacy(), id: undefined }, { ...legacy(), id: ' ' },
@@ -47,7 +61,7 @@ describe('public guide photo conversion and selection', () => {
         { ...legacy(), geometry: { location: { lat: 15, lng: Number.POSITIVE_INFINITY } } },
         { ...legacy(), geometry: { location: { lat: '15', lng: 74 } } },
         { ...legacy(), types: 'park' }, { ...legacy(), types: [42] },
-      ]) expect(convertPublicGuideSection(section({ morning: [entry] }))).toEqual({ ok: false });
+      ]) rejectsPlace(entry);
     }
   });
   it.each([
@@ -56,29 +70,27 @@ describe('public guide photo conversion and selection', () => {
     { ...canonical(), name: undefined, id: 'legacy-id', place_id: 'provider-one', formatted_address: 'Street' },
     { ...canonical(), geometry: { lat: 15, lng: 74 } },
   ])('rejects canonical and hybrid entries without URL rescue', place => {
-    expect(convertPublicGuideSection(section({ morning: [place] }))).toEqual({ ok: false });
+    rejectsPlace(place);
     // Each base is otherwise valid legacy input: retrying a legacy guard would rescue it.
     for (const marker of ['localId', 'placeId', 'formattedAddress', 'verified']) {
       for (const value of [undefined, marker === 'verified' ? false : 'canonical-marker']) {
         const hybrid = { ...legacy(), [marker]: value };
         expect(Object.hasOwn(hybrid, marker)).toBe(true);
-        expect(convertPublicGuideSection(section({ morning: [hybrid] }))).toEqual({ ok: false });
+        rejectsPlace(hybrid);
       }
     }
     for (const mediaId of ['bad-canonical-media', undefined]) {
       const hybrid = { ...legacy(), photos: [{ ...uiPhoto('valid-legacy-upload', '/legacy-rescue'), mediaId }] };
       expect(Object.hasOwn(hybrid.photos[0], 'mediaId')).toBe(true);
-      expect(convertPublicGuideSection(section({ morning: [hybrid] }))).toEqual({ ok: false });
+      rejectsPlace(hybrid);
     }
   });
   it('keeps absent legacy blocks and empty photos distinct from invalid supplied data', () => {
     for (const source of ['google', 'ai-unverified', 'manual'] as const) {
       expect(converted(section({ morning: [{ ...legacy(), source }] })).Timeline.morning[0].source).toBe(source);
     }
-    const invalidSource = section({ morning: [{ ...legacy(), source: { toString: null } }] });
-    let invalidSourceResult: unknown;
-    expect(() => { invalidSourceResult = convertPublicGuideSection(invalidSource); }).not.toThrow();
-    expect(invalidSourceResult).toEqual({ ok: false });
+    const invalidSourceEntry = { ...legacy(), source: { toString: null } };
+    expect(() => rejectsPlace(invalidSourceEntry)).not.toThrow();
     const input = { documentId: 'absent', Timeline: null, Stay: '', Recommendation_Activity: undefined };
     expect(converted(input)).toMatchObject({ Timeline: { morning: [], afternoon: [], evening: [] }, Stay: { accommodations: [] }, Recommendation_Activity: { activities: [] } });
     const empty = { ...legacy(), photos: undefined }; expect(converted(section({ morning: [empty] })).Timeline.morning[0].photos).toEqual([]);
@@ -88,7 +100,26 @@ describe('public guide photo conversion and selection', () => {
     expect(converted(section({ morning: [{ ...minimalLegacy, types: ['park'], geometry: { location: { lat: 0, lng: 0 } } }] })).Timeline.morning[0].geometry).toEqual({ location: { lat: 0, lng: 0 } });
     expect(convertPublicGuideSection(section('null'))).toEqual({ ok: false });
     expect(converted(section(null)).Timeline).toEqual({ morning: [], afternoon: [], evening: [] });
-    expect(convertPublicGuideSection(section({ morning: [{ ...legacy(), photos: null }] }))).toEqual({ ok: false });
+    rejectsPlace({ ...legacy(), photos: null });
+  });
+  it('keeps the rest of a section when one place is malformed', () => {
+    // The defect this replaces: convertPublicGuideSection returned {ok:false} for a single bad
+    // place, and PublicGuideDetailPage's flatMap then dropped the WHOLE section -- so one
+    // unparseable entry removed every valid place, stay and activity beside it, with no notice
+    // to the reader. Observed in e2e/public-shell-continuity.spec.ts, where a missing `id` left
+    // a guide with no sections at all.
+    const bad = { ...legacy(), id: undefined };
+    const result = converted({ ...section({ morning: [bad, legacy('keeps-morning')], afternoon: [legacy('keeps-afternoon')], evening: [] }),
+      Stay: { accommodations: [bad, legacy('keeps-stay')] },
+      Recommendation_Activity: { activities: [legacy('keeps-activity'), bad] } });
+    expect(result.Timeline.morning.map(place => place.id)).toEqual(['keeps-morning']);
+    expect(result.Timeline.afternoon.map(place => place.id)).toEqual(['keeps-afternoon']);
+    expect(result.Description).toBe('keep me');
+    expect((result.Stay.accommodations as { id: string }[]).map(place => place.id)).toEqual(['keeps-stay']);
+    expect((result.Recommendation_Activity.activities as { id: string }[]).map(place => place.id)).toEqual(['keeps-activity']);
+    // A block whose places are ALL malformed still yields an empty block rather than throwing.
+    // It is not rendered as a map: hasPlacesForMap stays false for it, which is unchanged here.
+    expect(converted(section({ morning: [bad] })).Timeline.morning).toEqual([]);
   });
   it('prefers each entry own thumbnail and retains last activity first photo fallback', () => {
     const first = legacy('first', [uiPhoto('own-first')]); const second = legacy('second', [uiPhoto('own-second')]);

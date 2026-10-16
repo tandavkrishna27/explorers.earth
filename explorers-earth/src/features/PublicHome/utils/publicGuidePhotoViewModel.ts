@@ -52,7 +52,7 @@ function legacyPlace(value: Record<string, unknown>): DayPlace | undefined {
     types: value.types === undefined ? undefined : [...value.types],
     photos: value.photos === undefined ? [] : value.photos.map(photo => ({ ...photo })) } as DayPlace;
 }
-function convertPlace(value: unknown): DayPlace | undefined {
+export function convertPlace(value: unknown): DayPlace | undefined {
   if (!record(value)) return undefined;
   const canonical = ['localId', 'placeId', 'formattedAddress', 'verified'].some(key => has(value, key))
     || (Array.isArray(value.photos) && value.photos.some(photo => record(photo) && has(photo, 'mediaId')));
@@ -75,7 +75,13 @@ function block(value: unknown, keys: readonly string[]): Record<string, unknown>
     const places: DayPlace[] = [];
     for (const entry of incoming) {
       const place = convertPlace(entry);
-      if (!place) return undefined;
+      // A single malformed place must not delete its whole block. Returning undefined here made
+      // convertPublicGuideSection report {ok:false}, and PublicGuideDetailPage's flatMap then
+      // dropped the ENTIRE section -- so one bad entry silently removed every good place beside
+      // it. Skipping the bad entry keeps the rest of the section readable.
+      // Note this does not make an all-malformed block render: that block becomes empty, so
+      // hasPlacesForMap stays false and the Map View button is still absent for it.
+      if (!place) continue;
       places.push(place);
     }
     result[key] = places;

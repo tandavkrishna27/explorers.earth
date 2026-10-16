@@ -70,12 +70,29 @@ describe('PublicGuideDetailPage photo boundary', () => {
     }
     expect(JSON.stringify([first, next])).toBe(original);
   });
-  it('omits invalid canonical sections without crashing or rendering their legacy URLs', async () => {
+  it('omits an invalid place without omitting its section, and never renders its legacy URL', async () => {
+    // Previously one invalid place made convertPublicGuideSection report {ok:false} and this
+    // page's flatMap dropped the WHOLE section -- the assertion here used to be `['valid']`,
+    // i.e. everything else in the 'invalid' section was deleted from the reader's view too.
+    // The section is now retained with the bad place skipped. The legacy-URL assertion is
+    // deliberately unchanged and still applies to every view: a rejected place must never
+    // reach the reader through its unverified `url`.
     const invalid = section('invalid', 1); invalid.Timeline.morning[0].photos = [{ ...invalid.Timeline.morning[0].photos[0], mediaId: 'invalid', url: '/legacy-rescue' } as any];
     const initialJourneyCount = state.seen.journey.length;
     state.data = freeze(payload([invalid, section('valid', 2)])); render(tree());
     await freshChild('journey', initialJourneyCount);
     await visitChildren();
-    for (const kind of ['journey', 'stay', 'map'] as const) { expect(state.seen[kind].at(-1).map((value: any) => value.documentId)).toEqual(['valid']); expect(JSON.stringify(state.seen[kind].at(-1))).not.toContain('/legacy-rescue'); }
+    for (const kind of ['journey', 'stay', 'map'] as const) {
+      const sections = state.seen[kind].at(-1);
+      expect(sections.map((value: any) => value.documentId)).toEqual(['invalid', 'valid']);
+      expect(JSON.stringify(sections)).not.toContain('/legacy-rescue');
+      const retained = sections.find((value: any) => value.documentId === 'invalid');
+      // The one rejected place is gone from its own block; every sibling block is untouched.
+      expect(retained.Timeline.morning).toEqual([]);
+      expect(retained.Timeline.afternoon.map((p: any) => p.id)).toEqual(['invalid-afternoon']);
+      expect(retained.Timeline.evening.map((p: any) => p.id)).toEqual(['invalid-evening']);
+      expect(retained.Stay.accommodations.map((p: any) => p.id)).toEqual(['invalid-stay']);
+      expect(retained.Recommendation_Activity.activities.map((p: any) => p.id)).toEqual(['invalid-activity']);
+    }
   });
 });

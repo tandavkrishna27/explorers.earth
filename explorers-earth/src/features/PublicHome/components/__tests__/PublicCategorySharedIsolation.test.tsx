@@ -50,8 +50,9 @@ vi.mock('../../api/usePublicProfileDetail', () => ({
           Title: 'Day 1: Old Town',
           // Canonical guideDayPlaceSchema entry, which is what the native projection
           // emits (tunes/server/publicProfile/publicGuidesProjection.ts:57 -> data.timeline).
-          // convertPublicGuideSection drops a section whose places are neither canonical
-          // nor a complete legacy DayPlace, so this fixture carries the real shape.
+          // convertPublicGuideSection skips a place that is neither canonical nor a complete
+          // legacy DayPlace (it used to drop the whole section), so this fixture carries the
+          // real shape -- otherwise this place would simply be absent from the rendered day.
           Timeline: { morning: [{
             localId: 'place-1',
             placeId: 'place-1',
