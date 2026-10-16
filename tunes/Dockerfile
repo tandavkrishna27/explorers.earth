@@ -6,17 +6,17 @@ WORKDIR /app
 # Refresh Alpine packages for each image commit, even with a remote build cache.
 ARG BUILD_COMMIT
 RUN : "$BUILD_COMMIT" && apk upgrade --no-cache
+# chromium was here only for the Puppeteer scrapers, which are absent from this
+# branch (tunes/server/utils/priceParsing.ts is the kept half). Removing it also
+# drops its ffmpeg-* codec dependencies. nss/freetype/harfbuzz/ttf-freefont stay
+# for now: no tunes dependency needs them and none is red today, so they go in a
+# separate commit to keep this one attributable to a single variable.
 RUN apk add --no-cache \
-      chromium \
       nss \
       freetype \
       harfbuzz \
       ca-certificates \
       ttf-freefont
-
-# Tell Puppeteer to skip downloading Chrome. We'll be using the installed package.
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Separate layer for dependencies
 FROM base AS deps

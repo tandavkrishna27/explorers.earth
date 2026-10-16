@@ -10,7 +10,7 @@ Real-time collaborative music playlist management platform for venues. Venue own
 
 **Database**: PostgreSQL + Drizzle ORM 0.39 (@neondatabase/serverless for connection)
 
-**Integrations**: YouTube Data API v3, Spotify API (import), Razorpay (payments), Resend (email), Puppeteer
+**Integrations**: YouTube Data API v3, Spotify API (import), Razorpay (payments), Resend (email)
 
 ## Directory Structure
 

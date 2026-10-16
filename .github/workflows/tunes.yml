@@ -198,11 +198,11 @@ jobs:
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
         env:
           TMPDIR: ${{ runner.temp }}
-          # Narrows only what fails the build, to named apk packages carrying the
-          # Puppeteer browser. The complete report step below reads no config, so it
-          # still discloses everything. See .grype-gate.yaml for the justification
-          # and its enforced review date.
-          GRYPE_CONFIG: .grype-gate.yaml
+          # No GRYPE_CONFIG, and no .grype.yaml anywhere: both scans are unfiltered.
+          # The only suppression this repo had covered chromium and its ffmpeg-* codecs,
+          # shipped for the Puppeteer scrapers that are absent from this branch.
+          # Reintroducing any grype config -- including an auto-discovered .grype.yaml --
+          # is blocked by music-deploy-workflow-security.test.ts.
         with:
           image: ${{ steps.image.outputs.name }}:${{ github.sha }}
           fail-build: true

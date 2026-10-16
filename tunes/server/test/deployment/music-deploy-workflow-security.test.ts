@@ -50,11 +50,17 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(read("tunes/scripts/music-image-ci-tests.ts")).toContain('["test", "--", "--maxWorkers=2"]');
   });
 
-  it("scopes the blocking scan suppression to the browser apk packages and keeps it expiring", () => {
-    // The gate suppresses named apk packages only, because tunes/Dockerfile ships
-    // chromium for the Puppeteer scraper. The disclosure scan must stay unfiltered,
-    // and the suppression must stay narrow and dated - otherwise "we scan images"
-    // quietly stops meaning anything.
+  it("keeps both image scans unfiltered, with no suppression config reachable", () => {
+    // The only suppression this repo had covered chromium and its ffmpeg-* codecs, in
+    // the image solely for the Puppeteer scrapers that are absent from this branch.
+    // With the browser gone the suppression is gone, so the blocking scan fails on
+    // every fixable high or critical finding.
+    //
+    // Asserting GRYPE_CONFIG is merely unset would be WEAKER than what it replaces:
+    // with no explicit config grype auto-discovers .grype.yaml / .grype/config.yaml
+    // from the working directory, which would silently filter BOTH scans - including
+    // the disclosure scan whose entire purpose is completeness. So pin each env block
+    // exactly, and prove no auto-discoverable config exists either.
     const workflow = parseYaml(read(".github/workflows/tunes.yml"));
     const steps = workflow.jobs["build-test-scan-push"].steps;
     const gate = steps.find(
@@ -63,26 +69,24 @@ describe("Tunes workflow provenance and input boundary", () => {
     const disclosure = steps.find(
       (step: any) => step.name === "Report all high and critical image vulnerabilities",
     );
-    expect(gate.env.GRYPE_CONFIG).toBe(".grype-gate.yaml");
-    // Complete disclosure reads no config, so the report keeps listing everything.
-    expect(disclosure.env?.GRYPE_CONFIG).toBeUndefined();
-
-    const gateConfig = parseYaml(read(".grype-gate.yaml"));
-    expect(Array.isArray(gateConfig.ignore)).toBe(true);
-    for (const rule of gateConfig.ignore) {
-      // Only ever a named apk package: no vulnerability wildcards, no fix-state
-      // rules, and nothing reaching application dependencies.
-      expect(Object.keys(rule)).toEqual(["package"]);
-      expect(Object.keys(rule.package).sort()).toEqual(["name", "type"]);
-      expect(rule.package.type).toBe("apk");
-      expect(rule.package.name).toMatch(/^(chromium|ffmpeg-[a-z]+)$/);
+    expect(gate).toBeDefined();
+    expect(disclosure).toBeDefined();
+    // Exact key sets: any reintroduced GRYPE_* knob on either step breaks this.
+    expect(Object.keys(gate.env)).toEqual(["TMPDIR"]);
+    expect(Object.keys(disclosure.env).sort()).toEqual(
+      ["GRYPE_LOG_FILE", "GRYPE_LOG_LEVEL", "NO_COLOR", "TMPDIR"],
+    );
+    for (const candidate of [
+      ".grype-gate.yaml",
+      ".grype.yaml",
+      ".grype.yml",
+      ".grype.json",
+      ".grype/config.yaml",
+      ".grype/config.yml",
+      "tunes/.grype.yaml",
+    ]) {
+      expect(existsSync(resolve(repoRoot, candidate)), `${candidate} must not exist`).toBe(false);
     }
-
-    // An expiry a reviewer has to act on, rather than a comment nobody revisits.
-    const reviewBy = Date.parse(`${gateConfig["x-review-by"]}T00:00:00Z`);
-    expect(Number.isFinite(reviewBy)).toBe(true);
-    expect(Date.now()).toBeLessThan(reviewBy);
-    expect(typeof gateConfig["x-tracking"]).toBe("string");
   });
 
   it("blocks fixable high vulnerabilities and retains a complete disclosure scan", () => {
