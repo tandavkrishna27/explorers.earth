@@ -43,36 +43,36 @@ public static class LocalMusicPrivateFiles {
   static string TokenOwner(IntPtr token) { using(var identity=new WindowsIdentity(token)) return identity.User.Value; }
   static string KnownFolder(IntPtr token, uint flags) {
     Guid localAppData=new Guid("F1B32785-6FBA-4FCF-9D55-7B8E7F157091"); IntPtr value;
-    int result=SHGetKnownFolderPath(ref localAppData,flags,token,out value); if(result != 0) throw new Exception();
+    int result=SHGetKnownFolderPath(ref localAppData,flags,token,out value); if(result != 0) throw new Exception("identity: SHGetKnownFolderPath failed");
     try { return Marshal.PtrToStringUni(value); } finally { Marshal.FreeCoTaskMem(value); }
   }
   static string PackageFamily(IntPtr process) {
-    uint length=0; int result=GetPackageFamilyName(process,ref length,null); if(result == 15700) return null; if(result != 122 || length == 0) throw new Exception();
-    var value=new StringBuilder((int)length); result=GetPackageFamilyName(process,ref length,value); if(result != 0) throw new Exception(); return value.ToString();
+    uint length=0; int result=GetPackageFamilyName(process,ref length,null); if(result == 15700) return null; if(result != 122 || length == 0) throw new Exception("identity: GetPackageFamilyName size probe failed");
+    var value=new StringBuilder((int)length); result=GetPackageFamilyName(process,ref length,value); if(result != 0) throw new Exception("identity: GetPackageFamilyName read failed"); return value.ToString();
   }
   static Dictionary<uint,uint> ProcessParents() {
-    var parents=new Dictionary<uint,uint>(); IntPtr snapshot=CreateToolhelp32Snapshot(SnapshotProcesses,0); if(snapshot == new IntPtr(-1)) throw new Exception();
+    var parents=new Dictionary<uint,uint>(); IntPtr snapshot=CreateToolhelp32Snapshot(SnapshotProcesses,0); if(snapshot == new IntPtr(-1)) throw new Exception("ancestry: process snapshot failed");
     try {
       var entry=new ProcessEntry(); entry.Size=(uint)Marshal.SizeOf(typeof(ProcessEntry));
-      if(!Process32FirstW(snapshot,ref entry)) throw new Exception();
+      if(!Process32FirstW(snapshot,ref entry)) throw new Exception("ancestry: first process entry failed");
       do { parents[entry.ProcessId]=entry.ParentProcessId; entry.Size=(uint)Marshal.SizeOf(typeof(ProcessEntry)); } while(Process32NextW(snapshot,ref entry));
     } finally { CloseHandle(snapshot); }
     return parents;
   }
-  static long CreationTime(IntPtr process) { long creation,exit,kernel,user; if(!GetProcessTimes(process,out creation,out exit,out kernel,out user)) throw new Exception(); return creation; }
+  static long CreationTime(IntPtr process) { long creation,exit,kernel,user; if(!GetProcessTimes(process,out creation,out exit,out kernel,out user)) throw new Exception("ancestry: GetProcessTimes failed"); return creation; }
   static string FinalDirectoryPath(string value) {
-    IntPtr handle=CreateFileW(value,0,ShareAll,IntPtr.Zero,OpenExisting,BackupSemantics,IntPtr.Zero); if(handle == new IntPtr(-1)) throw new Exception();
+    IntPtr handle=CreateFileW(value,0,ShareAll,IntPtr.Zero,OpenExisting,BackupSemantics,IntPtr.Zero); if(handle == new IntPtr(-1)) throw new Exception("identity: final path open failed");
     try {
-      var path=new StringBuilder(32768); uint length=GetFinalPathNameByHandleW(handle,path,(uint)path.Capacity,0); if(length == 0 || length >= path.Capacity) throw new Exception();
+      var path=new StringBuilder(32768); uint length=GetFinalPathNameByHandleW(handle,path,(uint)path.Capacity,0); if(length == 0 || length >= path.Capacity) throw new Exception("identity: final path length failed");
       string result=path.ToString(); if(result.StartsWith(@"\\?\UNC\",StringComparison.OrdinalIgnoreCase)) result=@"\\"+result.Substring(8);
       else if(result.StartsWith(@"\\?\",StringComparison.OrdinalIgnoreCase)) result=result.Substring(4); return result;
     } finally { CloseHandle(handle); }
   }
   static void ValidateRoot(string value, string owner) {
-    if(string.IsNullOrWhiteSpace(value) || !Path.IsPathRooted(value) || value.StartsWith(@"\\") || value.IndexOf(',') >= 0 || Path.GetFullPath(value) != value) throw new Exception();
-    string root=Path.GetPathRoot(value); if(value.Substring(root.Length).IndexOf(':') >= 0 || !String.Equals(FinalDirectoryPath(value),value,StringComparison.OrdinalIgnoreCase)) throw new Exception();
-    for(var current=new DirectoryInfo(value); current != null; current=current.Parent) if((current.Attributes & FileAttributes.ReparsePoint) != 0) throw new Exception();
-    string actualOwner=Directory.GetAccessControl(value).GetOwner(typeof(SecurityIdentifier)).Value; if(actualOwner != owner) throw new Exception();
+    if(string.IsNullOrWhiteSpace(value) || !Path.IsPathRooted(value) || value.StartsWith(@"\\") || value.IndexOf(',') >= 0 || Path.GetFullPath(value) != value) throw new Exception("identity: root path is not canonical");
+    string root=Path.GetPathRoot(value); if(value.Substring(root.Length).IndexOf(':') >= 0 || !String.Equals(FinalDirectoryPath(value),value,StringComparison.OrdinalIgnoreCase)) throw new Exception("identity: root path final-path mismatch");
+    for(var current=new DirectoryInfo(value); current != null; current=current.Parent) if((current.Attributes & FileAttributes.ReparsePoint) != 0) throw new Exception("identity: root path crosses a reparse point");
+    string actualOwner=Directory.GetAccessControl(value).GetOwner(typeof(SecurityIdentifier)).Value; if(actualOwner != owner) throw new Exception("identity: root owner mismatch");
   }
   public static RootEvidence IdentityEvidence() {
     string owner=Owner; IntPtr currentToken=Token(GetCurrentProcess());
@@ -103,7 +103,7 @@ public static class LocalMusicPrivateFiles {
         return new RootEvidence{OwnerId=owner,LocalAppData=target,UnredirectedLocalAppData=unredirected,Authority="current-token",Canonical=true,ReparseFree=true,OwnerVerified=true,PackageIdentityVerified=false,AncestryVerified=ancestryVerified};
       }
       string expected=Path.Combine(unredirected,"Packages",packageFamily,"LocalCache","Local");
-      if(!String.Equals(packageTarget,expected,StringComparison.OrdinalIgnoreCase)) throw new Exception(); ValidateRoot(packageTarget,owner);
+      if(!String.Equals(packageTarget,expected,StringComparison.OrdinalIgnoreCase)) throw new Exception("identity: packaged target does not match the expected LocalCache path"); ValidateRoot(packageTarget,owner);
       return new RootEvidence{OwnerId=owner,LocalAppData=packageTarget,UnredirectedLocalAppData=unredirected,Authority="packaged-ancestor",PackageFamily=packageFamily,Canonical=true,ReparseFree=true,OwnerVerified=true,PackageIdentityVerified=true,AncestryVerified=ancestryVerified};
     } finally { CloseHandle(currentToken); }
   }
