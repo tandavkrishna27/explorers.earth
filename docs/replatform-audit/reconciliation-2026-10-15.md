@@ -194,3 +194,48 @@ design, which is equally why it cannot have broken CI.
 3. The fixture-guard bootstrap budget was raised 1000ms → 5000ms **and its companion
    assertion and title updated to match**, on an explicit owner decision. It is a latency
    bound, not one of the five protected probes.
+
+## 2026-10-16 — guides seal, and the media-gate finding that reframes "task 4"
+
+### guides-native-diagnostic has two independent causes; one was mine
+
+Mine: commit 5f6c72eb put explanatory comments inside the empty catch blocks of
+`explorers-earth/e2e/replatform/guides.spec.ts` to clear `no-empty`. The seal matches that
+instrumentation with regexes requiring a literally empty catch
+(`guides-native-diagnostic.test.ts:92`), so the census collapsed — producer stages 18 -> 0,
+traversal 20 -> 0, section 14 -> 0, ownerList 14 -> 0, tip 16 -> 0 — and both fingerprint
+assertions returned `undefined`. Fixed in 91062b0d by restoring the file to its 5f98ed0c bytes
+and suppressing the three rules at file scope. Re-measured at base: 18 / 19 / 6 / 2 / 13.
+
+Pre-existing: at those restored baseline bytes the seal still fails the same two assertions.
+`trackGuideReads` and `assertOwnerCategoryReads` mismatch their pinned per-function hashes on the
+base commit as well; re-recording just those two makes the fingerprints compute but disagree
+(`60303d9d...` vs pinned `628f2d2d...`, `48797682...` vs pinned `f47a0fc3...`). The pin stores an
+opaque hash and no expected source, so there is nothing to diff against and a re-record cannot be
+made auditable. **Owner decision needed:** rewrite the seal to pin reviewable source, or retire it.
+
+### Owner media uploads are publicly unserveable for products and people
+
+`tunes/server/application/profiles.ts:10` treats `products` and `people` as public profile
+categories. The media visibility gate at `tunes/server/repositories/mediaRepository.ts:101` admits
+only `r.category IN('books','movies','games','apps','places')`, and its inner clause
+(`:102`) serves generic `recommendation_media` rows only for `books`, `movies`, `games`.
+
+`replaceMedia` (`explorersRecommendationRepository.ts:57-59`) writes generic rows without
+`required_category` for every category, and the live owner UI routes user uploads there for all of
+them — `AddProductPage.tsx:124`, `AddPersonPage.tsx:137`,
+`useAddRecommendation.ts:325` (non-provider place photos), `appsClient.ts:62`.
+
+So owner-uploaded photos are stored and shown back to the owner
+(`placesViewModel.ts:91-92`) but cannot be served publicly.
+
+The original plan proposed refusing `mediaIds` for the categories the gate cannot serve. That is
+wrong in both forms considered: refusing the complement of `{books,movies,games}` deletes the
+working Places and Apps upload flow, and refusing `{products,people}` deletes the working Product
+and Person upload flow. No category can be refused, because every category uses this path.
+
+The correct fix widens the gate. **Not done here, by design** — this is a public visibility
+boundary and widening it is an owner decision, not a cleanup. Decide: (a) add `products`/`people`
+to the category list and generic rows to the inner clause, (b) route owner uploads into the
+per-category tables that already carry `required_category`, or (c) accept that owner uploads are
+owner-only for these categories and stop collecting them in the public projection.
