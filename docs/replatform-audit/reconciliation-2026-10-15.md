@@ -202,10 +202,20 @@ design, which is equally why it cannot have broken CI.
 Mine: commit 5f6c72eb put explanatory comments inside the empty catch blocks of
 `explorers-earth/e2e/replatform/guides.spec.ts` to clear `no-empty`. The seal matches that
 instrumentation with regexes requiring a literally empty catch
-(`guides-native-diagnostic.test.ts:92`), so the census collapsed — producer stages 18 -> 0,
-traversal 20 -> 0, section 14 -> 0, ownerList 14 -> 0, tip 16 -> 0 — and both fingerprint
-assertions returned `undefined`. Fixed in 91062b0d by restoring the file to its 5f98ed0c bytes
-and suppressing the three rules at file scope. Re-measured at base: 18 / 19 / 6 / 2 / 13.
+(`guides-native-diagnostic.test.ts:92`), so the census collapsed and both fingerprint assertions
+returned `undefined`. Fixed in 91062b0d by restoring the file to its 5f98ed0c bytes and
+suppressing the three rules at file scope.
+
+CORRECTION (2026-10-16). An earlier revision of this section carried two mutually inconsistent
+sets of census figures: a "collapsed from" set (20 / 14 / 14 / 16) and a "re-measured at base" set
+(18 / 19 / 6 / 2 / 13). The first set was unsourced and is withdrawn — no recorded measurement
+produces it. The method also mattered and was not stated: the seal counts AST NODES
+(`producerStageWiringNodes(ast).size`, `passive.size`, `primaries.size`, `guards.size`), not
+substring occurrences, so a `grep -c` over the spec yields a third set again (at 5f98ed0c:
+markProducerStage 9, markTraversalOperation 11, markSectionOperation 7, markOwnerListOperation 7,
+markTipOperation 9) and must not be compared against either. The load-bearing fact, which is
+independently verifiable, is that the seal's census and shape gates PASS at the restored bytes;
+the two failures come from the per-function hash gate alone.
 
 Pre-existing: at those restored baseline bytes the seal still fails the same two assertions.
 `trackGuideReads` and `assertOwnerCategoryReads` mismatch their pinned per-function hashes on the
@@ -239,3 +249,40 @@ boundary and widening it is an owner decision, not a cleanup. Decide: (a) add `p
 to the category list and generic rows to the inner clause, (b) route owner uploads into the
 per-category tables that already carry `required_category`, or (c) accept that owner uploads are
 owner-only for these categories and stop collecting them in the public projection.
+
+
+## 2026-10-16 — corrections to this session's own claims
+
+Three claims made in commit messages on this branch today were wrong. Commit messages on a pushed
+branch cannot be amended, so they are corrected here.
+
+1. "root scripts/ seals 570/570, which covers the browser baselines that list this spec"
+   (commit 3de9ddfe). FALSE. `scripts/browser-source-inventory.test.mjs:19-20` reads
+   `browser-baselines/*.json` and checks them for INTERNAL consistency
+   (`digest(snapshot.portable) === current.provenance.sourceHash`); nothing in that lane hashes the
+   working tree. Proof: `source-v3.json` pins `public-shell-continuity.spec.ts` at byteHash
+   `0a089bed…` while the file already hashed `532eb5c9…` at `ad20c4c1`, before this session began.
+   The seals are green and that is worth having; they simply do not attest those bytes.
+
+2. "under 69 specs of parallel load" as the mechanism for the e2e flake (commit 3de9ddfe). FALSE.
+   `playwright.category-navigation.config.ts:6` sets `workers: 1, retries: 0`, so that lane is
+   SERIAL and 69 is its serial test count. The same comment also cited a 90s test budget from
+   `playwright.config.ts:17`; in CI the spec runs only under
+   `playwright.music-publishing.config.ts`, whose budget is 60s. Both errors are corrected in the
+   spec's own comment. The measured cause remains unknown: at 741068bd the failing run took 19.65s
+   for that test (12.0s of it the expect timeout, so a ~7.6s prologue) while the passing twin took
+   7.94s end to end. The 30s window is a mitigation, not a fix.
+
+3. "its bytes are hash-sealed into the replatform e2e provenance", said of
+   `tunes/scripts/music-local-private-files.ps1` while deferring the Windows owner-check decision.
+   OVERSTATED. `scripts/replatform-e2e.test.mjs:1130` asserts only that
+   `snapshot.hashes['tunes/scripts/music-local-private-files.ps1']` is TRUTHY, and the hash is
+   computed from the working tree at `scripts/replatform-e2e.mjs:538`. This session changed that
+   file's bytes twice with the 570 seals still green. The owner-decision reason for deferring a
+   `ValidateRoot` change stands on its own; the hash-seal reason does not and is withdrawn.
+
+Also recorded: the stderr diagnostic added in db181e9a documented a 4 KiB cap it did not hold.
+Measured, one 64 KiB pipe chunk arriving at 4095 bytes retained 69,631 bytes. The cap now
+truncates and is byte-counted. The first fix attempted for it — rejecting any chunk that would
+exceed the cap — was itself wrong: it retained NOTHING when a child writes its whole stderr in a
+single large write, which is the exact blindness the capture exists to cure.

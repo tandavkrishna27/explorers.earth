@@ -101,6 +101,35 @@ jobs:
         # each level: the leaf can report canonical while an intermediate (C:\Users\RUNNER~1)
         # does not, which is what the first, leaf-only probe missed.
         run: node -e "const os=require('os'),fs=require('fs'),path=require('path');const walk=(label,root)=>{if(!root)return console.log(JSON.stringify({label,root:null}));const out=[];for(let c=path.resolve(root);;c=path.dirname(c)){let rp=null,err=null;try{rp=fs.realpathSync(c)}catch(e){err=e.code}out.push({c,rp,ok:rp===c,err});if(c===path.dirname(c))break}console.log(JSON.stringify({label,root,ancestors:out}))};walk('tmpdir',os.tmpdir());walk('RUNNER_TEMP',process.env.RUNNER_TEMP)"
+      # Read-only. ValidateRoot (music-local-private-files.ps1:75) compares the LocalAppData
+      # root's ACL owner to the token's User SID, and the Windows lane refuses with
+      # `identity: root owner mismatch`. Nobody has measured WHICH principal owns that root on a
+      # hosted runner, and the helper redacts it by design, so the refusal cannot be told apart
+      # from a product defect. This prints only BOOLEANS -- this repository is public, so its CI
+      # logs are world-readable and no SID is emitted. ownerMatchesOwner is the discriminator: the
+      # token's Owner SID is what Windows stamps on objects this token creates, and differs from
+      # User for an elevated administrator. continue-on-error because a diagnostic must never be
+      # able to fail the lane (pwsh steps run with $ErrorActionPreference = stop).
+      # Both ValidateRoot inputs are reported: it is called on the no-package-redirection root
+      # (:80) and on the redirection target (:102/:106), which need not be the same directory.
+      - name: Report the runner LocalAppData owner shape (booleans only)
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $id = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+          $principal = New-Object System.Security.Principal.WindowsPrincipal($id)
+          $report = [ordered]@{ isAdmin = $principal.IsInRole([System.Security.Principal.WindowsBuiltinRole]::Administrator); tokenUserEqualsTokenOwner = ($id.User.Value -eq $id.Owner.Value) }
+          foreach ($entry in @(@{ label = 'localAppData'; path = [Environment]::GetFolderPath('LocalApplicationData') }, @{ label = 'userProfile'; path = [Environment]::GetFolderPath('UserProfile') })) {
+            $owner = $null
+            try { $owner = (Get-Acl -LiteralPath $entry.path -ErrorAction Stop).GetOwner([System.Security.Principal.SecurityIdentifier]).Value } catch { $report[$entry.label + 'Error'] = $_.Exception.GetType().Name }
+            if ($null -ne $owner) {
+              $report[$entry.label + 'OwnerMatchesUser']  = ($owner -eq $id.User.Value)
+              $report[$entry.label + 'OwnerMatchesOwner'] = ($owner -eq $id.Owner.Value)
+              $report[$entry.label + 'OwnerIsWellKnown']  = @('S-1-5-18','S-1-5-32-544') -contains $owner
+            }
+          }
+          $report | ConvertTo-Json -Compress
       - if: runner.os == 'Windows'
         env:
           # Belt and braces: the test refuses to skip when this is set, so the lane cannot go green

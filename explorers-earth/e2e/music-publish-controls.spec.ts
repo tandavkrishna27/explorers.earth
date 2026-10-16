@@ -288,13 +288,21 @@ test('friendly pending descriptor never redirects; failed account read Retry per
     await guest.page.reload();
     const retry = guest.page.getByRole('button', { name: 'Retry', exact: true }); await expect(retry).toBeVisible();
     const reads = state.reads.length; await retry.click();
-    // Explicit 30s window on THIS wait only, which stays well inside this test's own 90s budget
-    // (playwright.config.ts:17) so a slow read still fails as this assertion, not as a test timeout. Everything before it in this test -- including the
-    // Retry button becoming visible -- is unaffected, so the step that runs out of time is the
-    // gateway read that the Retry click starts. Observed: of two runs of this lane on the same
-    // commit one passed and one failed here against the 12s expect default, under 69 specs of
-    // parallel load. The assertion is unchanged and still has to come true; only the window for
-    // it grows, and the read-count and no-writes checks on the same line are untouched.
+    // Explicit 30s window on THIS wait only. It is a MITIGATION, not a fix: the cause of the
+    // variance is not known. Measured on CI at 741068bd, where the same commit's two runs of this
+    // lane differed -- the failing run took 19.65s for this test, 12.0s of which was the expect
+    // timeout, so its prologue cost ~7.6s; the passing twin took 7.94s end to end. The gateway read
+    // the Retry click starts therefore completed in under a second in one run and exceeded 12s in
+    // the other.
+    // Two earlier claims in this comment were wrong and are corrected here. The budget is 60s, not
+    // 90s: in CI this spec runs only under playwright.music-publishing.config.ts, which spreads
+    // playwright.category-navigation.config.ts:6 (timeout 60_000, expect 12_000). And the mechanism
+    // is NOT parallel contention -- that same line sets workers: 1, so the lane is serial and 69 is
+    // its serial test count. navigationTimeout is unset there, so the reload before this point is
+    // bounded only by the 60s test budget.
+    // 30s sits inside 60s against a measured ~7.6s prologue, so a genuinely slow read still fails as
+    // this assertion rather than as an opaque test timeout. The assertion is unchanged and must still
+    // come true; the read-count and no-writes checks on the next line are untouched.
     await expect(guest.page.getByRole('heading', { name: 'Music', exact: true })).toBeVisible({ timeout: 30000 }); expect(state.reads.length).toBeGreaterThan(reads); expect(state.writes).toEqual([]);
   } finally { release?.(); await closeFixture(guest); }
 });

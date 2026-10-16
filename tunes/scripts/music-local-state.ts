@@ -30,6 +30,11 @@ export async function runLocalProcess(executable: string, args: string[], input?
     // `exited 1: no reason supplied (stdout empty)` and read as a helper refusal rather than
     // the deadline it was. 120s still catches a genuinely hung child. Same reasoning as the
     // places writer guard bootstrap budget (placesWriterGuardTransport.ts), raised 1000 -> 5000ms.
+    // Scope, wider than the evidence above: runLocalProcess is also the transport for
+    // runDocker (music-local.ts:76) and two git reads (:227 rev-parse, :228 status), plus a
+    // direct call in music-local-state.test.ts:126. A hung docker or git child therefore now
+    // waits 120s too. That is latency only -- no caller asserts a completion deadline -- and
+    // runDocker is the DEFAULT dependency, so an injected one is unaffected.
     const timer = setTimeout(() => child.kill(), 120_000);
     child.stdout.on('data', (data: Buffer) => { if (stdout.length + data.length > 1024 * 1024) { overflow = true; stdout = ''; child.kill(); } else if (!overflow) stdout += data.toString('utf8'); });
     // External stderr may contain credentials or raw system errors. Never retain it.
@@ -39,9 +44,15 @@ export async function runLocalProcess(executable: string, args: string[], input?
     // three layers of discarded detail (a JSON SyntaxError, then `exited 1`, then
     // `exited 1: no reason supplied`) and the remaining fact lives only on stderr. It is set on
     // the Windows CI leg alone, whose only secret-bearing input is a synthetic fixture, and the
-    // capture is capped at 4 KiB so a hostile child cannot flood the log.
+    // capture is capped at 4 KiB so a hostile child cannot flood the log. The cap TRUNCATES
+    // rather than dropping: testing the length before appending without counting data.length
+    // let one 64 KiB pipe chunk arriving at 4095 bytes retain 69631 bytes (measured) against
+    // a documented 4096 -- and rejecting an oversized chunk outright would instead retain
+    // NOTHING when a child writes its whole stderr in one write, which is the blindness this
+    // capture exists to cure. Byte-counted, because data.length is bytes while a JS string
+    // length is UTF-16 units, and this buffer is the credential boundary.
     let stderr = '';
-    if (process.env.MUSIC_LOCAL_STATE_STDERR === '1') child.stderr.on('data', (data: Buffer) => { if (stderr.length < 4096) stderr += data.toString('utf8'); });
+    if (process.env.MUSIC_LOCAL_STATE_STDERR === '1') child.stderr.on('data', (data: Buffer) => { if (Buffer.byteLength(stderr, 'utf8') < 4096) stderr = Buffer.from(stderr + data.toString('utf8'), 'utf8').subarray(0, 4096).toString('utf8'); });
     else child.stderr.resume();
     // A spawn failure and a child that produced nothing were indistinguishable: both arrived as
     // empty stdout with exit 1, which is why CI could only ever say `no reason supplied`. The
