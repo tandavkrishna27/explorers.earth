@@ -368,8 +368,31 @@ jobs:
           printf '%s\n' "$browser_digest" | sudo tee /opt/explorers-music-playwright/.chromium-executable.sha256 >/dev/null
           sudo chown root:root /opt/explorers-music-playwright/.chromium-executable.sha256
           sudo chmod 0644 /opt/explorers-music-playwright/.chromium-executable.sha256
+      # The C10 standalone PostgreSQL fixture attests an exact, already-present image and
+      # never pulls one itself - its whole Docker path is read-only apart from `run`. A
+      # fresh runner has no postgres:15-alpine, so `docker image inspect` exits non-zero
+      # and the attestation fails with "read-only Docker attestation failed", which is the
+      # image inspect and not the daemon. Supplying the image is the caller's job, exactly
+      # as it is on a developer machine, and exactly as the frontend E2E qualification
+      # workflow has always done for its own real-stack lanes. Without this step this lane
+      # failed on every scheduled run from its introduction onward.
+      - name: Fetch the pinned fixture PostgreSQL image
+        run: docker pull postgres:15-alpine
       - name: Run the authoritative native nightly qualification lane
         run: /usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh nightly
+      # The launcher prints one summary JSON and writes every per-task log under
+      # `.artifacts/music-runs/<runId>/`, and this job had no upload step, so all of that
+      # went into the runner with nothing left behind. The summary gives counts
+      # ("failure: 8") but never which tasks or why, which is useless for a nightly lane.
+      # Diagnostics only; it adds no gate and changes no result.
+      - name: Upload the sanitized nightly qualification evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: nightly-qualification-evidence
+          path: .artifacts/music-runs/
+          if-no-files-found: ignore
+          retention-days: 14
 
   image-deploy-contract:
     runs-on: ubuntu-24.04
