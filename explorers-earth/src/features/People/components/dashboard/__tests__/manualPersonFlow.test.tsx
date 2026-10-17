@@ -171,14 +171,14 @@ describe('native manual People', () => {
 
 describe('manual People edit', () => {
  function editElement() { return <MockedProvider><MemoryRouter initialEntries={['/people/list-1/edit/person-a']}><Routes><Route path="/people/:listId/edit/:personId" element={<AddPersonPage />} /><Route path="/recommendations/people/:listId" element={<p>Saved list</p>} /></Routes></MemoryRouter></MockedProvider>; }
- function loaded() {
+ function loaded(mediaIds: string[] = []) {
   const person = {documentId: 'person-a', name: 'Alex Lee', full_name: 'Alex Lee', username_handle: 'alexlee', headline: 'Designer',
    location: 'Lisbon', avatar_path: null, media_details: null, primary_platform: 'twitter', platform: 'x',
    social_urls: {twitter: 'https://example.com/alex'}, profile_url: 'https://example.com/alex',
    skills_tags: ['design'], follower_count: '12.4k', user_recommendation_note: '<p>Note</p>', user_rating: 7,
    is_pinned: false, pin_order: null, display_order: 0, person_list: null, person_category: null};
   fixture.content.view.lists = [{documentId: 'list-1', recommended_people: [person]}];
-  fixture.content.details.set('person-a', {detail: {id: 'person-a', revision: 1, category: 'people'}});
+  fixture.content.details.set('person-a', {detail: {id: 'person-a', revision: 1, category: 'people', mediaIds}});
   fixture.content = {...fixture.content}; fixture.loading = false; fixture.error = undefined;
  }
  beforeEach(() => { vi.clearAllMocks(); fixture.content = {view: {lists: []}, details: new Map(), observation: {}}; fixture.loading = false; fixture.error = undefined; useAuthStore.getState().login({id: 'u1', documentId: 'u1', username: 'owner',email:'owner@example.invalid',blocked:false, token: 'fixture'}); useAuthStore.setState({accountId: 'a1'}); });
@@ -194,6 +194,17 @@ describe('manual People edit', () => {
   if(action==='clear')vi.mocked(PeopleClient.readSectorCatalog).mockResolvedValue({...catalog(),state:'UNCONFIGURED',catalogVersion:0,defaultLocale:null,items:[]} as never);
   render(editElement());await screen.findByText(action==='clear'?'Sector catalog is not configured.':'Existing sector is unavailable.');expect(screen.getByLabelText('Sector')).toHaveValue('old-sector');expect(screen.getByRole('option',{name:'stored-slug (unavailable)'})).toBeInTheDocument();
   fill('Sector',action==='clear'?'':sectorId);fireEvent.click(screen.getByRole('button',{name:'Save person'}));await waitFor(()=>expect(PeopleClient.updateRecommendation).toHaveBeenCalled());expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toHaveProperty('peopleSectorTermId',action==='clear'?null:sectorId);
+ });
+
+ // Without rehydration the form starts with no media and saves mediaIds: [], silently
+ // detaching every snapshot the owner already uploaded.
+ it('keeps previously uploaded snapshots through a re-edit', async () => {
+  const existing = '22222222-3333-4444-5555-666666666666';
+  loaded([existing]); render(editElement());
+  expect(await screen.findByAltText('Person snapshot')).toHaveAttribute('src', `/api/explorers/v1/media/${existing}/content`);
+  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+  await waitFor(() => expect(PeopleClient.updateRecommendation).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toMatchObject({mediaIds: [existing]});
  });
 
  it('hydrates the stored platform rather than its presented alias', async () => {

@@ -183,13 +183,13 @@ describe('native manual Products', () => {
 });
 
 describe('manual Products edit', () => {
- function editElement() { return <MockedProvider><MemoryRouter initialEntries={['/products/list-1/edit/product-a']}><Routes><Route path="/products/:listId/edit/:productId" element={<AddProductPage />} /></Routes></MemoryRouter></MockedProvider>; }
- function loaded() {
+ function editElement() { return <MockedProvider><MemoryRouter initialEntries={['/recommendations/products/list-1/edit/product-a']}><Routes><Route path="/recommendations/products/:listId/edit/:productId" element={<AddProductPage />} /></Routes></MemoryRouter></MockedProvider>; }
+ function loaded(mediaIds: string[] = []) {
   const product = {documentId: 'product-a', title: 'Original title', product_url: 'https://example.com/original', brand: 'Acme', price: 19.9,
    currency: 'USD', buy_url: null, logo_url: null, description: null, specifications: {Weight: '1kg'}, user_recommendation_note: '<p>Note</p>',
    user_rating: 8, images: null, is_pinned: false, pin_order: null, display_order: 0, product_list: null, product_category: null};
   fixture.content.view.lists = [{documentId: 'list-1', recommended_products: [product]}];
-  fixture.content.details.set('product-a', {detail: {id: 'product-a', revision: 1, category: 'products', productOffer: {price: '19.90', currencyCode: 'USD', buyUrl: null}}});
+  fixture.content.details.set('product-a', {detail: {id: 'product-a', revision: 1, category: 'products', mediaIds, productOffer: {price: '19.90', currencyCode: 'USD', buyUrl: null}}});
   fixture.content = {...fixture.content}; fixture.loading = false; fixture.error = undefined;
  }
  beforeEach(() => { vi.clearAllMocks(); fixture.content = {view: {lists: []}, details: new Map(), observation: {}}; fixture.loading = false; fixture.error = undefined; useAuthStore.getState().login({id: 'u1', documentId: 'u1', username: 'owner', token: 'fixture'}); useAuthStore.setState({accountId: 'a1'}); });
@@ -204,6 +204,19 @@ describe('manual Products edit', () => {
   expect(screen.getByLabelText('Product URL')).toHaveValue('https://example.com/original');
   expect(screen.getByLabelText('Product URL')).toBeDisabled();
   expect(screen.getByLabelText('Specification key 1')).toHaveValue('Weight');
+ });
+
+ // Without rehydration the form starts with no media and saves mediaIds: [], silently
+ // detaching every snapshot the owner had uploaded. The thumbnail proves the state is
+ // restored; the patch proves the save cannot drop it.
+ it('keeps previously uploaded snapshots through a re-edit', async () => {
+  const existing = '11111111-2222-3333-4444-555555555555';
+  loaded([existing]); vi.mocked(ProductsClient.updateRecommendation).mockResolvedValue({} as never);
+  render(editElement());
+  expect(await screen.findByAltText('Product snapshot')).toHaveAttribute('src', `/api/explorers/v1/media/${existing}/content`);
+  fireEvent.click(screen.getByRole('button', {name: 'Save product'}));
+  await waitFor(() => expect(ProductsClient.updateRecommendation).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(ProductsClient.updateRecommendation).mock.calls[0][1]).toMatchObject({mediaIds: [existing]});
  });
 
  it('never sends the product URL as a display override', async () => {
