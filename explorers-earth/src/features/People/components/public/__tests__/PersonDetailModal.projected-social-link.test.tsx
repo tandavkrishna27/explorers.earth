@@ -24,9 +24,12 @@ function actualProjection(){
  ) as (db:unknown,row:Record<string,unknown>)=>Promise<unknown>;
 }
 let currentFacts:PersonEntityDetails=emptyPersonDetails();
-async function mount(facts:Partial<PersonEntityDetails>){
+async function mount(facts:Partial<PersonEntityDetails>,uploads:{id:string}[]=[]){
  currentFacts=personEntityDetailsSchema.parse({...emptyPersonDetails(),...facts});
- const raw=await actualProjection()({}, {id:id(1),account_id:id(2),entity_id:id(3),note:null,note_bytes:0,override_bytes:0,display_values:{},user_rating:null,pin_order:null,display_order:0,collection_id:id(4),collection_title:'List',collection_slug:'list'});
+ // richPerson now reads its owner snapshots from the connection, so the stub has to answer
+ // a query rather than be an empty object.
+ const db={query:async()=>({rows:uploads})};
+ const raw=await actualProjection()(db, {id:id(1),account_id:id(2),entity_id:id(3),note:null,note_bytes:0,override_bytes:0,display_values:{},user_rating:null,pin_order:null,display_order:0,collection_id:id(4),collection_title:'List',collection_slug:'list'});
  const person=publicPersonViewModel(raw);
  render(<PersonDetailModal person={person} open onClose={()=>{}}/>);
  return person;
@@ -45,4 +48,13 @@ it('explicit primary and selected-platform links retain precedence over website'
 it('absent social URLs retain null facts and render no invented profile link',async()=>{
  const person=await mount({});expect(person.profile_url).toBeUndefined();expect(person.primary_platform).toBeNull();expect(person.social_urls).toBeNull();
  expect(screen.queryByRole('link',{name:'View Profile'})).toBeNull();
+});
+// The whole chain for an owner snapshot: the real projection reads it, the strict public
+// schema accepts it, publicPersonViewModel copies it through, and the modal renders it.
+// Each link was a separate way for this feature to ship dead.
+it('carries an owner snapshot from the actual projection to the rendered modal',async()=>{
+ const snapshot='11111111-2222-3333-4444-555555555555';
+ const person=await mount({},[{id:snapshot}]) as {media_details?:{imageDetails?:{id:string;url:string}[]}};
+ expect(person.media_details?.imageDetails).toEqual([{id:snapshot,url:`/api/explorers/v1/media/${snapshot}/content`}]);
+ expect(await screen.findByAltText('Snapshot')).toHaveAttribute('src',expect.stringContaining(snapshot));
 });

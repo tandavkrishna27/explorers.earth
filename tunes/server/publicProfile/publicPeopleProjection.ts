@@ -49,11 +49,19 @@ async function richPerson(db:PoolClient,row:any){
  const overrides=displayOverridesReadSchema.parse(row.display_values??{}),facts=effectivePersonDetails(entity.details,overrides);
  const name=(Object.hasOwn(overrides,'title')?overrides.title:entity.title)??'Unnamed person';
  const primary=facts.socialUrls.primary??(facts.primaryPlatform?facts.socialUrls[facts.primaryPlatform]:undefined)??facts.socialUrls.website??null;
+ // Owner snapshots. People has no typed media table and AddPersonPage writes avatarUrl as
+ // null, so before this a person had no public imagery at all. Emitted only as
+ // media_details.imageDetails, the key PersonDetailModal actually reads - a Media array
+ // would add payload against the 4 MiB page bound below for no consumer.
+ const uploads=(await db.query(`SELECT m.id FROM recommendation_media rm JOIN media_assets m ON m.id=rm.media_id AND m.account_id=rm.account_id
+ WHERE rm.recommendation_id=$1 AND m.status='ready' ORDER BY rm.display_order,m.id LIMIT 21`,[row.id])).rows.map(m=>({id:m.id as string,url:`/api/explorers/v1/media/${m.id}/content`}));
+ if(uploads.length>20)throw new Error('Public Person exceeds media read bound');
  const person={documentId:row.id,
  // Canonical plus the compatibility aliases the consuming components still read.
  title:name,full_name:name,
  username_handle:facts.usernameHandle,headline:facts.headline,location_text:facts.locationText,
  avatar_url:facts.avatarUrl,
+ media_details:uploads.length?{imageDetails:uploads}:null,
  platform:presentedPlatform(facts.primaryPlatform),primary_platform:facts.primaryPlatform,
  profile_url:primary,social_urls:Object.keys(facts.socialUrls).length?facts.socialUrls:null,
  skills_tags:facts.skillsTags.length?facts.skillsTags:null,

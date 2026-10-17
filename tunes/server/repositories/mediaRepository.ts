@@ -98,8 +98,8 @@ export class MediaRepository {
       JOIN collections c ON c.id=ci.collection_id AND c.account_id=ci.account_id AND c.category=ci.category
       JOIN creator_accounts a ON a.id=r.account_id
       JOIN account_category_settings s ON s.account_id=r.account_id AND s.category=r.category
-      WHERE rm.media_id=$1 AND r.category IN('books','movies','games','apps','places')
-        AND ((rm.required_category IS NULL AND r.category IN('books','movies','games')) OR rm.required_category=r.category)
+      WHERE rm.media_id=$1 AND r.category IN('books','movies','games','apps','places','products','people')
+        AND ((rm.required_category IS NULL AND r.category IN('books','movies','games','products','people')) OR rm.required_category=r.category)
         AND (rm.source_entity_id IS NULL OR rm.source_entity_id=r.entity_id) AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile
         AND s.is_public AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'
         AND r.archived_at IS NULL AND r.publication_state='published'

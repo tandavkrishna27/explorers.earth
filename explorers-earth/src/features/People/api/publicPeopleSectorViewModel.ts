@@ -23,6 +23,11 @@ export function publicPersonViewModel(raw:unknown):RecommendedPerson{
  const parsed=publicPersonSchema.safeParse(raw);if(!parsed.success)return invalid();const p:PublicPerson=parsed.data;
  return {documentId:p.documentId,name:p.title,full_name:p.full_name,username_handle:p.username_handle,handle:p.username_handle,
  headline:p.headline,location:p.location_text,avatar_path:p.avatar_url,avatar_url:p.avatar_url,
+ // This mapping is a whitelist, so a key the server emits but this omits never reaches the
+ // gallery. PersonDetailModal reads media_details.imageDetails. Carried only when the
+ // server actually sent it, so the no-fabrication guarantee the consumer tests assert
+ // still holds for a person with no snapshots.
+ ...(p.media_details?{media_details:p.media_details}:{}),
  primary_platform:p.primary_platform==='twitter'?'twitter':platform(p.primary_platform)==='x'?'twitter':platform(p.primary_platform) as RecommendedPerson['primary_platform'],
  platform:platform(p.platform),profile_url:p.profile_url??undefined,social_urls:p.social_urls,skills_tags:p.skills_tags,tags:p.skills_tags,
  follower_count:p.follower_count,user_recommendation_note:p.user_recommendation_note,user_rating:p.user_rating,is_pinned:p.is_pinned,pin_order:p.pin_order,
