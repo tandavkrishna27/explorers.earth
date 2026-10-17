@@ -88,7 +88,6 @@ type CreatedRecommendationMediaAttempt = {
   selected: PendingRecommendationMedia[];
   pending: PendingRecommendationMedia[];
   photoMediaIds: string[];
-  mediaIds: string[];
   attached: boolean;
 };
 
@@ -321,8 +320,9 @@ export const useAddRecommendation = ({
       try {
         const file = new File([media.blob], media.fileName || "recommendation", { type: media.blob.type || "image/jpeg" });
         const uploaded = await commands.upload(file, "recommendation");
-        if (media.origin === "provider") attempt.photoMediaIds.push(uploaded.id);
-        else attempt.mediaIds.push(uploaded.id);
+        // Creator and provider uploads share the one typed, publicly projected photo
+        // path. The generic recommendation_media leg had no public Places reader.
+        attempt.photoMediaIds.push(uploaded.id);
         attempt.pending = attempt.pending.slice(1);
       } catch (error) {
         console.warn("Selected recommendation media upload failed:", error);
@@ -333,7 +333,6 @@ export const useAddRecommendation = ({
 
     try {
       await commands.updatePlace(attempt.recommendationId, {
-        mediaIds: [...attempt.mediaIds],
         placePhotos: { photoMediaIds: attempt.photoMediaIds.slice(0, 10) },
       });
       attempt.attached = true;
@@ -433,7 +432,6 @@ export const useAddRecommendation = ({
         userRating: toNumberOrNull(values.userRating),
         // Media is attached after the recommendation exists, so a media failure cannot
         // lose what the creator already wrote.
-        mediaIds: [],
         photoMediaIds: [],
       };
 
@@ -452,7 +450,6 @@ export const useAddRecommendation = ({
         selected: selectedMedia,
         pending: [...selectedMedia],
         photoMediaIds: [],
-        mediaIds: [],
         attached: false,
       };
       createdMediaAttemptRef.current = attempt;
@@ -508,9 +505,11 @@ export const useAddRecommendation = ({
         attempt.uploadedIds.push(uploaded.id);
       }
       const uploadedIds=attempt.uploadedIds;
-      const existingMediaIds = Array.isArray(fetchedPlace?.media_details?.imageDetails)
-        ? fetchedPlace.media_details.imageDetails.map((item: { id: string }) => item.id).filter(Boolean)
-        : [];
+      // Read the existing photos from the authoritative owner detail, not from the
+      // presentation view model: the patch preserves what the server says this
+      // recommendation holds, and a view model is free to reshape or drop keys.
+      const observedPhotos = editObservation?.detail.category === 'places' ? editObservation.detail.placePhotos?.photoMediaIds : undefined;
+      const existingPhotoMediaIds = Array.isArray(observedPhotos) ? observedPhotos.filter(Boolean) : [];
 
       const existingContext: PlaceRecommendationContext | null = fetchedPlace?.Contact_Visibility
         ? {
@@ -525,7 +524,7 @@ export const useAddRecommendation = ({
         ...(values.placesTaxonomy===undefined?{}:{placesTaxonomy:placesTaxonomyAssignmentSchema.parse(values.placesTaxonomy)}),
         note: richNoteFromEditor(typeof values.reason === "string" ? values.reason : ""),
         userRating: toNumberOrNull(values.userRating),
-        mediaIds: [...existingMediaIds, ...uploadedIds],
+        placePhotos: { photoMediaIds: [...existingPhotoMediaIds, ...uploadedIds].slice(0, 10) },
         placeContext: recommendationContext(values, {
           recommendationType,
           source: determineRecommendationSource(new URLSearchParams(window.location.search)),
