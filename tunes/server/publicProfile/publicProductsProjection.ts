@@ -42,6 +42,13 @@ async function richProduct(db:PoolClient,row:any){
  const entity=await readProductEntity(db,row.entity_id);
  const overrides=displayOverridesReadSchema.parse(row.display_values??{}),facts=effectiveProductDetails(entity.details,overrides);
  const offer=await readProductOffer(db,row.id,row.account_id);
+ // Owner snapshots. Products has no typed media table and no provider writing imageUrls,
+ // so before this these uploads were stored, shown to the owner, and publicly unreachable.
+ // LIMIT 21 plus the throw detects an over-bound row rather than silently truncating it,
+ // as Books does at publicBooksProjection.ts:23-25.
+ const uploads=(await db.query(`SELECT m.id FROM recommendation_media rm JOIN media_assets m ON m.id=rm.media_id AND m.account_id=rm.account_id
+ WHERE rm.recommendation_id=$1 AND m.status='ready' ORDER BY rm.display_order,m.id LIMIT 21`,[row.id])).rows.map(m=>`/api/explorers/v1/media/${m.id}/content`);
+ if(uploads.length>20)throw new Error('Public Product exceeds media read bound');
  return {documentId:row.id,product_url:facts.productUrl,
  title:(Object.hasOwn(overrides,'title')?overrides.title:entity.title)??'Untitled product',
  brand:facts.brand,
@@ -53,7 +60,10 @@ async function richProduct(db:PoolClient,row:any){
  specifications:Object.keys(facts.specifications).length?facts.specifications:null,
  user_recommendation_note:normalizeRichNote(row.note)?.html??'',user_rating:row.user_rating,
  is_pinned:row.pin_order!==null,pin_order:row.pin_order,display_order:row.display_order,
- images:facts.imageUrls.length?facts.imageUrls:null,
+ // Owner uploads first: the card and the hero both take images[0], and the owner's own
+ // photo should win over a provider image. Bounded because imageUrls is itself capped at
+ // 20 (0044:36), so a naive concatenation could reach 40.
+ images:uploads.length||facts.imageUrls.length?[...uploads,...facts.imageUrls].slice(0,20):null,
  product_list:{documentId:row.collection_id,List_Name:row.collection_title,slug:row.collection_slug},
  product_category:null};
 }
@@ -84,7 +94,7 @@ export async function publicLinkedProductsLists(db:PoolClient,accountId:string,l
   FROM collection_location_links l
   JOIN collections c ON c.id=l.child_collection_id AND c.account_id=l.account_id AND c.category=l.child_category
   JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category
-  LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover'
+  LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover' AND EXISTS(SELECT 1 FROM media_assets m WHERE m.id=cm.media_id AND m.account_id=cm.account_id AND m.status='ready')
   WHERE l.account_id=$1 AND l.location_collection_id=$2 AND l.child_category='products'
    AND ${gate} AND ${listGate}
   ORDER BY c.display_order,c.id LIMIT $3`,[accountId,locationCollectionId,limit])).rows;
@@ -107,7 +117,7 @@ export async function publicProductsProjection(pool:Pool,username:string,limit:n
   observed=await scope(db,username);if(!observed){await db.query('COMMIT');return undefined;}
   const rows=(await db.query(`SELECT c.id,c.title,c.description,c.slug,c.heading,c.display_order,cm.media_id AS cover_media_id FROM collections c
    JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category
-   LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover'
+   LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover' AND EXISTS(SELECT 1 FROM media_assets m WHERE m.id=cm.media_id AND m.account_id=cm.account_id AND m.status='ready')
    WHERE a.id=$1 AND c.category='products' AND ${gate} AND ${listGate} AND ($2::text IS NULL OR c.slug=$2)
    ORDER BY c.display_order,c.id LIMIT $3 OFFSET $4`,[observed.id,slug??null,slug?1:limit+1,slug?0:offset])).rows;
   if(slug&&!rows.length){await db.query('COMMIT');return undefined;}

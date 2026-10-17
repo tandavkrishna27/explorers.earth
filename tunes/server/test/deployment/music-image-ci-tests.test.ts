@@ -45,7 +45,7 @@ describe("owned image CI PostgreSQL wiring", () => {
       run: "node node_modules/tsx/dist/cli.mjs scripts/music-image-ci-tests.ts --cleanup" });
   });
 
-  it("preserves all forty-eight ordinary database selectors on their existing service", () => {
+  it("preserves all forty-nine ordinary database selectors on their existing service", () => {
     const ordinary = load(read(".github/workflows/test.yml"));
     const job = Object.values(ordinary.jobs).find((job: any) => job.env?.DATABASE_URL_TEST) as any;
     expect(job.env.DATABASE_URL_TEST).toBe("postgresql://music_migrator:music@127.0.0.1:55432/music_fixture");
@@ -118,6 +118,7 @@ describe("owned image CI PostgreSQL wiring", () => {
       "server/test/explorers-auth.integration.test.ts",
       "server/test/explorers-content-revision.integration.test.ts",
       "server/test/explorers-manual-overrides.integration.test.ts",
+      "server/test/explorers-media-cover.integration.test.ts",
       "server/test/explorers-media.integration.test.ts",
       "server/test/explorers-owner-content.integration.test.ts",
       "server/test/explorers-profile.integration.test.ts",
@@ -149,8 +150,8 @@ describe("owned image CI PostgreSQL wiring", () => {
        */
       "server/test/user-leak.integration.test.ts",
     ]);
-    expect(selectors).toHaveLength(48);
-    expect(new Set(selectors).size).toBe(48);
+    expect(selectors).toHaveLength(49);
+    expect(new Set(selectors).size).toBe(49);
   });
 
   /*

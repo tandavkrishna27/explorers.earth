@@ -40,9 +40,12 @@ it('maps every consumed Place_Details key, with photos as owned media routes',()
   Photos:[{url:`/api/explorers/v1/media/${photo}/content`}],Place_Types:['cafe','food'],
   Public_Phone:'+91 80 1234 5678',Website:'https://example.com',Price_Level:null,Price_Range:null,
  });
- // The owner's own uploads stay a separate gallery source, as PlaceOverview concatenates them.
- expect(row.Media).toEqual([{documentId:upload,url:`/api/explorers/v1/media/${upload}/content`}]);
- expect(row.media_details?.imageDetails).toEqual([{id:upload,url:`/api/explorers/v1/media/${upload}/content`}]);
+ // One gallery source. Creator and provider uploads are both routed into the typed
+ // recommendation_place_photos at upload time, so Media, media_details and Photos all
+ // resolve from the same ids - and those are the ids the edit path reads back.
+ expect(row.Media).toEqual([{documentId:photo,url:`/api/explorers/v1/media/${photo}/content`}]);
+ expect(row.media_details?.imageDetails).toEqual([{id:photo,url:`/api/explorers/v1/media/${photo}/content`}]);
+ expect(row.media_details?.thumbnail).toEqual({id:photo,url:`/api/explorers/v1/media/${photo}/content`});
  expect(row).toMatchObject({user_recommendation_note:'<p>Best filter coffee</p>',user_rating:9,google_rating:4.5,is_pinned:true,pin_order:0});
 });
 

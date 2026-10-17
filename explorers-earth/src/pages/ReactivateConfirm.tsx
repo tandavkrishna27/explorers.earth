@@ -4,6 +4,7 @@ import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import { authClient } from "../lib/authClient";
 import useAuthStore from "../store/store";
+import { useSessionBootstrap } from "../lib/sessionBootstrap";
 import { lifecycleObservationSchema } from "../../../tunes/shared/explorersLifecycleObservation";
 
 /**
@@ -34,6 +35,10 @@ export default function ReactivateConfirm() {
   const [state, setState] = useState<State>({ kind: "loading" });
   // Recovery can begin signed out. Bind custody after initial verification
   // settles, or immediately if already settled, without requiring ordinary auth.
+  //
+  // It sits outside ProtectedRoute, so it owns its bootstrap: the comment below waits for
+  // an initial verification, and nothing else on this route would start one.
+  useSessionBootstrap();
   const [flow] = useState(() => {
     const current = useAuthStore.getState();
     const generation: number | null = current.status === "loading" ? null : current.generation;

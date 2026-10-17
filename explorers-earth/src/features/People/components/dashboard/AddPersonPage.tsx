@@ -88,6 +88,10 @@ export default function AddPersonPage() {
   setTags(person.skills_tags ?? []);
   setNote(typeof person.user_recommendation_note === 'string' ? person.user_recommendation_note : '');
   setRating(person.user_rating);
+  // Without this the form starts empty and save() sends mediaIds: [], silently detaching
+  // every snapshot the owner already uploaded. mediaIds is on every recommendation detail,
+  // so unlike appScreenshots it needs no category guard.
+  setMedia((observed.detail.mediaIds ?? []).map(id => ({ id, url: `/api/explorers/v1/media/${id}/content` })));
  }, [owner.content, scope, personId, listId]);
 
  const valid = (captured: string, operation?: number) => mounted.current && currentScope.current === captured && (operation === undefined || active.current === operation);

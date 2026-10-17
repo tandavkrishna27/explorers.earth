@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from "react-router-dom";
 import useAuthStore from "../store/store";
 import { EarthLoader } from "./EarthLoader";
+import { useSessionBootstrap } from "../lib/sessionBootstrap";
 
 /**
  * GuestRoute — only accessible to unauthenticated users.
@@ -8,6 +9,9 @@ import { EarthLoader } from "./EarthLoader";
  */
 const GuestRoute = () => {
     const { status, isAuthenticated } = useAuthStore();
+    // GuestRoute wraps "/" and "/login", neither of which is inside ProtectedRoute, so
+    // without its own bootstrap both would render a loader forever.
+    useSessionBootstrap();
 
     if (status === "loading") return <EarthLoader context="login" />;
     if (isAuthenticated && (status === "active-complete" || status === "active-incomplete")) {

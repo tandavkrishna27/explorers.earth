@@ -22,7 +22,7 @@ export type CompletePlacesOwnerContent=CompleteMyCategoryContent&{readonly categ
 export type ManualPlaceDraft={
  title:string;details:Partial<PlaceEntityDetails>;
  context:PlaceRecommendationContext;
- note:RichNote|null;userRating:number|null;mediaIds:string[];photoMediaIds:string[];
+ note:RichNote|null;userRating:number|null;photoMediaIds:string[];
  placesTaxonomy?:PlacesTaxonomyAssignment;
 };
 export type ManualPlaceIntent=Readonly<{entityKey:string;recommendationKey:string;parent:CollectionObservation;draft:Readonly<ManualPlaceDraft>}>;
@@ -117,10 +117,10 @@ export const PlacesClient={
   // disclosure, and person fields only on a person recommendation.
   const context=placeRecommendationContextSchema.parse({...emptyPlaceContext(),...draft.context});
   const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
-   .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',placeContext:context,placePhotos:{photoMediaIds:draft.photoMediaIds}});
+   .parse({note:draft.note,userRating:draft.userRating,publicationState:'draft',placeContext:context,placePhotos:{photoMediaIds:draft.photoMediaIds}});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{
    ...draft,...taxonomy,title:details.title,details,context,note:normalized.note,userRating:normalized.userRating,
-   mediaIds:[...normalized.mediaIds],photoMediaIds:[...draft.photoMediaIds],
+   photoMediaIds:[...draft.photoMediaIds],
   }});
   const state=useAuthStore.getState();intents.set(intent,{accountId:state.accountId,generation:state.generation,route:route()});return intent;
  },
@@ -131,7 +131,7 @@ export const PlacesClient={
    :await explorersApiClient.resolvePlaceEntity({kind:'manual',category:'places',details:{...intent.draft.details,title:intent.draft.title}},intent.entityKey,signal);
   current(scope,signal);collection(intent.parent);
   const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,
-   mediaIds:[...intent.draft.mediaIds],publicationState:'draft',placeContext:intent.draft.context,placePhotos:{photoMediaIds:[...intent.draft.photoMediaIds]},...(intent.draft.placesTaxonomy===undefined?{}:{placesTaxonomy:intent.draft.placesTaxonomy})},intent.recommendationKey,signal);
+   publicationState:'draft',placeContext:intent.draft.context,placePhotos:{photoMediaIds:[...intent.draft.photoMediaIds]},...(intent.draft.placesTaxonomy===undefined?{}:{placesTaxonomy:intent.draft.placesTaxonomy})},intent.recommendationKey,signal);
   current(scope,signal);return result;
  },
  /**
@@ -146,9 +146,9 @@ export const PlacesClient={
   const details=resolveManualPersonSchema.parse({kind:'manual',category:'people',details:{title:draft.title}}).details;
   const context=placeRecommendationContextSchema.parse({...emptyPlaceContext(),...draft.context,recommendationType:'person'});
   const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
-   .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',placeContext:context,placePhotos:{photoMediaIds:draft.photoMediaIds}});
+   .parse({note:draft.note,userRating:draft.userRating,publicationState:'draft',placeContext:context,placePhotos:{photoMediaIds:draft.photoMediaIds}});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{...draft,...taxonomy,title:details.title,details:{},context,note:normalized.note,userRating:normalized.userRating,
-   mediaIds:[...normalized.mediaIds],photoMediaIds:[...draft.photoMediaIds]}});
+   photoMediaIds:[...draft.photoMediaIds]}});
   personIntents.add(intent);
   const state=useAuthStore.getState();intents.set(intent,{accountId:state.accountId,generation:state.generation,route:route()});return intent;
  },

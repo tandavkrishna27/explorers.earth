@@ -86,10 +86,10 @@ export function placeViewModel(detail:Readonly<EditableOwnerRecommendation>,memb
  const title=detail.displayTitle??'Unnamed place';
  // Membership-local metadata permits different pin positions in different lists.
  const selectedPin=membership.placePinPosition==null?undefined:{position:membership.placePinPosition};
- // Photos are owned media in their stored order, then the recommendation's own uploads.
- // PlaceOverview concatenates both into one gallery, so both are emitted.
+ // One source. Creator and provider uploads are merged at upload time into the typed
+ // recommendation_place_photos, so there is no second gallery to concatenate, and these
+ // are the ids the edit path reads back to preserve existing photos.
  const photos=detail.placePhotos?.photoMediaIds??[];
- const uploads=detail.mediaIds??[];
  return {
   documentId:detail.id,
   Place_Details:{
@@ -106,8 +106,8 @@ export function placeViewModel(detail:Readonly<EditableOwnerRecommendation>,memb
    Public_Phone:facts.publicPhone,Website:facts.websiteUrl,
    Price_Level:facts.priceLevel,Price_Range:facts.priceRange,
   },
-  media_details:uploads.length?{thumbnail:{id:uploads[0],url:MEDIA(uploads[0])},imageDetails:uploads.map(id=>({id,url:MEDIA(id)}))}:null,
-  Media:uploads.map(id=>({documentId:id,url:MEDIA(id)})),
+  media_details:photos.length?{thumbnail:{id:photos[0],url:MEDIA(photos[0])},imageDetails:photos.map(id=>({id,url:MEDIA(id)}))}:null,
+  Media:photos.map(id=>({documentId:id,url:MEDIA(id)})),
   Recommendation_Type:own.recommendationType,
   Source_Of_Recommendation:own.sourceOfRecommendation,
   // The owner's own contact details, which is why no visibility gate applies here. The

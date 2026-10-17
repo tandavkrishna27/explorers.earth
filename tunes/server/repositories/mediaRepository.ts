@@ -6,6 +6,27 @@ export type MediaRecord = { id: string; account_id: string; purpose: string; sta
   storage_environment: string; storage_version_id: string | null; content_sha256: Buffer };
 export class MediaAccountInactive extends Error {}
 
+/**
+ * The two category lists inside isPublicAttachment, exported so the drift that caused a
+ * real defect is checkable.
+ *
+ * COVER_CATEGORIES grew one ticket at a time - git log -L 68,77 on this file shows
+ * ('places','products','people'), then +'guides', then +'apps' - and books, movies and
+ * games were never appended even though their projections emit a cover URL. The result was
+ * an owner seeing a cover the public got a 404 on. It must equal every category that can
+ * own a collection, which media-cover-categories.test.ts asserts against
+ * contentCategorySchema.
+ *
+ * GENERIC_MEDIA_CATEGORIES is deliberately a SUBSET and must not be pinned to an enum: it
+ * is the set whose public projection reads the shared recommendation_media table. Guides
+ * has no recommendations rows at all, and apps and places keep their media in typed tables
+ * matched by required_category, so admitting them here would publish an upload no
+ * projection references.
+ */
+export const COVER_CATEGORIES = ["apps", "places", "products", "people", "guides", "books", "movies", "games"] as const;
+export const GENERIC_MEDIA_CATEGORIES = ["books", "movies", "games", "products", "people"] as const;
+const list = (categories: readonly string[]) => categories.map(category => `'${category}'`).join(",");
+
 export class MediaRepository {
   constructor(private readonly db: Pool) {}
 
@@ -71,7 +92,7 @@ export class MediaRepository {
       JOIN creator_accounts a ON a.id=c.account_id
       JOIN account_category_settings s ON s.account_id=c.account_id AND s.category=c.category
       WHERE cm.media_id=$1 AND cm.slot='cover' AND m.purpose='collection'
-        AND c.category IN ('apps','places','products','people','guides')
+        AND c.category IN (${list(COVER_CATEGORIES)})
         AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile
         AND s.is_public AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'
       UNION ALL
@@ -98,8 +119,8 @@ export class MediaRepository {
       JOIN collections c ON c.id=ci.collection_id AND c.account_id=ci.account_id AND c.category=ci.category
       JOIN creator_accounts a ON a.id=r.account_id
       JOIN account_category_settings s ON s.account_id=r.account_id AND s.category=r.category
-      WHERE rm.media_id=$1 AND r.category IN('books','movies','games','apps','places')
-        AND ((rm.required_category IS NULL AND r.category IN('books','movies','games')) OR rm.required_category=r.category)
+      WHERE rm.media_id=$1 AND r.category IN(${list([...GENERIC_MEDIA_CATEGORIES,'apps','places'])})
+        AND ((rm.required_category IS NULL AND r.category IN(${list(GENERIC_MEDIA_CATEGORIES)})) OR rm.required_category=r.category)
         AND (rm.source_entity_id IS NULL OR rm.source_entity_id=r.entity_id) AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile
         AND s.is_public AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'
         AND r.archived_at IS NULL AND r.publication_state='published'

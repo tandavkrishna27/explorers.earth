@@ -80,6 +80,10 @@ export default function AddProductPage() {
   setSpecifications(Object.entries(product.specifications ?? {}).map(([key, value]) => ({ key, value })));
   setNote(typeof product.user_recommendation_note === 'string' ? product.user_recommendation_note : '');
   setRating(product.user_rating);
+  // Without this the form starts empty and save() sends mediaIds: [], silently detaching
+  // every snapshot the owner already uploaded. mediaIds is on every recommendation detail,
+  // so unlike appScreenshots it needs no category guard.
+  setMedia((observed.detail.mediaIds ?? []).map(id => ({ id, url: `/api/explorers/v1/media/${id}/content` })));
  }, [owner.content, scope, productId, listId]);
 
  const valid = (captured: string, operation?: number) => mounted.current && currentScope.current === captured && (operation === undefined || active.current === operation);

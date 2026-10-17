@@ -10,6 +10,8 @@ import type { ObjectStorage } from "../services/objectStorage";
 import { MediaRepository } from "../repositories/mediaRepository";
 import { publicAppsProjection } from "../publicProfile/publicAppsProjection";
 import { publicPlacesProjection } from "../publicProfile/publicPlacesProjection";
+import { publicProductsProjection } from "../publicProfile/publicProductsProjection";
+import { publicPeopleProjection } from "../publicProfile/publicPeopleProjection";
 
 const config = resolveExplorersAuthConfig({ EXPLORERS_PUBLIC_ORIGIN: "http://127.0.0.1:51474",
   EXPLORERS_AUTH_SECRET: "integration-secret-".repeat(4), GOOGLE_CLIENT_ID: "fixture-google-id", GOOGLE_CLIENT_SECRET: "fixture-google-secret" });
@@ -41,8 +43,18 @@ describe("private local media", () => {
   afterAll(async () => { await pool?.end(); });
 
   // These fixtures use real uploaded bytes and committed, schema-validated typed rows.
-  for (const category of ["apps", "places"] as const) {
-    const table = category === "apps" ? "recommendation_app_screenshots" : "recommendation_place_photos";
+  // Apps and Places keep owner media in their own typed tables; Products and People have
+  // none, so theirs lives in the generic recommendation_media that the gate's generic arm
+  // admits. The first three cases hold for all four. The last two are *about* the
+  // typed-vs-generic distinction - the fourth inserts a generic row as "a second
+  // legitimate relation" - so they stay scoped to the typed categories, where `table` and
+  // `recommendation_media` are actually different tables.
+  for (const category of ["apps", "places", "products", "people"] as const) {
+    const typed = category === "apps" || category === "places";
+    const table = category === "apps" ? "recommendation_app_screenshots"
+      : category === "places" ? "recommendation_place_photos" : "recommendation_media";
+    // recommendation_media orders by display_order and has no slot_index (0029:82-89).
+    const slotColumn = typed ? "slot_index" : "display_order";
     async function fixture() {
       const owner = await persona();
       const handle = `m${randomUUID().replaceAll("-", "").slice(0, 20)}`;
@@ -53,13 +65,16 @@ describe("private local media", () => {
       const id = uploaded.body.media.id as string;
       const url = `/api/explorers/v1/media/${id}/content`;
       async function attach(mediaId = id) {
-        const entity = (await pool.query("INSERT INTO entities(kind,title,origin) VALUES($1,'Typed media fixture','manual') RETURNING id", [category === "apps" ? "app" : "place"])).rows[0].id;
+        const kind = category === "apps" ? "app" : category === "places" ? "place" : category === "products" ? "product" : "person";
+        const entity = (await pool.query("INSERT INTO entities(kind,title,origin) VALUES($1,'Typed media fixture','manual') RETURNING id", [kind])).rows[0].id;
         if (category === "apps") await pool.query("INSERT INTO app_entity_details(entity_id,app_url) VALUES($1,'https://example.invalid/app')", [entity]);
-        else await pool.query("INSERT INTO place_entity_details(entity_id) VALUES($1)", [entity]);
+        else if (category === "places") await pool.query("INSERT INTO place_entity_details(entity_id) VALUES($1)", [entity]);
+        else if (category === "products") await pool.query("INSERT INTO product_entity_details(entity_id,product_url) VALUES($1,'https://example.invalid/product')", [entity]);
+        else await pool.query("INSERT INTO person_entity_details(entity_id) VALUES($1)", [entity]);
         const collection = (await pool.query("INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order) VALUES($1,$2,'Media list',$3,'public','published',0) RETURNING id", [owner.accountId, category, `media-${randomUUID()}`])).rows[0].id;
         const recommendation = (await pool.query("INSERT INTO recommendations(account_id,category,entity_id,publication_state) VALUES($1,$2,$3,'published') RETURNING id", [owner.accountId, category, entity])).rows[0].id;
         await pool.query("INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order) VALUES($1,$2,$3,$4,0)", [collection, recommendation, owner.accountId, category]);
-        await pool.query(`INSERT INTO ${table}(recommendation_id,account_id,slot_index,media_id) VALUES($1,$2,0,$3)`, [recommendation, owner.accountId, mediaId]);
+        await pool.query(`INSERT INTO ${table}(recommendation_id,account_id,${slotColumn},media_id) VALUES($1,$2,0,$3)`, [recommendation, owner.accountId, mediaId]);
         return { collection, recommendation };
       }
       return { owner, handle, id, url, attach, repository: new MediaRepository(pool) };
@@ -71,7 +86,7 @@ describe("private local media", () => {
       if (expected) expect(response.body).toEqual(png);
     }
 
-    it(`typed Apps/Places media ${category}: public projection and independent entitlement withdrawals`, async () => {
+    it(`${category} media: public projection and independent entitlement withdrawals`, async () => {
       const f = await fixture();
       await visible(f, false);
       expect((await request(composed.app).get(f.url).set("cookie", f.owner.cookie)).status).toBe(200);
@@ -79,9 +94,19 @@ describe("private local media", () => {
       expect((await request(composed.app).get(f.url).set("cookie", foreign.cookie)).status).toBe(404);
       expect((await request(composed.app).delete(`/api/explorers/v1/media/${f.id}`).set("cookie", foreign.cookie).set("origin", config.baseURL)).status).toBe(404);
       const attachment = await f.attach();
-      const projection = category === "apps" ? await publicAppsProjection(pool, f.handle, 24) : await publicPlacesProjection(pool, f.handle, 24);
-      if (category === "apps") expect(projection?.appLists[0].recommended_apps[0].screenshots).toEqual([f.url]);
-      else expect(projection?.recommendationLists[0].recommended_places[0].Media).toEqual([{ documentId: f.id, url: f.url }]);
+      if (category === "apps") {
+        const projection = await publicAppsProjection(pool, f.handle, 24);
+        expect(projection?.appLists[0].recommended_apps[0].screenshots).toEqual([f.url]);
+      } else if (category === "places") {
+        const projection = await publicPlacesProjection(pool, f.handle, 24);
+        expect(projection?.recommendationLists[0].recommended_places[0].Media).toEqual([{ documentId: f.id, url: f.url }]);
+      } else if (category === "products") {
+        const projection = await publicProductsProjection(pool, f.handle, 24);
+        expect(projection?.productLists[0].recommended_products[0].images).toEqual([f.url]);
+      } else {
+        const projection = await publicPeopleProjection(pool, f.handle, 24);
+        expect(projection?.personLists[0].recommended_people[0].media_details).toEqual({ imageDetails: [{ id: f.id, url: f.url }] });
+      }
       await visible(f, true);
       const cover = await upload(f.owner.cookie, png, "image/png", "collection");
       expect(cover.status).toBe(201);
@@ -115,7 +140,7 @@ describe("private local media", () => {
       await visible(f, true);
     }, 30_000);
 
-    it(`typed Apps/Places media ${category}: any surviving public list grants bytes without granting deletion`, async () => {
+    it(`${category} media: any surviving public list grants bytes without granting deletion`, async () => {
       const f = await fixture(); const first = await f.attach(); const second = await f.attach();
       await visible(f, true);
       await pool.query("DELETE FROM collection_items WHERE collection_id=$1", [first.collection]);
@@ -128,7 +153,7 @@ describe("private local media", () => {
       expect((await f.repository.find(f.id))?.status).toBe("ready");
     }, 30_000);
 
-    it(`typed Apps/Places media ${category}: attached deletion refuses cleanly for private draft archived parents`, async () => {
+    it(`${category} media: attached deletion refuses cleanly for private draft archived parents`, async () => {
       const f = await fixture(); const attachment = await f.attach();
       await pool.query("UPDATE collections SET visibility='private',publication_state='draft',archived_at=now() WHERE id=$1", [attachment.collection]);
       await pool.query("UPDATE recommendations SET publication_state='draft',archived_at=now() WHERE id=$1", [attachment.recommendation]);
@@ -138,7 +163,7 @@ describe("private local media", () => {
       expect((await pool.query("SELECT status FROM media_assets WHERE id=$1", [f.id])).rows[0].status).toBe("ready");
     }, 30_000);
 
-    it(`typed Apps/Places media ${category}: aged attachments survive cleanup until the last real relation detaches`, async () => {
+    it.skipIf(!typed)(`${category} media: aged attachments survive cleanup until the last real relation detaches`, async () => {
       const f = await fixture(); const first = await f.attach(); const second = await f.attach();
       await pool.query("UPDATE media_assets SET created_at=now()-interval '25 hours' WHERE id=$1", [f.id]);
       expect((await f.repository.abandoned(f.owner.accountId, "local")).map(row => row.id)).not.toContain(f.id);
@@ -166,22 +191,37 @@ describe("private local media", () => {
       expect((await pool.query("SELECT status FROM media_assets WHERE id=$1", [f.id])).rows[0].status).toBe("pending_delete");
     }, 30_000);
 
-    it(`typed Apps/Places media ${category}: actual schema rejects unsafe typed relations and attached transitions`, async () => {
+    it.skipIf(!typed)(`${category} media: actual schema rejects unsafe typed relations and attached transitions`, async () => {
       const f = await fixture(); const attachment = await f.attach();
       await expect(pool.query("UPDATE media_assets SET status='pending_delete',delete_requested_at=now() WHERE id=$1", [f.id])).rejects.toMatchObject({ code: "23514" });
       expect((await f.repository.find(f.id))?.status).toBe("ready");
       for (const purpose of ["profile", "claim-evidence"] as const) {
         const wrong = await upload(f.owner.cookie, png, "image/png", "profile"); expect(wrong.status).toBe(201);
         if (purpose === "claim-evidence") await pool.query("UPDATE media_assets SET purpose='claim-evidence' WHERE id=$1", [wrong.body.media.id]);
-        await expect(pool.query(`INSERT INTO ${table}(recommendation_id,account_id,slot_index,media_id) VALUES($1,$2,1,$3)`, [attachment.recommendation, f.owner.accountId, wrong.body.media.id])).rejects.toMatchObject({ code: "23514" });
+        await expect(pool.query(`INSERT INTO ${table}(recommendation_id,account_id,${slotColumn},media_id) VALUES($1,$2,1,$3)`, [attachment.recommendation, f.owner.accountId, wrong.body.media.id])).rejects.toMatchObject({ code: "23514" });
       }
       const unready = await upload(f.owner.cookie, png, "image/png", "recommendation"); expect(unready.status).toBe(201);
       await pool.query("UPDATE media_assets SET status='pending_delete',delete_requested_at=now() WHERE id=$1", [unready.body.media.id]);
-      await expect(pool.query(`INSERT INTO ${table}(recommendation_id,account_id,slot_index,media_id) VALUES($1,$2,1,$3)`, [attachment.recommendation, f.owner.accountId, unready.body.media.id])).rejects.toMatchObject({ code: "23514" });
+      await expect(pool.query(`INSERT INTO ${table}(recommendation_id,account_id,${slotColumn},media_id) VALUES($1,$2,1,$3)`, [attachment.recommendation, f.owner.accountId, unready.body.media.id])).rejects.toMatchObject({ code: "23514" });
       const other = await persona(); const foreign = await upload(other.cookie, png, "image/png", "recommendation"); expect(foreign.status).toBe(201);
       // The composite ownership FK rejects before the deferred guard can run.
-      await expect(pool.query(`INSERT INTO ${table}(recommendation_id,account_id,slot_index,media_id) VALUES($1,$2,1,$3)`, [attachment.recommendation, f.owner.accountId, foreign.body.media.id])).rejects.toMatchObject({ code: "23503" });
+      await expect(pool.query(`INSERT INTO ${table}(recommendation_id,account_id,${slotColumn},media_id) VALUES($1,$2,1,$3)`, [attachment.recommendation, f.owner.accountId, foreign.body.media.id])).rejects.toMatchObject({ code: "23503" });
       expect((await f.repository.find(f.id))?.status).toBe("ready");
+
+      // A list cover cannot be unready in either direction, which is why no projection can
+      // emit a URL for one. Recorded here so a future migration cannot relax it silently.
+      // The asset must carry purpose 'collection': with 'recommendation' this would fail on
+      // guard_recommendation_media's purpose arm with the same 23514 and never exercise the
+      // status arm at all.
+      const unreadyCover = await upload(f.owner.cookie, png, "image/png", "collection"); expect(unreadyCover.status).toBe(201);
+      await pool.query("UPDATE media_assets SET status='uploading' WHERE id=$1", [unreadyCover.body.media.id]);
+      await expect(pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",
+        [attachment.collection, f.owner.accountId, unreadyCover.body.media.id])).rejects.toMatchObject({ code: "23514" });
+      const readyCover = await upload(f.owner.cookie, png, "image/png", "collection"); expect(readyCover.status).toBe(201);
+      await pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",
+        [attachment.collection, f.owner.accountId, readyCover.body.media.id]);
+      await expect(pool.query("UPDATE media_assets SET status='uploading' WHERE id=$1", [readyCover.body.media.id]))
+        .rejects.toMatchObject({ code: "23514" });
     }, 30_000);
   }
 

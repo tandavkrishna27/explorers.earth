@@ -5,9 +5,12 @@ import { EarthLoader } from "./EarthLoader";
 import OnboardingCheckError from "./OnboardingCheckError";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 import { authClient } from "../lib/authClient";
+import { useSessionBootstrap } from "../lib/sessionBootstrap";
 
 export default function ProtectedRoute() {
   const { status, isAuthenticated } = useAuthStore();
+  // This gate renders a loader for "loading", so it has to be the thing that ends it.
+  useSessionBootstrap();
   const location = useLocation();
   const logout = useLogout();
   const active = isAuthenticated && (status === "active-incomplete" || status === "active-complete");

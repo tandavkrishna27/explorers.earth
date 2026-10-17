@@ -76,13 +76,22 @@ const selectedMedia = [{
 
 const values = { title: "Saved place", address: "Address" };
 
-const defaultProps = (fetchedGoogleMedia: unknown[] = selectedMedia) => ({
+// Creator-origin media reaches the hook through instagramMedia or the owner's own
+// uploads; both are snapshotted with origin "creator". instagramMedia is a prop, so it
+// drives that path without reaching into hook internals.
+const creatorMedia = [{
+  photoBlob: new Blob(["creator"], { type: "image/jpeg" }),
+  fileName: "mine.jpg",
+  url: "blob:mine",
+}];
+
+const defaultProps = (fetchedGoogleMedia: unknown[] = selectedMedia, instagramMedia: unknown[] = []) => ({
   places: null,
   listId: "list-1",
   type: "default",
   fetchedListId: undefined,
   fetchedGoogleMedia,
-  instagramMedia: [],
+  instagramMedia,
   setPreviewUrl: vi.fn(),
   setIsLoading: vi.fn(),
   userInputRef: { current: null },
@@ -90,9 +99,9 @@ const defaultProps = (fetchedGoogleMedia: unknown[] = selectedMedia) => ({
   recommendationType: "place" as const,
 });
 
-const renderMediaHook = (fetchedGoogleMedia: unknown[] = selectedMedia) =>
+const renderMediaHook = (fetchedGoogleMedia: unknown[] = selectedMedia, instagramMedia: unknown[] = []) =>
   renderHook(
-    ({ media }) => useAddRecommendation(defaultProps(media) as never),
+    ({ media }) => useAddRecommendation(defaultProps(media, instagramMedia) as never),
     { initialProps: { media: fetchedGoogleMedia } },
   );
 
@@ -114,12 +123,27 @@ describe("useAddRecommendation selected-media persistence", () => {
     expect(result.current.mediaStatus).toBe("saved");
     expect(mocks.createPlace).toHaveBeenCalledTimes(1);
     expect(mocks.upload).toHaveBeenCalledTimes(1);
-    // Provider imagery becomes the place's gallery, not the creator's own media.
+    // One typed, publicly projected photo path. The generic mediaIds leg is gone, because
+    // no public Places read ever looked at it.
     expect(mocks.updatePlace).toHaveBeenCalledWith(created.id, {
-      mediaIds: [],
       placePhotos: { photoMediaIds: ["media-1"] },
     });
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
+  });
+
+  // Creator uploads used to go to mediaIds, which no public Places projection reads, so
+  // the owner saw them and the public never could.
+  it("sends a creator-origin upload as a place photo, not as generic media", async () => {
+    const { result } = renderMediaHook([], creatorMedia);
+
+    await act(async () => {
+      await result.current.handleSubmit(values as never);
+    });
+
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.updatePlace).toHaveBeenCalledWith(created.id, {
+      placePhotos: { photoMediaIds: ["media-1"] },
+    });
   });
 
   it("attaches media only to the recommendation that was created", async () => {
@@ -193,7 +217,7 @@ describe("useAddRecommendation selected-media persistence", () => {
     expect(result.current.mediaStatus).toBe("saved");
     // The first blob is not uploaded a second time.
     expect(mocks.upload).toHaveBeenCalledTimes(3);
-    expect(mocks.updatePlace).toHaveBeenCalledWith(created.id, { mediaIds: [], placePhotos: { photoMediaIds: ["media-a", "media-b"] } });
+    expect(mocks.updatePlace).toHaveBeenCalledWith(created.id, { placePhotos: { photoMediaIds: ["media-a", "media-b"] } });
     expect(mocks.createPlace).toHaveBeenCalledTimes(1);
   });
 
