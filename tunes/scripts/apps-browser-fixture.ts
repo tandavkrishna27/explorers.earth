@@ -236,7 +236,7 @@ const keys = ['platform', 'argv', 'environment', 'temporaryRoot', 'clock', 'rand
 type DiagnosticStage = 'validation' | 'preflight' | 'receipt' | 'create-directory' | 'check-directory' | 'prepare-secret' | 'prepare-database' | 'create-database' | 'create-pool' | 'migrate' | 'current-database' | 'seed-auth' | 'initial-account' | 'config' | 'composition' | 'create-sessions' | 'start-api' | 'baseline' | 'create-control' | 'descriptor' | 'browser-context' | 'vite' | 'startup' | 'discovery' | 'execution' | 'cleanup';
 type DiagnosticCategory = 'refusal' | 'spawn-error' | 'nonzero' | 'signal' | 'output-overflow' | 'deadline' | 'ack-mismatch';
 type CleanupStep = 'request-seal' | 'browser-stop' | 'browser-close' | 'discovery-stop' | 'discovery-close' | 'vite-stop' | 'vite-close' | 'producer-settlement' | 'request-drain' | 'control-close' | 'storage-drain' | 'api-close' | 'artifact-remove' | 'runtime-pool-close' | 'database-budget' | 'admin-pool-open' | 'database-drop' | 'admin-pool-close' | 'database-dispose' | 'root-check' | 'root-remove' | 'secret-clean' | 'failure-receipt' | 'finish-receipt';
-export type NativeUnknownOrigin='clock-callback'|'clock-late-clear'|'guard-expiry'|'child-error'|'child-output-overflow'|'child-stdin'|'powershell-deadline'|'privacy-refusal'|'capture-rejection'|'directory-create'|'secret-create'|'api-failure'|'descriptor-create'|'vite-output-overflow';
+export type NativeUnknownOrigin='clock-callback'|'clock-late-clear'|'guard-expiry'|'child-error'|'child-output-overflow'|'child-stdin'|'powershell-deadline'|'privacy-refusal'|'capture-rejection'|'child-stdio-open'|'artifact-capture'|'directory-create'|'secret-create'|'api-failure'|'descriptor-create'|'vite-output-overflow';
 export type RequestDrainBoundary='native-unknown-before'|'ledger-missing'|'handler-drain'|'remaining-budget'|'support-drain'|'native-unknown-after'|'canonical-evidence';
 type NativeContext=Readonly<{stage:DiagnosticStage;cleanupStep?:CleanupStep}>;
 export type RequestDrainPending=Readonly<{phase:'handler-wait'|'canonical-wait';handlers:number;evidence?:AppsRequestDrainDiagnostic}>;
@@ -941,8 +941,36 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
     }, options: Options, discovery = false) {
         const child = await fixedChild(process.execPath, [cli, 'test', ...context.arguments, ...(discovery ? ['--list'] : []), '--reporter=json'], { ...env(), ...context.environment, ...(discovery ? { PLAYWRIGHT_JSON_OUTPUT_NAME: path.join(options.disposableDirectory, 'protected-discovery.json') } : {}) }, frontend);
         const original = child.closed;
-        child.closed = original.then(async (result) => { if (!result.stdioClosed)
-            throw new Refusal(); await captureBrowserArtifacts(options, !discovery); return result; });
+        // `capture-rejection` was latched from a parameterless `.catch()` on this promise,
+        // which rejects for two unrelated reasons - the child's stdio never closing, and the
+        // artifact capture refusing - and discarded the error outright. One token for two
+        // causes made `stage=execution; nativeUnknownOrigin=capture-rejection` impossible to
+        // act on, the same way the Docker `catch {}` and the thirteen-way `stage=preflight`
+        // were. Each cause is now latched where it is known for certain, so the token names
+        // it, and `stdioClosed` needs no separate field: `child-stdio-open` means it was
+        // false, and `artifact-capture` is only reachable once it was true.
+        //
+        // Reporting only. The control flow is unchanged: a non-closed stdio still refuses
+        // before the capture runs, the capture still runs in the same place, and its error is
+        // now rethrown exactly as received rather than swallowed.
+        child.closed = original.then(async (result) => {
+            if (!result.stdioClosed) {
+                latchUnknown('child-stdio-open');
+                throw new Refusal();
+            }
+            try {
+                await captureBrowserArtifacts(options, !discovery);
+            }
+            catch (error) {
+                latchUnknown('artifact-capture');
+                throw error;
+            }
+            return result;
+        });
+        // `latchUnknown` keeps only the first origin, so this stays as the residual: it now
+        // fires only when `child.closed` rejects for neither named reason - the underlying
+        // child promise failing before this handler runs - and `capture-rejection` on a
+        // future marker should be read as exactly that rather than as either named cause.
         child.closed.catch(() => { latchUnknown('capture-rejection'); });
         return child;
     }
