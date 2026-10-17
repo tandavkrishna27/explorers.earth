@@ -22,10 +22,19 @@ import {publicLinkedProductsLists} from './publicProductsProjection';
  * them are emitted - the ticket requires mapping that JSON "without dropping data used by
  * cards and maps".
  *
- * Photos are owned media served through the media route, concatenated with the owner's
- * own uploads exactly as PlaceOverview already concatenates them. Owner decision,
- * 2026-10-07: all photos and media are stored in S3, so no provider URL appears here and
- * no provider request is made to render a page.
+ * Photos are owned media served through the media route, read solely from
+ * recommendation_place_photos. There is nothing to concatenate: creator and provider
+ * uploads are merged at upload time, because useAddRecommendation routes both into
+ * photoMediaIds on create and on edit. Before that they were split, and the creator's
+ * half went to the generic recommendation_media that this read never looked at - so the
+ * owner saw those photos and the public never could.
+ *
+ * Note that media_details.imageDetails means recommendation_place_photos here, and the
+ * owner side resolves the same key from its own copy of those ids. The key is shared, the
+ * source is not, so do not assume one side's shape from the other.
+ *
+ * Owner decision, 2026-10-07: all photos and media are stored in S3, so no provider URL
+ * appears here and no provider request is made to render a page.
  *
  * Contact details pass through publicPlaceContact and nothing else, so they appear only
  * when the creator chose to disclose them. A creator's private number is never emitted,
