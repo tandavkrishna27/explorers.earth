@@ -942,7 +942,7 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
                 if (!(await fs.lstat(file)).isFile())
                     throw new Refusal();
             }
-            if (createHash('sha256').update(await fs.readFile(helper)).digest('hex') !== 'd35c7b8a92813890d5074a9088ff6d690610322deb0684d0c52b26774a5ff764')
+            if (createHash('sha256').update(await fs.readFile(helper)).digest('hex') !== 'a43bb8db3ae88ae440fb73d77801a400d2b5fadc0151fd6ac10e61a3cd26bac0')
                 throw new Refusal();
             await canonical(temporaryRoot);
             if (process.platform === 'win32') {
