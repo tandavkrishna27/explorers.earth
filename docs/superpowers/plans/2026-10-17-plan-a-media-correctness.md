@@ -4,119 +4,133 @@
 
 **Goal:** Make owner-uploaded media work and appear publicly for all eight recommendation categories, and fix the two regressions the first honest CI run exposed.
 
-**Architecture:** Owner media is uploaded to a private S3 bucket and served only through `GET /api/explorers/v1/media/:id/content`, authorised by `MediaRepository.isPublicAttachment`. That function is a UNION of arms, each arm pairing a storage table with a `required_category`. A category's media is publicly visible only when a public projection emits its URL **and** a gate arm admits it. Today three categories emit a cover URL the gate refuses, and three store owner uploads the gate correctly refuses because no projection reads them. This plan closes both halves, always changing projection and gate in the same commit.
+**Architecture:** Owner media is uploaded to a private S3 bucket and served only through `GET /api/explorers/v1/media/:id/content`, authorised by `MediaRepository.isPublicAttachment`. That function is a UNION of arms, each pairing a storage table with a `required_category`. A category's media is publicly visible only when a public projection emits its URL **and** a gate arm admits it. This plan closes both halves, always changing projection and gate in the same commit.
 
 **Tech Stack:** TypeScript (strict), PostgreSQL via `pg`, Express, Vitest, Playwright, React 18 + Vite.
 
+**Revision:** v2, after two independent reviews. v1 had four defects that would have produced broken code; each is called out inline as **[v1 defect]** so the correction is not silently lost.
+
 ---
 
-## Decisions this plan implements
+## Decisions implemented
 
 | Decision | Choice |
 |---|---|
 | D-1 products/people snapshot uploads | **Complete the feature** — add public reads, then widen the gate |
-| D-2 places creator uploads | **Route into the typed `photoMediaIds` path**, not the generic table |
-| D-3 paste-a-link enrichment | Out of scope here — Plan B |
+| D-2 places creator uploads | **Route into the typed `photoMediaIds` path**, create *and* edit |
+| D-3 paste-a-link enrichment | Out of scope — Plan B |
 
-## Key facts established by investigation (do not re-derive)
+## Verified facts (do not re-derive)
 
-- The gate function is `MediaRepository.isPublicAttachment` (`tunes/server/repositories/mediaRepository.ts:59-108`). `isPubliclyVisible` does **not** exist.
-- A projection may read its media through an **imported module**, not inline SQL. `publicGamesProjection.ts:140` reads via `readManualGamePresentation`. Never conclude "no media read" from grepping one file.
-- Both public consumers already have a key waiting, so **no frontend rendering change is needed**: products render `product.images` (`explorers-earth/src/features/PublicHome/components/ProfileRecommendationsTab.tsx:163-168`), people render `Media[0].url` (`explorers-earth/src/features/PublicHome/components/PlaceDetails/PersonOverview.tsx:340`).
-- The place-photo guard trigger (`tunes/migrations/0047_explorers_place_photo_media.sql:31-50`) requires only `status='ready'`, `purpose='recommendation'`, an image MIME and ≤ 5 MiB on a `places` recommendation. It has **no provider-only semantics**, so creator uploads satisfy it.
+- The gate is `MediaRepository.isPublicAttachment` (`tunes/server/repositories/mediaRepository.ts:59-108`). `isPubliclyVisible` does not exist.
+- A projection may read media through an **imported module**. `publicGamesProjection.ts:140` uses `readManualGamePresentation`. Never conclude "no media read" from grepping one file.
+- **Neither** the ref-count query (`mediaRepository.ts:116-122`) **nor** `abandoned` (`:149-166`) needs changing — both already enumerate `recommendation_media` and `recommendation_place_photos`.
+- The place-photo guard (`tunes/migrations/0047_explorers_place_photo_media.sql:31-50`) requires only `status='ready'`, `purpose='recommendation'`, an image MIME and ≤ 5 MiB on a `places` recommendation — no provider-only semantics. Its slot cap is 10 (`0047…:22`, `slot_index BETWEEN 0 AND 9`), matching the `recommendation` upload limit of exactly 5 MiB (`tunes/server/application/media.ts:28-29`).
+- `entities.kind` accepts `'product'` and `'person'` (`0029…:4`); `product_entity_details(entity_id, product_url)` has `product_url` as its only NOT NULL (`0044…:26-28`); `person_entity_details(entity_id)` has everything else nullable (`0045…:24-36`).
 - `tsc -p tsconfig.json` in `explorers-earth` checks nothing. Use `tsconfig.app.json`.
-- Run the whole `explorers-earth` unit lane **serially**; it is the only gate that catches cross-ticket DTO-shape regressions.
-
-## File structure
-
-| File | Responsibility | Tasks |
-|---|---|---|
-| `tunes/scripts/apps-browser-fixture.ts` | Apps protected-fixture preflight; pins a helper by content hash | 1 |
-| `explorers-earth/src/features/Products/components/dashboard/AddProductPage.tsx` | Product owner form; must rehydrate existing media | 2 |
-| `explorers-earth/src/features/People/components/dashboard/AddPersonPage.tsx` | Person owner form; same | 2 |
-| `tunes/server/publicProfile/publicProductsProjection.ts` | Public Products read; gains an owner-media read | 3 |
-| `tunes/server/publicProfile/publicPeopleProjection.ts` | Public People read; gains an owner-media read | 3 |
-| `tunes/server/repositories/mediaRepository.ts` | **The** visibility authority; both arms widen here | 3, 4 |
-| `tunes/server/test/explorers-media-cover.integration.test.ts` | New: cover-arm parity across all eight categories | 4 |
-| 6 × `tunes/server/publicProfile/public*Projection.ts` | Cover joins gain a `status='ready'` guard | 5 |
-| `explorers-earth/src/features/Favorites/hooks/useAddRecommendation.ts` | Places upload partition; creator uploads re-routed | 6 |
-| `explorers-earth/src/features/Favorites/api/placesClient.ts` | Places commands; `mediaIds` leg removed | 6 |
-| `explorers-earth/src/components/AuthSyncManager.tsx` | Identity sync; must not fire for anonymous visitors | 8 |
+- Run the `explorers-earth` unit lane **serially** (`--no-file-parallelism`); it is the only gate that catches cross-ticket DTO-shape regressions.
+- **`.github/workflows/test.yml:225` names every integration file explicitly.** A new test file that is not added there never runs on a PR.
 
 ---
 
-## Task 1: Re-pin the Apps fixture seal
+## Task 1: Re-pin the Apps private-files seal in all four places
 
-A seal pins `tunes/scripts/music-local-private-files.ps1` by SHA-256. That helper was edited earlier in this effort without updating the constant, so the Apps protected fixture refuses at preflight on **every** platform, including a developer machine. Not a line-ending artifact: the git blob and the working file hash identically.
+**[v1 defect]** v1 fixed one of four sites and asserted the others did not exist.
+
+The stale hash `d35c7b8a92813890d5074a9088ff6d690610322deb0684d0c52b26774a5ff764` pins `tunes/scripts/music-local-private-files.ps1`, which was edited earlier in this effort. Four production sites still carry it, so three preflights keep refusing even after v1's fix.
 
 **Files:**
 - Modify: `tunes/scripts/apps-browser-fixture.ts:945`
+- Modify: `tunes/scripts/apps-retained-acl-adoption.ts:7` and `:96` (the second is the same literal embedded in generated C#)
+- Modify: `tunes/scripts/apps-retained-recovery.ts:154`
+- Modify: `tunes/server/test/contracts/apps-retained-recovery.test.ts:80`
 
-- [ ] **Step 1: Confirm the mismatch**
+- [ ] **Step 1: Confirm the current hash and every site**
 
 ```bash
 git show HEAD:tunes/scripts/music-local-private-files.ps1 | sha256sum
-grep -c "d35c7b8a92813890d5074a9088ff6d690610322deb0684d0c52b26774a5ff764" tunes/scripts/apps-browser-fixture.ts
-```
-
-Expected: hash `a43bb8db3ae88ae440fb73d77801a400d2b5fadc0151fd6ac10e61a3cd26bac0`, grep count `1`.
-
-- [ ] **Step 2: Replace the constant**
-
-Change `'d35c7b8a92813890d5074a9088ff6d690610322deb0684d0c52b26774a5ff764'` to `'a43bb8db3ae88ae440fb73d77801a400d2b5fadc0151fd6ac10e61a3cd26bac0'`.
-
-- [ ] **Step 3: Confirm no other seal pins the same helper**
-
-```bash
 grep -rn "d35c7b8a92813890d5074a9088ff6d690610322deb0684d0c52b26774a5ff764" --include=*.ts --include=*.json --include=*.mjs . | grep -v node_modules
 ```
 
-Expected: no output.
+Expected: hash `a43bb8db3ae88ae440fb73d77801a400d2b5fadc0151fd6ac10e61a3cd26bac0`, and six hits — four in `tunes/scripts/*.ts`, one in `tunes/server/test/contracts/apps-retained-recovery.test.ts:80`, one in `docs/replatform-audit/receipts/wave2-7f536e55/qualification.json:4774`.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 2: Replace the hash in all four script sites**
+
+Replace every occurrence of `d35c7b8a92813890d5074a9088ff6d690610322deb0684d0c52b26774a5ff764` with `a43bb8db3ae88ae440fb73d77801a400d2b5fadc0151fd6ac10e61a3cd26bac0` in `apps-browser-fixture.ts` and `apps-retained-acl-adoption.ts` (both sites) and `apps-retained-recovery.ts`.
+
+Leave `docs/replatform-audit/receipts/wave2-7f536e55/qualification.json` untouched — it is a historical receipt, and rewriting a recorded receipt would falsify evidence.
+
+- [ ] **Step 3: Update the contract test's stub**
+
+`apps-retained-recovery.test.ts:80` injects a `createHash` stub whose `digest()` returns the **stale** hash, so `requireValue` at `apps-retained-recovery.ts:154` would now fail. Change that stub's return value to `a43bb8db3ae88ae440fb73d77801a400d2b5fadc0151fd6ac10e61a3cd26bac0`.
+
+- [ ] **Step 4: Verify**
 
 ```bash
-git add tunes/scripts/apps-browser-fixture.ts
-git commit -m "fix(apps): re-pin the private-files seal to the current helper"
+grep -rn "d35c7b8a9281" --include=*.ts . | grep -v node_modules
+cd tunes && npx vitest run server/test/contracts/apps-retained-recovery.test.ts
 ```
+
+Expected: no `.ts` hits remain; the contract test passes.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add tunes/scripts/apps-browser-fixture.ts tunes/scripts/apps-retained-acl-adoption.ts tunes/scripts/apps-retained-recovery.ts tunes/server/test/contracts/apps-retained-recovery.test.ts
+git commit -m "fix(apps): re-pin the private-files seal at all four sites"
+```
+
+**Carry forward:** a seal that pins a sibling script by content hash across four files will break again on the next edit. Worth a follow-up that derives the constant once.
 
 ---
 
 ## Task 2: Stop re-edits from detaching product and person photos
 
-`AddProductPage.tsx` and `AddPersonPage.tsx` initialise their form from `observed.detail` but never restore `media` from `observed.detail.mediaIds`. `AddAppPage.tsx:85` and `AddGamePage.tsx:39` do. So re-editing submits `mediaIds: []` and silently detaches every previously uploaded snapshot. This is live data loss and is fixed first.
+The hydration effect never restores `media` from `observed.detail.mediaIds`, so re-editing submits `mediaIds: []` and detaches every prior upload. `AddAppPage.tsx:85` and `AddGamePage.tsx:39` already do this correctly.
+
+**[v1 correction]** Extend the **existing** edit-flow describes rather than hand-rolling a third route spelling, and assert the submitted patch, not just the thumbnail — otherwise a refactor that renders thumbnails straight from the observation would keep the test green while still detaching.
 
 **Files:**
-- Modify: `explorers-earth/src/features/Products/components/dashboard/AddProductPage.tsx:82` (end of the hydration `useEffect`)
-- Modify: `explorers-earth/src/features/People/components/dashboard/AddPersonPage.tsx` (end of its hydration `useEffect`)
-- Test: `explorers-earth/src/features/Products/components/dashboard/__tests__/manualProductFlow.test.tsx`, `explorers-earth/src/features/People/components/dashboard/__tests__/manualPersonFlow.test.tsx`
+- Modify: `explorers-earth/src/features/Products/components/dashboard/AddProductPage.tsx:82`
+- Modify: `explorers-earth/src/features/People/components/dashboard/AddPersonPage.tsx:90`
+- Test: `explorers-earth/src/features/Products/components/dashboard/__tests__/manualProductFlow.test.tsx` (`describe('manual Products edit')`, line 185-243)
+- Test: `explorers-earth/src/features/People/components/dashboard/__tests__/manualPersonFlow.test.tsx` (`describe('manual People edit')`, line 172)
 
-- [ ] **Step 1: Write the failing test** (products; mirror it for people)
+- [ ] **Step 1: Extend the existing edit fixture with media**
 
-Add to `manualProductFlow.test.tsx`, inside the existing `describe('native manual Products', …)`. It asserts the form restores the thumbnail, which tests rehydration directly without mocking the save path.
+In `manualProductFlow.test.tsx`, add `mediaIds` to whatever observation `loaded()` returns, defaulting to `[]` so existing cases are unaffected:
 
 ```tsx
- it('restores previously uploaded snapshots when re-editing', async () => {
+ const loaded = (mediaIds: string[] = []) => { /* existing body, with mediaIds added to the detail it seeds */ };
+```
+
+Keep the existing call sites working by leaving the parameter optional. While here, correct that describe's stale route spelling to the real one, `/recommendations/products/:listId/edit/:productId` (`src/routes/ProtectedRoutes.tsx:90`).
+
+- [ ] **Step 2: Write the failing test**
+
+```tsx
+ it('keeps previously uploaded snapshots through a re-edit', async () => {
   const existing = '11111111-2222-3333-4444-555555555555';
-  fixture.content.view.lists = [{documentId: 'list-1', recommended_products: [{documentId: 'product-1',
-   title: 'Keyboard', product_url: 'https://example.com/kb', brand: null, logo_url: null, description: null,
-   buy_url: null, specifications: null, user_recommendation_note: '', user_rating: null}]}];
-  fixture.content.details.set('product-1', {detail: {id: 'product-1', category: 'products',
-   mediaIds: [existing], productOffer: {price: null, currencyCode: null, buyUrl: null}}});
+  loaded([existing]);
+  vi.mocked(ProductsClient.updateRecommendation).mockResolvedValue({id: 'product-1'} as never);
 
-  render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/products/list-1/edit/product-1']}>
-   <Routes><Route path="/recommendations/products/:listId/edit/:productId" element={<AddProductPage />} /></Routes>
-  </MemoryRouter></MockedProvider>);
+  await editElement();
 
-  // The owner's existing snapshot must come back, or saving would detach it.
+  // The thumbnail comes back...
   expect(await screen.findByAltText('Product snapshot'))
    .toHaveAttribute('src', `/api/explorers/v1/media/${existing}/content`);
+
+  // ...and, decisively, the saved patch still carries the id.
+  fireEvent.click(screen.getByRole('button', {name: 'Save product'}));
+  await waitFor(() => expect(ProductsClient.updateRecommendation).toHaveBeenCalled());
+  expect(vi.mocked(ProductsClient.updateRecommendation).mock.calls.at(-1)?.[1])
+   .toMatchObject({mediaIds: [existing]});
  });
 ```
 
-Mirror it in `manualPersonFlow.test.tsx` using that file's own fixture object, the route `/recommendations/people/list-1/edit/person-1`, a `recommended_people` row keyed `documentId: 'person-1'`, and `findByAltText('Person snapshot')`.
+Mirror it in `manualPersonFlow.test.tsx` using that file's own `loaded()`/edit helper, `PeopleClient.updateRecommendation`, and `findByAltText('Person snapshot')`.
 
-- [ ] **Step 2: Run it and confirm it fails**
+- [ ] **Step 3: Run and confirm failure**
 
 ```bash
 cd explorers-earth && npx vitest run src/features/Products/components/dashboard/__tests__/manualProductFlow.test.tsx
@@ -124,30 +138,28 @@ cd explorers-earth && npx vitest run src/features/Products/components/dashboard/
 
 Expected: FAIL — `Unable to find an element with the alt text: Product snapshot`.
 
-- [ ] **Step 3: Rehydrate `media`**
+- [ ] **Step 4: Rehydrate `media`**
 
-In `AddProductPage.tsx`, as the last statement inside the hydration `useEffect`, immediately after `setRating(product.user_rating);` (line 82):
+In `AddProductPage.tsx`, immediately after `setRating(product.user_rating);` (line 82):
 
 ```tsx
   setMedia((observed.detail.mediaIds ?? []).map(id => ({ id, url: `/api/explorers/v1/media/${id}/content` })));
 ```
 
-Add the identical line in `AddPersonPage.tsx` immediately after `setRating(person.user_rating);` (line 90). The `{ id, url }` shape and URL template match what the upload handlers already store (`AddProductPage.tsx:109`, `AddPersonPage.tsx:117`), so the thumbnail renders at `AddProductPage.tsx:225` / `AddPersonPage.tsx:245` with no further change.
+Add the identical line in `AddPersonPage.tsx` immediately after `setRating(person.user_rating);` (line 90). `mediaIds` exists on every recommendation detail, so **no category guard is needed** — unlike `appScreenshots` at `AddAppPage.tsx:85`.
 
-`mediaIds` is present on every recommendation detail regardless of category, so — unlike `appScreenshots` in `AddAppPage.tsx:85` — **no category guard is needed**.
-
-- [ ] **Step 4: Run both tests and confirm they pass**
+- [ ] **Step 5: Run both files, then the serial unit lane**
 
 ```bash
-cd explorers-earth && npx vitest run src/features/Products/components/dashboard/__tests__/manualProductFlow.test.tsx src/features/People/components/dashboard/__tests__/manualPersonFlow.test.tsx
+cd explorers-earth && npx vitest run src/features/Products src/features/People && npx vitest run --no-file-parallelism
 ```
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add explorers-earth/src/features/Products/components/dashboard/AddProductPage.tsx explorers-earth/src/features/People/components/dashboard/AddPersonPage.tsx explorers-earth/src/features/Products/components/dashboard/__tests__/manualProductFlow.test.tsx explorers-earth/src/features/People/components/dashboard/__tests__/manualPersonFlow.test.tsx
+git add explorers-earth/src/features/Products explorers-earth/src/features/People
 git commit -m "fix(products,people): rehydrate uploaded media so a re-edit cannot detach it"
 ```
 
@@ -155,69 +167,74 @@ git commit -m "fix(products,people): rehydrate uploaded media so a re-edit canno
 
 ## Task 3: Make products and people snapshot uploads publicly visible
 
-This is decision D-1. The projections and the gate **must change in the same commit**: a projection without the gate emits URLs that 404, and the gate without a projection publishes assets nothing references.
+Decision D-1. Projection, contract schema and gate **must land in one commit**.
+
+**[v1 defect — would have 500'd production]** `richPerson` is shared by `publicPeopleProjection` **and** `publicPeopleSectorProjection`, and the sector path validates every person through `publicPersonSchema`, which is **`.strict()`** (`tunes/shared/explorersPublicPeopleSectorContract.ts:4`, parsed at `publicPeopleProjection.ts:169`). Adding any new key to the person literal makes that `parse` throw `Unrecognized key(s) in object: 'Media'` for every person — including when the value is `null` — breaking the sector page and at least six existing cases in `tunes/server/test/publicProfile/publicPeopleSector.test.ts`. The schema must be extended in the same commit.
+
+**[v1 defect]** v1 cited `PersonOverview.tsx:340` as proof no frontend change was needed. That line is the **SEO** `og:image` prop. The *visible* gallery reads `fetchedPerson?.media_details?.imageDetails` (`PersonOverview.tsx:123`), and the legacy Strapi selection confirms `media_details` is the consumed key (`strapiPublicProfileGateway.ts:148` lists it and not `Media`). Emit **both**, exactly as Places does (`publicPlacesProjection.ts:79-80`).
 
 **Files:**
-- Modify: `tunes/server/publicProfile/publicProductsProjection.ts:40-59` (`richProduct`)
-- Modify: `tunes/server/publicProfile/publicPeopleProjection.ts:45-67` (`richPerson`)
+- Modify: `tunes/server/publicProfile/publicProductsProjection.ts` (`richProduct`, lines 40-59)
+- Modify: `tunes/server/publicProfile/publicPeopleProjection.ts` (`richPerson`, lines 45-67)
+- Modify: `tunes/shared/explorersPublicPeopleSectorContract.ts:4` (`publicPersonSchema`)
 - Modify: `tunes/server/repositories/mediaRepository.ts:101-102`
-- Test: `tunes/server/test/explorers-media.integration.test.ts`
+- Test: `tunes/server/test/explorers-media.integration.test.ts` (extend the existing loop)
 
-- [ ] **Step 1: Write the failing integration test**
+- [ ] **Step 1: Extend the existing parameterised fixture to products and people**
 
-Append to `tunes/server/test/explorers-media.integration.test.ts`, inside the existing `describe("private local media", …)` block and at top level within it — **not** nested inside another `it`.
+**[v1 correction]** v1 added a parallel loop that tested only the happy path. The existing loop at `explorers-media.integration.test.ts:44-66` already walks a **twelve-dimension withdrawal table** (`:90-115`: account status, onboarding, `public_profile`, category `is_public`, collection visibility / publication / archival, recommendation publication / archival, membership deletion, plus the independent cover answer via `deniesCover`). Extending it means products and people inherit all of that; a parallel loop would leave them materially less protected than apps and places.
+
+Change line 44 from `for (const category of ["apps", "places"] as const)` to:
 
 ```ts
-for (const category of ["products", "people"] as const) {
-  it(`${category} owner snapshots are publicly visible once published`, async () => {
-    const owner = await persona();
-    const handle = `m${randomUUID().replaceAll("-", "").slice(0, 20)}`;
-    await pool.query("UPDATE creator_accounts SET handle=$2,display_name='Media creator',account_type='Creator',onboarding_status='complete',status='active',public_profile=true WHERE id=$1", [owner.accountId, handle]);
-    await pool.query("INSERT INTO account_category_settings(account_id,category,is_public,display_order) VALUES($1,$2,true,(SELECT coalesce(max(display_order),-1)+1 FROM account_category_settings WHERE account_id=$1)) ON CONFLICT(account_id,category) DO UPDATE SET is_public=true", [owner.accountId, category]);
-    const uploaded = await upload(owner.cookie, png, "image/png", "recommendation");
-    expect(uploaded.status).toBe(201);
-    const id = uploaded.body.media.id as string;
-    const url = `/api/explorers/v1/media/${id}/content`;
-    const repository = new MediaRepository(pool);
-
-    // Before attachment the asset is owner-only.
-    expect(await repository.isPublicAttachment(id)).toBe(false);
-
-    const entity = (await pool.query("INSERT INTO entities(kind,title,origin) VALUES($1,'Generic media fixture','manual') RETURNING id", [category === "products" ? "product" : "person"])).rows[0].id;
-    if (category === "products") await pool.query("INSERT INTO product_entity_details(entity_id,product_url) VALUES($1,'https://example.invalid/product')", [entity]);
-    else await pool.query("INSERT INTO person_entity_details(entity_id) VALUES($1)", [entity]);
-    const collection = (await pool.query("INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order) VALUES($1,$2,'Media list',$3,'public','published',0) RETURNING id", [owner.accountId, category, `media-${randomUUID()}`])).rows[0].id;
-    const recommendation = (await pool.query("INSERT INTO recommendations(account_id,category,entity_id,publication_state) VALUES($1,$2,$3,'published') RETURNING id", [owner.accountId, category, entity])).rows[0].id;
-    await pool.query("INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order) VALUES($1,$2,$3,$4,0)", [collection, recommendation, owner.accountId, category]);
-    await pool.query("INSERT INTO recommendation_media(recommendation_id,account_id,media_id,display_order) VALUES($1,$2,$3,0)", [recommendation, owner.accountId, id]);
-
-    // The public projection must emit it, and the gate must admit it.
-    if (category === "products") {
-      const projection = await publicProductsProjection(pool, handle, 24);
-      expect(projection?.productLists[0].recommended_products[0].images).toEqual([url]);
-    } else {
-      const projection = await publicPeopleProjection(pool, handle, 24);
-      expect(projection?.personLists[0].recommended_people[0].Media).toEqual([{ documentId: id, url, alternativeText: null, caption: null }]);
-    }
-    expect(await repository.isPublicAttachment(id)).toBe(true);
-    expect((await request(composed.app).get(url)).status).toBe(200);
-  });
-}
+  for (const category of ["apps", "places", "products", "people"] as const) {
+    const table = category === "apps" ? "recommendation_app_screenshots"
+      : category === "places" ? "recommendation_place_photos" : "recommendation_media";
 ```
 
-Add `publicProductsProjection` and `publicPeopleProjection` to the file's imports if absent.
+In `attach()`, branch the entity kind and detail row for the two new categories, and the insert for the generic table (which has `display_order`, not `slot_index`):
 
-- [ ] **Step 2: Run it and confirm it fails**
+```ts
+        const kind = category === "apps" ? "app" : category === "places" ? "place" : category === "products" ? "product" : "person";
+        const entity = (await pool.query("INSERT INTO entities(kind,title,origin) VALUES($1,'Typed media fixture','manual') RETURNING id", [kind])).rows[0].id;
+        if (category === "apps") await pool.query("INSERT INTO app_entity_details(entity_id,app_url) VALUES($1,'https://example.invalid/app')", [entity]);
+        else if (category === "places") await pool.query("INSERT INTO place_entity_details(entity_id) VALUES($1)", [entity]);
+        else if (category === "products") await pool.query("INSERT INTO product_entity_details(entity_id,product_url) VALUES($1,'https://example.invalid/product')", [entity]);
+        else await pool.query("INSERT INTO person_entity_details(entity_id) VALUES($1)", [entity]);
+```
+
+and, for the attachment itself:
+
+```ts
+        if (table === "recommendation_media") await pool.query("INSERT INTO recommendation_media(recommendation_id,account_id,media_id,display_order) VALUES($1,$2,$3,0)", [recommendation, owner.accountId, mediaId]);
+        else await pool.query(`INSERT INTO ${table}(recommendation_id,account_id,slot_index,media_id) VALUES($1,$2,0,$3)`, [recommendation, owner.accountId, mediaId]);
+```
+
+Extend the projection assertion in the existing `it` to cover the new categories:
+
+```ts
+      else if (category === "products") {
+        const projection = await publicProductsProjection(pool, f.handle, 24);
+        expect(projection?.productLists[0].recommended_products[0].images).toEqual([f.url]);
+      } else if (category === "people") {
+        const projection = await publicPeopleProjection(pool, f.handle, 24);
+        expect(projection?.personLists[0].recommended_people[0].media_details.imageDetails).toEqual([{ id: f.id, url: f.url }]);
+      }
+```
+
+Add `publicProductsProjection` and `publicPeopleProjection` to the file's imports.
+
+- [ ] **Step 2: Run and confirm the two new categories fail**
 
 ```bash
 cd tunes && npx vitest run --config vitest.integration.config.ts server/test/explorers-media.integration.test.ts
 ```
 
-Expected: FAIL — `images` is `null` / `Media` is undefined, and `isPublicAttachment` is `false`.
+Expected: `apps` and `places` PASS; `products` and `people` FAIL — `images` is `null`, `media_details` is undefined, and `isPublicAttachment` is `false`.
 
 - [ ] **Step 3: Read owner media in the Products projection**
 
-In `publicProductsProjection.ts`, inside `richProduct`, after the `const offer = await readProductOffer(...)` line:
+In `publicProductsProjection.ts`, inside `richProduct`, after `const offer = await readProductOffer(...)`:
 
 ```ts
  const uploads=(await db.query(`SELECT m.id FROM recommendation_media rm JOIN media_assets m ON m.id=rm.media_id AND m.account_id=rm.account_id
@@ -225,15 +242,13 @@ In `publicProductsProjection.ts`, inside `richProduct`, after the `const offer =
  if(uploads.length>20)throw new Error('Public Product exceeds media read bound');
 ```
 
-Then replace the `images` property:
+Replace the `images` property. Owner uploads come **first** and the combined array is bounded, because the card renderer takes only element `[0]` (`ProfileRecommendationsTab.tsx:161-171`) and `image_urls` is itself capped at 20 (`0044…:36`), so a naive concatenation could reach 40:
 
 ```ts
- images:facts.imageUrls.length||uploads.length?[...facts.imageUrls,...uploads]:null,
+ images:uploads.length||facts.imageUrls.length?[...uploads,...facts.imageUrls].slice(0,20):null,
 ```
 
-`images` is an array of URL strings and the public consumer already renders it (`ProfileRecommendationsTab.tsx:163-168`), so nothing on the frontend changes. The `LIMIT 21` plus the `> 20` throw is the bound Books already uses (`publicBooksProjection.ts:23-24`) — it detects an over-bound row rather than silently truncating.
-
-- [ ] **Step 4: Read owner media in the People projection**
+- [ ] **Step 4: Read owner media in the People projection and extend its strict schema**
 
 In `publicPeopleProjection.ts`, inside `richPerson`, after the `const primary = ...` line:
 
@@ -243,15 +258,21 @@ In `publicPeopleProjection.ts`, inside `richPerson`, after the `const primary = 
  if(uploads.length>20)throw new Error('Public Person exceeds media read bound');
 ```
 
-Then add to the `person` object literal, immediately after the `avatar_url:facts.avatarUrl,` line:
+Add to the `person` object literal, after `avatar_url:facts.avatarUrl,` — both keys, matching Places:
 
 ```ts
+ media_details:uploads.length?{imageDetails:uploads.map(u=>({id:u.documentId,url:u.url}))}:null,
  Media:uploads.length?uploads:null,
 ```
 
-This is the Books `Media` shape, which `PersonOverview.tsx:340` already reads as `fetchedPerson?.Media?.[0]?.url`.
+Then extend `publicPersonSchema` in `tunes/shared/explorersPublicPeopleSectorContract.ts` so the `.strict()` parse accepts them:
 
-- [ ] **Step 5: Widen both gate arms together**
+```ts
+  media_details: z.object({ imageDetails: z.array(z.object({ id: z.string().uuid(), url: z.string() }).strict()).max(20) }).strict().nullable(),
+  Media: z.array(z.object({ documentId: z.string().uuid(), url: z.string(), alternativeText: z.string().nullable(), caption: z.string().nullable() }).strict()).max(20).nullable(),
+```
+
+- [ ] **Step 5: Widen both gate lists together**
 
 In `mediaRepository.ts`, replace lines 101-102:
 
@@ -267,46 +288,42 @@ with:
         AND ((rm.required_category IS NULL AND r.category IN('books','movies','games','products','people')) OR rm.required_category=r.category)
 ```
 
-Both lists must change. The outer list alone leaves the generic arm refusing them; the inner list alone is unreachable.
+Both lists must change: the outer alone leaves the generic arm refusing them, the inner alone is unreachable. This correctly keeps apps/places generic media refused, which `explorers-media.integration.test.ts:157-158` asserts.
 
-- [ ] **Step 6: Run the test and confirm it passes**
+- [ ] **Step 6: Run the media suite and the People sector suite**
 
 ```bash
 cd tunes && npx vitest run --config vitest.integration.config.ts server/test/explorers-media.integration.test.ts
+npx vitest run server/test/publicProfile/publicPeopleSector.test.ts
 ```
 
-Expected: PASS, including the pre-existing apps/places cases.
+Expected: both PASS. The sector suite is the guard against the `.strict()` regression; if it throws `Unrecognized key(s)`, Step 4's schema edit is incomplete.
 
-- [ ] **Step 7: Confirm the byte-count bound still holds**
-
-The People projection enforces a 4 MiB page bound (`publicPeopleProjection.ts:131`). Twenty media objects per person across twelve people per list is new payload. Run the People e2e lane and confirm no `Public People page exceeds read bound`:
+- [ ] **Step 7: Commit**
 
 ```bash
-cd tunes && npx vitest run --config vitest.integration.config.ts server/test/contracts/
-```
-
-Expected: PASS. If the bound trips, reduce the per-person cap rather than raising the page bound.
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add tunes/server/publicProfile/publicProductsProjection.ts tunes/server/publicProfile/publicPeopleProjection.ts tunes/server/repositories/mediaRepository.ts tunes/server/test/explorers-media.integration.test.ts
+git add tunes/server/publicProfile/publicProductsProjection.ts tunes/server/publicProfile/publicPeopleProjection.ts tunes/shared/explorersPublicPeopleSectorContract.ts tunes/server/repositories/mediaRepository.ts tunes/server/test/explorers-media.integration.test.ts
 git commit -m "feat(products,people): publish owner snapshot media and admit it at the gate"
 ```
 
+**Note for later:** `media_assets.alternative_text` and `caption` are unbounded `text` with no CHECK (`0024…:12-13`). Nothing writes them today, so the People page's 4 MiB bound is not currently at risk, but Books carries the same latent exposure at `publicBooksProjection.ts:23-24`. Not this plan's job.
+
 ---
 
-## Task 4: Admit books, movies and games list covers
+## Task 4: Admit books, movies and games list covers, with a drift-proof oracle
 
-`git log -L 68,77:tunes/server/repositories/mediaRepository.ts` shows the cover arm's category list grew one ticket at a time — `('places','products','people')`, then `+'guides'`, then `+'apps'` — and these three were never appended. A public consumer already exists for all three (`publicBooksProjection.ts:62`, `publicMoviesProjection.ts:89`, `publicGamesProjection.ts:158`), so the gate is wrong, not the projections.
+`git log -L 68,77:tunes/server/repositories/mediaRepository.ts` shows the cover arm's category list grew by accretion — `('places','products','people')`, `+'guides'`, `+'apps'` — and these three were never appended, though public consumers exist (`publicBooksProjection.ts:62`, `publicMoviesProjection.ts:89`, `publicGamesProjection.ts:158`).
 
-The existing fixture loop in `explorers-media.integration.test.ts` is specialised per typed table, so a new focused test is clearer than contorting it. The cover arm joins only account, settings, collection and `collection_media`, so it needs no recommendation or entity.
+**[v1 defect]** v1's self-review claimed its test made the accretion bug unrepeatable. It did not: the category list was a hand-written literal, i.e. a second list that drifts. Both reviewers converged on the fix — drive the loop from the single source of truth, and assert the **invariant** rather than per-key shapes.
 
 **Files:**
 - Create: `tunes/server/test/explorers-media-cover.integration.test.ts`
 - Modify: `tunes/server/repositories/mediaRepository.ts:74`
+- Modify: `.github/workflows/test.yml:225`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the drift-proof test**
+
+Two things matter here. The category list comes from `contentCategorySchema.options` (`tunes/shared/explorersContract.ts:29`), which is exactly the eight categories that can own a collection and matches the `collections.category` CHECK (`0029…:25`) — so a ninth category fails this test on the day it is added. And the assertion is **key-name agnostic**: it harvests every media URL anywhere in the projection's JSON, so `Guide_Media` vs `cover_image` vs `coverUrl` vs `images` vs `screenshots` vs `Media` stops mattering.
 
 ```ts
 import { randomUUID } from "node:crypto";
@@ -314,50 +331,84 @@ import pg from "pg";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MediaRepository } from "../repositories/mediaRepository";
-import { createCanonicalApp } from "../canonicalApp";
-import { config, persona, png, upload } from "./helpers/explorersMediaHarness";
+import { createCanonicalApp } from "../auth/canonicalApp";
+import { contentCategorySchema } from "../../shared/explorersContract";
+import { createMediaHarness } from "./helpers/explorersMediaHarness";
+import { publicAppsProjection } from "../publicProfile/publicAppsProjection";
+import { publicBooksProjection } from "../publicProfile/publicBooksProjection";
+import { publicGamesProjection } from "../publicProfile/publicGamesProjection";
+import { publicGuidesProjection } from "../publicProfile/publicGuidesProjection";
+import { publicMoviesProjection } from "../publicProfile/publicMoviesProjection";
+import { publicPeopleProjection } from "../publicProfile/publicPeopleProjection";
+import { publicPlacesProjection } from "../publicProfile/publicPlacesProjection";
+import { publicProductsProjection } from "../publicProfile/publicProductsProjection";
 
-let pool: pg.Pool, composed: ReturnType<typeof createCanonicalApp>;
+let harness: ReturnType<typeof createMediaHarness>, composed: ReturnType<typeof createCanonicalApp>;
 
-describe("collection cover visibility", () => {
-  beforeAll(() => { pool = new pg.Pool({ connectionString: process.env.DATABASE_URL_TEST, max: 4 }); composed = createCanonicalApp(pool, config); });
-  afterAll(async () => { await pool?.end(); });
+const projectionFor: Record<string, (pool: pg.Pool, handle: string) => Promise<unknown>> = {
+  places: (p, h) => publicPlacesProjection(p, h, 24), guides: (p, h) => publicGuidesProjection(p, h, 24),
+  movies: (p, h) => publicMoviesProjection(p, h, 24), books: (p, h) => publicBooksProjection(p, h, 24),
+  games: (p, h) => publicGamesProjection(p, h, 24), apps: (p, h) => publicAppsProjection(p, h, 24),
+  products: (p, h) => publicProductsProjection(p, h, 24), people: (p, h) => publicPeopleProjection(p, h, 24),
+};
 
-  // Every category that can hold a cover must serve it. The list in the gate grew by
-  // accretion, so this asserts parity rather than the current contents.
-  for (const category of ["places", "guides", "movies", "books", "games", "apps", "products", "people"] as const) {
-    it(`serves a published ${category} list cover`, async () => {
-      const owner = await persona();
-      await pool.query("UPDATE creator_accounts SET display_name='Cover creator',account_type='Creator',onboarding_status='complete',status='active',public_profile=true WHERE id=$1", [owner.accountId]);
-      await pool.query("INSERT INTO account_category_settings(account_id,category,is_public,display_order) VALUES($1,$2,true,(SELECT coalesce(max(display_order),-1)+1 FROM account_category_settings WHERE account_id=$1)) ON CONFLICT(account_id,category) DO UPDATE SET is_public=true", [owner.accountId, category]);
-      const collection = (await pool.query("INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order) VALUES($1,$2,'Cover list',$3,'public','published',0) RETURNING id", [owner.accountId, category, `cover-${randomUUID()}`])).rows[0].id;
-      const cover = await upload(owner.cookie, png, "image/png", "collection");
+// Every media URL anywhere in the payload, whatever key holds it.
+function mediaUrls(value: unknown, found: string[] = []): string[] {
+  if (typeof value === "string") { if (/^\/api\/explorers\/v1\/media\/[0-9a-f-]{36}\/content$/.test(value)) found.push(value); return found; }
+  if (Array.isArray(value)) { for (const item of value) mediaUrls(item, found); return found; }
+  if (value && typeof value === "object") { for (const item of Object.values(value)) mediaUrls(item, found); return found; }
+  return found;
+}
+
+describe("public media URLs are always servable", () => {
+  beforeAll(() => { harness = createMediaHarness(); composed = createCanonicalApp(harness.pool, harness.config); });
+  afterAll(async () => { await harness.end(); });
+
+  for (const category of contentCategorySchema.options) {
+    it(`serves every media URL the public ${category} read emits`, async () => {
+      const owner = await harness.persona();
+      const handle = `m${randomUUID().replaceAll("-", "").slice(0, 20)}`;
+      await harness.pool.query("UPDATE creator_accounts SET handle=$2,display_name='Cover creator',account_type='Creator',onboarding_status='complete',status='active',public_profile=true WHERE id=$1", [owner.accountId, handle]);
+      await harness.pool.query("INSERT INTO account_category_settings(account_id,category,is_public,display_order) VALUES($1,$2,true,(SELECT coalesce(max(display_order),-1)+1 FROM account_category_settings WHERE account_id=$1)) ON CONFLICT(account_id,category) DO UPDATE SET is_public=true", [owner.accountId, category]);
+      const collection = (await harness.pool.query("INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order) VALUES($1,$2,'Cover list',$3,'public','published',0) RETURNING id", [owner.accountId, category, `cover-${randomUUID()}`])).rows[0].id;
+      const cover = await harness.upload(owner.cookie, harness.png, "image/png", "collection");
       expect(cover.status).toBe(201);
-      const id = cover.body.media.id as string;
-      await pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)", [collection, owner.accountId, id]);
+      const coverId = cover.body.media.id as string;
+      await harness.pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)", [collection, owner.accountId, coverId]);
 
-      expect(await new MediaRepository(pool).isPublicAttachment(id)).toBe(true);
-      expect((await request(composed.app).get(`/api/explorers/v1/media/${id}/content`)).status).toBe(200);
+      // Positive control: the projection must actually emit something, or the
+      // assertion below would pass vacuously on an empty payload.
+      const urls = mediaUrls(await projectionFor[category](harness.pool, handle));
+      expect(urls, `${category} projection emitted no media URL`).not.toHaveLength(0);
+      expect(urls).toContain(`/api/explorers/v1/media/${coverId}/content`);
 
-      // Unpublishing the list must withdraw the cover again.
-      await pool.query("UPDATE collections SET publication_state='draft' WHERE id=$1", [collection]);
-      expect(await new MediaRepository(pool).isPublicAttachment(id)).toBe(false);
+      // The invariant: anything the public read emits must be servable.
+      for (const url of urls) expect((await request(composed.app).get(url)).status, url).toBe(200);
+      expect(await new MediaRepository(harness.pool).isPublicAttachment(coverId)).toBe(true);
+
+      // And withdrawing the list withdraws the cover.
+      await harness.pool.query("UPDATE collections SET publication_state='draft' WHERE id=$1", [collection]);
+      expect(await new MediaRepository(harness.pool).isPublicAttachment(coverId)).toBe(false);
     });
   }
 });
 ```
 
-Import `config`, `persona`, `png` and `upload` from wherever `explorers-media.integration.test.ts` already obtains them; if they are declared inline in that file rather than in a shared harness, extract them to `tunes/server/test/helpers/explorersMediaHarness.ts` first and have both files import from it, so neither file owns a duplicate.
+- [ ] **Step 2: Extract the harness as a factory, not a move**
 
-- [ ] **Step 2: Run it and confirm exactly three failures**
+**[v1 defect]** v1 said to import `config, persona, png, upload` from a new helper. Those close over module-scope `pool` and `composed` assigned in `beforeAll` (`explorers-media.integration.test.ts:20-40`), so a straight move yields `undefined` at call time, and two files each running `afterAll(() => pool.end())` would race to kill a shared pool.
+
+Create `tunes/server/test/helpers/explorersMediaHarness.ts` exporting `createMediaHarness()`, which owns **its own** pool and returns `{ pool, config, png, persona, upload, end }`. Move the bodies of `persona` and `upload` into it, taking `pool` from the closure the factory creates. Then have `explorers-media.integration.test.ts` call the factory too, so neither file owns a duplicate and each owns its own pool.
+
+- [ ] **Step 3: Run and confirm exactly three failures**
 
 ```bash
 cd tunes && npx vitest run --config vitest.integration.config.ts server/test/explorers-media-cover.integration.test.ts
 ```
 
-Expected: `books`, `movies` and `games` FAIL with `expected false to be true`; the other five PASS.
+Expected: `books`, `movies`, `games` FAIL on the `status 200` assertion for the cover URL; the other five PASS.
 
-- [ ] **Step 3: Add the three categories to the cover arm**
+- [ ] **Step 4: Add the three categories to the cover arm**
 
 In `mediaRepository.ts:74`, replace:
 
@@ -371,158 +422,146 @@ with:
         AND c.category IN ('apps','places','products','people','guides','books','movies','games')
 ```
 
-- [ ] **Step 4: Run it and confirm all eight pass**
+- [ ] **Step 5: Register the new file in the PR lane**
+
+Add `server/test/explorers-media-cover.integration.test.ts` to the explicit file list at `.github/workflows/test.yml:225`. Without this the test never runs on a PR, and it is this plan's anti-regression guard.
+
+- [ ] **Step 6: Run and commit**
 
 ```bash
-cd tunes && npx vitest run --config vitest.integration.config.ts server/test/explorers-media-cover.integration.test.ts
+cd tunes && npx vitest run --config vitest.integration.config.ts server/test/explorers-media-cover.integration.test.ts server/test/explorers-media.integration.test.ts
 ```
 
-Expected: 8 passed.
-
-- [ ] **Step 5: Commit**
+Expected: 8 passed in the new file, existing file still green.
 
 ```bash
-git add tunes/server/repositories/mediaRepository.ts tunes/server/test/explorers-media-cover.integration.test.ts
-git commit -m "fix(media): serve books, movies and games list covers at the gate"
+git add tunes/server/repositories/mediaRepository.ts tunes/server/test/explorers-media-cover.integration.test.ts tunes/server/test/helpers/explorersMediaHarness.ts tunes/server/test/explorers-media.integration.test.ts .github/workflows/test.yml
+git commit -m "fix(media): serve books, movies and games list covers, with a drift-proof oracle"
 ```
+
+- [ ] **Step 7: Pin the lists to the contract**
+
+Add to `tunes/server/test/contracts/` a unit test that converts future accretion into an instant failure. Export the two lists from `mediaRepository.ts` as `COVER_CATEGORIES` and `GENERIC_MEDIA_CATEGORIES`, build the SQL from them, and assert:
+
+```ts
+it("admits a cover for every category that can own a collection", () => {
+  expect([...COVER_CATEGORIES].sort()).toEqual([...contentCategorySchema.options].sort());
+});
+```
+
+Do **not** also pin `GENERIC_MEDIA_CATEGORIES` to an enum — it is deliberately a subset (guides has no `recommendations` rows, and apps/places use typed tables), so assert its exact expected membership with a comment saying why each is in or out.
 
 ---
 
-## Task 5: Require ready media on every cover join
+## Task 5: Keep the cover `status='ready'` guard as defence-in-depth — and test the real enforcement
 
-Only Places (`publicPlacesProjection.ts:126`) and People (`publicPeopleProjection.ts:95,118`) check that a cover's media is `ready`. Elsewhere an `uploading` or `pending_delete` cover yields a URL that 404s.
+**[v1 defect]** v1 claimed an unready cover yields a 404ing URL and wrote eight tests for it. **That state is unreachable**, and the tests would have errored rather than asserted. `0030_explorers_media_purpose_guard.sql:26` creates `media_asset_reference_guard AFTER UPDATE OF status,purpose ON media_assets`, raising `23514 'Referenced media must remain ready'` when `collection_media` references the row (`:9-14`); and a cover can only be attached while ready (`0029…:107-119`). Both are `DEFERRABLE INITIALLY DEFERRED`, so the pair cannot be slipped through one transaction. `explorers-media.integration.test.ts:171` already pins this. `media.ts:153` independently 404s a non-`ready` asset.
+
+So the SQL guard is worth adding for defence-in-depth and consistency with Places/People, but it fixes no live defect and must not be described as doing so.
 
 **Files:**
-- Modify: `tunes/server/publicProfile/publicAppsProjection.ts`, `publicBooksProjection.ts`, `publicMoviesProjection.ts`, `publicGamesProjection.ts`, `publicProductsProjection.ts`, `publicGuidesProjection.ts`
-- Test: `tunes/server/test/explorers-media-cover.integration.test.ts`
+- Modify: `publicAppsProjection.ts:72`, `publicBooksProjection.ts:53`, `publicGamesProjection.ts:155`, `publicGuidesProjection.ts:119`, `publicMoviesProjection.ts:80`, `publicProductsProjection.ts:87` **and `:110`** (seven sites in six files)
+- Test: `tunes/server/test/explorers-media.integration.test.ts:169-185`
 
-- [ ] **Step 1: Locate every unguarded cover join**
+- [ ] **Step 1: Pin the enforcement that actually exists**
+
+Extend the existing "actual schema rejects unsafe typed relations" case at `:169-185` with the `collection_media` pair, both directions:
+
+```ts
+    // A cover cannot be attached unless its asset is ready...
+    await expect(pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)", [collection, owner.accountId, uploadingId]))
+      .rejects.toMatchObject({ code: "23514" });
+    // ...and a referenced cover cannot leave ready.
+    await expect(pool.query("UPDATE media_assets SET status='uploading' WHERE id=$1", [attachedCoverId]))
+      .rejects.toMatchObject({ code: "23514" });
+```
+
+- [ ] **Step 2: Run and confirm it passes immediately**
+
+```bash
+cd tunes && npx vitest run --config vitest.integration.config.ts server/test/explorers-media.integration.test.ts
+```
+
+Expected: PASS with no production change — that is the point. It records an invariant the schema already enforces so a future migration cannot silently relax it.
+
+- [ ] **Step 3: Locate the seven cover joins**
 
 ```bash
 cd tunes && grep -rn "collection_media cm" server/publicProfile/ | grep -v "status='ready'"
 ```
 
-Expected: the join sites in the six projections above. Each looks like:
+Expected: the seven sites above. Note `publicProductsProjection.ts` has **two** (the linked-lists read and the main read), and `publicGamesProjection.ts:155` holds its whole query on one line, so that one is an in-string edit rather than a line append.
 
-```sql
-LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover'
-```
+- [ ] **Step 4: Append the guard to each**
 
-- [ ] **Step 2: Add the failing assertion**
-
-In `explorers-media-cover.integration.test.ts`, add inside the same `for` loop a second test:
-
-```ts
-    it(`omits an unready ${category} list cover`, async () => {
-      const owner = await persona();
-      await pool.query("UPDATE creator_accounts SET display_name='Cover creator',account_type='Creator',onboarding_status='complete',status='active',public_profile=true WHERE id=$1", [owner.accountId]);
-      await pool.query("INSERT INTO account_category_settings(account_id,category,is_public,display_order) VALUES($1,$2,true,(SELECT coalesce(max(display_order),-1)+1 FROM account_category_settings WHERE account_id=$1)) ON CONFLICT(account_id,category) DO UPDATE SET is_public=true", [owner.accountId, category]);
-      const collection = (await pool.query("INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order) VALUES($1,$2,'Cover list',$3,'public','published',0) RETURNING id", [owner.accountId, category, `cover-${randomUUID()}`])).rows[0].id;
-      const cover = await upload(owner.cookie, png, "image/png", "collection");
-      const id = cover.body.media.id as string;
-      await pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)", [collection, owner.accountId, id]);
-      // Return the asset to a non-servable state behind the projection's back.
-      await pool.query("UPDATE media_assets SET status='uploading' WHERE id=$1", [id]);
-      expect(await coverUrlFor(pool, category, owner.accountId)).toBeNull();
-    });
-```
-
-Add a helper in the same file that calls the category's projection and returns its first list's cover URL or `null`, so the assertion names one behaviour:
-
-```ts
-async function coverUrlFor(pool: pg.Pool, category: string, accountId: string): Promise<string | null> {
-  const handle = (await pool.query("SELECT handle FROM creator_accounts WHERE id=$1", [accountId])).rows[0].handle as string;
-  const projections: Record<string, () => Promise<any>> = {
-    places: () => publicPlacesProjection(pool, handle, 24), guides: () => publicGuidesProjection(pool, handle, 24),
-    movies: () => publicMoviesProjection(pool, handle, 24), books: () => publicBooksProjection(pool, handle, 24),
-    games: () => publicGamesProjection(pool, handle, 24), apps: () => publicAppsProjection(pool, handle, 24),
-    products: () => publicProductsProjection(pool, handle, 24), people: () => publicPeopleProjection(pool, handle, 24),
-  };
-  const result = await projections[category]();
-  const lists = result?.recommendationLists ?? result?.guides ?? result?.movieLists ?? result?.bookLists
-    ?? result?.gameLists ?? result?.appLists ?? result?.productLists ?? result?.personLists ?? [];
-  return lists[0]?.cover_image?.url ?? lists[0]?.coverUrl ?? null;
-}
-```
-
-Set each persona's handle in the first test so the helper can resolve it; if the harness does not already assign one, add the same `UPDATE creator_accounts SET handle=…` used in Task 3.
-
-- [ ] **Step 3: Run and confirm six failures**
-
-```bash
-cd tunes && npx vitest run --config vitest.integration.config.ts server/test/explorers-media-cover.integration.test.ts
-```
-
-Expected: the six unguarded categories FAIL by returning a URL; `places` and `people` PASS.
-
-- [ ] **Step 4: Add the guard to each of the six**
-
-Append to each cover join located in Step 1, matching the Places/People form exactly:
+Match the Places/People form exactly:
 
 ```sql
  AND EXISTS(SELECT 1 FROM media_assets m WHERE m.id=cm.media_id AND m.account_id=cm.account_id AND m.status='ready')
 ```
 
-- [ ] **Step 5: Run the whole server contract suite**
+- [ ] **Step 5: Run the server suites and the serial frontend lane**
 
 ```bash
 cd tunes && npx vitest run --config vitest.integration.config.ts server/test/
+cd ../explorers-earth && npx vitest run --no-file-parallelism
 ```
 
 Expected: PASS.
 
-- [ ] **Step 6: Run the explorers-earth unit lane serially**
+- [ ] **Step 6: Commit**
 
 ```bash
-cd explorers-earth && npx vitest run --no-file-parallelism
-```
-
-Expected: PASS. This lane is the only gate that catches cross-ticket DTO-shape regressions.
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add tunes/server/publicProfile/ tunes/server/test/explorers-media-cover.integration.test.ts
-git commit -m "fix(media): require ready media on every public cover join"
+git add tunes/server/publicProfile/ tunes/server/test/explorers-media.integration.test.ts
+git commit -m "chore(media): guard cover joins on ready media and pin the schema's own enforcement"
 ```
 
 ---
 
-## Task 6: Route places creator uploads into the typed photo path
+## Task 6: Route places creator uploads into the typed photo path, create *and* edit
 
-This is decision D-2. Places partitions uploads by origin: provider-origin ids go to `photoMediaIds` (typed, gated, projected) and creator-origin ids go to `mediaIds` (generic, publicly unreadable). Routing both into the typed path gives the same visible outcome with one fewer code path and no new gate surface. Verified safe: the place-photo guard trigger has no provider-only semantics.
+Decision D-2. Places sends provider-origin ids to `photoMediaIds` (typed, gated, projected) and creator-origin ids to `mediaIds` (generic, publicly unreadable).
+
+**[v1 defect]** v1 changed only the **create** path and would have left D-2 unfinished. The **edit** path at `useAddRecommendation.ts:528` also writes `mediaIds: [...existingMediaIds, ...uploadedIds]` into `attempt.patch`, dispatched at `:537` through `PlacesClient.updateRecommendation` (`placesCommands.ts:111`) — which is not among the lines v1 edited.
 
 **Files:**
-- Modify: `explorers-earth/src/features/Favorites/hooks/useAddRecommendation.ts:325`
-- Modify: `explorers-earth/src/features/Favorites/api/placesClient.ts:120,123,134,149,151`
-- Test: `explorers-earth/src/features/Favorites/api/__tests__/placesViewModel.test.ts`
+- Modify: `explorers-earth/src/features/Favorites/hooks/useAddRecommendation.ts:324-325` (create) and `:511-513,528` (edit)
+- Modify: `explorers-earth/src/features/Favorites/api/placesClient.ts:25` and the payload sites at `:120,123,134,149,151`
+- Test: `explorers-earth/src/features/Favorites/hooks/__tests__/useAddRecommendation.media.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing tests in the file that can run them**
 
-In `placesViewModel.test.ts`, assert a creator-origin upload reaches the typed photo list:
+**[v1 defect]** v1 put this in `placesViewModel.test.ts` and called `persistCreatedRecommendationMedia` directly. That function is an unexported closure inside the hook (`useAddRecommendation.ts:316`), and that test file is a pure mapping test with no `commands` and no upload stub — `upload` there is a UUID constant. Use `useAddRecommendation.media.test.ts`, which already mocks `upload`/`updatePlace` (`:18,33,104`) and drives the hook through `renderHook`.
+
+Add two cases asserting the **command boundary**, not accumulator state:
 
 ```ts
-it("sends creator-origin uploads as place photos", async () => {
-  const attempt = { recommendationId: "rec", pending: [{ blob: new Blob([1]), fileName: "a.jpg", origin: "creator" as const }], mediaIds: [] as string[], photoMediaIds: [] as string[], attached: false };
-  await persistCreatedRecommendationMedia(attempt);
-  expect(attempt.photoMediaIds).toHaveLength(1);
-  expect(attempt.mediaIds).toEqual([]);
+it("sends a creator-origin upload as a place photo on create", async () => {
+  // drive the hook's create flow with one creator-origin pending blob, per this file's existing pattern
+  await waitFor(() => expect(updatePlace).toHaveBeenCalled());
+  expect(updatePlace.mock.calls.at(-1)?.[1]).toMatchObject({ placePhotos: { photoMediaIds: [uploadedId] }, mediaIds: [] });
+});
+
+it("sends a creator-origin upload as a place photo on edit", async () => {
+  // drive the hook's edit flow with one creator-origin pending blob
+  await waitFor(() => expect(updatePlace).toHaveBeenCalled());
+  const patch = updatePlace.mock.calls.at(-1)?.[1];
+  expect(patch.placePhotos.photoMediaIds).toContain(uploadedId);
+  expect(patch.mediaIds ?? []).toEqual([]);
 });
 ```
 
-Use the file's existing upload stub so `commands.upload` resolves to a fixed id.
-
-- [ ] **Step 2: Run it and confirm it fails**
+- [ ] **Step 2: Run and confirm both fail**
 
 ```bash
-cd explorers-earth && npx vitest run src/features/Favorites/api/__tests__/placesViewModel.test.ts
+cd explorers-earth && npx vitest run src/features/Favorites/hooks/__tests__/useAddRecommendation.media.test.ts
 ```
 
-Expected: FAIL — `photoMediaIds` is empty and `mediaIds` has one entry.
+Expected: FAIL — ids appear under `mediaIds` instead of `placePhotos.photoMediaIds`.
 
-- [ ] **Step 3: Send every upload to the typed list**
+- [ ] **Step 3: Route the create path**
 
-In `useAddRecommendation.ts`, replace lines 324-325:
+Replace `useAddRecommendation.ts:324-325`:
 
 ```ts
         if (media.origin === "provider") attempt.photoMediaIds.push(uploaded.id);
@@ -536,44 +575,65 @@ with:
         attempt.photoMediaIds.push(uploaded.id);
 ```
 
-The existing `updatePlace` call already caps the list with `attempt.photoMediaIds.slice(0, 10)`, matching the ten-slot bound the migration enforces.
+- [ ] **Step 4: Route the edit path**
 
-- [ ] **Step 4: Drop the now-dead `mediaIds` leg from the places commands**
+At `:511-513`, `existingMediaIds` is derived from `fetchedPlace?.media_details?.imageDetails`. On the public side that key now means `recommendation_place_photos`, so read the existing **photo** ids and merge the new uploads into `placePhotos` instead. Change `:528` from:
 
-In `placesClient.ts`, remove `mediaIds` from the four command payloads at lines 120, 123, 134, 149 and 151. Leave `photoMediaIds` untouched. Do **not** remove `mediaIds` from the shared `explorersContract.ts` schema — books, movies, games, products and people all still use it.
+```ts
+        mediaIds: [...existingMediaIds, ...uploadedIds],
+```
 
-- [ ] **Step 5: Run the places tests and the serial unit lane**
+to:
+
+```ts
+        placePhotos: { photoMediaIds: [...existingPhotoMediaIds, ...uploadedIds].slice(0, 10) },
+```
+
+and rename the `:511-513` derivation to `existingPhotoMediaIds`, sourcing it from the fetched place's photo ids. Do not leave a `mediaIds` key in the edit patch.
+
+- [ ] **Step 5: Remove the dead field from the places contract**
+
+**[v1 defect]** `ManualPlaceDraft.mediaIds` is declared **required** at `placesClient.ts:25`. Removing it from the five payload sites without touching the type leaves a required field nothing populates. Delete it from the type as well as from `:120,123,134,149,151`. Leave `mediaIds` in the shared `explorersContract.ts` — books, movies, games, products and people all still use it.
+
+- [ ] **Step 6: Reconcile the owner-side consumer**
+
+`placesViewModel.ts:92` reads `detail.mediaIds` into `row.Media` and `row.media_details.imageDetails`, and `placesViewModel.test.ts:44-45` asserts it with the comment "The owner's own uploads stay a separate gallery source". After this task nothing writes places `mediaIds`, so the owner's gallery would silently go empty for newly created places. Point that consumer at the place-photo ids instead, and update the test and its comment to match. Do not leave the view-model test documenting the opposite of Task 7's comment.
+
+- [ ] **Step 7: Run the places tests and the serial lane**
 
 ```bash
-cd explorers-earth && npx vitest run src/features/Favorites/ && npx vitest run --no-file-parallelism
+cd explorers-earth && npx vitest run src/features/Favorites && npx vitest run --no-file-parallelism
 ```
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add explorers-earth/src/features/Favorites/
-git commit -m "fix(places): route creator uploads into the typed public photo path"
+git add explorers-earth/src/features/Favorites
+git commit -m "fix(places): route creator uploads into the typed public photo path on create and edit"
 ```
+
+**Two consequences to accept explicitly.** A creator who previously had 10 provider photos *plus* uncapped own uploads now loses everything past the 10-slot migration cap (`0047…:22`) with no message — consider a user-visible refusal as a follow-up. And there is **no backfill**: creator uploads already sitting in `recommendation_media` for places stay publicly invisible, because the gate's inner list still correctly excludes `'places'`.
 
 ---
 
 ## Task 7: Correct the Places projection comment
 
-`publicPlacesProjection.ts:25-26` claims photos are "concatenated with the owner's own uploads exactly as PlaceOverview already concatenates them". The code never concatenates — `photos` comes solely from `readPlacePhotoMediaIds`. After Task 6 the claim is still wrong, because the concatenation happens at upload time, not read time.
+`publicPlacesProjection.ts:24-27` claims photos are "concatenated with the owner's own uploads exactly as PlaceOverview already concatenates them". The code never concatenates — `photos` comes solely from `readPlacePhotoMediaIds`.
 
 **Files:**
-- Modify: `tunes/server/publicProfile/publicPlacesProjection.ts:25-26`
+- Modify: `tunes/server/publicProfile/publicPlacesProjection.ts:24-27`
 
-- [ ] **Step 1: Replace the comment** with what the code now does:
+- [ ] **Step 1: Replace the comment** (accurate only once Task 6 is done, so sequence it after)
 
 ```ts
  * Photos are owned media served through the media route, read solely from
- * recommendation_place_photos. Creator and provider uploads are merged at upload time
- * (useAddRecommendation routes both into photoMediaIds), so this read needs no union.
- * Note that media_details.imageDetails means recommendation_place_photos here and
- * recommendation_media on the owner side; the key is shared, the source is not.
+ * recommendation_place_photos. Creator and provider uploads are merged at upload time —
+ * useAddRecommendation routes both into photoMediaIds on create and on edit — so this
+ * read needs no union. Note that media_details.imageDetails means
+ * recommendation_place_photos here; the owner side resolves the same key from its own
+ * photo ids. The key is shared, the source is not.
 ```
 
 - [ ] **Step 2: Commit**
@@ -585,82 +645,110 @@ git commit -m "docs(places): describe the actual photo source and the shared key
 
 ---
 
-## Task 8: Stop anonymous visitors triggering an auth session fetch
+## Task 8: Stop anonymous visitors bootstrapping a session — without deadlocking protected routes
 
-The merge replaced a guarded `useQuery(musicEligibilityQuery, { skip: !isAuthenticated || !user?.documentId })` with an unconditional `useEffect(() => { void authClient.refresh(); }, [])`, and `authClient.refresh()` opens with `fetch("/api/auth/get-session")`. Every anonymous visitor to a public profile now fires an auth request — two under StrictMode in dev, one in production. It fails `profile-tabs` 18/18 on `deniedAuthority === 0`, and it is unnecessary load on the most cacheable pages.
+The merge replaced a guarded `useQuery(musicEligibilityQuery, { skip: !isAuthenticated || !user?.documentId })` with an unconditional `useEffect(() => { void authClient.refresh(); }, [])` at `AuthSyncManager.tsx:24`, and `authClient.ts:19` opens with `fetch("/api/auth/get-session")`. Every anonymous visitor to a public profile now issues an auth request, which is unnecessary load on the most cacheable pages and fails `profile-tabs` 18/18 on `deniedAuthority === 0`.
 
-**Do not** fix this by widening the harness allowlist in `explorers-earth/e2e/setup/profile-tab-hit-testing.ts`. The counter is the oracle.
+**[v1 defect — all three of v1's variants were broken]**
+1. The `explorers.session_hint` cookie v1 proposed **does not exist** anywhere in the repo; `betterAuth.ts:72` sets `cookieCache:{enabled:false}`. `hasSessionHint()` would always be `false`.
+2. v1's fallback — gate on `isAuthenticated` — is **circular**. `authClient.refresh()` is the only producer of `isAuthenticated` (`authClient.ts:17-38`), and the store starts `status:"loading", isAuthenticated:false` (`store.ts:58,64`). Gating on it means nobody is ever signed in. v1's claim that this "restores pre-merge semantics" was wrong: the pre-merge guard protected a *music eligibility* query, not the session bootstrap.
+3. **Either** variant leaves `status === "loading"` forever, and `ProtectedRoute.tsx:15` renders an infinite loader for that state instead of redirecting — so an anonymous visitor hitting a protected URL hangs.
+
+The constraint this yields: **the store must always reach a terminal status**, and the bootstrap must happen before any protected route renders. `ProtectedRoute.tsx:16` already calls `authClient.refresh()` as a retry, so moving the bootstrap there satisfies both.
 
 **Files:**
 - Modify: `explorers-earth/src/components/AuthSyncManager.tsx:24`
+- Modify: `explorers-earth/src/components/ProtectedRoute.tsx` (own the bootstrap)
+- Test: `explorers-earth/src/components/__tests__/AuthSyncManager.test.tsx`, `AuthSyncManager.canonical.test.tsx`
 - Test: `explorers-earth/e2e/profile-tab-hit-testing.spec.ts` (existing, unchanged)
 
-- [ ] **Step 1: Reproduce the failure**
+- [ ] **Step 1: Reproduce**
 
 ```bash
 cd explorers-earth && npx playwright test --config e2e/replatform/profile-tabs.playwright.config.ts
 ```
 
-Expected: 18 failures, each `expect.soft(counters.deniedAuthority).toBe(0)` receiving `2`.
+Expected: 18 failures, each `expect.soft(counters.deniedAuthority).toBe(0)` receiving `2` (two because StrictMode double-invokes the effect under the dev server; production would issue one).
 
-- [ ] **Step 2: Guard the refresh on a plausible session**
+- [ ] **Step 2: Decide where the bootstrap lives, from the evidence**
 
-In `AuthSyncManager.tsx`, replace line 24:
+Confirm whether any **public** surface needs to know the viewer is signed in — for example an owner-only affordance rendered on a public profile:
+
+```bash
+cd explorers-earth && grep -rn "isAuthenticated\|useAuthStore" src/features/PublicHome/ | grep -v "__tests__"
+```
+
+- If this returns **nothing**, move the bootstrap into `ProtectedRoute` (Step 3a). Public pages then issue no auth request at all.
+- If it returns real consumers, keep the bootstrap at the root but have those public surfaces request it explicitly, and instead make `AuthSyncManager` settle the store to a terminal signed-out status on public routes without fetching (Step 3b). Record which branch you took and why in the commit message.
+
+- [ ] **Step 3a: Move the bootstrap into the protected gate**
+
+Remove line 24 from `AuthSyncManager.tsx` entirely. In `ProtectedRoute.tsx`, bootstrap once on mount before gating, keeping its existing retry behaviour:
 
 ```tsx
-  useEffect(() => { void authClient.refresh(); }, []);
+  useEffect(() => { if (status === "idle") void authClient.refresh(); }, [status]);
+  if (status === "loading" || status === "idle") return <EarthLoader />;
 ```
 
-with:
+Add an `"idle"` initial status to the store if it does not already distinguish "never attempted" from "in flight" (`store.ts:58`); otherwise use the existing initial status and ensure `refresh()` is dispatched exactly once. The invariant to preserve: **no path leaves `status` non-terminal with no request in flight.**
+
+- [ ] **Step 3b: Alternative — settle the store without fetching**
+
+If Step 2 showed public consumers, replace line 24 with:
 
 ```tsx
-  // A public profile view is anonymous. Refreshing unconditionally put an auth request on
-  // every cacheable public page, which is also what profile-tab hit testing counts.
-  useEffect(() => { if (authClient.hasSessionHint()) void authClient.refresh(); }, []);
+  // A public profile view is anonymous. Settle the store rather than fetching, so
+  // ProtectedRoute never sees a non-terminal status and no auth request leaves the page.
+  useEffect(() => {
+    if (!onPublicProfileRoute) { void authClient.refresh(); return; }
+    const store = useAuthStore.getState();
+    store.verificationFailed(store.beginVerification(), "signed-out");
+  }, [onPublicProfileRoute]);
 ```
 
-Then add `hasSessionHint` to the `authClient` object in `explorers-earth/src/lib/authClient.ts`:
+Derive `onPublicProfileRoute` from the router rather than from `window.location`, so it is testable.
 
-```ts
-  // Better Auth sets a client-readable session hint alongside its httpOnly cookie. Absent
-  // hint means no session to refresh, so an anonymous visitor issues no auth request.
-  hasSessionHint(): boolean {
-    try { return document.cookie.split("; ").some(entry => entry.startsWith("explorers.session_hint=")); }
-    catch { return false; }
-  },
+- [ ] **Step 4: Fix the five existing unit tests and add the real oracle**
+
+`AuthSyncManager.test.tsx:11` mocks `authClient` as `{ refresh: calls.refresh }`. Any new method called on that mock throws and takes **every** test in the file (and in `AuthSyncManager.canonical.test.tsx`) down with it, so update the mock to whatever shape Step 3 requires. `:26-29` (`it("starts cookie verification on mount")` asserting `refresh` called once from a `logout()` state) asserts the **old** behaviour and must be rewritten to the new contract.
+
+Then add the pair that v1 lacked — v1's "a signed-in session still refreshes" was prose with no assertion, which is exactly how a wrong guard would ship green:
+
+```tsx
+it("issues no auth request for an anonymous public visitor", async () => {
+  renderAtPublicProfile();
+  await waitFor(() => expect(useAuthStore.getState().status).not.toBe("loading"));
+  expect(calls.refresh).not.toHaveBeenCalled();
+});
+
+it("still bootstraps a session where auth is required", async () => {
+  renderAtProtectedRoute();
+  await waitFor(() => expect(calls.refresh).toHaveBeenCalledTimes(1));
+});
+
+it("never leaves the store non-terminal", async () => {
+  renderAtPublicProfile();
+  await waitFor(() => expect(["authenticated", "signed-out"]).toContain(useAuthStore.getState().status));
+});
 ```
 
-**Before implementing, verify the hint cookie's real name** by signing in locally and inspecting `document.cookie`:
+The third is the guard against the `ProtectedRoute` deadlock, which is the failure mode neither the e2e counter nor the first two would catch.
+
+- [ ] **Step 5: Run the unit lane, then the two e2e lanes**
 
 ```bash
-cd tunes && grep -rn "session_hint\|cookiePrefix\|cookieName" server/auth.ts server/routes/musicIdentityRoutes.ts | head
+cd explorers-earth && npx vitest run --no-file-parallelism
+npx playwright test --config e2e/replatform/profile-tabs.playwright.config.ts
+npx playwright test --config e2e/replatform/auth.playwright.config.ts
 ```
 
-If no client-readable hint cookie exists, fall back to gating on the already-available `isAuthenticated` value in this component — that restores the exact pre-merge semantics — and reference it in the dependency array.
+Expected: unit lane PASS; `profile-tabs` 18 passed; auth lane PASS. The auth lane is the real check that sign-in still works — do not skip it, and do not widen the harness allowlist in `e2e/setup/profile-tab-hit-testing.ts` to make `profile-tabs` pass. The counter is the oracle.
 
-- [ ] **Step 3: Confirm the lane passes**
-
-```bash
-cd explorers-earth && npx playwright test --config e2e/replatform/profile-tabs.playwright.config.ts
-```
-
-Expected: 18 passed.
-
-- [ ] **Step 4: Confirm authenticated identity sync still works**
-
-This component exists to reconcile Explorer identity with Music, so a regression here is worse than the test failure. Run the auth and lifecycle lanes:
+- [ ] **Step 6: Commit**
 
 ```bash
-cd explorers-earth && npx playwright test --config e2e/replatform/auth.playwright.config.ts
-```
-
-Expected: PASS, and a signed-in session still refreshes on mount.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add explorers-earth/src/components/AuthSyncManager.tsx explorers-earth/src/lib/authClient.ts
-git commit -m "fix(auth): do not refresh a session for anonymous public visitors"
+git add explorers-earth/src/components explorers-earth/src/lib explorers-earth/src/store
+git commit -m "fix(auth): bootstrap the session where it is needed, not on every public page"
 ```
 
 ---
@@ -668,12 +756,11 @@ git commit -m "fix(auth): do not refresh a session for anonymous public visitors
 ## Out of scope
 
 - Paste-a-link enrichment (Plan B).
-- Unifying the two storage patterns (generic `recommendation_media` vs per-category typed tables). The typed tables exist where provider imports or slot ordering need their own semantics; collapsing them would need migrations and would change nothing a user sees.
-- Production cutover — see `docs/replatform-audit/production-cutover-runbook.md`.
-- `real-stack lifecycle` and `real-stack books`, neither of which has ever been green. **Triage `lifecycle` before executing this plan**: it failed because owner A's session refresh returned owner B's account id, and if that is a real cross-owner leak rather than harness reuse it outranks everything here.
+- Unifying the two storage patterns (generic `recommendation_media` vs typed per-category tables). Typed tables exist where provider imports or slot ordering need their own semantics; collapsing them needs migrations and changes nothing a user sees.
+- Production cutover — `docs/replatform-audit/production-cutover-runbook.md`.
+- `explorersRecommendationRepository.ts:501-506`'s ref-count list omits `recommendation_app_screenshots` and `recommendation_place_photos`. It runs only on the `category==='movies'` branch (`:495`), so this plan does not regress it, but it is a parallel list that is already wrong.
+- `real-stack lifecycle` and `real-stack books`, neither ever green. **Triage `lifecycle` before executing this plan**: it failed because owner A's session refresh returned owner B's account id, and if that is a real cross-owner leak rather than harness reuse, it outranks everything here.
 
-## Self-review notes
+## What the reviews changed
 
-- Every task changes projection and gate together where both are involved (Task 3), so no step leaves assets exposed without a consumer or URLs that 404.
-- Task 4's test asserts parity across all eight categories rather than the current list contents, so the next category added cannot silently repeat the accretion bug.
-- Task 8 deliberately leaves the guard mechanism to be confirmed against the real cookie name, with an explicit fallback that restores pre-merge semantics. That is a verification step, not a placeholder.
+Recorded so the corrections are not re-litigated: Task 3 would have thrown `Unrecognized key(s)` on every public People sector request and broken six existing tests, and emitted a key only the SEO tag reads. Task 8's primary mechanism was a cookie that does not exist, its fallback was circular, and both variants deadlocked `ProtectedRoute`. Task 1 fixed one of four seal sites. Task 5 targeted a state the schema makes unreachable. Task 6 missed the edit-path producer, so D-2 would have stayed unfinished. Task 4's new file would never have run in the PR lane, and its "drift-proof" claim rested on a hand-written list that drifts.
