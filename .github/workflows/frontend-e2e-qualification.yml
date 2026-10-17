@@ -188,11 +188,22 @@ jobs:
   apps-native:
     name: protected Apps manual qualification
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == 'apps-native' }}
-    runs-on: ubuntu-24.04
+    # This fixture's privacy model is Windows ACL inheritance. Running it on Linux meant
+    # reimplementing that on POSIX one layer at a time - a custody predicate that accepted
+    # only drive-letter paths, then a umask because POSIX does not inherit directory modes,
+    # then an artifact-capture refusal - with no visible end, so the lane runs where it was
+    # designed to run instead. The fixes made along the way are kept: they are correct on
+    # both platforms and the diagnostics help everywhere.
+    runs-on: windows-latest
     timeout-minutes: 90
     defaults:
       run:
         working-directory: .
+        # The qualification step interpolates a path that the fixture then requires to
+        # satisfy `path.resolve(x) === x`. Under bash on Windows `$RUNNER_TEMP` expands to a
+        # backslash path which then gets a forward slash appended, so the mixed separators
+        # fail that identity check. pwsh keeps it all-backslash.
+        shell: pwsh
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -212,14 +223,21 @@ jobs:
           npm ci --prefix tunes/auth-runtime
       - name: Install owned Chromium
         working-directory: explorers-earth
-        run: npx playwright install --with-deps chromium
+        # `--with-deps` installs OS packages and is supported on Ubuntu only; on Windows it
+        # is not applicable, so the browser is installed on its own.
+        run: npx playwright install chromium
       - name: Supply fixture PostgreSQL image
         run: docker pull postgres:15-alpine
       - name: Run protected Apps selection
-        run: npm run platform:test:e2e -- --milestone delivered-auth-profile-books --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15 --receipt "$RUNNER_TEMP/replatform-e2e-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-apps" --lane apps
+        # Node reads TEMP/TMP on Windows, not TMPDIR, and `os.tmpdir()` has to equal
+        # `runner.temp` because the fixture requires the receipt directory's grandparent to
+        # BE the temporary root, and separately requires every ancestor to satisfy realpath
+        # identity - which the default per-user temp path, an 8.3 short name, does not.
+        run: npm run platform:test:e2e -- --milestone delivered-auth-profile-books --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15 --receipt "$env:RUNNER_TEMP\replatform-e2e-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT-apps" --lane apps
         env:
           CI: true
-          TMPDIR: ${{ runner.temp }}
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
       - name: Upload sanitized protected Apps evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
