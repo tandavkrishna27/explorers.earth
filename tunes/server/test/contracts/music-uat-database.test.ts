@@ -42,7 +42,11 @@ function authorityEnvironment(overrides: NodeJS.ProcessEnv = {}): NodeJS.Process
 // never acquire a database - the defect this suite should catch, not encode. The
 // filesystem is injected throughout, so neither spelling is ever touched on disk.
 const windowsHost = process.platform === "win32";
-const ownedSecretPath = (name: string) => windowsHost ? `C:\\Users\\TK\\fixture\\${name}` : `/home/runner/fixture/${name}`;
+// The POSIX spelling deliberately carries an uppercase segment. Two cases in this suite
+// simulate a custody mismatch with `passwordFile.toLowerCase()`, which only differs from
+// the original when the path is not already lower case - an all-lowercase POSIX path made
+// those mutations no-ops and the calls resolved instead of refusing.
+const ownedSecretPath = (name: string) => windowsHost ? `C:\\Users\\TK\\fixture\\${name}` : `/home/runner/Fixture/${name}`;
 
 function ownedInspect() {
   return {
@@ -381,7 +385,7 @@ describe("staged owned UAT database acquisition", () => {
     // the distinct order is what states "walks to the platform root".
     expect([...new Set(f.custodyPaths())]).toEqual(windowsHost
       ? [String.raw`C:\Users\TK\fixture\current-secret`, String.raw`C:\Users\TK\fixture`, String.raw`C:\Users\TK`, String.raw`C:\Users`, "C:\\"]
-      : ["/home/runner/fixture/current-secret", "/home/runner/fixture", "/home/runner", "/home", "/"]);
+      : ["/home/runner/Fixture/current-secret", "/home/runner/Fixture", "/home/runner", "/home", "/"]);
   });
 });
 
