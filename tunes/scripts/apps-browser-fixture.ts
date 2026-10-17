@@ -784,7 +784,29 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         output(): string;
     }> {
         const { spawn } = await import('node:child_process');
-        const child = spawn(executable, args, { cwd, env: environment, shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+        // POSIX has no permission inheritance. The disposable directories are created
+        // `mode: 0o700`, but a file a CHILD writes still lands at `0666 & ~umask` - normally
+        // 0644 - and `inspect` refuses anything carrying group or other bits. Playwright
+        // writes `protected-discovery.json` and `protected-execution.json` itself, from the
+        // child, via PLAYWRIGHT_JSON_OUTPUT_NAME, so the fixture cannot choose their mode at
+        // creation. On Windows the equivalent privacy comes from the disposable directory's
+        // restrictive ACL, which new children DO inherit, so there is nothing to do there and
+        // this stays off that path entirely. A umask is therefore the POSIX equivalent of the
+        // Windows guarantee, not a loosening of it: 0o077 is strictly more restrictive than
+        // the default and only ever removes permissions.
+        //
+        // A child inherits the umask at spawn, so this is narrowed to the spawn call itself
+        // and the previous value is restored immediately afterwards - the child keeps the
+        // restrictive mask for its whole life, while nothing else in this process ever
+        // observes the change.
+        const previousUmask = process.platform === 'win32' ? undefined : process.umask(0o077);
+        let child: import('node:child_process').ChildProcessByStdio<import('node:stream').Writable, import('node:stream').Readable, import('node:stream').Readable>;
+        try {
+            child = spawn(executable, args, { cwd, env: environment, shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+        }
+        finally {
+            if (previousUmask !== undefined) process.umask(previousUmask);
+        }
         let output = '', overflow = false;
         const closed = new Promise<{
         code: number | null;
