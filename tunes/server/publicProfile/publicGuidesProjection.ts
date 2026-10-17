@@ -116,7 +116,7 @@ const GUIDE_COLUMNS = `c.id,c.title,c.description,c.slug,c.display_order,c.pin_o
 const GUIDE_JOIN = `FROM collections c
  JOIN creator_accounts a ON a.id=c.account_id
  JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category
- LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover'
+ LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover' AND EXISTS(SELECT 1 FROM media_assets m WHERE m.id=cm.media_id AND m.account_id=cm.account_id AND m.status='ready')
  LEFT JOIN guide_collection_details d ON d.collection_id=c.id AND d.account_id=c.account_id`;
 
 /**

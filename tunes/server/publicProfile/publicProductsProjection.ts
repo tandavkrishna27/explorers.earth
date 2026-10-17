@@ -94,7 +94,7 @@ export async function publicLinkedProductsLists(db:PoolClient,accountId:string,l
   FROM collection_location_links l
   JOIN collections c ON c.id=l.child_collection_id AND c.account_id=l.account_id AND c.category=l.child_category
   JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category
-  LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover'
+  LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover' AND EXISTS(SELECT 1 FROM media_assets m WHERE m.id=cm.media_id AND m.account_id=cm.account_id AND m.status='ready')
   WHERE l.account_id=$1 AND l.location_collection_id=$2 AND l.child_category='products'
    AND ${gate} AND ${listGate}
   ORDER BY c.display_order,c.id LIMIT $3`,[accountId,locationCollectionId,limit])).rows;
@@ -117,7 +117,7 @@ export async function publicProductsProjection(pool:Pool,username:string,limit:n
   observed=await scope(db,username);if(!observed){await db.query('COMMIT');return undefined;}
   const rows=(await db.query(`SELECT c.id,c.title,c.description,c.slug,c.heading,c.display_order,cm.media_id AS cover_media_id FROM collections c
    JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category
-   LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover'
+   LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover' AND EXISTS(SELECT 1 FROM media_assets m WHERE m.id=cm.media_id AND m.account_id=cm.account_id AND m.status='ready')
    WHERE a.id=$1 AND c.category='products' AND ${gate} AND ${listGate} AND ($2::text IS NULL OR c.slug=$2)
    ORDER BY c.display_order,c.id LIMIT $3 OFFSET $4`,[observed.id,slug??null,slug?1:limit+1,slug?0:offset])).rows;
   if(slug&&!rows.length){await db.query('COMMIT');return undefined;}

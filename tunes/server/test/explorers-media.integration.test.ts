@@ -207,6 +207,21 @@ describe("private local media", () => {
       // The composite ownership FK rejects before the deferred guard can run.
       await expect(pool.query(`INSERT INTO ${table}(recommendation_id,account_id,${slotColumn},media_id) VALUES($1,$2,1,$3)`, [attachment.recommendation, f.owner.accountId, foreign.body.media.id])).rejects.toMatchObject({ code: "23503" });
       expect((await f.repository.find(f.id))?.status).toBe("ready");
+
+      // A list cover cannot be unready in either direction, which is why no projection can
+      // emit a URL for one. Recorded here so a future migration cannot relax it silently.
+      // The asset must carry purpose 'collection': with 'recommendation' this would fail on
+      // guard_recommendation_media's purpose arm with the same 23514 and never exercise the
+      // status arm at all.
+      const unreadyCover = await upload(f.owner.cookie, png, "image/png", "collection"); expect(unreadyCover.status).toBe(201);
+      await pool.query("UPDATE media_assets SET status='uploading' WHERE id=$1", [unreadyCover.body.media.id]);
+      await expect(pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",
+        [attachment.collection, f.owner.accountId, unreadyCover.body.media.id])).rejects.toMatchObject({ code: "23514" });
+      const readyCover = await upload(f.owner.cookie, png, "image/png", "collection"); expect(readyCover.status).toBe(201);
+      await pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",
+        [attachment.collection, f.owner.accountId, readyCover.body.media.id]);
+      await expect(pool.query("UPDATE media_assets SET status='uploading' WHERE id=$1", [readyCover.body.media.id]))
+        .rejects.toMatchObject({ code: "23514" });
     }, 30_000);
   }
 
