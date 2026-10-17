@@ -1,0 +1,298 @@
+name: Music identity reconciliation
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Production report, staging review, or reviewed staging apply
+        type: choice
+        options: [report-only, staging-report, staging-apply]
+        default: report-only
+        required: true
+      review_run_id:
+        description: Workflow run ID that produced the protected staging review artifact
+        type: string
+        required: false
+      review_run_attempt:
+        description: Workflow run attempt that produced the protected staging review artifact
+        type: string
+        default: "1"
+        required: false
+      approval_token:
+        description: Exact approval token from that reviewed checkpoint
+        type: string
+        required: false
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: "music-reconciliation-${{ github.repository }}-${{ inputs.action || 'report-only' }}"
+  cancel-in-progress: false
+
+jobs:
+  report-only:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' ||
+       (github.event_name == 'workflow_dispatch' && inputs.action == 'report-only'))
+    runs-on: [self-hosted, music-reconciliation]
+    timeout-minutes: 30
+    environment: music-reconciliation-production-report
+    env:
+      MUSIC_MODE: live
+      MUSIC_RECONCILIATION_ENVIRONMENT: production
+      MUSIC_RECONCILIATION_APPLY_ENABLED: "false"
+      MUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED: ${{ vars.MUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED }}
+      STRAPI_URL: ${{ vars.STRAPI_URL }}
+      MUSIC_STRAPI_ALLOWED_ORIGINS: ${{ vars.MUSIC_STRAPI_ALLOWED_ORIGINS }}
+      STRAPI_RECONCILIATION_TOKEN_FILE: ${{ secrets.STRAPI_RECONCILIATION_TOKEN_FILE }}
+      STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: ${{ secrets.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE }}
+      STRAPI_ACCESS_TOKEN_FILE: ${{ secrets.STRAPI_ACCESS_TOKEN_FILE }}
+      STRAPI_ACCESS_TOKEN: ${{ secrets.STRAPI_ACCESS_TOKEN }}
+      MUSIC_DATABASE_HOST: ${{ vars.MUSIC_DATABASE_HOST }}
+      MUSIC_DATABASE_PORT: ${{ vars.MUSIC_DATABASE_PORT }}
+      MUSIC_DATABASE_NAME: ${{ vars.MUSIC_DATABASE_NAME }}
+      MUSIC_DATABASE_USER: ${{ vars.MUSIC_DATABASE_USER }}
+      MUSIC_DATABASE_MIGRATOR_USER: ${{ vars.MUSIC_DATABASE_MIGRATOR_USER }}
+      MUSIC_DATABASE_PASSWORD_FILE: ${{ vars.MUSIC_DATABASE_PASSWORD_FILE }}
+      MUSIC_IDENTITY_MAX_CONCURRENCY: ${{ vars.MUSIC_IDENTITY_MAX_CONCURRENCY }}
+      MUSIC_RECONCILIATION_PAGE_SIZE: ${{ vars.MUSIC_RECONCILIATION_PAGE_SIZE }}
+      MUSIC_RECONCILIATION_SCAN_MAX_ROWS: ${{ vars.MUSIC_RECONCILIATION_SCAN_MAX_ROWS }}
+      MUSIC_RECONCILIATION_BATCH_SIZE: ${{ vars.MUSIC_RECONCILIATION_BATCH_SIZE }}
+      MUSIC_RECONCILIATION_MAX_CHANGE_ABSOLUTE: ${{ vars.MUSIC_RECONCILIATION_MAX_CHANGE_ABSOLUTE }}
+      MUSIC_RECONCILIATION_MAX_CHANGE_PERCENT: ${{ vars.MUSIC_RECONCILIATION_MAX_CHANGE_PERCENT }}
+      MUSIC_RECONCILIATION_MAX_PAGES: ${{ vars.MUSIC_RECONCILIATION_MAX_PAGES }}
+      MUSIC_RECONCILIATION_SCAN_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_SCAN_TIMEOUT_MS }}
+      MUSIC_RECONCILIATION_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_TIMEOUT_MS }}
+      MUSIC_RECONCILIATION_MAX_RESPONSE_BYTES: ${{ vars.MUSIC_RECONCILIATION_MAX_RESPONSE_BYTES }}
+      MUSIC_RECONCILIATION_MAX_CANONICAL_BYTES: ${{ vars.MUSIC_RECONCILIATION_MAX_CANONICAL_BYTES }}
+      MUSIC_RECONCILIATION_DB_LOCK_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_DB_LOCK_TIMEOUT_MS }}
+      MUSIC_RECONCILIATION_DB_STATEMENT_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_DB_STATEMENT_TIMEOUT_MS }}
+      MUSIC_RECONCILIATION_DB_IDLE_TRANSACTION_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_DB_IDLE_TRANSACTION_TIMEOUT_MS }}
+      MUSIC_CHECKPOINT_PATH: .artifacts/music-runs/workflow-${{ github.run_id }}-${{ github.run_attempt }}/reconciliation-checkpoint.json
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tunes/package-lock.json
+      - name: Install the exact checked-in command
+        run: |
+          npm ci --ignore-scripts
+          npm ci --prefix tunes --ignore-scripts
+      - name: Run redacted report-only reconciliation
+        shell: bash
+        run: |
+          set -euo pipefail
+          report_directory="$(dirname "$MUSIC_CHECKPOINT_PATH")"
+          mkdir -p "$report_directory"
+          set +e
+          npm run --silent music:reconcile -- --mode live --dry-run --format json --checkpoint "$MUSIC_CHECKPOINT_PATH" > "$report_directory/report.json"
+          status=$?
+          set -e
+          exit "$status"
+      - name: Upload bounded redacted report evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: music-reconciliation-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/music-runs/workflow-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: error
+          retention-days: 14
+
+  staging-report:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.action == 'staging-report' &&
+      github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, music-reconciliation-staging]
+    timeout-minutes: 30
+    environment: music-reconciliation-staging-report
+    env:
+      MUSIC_MODE: live
+      MUSIC_RECONCILIATION_ENVIRONMENT: staging
+      MUSIC_RECONCILIATION_APPLY_ENABLED: "true"
+      MUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED: ${{ vars.MUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED }}
+      STRAPI_URL: ${{ vars.STRAPI_URL }}
+      MUSIC_STRAPI_ALLOWED_ORIGINS: ${{ vars.MUSIC_STRAPI_ALLOWED_ORIGINS }}
+      STRAPI_RECONCILIATION_TOKEN_FILE: ${{ secrets.STRAPI_RECONCILIATION_TOKEN_FILE }}
+      STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: ${{ secrets.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE }}
+      STRAPI_ACCESS_TOKEN_FILE: ${{ secrets.STRAPI_ACCESS_TOKEN_FILE }}
+      STRAPI_ACCESS_TOKEN: ${{ secrets.STRAPI_ACCESS_TOKEN }}
+      MUSIC_DATABASE_HOST: ${{ vars.MUSIC_DATABASE_HOST }}
+      MUSIC_DATABASE_PORT: ${{ vars.MUSIC_DATABASE_PORT }}
+      MUSIC_DATABASE_NAME: ${{ vars.MUSIC_DATABASE_NAME }}
+      MUSIC_DATABASE_USER: ${{ vars.MUSIC_DATABASE_USER }}
+      MUSIC_DATABASE_MIGRATOR_USER: ${{ vars.MUSIC_DATABASE_MIGRATOR_USER }}
+      MUSIC_DATABASE_PASSWORD_FILE: ${{ vars.MUSIC_DATABASE_PASSWORD_FILE }}
+      MUSIC_IDENTITY_MAX_CONCURRENCY: ${{ vars.MUSIC_IDENTITY_MAX_CONCURRENCY }}
+      MUSIC_RECONCILIATION_PAGE_SIZE: ${{ vars.MUSIC_RECONCILIATION_PAGE_SIZE }}
+      MUSIC_RECONCILIATION_SCAN_MAX_ROWS: ${{ vars.MUSIC_RECONCILIATION_SCAN_MAX_ROWS }}
+      MUSIC_RECONCILIATION_BATCH_SIZE: ${{ vars.MUSIC_RECONCILIATION_BATCH_SIZE }}
+      MUSIC_RECONCILIATION_MAX_CHANGE_ABSOLUTE: ${{ vars.MUSIC_RECONCILIATION_MAX_CHANGE_ABSOLUTE }}
+      MUSIC_RECONCILIATION_MAX_CHANGE_PERCENT: ${{ vars.MUSIC_RECONCILIATION_MAX_CHANGE_PERCENT }}
+      MUSIC_RECONCILIATION_MAX_PAGES: ${{ vars.MUSIC_RECONCILIATION_MAX_PAGES }}
+      MUSIC_RECONCILIATION_SCAN_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_SCAN_TIMEOUT_MS }}
+      MUSIC_RECONCILIATION_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_TIMEOUT_MS }}
+      MUSIC_RECONCILIATION_MAX_RESPONSE_BYTES: ${{ vars.MUSIC_RECONCILIATION_MAX_RESPONSE_BYTES }}
+      MUSIC_RECONCILIATION_MAX_CANONICAL_BYTES: ${{ vars.MUSIC_RECONCILIATION_MAX_CANONICAL_BYTES }}
+      MUSIC_RECONCILIATION_DB_LOCK_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_DB_LOCK_TIMEOUT_MS }}
+      MUSIC_RECONCILIATION_DB_STATEMENT_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_DB_STATEMENT_TIMEOUT_MS }}
+      MUSIC_RECONCILIATION_DB_IDLE_TRANSACTION_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_DB_IDLE_TRANSACTION_TIMEOUT_MS }}
+      MUSIC_CHECKPOINT_PATH: .artifacts/music-runs/staging-review/reconciliation-checkpoint.json
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tunes/package-lock.json
+      - name: Install the exact checked-in command
+        run: |
+          npm ci --ignore-scripts
+          npm ci --prefix tunes --ignore-scripts
+      - name: Create the protected staging review checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$MUSIC_CHECKPOINT_PATH")"
+          npm run --silent music:reconcile -- --mode live --dry-run --format json --checkpoint "$MUSIC_CHECKPOINT_PATH" > "$(dirname "$MUSIC_CHECKPOINT_PATH")/report.json"
+      - name: Upload the immutable staging review evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: music-reconciliation-staging-review-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/music-runs/staging-review/
+          if-no-files-found: error
+          retention-days: 30
+
+  staging-apply:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.action == 'staging-apply' &&
+      github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, music-reconciliation-staging]
+    timeout-minutes: 30
+    environment: music-reconciliation-staging-apply
+    env:
+      MUSIC_MODE: live
+      MUSIC_RECONCILIATION_ENVIRONMENT: staging
+      MUSIC_RECONCILIATION_APPLY_ENABLED: "true"
+      MUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED: ${{ vars.MUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED }}
+      STRAPI_URL: ${{ vars.STRAPI_URL }}
+      MUSIC_STRAPI_ALLOWED_ORIGINS: ${{ vars.MUSIC_STRAPI_ALLOWED_ORIGINS }}
+      STRAPI_RECONCILIATION_TOKEN_FILE: ${{ secrets.STRAPI_RECONCILIATION_TOKEN_FILE }}
+      STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: ${{ secrets.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE }}
+      STRAPI_ACCESS_TOKEN_FILE: ${{ secrets.STRAPI_ACCESS_TOKEN_FILE }}
+      STRAPI_ACCESS_TOKEN: ${{ secrets.STRAPI_ACCESS_TOKEN }}
+      MUSIC_DATABASE_HOST: ${{ vars.MUSIC_DATABASE_HOST }}
+      MUSIC_DATABASE_PORT: ${{ vars.MUSIC_DATABASE_PORT }}
+      MUSIC_DATABASE_NAME: ${{ vars.MUSIC_DATABASE_NAME }}
+      MUSIC_DATABASE_USER: ${{ vars.MUSIC_DATABASE_USER }}
+      MUSIC_DATABASE_MIGRATOR_USER: ${{ vars.MUSIC_DATABASE_MIGRATOR_USER }}
+      MUSIC_DATABASE_PASSWORD_FILE: ${{ vars.MUSIC_DATABASE_PASSWORD_FILE }}
+      MUSIC_IDENTITY_MAX_CONCURRENCY: ${{ vars.MUSIC_IDENTITY_MAX_CONCURRENCY }}
+      MUSIC_RECONCILIATION_PAGE_SIZE: ${{ vars.MUSIC_RECONCILIATION_PAGE_SIZE }}
+      MUSIC_RECONCILIATION_SCAN_MAX_ROWS: ${{ vars.MUSIC_RECONCILIATION_SCAN_MAX_ROWS }}
+      MUSIC_RECONCILIATION_BATCH_SIZE: ${{ vars.MUSIC_RECONCILIATION_BATCH_SIZE }}
+      MUSIC_RECONCILIATION_MAX_CHANGE_ABSOLUTE: ${{ vars.MUSIC_RECONCILIATION_MAX_CHANGE_ABSOLUTE }}
+      MUSIC_RECONCILIATION_MAX_CHANGE_PERCENT: ${{ vars.MUSIC_RECONCILIATION_MAX_CHANGE_PERCENT }}
+      MUSIC_RECONCILIATION_MAX_PAGES: ${{ vars.MUSIC_RECONCILIATION_MAX_PAGES }}
+      MUSIC_RECONCILIATION_SCAN_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_SCAN_TIMEOUT_MS }}
+      MUSIC_RECONCILIATION_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_TIMEOUT_MS }}
+      MUSIC_RECONCILIATION_MAX_RESPONSE_BYTES: ${{ vars.MUSIC_RECONCILIATION_MAX_RESPONSE_BYTES }}
+      MUSIC_RECONCILIATION_MAX_CANONICAL_BYTES: ${{ vars.MUSIC_RECONCILIATION_MAX_CANONICAL_BYTES }}
+      MUSIC_RECONCILIATION_DB_LOCK_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_DB_LOCK_TIMEOUT_MS }}
+      MUSIC_RECONCILIATION_DB_STATEMENT_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_DB_STATEMENT_TIMEOUT_MS }}
+      MUSIC_RECONCILIATION_DB_IDLE_TRANSACTION_TIMEOUT_MS: ${{ vars.MUSIC_RECONCILIATION_DB_IDLE_TRANSACTION_TIMEOUT_MS }}
+      MUSIC_RESUME_CHECKPOINT: .artifacts/music-runs/reviewed/reconciliation-checkpoint.json
+      MUSIC_APPROVAL_TOKEN: ${{ inputs.approval_token }}
+      MUSIC_REVIEW_RUN_ID: ${{ inputs.review_run_id }}
+      MUSIC_REVIEW_RUN_ATTEMPT: ${{ inputs.review_run_attempt }}
+      MUSIC_CHECKPOINT_PATH: .artifacts/music-runs/workflow-${{ github.run_id }}-${{ github.run_attempt }}/reconciliation-checkpoint.json
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tunes/package-lock.json
+      - name: Verify reviewed workflow provenance
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          REVIEW_RUN_ID: ${{ inputs.review_run_id }}
+          REVIEW_RUN_ATTEMPT: ${{ inputs.review_run_attempt }}
+        with:
+          script: |
+            const runId = Number(process.env.REVIEW_RUN_ID);
+            const expectedAttempt = Number(process.env.REVIEW_RUN_ATTEMPT);
+            if (!Number.isSafeInteger(runId) || runId < 1 || !Number.isSafeInteger(expectedAttempt) || expectedAttempt < 1) {
+              core.setFailed('review run authority is invalid');
+              return;
+            }
+            const { data: reviewed } = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: runId,
+            });
+            if (reviewed.path !== '.github/workflows/music-reconcile.yml'
+                || reviewed.event !== 'workflow_dispatch'
+                || reviewed.conclusion !== 'success'
+                || reviewed.head_sha !== context.sha
+                || reviewed.run_attempt !== expectedAttempt) {
+              core.setFailed('reviewed workflow provenance does not match this exact apply commit');
+            }
+      - name: Download the exact protected staging review
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.review_run_id }}
+          name: music-reconciliation-staging-review-${{ inputs.review_run_id }}-${{ inputs.review_run_attempt }}
+          path: .artifacts/music-runs/reviewed
+      - name: Install the exact checked-in command
+        run: |
+          npm ci --ignore-scripts
+          npm ci --prefix tunes --ignore-scripts
+      - name: Apply the reviewed staging checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$MUSIC_REVIEW_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$MUSIC_REVIEW_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
+          test -n "$MUSIC_RESUME_CHECKPOINT"
+          test -n "$MUSIC_APPROVAL_TOKEN"
+          report_directory="$(dirname "$MUSIC_CHECKPOINT_PATH")"
+          mkdir -p "$report_directory"
+          set +e
+          npm run --silent music:reconcile -- --mode live --apply --resume "$MUSIC_RESUME_CHECKPOINT" --approval-token "$MUSIC_APPROVAL_TOKEN" --format json --checkpoint "$MUSIC_CHECKPOINT_PATH" > "$report_directory/report.json"
+          status=$?
+          set -e
+          exit "$status"
+      - name: Upload bounded redacted apply evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: music-reconciliation-staging-apply-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/music-runs/workflow-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: error
+          retention-days: 30

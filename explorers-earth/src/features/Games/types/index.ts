@@ -19,7 +19,8 @@ export interface GameList {
 
 export interface RecommendedGame {
   documentId: string;
-  igdb_id: number;
+  igdb_id: number | null;
+  entity_id?: string;
   igdb_slug: string | null;
   title: string;
   cover_url: string | null;

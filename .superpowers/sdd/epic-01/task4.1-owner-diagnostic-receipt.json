@@ -1,0 +1,311 @@
+{
+  "version": 1,
+  "acceptance": false,
+  "binding": {
+    "acceptance": false,
+    "canonical": "1356efac05cb552d8c0a8e9065829674d63f55a0042d79a815bd48caff3c8f1c",
+    "overlay": "4ad483566dc7b1c707d9c38caab1b3fbf58ae7754e0ea67e977524d833a8c456",
+    "paths": [
+      "explorers-earth/src/features/Movies/api/moviesClient.ts"
+    ],
+    "ui": [
+      {
+        "sha256": "5f44c769b91f64e13043a26827caae7dec16d987c9726000ebf3aaa232d41b9b",
+        "path": "explorers-earth/src/features/Movies/components/dashboard/AddMoviePage.tsx"
+      },
+      {
+        "sha256": "34e48a39a0da2c84c6458fff0c943df390bcfea55d83f35e5dec12372934c586",
+        "path": "explorers-earth/src/features/Movies/components/dashboard/MovieListView.tsx"
+      },
+      {
+        "sha256": "d2d31efd1b8aa7e54111c12a2a57976f34caaad0fb2205fda0b879a6b18e527a",
+        "path": "explorers-earth/src/features/Movies/components/dashboard/MoviesHome.tsx"
+      },
+      {
+        "sha256": "5a511ad7743603bc02b1ac0148861c28e82a47416aab1905aedf01beddd8dc53",
+        "path": "explorers-earth/src/features/Movies/components/dashboard/TopPicksManager.tsx"
+      },
+      {
+        "sha256": "ed1831e76ac3dc9af0fa36951f211d2c220130d43a8846571a1f11ffa01c8f1d",
+        "path": "explorers-earth/src/features/Movies/components/public/PublicMovies.tsx"
+      },
+      {
+        "sha256": "ae28739b5597223a1cebd9afdfa2e9aa4424dbe982b96a306af435f2bd550d2c",
+        "path": "explorers-earth/src/features/Movies/components/public/PublicMovieList.tsx"
+      },
+      {
+        "sha256": "36fe6d276b243f594b4e31c9cb3aee5173b7eb9f9e32eadce279d27d0be50e4b",
+        "path": "explorers-earth/src/features/Movies/components/public/PublicMovieGenre.tsx"
+      },
+      {
+        "sha256": "4c7b6a1dc1e44863198a4e5aebec655911c78646d305661296556bf8aa5825e8",
+        "path": "explorers-earth/src/features/Movies/components/public/MovieDetailModal.tsx"
+      },
+      {
+        "sha256": "b046787d67a86e9d8969b9c8d18fee1ab61b8b7711fd238ba0aeafb2908bd161",
+        "path": "explorers-earth/src/features/Movies/components/public/MoviePosterCard.tsx"
+      },
+      {
+        "sha256": "a8df06ad89da7be231ac19bf6447ce459a67c93cbd75cc3699bb30247fa4d0c2",
+        "path": "explorers-earth/src/features/Movies/components/public/TopPicksHero.tsx"
+      },
+      {
+        "sha256": "d6df9dbb5b51ae5123d348127e7fae3a827b31c51890c42f46cbf003c0750f5d",
+        "path": "explorers-earth/src/features/Movies/components/public/TopPicksMobileHero.tsx"
+      },
+      {
+        "sha256": "e05790223c67fd2ee876697fb47c5a6228cd43ceeae2cda33461c528af6bad53",
+        "path": "explorers-earth/src/features/Movies/components/public/GenreBrowse.tsx"
+      },
+      {
+        "sha256": "dccd6a3f6409cedc498a4d867ba5a4aa78a4a6ba5f1a75a4a756b444a6a2e1e3",
+        "path": "explorers-earth/src/features/Movies/utils/movieHelpers.ts"
+      },
+      {
+        "sha256": "a645099a5aed351889125cfb4eb6fe2e4583d167517b7355cf1b3224098ee38f",
+        "path": "explorers-earth/src/features/Movies/hooks/useTMDBSearch.ts"
+      },
+      {
+        "sha256": "dfc6338e8e16694178eea03850239e40fcdbf852bf599a86faec4663d29f1b1e",
+        "path": "explorers-earth/src/features/Movies/api/query.ts"
+      },
+      {
+        "sha256": "721c5487c9c49f03ee193cf0cacda24b87c2267e67572a753f95fbea3b6fa6b6",
+        "path": "explorers-earth/src/features/Movies/api/mutation.ts"
+      },
+      {
+        "sha256": "ab6ed27839f5cf245ffd7d5d3692608a169cf5c4451f738ee48c70e03146754d",
+        "path": "explorers-earth/src/features/Movies/api/explorersAdapter.ts"
+      },
+      {
+        "sha256": "199b1970f89b2b8beab68d00914c421749044a4a27c7a53a78fd16071befa0b6",
+        "path": "explorers-earth/src/features/Movies/__tests__/useTMDBSearch.test.ts"
+      },
+      {
+        "sha256": "9b01bac50d9a5c276d9947f62ba01bc4f1ce0eadaf36cc455851968250b439f3",
+        "path": "explorers-earth/src/features/Movies/__tests__/movieHelpers.test.ts"
+      },
+      {
+        "sha256": "6780f898b853c7a60966bc957cc49ed0566b167a95c87369b6c5687e9ccdc669",
+        "path": "explorers-earth/src/features/Movies/__tests__/movieHelpers.extra.test.ts"
+      },
+      {
+        "sha256": "6d3a5ac5718c70da955b9869656c51c01308ff2a73084fda0b0647c7aa2adb34",
+        "path": "explorers-earth/src/features/Movies/components/dashboard/__tests__/movieListViewPublishPrompt.test.tsx"
+      },
+      {
+        "sha256": "3f4cfef03a0edfad9839060c181a6f4f20760b26544f21ed6600f2da5f7bfefb",
+        "path": "explorers-earth/src/features/Movies/components/dashboard/__tests__/createMovieListNavigation.test.tsx"
+      },
+      {
+        "sha256": "1ed5da80dfb9b84ac0a08aa2f371ee95fc93937447fa4ebbdd927682074e5a2c",
+        "path": "explorers-earth/src/services/tmdbService.ts"
+      },
+      {
+        "sha256": "c2eab8b46e79b59777cb667e867268b760fc0919760d2a9782ef64226235c049",
+        "path": "explorers-earth/src/services/__tests__/tmdbService.test.ts"
+      },
+      {
+        "sha256": "981552b167d89d19b2b03dea70ebfa8f75f943acf511364807cb94806596b555",
+        "path": "explorers-earth/src/services/__tests__/tmdbService.extra.test.ts"
+      },
+      {
+        "sha256": "dd1f31bfcf6ad353f9ce72ae86afa204e4281bf3426a829017eae7da83774fe4",
+        "path": "explorers-earth/src/pages/Home.tsx"
+      },
+      {
+        "sha256": "ed61301cf31671fc30d93a870f0d603fa0ded3b6ffd1c005017a1c2eb24d763a",
+        "path": "explorers-earth/src/pages/__tests__/Home.analytics.test.tsx"
+      },
+      {
+        "sha256": "b2c2a43a2bd621ecdea7f8db81f9b7a3e157228cfd4bd2ba2afe1d75f775965f",
+        "path": "explorers-earth/src/pages/__tests__/home-categories.integration.test.tsx"
+      }
+    ]
+  },
+  "exitCode": 0,
+  "records": [
+    {
+      "project": "movies-desktop",
+      "line": 22,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-desktop",
+      "line": 32,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-desktop",
+      "line": 36,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-desktop",
+      "line": 41,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-desktop",
+      "line": 45,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-desktop",
+      "line": 49,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-desktop",
+      "line": 53,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-desktop",
+      "line": 57,
+      "status": "passed",
+      "records": [
+        {
+          "phase": "initial",
+          "attempt": 0,
+          "code": "ABORTED",
+          "status": 409,
+          "aborted": true,
+          "abortReason": "signal",
+          "parseLocation": "category-response"
+        },
+        {
+          "phase": "initial",
+          "attempt": 0,
+          "code": "ABORTED",
+          "status": 409,
+          "aborted": true,
+          "abortReason": "signal",
+          "parseLocation": "category-response"
+        }
+      ]
+    },
+    {
+      "project": "movies-desktop",
+      "line": 61,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-desktop",
+      "line": 65,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-desktop",
+      "line": 69,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-desktop",
+      "line": 73,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-mobile",
+      "line": 22,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-mobile",
+      "line": 32,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-mobile",
+      "line": 36,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-mobile",
+      "line": 41,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-mobile",
+      "line": 45,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-mobile",
+      "line": 49,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-mobile",
+      "line": 53,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-mobile",
+      "line": 57,
+      "status": "passed",
+      "records": [
+        {
+          "phase": "initial",
+          "attempt": 0,
+          "code": "ABORTED",
+          "status": 409,
+          "aborted": true,
+          "abortReason": "signal",
+          "parseLocation": "category-response"
+        },
+        {
+          "phase": "initial",
+          "attempt": 0,
+          "code": "ABORTED",
+          "status": 409,
+          "aborted": true,
+          "abortReason": "signal",
+          "parseLocation": "category-response"
+        }
+      ]
+    },
+    {
+      "project": "movies-mobile",
+      "line": 61,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-mobile",
+      "line": 65,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-mobile",
+      "line": 69,
+      "status": "passed",
+      "records": []
+    },
+    {
+      "project": "movies-mobile",
+      "line": 73,
+      "status": "passed",
+      "records": []
+    }
+  ]
+}

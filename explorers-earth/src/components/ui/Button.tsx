@@ -1,4 +1,5 @@
 import { FC, memo, ReactNode, ButtonHTMLAttributes } from "react";
+import { usePublicCategoryThemeStyles } from "../../features/PublicHome/components/PublicCategoryThemeContext";
 
 // Inline spinner component for button loading states
 const ButtonSpinner: FC<{ size?: string }> = ({ size = "small" }) => {
@@ -80,6 +81,9 @@ const Button: FC<ButtonProps> = memo(
         isLoading = false,
         ...rest // 🔥 catch all other props (like data-tooltip-id)
     }) => {
+        const categoryStyles = usePublicCategoryThemeStyles();
+        const categoryVariant = categoryStyles && ['primary', 'secondary', 'black', 'tag', 'tagSelected', 'ghost', 'icon', 'whiteText', 'purpleText', 'dashAccent', 'menu'].includes(variant);
+        const categoryFilled = ['primary', 'tagSelected', 'black'].includes(variant);
         const inDashboard =
             typeof document !== "undefined" &&
             (document.querySelector(".white-theme") ||
@@ -125,7 +129,9 @@ const Button: FC<ButtonProps> = memo(
                 }}
                 className={`flex flex-row gap-2 items-center rounded-md focus:outline-none font-poppins ${(disabled || isLoading) ? "cursor-not-allowed opacity-50" : ""
                     } ${fullWidth ? "w-full" : ""}
-        ${effectiveVariant === "dashPrimary"
+        ${categoryVariant
+                        ? `${categoryFilled ? "bg-[var(--category-accent)] text-[var(--category-accent-ink)] hover:opacity-90" : "bg-[var(--category-panel)] text-[var(--category-text)] hover:bg-[var(--category-hover)] shadow-[inset_0_0_0_1px_var(--category-control-border)]"} ${variant === 'tagSelected' ? 'border-2 border-[var(--category-accent)] rounded-2xl' : variant === 'tag' ? 'rounded-2xl' : ''} ${['whiteText', 'purpleText', 'dashAccent', 'dashSecondary'].includes(effectiveVariant) ? 'border border-[var(--category-control-border)]' : ''} ${effectiveVariant === 'dashIcon' ? 'p-2' : variant === 'icon' || variant === 'menu' ? '' : 'px-4 py-2'} ${variant === 'menu' ? 'rounded-full' : ''} justify-center transition-colors duration-200 focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-[var(--category-focus)]`
+                        : effectiveVariant === "dashPrimary"
                         ? "dt-button-text bg-dashboard-accent text-white justify-center px-4 py-2 hover:brightness-110"
                         : effectiveVariant === "dashGhost"
                             ? "dt-button-text text-dashboard-accent hover:bg-dashboard-muted/40 px-4 py-2 justify-center"

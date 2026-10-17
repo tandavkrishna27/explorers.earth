@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "environment": "production",
+  "hostAlias": "prod-host",
+  "sshUser": "deploy",
+  "sshPort": 22,
+  "knownHostKeyRef": "PROD_KNOWN_HOST",
+  "architecture": "linux/amd64",
+  "dockerVersion": "29.2.1",
+  "composeVersion": "2.39.0",
+  "publicOrigin": "",
+  "internalPorts": {
+    "api": 5000,
+    "web": 80,
+    "postgres": 5432
+  },
+  "database": {
+    "name": "prod_db",
+    "volume": "prod_data",
+    "runtimeRole": "prod_app",
+    "migratorRole": "prod_migrator",
+    "runtimePasswordRef": "PROD_DB_PASSWORD_FILE",
+    "migratorPasswordRef": "PROD_MIGRATOR_PASSWORD_FILE"
+  },
+  "storage": {
+    "bucket": "replace-approved-bucket",
+    "region": "ap-south-1",
+    "prefix": "prod/",
+    "boundary": "application-shared-principal"
+  },
+  "google": {
+    "clientIdRef": "GOOGLE_CLIENT_ID",
+    "clientSecretRef": "GOOGLE_CLIENT_SECRET",
+    "callback": ""
+  },
+  "appSecretRef": "PROD_APP_SECRET",
+  "publicConfig": {
+    "origin": "",
+    "apiPath": "/api",
+    "socketPath": "/socket.io"
+  }
+}

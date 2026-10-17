@@ -1,3 +1,4 @@
+import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Grid, ChevronLeft, ChevronRight, Star } from "lucide-react";
@@ -12,6 +13,7 @@ interface TopGamesHeroProps {
 }
 
 const TopGamesHero = ({ games, onGameClick, showManageButton = false, onManageClick }: TopGamesHeroProps) => {
+  const categoryStyles = usePublicCategoryThemeStyles();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -49,12 +51,10 @@ const TopGamesHero = ({ games, onGameClick, showManageButton = false, onManageCl
 
   if (!games || games.length === 0) return null;
 
-  const activeGame = games[activeIndex];
+  const activeGame = games[activeIndex % games.length];
 
   // Backdrop logic: try first screenshot, then cover_url_large
-  const backdropUrl = (activeGame.screenshot_ids && activeGame.screenshot_ids.length > 0)
-    ? `https://images.igdb.com/igdb/image/upload/t_1080p/${activeGame.screenshot_ids[0]}.jpg`
-    : buildCoverUrl(activeGame.cover_url_large || activeGame.cover_url);
+  const backdropUrl = buildCoverUrl(activeGame.Media?.[0]?.url || activeGame.cover_url_large || activeGame.cover_url);
 
   const genres = activeGame.genres?.slice(0, 4) || [];
   const platforms = activeGame.platforms?.slice(0, 3) || [];
@@ -67,7 +67,7 @@ const TopGamesHero = ({ games, onGameClick, showManageButton = false, onManageCl
   };
 
   return (
-    <div className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden bg-black shadow-2xl group/hero mb-12">
+    <div data-public-category-artwork className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden bg-black shadow-2xl group/hero mb-12">
       {/* Background Presentation & Click Target */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -144,7 +144,7 @@ const TopGamesHero = ({ games, onGameClick, showManageButton = false, onManageCl
               {showManageButton ? (
                 <button 
                   onClick={(e) => { e.stopPropagation(); onManageClick?.(); }}
-                  className="flex items-center gap-2 bg-dashboard-accent hover:opacity-90 text-white font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105"
+                  className={`flex items-center gap-2 ${categoryStyles ? 'bg-[var(--category-accent)]' : 'bg-dashboard-accent'} hover:opacity-90 ${categoryStyles ? 'text-[color:var(--category-accent-ink)]' : 'text-white'} font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105`}
                 >
                   <Star size={20} fill="currentColor" />
                   Manage Top Picks
@@ -152,7 +152,7 @@ const TopGamesHero = ({ games, onGameClick, showManageButton = false, onManageCl
               ) : (
                 <button 
                   onClick={() => onGameClick(activeGame)}
-                  className="flex items-center gap-2 bg-dashboard-accent hover:opacity-90 text-white font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105"
+                  className={`flex items-center gap-2 ${categoryStyles ? 'bg-[var(--category-accent)]' : 'bg-dashboard-accent'} hover:opacity-90 ${categoryStyles ? 'text-[color:var(--category-accent-ink)]' : 'text-white'} font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105`}
                 >
                   <Grid size={20} />
                   See Details

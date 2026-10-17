@@ -1,0 +1,105 @@
+# Synthetic local reference graph; not hosted deployment authority.
+# Generate only through the reviewed runtime plan; supplied image digests below are placeholders.
+{
+  "http": {
+    "routers": {
+      "api": {
+        "rule": "Host(`qa.platform.invalid`) && (Path(`/api`) || PathPrefix(`/api/`))",
+        "service": "api",
+        "priority": 100,
+        "entryPoints": [
+          "websecure"
+        ],
+        "tls": {},
+        "middlewares": [
+          "qa-policy",
+          "api-no-cache"
+        ]
+      },
+      "socket": {
+        "rule": "Host(`qa.platform.invalid`) && (Path(`/socket.io`) || PathPrefix(`/socket.io/`))",
+        "service": "api",
+        "priority": 100,
+        "entryPoints": [
+          "websecure"
+        ],
+        "tls": {},
+        "middlewares": [
+          "qa-policy",
+          "api-no-cache"
+        ]
+      },
+      "legacy": {
+        "rule": "Host(`qa.platform.invalid`) && (Path(`/graphql`) || PathPrefix(`/graphql/`))",
+        "service": "api",
+        "priority": 100,
+        "entryPoints": [
+          "websecure"
+        ],
+        "tls": {},
+        "middlewares": [
+          "qa-policy",
+          "api-no-cache"
+        ]
+      },
+      "web": {
+        "rule": "Host(`qa.platform.invalid`)",
+        "service": "web",
+        "priority": 1,
+        "entryPoints": [
+          "websecure"
+        ],
+        "tls": {},
+        "middlewares": [
+          "qa-policy"
+        ]
+      }
+    },
+    "services": {
+      "api": {
+        "loadBalancer": {
+          "passHostHeader": true,
+          "servers": [
+            {
+              "url": "http://api:5000"
+            }
+          ]
+        }
+      },
+      "web": {
+        "loadBalancer": {
+          "passHostHeader": true,
+          "servers": [
+            {
+              "url": "http://web:80"
+            }
+          ]
+        }
+      }
+    },
+    "middlewares": {
+      "qa-policy": {
+        "headers": {
+          "customResponseHeaders": {
+            "X-Robots-Tag": "noindex,nofollow"
+          }
+        }
+      },
+      "api-no-cache": {
+        "headers": {
+          "customResponseHeaders": {
+            "Cache-Control": "no-store"
+          }
+        }
+      }
+    }
+  },
+  "tls": {
+    "certificates": [
+      {
+        "certFile": "/tls/cert.pem",
+        "keyFile": "/tls/key.pem"
+      }
+    ]
+  }
+}

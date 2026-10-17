@@ -1,13 +1,77 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
+  appendAttributionParamsToPath,
+  canonicalizePublicPathname,
   appendUtmParams,
   extractUtmParams,
   extractUtmParamsFromCurrentUrl,
+  getSessionAttributionReferrerOrigin,
+  getSessionAttributionUtmParams,
   createUtmParams,
   validateUtmParams,
   sanitizeUtmParams,
   UTMParameters
 } from '../urlHelpers';
+
+describe('appendAttributionParamsToPath', () => {
+  it('preserves only bounded UTM attribution through friendly Music navigation', () => {
+    expect(appendAttributionParamsToPath('/alice/music', '?utm_source=newsletter&utm_medium=email&access=secret&query=raw')).toBe('/alice/music?utm_source=newsletter&utm_medium=email');
+  });
+
+  it('uses the first non-empty sanitized duplicate for each of exactly five UTM keys', () => {
+    expect(appendAttributionParamsToPath(
+      '/alice/books',
+      '?utm_source=%3C%22%22%3E&utm_source=%20qr%20&utm_source=later&utm_medium=email&utm_campaign=launch&utm_term=maps&utm_content=hero&access=secret&token=credential&unknown=value#private',
+    )).toBe('/alice/books?utm_source=qr&utm_medium=email&utm_campaign=launch&utm_term=maps&utm_content=hero');
+  });
+});
+
+describe('canonicalizePublicPathname', () => {
+  it('replaces the requested username, lowercases only known static segments, and preserves encoded slugs', () => {
+    expect(canonicalizePublicPathname(
+      '//Requested//BOOKS//SUBJECT//Sci%2DFi%20Classics//',
+      'ReturnedUser',
+    )).toBe('/returneduser/books/subject/Sci%2DFi%20Classics');
+  });
+
+  it.each([
+    ['guide detail MAP slug', '/Requested/GUIDES/MAP/', '/returned/guides/MAP'],
+    ['guide detail encoded MAP slug', '/Requested/GUIDES/%4D%41%50/', '/returned/guides/%4D%41%50'],
+    ['guide detail encoded Sector slug', '/Requested/GUIDES/%53ector/', '/returned/guides/%53ector'],
+    ['book list Music slug', '/Requested/BOOKS/Music/', '/returned/books/Music'],
+    ['book list encoded Music slug', '/Requested/BOOKS/%4Dusic/', '/returned/books/%4Dusic'],
+    ['movie genre Guides slug', '/Requested/MOVIES/GENRE/Guides/', '/returned/movies/genre/Guides'],
+    ['movie genre encoded Guides slug', '/Requested/MOVIES/GENRE/%47uides/', '/returned/movies/genre/%47uides'],
+    ['book subject Genre slug', '/Requested/BOOKS/SUBJECT/Genre/', '/returned/books/subject/Genre'],
+    ['book subject encoded Genre slug', '/Requested/BOOKS/SUBJECT/%47enre/', '/returned/books/subject/%47enre'],
+    ['people sector Subject slug', '/Requested/PEOPLE/SECTOR/Subject/', '/returned/people/sector/Subject'],
+    ['people sector encoded Subject slug', '/Requested/PEOPLE/SECTOR/%53ubject/', '/returned/people/sector/%53ubject'],
+    ['place MAP slug before map suffix', '/Requested/PLACES/MAP/MAP/', '/returned/places/MAP/map'],
+    ['place Guides slug before placesmap suffix', '/Requested/PLACES/Guides/PLACESMAP/', '/returned/places/Guides/placesmap'],
+    ['encoded place Sector slug before map suffix', '//Requested//PLACES//%53ector//MAP//', '/returned/places/%53ector/map'],
+    ['list slug equal to another nested prefix', '/Requested/GAMES/Sector/', '/returned/games/Sector'],
+  ])('preserves dynamic bytes for the %s while lowercasing only route syntax', (_name, pathname, expected) => {
+    expect(canonicalizePublicPathname(pathname, 'Returned')).toBe(expected);
+  });
+
+  it.each([
+    ['top-level category', '/Requested/%42OOKS/%4Dusic/', '/returned/books/%4Dusic'],
+    ['subject prefix', '/Requested/%42OOKS/%53UBJECT/%47enre/', '/returned/books/subject/%47enre'],
+    ['genre prefix', '/Requested/%4DOVIES/%47ENRE/%47uides/', '/returned/movies/genre/%47uides'],
+    ['sector prefix', '/Requested/%50EOPLE/%53ECTOR/%53ubject/', '/returned/people/sector/%53ubject'],
+    ['direct map suffix', '/Requested/%50LACES/%4DAP/', '/returned/places/map'],
+    ['place map suffix', '/Requested/%50LACES/%53ector/%4DAP/', '/returned/places/%53ector/map'],
+    ['place placesmap suffix', '/Requested/%50LACES/%47uides/%50LACESMAP/', '/returned/places/%47uides/placesmap'],
+  ])('decodes only the encoded static %s and preserves adjacent dynamic bytes', (_name, pathname, expected) => {
+    expect(canonicalizePublicPathname(pathname, 'Returned')).toBe(expected);
+  });
+
+  it('preserves malformed percent encoding instead of guessing that it is static syntax', () => {
+    expect(canonicalizePublicPathname('/Requested/%BO%4FKS/%53ubject/', 'Returned')).toBe(
+      '/returned/%BO%4FKS/%53ubject',
+    );
+  });
+});
 
 describe('urlHelpers', () => {
   afterEach(() => {
@@ -16,6 +80,19 @@ describe('urlHelpers', () => {
 
   // ── appendUtmParams ────────────────────────────────────────────────────────
   describe('appendUtmParams', () => {
+    it('appends all five standard UTM fields and omits empty values', () => {
+      const result = appendUtmParams('https://example.com/page', {
+        utm_source: 'newsletter',
+        utm_medium: 'email',
+        utm_campaign: 'launch week',
+        utm_term: 'travel creators',
+        utm_content: 'hero button',
+      });
+
+      expect(result).toBe(
+        'https://example.com/page?utm_source=newsletter&utm_medium=email&utm_campaign=launch+week&utm_term=travel+creators&utm_content=hero+button',
+      );
+    });
     it('appends UTM parameters to a base URL', () => {
       const url = 'https://example.com/page';
       const params: UTMParameters = { utm_source: 'twitter', utm_medium: 'social' };
@@ -58,6 +135,27 @@ describe('urlHelpers', () => {
 
   // ── extractUtmParams ───────────────────────────────────────────────────────
   describe('extractUtmParams', () => {
+    it('extracts all five standard fields, decodes values, and keeps the first duplicate', () => {
+      const result = extractUtmParams(
+        'https://example.com/?utm_source=first&utm_source=second&utm_medium=social&utm_campaign=summer%20launch&utm_term=city%2Bguide&utm_content=top%20card&unrelated=ignored',
+      );
+
+      expect(result).toEqual({
+        utm_source: 'first',
+        utm_medium: 'social',
+        utm_campaign: 'summer launch',
+        utm_term: 'city+guide',
+        utm_content: 'top card',
+      });
+    });
+
+    it('omits empty canonical values and ignores differently cased keys', () => {
+      const result = extractUtmParams(
+        'https://example.com/?utm_source=&utm_medium=email&UTM_CAMPAIGN=wrong',
+      );
+
+      expect(result).toEqual({ utm_medium: 'email' });
+    });
     it('extracts source and medium from URL', () => {
       const result = extractUtmParams('https://example.com/?utm_source=test&utm_medium=email');
       expect(result).toEqual({ utm_source: 'test', utm_medium: 'email' });
@@ -93,6 +191,171 @@ describe('urlHelpers', () => {
       });
       const result = extractUtmParamsFromCurrentUrl();
       expect(result).toEqual({ utm_source: 'google', utm_medium: 'cpc' });
+    });
+  });
+
+  describe('getSessionAttributionUtmParams', () => {
+    const makeStorage = () => {
+      const values = new Map<string, string>();
+      return {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => values.delete(key),
+      };
+    };
+
+    it('keeps first-touch campaign data across internal URLs without query parameters', () => {
+      const storage = makeStorage();
+      const first = getSessionAttributionUtmParams({
+        url: 'https://explorers.earth/tk2727?utm_source=instagram&utm_medium=social&utm_campaign=launch',
+        storage,
+        now: () => 1_000,
+      });
+      const internal = getSessionAttributionUtmParams({
+        url: 'https://explorers.earth/tk2727/places',
+        storage,
+        now: () => 2_000,
+      });
+
+      expect(first).toEqual({
+        utm_source: 'instagram',
+        utm_medium: 'social',
+        utm_campaign: 'launch',
+      });
+      expect(internal).toEqual(first);
+    });
+
+    it('preserves the original campaign when a later internal URL has new UTM values', () => {
+      const storage = makeStorage();
+      const first = getSessionAttributionUtmParams({
+        url: 'https://explorers.earth/tk2727?utm_source=newsletter&utm_medium=email',
+        storage,
+        now: () => 3_000,
+      });
+      const later = getSessionAttributionUtmParams({
+        url: 'https://explorers.earth/tk2727/books?utm_source=paid&utm_medium=cpc',
+        storage,
+        now: () => 4_000,
+      });
+
+      expect(later).toEqual(first);
+    });
+
+    it('expires stale attribution and safely replaces malformed storage', () => {
+      const storage = makeStorage();
+      storage.setItem('explorers-first-touch-utm', '{bad json');
+      expect(
+        getSessionAttributionUtmParams({
+          url: 'https://explorers.earth/tk2727',
+          storage,
+          now: () => 5_000,
+        }),
+      ).toEqual({});
+
+      getSessionAttributionUtmParams({
+        url: 'https://explorers.earth/tk2727?utm_source=old&utm_medium=social',
+        storage,
+        now: () => 10_000,
+      });
+      expect(
+        getSessionAttributionUtmParams({
+          url: 'https://explorers.earth/tk2727/games',
+          storage,
+          now: () => 10_000 + 30 * 60 * 1000 + 1,
+        }),
+      ).toEqual({});
+    });
+
+    it.each(['getItem', 'removeItem', 'setItem'] as const)(
+      'keeps current attribution when session storage %s throws',
+      (operation) => {
+        const storage = makeStorage();
+        if (operation === 'removeItem') {
+          storage.setItem('explorers-first-touch-utm', '{bad json');
+        }
+        storage[operation] = () => {
+          throw new DOMException('Storage unavailable', 'SecurityError');
+        };
+
+        expect(
+          getSessionAttributionUtmParams({
+            url: 'https://explorers.earth/tk2727?utm_source=privacy-test&utm_medium=social',
+            storage,
+            now: () => 20_000,
+          }),
+        ).toEqual({
+          utm_source: 'privacy-test',
+          utm_medium: 'social',
+        });
+      },
+    );
+  });
+
+  describe('getSessionAttributionReferrerOrigin', () => {
+    const makeStorage = () => {
+      const values = new Map<string, string>();
+      return {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => values.delete(key),
+      };
+    };
+
+    it('captures only the external origin and preserves it across internal navigation', () => {
+      const storage = makeStorage();
+      const first = getSessionAttributionReferrerOrigin({
+        url: 'https://explorers.earth/tk2727',
+        referrer: 'https://www.google.com/search?q=private+query',
+        storage,
+        now: () => 1_000,
+      });
+      const internal = getSessionAttributionReferrerOrigin({
+        url: 'https://explorers.earth/tk2727/books',
+        referrer: 'https://explorers.earth/tk2727',
+        storage,
+        now: () => 2_000,
+      });
+
+      expect(first).toBe('https://www.google.com');
+      expect(internal).toBe(first);
+    });
+
+    it('classifies same-origin, malformed, and unsafe referrers as direct', () => {
+      for (const referrer of [
+        'https://explorers.earth/another-page',
+        'javascript:alert(1)',
+        'not a url',
+        '',
+      ]) {
+        expect(
+          getSessionAttributionReferrerOrigin({
+            url: 'https://explorers.earth/tk2727',
+            referrer,
+            storage: makeStorage(),
+            now: () => 3_000,
+          }),
+        ).toBeUndefined();
+      }
+    });
+
+    it('locks a direct first touch for the attribution window', () => {
+      const storage = makeStorage();
+      expect(
+        getSessionAttributionReferrerOrigin({
+          url: 'https://explorers.earth/tk2727',
+          referrer: '',
+          storage,
+          now: () => 4_000,
+        }),
+      ).toBeUndefined();
+      expect(
+        getSessionAttributionReferrerOrigin({
+          url: 'https://explorers.earth/tk2727/books',
+          referrer: 'https://later.example/path',
+          storage,
+          now: () => 5_000,
+        }),
+      ).toBeUndefined();
     });
   });
 

@@ -1,0 +1,3211 @@
+{
+  "rows": [
+    {
+      "file": "tunes/server/app.ts",
+      "codeCount": 3,
+      "commentCount": 0,
+      "kinds": [
+        "IMPORT",
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 13,
+          "text": "import { StrapiIdentityAbsenceProof } from \"./services/strapiIdentityAbsenceProof\";"
+        },
+        {
+          "line": 178,
+          "text": "const identityAbsenceProof = new StrapiIdentityAbsenceProof({"
+        },
+        {
+          "line": 179,
+          "text": "baseUrl: musicIdentityConfig.strapiOrigin,"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/application/accountLifecycleMaintenance.ts",
+      "codeCount": 1,
+      "commentCount": 1,
+      "kinds": [
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 37,
+          "text": "AND u.strapi_user_document_id IS NULL AND u.strapi_account_document_id IS NULL"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/application/guides.ts",
+      "codeCount": 0,
+      "commentCount": 1,
+      "kinds": [],
+      "verdict": "COMMENT_ONLY",
+      "code": []
+    },
+    {
+      "file": "tunes/server/auth.ts",
+      "codeCount": 2,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 15,
+          "text": "strapiUserDocumentId: string;"
+        },
+        {
+          "line": 16,
+          "text": "strapiAccountDocumentId: string;"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/commands/reconcileMusicIdentities.ts",
+      "codeCount": 2,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 8,
+          "text": "STRAPI_RECONCILIATION_SCHEMA_VERSION,"
+        },
+        {
+          "line": 25,
+          "text": "schemaVersion: z.literal(STRAPI_RECONCILIATION_SCHEMA_VERSION),"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/config/local-public-profile-gateway.ts",
+      "codeCount": 3,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 4,
+          "text": "const STRAPI_ORIGIN = \"https://api.localqr.earth\";"
+        },
+        {
+          "line": 26,
+          "text": "if (input.host !== LOOPBACK_HOST || input.origin !== STRAPI_ORIGIN) fail();"
+        },
+        {
+          "line": 37,
+          "text": "origin: STRAPI_ORIGIN,"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/config/music-environment.ts",
+      "codeCount": 24,
+      "commentCount": 0,
+      "kinds": [
+        "EXPORT_DECL",
+        "IDENTIFIER",
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 4,
+          "text": "export const DEFAULT_MUSIC_FIXTURE_STRAPI_HOST_PORT = 51_337;"
+        },
+        {
+          "line": 7,
+          "text": "export function parseMusicFixtureStrapiHostPort(value: string | number | undefined): number {"
+        },
+        {
+          "line": 8,
+          "text": "const text = value === undefined ? String(DEFAULT_MUSIC_FIXTURE_STRAPI_HOST_PORT) : String(value);"
+        },
+        {
+          "line": 9,
+          "text": "if (!/^[1-9]\\d*$/.test(text)) throw new Error(\"MUSIC_STRAPI_HOST_PORT must be an explicit integer\");"
+        },
+        {
+          "line": 12,
+          "text": "throw new Error(\"MUSIC_STRAPI_HOST_PORT must be a distinct unprivileged fixture port\");"
+        },
+        {
+          "line": 17,
+          "text": "export function resolveMusicFixtureStrapiUrl(hostPort?: string | number): string {"
+        },
+        {
+          "line": 18,
+          "text": "return `http://127.0.0.1:${parseMusicFixtureStrapiHostPort(hostPort)}`;"
+        },
+        {
+          "line": 21,
+          "text": "export function validateMusicFixtureStrapiUrl(value: string): string {"
+        },
+        {
+          "line": 24,
+          "text": "catch { throw new Error(\"STRAPI_FIXTURE_URL must target an explicit loopback Strapi fixture port\"); }"
+        },
+        {
+          "line": 25,
+          "text": "if (!parsed.port) throw new Error(\"STRAPI_FIXTURE_URL must target an explicit loopback Strapi fixture port\");"
+        },
+        {
+          "line": 26,
+          "text": "const canonical = resolveMusicFixtureStrapiUrl(parsed.port);"
+        },
+        {
+          "line": 30,
+          "text": "throw new Error(\"STRAPI_FIXTURE_URL must target an explicit loopback Strapi fixture port\");"
+        },
+        {
+          "line": 40,
+          "text": "const fixtureStrapiHostPort = z.string().default(String(DEFAULT_MUSIC_FIXTURE_STRAPI_HOST_PORT)).transform((value, context) => {"
+        },
+        {
+          "line": 41,
+          "text": "try { return parseMusicFixtureStrapiHostPort(value); }"
+        },
+        {
+          "line": 51,
+          "text": "MUSIC_STRAPI_HOST_PORT: fixtureStrapiHostPort,"
+        },
+        {
+          "line": 52,
+          "text": "STRAPI_FIXTURE_URL: z.string().min(1).max(128),"
+        },
+        {
+          "line": 91,
+          "text": "MUSIC_STRAPI_HOST_PORT: number;"
+        },
+        {
+          "line": 92,
+          "text": "STRAPI_FIXTURE_URL: string;"
+        },
+        {
+          "line": 95,
+          "text": "const canonical = validateMusicFixtureStrapiUrl(environment.STRAPI_FIXTURE_URL);"
+        },
+        {
+          "line": 96,
+          "text": "if (canonical !== resolveMusicFixtureStrapiUrl(environment.MUSIC_STRAPI_HOST_PORT)) {"
+        },
+        {
+          "line": 97,
+          "text": "throw new Error(\"STRAPI_FIXTURE_URL and MUSIC_STRAPI_HOST_PORT must identify the same loopback fixture\");"
+        },
+        {
+          "line": 102,
+          "text": "path: [\"STRAPI_FIXTURE_URL\"],"
+        },
+        {
+          "line": 142,
+          "text": "MUSIC_STRAPI_HOST_PORT: String(environment.MUSIC_STRAPI_HOST_PORT),"
+        },
+        {
+          "line": 143,
+          "text": "STRAPI_FIXTURE_URL: environment.STRAPI_FIXTURE_URL,"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/config/music-identity-config.ts",
+      "codeCount": 34,
+      "commentCount": 2,
+      "kinds": [
+        "IDENTIFIER",
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 33,
+          "text": "strapiOrigin: string;"
+        },
+        {
+          "line": 62,
+          "text": "strapiOrigin: string;"
+        },
+        {
+          "line": 123,
+          "text": "const url = parseOrigin(environment.STRAPI_URL, \"STRAPI_URL\");"
+        },
+        {
+          "line": 206,
+          "text": "environment.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE,"
+        },
+        {
+          "line": 207,
+          "text": "environment.STRAPI_ACCESS_TOKEN_FILE,"
+        },
+        {
+          "line": 208,
+          "text": "environment.STRAPI_RECONCILIATION_TOKEN_FILE,"
+        },
+        {
+          "line": 286,
+          "text": "environment.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE,"
+        },
+        {
+          "line": 287,
+          "text": "environment.STRAPI_ACCESS_TOKEN_FILE,"
+        },
+        {
+          "line": 288,
+          "text": "environment.STRAPI_RECONCILIATION_TOKEN_FILE,"
+        },
+        {
+          "line": 395,
+          "text": "environment.STRAPI_ACCESS_TOKEN,"
+        },
+        {
+          "line": 396,
+          "text": "environment.STRAPI_RECONCILIATION_TOKEN,"
+        },
+        {
+          "line": 401,
+          "text": "environment.STRAPI_JWT_SECRET,"
+        },
+        {
+          "line": 430,
+          "text": "const url = parseOrigin(environment.STRAPI_URL, \"STRAPI_URL\");"
+        },
+        {
+          "line": 449,
+          "text": "const fixtureOrigin = parseOrigin(environment.MUSIC_FIXTURE_STRAPI_ORIGIN, \"MUSIC_FIXTURE_STRAPI_ORIGIN\");"
+        },
+        {
+          "line": 450,
+          "text": "if (url.origin !== fixtureOrigin.origin) throw new Error(\"STRAPI_URL must equal the exact fixture origin\");"
+        },
+        {
+          "line": 452,
+          "text": "if (url.protocol !== \"https:\") throw new Error(\"live STRAPI_URL must be an HTTPS origin\");"
+        },
+        {
+          "line": 453,
+          "text": "const allowed = parseAllowedOrigins(environment.MUSIC_STRAPI_ALLOWED_ORIGINS);"
+        },
+        {
+          "line": 454,
+          "text": "if (!allowed.includes(url.origin)) throw new Error(\"STRAPI_URL origin is not allowlisted\");"
+        },
+        {
+          "line": 459,
+          "text": "throw new Error(\"live STRAPI_URL must resolve only to public addresses\");"
+        },
+        {
+          "line": 464,
+          "text": "strapiOrigin: url.origin,"
+        },
+        {
+          "line": 477,
+          "text": "if (environment.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE) {"
+        },
+        {
+          "line": 478,
+          "text": "throw new Error(\"STRAPI_LIFECYCLE_PROOF_TOKEN must use the deterministic fixture credential\");"
+        },
+        {
+          "line": 480,
+          "text": "const fixtureToken = environment.STRAPI_LIFECYCLE_PROOF_TOKEN ?? environment.STRAPI_ACCESS_TOKEN;"
+        },
+        {
+          "line": 481,
+          "text": "const projectedFixtureToken = environment.MUSIC_E2E_STRAPI_TOKEN ?? \"fixture-read-only-token\";"
+        },
+        {
+          "line": 483,
+          "text": "throw new Error(\"STRAPI_LIFECYCLE_PROOF_TOKEN must equal the verified read-only fixture credential\");"
+        },
+        {
+          "line": 488,
+          "text": "environment.STRAPI_LIFECYCLE_PROOF_TOKEN,"
+        },
+        {
+          "line": 489,
+          "text": "environment.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE,"
+        },
+        {
+          "line": 490,
+          "text": "\"STRAPI_LIFECYCLE_PROOF_TOKEN\","
+        },
+        {
+          "line": 495,
+          "text": "throw new Error(\"STRAPI_LIFECYCLE_PROOF_TOKEN is invalid\");"
+        },
+        {
+          "line": 497,
+          "text": "if (token === environment.STRAPI_ACCESS_TOKEN) {"
+        },
+        {
+          "line": 498,
+          "text": "throw new Error(\"STRAPI_LIFECYCLE_PROOF_TOKEN must be dedicated and separate from STRAPI_ACCESS_TOKEN\");"
+        },
+        {
+          "line": 604,
+          "text": "if (!value) throw new Error(\"MUSIC_STRAPI_ALLOWED_ORIGINS is required\");"
+        },
+        {
+          "line": 605,
+          "text": "const origins = value.split(\",\").map((item) => parseOrigin(item.trim(), \"MUSIC_STRAPI_ALLOWED_ORIGINS\"));"
+        },
+        {
+          "line": 607,
+          "text": "throw new Error(\"MUSIC_STRAPI_ALLOWED_ORIGINS must contain only HTTPS origins\");"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/config/music-local-profile.ts",
+      "codeCount": 10,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER",
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 13,
+          "text": "strapiOrigin: \"https://api.localqr.earth\","
+        },
+        {
+          "line": 155,
+          "text": "\"STRAPI_LIFECYCLE_PROOF_TOKEN_FILE\", \"MUSIC_COHORT_ENABLED\", \"MUSIC_COHORT_USER_DOCUMENT_IDS\","
+        },
+        {
+          "line": 159,
+          "text": "if (/^(?:MUSIC_|STRAPI_|DATABASE_|PG|EXPLORERS_ANALYTICS_|COOKIE_SECRET|SESSION_SECRET)/i.test(name)"
+        },
+        {
+          "line": 160,
+          "text": "|| /(?:STRAPI|ANALYTICS)/i.test(name)) fail(\"environment_authority\");"
+        },
+        {
+          "line": 166,
+          "text": "if (env.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE !== undefined) {"
+        },
+        {
+          "line": 167,
+          "text": "const proofFile = absolutePath(env.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE);"
+        },
+        {
+          "line": 207,
+          "text": "STRAPI_URL: LOCAL_MUSIC_TARGET.strapiOrigin,"
+        },
+        {
+          "line": 208,
+          "text": "MUSIC_STRAPI_ALLOWED_ORIGINS: LOCAL_MUSIC_TARGET.strapiOrigin,"
+        },
+        {
+          "line": 212,
+          "text": "// Hosted development Strapi includes database work before response headers;"
+        },
+        {
+          "line": 242,
+          "text": "environment.STRAPI_LIFECYCLE_PROOF_TOKEN_FILE = validated.lifecycleProofFile;"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/config/music-reconciliation-config.ts",
+      "codeCount": 11,
+      "commentCount": 0,
+      "kinds": [
+        "IMPORT",
+        "STRING_LITERAL",
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 2,
+          "text": "import { resolveMusicFixtureStrapiUrl, validateMusicFixtureStrapiUrl } from \"./music-environment\";"
+        },
+        {
+          "line": 108,
+          "text": "const sourceUrl = validateMusicFixtureStrapiUrl(requiredString(input, \"STRAPI_FIXTURE_URL\"));"
+        },
+        {
+          "line": 109,
+          "text": "if (sourceUrl !== resolveMusicFixtureStrapiUrl(input.MUSIC_STRAPI_HOST_PORT as string | undefined)) {"
+        },
+        {
+          "line": 112,
+          "text": "const serviceToken = requiredString(input, \"STRAPI_RECONCILIATION_TOKEN\");"
+        },
+        {
+          "line": 117,
+          "text": "const sourceUrl = requiredString(input, \"STRAPI_URL\");"
+        },
+        {
+          "line": 119,
+          "text": "if (parsed.protocol !== \"https:\" || parsed.username || parsed.password) throw new Error(\"Live reconciliation requires a credential-free HTTPS Strapi URL\");"
+        },
+        {
+          "line": 120,
+          "text": "const serviceTokenFile = requiredString(input, \"STRAPI_RECONCILIATION_TOKEN_FILE\");"
+        },
+        {
+          "line": 121,
+          "text": "const lifecycleProofTokenFile = requiredString(input, \"STRAPI_LIFECYCLE_PROOF_TOKEN_FILE\");"
+        },
+        {
+          "line": 122,
+          "text": "const accessTokenFile = requiredString(input, \"STRAPI_ACCESS_TOKEN_FILE\");"
+        },
+        {
+          "line": 123,
+          "text": "requiredString(input, \"STRAPI_ACCESS_TOKEN\");"
+        },
+        {
+          "line": 124,
+          "text": "if (input.STRAPI_RECONCILIATION_TOKEN !== undefined && input.STRAPI_RECONCILIATION_TOKEN !== \"\") {"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/config/public-profile-gateway-config.ts",
+      "codeCount": 2,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER",
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 13,
+          "text": "const token = environment.STRAPI_PUBLIC_PROFILE_READ_TOKEN?.trim();"
+        },
+        {
+          "line": 15,
+          "text": "throw new Error(\"STRAPI_PUBLIC_PROFILE_READ_TOKEN is required for the public profile gateway\");"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/deployment/music-health.ts",
+      "codeCount": 3,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 57,
+          "text": "STRAPI_ACCESS_TOKEN: env.STRAPI_ACCESS_TOKEN,"
+        },
+        {
+          "line": 58,
+          "text": "STRAPI_JWT_SECRET: env.STRAPI_JWT_SECRET,"
+        },
+        {
+          "line": 60,
+          "text": "upstreamUrls: { STRAPI_URL: env.STRAPI_URL },"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/jwt-auth-middleware.ts",
+      "codeCount": 4,
+      "commentCount": 1,
+      "kinds": [
+        "IMPORT",
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 2,
+          "text": "import { requestIdFor, sendContainmentError, verifyStrapiToken } from \"./security-containment\";"
+        },
+        {
+          "line": 4,
+          "text": "type ContainmentRequest = Request & { jwtAuthenticated?: boolean; strapiUserId?: number };"
+        },
+        {
+          "line": 20,
+          "text": "const payload = verifyStrapiToken(match[1]);"
+        },
+        {
+          "line": 26,
+          "text": "request.strapiUserId = payload.id;"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/middleware/musicPrincipal.ts",
+      "codeCount": 3,
+      "commentCount": 3,
+      "kinds": [
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 133,
+          "text": "if (!identity || state.tombstoned || identity.strapiUserDocumentId !== claims.sub) {"
+        },
+        {
+          "line": 147,
+          "text": "subject: identity.strapiUserDocumentId,"
+        },
+        {
+          "line": 148,
+          "text": "accountDocumentId: identity.strapiAccountDocumentId,"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/music/accountMusicRepository.ts",
+      "codeCount": 1,
+      "commentCount": 4,
+      "kinds": [
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 82,
+          "text": "strapi_user_document_id,strapi_account_document_id,guest_capability_hash)"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/policies/musicRetirementPolicy.ts",
+      "codeCount": 3,
+      "commentCount": 0,
+      "kinds": [
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 14,
+          "text": "{ family: \"graphql-service-proxy\", path: \"/api/strapi/graphql\", match: \"exact\", classification: \"tombstone\" },"
+        },
+        {
+          "line": 15,
+          "text": "{ family: \"graphql-service-proxy\", path: \"/api/strapi/config\", match: \"exact\", classification: \"tombstone\" },"
+        },
+        {
+          "line": 16,
+          "text": "{ family: \"graphql-service-proxy\", path: \"/api/debug/strapi\", match: \"exact\", classification: \"tombstone\" },"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/policies/musicSurfacePolicy.ts",
+      "codeCount": 5,
+      "commentCount": 1,
+      "kinds": [
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 49,
+          "text": "| \"strapi-identity\""
+        },
+        {
+          "line": 128,
+          "text": "if(route.method==='GET')return 'strapi-identity'; // Historical GET only, until Epic7.2."
+        },
+        {
+          "line": 213,
+          "text": "if (route.path === \"/api/music/identity/ensure\" || route.path.startsWith(\"/api/music/identity/lifecycle/\")) return \"strapi-identity\";"
+        },
+        {
+          "line": 226,
+          "text": "if (route.path === \"/graphql\" || route.path === \"/api/strapi/graphql\""
+        },
+        {
+          "line": 227,
+          "text": "|| route.path === \"/api/strapi/config\" || route.path === \"/api/debug/strapi\""
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/publicProfile/publicGuidesProjection.ts",
+      "codeCount": 0,
+      "commentCount": 2,
+      "kinds": [],
+      "verdict": "COMMENT_ONLY",
+      "code": []
+    },
+    {
+      "file": "tunes/server/publicProfile/publicPlacesProjection.ts",
+      "codeCount": 0,
+      "commentCount": 1,
+      "kinds": [],
+      "verdict": "COMMENT_ONLY",
+      "code": []
+    },
+    {
+      "file": "tunes/server/publicProfile/publicProfileContract.ts",
+      "codeCount": 0,
+      "commentCount": 1,
+      "kinds": [],
+      "verdict": "COMMENT_ONLY",
+      "code": []
+    },
+    {
+      "file": "tunes/server/publicProfile/strapiPublicProfileGateway.ts",
+      "codeCount": 3,
+      "commentCount": 1,
+      "kinds": [
+        "TYPE_ONLY",
+        "EXPORT_DECL",
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 8,
+          "text": "type StrapiGraphqlResponse<T> = {"
+        },
+        {
+          "line": 109,
+          "text": "export class StrapiPublicProfileGateway {"
+        },
+        {
+          "line": 125,
+          "text": "const body = await response.json() as StrapiGraphqlResponse<T>;"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/repositories/explorersAnalyticsEventRepository.ts",
+      "codeCount": 1,
+      "commentCount": 0,
+      "kinds": [
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 37,
+          "text": "const users = (await db.query(`SELECT u.id,u.guest_discoverable,u.guest_capability_hash,u.guest_capability_revoked_at FROM users u JOIN account_music_identity i ON i.music_user_id=u.id WHERE i.account_id=$1 AND u.identity_status='active' AND (($2='friendly' AND u.strapi_account_document_id=$3) OR ($2<>'friendly' AND u.guest_url=$4)) FOR SHARE OF u`, [input.accountId, evidence.mode, evidence.legacyAccountId ?? null, evidence.publicSlug ?? null])).rows;"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/repositories/guideRepository.ts",
+      "codeCount": 0,
+      "commentCount": 1,
+      "kinds": [],
+      "verdict": "COMMENT_ONLY",
+      "code": []
+    },
+    {
+      "file": "tunes/server/repositories/musicDomainRepository.ts",
+      "codeCount": 4,
+      "commentCount": 3,
+      "kinds": [
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 1205,
+          "text": "WHERE (u.strapi_account_document_id=$1"
+        },
+        {
+          "line": 1218,
+          "text": "WHERE collision.strapi_user_document_id=$1"
+        },
+        {
+          "line": 1222,
+          "text": "WHERE tombstone.strapi_user_document_id=$1"
+        },
+        {
+          "line": 1223,
+          "text": "OR tombstone.strapi_account_document_id=$1"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/repositories/musicIdentityRepository.ts",
+      "codeCount": 221,
+      "commentCount": 4,
+      "kinds": [
+        "IDENTIFIER",
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 9,
+          "text": "strapiUserDocumentId: string;"
+        },
+        {
+          "line": 10,
+          "text": "strapiAccountDocumentId: string;"
+        },
+        {
+          "line": 29,
+          "text": "strapiUserDocumentId: string;"
+        },
+        {
+          "line": 30,
+          "text": "strapiAccountDocumentId: string;"
+        },
+        {
+          "line": 46,
+          "text": "strapiUserDocumentId: string;"
+        },
+        {
+          "line": 47,
+          "text": "strapiAccountDocumentId: string;"
+        },
+        {
+          "line": 70,
+          "text": "strapiUserDocumentId: string;"
+        },
+        {
+          "line": 71,
+          "text": "strapiAccountDocumentId: string;"
+        },
+        {
+          "line": 77,
+          "text": "strapiUserDocumentId: string;"
+        },
+        {
+          "line": 92,
+          "text": "strapiUserId: number;"
+        },
+        {
+          "line": 101,
+          "text": "strapiUserId: number;"
+        },
+        {
+          "line": 112,
+          "text": "strapiUserDocumentId: string;"
+        },
+        {
+          "line": 113,
+          "text": "strapiAccountDocumentId: string;"
+        },
+        {
+          "line": 133,
+          "text": "strapi_user_document_id: string;"
+        },
+        {
+          "line": 134,
+          "text": "strapi_account_document_id: string;"
+        },
+        {
+          "line": 140,
+          "text": "strapiUserDocumentId: row.strapi_user_document_id,"
+        },
+        {
+          "line": 141,
+          "text": "strapiAccountDocumentId: row.strapi_account_document_id,"
+        },
+        {
+          "line": 150,
+          "text": "strapiUserDocumentId: input.userDocumentId,"
+        },
+        {
+          "line": 151,
+          "text": "strapiAccountDocumentId: input.accountDocumentId,"
+        },
+        {
+          "line": 193,
+          "text": "if (!Number.isSafeInteger(input.strapiUserId) || input.strapiUserId < 1"
+        },
+        {
+          "line": 214,
+          "text": "token_hash,strapi_user_id,strapi_user_document_id,strapi_account_document_id,"
+        },
+        {
+          "line": 218,
+          "text": "input.strapiUserId,"
+        },
+        {
+          "line": 234,
+          "text": "strapi_user_id: string | null;"
+        },
+        {
+          "line": 235,
+          "text": "strapi_user_document_id: string | null;"
+        },
+        {
+          "line": 236,
+          "text": "strapi_account_document_id: string | null;"
+        },
+        {
+          "line": 244,
+          "text": "RETURNING strapi_user_id,strapi_user_document_id,strapi_account_document_id,operation_id"
+        },
+        {
+          "line": 246,
+          "text": "SELECT 'claimed'::text AS disposition,strapi_user_id,strapi_user_document_id,"
+        },
+        {
+          "line": 247,
+          "text": "strapi_account_document_id,operation_id FROM claimed"
+        },
+        {
+          "line": 258,
+          "text": "SELECT disposition,strapi_user_id,strapi_user_document_id,strapi_account_document_id,operation_id"
+        },
+        {
+          "line": 262,
+          "text": "const strapiUserId = Number(row.strapi_user_id);"
+        },
+        {
+          "line": 263,
+          "text": "if (!Number.isSafeInteger(strapiUserId) || strapiUserId < 1 || !row.strapi_user_document_id"
+        },
+        {
+          "line": 264,
+          "text": "|| !row.strapi_account_document_id || !row.operation_id) {"
+        },
+        {
+          "line": 269,
+          "text": "strapiUserId,"
+        },
+        {
+          "line": 270,
+          "text": "userDocumentId: row.strapi_user_document_id,"
+        },
+        {
+          "line": 271,
+          "text": "accountDocumentId: row.strapi_account_document_id,"
+        },
+        {
+          "line": 310,
+          "text": "const tombstone = await client.query(`SELECT strapi_user_document_id,strapi_account_document_id"
+        },
+        {
+          "line": 312,
+          "text": "WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2`, [input.userDocumentId, input.accountDocumentId]);"
+        },
+        {
+          "line": 316,
+          "text": "const nullableAuthority = (await client.query<any>(`SELECT operation_id,strapi_user_document_id,"
+        },
+        {
+          "line": 317,
+          "text": "strapi_account_document_id,operation_kind,error_code,created_at"
+        },
+        {
+          "line": 320,
+          "text": "AND (strapi_user_document_id=$1 OR strapi_account_document_id=$2)"
+        },
+        {
+          "line": 322,
+          "text": "if (nullableAuthority.some((operation) => operation.strapi_user_document_id !== input.userDocumentId"
+        },
+        {
+          "line": 323,
+          "text": "|| operation.strapi_account_document_id !== input.accountDocumentId)) throw lifecycleConflict();"
+        },
+        {
+          "line": 333,
+          "text": "const existing = await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id,"
+        },
+        {
+          "line": 335,
+          "text": "WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2 FOR UPDATE`, [input.userDocumentId, input.accountDocumentId]);"
+        },
+        {
+          "line": 338,
+          "text": "if (row.strapi_user_document_id === input.userDocumentId"
+        },
+        {
+          "line": 339,
+          "text": "&& row.strapi_account_document_id !== input.accountDocumentId) {"
+        },
+        {
+          "line": 342,
+          "text": "if (row.strapi_user_document_id !== input.userDocumentId"
+        },
+        {
+          "line": 343,
+          "text": "|| row.strapi_account_document_id !== input.accountDocumentId) {"
+        },
+        {
+          "line": 353,
+          "text": "strapi_username_snapshot=$2,strapi_email_snapshot=$3,strapi_provider_snapshot=$4,"
+        },
+        {
+          "line": 354,
+          "text": "strapi_account_name_snapshot=$5,strapi_account_type_snapshot=$6,strapi_account_mobile_snapshot=$7,"
+        },
+        {
+          "line": 357,
+          "text": "RETURNING id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version`, ["
+        },
+        {
+          "line": 365,
+          "text": "username,password,email,guest_url,venue_name,strapi_user_document_id,strapi_account_document_id,"
+        },
+        {
+          "line": 366,
+          "text": "strapi_username_snapshot,strapi_email_snapshot,strapi_provider_snapshot,strapi_account_name_snapshot,"
+        },
+        {
+          "line": 367,
+          "text": "strapi_account_type_snapshot,strapi_account_mobile_snapshot,last_identity_sync_at,"
+        },
+        {
+          "line": 370,
+          "text": "RETURNING id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version`, ["
+        },
+        {
+          "line": 393,
+          "text": "async findByExternalIdentity(strapiUserDocumentId: string): Promise<MusicIdentityProjection | undefined> {"
+        },
+        {
+          "line": 396,
+          "text": "strapi_user_document_id: string;"
+        },
+        {
+          "line": 397,
+          "text": "strapi_account_document_id: string;"
+        },
+        {
+          "line": 400,
+          "text": "}>(`SELECT id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version"
+        },
+        {
+          "line": 401,
+          "text": "FROM users WHERE strapi_user_document_id=$1`, [strapiUserDocumentId]);"
+        },
+        {
+          "line": 405,
+          "text": "async isTombstoned(strapiUserDocumentId: string): Promise<boolean> {"
+        },
+        {
+          "line": 407,
+          "text": "\"SELECT EXISTS(SELECT 1 FROM music_identity_tombstones WHERE strapi_user_document_id=$1) AS present\","
+        },
+        {
+          "line": 408,
+          "text": "[strapiUserDocumentId],"
+        },
+        {
+          "line": 437,
+          "text": "WHERE (u.strapi_user_document_id IS NOT NULL"
+        },
+        {
+          "line": 438,
+          "text": "AND t.strapi_user_document_id=u.strapi_user_document_id)"
+        },
+        {
+          "line": 439,
+          "text": "OR (u.strapi_account_document_id IS NOT NULL"
+        },
+        {
+          "line": 440,
+          "text": "AND t.strapi_account_document_id=u.strapi_account_document_id)) AS tombstoned"
+        },
+        {
+          "line": 454,
+          "text": "async resolveCredentialSubject(strapiUserDocumentId: string): Promise<{"
+        },
+        {
+          "line": 460,
+          "text": "strapi_user_document_id: string | null;"
+        },
+        {
+          "line": 461,
+          "text": "strapi_account_document_id: string | null;"
+        },
+        {
+          "line": 465,
+          "text": "}>(`SELECT u.id,u.strapi_user_document_id,u.strapi_account_document_id,u.identity_status,u.session_version,"
+        },
+        {
+          "line": 467,
+          "text": "WHERE t.strapi_user_document_id=requested.subject"
+        },
+        {
+          "line": 468,
+          "text": "OR (u.strapi_account_document_id IS NOT NULL"
+        },
+        {
+          "line": 469,
+          "text": "AND t.strapi_account_document_id=u.strapi_account_document_id)) AS tombstoned"
+        },
+        {
+          "line": 471,
+          "text": "LEFT JOIN users u ON u.strapi_user_document_id=requested.subject`, [strapiUserDocumentId]);"
+        },
+        {
+          "line": 473,
+          "text": "if (!row?.id || !row.strapi_user_document_id || !row.strapi_account_document_id"
+        },
+        {
+          "line": 480,
+          "text": "strapi_user_document_id: row.strapi_user_document_id,"
+        },
+        {
+          "line": 481,
+          "text": "strapi_account_document_id: row.strapi_account_document_id,"
+        },
+        {
+          "line": 500,
+          "text": "strapi_user_document_id,strapi_account_document_id,reason,expected_session_version,"
+        },
+        {
+          "line": 514,
+          "text": "strapiUserDocumentId: operation.strapi_user_document_id,"
+        },
+        {
+          "line": 515,
+          "text": "strapiAccountDocumentId: operation.strapi_account_document_id,"
+        },
+        {
+          "line": 530,
+          "text": "const result = await client.query<any>(`SELECT id,strapi_user_document_id,"
+        },
+        {
+          "line": 531,
+          "text": "strapi_account_document_id,identity_status,session_version"
+        },
+        {
+          "line": 545,
+          "text": "operation_id,music_user_id,strapi_user_document_id,strapi_account_document_id,reason,"
+        },
+        {
+          "line": 548,
+          "text": "RETURNING operation_id,music_user_id,strapi_user_document_id,strapi_account_document_id,reason,"
+        },
+        {
+          "line": 550,
+          "text": "input.operationId,input.musicUserId,row.strapi_user_document_id,row.strapi_account_document_id,"
+        },
+        {
+          "line": 586,
+          "text": "await lockIdentity(client, input.strapiUserDocumentId, input.strapiAccountDocumentId);"
+        },
+        {
+          "line": 588,
+          "text": "WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2`,"
+        },
+        {
+          "line": 589,
+          "text": "[input.strapiUserDocumentId, input.strapiAccountDocumentId]);"
+        },
+        {
+          "line": 591,
+          "text": "const existing = await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version,lifecycle_operation_id"
+        },
+        {
+          "line": 592,
+          "text": "FROM users WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2 FOR UPDATE`,"
+        },
+        {
+          "line": 593,
+          "text": "[input.strapiUserDocumentId, input.strapiAccountDocumentId]);"
+        },
+        {
+          "line": 595,
+          "text": "if (existing.rows[0].strapi_user_document_id === input.strapiUserDocumentId"
+        },
+        {
+          "line": 596,
+          "text": "&& existing.rows[0].strapi_account_document_id === input.strapiAccountDocumentId"
+        },
+        {
+          "line": 604,
+          "text": "(username,password,guest_url,venue_name,strapi_user_document_id,strapi_account_document_id,"
+        },
+        {
+          "line": 607,
+          "text": "RETURNING id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version`, ["
+        },
+        {
+          "line": 609,
+          "text": "input.strapiUserDocumentId, input.strapiAccountDocumentId,"
+        },
+        {
+          "line": 626,
+          "text": "const existingTombstone = await client.query<any>(`SELECT strapi_user_document_id,strapi_account_document_id,lifecycle_operation_id"
+        },
+        {
+          "line": 627,
+          "text": "FROM music_identity_tombstones WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2`,"
+        },
+        {
+          "line": 628,
+          "text": "[input.strapiUserDocumentId, input.strapiAccountDocumentId]);"
+        },
+        {
+          "line": 631,
+          "text": "if (row.strapi_user_document_id !== input.strapiUserDocumentId"
+        },
+        {
+          "line": 632,
+          "text": "|| row.strapi_account_document_id !== input.strapiAccountDocumentId"
+        },
+        {
+          "line": 637,
+          "text": "const live = await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id FROM users"
+        },
+        {
+          "line": 638,
+          "text": "WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2`,"
+        },
+        {
+          "line": 639,
+          "text": "[input.strapiUserDocumentId, input.strapiAccountDocumentId]);"
+        },
+        {
+          "line": 640,
+          "text": "if (live.rows[0] && (live.rows[0].strapi_user_document_id !== input.strapiUserDocumentId"
+        },
+        {
+          "line": 641,
+          "text": "|| live.rows[0].strapi_account_document_id !== input.strapiAccountDocumentId)) {"
+        },
+        {
+          "line": 652,
+          "text": "(strapi_user_document_id,strapi_account_document_id,reason,lifecycle_operation_id)"
+        },
+        {
+          "line": 654,
+          "text": "input.strapiUserDocumentId, input.strapiAccountDocumentId, input.reason, input.operationId,"
+        },
+        {
+          "line": 670,
+          "text": "const identity = await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id,"
+        },
+        {
+          "line": 671,
+          "text": "identity_status,session_version,lifecycle_operation_id FROM users WHERE strapi_user_document_id=$1`,"
+        },
+        {
+          "line": 672,
+          "text": "[input.strapiUserDocumentId]);"
+        },
+        {
+          "line": 675,
+          "text": "await lockIdentity(client, row.strapi_user_document_id, row.strapi_account_document_id);"
+        },
+        {
+          "line": 676,
+          "text": "const locked = (await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id,"
+        },
+        {
+          "line": 680,
+          "text": "const operation = await client.query<any>(`SELECT operation_id,strapi_user_document_id,strapi_account_document_id,"
+        },
+        {
+          "line": 685,
+          "text": "if (prior.strapi_user_document_id !== input.strapiUserDocumentId"
+        },
+        {
+          "line": 686,
+          "text": "|| prior.strapi_account_document_id !== locked.strapi_account_document_id"
+        },
+        {
+          "line": 699,
+          "text": "strapiUserDocumentId: input.strapiUserDocumentId,"
+        },
+        {
+          "line": 700,
+          "text": "strapiAccountDocumentId: locked.strapi_account_document_id,"
+        },
+        {
+          "line": 719,
+          "text": "operation_id,strapi_user_document_id,strapi_account_document_id,music_user_id,operation_kind,requested_identity_status,operation_phase"
+        },
+        {
+          "line": 721,
+          "text": "input.operationId,input.strapiUserDocumentId,locked.strapi_account_document_id,locked.id,operationKind,input.targetStatus,"
+        },
+        {
+          "line": 733,
+          "text": "WHERE id=$1 RETURNING id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version`, ["
+        },
+        {
+          "line": 768,
+          "text": "const collision = (await client.query<any>(`SELECT operation_id,strapi_user_document_id,"
+        },
+        {
+          "line": 769,
+          "text": "strapi_account_document_id,music_user_id,operation_kind,requested_identity_status,"
+        },
+        {
+          "line": 772,
+          "text": "if (collision && (collision.strapi_user_document_id !== input.userDocumentId"
+        },
+        {
+          "line": 773,
+          "text": "|| collision.strapi_account_document_id !== input.accountDocumentId"
+        },
+        {
+          "line": 777,
+          "text": "const tombstones = (await client.query<any>(`SELECT strapi_user_document_id,strapi_account_document_id"
+        },
+        {
+          "line": 779,
+          "text": "WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2`, [input.userDocumentId,input.accountDocumentId])).rows;"
+        },
+        {
+          "line": 780,
+          "text": "if (tombstones.some((row) => row.strapi_user_document_id !== input.userDocumentId"
+        },
+        {
+          "line": 781,
+          "text": "|| row.strapi_account_document_id !== input.accountDocumentId) || tombstones.length > 1) throw lifecycleConflict();"
+        },
+        {
+          "line": 788,
+          "text": "const liveRows = (await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id,"
+        },
+        {
+          "line": 790,
+          "text": "WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2 FOR UPDATE`, ["
+        },
+        {
+          "line": 794,
+          "text": "if (liveRows.some((row) => row.strapi_user_document_id !== input.userDocumentId"
+        },
+        {
+          "line": 795,
+          "text": "|| row.strapi_account_document_id !== input.accountDocumentId) || liveRows.length > 1) throw lifecycleConflict();"
+        },
+        {
+          "line": 796,
+          "text": "const nullableAuthority = (await client.query<any>(`SELECT operation_id,strapi_user_document_id,"
+        },
+        {
+          "line": 797,
+          "text": "strapi_account_document_id,operation_kind,requested_identity_status,operation_state,"
+        },
+        {
+          "line": 800,
+          "text": "AND (strapi_user_document_id=$1 OR strapi_account_document_id=$2)"
+        },
+        {
+          "line": 802,
+          "text": "if (nullableAuthority.some((operation) => operation.strapi_user_document_id !== input.userDocumentId"
+        },
+        {
+          "line": 803,
+          "text": "|| operation.strapi_account_document_id !== input.accountDocumentId)) throw lifecycleConflict();"
+        },
+        {
+          "line": 832,
+          "text": "operation_id,strapi_user_document_id,strapi_account_document_id,music_user_id,"
+        },
+        {
+          "line": 847,
+          "text": "RETURNING id,strapi_user_document_id,strapi_account_document_id,identity_status,session_version`, ["
+        },
+        {
+          "line": 875,
+          "text": "operation_id,strapi_user_document_id,strapi_account_document_id,music_user_id,operation_kind,"
+        },
+        {
+          "line": 900,
+          "text": "const initialRows = (await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id"
+        },
+        {
+          "line": 901,
+          "text": "FROM users WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2`, ["
+        },
+        {
+          "line": 908,
+          "text": "WHERE t.strapi_user_document_id=$1 OR t.strapi_account_document_id=$2`, [input.userDocumentId,input.accountDocumentId]);"
+        },
+        {
+          "line": 911,
+          "text": "&& (await client.query<any>(`SELECT strapi_user_document_id,strapi_account_document_id FROM music_identity_tombstones"
+        },
+        {
+          "line": 913,
+          "text": "if (!exact || exact.strapi_user_document_id !== input.userDocumentId"
+        },
+        {
+          "line": 914,
+          "text": "|| exact.strapi_account_document_id !== input.accountDocumentId) throw lifecycleConflict();"
+        },
+        {
+          "line": 924,
+          "text": "AND (strapi_user_document_id=$1 OR strapi_account_document_id=$2)"
+        },
+        {
+          "line": 926,
+          "text": "if (priorRows.some((row) => row.strapi_user_document_id !== input.userDocumentId"
+        },
+        {
+          "line": 927,
+          "text": "|| row.strapi_account_document_id !== input.accountDocumentId)) throw lifecycleConflict();"
+        },
+        {
+          "line": 936,
+          "text": "operation_id,strapi_user_document_id,strapi_account_document_id,music_user_id,operation_kind,"
+        },
+        {
+          "line": 946,
+          "text": "if (initialRows.length !== 1 || initial.strapi_user_document_id !== input.userDocumentId"
+        },
+        {
+          "line": 947,
+          "text": "|| initial.strapi_account_document_id !== input.accountDocumentId) throw lifecycleConflict();"
+        },
+        {
+          "line": 949,
+          "text": "const identity = (await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id,"
+        },
+        {
+          "line": 962,
+          "text": "operation_id,strapi_user_document_id,strapi_account_document_id,music_user_id,operation_kind,"
+        },
+        {
+          "line": 974,
+          "text": "updated_at=now() WHERE id=$1 RETURNING id,strapi_user_document_id,strapi_account_document_id,"
+        },
+        {
+          "line": 1007,
+          "text": "? `SELECT strapi_user_document_id,strapi_account_document_id,identity_status FROM users"
+        },
+        {
+          "line": 1008,
+          "text": "WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2 FOR UPDATE`"
+        },
+        {
+          "line": 1009,
+          "text": ": `SELECT strapi_user_document_id,strapi_account_document_id,identity_status FROM users"
+        },
+        {
+          "line": 1010,
+          "text": "WHERE strapi_user_document_id=$1 FOR UPDATE`, accountDocumentId ? [userDocumentId, accountDocumentId] : [userDocumentId]);"
+        },
+        {
+          "line": 1012,
+          "text": "? `SELECT strapi_user_document_id,strapi_account_document_id FROM music_identity_tombstones"
+        },
+        {
+          "line": 1013,
+          "text": "WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2`"
+        },
+        {
+          "line": 1014,
+          "text": ": `SELECT strapi_user_document_id,strapi_account_document_id FROM music_identity_tombstones"
+        },
+        {
+          "line": 1015,
+          "text": "WHERE strapi_user_document_id=$1`, accountDocumentId ? [userDocumentId, accountDocumentId] : [userDocumentId]);"
+        },
+        {
+          "line": 1017,
+          "text": "const exact = tombstone.rows.length === 1 && tombstone.rows[0].strapi_user_document_id === userDocumentId"
+        },
+        {
+          "line": 1018,
+          "text": "&& (!accountDocumentId || tombstone.rows[0].strapi_account_document_id === accountDocumentId);"
+        },
+        {
+          "line": 1025,
+          "text": "disposition: \"present\", userDocumentId: tombstone.rows[0].strapi_user_document_id,"
+        },
+        {
+          "line": 1026,
+          "text": "accountDocumentId: tombstone.rows[0].strapi_account_document_id, identityStatus: \"pending_deletion\","
+        },
+        {
+          "line": 1031,
+          "text": "? `SELECT operation_id,strapi_user_document_id,strapi_account_document_id,"
+        },
+        {
+          "line": 1035,
+          "text": "AND (strapi_user_document_id=$1 OR strapi_account_document_id=$2)"
+        },
+        {
+          "line": 1037,
+          "text": ": `SELECT operation_id,strapi_user_document_id,strapi_account_document_id,"
+        },
+        {
+          "line": 1041,
+          "text": "AND strapi_user_document_id=$1 ORDER BY created_at DESC,operation_id DESC FOR UPDATE`,"
+        },
+        {
+          "line": 1043,
+          "text": "const durableAccountDocumentId = noLocal.rows[0]?.strapi_account_document_id;"
+        },
+        {
+          "line": 1044,
+          "text": "if (noLocal.rows.some((row) => row.strapi_user_document_id !== userDocumentId"
+        },
+        {
+          "line": 1045,
+          "text": "|| row.strapi_account_document_id !== (accountDocumentId ?? durableAccountDocumentId))) throw lifecycleConflict();"
+        },
+        {
+          "line": 1051,
+          "text": "disposition: \"present\", userDocumentId: pendingDeletion.strapi_user_document_id,"
+        },
+        {
+          "line": 1052,
+          "text": "accountDocumentId: pendingDeletion.strapi_account_document_id, identityStatus: \"pending_deletion\","
+        },
+        {
+          "line": 1060,
+          "text": "disposition: \"cancelled\", userDocumentId: cancelledDeletion.strapi_user_document_id,"
+        },
+        {
+          "line": 1061,
+          "text": "accountDocumentId: cancelledDeletion.strapi_account_document_id,"
+        },
+        {
+          "line": 1068,
+          "text": "disposition: \"suspended_absent\", userDocumentId: availabilityAuthority.strapi_user_document_id,"
+        },
+        {
+          "line": 1069,
+          "text": "accountDocumentId: availabilityAuthority.strapi_account_document_id,"
+        },
+        {
+          "line": 1076,
+          "text": "if (live.rows.length !== 1 || row.strapi_user_document_id !== userDocumentId"
+        },
+        {
+          "line": 1077,
+          "text": "|| (accountDocumentId && row.strapi_account_document_id !== accountDocumentId)"
+        },
+        {
+          "line": 1082,
+          "text": "userDocumentId: row.strapi_user_document_id,"
+        },
+        {
+          "line": 1083,
+          "text": "accountDocumentId: row.strapi_account_document_id,"
+        },
+        {
+          "line": 1095,
+          "text": "const live = await this.pool.query<any>(`SELECT u.id,u.strapi_user_document_id,u.strapi_account_document_id,"
+        },
+        {
+          "line": 1099,
+          "text": "WHERE u.strapi_user_document_id=$1 OR u.strapi_account_document_id=$2`, [input.userDocumentId,input.accountDocumentId]);"
+        },
+        {
+          "line": 1102,
+          "text": "if (row.strapi_user_document_id !== input.userDocumentId || row.strapi_account_document_id !== input.accountDocumentId) {"
+        },
+        {
+          "line": 1127,
+          "text": "WHERE t.strapi_user_document_id=$1 OR t.strapi_account_document_id=$2`, [input.userDocumentId,input.accountDocumentId]);"
+        },
+        {
+          "line": 1132,
+          "text": "AND (strapi_user_document_id=$1 OR strapi_account_document_id=$2)"
+        },
+        {
+          "line": 1135,
+          "text": "if (operations.rows.some((operation) => operation.strapi_user_document_id !== input.userDocumentId"
+        },
+        {
+          "line": 1136,
+          "text": "|| operation.strapi_account_document_id !== input.accountDocumentId)) throw lifecycleConflict();"
+        },
+        {
+          "line": 1156,
+          "text": "const identity = (await client.query<any>(`SELECT id,strapi_user_document_id,strapi_account_document_id,"
+        },
+        {
+          "line": 1158,
+          "text": "FROM users WHERE strapi_user_document_id=$1 FOR UPDATE`, [input.userDocumentId])).rows[0];"
+        },
+        {
+          "line": 1160,
+          "text": "const collision = await client.query(\"SELECT 1 FROM users WHERE strapi_account_document_id=$1\", [input.accountDocumentId]);"
+        },
+        {
+          "line": 1164,
+          "text": "AND (strapi_user_document_id=$1 OR strapi_account_document_id=$2)"
+        },
+        {
+          "line": 1167,
+          "text": "if (!operation || operations.some((row) => row.strapi_user_document_id !== input.userDocumentId"
+        },
+        {
+          "line": 1168,
+          "text": "|| row.strapi_account_document_id !== input.accountDocumentId)"
+        },
+        {
+          "line": 1180,
+          "text": "if (identity.strapi_account_document_id !== input.accountDocumentId"
+        },
+        {
+          "line": 1212,
+          "text": "const identity = (await client.query<any>(`SELECT * FROM users WHERE strapi_user_document_id=$1 FOR UPDATE`, [input.userDocumentId])).rows[0];"
+        },
+        {
+          "line": 1214,
+          "text": "const collision = await client.query(\"SELECT 1 FROM users WHERE strapi_account_document_id=$1\", [input.accountDocumentId]);"
+        },
+        {
+          "line": 1218,
+          "text": "AND (strapi_user_document_id=$1 OR strapi_account_document_id=$2)"
+        },
+        {
+          "line": 1221,
+          "text": "if (!operation || operations.some((row) => row.strapi_user_document_id !== input.userDocumentId"
+        },
+        {
+          "line": 1222,
+          "text": "|| row.strapi_account_document_id !== input.accountDocumentId)) throw lifecycleConflict();"
+        },
+        {
+          "line": 1235,
+          "text": "if (identity.strapi_account_document_id !== input.accountDocumentId) throw lifecycleConflict();"
+        },
+        {
+          "line": 1252,
+          "text": "operation_id,strapi_user_document_id,strapi_account_document_id,music_user_id,operation_kind,requested_identity_status"
+        },
+        {
+          "line": 1306,
+          "text": "const due = await client.query<any>(`SELECT u.id,u.strapi_user_document_id,u.strapi_account_document_id,"
+        },
+        {
+          "line": 1331,
+          "text": "userDocumentId: row.strapi_user_document_id,"
+        },
+        {
+          "line": 1332,
+          "text": "accountDocumentId: row.strapi_account_document_id,"
+        },
+        {
+          "line": 1358,
+          "text": "userDocumentId: noLocal.strapi_user_document_id,"
+        },
+        {
+          "line": 1359,
+          "text": "accountDocumentId: noLocal.strapi_account_document_id,"
+        },
+        {
+          "line": 1439,
+          "text": "WHERE operation_id=$1 AND music_user_id IS NULL AND strapi_user_document_id=$2"
+        },
+        {
+          "line": 1440,
+          "text": "AND strapi_account_document_id=$3 AND attempt_count=$4 AND updated_at=$5::timestamptz"
+        },
+        {
+          "line": 1449,
+          "text": "WHERE t.music_user_id IS NULL AND t.strapi_user_document_id=$1 AND t.strapi_account_document_id=$2"
+        },
+        {
+          "line": 1457,
+          "text": "WHERE strapi_user_document_id=$1 OR strapi_account_document_id=$2`, [operation.userDocumentId,operation.accountDocumentId]);"
+        },
+        {
+          "line": 1462,
+          "text": "strapi_user_document_id,strapi_account_document_id,music_user_id,reason,lifecycle_operation_id,retention_stage"
+        },
+        {
+          "line": 1471,
+          "text": "WHERE u.id=$1 AND u.strapi_user_document_id=$2 AND u.strapi_account_document_id=$3"
+        },
+        {
+          "line": 1530,
+          "text": "WHERE operation_id=$1 AND music_user_id IS NULL AND strapi_user_document_id=$2"
+        },
+        {
+          "line": 1531,
+          "text": "AND strapi_account_document_id=$3 AND attempt_count=$4 AND updated_at=$5::timestamptz"
+        },
+        {
+          "line": 1551,
+          "text": "WHERE u.id=$1 AND u.strapi_user_document_id=$2 AND u.strapi_account_document_id=$3"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/repositories/reconciliationRepository.ts",
+      "codeCount": 61,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 16,
+          "text": "strapi_user_document_id: string;"
+        },
+        {
+          "line": 17,
+          "text": "strapi_account_document_id: string;"
+        },
+        {
+          "line": 25,
+          "text": "strapi_username_snapshot: string | null;"
+        },
+        {
+          "line": 26,
+          "text": "strapi_email_snapshot: string | null;"
+        },
+        {
+          "line": 27,
+          "text": "strapi_provider_snapshot: string | null;"
+        },
+        {
+          "line": 28,
+          "text": "strapi_account_name_snapshot: string | null;"
+        },
+        {
+          "line": 29,
+          "text": "strapi_account_type_snapshot: string | null;"
+        },
+        {
+          "line": 30,
+          "text": "strapi_account_mobile_snapshot: string | null;"
+        },
+        {
+          "line": 41,
+          "text": "strapi_user_document_id: string;"
+        },
+        {
+          "line": 42,
+          "text": "strapi_account_document_id: string;"
+        },
+        {
+          "line": 53,
+          "text": "strapi_user_document_id: string;"
+        },
+        {
+          "line": 54,
+          "text": "strapi_account_document_id: string;"
+        },
+        {
+          "line": 112,
+          "text": "SELECT u.id,1 AS priority,'music:user:' || u.strapi_user_document_id AS lock_key"
+        },
+        {
+          "line": 117,
+          "text": "SELECT u.id,2 AS priority,'music:account:' || u.strapi_account_document_id AS lock_key"
+        },
+        {
+          "line": 124,
+          "text": "SELECT u.id,u.strapi_user_document_id,"
+        },
+        {
+          "line": 125,
+          "text": "u.strapi_account_document_id,u.identity_status,u.session_version,u.lifecycle_operation_id,u.lifecycle_state,"
+        },
+        {
+          "line": 127,
+          "text": "u.strapi_username_snapshot,u.strapi_email_snapshot,u.strapi_provider_snapshot,"
+        },
+        {
+          "line": 128,
+          "text": "u.strapi_account_name_snapshot,u.strapi_account_type_snapshot,u.strapi_account_mobile_snapshot,"
+        },
+        {
+          "line": 134,
+          "text": "ON s.user_document_id=u.strapi_user_document_id"
+        },
+        {
+          "line": 135,
+          "text": "AND s.account_document_id=u.strapi_account_document_id"
+        },
+        {
+          "line": 155,
+          "text": "ON s.user_document_id=u.strapi_user_document_id OR s.account_document_id=u.strapi_account_document_id"
+        },
+        {
+          "line": 156,
+          "text": "WHERE s.user_document_id<>u.strapi_user_document_id OR s.account_document_id<>u.strapi_account_document_id`, [sourceJson])).rows[0].value);"
+        },
+        {
+          "line": 158,
+          "text": "SELECT t.strapi_user_document_id,t.strapi_account_document_id,t.lifecycle_operation_id,"
+        },
+        {
+          "line": 162,
+          "text": "WHERE s.user_document_id=t.strapi_user_document_id OR s.account_document_id=t.strapi_account_document_id)"
+        },
+        {
+          "line": 164,
+          "text": "AND (u.strapi_user_document_id=t.strapi_user_document_id"
+        },
+        {
+          "line": 165,
+          "text": "OR u.strapi_account_document_id=t.strapi_account_document_id))"
+        },
+        {
+          "line": 175,
+          "text": "o.operation_id,o.strapi_user_document_id,o.strapi_account_document_id,o.music_user_id,"
+        },
+        {
+          "line": 180,
+          "text": "OR o.strapi_user_document_id=u.strapi_user_document_id"
+        },
+        {
+          "line": 181,
+          "text": "OR o.strapi_account_document_id=u.strapi_account_document_id"
+        },
+        {
+          "line": 242,
+          "text": "strapi_username_snapshot=s.username,"
+        },
+        {
+          "line": 243,
+          "text": "strapi_email_snapshot=s.email,"
+        },
+        {
+          "line": 244,
+          "text": "strapi_provider_snapshot=s.provider,"
+        },
+        {
+          "line": 245,
+          "text": "strapi_account_name_snapshot=s.account_name,"
+        },
+        {
+          "line": 246,
+          "text": "strapi_account_type_snapshot=s.account_type,"
+        },
+        {
+          "line": 247,
+          "text": "strapi_account_mobile_snapshot=s.account_mobile,"
+        },
+        {
+          "line": 253,
+          "text": "WHERE s.user_document_id=u.strapi_user_document_id"
+        },
+        {
+          "line": 254,
+          "text": "AND s.account_document_id=u.strapi_account_document_id"
+        },
+        {
+          "line": 260,
+          "text": "operation_id,strapi_user_document_id,strapi_account_document_id,music_user_id,"
+        },
+        {
+          "line": 262,
+          "text": ") SELECT $3 || u.id::text,u.strapi_user_document_id,u.strapi_account_document_id,u.id,"
+        },
+        {
+          "line": 269,
+          "text": "WHERE s.user_document_id=u.strapi_user_document_id"
+        },
+        {
+          "line": 270,
+          "text": "AND s.account_document_id=u.strapi_account_document_id)"
+        },
+        {
+          "line": 276,
+          "text": "AND o.strapi_user_document_id=u.strapi_user_document_id"
+        },
+        {
+          "line": 277,
+          "text": "AND o.strapi_account_document_id=u.strapi_account_document_id"
+        },
+        {
+          "line": 285,
+          "text": "AND o.strapi_user_document_id=u.strapi_user_document_id"
+        },
+        {
+          "line": 286,
+          "text": "AND o.strapi_account_document_id=u.strapi_account_document_id"
+        },
+        {
+          "line": 302,
+          "text": "WHERE s.user_document_id=u.strapi_user_document_id"
+        },
+        {
+          "line": 303,
+          "text": "AND s.account_document_id=u.strapi_account_document_id)`, [sourceJson, input.observationVersion]);"
+        },
+        {
+          "line": 313,
+          "text": "AND o.strapi_user_document_id=u.strapi_user_document_id"
+        },
+        {
+          "line": 314,
+          "text": "AND o.strapi_account_document_id=u.strapi_account_document_id"
+        },
+        {
+          "line": 379,
+          "text": "userDocumentId: row.strapi_user_document_id,"
+        },
+        {
+          "line": 380,
+          "text": "accountDocumentId: row.strapi_account_document_id,"
+        },
+        {
+          "line": 389,
+          "text": "row.strapi_username_snapshot,row.strapi_email_snapshot,row.strapi_provider_snapshot,"
+        },
+        {
+          "line": 390,
+          "text": "row.strapi_account_name_snapshot,row.strapi_account_type_snapshot,row.strapi_account_mobile_snapshot,"
+        },
+        {
+          "line": 413,
+          "text": "row.strapi_username_snapshot !== row.source_username"
+        },
+        {
+          "line": 414,
+          "text": "|| row.strapi_email_snapshot !== row.source_email"
+        },
+        {
+          "line": 415,
+          "text": "|| row.strapi_provider_snapshot !== row.source_provider"
+        },
+        {
+          "line": 416,
+          "text": "|| row.strapi_account_name_snapshot !== row.source_account_name"
+        },
+        {
+          "line": 417,
+          "text": "|| row.strapi_account_type_snapshot !== row.source_account_type"
+        },
+        {
+          "line": 418,
+          "text": "|| row.strapi_account_mobile_snapshot !== row.source_account_mobile"
+        },
+        {
+          "line": 429,
+          "text": "return authority.strapi_user_document_id !== expected.strapi_user_document_id"
+        },
+        {
+          "line": 430,
+          "text": "|| authority.strapi_account_document_id !== expected.strapi_account_document_id"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts",
+      "codeCount": 1,
+      "commentCount": 0,
+      "kinds": [
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 23,
+          "text": "resolveFriendlyMusicAnalyticsTarget: async (legacyId) => { const rows = (await pool.query(`SELECT i.account_id FROM users u JOIN account_music_identity i ON i.music_user_id=u.id WHERE u.strapi_account_document_id=$1 AND u.identity_status='active' LIMIT 2`, [legacyId])).rows; return rows.length === 1 ? { accountId: rows[0].account_id, mode: 'friendly' } : undefined; },"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/routes/explorersMusicIdentityRoutes.ts",
+      "codeCount": 0,
+      "commentCount": 1,
+      "kinds": [],
+      "verdict": "COMMENT_ONLY",
+      "code": []
+    },
+    {
+      "file": "tunes/server/routes/index.ts",
+      "codeCount": 8,
+      "commentCount": 0,
+      "kinds": [
+        "IMPORT",
+        "ENV_READ",
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 16,
+          "text": "import { StrapiIdentityGateway } from \"../services/strapiIdentityGateway\";"
+        },
+        {
+          "line": 44,
+          "text": "import { StrapiPublicProfileGateway } from \"../publicProfile/strapiPublicProfileGateway\";"
+        },
+        {
+          "line": 79,
+          "text": "strapiUrl: process.env.STRAPI_URL ?? \"\","
+        },
+        {
+          "line": 80,
+          "text": "strapiReadToken: lifecycleAbsenceProof.fixtureReadToken ?? \"\","
+        },
+        {
+          "line": 84,
+          "text": "const identityGateway = new StrapiIdentityGateway({"
+        },
+        {
+          "line": 85,
+          "text": "baseUrl: musicConfig.strapiOrigin,"
+        },
+        {
+          "line": 181,
+          "text": "const publicProfileService = new PublicProfileService(new StrapiPublicProfileGateway({"
+        },
+        {
+          "line": 182,
+          "text": "origin: musicConfig.strapiOrigin,"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/routes/musicFixtureProbe.ts",
+      "codeCount": 10,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER",
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 7,
+          "text": "strapiUrl: string;"
+        },
+        {
+          "line": 8,
+          "text": "strapiReadToken: string;"
+        },
+        {
+          "line": 19,
+          "text": "if (!dependencies.strapiReadToken || dependencies.strapiReadToken.trim() !== dependencies.strapiReadToken"
+        },
+        {
+          "line": 20,
+          "text": "|| /[\\u0000-\\u001f\\u007f]/.test(dependencies.strapiReadToken)) {"
+        },
+        {
+          "line": 21,
+          "text": "throw new Error(\"Music fixture probe requires a valid read-only Strapi token\");"
+        },
+        {
+          "line": 27,
+          "text": "const healthResponse = await dependencies.fetchImpl(`${dependencies.strapiUrl}/health`, { signal: AbortSignal.timeout(5_000) });"
+        },
+        {
+          "line": 28,
+          "text": "const identityResponse = await dependencies.fetchImpl(`${dependencies.strapiUrl}/api/users/me`, {"
+        },
+        {
+          "line": 29,
+          "text": "headers: { authorization: `Bearer ${dependencies.strapiReadToken}` },"
+        },
+        {
+          "line": 32,
+          "text": "if (!healthResponse.ok || !identityResponse.ok) throw new Error(\"fixture Strapi is not ready\");"
+        },
+        {
+          "line": 41,
+          "text": "boundaries: { database: database.database, migration: migration.currentId, strapi: health.status },"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/routes/musicIdentityRoutes.ts",
+      "codeCount": 4,
+      "commentCount": 0,
+      "kinds": [
+        "IMPORT",
+        "STRING_LITERAL",
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 11,
+          "text": "import { fingerprintStrapiProof } from \"../services/strapiIdentityGateway\";"
+        },
+        {
+          "line": 29,
+          "text": "\"x-strapi-user-document-id\","
+        },
+        {
+          "line": 30,
+          "text": "\"x-strapi-account-document-id\","
+        },
+        {
+          "line": 80,
+          "text": "const fingerprint = dependencies.fingerprint ?? fingerprintStrapiProof;"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/routes/musicOpenApiRoutes.ts",
+      "codeCount": 1,
+      "commentCount": 0,
+      "kinds": [
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 429,
+          "text": "description: \"Temporary historical Strapi read retained until Epic7.2; the authoritative Explorer bearer must own accountId. Inclusive fromDate/toDate calendar dates and an IANA timeZone form a window of at most93 calendar days. This is not the canonical Actor summary or Music credential flow.\","
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "codeCount": 3,
+      "commentCount": 0,
+      "kinds": [
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 124,
+          "text": "\"strapiUser\", \"strapiUserDocumentId\", \"strapiAccountDocumentId\","
+        },
+        {
+          "line": 743,
+          "text": "\"x-document-id\", \"x-strapi-user-document-id\", \"x-strapi-account-document-id\", \"x-music-guest-capability\","
+        },
+        {
+          "line": 759,
+          "text": "\"x-document-id\", \"x-strapi-user-document-id\", \"x-strapi-account-document-id\","
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/routes/reactivationRoutes.ts",
+      "codeCount": 4,
+      "commentCount": 1,
+      "kinds": [
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 20,
+          "text": "// Strapi. RFC 5321 caps an address at 254 chars."
+        },
+        {
+          "line": 34,
+          "text": "// Strapi, so they must not consume rate-limit buckets or create keys."
+        },
+        {
+          "line": 77,
+          "text": "// (rate-limit keys) or amplify Strapi lookups without bound. Constant key (not IP,"
+        },
+        {
+          "line": 142,
+          "text": "// oversized emails before any Strapi work."
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/routes/strapiRoutes.ts",
+      "codeCount": 1,
+      "commentCount": 0,
+      "kinds": [
+        "EXPORT_DECL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 5,
+          "text": "export function setupStrapiRoutes(app: Express): Server {"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/security-containment.ts",
+      "codeCount": 14,
+      "commentCount": 1,
+      "kinds": [
+        "STRING_LITERAL",
+        "EXPORT_DECL",
+        "ENV_READ",
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 11,
+          "text": "containmentPrincipal?: { kind: \"session\"; userId: number; isAdmin: boolean } | { kind: \"strapi\"; externalId: number };"
+        },
+        {
+          "line": 36,
+          "text": "export function verifyStrapiToken(token: string): JwtPayload & { id: number } {"
+        },
+        {
+          "line": 37,
+          "text": "const secret = process.env.STRAPI_JWT_SECRET;"
+        },
+        {
+          "line": 38,
+          "text": "if (!secret) throw new Error(\"STRAPI_JWT_SECRET is required\");"
+        },
+        {
+          "line": 50,
+          "text": "throw new Error(\"Verified Strapi bearer requires the Music identity gateway\");"
+        },
+        {
+          "line": 150,
+          "text": "// Native registration cannot establish the Strapi/Account identity tuple."
+        },
+        {
+          "line": 176,
+          "text": "const OWNER_INPUT_KEYS = new Set([\"username\", \"currentUsername\", \"userId\", \"ownerId\", \"documentId\", \"strapiUser\", \"accountId\"]);"
+        },
+        {
+          "line": 207,
+          "text": "if (req.path === \"/graphql\" || req.path === \"/api/strapi/graphql\") {"
+        },
+        {
+          "line": 210,
+          "text": "if (req.path === \"/api/strapi/config\" || req.path === \"/api/debug/strapi\") {"
+        },
+        {
+          "line": 241,
+          "text": "const payload = verifyStrapiToken(match[1]);"
+        },
+        {
+          "line": 243,
+          "text": "request.containmentPrincipal = { kind: \"strapi\", externalId: payload.id };"
+        },
+        {
+          "line": 263,
+          "text": ": `strapi:${request.containmentPrincipal.externalId}`;"
+        },
+        {
+          "line": 272,
+          "text": "if (request.containmentPrincipal.kind === \"strapi\") return sendContainmentError(res, 410, \"LEGACY_OWNER_ROUTE_REMOVED\", requestId);"
+        },
+        {
+          "line": 290,
+          "text": "const mandatory = [\"DATABASE_URL\", \"SESSION_SECRET\", \"COOKIE_SECRET\", \"STRAPI_JWT_SECRET\", \"ALLOWED_ORIGINS\"] as const;"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/seo-routes.ts",
+      "codeCount": 8,
+      "commentCount": 1,
+      "kinds": [
+        "ENV_READ",
+        "IDENTIFIER",
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 116,
+          "text": "const strapiUrl = process.env.STRAPI_URL;"
+        },
+        {
+          "line": 117,
+          "text": "const strapiToken = process.env.STRAPI_ACCESS_TOKEN;"
+        },
+        {
+          "line": 119,
+          "text": "if (strapiUrl && strapiToken) {"
+        },
+        {
+          "line": 121,
+          "text": "const response = await fetch(`${strapiUrl}/graphql`, {"
+        },
+        {
+          "line": 125,
+          "text": "Authorization: `Bearer ${strapiToken}`,"
+        },
+        {
+          "line": 160,
+          "text": "console.error(\"Error querying Strapi for explorers sitemap:\", error);"
+        },
+        {
+          "line": 164,
+          "text": "console.warn(\"Strapi not configured — explorers sitemap will only contain static pages\");"
+        },
+        {
+          "line": 214,
+          "text": "// Dynamic explorers.earth sitemap — queries Strapi for public user profiles"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/services/explorers-analytics-adapters.ts",
+      "codeCount": 17,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER",
+        "EXPORT_DECL",
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 107,
+          "text": "// optional public analytics target is checked through its owning Strapi"
+        },
+        {
+          "line": 108,
+          "text": "// relation without requiring any Strapi schema or application-code changes."
+        },
+        {
+          "line": 289,
+          "text": "export class StrapiAnalyticsTargetValidator {"
+        },
+        {
+          "line": 299,
+          "text": "strapiUrl,"
+        },
+        {
+          "line": 303,
+          "text": "strapiUrl: string;"
+        },
+        {
+          "line": 307,
+          "text": "this.graphqlUrl = `${stripTrailingSlash(strapiUrl)}/graphql`;"
+        },
+        {
+          "line": 340,
+          "text": "throw new Error(\"Strapi analytics target validation failed\");"
+        },
+        {
+          "line": 387,
+          "text": "export class StrapiAnalyticsPublisher implements AnalyticsPublisher {"
+        },
+        {
+          "line": 393,
+          "text": "strapiUrl,"
+        },
+        {
+          "line": 397,
+          "text": "strapiUrl: string;"
+        },
+        {
+          "line": 401,
+          "text": "this.graphqlUrl = `${stripTrailingSlash(strapiUrl)}/graphql`;"
+        },
+        {
+          "line": 419,
+          "text": "throw new AnalyticsPublishDispatchError(\"Strapi analytics request was not dispatched\", true, { cause });"
+        },
+        {
+          "line": 426,
+          "text": "`Strapi analytics request failed with ${response.status}`,"
+        },
+        {
+          "line": 442,
+          "text": "if (!documentId) throw new Error(\"Strapi analytics write returned no document ID\");"
+        },
+        {
+          "line": 501,
+          "text": "strapiUrl,"
+        },
+        {
+          "line": 506,
+          "text": "strapiUrl: string;"
+        },
+        {
+          "line": 513,
+          "text": "`${stripTrailingSlash(strapiUrl)}/api/users/me?populate=accounts`,"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/services/explorers-analytics-composition.ts",
+      "codeCount": 19,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER",
+        "TYPE_ONLY",
+        "STRING_LITERAL",
+        "EXPORT_DECL",
+        "ENV_READ"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 6,
+          "text": "StrapiAnalyticsPublisher,"
+        },
+        {
+          "line": 7,
+          "text": "StrapiAnalyticsTargetValidator,"
+        },
+        {
+          "line": 16,
+          "text": "type AnalyticsStrapiEnvironment = Partial<"
+        },
+        {
+          "line": 18,
+          "text": "\"STRAPI_ANALYTICS_ACCESS_TOKEN\" | \"STRAPI_ACCESS_TOKEN\","
+        },
+        {
+          "line": 23,
+          "text": "export function resolveAnalyticsStrapiAccessToken("
+        },
+        {
+          "line": 24,
+          "text": "environment: AnalyticsStrapiEnvironment = process.env,"
+        },
+        {
+          "line": 26,
+          "text": "const accessToken = environment.STRAPI_ANALYTICS_ACCESS_TOKEN?.trim();"
+        },
+        {
+          "line": 28,
+          "text": "throw new Error(\"STRAPI_ANALYTICS_ACCESS_TOKEN is not configured\");"
+        },
+        {
+          "line": 41,
+          "text": "`SELECT strapi_account_document_id,guest_discoverable,guest_capability_hash,guest_capability_revoked_at"
+        },
+        {
+          "line": 50,
+          "text": "const accountId = row.strapi_account_document_id;"
+        },
+        {
+          "line": 63,
+          "text": "`SELECT strapi_account_document_id FROM users"
+        },
+        {
+          "line": 64,
+          "text": "WHERE strapi_account_document_id=$1 AND identity_status='active' LIMIT 2`,"
+        },
+        {
+          "line": 67,
+          "text": "if (rows.length !== 1 || rows[0].strapi_account_document_id !== accountDocumentId) return undefined;"
+        },
+        {
+          "line": 72,
+          "text": "const strapiUrl = process.env.STRAPI_URL || \"\";"
+        },
+        {
+          "line": 73,
+          "text": "const accessToken = resolveAnalyticsStrapiAccessToken();"
+        },
+        {
+          "line": 76,
+          "text": "publisher: new StrapiAnalyticsPublisher({ strapiUrl, accessToken }),"
+        },
+        {
+          "line": 79,
+          "text": "const targetValidator = new StrapiAnalyticsTargetValidator({"
+        },
+        {
+          "line": 80,
+          "text": "strapiUrl,"
+        },
+        {
+          "line": 89,
+          "text": "strapiUrl,"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/services/explorers-analytics-receipts.ts",
+      "codeCount": 7,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 13,
+          "text": "strapi_document_id: string | null;"
+        },
+        {
+          "line": 32,
+          "text": "documentId: row.strapi_document_id || undefined,"
+        },
+        {
+          "line": 55,
+          "text": "RETURNING event_id, payload_hash, status, strapi_document_id, lease_id"
+        },
+        {
+          "line": 66,
+          "text": "RETURNING event_id,payload_hash,status,strapi_document_id,lease_id,last_error`,"
+        },
+        {
+          "line": 76,
+          "text": "RETURNING event_id,payload_hash,status,strapi_document_id,lease_id,last_error`,"
+        },
+        {
+          "line": 83,
+          "text": "SELECT event_id, payload_hash, status, strapi_document_id, lease_id, last_error"
+        },
+        {
+          "line": 100,
+          "text": "SET status = 'committed', strapi_document_id = $2,"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/services/explorers-analytics-service.ts",
+      "codeCount": 1,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 369,
+          "text": "// Strapi does not expose an atomic create-if-absent operation keyed by"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/services/musicLifecycleService.ts",
+      "codeCount": 10,
+      "commentCount": 0,
+      "kinds": [
+        "IMPORT",
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 2,
+          "text": "import { fingerprintStrapiProof, type ResolvedStrapiIdentity } from \"./strapiIdentityGateway\";"
+        },
+        {
+          "line": 21,
+          "text": "strapiUserDocumentId: string;"
+        },
+        {
+          "line": 22,
+          "text": "strapiAccountDocumentId: string;"
+        },
+        {
+          "line": 37,
+          "text": "resolve(proof: string, requestId: string): Promise<ResolvedStrapiIdentity>;"
+        },
+        {
+          "line": 59,
+          "text": "strapiUserDocumentId: string;"
+        },
+        {
+          "line": 127,
+          "text": "async suspend(strapiUserDocumentId: string): Promise<MusicIdentityProjection> {"
+        },
+        {
+          "line": 129,
+          "text": "strapiUserDocumentId,"
+        },
+        {
+          "line": 150,
+          "text": "this.gateway.clear(fingerprintStrapiProof(proof));"
+        },
+        {
+          "line": 159,
+          "text": "async reactivate(strapiUserDocumentId: string): Promise<MusicIdentityProjection> {"
+        },
+        {
+          "line": 161,
+          "text": "strapiUserDocumentId,"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/services/musicProjectionService.ts",
+      "codeCount": 6,
+      "commentCount": 0,
+      "kinds": [
+        "IMPORT",
+        "IDENTIFIER",
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 3,
+          "text": "import type { ResolvedStrapiIdentity, StrapiIdentityGateway } from \"./strapiIdentityGateway\";"
+        },
+        {
+          "line": 4,
+          "text": "import { fingerprintStrapiProof } from \"./strapiIdentityGateway\";"
+        },
+        {
+          "line": 7,
+          "text": "export interface EnsureMusicIdentityInput extends ResolvedStrapiIdentity {"
+        },
+        {
+          "line": 26,
+          "text": "private readonly gateway: Pick<StrapiIdentityGateway, \"resolve\"> & Partial<Pick<StrapiIdentityGateway, \"clear\">>,"
+        },
+        {
+          "line": 36,
+          "text": "const fingerprint = fingerprintStrapiProof(proof);"
+        },
+        {
+          "line": 75,
+          "text": "this.gateway.clear?.(fingerprintStrapiProof(proof));"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/services/musicReconciler.ts",
+      "codeCount": 3,
+      "commentCount": 0,
+      "kinds": [
+        "EXPORT_DECL",
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 5,
+          "text": "export const STRAPI_RECONCILIATION_SCHEMA_VERSION = \"strapi-music-reconciliation/v1\" as const;"
+        },
+        {
+          "line": 34,
+          "text": "schemaVersion: z.literal(STRAPI_RECONCILIATION_SCHEMA_VERSION),"
+        },
+        {
+          "line": 54,
+          "text": "schemaVersion: typeof STRAPI_RECONCILIATION_SCHEMA_VERSION;"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/services/musicReconciliationSuspensionListener.ts",
+      "codeCount": 2,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 137,
+          "text": "AND operation.strapi_user_document_id=identity.strapi_user_document_id"
+        },
+        {
+          "line": 138,
+          "text": "AND operation.strapi_account_document_id=identity.strapi_account_document_id"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/services/musicTokenService.ts",
+      "codeCount": 2,
+      "commentCount": 2,
+      "kinds": [
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 102,
+          "text": "|| !SUBJECT_PATTERN.test(identity.strapiUserDocumentId)"
+        },
+        {
+          "line": 107,
+          "text": "return this.issue(identity.strapiUserDocumentId, identity.sessionVersion);"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/services/reactivation-service.ts",
+      "codeCount": 34,
+      "commentCount": 5,
+      "kinds": [
+        "IMPORT",
+        "IDENTIFIER",
+        "TYPE_ONLY",
+        "STRING_LITERAL",
+        "ENV_READ"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 21,
+          "text": "import { cancelResponseBody, readBoundedResponseBody } from './strapiIdentityGateway';"
+        },
+        {
+          "line": 125,
+          "text": "const STRAPI_CONNECT_TIMEOUT_MS = 2_000;"
+        },
+        {
+          "line": 126,
+          "text": "const STRAPI_READ_TIMEOUT_MS = 4_000;"
+        },
+        {
+          "line": 127,
+          "text": "const STRAPI_OVERALL_TIMEOUT_MS = 7_000;"
+        },
+        {
+          "line": 128,
+          "text": "const STRAPI_MAX_BODY_BYTES = 64 * 1024;"
+        },
+        {
+          "line": 130,
+          "text": "// ─── Strapi REST helpers ───────────────────────────────────────────────────────"
+        },
+        {
+          "line": 132,
+          "text": "interface StrapiUser {"
+        },
+        {
+          "line": 146,
+          "text": "async function findBlockedUserByEmail(email: string): Promise<StrapiUser | null> {"
+        },
+        {
+          "line": 147,
+          "text": "const value = await requestStrapiJson(`/api/users?filters[email][$eq]=${encodeURIComponent(email)}&filters[blocked][$eq]=true&populate=accounts`);"
+        },
+        {
+          "line": 149,
+          "text": "return validStrapiUser(value[0]) ? value[0] : null;"
+        },
+        {
+          "line": 152,
+          "text": "async function resolveCurrentReactivationIdentity(userId: number): Promise<StrapiUser | null> {"
+        },
+        {
+          "line": 155,
+          "text": "const value = await requestStrapiJson(`/api/users/${userId}?populate=accounts`);"
+        },
+        {
+          "line": 156,
+          "text": "if (!validStrapiUser(value)) return null;"
+        },
+        {
+          "line": 162,
+          "text": "return candidate as StrapiUser;"
+        },
+        {
+          "line": 171,
+          "text": "async function unblockStrapiUser(expected: {"
+        },
+        {
+          "line": 177,
+          "text": "const value = await requestStrapiJson(`/api/users/${expected.id}`, {"
+        },
+        {
+          "line": 182,
+          "text": "const candidate = value as Partial<StrapiUser>;"
+        },
+        {
+          "line": 196,
+          "text": "console.log('reactivation_strapi_unblock_succeeded');"
+        },
+        {
+          "line": 200,
+          "text": "function validStrapiUser(value: unknown): value is StrapiUser {"
+        },
+        {
+          "line": 202,
+          "text": "const candidate = value as Partial<StrapiUser>;"
+        },
+        {
+          "line": 211,
+          "text": "async function requestStrapiJson(path: string, init: Pick<RequestInit, 'method' | 'body'> = {}): Promise<unknown> {"
+        },
+        {
+          "line": 212,
+          "text": "const token = process.env.STRAPI_ACCESS_TOKEN;"
+        },
+        {
+          "line": 214,
+          "text": "try { origin = new URL(process.env.STRAPI_URL ?? ''); }"
+        },
+        {
+          "line": 215,
+          "text": "catch { throw new Error('reactivation Strapi authority is unavailable'); }"
+        },
+        {
+          "line": 218,
+          "text": "throw new Error('reactivation Strapi authority is unavailable');"
+        },
+        {
+          "line": 221,
+          "text": "if (endpoint.origin !== origin.origin) throw new Error('reactivation Strapi authority is unavailable');"
+        },
+        {
+          "line": 223,
+          "text": "const overall = setTimeout(() => controller.abort(), STRAPI_OVERALL_TIMEOUT_MS);"
+        },
+        {
+          "line": 237,
+          "text": "reject(new Error('reactivation Strapi connect timeout'));"
+        },
+        {
+          "line": 238,
+          "text": "}, STRAPI_CONNECT_TIMEOUT_MS);"
+        },
+        {
+          "line": 244,
+          "text": "throw new Error('reactivation Strapi request failed');"
+        },
+        {
+          "line": 246,
+          "text": "const body = await readBoundedResponseBody(response, STRAPI_MAX_BODY_BYTES, STRAPI_READ_TIMEOUT_MS, controller);"
+        },
+        {
+          "line": 283,
+          "text": "strapiUserId: user.id,"
+        },
+        {
+          "line": 349,
+          "text": "const userId = entry.strapiUserId;"
+        },
+        {
+          "line": 366,
+          "text": "const unblocked = current.blocked === false || await unblockStrapiUser({"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/services/strapi-service.ts",
+      "codeCount": 22,
+      "commentCount": 2,
+      "kinds": [
+        "IDENTIFIER",
+        "ENV_READ",
+        "STRING_LITERAL",
+        "EXPORT_DECL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 38,
+          "text": "class StrapiService {"
+        },
+        {
+          "line": 39,
+          "text": "private strapiUrl: string;"
+        },
+        {
+          "line": 44,
+          "text": "this.strapiUrl = process.env.STRAPI_URL || '';"
+        },
+        {
+          "line": 45,
+          "text": "this.accessToken = process.env.STRAPI_ACCESS_TOKEN || '';"
+        },
+        {
+          "line": 46,
+          "text": "this.graphqlEndpoint = `${this.strapiUrl}/graphql`;"
+        },
+        {
+          "line": 48,
+          "text": "console.log('🔧 Strapi Service initialized:', {"
+        },
+        {
+          "line": 49,
+          "text": "strapiUrl: this.strapiUrl || 'NOT SET',"
+        },
+        {
+          "line": 52,
+          "text": "isConfigured: !!(this.strapiUrl && this.accessToken)"
+        },
+        {
+          "line": 55,
+          "text": "if (!this.strapiUrl) {"
+        },
+        {
+          "line": 56,
+          "text": "console.warn('⚠️ STRAPI_URL environment variable is not set');"
+        },
+        {
+          "line": 59,
+          "text": "console.warn('⚠️ STRAPI_ACCESS_TOKEN environment variable is not set');"
+        },
+        {
+          "line": 70,
+          "text": "if (!this.strapiUrl || !this.accessToken) {"
+        },
+        {
+          "line": 71,
+          "text": "const error = 'Strapi configuration is missing. Please set STRAPI_URL and STRAPI_ACCESS_TOKEN environment variables.';"
+        },
+        {
+          "line": 77,
+          "text": "console.log('📡 Making Strapi GraphQL request:', {"
+        },
+        {
+          "line": 95,
+          "text": "console.log('📥 Strapi GraphQL response status:', response.status, response.statusText);"
+        },
+        {
+          "line": 99,
+          "text": "console.error('❌ Strapi API error response:', errorText);"
+        },
+        {
+          "line": 100,
+          "text": "throw new Error(`Strapi API error: ${response.status} ${response.statusText} - ${errorText}`);"
+        },
+        {
+          "line": 112,
+          "text": "console.error('❌ No data returned from Strapi');"
+        },
+        {
+          "line": 113,
+          "text": "throw new Error('No data returned from Strapi');"
+        },
+        {
+          "line": 116,
+          "text": "console.log('✅ Strapi GraphQL request successful');"
+        },
+        {
+          "line": 119,
+          "text": "console.error('❌ Strapi GraphQL request failed:', error);"
+        },
+        {
+          "line": 335,
+          "text": "export const strapiService = new StrapiService();"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/services/strapiIdentityAbsenceProof.ts",
+      "codeCount": 5,
+      "commentCount": 0,
+      "kinds": [
+        "IMPORT",
+        "EXPORT_DECL",
+        "IDENTIFIER",
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 3,
+          "text": "import { cancelResponseBody, readBoundedResponseBody } from \"./strapiIdentityGateway\";"
+        },
+        {
+          "line": 15,
+          "text": "export interface StrapiIdentityAbsenceProofOptions {"
+        },
+        {
+          "line": 23,
+          "text": "export class StrapiIdentityAbsenceProof {"
+        },
+        {
+          "line": 27,
+          "text": "constructor(private readonly options: StrapiIdentityAbsenceProofOptions) {"
+        },
+        {
+          "line": 31,
+          "text": "throw new Error(\"invalid Strapi identity absence proof configuration\");"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/services/strapiIdentityGateway.ts",
+      "codeCount": 21,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER",
+        "EXPORT_DECL",
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 6,
+          "text": "const strapiUserSchema = z.object({"
+        },
+        {
+          "line": 15,
+          "text": "const strapiAccountSchema = z.object({"
+        },
+        {
+          "line": 22,
+          "text": "const strapiAccountsSchema = z.object({"
+        },
+        {
+          "line": 23,
+          "text": "data: z.array(strapiAccountSchema).max(50),"
+        },
+        {
+          "line": 39,
+          "text": "export interface ResolvedStrapiIdentity {"
+        },
+        {
+          "line": 50,
+          "text": "export interface ResolvedStrapiUser {"
+        },
+        {
+          "line": 54,
+          "text": "export interface StrapiIdentityGatewayOptions {"
+        },
+        {
+          "line": 73,
+          "text": "value: ResolvedStrapiIdentity;"
+        },
+        {
+          "line": 165,
+          "text": "export function fingerprintStrapiProof(proof: string): string {"
+        },
+        {
+          "line": 169,
+          "text": "export class StrapiIdentityGateway {"
+        },
+        {
+          "line": 187,
+          "text": "constructor(private readonly options: StrapiIdentityGatewayOptions) {"
+        },
+        {
+          "line": 190,
+          "text": "catch { throw new Error(\"invalid bounded Strapi identity gateway configuration\"); }"
+        },
+        {
+          "line": 202,
+          "text": "throw new Error(\"invalid bounded Strapi identity gateway configuration\");"
+        },
+        {
+          "line": 211,
+          "text": "async resolve(proof: string, requestId: string): Promise<ResolvedStrapiIdentity> {"
+        },
+        {
+          "line": 212,
+          "text": "const fingerprint = fingerprintStrapiProof(proof);"
+        },
+        {
+          "line": 237,
+          "text": "async resolveUser(proof: string, requestId: string): Promise<ResolvedStrapiUser> {"
+        },
+        {
+          "line": 283,
+          "text": "private async resolveFresh(proof: string, requestId: string, admission: CircuitAdmission): Promise<ResolvedStrapiIdentity> {"
+        },
+        {
+          "line": 287,
+          "text": "const accounts: Array<z.infer<typeof strapiAccountSchema>> = [];"
+        },
+        {
+          "line": 299,
+          "text": "const parsedAccounts = strapiAccountsSchema.safeParse(accountBody);"
+        },
+        {
+          "line": 345,
+          "text": "): Promise<z.infer<typeof strapiUserSchema>> {"
+        },
+        {
+          "line": 347,
+          "text": "const parsedUser = strapiUserSchema.safeParse(userBody);"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/services/youtubeReadService.ts",
+      "codeCount": 1,
+      "commentCount": 0,
+      "kinds": [
+        "IMPORT"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 2,
+          "text": "import { cancelResponseBody, readBoundedResponseBody } from \"./strapiIdentityGateway\";"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/startup/explorers-analytics-migration.ts",
+      "codeCount": 2,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER",
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 12,
+          "text": "strapi_document_id text,"
+        },
+        {
+          "line": 52,
+          "text": "for (const required of [\"event_id\", \"payload_hash\", \"status\", \"strapi_document_id\", \"last_error\", \"lease_id\", \"created_at\", \"updated_at\"]) {"
+        }
+      ]
+    },
+    {
+      "file": "tunes/server/storage.ts",
+      "codeCount": 7,
+      "commentCount": 0,
+      "kinds": [
+        "STRING_LITERAL",
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 65,
+          "text": "\"strapiUserDocumentId\" | \"strapiAccountDocumentId\" | \"lifecycleOperationId\" | \"guestCapabilityHash\">;"
+        },
+        {
+          "line": 286,
+          "text": "const { strapiUserDocumentId, strapiAccountDocumentId, lifecycleOperationId, guestCapabilityHash } = insertUser;"
+        },
+        {
+          "line": 287,
+          "text": "if (!strapiUserDocumentId || !strapiAccountDocumentId || !lifecycleOperationId || !guestCapabilityHash) {"
+        },
+        {
+          "line": 292,
+          "text": ".values({ ...insertUser, strapiUserDocumentId, strapiAccountDocumentId, lifecycleOperationId,"
+        },
+        {
+          "line": 843,
+          "text": "const initialIdentity = (await connection.query(`SELECT id,strapi_user_document_id,strapi_account_document_id,"
+        },
+        {
+          "line": 855,
+          "text": "await connection.query(\"SELECT pg_advisory_xact_lock(hashtextextended($1,0))\", [`music:user:${initialIdentity.strapi_user_document_id}`]);"
+        },
+        {
+          "line": 856,
+          "text": "await connection.query(\"SELECT pg_advisory_xact_lock(hashtextextended($1,0))\", [`music:account:${initialIdentity.strapi_account_document_id}`]);"
+        }
+      ]
+    },
+    {
+      "file": "tunes/shared/explorersGuideContract.ts",
+      "codeCount": 0,
+      "commentCount": 1,
+      "kinds": [],
+      "verdict": "COMMENT_ONLY",
+      "code": []
+    },
+    {
+      "file": "tunes/shared/musicError.ts",
+      "codeCount": 2,
+      "commentCount": 0,
+      "kinds": [
+        "IDENTIFIER",
+        "STRING_LITERAL"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 246,
+          "text": "security: [{ strapiBearer: [] }],"
+        },
+        {
+          "line": 254,
+          "text": "\"401\": errorResponse(\"Missing or invalid Strapi proof\"),"
+        }
+      ]
+    },
+    {
+      "file": "tunes/shared/schema.ts",
+      "codeCount": 25,
+      "commentCount": 0,
+      "kinds": [
+        "STRING_LITERAL",
+        "IDENTIFIER"
+      ],
+      "verdict": "CODE",
+      "code": [
+        {
+          "line": 39,
+          "text": "strapiUserDocumentId: text(\"strapi_user_document_id\").notNull().unique(),"
+        },
+        {
+          "line": 40,
+          "text": "strapiAccountDocumentId: text(\"strapi_account_document_id\").notNull().unique(),"
+        },
+        {
+          "line": 41,
+          "text": "strapiUsernameSnapshot: text(\"strapi_username_snapshot\"),"
+        },
+        {
+          "line": 42,
+          "text": "strapiEmailSnapshot: text(\"strapi_email_snapshot\"),"
+        },
+        {
+          "line": 43,
+          "text": "strapiProviderSnapshot: text(\"strapi_provider_snapshot\").notNull().default(\"legacy-unknown\").$type<\"legacy-unknown\" | \"local\" | \"google\">(),"
+        },
+        {
+          "line": 44,
+          "text": "strapiAccountNameSnapshot: text(\"strapi_account_name_snapshot\"),"
+        },
+        {
+          "line": 45,
+          "text": "strapiAccountTypeSnapshot: text(\"strapi_account_type_snapshot\"),"
+        },
+        {
+          "line": 46,
+          "text": "strapiAccountMobileSnapshot: text(\"strapi_account_mobile_snapshot\"),"
+        },
+        {
+          "line": 59,
+          "text": "// since migration 0040: a canonically provisioned venue has no Strapi-keyed"
+        },
+        {
+          "line": 91,
+          "text": "strapiUserDocumentId: text(\"strapi_user_document_id\").notNull(),"
+        },
+        {
+          "line": 92,
+          "text": "strapiAccountDocumentId: text(\"strapi_account_document_id\").notNull(),"
+        },
+        {
+          "line": 111,
+          "text": "strapiUserDocumentId: text(\"strapi_user_document_id\").notNull(),"
+        },
+        {
+          "line": 112,
+          "text": "strapiAccountDocumentId: text(\"strapi_account_document_id\").notNull(),"
+        },
+        {
+          "line": 121,
+          "text": "strapiUserDocumentId: text(\"strapi_user_document_id\").primaryKey(),"
+        },
+        {
+          "line": 122,
+          "text": "strapiAccountDocumentId: text(\"strapi_account_document_id\").notNull().unique(),"
+        },
+        {
+          "line": 235,
+          "text": "// payload remains in Strapi; this table stores only delivery state and hashes,"
+        },
+        {
+          "line": 241,
+          "text": "strapiDocumentId: text(\"strapi_document_id\"),"
+        },
+        {
+          "line": 476,
+          "text": "| \"strapiUserDocumentId\""
+        },
+        {
+          "line": 477,
+          "text": "| \"strapiAccountDocumentId\""
+        },
+        {
+          "line": 478,
+          "text": "| \"strapiUsernameSnapshot\""
+        },
+        {
+          "line": 479,
+          "text": "| \"strapiEmailSnapshot\""
+        },
+        {
+          "line": 480,
+          "text": "| \"strapiProviderSnapshot\""
+        },
+        {
+          "line": 481,
+          "text": "| \"strapiAccountNameSnapshot\""
+        },
+        {
+          "line": 482,
+          "text": "| \"strapiAccountTypeSnapshot\""
+        },
+        {
+          "line": 483,
+          "text": "| \"strapiAccountMobileSnapshot\""
+        }
+      ]
+    }
+  ]
+}

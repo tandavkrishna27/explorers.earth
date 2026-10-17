@@ -1,10 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
-import { Smartphone, Share2 } from "lucide-react";
-import { PUBLIC_APP_DATA } from "../../api/query";
+import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
+import { Smartphone } from "lucide-react";
 import { deduplicateApps } from "../../utils/appHelpers";
-import { toast } from "sonner";
 import type { RecommendedApp, AppList } from "../../types";
 import AppCarouselRow from "./AppCarouselRow";
 import AppDetailModal from "./AppDetailModal";
@@ -13,57 +10,73 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import AppTopPicksHero from "./AppTopPicksHero";
 import AppTopPicksMobileHero from "./AppTopPicksMobileHero";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
+import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
+import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
+import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
+import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
 
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernameApps($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-        profile_picture {
-          url
-        }
-      }
-    }
-  }
-`;
+const isRenderableAppList = (value: unknown): value is AppList =>
+  isNonNullObject(value) && Array.isArray(value.recommended_apps);
 
 const PublicApps = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
+  const location = useLocation();
+  const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
 
   const [modalState, setModalState] = useState<{ open: boolean; app: RecommendedApp | null }>({
     open: false,
     app: null,
   });
 
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
+  const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
+  const query = usePublicRecommendationCategory(username, "apps", accountData?.public_apps === "Yes");
+  const { data, loading: appsLoading, error: appsError, refetch: refetchApps } = query;
 
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
-
-  const { data, loading: appsLoading } = useQuery(PUBLIC_APP_DATA, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
 
   const loading = userLoading || appsLoading;
+  const queryError = userError || appsError;
+  const rawLists = data?.appLists;
+  const lists: AppList[] = (Array.isArray(rawLists) ? rawLists : [])
+    .filter(isRenderableAppList)
+    .map((list) => ({
+      ...list,
+      recommended_apps: list.recommended_apps.filter(isNonNullObject) as AppList["recommended_apps"],
+    }));
+  const completeCollection = Array.isArray(rawLists) && rawLists.every(isRenderableAppList);
+  const hasPartialCollection = !completeCollection && lists.length > 0;
+  const hasUsableData = queryError ? lists.length > 0 : completeCollection || hasPartialCollection;
 
   useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
-  const lists: AppList[] = data?.appLists ?? [];
+  const handleRetry = useCallback(async () => {
+    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchApps : undefined);
+  }, [accountDocumentId, refetchApps, refetchUser]);
+
+  const analytics = useTrackAnalytics(
+    createAnalyticsOptions.apps(accountDocumentId || "", username),
+  );
+
+  const owningListByAppId = useMemo(() => {
+    const ownership = new Map<string, { documentId: string; name: string }>();
+    lists.forEach((list) => {
+      list.recommended_apps?.forEach((app) => {
+        ownership.set(app.documentId, {
+          documentId: list.documentId,
+          name: list.List_Name,
+        });
+      });
+    });
+    return ownership;
+  }, [lists]);
 
   const allApps = useMemo(() => {
     return deduplicateApps(lists.flatMap((l) => l.recommended_apps ?? []));
@@ -81,23 +94,28 @@ const PublicApps = () => {
 
   const handleAppClick = useCallback((app: RecommendedApp) => {
     setModalState({ open: true, app });
-  }, []);
+    const owningList = owningListByAppId.get(app.documentId);
+    analytics.trackClick("app-card", {
+      id: app.documentId,
+      listId: app.app_list?.documentId || owningList?.documentId,
+      listName: app.app_list?.List_Name || owningList?.name,
+      title: app.title,
+      category: app.app_category?.name,
+    });
+  }, [analytics, owningListByAppId]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try { await navigator.share({ title: `${creatorName}'s Apps`, url }); } catch { /* ignore */ }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied!");
-    }
-  };
+  usePublicHeaderDescriptor({
+    navigationKey: location.key,
+    title: `${creatorName}'s Apps`,
+    url: window.location.href,
+    analyticsContext: "apps-header",
+  });
 
   const appCount = allApps.length;
   const listCount = lists.length;
   const pageTitle = `${creatorName} | Favorite Apps & Tools | explorers`;
   const metaDescription = appCount > 0
-    ? `Browse curated app lists and recommended tools shared by ${creatorName} on explorers. Explore ${listCount} app list${listCount !== 1 ? 's' : ''} containing ${appCount} favorite app${appCount !== 1 ? 's' : ''}.`
+    ? `Browse curated app lists and recommended tools shared by ${creatorName} on explorers. Explore ${listCount}${query.hasMore || query.error ? '+' : ''} app list${listCount !== 1 ? 's' : ''} containing ${appCount} loaded favorite app${appCount !== 1 ? 's' : ''}.`
     : `Explore app and tool recommendations shared by ${creatorName} on explorers.`;
 
   const seoKeywords = [
@@ -112,7 +130,7 @@ const PublicApps = () => {
 
   return (
     <>
-      {!loading && userLookup && (
+      {!loading && accountData && (
         <SEO
           title={pageTitle}
           description={metaDescription}
@@ -124,33 +142,11 @@ const PublicApps = () => {
         />
       )}
 
-      <div className="min-h-screen bg-[#0d1117] text-white">
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="text-white font-bold text-2xl cursor-pointer"
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={handleShare}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Share"
-              >
-                <Share2 size={16} />
-              </button>
-
-            </div>
-          </div>
-        </div>
-
+      <div data-category-page className="min-h-screen bg-[var(--category-page,#0d1117)] text-[color:var(--category-text,#fff)]">
         {/* Content */}
-        <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
-          {loading ? (
-            (window as any).__publicProfileLoaded ? (
+        <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16" aria-busy={loading || undefined}>
+          {loading && !hasUsableData ? (
+            outletContext?.isShellRevealed ? (
               <div className="space-y-10 mt-4">
                 {/* Hero skeleton — Desktop (lg screens) */}
                 <div className="hidden lg:block">
@@ -165,27 +161,30 @@ const PublicApps = () => {
                   <section key={i} className="mb-8">
                     {/* Row header */}
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="w-1.5 h-[22px] bg-white/10 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
-                      <div className="h-5 w-32 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
+                      <div className="w-1.5 h-[22px] bg-[var(--category-skeleton,rgba(255,255,255,0.1))] rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
+                      <div className="h-5 w-32 bg-[var(--category-skeleton,rgba(255,255,255,0.08))] rounded skeleton-shimmer relative overflow-hidden" />
                     </div>
                     {/* Poster strip skeleton equivalent for apps */}
                     <div className="flex gap-3 overflow-hidden">
                       {[1, 2, 3, 4, 5].map((idx) => (
-                        <div key={idx} className="flex-shrink-0 w-32 h-44 rounded-xl bg-white/5 skeleton-shimmer relative overflow-hidden" />
+                        <div key={idx} className="flex-shrink-0 w-32 h-44 rounded-xl bg-[var(--category-skeleton,rgba(255,255,255,0.05))] skeleton-shimmer relative overflow-hidden" />
                       ))}
                     </div>
                   </section>
                 ))}
               </div>
             ) : null
+          ) : queryError && !hasUsableData ? (
+            <PublicRouteErrorState title="Apps unavailable" error={queryError} onRetry={handleRetry} />
           ) : (
             <>
+              {(queryError || hasPartialCollection) && <PublicRoutePartialNotice message="Some app data is unavailable." />}
               {/* Empty state */}
               {lists.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
-                  <Smartphone size={48} className="text-white/20 mb-4" />
-                  <p className="text-white/40 text-lg font-medium">No apps shared yet</p>
-                  <p className="text-white/25 text-sm mt-1">Check back later for recommendations</p>
+                  <Smartphone size={48} className="text-[color:var(--category-muted,rgba(255,255,255,0.2))] mb-4" />
+                  <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-lg font-medium">No apps shared yet</p>
+                  <p className="text-[color:var(--category-muted,rgba(255,255,255,0.25))] text-sm mt-1">Check back later for recommendations</p>
                 </div>
               ) : (
                 <>
@@ -214,7 +213,13 @@ const PublicApps = () => {
                         key={list.documentId}
                         list={list}
                         onAppClick={handleAppClick}
-                        onViewAll={() => navigate(`/${username}/apps/${list.slug}`)}
+                        onViewAll={() => {
+                          analytics.trackClick("app-list", {
+                            listId: list.documentId,
+                            listName: list.List_Name,
+                          });
+                          navigate(`/${username}/apps/${list.slug}`);
+                        }}
                       />
                     ))}
                   </div>
@@ -222,13 +227,13 @@ const PublicApps = () => {
                   {/* Category browse - hidden for now as category pages are not registered/implemented
                   {allCategories.length > 0 && (
                     <div className="mt-10">
-                      <p className="text-sm font-semibold text-white/60 mb-3">Browse by Category</p>
+                      <p className="text-sm font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.6))] mb-3">Browse by Category</p>
                       <div className="flex flex-wrap gap-2">
                         {allCategories.map((cat) => (
                           <button
                             key={cat.slug}
                             onClick={() => navigate(`/${username}/apps/category/${cat.slug}`)}
-                            className="text-xs text-violet-400/80 bg-violet-900/20 hover:bg-violet-900/40 border border-violet-800/20 px-3 py-1.5 rounded-full transition-all"
+                            className="text-xs text-[color:var(--category-text,rgba(167,139,250,0.8))] bg-violet-900/20 hover:bg-violet-900/40 border border-violet-800/20 px-3 py-1.5 rounded-full transition-all"
                           >
                             {cat.name}
                           </button>
@@ -241,6 +246,7 @@ const PublicApps = () => {
               )}
             </>
           )}
+          <PublicScrollContinuation {...query} label="app lists" />
         </div>
 
         <AppDetailModal

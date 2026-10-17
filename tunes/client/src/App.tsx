@@ -22,8 +22,6 @@ import LandingPage from '@/pages/landing-page';
 import DashboardPage from '@/pages/dashboard-page';
 import SettingsPage from '@/pages/settings-page';
 import AdminDashboard from '@/pages/AdminDashboard';
-import AdminSEOPage from '@/pages/admin-seo';
-import UserDetailPage from '@/pages/user-detail-page';
 import AnalyticsTest from '@/pages/analytics-test';
 import TermsPage from '@/pages/terms-page';
 import PrivacyPage from '@/pages/privacy-page';
@@ -85,14 +83,14 @@ function Router() {
       </Route>
       <Route path="/admin/seo">
         {() => (
-          <NewProtectedRoute path="/admin/seo" component={AdminSEOPage} requireAdmin={true} />
+          <NewProtectedRoute path="/admin/seo" component={AdminDashboard} requireAdmin={true} />
         )}
       </Route>
       <Route path="/admin/users/:userId">
         {() => (
           <NewProtectedRoute
             path="/admin/users/:userId"
-            component={UserDetailPage}
+            component={AdminDashboard}
             requireAdmin={true}
           />
         )}

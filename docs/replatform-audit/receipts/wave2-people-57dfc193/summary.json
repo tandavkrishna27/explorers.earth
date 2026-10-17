@@ -1,0 +1,460 @@
+{
+  "version": 1,
+  "evidence": "selected-local-people-protected-browser-run",
+  "selectedLane": {
+    "name": "people",
+    "status": "passed"
+  },
+  "provenance": {
+    "commit": "57dfc193097fc78c647d2249d6914ca43bf47153",
+    "sourceHash": "1eecd50a3bb5012f920c9cf37b58ea1ec8f227c33f87f68a96f60d83a88bccad",
+    "manifestHash": "276bb0aca15f0db7c67081e34d407fec7b2d19e811981146140fdb3da6fa5348",
+    "dirty": false
+  },
+  "receiptHashes": {
+    "rootQualificationSha256": "5db162367a808738116a5e3ee9183c8deb721b60fc2a453b4d9e4cb1c5d31bc1",
+    "nativeReceiptSha256": "79d8aa4bd0296ff354808a7a914f07754738cf771942fbd388480064533ffb15"
+  },
+  "sourceHashEntries": 2184,
+  "counts": {
+    "discovered": 12,
+    "executed": 12,
+    "passed": 12,
+    "failed": 0,
+    "retries": 0,
+    "errors": 0
+  },
+  "projects": [
+    "people-desktop",
+    "people-mobile"
+  ],
+  "config": "explorers-earth/e2e/replatform/people.playwright.config.ts",
+  "spec": "explorers-earth/e2e/replatform/people.spec.ts",
+  "discovery": [
+    {
+      "file": "explorers-earth/e2e/replatform/people.spec.ts",
+      "titlePath": [
+        "People: native manual list and typed person create edit and reload preserve nullable facts and notes"
+      ],
+      "project": "people-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/people.spec.ts",
+      "titlePath": [
+        "People: same-name records and matching account handles remain distinct without identity authority"
+      ],
+      "project": "people-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/people.spec.ts",
+      "titlePath": [
+        "People: shared-person presentation and immutable handle preserve owner isolation and stale drafts"
+      ],
+      "project": "people-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/people.spec.ts",
+      "titlePath": [
+        "People: native draft publication and public detail retain explicit social fields without private owner data"
+      ],
+      "project": "people-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/people.spec.ts",
+      "titlePath": [
+        "People: pre-suppressed public omission preserves the original owner record and eligible control"
+      ],
+      "project": "people-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/people.spec.ts",
+      "titlePath": [
+        "People: configured-empty sector input preserves ordinary recommendations and refuses unknown public sectors"
+      ],
+      "project": "people-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/people.spec.ts",
+      "titlePath": [
+        "People: native manual list and typed person create edit and reload preserve nullable facts and notes"
+      ],
+      "project": "people-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/people.spec.ts",
+      "titlePath": [
+        "People: same-name records and matching account handles remain distinct without identity authority"
+      ],
+      "project": "people-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/people.spec.ts",
+      "titlePath": [
+        "People: shared-person presentation and immutable handle preserve owner isolation and stale drafts"
+      ],
+      "project": "people-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/people.spec.ts",
+      "titlePath": [
+        "People: native draft publication and public detail retain explicit social fields without private owner data"
+      ],
+      "project": "people-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/people.spec.ts",
+      "titlePath": [
+        "People: pre-suppressed public omission preserves the original owner record and eligible control"
+      ],
+      "project": "people-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/people.spec.ts",
+      "titlePath": [
+        "People: configured-empty sector input preserves ordinary recommendations and refuses unknown public sectors"
+      ],
+      "project": "people-mobile",
+      "repeat": 0
+    }
+  ],
+  "results": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/people.spec.ts",
+        "titlePath": [
+          "People: native manual list and typed person create edit and reload preserve nullable facts and notes"
+        ],
+        "project": "people-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/people.spec.ts",
+        "titlePath": [
+          "People: same-name records and matching account handles remain distinct without identity authority"
+        ],
+        "project": "people-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/people.spec.ts",
+        "titlePath": [
+          "People: shared-person presentation and immutable handle preserve owner isolation and stale drafts"
+        ],
+        "project": "people-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/people.spec.ts",
+        "titlePath": [
+          "People: native draft publication and public detail retain explicit social fields without private owner data"
+        ],
+        "project": "people-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/people.spec.ts",
+        "titlePath": [
+          "People: pre-suppressed public omission preserves the original owner record and eligible control"
+        ],
+        "project": "people-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/people.spec.ts",
+        "titlePath": [
+          "People: configured-empty sector input preserves ordinary recommendations and refuses unknown public sectors"
+        ],
+        "project": "people-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/people.spec.ts",
+        "titlePath": [
+          "People: native manual list and typed person create edit and reload preserve nullable facts and notes"
+        ],
+        "project": "people-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/people.spec.ts",
+        "titlePath": [
+          "People: same-name records and matching account handles remain distinct without identity authority"
+        ],
+        "project": "people-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/people.spec.ts",
+        "titlePath": [
+          "People: shared-person presentation and immutable handle preserve owner isolation and stale drafts"
+        ],
+        "project": "people-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/people.spec.ts",
+        "titlePath": [
+          "People: native draft publication and public detail retain explicit social fields without private owner data"
+        ],
+        "project": "people-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/people.spec.ts",
+        "titlePath": [
+          "People: pre-suppressed public omission preserves the original owner record and eligible control"
+        ],
+        "project": "people-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/people.spec.ts",
+        "titlePath": [
+          "People: configured-empty sector input preserves ordinary recommendations and refuses unknown public sectors"
+        ],
+        "project": "people-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    }
+  ],
+  "child": {
+    "status": 0,
+    "signal": null
+  },
+  "cleanup": {
+    "status": "passed"
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  },
+  "authority": {
+    "owned": true,
+    "database": "music_uat_1576e067d78fdfe3ea02283943a9d3ef",
+    "containerId": "909e554d83161258551d82a55521245ccfe527f0db364843ca19453ad9272254",
+    "imageId": "sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81"
+  },
+  "tools": {
+    "node": "24.21.0",
+    "npm": "11.19.0",
+    "playwright": "1.61.1",
+    "chromium": "149.0.7827.55",
+    "lockHashes": {
+      "root": "0d1ac98c4c1a9e78ef7f4c4c39828e1b495f9e0b7473a0f43d0adf5173eb8748",
+      "tunes": "9a84227e2a067033c1945f314c2f087d322639d1b0966fc3e1a447a040f337b5",
+      "explorers-earth": "ea8be30dff688682d0b8be439cf26ebb3f8c8d419dce9d803396a80e3ed3f9c0",
+      "tunes/auth-runtime": "b7065dfb274cce760d0f8c1a42cb271f770d54832ad623272caacf7cb155ad9d"
+    }
+  },
+  "timing": {
+    "rootStartedAt": "2026-10-14T03:20:07.579Z",
+    "rootEndedAt": "2026-10-14T03:21:34.088Z",
+    "nativeStartedAt": "2026-10-14T03:20:14.313Z",
+    "nativeEndedAt": "2026-10-14T03:21:33.041Z"
+  },
+  "readiness": {
+    "deliveredSlice": "incomplete",
+    "overallMilestone": "incomplete",
+    "fullParity": "incomplete",
+    "releaseEligible": false
+  },
+  "pending": [
+    {
+      "ticket": "2.4",
+      "obligation": "Configured deployed Google callback and consent evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.4",
+      "obligation": "Analytics acceptance",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.5",
+      "obligation": "Unified QA deployment, image/schema and trusted producer evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "4/5",
+      "obligation": "Remaining canonical category producer families and their own acceptance evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "6.1-6.3",
+      "obligation": "Music mapped-owner HTTP/socket and feature parity",
+      "status": "pending"
+    },
+    {
+      "ticket": "7.1/7.2",
+      "obligation": "Cross-category consumers and all nine categories",
+      "status": "pending"
+    },
+    {
+      "ticket": "8.1-8.4",
+      "obligation": "Removal, rename, exact QA digest promotion and deployment",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.1/5.2",
+      "obligation": "Places/link16 proposed inventory awaits independent source review and actual protected execution; provider photo/gallery closure, taxonomy/pins and hosted acceptance remain pending",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.3/5.4",
+      "obligation": "Apps manual8 awaits integrated owned fixture and protected native execution; provider enrichment, taxonomy and complete public pagination remain independently pending",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.5/5.6",
+      "obligation": "Guides complete16 awaits independently reviewed clean exact-head discovery and protected owned native execution; Public32 and new feature acceptance remain pending",
+      "status": "pending"
+    }
+  ],
+  "limits": [
+    "Auth is one Chromium desktop project",
+    "Profile uses two viewport cases in one desktop project; 390px is not a mobile device project",
+    "Books has desktop and mobile Chromium projects",
+    "Lifecycle is one Chromium desktop project; provider simulation is not deployed Google acceptance",
+    "The stable delivered-auth-profile-books CLI scope is a compatibility identifier; actual scope includes Movies desktop/mobile Chromium in its separate exact24-identity lane, not live TMDB or deployed QA qualification.",
+    "Places and place-links append16 proposed local identities; Maps selection and Google REST are simulated with no provider photo import. Linked arrays are bounded12, Places traversal53 is distinct from all-category parity.",
+    "Apps adds eight manual desktop/mobile Chromium identities; native source integration and protected execution remain unqualified; no nightly provider fetch, scheduler or complete public pagination evidence.",
+    "Guides adds sixteen complete desktop/mobile Chromium source identities; clean frozen exact-head discovery and protected native execution remain unqualified. Public32 and new feature obligations remain mandatory."
+  ],
+  "producer": "selected local owned-fixture evidence; delivered slice and hosted release remain incomplete",
+  "priorIntermittentFailure": {
+    "disposition": "earlier mobile case3 page-error failure did not recur in this passing run; cause remains unproven",
+    "diagnosticOnly": true,
+    "productFixClaim": false
+  }
+}

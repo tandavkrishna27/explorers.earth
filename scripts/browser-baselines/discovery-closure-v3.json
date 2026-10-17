@@ -1,0 +1,260 @@
+{
+  "schemaVersion": 2,
+  "sha": "8d922e66692067521edcb6f370c8f18ed6991525",
+  "collector": "TypeScript AST literal import/export/require/dynamic-import traversal; conservative function-body inclusion",
+  "closure": {
+    "roots": [
+      "explorers-earth/playwright.config.ts",
+      "explorers-earth/playwright.music-publishing.config.ts",
+      "explorers-earth/e2e/music.spec.ts",
+      "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "explorers-earth/e2e/music-accessibility.spec.ts",
+      "explorers-earth/e2e/music-publish-controls.spec.ts"
+    ],
+    "edges": [
+      {
+        "from": "explorers-earth/e2e/account-lifecycle.spec.ts",
+        "to": "explorers-earth/e2e/setup/auth.ts"
+      },
+      {
+        "from": "explorers-earth/e2e/account-lifecycle.spec.ts",
+        "to": "explorers-earth/src/test/canonicalAccountFixture.ts"
+      },
+      {
+        "from": "explorers-earth/e2e/music-accessibility.spec.ts",
+        "to": "explorers-earth/e2e/setup/auth.ts"
+      },
+      {
+        "from": "explorers-earth/e2e/music-accessibility.spec.ts",
+        "to": "explorers-earth/e2e/setup/music.ts"
+      },
+      {
+        "from": "explorers-earth/e2e/music-publish-controls.spec.ts",
+        "to": "explorers-earth/e2e/setup/category-navigation.ts"
+      },
+      {
+        "from": "explorers-earth/e2e/music.spec.ts",
+        "to": "explorers-earth/e2e/setup/auth.ts"
+      },
+      {
+        "from": "explorers-earth/e2e/music.spec.ts",
+        "to": "explorers-earth/src/test/canonicalAccountFixture.ts"
+      },
+      {
+        "from": "explorers-earth/e2e/setup/books-owner-content.ts",
+        "to": "explorers-earth/src/test/canonicalAccountFixture.ts"
+      },
+      {
+        "from": "explorers-earth/e2e/setup/books-owner-content.ts",
+        "to": "tunes/shared/explorersBookContract.ts"
+      },
+      {
+        "from": "explorers-earth/e2e/setup/books-owner-content.ts",
+        "to": "tunes/shared/explorersOwnerContentContract.ts"
+      },
+      {
+        "from": "explorers-earth/e2e/setup/category-navigation.ts",
+        "to": "explorers-earth/e2e/setup/books-owner-content.ts"
+      },
+      {
+        "from": "explorers-earth/e2e/setup/category-navigation.ts",
+        "to": "explorers-earth/src/test/canonicalAccountFixture.ts"
+      },
+      {
+        "from": "explorers-earth/e2e/setup/category-navigation.ts",
+        "to": "tunes/shared/explorersContract.ts"
+      },
+      {
+        "from": "explorers-earth/e2e/setup/music.ts",
+        "to": "explorers-earth/scripts/music-public-live-preflight.mjs"
+      },
+      {
+        "from": "explorers-earth/e2e/setup/music.ts",
+        "to": "explorers-earth/src/test/canonicalAccountFixture.ts"
+      },
+      {
+        "from": "explorers-earth/playwright.music-publishing.config.ts",
+        "to": "explorers-earth/playwright.category-navigation.config.ts"
+      },
+      {
+        "from": "explorers-earth/src/test/canonicalAccountFixture.ts",
+        "to": "tunes/shared/explorersContract.ts"
+      },
+      {
+        "from": "tunes/shared/explorersContract.ts",
+        "to": "tunes/shared/explorersBookContract.ts"
+      },
+      {
+        "from": "tunes/shared/explorersContract.ts",
+        "to": "tunes/shared/explorersRichNoteContract.ts"
+      },
+      {
+        "from": "tunes/shared/explorersOwnerContentContract.ts",
+        "to": "tunes/shared/explorersBookContract.ts"
+      },
+      {
+        "from": "tunes/shared/explorersOwnerContentContract.ts",
+        "to": "tunes/shared/explorersBookCoverContract.ts"
+      },
+      {
+        "from": "tunes/shared/explorersOwnerContentContract.ts",
+        "to": "tunes/shared/explorersContract.ts"
+      },
+      {
+        "from": "tunes/shared/explorersOwnerContentContract.ts",
+        "to": "tunes/shared/explorersRichNoteContract.ts"
+      }
+    ]
+  },
+  "visited": [
+    "explorers-earth/e2e/account-lifecycle.spec.ts",
+    "explorers-earth/e2e/music-accessibility.spec.ts",
+    "explorers-earth/e2e/music-publish-controls.spec.ts",
+    "explorers-earth/e2e/music.spec.ts",
+    "explorers-earth/e2e/setup/auth.ts",
+    "explorers-earth/e2e/setup/books-owner-content.ts",
+    "explorers-earth/e2e/setup/category-navigation.ts",
+    "explorers-earth/e2e/setup/music.ts",
+    "explorers-earth/playwright.category-navigation.config.ts",
+    "explorers-earth/playwright.config.ts",
+    "explorers-earth/playwright.music-publishing.config.ts",
+    "explorers-earth/scripts/music-public-live-preflight.mjs",
+    "explorers-earth/src/test/canonicalAccountFixture.ts",
+    "tunes/shared/explorersBookContract.ts",
+    "tunes/shared/explorersBookCoverContract.ts",
+    "tunes/shared/explorersContract.ts",
+    "tunes/shared/explorersOwnerContentContract.ts",
+    "tunes/shared/explorersRichNoteContract.ts"
+  ],
+  "external": [
+    {
+      "from": "explorers-earth/e2e/account-lifecycle.spec.ts",
+      "specifier": "@playwright/test"
+    },
+    {
+      "from": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "specifier": "@axe-core/playwright"
+    },
+    {
+      "from": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "specifier": "@playwright/test"
+    },
+    {
+      "from": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "specifier": "node:fs"
+    },
+    {
+      "from": "explorers-earth/e2e/music-accessibility.spec.ts",
+      "specifier": "node:path"
+    },
+    {
+      "from": "explorers-earth/e2e/music-publish-controls.spec.ts",
+      "specifier": "@playwright/test"
+    },
+    {
+      "from": "explorers-earth/e2e/music.spec.ts",
+      "specifier": "@playwright/test"
+    },
+    {
+      "from": "explorers-earth/e2e/music.spec.ts",
+      "specifier": "node:fs"
+    },
+    {
+      "from": "explorers-earth/e2e/music.spec.ts",
+      "specifier": "node:path"
+    },
+    {
+      "from": "explorers-earth/e2e/setup/auth.ts",
+      "specifier": "@playwright/test"
+    },
+    {
+      "from": "explorers-earth/e2e/setup/books-owner-content.ts",
+      "specifier": "node:crypto"
+    },
+    {
+      "from": "explorers-earth/e2e/setup/category-navigation.ts",
+      "specifier": "@playwright/test"
+    },
+    {
+      "from": "explorers-earth/e2e/setup/category-navigation.ts",
+      "specifier": "graphql"
+    },
+    {
+      "from": "explorers-earth/e2e/setup/category-navigation.ts",
+      "specifier": "node:fs"
+    },
+    {
+      "from": "explorers-earth/e2e/setup/category-navigation.ts",
+      "specifier": "node:path"
+    },
+    {
+      "from": "explorers-earth/e2e/setup/music.ts",
+      "specifier": "@playwright/test"
+    },
+    {
+      "from": "explorers-earth/e2e/setup/music.ts",
+      "specifier": "node:crypto"
+    },
+    {
+      "from": "explorers-earth/e2e/setup/music.ts",
+      "specifier": "node:fs"
+    },
+    {
+      "from": "explorers-earth/e2e/setup/music.ts",
+      "specifier": "node:path"
+    },
+    {
+      "from": "explorers-earth/playwright.category-navigation.config.ts",
+      "specifier": "@playwright/test"
+    },
+    {
+      "from": "explorers-earth/playwright.config.ts",
+      "specifier": "@playwright/test"
+    },
+    {
+      "from": "explorers-earth/playwright.music-publishing.config.ts",
+      "specifier": "@playwright/test"
+    },
+    {
+      "from": "explorers-earth/scripts/music-public-live-preflight.mjs",
+      "specifier": "node:crypto"
+    },
+    {
+      "from": "explorers-earth/scripts/music-public-live-preflight.mjs",
+      "specifier": "node:fs"
+    },
+    {
+      "from": "explorers-earth/scripts/music-public-live-preflight.mjs",
+      "specifier": "node:module"
+    },
+    {
+      "from": "explorers-earth/scripts/music-public-live-preflight.mjs",
+      "specifier": "node:path"
+    },
+    {
+      "from": "explorers-earth/scripts/music-public-live-preflight.mjs",
+      "specifier": "node:url"
+    },
+    {
+      "from": "tunes/shared/explorersBookContract.ts",
+      "specifier": "zod/v3"
+    },
+    {
+      "from": "tunes/shared/explorersBookCoverContract.ts",
+      "specifier": "zod/v3"
+    },
+    {
+      "from": "tunes/shared/explorersContract.ts",
+      "specifier": "zod/v3"
+    },
+    {
+      "from": "tunes/shared/explorersOwnerContentContract.ts",
+      "specifier": "zod/v3"
+    },
+    {
+      "from": "tunes/shared/explorersRichNoteContract.ts",
+      "specifier": "zod/v3"
+    }
+  ],
+  "inventoryHash": "ccbdf962d8adceb7f9096d2114014d20e831a68b266b16b9f14a49e272986149"
+}

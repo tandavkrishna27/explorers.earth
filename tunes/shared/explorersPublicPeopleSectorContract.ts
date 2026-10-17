@@ -1,0 +1,10 @@
+import {z} from 'zod/v3';
+export const publicPeopleSectorTermSchema=z.object({documentId:z.string().uuid(),slug:z.string().min(1).max(100),Category_name:z.string().min(1).max(200)}).strict();
+const nullableText=z.string().nullable();
+// Owner snapshots. Optional, not merely nullable: this schema is .strict() and is parsed
+// by existing callers that omit the key, which a required key would reject.
+const publicPersonMediaSchema=z.object({imageDetails:z.array(z.object({id:z.string().uuid(),url:z.string()}).strict()).max(20)}).strict().nullable().optional();
+export const publicPersonSchema=z.object({documentId:z.string().uuid(),title:z.string(),full_name:z.string(),username_handle:nullableText,headline:nullableText,location_text:nullableText,avatar_url:nullableText,media_details:publicPersonMediaSchema,platform:nullableText,primary_platform:nullableText,profile_url:nullableText,social_urls:z.record(z.string()).nullable(),skills_tags:z.array(z.string()).nullable(),follower_count:nullableText,user_recommendation_note:z.string(),user_rating:z.number().nullable(),is_pinned:z.boolean(),pin_order:z.number().nullable(),display_order:z.number(),person_list:z.object({documentId:z.string().uuid(),List_Name:z.string(),slug:z.string()}),person_category:publicPeopleSectorTermSchema.extend({id:z.string().uuid()}).nullable(),people_category:publicPeopleSectorTermSchema.extend({id:z.string().uuid()}).nullable()}).strict();
+export const publicPeopleSectorPageSchema=z.object({version:z.literal('explorers-public-people-sector/v1'),sector:publicPeopleSectorTermSchema,canonicalSlug:z.string(),redirectSlug:z.string().nullable(),recommended_people:z.array(publicPersonSchema).max(24),nextCursor:z.string().max(2048).nullable()}).strict();
+export type PublicPerson=z.infer<typeof publicPersonSchema>;
+export type PublicPeopleSectorPage=z.infer<typeof publicPeopleSectorPageSchema>;

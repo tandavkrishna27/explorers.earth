@@ -1,0 +1,58 @@
+{
+  "locale": "id",
+  "terms": [],
+  "privacy": [],
+  "cookies": [],
+  "faqs": [
+    {
+      "Question": "Apa itu explorers.earth?",
+      "Answer": "explorers.earth memungkinkan Anda membuat dan berbagi panduan perjalanan sederhana menggunakan tautan dan kode QR.Tambahkan tempat, tips, peta, dan foto — dan bagikan di mana saja.",
+      "Sequence": 1
+    },
+    {
+      "Question": "Siapa yang dapat membuat panduan di explorers.earth?",
+      "Answer": "Siapa saja — wisatawan, lokal, influencer, tuan rumah, kafe, hotel, atau bisnis.",
+      "Sequence": 2
+    },
+    {
+      "Question": "Apakah explorers.earth gratis untuk digunakan?",
+      "Answer": "Ya.explorers.earth gratis selamanya.Anda dapat membuat kode QR, menambahkan rekomendasi tanpa batas, dan melacak analisis dasar tanpa biaya.Fitur premium untuk bisnis dan analitik tingkat lanjut tersedia melalui paket berbayar kami.",
+      "Sequence": 3
+    },
+    {
+      "Question": "Apakah saya perlu mengunduh aplikasi?",
+      "Answer": "Tidak. explorers.earth berfungsi sepenuhnya di browser Anda — pindai atau ketuk dan Anda langsung masuk.",
+      "Sequence": 4
+    },
+    {
+      "Question": "Bisakah saya mengedit panduan saya setelah diterbitkan?",
+      "Answer": "Ya.Anda dapat memperbarui panduan Anda kapan saja, dan kode QR Anda tetap sama.",
+      "Sequence": 5
+    },
+    {
+      "Question": "Di mana saya bisa membagikan pemandu lokal saya?",
+      "Answer": "Instagram, WhatsApp, ruang Airbnb, situs web, menu, poster, kartu nama, atau di mana pun kode QR dapat ditampilkan.",
+      "Sequence": 6
+    },
+    {
+      "Question": "Apa itu Lagu Lokal?",
+      "Answer": "Lagu Lokal adalah fitur di dalam explorers.earth yang memungkinkan Anda menambahkan daftar putar Spotify/Apple/YouTube Music ke panduan Anda — memberikan nuansa dan suasana hati tersendiri pada suatu tempat.",
+      "Sequence": 7
+    },
+    {
+      "Question": "Apakah saya memerlukan akun terpisah untuk Lagu Lokal?",
+      "Answer": "Tidak. Akun explorers.earth Anda berfungsi untuk explorers.earth dan LocalTunes.",
+      "Sequence": 8
+    },
+    {
+      "Question": "Berapa harga Lagu Lokal?",
+      "Answer": "LocalTunes memiliki paket gratis dan langganan ₹300/bulan (dengan diskon 10% untuk penagihan tahunan) yang menawarkan daftar putar tanpa batas, analitik, dan fitur-fitur canggih.",
+      "Sequence": 9
+    },
+    {
+      "Question": "Apakah kode QR bersifat permanen?",
+      "Answer": "Ya.Setelah dibuat, kode QR Anda tidak pernah berubah — bahkan saat Anda memperbarui panduan Anda.",
+      "Sequence": 10
+    }
+  ]
+}

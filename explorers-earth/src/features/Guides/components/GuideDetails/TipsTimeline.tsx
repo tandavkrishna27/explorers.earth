@@ -261,7 +261,6 @@ const TipsTimeline: React.FC<TipsTimelineProps> = ({ guide }) => {
           }}
           sectionId={editingTip.sectionId}
           sectionTitle={editingTip.sectionTitle}
-          guideId={guide.documentId}
           onSuccess={() => {
             // Modal will handle refetching, just close it
             setEditingTip(null);

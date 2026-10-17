@@ -1,0 +1,245 @@
+client/src/components/import-youtube-playlist.tsx(27,25): error TS2558: Expected 0 type arguments, but got 1.
+client/src/components/import-youtube-playlist.tsx(43,36): error TS2339: Property 'videosAdded' does not exist on type 'Response'.
+client/src/components/import-youtube-playlist.tsx(43,60): error TS2339: Property 'videosAdded' does not exist on type 'Response'.
+client/src/components/theme-provider.tsx(23,58): error TS2339: Property 'primary' does not exist on type '{}'.
+client/src/components/theme-provider.tsx(46,75): error TS2339: Property 'primary' does not exist on type '{}'.
+client/src/components/theme-provider.tsx(55,43): error TS2339: Property 'primary' does not exist on type '{}'.
+client/src/hooks/use-analytics.tsx(106,7): error TS2783: 'category' is specified more than once, so this usage will be overwritten.
+client/src/hooks/use-analytics.tsx(107,7): error TS2783: 'action' is specified more than once, so this usage will be overwritten.
+client/src/hooks/use-auth.tsx(127,15): error TS7006: Parameter 'error' implicitly has an 'any' type.
+client/src/hooks/use-auth.tsx(127,5): error TS2769: No overload matches this call. Overload 1 of 3, '(options: DefinedInitialDataOptions<{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | undefined, Error, { ...; } | undefined, QueryKey>, queryClient?: QueryClient | undefined): DefinedUseQueryResult<...>', gave the following error. Object literal may only specify known properties, and 'onError' does not exist in type 'DefinedInitialDataOptions<{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | undefined, Error, { ...; } | undefined, QueryKey>'. Overload 2 of 3, '(options: UndefinedInitialDataOptions<{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | undefined, Error, { ...; } | undefined, QueryKey>, queryClient?: QueryClient | undefined): UseQueryResult<...>', gave the following error. Object literal may only specify known properties, and 'onError' does not exist in type 'UndefinedInitialDataOptions<{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | undefined, Error, { ...; } | undefined, QueryKey>'. Overload 3 of 3, '(options: UseQueryOptions<{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | undefined, Error, { ...; } | undefined, QueryKey>, queryClient?: QueryClient | undefined): UseQueryResult<...>', gave the following error. Object literal may only specify known properties, and 'onError' does not exist in type 'UseQueryOptions<{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | undefined, Error, { ...; } | undefined, QueryKey>'.
+client/src/hooks/use-auth.tsx(167,15): error TS2339: Property 'email' does not exist on type '{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | NonNullable<...>'. Property 'email' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/hooks/use-auth.tsx(168,19): error TS2339: Property 'isEmailVerified' does not exist on type '{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | NonNullable<...>'. Property 'isEmailVerified' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/hooks/use-auth.tsx(175,22): error TS2339: Property 'id' does not exist on type '{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | NonNullable<...>'. Property 'id' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/hooks/use-auth.tsx(177,24): error TS2339: Property 'username' does not exist on type '{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | NonNullable<...>'. Property 'username' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/hooks/use-auth.tsx(340,26): error TS2339: Property 'id' does not exist on type '{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | NonNullable<...>'. Property 'id' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/hooks/use-auth.tsx(341,28): error TS2339: Property 'username' does not exist on type '{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | NonNullable<...>'. Property 'username' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/hooks/use-auth.tsx(403,9): error TS2322: Type '{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | NonNullable<...> | null' is not assignable to type '{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | null'. Type 'NonNullable<TQueryFnData>' is not assignable to type '{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | null'. Type '{}' is missing the following properties from type '{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; }': id, email, createdAt, username, and 16 more.
+client/src/hooks/use-auth.tsx(407,9): error TS2322: Type 'UseMutationResult<void | Response, Error, void, unknown>' is not assignable to type 'UseMutationResult<void, Error, void>'. Type 'Override<MutationObserverIdleResult<void | Response, Error, void, unknown>, { mutate: UseMutateFunction<void | Response, Error, void, unknown>; }> & { ...; }' is not assignable to type 'UseMutationResult<void, Error, void>'. Type 'Override<MutationObserverIdleResult<void | Response, Error, void, unknown>, { mutate: UseMutateFunction<void | Response, Error, void, unknown>; }> & { ...; }' is not assignable to type 'Override<MutationObserverIdleResult<void, Error, void, unknown>, { mutate: UseMutateFunction<void, Error, void, unknown>; }> & { ...; }'. Type 'Override<MutationObserverIdleResult<void | Response, Error, void, unknown>, { mutate: UseMutateFunction<void | Response, Error, void, unknown>; }> & { ...; }' is not assignable to type 'Override<MutationObserverIdleResult<void, Error, void, unknown>, { mutate: UseMutateFunction<void, Error, void, unknown>; }>'. Types of property 'mutate' are incompatible. Type 'UseMutateFunction<void | Response, Error, void, unknown>' is not assignable to type 'UseMutateFunction<void, Error, void, unknown>'. Type 'void | Response' is not assignable to type 'void'. Type 'Response' is not assignable to type 'void'.
+client/src/hooks/use-music-controls.tsx(16,14): error TS2339: Property 'musicSettings' does not exist on type '{ id: number; state: string | null; updatedAt: Date; userId: number; countryCode: string | null; firstName: string | null; lastName: string | null; profilePicture: string | null; ... 9 more ...; whatsappUrl: string | null; }'.
+client/src/hooks/use-music-controls.tsx(36,18): error TS2339: Property 'musicSettings' does not exist on type '{ id: number; state: string | null; updatedAt: Date; userId: number; countryCode: string | null; firstName: string | null; lastName: string | null; profilePicture: string | null; ... 9 more ...; whatsappUrl: string | null; }'.
+client/src/hooks/use-music-controls.tsx(37,41): error TS2339: Property 'musicSettings' does not exist on type '{ id: number; state: string | null; updatedAt: Date; userId: number; countryCode: string | null; firstName: string | null; lastName: string | null; profilePicture: string | null; ... 9 more ...; whatsappUrl: string | null; }'.
+client/src/hooks/use-music-controls.tsx(39,16): error TS2339: Property 'musicSettings' does not exist on type '{ id: number; state: string | null; updatedAt: Date; userId: number; countryCode: string | null; firstName: string | null; lastName: string | null; profilePicture: string | null; ... 9 more ...; whatsappUrl: string | null; }'.
+client/src/lib/apollo-client.ts(31,56): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'. Type 'undefined' is not assignable to type 'string'.
+client/src/lib/apollo-client.ts(55,30): error TS2339: Property 'graphQLErrors' does not exist on type 'ErrorHandlerOptions'.
+client/src/lib/apollo-client.ts(55,45): error TS2339: Property 'networkError' does not exist on type 'ErrorHandlerOptions'.
+client/src/lib/apollo-client.ts(57,30): error TS7031: Binding element 'message' implicitly has an 'any' type.
+client/src/lib/apollo-client.ts(57,39): error TS7031: Binding element 'locations' implicitly has an 'any' type.
+client/src/lib/apollo-client.ts(57,50): error TS7031: Binding element 'path' implicitly has an 'any' type.
+client/src/lib/apollo-client.ts(57,56): error TS7031: Binding element 'extensions' implicitly has an 'any' type.
+client/src/lib/queryClient.ts(253,14): error TS2322: Type '(failureCount: any, error: any, context: any) => boolean' is not assignable to type 'RetryValue<Error> | undefined'. Type '(failureCount: any, error: any, context: any) => boolean' is not assignable to type 'ShouldRetryFunction<Error>'. Target signature provides too few arguments. Expected 3 or more, but got 2.
+client/src/lib/queryClient.ts(253,15): error TS7006: Parameter 'failureCount' implicitly has an 'any' type.
+client/src/lib/queryClient.ts(253,41): error TS7006: Parameter 'context' implicitly has an 'any' type.
+client/src/main.tsx(17,11): error TS7015: Element implicitly has an 'any' type because index expression is not of type 'number'.
+client/src/main.tsx(17,16): error TS7015: Element implicitly has an 'any' type because index expression is not of type 'number'.
+client/src/main.tsx(17,34): error TS7015: Element implicitly has an 'any' type because index expression is not of type 'number'.
+client/src/main.tsx(17,41): error TS7015: Element implicitly has an 'any' type because index expression is not of type 'number'.
+client/src/main.tsx(18,30): error TS18048: 't' is possibly 'undefined'.
+client/src/main.tsx(18,40): error TS18048: 't' is possibly 'undefined'.
+client/src/main.tsx(18,9): error TS2322: Type 'HTMLElement' is not assignable to type 'undefined'.
+client/src/main.tsx(19,40): error TS18048: 'y' is possibly 'undefined'.
+client/src/main.tsx(19,9): error TS2322: Type 'Element' is not assignable to type 'undefined'.
+client/src/main.tsx(23,14): error TS2339: Property 'clarity' does not exist on type 'Window & typeof globalThis'.
+client/src/main.tsx(23,31): error TS2339: Property 'clarity' does not exist on type 'Window & typeof globalThis'.
+client/src/main.tsx(23,63): error TS2339: Property 'clarity' does not exist on type 'Window & typeof globalThis'.
+client/src/main.tsx(23,82): error TS2339: Property 'clarity' does not exist on type 'Window & typeof globalThis'.
+client/src/main.tsx(26,14): error TS2339: Property 'clarity' does not exist on type 'Window & typeof globalThis'.
+client/src/main.tsx(27,14): error TS2339: Property 'clarity' does not exist on type 'Window & typeof globalThis'.
+client/src/pages/admin/tabs/TeamTab.tsx(180,40): error TS2304: Cannot find name 'apiTokenSchema'.
+client/src/pages/admin/tabs/TeamTab.tsx(183,45): error TS2304: Cannot find name 'emailTemplateSchema'.
+client/src/pages/admin/tabs/TeamTab.tsx(184,49): error TS2304: Cannot find name 'emailVerificationSchema'.
+client/src/pages/admin/tabs/WebsiteTab.tsx(209,25): error TS2339: Property 'title' does not exist on type '{}'.
+client/src/pages/admin/tabs/WebsiteTab.tsx(210,27): error TS2339: Property 'content' does not exist on type '{}'.
+client/src/pages/admin/tabs/WebsiteTab.tsx(226,39): error TS2339: Property 'updatedAt' does not exist on type '{}'.
+client/src/pages/admin/tabs/WebsiteTab.tsx(227,36): error TS2339: Property 'updatedAt' does not exist on type '{}'.
+client/src/pages/admin/tabs/WebsiteTab.tsx(257,25): error TS2339: Property 'title' does not exist on type '{}'.
+client/src/pages/admin/tabs/WebsiteTab.tsx(258,27): error TS2339: Property 'content' does not exist on type '{}'.
+client/src/pages/admin/tabs/WebsiteTab.tsx(274,39): error TS2339: Property 'updatedAt' does not exist on type '{}'.
+client/src/pages/admin/tabs/WebsiteTab.tsx(275,36): error TS2339: Property 'updatedAt' does not exist on type '{}'.
+client/src/pages/analytics-test.tsx(19,20): error TS2339: Property 'gtag' does not exist on type 'Window & typeof globalThis'.
+client/src/pages/dashboard-page.tsx(1073,31): error TS2339: Property 'songs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(1670,59): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(1678,68): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(1679,43): error TS2339: Property 'songs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(1680,47): error TS2339: Property 'playedSongs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(1685,39): error TS2339: Property 'playedSongs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(1685,69): error TS2339: Property 'playedSongs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(1687,59): error TS2339: Property 'playedSongs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(1690,68): error TS2339: Property 'playedSongs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(1754,40): error TS2339: Property 'songs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(1756,23): error TS2322: Type '(song: Song) => Promise<void>' is not assignable to type '(song: SongType) => void'. Types of parameters 'song' and 'song' are incompatible. Type 'SongType' is not assignable to type '{ title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }'. Type 'PlaylistSong' is missing the following properties from type '{ title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }': status, userId, playedAt
+client/src/pages/dashboard-page.tsx(1759,75): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(2125,37): error TS2339: Property 'playedSongs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(2127,21): error TS2322: Type '(song: Song) => Promise<void>' is not assignable to type '(song: SongType) => void'. Types of parameters 'song' and 'song' are incompatible. Type 'SongType' is not assignable to type '{ title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }'. Type 'PlaylistSong' is missing the following properties from type '{ title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }': status, userId, playedAt
+client/src/pages/dashboard-page.tsx(2130,21): error TS2322: Type '(songs: Song[]) => Promise<void>' is not assignable to type '(songs: SongType[]) => void'. Types of parameters 'songs' and 'songs' are incompatible. Type 'SongType[]' is not assignable to type '{ title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }[]'. Type 'SongType' is not assignable to type '{ title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }'. Type 'PlaylistSong' is missing the following properties from type '{ title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }': status, userId, playedAt
+client/src/pages/dashboard-page.tsx(2133,72): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(2257,31): error TS2322: Type '{ playlistId: number; onAdd: (songs: any) => Promise<void>; }' is not assignable to type 'IntrinsicAttributes & Props'. Property 'onAdd' does not exist on type 'IntrinsicAttributes & Props'.
+client/src/pages/dashboard-page.tsx(2257,39): error TS7006: Parameter 'songs' implicitly has an 'any' type.
+client/src/pages/dashboard-page.tsx(2428,29): error TS2322: Type '(song: Song) => Promise<void>' is not assignable to type '(song: SongType) => void'. Types of parameters 'song' and 'song' are incompatible. Type 'SongType' is not assignable to type '{ title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }'. Type 'PlaylistSong' is missing the following properties from type '{ title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }': status, userId, playedAt
+client/src/pages/dashboard-page.tsx(2429,79): error TS2345: Argument of type 'SongType' is not assignable to parameter of type '{ title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }'. Type 'PlaylistSong' is missing the following properties from type '{ title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }': status, userId, playedAt
+client/src/pages/dashboard-page.tsx(271,15): error TS7006: Parameter 'err' implicitly has an 'any' type.
+client/src/pages/dashboard-page.tsx(271,5): error TS2769: No overload matches this call. Overload 1 of 3, '(options: DefinedInitialDataOptions<{ songs: { title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }[]; currentlyPlaying?: { ...; } | undefined; playedSongs: { ...; }[]; }, Error, { ...; }, QueryKey>, queryClient?: QueryClient | undefined): DefinedUseQueryResult<...>', gave the following error. Object literal may only specify known properties, and 'onError' does not exist in type 'DefinedInitialDataOptions<{ songs: { title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }[]; currentlyPlaying?: { ...; } | undefined; playedSongs: { ...; }[]; }, Error, { ...; }, QueryKey>'. Overload 2 of 3, '(options: UndefinedInitialDataOptions<{ songs: { title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }[]; currentlyPlaying?: { ...; } | undefined; playedSongs: { ...; }[]; }, Error, { ...; }, QueryKey>, queryClient?: QueryClient | undefined): UseQueryResult<...>', gave the following error. Object literal may only specify known properties, and 'onError' does not exist in type 'UndefinedInitialDataOptions<{ songs: { title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }[]; currentlyPlaying?: { ...; } | undefined; playedSongs: { ...; }[]; }, Error, { ...; }, QueryKey>'. Overload 3 of 3, '(options: UseQueryOptions<{ songs: { title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }[]; currentlyPlaying?: { ...; } | undefined; playedSongs: { ...; }[]; }, Error, { ...; }, QueryKey>, queryClient?: QueryClient | undefined): UseQueryResult<...>', gave the following error. Object literal may only specify known properties, and 'onError' does not exist in type 'UseQueryOptions<{ songs: { title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }[]; currentlyPlaying?: { ...; } | undefined; playedSongs: { ...; }[]; }, Error, { ...; }, QueryKey>'.
+client/src/pages/dashboard-page.tsx(295,78): error TS18047: 'user' is possibly 'null'.
+client/src/pages/dashboard-page.tsx(345,33): error TS2339: Property 'songs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(345,57): error TS2339: Property 'songs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(558,39): error TS2339: Property 'songs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(599,36): error TS2339: Property 'songs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(600,50): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/pages/dashboard-page.tsx(632,19): error TS2339: Property 'songs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(632,37): error TS2339: Property 'songs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(633,34): error TS2339: Property 'songs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(636,17): error TS2339: Property 'songs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/dashboard-page.tsx(848,30): error TS2339: Property 'name' does not exist on type 'Response'.
+client/src/pages/playlist-page.tsx(421,31): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(475,20): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(477,27): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(479,29): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(481,17): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(481,44): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(511,28): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(512,71): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(513,29): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(522,72): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(548,29): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(555,25): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(560,39): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(561,39): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(577,95): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(578,80): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(586,36): error TS2339: Property 'allowGuestPlayOnDevice' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(598,26): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(616,20): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(655,81): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(67,17): error TS7006: Parameter 'data' implicitly has an 'any' type.
+client/src/pages/playlist-page.tsx(67,5): error TS2769: No overload matches this call. Overload 1 of 3, '(options: DefinedInitialDataOptions<PlaylistResponse, Error, PlaylistResponse, QueryKey>, queryClient?: QueryClient | undefined): DefinedUseQueryResult<...>', gave the following error. Object literal may only specify known properties, and 'onSuccess' does not exist in type 'DefinedInitialDataOptions<PlaylistResponse, Error, PlaylistResponse, QueryKey>'. Overload 2 of 3, '(options: UndefinedInitialDataOptions<PlaylistResponse, Error, PlaylistResponse, QueryKey>, queryClient?: QueryClient | undefined): UseQueryResult<...>', gave the following error. Object literal may only specify known properties, and 'onSuccess' does not exist in type 'UndefinedInitialDataOptions<PlaylistResponse, Error, PlaylistResponse, QueryKey>'. Overload 3 of 3, '(options: UseQueryOptions<PlaylistResponse, Error, PlaylistResponse, QueryKey>, queryClient?: QueryClient | undefined): UseQueryResult<...>', gave the following error. Object literal may only specify known properties, and 'onSuccess' does not exist in type 'UseQueryOptions<PlaylistResponse, Error, PlaylistResponse, QueryKey>'.
+client/src/pages/playlist-page.tsx(686,38): error TS2339: Property 'songs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(688,51): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(699,21): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(71,50): error TS7006: Parameter 'p' implicitly has an 'any' type.
+client/src/pages/playlist-page.tsx(720,33): error TS2339: Property 'playedSongs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(722,42): error TS2339: Property 'playedSongs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(725,55): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(739,20): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(739,58): error TS2339: Property 'playlists' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(739,80): error TS2339: Property 'playlists' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(757,55): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(760,31): error TS2339: Property 'playlists' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(760,46): error TS7006: Parameter 'p' implicitly has an 'any' type.
+client/src/pages/playlist-page.tsx(761,52): error TS2339: Property 'playlists' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(761,67): error TS7006: Parameter 'p' implicitly has an 'any' type.
+client/src/pages/playlist-page.tsx(763,37): error TS2339: Property 'playlists' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(764,37): error TS7006: Parameter 'p' implicitly has an 'any' type.
+client/src/pages/playlist-page.tsx(765,35): error TS7006: Parameter 'p' implicitly has an 'any' type.
+client/src/pages/playlist-page.tsx(772,35): error TS2339: Property 'playlists' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(773,35): error TS7006: Parameter 'p' implicitly has an 'any' type.
+client/src/pages/playlist-page.tsx(774,33): error TS7006: Parameter 'p' implicitly has an 'any' type.
+client/src/pages/playlist-page.tsx(78,19): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(789,66): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(79,73): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(790,37): error TS2322: Type '(song: Song) => Promise<void>' is not assignable to type '(song: SongType) => void'. Types of parameters 'song' and 'song' are incompatible. Type 'SongType' is not assignable to type '{ title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }'. Type 'PlaylistSong' is missing the following properties from type '{ title: string; id: number; status: SongStatus; userId: number; youtubeId: string; artist: string; thumbnailUrl: string; position: number; playedAt: Date | null; }': status, userId, playedAt
+client/src/pages/playlist-page.tsx(80,28): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(818,19): error TS2339: Property 'allowGuestPlayOnDevice' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(83,17): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(846,49): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(847,46): error TS2339: Property 'songs' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(87,15): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(876,36): error TS2339: Property 'currentlyPlaying' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(878,37): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(879,40): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(880,42): error TS2339: Property 'allowGuestPlayOnDevice' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/playlist-page.tsx(881,49): error TS2339: Property 'user' does not exist on type 'NonNullable<TQueryFnData>'.
+client/src/pages/privacy-page.tsx(14,5): error TS2769: No overload matches this call. Overload 1 of 3, '(options: DefinedInitialDataOptions<unknown, Error, unknown, string[]>, queryClient?: QueryClient | undefined): DefinedUseQueryResult<unknown, Error>', gave the following error. Object literal may only specify known properties, and 'onError' does not exist in type 'DefinedInitialDataOptions<unknown, Error, unknown, string[]>'. Overload 2 of 3, '(options: UndefinedInitialDataOptions<unknown, Error, unknown, string[]>, queryClient?: QueryClient | undefined): UseQueryResult<unknown, Error>', gave the following error. Object literal may only specify known properties, and 'onError' does not exist in type 'UndefinedInitialDataOptions<unknown, Error, unknown, string[]>'. Overload 3 of 3, '(options: UseQueryOptions<unknown, Error, unknown, string[]>, queryClient?: QueryClient | undefined): UseQueryResult<unknown, Error>', gave the following error. Object literal may only specify known properties, and 'onError' does not exist in type 'UseQueryOptions<unknown, Error, unknown, string[]>'.
+client/src/pages/privacy-page.tsx(85,66): error TS2339: Property 'title' does not exist on type '{}'.
+client/src/pages/privacy-page.tsx(87,49): error TS2339: Property 'updatedAt' does not exist on type '{}'.
+client/src/pages/privacy-page.tsx(87,74): error TS2339: Property 'createdAt' does not exist on type '{}'.
+client/src/pages/privacy-page.tsx(91,119): error TS2339: Property 'content' does not exist on type '{}'.
+client/src/pages/settings-page.tsx(294,34): error TS2339: Property 'primary' does not exist on type '{}'.
+client/src/pages/settings-page.tsx(401,11): error TS2698: Spread types may only be created from object types.
+client/src/pages/settings-page.tsx(464,39): error TS2339: Property 'primary' does not exist on type '{}'.
+client/src/pages/settings-page.tsx(465,32): error TS2339: Property 'primary' does not exist on type '{}'.
+client/src/pages/settings-page.tsx(506,64): error TS2345: Argument of type 'string | number | Date' is not assignable to parameter of type 'string | undefined'. Type 'number' is not assignable to type 'string'.
+client/src/pages/terms-page.tsx(14,5): error TS2769: No overload matches this call. Overload 1 of 3, '(options: DefinedInitialDataOptions<unknown, Error, unknown, string[]>, queryClient?: QueryClient | undefined): DefinedUseQueryResult<unknown, Error>', gave the following error. Object literal may only specify known properties, and 'onError' does not exist in type 'DefinedInitialDataOptions<unknown, Error, unknown, string[]>'. Overload 2 of 3, '(options: UndefinedInitialDataOptions<unknown, Error, unknown, string[]>, queryClient?: QueryClient | undefined): UseQueryResult<unknown, Error>', gave the following error. Object literal may only specify known properties, and 'onError' does not exist in type 'UndefinedInitialDataOptions<unknown, Error, unknown, string[]>'. Overload 3 of 3, '(options: UseQueryOptions<unknown, Error, unknown, string[]>, queryClient?: QueryClient | undefined): UseQueryResult<unknown, Error>', gave the following error. Object literal may only specify known properties, and 'onError' does not exist in type 'UseQueryOptions<unknown, Error, unknown, string[]>'.
+client/src/pages/terms-page.tsx(85,66): error TS2339: Property 'title' does not exist on type '{}'.
+client/src/pages/terms-page.tsx(87,49): error TS2339: Property 'updatedAt' does not exist on type '{}'.
+client/src/pages/terms-page.tsx(87,74): error TS2339: Property 'createdAt' does not exist on type '{}'.
+client/src/pages/terms-page.tsx(91,119): error TS2339: Property 'content' does not exist on type '{}'.
+client/src/pages/website-tab.tsx(209,25): error TS2339: Property 'title' does not exist on type '{}'.
+client/src/pages/website-tab.tsx(210,27): error TS2339: Property 'content' does not exist on type '{}'.
+client/src/pages/website-tab.tsx(226,39): error TS2339: Property 'updatedAt' does not exist on type '{}'.
+client/src/pages/website-tab.tsx(227,36): error TS2339: Property 'updatedAt' does not exist on type '{}'.
+client/src/pages/website-tab.tsx(257,25): error TS2339: Property 'title' does not exist on type '{}'.
+client/src/pages/website-tab.tsx(258,27): error TS2339: Property 'content' does not exist on type '{}'.
+client/src/pages/website-tab.tsx(274,39): error TS2339: Property 'updatedAt' does not exist on type '{}'.
+client/src/pages/website-tab.tsx(275,36): error TS2339: Property 'updatedAt' does not exist on type '{}'.
+server/legacy-routes.ts(1377,11): error TS2322: Type 'Date | null' is not assignable to type 'Date | undefined'. Type 'null' is not assignable to type 'Date | undefined'.
+server/legacy-routes.ts(1477,9): error TS2353: Object literal may only specify known properties, and 'description' does not exist in type '{ variables: Record<string, string>; name: string; subject: string; html_content: string; text_content: string; isActive?: boolean | undefined; createdBy?: number | null | undefined; }'.
+server/legacy-routes.ts(1536,9): error TS2353: Object literal may only specify known properties, and 'description' does not exist in type 'Partial<{ variables: unknown; id: number; name: string; createdAt: Date; updatedAt: Date; isActive: boolean; subject: string; html_content: string; text_content: string; createdBy: number | null; }>'.
+server/legacy-routes.ts(1605,17): error TS7006: Parameter 'emailLogs' implicitly has an 'any' type.
+server/legacy-routes.ts(1605,30): error TS7031: Binding element 'eq' implicitly has an 'any' type.
+server/legacy-routes.ts(1616,19): error TS7006: Parameter 'emailTemplates' implicitly has an 'any' type.
+server/legacy-routes.ts(1616,37): error TS7031: Binding element 'eq' implicitly has an 'any' type.
+server/legacy-routes.ts(1769,9): error TS2561: Object literal may only specify known properties, but 'emailTemplateId' does not exist in type '{ metadata: Record<string, any>; status: string; subject: string; recipient: string; templateId?: number | null | undefined; errorMessage?: string | null | undefined; apiTokenId?: number | ... 1 more ... | undefined; messageId?: string | ... 1 more ... | undefined; }'. Did you mean to write 'templateId'?
+server/legacy-routes.ts(2584,9): error TS2322: Type '{ id: number; name: string; description: string | null; createdAt: Date; updatedAt: Date; userId: number; isVisibleToGuests: boolean; }[]' is not assignable to type 'PlaylistWithSongs[]'. Property 'songs' is missing in type '{ id: number; name: string; description: string | null; createdAt: Date; updatedAt: Date; userId: number; isVisibleToGuests: boolean; }' but required in type 'PlaylistWithSongs'.
+server/legacy-routes.ts(5897,9): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'. Type 'null' is not assignable to type 'string | undefined'.
+server/routes/instagramRoutes.ts(357,37): error TS2345: Argument of type 'string | number | true | string[] | AxiosHeaders' is not assignable to parameter of type 'string | string[] | undefined'. Type 'number' is not assignable to type 'string | string[] | undefined'.
+server/routes/scrapeRoutes.ts(120,22): error TS2339: Property 'startsWith' does not exist on type 'string | number | true | string[] | AxiosHeaders'. Property 'startsWith' does not exist on type 'number'.
+server/routes/scrapeRoutes.ts(120,59): error TS2339: Property 'startsWith' does not exist on type 'string | number | true | string[] | AxiosHeaders'. Property 'startsWith' does not exist on type 'number'.
+server/routes/scrapeRoutes.ts(128,38): error TS2345: Argument of type 'string | number | true | string[] | AxiosHeaders' is not assignable to parameter of type 'string'. Type 'number' is not assignable to type 'string'.
+server/routes/scrapeRoutes.ts(135,35): error TS2345: Argument of type 'string | number | true | string[] | AxiosHeaders' is not assignable to parameter of type 'string | number | readonly string[]'. Type 'boolean' is not assignable to type 'string | number | readonly string[]'.
+server/services/reactivation-service.ts(133,32): error TS2802: Type 'MapIterator<[string, ReactivationEntry]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+server/services/user-sync-service.ts(65,9): error TS2353: Object literal may only specify known properties, and 'guestUrl' does not exist in type '{ username: string; password: string; venueName: string; _csrf?: string | undefined; email?: string | undefined; countryCode?: string | undefined; phoneNumber?: string | undefined; }'.
+server/services/user-sync-service.ts(88,7): error TS2322: Type '{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | undefined' is not assignable to type '{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | null'. Type 'undefined' is not assignable to type '{ id: number; email: string | null; createdAt: Date; username: string; password: string; otp: string | null; otpExpiry: Date | null; emailVerificationToken: string | null; ... 11 more ...; updatedAt: Date; } | null'.
+server/services/youtube-playlist-import.ts(307,39): error TS2345: Argument of type '{ youtubeId: string; title: string; artist: string; thumbnailUrl: string; }' is not assignable to parameter of type '{ title: string; youtubeId: string; artist: string; thumbnailUrl: string; position: number; }'. Property 'position' is missing in type '{ youtubeId: string; title: string; artist: string; thumbnailUrl: string; }' but required in type '{ title: string; youtubeId: string; artist: string; thumbnailUrl: string; position: number; }'.
+server/storage.ts(1104,32): error TS7006: Parameter 'playlist' implicitly has an 'any' type.
+server/storage.ts(1146,33): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+server/storage.ts(1166,33): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+server/storage.ts(1195,35): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+server/storage.ts(1273,17): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(1281,35): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+server/storage.ts(1289,58): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(1295,39): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(1443,31): error TS7006: Parameter 'stat' implicitly has an 'any' type.
+server/storage.ts(1773,39): error TS7006: Parameter 'token' implicitly has an 'any' type.
+server/storage.ts(2101,38): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(2102,43): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(2103,40): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(2121,31): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(2326,58): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(327,51): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+server/storage.ts(350,33): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+server/storage.ts(386,35): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+server/storage.ts(400,65): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(415,58): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(452,71): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(465,33): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+server/storage.ts(475,60): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(478,50): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(494,55): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(529,35): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+server/storage.ts(575,27): error TS7006: Parameter 's' implicitly has an 'any' type.
+server/storage.ts(975,33): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+server/user-routes.ts(200,30): error TS2339: Property 'device' does not exist on type '{}'.
+server/user-routes.ts(201,31): error TS2339: Property 'device' does not exist on type '{}'.
+server/user-routes.ts(202,36): error TS2339: Property 'browser' does not exist on type '{}'.
+server/user-routes.ts(202,77): error TS2339: Property 'browser' does not exist on type '{}'.
+server/user-routes.ts(203,31): error TS2339: Property 'os' does not exist on type '{}'.
+server/user-routes.ts(203,67): error TS2339: Property 'os' does not exist on type '{}'.
+server/user-routes.ts(204,34): error TS2339: Property 'isMobile' does not exist on type '{}'.
+server/user-routes.ts(205,34): error TS2339: Property 'language' does not exist on type '{}'.
+server/user-routes.ts(208,119): error TS2339: Property 'os' does not exist on type '{}'.
+server/user-routes.ts(208,155): error TS2339: Property 'browser' does not exist on type '{}'.
+server/user-routes.ts(208,38): error TS2339: Property 'device' does not exist on type '{}'.
+server/user-routes.ts(208,78): error TS2339: Property 'device' does not exist on type '{}'.
+server/user-routes.ts(42,28): error TS2339: Property 'country' does not exist on type '{ id: number; region: string | null; userId: number; startTime: Date; endTime: Date | null; lastActiveAt: Date | null; deviceInfo: unknown; ipAddress: string | null; countryCode: string | null; geoData: unknown; }'.
+server/user-routes.ts(46,30): error TS2339: Property 'device' does not exist on type '{}'.
+server/user-routes.ts(47,31): error TS2339: Property 'device' does not exist on type '{}'.
+server/user-routes.ts(48,36): error TS2339: Property 'browser' does not exist on type '{}'.
+server/user-routes.ts(48,77): error TS2339: Property 'browser' does not exist on type '{}'.
+server/user-routes.ts(49,31): error TS2339: Property 'os' does not exist on type '{}'.
+server/user-routes.ts(49,67): error TS2339: Property 'os' does not exist on type '{}'.
+server/user-routes.ts(50,34): error TS2339: Property 'isMobile' does not exist on type '{}'.
+server/user-routes.ts(51,34): error TS2339: Property 'language' does not exist on type '{}'.
+server/utils/scrapeUtils.ts(64,32): error TS2694: Namespace '"dns"' has no exported member 'LookupFunction'.
+server/utils/scrapeUtils.ts(64,50): error TS7006: Parameter 'hostname' implicitly has an 'any' type.
+server/utils/scrapeUtils.ts(64,60): error TS7006: Parameter 'options' implicitly has an 'any' type.
+server/utils/scrapeUtils.ts(64,69): error TS7006: Parameter 'callback' implicitly has an 'any' type.

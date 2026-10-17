@@ -28,6 +28,7 @@ import {
   type InsertTeamMember,
   type Playlist,
   type InsertPlaylist,
+  type InsertPlaylistSong,
   type InsertSong,
   type PlaylistSong,
   emailTemplates,
@@ -45,6 +46,8 @@ import {
   systemSettings,
   type SystemSetting,
   type InsertSystemSetting,
+  emailSuppressions,
+  normalizeSuppressionEmail,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray, count, gte, lt, gt, lte, or, like, isNotNull, isNull } from "drizzle-orm";
@@ -60,6 +63,10 @@ export type AdminUserListRow = Record<string, any> & {
   accountManager: { name: string; role: string } | null;
 };
 
+type UserCreationIdentity = Pick<typeof users.$inferInsert,
+  "strapiUserDocumentId" | "strapiAccountDocumentId" | "lifecycleOperationId" | "guestCapabilityHash">;
+type UserCreationInput = InsertUser & UserCreationIdentity;
+
 const MemoryStore = createMemoryStore(session);
 const PgStore = connectPgSimple(session);
 
@@ -68,7 +75,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByGuestUrl(guestUrl: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  createUser(user: UserCreationInput): Promise<User>;
   updateUser(id: number, updates: Partial<User>): Promise<User>;
   updateUserPassword(id: number, newPassword: string): Promise<void>;
   getSongs(userId: number): Promise<Song[]>;
@@ -102,7 +109,7 @@ export interface IStorage {
       };
     };
   }>;
-  deleteUser(id: number): Promise<void>;
+  deleteUser(id: number, operationId?: string): Promise<MusicIdentityDeletionResult>;
   getUserActivity(userId: number): Promise<{ totalSongs: number; lastActive?: Date }>;
 
   // New team management methods
@@ -125,9 +132,9 @@ export interface IStorage {
   createPlaylist(userId: number, playlist: InsertPlaylist): Promise<Playlist>;
   updatePlaylist(id: number, updates: Partial<Playlist>): Promise<Playlist>;
   deletePlaylist(id: number): Promise<void>;
-  addSongToPlaylist(playlistId: number, songId: number, position: number): Promise<void>;
+  addSongToPlaylist(playlistId: number, song: InsertPlaylistSong): Promise<void>;
   removeSongFromPlaylist(playlistId: number, songId: number): Promise<void>;
-  getPlaylistSongs(playlistId: number): Promise<Song[]>;
+  getPlaylistSongs(playlistId: number): Promise<PlaylistSong[]>;
   addSongsToPlaylist(playlistId: number, songsToAdd: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }[]): Promise<void>;
   reorderPlaylistSong(playlistId: number, songId: number, newPosition: number): Promise<void>;
   logUserActivity(userId: number, path: string, method: string): Promise<void>;
@@ -183,6 +190,9 @@ export interface IStorage {
   getEmailTemplateByName(name: string): Promise<EmailTemplate | undefined>;
   updateEmailTemplate(id: number, updates: Partial<EmailTemplate>): Promise<EmailTemplate>;
   deleteEmailTemplate(id: number): Promise<void>;
+
+  // Email suppression (decision D2). Honoured before every send.
+  isEmailSuppressed(email: string): Promise<boolean>;
 
   // Email logs methods
   createEmailLog(log: InsertEmailLog): Promise<EmailLog>;
@@ -243,7 +253,7 @@ export class DatabaseStorage implements IStorage {
       this.sessionStore = new PgStore({
         pool: pool,
         tableName: 'session', // Default
-        createTableIfMissing: true,
+        createTableIfMissing: false,
         pruneSessionInterval: 60 * 60 // Prune expired sessions every hour (in seconds)
       });
       console.log("Session store initialized successfully");
@@ -276,13 +286,18 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    console.log('Creating new user:', { ...insertUser, password: '[REDACTED]' });
+  async createUser(insertUser: UserCreationInput): Promise<User> {
+    console.log('Creating user with server-owned identity:', { username: insertUser.username });
+    const { strapiUserDocumentId, strapiAccountDocumentId, lifecycleOperationId, guestCapabilityHash } = insertUser;
+    if (!strapiUserDocumentId || !strapiAccountDocumentId || !lifecycleOperationId || !guestCapabilityHash) {
+      throw new Error('Legacy user creation requires server-owned identity fields');
+    }
     const guestUrl = randomBytes(16).toString('hex');
     const [user] = await db.insert(users)
-      .values({ ...insertUser, guestUrl, theme: { primary: '#6E56CF' } })
+      .values({ ...insertUser, strapiUserDocumentId, strapiAccountDocumentId, lifecycleOperationId,
+        guestCapabilityHash, guestUrl, theme: { primary: '#6E56CF' } })
       .returning();
-    console.log('Created user:', { ...user, password: '[REDACTED]' });
+    console.log('Created user:', { id: user.id, username: user.username });
     return user;
   }
 
@@ -588,7 +603,7 @@ export class DatabaseStorage implements IStorage {
     const offset = (page - 1) * limit;
 
     try {
-      let query = db.select().from(users);
+      let query = db.select().from(users).$dynamic();
 
       // Apply search if term is provided
       if (searchTerm) {
@@ -614,7 +629,8 @@ export class DatabaseStorage implements IStorage {
           manager: teamMembers
         })
         .from(users)
-        .leftJoin(teamMembers, eq(users.accountManagerId, teamMembers.id));
+        .leftJoin(teamMembers, eq(users.accountManagerId, teamMembers.id))
+        .$dynamic();
 
       // Apply search if term is provided
       if (searchTerm) {
@@ -814,125 +830,125 @@ export class DatabaseStorage implements IStorage {
     return stats;
   }
 
-  async deleteUser(id: number): Promise<void> {
-    console.log('Starting user deletion process for ID:', id);
-
+  async deleteUser(id: number, requestedOperationId?: string): Promise<MusicIdentityDeletionResult> {
+    // Keep selection, saga validation, cleanup, and finalization in one transaction; identity locks
+    // preserve the database primitive's global lock order. A prepared deletion
+    // owns its operation ID; callers may replay it but cannot substitute one.
+    // Active administrative deletion gets an unpredictable internal ID. The
+    // finalized tombstone remains the idempotency record after the user is gone.
     try {
-      // Clean up sessions first outside the transaction
-      // This prevents issues with session store operations
-      await this.cleanupUserSessions(id);
+      const connectionPool = this.getConnection();
+      const connection = typeof connectionPool.connect === "function"
+        ? await connectionPool.connect()
+        : connectionPool;
 
-      // Get a raw database connection for direct SQL operations
-      const connection = this.getConnection();
-
-      // Begin a transaction with a raw query
-      // This approach ensures we have maximum control over the deletion sequence
       await connection.query('BEGIN');
 
       try {
-        console.log('Starting transaction for user deletion with raw SQL approach');
+        const initialIdentity = (await connection.query(`SELECT id,strapi_user_document_id,strapi_account_document_id,
+          identity_status,session_version,lifecycle_operation_id FROM users WHERE id=$1`, [id])).rows[0];
+        if (!initialIdentity) {
+          if (!requestedOperationId) throw new LifecycleOperationConflictError();
+          const completed = (await connection.query(`SELECT 1 FROM music_identity_tombstones t
+            JOIN music_identity_lifecycle_operations o ON o.operation_id=t.lifecycle_operation_id
+            WHERE t.lifecycle_operation_id=$1 AND o.operation_kind='delete' AND t.music_user_id=$2
+              AND o.music_user_id=$2 AND o.operation_state='completed' AND o.operation_phase='finalized'`, [requestedOperationId,id])).rows[0];
+          if (!completed) throw new LifecycleOperationConflictError();
+          await connection.query('COMMIT');
+          return { operationId: requestedOperationId, finalized: false };
+        }
+        await connection.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:user:${initialIdentity.strapi_user_document_id}`]);
+        await connection.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`music:account:${initialIdentity.strapi_account_document_id}`]);
+        await connection.query("SELECT lock_music_numeric_user_id($1::integer)", [id]);
+        const identity = (await connection.query(`SELECT identity_status,session_version,lifecycle_operation_id
+          FROM users WHERE id=$1 FOR UPDATE`, [id])).rows[0];
+        if (!identity) throw new LifecycleOperationConflictError();
+        let operationId: string;
+        if (identity.identity_status === "pending_deletion") {
+          operationId = identity.lifecycle_operation_id;
+          if (!operationId || (requestedOperationId !== undefined && requestedOperationId !== operationId)) {
+            throw new LifecycleOperationConflictError();
+          }
+        } else {
+          if (requestedOperationId !== undefined) throw new LifecycleOperationConflictError();
+          operationId = `storage-delete:${randomBytes(32).toString("hex")}`;
+        }
 
-        // First, handle entities with foreign keys to user or related tables
-        // Delete in proper order to respect referential integrity
-
-        // Clear and update references first (don't delete yet)
         await connection.query(`UPDATE users SET account_manager_id = NULL WHERE account_manager_id = $1`, [id]);
-        console.log('Cleared account manager references');
 
         await connection.query(`UPDATE page_contents SET created_by = NULL WHERE created_by = $1`, [id]);
         await connection.query(`UPDATE page_contents SET updated_by = NULL WHERE updated_by = $1`, [id]);
-        console.log('Updated page content references');
 
         await connection.query(`UPDATE seo_settings SET updated_by = NULL WHERE updated_by = $1`, [id]);
-        console.log('Updated SEO settings references');
-
-        // Handle direct entity deletion in the correct sequence
-        // First-level dependent entities (no dependencies other than user)
-
-        // Delete related YouTube entities first (these were causing problems)
         await connection.query(`DELETE FROM youtube_music_playlists WHERE user_id = $1`, [id]);
-        console.log('Deleted YouTube Music playlists');
 
         await connection.query(`DELETE FROM youtube_music WHERE user_id = $1`, [id]);
-        console.log('Deleted YouTube Music connections');
 
         await connection.query(`DELETE FROM youtube_tokens WHERE user_id = $1`, [id]);
-        console.log('Deleted YouTube tokens');
 
         await connection.query(`DELETE FROM youtube_playlists WHERE user_id = $1`, [id]);
-        console.log('Deleted YouTube playlists');
 
         // Now handle all other user-dependent entities
         await connection.query(`DELETE FROM api_tokens WHERE user_id = $1`, [id]);
-        console.log('Deleted API tokens');
 
         await connection.query(`DELETE FROM email_logs WHERE api_token_id IN 
           (SELECT id FROM api_tokens WHERE user_id = $1)`, [id]);
-        console.log('Deleted associated email logs');
 
         await connection.query(`DELETE FROM guest_interactions WHERE user_id = $1`, [id]);
-        console.log('Deleted guest interactions');
 
         await connection.query(`DELETE FROM youtube_api_usage WHERE user_id = $1`, [id]);
-        console.log('Deleted YouTube API usage records');
 
         await connection.query(`DELETE FROM analytics_snapshots WHERE user_id = $1`, [id]);
-        console.log('Deleted analytics snapshots');
 
         await connection.query(`DELETE FROM activity_logs WHERE user_id = $1`, [id]);
-        console.log('Deleted activity logs');
 
         await connection.query(`DELETE FROM user_activity WHERE user_id = $1`, [id]);
-        console.log('Deleted user activity records');
 
         await connection.query(`DELETE FROM widgets WHERE user_id = $1`, [id]);
-        console.log('Deleted widgets');
 
         await connection.query(`DELETE FROM youtube_api_calls WHERE user_id = $1`, [id]);
-        console.log('Deleted YouTube API calls');
 
         await connection.query(`DELETE FROM playback_states WHERE user_id = $1`, [id]);
-        console.log('Deleted playback states');
 
         await connection.query(`DELETE FROM user_sessions WHERE user_id = $1`, [id]);
-        console.log('Deleted user sessions from database');
 
         // Delete playlist songs first (they depend on playlists)
         await connection.query(`DELETE FROM playlist_songs WHERE playlist_id IN 
           (SELECT id FROM playlists WHERE user_id = $1)`, [id]);
-        console.log('Deleted playlist songs');
 
         // Now delete playlists
         await connection.query(`DELETE FROM playlists WHERE user_id = $1`, [id]);
-        console.log('Deleted playlists');
 
         // Delete played songs records
         await connection.query(`DELETE FROM played_songs WHERE user_id = $1`, [id]);
-        console.log('Deleted played songs records');
 
         // Delete songs
         await connection.query(`DELETE FROM songs WHERE user_id = $1`, [id]);
-        console.log('Deleted songs');
 
         // Delete user profiles
         await connection.query(`DELETE FROM user_profiles WHERE user_id = $1`, [id]);
-        console.log('Deleted user profile');
 
-        // Finally, delete the user
-        await connection.query(`DELETE FROM users WHERE id = $1`, [id]);
-        console.log('Deleted user record');
-
+        // Finally, finalize the identity deletion through the one lock-ordered DB primitive.
+        const deletion = await connection.query(
+          `SELECT finalize_music_identity_deletion($1::integer,$2::text,$3::text) AS finalized`,
+          [id, operationId, 'storage-delete'],
+        );
         // If we get here, commit the transaction
         await connection.query('COMMIT');
-        console.log('User deletion completed successfully');
+        // Database sessions were transactional; now clear fallback memory sessions.
+        if (this.sessionStore instanceof MemoryStore) {
+          await this.cleanupUserSessions(id);
+        }
+        return { operationId, finalized: deletion.rows[0].finalized };
       } catch (txError) {
         // If anything goes wrong, roll back
         await connection.query('ROLLBACK');
-        console.error('Transaction error in deleteUser, rolled back:', txError);
         throw txError;
+      } finally {
+        if (typeof connection.release === "function") connection.release();
       }
     } catch (error) {
-      console.error('Error in deleteUser:', error);
+      if (error instanceof LifecycleOperationConflictError) throw error;
       throw new Error(`Failed to delete user: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -998,10 +1014,11 @@ export class DatabaseStorage implements IStorage {
   async getActiveConnections(): Promise<number> {
     try {
       // Get active connection count from pg_stat_activity
-      const [result] = await db.execute(
+      const result = await db.execute(
         sql`SELECT count(*) as count FROM pg_stat_activity WHERE state = 'active'`
       );
-      return Number(result?.count) || 0;
+      const rows = Array.isArray(result) ? result : result.rows;
+      return Number(rows[0]?.count) || 0;
     } catch (error) {
       console.error('Error getting active connections:', error);
       return 0;
@@ -1154,10 +1171,10 @@ export class DatabaseStorage implements IStorage {
     console.log('Playlist deleted successfully');
   }
 
-  async addSongToPlaylist(playlistId: number, songId: number, position: number): Promise<void> {
-    console.log('Adding song to playlist:', { playlistId, songId, position });
+  async addSongToPlaylist(playlistId: number, song: InsertPlaylistSong): Promise<void> {
+    console.log('Adding song to playlist:', { playlistId, youtubeId: song.youtubeId, position: song.position });
     await db.insert(playlistSongs)
-      .values({ playlistId, songId, position });
+      .values({ playlistId, ...song });
     console.log('Song added to playlist successfully');
   }
 
@@ -1259,7 +1276,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getPlaylistSongs(playlistId: number): Promise<Song[]> {
+  async getPlaylistSongs(playlistId: number): Promise<PlaylistSong[]> {
     console.log('Getting songs for playlist:', playlistId);
 
     // Get all songs directly from playlist_songs table
@@ -1759,7 +1776,7 @@ export class DatabaseStorage implements IStorage {
     console.log('Getting API tokens', userId ? `for user ${userId}` : 'for all users');
 
     try {
-      let query = db.select().from(apiTokens);
+      let query = db.select().from(apiTokens).$dynamic();
 
       if (userId) {
         query = query.where(eq(apiTokens.userId, userId));
@@ -1946,6 +1963,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Email logs methods
+  /**
+   * Whether this address has asked not to be contacted. Decision D2, 2026-10-08.
+   *
+   * Deliberately throws rather than returning false when the query itself fails. The caller
+   * is deciding whether to send, and "the database was unreachable" is not evidence that
+   * somebody consented - failing closed is the only answer that cannot violate an opt-out.
+   */
+  async isEmailSuppressed(email: string): Promise<boolean> {
+    const normalized = normalizeSuppressionEmail(email);
+    if (!normalized) return false;
+    const [row] = await db.select({ id: emailSuppressions.id })
+      .from(emailSuppressions)
+      .where(eq(emailSuppressions.email, normalized))
+      .limit(1);
+    return row !== undefined;
+  }
+
   async createEmailLog(log: InsertEmailLog): Promise<EmailLog> {
     console.log('Creating email log:', { recipient: log.recipient, subject: log.subject });
     try {
@@ -2104,7 +2138,7 @@ export class DatabaseStorage implements IStorage {
 
       // Get daily stats
       const dailyStats = await db.select({
-        date: sql`to_char(${emailLogs.createdAt}, 'YYYY-MM-DD')`.as('date'),
+        date: sql<string>`to_char(${emailLogs.createdAt}, 'YYYY-MM-DD')`.as('date'),
         status: emailLogs.status,
         count: sql`count(*)`.mapWith(Number)
       })
@@ -2315,7 +2349,7 @@ export class DatabaseStorage implements IStorage {
   async getSystemSettings(category?: string): Promise<SystemSetting[]> {
     console.log('Getting all system settings', category ? `for category: ${category}` : '');
     try {
-      let query = db.select().from(systemSettings);
+      let query = db.select().from(systemSettings).$dynamic();
 
       if (category) {
         query = query.where(eq(systemSettings.category, category));
@@ -2463,3 +2497,17 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+
+export interface MusicIdentityDeletionResult {
+  operationId: string;
+  finalized: boolean;
+}
+
+export class LifecycleOperationConflictError extends Error {
+  readonly code = "LIFECYCLE_OPERATION_CONFLICT" as const;
+
+  constructor() {
+    super("lifecycle operation conflicts with the current deletion saga");
+    this.name = "LifecycleOperationConflictError";
+  }
+}

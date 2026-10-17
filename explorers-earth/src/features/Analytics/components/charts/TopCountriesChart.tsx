@@ -121,7 +121,7 @@ const TopCountriesChart: React.FC<TopCountriesChartProps> = ({ events, isResolvi
 
   return (
     <div className="w-full px-2 sm:px-0" style={{ height: `${chartConfig.chartHeight}px` }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 1, height: 1 }}>
         <BarChart
           data={chartData}
           margin={{

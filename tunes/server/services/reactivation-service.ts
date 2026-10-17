@@ -17,6 +17,8 @@ import crypto from 'crypto';
 import { emailService } from './email-service';
 import { systemSettingsService } from './system-settings-service';
 import { storage } from '../storage';
+import type { MusicIdentityRepository } from '../repositories/musicIdentityRepository';
+import { cancelResponseBody, readBoundedResponseBody } from './upstreamResponseBody';
 
 // ─── Reactivation email template (self-seeding) ───────────────────────────────
 
@@ -111,40 +113,30 @@ If you didn't request this, you can safely ignore this email.
 }
 
 
-// ─── In-memory token store ────────────────────────────────────────────────────
-// We use a simple in-memory Map so we don't need a schema migration.
-// Keys: token string → Value: { strapiUserId, email, expiresAt }
-// This is sufficient since:
-//   - Tokens are short-lived (24 hours)
-//   - Server restart clears them (user just re-requests)
-//   - For multi-instance production: swap with Redis or DB column easily
+export type ReactivationTokenAuthority = Pick<MusicIdentityRepository,
+  "issueReactivationToken" | "claimReactivationToken" | "releaseReactivationToken"
+  | "consumeReactivationToken" | "revokeReactivationToken">;
 
-interface ReactivationEntry {
-  strapiUserId: string;   // Strapi numeric user ID (as string from REST response)
-  email: string;
-  expiresAt: number;      // Unix ms timestamp
+interface ReactivationRequestDependencies { tokens: ReactivationTokenAuthority }
+interface ReactivationConfirmDependencies extends ReactivationRequestDependencies {
+  reactivateMusic(input: { userDocumentId: string; accountDocumentId: string; operationId: string }): Promise<void>;
 }
 
-const tokenStore = new Map<string, ReactivationEntry>();
-
-// Clean up expired tokens every hour
-setInterval(() => {
-  const now = Date.now();
-  for (const [token, entry] of tokenStore.entries()) {
-    if (now > entry.expiresAt) {
-      tokenStore.delete(token);
-    }
-  }
-}, 60 * 60 * 1000);
+const STRAPI_CONNECT_TIMEOUT_MS = 2_000;
+const STRAPI_READ_TIMEOUT_MS = 4_000;
+const STRAPI_OVERALL_TIMEOUT_MS = 7_000;
+const STRAPI_MAX_BODY_BYTES = 64 * 1024;
 
 // ─── Strapi REST helpers ───────────────────────────────────────────────────────
 
 interface StrapiUser {
   id: number;
+  documentId: string;
   username: string;
   email: string;
   blocked: boolean;
   confirmed: boolean;
+  accounts?: Array<{ documentId?: string }>;
 }
 
 /**
@@ -152,64 +144,110 @@ interface StrapiUser {
  * Returns null if not found or not blocked.
  */
 async function findBlockedUserByEmail(email: string): Promise<StrapiUser | null> {
-  const strapiUrl = process.env.STRAPI_URL;
-  const strapiToken = process.env.STRAPI_ACCESS_TOKEN;
+  const value = await requestStrapiJson(`/api/users?filters[email][$eq]=${encodeURIComponent(email)}&filters[blocked][$eq]=true&populate=accounts`);
+  if (!Array.isArray(value) || value.length !== 1) return null;
+  return validStrapiUser(value[0]) ? value[0] : null;
+}
 
-  if (!strapiUrl || !strapiToken) {
-    throw new Error('STRAPI_URL or STRAPI_ACCESS_TOKEN is not configured');
-  }
-
-  const url = `${strapiUrl}/api/users?filters[email][$eq]=${encodeURIComponent(email)}&filters[blocked][$eq]=true`;
-
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${strapiToken}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    console.error('❌ Strapi user lookup failed:', response.status);
+async function resolveCurrentReactivationIdentity(userId: number): Promise<StrapiUser | null> {
+  if (!Number.isSafeInteger(userId) || userId < 1) return null;
+  try {
+    const value = await requestStrapiJson(`/api/users/${userId}?populate=accounts`);
+    if (!validStrapiUser(value)) return null;
+    const candidate = value;
+    if (candidate.id !== userId || typeof candidate.documentId !== 'string' || candidate.documentId.length === 0
+        || typeof candidate.blocked !== 'boolean' || !Array.isArray(candidate.accounts)
+        || candidate.accounts.length !== 1 || typeof candidate.accounts[0]?.documentId !== 'string'
+        || candidate.accounts[0].documentId.length === 0) return null;
+    return candidate as StrapiUser;
+  } catch {
     return null;
   }
-
-  const users: StrapiUser[] = await response.json();
-
-  if (!Array.isArray(users) || users.length === 0) {
-    return null;
-  }
-
-  return users[0];
 }
 
 /**
  * Set blocked = false on a Strapi user by their numeric ID.
  */
-async function unblockStrapiUser(userId: number): Promise<boolean> {
-  const strapiUrl = process.env.STRAPI_URL;
-  const strapiToken = process.env.STRAPI_ACCESS_TOKEN;
-
-  if (!strapiUrl || !strapiToken) {
-    throw new Error('STRAPI_URL or STRAPI_ACCESS_TOKEN is not configured');
-  }
-
-  const response = await fetch(`${strapiUrl}/api/users/${userId}`, {
-    method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${strapiToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ blocked: false }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    console.error('❌ Strapi unblock failed:', response.status, text);
+async function unblockStrapiUser(expected: {
+  id: number;
+  documentId: string;
+  accountDocumentId: string;
+}): Promise<boolean> {
+  try {
+    const value = await requestStrapiJson(`/api/users/${expected.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ blocked: false }),
+    });
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+    const candidate = value as Partial<StrapiUser>;
+    if (candidate.id !== expected.id || candidate.documentId !== expected.documentId || candidate.blocked !== false) return false;
+    if (candidate.accounts !== undefined) {
+      if (!Array.isArray(candidate.accounts) || candidate.accounts.length !== 1
+          || candidate.accounts[0]?.documentId !== expected.accountDocumentId) return false;
+    } else {
+      const readback = await resolveCurrentReactivationIdentity(expected.id);
+      if (!readback || readback.documentId !== expected.documentId || readback.blocked !== false
+          || readback.accounts?.[0]?.documentId !== expected.accountDocumentId) return false;
+    }
+  } catch {
     return false;
   }
 
-  console.log(`✅ Strapi user ${userId} unblocked successfully`);
+  console.log('reactivation_strapi_unblock_succeeded');
   return true;
+}
+
+function validStrapiUser(value: unknown): value is StrapiUser {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const candidate = value as Partial<StrapiUser>;
+  return Number.isSafeInteger(candidate.id) && Number(candidate.id) > 0
+    && typeof candidate.documentId === 'string' && candidate.documentId.length > 0 && candidate.documentId.length <= 512
+    && typeof candidate.username === 'string' && candidate.username.length > 0 && candidate.username.length <= 512
+    && typeof candidate.email === 'string' && candidate.email.length > 0 && candidate.email.length <= 320
+    && typeof candidate.blocked === 'boolean' && typeof candidate.confirmed === 'boolean'
+    && Array.isArray(candidate.accounts) && candidate.accounts.length <= 50;
+}
+
+async function requestStrapiJson(path: string, init: Pick<RequestInit, 'method' | 'body'> = {}): Promise<unknown> {
+  const token = process.env.STRAPI_ACCESS_TOKEN;
+  let origin: URL;
+  try { origin = new URL(process.env.STRAPI_URL ?? ''); }
+  catch { throw new Error('reactivation Strapi authority is unavailable'); }
+  if (!token || !['http:', 'https:'].includes(origin.protocol) || origin.origin !== origin.href.replace(/\/$/, '')
+      || origin.username || origin.password) {
+    throw new Error('reactivation Strapi authority is unavailable');
+  }
+  const endpoint = new URL(path, origin);
+  if (endpoint.origin !== origin.origin) throw new Error('reactivation Strapi authority is unavailable');
+  const controller = new AbortController();
+  const overall = setTimeout(() => controller.abort(), STRAPI_OVERALL_TIMEOUT_MS);
+  overall.unref?.();
+  try {
+    let connectTimer: NodeJS.Timeout | undefined;
+    const response = await Promise.race([
+      fetch(endpoint, {
+        ...init,
+        redirect: 'manual',
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' },
+        signal: controller.signal,
+      }),
+      new Promise<Response>((_, reject) => {
+        connectTimer = setTimeout(() => {
+          controller.abort();
+          reject(new Error('reactivation Strapi connect timeout'));
+        }, STRAPI_CONNECT_TIMEOUT_MS);
+        connectTimer.unref?.();
+      }),
+    ]).finally(() => { if (connectTimer) clearTimeout(connectTimer); });
+    if ((response.url && new URL(response.url).origin !== origin.origin) || response.status < 200 || response.status >= 300) {
+      await cancelResponseBody(response);
+      throw new Error('reactivation Strapi request failed');
+    }
+    const body = await readBoundedResponseBody(response, STRAPI_MAX_BODY_BYTES, STRAPI_READ_TIMEOUT_MS, controller);
+    return JSON.parse(body);
+  } finally {
+    clearTimeout(overall);
+  }
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -221,24 +259,31 @@ async function unblockStrapiUser(userId: number): Promise<boolean> {
  * If the email belongs to a blocked user, a token is generated and a
  * reactivation link is emailed to them.
  */
-export async function requestReactivation(email: string): Promise<void> {
+export async function requestReactivation(email: string, dependencies: ReactivationRequestDependencies): Promise<void> {
+  let tokenHash: string | undefined;
   try {
     const user = await findBlockedUserByEmail(email);
     if (!user) {
       // No blocked user with this email — do nothing (security: don't reveal)
-      console.log('ℹ️ No blocked user found for email:', email);
+      console.log('reactivation_blocked_identity_not_found');
+      return;
+    }
+    if (typeof user.documentId !== 'string' || user.documentId.length === 0
+        || !Array.isArray(user.accounts) || user.accounts.length !== 1
+        || typeof user.accounts[0]?.documentId !== 'string' || user.accounts[0].documentId.length === 0) {
+      console.error('reactivation_identity_binding_invalid');
       return;
     }
 
     // Generate a secure random token (same approach as email-service)
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
-
-    // Store token
-    tokenStore.set(token, {
-      strapiUserId: String(user.id),
-      email: user.email,
-      expiresAt,
+    tokenHash = crypto.createHash('sha256').update(token, 'utf8').digest('hex');
+    await dependencies.tokens.issueReactivationToken({
+      tokenHash,
+      strapiUserId: user.id,
+      userDocumentId: user.documentId,
+      accountDocumentId: user.accounts[0].documentId,
+      operationId: crypto.randomUUID(),
     });
 
     // Build the reactivation link using the existing base URL resolution
@@ -262,26 +307,15 @@ export async function requestReactivation(email: string): Promise<void> {
       'Reactivate your Explorers account'
     );
 
-    // ── Dev mode: always log the link so it can be copy-pasted without email ──
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('\n');
-      console.log('┌─────────────────────────────────────────────────────┐');
-      console.log('│  🔗 DEV MODE — Reactivation link (copy into browser) │');
-      console.log('├─────────────────────────────────────────────────────┤');
-      console.log(`│  ${reactivationLink}`);
-      console.log('└─────────────────────────────────────────────────────┘');
-      console.log('\n');
-    }
-
     if (!result.success) {
-      console.error('❌ Failed to send reactivation email:', result.error);
-      // Still don't throw — we silently swallow so the response stays generic
+      await dependencies.tokens.revokeReactivationToken(tokenHash);
+      console.error('reactivation_email_delivery_failed');
     } else {
-      console.log('✅ Reactivation email sent to:', user.email);
+      console.log('reactivation_email_delivery_succeeded');
     }
-  } catch (error) {
-    // Log but do not re-throw — keep the response generic
-    console.error('❌ requestReactivation error (suppressed):', error);
+  } catch {
+    if (tokenHash) await dependencies.tokens.revokeReactivationToken(tokenHash).catch(() => undefined);
+    console.error('reactivation_request_suppressed_failure');
   }
 }
 
@@ -292,32 +326,54 @@ export async function requestReactivation(email: string): Promise<void> {
  * Returns a result object so the route can respond appropriately.
  */
 export async function confirmReactivation(
-  token: string
+  token: string,
+  dependencies: ReactivationConfirmDependencies,
 ): Promise<{ success: boolean; error?: string }> {
   if (!token) {
     return { success: false, error: 'Token is required' };
   }
 
-  const entry = tokenStore.get(token);
-
-  if (!entry) {
+  if (!/^[a-f0-9]{64}$/i.test(token)) {
     return { success: false, error: 'Invalid or already used reactivation link' };
   }
-
-  if (Date.now() > entry.expiresAt) {
-    tokenStore.delete(token);
+  const tokenHash = crypto.createHash('sha256').update(token, 'utf8').digest('hex');
+  const leaseOwner = crypto.randomUUID();
+  const entry = await dependencies.tokens.claimReactivationToken(tokenHash, leaseOwner);
+  if (entry.disposition === 'expired') {
     return { success: false, error: 'Reactivation link has expired. Please request a new one.' };
   }
-
-  const userId = parseInt(entry.strapiUserId, 10);
-  const unblocked = await unblockStrapiUser(userId);
-
-  if (!unblocked) {
+  if (entry.disposition !== 'claimed') {
+    return { success: false, error: 'Invalid or already used reactivation link' };
+  }
+  const release = async () => { await dependencies.tokens.releaseReactivationToken(tokenHash, leaseOwner).catch(() => undefined); };
+  const userId = entry.strapiUserId;
+  const current = await resolveCurrentReactivationIdentity(userId);
+  if (!current || current.documentId !== entry.userDocumentId
+      || current.accounts?.[0]?.documentId !== entry.accountDocumentId) {
+    await release();
+    return { success: false, error: 'Failed to verify the current account identity. Please request a new link.' };
+  }
+  try {
+    await dependencies.reactivateMusic({
+      userDocumentId: entry.userDocumentId,
+      accountDocumentId: entry.accountDocumentId,
+      operationId: entry.operationId,
+    });
+  } catch {
+    await release();
     return { success: false, error: 'Failed to reactivate account. Please try again.' };
   }
+  const unblocked = current.blocked === false || await unblockStrapiUser({
+    id: userId,
+    documentId: entry.userDocumentId,
+    accountDocumentId: entry.accountDocumentId,
+  });
 
-  // Consume the token (one-time use)
-  tokenStore.delete(token);
-
-  return { success: true };
+  if (!unblocked) {
+    await release();
+    return { success: false, error: 'Failed to reactivate account. Please try again.' };
+  }
+  return await dependencies.tokens.consumeReactivationToken(tokenHash, leaseOwner)
+    ? { success: true }
+    : { success: false, error: 'Failed to reactivate account. Please try again.' };
 }

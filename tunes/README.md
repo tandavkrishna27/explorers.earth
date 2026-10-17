@@ -5,28 +5,26 @@ tunes is a songs recommendation platform that transforms music sharing across di
 ## Tech Stack
 
 - **Frontend**: React 18 + TypeScript, TanStack Query v5, shadcn/ui, Socket.IO, Tailwind CSS
-- **Backend**: Express.js + TypeScript, Socket.IO, Passport.js 
+- **Backend**: Express 5.2 runtime + TypeScript, Socket.IO, Passport.js (`@types/express` 4.17 is tracked type debt)
 - **Database**: PostgreSQL + Drizzle ORM
 - **Integrations**: YouTube Data API, Spotify, Razorpay, AWS SES, Google Gemini
  
- ## Quick Start 
- 
-```bash
-# Install dependencies
-npm install
+## Safe Music quick start
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your values (see docs/environment-variables.md)
+Run from the repository root with Node 22.12 or newer. This creates only the disposable fixture stack; it does not request production credentials or run schema push against an arbitrary database.
 
-# Initialize database
-npm run db:push
-
-# Start development server
-npm run dev
-# App available at http://localhost:5000
-# API docs at http://localhost:5000/api-docs
+```text
+npm ci
+npm ci --prefix tunes --legacy-peer-deps
+npm ci --prefix explorers-earth
+npm run music:bootstrap -- --mode fixture
+npm run music:doctor -- --mode fixture
+npm run music:up -- --mode fixture --detach --wait
+npm run music:test:smoke -- --mode fixture
+npm run music:down -- --mode fixture
 ```
+
+The generated fixture target is exactly `127.0.0.1:55432/music_fixture`. Use `music:db:status`, `music:db:migrate`, and `music:db:verify`; schema-synchronization shortcuts are not Music setup or production migration authority. The live machine-readable API is served at `/api-docs`.
 
 ## Key Features
 
@@ -50,6 +48,11 @@ Full documentation is in the [`docs/`](../docs/) folder:
 - [Database](../docs/tunes/database.md) — Schema, migrations, Drizzle patterns
 - [WebSocket Protocol](../docs/tunes/websockets.md) — Socket.IO events
 - [Security](../docs/tunes/security.md) — Auth flows, sessions, API tokens
+- [Music identity architecture](../docs/architecture/music-identity.md) — Identity, Account context, entitlement, publication, content, lifecycle
+- [Music API contract](../docs/api/music-identity-contract.md) — Canonical endpoints, events, stable errors, token/capability lifecycle
+- [Music auth model](../docs/security/music-auth-model.md) — Principal derivation, owner predicates, rotation, redaction
+- [Music testing](../docs/testing/music-identity-testing.md) — Fixture golden path and CI lanes
+- [Music incident runbook](../docs/operations/music-incident-runbook.md) — Containment, recovery, and escalation
 - [Integrations](../docs/tunes/integrations.md) — YouTube, Spotify, Razorpay, etc.
 - [State Management](../docs/tunes/state-management.md) — TanStack Query, Zustand, Socket.IO
 - [Deployment](../docs/tunes/deployment.md) — Docker, AWS, CI/CD

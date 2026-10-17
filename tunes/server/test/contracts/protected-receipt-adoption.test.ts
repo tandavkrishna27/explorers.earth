@@ -1,0 +1,39 @@
+import {beforeEach,describe,expect,it,vi} from 'vitest';
+import path from 'node:path';
+import {tmpdir} from 'node:os';
+import {pathToFileURL} from 'node:url';
+const state=vi.hoisted(()=>({lane:'guides',bytes:Buffer.alloc(0),writes:0,reads:0,opens:0,closes:0,symlink:'',foreign:'',changed:false,growth:false,outputFile:false,sourceChanged:false,postReadMutation:'',closeFailure:false,policies:[] as unknown[]}));
+const root=path.resolve(import.meta.dirname,'../../../..');
+const fixture=path.join(tmpdir(),'explorers-profile-e2e-'+ 'a'.repeat(32));
+const config=path.join(fixture,'protected.playwright.config.mjs');
+const output=path.join(fixture,'browser-output');
+const laneConfig=()=>`explorers-earth/e2e/replatform/${state.lane}.playwright.config.ts`;
+vi.mock('node:fs',()=>{
+ const stat=(file:string,handle=false)=>({dev:1n,ino:state.changed&&handle||state.reads>0&&file===state.postReadMutation?2n:1n,mode:0o600n,uid:1n,nlink:1n,size:BigInt(state.bytes.length),mtimeNs:1n,ctimeNs:1n,isSymbolicLink:()=>file===state.symlink,isFile:()=>file.endsWith('.mjs')||file.endsWith('.json')||file===output&&state.outputFile,isDirectory:()=>!file.endsWith('.mjs')&&!file.endsWith('.json')&&!(file===output&&state.outputFile)});
+ return {constants:{O_RDONLY:0,O_NOFOLLOW:131072},existsSync:()=>true,lstatSync:(file:string)=>stat(file),realpathSync:(file:string)=>file===state.foreign?file+'-foreign':file,
+  readFileSync:(file:string)=>JSON.stringify(file.endsWith('.protected-owned.json')?{version:1,lane:state.lane,capability:'e'.repeat(64),provenance:{bound:true}}:{lanes:[{name:state.lane,config:laneConfig()}]}),writeFileSync:()=>{state.writes++;},
+  openSync:()=>{state.opens++;return 7;},fstatSync:()=>stat(config,true),readSync:(_fd:number,b:Buffer,offset:number,length:number,position:number)=>{state.reads++;if(state.growth){b.fill(1,offset,offset+length);return length;}const n=Math.min(length,Math.max(0,state.bytes.length-position));state.bytes.copy(b,offset,position,position+n);return n;},closeSync:()=>{state.closes++;if(state.closeFailure)throw Error('private failure');}};
+});
+vi.mock('../../../../scripts/replatform-e2e.mjs',()=>({validateManifest:()=>{},snapshotSource:()=>({provenance:state.sourceChanged?{bound:false}:{bound:true}}),decodeProtectedReport:(_report:unknown,_lane:unknown,_root:unknown,_execution:boolean,policy:unknown)=>{state.policies.push(policy);return {results:[],playwright:'locked'};}}));
+import * as receiptModule from '../../../scripts/protected-browser-receipt';
+const source=()=>`import base from ${JSON.stringify(pathToFileURL(path.join(root,laneConfig())).href)};\nimport {protectedBrowserConfiguration} from ${JSON.stringify(pathToFileURL(path.join(root,'scripts/replatform-e2e.mjs')).href)};\nexport default protectedBrowserConfiguration(base,${JSON.stringify(root)},${JSON.stringify(laneConfig())},${JSON.stringify(output)});\n`;
+async function receipt(){const value=(await receiptModule.createProtectedReceipt(root,state.lane,{args:[],directory:path.join(tmpdir(),'replatform-e2e-owned123',state.lane),capability:'e'.repeat(64)}))!;expect(typeof (value as any).adoptArguments).toBe('function');return value;}
+beforeEach(()=>{state.lane='guides';Object.assign(state,{lane:'guides',bytes:Buffer.from(source()),writes:0,reads:0,opens:0,closes:0,symlink:'',foreign:'',changed:false,growth:false,outputFile:false,sourceChanged:false,postReadMutation:'',closeFailure:false,policies:[]});});
+describe('Guides protected receipt host policy adoption',()=>{
+ it('exports fixed support and adopts exact existing config without writes before decoding',async()=>{const r=await receipt();expect((receiptModule as any).supportsProtectedReceiptAdoption).toBe(true);(r as any).adoptArguments(fixture);r.decodeDiscovery({});expect(state.writes).toBe(0);expect(state.closes).toBe(1);expect(state.policies).toEqual([{configFile:config,outputDir:output}]);});
+ it('refuses repeated adoption and legacy arguments after adoption',async()=>{const r=await receipt();(r as any).adoptArguments(fixture);expect(()=>(r as any).adoptArguments(fixture)).toThrow();expect(()=>r.arguments([],fixture)).toThrow();});
+ it('refuses adoption after arguments',async()=>{const r=await receipt();r.arguments([],fixture);expect(()=>(r as any).adoptArguments(fixture)).toThrow();});
+ it('refuses adoption for Apps',async()=>{state.lane='apps';const r=await receipt();expect(()=>(r as any).adoptArguments(fixture)).toThrow();expect(state.opens).toBe(0);});
+ it.each(['public-parity','people'])('adopts the exact existing %s host config without writes',async family=>{state.lane=family;state.bytes=Buffer.from(source());const r=await receipt();r.adoptArguments(fixture);r.decodeDiscovery({});expect(state.writes).toBe(0);expect(state.closes).toBe(1);expect(state.policies).toEqual([{configFile:config,outputDir:output}]);});
+ it.each(['public-parity','people'])('refuses foreign config bytes for %s before decoder binding',async family=>{state.lane=family;state.bytes=Buffer.from(source().replace(`${family}.playwright`,'guides.playwright'));const r=await receipt();expect(()=>r.adoptArguments(fixture)).toThrow();expect(()=>r.decodeDiscovery({})).toThrow();expect(state.writes).toBe(0);});
+ it.each(['relative','foreign'])('refuses %s fixture path before reads',async(kind)=>{const r=await receipt();expect(()=>(r as any).adoptArguments(kind==='relative'?'fixture':path.join(tmpdir(),'foreign-root'))).toThrow();expect(state.opens).toBe(0);});
+ it.each(['config','ancestor','output'])('refuses %s symlink',async(kind)=>{const r=await receipt();state.symlink=kind==='config'?config:kind==='output'?output:path.dirname(fixture);expect(()=>(r as any).adoptArguments(fixture)).toThrow();});
+ it('refuses noncanonical ancestor and output file',async()=>{const r=await receipt();state.foreign=fixture;expect(()=>(r as any).adoptArguments(fixture)).toThrow();state.foreign='';state.outputFile=true;expect(()=>(r as any).adoptArguments(fixture)).toThrow();});
+ it('refuses config byte mutation and leaves decoder unbound',async()=>{const r=await receipt();state.bytes=Buffer.from(source()+'// foreign');expect(()=>(r as any).adoptArguments(fixture)).toThrow();expect(()=>r.decodeDiscovery({})).toThrow();expect(state.writes).toBe(0);});
+ it('refuses same-length foreign output configuration after bounded read',async()=>{const r=await receipt();state.bytes=Buffer.from(source().replace('browser-output','browser-xutput'));expect(()=>(r as any).adoptArguments(fixture)).toThrow();expect(state.reads).toBeGreaterThan(0);expect(()=>r.decodeDiscovery({})).toThrow();});
+ it.each(['config','ancestor','output'])('refuses %s identity replacement after physical read',async(kind)=>{const r=await receipt();state.postReadMutation=kind==='config'?config:kind==='output'?output:path.dirname(fixture);expect(()=>(r as any).adoptArguments(fixture)).toThrow();expect(state.closes).toBe(1);expect(()=>r.decodeDiscovery({})).toThrow();});
+ it('does not bind policy when physical handle close fails',async()=>{const r=await receipt();state.closeFailure=true;expect(()=>(r as any).adoptArguments(fixture)).toThrow();expect(()=>r.decodeDiscovery({})).toThrow();});
+ it('refuses opened identity mismatch and closes handle',async()=>{const r=await receipt();state.changed=true;expect(()=>(r as any).adoptArguments(fixture)).toThrow();expect(state.closes).toBe(1);});
+ it('refuses oversize before reading and bounded growth',async()=>{const r=await receipt();state.bytes=Buffer.alloc(16385);expect(()=>(r as any).adoptArguments(fixture)).toThrow();expect(state.reads).toBe(0);state.bytes=Buffer.from(source());state.growth=true;expect(()=>(r as any).adoptArguments(fixture)).toThrow();expect(state.reads).toBeLessThanOrEqual(18);});
+ it('refuses changed protected source before policy binding',async()=>{const r=await receipt();state.sourceChanged=true;expect(()=>(r as any).adoptArguments(fixture)).toThrow();expect(()=>r.decodeDiscovery({})).toThrow();});
+});

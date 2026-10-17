@@ -1,5 +1,6 @@
 import { memo, useMemo, useEffect, useState, useCallback, useRef } from "react";
 import { Map, AdvancedMarker, Pin, useMap, MapCameraChangedEvent } from "@vis.gl/react-google-maps";
+import { withGoogleMapsProvider } from "../../../../components/GoogleMapsProvider";
 import { parseTimeline } from "../../../Guides/utils/guideDataParser";
 
 interface PlaceWithCoords {
@@ -518,4 +519,4 @@ const GuideCoverMapView = memo(({ sections, isVisible }: GuideCoverMapViewProps)
 
 GuideCoverMapView.displayName = "GuideCoverMapView";
 
-export default GuideCoverMapView;
+export default withGoogleMapsProvider(GuideCoverMapView);

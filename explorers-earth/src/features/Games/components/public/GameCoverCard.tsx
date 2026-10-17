@@ -12,6 +12,7 @@ interface GameCoverCardProps {
 const GameCoverCard = ({ coverUrl, title, onClick }: GameCoverCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const imageUrl = buildCoverUrl(coverUrl);
+  const [failedUrl, setFailedUrl] = useState<string>();
 
   return (
     <motion.button
@@ -23,14 +24,15 @@ const GameCoverCard = ({ coverUrl, title, onClick }: GameCoverCardProps) => {
       className="relative w-full aspect-[3/4] rounded-xl overflow-hidden group perspective bg-transparent"
     >
       <div
-        className={`w-full h-full relative preserve-3d transition-transform duration-500 rounded-xl overflow-hidden shadow-2xl bg-white/5 border border-white/10 flex items-center justify-center ${
+        className={`w-full h-full relative preserve-3d transition-transform duration-500 rounded-xl overflow-hidden shadow-2xl bg-[var(--category-card,rgba(255,255,255,0.05))] border border-[color:var(--category-border,rgba(255,255,255,0.1))] flex items-center justify-center ${
           isHovered ? "rotate-y-[-10deg]" : ""
         }`}
       >
-        {imageUrl ? (
+        {imageUrl && imageUrl !== failedUrl ? (
           <>
             <img
               src={imageUrl}
+              onError={() => setFailedUrl(imageUrl)}
               alt={title}
               className="w-full h-full object-cover rounded-xl"
             />
@@ -41,7 +43,7 @@ const GameCoverCard = ({ coverUrl, title, onClick }: GameCoverCardProps) => {
             <div className="absolute top-0 right-0 w-[4%] h-full bg-gradient-to-l from-black/40 to-transparent pointer-events-none rounded-r-xl" />
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center w-full h-full text-white/20 p-4 relative rounded-xl bg-gradient-to-br from-[#1a2332] to-[#0d1117] border border-white/5">
+          <div className="flex flex-col items-center justify-center w-full h-full text-[color:var(--category-muted,rgba(255,255,255,0.2))] p-4 relative rounded-xl bg-gradient-to-br from-[var(--category-card,#1a2332)] to-[var(--category-page,#0d1117)] border border-[color:var(--category-border,rgba(255,255,255,0.05))]">
              <Gamepad2 className="w-10 h-10 mb-2 opacity-50" />
              <span className="text-[10px] uppercase font-bold tracking-widest text-center line-clamp-2 leading-tight">
                {title}

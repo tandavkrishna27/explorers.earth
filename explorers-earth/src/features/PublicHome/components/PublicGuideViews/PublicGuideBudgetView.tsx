@@ -169,12 +169,12 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
 
   if (allBudgetItems.length === 0) {
     return (
-      <div className="bg-gray-900 rounded-lg p-3 sm:p-4 md:p-6 border border-gray-700">
+      <div className="bg-[var(--category-card,#111827)] rounded-lg p-3 sm:p-4 md:p-6 border border-[var(--category-control-border,#374151)]">
         <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
           <BudgetIcon size="5" color="#4ADE80" />
-          <h2 className="text-white text-base sm:text-lg md:text-xl font-poppins font-bold">Budget</h2>
+          <h2 className="text-[var(--category-text,#FFFFFF)] text-base sm:text-lg md:text-xl font-poppins font-bold">Budget</h2>
         </div>
-        <p className="text-gray-400 text-xs sm:text-sm font-poppins">
+        <p className="text-[var(--category-muted,#9CA3AF)] text-xs sm:text-sm font-poppins">
           No budget information available yet.
         </p>
       </div>
@@ -197,17 +197,17 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
         )}
 
       {/* Budget Table */}
-      <div className="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
+      <div className="bg-[var(--category-card,#111827)] rounded-lg border border-[var(--category-control-border,#374151)] overflow-hidden">
         {/* Table Header */}
-        <div className="bg-gray-800/80 border-b border-gray-700/50 px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+        <div className="bg-[var(--category-card,rgba(31,41,55,0.8))] border-b border-[var(--category-control-border,rgba(55,65,81,0.5))] px-3 sm:px-4 md:px-6 py-3 sm:py-4">
           <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-            <div className="text-xs sm:text-sm md:text-base font-poppins font-bold bg-gradient-to-r from-[hsl(var(--blue-cta))] via-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] bg-clip-text text-transparent">
+            <div className="text-xs sm:text-sm md:text-base font-poppins font-bold bg-gradient-to-r from-[var(--category-text,hsl(var(--blue-cta)))] via-[var(--category-text,hsl(var(--blue-cta)))] to-[var(--category-text,hsl(var(--blue-final)))] bg-clip-text text-transparent">
               Day & Title
             </div>
-            <div className="text-xs sm:text-sm md:text-base font-poppins font-bold bg-gradient-to-r from-[hsl(var(--blue-cta))] via-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] bg-clip-text text-transparent">
+            <div className="text-xs sm:text-sm md:text-base font-poppins font-bold bg-gradient-to-r from-[var(--category-text,hsl(var(--blue-cta)))] via-[var(--category-text,hsl(var(--blue-cta)))] to-[var(--category-text,hsl(var(--blue-final)))] bg-clip-text text-transparent">
               Place / Activity
             </div>
-            <div className="text-xs sm:text-sm md:text-base font-poppins font-bold bg-gradient-to-r from-[hsl(var(--blue-cta))] via-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] bg-clip-text text-transparent text-right">
+            <div className="text-xs sm:text-sm md:text-base font-poppins font-bold bg-gradient-to-r from-[var(--category-text,hsl(var(--blue-cta)))] via-[var(--category-text,hsl(var(--blue-cta)))] to-[var(--category-text,hsl(var(--blue-final)))] bg-clip-text text-transparent text-right">
               Amount
             </div>
           </div>
@@ -217,7 +217,7 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
         <div className="divide-y divide-gray-700/50">
           {displayedItems.length === 0 ? (
             <div className="px-3 sm:px-4 md:px-6 py-8 sm:py-10 text-center">
-              <p className="text-gray-400 text-xs sm:text-sm font-poppins">
+              <p className="text-[var(--category-muted,#9CA3AF)] text-xs sm:text-sm font-poppins">
                 No budget items available for this day.
               </p>
             </div>
@@ -226,16 +226,16 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
               {displayedItems.map((item, index) => (
                 <div
                   key={index}
-                  className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 hover:bg-gray-800/30 transition-colors duration-200"
+                  className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 hover:bg-[var(--category-hover,rgba(31,41,55,0.3))] transition-colors duration-200"
                 >
                   <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 items-center">
                     {/* Day & Title Column */}
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-blue-500/30 text-blue-400 flex items-center justify-center text-[10px] sm:text-xs font-poppins font-bold flex-shrink-0">
+                        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-[var(--category-card,rgba(59,130,246,0.3))] text-[var(--category-text,#60A5FA)] flex items-center justify-center text-[10px] sm:text-xs font-poppins font-bold flex-shrink-0">
                           {item.sectionSequence}
                         </div>
-                        <span className="text-xs sm:text-sm md:text-base font-poppins font-semibold text-white line-clamp-2">
+                        <span className="text-xs sm:text-sm md:text-base font-poppins font-semibold text-[var(--category-text,#FFFFFF)] line-clamp-2">
                           {item.sectionTitle}
                         </span>
                       </div>
@@ -244,10 +244,10 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
                     {/* Place / Activity Column */}
                     <div className="min-w-0">
                       <div className="flex flex-col gap-1">
-                        <span className="text-xs sm:text-sm md:text-base font-poppins text-gray-200 line-clamp-2">
+                        <span className="text-xs sm:text-sm md:text-base font-poppins text-[var(--category-muted,#E5E7EB)] line-clamp-2">
                           {item.placeName}
                         </span>
-                        <span className="text-[10px] sm:text-xs text-gray-500 font-poppins">
+                        <span className="text-[10px] sm:text-xs text-[var(--category-muted,#6B7280)] font-poppins">
                           {item.period}
                         </span>
                       </div>
@@ -265,7 +265,7 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
 
               {/* Total Budget Row - Only show if there are numeric amounts */}
               {totalBudget.length > 0 && (
-                <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-5 bg-gradient-to-r from-gray-800/50 to-gray-700/30 border-t-2 border-gray-600/50">
+                <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-5 bg-gradient-to-r from-[var(--category-card,rgba(31,41,55,0.5))] to-[var(--category-card,rgba(55,65,81,0.3))] border-t-2 border-[var(--category-control-border,rgba(75,85,99,0.5))]">
                   <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 items-center">
                     {/* Empty column for spacing */}
                     <div></div>
@@ -277,7 +277,7 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                         </svg>
                       </div>
-                      <span className="text-sm sm:text-base md:text-lg font-poppins font-bold text-white">
+                      <span className="text-sm sm:text-base md:text-lg font-poppins font-bold text-[var(--category-text,#FFFFFF)]">
                         Total Budget
                       </span>
                     </div>

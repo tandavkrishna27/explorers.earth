@@ -12,7 +12,6 @@ import EditIcon from "../../../assets/icons/EditIcon";
 import EyeOffIcon from "../../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../../assets/icons/EyeOnIcon";
 import { useMenuItems } from "../hooks/useMenuItems";
-import { OperationVariables, ApolloQueryResult } from "@apollo/client";
 import QRSticker from "./QRSticker";
 import TwitterIcon from "../../../assets/icons/TwitterIcon";
 import ShareModal from "../../../components/ShareModal";
@@ -40,9 +39,8 @@ export interface SelectedCity {
 }
 
 interface LinksAndQRProps {
-  refetchCities: (
-    variables?: Partial<OperationVariables>
-  ) => Promise<ApolloQueryResult<unknown>>;
+  /** Any refresh the caller holds. Nothing here depends on an Apollo result shape. */
+  refetchCities: () => Promise<unknown>;
   setShowConfirmDeleteModal: React.Dispatch<React.SetStateAction<boolean>>;
   setIsEditing: React.Dispatch<React.SetStateAction<boolean>>;
   setIsLocationModalOpen: React.Dispatch<React.SetStateAction<boolean>>;

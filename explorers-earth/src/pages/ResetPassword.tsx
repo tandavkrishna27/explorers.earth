@@ -1,23 +1,32 @@
-import { useMutation } from "@apollo/client";
-import { resetPasswordMutation } from "../features/Authentication/api/mutation";
 import { Formik, Form, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { toast } from "sonner";
-import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { EarthLoader } from "../components/EarthLoader";
-import { ApolloError } from "@apollo/client";
 import PasswordInput from "../components/ui/PasswordInput";
-import { validatePassword } from "../utils/passwordValidator";
 import { useTranslation } from "react-i18next";
 import { isManualAuthEnabled } from "../config/featureFlags";
 import { useEffect } from "react";
 import AuthShell from "../components/auth/AuthShell";
 
+/**
+ * Ticket 2.4. Password authentication does not exist canonically - betterAuth.ts sets
+ * emailAndPassword: {enabled: false} and Login offers only Google - so there is no
+ * canonical operation for this page to call, and the Strapi one it used to call wrote
+ * credentials that no sign-in path would have accepted.
+ *
+ * The page already redirects to Google sign-in (ENABLE_MANUAL_AUTH is false), which is the
+ * visible change ticket 2.4 line 45 records as agreed. That redirect runs in an effect, so
+ * it happens a frame after the first render; this makes the submit path refuse by
+ * construction rather than merely be unreached in practice.
+ */
+const manualAuthUnavailable = () => {
+  throw new Error('Password sign-in is unavailable. Please continue with Google.');
+};
+
 const ResetPassword = () => {
   const { t } = useTranslation();
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const code = searchParams.get("code");
 
   // MANUAL AUTH DISABLED - Redirect to login for OAuth-only mode
   useEffect(() => {
@@ -27,7 +36,7 @@ const ResetPassword = () => {
     }
   }, [navigate, t]);
 
-  const [resetPassword, { loading }] = useMutation(resetPasswordMutation);
+  const loading = false;
 
   const initialValues = {
     password: "",
@@ -42,62 +51,8 @@ const ResetPassword = () => {
       .required(t('auth.validations.confirmPassword.confirmRequired')),
   });
 
-  const handleSubmit = async (values: typeof initialValues) => {
-    if (!code) {
-      toast.error(t('toast.error.invalidToken'));
-      console.error("Code is missing from URL!");
-      return;
-    }
-
-    // Validate password using centralized validator
-    const passwordValidation = validatePassword(values.password, {}, t);
-    if (!passwordValidation.isValid) {
-      toast.error(t('toast.error.validationError'));
-      return;
-    }
-
-    try {
-      const variables = {
-        password: values.password,
-        passwordConfirmation: values.confirmPassword,
-        code,
-      };
-
-      const response = await resetPassword({ variables });
-
-      if (response.data?.resetPassword?.user) {
-        toast.success(t('toast.success.passwordResetSuccessful'));
-        navigate("/login");
-      } else {
-        const message = response.data?.resetPassword?.message || t('toast.error.passwordResetFailed');
-        toast.error(message);
-        console.error("Server message:", message);
-      }
-    } catch (error: unknown) {
-      console.error("Caught Error object:", error);
-
-      if (error instanceof ApolloError) {
-        const serverError = error.graphQLErrors?.[0]?.message;
-        if (serverError) {
-          if (serverError.toLowerCase().includes("invalid token") ||
-            serverError.toLowerCase().includes("expired token")) {
-            toast.error(t('toast.error.expiredToken'));
-          } else if (serverError.toLowerCase().includes("password") &&
-            serverError.toLowerCase().includes("weak")) {
-            toast.error(t('toast.error.passwordTooWeak'));
-          } else if (serverError.toLowerCase().includes("validation")) {
-            toast.error(t('toast.error.validationError'));
-          } else {
-            toast.error(t('toast.error.passwordResetFailed'));
-          }
-        } else {
-          toast.error(t('toast.error.passwordResetFailed'));
-        }
-        console.error("GraphQL Error from Server:", serverError);
-      } else {
-        toast.error(t('toast.error.passwordResetFailed'));
-      }
-    }
+  const handleSubmit = async (_values: typeof initialValues) => {
+    manualAuthUnavailable();
   };
 
   if (loading) {

@@ -1,0 +1,2603 @@
+{
+  "repo": "MeteoriteLabs/localqr-strapi-v2",
+  "commit": "50b6c6e180de4a1290b0c0a3c8450ac5947566d5",
+  "schemas": [
+    {
+      "file": "src/api/account/content-types/account/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "accounts",
+        "info": {
+          "singularName": "account",
+          "pluralName": "accounts",
+          "displayName": "Account",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {
+          "i18n": {
+            "localized": true
+          }
+        },
+        "attributes": {
+          "username": {
+            "type": "string",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "Account_Name": {
+            "type": "string",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "Bio_1": {
+            "type": "string",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "users_permissions_users": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "plugin::users-permissions.user",
+            "inversedBy": "accounts"
+          },
+          "Addresss": {
+            "type": "json",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "Account_Type": {
+            "type": "enumeration",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            },
+            "enum": [
+              "Personal",
+              "Creator",
+              "Business"
+            ]
+          },
+          "profile_picture": {
+            "type": "media",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            },
+            "multiple": false,
+            "required": false,
+            "allowedTypes": [
+              "images"
+            ]
+          },
+          "bg_picture": {
+            "type": "media",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            },
+            "multiple": false,
+            "required": false,
+            "allowedTypes": [
+              "images"
+            ]
+          },
+          "social_media": {
+            "type": "json",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "primary_admin": {
+            "type": "relation",
+            "relation": "oneToOne",
+            "target": "plugin::users-permissions.user"
+          },
+          "all_admins": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "plugin::users-permissions.user"
+          },
+          "mobile_number_visibility": {
+            "type": "boolean",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "profile_place_details": {
+            "type": "json",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "profile_place_media_details": {
+            "type": "json",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "recommendation_lists": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::recommendation-list.recommendation-list",
+            "mappedBy": "account"
+          },
+          "mobile_number": {
+            "type": "string",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "Primary_Address": {
+            "type": "json",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            },
+            "required": true
+          },
+          "Bio": {
+            "type": "richtext",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "community_boards": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::community.community",
+            "mappedBy": "account"
+          },
+          "guides": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::guide.guide",
+            "mappedBy": "account"
+          },
+          "Public_Profile_Address": {
+            "type": "json",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "Feed_Data": {
+            "type": "json"
+          },
+          "claimable_place_profile": {
+            "type": "relation",
+            "relation": "oneToOne",
+            "target": "api::claimable-place-profile.claimable-place-profile",
+            "mappedBy": "Claiming_Account"
+          },
+          "Is_Claimable": {
+            "type": "boolean",
+            "default": false
+          },
+          "localtunes_integrated": {
+            "type": "enumeration",
+            "required": true,
+            "default": "No",
+            "enum": [
+              "Yes",
+              "No"
+            ]
+          },
+          "public_recommendations": {
+            "type": "enumeration",
+            "default": "No",
+            "enum": [
+              "Yes",
+              "No"
+            ]
+          },
+          "public_profile": {
+            "type": "enumeration",
+            "default": "Yes",
+            "enum": [
+              "Yes",
+              "No"
+            ]
+          },
+          "public_music": {
+            "type": "enumeration",
+            "default": "No",
+            "enum": [
+              "Yes",
+              "No"
+            ]
+          },
+          "localtunes_public": {
+            "type": "string"
+          },
+          "public_guides": {
+            "type": "enumeration",
+            "default": "No",
+            "enum": [
+              "Yes",
+              "No"
+            ]
+          },
+          "movie_lists": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::movie-list.movie-list",
+            "mappedBy": "account"
+          },
+          "public_movie": {
+            "type": "enumeration",
+            "default": "No",
+            "enum": [
+              "Yes",
+              "No"
+            ]
+          },
+          "book_lists": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::book-list.book-list",
+            "mappedBy": "account"
+          },
+          "public_books": {
+            "type": "enumeration",
+            "default": "No",
+            "enum": [
+              "Yes",
+              "No"
+            ]
+          },
+          "game_lists": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::game-list.game-list",
+            "mappedBy": "account"
+          },
+          "public_games": {
+            "type": "enumeration",
+            "default": "No",
+            "enum": [
+              "Yes",
+              "No"
+            ]
+          },
+          "pinned_nav_tabs": {
+            "type": "json"
+          },
+          "app_lists": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::app-list.app-list",
+            "mappedBy": "account"
+          },
+          "product_lists": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::product-list.product-list",
+            "mappedBy": "account"
+          },
+          "public_apps": {
+            "type": "enumeration",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            },
+            "default": "No",
+            "enum": [
+              "Yes",
+              "No"
+            ]
+          },
+          "public_products": {
+            "type": "enumeration",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            },
+            "default": "No",
+            "enum": [
+              "Yes",
+              "No"
+            ]
+          },
+          "person_lists": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::person-list.person-list",
+            "mappedBy": "account"
+          },
+          "public_people": {
+            "type": "enumeration",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            },
+            "default": "No",
+            "enum": [
+              "Yes",
+              "No"
+            ]
+          },
+          "auto_pinning": {
+            "type": "boolean",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            },
+            "default": true
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/app-category/content-types/app-category/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "app_categories",
+        "info": {
+          "singularName": "app-category",
+          "pluralName": "app-categories",
+          "displayName": "App_Category"
+        },
+        "options": {
+          "draftAndPublish": true
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "recommended_apps": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::recommended-app.recommended-app",
+            "mappedBy": "app_category"
+          },
+          "name": {
+            "type": "string",
+            "required": true
+          },
+          "slug": {
+            "type": "string",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/app-list/content-types/app-list/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "app_lists",
+        "info": {
+          "singularName": "app-list",
+          "pluralName": "app-lists",
+          "displayName": "AppList"
+        },
+        "options": {
+          "draftAndPublish": true
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "List_Name": {
+            "type": "string",
+            "required": true
+          },
+          "list_description": {
+            "type": "text"
+          },
+          "slug": {
+            "type": "string",
+            "required": true
+          },
+          "Visibility": {
+            "type": "boolean",
+            "required": true,
+            "default": false
+          },
+          "cover_image": {
+            "type": "media",
+            "multiple": false,
+            "allowedTypes": [
+              "images",
+              "files",
+              "videos",
+              "audios"
+            ]
+          },
+          "display_order": {
+            "type": "integer",
+            "default": 0
+          },
+          "top_apps_heading": {
+            "type": "string"
+          },
+          "account": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::account.account",
+            "inversedBy": "app_lists"
+          },
+          "recommended_apps": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::recommended-app.recommended-app",
+            "mappedBy": "app_list"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/book-category/content-types/book-category/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "book_categories",
+        "info": {
+          "singularName": "book-category",
+          "pluralName": "book-categories",
+          "displayName": "Book_Category",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "subject_name": {
+            "type": "string",
+            "required": true
+          },
+          "recommended_books": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::recommended-book.recommended-book",
+            "inversedBy": "book_categories"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/book-list/content-types/book-list/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "book_lists",
+        "info": {
+          "singularName": "book-list",
+          "pluralName": "book-lists",
+          "displayName": "BookList",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "List_Name": {
+            "type": "string",
+            "required": true
+          },
+          "list_description": {
+            "type": "text"
+          },
+          "slug": {
+            "type": "string",
+            "required": true
+          },
+          "visibility": {
+            "type": "boolean",
+            "required": true,
+            "default": false
+          },
+          "cover_image": {
+            "type": "media",
+            "multiple": false,
+            "required": false,
+            "allowedTypes": [
+              "images",
+              "files",
+              "videos",
+              "audios"
+            ]
+          },
+          "display_order": {
+            "type": "integer"
+          },
+          "top_reads_heading": {
+            "type": "string"
+          },
+          "account": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::account.account",
+            "inversedBy": "book_lists"
+          },
+          "recommended_books": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::recommended-book.recommended-book",
+            "mappedBy": "book_list"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/claimable-place-profile/content-types/claimable-place-profile/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "claimable_place_profiles",
+        "info": {
+          "singularName": "claimable-place-profile",
+          "pluralName": "claimable-place-profiles",
+          "displayName": "Claimable_Place_Profile",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "attributes": {
+          "Place_Id": {
+            "type": "uid"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Address": {
+            "type": "string"
+          },
+          "Lat": {
+            "type": "decimal"
+          },
+          "Long": {
+            "type": "decimal"
+          },
+          "Phone": {
+            "type": "string"
+          },
+          "Website": {
+            "type": "string"
+          },
+          "Meta_Data": {
+            "type": "json"
+          },
+          "Recommendation_Count": {
+            "type": "integer"
+          },
+          "Is_Claimed": {
+            "type": "boolean",
+            "default": false
+          },
+          "Claiming_Account": {
+            "type": "relation",
+            "relation": "oneToOne",
+            "target": "api::account.account",
+            "inversedBy": "claimable_place_profile"
+          },
+          "Added_By_User": {
+            "type": "json"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/community/content-types/community/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "communities",
+        "info": {
+          "singularName": "community",
+          "pluralName": "communities",
+          "displayName": "Community",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "attributes": {
+          "description": {
+            "type": "richtext"
+          },
+          "Title": {
+            "type": "string"
+          },
+          "media_details": {
+            "type": "json"
+          },
+          "Media": {
+            "type": "media",
+            "multiple": true,
+            "required": false,
+            "allowedTypes": [
+              "images",
+              "files",
+              "videos",
+              "audios"
+            ]
+          },
+          "visibility": {
+            "type": "boolean",
+            "default": true
+          },
+          "account": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::account.account",
+            "inversedBy": "community_boards"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/faq/content-types/faq/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "faqs",
+        "info": {
+          "singularName": "faq",
+          "pluralName": "faqs",
+          "displayName": "FAQ",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {
+          "i18n": {
+            "localized": true
+          }
+        },
+        "attributes": {
+          "Question": {
+            "type": "text",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "Answer": {
+            "type": "text",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "Sequence": {
+            "type": "integer",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/follower/content-types/follower/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "followers",
+        "info": {
+          "singularName": "follower",
+          "pluralName": "followers",
+          "displayName": "Follower"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "attributes": {
+          "main_account": {
+            "type": "string"
+          },
+          "follower_account": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/game-category/content-types/game-category/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "game_categories",
+        "info": {
+          "singularName": "game-category",
+          "pluralName": "game-categories",
+          "displayName": "Game_Category"
+        },
+        "options": {
+          "draftAndPublish": true
+        },
+        "attributes": {
+          "genre_name": {
+            "type": "string",
+            "required": true
+          },
+          "igdb_genre_id": {
+            "type": "integer"
+          },
+          "recommended_games": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::recommended-game.recommended-game",
+            "inversedBy": "game_categories"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/game-list/content-types/game-list/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "game_lists",
+        "info": {
+          "singularName": "game-list",
+          "pluralName": "game-lists",
+          "displayName": "GameList"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "List_Name": {
+            "type": "string",
+            "required": true
+          },
+          "list_description": {
+            "type": "text"
+          },
+          "slug": {
+            "type": "string",
+            "required": true
+          },
+          "Visibility": {
+            "type": "boolean",
+            "required": true,
+            "default": false
+          },
+          "cover_image": {
+            "type": "media",
+            "multiple": false,
+            "allowedTypes": [
+              "images",
+              "files",
+              "videos",
+              "audios"
+            ]
+          },
+          "display_order": {
+            "type": "integer"
+          },
+          "top_picks_heading": {
+            "type": "string"
+          },
+          "account": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::account.account",
+            "inversedBy": "game_lists"
+          },
+          "recommended_games": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::recommended-game.recommended-game",
+            "mappedBy": "game_list"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/guide-category/content-types/guide-category/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "guide_categories",
+        "info": {
+          "singularName": "guide-category",
+          "pluralName": "guide-categories",
+          "displayName": "Guide_Category"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "attributes": {
+          "Category_Name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/guide-section/content-types/guide-section/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "guide_sections",
+        "info": {
+          "singularName": "guide-section",
+          "pluralName": "guide-sections",
+          "displayName": "Guide_Section",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": true
+        },
+        "attributes": {
+          "Title": {
+            "type": "string"
+          },
+          "Sequence": {
+            "type": "decimal"
+          },
+          "Description": {
+            "type": "blocks"
+          },
+          "Recommendation_Activity": {
+            "type": "json"
+          },
+          "guide": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::guide.guide",
+            "inversedBy": "guide_sections"
+          },
+          "Recomendation_Media": {
+            "type": "media",
+            "multiple": true,
+            "required": false,
+            "allowedTypes": [
+              "images",
+              "files",
+              "videos",
+              "audios"
+            ]
+          },
+          "Map_Details": {
+            "type": "json"
+          },
+          "Packing_List": {
+            "type": "json"
+          },
+          "Pre_Tasks": {
+            "type": "json"
+          },
+          "Section_tags": {
+            "type": "json"
+          },
+          "Timeline": {
+            "type": "json"
+          },
+          "Transport": {
+            "type": "json"
+          },
+          "Stay": {
+            "type": "json"
+          },
+          "Budget": {
+            "type": "json"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/guide/content-types/guide/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "guides",
+        "info": {
+          "singularName": "guide",
+          "pluralName": "guides",
+          "displayName": "Guide",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "Title": {
+            "type": "string"
+          },
+          "Description": {
+            "type": "blocks"
+          },
+          "Tips_Notes": {
+            "type": "blocks"
+          },
+          "Visibility": {
+            "type": "boolean"
+          },
+          "account": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::account.account",
+            "inversedBy": "guides"
+          },
+          "Estimated_Budget": {
+            "type": "json"
+          },
+          "Guide_Section_Details": {
+            "type": "json"
+          },
+          "guide_sections": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::guide-section.guide-section",
+            "mappedBy": "guide"
+          },
+          "Guide_Media": {
+            "type": "media",
+            "multiple": true,
+            "required": false,
+            "allowedTypes": [
+              "images",
+              "files",
+              "videos",
+              "audios"
+            ]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "Guide_Type": {
+            "type": "enumeration",
+            "enum": [
+              "Itinerary",
+              "Theme"
+            ]
+          },
+          "Guide_Tags": {
+            "type": "json"
+          },
+          "Place_Details": {
+            "type": "json"
+          },
+          "Transportation": {
+            "type": "json"
+          },
+          "Number_Of_Days": {
+            "type": "integer"
+          },
+          "Category": {
+            "type": "json"
+          },
+          "Best_Time_To_Visit": {
+            "type": "json"
+          },
+          "Budget_Type": {
+            "type": "enumeration",
+            "enum": [
+              "Budget",
+              "Mid-Range",
+              "Luxury",
+              "Backpacker",
+              "Ultra-Luxury"
+            ]
+          },
+          "is_Multicity": {
+            "type": "boolean",
+            "default": false
+          },
+          "is_pinned": {
+            "type": "boolean"
+          },
+          "pin_order": {
+            "type": "integer"
+          },
+          "display_order": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/movie-category/content-types/movie-category/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "movie_categories",
+        "info": {
+          "singularName": "movie-category",
+          "pluralName": "movie-categories",
+          "displayName": "Movie_Category",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "attributes": {
+          "genre_name": {
+            "type": "string",
+            "required": true
+          },
+          "recommended_movie": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::recommended-movie.recommended-movie",
+            "inversedBy": "movie_categories"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/movie-list/content-types/movie-list/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "movie_lists",
+        "info": {
+          "singularName": "movie-list",
+          "pluralName": "movie-lists",
+          "displayName": "MovieList",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "List_Name": {
+            "type": "string",
+            "required": true,
+            "pluginOptions": {}
+          },
+          "list_description": {
+            "type": "text",
+            "pluginOptions": {}
+          },
+          "slug": {
+            "type": "uid",
+            "targetField": "List_Name",
+            "required": true
+          },
+          "Visibility": {
+            "type": "boolean",
+            "default": false,
+            "required": true,
+            "pluginOptions": {}
+          },
+          "cover_image": {
+            "type": "media",
+            "multiple": false,
+            "required": false,
+            "allowedTypes": [
+              "images"
+            ],
+            "pluginOptions": {}
+          },
+          "display_order": {
+            "type": "integer",
+            "default": 0,
+            "pluginOptions": {}
+          },
+          "top_picks_heading": {
+            "type": "string",
+            "default": "Top Picks",
+            "pluginOptions": {}
+          },
+          "account": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::account.account",
+            "inversedBy": "movie_lists"
+          },
+          "recommended_movies": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::recommended-movie.recommended-movie",
+            "mappedBy": "movie_list"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/people-category/content-types/people-category/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "people_categories",
+        "info": {
+          "singularName": "people-category",
+          "pluralName": "people-categories",
+          "displayName": "People_Category"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "Category_name": {
+            "type": "string"
+          },
+          "recommended_people": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::recommended-person.recommended-person",
+            "mappedBy": "people_category"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/person-list/content-types/person-list/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "person_lists",
+        "info": {
+          "singularName": "person-list",
+          "pluralName": "person-lists",
+          "displayName": "PersonList"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "List_Name": {
+            "type": "string",
+            "required": true
+          },
+          "list_description": {
+            "type": "text"
+          },
+          "slug": {
+            "type": "string",
+            "required": true
+          },
+          "Visibility": {
+            "type": "boolean",
+            "required": true,
+            "default": false
+          },
+          "cover_image": {
+            "type": "media",
+            "multiple": false,
+            "allowedTypes": [
+              "images",
+              "files",
+              "videos",
+              "audios"
+            ]
+          },
+          "display_order": {
+            "type": "integer",
+            "default": 0
+          },
+          "top_picks_heading": {
+            "type": "string"
+          },
+          "account": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::account.account",
+            "inversedBy": "person_lists"
+          },
+          "recommended_people": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::recommended-person.recommended-person",
+            "mappedBy": "person_list"
+          },
+          "recommendation_list": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::recommendation-list.recommendation-list",
+            "inversedBy": "person_lists"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/platform-term/content-types/platform-term/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "platform_terms",
+        "info": {
+          "singularName": "platform-term",
+          "pluralName": "platform-terms",
+          "displayName": "Platform_Term",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {
+          "i18n": {
+            "localized": true
+          }
+        },
+        "attributes": {
+          "Terms_and_Condition": {
+            "type": "blocks",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "Privacy_and_Policy": {
+            "type": "blocks",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "Cookie_Policy": {
+            "type": "blocks",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/product-category/content-types/product-category/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "product_categories",
+        "info": {
+          "singularName": "product-category",
+          "pluralName": "product-categories",
+          "displayName": "Product_Category"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "recommended_products": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::recommended-product.recommended-product",
+            "mappedBy": "product_category"
+          },
+          "name": {
+            "type": "string",
+            "required": true
+          },
+          "slug": {
+            "type": "string",
+            "required": true
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/product-list/content-types/product-list/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "product_lists",
+        "info": {
+          "singularName": "product-list",
+          "pluralName": "product-lists",
+          "displayName": "ProductList"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "List_Name": {
+            "type": "string",
+            "required": true
+          },
+          "slug": {
+            "type": "string",
+            "required": true
+          },
+          "Visibility": {
+            "type": "boolean",
+            "required": true,
+            "default": false
+          },
+          "cover_image": {
+            "type": "media",
+            "multiple": false,
+            "allowedTypes": [
+              "images",
+              "files",
+              "videos",
+              "audios"
+            ]
+          },
+          "display_order": {
+            "type": "integer",
+            "default": 0
+          },
+          "top_products_heading": {
+            "type": "string"
+          },
+          "account": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::account.account",
+            "inversedBy": "product_lists"
+          },
+          "recommended_products": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::recommended-product.recommended-product",
+            "mappedBy": "product_list"
+          },
+          "list_description": {
+            "type": "text"
+          },
+          "recommendation_list": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::recommendation-list.recommendation-list",
+            "inversedBy": "product_lists"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/public-page-analytic/content-types/public-page-analytic/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "public_page_analytics",
+        "info": {
+          "singularName": "public-page-analytic",
+          "pluralName": "public-page-analytics",
+          "displayName": "Public_Page_Analytic"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "Account_Id": {
+            "type": "string",
+            "required": true
+          },
+          "Location_Id": {
+            "type": "string",
+            "required": false
+          },
+          "Recommendation_Id": {
+            "type": "string"
+          },
+          "Stats": {
+            "type": "json"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/reason-for-leaving/content-types/reason-for-leaving/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "reason_for_leavings",
+        "info": {
+          "singularName": "reason-for-leaving",
+          "pluralName": "reason-for-leavings",
+          "displayName": "Reason_For_Leaving"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "attributes": {
+          "Reasons": {
+            "type": "json"
+          },
+          "User_Details": {
+            "type": "json"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/recommendation-category/content-types/recommendation-category/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "recommendation_categories",
+        "info": {
+          "singularName": "recommendation-category",
+          "pluralName": "recommendation-categories",
+          "displayName": "Recommendation_Category",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {
+          "i18n": {
+            "localized": true
+          }
+        },
+        "attributes": {
+          "Category_Name": {
+            "type": "string",
+            "pluginOptions": {
+              "i18n": {
+                "localized": true
+              }
+            }
+          },
+          "recommendation_sub_categories": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::recommendation-sub-category.recommendation-sub-category",
+            "mappedBy": "recommendation_category"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/recommendation-list/content-types/recommendation-list/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "recommendation_lists",
+        "info": {
+          "singularName": "recommendation-list",
+          "pluralName": "recommendation-lists",
+          "displayName": "Recommendation_List",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "slug": {
+            "type": "string"
+          },
+          "List_Name": {
+            "type": "string"
+          },
+          "Instagram_Media_URL": {
+            "type": "string"
+          },
+          "account": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::account.account",
+            "inversedBy": "recommendation_lists"
+          },
+          "Visibility": {
+            "type": "boolean"
+          },
+          "List_Name_Details": {
+            "type": "json"
+          },
+          "Sequence": {
+            "type": "integer"
+          },
+          "recommended_places": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::recommended-place.recommended-place",
+            "mappedBy": "recommendation_list"
+          },
+          "is_pinned": {
+            "type": "boolean"
+          },
+          "pin_order": {
+            "type": "integer"
+          },
+          "display_order": {
+            "type": "integer"
+          },
+          "person_lists": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::person-list.person-list",
+            "mappedBy": "recommendation_list"
+          },
+          "product_lists": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::product-list.product-list",
+            "mappedBy": "recommendation_list"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/recommendation-sub-category/content-types/recommendation-sub-category/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "recommendation_sub_categories",
+        "info": {
+          "singularName": "recommendation-sub-category",
+          "pluralName": "recommendation-sub-categories",
+          "displayName": "Recommendation_Sub_Category"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "attributes": {
+          "sub_category": {
+            "type": "string"
+          },
+          "recommendation_category": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::recommendation-category.recommendation-category",
+            "inversedBy": "recommendation_sub_categories"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/recommended-app/content-types/recommended-app/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "recommended_apps",
+        "info": {
+          "singularName": "recommended-app",
+          "pluralName": "recommended-apps",
+          "displayName": "RecommendedApp"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "app_url": {
+            "type": "string",
+            "required": true
+          },
+          "title": {
+            "type": "string",
+            "required": true
+          },
+          "description": {
+            "type": "text"
+          },
+          "logo_url": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "platforms": {
+            "type": "json"
+          },
+          "price_tier": {
+            "type": "enumeration",
+            "required": true,
+            "default": "Freemium",
+            "enum": [
+              "Free",
+              "Freemium",
+              "Paid",
+              "Subscription"
+            ]
+          },
+          "download_url": {
+            "type": "string"
+          },
+          "user_recommendation_note": {
+            "type": "blocks"
+          },
+          "user_rating": {
+            "type": "integer"
+          },
+          "is_pinned": {
+            "type": "boolean",
+            "default": false
+          },
+          "pin_order": {
+            "type": "integer"
+          },
+          "display_order": {
+            "type": "integer",
+            "default": 0
+          },
+          "screenshots": {
+            "type": "json"
+          },
+          "app_list": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::app-list.app-list",
+            "inversedBy": "recommended_apps"
+          },
+          "app_category": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::app-category.app-category",
+            "inversedBy": "recommended_apps"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/recommended-book/content-types/recommended-book/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "recommended_books",
+        "info": {
+          "singularName": "recommended-book",
+          "pluralName": "recommended-books",
+          "displayName": "RecommendedBook",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "volume_id": {
+            "type": "string",
+            "required": true
+          },
+          "title": {
+            "type": "string",
+            "required": true
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "authors": {
+            "type": "json"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "published_date": {
+            "type": "string"
+          },
+          "year": {
+            "type": "string"
+          },
+          "description": {
+            "type": "text"
+          },
+          "cover_url": {
+            "type": "string"
+          },
+          "cover_url_large": {
+            "type": "string"
+          },
+          "subjects": {
+            "type": "json"
+          },
+          "page_count": {
+            "type": "integer"
+          },
+          "isbn_13": {
+            "type": "string"
+          },
+          "isbn_10": {
+            "type": "string"
+          },
+          "google_rating": {
+            "type": "decimal"
+          },
+          "ratings_count": {
+            "type": "integer"
+          },
+          "language": {
+            "type": "string"
+          },
+          "preview_link": {
+            "type": "string"
+          },
+          "user_recommendation_note": {
+            "type": "blocks"
+          },
+          "user_rating": {
+            "type": "integer"
+          },
+          "buy_links": {
+            "type": "json"
+          },
+          "is_pinned": {
+            "type": "boolean"
+          },
+          "pin_order": {
+            "type": "integer"
+          },
+          "display_order": {
+            "type": "integer"
+          },
+          "Media": {
+            "type": "media",
+            "multiple": true,
+            "required": false,
+            "allowedTypes": [
+              "images",
+              "files",
+              "videos",
+              "audios"
+            ]
+          },
+          "media_details": {
+            "type": "json"
+          },
+          "book_list": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::book-list.book-list",
+            "inversedBy": "recommended_books"
+          },
+          "book_categories": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::book-category.book-category",
+            "mappedBy": "recommended_books"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/recommended-game/content-types/recommended-game/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "recommended_games",
+        "info": {
+          "singularName": "recommended-game",
+          "pluralName": "recommended-games",
+          "displayName": "RecommendedGame",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "igdb_id": {
+            "type": "integer",
+            "required": true
+          },
+          "igdb_slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "required": true
+          },
+          "igdb_image_id": {
+            "type": "string"
+          },
+          "cover_url": {
+            "type": "string"
+          },
+          "cover_url_large": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "text"
+          },
+          "release_date": {
+            "type": "string"
+          },
+          "release_year": {
+            "type": "string"
+          },
+          "igdb_rating": {
+            "type": "decimal"
+          },
+          "igdb_rating_count": {
+            "type": "integer"
+          },
+          "genres": {
+            "type": "json"
+          },
+          "platforms": {
+            "type": "json"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "game_modes": {
+            "type": "json"
+          },
+          "screenshot_ids": {
+            "type": "json"
+          },
+          "igdb_url": {
+            "type": "string"
+          },
+          "user_recommendation_note": {
+            "type": "blocks"
+          },
+          "user_rating": {
+            "type": "integer"
+          },
+          "is_pinned": {
+            "type": "boolean",
+            "default": false
+          },
+          "pin_order": {
+            "type": "integer"
+          },
+          "display_order": {
+            "type": "integer"
+          },
+          "Media": {
+            "type": "media",
+            "multiple": true,
+            "required": false,
+            "allowedTypes": [
+              "images",
+              "files",
+              "videos",
+              "audios"
+            ]
+          },
+          "media_details": {
+            "type": "json"
+          },
+          "game_list": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::game-list.game-list",
+            "inversedBy": "recommended_games"
+          },
+          "game_categories": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::game-category.game-category",
+            "mappedBy": "recommended_games"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/recommended-movie/content-types/recommended-movie/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "recommended_movies",
+        "info": {
+          "singularName": "recommended-movie",
+          "pluralName": "recommended-movies",
+          "displayName": "RecommendedMovie",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "tmdb_id": {
+            "type": "string",
+            "required": true
+          },
+          "media_type": {
+            "type": "enumeration",
+            "required": true,
+            "enum": [
+              "Movie",
+              "Show",
+              "TV"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "required": true
+          },
+          "original_title": {
+            "type": "string"
+          },
+          "year": {
+            "type": "string"
+          },
+          "poster_path": {
+            "type": "string"
+          },
+          "backdrop_path": {
+            "type": "string"
+          },
+          "genres": {
+            "type": "json"
+          },
+          "director": {
+            "type": "string"
+          },
+          "runtime": {
+            "type": "integer"
+          },
+          "tmdb_rating": {
+            "type": "decimal"
+          },
+          "overview": {
+            "type": "text"
+          },
+          "season_count": {
+            "type": "integer"
+          },
+          "user_recommendation_note": {
+            "type": "blocks"
+          },
+          "watch_providers": {
+            "type": "json"
+          },
+          "is_pinned": {
+            "type": "boolean",
+            "default": false
+          },
+          "pin_order": {
+            "type": "integer"
+          },
+          "display_order": {
+            "type": "integer"
+          },
+          "media_details": {
+            "type": "json"
+          },
+          "Media": {
+            "type": "media",
+            "multiple": true,
+            "required": false,
+            "allowedTypes": [
+              "images",
+              "files",
+              "videos",
+              "audios"
+            ]
+          },
+          "movie_list": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::movie-list.movie-list",
+            "inversedBy": "recommended_movies"
+          },
+          "movie_categories": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::movie-category.movie-category",
+            "mappedBy": "recommended_movie"
+          },
+          "cast_details": {
+            "type": "json"
+          },
+          "user_rating": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/recommended-person/content-types/recommended-person/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "recommended_people",
+        "info": {
+          "singularName": "recommended-person",
+          "pluralName": "recommended-people",
+          "displayName": "RecommendedPerson"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "name": {
+            "type": "string",
+            "required": true
+          },
+          "username_handle": {
+            "type": "string"
+          },
+          "headline": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "avatar_path": {
+            "type": "string"
+          },
+          "primary_platform": {
+            "type": "enumeration",
+            "default": "linkedin",
+            "enum": [
+              "instagram",
+              "linkedin",
+              "twitter",
+              "github",
+              "youtube",
+              "website",
+              "other"
+            ]
+          },
+          "social_urls": {
+            "type": "json"
+          },
+          "skills_tags": {
+            "type": "json"
+          },
+          "user_recommendation_note": {
+            "type": "blocks"
+          },
+          "user_rating": {
+            "type": "integer"
+          },
+          "is_pinned": {
+            "type": "boolean",
+            "default": false
+          },
+          "pin_order": {
+            "type": "integer"
+          },
+          "display_order": {
+            "type": "integer",
+            "default": 0
+          },
+          "Media": {
+            "type": "media",
+            "multiple": true,
+            "allowedTypes": [
+              "images",
+              "files",
+              "videos",
+              "audios"
+            ]
+          },
+          "media_details": {
+            "type": "json"
+          },
+          "person_list": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::person-list.person-list",
+            "inversedBy": "recommended_people"
+          },
+          "people_category": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::people-category.people-category",
+            "inversedBy": "recommended_people"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/recommended-place/content-types/recommended-place/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "recommended_places",
+        "info": {
+          "singularName": "recommended-place",
+          "pluralName": "recommended-places",
+          "displayName": "Recommended_place",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "Place_Details": {
+            "type": "json"
+          },
+          "Contact_Name": {
+            "type": "string"
+          },
+          "Contact_Number": {
+            "type": "string"
+          },
+          "recommendation_category": {
+            "type": "relation",
+            "relation": "oneToOne",
+            "target": "api::recommendation-category.recommendation-category"
+          },
+          "Places_Social_Link": {
+            "type": "string"
+          },
+          "Places_Website": {
+            "type": "string"
+          },
+          "Users_Place_Note": {
+            "type": "blocks"
+          },
+          "Users_Social_URL": {
+            "type": "string"
+          },
+          "Media": {
+            "type": "media",
+            "multiple": true,
+            "required": false,
+            "allowedTypes": [
+              "images",
+              "files",
+              "videos",
+              "audios"
+            ]
+          },
+          "media_details": {
+            "type": "json"
+          },
+          "supporters": {
+            "type": "json"
+          },
+          "Source_Of_Recommendation": {
+            "type": "enumeration",
+            "enum": [
+              "self",
+              "suggestion"
+            ]
+          },
+          "recommendation_list": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::recommendation-list.recommendation-list",
+            "inversedBy": "recommended_places"
+          },
+          "recommendation_sub_category": {
+            "type": "relation",
+            "relation": "oneToOne",
+            "target": "api::recommendation-sub-category.recommendation-sub-category"
+          },
+          "supporter": {
+            "type": "relation",
+            "relation": "oneToOne",
+            "target": "api::supporter.supporter",
+            "mappedBy": "recommended_place"
+          },
+          "user_recommendation_note": {
+            "type": "richtext"
+          },
+          "Recommendation_Type": {
+            "type": "enumeration",
+            "enum": [
+              "place",
+              "person"
+            ]
+          },
+          "Person_Details": {
+            "type": "json"
+          },
+          "user_rating": {
+            "type": "integer"
+          },
+          "google_rating": {
+            "type": "decimal"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/recommended-product/content-types/recommended-product/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "recommended_products",
+        "info": {
+          "singularName": "recommended-product",
+          "pluralName": "recommended-products",
+          "displayName": "RecommendedProduct"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "product_url": {
+            "type": "string",
+            "required": true
+          },
+          "title": {
+            "type": "string",
+            "required": true
+          },
+          "brand": {
+            "type": "string"
+          },
+          "price": {
+            "type": "decimal"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "buy_url": {
+            "type": "string"
+          },
+          "logo_url": {
+            "type": "string"
+          },
+          "description": {
+            "type": "text"
+          },
+          "specifications": {
+            "type": "json"
+          },
+          "user_recommendation_note": {
+            "type": "blocks"
+          },
+          "user_rating": {
+            "type": "integer"
+          },
+          "is_pinned": {
+            "type": "boolean",
+            "default": false
+          },
+          "pin_order": {
+            "type": "integer"
+          },
+          "display_order": {
+            "type": "integer",
+            "default": 0
+          },
+          "images": {
+            "type": "json"
+          },
+          "product_list": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::product-list.product-list",
+            "inversedBy": "recommended_products"
+          },
+          "product_category": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::product-category.product-category",
+            "inversedBy": "recommended_products"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/song-limit/content-types/song-limit/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "song_limits",
+        "info": {
+          "singularName": "song-limit",
+          "pluralName": "song-limits",
+          "displayName": "Song_limit",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "username": {
+            "type": "string"
+          },
+          "song_requests": {
+            "type": "integer"
+          },
+          "ai_guide_requests": {
+            "type": "integer",
+            "default": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/subscription-plan-base/content-types/subscription-plan-base/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "subscription_plan_bases",
+        "info": {
+          "singularName": "subscription-plan-base",
+          "pluralName": "subscription-plan-bases",
+          "displayName": "Subscription_plan_base",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "plan_name": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "string"
+          },
+          "songs_quota": {
+            "type": "string"
+          },
+          "features": {
+            "type": "json"
+          },
+          "duration": {
+            "type": "enumeration",
+            "enum": [
+              "monthly",
+              "yearly"
+            ]
+          },
+          "plan_code": {
+            "type": "string"
+          },
+          "feature_control": {
+            "type": "json"
+          },
+          "max_devices": {
+            "type": "integer"
+          },
+          "ai_guide_quota": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/supporter/content-types/supporter/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "supporters",
+        "info": {
+          "singularName": "supporter",
+          "pluralName": "supporters",
+          "displayName": "Supporter"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "attributes": {
+          "recommended_place": {
+            "type": "relation",
+            "relation": "oneToOne",
+            "target": "api::recommended-place.recommended-place",
+            "inversedBy": "supporter"
+          },
+          "accounts": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::account.account"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/unsubscribe/content-types/unsubscribe/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "unsubscribes",
+        "info": {
+          "singularName": "unsubscribe",
+          "pluralName": "unsubscribes",
+          "displayName": "Unsubscribe"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "attributes": {
+          "email": {
+            "type": "email",
+            "required": true,
+            "unique": true
+          },
+          "feedback": {
+            "type": "string"
+          },
+          "unsubscribedAt": {
+            "type": "datetime"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/user-subscription-plan/content-types/user-subscription-plan/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "user_subscription_plans",
+        "info": {
+          "singularName": "user-subscription-plan",
+          "pluralName": "user-subscription-plans",
+          "displayName": "User_subscription_plan",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "pluginOptions": {},
+        "attributes": {
+          "user_id": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "datetime"
+          },
+          "end_date": {
+            "type": "datetime"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "razorpay_sub_id": {
+            "type": "string"
+          },
+          "razorpay_plan_id": {
+            "type": "string"
+          },
+          "razorpay_customer_id": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/api/verify-claim/content-types/verify-claim/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "verify_claims",
+        "info": {
+          "singularName": "verify-claim",
+          "pluralName": "verify-claims",
+          "displayName": "Verify_Claim",
+          "description": ""
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "attributes": {
+          "Email": {
+            "type": "email"
+          },
+          "Phone": {
+            "type": "string"
+          },
+          "Message": {
+            "type": "text"
+          },
+          "Attachment": {
+            "type": "media",
+            "multiple": true,
+            "required": false,
+            "allowedTypes": [
+              "images",
+              "files",
+              "videos",
+              "audios"
+            ]
+          },
+          "Name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "file": "src/extensions/users-permissions/content-types/user/schema.json",
+      "schema": {
+        "kind": "collectionType",
+        "collectionName": "up_users",
+        "info": {
+          "name": "user",
+          "description": "",
+          "singularName": "user",
+          "pluralName": "users",
+          "displayName": "User"
+        },
+        "options": {
+          "draftAndPublish": false
+        },
+        "attributes": {
+          "username": {
+            "type": "string",
+            "minLength": 3,
+            "unique": true,
+            "configurable": false,
+            "required": true
+          },
+          "email": {
+            "type": "email",
+            "minLength": 6,
+            "configurable": false,
+            "required": true
+          },
+          "provider": {
+            "type": "string",
+            "configurable": false
+          },
+          "password": {
+            "type": "password",
+            "minLength": 6,
+            "configurable": false,
+            "private": true,
+            "searchable": false
+          },
+          "resetPasswordToken": {
+            "type": "string",
+            "configurable": false,
+            "private": true,
+            "searchable": false
+          },
+          "confirmationToken": {
+            "type": "string",
+            "configurable": false,
+            "private": true,
+            "searchable": false
+          },
+          "confirmed": {
+            "type": "boolean",
+            "default": false,
+            "configurable": false
+          },
+          "blocked": {
+            "type": "boolean",
+            "default": false,
+            "configurable": false
+          },
+          "role": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "plugin::users-permissions.role",
+            "inversedBy": "users",
+            "configurable": false
+          },
+          "mobile_number": {
+            "type": "string"
+          },
+          "mobile_number_visibility": {
+            "type": "string"
+          },
+          "Language_preference": {
+            "type": "string"
+          },
+          "accounts": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::account.account",
+            "mappedBy": "users_permissions_users"
+          },
+          "Language_Choice": {
+            "type": "string",
+            "default": "en"
+          },
+          "is_subscribed": {
+            "type": "boolean",
+            "default": false
+          },
+          "razorpay_customer_id": {
+            "type": "string"
+          },
+          "instagramUserId": {
+            "type": "string"
+          },
+          "instagramUsername": {
+            "type": "string"
+          },
+          "instagramAccountType": {
+            "type": "string"
+          },
+          "instagramAccessToken": {
+            "type": "text"
+          },
+          "movie_lists": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::movie-list.movie-list",
+            "mappedBy": "account"
+          }
+        }
+      }
+    }
+  ]
+}

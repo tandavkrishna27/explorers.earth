@@ -5,6 +5,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { strapiRequest } from "./strapi-client";
+import { apiRequest } from "./queryClient";
 
 // Types
 export interface Faq {
@@ -220,34 +221,7 @@ export function useSubscriptionPlanBases(options?: {
 }) {
   return useQuery<SubscriptionPlanBase[]>({
     queryKey: ["strapi", "subscriptionPlanBases", options],
-    queryFn: async () => {
-      // Extract planId from filters if provided
-      const planId = options?.filters?.documentId?.eq;
-
-      if (planId) {
-        // Get single plan by ID
-        const response = await fetch(`/api/subscriptions/plans/${planId}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch subscription plan: ${response.statusText}`);
-        }
-        const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to fetch subscription plan');
-        }
-        return [result.data]; // Return as array for consistency
-      } else {
-        // Get all plans
-        const response = await fetch('/api/subscriptions/plans');
-        if (!response.ok) {
-          throw new Error(`Failed to fetch subscription plans: ${response.statusText}`);
-        }
-        const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to fetch subscription plans');
-        }
-        return result.data || [];
-      }
-    },
+    queryFn: async () => [],
     enabled: options?.enabled !== false,
     staleTime: 5 * 60 * 1000,
   });
@@ -285,44 +259,7 @@ export function useUserSubscriptionPlans(options?: {
 }) {
   return useQuery<UserSubscriptionPlan[]>({
     queryKey: ["strapi", "userSubscriptionPlans", options],
-    queryFn: async () => {
-      // Extract userId from filters
-      const userId = options?.filters?.user_id?.eq;
-
-      if (!userId) {
-        return []; // Return empty array if no userId provided
-      }
-
-      const response = await fetch(`/api/subscriptions/user-plans/${userId}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch user subscription plans: ${response.statusText}`);
-      }
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch user subscription plans');
-      }
-
-      let plans = result.data || [];
-
-      // Apply sorting if provided (backend doesn't support sort, so we do it client-side)
-      if (options?.sort && plans.length > 0) {
-        plans = [...plans].sort((a, b) => {
-          for (const sortField of options.sort || []) {
-            const [field, direction] = sortField.split(':');
-            const aVal = a[field as keyof UserSubscriptionPlan];
-            const bVal = b[field as keyof UserSubscriptionPlan];
-
-            if (aVal === bVal) continue;
-
-            const comparison = aVal < bVal ? -1 : 1;
-            return direction === 'desc' ? -comparison : comparison;
-          }
-          return 0;
-        });
-      }
-
-      return plans;
-    },
+    queryFn: async () => [],
     enabled: options?.enabled !== false,
     staleTime: 5 * 60 * 1000,
   });
@@ -337,24 +274,7 @@ export function useSongLimits(options?: {
 }) {
   return useQuery<SongLimit[]>({
     queryKey: ["strapi", "songLimits", options],
-    queryFn: async () => {
-      // Extract username from filters
-      const username = options?.filters?.username?.eq;
-
-      if (!username) {
-        return []; // Return empty array if no username provided
-      }
-
-      const response = await fetch(`/api/subscriptions/song-limits/${username}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch song limits: ${response.statusText}`);
-      }
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch song limits');
-      }
-      return result.data || [];
-    },
+    queryFn: async () => [],
     enabled: options?.enabled !== false,
     staleTime: 5 * 60 * 1000,
   });
@@ -391,63 +311,32 @@ export interface SubscriptionPlanInfo {
   isActivePlan: boolean;
 }
 
-export function useUserSubscriptionPlanInfo(username: string | null | undefined) {
-  // Step 1: Get user by username
-  const { data: users, isLoading: isLoadingUser } = useUsersPermissionsUsers({
-    filters: username ? { username: { eq: username } } : undefined,
+export function useUserSubscriptionPlanInfo(username: string | null | undefined): SubscriptionPlanInfo {
+  const entitlement = useQuery<{
+    state: string;
+    coreRead: boolean;
+    coreMutation: boolean;
+    paidMutation: boolean;
+  }>({
+    queryKey: ["music", "entitlement"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/music/entitlement");
+      return response.json();
+    },
     enabled: !!username,
+    staleTime: 60_000,
   });
-
-  const userDocumentId = users?.[0]?.documentId;
-
-  // Step 2: Get user subscription plans
-  const { data: userSubscriptions, isLoading: isLoadingSubscriptions } = useUserSubscriptionPlans({
-    filters: userDocumentId ? { user_id: { eq: userDocumentId } } : undefined,
-    sort: ["start_date:desc"], // Get latest first
-    enabled: !!userDocumentId,
-  });
-
-  // Get the latest subscription (first one after sorting by start_date desc)
-  const latestSubscription = userSubscriptions?.[0] || null;
-  const planId = latestSubscription?.plan_id;
-
-  // Step 3: Get subscription plan details
-  const { data: plans, isLoading: isLoadingPlan } = useSubscriptionPlanBases({
-    filters: planId ? { documentId: { eq: planId } } : undefined,
-    enabled: !!planId,
-  });
-
-  const plan = plans?.[0] || null;
-
-  // Step 4: Get song requests count
-  const { data: songLimits, isLoading: isLoadingSongLimits } = useSongLimits({
-    filters: username ? { username: { eq: username } } : undefined,
-    enabled: !!username,
-  });
-
-  const songRequests = songLimits?.[0]?.song_requests || 0;
-  const songsQuota = plan ? parseInt(plan.songs_quota) || 0 : 0;
-
-  // Step 5: Check if plan is active (end_date >= today)
-  const isActivePlan = (() => {
-    if (!latestSubscription || !latestSubscription.end_date) {
-      return false; // No subscription or no end_date means no active plan
-    }
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time to start of day
-    const endDate = new Date(latestSubscription.end_date);
-    endDate.setHours(0, 0, 0, 0); // Reset time to start of day
-    return endDate >= today;
-  })();
 
   return {
-    plan,
-    songRequests,
-    songsQuota,
-    isLoading: isLoadingUser || isLoadingSubscriptions || isLoadingPlan || isLoadingSongLimits,
-    error: null, // Could be enhanced to track errors from individual queries
-    latestSubscription,
-    isActivePlan,
+    plan: null,
+    songRequests: 0,
+    songsQuota: 0,
+    isLoading: entitlement.isLoading,
+    error: entitlement.error instanceof Error ? entitlement.error : null,
+    latestSubscription: null,
+    // Core personal Music remains included. Paid mutation authority is exposed
+    // separately and never inferred from a browser-selected user or plan.
+    isActivePlan: entitlement.data?.coreMutation ?? true,
   };
 }
 

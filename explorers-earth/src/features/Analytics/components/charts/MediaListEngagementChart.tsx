@@ -191,7 +191,7 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
       {/* ── Time-series line chart ───────────────────────────────── */}
       {timeSeriesData.length > 0 && (
         <div className="w-full" style={{ height: 220 }}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 1, height: 1 }}>
             <LineChart data={timeSeriesData} margin={{ top: 5, right: 10, left: 0, bottom: 40 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
               <XAxis
@@ -225,7 +225,7 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
       {selectedList === 'all' && listClicksData.length > 0 && (
         <div>
           <p className="text-xs font-semibold dt-label uppercase tracking-wider mb-3">Clicks by List</p>
-          <ResponsiveContainer width="100%" height={Math.max(160, listClicksData.length * 38)}>
+          <ResponsiveContainer width="100%" height={Math.max(160, listClicksData.length * 38)} minWidth={0} initialDimension={{ width: 1, height: 1 }}>
             <BarChart data={listClicksData} layout="vertical" margin={{ left: 8, right: 32, top: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
               <XAxis type="number" allowDecimals={false} tick={{ fill: 'var(--color-text-muted, #9ca3af)', fontSize: 10 }} axisLine={false} tickLine={false} />

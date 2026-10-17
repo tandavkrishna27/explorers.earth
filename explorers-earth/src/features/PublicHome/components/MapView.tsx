@@ -1,18 +1,18 @@
-import { AdvancedMarker, Map, MapCameraChangedEvent, Pin, useMap } from "@vis.gl/react-google-maps";
+import { AdvancedMarker, Map, MapCameraChangedEvent, Pin, useApiIsLoaded, useMap } from "@vis.gl/react-google-maps";
+import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
 import { memo, useState, useCallback, useEffect, useRef } from "react";
 import Button from "../../../components/ui/Button";
 import WhiteMap from "../../../assets/icons/WhiteMap";
 import UpArrow from "../../../assets/icons/UpArrow";
 import Down from "../../../assets/icons/Down";
-import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@apollo/client";
-import { getPlaceCoordinatesQuery } from "../api/query";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import Card from "../../../components/ui/Card";
-import { EarthLoader } from "../../../components/EarthLoader";
 import SEO from "../../../components/SEO";
 import { createMapGEOData } from "../../../utils/geoHelpers";
 import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
 import { Maximize2, Minimize2 } from "lucide-react";
+import { isNonNullObject, PublicRouteLoadingState, PublicRoutePartialNotice, settlePublicRouteRetries } from "./PublicRouteContentState";
+import { usePublicRecommendationCategory } from "../api/usePublicRecommendationCategory";
 // import Logo from "../../../assets/icons/Logo";
 
 type List = {
@@ -22,7 +22,7 @@ type List = {
       Place_Address: string;
       Place_Id: string;
       Place_Name: string;
-      Geometry?: {
+      Geometry: {
         lat: number;
         lng: number;
       };
@@ -37,6 +37,23 @@ type List = {
     }[];
   }[];
 };
+
+type MapPlace = List["recommended_places"][number];
+
+const isRenderableMapPlace = (value: unknown): value is MapPlace => {
+  if (!isNonNullObject(value) || !isNonNullObject(value.Place_Details)) return false;
+  const geometry = value.Place_Details.Geometry;
+  return isNonNullObject(geometry)
+    && Number.isFinite(geometry.lat)
+    && Number.isFinite(geometry.lng)
+    && Array.isArray(value.Media)
+    && typeof value.documentId === "string";
+};
+
+const isRenderableMapList = (value: unknown): value is List =>
+  isNonNullObject(value)
+  && typeof value.List_Name === "string"
+  && Array.isArray(value.recommended_places);
 
 type Geometry = {
   lat: number;
@@ -194,6 +211,7 @@ const SmoothMapController = ({ targetCoords, targetZoom }: { targetCoords: Geome
 };
 
 const MapView = memo(() => {
+  const mapsApiLoaded = useApiIsLoaded();
   const [currentCoords, setCurrentCoords] = useState<Geometry>({
     lat: 20.5937,
     lng: 78.9629,
@@ -267,19 +285,27 @@ const MapView = memo(() => {
 
   const { username } = useParams();
   const { placeSlug } = useParams();
-  const { data, loading, error } = useQuery(getPlaceCoordinatesQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
-    },
-  });
+  const { data, loading, error, refetch } = usePublicRecommendationCategory(username, "places", Boolean(username));
+  const rawRecommendationLists = data?.recommendationLists;
+  const recommendationLists: List[] = (Array.isArray(rawRecommendationLists) ? rawRecommendationLists : [])
+    .filter(isRenderableMapList)
+    .map((list) => ({
+      ...list,
+      recommended_places: list.recommended_places.filter(isRenderableMapPlace),
+    }));
+  const completeCollection = Array.isArray(rawRecommendationLists)
+    && rawRecommendationLists.every((list) => (
+      isRenderableMapList(list) && list.recommended_places.every(isRenderableMapPlace)
+    ));
+  const hasUsableData = error
+    ? recommendationLists.some((list) => list.recommended_places.length > 0)
+    : completeCollection;
   const navigate = useNavigate();
+  const outlet = useOutletContext<{ setIsPageLoaded?: (loaded: boolean) => void } | null>();
 
-  // Extract all recommendation lists (regions)
-  const recommendationLists = data?.accounts?.[0]?.recommendation_lists || [];
+  useEffect(() => {
+    if (!loading || hasUsableData) outlet?.setIsPageLoaded?.(true);
+  }, [hasUsableData, loading, outlet?.setIsPageLoaded]);
 
   // Get available regions from recommendation lists with fallback
   const regions: string[] = Array.from(
@@ -450,7 +476,7 @@ const MapView = memo(() => {
 
 
   // Comprehensive dynamic SEO data extraction for map views
-  const profileName = data?.accounts?.[0]?.Account_Name || username || "User";
+  const profileName = username || "User";
   const totalLocationsCount = regions.length;
   const totalPlacesCount = placeDataWithRegion.length;
   const profileUsername = username || "";
@@ -465,7 +491,7 @@ const MapView = memo(() => {
 
   // Find the specific location data for location-specific map
   const currentLocationData = currentLocationName ?
-    data?.accounts?.[0]?.recommendation_lists?.find(
+    recommendationLists.find(
       (list: List) => list.List_Name === currentLocationName
     ) : null;
 
@@ -550,22 +576,18 @@ const MapView = memo(() => {
 
 
 
-  if (loading)
-    return (
-      <div className="flex bg-black items-center justify-center min-h-screen">
-        <EarthLoader context="general" size="small" />
-      </div>
-    );
+  if (loading && !hasUsableData)
+    return <PublicRouteLoadingState label="Map loading" />;
 
-  if (error)
+  if (error && !hasUsableData)
     return (
-      <div className="flex bg-black items-center justify-center min-h-screen">
-        <div className="text-white text-center">
+      <div className="flex bg-[var(--category-page,#000000)] items-center justify-center min-h-screen">
+        <div className="text-[var(--category-text,#FFFFFF)] text-center">
           <h2 className="text-xl font-semibold mb-2">Failed to Load Map</h2>
-          <p className="text-gray-400 mb-4">Could not connect to the data service.</p>
+          <p className="text-[var(--category-muted,#9CA3AF)] mb-4">Could not connect to the data service.</p>
           <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-md text-sm transition-colors"
+            onClick={() => void settlePublicRouteRetries(refetch)}
+            className="min-h-11 px-4 py-2 bg-[var(--category-panel,rgba(255,255,255,0.1))] hover:bg-[var(--category-hover,rgba(255,255,255,0.2))] rounded-md text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Retry
           </button>
@@ -573,13 +595,24 @@ const MapView = memo(() => {
       </div>
     );
 
-  // Check if we have valid data
-  if (!data?.accounts?.[0]?.recommendation_lists) {
+  if (!mapsApiLoaded)
     return (
-      <div className="flex bg-black items-center justify-center min-h-screen">
-        <div className="text-white text-center">
+      <div className="flex bg-[var(--category-page,#000000)] items-center justify-center min-h-screen" aria-busy={loading || undefined}>
+        <div className="text-[var(--category-text,#FFFFFF)] text-center px-6">
+          {Boolean(error) && hasUsableData && <PublicRoutePartialNotice message="Some map data is unavailable." />}
+          <h2 className="text-xl font-semibold mb-2">Map Unavailable</h2>
+          <p className="text-[var(--category-muted,#9CA3AF)]">Use the list view while the map service is unavailable.</p>
+        </div>
+      </div>
+    );
+
+  // Check if we have valid data
+  if (!Array.isArray(rawRecommendationLists)) {
+    return (
+      <div className="flex bg-[var(--category-page,#000000)] items-center justify-center min-h-screen">
+        <div className="text-[var(--category-text,#FFFFFF)] text-center">
           <h2 className="text-xl font-semibold mb-2">No Data Available</h2>
-          <p className="text-gray-400">No recommendation lists found for this user.</p>
+          <p className="text-[var(--category-muted,#9CA3AF)]">No recommendation lists found for this user.</p>
         </div>
       </div>
     );
@@ -601,6 +634,11 @@ const MapView = memo(() => {
       />
 
       <div className="relative">
+        {Boolean(error) && hasUsableData && (
+          <div className="absolute left-4 right-4 top-4 z-[60]">
+            <PublicRoutePartialNotice message="Some map data is unavailable." />
+          </div>
+        )}
         <Map
           defaultCenter={currentCoords ?? latLngArray[0]}
           center={currentCoords}
@@ -653,7 +691,7 @@ const MapView = memo(() => {
                 navigate(`/${username}/places`);
               }
             }}
-            className="bg-[hsl(var(--blue-cta))] hover:bg-[hsl(var(--blue-final))]"
+            className="bg-[var(--category-accent,hsl(var(--blue-cta)))] hover:bg-[var(--category-accent,hsl(var(--blue-final)))]"
           />
         </div>
 
@@ -688,7 +726,7 @@ const MapView = memo(() => {
             </div>
           ) : (
             <div className="flex">
-              <span className="text-white text-sm">Loading regions...</span>
+              <span className="text-[var(--category-text,#FFFFFF)] text-sm">Loading regions...</span>
             </div>
           )}
         </div>
@@ -696,19 +734,19 @@ const MapView = memo(() => {
         {/* Fullscreen Button (Four Corners Button - Top Right of Second Row) */}
         <button
           onClick={toggleFullscreen}
-          className="absolute top-14 right-3 z-50 bg-white hover:bg-gray-100 text-gray-700 p-2.5 rounded-lg shadow-md transition-all duration-200 cursor-pointer flex items-center justify-center border border-gray-200"
+          className="absolute top-14 right-3 z-50 bg-[var(--category-panel,#FFFFFF)] hover:bg-[var(--category-hover,#F3F4F6)] text-[var(--category-muted,#374151)] p-2.5 rounded-lg shadow-md transition-all duration-200 cursor-pointer flex items-center justify-center border border-[var(--category-control-border,#E5E7EB)]"
           aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
         >
           {isFullscreen ? (
-            <Minimize2 className="w-4 h-4 text-gray-700" />
+            <Minimize2 className="w-4 h-4 text-[var(--category-muted,#374151)]" />
           ) : (
-            <Maximize2 className="w-4 h-4 text-gray-700" />
+            <Maximize2 className="w-4 h-4 text-[var(--category-muted,#374151)]" />
           )}
         </button>
 
         {/* Collapsible Wrapper for Category Filter and Place Cards */}
         <div
-          className="bg-[#0d1117]/90 border-t border-white/10 backdrop-blur-md py-4 absolute bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out rounded-t-2xl shadow-2xl"
+          className="bg-[var(--category-panel,rgba(13,17,23,0.9))] border-t border-[var(--category-control-border,rgba(255,255,255,0.1))] backdrop-blur-md py-4 absolute bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out rounded-t-2xl shadow-2xl"
           style={{
             transform: isCollapsed ? "translateY(calc(100% - 68px))" : "translateY(0)"
           }}
@@ -717,7 +755,7 @@ const MapView = memo(() => {
           <div className="flex justify-center mb-2">
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="bg-gray-800 hover:bg-gray-700 border border-white/15 rounded-full p-2 text-white transition-colors duration-200 cursor-pointer flex items-center justify-center"
+              className="bg-[var(--category-panel,#1F2937)] hover:bg-[var(--category-hover,#374151)] border border-[var(--category-control-border,rgba(255,255,255,0.15))] rounded-full p-2 text-[var(--category-text,#FFFFFF)] transition-colors duration-200 cursor-pointer flex items-center justify-center"
               aria-label={isCollapsed ? "Expand filters and cards" : "Collapse filters and cards"}
             >
               {isCollapsed ? <UpArrow /> : <Down />}
@@ -755,7 +793,7 @@ const MapView = memo(() => {
               </div>
             ) : (
               <div className="flex px-4">
-                <span className="text-white/40 text-xs font-poppins">No categories available</span>
+                <span className="text-[var(--category-muted,rgba(255,255,255,0.4))] text-xs font-poppins">No categories available</span>
               </div>
             )}
           </div>
@@ -766,16 +804,7 @@ const MapView = memo(() => {
             style={{ scrollbarWidth: "none" }}
           >
             {filteredPlaces.map(
-              (
-                place: {
-                  Title: string;
-                  Media: { url: string }[];
-                  Rating: number;
-                  Rating_Count: number;
-                  Geometry: Geometry;
-                },
-                index: number
-              ) => (
+              (place, index: number) => (
                 <div key={index} className="w-[135px] md:w-[155px] flex-shrink-0">
                   <Card
                     title={place?.Title}
@@ -805,4 +834,4 @@ const MapView = memo(() => {
   );
 });
 
-export default MapView;
+export default withGoogleMapsProvider(MapView);

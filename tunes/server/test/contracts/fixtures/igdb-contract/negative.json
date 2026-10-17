@@ -1,0 +1,7 @@
+[
+ {"name":"zero identity","row":{"id":0,"name":"Invalid"}},
+ {"name":"rating above raw scale","row":{"id":1,"name":"Invalid","total_rating":100.1}},
+ {"name":"unsafe count","row":{"id":1,"name":"Invalid","total_rating_count":9007199254740992}},
+ {"name":"credential-shaped unknown field","row":{"id":1,"name":"Invalid","client_secret":"synthetic-no-secret"}},
+ {"name":"caller URL authority","row":{"id":1,"name":"Invalid","url":"https://evil.invalid/games/x"}}
+]

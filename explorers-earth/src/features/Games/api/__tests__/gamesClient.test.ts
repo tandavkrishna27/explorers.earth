@@ -1,0 +1,32 @@
+import {beforeEach,it,expect,vi} from 'vitest';
+import {GamesClient} from '../gamesClient';import {explorersApiClient} from '../../../../lib/explorersApiClient';import useAuthStore from '../../../../store/store';
+vi.mock('../../../../lib/explorersApiClient',()=>({explorersApiClient:{getCompleteMyCategoryContent:vi.fn(),getMyEditableCollection:vi.fn(),getMyEditableRecommendation:vi.fn(),resolveManualEntity:vi.fn(),createMyRecommendation:vi.fn(),updateMyRecommendation:vi.fn(),createMedia:vi.fn(),attachMyGameMembership:vi.fn(),detachMyGameMembership:vi.fn(),searchGames:vi.fn(),resolveGameProvider:vi.fn()},assertOwnerDetailObservation:vi.fn(),assertCompleteMyCategoryContent:vi.fn(),ExplorersApiError:class extends Error{constructor(public status:number,public code:string,message:string){super(message);}}}));
+const parent={kind:'collection',accountId:'owner',generation:1,resourceId:'list',resourceRevision:1,detail:{id:'list',accountId:'owner',category:'games',revision:1}} as any;
+const draft={title:' Manual ',note:null,userRating:null,mediaIds:[]};
+beforeEach(()=>{vi.clearAllMocks();useAuthStore.setState({accountId:'owner',generation:1,isAuthenticated:true});history.replaceState({},'', '/games');vi.mocked(explorersApiClient.resolveManualEntity).mockResolvedValue({id:'00000000-0000-4000-8000-000000000001',kind:'game',title:'Manual'});vi.mocked(explorersApiClient.createMyRecommendation).mockResolvedValue({id:'rec'} as never);});
+it('binds an immutable original parent and two stable independent keys for lost acknowledgement replay',async()=>{
+ const intent=GamesClient.prepareManualIntent(parent,draft);expect(intent.entityKey).not.toBe(intent.recommendationKey);expect(Object.isFrozen(intent.draft.mediaIds)).toBe(true);expect(intent.draft.title).toBe('Manual');
+ vi.mocked(explorersApiClient.createMyRecommendation).mockRejectedValueOnce(new Error('lost acknowledgement')).mockResolvedValueOnce({id:'rec'} as never);
+ await expect(GamesClient.createManual(intent)).rejects.toThrow('lost acknowledgement');await GamesClient.createManual(intent);
+ const creates=vi.mocked(explorersApiClient.createMyRecommendation).mock.calls;expect(creates).toHaveLength(2);expect(creates[0]).toEqual(creates[1]);expect(creates[0][0]).toBe(parent);expect(creates[0][2]).toBe(intent.recommendationKey);
+ const resolves=vi.mocked(explorersApiClient.resolveManualEntity).mock.calls;expect(resolves[0]).toEqual(resolves[1]);
+});
+for(const boundary of ['generation','account','route','abort'] as const)it('denies '+boundary+' transition during entity await before recommendation write',async()=>{
+ let finish:(value:any)=>void=()=>{};vi.mocked(explorersApiClient.resolveManualEntity).mockReturnValueOnce(new Promise(resolve=>{finish=resolve;}));const intent=GamesClient.prepareManualIntent(parent,draft),controller=new AbortController(),work=GamesClient.createManual(intent,controller.signal);
+ if(boundary==='generation')useAuthStore.setState({generation:2});if(boundary==='account')useAuthStore.setState({accountId:'other'});if(boundary==='route')history.pushState({},'','/other');if(boundary==='abort')controller.abort();finish({id:'00000000-0000-4000-8000-000000000001'});
+ await expect(work).rejects.toMatchObject({status:409});expect(explorersApiClient.createMyRecommendation).not.toHaveBeenCalled();
+});
+it('rejects forged intent/nonGames original observation before I/O',async()=>{await expect(GamesClient.createManual({...GamesClient.prepareManualIntent(parent,draft)})).rejects.toMatchObject({status:409});expect(()=>GamesClient.prepareManualIntent({...parent,detail:{...parent.detail,category:'books'}},draft)).toThrow();expect(explorersApiClient.resolveManualEntity).not.toHaveBeenCalled();});
+it('returns the same authentic complete object and rejects another category',async()=>{const observed={category:'games'} as never;vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockResolvedValueOnce(observed);expect(await GamesClient.readCompleteOwner()).toBe(observed);expect(explorersApiClient.getCompleteMyCategoryContent).toHaveBeenCalledWith({category:'games',status:'active'},undefined,true);vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockResolvedValueOnce({category:'books'} as never);await expect(GamesClient.readCompleteOwner()).rejects.toMatchObject({status:409});});
+it('awaits actual upload completion and denies owner transition before returning ready identity',async()=>{let finish:(value:any)=>void=()=>{};vi.mocked(explorersApiClient.createMedia).mockReturnValueOnce(new Promise(resolve=>{finish=resolve;}));const uploading=GamesClient.upload(new File(['x'],'game.png'), 'reserved');useAuthStore.setState({accountId:'other'});finish({id:'image'});await expect(uploading).rejects.toMatchObject({status:409});});
+const item={kind:'recommendation',accountId:'owner',generation:1,resourceId:'rec',resourceRevision:2,detail:{id:'rec',category:'games',revision:2}} as any;
+it('retains original immutable paired membership observations and key after lost acknowledgement',async()=>{
+ const intent=GamesClient.prepareMembershipIntent(parent,item,true);vi.mocked(explorersApiClient.attachMyGameMembership).mockRejectedValueOnce(Error('lost')).mockResolvedValueOnce({attached:true} as never);
+ await expect(GamesClient.saveMembership(intent)).rejects.toThrow('lost');await GamesClient.saveMembership(intent);const calls=vi.mocked(explorersApiClient.attachMyGameMembership).mock.calls;expect(calls[0]).toEqual(calls[1]);expect(calls[0][0]).toBe(parent);expect(calls[0][1]).toBe(item);expect(calls[0][2]).toBe(intent.commandKey);expect(Object.isFrozen(intent)).toBe(true);
+});
+it('denies forged paired intent and route changes before command dispatch',async()=>{
+ const intent=GamesClient.prepareMembershipIntent(parent,item,false);await expect(GamesClient.saveMembership({...intent})).rejects.toMatchObject({status:409});history.pushState({},'','/different');await expect(GamesClient.saveMembership(intent)).rejects.toMatchObject({status:409});expect(explorersApiClient.detachMyGameMembership).not.toHaveBeenCalled();
+});
+it('withholds a deferred membership acknowledgement from a newer account scope',async()=>{
+ let finish:(value:any)=>void=()=>{};vi.mocked(explorersApiClient.detachMyGameMembership).mockReturnValueOnce(new Promise(resolve=>{finish=resolve;}));const intent=GamesClient.prepareMembershipIntent(parent,item,false),work=GamesClient.saveMembership(intent);useAuthStore.setState({generation:2});finish({attached:false});await expect(work).rejects.toMatchObject({status:409});
+});

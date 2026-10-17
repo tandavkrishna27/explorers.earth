@@ -16,9 +16,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useMutation, useApolloClient } from "@apollo/client";
-import { UPDATE_GUIDE_SECTION_MUTATION } from "../../api/mutations";
-import { GET_GUIDE_BY_ID_QUERY } from "../../api/queries";
+import {useGuideEditing} from '../../context/GuideEditingProvider';
 import { toast } from "sonner";
 import Button from "../../../../components/ui/Button";
 import { DayPlace, TimelineData } from "../../types/guideSectionTypes";
@@ -37,7 +35,6 @@ interface EditTipModalProps {
   };
   sectionId: string;
   sectionTitle: string;
-  guideId: string;
   onSuccess?: () => void;
 }
 
@@ -47,38 +44,26 @@ const EditTipModal: React.FC<EditTipModalProps> = ({
   tip,
   sectionId,
   sectionTitle,
-  guideId,
   onSuccess,
 }) => {
   const [tipText, setTipText] = useState("");
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const apolloClient = useApolloClient();
+  const {getSection, saveSection} = useGuideEditing();
 
-  const [updateSection] = useMutation(UPDATE_GUIDE_SECTION_MUTATION);
 
   // Initialize form with current tip data
   useEffect(() => {
     if (isOpen && tip) {
       setTipText(tip.tip || "");
     }
-  }, [isOpen, tip]);
+  }, [isOpen, tip.placeId, tip.tip]);
 
   const saveTip = async (newTipText: string, isDelete: boolean = false) => {
     setLoading(true);
 
     try {
-      // Fetch current section data to preserve other fields
-      const { data: guideData } = await apolloClient.query({
-        query: GET_GUIDE_BY_ID_QUERY,
-        variables: { documentId: guideId },
-        fetchPolicy: "network-only",
-      });
-
-      const section = guideData?.guide?.guide_sections?.find(
-        (s: any) => s.documentId === sectionId
-      );
-
+      const section = getSection(sectionId);
       if (!section) {
         throw new Error("Section not found");
       }
@@ -107,29 +92,13 @@ const EditTipModal: React.FC<EditTipModalProps> = ({
         evening: updateTipInArray(currentTimelineData.evening || []),
       };
 
-      const timelineString = JSON.stringify(updatedTimeline);
 
-      // Update the section - preserve all other fields
-      await updateSection({
-        variables: {
-          documentId: sectionId,
-          data: {
-            Title: section.Title,
-            Description: section.Description,
-            Sequence: section.Sequence,
-            Timeline: timelineString, // Updated Timeline field with synced tip
-            Transport: section.Transport,
-            Stay: section.Stay,
-            Recommendation_Activity: section.Recommendation_Activity,
-            Map_Details: section.Map_Details,
-            Budget: section.Budget,
-          },
-        },
-      });
-
-      // Refetch guide data to update UI
-      await apolloClient.refetchQueries({
-        include: [GET_GUIDE_BY_ID_QUERY],
+      // Only the timeline changes; every other block keeps its current value because the
+      // save fills in what the caller does not name.
+      await saveSection(sectionId, {
+        title: section.Title,
+        description: section.Description ?? null,
+        Timeline: updatedTimeline,
       });
 
       toast.success(isDelete ? "Tip deleted successfully!" : "Tip updated successfully!");

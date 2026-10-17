@@ -58,23 +58,23 @@ const GameCarouselRow = memo(({
           <div className="flex items-center gap-2 group">
             <div className="w-1.5 h-[22px] bg-yellow-400 rounded-sm flex-shrink-0" />
             {seeAllLink ? (
-              <Link to={seeAllLink} className="flex items-center text-xl font-bold text-white hover:text-white transition-colors">
-                {title} <ChevronRight size={22} className="ml-0.5 text-white/80 group-hover:translate-x-1 transition-transform" />
+              <Link to={seeAllLink} className="flex items-center text-xl font-bold text-[color:var(--category-text,#fff)] hover:text-[color:var(--category-text,#fff)] transition-colors">
+                {title} <ChevronRight size={22} className="ml-0.5 text-[color:var(--category-text,rgba(255,255,255,0.8))] group-hover:translate-x-1 transition-transform" />
               </Link>
             ) : (
-              <h2 className="text-xl font-bold text-white flex items-center">
+              <h2 className="text-xl font-bold text-[color:var(--category-text,#fff)] flex items-center">
                 {title}
               </h2>
             )}
           </div>
-          {description && <p className="text-white/60 text-sm mt-1 line-clamp-1">{description}</p>}
+          {description && <p className="text-[color:var(--category-muted,rgba(255,255,255,0.6))] text-sm mt-1 line-clamp-1">{description}</p>}
         </div>
 
         <div className="flex flex-col items-end pt-1 flex-shrink-0 ml-4">
           {seeAllLink && !isLoading && games.length > 0 && (
             <Link
               to={seeAllLink}
-              className="text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors flex items-center gap-0.5"
+              className="text-xs font-bold text-[color:var(--category-text,#3b82f6)] hover:text-[color:var(--category-text,#60a5fa)] transition-colors flex items-center gap-0.5"
             >
               See All ➔
             </Link>
@@ -113,11 +113,11 @@ const GameCarouselRow = memo(({
         {isLoading ? (
           [1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="flex-none w-[130px] md:w-[150px] lg:w-[170px]">
-              <div className="aspect-[3/4] bg-white/5 animate-pulse rounded-xl border border-white/5" />
+              <div className="aspect-[3/4] bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse rounded-xl border border-[color:var(--category-border,rgba(255,255,255,0.05))]" />
             </div>
           ))
         ) : games.length === 0 ? (
-          <p className="text-white/40 text-sm py-4">{emptyMessage}</p>
+          <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-sm py-4">{emptyMessage}</p>
         ) : (
           games.map((game) => (
             <div
@@ -130,8 +130,8 @@ const GameCarouselRow = memo(({
                 onClick={() => onGameClick(game)}
               />
               <div className="mt-3 px-1">
-                <h4 className="text-sm font-semibold text-white/90 line-clamp-1 truncate">{game.title}</h4>
-                <p className="text-[11px] text-white/40 mt-0.5 line-clamp-1 truncate uppercase tracking-wider">
+                <h4 className="text-sm font-semibold text-[color:var(--category-text,rgba(255,255,255,0.9))] line-clamp-1 truncate">{game.title}</h4>
+                <p className="text-[11px] text-[color:var(--category-muted,rgba(255,255,255,0.4))] mt-0.5 line-clamp-1 truncate uppercase tracking-wider">
                   {game.genres && game.genres.length > 0 ? game.genres[0] : (game.release_year || "")}
                 </p>
               </div>

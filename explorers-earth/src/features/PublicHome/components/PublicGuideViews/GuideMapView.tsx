@@ -1,7 +1,10 @@
+import { selectGuidePlaceThumbnail } from "../../utils/publicGuidePhotoViewModel";
+import { usePublicCategoryThemeStyles } from "../PublicCategoryThemeContext";
 import React, { memo, useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { Map, AdvancedMarker, Pin, useMap, MapCameraChangedEvent } from "@vis.gl/react-google-maps";
+import { withGoogleMapsProvider } from "../../../../components/GoogleMapsProvider";
 import { parseTimeline } from "../../../Guides/utils/guideDataParser";
 import GooglePlaceModal from "./GooglePlaceModal";
 import Card from "../../../../components/ui/Card";
@@ -214,6 +217,7 @@ const GuideMapView = memo(({
   onPlaceClick,
   highlightedPlaceId
 }: GuideMapViewProps) => {
+  const categoryStyles = usePublicCategoryThemeStyles();
   const [selectedDay, setSelectedDay] = useState<string>("all");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [activeMarker, setActiveMarker] = useState<string | null>(null);
@@ -352,41 +356,8 @@ const GuideMapView = memo(({
     setTargetZoom(undefined);
   }, [filteredPlaces]);
 
-  // Helper function to get S3 image from guide data by place_id
-  const getS3ImageForPlace = useMemo(() => {
-    const imageMap: Record<string, string | null> = {};
 
-    // Iterate through all sections to find activity photos
-    sections.forEach((section) => {
-      if (section.Recommendation_Activity?.activities) {
-        section.Recommendation_Activity.activities.forEach((activity: any) => {
-          if (activity.place_id && activity.photos && activity.photos.length > 0) {
-            // Use first photo from S3
-            const firstPhoto = activity.photos[0];
-            if (firstPhoto.url) {
-              imageMap[activity.place_id] = firstPhoto.url;
-            }
-          }
-        });
-      }
-    });
-
-    return imageMap;
-  }, [sections]);
-
-  // Get image URL for a place - prioritize S3 images from guide data
-  const getPlaceImage = useCallback((place: any): string => {
-    if (!place?.place_id) return "https://placehold.co/400x400";
-
-    // First check S3 images from guide data
-    const s3Image = getS3ImageForPlace[place.place_id];
-    if (s3Image) {
-      return s3Image;
-    }
-
-    // Fallback to placeholder
-    return "https://placehold.co/400x400";
-  }, [getS3ImageForPlace]);
+  const getPlaceImage = useCallback((place: unknown): string => selectGuidePlaceThumbnail(place, sections)?.url ?? "https://placehold.co/400x400", [sections]);
 
   // Handle marker click - show InfoWindow (like recommendations map)
   const handleMarkerClick = useCallback((placeWithCoords: PlaceWithCoords, event?: any) => {
@@ -518,10 +489,10 @@ const GuideMapView = memo(({
 
   if (allPlacesWithCoords.length === 0) {
     return (
-      <div className="relative w-full h-screen md:h-[700px] flex items-center justify-center bg-gray-900">
-        <div className="text-white text-center">
+      <div className="relative w-full h-screen md:h-[700px] flex items-center justify-center bg-[var(--category-panel,#111827)]">
+        <div className="text-[var(--category-text,#FFFFFF)] text-center">
           <p className="text-lg font-semibold mb-2">No places with coordinates found</p>
-          <p className="text-sm text-gray-400">Please add places with valid locations to view the map</p>
+          <p className="text-sm text-[var(--category-muted,#9CA3AF)]">Please add places with valid locations to view the map</p>
           <Button
             btnText="Close"
             variant="primary"
@@ -566,7 +537,7 @@ const GuideMapView = memo(({
           </div>
         ) : (
           <div className="flex">
-            <span className="text-white text-sm">Loading days...</span>
+            <span className="text-[var(--category-text,#FFFFFF)] text-sm">Loading days...</span>
           </div>
         )}
       </div>
@@ -632,7 +603,7 @@ const GuideMapView = memo(({
 
                     return (
                       <div
-                        className="absolute left-1/2 bg-white rounded-lg shadow-2xl pointer-events-auto min-w-[280px] max-w-[320px] overflow-hidden"
+                        className="absolute left-1/2 bg-[var(--category-panel,#FFFFFF)] rounded-lg shadow-2xl pointer-events-auto min-w-[280px] max-w-[320px] overflow-hidden"
                         style={{
                           zIndex: 10002,
                           bottom: '100%',
@@ -658,10 +629,10 @@ const GuideMapView = memo(({
                             setInfoWindowPlace(null);
                             setActiveMarker(null);
                           }}
-                          className="absolute top-2 right-2 z-[10001] bg-white/90 hover:bg-gray-100 rounded-full p-1.5 shadow-sm transition-colors"
+                          className={`absolute top-2 right-2 z-[10001] bg-[var(--category-panel,rgba(255,255,255,0.9))] hover:bg-[var(--category-hover,#F3F4F6)] rounded-full p-1.5 shadow-sm transition-colors ${categoryStyles ? "focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-[var(--category-focus)] focus-visible:!transform-none" : ""}`}
                           aria-label="Close"
                         >
-                          <CrossIcon stroke="#666" size="4" />
+                          <CrossIcon stroke="var(--category-text, #666)" size="4" />
                         </button>
 
                         {/* Place Image */}
@@ -681,19 +652,19 @@ const GuideMapView = memo(({
                         {/* InfoWindow Content */}
                         <div className="p-4">
                           {/* Place Name */}
-                          <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-2 pr-8">
+                          <h3 className="text-base font-semibold text-[var(--category-text,#111827)] mb-2 line-clamp-2 pr-8">
                             {placeName}
                           </h3>
 
                           {/* Full Address */}
                           {addressInfo.full && (
                             <div className="mb-3">
-                              <p className="text-sm text-gray-600 line-clamp-2">
+                              <p className="text-sm text-[var(--category-muted,#4B5563)] line-clamp-2">
                                 {addressInfo.full}
                               </p>
                               {/* City, State, Country breakdown */}
                               {(addressInfo.city || addressInfo.state || addressInfo.country) && (
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-[var(--category-muted,#6B7280)] mt-1">
                                   {[addressInfo.city, addressInfo.state, addressInfo.country].filter(Boolean).join(', ')}
                                 </p>
                               )}
@@ -705,14 +676,14 @@ const GuideMapView = memo(({
                             <div className="flex items-center gap-2 mb-3">
                               {placeWithCoords.place.rating && (
                                 <div className="flex items-center gap-1">
-                                  <span className="text-yellow-500 text-sm">★</span>
-                                  <span className="text-sm font-medium text-gray-900">
+                                  <span className="text-[var(--category-rating,#EAB308)] text-sm">★</span>
+                                  <span className="text-sm font-medium text-[var(--category-text,#111827)]">
                                     {placeWithCoords.place.rating.toFixed(1)}
                                   </span>
                                 </div>
                               )}
                               {placeWithCoords.place.user_ratings_total && (
-                                <span className="text-sm text-gray-500">
+                                <span className="text-sm text-[var(--category-muted,#6B7280)]">
                                   ({placeWithCoords.place.user_ratings_total.toLocaleString()} {placeWithCoords.place.user_ratings_total === 1 ? 'review' : 'reviews'})
                                 </span>
                               )}
@@ -729,7 +700,7 @@ const GuideMapView = memo(({
                                 e.stopPropagation();
                               }
                             }}
-                            className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium mb-2 transition-colors"
+                            className={`inline-flex items-center gap-2 text-sm text-[var(--category-text,#2563EB)] hover:text-[var(--category-text,#1D4ED8)] font-medium mb-2 transition-colors ${categoryStyles ? "focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-[var(--category-focus)] focus-visible:!transform-none" : ""}`}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -738,7 +709,7 @@ const GuideMapView = memo(({
                           </a>
 
                           {/* Day and Sequence Info */}
-                          <div className="flex items-center gap-2 text-xs text-gray-500 pt-2 border-t border-gray-200 mt-2">
+                          <div className="flex items-center gap-2 text-xs text-[var(--category-muted,#6B7280)] pt-2 border-t border-[var(--category-control-border,#E5E7EB)] mt-2">
                             <span>Day {placeWithCoords.dayNumber}</span>
                             <span>•</span>
                             <span>Stop #{placeWithCoords.sequence}</span>
@@ -759,22 +730,33 @@ const GuideMapView = memo(({
 
       {/* Collapsible Wrapper for Cards - Positioned like recommendations page */}
       <div
-        className={`bg-black/30 backdrop-blur-sm py-4 absolute bottom-20 left-0 right-0 z-50 transition-transform duration-300 ease-in-out ${isCardsExpanded ? "translate-y-0" : "translate-y-full"
-          }`}
+        data-public-guide-map-tray
+        className="bg-[var(--category-panel,rgba(0,0,0,0.3))] backdrop-blur-sm py-4 absolute left-0 right-0 z-50 transition-transform duration-300 ease-in-out"
+        style={{
+          bottom: 'calc(var(--public-nav-reserved-bottom) + var(--public-guide-tray-gap))',
+          transform: isCardsExpanded ? 'translateY(0)' : 'translateY(calc(100% - var(--public-guide-tray-visible-height) + var(--public-guide-tray-gap)))',
+        }}
       >
         {/* Toggle Button - Centered above cards */}
         <div className="flex justify-center mb-2">
           <button
             onClick={() => setIsCardsExpanded(!isCardsExpanded)}
-            className="bg-black/80 backdrop-blur-sm border border-gray-700 rounded-full p-2 text-white hover:bg-black/90 transition-colors duration-200"
+            className={`inline-flex min-h-11 min-w-11 items-center justify-center bg-[var(--category-panel,rgba(0,0,0,0.8))] backdrop-blur-sm border border-[var(--category-control-border,#374151)] rounded-full p-2 text-[var(--category-text,#FFFFFF)] hover:bg-[var(--category-hover,rgba(0,0,0,0.9))] transition-colors duration-200 ${categoryStyles ? "focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-[var(--category-focus)] focus-visible:!transform-none" : ""}`}
             aria-label={isCardsExpanded ? "Collapse cards" : "Expand cards"}
+            aria-expanded={isCardsExpanded}
           >
             {isCardsExpanded ? <UpArrow /> : <Down />}
           </button>
         </div>
 
         {/* Place Cards */}
-        <div className="p-2 flex gap-4 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+        <div
+          data-public-guide-map-card-rail
+          className="p-2 flex gap-4 overflow-x-auto"
+          aria-hidden={!isCardsExpanded}
+          {...(!isCardsExpanded ? { inert: '' } : {})}
+          style={{ scrollbarWidth: "none", visibility: isCardsExpanded ? 'visible' : 'hidden' }}
+        >
           {filteredPlaces.map((placeWithCoords) => {
             const placeImage = getPlaceImage(placeWithCoords.place);
 
@@ -804,7 +786,8 @@ const GuideMapView = memo(({
       {!isFullscreen && (
         <button
           onClick={() => setIsFullscreen(true)}
-          className="absolute top-4 right-4 z-50 bg-black/70 hover:bg-black/90 backdrop-blur-sm text-white p-2 rounded-lg shadow-lg transition-all duration-200"
+          className={`absolute right-4 z-50 inline-flex min-h-11 min-w-11 items-center justify-center bg-[var(--category-panel,rgba(0,0,0,0.7))] hover:bg-[var(--category-hover,rgba(0,0,0,0.9))] backdrop-blur-sm text-[var(--category-text,#FFFFFF)] p-2 rounded-lg shadow-lg transition-all duration-200 ${categoryStyles ? "focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-[var(--category-focus)] focus-visible:!transform-none" : ""}`}
+          style={{ top: "calc(var(--public-header-reserved-offset, 0px) + 1rem)" }}
           aria-label="Expand map"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -814,14 +797,20 @@ const GuideMapView = memo(({
       )}
 
       {/* List View Button - Positioned like recommendations page */}
-      <div className="fixed bottom-[3.5rem] z-50 md:left-0 flex justify-center w-full">
+      <div
+        className="fixed z-50 flex"
+        style={{
+          left: 'calc(var(--public-safe-left, env(safe-area-inset-left, 0px)) + 1rem)',
+          bottom: 'calc(var(--public-nav-reserved-bottom) + .5rem)',
+        }}
+      >
         <Button
           startIcon={<WhiteMap />}
           btnText="List View"
           variant="primary"
           size="xsmall"
           onClickHandler={onCloseMap}
-          className="bg-[hsl(var(--blue-cta))] hover:bg-[hsl(var(--blue-final))]"
+          className="min-h-11 bg-[var(--category-accent,hsl(var(--blue-cta)))] hover:bg-[var(--category-accent,hsl(var(--blue-final)))]"
         />
       </div>
     </div>
@@ -843,11 +832,12 @@ const GuideMapView = memo(({
       {/* Using same mapId ensures Google Maps reuses the instance, preventing blinking */}
       {isFullscreen && typeof document !== "undefined" && createPortal(
         <motion.div
+          data-public-guide-map-portal
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] bg-black"
-          style={{ width: '100vw', height: '100vh' }}
+          className={categoryStyles ? "public-guide-map-portal fixed inset-0 bg-[var(--category-page)]" : "public-guide-map-portal fixed inset-0 bg-black"}
+          style={{ ...categoryStyles, width: '100vw', height: '100vh' }}
         >
           {MapContent}
         </motion.div>,
@@ -875,4 +865,4 @@ const GuideMapView = memo(({
 
 GuideMapView.displayName = "GuideMapView";
 
-export default GuideMapView;
+export default withGoogleMapsProvider(GuideMapView);

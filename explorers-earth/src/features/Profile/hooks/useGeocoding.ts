@@ -1,3 +1,4 @@
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Address, formatAddress } from "../../../utils/formatAddress";
@@ -39,7 +40,7 @@ const useGeocoding = (address: Address) => {
       try {
         const response = await axios.get(
           `${GOOGLE_GEOCODING_BASE_URL}?address=${encodedAddress}&key=${
-            import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+            mapsBrowserKey()
           }`
         );
         setMapData(response.data.results[0]);

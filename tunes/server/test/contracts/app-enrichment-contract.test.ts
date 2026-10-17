@@ -1,0 +1,78 @@
+import {it,expect} from 'vitest';
+import {appSnapshotSchema,appEnrichmentCommandSchema,appSelectedFieldsSchema} from '../../../shared/explorersAppEnrichmentContract';
+import {mergeAppSnapshot,hashAppSnapshot,validateAppAcceptance} from '../../application/appEnrichmentValidation';
+const id=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+const time='2026-10-11T00:00:00.000Z';
+const identity={sourceId:'approved',sourceIdentity:'Exact/Identity',sourceIdentityHash:'a'.repeat(64),canonicalizationVersion:'v1'};
+const p={sourceUrl:'https://example.org/app',observedAt:time};
+const snapshot={snapshotId:id(1),appEntityId:id(2),...identity,adapterVersion:'v1',fetchedAt:time,contentHash:'b'.repeat(64),fields:{title:' Name ',description:null,priceTier:null,platforms:[]},fieldProvenance:{title:p,description:p,priceTier:p,platforms:p}};
+it('validates snapshot fields, exact provenance and existing write bounds',()=>{
+ expect(appSnapshotSchema.parse(snapshot).fields.title).toBe('Name');
+ for(const tier of ['Free','Freemium','Paid','Subscription',null])expect(appSnapshotSchema.safeParse({...snapshot,fields:{...snapshot.fields,priceTier:tier}}).success).toBe(true);
+ for(const fields of [{appUrl:'https://x.org'},{developer:'x'},{logoUrl:null},{downloadUrl:null},{screenshots:[]},{title:null},{title:''},{title:'x'.repeat(501)},{title:'a\nb'},{platforms:null},{platforms:Array(17).fill('x')},{platforms:['']},{platforms:['x'.repeat(101)]},{priceTier:'Other'}])expect(appSnapshotSchema.safeParse({...snapshot,fields}).success).toBe(false);
+ expect(appSnapshotSchema.safeParse({...snapshot,fieldProvenance:{}}).success).toBe(false);
+ expect(appSnapshotSchema.safeParse({...snapshot,fieldProvenance:{...snapshot.fieldProvenance,extra:p}}).success).toBe(false);
+ expect(appSnapshotSchema.safeParse({...snapshot,fields:{description:null},fieldProvenance:{description:p}}).success).toBe(true);
+});
+it('strict command sentinel and unique exact selection',()=>{
+ const command={operation:'configureAppEnrichment',expectedRecommendationRevision:1,expectedBindingRevision:null,...identity,optIn:true};
+ expect(appEnrichmentCommandSchema.safeParse(command).success).toBe(true);
+ for(const v of [undefined,0,-1,1.2,Number.MAX_SAFE_INTEGER+1])expect(appEnrichmentCommandSchema.safeParse({...command,expectedBindingRevision:v}).success).toBe(false);
+ expect(appEnrichmentCommandSchema.safeParse({...command,extra:1}).success).toBe(false);
+ expect(appSelectedFieldsSchema.safeParse(['title','title']).success).toBe(false);expect(appSelectedFieldsSchema.safeParse(['appUrl']).success).toBe(false);
+});
+it('complete merge preserves manual values, normalized no-ops and deterministic hashes',()=>{
+ const current={title:'Old',developer:'Manual',logoUrl:null,downloadUrl:'https://example.org/download',description:null};
+ const result=mergeAppSnapshot(current,snapshot,['platforms','title']);
+ expect(result).toEqual({mergedValues:{...current,title:'Name',platforms:[]},acceptedFields:['title','platforms'],acceptedValues:{title:'Name',platforms:[]},changed:true});
+ expect(mergeAppSnapshot(result.mergedValues,snapshot,['title','platforms']).changed).toBe(false);
+ expect(mergeAppSnapshot(current,snapshot,[])).toMatchObject({changed:false,acceptedValues:{},acceptedFields:[]});
+ expect(()=>mergeAppSnapshot({appUrl:'https://x.org'},snapshot,[])).toThrow();
+ expect(()=>mergeAppSnapshot({}, {...snapshot,fields:{},fieldProvenance:{}},['description'])).toThrow();
+ expect(hashAppSnapshot(snapshot)).toBe(hashAppSnapshot({...snapshot,fields:{platforms:[],priceTier:null,description:null,title:'Name'}}));
+ expect(hashAppSnapshot(snapshot)).not.toBe(hashAppSnapshot({...snapshot,sourceIdentity:'exact/Identity'}));
+});
+it('fences acceptance while disabled with historical entitlement revision remains valid',()=>{
+ const binding={bindingId:id(3),accountId:id(4),recommendationId:id(5),appEntityId:id(2),optIn:false,bindingRevision:3,currentGenerationId:id(6)};
+ const generation={generationId:id(6),bindingId:id(3),accountId:id(4),recommendationId:id(5),appEntityId:id(2),...identity,createdAt:time};
+ const entitlement={snapshotId:id(1),recommendationId:id(5),generationId:id(6),accountId:id(4),appEntityId:id(2),observedBindingRevision:1};
+ const command={operation:'acceptAppEnrichment',expectedRecommendationRevision:2,expectedBindingRevision:3,snapshotId:id(1),selectedFields:['title']};
+ const context={accountId:id(4),recommendationId:id(5),appEntityId:id(2),recommendationRevision:2,binding,generation,entitlement,snapshot,generationRetired:false};
+ expect(()=>validateAppAcceptance(context,command)).not.toThrow();
+ for(const mutation of [{recommendationRevision:3},{binding:{...binding,bindingRevision:4}},{generationRetired:true},{appEntityId:id(10)},{entitlement:{...entitlement,accountId:id(10)}},{generation:{...generation,sourceIdentity:'different'}},{binding:{...binding,currentGenerationId:id(10)}}])expect(()=>validateAppAcceptance({...context,...mutation},command)).toThrow();
+});
+it('bounds platforms and title, strict owned records and deterministic contract mapping',async()=>{
+ const c=await import('../../../shared/explorersAppEnrichmentContract');
+ expect(c.appSelectableFieldMap).toEqual({displayName:'title',description:'description',priceTier:'priceTier',platforms:'platforms'});
+ const make=(fields:Record<string,unknown>)=>({...snapshot,fields,fieldProvenance:Object.fromEntries(Object.keys(fields).map(k=>[k,p]))});
+ for(const fields of [{title:'x'.repeat(500)},{platforms:[]},{platforms:Array(16).fill('x'.repeat(100))},{platforms:[' Linux ']},{description:null},{priceTier:null},{}])expect(c.appSnapshotSchema.safeParse(make(fields)).success).toBe(true);
+ for(const title of ['a\u0000b','a\u007fb','a\ud800b'])expect(c.appSnapshotSchema.safeParse(make({title})).success).toBe(false);
+ expect(c.appSnapshotSchema.parse(make({platforms:[' Linux ']})).fields.platforms).toEqual(['Linux']);
+ expect(c.appSnapshotSchema.safeParse({...make({title:'Name'}),fieldProvenance:{description:p}}).success).toBe(false);
+ expect(c.appSnapshotSchema.safeParse({...snapshot,extra:true}).success).toBe(false);
+ expect(()=>mergeAppSnapshot({},make({description:null}),['title'])).toThrow();
+ const binding={bindingId:id(3),accountId:id(4),recommendationId:id(5),appEntityId:id(2),optIn:false,bindingRevision:3,currentGenerationId:id(6)};
+ const generation={generationId:id(6),bindingId:id(3),accountId:id(4),recommendationId:id(5),appEntityId:id(2),...identity,createdAt:time};
+ const entitlement={snapshotId:id(1),recommendationId:id(5),generationId:id(6),accountId:id(4),appEntityId:id(2),observedBindingRevision:1};
+ for(const [schema,value] of [[c.appBindingSchema,binding],[c.appGenerationSchema,generation],[c.appEntitlementSchema,entitlement]] as const){expect(schema.safeParse(value).success).toBe(true);expect(schema.safeParse({...value,unknown:true}).success).toBe(false);}
+ const record={acceptanceId:id(7),accountId:id(4),recommendationId:id(5),snapshotId:id(1),generationId:id(6),selectedFields:[],acceptedValues:{},actorUserId:id(8),receiptId:id(9),acceptedAt:time};
+ expect(c.appAcceptanceRecordSchema.safeParse(record).success).toBe(true);
+ expect(c.appAcceptanceRecordSchema.safeParse({...record,selectedFields:['title']}).success).toBe(false);
+ expect(c.appAcceptanceRecordSchema.safeParse({...record,acceptedValues:{title:'Name'}}).success).toBe(false);
+ expect(c.appAcceptanceRecordSchema.safeParse({...record,acceptedValues:{description:undefined}}).success).toBe(false);
+ const result={recommendationId:id(5),snapshotId:id(1),bindingGenerationId:id(6),acceptedFields:[],changed:false,recommendationRevision:2,categoryContentRevision:'9',receiptId:id(9)};
+ expect(c.appAcceptanceResultSchema.safeParse(result).success).toBe(true);expect(c.appAcceptanceResultSchema.safeParse({...result,acceptedValues:{}}).success).toBe(false);
+ for(const operation of ['configureAppEnrichment','rebindAppEnrichment'])expect(c.appEnrichmentCommandSchema.safeParse({operation,expectedRecommendationRevision:2,expectedBindingRevision:3,...identity,optIn:false}).success).toBe(true);
+ expect(c.appEnrichmentCommandSchema.safeParse({operation:'rebindAppEnrichment',expectedRecommendationRevision:2,expectedBindingRevision:null,...identity,optIn:true}).success).toBe(false);
+ expect(c.appEnrichmentCommandSchema.safeParse({operation:'disableAppEnrichment',expectedRecommendationRevision:2,expectedBindingRevision:3}).success).toBe(true);
+ const command={operation:'acceptAppEnrichment',expectedRecommendationRevision:2,expectedBindingRevision:3,snapshotId:id(1),selectedFields:[]};
+ const context={accountId:id(4),recommendationId:id(5),appEntityId:id(2),recommendationRevision:2,binding,generation,entitlement,snapshot,generationRetired:false};
+ for(const key of ['sourceId','sourceIdentity','sourceIdentityHash','canonicalizationVersion'] as const)expect(()=>validateAppAcceptance({...context,generation:{...generation,[key]:key==='sourceIdentityHash'?'c'.repeat(64):'different'}},command)).toThrow();
+ for(const obj of ['binding','generation','entitlement'] as const)for(const key of ['accountId','recommendationId','appEntityId'])expect(()=>validateAppAcceptance({...context,[obj]:{...context[obj],[key]:id(10)}},command)).toThrow();
+ expect(()=>validateAppAcceptance({...context,entitlement:{...entitlement,generationId:id(10)}},command)).toThrow();
+ expect(()=>validateAppAcceptance({...context,entitlement:{...entitlement,snapshotId:id(10)}},command)).toThrow();
+ expect(()=>validateAppAcceptance({...context,generation:{...generation,bindingId:id(10)}},command)).toThrow();
+ expect(()=>validateAppAcceptance(context,{...command,snapshotId:id(10)})).toThrow();
+ expect(hashAppSnapshot({...snapshot,snapshotId:id(10)})).toBe(hashAppSnapshot(snapshot));
+ expect(hashAppSnapshot({...snapshot,sourceIdentityHash:'c'.repeat(64)})).not.toBe(hashAppSnapshot(snapshot));
+});

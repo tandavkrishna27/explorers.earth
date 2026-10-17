@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import ReactQuill from "react-quill-new";
-import "react-quill-new/dist/quill.snow.css";
+import "quill/dist/quill.snow.css";
 // Side-effect import: quill2-emoji self-registers `modules/emoji-toolbar` and
 // `formats/emoji` onto the shared Quill instance at module load. (It does NOT
 // provide the emoji-textarea or emoji-shortname modules that quill-emoji@1 had.)
@@ -38,8 +38,9 @@ const TiptapEditor: React.FC<TiptapEditorProps> = ({
     "italic",
     "underline",
     "strike",
+    "color",
+    "background",
     "list",
-    "bullet",
     "emoji", // Add emoji to formats
   ];
 

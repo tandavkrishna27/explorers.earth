@@ -37,7 +37,7 @@ describe.each(cases)("$name publish toggle", ({ Card, list }) => {
         togglingId={null}
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: /toggle/i }));
+    await userEvent.click(screen.getByRole("switch", { name: /toggle/i }));
     expect(onToggleVisibility).toHaveBeenCalledWith("list-1", false);
     expect(onOpen).not.toHaveBeenCalled(); // navigation must NOT fire
   });

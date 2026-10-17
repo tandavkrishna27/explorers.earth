@@ -1,3 +1,4 @@
+import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
@@ -6,6 +7,7 @@ import { buildImageUrl, extractNoteText, getPlatformColor } from "../../utils/pe
 import PlatformIcon from "../PlatformIcon";
 import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
+import SafePublicRichText from "../../../PublicHome/components/SafePublicRichText";
 
 interface PersonDetailModalProps {
   person: RecommendedPerson | null;
@@ -16,6 +18,7 @@ interface PersonDetailModalProps {
 const FALLBACK_IMAGE = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'><rect width='300' height='300' fill='%23171e2e'/></svg>`;
 
 const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) => {
+  const categoryStyles = usePublicCategoryThemeStyles();
   const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -119,7 +122,9 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
           {/* Modal panel wrapper */}
           <div className="fixed inset-0 pt-[88px] md:pt-8 flex items-end justify-center z-[150] pointer-events-none">
             <motion.div
-              className="relative bg-[#0d1117] rounded-t-2xl w-full h-full md:max-w-2xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-white/10 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
+              data-category-detail-panel
+              style={categoryStyles ?? undefined}
+              className="relative bg-[var(--category-panel,#0d1117)] rounded-t-2xl w-full h-full md:max-w-2xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-[color:var(--category-border,rgba(255,255,255,0.1))] hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
               initial={{ y: "100%", opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}
@@ -133,13 +138,14 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                 {avatarUrl && (
                   <img src={avatarUrl} alt="" className="w-full h-full object-cover opacity-30 filter blur-lg scale-110" />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-[#0d1117]/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[var(--category-panel,#0d1117)] via-[#0d1117]/20 to-transparent" />
 
                 {/* Drag handle (mobile) */}
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-white/30 md:hidden" />
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-[var(--category-card,rgba(255,255,255,0.3))] md:hidden" />
 
                 {/* Close button */}
                 <button
+                  aria-label="Close"
                   onClick={onClose}
                   className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white/80 hover:text-white transition-all"
                 >
@@ -153,7 +159,7 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                 <div className="flex gap-4 px-5 -mt-16 relative z-10 items-end">
                   <div 
                     onClick={() => handleImageClick("avatar")}
-                    className="flex-shrink-0 w-28 h-28 rounded-full overflow-hidden ring-4 ring-[#0d1117] shadow-2xl bg-[#1a2332] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                    className="flex-shrink-0 w-28 h-28 rounded-full overflow-hidden ring-4 ring-[var(--category-panel,#0d1117)] shadow-2xl bg-[var(--category-card,#1a2332)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                   >
                     <img
                       src={avatarUrl || FALLBACK_IMAGE}
@@ -164,13 +170,13 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                   </div>
                   <div className="flex-1 pt-16 min-w-0 pb-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-xl font-bold text-white leading-tight">{person.full_name}</h2>
+                      <h2 className="text-xl font-bold text-[color:var(--category-text,#fff)] leading-tight">{person.full_name}</h2>
                       {person.platform && (
                         <PlatformIcon platform={person.platform} size={16} className="flex-shrink-0" />
                       )}
                     </div>
                     {person.handle && (
-                      <p className="text-sm text-white/40 mt-0.5">@{person.handle}</p>
+                      <p className="text-sm text-[color:var(--category-muted,rgba(255,255,255,0.4))] mt-0.5">@{person.handle}</p>
                     )}
                   </div>
                 </div>
@@ -179,33 +185,33 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                   {/* Meta pills */}
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     {person.user_rating && (
-                      <span className="flex items-center gap-1 text-yellow-400 font-semibold">
-                        <Star size={13} fill="currentColor" /> {person.user_rating}/10
+                      <span className="flex items-center gap-1 text-[color:var(--category-text,#facc15)] font-semibold">
+                        <Star size={13} fill="currentColor" className="text-[color:var(--category-rating,#facc15)]" /> {person.user_rating}/10
                       </span>
                     )}
                     {person.follower_count && (
-                      <span className="text-white/40 text-xs">{person.follower_count} followers</span>
+                      <span className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-xs">{person.follower_count} followers</span>
                     )}
                     {person.location && (
-                      <span className="text-white/40 text-xs">📍 {person.location}</span>
+                      <span className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-xs">📍 {person.location}</span>
                     )}
                   </div>
 
                   {/* Headline */}
                   {person.headline && (
-                    <p className="text-sm font-semibold text-white/80">{person.headline}</p>
+                    <p className="text-sm font-semibold text-[color:var(--category-text,rgba(255,255,255,0.8))]">{person.headline}</p>
                   )}
 
                   {/* Bio */}
                   {person.bio && (
-                    <p className="text-sm text-white/60 leading-relaxed">{person.bio}</p>
+                    <p className="text-sm text-[color:var(--category-muted,rgba(255,255,255,0.6))] leading-relaxed">{person.bio}</p>
                   )}
 
                   {/* Tags */}
                   {person.tags && person.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {person.tags.map((tag) => (
-                        <span key={tag} className="text-xs bg-violet-500/15 border border-violet-500/25 text-violet-300 px-2.5 py-1 rounded-full">
+                        <span key={tag} className="text-xs bg-violet-500/15 border border-violet-500/25 text-[color:var(--category-text,#c4b5fd)] px-2.5 py-1 rounded-full">
                           {tag}
                         </span>
                       ))}
@@ -215,22 +221,25 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                   {/* Creator note */}
                   {noteText && (
                     <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4">
-                      <p className="text-xs font-semibold text-violet-400 mb-1.5 uppercase tracking-wider">Creator's Note</p>
-                      <div className="text-sm text-white/80 leading-relaxed [&_p]:mb-2 [&_p]:last:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h2]:text-md [&_h3]:text-base font-normal max-w-none" dangerouslySetInnerHTML={{ __html: noteText }} />
+                      <p className="text-xs font-semibold text-[color:var(--category-text,#a78bfa)] mb-1.5 uppercase tracking-wider">Creator's Note</p>
+                      <SafePublicRichText
+                        className="text-sm text-[color:var(--category-text,rgba(255,255,255,0.8))] leading-relaxed [&_p]:mb-2 [&_p]:last:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h2]:text-md [&_h3]:text-base font-normal max-w-none"
+                        html={noteText}
+                      />
                     </div>
                   )}
 
                   {/* Creator Rating */}
                   {person.user_rating && (
                     <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 flex items-center justify-between">
-                      <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">Creator's Rating</p>
+                      <p className="text-xs font-semibold text-[color:var(--category-text,#eab308)] uppercase tracking-wider">Creator's Rating</p>
                       <div className="flex gap-1 flex-wrap justify-end">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(star => (
                           <Star
                             key={star}
                             size={16}
                             fill={person.user_rating! >= star ? "currentColor" : "none"}
-                            className={person.user_rating! >= star ? "text-yellow-400" : "text-white/20"}
+                            className={person.user_rating! >= star ? "text-[color:var(--category-rating,#facc15)]" : "text-[color:var(--category-muted,rgba(255,255,255,0.2))]"}
                           />
                         ))}
                       </div>
@@ -240,7 +249,7 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                   {/* Photos & Media Gallery */}
                   {snapshots.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">
+                      <p className="text-xs font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.5))] uppercase tracking-wider mb-3">
                         Photos & Media
                       </p>
                       <div className="relative group">
@@ -258,7 +267,7 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                             <div
                               key={snap.id}
                               onClick={() => handleImageClick("snap", i)}
-                              className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                              className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-[color:var(--category-border,rgba(255,255,255,0.1))] bg-[var(--category-card,#1a2332)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                             >
                               <img
                                 src={buildImageUrl(snap.url)}
@@ -280,18 +289,18 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
 
                   {/* Source list */}
                   {person.person_list && (
-                    <p className="text-xs text-white/30">
-                      From the list: <span className="text-violet-400">{person.person_list.List_Name}</span>
+                    <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.3))]">
+                      From the list: <span className="text-[color:var(--category-text,#a78bfa)]">{person.person_list.List_Name}</span>
                     </p>
                   )}
                 </div>
               </div>
 
               {/* Footer actions */}
-              <div className="flex-shrink-0 border-t border-white/8 px-5 py-4 flex items-center justify-between gap-3 bg-[#0d1117]">
+              <div className="flex-shrink-0 border-t border-[color:var(--category-border,rgba(255,255,255,0.08))] px-5 py-4 flex items-center justify-between gap-3 bg-[var(--category-panel,#0d1117)]">
                 <button
                   onClick={handleShare}
-                  className="flex items-center gap-1.5 text-sm text-white/60 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/8 transition-all"
+                  className="flex items-center gap-1.5 text-sm text-[color:var(--category-muted,rgba(255,255,255,0.6))] hover:text-[color:var(--category-text,#fff)] px-3 py-1.5 rounded-lg hover:bg-[var(--category-hover,rgba(255,255,255,0.08))] transition-all"
                 >
                   <Share2 size={14} /> Share
                 </button>
@@ -301,7 +310,7 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                       href={person.profile_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-sm text-white font-medium transition-colors"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--category-accent,#7c3aed)] hover:bg-[var(--category-accent,#6d28d9)] text-sm text-[color:var(--category-accent-ink,#fff)] font-medium transition-colors"
                     >
                       <ExternalLink size={14} /> View Profile
                     </a>

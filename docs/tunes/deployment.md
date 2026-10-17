@@ -1,134 +1,37 @@
-# tunes — Deployment
+# Tunes deployment
 
-## Build Process
+## Production authority
 
-```bash
-# Build for production
-npm run build
-# Runs: vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist/server
+`.github/workflows/tunes.yml` is the sole image-build and publication authority. A protected `main` push runs the release dependency chain, builds the checked-in multi-stage Dockerfile, verifies the runtime and migration artifacts, scans the image, publishes provenance, pushes the canonical GHCR package with a full-commit tag, and exposes the immutable registry digest. Production promotion then calls the internal reusable `.github/workflows/tunes-deploy.yml` with that digest.
 
-# Start production server
-npm run start
-# Runs: NODE_ENV=production node dist/server/index.js
-```
+Operators must follow the [immutable deployment runbook](../operations/music-deploy-runbook.md). The checked-in `tunes/deployment/music-deploy.sh` wrapper is the only bootstrap, deploy, and rollback entrypoint. It admits only the canonical digest-qualified image, verifies provenance and OCI labels, authenticates the request and retained state, runs ordered migration/readiness gates, and promotes only after all controls pass. Manual dispatch permits the one-time attested legacy bootstrap or a retained-digest rollback; normal deployment remains internal to the protected main workflow.
 
-The build produces:
-- `dist/` — Vite-built frontend static assets
-- `dist/server/index.js` — Bundled Express server (ESM format)
+Local `npm run build` or `npm run start` may verify developer changes, but local builds, branch names, mutable tags, and ad hoc infrastructure commands are not production authority.
 
-In production, Express serves the static frontend files and handles API/WebSocket connections from a single port (default: 5000).
+## Image and runtime topology
 
-## Docker
+The image build produces the Vite frontend and bundled Express server in one artifact. The same digest supplies the application, migration gate, readiness checks, compatibility checks, and rollback metadata. Express serves the frontend, HTTP API, and Socket.IO boundary from the configured application port.
 
-tunes includes Docker support for containerized deployment. See `tunes/docker-documentation.md` for the detailed Docker setup guide.
+The root `docker-compose.yml` defines the production topology consumed by the checked-in deployment engine. `tunes/docker-compose.yml` is intentionally non-runnable, and `docker-compose.test.yml` is fixture-only. Do not substitute a local Compose build or an operator-authored topology for the attested image and generated deployment state.
 
-### Quick Docker Start
+The runtime database credential is least-privileged and separate from the migrator credential. Secret-bearing environments and credentials are passed through protected files and descriptors described in the runbook; they are not committed, logged, placed on command lines, or copied into a fixed environment file.
 
-```bash
-# Build and start with Docker Compose
-docker-compose build
-docker-compose up -d
+## Migration and promotion order
 
-# View logs
-docker-compose logs -f
+Schema evolution uses reviewed append-only SQL files from `tunes/migrations/`, in the exact order published by `tunes/shared/music-migration-contract.ts`. The candidate image performs the migration gate with the dedicated migrator role, records the authenticated schema epoch, and proves application readiness against the resulting schema before traffic promotion.
 
-# Access application
-# http://localhost:5000
-```
+Applied migration bytes and journal rows are immutable. Changes use expand/contract compatibility and forward recovery. A rollback may select only a retained, authenticated digest at or above both the permanent security floor and active schema floor; it never reverses an applied migration or restores retired identity behavior.
 
-### Dockerfile Overview
+## Environment and branch controls
 
-Multi-stage build:
-1. **deps** — Install npm dependencies (`npm ci`)
-2. **builder** — Build the application (`npm run build`)
-3. **runner** — Production image with only built artifacts and production dependencies
+Only a protected `main` push can enter the normal production call path. The `tunes-production` GitHub environment is limited to protected branches, holds production-scoped credentials, and enforces its configured independent reviewers. Workflow and deploy preflights fail closed if repository, branch, environment, provenance, digest, or credential authority differs from the published contract.
 
-### Docker Compose Services
+Use environment variables for non-secret environment-specific configuration and protected file authorities for production secrets. Never hardcode URLs, credentials, or environment-dependent values. See [Environment Variables](../environment-variables.md) and the runbook for the exact allowlist.
 
-| Service | Image | Purpose |
-|---------|-------|---------|
-| `app` | Custom build | tunes application (port 5000) |
-| `db` | `postgres:15-alpine` | PostgreSQL database (port 5432) |
+## Monitoring and recovery
 
-Both services run on a shared Docker network for internal communication.
-
-## AWS Infrastructure
-
-### Frontend Hosting
-- **S3** bucket for static assets with website hosting enabled
-- **CloudFront** CDN distribution for global edge caching
-- **Route53** for DNS management
-- **ACM** for SSL certificate management
-
-### Backend Services
-- **ECS Fargate** for containerized backend (serverless containers)
-- **ECR** for Docker image registry
-- **RDS PostgreSQL** for managed database
-- **ElastiCache** for session caching (optional)
-- **ALB** (Application Load Balancer) for traffic distribution
-
-### Supporting Infrastructure
-- **CloudWatch** for monitoring, logging, and alerting
-- **SNS** for notifications
-- **IAM** roles and policies for secure service access
-- **VPC** with private subnets for network isolation
-
-### Infrastructure as Code
-Terraform is recommended for provisioning AWS resources:
-- Modularize resources (networking, compute, database, CDN)
-- Use S3 backend for Terraform state
-- Maintain environment-specific configurations (staging, production)
-
-## CI/CD Pipeline
-
-### GitHub Actions
-
-Set up `.github/workflows/ci.yml` for:
-- TypeScript type checking (`npm run check`)
-- ESLint code style validation
-- Unit test execution
-- Code coverage reporting
-
-### Jenkins Pipeline
-
-For production deployments:
-1. **Checkout** — Pull latest code
-2. **Dependencies** — `npm ci`
-3. **Test** — Run type checks and tests
-4. **Build** — `npm run build`
-5. **Docker** — Build and push image to ECR
-6. **Deploy** — Update ECS service or S3/CloudFront
-
-Conditional deployment based on branch:
-- `develop` → staging environment
-- `main` → production environment
-
-## Database Migrations in Production
-
-1. **Pre-deployment**: Generate migration with `drizzle-kit push` on staging
-2. **Test**: Validate migration on staging database
-3. **Backup**: Snapshot production database before deployment
-4. **Deploy**: Run migration as part of CI/CD pipeline
-5. **Verify**: Check migration success before routing traffic
-6. **Rollback**: Keep reversion scripts ready for each migration
-
-## Monitoring
-
-- **Application health**: Express health check endpoint
-- **Database**: RDS monitoring via CloudWatch
-- **WebSocket**: Socket.IO connection metrics
-- **Error tracking**: Server-side logging
-- **User analytics**: Microsoft Clarity (client-side)
-
-## Branch Strategy
-
-| Branch | Purpose |
-|--------|---------|
-| `main` | Production-ready code |
-| `staging` | Pre-production testing |
-| `develop` | Active development |
-| `feat/*` | Feature branches (from develop) |
-
-## Environment-Specific Config
-
-Use environment variables for all environment-specific configuration. Never hardcode URLs, secrets, or environment-dependent values. See [Environment Variables](../environment-variables.md).
+- Liveness is process-only; readiness proves database, schema, security floor, and required dependency state.
+- Sanitized deployment evidence records the commit, digest, migration marker, timing, readiness, promotion, and recovery results without bearer values.
+- Application, database, Socket.IO, identity lifecycle, reconciliation, and credential-revocation signals are monitored through the approved platform integration.
+- A failed migration, readiness, provenance, or promotion check keeps the prior healthy route active and leaves production closed.
+- Rollback, kill-switch, incident, and reconciliation procedures are defined by the immutable runbook and linked incident runbooks; do not improvise alternate mutation paths.

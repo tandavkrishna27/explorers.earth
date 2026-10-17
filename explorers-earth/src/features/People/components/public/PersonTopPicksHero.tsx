@@ -57,7 +57,7 @@ const PersonTopPicksHero = ({ people, onPersonClick, showManageButton = false, o
   };
 
   return (
-    <div className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden bg-black shadow-2xl group/hero mb-12">
+    <div data-public-category-artwork className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden bg-black shadow-2xl group/hero mb-12">
       {/* Background — blurred avatar + platform gradient */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -166,7 +166,7 @@ const PersonTopPicksHero = ({ people, onPersonClick, showManageButton = false, o
               {showManageButton ? (
                 <button
                   onClick={(e) => { e.stopPropagation(); onManageClick?.(); }}
-                  className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-8 rounded-lg shadow-xl shadow-violet-500/20 transition-all hover:scale-105"
+                  className="flex items-center gap-2 bg-[var(--category-accent,#7c3aed)] hover:bg-[var(--category-accent,#6d28d9)] text-[color:var(--category-accent-ink,#fff)] font-bold py-3 px-8 rounded-lg shadow-xl shadow-violet-500/20 transition-all hover:scale-105"
                 >
                   <Star size={20} fill="currentColor" />
                   Manage Top Picks
@@ -174,7 +174,7 @@ const PersonTopPicksHero = ({ people, onPersonClick, showManageButton = false, o
               ) : (
                 <button
                   onClick={() => onPersonClick(activePerson)}
-                  className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-8 rounded-lg shadow-xl shadow-violet-500/20 transition-all hover:scale-105"
+                  className="flex items-center gap-2 bg-[var(--category-accent,#7c3aed)] hover:bg-[var(--category-accent,#6d28d9)] text-[color:var(--category-accent-ink,#fff)] font-bold py-3 px-8 rounded-lg shadow-xl shadow-violet-500/20 transition-all hover:scale-105"
                 >
                   <ExternalLink size={20} />
                   View Profile

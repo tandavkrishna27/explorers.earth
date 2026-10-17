@@ -30,14 +30,14 @@ netstat -ano | findstr :5000
 4. Can you connect manually? (`psql $DATABASE_URL`)
 5. For Neon (cloud): check that the connection string includes `?sslmode=require`
 
-### Schema Push Fails (tunes)
+### Fixture Migration Fails (tunes)
 
-**Symptom**: `npm run db:push` fails with errors
+**Symptom**: `npm run music:db:migrate -- --mode fixture --target test` fails with errors
 
 **Common causes**:
-- Database doesn't exist — create it first
-- `DATABASE_URL` not set — check `tunes/.env`
-- Schema conflict — if tables already exist with incompatible schema, you may need to drop and recreate (development only)
+- Bootstrap has not created the disposable Compose database — run `npm run music:bootstrap -- --mode fixture`
+- `DATABASE_URL_TEST` does not resolve exactly to `music_migrator@127.0.0.1:55432/music_fixture` — remove the conflicting override and rerun bootstrap
+- The migration journal, checksum, or catalog differs from the reviewed chain — do not force it; run `npm run music:db:verify -- --mode fixture --target test` and inspect the typed recovery action
 
 ### Missing Environment Variables
 
@@ -78,7 +78,7 @@ netstat -ano | findstr :5000
 **Common causes**:
 - TypeScript errors — run `npm run check` (tunes) or `npx tsc -b` (explorers-earth) to see details
 - Missing dependencies — run `npm install` in the affected directory
-- Node version mismatch — ensure Node.js 18+
+- Node version mismatch — ensure Node.js 24.21.0 (24.x)
 
 ### Authentication Issues (tunes)
 
@@ -121,6 +121,29 @@ netstat -ano | findstr :5000
 **Cause**: Only users with valid `countryCode` in `user_sessions` appear on the map. Users without session data show as "Unknown" region.
 
 **This is expected behavior** — users without geolocation data are counted in the "Unknown" category.
+
+### Public Music is stale or reconnecting
+
+Filter operational logs by `version = music-public-ops/v1`; use the browser
+stream `music-public-browser-ops/v1` only for client/parser and fallback-poll
+diagnosis. Compare low-cardinality `event`, `outcome`, `operation`, `status`,
+`kind`, `role`, and bounded duration fields. A validated support reference can
+be matched to backend `requestId`. Never request or paste a public slug,
+capability, Account/User identifier, raw search, media URL, credential, IP
+address, or socket room into a ticket or query.
+
+Check in order: HTTP 5xx and parser rejection, listener reconnect/fatal events,
+socket admission/disconnect churn, notification fanout lag, then fallback poll
+activation. Revocation enforcement is expected after a permission/publication
+change; missing enforcement or cross-owner delivery requires containment.
+
+### Public Music fixture cleanup failed
+
+Do not rerun an authorized live-write lane after a restoration mismatch. Keep
+the sanitized recovery artifact, compare its normalized `beforeHash` and
+`afterHash`, and inspect only namespaced `e2e-public-music-<run>` records. Never
+delete an unnamespaced playlist/account to force the comparison green. PR-safe
+and mocked lanes remain usable because they cannot acquire write authority.
 
 ## Getting Help
 

@@ -1,96 +1,79 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
-import { Users, Share2, ArrowLeft } from "lucide-react";
-import { PUBLIC_PEOPLE_DATA } from "../../api/query";
+import { useParams, Link, useOutletContext, useLocation, useNavigate } from "react-router-dom";
+import { Users, ArrowLeft } from "lucide-react";
 import {
-  deduplicatePeople,
   buildImageUrl,
-  slugToCategoryName,
-  categoryToSlug,
 } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
-import type { RecommendedPerson, PersonList } from "../../types";
+import type { RecommendedPerson } from "../../types";
 import PersonDetailModal from "./PersonDetailModal";
-import { toast } from "sonner";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernameForPersonSector($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-      }
-    }
-  }
-`;
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
+import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
+import { PublicRouteErrorState, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
+import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
+import { usePublicPeopleSector } from "../../api/usePublicPeopleSector";
+import { publicPersonViewModel } from "../../api/publicPeopleSectorViewModel";
+import { subscribePublicProfileInvalidation } from "../../../PublicHome/api/publicProfileInvalidation";
 
 const PublicPersonSector = () => {
   const { username, sectorSlug } = useParams<{ username: string; sectorSlug: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
-  const sectorName = slugToCategoryName(sectorSlug ?? "");
 
   const [selectedPerson, setSelectedPerson] = useState<RecommendedPerson | null>(null);
 
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
+  const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
+  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
+  const analytics = useTrackAnalytics(
+    createAnalyticsOptions.people(accountDocumentId || "", username),
+  );
 
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
-
-  const { data, loading: peopleLoading, error } = useQuery<{ personLists: PersonList[] }>(PUBLIC_PEOPLE_DATA, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const eligible = accountData?.public_people === "Yes";
+  const { data, loading: peopleLoading, error: peopleError, refetch: refetchPeople } = usePublicPeopleSector(username, sectorSlug, eligible);
+  const sectorName = data?.sector.Category_name ?? "People sector";
+  const canonicalSlug = data?.canonicalSlug;
+  useEffect(() => {if(data?.redirectSlug && data.redirectSlug!==sectorSlug)navigate(`/${username}/people/sector/${data.redirectSlug}`,{replace:true});},[data?.redirectSlug,sectorSlug,username,navigate]);
+  useEffect(() => {setSelectedPerson(null);},[username,sectorSlug,eligible]);
+  useEffect(() => subscribePublicProfileInvalidation(event=>{if(event.username.trim().toLowerCase()===username?.trim().toLowerCase()&&(event.category==='public_people'||event.category==='public_profile'))setSelectedPerson(null);}),[username]);
 
   const loading = userLoading || peopleLoading;
+  const queryError = userError || peopleError || (!userLoading && !eligible ? new Error("PUBLIC_PROFILE_404") : null);
+  const hasUsableData = Boolean(data) && eligible;
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
-  const lists = data?.personLists ?? [];
+  const handleRetry = useCallback(async () => {
+    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchPeople : undefined);
+  }, [accountDocumentId, refetchPeople, refetchUser]);
 
-  // Extract all people across lists, deduplicate, and filter by sector slug
-  const allPeople = useMemo(() => {
-    return deduplicatePeople<RecommendedPerson>(lists.flatMap((l) => l.recommended_people ?? []));
-  }, [lists]);
-
-  const sectorPeople = useMemo(() => {
-    return allPeople.filter(
-      (p) =>
-        p.people_category?.Category_name &&
-        categoryToSlug(p.people_category.Category_name) === sectorSlug
-    );
-  }, [allPeople, sectorSlug]);
+  const sectorPeople = useMemo(() => (data?.recommended_people ?? []).map(publicPersonViewModel),[data]);
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
     setSelectedPerson(person);
-  }, []);
+    analytics.trackClick("person-card", {
+      id: person.documentId,
+      listId: person.person_list?.documentId,
+      listName: person.person_list?.List_Name,
+      title: person.full_name || person.name,
+      category: person.people_category?.Category_name,
+    });
+  }, [analytics]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: `${sectorName} recommendations by ${creatorName}`, url });
-      } catch {
-        /* ignore */
-      }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied!");
-    }
-  };
+  usePublicHeaderDescriptor(sectorSlug ? {
+    navigationKey: location.key,
+    title: `${sectorName} recommendations by ${creatorName}`,
+    url: canonicalSlug ? createCanonicalUrl(`/${username}/people/sector/${canonicalSlug}`) : window.location.href,
+    analyticsContext: "people-sector-header",
+    analyticsMetadata: { sector: sectorSlug },
+  } : undefined);
 
   const pageTitle = `${sectorName} | ${creatorName}'s People Sector | explorers`;
   const metaDescription = `Explore ${sectorPeople.length} people in ${sectorName} recommended by ${creatorName} on explorers.`;
@@ -103,57 +86,36 @@ const PublicPersonSector = () => {
           title={pageTitle}
           description={metaDescription}
           keywords={seoKeywords}
-          canonical={createCanonicalUrl(`/${username}/people/sector/${sectorSlug}`)}
+          canonical={createCanonicalUrl(`/${username}/people/sector/${canonicalSlug ?? sectorSlug}`)}
           type="website"
           author={creatorName}
           siteName="explorers"
         />
       )}
-      <div className="min-h-screen bg-[#0d1117] text-white">
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="text-white font-bold text-2xl cursor-pointer"
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={handleShare}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Share"
-              >
-                <Share2 size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-
+      <div data-category-page className="min-h-screen bg-[var(--category-page,#0d1117)] text-[color:var(--category-text,#fff)]" aria-busy={loading || undefined}>
         {/* Header content section */}
-        <div className="max-w-5xl mx-auto px-4 pt-6 pb-2 mt-14">
+        <div className="max-w-5xl mx-auto px-4 pt-6 pb-2">
           <Link
             to={`/${username}/people`}
-            className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white/80 transition-colors mb-6"
+            className="inline-flex items-center gap-1.5 text-sm text-[color:var(--category-muted,rgba(255,255,255,0.5))] hover:text-[color:var(--category-text,rgba(255,255,255,0.8))] transition-colors mb-6"
           >
             <ArrowLeft size={14} /> {creatorName}'s People
           </Link>
 
-          {loading ? (
+          {loading && !hasUsableData ? (
             <>
-              <div className="h-7 w-48 bg-white/5 animate-pulse rounded mb-2" />
-              <div className="h-4 w-64 bg-white/5 animate-pulse rounded" />
+              <div className="h-7 w-48 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse rounded mb-2" />
+              <div className="h-4 w-64 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse rounded" />
             </>
-          ) : error ? (
-            <p className="text-red-400">Failed to load sector.</p>
+          ) : queryError && !hasUsableData ? (
+            <PublicRouteErrorState title="People sector unavailable" error={queryError} onRetry={handleRetry} />
           ) : (
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h1 className="text-xl md:text-2xl font-poppins font-bold text-white mb-1">
+                <h1 className="text-xl md:text-2xl font-poppins font-bold text-[color:var(--category-text,#fff)] mb-1">
                   {sectorName}
                 </h1>
-                <p className="text-gray-400 font-poppins text-xs md:text-sm mt-2">
+                <p className="text-[color:var(--category-muted,#9ca3af)] font-poppins text-xs md:text-sm mt-2">
                   {sectorPeople.length} person{sectorPeople.length !== 1 ? "s" : ""}
                 </p>
               </div>
@@ -164,15 +126,15 @@ const PublicPersonSector = () => {
         {/* Grid of person cards */}
         <div className="max-w-5xl mx-auto px-4 pt-6 pb-24 md:pb-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {loading ? (
+            {loading && !hasUsableData ? (
               [1, 2, 3, 4, 5, 6].map((idx) => (
                 <div key={idx} className="flex flex-col items-center gap-3">
-                  <div className="w-24 h-24 rounded-full bg-white/5 skeleton-shimmer relative overflow-hidden" />
-                  <div className="w-20 h-3 rounded bg-white/5 skeleton-shimmer relative overflow-hidden" />
+                  <div className="w-24 h-24 rounded-full bg-[var(--category-skeleton,rgba(255,255,255,0.05))] skeleton-shimmer relative overflow-hidden" />
+                  <div className="w-20 h-3 rounded bg-[var(--category-skeleton,rgba(255,255,255,0.05))] skeleton-shimmer relative overflow-hidden" />
                 </div>
               ))
-            ) : sectorPeople.length === 0 ? (
-              <div className="col-span-full py-12 text-center text-white/40 text-sm">
+            ) : queryError ? null : hasUsableData && sectorPeople.length === 0 ? (
+              <div className="col-span-full py-12 text-center text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-sm">
                 No people recommended in this sector.
               </div>
             ) : (
@@ -182,7 +144,7 @@ const PublicPersonSector = () => {
                   onClick={() => handlePersonClick(person)}
                   className="flex flex-col items-center gap-2 text-center group"
                 >
-                  <div className="relative w-24 h-24 rounded-full overflow-hidden bg-white/5 ring-2 ring-white/10 group-hover:ring-violet-400/50 transition-all shadow-lg group-hover:scale-105 duration-200">
+                  <div className="relative w-24 h-24 rounded-full overflow-hidden bg-[var(--category-card,rgba(255,255,255,0.05))] ring-2 ring-[color:var(--category-border,rgba(255,255,255,0.1))] group-hover:ring-[color:var(--category-focus,rgba(167,139,250,0.5))] transition-all shadow-lg group-hover:scale-105 duration-200">
                     {person.avatar_url ? (
                       <img
                         src={buildImageUrl(person.avatar_url)}
@@ -192,7 +154,7 @@ const PublicPersonSector = () => {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Users size={28} className="text-white/20" />
+                        <Users size={28} className="text-[color:var(--category-muted,rgba(255,255,255,0.2))]" />
                       </div>
                     )}
                     {person.platform && (
@@ -202,14 +164,14 @@ const PublicPersonSector = () => {
                     )}
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-white line-clamp-1">
+                    <p className="text-xs font-semibold text-[color:var(--category-text,#fff)] line-clamp-1">
                       {person.full_name}
                     </p>
                     {person.handle && (
-                      <p className="text-[10px] text-white/40 truncate">@{person.handle}</p>
+                      <p className="text-[10px] text-[color:var(--category-muted,rgba(255,255,255,0.4))] truncate">@{person.handle}</p>
                     )}
                     {person.headline && (
-                      <p className="text-[10px] text-white/30 line-clamp-1 mt-0.5">
+                      <p className="text-[10px] text-[color:var(--category-muted,rgba(255,255,255,0.3))] line-clamp-1 mt-0.5">
                         {person.headline}
                       </p>
                     )}
@@ -221,8 +183,8 @@ const PublicPersonSector = () => {
         </div>
 
         <PersonDetailModal
-          open={!!selectedPerson}
-          person={selectedPerson}
+          open={eligible && !peopleLoading && !!selectedPerson}
+          person={eligible && !peopleLoading ? selectedPerson : null}
           onClose={() => setSelectedPerson(null)}
         />
       </div>

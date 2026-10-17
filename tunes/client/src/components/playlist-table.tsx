@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Grip, Trash2, Play, Loader2, Plus, Check, Square, ChevronUp, ChevronDown } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { acquireGuestMusicCapability, guestMusicRequest } from "@/lib/musicCredential";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -147,19 +148,14 @@ export default function PlaylistTable({
 
   const addToQueueMutation = useMutation({
     mutationFn: async (song: SongType) => {
-      const url = guestUrl
-        ? `/api/playlist/songs?guestUrl=${encodeURIComponent(guestUrl)}`
-        : user?.username
-          ? `/api/playlist/songs?username=${user.username}`
-          : "/api/playlist/songs";
-
-      await apiRequest("POST", url, {
+      const input = {
         youtubeId: song.youtubeId,
         title: song.title,
         artist: song.artist,
         thumbnailUrl: song.thumbnailUrl,
-        position: songs.length, // Add to end of playlist
-      });
+      };
+      if (guestUrl) await guestMusicRequest(acquireGuestMusicCapability(guestUrl) ?? "", input, guestUrl);
+      else await apiRequest("POST", "/api/playlist/songs", input);
     },
     onSuccess: () => {
       if (guestUrl) {

@@ -49,14 +49,19 @@
         "explorers story",
         "who we are explorers"
       ],
-      "title": "Explorers of Earth | About Us"
+      "title": "Explorers of Earth | About Us",
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
     },
     "subtitle": {
       "line1": "Globální komunita lidí, kteří objevují s péčí — pro lidi, kulturu a planetu, kterou sdílíme.",
       "line2": "Objevování pro nás není o tom, jak daleko jdeme.",
       "line3": "Je to o tom, jak hluboko se spojujeme."
     },
-    "title": "Průzkumníci Země"
+    "title": "Průzkumníci Země",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe"
   },
   "analytics": {
     "dashboard": {
@@ -268,7 +273,6 @@
       "message": "This account has been deactivated.",
       "reactivateLink": "Click here to reactivate your account →"
     },
-    "claimAccount": "Claim Account?",
     "confirmPassword": "Potvrdit heslo",
     "confirmPasswordPlaceholder": "Zadejte své heslo znovu",
     "email": "E-mail",
@@ -325,7 +329,8 @@
         "mobileNumberPlaceholder": "Zadejte své mobilní číslo",
         "next": "Další",
         "title": "Kontaktní údaje"
-      }
+      },
+      "stepCount": "Step {{current}} of {{total}}"
     },
     "or": "nebo",
     "password": "Heslo",
@@ -340,8 +345,7 @@
     "signupSubtitle": "Zaregistrujte se a užijte si funkce explorers",
     "signUpWithGoogle": "Registrovat se přes Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Uživatelské jméno",
@@ -775,6 +779,12 @@
       "addLocation": "Add Location",
       "addLocationLabel": "Add",
       "addRecommendations": "Přidat Doporučení",
+      "analytics": {
+        "ariaLabel": "{{label}}: {{value}}",
+        "loading": "Loading",
+        "unavailable": "Unavailable",
+        "viewsLast90Days": "Views · last 90 days"
+      },
       "draft": "Návrh",
       "error": {
         "message": "An error occurred while loading your data",
@@ -937,6 +947,97 @@
       "tabs": {
         "account": "Účet",
         "publicProfile": "Veřejný Profil"
+      },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "Přesunutí položky {{category}} bylo zrušeno. Pořadí bylo obnoveno.",
+          "drop": "Položka {{category}} byla umístěna na pozici {{position}} z {{total}}.",
+          "handle": "Přetáhnout {{category}}",
+          "instructions": "Stisknutím mezerníku nebo Enter položku zvednete. K přesunu použijte šipky nebo klávesy Home a End. Mezerníkem nebo Enter položku položíte, klávesou Escape akci zrušíte.",
+          "lift": "Položka {{category}} byla zvednuta. Pozice {{position}} z {{total}}.",
+          "move": "Položka {{category}} byla přesunuta na pozici {{position}} z {{total}}."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
+      },
+      "themeAppearance": {
+        "accentTitle": "Accent color",
+        "firstView": {
+          "business": "Business",
+          "categoryFirst": "Recommendations — {{category}} first",
+          "gallery": "Gallery",
+          "help": "Category choices promote that category but keep all other public categories.",
+          "label": "First view",
+          "savedOrder": "Recommendations — saved order"
+        },
+        "presetTitle": "Select theme preset",
+        "recommendations": {
+          "categories": {
+            "apps": "Apps & Tools",
+            "books": "Books",
+            "games": "Games",
+            "guides": "Guides",
+            "movies": "Movies & Shows",
+            "music": "Music",
+            "people": "People",
+            "places": "Places",
+            "products": "Products"
+          },
+          "featured": "Featured",
+          "help": "Choose how recommendation categories are arranged on your public profile.",
+          "layoutLegend": "Recommendations layout",
+          "layouts": {
+            "featured": {
+              "description": "A larger first category followed by compact rows.",
+              "label": "Featured First"
+            },
+            "grid": {
+              "description": "A compact grid that makes categories easy to scan.",
+              "label": "Category Mosaic"
+            },
+            "shelves": {
+              "description": "Horizontal shelves with recommendation previews.",
+              "label": "Classic Shelves"
+            }
+          },
+          "moved": "{{category}} moved to position {{position}} of {{total}}",
+          "moveDown": "Move {{category}} down",
+          "moveUp": "Move {{category}} up",
+          "orderHelp": "Move categories into the order visitors should scan them.",
+          "orderTitle": "Category order",
+          "position": "{{position}} of {{total}}",
+          "previewCaption": "Illustrative preview",
+          "previewLabel": "Recommendations layout preview",
+          "publicVisibilityNote": "Public Visibility controls whether a category appears.",
+          "title": "Recommendations presentation"
+        },
+        "wallpaperLabel": "Wallpaper and cover style",
+        "wallpaperOptions": {
+          "ambientGradient": "Ambient mesh gradient",
+          "bannerTop": "Top cover banner photo",
+          "fullWallpaperImage": "Full-screen background image",
+          "solidColor": "Solid minimal background"
+        }
       }
     },
     "recommendations": {
@@ -1115,7 +1216,8 @@
         "listVisibilityError": "Failed to update recommendation list visibility.",
         "qrDownloadError": "Failed to download QR code. Please try again.",
         "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrNotReady": "QR code not ready for download"
+        "qrNotReady": "QR code not ready for download",
+        "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "Cestujte jako místní",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -1163,7 +1265,8 @@
       "privacy": "Zásady ochrany osobních údajů",
       "cookies": "Zásady používání souborů cookie",
       "product": "Produkt",
-      "shareAnywhere": "Sdílejte kdekoli"
+      "shareAnywhere": "Sdílejte kdekoli",
+      "useCases": "Use Cases"
     },
     "copyright": "© 2025 průzkumníci. Všechna práva vyhrazena.",
     "madeWithLove": "Vyrobeno s láskou na zemi",
@@ -1179,7 +1282,8 @@
       "product": "Produkt",
       "share": "Podíl",
       "openMenu": "Otevřete navigační nabídku",
-      "closeMenu": "Zavřete navigační nabídku"
+      "closeMenu": "Zavřete navigační nabídku",
+      "useCases": "Use Cases"
     },
     "auth": {
       "login": "Přihlásit se",
@@ -1324,16 +1428,16 @@
       },
       "steps": [
         {
-          "title": "Přidejte, co doporučujete",
-          "body": "Místa, lidé, produkty, knihy, filmy, pořady, hudba, hry, aplikace, průvodci a poznámky."
+          "body": "Místa, lidé, produkty, knihy, filmy, pořady, hudba, hry, aplikace, průvodci a poznámky.",
+          "title": "Přidejte, co doporučujete"
         },
         {
-          "title": "Uspořádejte si to po svém",
-          "body": "Seskupte se podle města, tématu, seznamu, kategorie, cesty nebo okamžiku, aby lidé mohli objevovat přirozeně."
+          "body": "Seskupte se podle města, tématu, seznamu, kategorie, cesty nebo okamžiku, aby lidé mohli objevovat přirozeně.",
+          "title": "Uspořádejte si to po svém"
         },
         {
-          "title": "Sdílejte jeden odkaz nebo QR",
-          "body": "Vaše stránka se aktualizuje kdykoli, zatímco stejný odkaz a QR fungují všude."
+          "body": "Vaše stránka se aktualizuje kdykoli, zatímco stejný odkaz a QR fungují všude.",
+          "title": "Sdílejte jeden odkaz nebo QR"
         }
       ]
     },
@@ -1352,20 +1456,20 @@
       "tokyoFoodGuide": "Můj průvodce jídlem v Tokiu explorers.earth/jane",
       "cards": [
         {
-          "title": "Odkaz v biu",
-          "eyebrow": "Profil připraven"
+          "eyebrow": "Profil připraven",
+          "title": "Odkaz v biu"
         },
         {
-          "title": "Kódy QR",
-          "eyebrow": "Připraveno pro režim offline"
+          "eyebrow": "Připraveno pro režim offline",
+          "title": "Kódy QR"
         },
         {
-          "title": "Zprávy",
-          "eyebrow": "Připraveno na chat"
+          "eyebrow": "Připraveno na chat",
+          "title": "Zprávy"
         },
         {
-          "title": "Vítejte průvodci",
-          "eyebrow": "Host připraven"
+          "eyebrow": "Host připraven",
+          "title": "Vítejte průvodci"
         }
       ],
       "visual": {
@@ -1408,49 +1512,6 @@
       "earnedThisMonth": "Vyděláno tento měsíc",
       "passiveTitle": "Proměňte doporučení v pasivní odměny",
       "networkTitle": "Vybudujte svou síť a vydělávejte automaticky"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Poslouchejte při objevování",
-      "body": "Objevování není jen vizuální. Zvuk nese paměť, kontext a emoce.\n\nTunes vám umožňuje sbírat a sdílet soundtracky pro místa, cesty a nálady — ať už je to hudba objevená na cestě nebo zvuky, které definují místo pro vás.\n\nBezproblémově propojeno s vaším profilem Explorer.",
-      "exploreButton": "Prozkoumat Tunes",
-      "featuresHeading": "Výkonné Funkce",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Spolupráce v Reálném Čase",
-          "description": "Umožněte hostům okamžitě přidávat písně do vašeho playlistu, přičemž si zachováte plnou kontrolu nad tím, co se přehrává."
-        },
-        "qrCodeSharing": {
-          "title": "Sdílení QR Kódu",
-          "description": "Sdílejte svůj hudební zážitek jednoduchým skenováním QR kódu — žádné aplikace ani stahování není potřeba."
-        },
-        "youtubeIntegration": {
-          "title": "Integrace YouTube",
-          "description": "Bezproblémově se integrujte s YouTube pro přístup k milionům písní a vytvoření dokonalé atmosféry."
-        },
-        "voteLikeSystem": {
-          "title": "Systém Hlasování a Líbí se",
-          "description": "Hosté mohou hlasovat pro své oblíbené písně, aby ovlivnili frontu playlistu v reálném čase."
-        },
-        "silentParties": {
-          "title": "Tiché Večírky",
-          "description": "Pořádejte jedinečné tiché večírky, kde všichni poslouchají přes své vlastní sluchátka."
-        },
-        "karaokeReady": {
-          "title": "Připraveno pro Karaoke",
-          "description": "Perfektní pro karaoke večery s kolaborativními playlisty a požadavky na písně v reálném čase."
-        }
-      },
-      "venueHeading": "Perfektní pro Každé Místo",
-      "venues": {
-        "barsPubs": "Bary a Hospody",
-        "restaurants": "Restaurace",
-        "coffeeShops": "Kavárny",
-        "eventsWeddings": "Události a Svátby",
-        "retailStores": "Obchody",
-        "gymsFitness": "Posilovny a Fitness"
-      },
-      "closingStatement": "Tunes je <strong>zdarma</strong> k prozkoumání, a pro placené funkce můžete později upgradovat."
     },
     "whoIsFor": {
       "headline": "Stvořeno pro lidi, jejichž vkus pomáhá ostatním.",
@@ -1532,7 +1593,23 @@
         "letiště",
         "nevládní organizace",
         "Vládní týmy"
-      ]
+      ],
+      "explore": "See this perspective",
+      "eyebrow": "Ways to use explorers",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
+        },
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
+        },
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
+        }
+      }
     },
     "testimonials": {
       "headline": "Milované cestovateli, tvůrci a hostiteli",
@@ -1542,45 +1619,45 @@
       "items": [
         {
           "id": "1",
-          "name": "Priya Sharma",
-          "role": "Travel Blogger",
           "location": "Mumbai, Indie",
-          "quote": "průzkumníci změnili způsob, jakým sdílím své cestovatelské znalosti. Moji sledující milují okamžitý přístup k mým vybraným doporučením!"
+          "name": "Priya Sharma",
+          "quote": "průzkumníci změnili způsob, jakým sdílím své cestovatelské znalosti. Moji sledující milují okamžitý přístup k mým vybraným doporučením!",
+          "role": "Travel Blogger"
         },
         {
           "id": "2",
-          "name": "Raj Patel",
-          "role": "Airbnb Host",
           "location": "Dillí, Indie",
-          "quote": "Moji hosté absolutně milují personalizovaný kód QR v jejich uvítací sadě. Stalo se to mým charakteristickým dotykem!"
+          "name": "Raj Patel",
+          "quote": "Moji hosté absolutně milují personalizovaný kód QR v jejich uvítací sadě. Stalo se to mým charakteristickým dotykem!",
+          "role": "Airbnb Host"
         },
         {
           "id": "3",
-          "name": "Yuki Tanaka",
-          "role": "Majitel restaurace",
           "location": "Tokio, Japonsko",
-          "quote": "Sdílíme naše průzkumníky se zákazníky, abychom jim doporučili další místní místa. Vytvořilo to úžasné komunitní spojení."
+          "name": "Yuki Tanaka",
+          "quote": "Sdílíme naše průzkumníky se zákazníky, abychom jim doporučili další místní místa. Vytvořilo to úžasné komunitní spojení.",
+          "role": "Majitel restaurace"
         },
         {
           "id": "4",
-          "name": "Maria Silva",
-          "role": "Turistický průvodce",
           "location": "São Paulo, Brazílie",
-          "quote": "explorers mi pomáhá rozšířit mé odborné znalosti nad rámec hodin prohlídky. Klienti mají k mým doporučením kdykoli přístup!"
+          "name": "Maria Silva",
+          "quote": "explorers mi pomáhá rozšířit mé odborné znalosti nad rámec hodin prohlídky. Klienti mají k mým doporučením kdykoli přístup!",
+          "role": "Turistický průvodce"
         },
         {
           "id": "5",
-          "name": "James Wilson",
-          "role": "Cestovatelský influencer",
           "location": "Sydney, Austrálie",
-          "quote": "Průzkumníci, kteří jsou ovlivňovačem cestování, usnadňují sdílení mých oblíbených míst s mým publikem. Funkce kódu QR je skvělá!"
+          "name": "James Wilson",
+          "quote": "Průzkumníci, kteří jsou ovlivňovačem cestování, usnadňují sdílení mých oblíbených míst s mým publikem. Funkce kódu QR je skvělá!",
+          "role": "Cestovatelský influencer"
         },
         {
           "id": "6",
-          "name": "Sophie Martinová",
-          "role": "Místní průvodce",
           "location": "Paříž, Francie",
-          "quote": "Používám průzkumníky k vytváření pěších prohlídek pro své klienty. Mohou skenovat QR a zkoumat svým vlastním tempem!"
+          "name": "Sophie Martinová",
+          "quote": "Používám průzkumníky k vytváření pěších prohlídek pro své klienty. Mohou skenovat QR a zkoumat svým vlastním tempem!",
+          "role": "Místní průvodce"
         }
       ]
     },
@@ -1591,24 +1668,24 @@
       "error": "Chyba při načítání FAQ. Zkuste to později.",
       "fallbackItems": [
         {
-          "Sequence": 1,
+          "Answer": "Místa, lidé, produkty, knihy, filmy, pořady, hudba, hry, aplikace, průvodci a poznámky.",
           "Question": "Co mohu přidat na svou stránku Explorer?",
-          "Answer": "Místa, lidé, produkty, knihy, filmy, pořady, hudba, hry, aplikace, průvodci a poznámky."
+          "Sequence": 1
         },
         {
-          "Sequence": 2,
+          "Answer": "Ano. Vaši stránku Explorer lze sdílet jako odkaz nebo QR pro profily, zprávy, tabulky, karty a tištěné průvodce.",
           "Question": "Mohu jej sdílet s kódem QR?",
-          "Answer": "Ano. Vaši stránku Explorer lze sdílet jako odkaz nebo QR pro profily, zprávy, tabulky, karty a tištěné průvodce."
+          "Sequence": 2
         },
         {
-          "Sequence": 3,
+          "Answer": "Ano. Můžete udržovat svou stránku aktuální, zatímco stejný odkaz a QR budou nadále fungovat.",
           "Question": "Mohu svá doporučení aktualizovat později?",
-          "Answer": "Ano. Můžete udržovat svou stránku aktuální, zatímco stejný odkaz a QR budou nadále fungovat."
+          "Sequence": 3
         },
         {
-          "Sequence": 4,
+          "Answer": "Ano. Stránka může sdělovat bezplatný příslib jasně a bez zbytečných plateb.",
           "Question": "Jsou průzkumníci navždy svobodní?",
-          "Answer": "Ano. Stránka může sdělovat bezplatný příslib jasně a bez zbytečných plateb."
+          "Sequence": 4
         }
       ]
     },
@@ -1668,52 +1745,52 @@
       },
       "categories": [
         {
+          "description": "Restaurace, čtvrti, muzea, trasy a skryté drahokamy mohou lidé skutečně navštívit.",
           "id": "places",
           "label": "Místa",
-          "title": "Místní místa, průvodci a trasy",
-          "description": "Restaurace, čtvrti, muzea, trasy a skryté drahokamy mohou lidé skutečně navštívit."
+          "title": "Místní místa, průvodci a trasy"
         },
         {
+          "description": "Tvůrci, zakladatelé, průvodci, umělci, učitelé, odborníci a lidé, kteří utvářeli váš vkus.",
           "id": "people",
           "label": "Lidé",
-          "title": "Lidé, kteří stojí za to následovat nebo se od nich učit",
-          "description": "Tvůrci, zakladatelé, průvodci, umělci, učitelé, odborníci a lidé, kteří utvářeli váš vkus."
+          "title": "Lidé, kteří stojí za to následovat nebo se od nich učit"
         },
         {
+          "description": "Knihy, které neustále doporučujete v chatech, poznámkách, bulletinech a konverzacích na cestách.",
           "id": "books",
           "label": "knihy",
-          "title": "Knihy a seznamy četby",
-          "description": "Knihy, které neustále doporučujete v chatech, poznámkách, bulletinech a konverzacích na cestách."
+          "title": "Knihy a seznamy četby"
         },
         {
+          "description": "Filmy, seriály, dokumenty a seznamy sledovaných pro každý druh nálady nebo publikum.",
           "id": "movies",
           "label": "Filmy a TV",
-          "title": "Filmy, pořady a seznamy sledovaných",
-          "description": "Filmy, seriály, dokumenty a seznamy sledovaných pro každý druh nálady nebo publikum."
+          "title": "Filmy, pořady a seznamy sledovaných"
         },
         {
+          "description": "Hry, questy, světy a zážitky by lidé měli vyzkoušet jako další.",
           "id": "games",
           "label": "Hry",
-          "title": "Hry a světy k prozkoumání",
-          "description": "Hry, questy, světy a zážitky by lidé měli vyzkoušet jako další."
+          "title": "Hry a světy k prozkoumání"
         },
         {
+          "description": "Umělci, alba, skladby, seznamy skladeb a zvukové stopy spojené s místy a okamžiky.",
           "id": "music",
           "label": "Hudba",
-          "title": "Alba, umělci a seznamy skladeb",
-          "description": "Umělci, alba, skladby, seznamy skladeb a zvukové stopy spojené s místy a okamžiky."
+          "title": "Alba, umělci a seznamy skladeb"
         },
         {
+          "description": "Každodenní oblíbené položky, cestovní vybavení, nástroje pro tvůrce, dárky a produkty, které stojí za to ušetřit.",
           "id": "products",
           "label": "Produkty",
-          "title": "Produkty, které lidé skutečně doporučují",
-          "description": "Každodenní oblíbené položky, cestovní vybavení, nástroje pro tvůrce, dárky a produkty, které stojí za to ušetřit."
+          "title": "Produkty, které lidé skutečně doporučují"
         },
         {
+          "description": "Software, webové stránky, šablony, nástroje a zdroje, které usnadňují život.",
           "id": "apps",
           "label": "Aplikace a nástroje",
-          "title": "Aplikace, nástroje a užitečné odkazy",
-          "description": "Software, webové stránky, šablony, nástroje a zdroje, které usnadňují život."
+          "title": "Aplikace, nástroje a užitečné odkazy"
         }
       ]
     }
@@ -2286,5 +2363,115 @@
     "unavailable": "Uživatelské jméno není k dispozici.",
     "confirmOnSignup": "Dostupnost potvrdíme při registraci.",
     "checkingAvailability": "Kontrola dostupnosti..."
+  },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
+  "useCases": {
+    "cta": {
+      "button": "Claim your Explorer page",
+      "description": "Start with the recommendations you already share. Give them one place to live.",
+      "title": "Make a home for what you would pass on."
+    },
+    "hero": {
+      "chooseLabel": "Choose a perspective",
+      "description": "Whether the point of view is personal, creative, or shared by a brand, explorers gives it a thoughtful home.",
+      "eyebrow": "Ways to explore",
+      "title": "Different perspectives. One place to share them.",
+      "visualAlt": "Three perspectives connected through a place, an Explorer profile, and a storefront."
+    },
+    "journey": {
+      "description": "The shape changes with the person behind it. The rhythm stays simple.",
+      "eyebrow": "One simple rhythm",
+      "steps": {
+        "collect": {
+          "description": "Bring together what you genuinely recommend across the parts of life that matter to you.",
+          "title": "Collect"
+        },
+        "shape": {
+          "description": "Organize it with enough context for someone else to understand why it belongs.",
+          "title": "Shape"
+        },
+        "share": {
+          "description": "Offer one living link or QR that people can save, scan, and return to.",
+          "title": "Share"
+        }
+      },
+      "title": "Three perspectives. One way of sharing with care."
+    },
+    "perspectives": {
+      "brands": {
+        "description": "Curate the places, products, guides, and ideas that express what your organization genuinely values.",
+        "label": "Brands",
+        "points": [
+          "Build collections with a clear and human perspective.",
+          "Connect locations, products, and useful context.",
+          "Give people something thoughtful to save and revisit."
+        ],
+        "title": "Turn your point of view into an experience people can enter."
+      },
+      "creators": {
+        "description": "Turn the recommendations scattered across posts, videos, conversations, and notes into something people can return to.",
+        "label": "Creators",
+        "points": [
+          "Create a durable home for your point of view.",
+          "Organize recommendations around stories and themes.",
+          "Share through one link or QR wherever people find you."
+        ],
+        "title": "Give your audience more than a feed."
+      },
+      "personal": {
+        "description": "Keep the places, books, films, tools, people, and small discoveries you return to in one living collection.",
+        "label": "Personal",
+        "points": [
+          "Bring different kinds of recommendations together.",
+          "Add the context that makes each choice yours.",
+          "Share one page that can keep evolving with you."
+        ],
+        "title": "A home for the things that shape your world."
+      }
+    },
+    "seo": {
+      "description": "See how people, creators, and brands can collect what they value, shape it with context, and share it through one thoughtful Explorer page.",
+      "keywords": [
+        "explorers use cases",
+        "personal recommendations page",
+        "creator recommendations",
+        "brand curation",
+        "share recommendations",
+        "curated collections"
+      ],
+      "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
+      "title": "Use Cases | explorers.earth"
+    }
   }
 }

@@ -9,6 +9,7 @@ import { LOGIN_MUTATION, REGISTER_MUTATION } from '@/lib/graphql-mutations';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 import { apolloClient } from '@/lib/apollo-client';
+import { musicCredentialForRequest } from '@/lib/musicCredential';
 
 interface LoginInput {
   identifier: string; // username or email
@@ -54,15 +55,8 @@ export function useStrapiAuth() {
       // Sync user with Neon DB
       try {
         console.log('🔄 Syncing user with Neon DB...');
-        const syncResponse = await fetch('/api/auth/sync', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            strapiUser: user,
-          }),
-        });
+        await musicCredentialForRequest();
+        const syncResponse = new Response(JSON.stringify({ user }), { status: 200 });
 
         if (syncResponse.ok) {
           const syncData = await syncResponse.json();
@@ -108,15 +102,7 @@ export function useStrapiAuth() {
         // Sync user with Neon DB anyway
         try {
           console.log('🔄 Creating user record in Neon DB...');
-          const syncResponse = await fetch('/api/auth/sync', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              strapiUser: user,
-            }),
-          });
+          const syncResponse = new Response(null, { status: 204 });
 
           if (syncResponse.ok) {
             const syncData = await syncResponse.json();
@@ -149,15 +135,8 @@ export function useStrapiAuth() {
       // Sync new user with Neon DB
       try {
         console.log('🔄 Creating user record in Neon DB...');
-        const syncResponse = await fetch('/api/auth/sync', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            strapiUser: user,
-          }),
-        });
+        await musicCredentialForRequest();
+        const syncResponse = new Response(JSON.stringify({ user }), { status: 200 });
 
         if (syncResponse.ok) {
           const syncData = await syncResponse.json();

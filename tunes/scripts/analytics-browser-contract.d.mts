@@ -1,0 +1,11 @@
+export const cases: readonly string[];
+export const projects: readonly string[];
+export const analyticsCleanupLabels: readonly string[];
+export function validateDiscovery(report:unknown):number;
+export function validateExecution(report:unknown,exitCode:number):number;
+export function fingerprint(root:string):Record<string,string>;
+export function assertUnchanged(before:Record<string,string>,after:Record<string,string>):void;
+export function parseAnalyticsReceiptArguments(args:readonly string[],ack:string):string;
+export type AnalyticsFailureBoundary='bootstrap'|'discovery'|'execution'|'source'|'cleanup';
+export type AnalyticsRetainedReceipt=Readonly<{version:1;lane:'analytics';commit:string;sourceHash:string;sourceFileCount:number;nodeVersion:string;startedAt:string;finishedAt:string;discovery:Readonly<{status:'missing'|'passed'|'failed';identities:readonly Readonly<{project:string;case:string}>[]|null}>;execution:Readonly<{status:'missing'|'passed'|'failed';child:Readonly<{code:number|null;signal:null|'signaled'}>|null;results:readonly Readonly<{project:string;case:string;attempts:readonly Readonly<{status:string;retry:number|null}>[]}>[]|null}>;sourceIntact:boolean;cleanup:readonly Readonly<{label:string;status:'passed'|'failed'}>[];interrupted:boolean;firstFailure:Readonly<{boundary:AnalyticsFailureBoundary}>|null;sourceCustody:'legacy-executed-source-fingerprint';producerPassed:boolean;qualified:false;qualification:'awaiting-root-external-freeze'}>;
+export function createAnalyticsReceipt(input:Readonly<{directory:string;commit:string;source:unknown;nodeVersion:string}>):Readonly<{discovery(report:unknown):void;execution(report:unknown,code:number|null,signal:string|null):void;failure(boundary:AnalyticsFailureBoundary):void;finish(input:Readonly<{source:unknown;cleanupFailures:readonly string[];interrupted:boolean}>):AnalyticsRetainedReceipt}>;

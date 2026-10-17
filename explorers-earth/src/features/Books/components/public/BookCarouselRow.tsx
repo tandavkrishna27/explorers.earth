@@ -57,21 +57,21 @@ const BookCarouselRow = memo(({
           <div className="flex items-center gap-2 group">
             <div className="w-1.5 h-[22px] bg-amber-400 rounded-sm flex-shrink-0" />
             {seeAllLink ? (
-              <Link to={seeAllLink} className="flex items-center text-xl font-bold text-white hover:text-white transition-colors">
-                {title} <ChevronRight size={22} className="ml-0.5 text-white/80 group-hover:translate-x-1 transition-transform" />
+              <Link to={seeAllLink} className="flex items-center text-xl font-bold text-[color:var(--category-text,#fff)] hover:text-[color:var(--category-text,#fff)] transition-colors">
+                {title} <ChevronRight size={22} className="ml-0.5 text-[color:var(--category-text,rgba(255,255,255,0.8))] group-hover:translate-x-1 transition-transform" />
               </Link>
             ) : (
-              <h2 className="text-xl font-bold text-white">{title}</h2>
+              <h2 className="text-xl font-bold text-[color:var(--category-text,#fff)]">{title}</h2>
             )}
           </div>
-          {description && <p className="text-white/60 text-sm mt-1">{description}</p>}
+          {description && <p className="text-[color:var(--category-muted,rgba(255,255,255,0.6))] text-sm mt-1">{description}</p>}
         </div>
 
         <div className="flex flex-col items-end pt-1 flex-shrink-0">
           {seeAllLink && !loading && books.length > 0 && (
             <Link
               to={seeAllLink}
-              className="text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors flex items-center gap-0.5"
+              className="text-xs font-bold text-[color:var(--category-text,#3b82f6)] hover:text-[color:var(--category-text,#60a5fa)] transition-colors flex items-center gap-0.5"
             >
               See All ➔
             </Link>
@@ -113,13 +113,13 @@ const BookCarouselRow = memo(({
                 key={i}
                 className="flex-shrink-0 w-[120px] animate-pulse"
               >
-                <div className="w-full aspect-[2/3] bg-white/8 rounded-xl mb-2" />
-                <div className="h-3 bg-white/8 rounded w-3/4 mb-1" />
-                <div className="h-3 bg-white/5 rounded w-1/2" />
+                <div className="w-full aspect-[2/3] bg-[var(--category-card,rgba(255,255,255,0.08))] rounded-xl mb-2" />
+                <div className="h-3 bg-[var(--category-skeleton,rgba(255,255,255,0.08))] rounded w-3/4 mb-1" />
+                <div className="h-3 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] rounded w-1/2" />
               </div>
             ))
           ) : books.length === 0 ? (
-            <p className="text-white/40 text-sm py-4">{emptyMessage}</p>
+            <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-sm py-4">{emptyMessage}</p>
           ) : (
             books.map((book) => (
               <BookCoverCard key={book.documentId} book={book} onClick={onBookClick} />

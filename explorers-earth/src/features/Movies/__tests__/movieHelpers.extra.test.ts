@@ -1,7 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { formatRuntime, formatRating, buildBackdropUrl, extractYear } from '../utils/movieHelpers';
+import { formatRuntime, formatRating, buildBackdropUrl, extractYear, deduplicateMovies } from '../utils/movieHelpers';
 
 describe('movieHelpers Extra Cases', () => {
+  it('preserves owned image paths and zero factual values', () => {
+    expect(buildBackdropUrl('/api/explorers/v1/media/a/content')).toBe('/api/explorers/v1/media/a/content');
+    expect(formatRating(0)).toBe('0.0');
+    expect(formatRuntime(0)).toBe('0m');
+  });
+  it('keeps distinct recommendations sharing Movie/TV provider numeric identity', () => {
+    const movies = [{documentId:'movie',tmdb_id:'7'},{documentId:'tv',tmdb_id:'7'},{documentId:'another',tmdb_id:'7'}];
+    expect(deduplicateMovies(movies).map(movie => movie.documentId)).toEqual(['movie','tv','another']);
+  });
   it('should handle runtime formatting boundary cases', () => {
     expect(formatRuntime(undefined)).toBe('');
     expect(formatRuntime(null)).toBe('');

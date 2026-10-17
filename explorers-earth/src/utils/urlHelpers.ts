@@ -5,6 +5,103 @@
 export interface UTMParameters {
   utm_source?: string;
   utm_medium?: string;
+  utm_campaign?: string;
+  utm_term?: string;
+  utm_content?: string;
+}
+
+const UTM_KEYS = [
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_term',
+  'utm_content',
+] as const satisfies readonly (keyof UTMParameters)[];
+
+const FIRST_TOUCH_UTM_STORAGE_KEY = 'explorers-first-touch-utm';
+const FIRST_TOUCH_REFERRER_STORAGE_KEY = 'explorers-first-touch-referrer';
+const FIRST_TOUCH_UTM_TTL_MS = 30 * 60 * 1000;
+
+const PUBLIC_TOP_LEVEL_PATH_SEGMENTS = new Set([
+  'apps',
+  'books',
+  'games',
+  'guides',
+  'movies',
+  'music',
+  'people',
+  'places',
+  'products',
+]);
+
+const classifyStaticPathSegment = (
+  segment: string | undefined,
+  allowed: ReadonlySet<string>,
+): string | undefined => {
+  if (!segment) return undefined;
+  try {
+    const decoded = decodeURIComponent(segment).toLowerCase();
+    return allowed.has(decoded) ? decoded : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+export const canonicalizePublicPathname = (pathname: string, username: string): string => {
+  const segments = pathname.split(/\/+/).filter(Boolean);
+  const canonicalUsername = username.trim().toLowerCase();
+  const tail = segments.slice(1);
+  const category = classifyStaticPathSegment(tail[0], PUBLIC_TOP_LEVEL_PATH_SEGMENTS);
+  if (category) tail[0] = category;
+
+  const nestedPrefix = classifyStaticPathSegment(
+    tail[1],
+    new Set(category === 'books'
+      ? ['subject']
+      : category === 'movies' || category === 'games'
+        ? ['genre']
+        : category === 'people'
+          ? ['sector']
+          : []),
+  );
+  if (
+    tail.length >= 3
+    && nestedPrefix
+  ) tail[1] = nestedPrefix;
+
+  if (category === 'places') {
+    const directMap = classifyStaticPathSegment(tail[1], new Set(['map']));
+    if (tail.length === 2 && directMap) tail[1] = directMap;
+    const suffix = classifyStaticPathSegment(tail[2], new Set(['map', 'placesmap']));
+    if (tail.length === 3 && suffix) tail[2] = suffix;
+  }
+  return `/${[canonicalUsername, ...tail].filter(Boolean).join('/')}`;
+};
+
+export const appendAttributionParamsToPath = (path: string, search: string): string => {
+  const source = new URLSearchParams(search.split('#', 1)[0]);
+  const target = new URLSearchParams();
+  for (const key of UTM_KEYS) {
+    for (const candidate of source.getAll(key)) {
+      const value = candidate.trim().slice(0, 100).replace(/[<>"']/g, '').trim();
+      if (value) {
+        target.set(key, value);
+        break;
+      }
+    }
+  }
+  const query = target.toString();
+  return query ? `${path}?${query}` : path;
+};
+
+interface SessionAttributionOptions {
+  url?: string;
+  storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+  now?: () => number;
+}
+
+interface SessionReferrerAttributionOptions extends SessionAttributionOptions {
+  referrer?: string;
 }
 
 /**
@@ -50,9 +147,7 @@ export const extractUtmParams = (url: string): UTMParameters => {
     const utmParams: UTMParameters = {};
 
     // Extract UTM parameters from URL
-    const utmKeys: (keyof UTMParameters)[] = ['utm_source', 'utm_medium'];
-    
-    utmKeys.forEach(key => {
+    UTM_KEYS.forEach(key => {
       const value = urlObj.searchParams.get(key);
       if (value) {
         utmParams[key] = value;
@@ -170,4 +265,115 @@ export const sanitizeUtmParams = (utmParams: UTMParameters): UTMParameters => {
   });
 
   return sanitized;
+};
+
+/**
+ * Keeps the first consented campaign touch through internal navigation while
+ * bounding attribution to a 30-minute browser session window.
+ */
+export const getSessionAttributionUtmParams = ({
+  url = window.location.href,
+  storage = sessionStorage,
+  now = Date.now,
+}: SessionAttributionOptions = {}): UTMParameters => {
+  const current = sanitizeUtmParams(extractUtmParams(url));
+  const capturedAt = now();
+
+  try {
+    const stored = storage.getItem(FIRST_TOUCH_UTM_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as {
+        params?: UTMParameters;
+        capturedAt?: number;
+      };
+      if (
+        parsed.params &&
+        typeof parsed.capturedAt === 'number' &&
+        capturedAt - parsed.capturedAt <= FIRST_TOUCH_UTM_TTL_MS
+      ) {
+        return sanitizeUtmParams(parsed.params);
+      }
+      storage.removeItem(FIRST_TOUCH_UTM_STORAGE_KEY);
+    }
+  } catch {
+    try {
+      storage.removeItem(FIRST_TOUCH_UTM_STORAGE_KEY);
+    } catch {
+      // Storage can be unavailable in privacy-restricted browser contexts.
+    }
+  }
+
+  if (Object.keys(current).length === 0) return {};
+
+  try {
+    storage.setItem(
+      FIRST_TOUCH_UTM_STORAGE_KEY,
+      JSON.stringify({ params: current, capturedAt }),
+    );
+  } catch {
+    // Attribution still applies to this event when persistence is unavailable.
+  }
+  return current;
+};
+
+/**
+ * Keeps a privacy-safe first-touch referral for the same attribution window.
+ * Only the external HTTP(S) origin is retained; paths and query strings are
+ * deliberately discarded, and direct traffic is locked as a first touch too.
+ */
+export const getSessionAttributionReferrerOrigin = ({
+  url = window.location.href,
+  referrer = document.referrer,
+  storage = sessionStorage,
+  now = Date.now,
+}: SessionReferrerAttributionOptions = {}): string | undefined => {
+  const capturedAt = now();
+
+  try {
+    const stored = storage.getItem(FIRST_TOUCH_REFERRER_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as {
+        origin?: string | null;
+        capturedAt?: number;
+      };
+      if (
+        typeof parsed.capturedAt === 'number' &&
+        capturedAt - parsed.capturedAt <= FIRST_TOUCH_UTM_TTL_MS &&
+        (typeof parsed.origin === 'string' || parsed.origin === null)
+      ) {
+        return parsed.origin || undefined;
+      }
+      storage.removeItem(FIRST_TOUCH_REFERRER_STORAGE_KEY);
+    }
+  } catch {
+    try {
+      storage.removeItem(FIRST_TOUCH_REFERRER_STORAGE_KEY);
+    } catch {
+      return undefined;
+    }
+  }
+
+  let origin: string | undefined;
+  try {
+    const currentUrl = new URL(url);
+    const referrerUrl = new URL(referrer);
+    if (
+      (referrerUrl.protocol === 'http:' || referrerUrl.protocol === 'https:') &&
+      referrerUrl.origin !== currentUrl.origin
+    ) {
+      origin = referrerUrl.origin;
+    }
+  } catch {
+    origin = undefined;
+  }
+
+  try {
+    storage.setItem(
+      FIRST_TOUCH_REFERRER_STORAGE_KEY,
+      JSON.stringify({ origin: origin ?? null, capturedAt }),
+    );
+  } catch {
+    // Storage can be unavailable in privacy-restricted browser contexts.
+  }
+  return origin;
 };

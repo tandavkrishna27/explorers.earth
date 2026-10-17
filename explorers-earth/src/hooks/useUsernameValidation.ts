@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { useApolloClient, ApolloClient, NormalizedCacheObject } from '@apollo/client';
 import { useTranslation } from 'react-i18next';
 import { 
   validateUsername, 
@@ -19,7 +18,6 @@ export interface UseUsernameValidationResult {
  */
 export const useUsernameValidation = (): UseUsernameValidationResult => {
   const [isValidating, setIsValidating] = useState(false);
-  const client = useApolloClient() as ApolloClient<NormalizedCacheObject>;
   const { t } = useTranslation();
 
   const validateUsernameWithAvailability = useCallback(async (
@@ -35,8 +33,7 @@ export const useUsernameValidation = (): UseUsernameValidationResult => {
       // If basic validation passes and we should check availability
       if (validationResult.isValid && validationResult.normalizedUsername && checkAvailability) {
         const availability = await checkUsernameAvailability(
-          validationResult.normalizedUsername, 
-          client
+          validationResult.normalizedUsername,
         );
         
         if (!availability.isAvailable) {
@@ -55,7 +52,7 @@ export const useUsernameValidation = (): UseUsernameValidationResult => {
     } finally {
       setIsValidating(false);
     }
-  }, [client]);
+  }, [t]);
 
   return {
     validateUsernameWithAvailability,

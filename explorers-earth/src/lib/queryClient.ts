@@ -15,6 +15,3 @@ export const queryClient = new QueryClient({
     },
   },
 });
-
-// Export the apiRequest function for compatibility
-export { apiRequest } from './apiClient';

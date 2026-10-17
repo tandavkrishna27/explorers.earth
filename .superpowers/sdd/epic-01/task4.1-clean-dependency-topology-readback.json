@@ -1,0 +1,70 @@
+{
+  "kind": "current locked topology readback, not retained install-process log",
+  "baseHead": "0c0b1075d7b577e95dbd6fdb3556f2635e3ec250",
+  "owners": [
+    {
+      "name": "root",
+      "lockSha256": "884acddb497b5551b31c7e03fd38857f95fea58a2cf62bebf3140fc9d9cfa9b8",
+      "lockEntries": 60,
+      "modules": [
+        {
+          "module": "tsx",
+          "resolved": "C:\\Users\\TK\\.codex\\tmp\\movies-b-qualification-36301b7c8cf5\\node_modules\\tsx\\dist\\loader.mjs"
+        }
+      ]
+    },
+    {
+      "name": "backend",
+      "lockSha256": "7842ae1768761e321d37f6e0597f930d7b2989859e8a18e8b86467f9493b4d83",
+      "lockEntries": 909,
+      "modules": [
+        {
+          "module": "vitest",
+          "resolved": "C:\\Users\\TK\\.codex\\tmp\\movies-b-qualification-36301b7c8cf5\\tunes\\node_modules\\vitest\\index.cjs"
+        },
+        {
+          "module": "typescript",
+          "resolved": "C:\\Users\\TK\\.codex\\tmp\\movies-b-qualification-36301b7c8cf5\\tunes\\node_modules\\typescript\\lib\\typescript.js"
+        },
+        {
+          "module": "tsx",
+          "resolved": "C:\\Users\\TK\\.codex\\tmp\\movies-b-qualification-36301b7c8cf5\\tunes\\node_modules\\tsx\\dist\\loader.mjs"
+        },
+        {
+          "module": "pg",
+          "resolved": "C:\\Users\\TK\\.codex\\tmp\\movies-b-qualification-36301b7c8cf5\\tunes\\node_modules\\pg\\lib\\index.js"
+        }
+      ]
+    },
+    {
+      "name": "auth",
+      "lockSha256": "85294033758cb4552ec0875b52ae803844c11f73517470bd64d2a842b333a851",
+      "lockEntries": 25,
+      "modules": [
+        {
+          "module": "better-auth",
+          "resolved": "C:\\Users\\TK\\.codex\\tmp\\movies-b-qualification-36301b7c8cf5\\tunes\\auth-runtime\\node_modules\\better-auth\\dist\\index.mjs"
+        }
+      ]
+    },
+    {
+      "name": "frontend",
+      "lockSha256": "f02b992dbf941b0656bc4ec96f5fa68b002614c7c261037be81db8e2662232b1",
+      "lockEntries": 814,
+      "modules": [
+        {
+          "module": "vite",
+          "resolved": "C:\\Users\\TK\\.codex\\tmp\\movies-b-qualification-36301b7c8cf5\\explorers-earth\\node_modules\\vite\\dist\\node\\index.js"
+        },
+        {
+          "module": "typescript",
+          "resolved": "C:\\Users\\TK\\.codex\\tmp\\movies-b-qualification-36301b7c8cf5\\explorers-earth\\node_modules\\typescript\\lib\\typescript.js"
+        },
+        {
+          "module": "vitest",
+          "resolved": "C:\\Users\\TK\\.codex\\tmp\\movies-b-qualification-36301b7c8cf5\\explorers-earth\\node_modules\\vitest\\index.cjs"
+        }
+      ]
+    }
+  ]
+}

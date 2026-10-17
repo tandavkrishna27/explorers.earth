@@ -1,0 +1,3 @@
+import {defineConfig} from '@playwright/test';
+if(!process.env.MOVIES_E2E_FIXTURE_PATH||!process.env.PLAYWRIGHT_EXTERNAL_BASE_URL?.startsWith('http://127.0.0.1:'))throw new Error('Movies requires its owned fixture');
+export default defineConfig({testDir:'.',outputDir:process.env.MOVIES_E2E_ARTIFACT_DIR,testMatch:'movies.spec.ts',fullyParallel:false,workers:1,retries:0,timeout:120000,expect:{timeout:15000},reporter:'line',use:{baseURL:process.env.PLAYWRIGHT_EXTERNAL_BASE_URL,headless:true,trace:'retain-on-failure',screenshot:'only-on-failure'},projects:[{name:'movies-desktop',use:{browserName:'chromium',viewport:{width:1365,height:900}}},{name:'movies-mobile',use:{browserName:'chromium',viewport:{width:390,height:844},isMobile:true,hasTouch:true}}]});

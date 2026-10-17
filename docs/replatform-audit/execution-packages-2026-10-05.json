@@ -1,0 +1,1015 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "1a5c6942bcf2ef59196d5d974ef5a2eea1a25a97",
+  "reviewStatus": "second independent review received 2026-10-05 and applied: the CORE-REPLACE false blocker is withdrawn on 11 edges, the shared browser runner/suite manifest/browser fixtures are coordinator-reserved, the source freeze is restated as repo-subtree-wide, producer-receipt write-back is required, and state is separated from dispatch readiness. Unresolved contract preflights remain; see dispatchGates.globalPreflights. Zero packages are dispatch-ready while those are open.",
+  "tickets": [
+    {
+      "id": "1.1",
+      "state": "complete",
+      "dispatchable": false,
+      "after": [],
+      "next": "Preserve accepted scope matrix; update new journey evidence only through its owning ticket.",
+      "consumedInputs": []
+    },
+    {
+      "id": "1.2",
+      "state": "partial",
+      "dispatchable": false,
+      "after": [
+        "1.1"
+      ],
+      "next": "Reuse accepted runtime; new seeds and migrations belong to the consuming feature. State corrected from \"complete\" to \"partial\" on 2026-10-05: the recorded acceptance stands and is not reopened, but 1.2's own route-graph invariant (epic-01.md:106, mirrored at ticket-1-2.md:35) is unmet, because scripts/replatform-route-parity.ts:4-8,23 inventories six legacy/Strapi/analytics paths and zero canonical ones while platform-route-parity.test.ts:22 asserts exactly 6, so the invariant passes vacuously for every canonical surface. Extending that inventory and raising the expected count is a coordinator-allocated shared edit. ticket-index.md and epic-01.md both record INCOMPLETE; this field previously contradicted them.",
+      "consumedInputs": [
+        {
+          "ticket": "1.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "41949fb5 recorded scope acceptance",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "1.3",
+      "state": "complete",
+      "dispatchable": false,
+      "after": [
+        "1.2"
+      ],
+      "next": "Preserve required hosted checks and immutable promotion contract.",
+      "consumedInputs": [
+        {
+          "ticket": "1.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "9bd0973b recorded runtime foundation",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "1.4",
+      "state": "complete",
+      "dispatchable": false,
+      "after": [
+        "1.2"
+      ],
+      "next": "Reuse API-only runtime; preserve build and production dependency gates.",
+      "consumedInputs": [
+        {
+          "ticket": "1.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "9bd0973b recorded runtime foundation",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "2.1",
+      "state": "complete",
+      "dispatchable": false,
+      "after": [
+        "1.2",
+        "1.4"
+      ],
+      "next": "Reuse canonical cookie authority; no legacy subject substitution.",
+      "consumedInputs": [
+        {
+          "ticket": "1.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "9bd0973b recorded runtime foundation",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "1.4",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "de339c6b recorded API-only runtime",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "2.2",
+      "state": "complete",
+      "dispatchable": false,
+      "after": [
+        "2.1"
+      ],
+      "next": "Reuse Actor contract; Music implementation belongs to 6.1.",
+      "consumedInputs": [
+        {
+          "ticket": "2.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "e65de223 recorded auth foundation",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "2.3",
+      "state": "complete",
+      "dispatchable": false,
+      "after": [
+        "2.2"
+      ],
+      "next": "Preserve 8ce52776 acceptance; new navigation overlay belongs to repair review, not reopening this ticket.",
+      "consumedInputs": [
+        {
+          "ticket": "2.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "c91cef4a recorded Actor contract",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "2.4",
+      "state": "partial",
+      "dispatchable": false,
+      "after": [
+        "2.2",
+        "2.3"
+      ],
+      "next": "Package L: map original 18 plus 3 recovery behaviors against accepted 12; implement missing held completion, response-loss and reload cases. Socket closure joins reviewed 6.1.",
+      "consumedInputs": [
+        {
+          "ticket": "2.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "c91cef4a recorded Actor contract",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "2.3",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "8ce5277665cda33b36b59ab0495ab51c9c39c8f7 original profile/base-media acceptance",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "3.1",
+      "state": "partial",
+      "dispatchable": true,
+      "after": [
+        "2.2"
+      ],
+      "next": "Reuse reviewed core packages; inventory outstanding scale and downstream obligations. Technical producer readiness does not wait for complete 2.4 socket closure. CORE-REPLACE is delivered and route-mounted, so it is folded into 3.1 closure as a verification item plus three obligations that remain mandatory for 3.1 closure: the foreign-owner negative, the unchanged-other-creator negative, and UI adoption of the mounted replacement route. No new CORE-REPLACE producer package is dispatched; re-implementing it would duplicate reviewed, route-registered code.",
+      "consumedInputs": [
+        {
+          "ticket": "2.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "c91cef4a recorded Actor contract",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "3.2",
+      "state": "partial",
+      "dispatchable": false,
+      "after": [
+        "2.3",
+        "3.1"
+      ],
+      "next": "Reuse media/catalog contracts; qualify remaining live storage/provider cases separately from delivered Books media.",
+      "consumedInputs": [
+        {
+          "ticket": "2.3",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "8ce5277665cda33b36b59ab0495ab51c9c39c8f7 original profile/base-media acceptance",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "22456f78 finite shared producer handoff; CORE-REPLACE is DELIVERED, not absent: replaceRecommendationEntity (expected-revision lock, idempotency key, 422 unchanged, 404 missing, revision bump) at tunes/server/repositories/explorersRecommendationRepository.ts:301, route-mounted at tunes/server/routes/explorersRecommendationRoutes.ts:89 as POST /api/explorers/v1/recommendations/:id/entity, landed in 4aa1f67e and present in the frozen runtime surface inventory (tunes/server/test/contracts/runtime-surface-inventory.test.ts:78,96). The earlier \"absent and not included\" wording was introduced by 225d83e5 itself and is withdrawn. This edge is a VERIFICATION item: verify the mounted route against the frozen inventory and do not re-implement it. Outstanding at 3.1 closure, still mandatory there: the foreign-owner negative, the unchanged-other-creator negative, and UI adoption of the mounted replacement route; those are 3.1 closure obligations, not a producer-interface prerequisite for this consumer.",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "3.3",
+      "state": "partial",
+      "dispatchable": false,
+      "after": [
+        "3.1",
+        "3.2"
+      ],
+      "next": "Preserve canonical Books 20; reconcile outstanding original requirements and external obligations without rebuilding owner/public slice.",
+      "consumedInputs": [
+        {
+          "ticket": "3.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "22456f78 finite shared producer handoff; CORE-REPLACE is DELIVERED, not absent: replaceRecommendationEntity (expected-revision lock, idempotency key, 422 unchanged, 404 missing, revision bump) at tunes/server/repositories/explorersRecommendationRepository.ts:301, route-mounted at tunes/server/routes/explorersRecommendationRoutes.ts:89 as POST /api/explorers/v1/recommendations/:id/entity, landed in 4aa1f67e and present in the frozen runtime surface inventory (tunes/server/test/contracts/runtime-surface-inventory.test.ts:78,96). The earlier \"absent and not included\" wording was introduced by 225d83e5 itself and is withdrawn. This edge is a VERIFICATION item: verify the mounted route against the frozen inventory and do not re-implement it. Outstanding at 3.1 closure, still mandatory there: the foreign-owner negative, the unchanged-other-creator negative, and UI adoption of the mounted replacement route; those are 3.1 closure obligations, not a producer-interface prerequisite for this consumer.",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "source-bound delivered media used in 46eea549 Books/Movies/Games acceptance; full provider/storage closure not established",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "3.4",
+      "state": "partial",
+      "dispatchable": false,
+      "after": [
+        "3.1"
+      ],
+      "next": "Preserve event foundation and canonical 10; inventory unexecuted consent/privacy/consumer obligations. Dashboard UI belongs to 7.2.",
+      "consumedInputs": [
+        {
+          "ticket": "3.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "22456f78 finite shared producer handoff; CORE-REPLACE is DELIVERED, not absent: replaceRecommendationEntity (expected-revision lock, idempotency key, 422 unchanged, 404 missing, revision bump) at tunes/server/repositories/explorersRecommendationRepository.ts:301, route-mounted at tunes/server/routes/explorersRecommendationRoutes.ts:89 as POST /api/explorers/v1/recommendations/:id/entity, landed in 4aa1f67e and present in the frozen runtime surface inventory (tunes/server/test/contracts/runtime-surface-inventory.test.ts:78,96). The earlier \"absent and not included\" wording was introduced by 225d83e5 itself and is withdrawn. This edge is a VERIFICATION item: verify the mounted route against the frozen inventory and do not re-implement it. Outstanding at 3.1 closure, still mandatory there: the foreign-owner negative, the unchanged-other-creator negative, and UI adoption of the mounted replacement route; those are 3.1 closure obligations, not a producer-interface prerequisite for this consumer.",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "3.5",
+      "state": "open",
+      "dispatchable": false,
+      "after": [
+        "1.3",
+        "1.4",
+        "2.4",
+        "3.3",
+        "3.4"
+      ],
+      "next": "Package Q1: artifact and readiness preparation now. Q2: selected milestone acceptance and required hosted gates. Q3: actual QA only after separate deployment decision; retain provider limitations.",
+      "consumedInputs": [
+        {
+          "ticket": "1.3",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "c64a274e recorded CI separation; current required hosted conclusions still independently required",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "1.4",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "de339c6b recorded API-only runtime",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "2.4",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.3",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "46eea549 canonical Books20 delivered slice; external/full QA not included",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.4",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "recorded c8fb27bf foundation review plus730d5a33 repair; exact latest-source handoff must be reconciled",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "4.1",
+      "state": "partial",
+      "dispatchable": false,
+      "after": [
+        "3.1",
+        "3.2",
+        "3.3"
+      ],
+      "next": "Preserve Movies 24; separate missing provider/whole-ticket qualification from accepted manual owner/public flow.",
+      "consumedInputs": [
+        {
+          "ticket": "3.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "22456f78 finite shared producer handoff; CORE-REPLACE is DELIVERED, not absent: replaceRecommendationEntity (expected-revision lock, idempotency key, 422 unchanged, 404 missing, revision bump) at tunes/server/repositories/explorersRecommendationRepository.ts:301, route-mounted at tunes/server/routes/explorersRecommendationRoutes.ts:89 as POST /api/explorers/v1/recommendations/:id/entity, landed in 4aa1f67e and present in the frozen runtime surface inventory (tunes/server/test/contracts/runtime-surface-inventory.test.ts:78,96). The earlier \"absent and not included\" wording was introduced by 225d83e5 itself and is withdrawn. This edge is a VERIFICATION item: verify the mounted route against the frozen inventory and do not re-implement it. Outstanding at 3.1 closure, still mandatory there: the foreign-owner negative, the unchanged-other-creator negative, and UI adoption of the mounted replacement route; those are 3.1 closure obligations, not a producer-interface prerequisite for this consumer.",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "source-bound delivered media used in 46eea549 Books/Movies/Games acceptance; full provider/storage closure not established",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.3",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "46eea549 canonical Books20 delivered slice; external/full QA not included",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "4.2",
+      "state": "partial",
+      "dispatchable": false,
+      "after": [
+        "3.1",
+        "3.2"
+      ],
+      "next": "Preserve committed manual Games 46ee; package G-provider owns IGDB, search and taxonomy parity with explicit provider access.",
+      "consumedInputs": [
+        {
+          "ticket": "3.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "22456f78 finite shared producer handoff; CORE-REPLACE is DELIVERED, not absent: replaceRecommendationEntity (expected-revision lock, idempotency key, 422 unchanged, 404 missing, revision bump) at tunes/server/repositories/explorersRecommendationRepository.ts:301, route-mounted at tunes/server/routes/explorersRecommendationRoutes.ts:89 as POST /api/explorers/v1/recommendations/:id/entity, landed in 4aa1f67e and present in the frozen runtime surface inventory (tunes/server/test/contracts/runtime-surface-inventory.test.ts:78,96). The earlier \"absent and not included\" wording was introduced by 225d83e5 itself and is withdrawn. This edge is a VERIFICATION item: verify the mounted route against the frozen inventory and do not re-implement it. Outstanding at 3.1 closure, still mandatory there: the foreign-owner negative, the unchanged-other-creator negative, and UI adoption of the mounted replacement route; those are 3.1 closure obligations, not a producer-interface prerequisite for this consumer.",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "source-bound delivered media used in 46eea549 Books/Movies/Games acceptance; full provider/storage closure not established",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "4.3",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "3.1",
+        "3.2"
+      ],
+      "next": "Package Apps: typed price tiers/platforms/screenshots and manual fallback, production adapter, persisted owner/public browser cases. Coordinate shared DTO/routes with root. Dispatchable only after the coordinator shared handoff (shared DTO/routes plus the reserved runner and suite manifest lane) is allocated; implementation may be prepared in parallel, qualification is serialized.",
+      "consumedInputs": [
+        {
+          "ticket": "3.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "22456f78 finite shared producer handoff; CORE-REPLACE is DELIVERED, not absent: replaceRecommendationEntity (expected-revision lock, idempotency key, 422 unchanged, 404 missing, revision bump) at tunes/server/repositories/explorersRecommendationRepository.ts:301, route-mounted at tunes/server/routes/explorersRecommendationRoutes.ts:89 as POST /api/explorers/v1/recommendations/:id/entity, landed in 4aa1f67e and present in the frozen runtime surface inventory (tunes/server/test/contracts/runtime-surface-inventory.test.ts:78,96). The earlier \"absent and not included\" wording was introduced by 225d83e5 itself and is withdrawn. This edge is a VERIFICATION item: verify the mounted route against the frozen inventory and do not re-implement it. Outstanding at 3.1 closure, still mandatory there: the foreign-owner negative, the unchanged-other-creator negative, and UI adoption of the mounted replacement route; those are 3.1 closure obligations, not a producer-interface prerequisite for this consumer.",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "source-bound delivered media used in 46eea549 Books/Movies/Games acceptance; full provider/storage closure not established",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "4.4",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "3.1",
+        "3.2"
+      ],
+      "next": "Package Products: exact decimal/currency/null contracts and independent recommendation ownership; production adapter and persisted browser cases. Can pair with Apps. Dispatchable only after the coordinator shared handoff (shared DTO/routes plus the reserved runner and suite manifest lane) is allocated; implementation may be prepared in parallel, qualification is serialized.",
+      "consumedInputs": [
+        {
+          "ticket": "3.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "22456f78 finite shared producer handoff; CORE-REPLACE is DELIVERED, not absent: replaceRecommendationEntity (expected-revision lock, idempotency key, 422 unchanged, 404 missing, revision bump) at tunes/server/repositories/explorersRecommendationRepository.ts:301, route-mounted at tunes/server/routes/explorersRecommendationRoutes.ts:89 as POST /api/explorers/v1/recommendations/:id/entity, landed in 4aa1f67e and present in the frozen runtime surface inventory (tunes/server/test/contracts/runtime-surface-inventory.test.ts:78,96). The earlier \"absent and not included\" wording was introduced by 225d83e5 itself and is withdrawn. This edge is a VERIFICATION item: verify the mounted route against the frozen inventory and do not re-implement it. Outstanding at 3.1 closure, still mandatory there: the foreign-owner negative, the unchanged-other-creator negative, and UI adoption of the mounted replacement route; those are 3.1 closure obligations, not a producer-interface prerequisite for this consumer.",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "source-bound delivered media used in 46eea549 Books/Movies/Games acceptance; full provider/storage closure not established",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "4.5",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "3.1",
+        "3.2"
+      ],
+      "next": "Package People: preserve alias/profile/social metadata and explicit ownership; same-name and login-handle negatives. Can pair with Places after capacity opens. Dispatchable only after the coordinator shared handoff (shared DTO/routes plus the reserved runner and suite manifest lane) is allocated; implementation may be prepared in parallel, qualification is serialized.",
+      "consumedInputs": [
+        {
+          "ticket": "3.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "22456f78 finite shared producer handoff; CORE-REPLACE is DELIVERED, not absent: replaceRecommendationEntity (expected-revision lock, idempotency key, 422 unchanged, 404 missing, revision bump) at tunes/server/repositories/explorersRecommendationRepository.ts:301, route-mounted at tunes/server/routes/explorersRecommendationRoutes.ts:89 as POST /api/explorers/v1/recommendations/:id/entity, landed in 4aa1f67e and present in the frozen runtime surface inventory (tunes/server/test/contracts/runtime-surface-inventory.test.ts:78,96). The earlier \"absent and not included\" wording was introduced by 225d83e5 itself and is withdrawn. This edge is a VERIFICATION item: verify the mounted route against the frozen inventory and do not re-implement it. Outstanding at 3.1 closure, still mandatory there: the foreign-owner negative, the unchanged-other-creator negative, and UI adoption of the mounted replacement route; those are 3.1 closure obligations, not a producer-interface prerequisite for this consumer.",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "source-bound delivered media used in 46eea549 Books/Movies/Games acceptance; full provider/storage closure not established",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "5.1",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "3.1",
+        "3.2"
+      ],
+      "next": "Package Places: typed coordinates including zero/null, location-list distinction, taxonomy and private contact redaction; publish and persisted real-backend qualification. Dispatchable only after the coordinator shared handoff (shared DTO/routes plus the reserved runner and suite manifest lane) is allocated; implementation may be prepared in parallel, qualification is serialized.",
+      "consumedInputs": [
+        {
+          "ticket": "3.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "22456f78 finite shared producer handoff; CORE-REPLACE is DELIVERED, not absent: replaceRecommendationEntity (expected-revision lock, idempotency key, 422 unchanged, 404 missing, revision bump) at tunes/server/repositories/explorersRecommendationRepository.ts:301, route-mounted at tunes/server/routes/explorersRecommendationRoutes.ts:89 as POST /api/explorers/v1/recommendations/:id/entity, landed in 4aa1f67e and present in the frozen runtime surface inventory (tunes/server/test/contracts/runtime-surface-inventory.test.ts:78,96). The earlier \"absent and not included\" wording was introduced by 225d83e5 itself and is withdrawn. This edge is a VERIFICATION item: verify the mounted route against the frozen inventory and do not re-implement it. Outstanding at 3.1 closure, still mandatory there: the foreign-owner negative, the unchanged-other-creator negative, and UI adoption of the mounted replacement route; those are 3.1 closure obligations, not a producer-interface prerequisite for this consumer.",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "source-bound delivered media used in 46eea549 Books/Movies/Games acceptance; full provider/storage closure not established",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "5.2",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "4.4",
+        "4.5",
+        "5.1"
+      ],
+      "next": "Freeze attachment DTOs first; then qualify map, QR and location links without inventing provider success.",
+      "consumedInputs": [
+        {
+          "ticket": "4.4",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "4.5",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "5.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "5.3",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "3.1",
+        "3.2",
+        "5.1"
+      ],
+      "next": "Prepare section field map now; implement versioned Guide aggregate and atomic order/archive/media race behavior after Places contract.",
+      "consumedInputs": [
+        {
+          "ticket": "3.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "22456f78 finite shared producer handoff; CORE-REPLACE is DELIVERED, not absent: replaceRecommendationEntity (expected-revision lock, idempotency key, 422 unchanged, 404 missing, revision bump) at tunes/server/repositories/explorersRecommendationRepository.ts:301, route-mounted at tunes/server/routes/explorersRecommendationRoutes.ts:89 as POST /api/explorers/v1/recommendations/:id/entity, landed in 4aa1f67e and present in the frozen runtime surface inventory (tunes/server/test/contracts/runtime-surface-inventory.test.ts:78,96). The earlier \"absent and not included\" wording was introduced by 225d83e5 itself and is withdrawn. This edge is a VERIFICATION item: verify the mounted route against the frozen inventory and do not re-implement it. Outstanding at 3.1 closure, still mandatory there: the foreign-owner negative, the unchanged-other-creator negative, and UI adoption of the mounted replacement route; those are 3.1 closure obligations, not a producer-interface prerequisite for this consumer.",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "source-bound delivered media used in 46eea549 Books/Movies/Games acceptance; full provider/storage closure not established",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "5.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "5.4",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "2.2",
+        "3.2",
+        "5.1"
+      ],
+      "next": "Implement current claim/evidence eligibility only; no new administrator or implicit ownership grant.",
+      "consumedInputs": [
+        {
+          "ticket": "2.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "c91cef4a recorded Actor contract",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "source-bound delivered media used in 46eea549 Books/Movies/Games acceptance; full provider/storage closure not established",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "5.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "6.1",
+      "state": "partial",
+      "dispatchable": false,
+      "after": [
+        "2.2",
+        "3.1"
+      ],
+      "next": "Priority prerequisite and the nearest package to dispatch. Package M1: canonical mapping/principal and session HTTP. M2: token-null production startup and generation fencing. M3: purpose-limited socket credential/revocation. Backend/frontend split only after exact interface handoff. BLOCKING PREFLIGHT before any M-package dispatch: supersede ADR-005, which is still Accepted and mandates the Strapi proof exchange 6.1 must delete; ADR-006 is being drafted as Proposed by its owner and is not yet in docs/adr/. Do not mint a fixture proof to work around it.",
+      "consumedInputs": [
+        {
+          "ticket": "2.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "c91cef4a recorded Actor contract",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "22456f78 finite shared producer handoff; CORE-REPLACE is DELIVERED, not absent: replaceRecommendationEntity (expected-revision lock, idempotency key, 422 unchanged, 404 missing, revision bump) at tunes/server/repositories/explorersRecommendationRepository.ts:301, route-mounted at tunes/server/routes/explorersRecommendationRoutes.ts:89 as POST /api/explorers/v1/recommendations/:id/entity, landed in 4aa1f67e and present in the frozen runtime surface inventory (tunes/server/test/contracts/runtime-surface-inventory.test.ts:78,96). The earlier \"absent and not included\" wording was introduced by 225d83e5 itself and is withdrawn. This edge is a VERIFICATION item: verify the mounted route against the frozen inventory and do not re-implement it. Outstanding at 3.1 closure, still mandatory there: the foreign-owner negative, the unchanged-other-creator negative, and UI adoption of the mounted replacement route; those are 3.1 closure obligations, not a producer-interface prerequisite for this consumer.",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "6.2",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "6.1"
+      ],
+      "next": "Qualify retained owner playlists, queue, playback, history and entitlement transactions; do not rebuild unrelated Music services.",
+      "consumedInputs": [
+        {
+          "ticket": "6.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "6.3",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "6.1",
+        "6.2"
+      ],
+      "next": "Qualify guest capability, public playback, replay/revocation and socket separation after canonical owner behavior.",
+      "consumedInputs": [
+        {
+          "ticket": "6.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "6.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "7.1",
+      "state": "partial",
+      "dispatchable": false,
+      "after": [
+        "4.1",
+        "4.2",
+        "4.3",
+        "4.4",
+        "4.5",
+        "5.1",
+        "5.2",
+        "5.3",
+        "5.4",
+        "6.3"
+      ],
+      "next": "Package N-shared review proceeds now using existing producer contracts; N-full requires all nine categories, privacy/public media, pins and cold-entry positives. Full-ticket dependencies do not block the shared slice. Full parity remains waiting on the producer tickets above.",
+      "consumedInputs": [
+        {
+          "ticket": "4.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "4.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "4.3",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "4.4",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "4.5",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "5.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "5.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "5.3",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "5.4",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "6.3",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "7.2",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "3.4",
+        "7.1"
+      ],
+      "next": "Package A-dashboard can prepare session-authority conversion now; A-reference inventories actual legal/localized inputs independently. A-full category totals waits for producers. Preserve consent/dedupe/UTC bounds. Preparation is not dispatch: dispatchable stays false while the inbound 7.1 edge reads UNRESOLVED.",
+      "consumedInputs": [
+        {
+          "ticket": "3.4",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "recorded c8fb27bf foundation review plus730d5a33 repair; exact latest-source handoff must be reconciled",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "7.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "7.3",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "2.4",
+        "3.5",
+        "7.1",
+        "7.2"
+      ],
+      "next": "Run full retained regression only after reviewed producers; preserve required red positives and publish exact-source evidence, not fixture aggregates.",
+      "consumedInputs": [
+        {
+          "ticket": "2.4",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.5",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "7.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "7.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "8.1",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "7.3"
+      ],
+      "next": "Retire Strapi only after full retained parity and separate release decision; verify zero active consumers before deleting compatibility files.",
+      "consumedInputs": [
+        {
+          "ticket": "7.3",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "8.2",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "8.1"
+      ],
+      "next": "Consolidate approved API-only/Music topology after retirement; retain security and role boundaries.",
+      "consumedInputs": [
+        {
+          "ticket": "8.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "8.3",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "8.2"
+      ],
+      "next": "Rename only after topology stabilizes; verify import/build/runtime references and artifact lineage.",
+      "consumedInputs": [
+        {
+          "ticket": "8.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "8.4",
+      "state": "partial",
+      "dispatchable": false,
+      "after": [
+        "3.5",
+        "8.3"
+      ],
+      "next": "Prepare promotion from same immutable artifacts; production deployment requires separate authorization.",
+      "consumedInputs": [
+        {
+          "ticket": "3.5",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "8.3",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "8.5",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "8.4"
+      ],
+      "next": "Qualify backup, restore and recovery against approved topology with owned resources; do not touch retained qualification database.",
+      "consumedInputs": [
+        {
+          "ticket": "8.4",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "9.1",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "8.5"
+      ],
+      "next": "Revalidate current MCP/OpenAI protocols when this phase starts; reuse public services and indexed search, no premature infrastructure expansion.",
+      "consumedInputs": [
+        {
+          "ticket": "8.5",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "9.2",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "9.1",
+        "3.4"
+      ],
+      "next": "Qualify public discovery/search analytics under anonymous consent policy and canonical services.",
+      "consumedInputs": [
+        {
+          "ticket": "9.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "3.4",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "recorded c8fb27bf foundation review plus730d5a33 repair; exact latest-source handoff must be reconciled",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "10.1",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "9.1",
+        "2.2"
+      ],
+      "next": "Implement delegated grant authority with scopes, consent and revocation after public discovery; recheck current external protocol first.",
+      "consumedInputs": [
+        {
+          "ticket": "9.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "2.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "c91cef4a recorded Actor contract",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "10.2",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "10.1"
+      ],
+      "next": "Reuse reviewed web commands for creator tools; require grant scope and current account membership for each operation.",
+      "consumedInputs": [
+        {
+          "ticket": "10.1",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    },
+    {
+      "id": "10.3",
+      "state": "not started",
+      "dispatchable": false,
+      "after": [
+        "9.2",
+        "10.2"
+      ],
+      "next": "Complete current review/publication requirements using actual app evidence; submission is a separate authorized external action.",
+      "consumedInputs": [
+        {
+          "ticket": "9.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        },
+        {
+          "ticket": "10.2",
+          "kind": "reviewed producer interface, not whole-ticket closure",
+          "checkpoint": "UNRESOLVED: consuming package must name exact reviewed producer receipt before dispatch",
+          "sourceFreeze": "Actual current runtime/dependency hashes required at consuming-package handoff; historical checkpoint alone is insufficient"
+        }
+      ]
+    }
+  ],
+  "edgeSemantics": {
+    "after": "technical producer interface prerequisites; never implicit whole-ticket completion",
+    "packageQualification": "exact package discovery, source freeze, meaningful regression, canonical backend and fresh review",
+    "ticketClosure": "Every mandatory original requirement needs accepted evidence or an explicit authorized scope decision. Mapping to remaining work, external blocker or downstream owner records an UNSATISFIED obligation, never completion.",
+    "release": "required exact-SHA CI, trusted artifact and QA, exact-candidate recovery/final acceptance, separate release decision"
+  },
+  "stateSemantics": {
+    "state": "Implementation status ONLY: \"complete\", \"partial\", \"open\" or \"not started\". It never encodes dispatch readiness, blocking, priority or sequencing, and it never records acceptance, passing evidence or release eligibility.",
+    "dispatchable": "Ticket-level dispatch readiness, independent of state. false whenever any inbound consumedInputs checkpoint reads UNRESOLVED (see dispatchGates.inputReceipts), a named ticket-level blocking preflight is open (ADR-005 for 6.1, the original 18+3 map for 2.4, the grouped Places suite selection for 5.1), the ticket needs a coordinator-reserved shared edit or an exclusive qualification window that is not allocated (see dispatchGates.sourceFreeze and writerAllocation.coordinator.reservedFiles), or the ticket is complete and has no open writer package. dispatchGates.globalPreflights gates every dispatch on top of this field.",
+    "separation": "The two fields are independent and must stay so. A DELIVERED producer must never read as a blocker: its state records what is built and its consuming edges become verification items, as with 3.1 and CORE-REPLACE, where the prior conflation produced a false blocker on 11 edges. Conversely an unstarted ticket may be dispatchable, and a partially delivered ticket may not be. Neither field may be used to mark anything complete or passing."
+  },
+  "dispatchGates": {
+    "lifecycle": "L0 observation/manual-review DTO and original 18+3 map",
+    "music": "exact backend/frontend/auth file allowlists, canonical principal handoff and socket qualification freeze. BLOCKING PREFLIGHT for every 6.1 package: docs/adr/005-music-identity-migration-deployment-authority.md is still Status Accepted and ratifies the bodyless POST /api/music/identity/ensure Strapi proof exchange that 6.1 must delete, so a writer following current ADR authority would rebuild exactly the boundary 6.1 exists to remove. ADR-005 must be superseded before any 6.1 writer is dispatched. ADR-006 is being drafted as Proposed by the architecture-authority owner and does not yet exist in docs/adr/ (001-005 plus README only).",
+    "categories": "typed core/media handoff plus CORE-REPLACE VERIFICATION when consumed; exact writer paths and guarded discovery. CORE-REPLACE is no longer a producer package: the producer is delivered and route-mounted (see the 3.1 inbound checkpoints), so a consuming package verifies the mounted route against the frozen runtime surface inventory and must not re-implement it. Its residual obligations are folded into 3.1 closure: the foreign-owner negative, the unchanged-other-creator negative, and UI adoption. No CORE-REPLACE producer package is dispatched.",
+    "places": "PLACES-CORE qualification selects only Places core owned scenarios and must NOT select the 5.2 place-links spec or the 5.4 claims spec, merely because a legacy suite alias groups them. The grouped Places suite selection is still present in the epic documents, which are owned by another document owner and are being corrected separately; until that lands, a PLACES-CORE run must use guarded exact discovery rather than the grouped alias, and 5.1 cannot qualify on the alias. All three tickets (5.1 core, 5.2 links, 5.4 claims) remain mandatory in full milestone discovery; no positive is removed, skipped or deferred to qualify core.",
+    "shared": "coordinator owns schema/routes/auth/Settings/migrations/seeds/manifests and the paths in writerAllocation.coordinator.reservedFiles; no writer may change any dependency inside the freeze roots while another package holds a protected qualification window (see dispatchGates.sourceFreeze)",
+    "inputReceipts": "Each producing package must write its exact reviewed receipt id back into every consuming edge checkpoint in this file at package close; that write-back is part of the producing package, not of the consumer. A consuming package whose inbound consumedInputs still read \"UNRESOLVED\" is NOT dispatchable, because the dispatchRequired item \"reviewed input signatures/checkpoints\" cannot be satisfied. Receipt ids are never fabricated, inferred or back-filled from a different freeze: an edge with no reviewed producer receipt stays UNRESOLVED and its consumer stays undispatchable. Current measured position, left as such deliberately rather than back-filled: 36 of the 77 consumedInputs entries still read UNRESOLVED, affecting 19 of the 38 tickets (3.5, 5.2, 5.3, 5.4, 6.2, 6.3, 7.1, 7.2, 7.3, 8.1, 8.2, 8.3, 8.4, 8.5, 9.1, 9.2, 10.1, 10.2, 10.3), every one of which is therefore undispatchable. The independent review's \"19 of 38\" is this ticket count, not an edge count.",
+    "sourceFreeze": "Repo-subtree-wide, never per-file. scripts/replatform-e2e.mjs snapshots whole subtrees (tunes/server, tunes/shared, tunes/auth-runtime, tunes/migrations, explorers-earth/src, explorers-earth/public, explorers-earth/e2e/replatform, explorers-earth/e2e/setup) and fails on any tracked-hash change OR any untracked or ignored file inside them, re-checking provenance before and during every lane (scripts/replatform-e2e.mjs:112,117,168,178). Consequence: implementation work on different tickets may overlap, but protected qualification takes an EXCLUSIVE repo-subtree window. No other writer may hold uncommitted, untracked or ignored files anywhere in those roots while a lane runs, so packages sharing a freeze domain cannot qualify in parallel even when their file allocations are disjoint. Every new file must be tracked before any lane runs, or the snapshot fails closed.",
+    "globalPreflights": "Cross-cutting preflights that gate EVERY dispatch regardless of a ticket's dispatchable value. Closed by this file: the CORE-REPLACE edge correction (11 inbound 3.1 checkpoints plus dispatchGates.categories), the coordinator reservation of the shared browser runner, suite manifest and browser fixtures, the repo-subtree-wide freeze statement, and the producer-receipt write-back rule. Still open and owned elsewhere: supersede ADR-005 with ADR-006 (blocks 6.1); produce the frozen original 18+3 lifecycle map (blocks 2.4); correct the grouped Places suite selection still carried by the epic documents (blocks 5.1 qualification); relabel the two \"Create\" lists that name existing files; and restate the three overstated counts (the 18-pass contained-route claim, \"Games canonical 82\", and the 12 lifecycle cases that exist only in the uncommitted overlay) while disclosing the 46ee hosted conclusions."
+  },
+  "releaseAcceptanceJoins": {
+    "8.4": [
+      "8.5 exact-candidate recovery and final acceptance",
+      "required exact-SHA hosted gates",
+      "QA immutable artifact evidence",
+      "separate release decision"
+    ]
+  },
+  "writerAllocation": {
+    "state": "No production writer dispatched by this planning audit",
+    "coordinator": {
+      "owns": [
+        "shared schema and migration identifiers",
+        "route registration",
+        "auth clients and AuthSyncManager",
+        "Settings",
+        "seed and protected manifest edits",
+        "navigation registration and eligibility",
+        "shared browser runner, suite manifest and browser fixtures (see reservedFiles)"
+      ],
+      "reservedFiles": [
+        "scripts/replatform-e2e.mjs",
+        "explorers-earth/e2e/replatform/suite-manifest.json",
+        "tunes/scripts/*-browser-fixture.ts"
+      ],
+      "reservedFilesRule": "Coordinator-reserved and serialized: no category, lifecycle or Music writer may edit these, and no other document's ownership claim over the suite manifest applies. Every category and lifecycle package must change the runner, which is why it is reserved: scripts/replatform-e2e.mjs hardcodes the six lanes (auth, profile, books, lifecycle, movies, games) with exact per-lane identity counts, runners, configs and projects, enforces the forbidden-ambient-authority environment guard (assertEnvironment), and requires the manifest scopeContents and lane names to equal its own lane keys exactly, so a lane added, renamed or re-counted in the manifest alone fails validateManifest. The tunes/scripts/*-browser-fixture.ts entry points are named by the runner lane table and by its protected-target check. Adding or re-counting any browser lane is therefore a single serialized coordinator edit, requested with the exact lane name, runner, config, projects and identity count.",
+      "rule": "One serialized shared-edit owner; freeze actual shared dependency hashes before qualification. The freeze is repo-subtree-wide, not per-file: see dispatchGates.sourceFreeze."
+    },
+    "nextBriefs": {
+      "lifecycle": {
+        "preflight": "L0 service/observation/manual-review contract and original18+3 map",
+        "candidateFiles": [
+          "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "tunes/scripts/lifecycle-browser-support.ts",
+          "tunes/scripts/lifecycle-browser-guards.ts",
+          "tunes/server/test/contracts/lifecycle-browser-support.test.ts"
+        ],
+        "excludes": [
+          "Settings",
+          "AuthSyncManager",
+          "Music implementation",
+          "coordinator-reserved shared browser runner, suite manifest and browser fixtures, which are never allocated to a feature writer"
+        ]
+      },
+      "music": {
+        "preflight": "Trace actual route/principal/mapping composition; freeze backend/frontend contract and existing-versus-proposed paths. Blocked until ADR-005 is superseded: it is still Accepted and ratifies the bodyless POST /api/music/identity/ensure proof exchange this ticket removes.",
+        "candidateFrontendFiles": [
+          "explorers-earth/src/features/music/musicApi.ts",
+          "explorers-earth/src/features/music/musicIdentityCoordinator.ts",
+          "explorers-earth/src/features/music/musicSessionBoundary.ts",
+          "explorers-earth/src/lib/localTunesApiClient.ts",
+          "explorers-earth/src/hooks/useTunesDashboard.ts"
+        ],
+        "excludes": [
+          "lifecycle browser fixtures",
+          "Settings",
+          "AuthSyncManager unless coordinator handoff",
+          "schema/routes/migrations until allocation",
+          "coordinator-reserved shared browser runner, suite manifest and browser fixtures"
+        ]
+      }
+    },
+    "dispatchRequired": [
+      "exact existing/to-create file allowlist including tests",
+      "reviewed input signatures/checkpoints, with every inbound edge resolved to an exact reviewed producer receipt id written back by the producing package at its close; never fabricated or inferred, and a package with any UNRESOLVED inbound edge is not dispatchable",
+      "migration identifier and owned ports/resources",
+      "qualification freeze spanning runtime and dependencies, taken as an exclusive repo-subtree window with every new file tracked before any lane runs (dispatchGates.sourceFreeze)",
+      "fresh writer and separate fresh reviewer"
+    ]
+  }
+}

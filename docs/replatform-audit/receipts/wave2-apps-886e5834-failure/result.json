@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "lane": "apps",
+  "sourceCommit": "886e583429328d885e82008683f04ddef16db434",
+  "runId": "15d78356f0b72af0106e295a62e7e313",
+  "evidence": "native",
+  "status": "failed",
+  "qualification": false,
+  "browserReport": { "expected": 5, "unexpected": 3, "flaky": 0, "skipped": 0 },
+  "lifecycle": { "phase": "execution", "interrupted": false, "sourceIntact": true, "cleanup": "failed" },
+  "originalParentExitCode": 1,
+  "diagnosis": [
+    { "cause": "raw JSON note substring does not decode Quill HTML nonbreaking spaces", "identities": 2 },
+    { "cause": "mobile carousel selector matches managers in inactive cards", "identities": 1 }
+  ],
+  "scope": "Sanitized protected-report summary. Five reported passing identities do not qualify the failed lane. Raw browser contexts are not included."
+}

@@ -5,8 +5,10 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
-import { createApp } from '../app';
-import { storage } from '../storage';
+import { createValidatedApp as createApp } from '../config/music-startup';
+import { prepareProtectedRuntimeTestAuthority, releaseProtectedRuntimeTestAuthority } from './protected-runtime-test-authority';
+
+let storage: typeof import('../storage')['storage'];
 
 const FRESH = { username: 'e2e_gsync_user', email: 'gsync-test@example.com' };
 
@@ -21,22 +23,25 @@ describe('POST /api/auth/sync — first-time Google user creation', () => {
   // beforeAll cleanup guarantees the CREATE path runs even if a prior run
   // failed mid-test and left a stale row (which would otherwise make this
   // pass via the existing-user path — a false green).
-  beforeAll(removeFresh);
-  afterAll(removeFresh);
+  beforeAll(async () => {
+    const startupDependencies = await prepareProtectedRuntimeTestAuthority();
+    ({ app } = await createApp(process.env, startupDependencies));
+    ({ storage } = await import('../storage'));
+    await removeFresh();
+  });
+  afterAll(async () => {
+    await removeFresh();
+    await releaseProtectedRuntimeTestAuthority();
+  });
 
-  it('creates the Neon user from a fresh strapiUser and returns it (no secrets)', async () => {
-    ({ app } = await createApp());
+  it('rejects unauthenticated username/email adoption without creating a user', async () => {
     const r = await request(app)
       .post('/api/auth/sync')
       .send({ strapiUser: { username: FRESH.username, email: FRESH.email } });
 
-    expect(r.status).toBe(200);
-    expect(r.body.user?.username).toBe(FRESH.username);
-    for (const k of ['password', 'otp', 'otpExpiry', 'emailVerificationToken']) {
-      expect(r.body.user[k]).toBeUndefined();
-    }
-    // Persisted in Neon
+    expect(r.status).toBe(410);
+    expect(r.body.error?.code).toBe('SURFACE_REMOVED');
     const persisted = await storage.getUserByUsername(FRESH.username);
-    expect(persisted?.email).toBe(FRESH.email);
+    expect(persisted).toBeUndefined();
   });
 });

@@ -51,6 +51,9 @@ Full documentation is in the [`docs/`](../docs/) folder:
 - [Integrations](../docs/explorers-earth/integrations.md) — Google Maps, Strapi, OAuth
 - [State Management](../docs/explorers-earth/state-management.md) — Zustand, Apollo, React Query
 - [Deployment](../docs/explorers-earth/deployment.md) — Netlify config
+- [Music identity architecture](../docs/architecture/music-identity.md) — Automatic post-onboarding projection and lifecycle
+- [Music API contract](../docs/api/music-identity-contract.md) — Bodyless ensure, in-memory Music credential, publication, and guest access
+- [Music testing](../docs/testing/music-identity-testing.md) — Supported clean-checkout fixture flow
 - [Contributing](../docs/contributing.md) — Code style, PR process
 
 For AI agents, see [`CLAUDE.md`](CLAUDE.md).

@@ -1,14 +1,21 @@
-import { useQuery } from "@apollo/client";
-import { memo, useEffect, useState, useMemo } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { getPublicProfileDataQuery, getUserMobileNumberQuery } from "../api/query";
+import { getThemeTokenStyles } from "../../Profile/constants/themePresets";
+import {
+  getPreferredRecommendationCategory,
+  isRecommendationCategoryVisible,
+  normalizeThemeSettings,
+  resolveInitialPublicProfileTab,
+  type PublicProfileTab,
+} from "../../Profile/constants/recommendationsPresentation";
+import { RECOMMENDATION_CATEGORY_IDS } from "../../Profile/types/themeTypes";
+import PublicProfileFooter from "./PublicProfileFooter";
+import { PublicProfileHeroBackdrop, PublicProfileIdentity, PublicProfileWallpaper } from "./PublicProfileChromePrimitives";
+import { memo, useEffect, useState, useMemo, useRef, type KeyboardEvent } from "react";
+import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
+import { usePublicProfileShell } from "../api/usePublicProfileShell";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../services/analyticsService";
 import WhatsappIcon from "../../../assets/icons/WhatsappIcon";
 import MobileIcon from "../../../assets/icons/MobileIcon";
 import InstagramIcon from "../../../assets/icons/InstagramIcon";
-import QRModal from "../../../components/ui/QRModal";
-import { useQRActions } from "../../../hooks/useQRActions";
-import { generateUserProfileQRUrl } from "../../../utils/qrCodeService";
 import BoldLinkIcon from "../../../assets/icons/BoldLinkIcon";
 import YoutubeIcon from "../../../assets/icons/YoutubeIcon";
 import TwitterIcon from "../../../assets/icons/TwitterIcon";
@@ -30,16 +37,34 @@ import {
   useMediaViewer,
   convertToMediaItems,
 } from "../../../hooks/useMediaViewer";
-import { normalizeExternalUrl, buildWhatsAppHref } from "../../../utils/url";
+import { buildWhatsAppHref } from "../../../utils/url";
 import SEO from "../../../components/SEO";
 import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
 import { createProfileGEOData } from "../../../utils/geoHelpers";
-import { extractUtmParamsFromCurrentUrl, createUtmParams } from "../../../utils/urlHelpers";
-import { toast } from "sonner";
 import ProfileRecommendationsTab from "./ProfileRecommendationsTab";
+import {
+  normalizePublicEmailHref,
+  normalizePublicWebHref,
+  sanitizePublicRichText,
+} from "../utils/publicProfileContent";
+import { usePublicMusicAvailability } from "../../music/PublicMusicAvailabilityProvider";
+import { PublicRouteErrorState, PublicRoutePartialNotice } from "./PublicRouteContentState";
 
 // Memoized FeedLayout to prevent unnecessary re-renders
 const MemoizedFeedLayout = memo(FeedLayout);
+
+const parseBusinessLocationData = (value: unknown): Record<string, any> | null => {
+  if (!value) return null;
+
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, any>)
+      : null;
+  } catch {
+    return null;
+  }
+};
 
 const ProfileSkeleton = memo(() => {
   return (
@@ -81,65 +106,42 @@ ProfileSkeleton.displayName = "ProfileSkeleton";
 const PublicProfile = memo(() => {
   const { username } = useParams();
   const navigate = useNavigate();
-  const [showQR, setShowQR] = useState(false);
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
-
-  // Extract UTM parameters from current URL for QR codes only
-  // Only use QR code UTM params if they already exist in the URL (user came from QR scan)
-  const utmParams = useMemo(() => {
-    const currentUtmParams = extractUtmParamsFromCurrentUrl();
-    // Only use existing UTM params if they're already in the URL
-    // Don't create new QR code UTM params for direct shares
-    return currentUtmParams;
-  }, []);
+  const location = useLocation();
+  const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
+  const musicAvailability = usePublicMusicAvailability();
+  const musicLandingHandled = useRef<string>();
 
   // MediaViewer state
   const { isOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
 
-  // Use centralized QR actions hook with profile context
-  // PublicProfile page QR should redirect to: host/{username}
-  // Only include UTM params if they exist (user came from QR scan)
-  useQRActions({
-    username: username,
-    context: "profile",
-    utmParams: utmParams, // Only include if user came from QR scan
-  });
+  const { data, loading, error, refetch } = usePublicProfileShell(username);
 
-  // Clean share URL without QR code UTM parameters for direct sharing
-  const getCleanShareUrl = () => {
-    return `${window.location.origin}/${username}`;
-  };
+  const accountData = data as any;
+  const hasUsableData = Boolean(accountData);
+  const themeSettings = useMemo(
+    () => normalizeThemeSettings(accountData?.social_media?.theme_settings),
+    [accountData?.social_media?.theme_settings],
+  );
+  const themeStyles = getThemeTokenStyles(themeSettings);
 
-  const { data, loading } = useQuery(getPublicProfileDataQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
-    },
-  });
-
-  const accountData = data?.accounts[0];
+  useEffect(() => {
+    if (location.key !== "default" || loading || themeSettings.landingTab !== "music" || musicAvailability.state === "loading") return;
+    if (musicLandingHandled.current === username) return;
+    musicLandingHandled.current = username;
+    if (musicAvailability.state === "available") navigate(`/${username}/music`, { replace: true });
+  }, [loading, location.key, musicAvailability.state, navigate, themeSettings.landingTab, username]);
 
   // Set public profile loaded when query completes successfully
   useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
-  // Fetch mobile number ONLY when visibility is explicitly enabled
-  // This prevents the mobile number from ever being in the response unless visibility is set
-  const { data: mobileData } = useQuery(getUserMobileNumberQuery, {
-    variables: {
-      documentId: accountData?.documentId,
-    },
-    skip: !accountData?.documentId || !accountData?.mobile_number_visibility,
-  });
-
-  const mobileNumber = mobileData?.account?.mobile_number;
+  // The protected public-profile gateway includes this field only when the
+  // account has opted into mobile-number visibility. Never fall back to a
+  // browser-side Strapi request for it.
+  const mobileNumber = accountData?.mobile_number;
 
   // Analytics tracking - initialize after accountData is available
   const analytics = useTrackAnalytics(
@@ -147,11 +149,67 @@ const PublicProfile = memo(() => {
   );
 
   // Parse business location data
-  const businessLocationData = accountData?.Public_Profile_Address
-    ? typeof accountData.Public_Profile_Address === "string"
-      ? JSON.parse(accountData.Public_Profile_Address)
-      : accountData.Public_Profile_Address
-    : null;
+  const businessLocationData = useMemo(
+    () => parseBusinessLocationData(accountData?.Public_Profile_Address),
+    [accountData?.Public_Profile_Address],
+  );
+  const sanitizedProfileBio = useMemo(
+    () => sanitizePublicRichText(accountData?.Bio),
+    [accountData?.Bio],
+  );
+  const rawBusinessDescription =
+    businessLocationData?.about || businessLocationData?.businessDescription;
+  const sanitizedBusinessDescription = useMemo(
+    () => sanitizePublicRichText(rawBusinessDescription),
+    [rawBusinessDescription],
+  );
+  const businessWebsiteHref = useMemo(
+    () =>
+      normalizePublicWebHref(
+        businessLocationData?.website || businessLocationData?.businessWebsite,
+      ),
+    [businessLocationData?.businessWebsite, businessLocationData?.website],
+  );
+  const emailSocial =
+    accountData?.social_media?.email ?? accountData?.social_media?.gmail;
+  const emailHref = normalizePublicEmailHref(emailSocial?.link);
+  const publicSocialHrefs = useMemo(
+    () => ({
+      instagram: normalizePublicWebHref(accountData?.social_media?.instagram?.link),
+      whatsapp: normalizePublicWebHref(
+        buildWhatsAppHref(accountData?.social_media?.whatsapp?.link),
+      ),
+      website: normalizePublicWebHref(accountData?.social_media?.website?.link),
+      youtube: normalizePublicWebHref(accountData?.social_media?.youtube?.link),
+      X: normalizePublicWebHref(accountData?.social_media?.X?.link),
+      spotify: normalizePublicWebHref(accountData?.social_media?.spotify?.link),
+      facebook: normalizePublicWebHref(accountData?.social_media?.facebook?.link),
+      youtubeMusic: normalizePublicWebHref(
+        accountData?.social_media?.youtubeMusic?.link,
+      ),
+      linkedin: normalizePublicWebHref(accountData?.social_media?.linkedin?.link),
+      appleMusic: normalizePublicWebHref(
+        accountData?.social_media?.appleMusic?.link,
+      ),
+      tiktok: normalizePublicWebHref(accountData?.social_media?.tiktok?.link),
+      snapchat: normalizePublicWebHref(accountData?.social_media?.snapchat?.link),
+      localTunes: normalizePublicWebHref(accountData?.social_media?.localTunes?.link),
+    }),
+    [accountData?.social_media],
+  );
+  const usesImageHeaderTreatment =
+    themeSettings.wallpaperMode === "banner-top" ||
+    themeSettings.wallpaperMode === "full-wallpaper-image";
+  const headerPrimaryColor = usesImageHeaderTreatment
+    ? "#FFFFFF"
+    : "var(--text-primary)";
+  const headerSecondaryColor = usesImageHeaderTreatment
+    ? "#FFFFFF"
+    : themeSettings.wallpaperMode === "ambient-gradient"
+      ? "var(--text-primary)"
+      : "var(--text-secondary)";
+  const socialLinkClassName =
+    "profile-presentation-focus inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition-opacity hover:opacity-75";
 
   // Feed images AND videos now supported with proper aspect ratio detection
   const feedItems = accountData?.Feed_Data || [];
@@ -169,25 +227,33 @@ const PublicProfile = memo(() => {
     }));
   }, [feedItems]);
 
-  // Convert feed items to MediaViewer format
+  const profileName = accountData?.Account_Name || username || "User";
+  const profileImageUrl =
+    accountData?.profile_picture?.url || IMAGE_CONFIG.defaultImages.profile;
+
+  // Keep the profile photo and feed in one accessible viewer. Feed indexes are
+  // offset by one because the avatar is the first slide.
   const mediaViewerItems = useMemo(() => {
-    return convertToMediaItems(feedItems);
-  }, [feedItems]);
+    return [
+      {
+        id: "profile-avatar",
+        url: profileImageUrl,
+        alt: `${profileName}'s profile photo`,
+        type: "image" as const,
+      },
+      ...convertToMediaItems(feedItems),
+    ];
+  }, [feedItems, profileImageUrl, profileName]);
 
   // Handle media item click to open MediaViewer
   const handleMediaClick = (index: number) => {
-    openViewer(index);
+    openViewer(index + 1);
     analytics.trackClick('feed-item', {
       action: 'open-media-viewer',
       index,
-      totalItems: mediaViewerItems.length
+      totalItems: feedItems.length
     });
   };
-
-  // Generate QR URL for user profile: host/{username}
-  // Always use QR code UTM params for the QR code itself (not for direct shares)
-  const qrCodeUtmParams = createUtmParams.qrCode();
-  const qrValue = generateUserProfileQRUrl(username || "", qrCodeUtmParams);
 
   // Mobile number visibility: only show if visibility is enabled AND we have a number from the separate query
   const showMobileIcon = !!(accountData?.mobile_number_visibility && mobileNumber);
@@ -235,18 +301,8 @@ const PublicProfile = memo(() => {
 
 
   // Determine availability of categories
-  const hasRecommendations = !!(
-    accountData?.public_recommendations === "Yes" || 
-    accountData?.public_recommendations === undefined || 
-    accountData?.public_recommendations === null ||
-    accountData?.public_music === "Yes" ||
-    accountData?.public_movie === "Yes" ||
-    accountData?.public_books === "Yes" ||
-    accountData?.public_games === "Yes" ||
-    accountData?.public_guides === "Yes" ||
-    accountData?.public_apps === "Yes" ||
-    accountData?.public_products === "Yes" ||
-    accountData?.public_people === "Yes"
+  const hasRecommendations = RECOMMENDATION_CATEGORY_IDS.some((categoryId) =>
+    isRecommendationCategoryVisible(accountData || {}, categoryId),
   );
 
   // Determine availability of business details & gallery (safe before data loaded)
@@ -256,36 +312,106 @@ const PublicProfile = memo(() => {
       businessLocationData.businessTitle ||
       businessLocationData.address ||
       businessLocationData.businessAddress ||
-      businessLocationData.about ||
-      businessLocationData.businessDescription ||
+      sanitizedBusinessDescription ||
       businessLocationData.contact ||
       businessLocationData.businessContact ||
-      businessLocationData.website ||
-      businessLocationData.businessWebsite)
+      businessWebsiteHref)
   );
   const hasGallery = memoizedFeedImages.length > 0;
-  const hasGalleryContent = true; // Always show gallery tab, even if empty
+  const availableTabs = useMemo<PublicProfileTab[]>(
+    () => [
+      ...(hasRecommendations ? (["recommendations"] as const) : []),
+      "gallery",
+      ...(hasBusinessDetails ? (["business"] as const) : []),
+    ],
+    [hasBusinessDetails, hasRecommendations],
+  );
+  const automaticActiveTab = resolveInitialPublicProfileTab({
+    landingTab: themeSettings.landingTab,
+    hasVisibleRecommendationCategories: hasRecommendations,
+    hasGallery: true,
+    hasBusiness: hasBusinessDetails,
+  });
+  const [manualTabOverride, setManualTabOverride] = useState<{
+    username: string;
+    tab: PublicProfileTab;
+  } | null>(null);
+  const manualTabForProfile =
+    manualTabOverride && manualTabOverride.username === username
+      ? manualTabOverride.tab
+      : undefined;
+  const activeTab =
+    manualTabForProfile && availableTabs.includes(manualTabForProfile)
+      ? manualTabForProfile
+      : automaticActiveTab;
+  const [focusedTabOverride, setFocusedTabOverride] = useState<{
+    username: string;
+    tab: PublicProfileTab;
+  } | null>(null);
+  const focusedTabForProfile =
+    focusedTabOverride && focusedTabOverride.username === username
+      ? focusedTabOverride.tab
+      : undefined;
+  const focusedTab =
+    focusedTabForProfile && availableTabs.includes(focusedTabForProfile)
+      ? focusedTabForProfile
+      : activeTab;
+  const preferredRecommendationCategory = getPreferredRecommendationCategory(
+    themeSettings.landingTab,
+  );
 
-  // Tab state must be declared before any early returns to preserve hook order
-  // "recommendations" is the default and first tab
-  const [activeTab, setActiveTab] = useState<"recommendations" | "gallery" | "business">("recommendations");
+  const selectTab = (tab: PublicProfileTab) => {
+    const profileUsername = username || "";
+    setManualTabOverride({ username: profileUsername, tab });
+    setFocusedTabOverride({ username: profileUsername, tab });
+  };
 
-  // Ensure activeTab remains valid if data availability changes
-  useEffect(() => {
-    if (activeTab === "recommendations" && !hasRecommendations) {
-      setActiveTab("gallery"); // fallback to gallery since hasGalleryContent is always true
-    } else if (activeTab === "gallery" && !hasGalleryContent && hasBusinessDetails) {
-      setActiveTab("business");
-    } else if (activeTab === "business" && !hasBusinessDetails && hasGalleryContent) {
-      setActiveTab("gallery");
+  const focusTab = (tab: PublicProfileTab) => {
+    setFocusedTabOverride({ username: username || "", tab });
+    document.getElementById(`public-profile-${tab}-tab`)?.focus();
+  };
+
+  const handleTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    tab: PublicProfileTab,
+  ) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      selectTab(tab);
+      return;
     }
-  }, [activeTab, hasGalleryContent, hasBusinessDetails, hasRecommendations]);
 
-  if (loading) {
-    if ((window as any).__publicProfileLoaded) {
+    const currentIndex = availableTabs.indexOf(tab);
+    let targetIndex: number | undefined;
+    if (event.key === "ArrowRight") {
+      targetIndex = (currentIndex + 1) % availableTabs.length;
+    } else if (event.key === "ArrowLeft") {
+      targetIndex = (currentIndex - 1 + availableTabs.length) % availableTabs.length;
+    } else if (event.key === "Home") {
+      targetIndex = 0;
+    } else if (event.key === "End") {
+      targetIndex = availableTabs.length - 1;
+    }
+
+    if (targetIndex !== undefined) {
+      event.preventDefault();
+      focusTab(availableTabs[targetIndex]);
+    }
+  };
+
+  if (loading && !hasUsableData) {
+    if (outletContext?.isShellRevealed) {
       return <ProfileSkeleton />;
     }
     return null;
+  }
+
+  if (error && !hasUsableData) {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <PublicRouteErrorState title="Profile unavailable" error={error} onRetry={refetch} />
+      </div>
+    );
   }
 
   // Add safety check for accountData
@@ -305,12 +431,11 @@ const PublicProfile = memo(() => {
   }
 
   const handleImageClick = () => {
-    setShowQR(true);
-    analytics.trackClick('profile-image', { action: 'open-qr-modal' });
+    openViewer(0);
+    analytics.trackClick('profile-image', { action: 'open-photo-viewer' });
   };
 
   // Enhanced dynamic SEO data preparation with all profile data
-  const profileName = accountData?.Account_Name || username || "User";
   const profileLocation = accountData?.Primary_Address?.address || "";
   const profileBio = accountData?.Bio || "";
   const profileUsername = username || "";
@@ -320,67 +445,67 @@ const PublicProfile = memo(() => {
   const socialPlatforms = [
     {
       name: "Instagram",
-      link: accountData?.social_media?.instagram?.link,
+      link: publicSocialHrefs.instagram,
       visibility: accountData?.social_media?.instagram?.visibility,
     },
     {
       name: "WhatsApp",
-      link: accountData?.social_media?.whatsapp?.link,
+      link: publicSocialHrefs.whatsapp,
       visibility: accountData?.social_media?.whatsapp?.visibility,
     },
     {
       name: "Website",
-      link: accountData?.social_media?.website?.link,
+      link: publicSocialHrefs.website,
       visibility: accountData?.social_media?.website?.visibility,
     },
     {
       name: "YouTube",
-      link: accountData?.social_media?.youtube?.link,
+      link: publicSocialHrefs.youtube,
       visibility: accountData?.social_media?.youtube?.visibility,
     },
     {
       name: "Twitter",
-      link: accountData?.social_media?.X?.link,
+      link: publicSocialHrefs.X,
       visibility: accountData?.social_media?.X?.visibility,
     },
     {
       name: "Spotify",
-      link: accountData?.social_media?.spotify?.link,
+      link: publicSocialHrefs.spotify,
       visibility: accountData?.social_media?.spotify?.visibility,
     },
     {
       name: "Gmail",
-      link: accountData?.social_media?.gmail?.link,
-      visibility: accountData?.social_media?.gmail?.visibility,
+      link: emailHref,
+      visibility: emailSocial?.visibility,
     },
     {
       name: "Facebook",
-      link: accountData?.social_media?.facebook?.link,
+      link: publicSocialHrefs.facebook,
       visibility: accountData?.social_media?.facebook?.visibility,
     },
     {
       name: "YouTube Music",
-      link: accountData?.social_media?.youtubeMusic?.link,
+      link: publicSocialHrefs.youtubeMusic,
       visibility: accountData?.social_media?.youtubeMusic?.visibility,
     },
     {
       name: "LinkedIn",
-      link: accountData?.social_media?.linkedin?.link,
+      link: publicSocialHrefs.linkedin,
       visibility: accountData?.social_media?.linkedin?.visibility,
     },
     {
       name: "Apple Music",
-      link: accountData?.social_media?.appleMusic?.link,
+      link: publicSocialHrefs.appleMusic,
       visibility: accountData?.social_media?.appleMusic?.visibility,
     },
     {
       name: "TikTok",
-      link: accountData?.social_media?.tiktok?.link,
+      link: publicSocialHrefs.tiktok,
       visibility: accountData?.social_media?.tiktok?.visibility,
     },
     {
       name: "Snapchat",
-      link: accountData?.social_media?.snapchat?.link,
+      link: publicSocialHrefs.snapchat,
       visibility: accountData?.social_media?.snapchat?.visibility,
     },
   ];
@@ -497,301 +622,232 @@ const PublicProfile = memo(() => {
         />
       )}
 
-      <div className="h-full bg-black min-h-screen overflow-auto preview-scroll pb-20">
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="text-white font-bold text-2xl cursor-pointer"
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={async () => {
-                  const shareUrl = getCleanShareUrl();
-                  if (navigator.share) {
-                    navigator.share({
-                      title: `${accountData?.Account_Name || username}'s Profile`,
-                      text: "Check out this profile!",
-                      url: shareUrl,
-                    }).catch(() => { });
-                  } else {
-                    // Copy clean URL without QR code UTM params
-                    try {
-                      await navigator.clipboard.writeText(shareUrl);
-                      toast.success("Link copied!");
-                    } catch (error) {
-                      console.error("Failed to copy text:", error);
-                    }
-                  }
-                  analytics.trackClick('share-button', { context: 'profile-header' });
-                }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Share"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-              </button>
-
-            </div>
-          </div>
-        </div>
-
+      <div
+        className="h-full min-h-screen overflow-auto preview-scroll pb-20"
+        data-testid="public-profile-theme-root"
+        aria-busy={loading || undefined}
+        data-theme-preset={themeSettings.preset}
+        data-theme-accent={themeSettings.accentColor}
+        data-wallpaper-mode={themeSettings.wallpaperMode}
+        style={{
+          ...themeStyles,
+          backgroundColor: "var(--bg-page)",
+          color: "var(--text-primary)",
+        }}
+      >
+        {Boolean(error) && <PublicRoutePartialNotice message="Some profile data is unavailable." />}
         {/* Profile Content */}
 
-        {/* Profile Header Section with Background Cover */}
-        <div className="relative overflow-hidden bg-black pb-0">
-          {/* Cover Photo Background with Rounded Bottom and Fade */}
-          <div className="absolute inset-x-0 top-0 h-[380px] md:h-[420px] overflow-hidden z-0 rounded-b-[2rem] md:rounded-none bg-black">
-            <img
-              src={
-                accountData?.bg_picture?.url ||
-                IMAGE_CONFIG.defaultImages.background
-              }
-              alt="Cover"
-              className="w-full h-full object-cover object-[center_32%] scale-105"
-              loading="eager"
-            />
-            {/* Cinematic top-to-bottom dimming - Base layer */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/20 to-black/80 z-0" />
-            
-            {/* Smooth blur-from-bottom effect for high-end look */}
-            <div 
-              className="absolute inset-x-0 bottom-0 h-[70%] backdrop-blur-md bg-black/10 z-0"
-              style={{
-                WebkitMaskImage: 'linear-gradient(to top, black 30%, transparent 100%)',
-                maskImage: 'linear-gradient(to top, black 30%, transparent 100%)'
-              }}
-            />
-            
-            {/* Deep bottom shadow for final transition to bio */}
-            <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/40 to-transparent z-0" />
-          </div>
+        <PublicProfileWallpaper account={accountData} theme={themeSettings} />
+
+        {/* Profile Header Section */}
+        <div className="relative overflow-hidden pb-0">
+          <PublicProfileHeroBackdrop account={accountData} theme={themeSettings} />
 
           {/* Profile Header Content (Profile Pic, Name, Social Icons) */}
           <div className="relative z-10 pt-16 md:pt-32 pb-0 md:pb-4 text-center px-4">
-            {/* Profile Picture */}
-            <div className="relative mb-2 px-4">
+            <div
+              className="mx-auto mt-1 max-w-xl"
+              data-testid="public-profile-header-metadata"
+            >
+              <PublicProfileIdentity account={accountData} interactive onAvatarClick={handleImageClick} primaryColor={headerPrimaryColor} secondaryColor={headerSecondaryColor} />
+
+              {/* Social Links */}
               <div
-                className="w-[7.5rem] h-[7.5rem] mx-auto rounded-full border-4 border-[hsl(var(--evergreen))] overflow-hidden cursor-pointer shadow-xl bg-black"
-                onClick={handleImageClick}
+                className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 empty:hidden px-6 mt-4 mb-2"
+                style={{ color: headerPrimaryColor }}
               >
-                <img
-                  src={
-                    accountData?.profile_picture?.url ||
-                    IMAGE_CONFIG.defaultImages.profile
-                  }
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
-
-            {/* Name & Location */}
-            <div className="text-center px-6">
-              <h1 className="text-base font-poppins font-bold text-white tracking-tight drop-shadow-md">
-                {accountData?.Account_Name}
-              </h1>
-              <div className="flex items-center justify-center gap-1.5 text-white/90 text-xs font-poppins mt-0.5 drop-shadow-sm">
-                <Location className="w-3 h-3 text-white/70" />
-                <span>{accountData?.Primary_Address?.address}</span>
-              </div>
-            </div>
-
-            {/* Social Links */}
-            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 px-6 mt-4 mb-2 empty:hidden">
-            {accountData?.social_media?.instagram?.link &&
+            {publicSocialHrefs.instagram &&
               accountData?.social_media?.instagram?.visibility && (
                 <a
-                  href={normalizeExternalUrl(
-                    accountData.social_media.instagram.link
-                  )}
+                  href={publicSocialHrefs.instagram}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className={socialLinkClassName}
                   onClick={() => analytics.trackClick('social-link', { platform: 'instagram' })}
                 >
-                  <InstagramIcon color="white" />
+                  <InstagramIcon color="currentColor" />
                 </a>
               )}
-            {accountData?.social_media?.whatsapp?.link &&
+            {publicSocialHrefs.whatsapp &&
               accountData?.social_media?.whatsapp?.visibility && (
                 <a
-                  href={buildWhatsAppHref(
-                    accountData.social_media.whatsapp.link
-                  )}
+                  href={publicSocialHrefs.whatsapp}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="WhatsApp"
+                  className={socialLinkClassName}
                   onClick={() => analytics.trackClick('social-link', { platform: 'whatsapp' })}
                 >
-                  <WhatsappIcon fill="white" />
+                  <WhatsappIcon fill="currentColor" />
                 </a>
               )}
             {showMobileIcon && (
               <a
-                href={`sms:+${mobileNumber}`}
+                href={`sms:${mobileNumber}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Send SMS"
-                className="focus:outline-none focus:ring-2 focus:ring-[hsl(var(--blue-cta))] rounded-full transition-opacity duration-200"
+                className={socialLinkClassName}
                 onClick={() => analytics.trackClick('social-link', { platform: 'mobile' })}
               >
-                <MobileIcon fill="white" />
+                <MobileIcon fill="currentColor" />
               </a>
             )}
-            {accountData?.social_media?.website?.link &&
+            {publicSocialHrefs.website &&
               accountData?.social_media?.website?.visibility && (
                 <a
-                  href={normalizeExternalUrl(
-                    accountData.social_media.website.link
-                  )}
+                  href={publicSocialHrefs.website}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Website"
+                  className={socialLinkClassName}
                   onClick={() => analytics.trackClick('social-link', { platform: 'website' })}
                 >
-                  <BoldLinkIcon color="white" />
+                  <BoldLinkIcon color="currentColor" />
                 </a>
               )}
-            {accountData?.social_media?.youtube?.link &&
+            {publicSocialHrefs.youtube &&
               accountData?.social_media?.youtube?.visibility && (
                 <a
-                  href={normalizeExternalUrl(
-                    accountData.social_media.youtube.link
-                  )}
+                  href={publicSocialHrefs.youtube}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="YouTube"
+                  className={socialLinkClassName}
                   onClick={() => analytics.trackClick('social-link', { platform: 'youtube' })}
                 >
-                  <YoutubeIcon color="white" />
+                  <YoutubeIcon color="currentColor" />
                 </a>
               )}
-            {accountData?.social_media?.X?.link &&
+            {publicSocialHrefs.X &&
               accountData?.social_media?.X?.visibility && (
                 <a
-                  href={normalizeExternalUrl(accountData.social_media.X.link)}
+                  href={publicSocialHrefs.X}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="X"
+                  className={socialLinkClassName}
                   onClick={() => analytics.trackClick('social-link', { platform: 'twitter' })}
                 >
-                  <TwitterIcon color="white" />
+                  <TwitterIcon color="currentColor" />
                 </a>
               )}
-            {accountData?.social_media?.spotify?.link &&
+            {publicSocialHrefs.spotify &&
               accountData?.social_media?.spotify?.visibility && (
                 <a
-                  href={normalizeExternalUrl(
-                    accountData.social_media.spotify.link
-                  )}
+                  href={publicSocialHrefs.spotify}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Spotify"
+                  className={socialLinkClassName}
                   onClick={() => analytics.trackClick('social-link', { platform: 'spotify' })}
                 >
-                  <Spotify color="white" />
+                  <Spotify color="currentColor" />
                 </a>
               )}
-            {accountData?.social_media?.gmail?.link &&
-              accountData?.social_media?.gmail?.visibility && (
+            {emailHref && emailSocial?.visibility && (
                 <a
-                  href={normalizeExternalUrl(
-                    accountData.social_media.gmail.link
-                  )}
+                  href={emailHref}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Email"
+                  className={socialLinkClassName}
                   onClick={() => analytics.trackClick('social-link', { platform: 'gmail' })}
                 >
-                  <Gmail color="white" />
+                  <Gmail color="currentColor" />
                 </a>
               )}
-            {accountData?.social_media?.facebook?.link &&
+            {publicSocialHrefs.facebook &&
               accountData?.social_media?.facebook?.visibility && (
                 <a
-                  href={normalizeExternalUrl(
-                    accountData.social_media.facebook.link
-                  )}
+                  href={publicSocialHrefs.facebook}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Facebook"
+                  className={socialLinkClassName}
                   onClick={() => analytics.trackClick('social-link', { platform: 'facebook' })}
                 >
-                  <FacebookIcon color="white" />
+                  <FacebookIcon color="currentColor" />
                 </a>
               )}
-            {accountData?.social_media?.youtubeMusic?.link &&
+            {publicSocialHrefs.youtubeMusic &&
               accountData?.social_media?.youtubeMusic?.visibility && (
                 <a
-                  href={normalizeExternalUrl(
-                    accountData.social_media.youtubeMusic.link
-                  )}
+                  href={publicSocialHrefs.youtubeMusic}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="YouTube Music"
+                  className={socialLinkClassName}
                   onClick={() => analytics.trackClick('social-link', { platform: 'youtube-music' })}
                 >
-                  <YoutubeMusic color="white" />
+                  <YoutubeMusic color="currentColor" />
                 </a>
               )}
-            {accountData?.social_media?.linkedin?.link &&
+            {publicSocialHrefs.linkedin &&
               accountData?.social_media?.linkedin?.visibility && (
                 <a
-                  href={normalizeExternalUrl(
-                    accountData.social_media.linkedin.link
-                  )}
+                  href={publicSocialHrefs.linkedin}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="LinkedIn"
+                  className={socialLinkClassName}
                   onClick={() => analytics.trackClick('social-link', { platform: 'linkedin' })}
                 >
-                  <LinkedinIcon color="white" />
+                  <LinkedinIcon color="currentColor" />
                 </a>
               )}
-            {accountData?.social_media?.appleMusic?.link &&
+            {publicSocialHrefs.appleMusic &&
               accountData?.social_media?.appleMusic?.visibility && (
                 <a
-                  href={normalizeExternalUrl(
-                    accountData.social_media.appleMusic.link
-                  )}
+                  href={publicSocialHrefs.appleMusic}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Apple Music"
+                  className={socialLinkClassName}
                   onClick={() => analytics.trackClick('social-link', { platform: 'apple-music' })}
                 >
-                  <AppleMusic color="white" />
+                  <AppleMusic color="currentColor" />
                 </a>
               )}
-            {accountData?.social_media?.tiktok?.link &&
+            {publicSocialHrefs.tiktok &&
               accountData?.social_media?.tiktok?.visibility && (
                 <a
-                  href={normalizeExternalUrl(
-                    accountData.social_media.tiktok.link
-                  )}
+                  href={publicSocialHrefs.tiktok}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="TikTok"
+                  className={socialLinkClassName}
                   onClick={() => analytics.trackClick('social-link', { platform: 'tiktok' })}
                 >
-                  <TiktokIcon color="white" />
+                  <TiktokIcon color="currentColor" />
                 </a>
               )}
-            {accountData?.social_media?.snapchat?.link &&
+            {publicSocialHrefs.snapchat &&
               accountData?.social_media?.snapchat?.visibility && (
                 <a
-                  href={normalizeExternalUrl(
-                    accountData.social_media.snapchat.link
-                  )}
+                  href={publicSocialHrefs.snapchat}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Snapchat"
+                  className={socialLinkClassName}
                   onClick={() => analytics.trackClick('social-link', { platform: 'snapchat' })}
                 >
-                  <SnapchatIcon color="white" />
+                  <SnapchatIcon color="currentColor" />
                 </a>
               )}
-            {accountData?.social_media?.localTunes?.link &&
+            {publicSocialHrefs.localTunes &&
               accountData?.social_media?.localTunes?.visibility && (
                 <a
-                  href={normalizeExternalUrl(
-                    accountData.social_media.localTunes.link
-                  )}
+                  href={publicSocialHrefs.localTunes}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Local Tunes"
+                  className={socialLinkClassName}
+                  onClick={() => analytics.trackClick('social-link', { platform: 'local-tunes' })}
                 >
-                  <MusicNote fill="white" />
+                  <MusicNote fill="currentColor" />
                 </a>
               )}
               {/* End of Social Links */}
@@ -800,30 +856,44 @@ const PublicProfile = memo(() => {
           </div>
           {/* End of Profile Header Section */}
         </div>
-        <div className="md:max-w-5xl px-6 md:px-6 md:mx-auto">
+        <div className="md:max-w-5xl px-6 md:px-6 md:mx-auto relative z-10">
           <div className="mt-0 max-w-3xl md:flex flex-col item-center justify-center mx-auto">
-            <div className="bg-black rounded-none md:rounded-lg p-2">
+            <div className="py-3">
               <div
-                className="text-gray-300 font-poppins text-xs line-clamp-3 break-words overflow-hidden text-ellipsis"
-                dangerouslySetInnerHTML={{ __html: accountData?.Bio || "" }}
+                className="font-poppins text-xs leading-relaxed line-clamp-3 break-words overflow-hidden text-ellipsis opacity-90" style={{ color: "var(--text-primary)" }}
+                dangerouslySetInnerHTML={{ __html: sanitizedProfileBio }}
               />
+              </div>
             </div>
           </div>
 
           {/* Tabs: Recommendations (heart) | Gallery (feed) | Address (location) */}
           <div className="mt-1 max-w-5xl mx-auto">
-            <div className="bg-black rounded-lg px-0 md:p-4">
+            <div className="mt-3">
               {/* Tab List */}
-              <div className="flex w-full justify-center gap-8 border-b border-gray-800 px-2 md:px-0 overflow-x-auto scrollbar-hide">
+              <div
+                role="tablist"
+                aria-label="Profile sections"
+                className="flex w-full justify-center gap-8 border-b px-2 md:px-0 overflow-x-auto scrollbar-hide"
+                style={{ borderColor: "var(--border-card)" }}
+              >
                 {/* Recommendations tab — conditionally rendered */}
                 {hasRecommendations && (
                   <button
-                    className={`py-2 text-xs font-poppins font-medium tracking-wide transition-colors border-b-2 focus:outline-none ${activeTab === "recommendations"
-                      ? "border-[hsl(var(--blue-cta))] text-white"
-                      : "border-transparent text-gray-400 hover:text-gray-200"
-                      }`}
+                    id="public-profile-recommendations-tab"
+                    role="tab"
+                    type="button"
+                    aria-label="Recommendations"
+                    aria-controls="public-profile-recommendations-panel"
+                    tabIndex={focusedTab === "recommendations" ? 0 : -1}
+                    className="profile-presentation-focus min-h-12 min-w-12 py-2.5 text-xs font-poppins font-medium tracking-wide transition-all border-b-2"
+                    style={{
+                      borderColor: activeTab === "recommendations" ? "var(--accent-color)" : "transparent",
+                      color: activeTab === "recommendations" ? "var(--text-primary)" : "var(--text-secondary)"
+                    }}
                     aria-selected={activeTab === "recommendations"}
-                    onClick={() => setActiveTab("recommendations")}
+                    onClick={() => selectTab("recommendations")}
+                    onKeyDown={(event) => handleTabKeyDown(event, "recommendations")}
                   >
                     <span className="flex items-center justify-center gap-1">
                       <svg viewBox="0 0 24 24" fill={activeTab === "recommendations" ? "currentColor" : "none"} stroke="currentColor" strokeWidth={activeTab === "recommendations" ? 0 : 1.8} className="size-5 transition-all" xmlns="http://www.w3.org/2000/svg">
@@ -836,12 +906,20 @@ const PublicProfile = memo(() => {
 
                 {/* Gallery tab */}
                 <button
-                  className={`py-2 text-xs font-poppins font-medium tracking-wide transition-colors border-b-2 focus:outline-none ${activeTab === "gallery"
-                    ? "border-[hsl(var(--blue-cta))] text-white"
-                    : "border-transparent text-gray-400 hover:text-gray-200"
-                    }`}
+                  id="public-profile-gallery-tab"
+                  role="tab"
+                  type="button"
+                  aria-label="Gallery"
+                  aria-controls="public-profile-gallery-panel"
+                  tabIndex={focusedTab === "gallery" ? 0 : -1}
+                  className="profile-presentation-focus min-h-12 min-w-12 py-2.5 text-xs font-poppins font-medium tracking-wide transition-all border-b-2"
+                  style={{
+                    borderColor: activeTab === "gallery" ? "var(--accent-color)" : "transparent",
+                    color: activeTab === "gallery" ? "var(--text-primary)" : "var(--text-secondary)"
+                  }}
                   aria-selected={activeTab === "gallery"}
-                  onClick={() => setActiveTab("gallery")}
+                  onClick={() => selectTab("gallery")}
+                  onKeyDown={(event) => handleTabKeyDown(event, "gallery")}
                 >
                   <span className="flex items-center justify-center gap-1">
                     <FeedIcon className="size-5" />
@@ -852,12 +930,20 @@ const PublicProfile = memo(() => {
                 {/* Address tab — only if business details exist */}
                 {hasBusinessDetails && (
                   <button
-                    className={`py-2 text-xs font-poppins font-medium tracking-wide transition-colors border-b-2 focus:outline-none ${activeTab === "business"
-                      ? "border-[hsl(var(--blue-cta))] text-white"
-                      : "border-transparent text-gray-400 hover:text-gray-200"
-                      }`}
+                    id="public-profile-business-tab"
+                    role="tab"
+                    type="button"
+                    aria-label="Business Details"
+                    aria-controls="public-profile-business-panel"
+                    tabIndex={focusedTab === "business" ? 0 : -1}
+                    className="profile-presentation-focus min-h-12 min-w-12 py-2.5 text-xs font-poppins font-medium tracking-wide transition-all border-b-2"
+                    style={{
+                      borderColor: activeTab === "business" ? "var(--accent-color)" : "transparent",
+                      color: activeTab === "business" ? "var(--text-primary)" : "var(--text-secondary)"
+                    }}
                     aria-selected={activeTab === "business"}
-                    onClick={() => setActiveTab("business")}
+                    onClick={() => selectTab("business")}
+                    onKeyDown={(event) => handleTabKeyDown(event, "business")}
                   >
                     <span className="flex items-center justify-center gap-1">
                       <Location className="size-5" />
@@ -868,24 +954,34 @@ const PublicProfile = memo(() => {
               </div>
 
               {/* Tab Panels */}
-              <div className="relative mt-2 pb-20 md:pb-20">
+              <div className="relative mt-2">
 
                 {/* ── Recommendations Tab ── */}
                 {activeTab === "recommendations" && hasRecommendations && (
-                  <div role="tabpanel">
+                  <div
+                    id="public-profile-recommendations-panel"
+                    role="tabpanel"
+                    aria-labelledby="public-profile-recommendations-tab"
+                  >
                     <ProfileRecommendationsTab
                       accountData={accountData}
                       username={username || ""}
+                      presentation={themeSettings.recommendations}
+                      preferredCategory={preferredRecommendationCategory}
                     />
                   </div>
                 )}
 
                 {/* ── Gallery Tab ── */}
                 {activeTab === "gallery" && (
-                  <div role="tabpanel" aria-hidden={false}>
+                  <div
+                    id="public-profile-gallery-panel"
+                    role="tabpanel"
+                    aria-labelledby="public-profile-gallery-tab"
+                  >
                     <div className="w-full">
                       <div className="max-w-4xl mx-auto px-1 md:px-4">
-                        <div className="bg-black rounded-none md:rounded-lg p-1 md:p-4">
+                        <div className="rounded-none md:rounded-lg p-1 md:p-4 transition-colors" style={{ backgroundColor: "var(--bg-card)", borderColor: "var(--border-card)" }}>
                           {hasGallery ? (
                             <MemoizedFeedLayout
                               images={memoizedFeedImages}
@@ -897,13 +993,20 @@ const PublicProfile = memo(() => {
                             />
                           ) : (
                             <div className="flex flex-col items-center justify-center py-12 px-4">
-                              <div className="w-16 h-16 mb-4 rounded-full bg-gray-800 flex items-center justify-center">
-                                <FeedIcon className="size-8 text-gray-400" />
+                              <div
+                                className="w-16 h-16 mb-4 rounded-full border flex items-center justify-center"
+                                style={{
+                                  backgroundColor: "var(--bg-page)",
+                                  borderColor: "var(--border-card)",
+                                  color: "var(--text-secondary)",
+                                }}
+                              >
+                                <FeedIcon className="size-8" />
                               </div>
-                              <h3 className="text-lg font-poppins font-semibold text-white mb-2">
+                              <h3 className="text-lg font-poppins font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
                                 No Photos Yet
                               </h3>
-                              <p className="text-sm text-gray-400 text-center max-w-sm">
+                              <p className="text-sm text-center max-w-sm" style={{ color: "var(--text-secondary)" }}>
                                 This user hasn't shared any photos in their feed yet. Check back later for updates!
                               </p>
                             </div>
@@ -918,9 +1021,13 @@ const PublicProfile = memo(() => {
                 {activeTab === "business" &&
                   hasBusinessDetails &&
                   businessLocationData && (
-                    <div role="tabpanel" aria-hidden={false}>
+                    <div
+                      id="public-profile-business-panel"
+                      role="tabpanel"
+                      aria-labelledby="public-profile-business-tab"
+                    >
                       <div className="max-w-3xl flex flex-col item-center justify-center mx-auto">
-                        <div className="bg-black rounded-none md:rounded-lg p-4">
+                        <div className="rounded-none md:rounded-lg p-4" style={{ backgroundColor: "var(--bg-card)" }}>
                           {(businessLocationData.title ||
                             businessLocationData.businessTitle ||
                             businessLocationData.address ||
@@ -928,68 +1035,63 @@ const PublicProfile = memo(() => {
                               <div className="mb-6">
                                 {(businessLocationData.title ||
                                   businessLocationData.businessTitle) && (
-                                    <h2 className="text-lg font-poppins font-semibold text-white mb-2">
+                                    <h2 className="text-lg font-poppins font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
                                       {businessLocationData.title ||
                                         businessLocationData.businessTitle}
                                     </h2>
                                   )}
                                 {(businessLocationData.address ||
                                   businessLocationData.businessAddress) && (
-                                    <p className="text-gray-300 font-poppins text-sm">
+                                    <p className="font-poppins text-sm" style={{ color: "var(--text-secondary)" }}>
                                       {businessLocationData.address ||
                                         businessLocationData.businessAddress}
                                     </p>
                                   )}
                               </div>
                             )}
-                          {(businessLocationData.about ||
-                            businessLocationData.businessDescription) && (
+                          {sanitizedBusinessDescription && (
                               <div className="mb-6">
-                                <h3 className="text-sm font-poppins font-semibold text-white mb-2">
+                                <h3 className="text-sm font-poppins font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
                                   About
                                 </h3>
                                 <div
-                                  className="text-gray-300 font-poppins text-xs leading-relaxed"
+                                  className="font-poppins text-xs leading-relaxed"
+                                  style={{ color: "var(--text-secondary)" }}
                                   dangerouslySetInnerHTML={{
-                                    __html:
-                                      businessLocationData.about ||
-                                      businessLocationData.businessDescription,
+                                    __html: sanitizedBusinessDescription,
                                   }}
                                 />
                               </div>
                             )}
                           {(businessLocationData.contact ||
                             businessLocationData.businessContact ||
-                            businessLocationData.website ||
-                            businessLocationData.businessWebsite) && (
+                            businessWebsiteHref) && (
                               <div className="mb-6 space-y-2">
                                 {(businessLocationData.contact ||
                                   businessLocationData.businessContact) && (
                                     <div className="flex items-center gap-2">
-                                      <MobileIcon fill="white" />
+                                      <MobileIcon fill="currentColor" />
                                       <a
                                         href={`tel:${businessLocationData.contact ||
                                           businessLocationData.businessContact
                                           }`}
-                                        className="text-gray-300 font-poppins text-sm hover:text-white transition-colors"
+                                        className="profile-presentation-focus font-poppins text-sm transition-colors"
+                                        style={{ color: "var(--text-secondary)" }}
                                       >
                                         {businessLocationData.contact ||
                                           businessLocationData.businessContact}
                                       </a>
                                     </div>
                                   )}
-                                {(businessLocationData.website ||
-                                  businessLocationData.businessWebsite) && (
+                                {businessWebsiteHref && (
                                     <div className="flex items-center gap-2">
-                                      <BoldLinkIcon color="white" />
+                                      <BoldLinkIcon color="currentColor" />
                                       <a
-                                        href={
-                                          businessLocationData.website ||
-                                          businessLocationData.businessWebsite
-                                        }
+                                        href={businessWebsiteHref}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="text-gray-300 font-poppins text-sm hover:text-white transition-colors"
+                                        className="profile-presentation-focus font-poppins text-sm transition-colors"
+                                        style={{ color: "var(--text-secondary)" }}
                                       >
                                         Visit Website
                                       </a>
@@ -1006,29 +1108,10 @@ const PublicProfile = memo(() => {
           </div>
 
 
+          {/* Footer Branding Badge */}
+          <PublicProfileFooter brandingStyle={themeSettings?.footerBranding || "enabled"} username={username} />
         </div>
-        {showQR && (
-          <QRModal
-            isOpen={showQR}
-            onClose={() => {
-              setShowQR(false);
-            }}
-            qrValue={qrValue}
-            onCopyLink={async () => {
-              // Copy the QR code value which includes QR code UTM params
-              try {
-                await navigator.clipboard.writeText(qrValue);
-                toast.success("Link copied!");
-              } catch (error) {
-                console.error("Failed to copy text:", error);
-              }
-            }}
-            title="Profile QR Code"
-            qrSize="medium"
-          />
-        )}
-
-        {/* MediaViewer for feed images and videos */}
+        {/* MediaViewer for the profile photo, feed images, and videos */}
         <MediaViewer
           mediaItems={mediaViewerItems}
           initialIndex={currentIndex}

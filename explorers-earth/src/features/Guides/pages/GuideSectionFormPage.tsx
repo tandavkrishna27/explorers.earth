@@ -7,13 +7,13 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { useQuery } from "@apollo/client";
 import { motion } from "framer-motion";
 import { EarthLoader } from "../../../components/EarthLoader";
 import Button from "../../../components/ui/Button";
 import BackIcon from "../../../assets/icons/BackIcon";
 import GuideSectionForm from "../components/GuideSectionForm";
-import { GET_GUIDE_BY_ID_QUERY } from "../api/queries";
+import { useGuidesOwner } from "../hooks/useGuidesOwner";
+import { GuideEditingProvider } from "../context/GuideEditingProvider";
 
 const GuideSectionFormPage = () => {
     const { guideId } = useParams<{ guideId: string }>();
@@ -22,17 +22,14 @@ const GuideSectionFormPage = () => {
 
     // The editing section (if any) is passed via navigation state
     const editingSection = location.state?.editingSection ?? null;
-    const isAIGenerated = editingSection?._isAIGenerated ?? false;
     const isEditMode = !!editingSection?.documentId;
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Fetch the guide to get sections list + multi-city info
-    const { data, loading, error } = useQuery(GET_GUIDE_BY_ID_QUERY, {
-        variables: { documentId: guideId },
-        skip: !guideId,
-        fetchPolicy: "cache-and-network",
-    });
+    // This page stands on its own route, so it reads the guide itself rather than
+    // inheriting one. The form beneath it writes through the editing provider below.
+    const { guide: ownedGuide, observation, content, loading, error, refresh } = useGuidesOwner(guideId);
+    const data = ownedGuide ? { guide: ownedGuide } : undefined;
 
     // Fallback: reset submitting after 10 s in case of error
     useEffect(() => {
@@ -81,10 +78,10 @@ const GuideSectionFormPage = () => {
 
     // ── Page heading ────────────────────────────────────────────────────────
     let headingText = "Add Day or Stop";
-    if (isAIGenerated) headingText = "Review AI-Generated Day";
-    else if (isEditMode) headingText = "Edit Day/Stop";
+    if (isEditMode) headingText = "Edit Day/Stop";
 
     return (
+        <GuideEditingProvider observation={observation} list={guideId ? content?.lists.get(guideId) : undefined} reload={refresh}>
         <div className="dashboard-theme bg-dashboard-bg text-dashboard-light">
             {/*
         Bottom padding keeps content clear of the floating action bar.
@@ -112,28 +109,8 @@ const GuideSectionFormPage = () => {
                         <h1 className="text-dashboard text-xl font-poppins font-bold">
                             {headingText}
                         </h1>
-                        {isAIGenerated && (
-                            <span className="px-2 py-1 text-xs font-poppins font-medium bg-dashboard-accent/10 text-dashboard-accent rounded-md border border-dashboard-accent/30">
-                                ✨ AI Generated
-                            </span>
-                        )}
                     </div>
                 </div>
-
-                {/* ── AI tip banner ───────────────────────────────────── */}
-                {isAIGenerated && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mb-6 bg-dashboard-accent/10 border border-dashboard-accent/30 rounded-lg p-4"
-                    >
-                        <p className="text-sm text-dashboard-light font-poppins">
-                            <span className="font-medium text-dashboard-accent">💡 Tip:</span>{" "}
-                            Review and edit the AI-generated content below. Feel free to modify
-                            any details before saving to your guide.
-                        </p>
-                    </motion.div>
-                )}
 
                 {/* ── Form card ───────────────────────────────────────────
             No overflow-hidden / no fixed height — card grows with content.
@@ -178,7 +155,7 @@ const GuideSectionFormPage = () => {
                         disabled={isSubmitting}
                         className="px-5 py-2.5 bg-dashboard-sidebar hover:bg-dashboard-muted text-dashboard rounded-xl transition-colors font-poppins text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-dashboard-muted"
                     >
-                        {isAIGenerated ? "Discard" : "Cancel"}
+                        Cancel
                     </button>
                     <button
                         type="submit"
@@ -187,20 +164,17 @@ const GuideSectionFormPage = () => {
                         className="px-5 py-2.5 bg-dashboard-accent hover:bg-dashboard-accent/90 text-white rounded-xl transition-colors font-poppins text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                     >
                         {isSubmitting
-                            ? isAIGenerated
-                                ? "Keeping..."
-                                : isEditMode
-                                    ? "Updating..."
-                                    : "Adding..."
-                            : isAIGenerated
-                                ? "Keep & Save"
-                                : isEditMode
-                                    ? "Update"
-                                    : "Add to Guide"}
+                            ? isEditMode
+                                ? "Updating..."
+                                : "Adding..."
+                            : isEditMode
+                                ? "Update"
+                                : "Add to Guide"}
                     </button>
                 </div>
             </div>
         </div>
+        </GuideEditingProvider>
     );
 };
 

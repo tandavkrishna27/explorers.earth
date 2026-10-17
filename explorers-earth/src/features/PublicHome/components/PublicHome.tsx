@@ -1,13 +1,13 @@
-import { memo, useState, useRef, useMemo, useEffect } from "react";
+import { memo, useState, useRef, useMemo, useEffect, type CSSProperties } from "react";
+import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
+import { usePublicCategoryThemeStyles } from "./PublicCategoryThemeContext";
 import InstagramIcon from "../../../assets/icons/InstagramIcon";
 import Button from "../../../components/ui/Button";
-import { useQuery } from "@apollo/client";
-import { accountsDetailQuery } from "../api/query";
-import { recommendedPlacesQuery } from "../../Favorites/api/query";
 import { useTrackAnalytics } from "../../../services/analyticsService";
 import HeroSkeleton from "../../../components/ui/HeroSkeleton";
 import RecommendationCardSkeleton from "../../../components/ui/RecommendationCardSkeleton";
 import PublicPlaceCard from "./PublicPlaceCard";
+import { resolvePublicPlaceImage } from "./publicPlaceMedia";
 import { useNavigate, useParams, useLocation, useOutletContext } from "react-router-dom";
 
 import { getCurrentDomain } from "../../../utils/getCurrentDomain";
@@ -31,18 +31,34 @@ import {
   createUtmParams,
 } from "../../../utils/urlHelpers";
 import Location from "../../../assets/icons/Location";
-import { Share2, ArrowLeft, Users, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Users, ShoppingBag } from "lucide-react";
 import { buildImageUrl, deduplicatePeople } from "../../People/utils/personHelpers";
 import ProductDetailModal from "../../Products/components/public/ProductDetailModal";
 import PersonDetailModal from "../../People/components/public/PersonDetailModal";
 import { deduplicateProducts } from "../../Products/utils/productHelpers";
-import { AdvancedMarker, Map, Pin, useMap } from "@vis.gl/react-google-maps";
-import { getPlaceCoordinatesQuery } from "../api/query";
-import { toast } from "sonner";
+import {
+  AdvancedMarker,
+  Map,
+  Pin,
+  useApiIsLoaded,
+  useMap,
+} from "@vis.gl/react-google-maps";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
+import ErrorBoundary from "../../../components/ErrorBoundary";
+import { usePublicHeaderDescriptor } from "./PublicHeaderDescriptorContext";
+import {
+  isNonNullObject,
+  PublicRouteErrorState,
+  PublicRoutePartialNotice,
+} from "./PublicRouteContentState";
+import { usePublicProfileShell } from "../api/usePublicProfileShell";
+import { usePublicRecommendationCategory } from "../api/usePublicRecommendationCategory";
+import { usePublicProfileDetail } from "../api/usePublicProfileDetail";
+import { PublicScrollContinuation } from "./PublicScrollContinuation";
+import PublicBlockingOverlay from "./PublicBlockingOverlay";
 
 type CardDataItem = {
-  Media: {
+  Media?: {
     url: string;
   }[];
   media_details?: {
@@ -56,7 +72,7 @@ type CardDataItem = {
       url: string;
     }[];
   };
-  Place_Details: {
+  Place_Details?: {
     Photos: string[];
     Place_Address: string;
     Place_Id: string;
@@ -64,15 +80,17 @@ type CardDataItem = {
     Rating: number;
     Rating_Count: number;
     Title: string;
+    Geometry?: { lat: number; lng: number };
   };
   Recommendation_Type?: "place" | "person";
   Contact_Name?: string;
-  recommendation_category: { Category_Name: string };
+  recommendation_category?: { Category_Name: string };
   documentId: string;
 };
 
 interface City {
   List_Name?: string;
+  slug?: string;
   recommended_places?: CardDataItem[];
   imageUrl?: string;
   documentId?: string;
@@ -88,6 +106,118 @@ interface City {
   person_lists?: any[];
   product_lists?: any[];
 }
+
+const hasNonEmptyString = (value: unknown): value is string => (
+  typeof value === "string" && value.trim().length > 0
+);
+
+const normalizePlaceCard = (value: unknown): CardDataItem | null => {
+  if (
+    !isNonNullObject(value)
+    || !hasNonEmptyString(value.documentId)
+    || !Array.isArray(value.Media)
+  ) {
+    return null;
+  }
+
+  // Canonical presence is authoritative, including withheld or malformed values.
+  const contactName = Object.prototype.hasOwnProperty.call(value, "contact_name")
+    ? value.contact_name : value.Contact_Name;
+  const normalizedContactName = typeof contactName === "string" ? contactName : undefined;
+  const contactNumber = Object.prototype.hasOwnProperty.call(value, "contact_number")
+    ? value.contact_number : value.Contact_Number;
+  const normalizedContactNumber = typeof contactNumber === "string" ? contactNumber : undefined;
+
+  const recommendationType = value.Recommendation_Type === "person" ? "person" : "place";
+  const placeDetails = isNonNullObject(value.Place_Details) ? value.Place_Details : null;
+  if (recommendationType === "person") {
+    if (!hasNonEmptyString(normalizedContactName)) return null;
+  } else if (!placeDetails || !hasNonEmptyString(placeDetails.Title)) {
+    return null;
+  }
+
+  const category = isNonNullObject(value.recommendation_category)
+    && hasNonEmptyString(value.recommendation_category.Category_Name)
+    ? { Category_Name: value.recommendation_category.Category_Name }
+    : undefined;
+
+  return {
+    ...value,
+    documentId: value.documentId,
+    Recommendation_Type: recommendationType,
+    Contact_Name: normalizedContactName,
+    Contact_Number: normalizedContactNumber,
+    Media: value.Media
+      .filter((media) => isNonNullObject(media) && typeof media.url === "string")
+      .map((media) => ({ url: media.url as string })),
+    Place_Details: placeDetails ? {
+      ...placeDetails,
+      Photos: Array.isArray(placeDetails.Photos)
+        ? placeDetails.Photos.filter((photo): photo is string => typeof photo === "string")
+        : [],
+    } : undefined,
+    recommendation_category: category,
+  } as CardDataItem;
+};
+
+const normalizePublishedCity = (value: unknown): City | null => {
+  if (
+    !isNonNullObject(value)
+    || value.Visibility !== true
+    || !hasNonEmptyString(value.documentId)
+    || !hasNonEmptyString(value.List_Name)
+    || !Array.isArray(value.recommended_places)
+  ) {
+    return null;
+  }
+
+  return {
+    ...value,
+    documentId: value.documentId,
+    List_Name: value.List_Name,
+    Visibility: true,
+    recommended_places: value.recommended_places
+      .map(normalizePlaceCard)
+      .filter((place): place is CardDataItem => place !== null),
+  } as City;
+};
+
+type MapPreviewPlace = CardDataItem["Place_Details"] & {
+  Media: { url: string }[];
+  category?: string;
+  region: string;
+  documentId: string;
+  Geometry: { lat: number; lng: number };
+};
+
+const normalizeMapPreviewPlace = (value: unknown, region: string): MapPreviewPlace | null => {
+  const place = normalizePlaceCard(value);
+  const details = place?.Place_Details;
+  const geometry = details?.Geometry;
+  if (
+    !place
+    || place.Recommendation_Type === "person"
+    || !details
+    || !geometry
+    || !Number.isFinite(geometry.lat)
+    || !Number.isFinite(geometry.lng)
+    || geometry.lat < -90
+    || geometry.lat > 90
+    || geometry.lng < -180
+    || geometry.lng > 180
+  ) {
+    return null;
+  }
+
+  return {
+    ...details,
+    Geometry: { lat: geometry.lat, lng: geometry.lng },
+    Media: place.Media ?? [],
+    category: place.recommendation_category?.Category_Name,
+    region,
+    documentId: place.documentId,
+  };
+};
 
 // Helper function to get person image with avatar fallback
 const getPersonImageUrl = (data: CardDataItem): string => {
@@ -117,19 +247,39 @@ const MapPreviewController = ({ targetCoords, targetZoom }: { targetCoords: { la
   return null;
 };
 
+const MapPreviewFallback = ({ placeCount, compact = false }: { placeCount: number; compact?: boolean }) => (
+  <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-dashboard-sidebar px-4 text-center text-white">
+    {placeCount > 0 ? (
+      <>
+        <span className={compact ? "text-xs text-white/70" : "text-sm text-white/70"}>
+          Map preview unavailable
+        </span>
+        <span className={compact ? "text-sm font-semibold" : "text-base font-semibold"}>
+          {placeCount} saved place{placeCount === 1 ? "" : "s"}
+        </span>
+        <span className={compact ? "text-xs text-white/80" : "text-sm text-white/80"}>Open map</span>
+      </>
+    ) : (
+      <span className={compact ? "text-xs" : "text-sm"}>No saved locations yet</span>
+    )}
+  </div>
+);
+
 const PublicHome = memo(() => {
+  const categoryStyles = usePublicCategoryThemeStyles();
+  const mapsApiLoaded = useApiIsLoaded();
+  // Map previews are decorative hero slides. Keeping them static avoids loading
+  // several interactive map instances (and markers) before a visitor asks for a map.
+  const enableLiveMapPreviews = true;
   const { username, placeSlug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const [showAllPlaces, setShowAllPlaces] = useState<boolean>(false);
-  const mobileObserverTarget = useRef<HTMLDivElement>(null);
-  const desktopObserverTarget = useRef<HTMLDivElement>(null);
   const mobileScrollContainerRef = useRef<HTMLDivElement>(null);
   const desktopScrollContainerRef = useRef<HTMLDivElement>(null);
-  const [hasMoreData, setHasMoreData] = useState<boolean>(true);
   const animationTriggeredRef = useRef<boolean>(false);
   const previousPathnameRef = useRef<string>('');
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
+  const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
 
   // Extract UTM parameters from current URL, or create default ones for QR codes
   const utmParams = useMemo(() => {
@@ -145,31 +295,60 @@ const PublicHome = memo(() => {
 
   // local state for handle catgeories
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const { data, loading } = useQuery(accountsDetailQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
-    },
-    skip: !username,
-    fetchPolicy: "cache-and-network", // Ensure fresh data is fetched
+  const { data: shellData, loading: shellLoading, error: accountError, refetch: refetchAccount } = usePublicProfileShell(username);
+  const categoryPage = usePublicRecommendationCategory(username, "places", !placeSlug && shellData?.public_recommendations === "Yes");
+  const detailPage = usePublicProfileDetail(username, "places", placeSlug, {
+    pageSize: 24, enabled: Boolean(placeSlug) && shellData?.public_recommendations === "Yes",
   });
+  const resource = placeSlug ? detailPage : categoryPage;
+  const { data: placesCategoryData, loading: placesCategoryLoading, error: placesCategoryError, refetch: refetchPlacesCategory } = resource;
+  const data = useMemo<any>(() => ({
+    accounts: shellData ? [{
+      ...shellData,
+      recommendation_lists: Array.isArray(placesCategoryData?.recommendationLists)
+        ? placesCategoryData.recommendationLists
+        : [],
+    }] : [],
+  }), [placesCategoryData?.recommendationLists, shellData]);
+  const loading = Boolean(shellLoading || placesCategoryLoading);
 
   const [showQR, setShowQR] = useState(false);
+  const rawAccountData = data?.accounts?.[0];
+  const normalizedRecommendationLists = useMemo(() => (
+    Array.isArray(rawAccountData?.recommendation_lists)
+      ? (rawAccountData.recommendation_lists as unknown[])
+        .map(normalizePublishedCity)
+        .filter((list): list is City => list !== null)
+      : []
+  ), [rawAccountData?.recommendation_lists]);
+  const hasRenderSafeRecommendationList = normalizedRecommendationLists.some(
+    (list: City) => (list.recommended_places?.length ?? 0) > 0,
+  );
+  const hasUsableData = Boolean(rawAccountData)
+    && (!accountError || hasRenderSafeRecommendationList);
 
   useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
   const [_isQRVisible, setIsQRVisible] = useState(false);
-  const accountData = data?.accounts[0];
+  const accountData = hasUsableData && rawAccountData
+    ? { ...rawAccountData, recommendation_lists: normalizedRecommendationLists }
+    : undefined;
 
-  const [selectedCity, setSelectedCity] = useState<City | undefined>(undefined);
+  // Derive selection during render so analytics and modals never observe a
+  // previous city's identity while the next scoped resource is loading.
+  const selectedCity = placeSlug
+    ? normalizedRecommendationLists.find(city => (city.slug || toUrlSlug(city.List_Name || "")) === placeSlug)
+    : normalizedRecommendationLists[0];
   const [activeTab, setActiveTab] = useState<"places" | "people" | "products">("places");
+
+  const linkedListsData = useMemo(() => ({
+    personLists: Array.isArray(selectedCity?.person_lists) ? selectedCity.person_lists : [],
+    productLists: Array.isArray(selectedCity?.product_lists) ? selectedCity.product_lists : [],
+  }), [selectedCity?.person_lists, selectedCity?.product_lists]);
+  const linkedListsError = undefined;
 
   // Reset activeTab when selectedCity changes
   useEffect(() => {
@@ -178,16 +357,16 @@ const PublicHome = memo(() => {
 
   // Linked person and product lists for the selected city
   const linkedPersonLists = useMemo(() => {
-    return (selectedCity?.person_lists || []).filter((l: any) => l.Visibility === true);
-  }, [selectedCity]);
+    return (linkedListsData?.personLists || []).filter((l: any) => l?.Visibility === true);
+  }, [linkedListsData?.personLists]);
 
   const linkedProductLists = useMemo(() => {
-    return (selectedCity?.product_lists || []).filter((l: any) => l.Visibility === true);
-  }, [selectedCity]);
+    return (linkedListsData?.productLists || []).filter((l: any) => l?.Visibility === true);
+  }, [linkedListsData?.productLists]);
 
   const linkedPeople = useMemo(() => {
     const raw = linkedPersonLists.flatMap((l: any) =>
-      (l.recommended_people || []).map((p: any) => ({
+      (Array.isArray(l?.recommended_people) ? l.recommended_people : []).filter(isNonNullObject).map((p: any) => ({
         ...p,
         _listName: l.List_Name,
         _listId: l.documentId,
@@ -199,7 +378,7 @@ const PublicHome = memo(() => {
 
   const linkedProducts = useMemo(() => {
     const raw = linkedProductLists.flatMap((l: any) =>
-      (l.recommended_products || []).map((p: any) => ({
+      (Array.isArray(l?.recommended_products) ? l.recommended_products : []).filter(isNonNullObject).map((p: any) => ({
         ...p,
         _listName: l.List_Name,
         _listId: l.documentId,
@@ -210,7 +389,8 @@ const PublicHome = memo(() => {
   }, [linkedProductLists]);
 
   // local state for inline details modals
-  const [isExpanded, setIsExpanded] = useState<{
+  const [expandedState, setExpandedState] = useState<{
+    scope?: string;
     visible: boolean;
     documentId: string | null;
     type: "place" | "person" | null;
@@ -219,22 +399,36 @@ const PublicHome = memo(() => {
     documentId: null,
     type: null,
   });
-  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
-  const [selectedPerson, setSelectedPerson] = useState<any | null>(null);
+  const modalScope = `${username ?? ""}\u0000${placeSlug ?? ""}`;
+  const placeOverlayOpenerRef = useRef<HTMLElement | null>(null);
+  const setIsExpanded = (value: { visible: boolean; documentId: string | null; type: "place" | "person" | null }) => {
+    if (value.visible && document.activeElement instanceof HTMLElement) {
+      placeOverlayOpenerRef.current = document.activeElement;
+    }
+    setExpandedState({ ...value, scope: modalScope });
+  };
+  const [productSelection, setProductSelection] = useState<{ scope: string; documentId: string; listId: string } | null>(null);
+  const [personSelection, setPersonSelection] = useState<{ scope: string; documentId: string; listId: string } | null>(null);
+  const linkedModalScope = `${modalScope}\u0000${selectedCity?.documentId ?? ""}`;
+  const canShowLinkedDetails = Boolean(accountData && selectedCity && shellData?.public_recommendations === "Yes")
+    && !shellLoading && !placesCategoryLoading && !accountError && !placesCategoryError;
+  const selectedProduct = canShowLinkedDetails && productSelection?.scope === linkedModalScope
+    ? linkedProducts.find((product: any) => product.documentId === productSelection.documentId && product._listId === productSelection.listId) ?? null
+    : null;
+  const selectedPerson = canShowLinkedDetails && personSelection?.scope === linkedModalScope
+    ? linkedPeople.find((person: any) => person.documentId === personSelection.documentId && person._listId === personSelection.listId) ?? null
+    : null;
+  // The render guard removes stale DTOs immediately; clearing intent prevents
+  // a withdrawn child or previously visited scope from reopening on restoration.
+  useEffect(() => {
+    if (productSelection && !selectedProduct) setProductSelection(null);
+    if (personSelection && !selectedPerson) setPersonSelection(null);
+  }, [productSelection, personSelection, selectedProduct, selectedPerson]);
 
   // Memoize expensive calculations to prevent unnecessary re-renders
   const PublishedCities = useMemo(() => {
-    return (
-      accountData?.recommendation_lists?.filter(
-        (list: {
-          List_Name: string;
-          Visibility: boolean;
-          recommended_places: string[];
-        }) => list.Visibility === true
-      ) || []
-    );
+    return accountData?.recommendation_lists ?? [];
   }, [accountData?.recommendation_lists]);
-
   // Analytics tracking - initialize after first city is selected
   const analytics = useTrackAnalytics({
     accountId: accountData?.documentId || "",
@@ -266,38 +460,41 @@ const PublicHome = memo(() => {
     utmParams: utmParams, // Include UTM parameters for tracking
   });
 
-  // Separate query for paginated places
-  // CRITICAL: Only query places for published cities
-  const {
-    data: placesData,
-    loading: placesQueryLoading,
-    fetchMore,
-  } = useQuery(recommendedPlacesQuery, {
-    variables: {
-      pagination: {
-        page: 1,
-        pageSize: 10,
-      },
-      filters: {
-        recommendation_list: {
-          documentId: {
-            eq: selectedCity?.documentId,
-          },
-        },
-      },
-    },
-    fetchPolicy: "cache-and-network",
-    // Skip query if no selectedCity, no documentId, or city is not published
-    skip: !selectedCity?.documentId || selectedCity?.Visibility !== true,
-  });
+  const placesQueryLoading = placesCategoryLoading;
+  const hasNormalizedPlacesCategory = Array.isArray(placesCategoryData?.recommendationLists);
+  const hasPublishedPlaces = normalizedRecommendationLists.length > 0;
+  const isPlacesCategoryPending = !hasPublishedPlaces
+    && !placesCategoryError
+    && (placesCategoryLoading || !hasNormalizedPlacesCategory);
+  const hasPlacesCategoryTerminalError = Boolean(placesCategoryError) && !hasPublishedPlaces;
+  const hasSettledEmptyPlacesCategory = hasNormalizedPlacesCategory
+    && !placesCategoryLoading
+    && !placesCategoryError
+    && !hasPublishedPlaces;
+  const placesError = placesCategoryError;
+  const refetchPlaces = refetchPlacesCategory;
+  const rawRecommendedPlaces = selectedCity?.recommended_places ?? [];
+  const displayedPlaces = useMemo(() => (
+    rawRecommendedPlaces.map(normalizePlaceCard).filter((place): place is CardDataItem => place !== null)
+  ), [rawRecommendedPlaces]);
+  const isPlacesDetailTerminalError = Boolean(placeSlug && !placesCategoryLoading && !selectedCity);
+  const expandedPlace = expandedState.scope === modalScope && !placesError
+    ? (placeSlug ? displayedPlaces : PublishedCities.flatMap((city: City) => city.recommended_places ?? []))
+      .find((place: CardDataItem) => place.documentId === expandedState.documentId)
+    : undefined;
+  const isExpanded = { ...expandedState, visible: expandedState.visible && Boolean(expandedPlace) };
+  useEffect(() => {
+    if (expandedState.visible && !isExpanded.visible) {
+      setExpandedState({ visible: false, documentId: null, type: null, scope: modalScope });
+    }
+  }, [expandedState.visible, isExpanded.visible, modalScope]);
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
 
   // Track recommendation engagement views when card is opened
   useEffect(() => {
     if (isExpanded.visible && isExpanded.documentId && accountData?.documentId && selectedCity?.documentId) {
       // Find the clicked item to get its details from current places data
-      const currentPlaces = placesData?.recommendedPlaces || [];
-      const clickedItem = currentPlaces.find(
+      const clickedItem = displayedPlaces.find(
         (item: any) => item.documentId === isExpanded.documentId
       );
 
@@ -323,144 +520,7 @@ const PublicHome = memo(() => {
         });
       }
     }
-  }, [isExpanded.visible, isExpanded.documentId, accountData?.documentId, selectedCity?.documentId, placesData?.recommendedPlaces, analytics.trackEvent]);
-
-  // CRITICAL FIX: Auto-select first PUBLISHED city only, not drafts
-  useEffect(() => {
-    if (PublishedCities?.length) {
-      if (placeSlug) {
-        // Find the city that matches the placeSlug from PUBLISHED cities only
-        const city = PublishedCities.find(
-          (list: City) =>
-            toUrlSlug(list.List_Name || "") === placeSlug.toLowerCase()
-        );
-        // If found city exists in published list, select it, otherwise select first published city
-        // Additional validation: ensure city is published before selecting
-        const cityToSelect = city || PublishedCities[0];
-        if (cityToSelect && cityToSelect.Visibility === true) {
-          setSelectedCity(cityToSelect);
-        } else if (PublishedCities[0]?.Visibility === true) {
-          setSelectedCity(PublishedCities[0]);
-        }
-      } else {
-        // Auto-select the first PUBLISHED city when no placeSlug is provided
-        // Additional validation: ensure city is published
-        if (PublishedCities[0]?.Visibility === true) {
-          setSelectedCity(PublishedCities[0]);
-        }
-      }
-    } else {
-      // If no published cities, clear selection
-      setSelectedCity(undefined);
-    }
-  }, [PublishedCities, placeSlug]);
-
-  // Handle case when currently selected city becomes unpublished or is a draft
-  useEffect(() => {
-    if (selectedCity && PublishedCities?.length) {
-      // Check if currently selected city is still published
-      const isStillPublished = PublishedCities.some(
-        (city: City) => city.documentId === selectedCity.documentId
-      );
-
-      // Additional check: ensure selectedCity has Visibility === true
-      const isSelectedCityPublished = selectedCity.Visibility === true;
-
-      // If selected city is not published anymore or is a draft, select the first published city
-      if (!isStillPublished || !isSelectedCityPublished) {
-        const firstPublishedCity = PublishedCities.find(
-          (city: City) => city.Visibility === true
-        );
-        if (firstPublishedCity) {
-          setSelectedCity(firstPublishedCity);
-          // Update URL to reflect the new selection
-          navigate(
-            `/${username}/places/${toUrlSlug(
-              firstPublishedCity.List_Name || ""
-            )}`
-          );
-        } else {
-          // No published cities available, clear selection
-          setSelectedCity(undefined);
-        }
-      }
-    } else if (selectedCity && PublishedCities?.length === 0) {
-      // No published cities available, clear selection
-      setSelectedCity(undefined);
-    }
-  }, [selectedCity, PublishedCities, username, navigate]);
-
-  // Set up intersection observer for infinite scroll
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (
-          entries[0].isIntersecting &&
-          !placesQueryLoading &&
-          hasMoreData &&
-          placesData?.recommendedPlaces?.length > 0
-        ) {
-          fetchMore({
-            variables: {
-              pagination: {
-                page:
-                  Math.ceil((placesData?.recommendedPlaces?.length || 0) / 10) +
-                  1,
-                pageSize: 10,
-              },
-              filters: {
-                recommendation_list: {
-                  documentId: {
-                    eq: selectedCity?.documentId,
-                  },
-                },
-              },
-            },
-            updateQuery: (prev, { fetchMoreResult }) => {
-              if (!fetchMoreResult?.recommendedPlaces?.length) {
-                setHasMoreData(false);
-                return prev;
-              }
-              // If we get less than the page size, we've reached the end
-              if (fetchMoreResult.recommendedPlaces.length < 10) {
-                setHasMoreData(false);
-              }
-              return {
-                recommendedPlaces: [
-                  ...prev.recommendedPlaces,
-                  ...fetchMoreResult.recommendedPlaces,
-                ],
-              };
-            },
-          }).catch(() => {
-            setHasMoreData(false);
-          });
-        }
-      },
-      { threshold: 1.0 }
-    );
-
-    // Observe both mobile and desktop targets
-    if (mobileObserverTarget.current && hasMoreData) {
-      observer.observe(mobileObserverTarget.current);
-    }
-    if (desktopObserverTarget.current && hasMoreData) {
-      observer.observe(desktopObserverTarget.current);
-    }
-
-    return () => observer.disconnect();
-  }, [
-    placesQueryLoading,
-    hasMoreData,
-    placesData,
-    fetchMore,
-    selectedCity?.documentId,
-  ]);
-
-  // Reset hasMoreData when selectedCity changes
-  useEffect(() => {
-    setHasMoreData(true);
-  }, [selectedCity?.documentId]);
+  }, [isExpanded.visible, isExpanded.documentId, accountData?.documentId, selectedCity?.documentId, displayedPlaces, analytics.trackEvent]);
 
   // Scroll animation (mobile and desktop) only when visiting base places route
   useEffect(() => {
@@ -538,9 +598,8 @@ const PublicHome = memo(() => {
   const handleCitySelect = (city: City) => {
     // CRITICAL: Only allow selection of published cities
     if (city.Visibility === true) {
-      setSelectedCity(city);
       // Update URL with the new place slug using the /places/ structure
-      navigate(`/${username}/places/${toUrlSlug(city.List_Name || "")}`);
+      navigate(`/${username}/places/${(city.slug || toUrlSlug(city.List_Name || ""))}`);
       analytics.trackClick("city-select", {
         cityName: city.List_Name,
         cityId: city.documentId,
@@ -551,9 +610,8 @@ const PublicHome = memo(() => {
         (c: City) => c.Visibility === true
       );
       if (firstPublishedCity) {
-        setSelectedCity(firstPublishedCity);
         navigate(
-          `/${username}/places/${toUrlSlug(firstPublishedCity.List_Name || "")}`
+          `/${username}/places/${(firstPublishedCity.slug || toUrlSlug(firstPublishedCity.List_Name || ""))}`
         );
       }
     }
@@ -600,40 +658,27 @@ const PublicHome = memo(() => {
 
 
   // Fetch map data for preview (same as MapView)
-  const { data: mapData, loading: mapLoading } = useQuery(getPlaceCoordinatesQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
-    },
-    skip: !username,
-  });
+  const mapData = data;
+  const mapLoading = loading;
+  const mapError = placesCategoryError;
+  const contentError = accountError || linkedListsError || placesError || mapError;
 
   // Calculate map preview coordinates and bounds
   const mapPreviewData = useMemo(() => {
-    if (!mapData?.accounts?.[0]?.recommendation_lists) {
+    const recommendationLists = mapData?.accounts?.[0]?.recommendation_lists;
+    if (!Array.isArray(recommendationLists)) {
       return { coordinates: [], center: { lat: 20.5937, lng: 78.9629 }, zoom: 2, places: [] };
     }
 
-    const recommendationLists = mapData.accounts[0].recommendation_lists;
-    const placeDataWithRegion = recommendationLists.flatMap(
-      (list: any) =>
-        list?.recommended_places?.map((place: any) => ({
-          ...place.Place_Details,
-          Media: place.Media,
-          category: place.recommendation_category?.Category_Name,
-          region: list.List_Name || 'Unknown Region',
-          documentId: place.documentId,
-        })) || []
-    );
+    const places = recommendationLists.flatMap((list: unknown) => {
+      if (!isNonNullObject(list) || !Array.isArray(list.recommended_places)) return [];
+      const region = hasNonEmptyString(list.List_Name) ? list.List_Name : "Unknown Region";
+      return list.recommended_places
+        .map((place) => normalizeMapPreviewPlace(place, region))
+        .filter((place): place is MapPreviewPlace => place !== null);
+    });
 
-    const places = placeDataWithRegion.filter(
-      (place: any) => place.Geometry && place.Geometry.lat && place.Geometry.lng
-    );
-
-    const coordinates = places.map((place: any) => place.Geometry);
+    const coordinates = places.map((place) => place.Geometry);
 
     if (coordinates.length === 0) {
       return { coordinates: [], center: { lat: 20.5937, lng: 78.9629 }, zoom: 2, places: [] };
@@ -704,32 +749,41 @@ const PublicHome = memo(() => {
     },
   ];
 
-  // Use paginated places data instead of nested data from accountsDetailQuery
-  const currentPlaces = placesData?.recommendedPlaces || [];
-
   // fetching categories for the recommendation list
   const categories: string[] = useMemo(() => {
     return Array.from(
       new Set(
-        currentPlaces?.map(
+        displayedPlaces.map(
           (place: CardDataItem) => place?.recommendation_category?.Category_Name
-        )
+        ).filter((category): category is string => typeof category === "string")
       )
     );
-  }, [currentPlaces]);
+  }, [displayedPlaces]);
 
   // Filter the recommended places by the selected category
   const filteredPlaces = useMemo(() => {
     return selectedCategory
-      ? currentPlaces?.filter(
+      ? displayedPlaces.filter(
         (place: CardDataItem) =>
           place?.recommendation_category?.Category_Name === selectedCategory
       )
-      : currentPlaces;
-  }, [selectedCategory, currentPlaces]);
+      : displayedPlaces;
+  }, [selectedCategory, displayedPlaces]);
 
   // Dynamic SEO data preparation
   const profileName = accountData?.Account_Name || username || "User";
+  usePublicHeaderDescriptor({
+    navigationKey: location.key,
+    title: `${accountData?.Account_Name || username}'s Places`,
+    text: "Check out these recommendations!",
+    url: selectedCity?.List_Name
+      ? `${getBaseUrl()}/${username}/places/${(selectedCity.slug || toUrlSlug(selectedCity.List_Name))}`
+      : `${getBaseUrl()}/${username}/places`,
+    analyticsContext: "places-header",
+    ...(selectedCity?.List_Name ? {
+      analyticsMetadata: { city: selectedCity.List_Name },
+    } : {}),
+  });
   const profileLocation = accountData?.Primary_Address?.address || "";
 
   // Extract city names for SEO
@@ -909,7 +963,7 @@ const PublicHome = memo(() => {
 
   // Create URL for current selection
   const currentUrl = selectedCityName
-    ? `${getBaseUrl()}/${username}/places/${toUrlSlug(selectedCityName)}`
+    ? `${getBaseUrl()}/${username}/places/${(selectedCity?.slug || toUrlSlug(selectedCityName))}`
     : `${getBaseUrl()}/${username}/places`;
 
   // Generate GEO data for enhanced structured data
@@ -920,7 +974,7 @@ const PublicHome = memo(() => {
     topCategories: Array.from(new Set(categories)).slice(0, 3),
     locationNote: selectedCityName
       ? `Explore ${placesCount} curated places in ${selectedCityName} recommended by ${profileName}`
-      : `Browse all ${totalRecommendations} recommendations by ${profileName} across ${cityNames.length} locations`,
+      : `Browse ${totalRecommendations} loaded recommendations by ${profileName} across ${cityNames.length}${categoryPage.hasMore || categoryPage.error ? "+" : ""} locations`,
     coordinates: mapPreviewData.coordinates.length > 0 ? mapPreviewData.center : undefined,
   });
 
@@ -957,15 +1011,17 @@ const PublicHome = memo(() => {
       title: "Interactive Location Map",
       image: "",
       rating: "Satellite",
-      reviews: `${totalRecommendations} spot${totalRecommendations === 1 ? "" : "s"}`,
+      reviews: `${totalRecommendations} loaded spot${totalRecommendations === 1 ? "" : "s"}`,
       category: "Interactive Map",
       address: "Satellite View Map",
       country: "All Regions",
       desc: "Explore all recommended locations on the interactive satellite map view. Click any pin to open spot details or expand map.",
       isMap: true,
+      city: undefined as City | undefined,
     });
 
-    // Followed by pinned location lists
+    // Follow the dashboard Places contract: a pinned published location list
+    // becomes a featured carousel slide after the interactive map.
     pinnedCities.forEach((city: any) => {
       const count = city.recommended_places?.length || 0;
       slides.push({
@@ -973,7 +1029,7 @@ const PublicHome = memo(() => {
         title: city.List_Name || "",
         image: city.List_Name_Details?.thumbnail || IMAGE_CONFIG.defaultImages.background,
         rating: undefined,
-        reviews: `${count} recommendation${count === 1 ? "" : "s"}`,
+        reviews: `${count}${count >= 24 ? "+" : ""} recommendation${count === 1 ? "" : "s"}`,
         category: "Location List",
         address: city.List_Name || "",
         country: "Curated List",
@@ -1023,51 +1079,10 @@ const PublicHome = memo(() => {
         />
       )}
 
-      <div className="relative bg-black min-h-screen pb-14 pt-14 flex flex-col overflow-x-hidden">
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="text-white font-bold text-2xl cursor-pointer"
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={async () => {
-                  const shareUrl = selectedCity?.List_Name
-                    ? `${window.location.origin}/${username}/places/${toUrlSlug(selectedCity.List_Name)}`
-                    : `${window.location.origin}/${username}/places`;
-                  if (navigator.share) {
-                    navigator.share({
-                      title: `${accountData?.Account_Name || username}'s Places`,
-                      text: "Check out these recommendations!",
-                      url: shareUrl,
-                    }).catch(() => { });
-                  } else {
-                    try {
-                      await navigator.clipboard.writeText(shareUrl);
-                      toast.success("Link copied!");
-                    } catch (error) {
-                      console.error("Failed to copy text:", error);
-                    }
-                  }
-                  analytics.trackClick('share-button', { context: 'places-header' });
-                }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Share"
-              >
-                <Share2 className="h-4 w-4" style={{ color: 'white' }} />
-              </button>
-
-            </div>
-          </div>
-        </div>
-
-        {loading ? (
-          (window as any).__publicProfileLoaded ? (
-            <div className="bg-black min-h-screen">
+      <div data-category-page="places" style={categoryStyles ? { '--skeleton-bg': 'var(--category-card)' } as CSSProperties : undefined} className="relative bg-[var(--category-page,#000000)] min-h-screen pb-14 flex flex-col overflow-x-hidden" aria-busy={loading || undefined}>
+        {loading && !hasUsableData ? (
+          outletContext?.isShellRevealed ? (
+            <div className="bg-[var(--category-page,#000000)] min-h-screen">
               {/* ── Hero skeleton — Desktop ── */}
               <div className="hidden md:block w-full mb-12 mt-4 px-4">
                 <div className="max-w-4xl mx-auto">
@@ -1088,17 +1103,17 @@ const PublicHome = memo(() => {
                       {/* Row header */}
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-1.5">
-                          <div className="w-4 h-4 rounded-full bg-white/10 skeleton-shimmer relative overflow-hidden" />
-                          <div className="h-4 w-24 rounded bg-white/10 skeleton-shimmer relative overflow-hidden" />
+                          <div className="w-4 h-4 rounded-full bg-[var(--category-skeleton,rgba(255,255,255,0.1))] skeleton-shimmer relative overflow-hidden" />
+                          <div className="h-4 w-24 rounded bg-[var(--category-skeleton,rgba(255,255,255,0.1))] skeleton-shimmer relative overflow-hidden" />
                         </div>
-                        <div className="h-3 w-14 rounded bg-white/8 skeleton-shimmer relative overflow-hidden" />
+                        <div className="h-3 w-14 rounded bg-[var(--category-skeleton,rgba(255,255,255,0.08))] skeleton-shimmer relative overflow-hidden" />
                       </div>
                       {/* Horizontal card strip */}
                       <div className="flex gap-4 overflow-hidden">
                         {[0, 1, 2, 3].map((j) => (
                           <div
                             key={j}
-                            className="flex-shrink-0 w-[120px] h-[90px] rounded-xl bg-white/5 skeleton-shimmer relative overflow-hidden"
+                            className="flex-shrink-0 w-[120px] h-[90px] rounded-xl bg-[var(--category-skeleton,rgba(255,255,255,0.05))] skeleton-shimmer relative overflow-hidden"
                           />
                         ))}
                       </div>
@@ -1108,15 +1123,23 @@ const PublicHome = memo(() => {
               </div>
             </div>
           ) : null
+        ) : accountError && !hasUsableData ? (
+          <PublicRouteErrorState title="Places unavailable" error={accountError} onRetry={refetchAccount} />
+        ) : accountData && hasPlacesCategoryTerminalError ? (
+          <PublicRouteErrorState title="Places unavailable" error={placesCategoryError as { message?: string }} onRetry={refetchPlaces} />
+        ) : accountData && isPlacesDetailTerminalError ? (
+          <PublicRouteErrorState title="Places unavailable" error={placesError as { message?: string }} onRetry={refetchPlaces} />
         ) : accountData ? (
-          <>            {/* ========================================== */}
+          <>
+            {contentError && <PublicRoutePartialNotice message="Some place data is unavailable." />}
+            {/* ========================================== */}
             {/*             HERO CAROUSEL SECTION          */}
             {/* ========================================== */}
             {heroSlides.length > 0 && !placeSlug && (
               <>
                 {/* Carousel Hero Section - Desktop Layout */}
                 <div className="hidden md:block w-full mb-12 mt-4 px-4">
-                  <div className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden bg-black shadow-2xl group/hero max-w-4xl mx-auto">
+                  <div data-public-category-artwork className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden bg-black shadow-2xl group/hero max-w-4xl mx-auto">
                     {/* Background Presentation */}
                     <AnimatePresence mode="wait">
                       <motion.div
@@ -1131,14 +1154,14 @@ const PublicHome = memo(() => {
                           if (slide.isMap) {
                             handleMapNavigation();
                           } else {
-                            const slug = toUrlSlug(slide.title);
-                            navigate(`/${username}/places/${slug}`);
+                            navigate(`/${username}/places/${(slide.city?.slug || toUrlSlug(slide.title))}`);
                           }
                         }}
                       >
                         {heroSlides[activeHeroIndex].isMap ? (
                           <div className="absolute inset-0 z-0 pointer-events-auto">
-                            {!mapLoading && mapPreviewData.places.length > 0 ? (
+                            {enableLiveMapPreviews && mapsApiLoaded && !mapLoading && mapPreviewData.places.length > 0 ? (
+                              <ErrorBoundary fallback={<MapPreviewFallback placeCount={mapPreviewData.places.length} />}>
                               <Map
                                 defaultCenter={mapPreviewData.center}
                                 defaultZoom={mapPreviewData.zoom}
@@ -1171,14 +1194,13 @@ const PublicHome = memo(() => {
                                   </AdvancedMarker>
                                 ))}
                               </Map>
+                              </ErrorBoundary>
                             ) : mapLoading ? (
                               <div className="w-full h-full bg-dashboard-sidebar flex items-center justify-center">
                                 <span className="inline-block w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                               </div>
                             ) : (
-                              <div className="w-full h-full bg-dashboard-sidebar flex items-center justify-center">
-                                <span className="text-white text-sm">No locations available</span>
-                              </div>
+                              <MapPreviewFallback placeCount={mapPreviewData.places.length} />
                             )}
                           </div>
                         ) : (
@@ -1248,8 +1270,7 @@ const PublicHome = memo(() => {
                                 if (slide.isMap) {
                                   handleMapNavigation();
                                 } else {
-                                  const slug = toUrlSlug(slide.title);
-                                  navigate(`/${username}/places/${slug}`);
+                                  navigate(`/${username}/places/${(slide.city?.slug || toUrlSlug(slide.title))}`);
                                 }
                               }}
                               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105 cursor-pointer border-none"
@@ -1268,6 +1289,7 @@ const PublicHome = memo(() => {
                                 return (
                                   <button
                                     key={`thumb-${slide.id}`}
+                                    aria-label={`Show ${slide.title}`}
                                     onClick={() => setActiveHeroIndex(index)}
                                     className={`relative flex-shrink-0 w-32 aspect-video rounded-md overflow-hidden transition-all duration-300 cursor-pointer ${isSelected ? 'ring-2 ring-white scale-110 z-10 shadow-xl' : 'opacity-60 hover:opacity-100 hover:scale-105 filter brightness-75 hover:brightness-100'}`}
                                   >
@@ -1328,6 +1350,7 @@ const PublicHome = memo(() => {
                         return (
                           <motion.div
                             key={slide.id}
+                            data-public-category-artwork={diff === 0 ? true : undefined}
                             variants={variants}
                             initial={false}
                             animate={position}
@@ -1342,15 +1365,15 @@ const PublicHome = memo(() => {
                                 if (slide.isMap) {
                                   handleMapNavigation();
                                 } else {
-                                  const slug = toUrlSlug(slide.title);
-                                  navigate(`/${username}/places/${slug}`);
+                                  navigate(`/${username}/places/${(slide.city?.slug || toUrlSlug(slide.title))}`);
                                 }
                               }
                             }}
                           >
                             {slide.isMap ? (
                               <div className="absolute inset-0 z-0 pointer-events-auto">
-                                {!mapLoading && mapPreviewData.places.length > 0 ? (
+                                {enableLiveMapPreviews && mapsApiLoaded && !mapLoading && mapPreviewData.places.length > 0 ? (
+                                  <ErrorBoundary fallback={<MapPreviewFallback placeCount={mapPreviewData.places.length} compact />}>
                                   <Map
                                     defaultCenter={mapPreviewData.center}
                                     defaultZoom={mapPreviewData.zoom}
@@ -1383,14 +1406,13 @@ const PublicHome = memo(() => {
                                       </AdvancedMarker>
                                     ))}
                                   </Map>
+                                  </ErrorBoundary>
                                 ) : mapLoading ? (
                                   <div className="w-full h-full bg-dashboard-sidebar flex items-center justify-center">
                                     <span className="inline-block w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                                   </div>
                                 ) : (
-                                  <div className="w-full h-full bg-dashboard-sidebar flex items-center justify-center">
-                                    <span className="text-white text-xs">No locations available</span>
-                                  </div>
+                                  <MapPreviewFallback placeCount={mapPreviewData.places.length} compact />
                                 )}
                               </div>
                             ) : (
@@ -1434,8 +1456,7 @@ const PublicHome = memo(() => {
                                     if (slide.isMap) {
                                       handleMapNavigation();
                                     } else {
-                                      const slug = toUrlSlug(slide.title);
-                                      navigate(`/${username}/places/${slug}`);
+                                      navigate(`/${username}/places/${(slide.city?.slug || toUrlSlug(slide.title))}`);
                                     }
                                   }}
                                 >
@@ -1452,8 +1473,13 @@ const PublicHome = memo(() => {
               </>
             )}
 
-            {/* Check if user has any visible recommendation lists */}
-            {PublishedCities && PublishedCities.length > 0 ? (
+            {isPlacesCategoryPending ? (
+              <div aria-busy="true" aria-label="Loading places" className="mx-auto w-full max-w-4xl px-4 py-12">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
+                  <RecommendationCardSkeleton count={6} />
+                </div>
+              </div>
+            ) : hasPublishedPlaces ? (
               <>
                 <ShareModal
                   shareButtons={shareButtons}
@@ -1461,9 +1487,7 @@ const PublicHome = memo(() => {
                   onClose={() => setShowShareModal(false)}
                   url={
                     selectedCity?.List_Name
-                      ? `${url}/${username}/places/${toUrlSlug(
-                        selectedCity.List_Name
-                      )}`
+                      ? `${url}/${username}/places/${(selectedCity.slug || toUrlSlug(selectedCity.List_Name))}`
                       : `${url}/${username}/places`
                   }
                   utmParams={utmParams}
@@ -1482,11 +1506,8 @@ const PublicHome = memo(() => {
                   <div className="px-4 max-w-4xl mx-auto w-full pb-16">
                     <div className="flex flex-col gap-8">
                       {PublishedCities.map((city: any, idx: number) => {
-                        const citySlug = toUrlSlug(city.List_Name || "");
+                        const citySlug = (city.slug || toUrlSlug(city.List_Name || ""));
                         const placesList = city.recommended_places || [];
-                        const count = placesList.length;
-
-                        if (count === 0) return null;
 
                         return (
                           <div key={city.documentId || idx} className="flex flex-col gap-3">
@@ -1494,7 +1515,7 @@ const PublicHome = memo(() => {
                               <div className="flex flex-col gap-0.5 max-w-[75%]">
                                 <h2
                                   onClick={() => navigate(`/${username}/places/${citySlug}`)}
-                                  className="text-base font-extrabold text-white cursor-pointer hover:text-blue-500 transition-colors duration-200 flex items-center gap-1.5"
+                                  className="text-base font-extrabold text-[var(--category-text,#FFFFFF)] cursor-pointer hover:text-[var(--category-text,#3B82F6)] transition-colors duration-200 flex items-center gap-1.5"
                                 >
                                   <svg
                                     xmlns="http://www.w3.org/2000/svg"
@@ -1513,7 +1534,7 @@ const PublicHome = memo(() => {
                               </div>
                               <button
                                 onClick={() => navigate(`/${username}/places/${citySlug}`)}
-                                className="text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors flex items-center gap-0.5 border-none bg-transparent cursor-pointer"
+                                className="text-xs font-bold text-[var(--category-text,#3B82F6)] hover:text-[var(--category-text,#60A5FA)] transition-colors flex items-center gap-0.5 border-none bg-transparent cursor-pointer"
                               >
                                 See All ➔
                               </button>
@@ -1529,7 +1550,7 @@ const PublicHome = memo(() => {
                                 return (
                                   <PublicPlaceCard
                                     key={place.documentId}
-                                    onClickhandler={() =>
+                                    onAction={() =>
                                       setIsExpanded({
                                         visible: true,
                                         documentId: place.documentId,
@@ -1539,10 +1560,12 @@ const PublicHome = memo(() => {
                                     image={
                                       isPersonType
                                         ? getPersonImageUrl(place)
-                                        : (place?.media_details?.thumbnail?.url ||
-                                          place?.Media?.[0]?.url ||
-                                          place?.Place_Details?.Photos?.[0] ||
-                                          IMAGE_CONFIG.defaultImages.place)
+                                        : resolvePublicPlaceImage({
+                                          itemMedia: place?.Media,
+                                          itemThumbnail: place?.media_details?.thumbnail,
+                                          itemPhotos: place?.Place_Details?.Photos,
+                                          parentListThumbnail: city?.List_Name_Details?.thumbnail,
+                                        })
                                     }
                                     title={isPersonType ? (place.Contact_Name || "") : (place.Place_Details?.Title || "")}
                                     rating={!isPersonType ? place.Place_Details?.Rating : undefined}
@@ -1563,25 +1586,25 @@ const PublicHome = memo(() => {
                   <div className="max-w-4xl mx-auto w-full px-4 pb-16">
                     <div className="flex flex-col gap-4">
                       {/* Sticky Top Header Info with Back arrow button directly above */}
-                      <div className="flex flex-col border-b border-white/10 pb-4 mb-2">
+                      <div className="flex flex-col border-b border-[var(--category-control-border,rgba(255,255,255,0.1))] pb-4 mb-2">
                         <button
                           onClick={() => navigate(`/${username}/places`)}
-                          className="text-xs font-bold text-white/50 hover:text-white flex items-center gap-1.5 pt-4 mb-2 w-fit bg-transparent border-none p-0 cursor-pointer"
+                          className="text-xs font-bold text-[var(--category-muted,rgba(255,255,255,0.5))] hover:text-[var(--category-text,#FFFFFF)] flex items-center gap-1.5 pt-4 mb-2 w-fit bg-transparent border-none p-0 cursor-pointer"
                         >
                           <ArrowLeft className="w-3.5 h-3.5" />
                           {username}'s Places
                         </button>
-                        <h2 className="text-2xl font-black text-white leading-tight">
+                        <h2 className="text-2xl font-black text-[var(--category-text,#FFFFFF)] leading-tight">
                           {selectedCityName}
                         </h2>
-                        <p className="text-xs text-white/50 leading-relaxed mt-1">
+                        <p className="text-xs text-[var(--category-muted,rgba(255,255,255,0.5))] leading-relaxed mt-1">
                           {locationNote || "Explore my curated recommendations."}
                         </p>
                       </div>
 
                       {/* Tab Switcher */}
                       {(filteredPlaces?.length > 0 || linkedPeople.length > 0 || linkedProducts.length > 0) && (
-                        <div className="flex gap-1 p-1 bg-white/5 border border-white/10 rounded-xl w-fit mb-4">
+                        <div className="flex gap-1 p-1 bg-[var(--category-card,rgba(255,255,255,0.05))] border border-[var(--category-control-border,rgba(255,255,255,0.1))] rounded-xl w-fit mb-4">
                           {([
                             { key: "places", label: "Places", count: filteredPlaces?.length || 0 },
                             { key: "people", label: "People", count: linkedPeople.length },
@@ -1592,14 +1615,14 @@ const PublicHome = memo(() => {
                               onClick={() => setActiveTab(key)}
                               className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 ${
                                 activeTab === key
-                                  ? "bg-blue-600 text-white shadow-lg shadow-blue-900/30"
-                                  : "text-gray-400 hover:text-white"
+                                  ? "bg-[var(--category-accent,#2563EB)] text-[var(--category-accent-ink,#FFFFFF)] shadow-lg shadow-blue-900/30"
+                                  : "text-[var(--category-muted,#9CA3AF)] hover:text-[var(--category-text,#FFFFFF)]"
                               }`}
                             >
                               {label}
                               {count > 0 && (
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                                  activeTab === key ? "bg-white/20" : "bg-white/10"
+                                  activeTab === key ? categoryStyles ? "bg-[var(--category-panel)] text-[var(--category-text)]" : "bg-[var(--category-card,rgba(255,255,255,0.2))]" : "bg-[var(--category-card,rgba(255,255,255,0.1))]"
                                 }`}>{count}</span>
                               )}
                             </button>
@@ -1647,7 +1670,7 @@ const PublicHome = memo(() => {
                                   return (
                                     <PublicPlaceCard
                                       key={place.documentId}
-                                      onClickhandler={() =>
+                                      onAction={() =>
                                         setIsExpanded({
                                           visible: true,
                                           documentId: place.documentId,
@@ -1658,10 +1681,12 @@ const PublicHome = memo(() => {
                                       image={
                                         isPersonType
                                           ? getPersonImageUrl(place)
-                                          : (place?.media_details?.thumbnail?.url ||
-                                            place?.Media?.[0]?.url ||
-                                            place?.Place_Details?.Photos?.[0] ||
-                                            IMAGE_CONFIG.defaultImages.place)
+                                          : resolvePublicPlaceImage({
+                                            itemMedia: place?.Media,
+                                            itemThumbnail: place?.media_details?.thumbnail,
+                                            itemPhotos: place?.Place_Details?.Photos,
+                                            parentListThumbnail: selectedCity?.List_Name_Details?.thumbnail,
+                                          })
                                       }
                                       title={isPersonType ? (place.Contact_Name || "") : (place.Place_Details?.Title || "")}
                                       rating={!isPersonType ? place.Place_Details?.Rating : undefined}
@@ -1669,14 +1694,13 @@ const PublicHome = memo(() => {
                                     />
                                   );
                                 })}
-                                {/* Observer target for infinite scroll */}
-                                <div ref={desktopObserverTarget} className="h-10 w-full col-span-2" />
                               </>
                             ) : (
-                              <h1 className="flex text-white items-center justify-center font-poppins font-semibold col-span-2 py-8">
+                              <h1 className="flex text-[var(--category-text,#FFFFFF)] items-center justify-center font-poppins font-semibold col-span-2 py-8">
                                 No Recommendation Available.
                               </h1>
                             )}
+                            <PublicScrollContinuation {...detailPage} label="places" className="col-span-full" />
                           </div>
                         </>
                       )}
@@ -1685,22 +1709,23 @@ const PublicHome = memo(() => {
                       {activeTab === "people" && (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-4">
                           {linkedPeople.length === 0 ? (
-                            <h1 className="flex text-white items-center justify-center font-poppins font-semibold col-span-3 py-8">
+                            <h1 className="flex text-[var(--category-text,#FFFFFF)] items-center justify-center font-poppins font-semibold col-span-3 py-8">
                               No People linked to this location.
                             </h1>
                           ) : (
                             linkedPeople.map((person: any, index: number) => {
+                              const personName = person.name || person.full_name || person.title;
                               const avatarSrc = person.media_details?.thumbnail?.url || person.media_details?.imageDetails?.[0]?.url || (person.avatar_path ? buildImageUrl(person.avatar_path) : null) || null;
                               return (
                                 <div
                                   key={person.documentId || `linked-person-${index}`}
-                                  className="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col gap-3 hover:border-blue-500/40 transition-all cursor-pointer"
-                                  onClick={() => setSelectedPerson(person)}
+                                  className="bg-[var(--category-card,rgba(255,255,255,0.05))] border border-[var(--category-control-border,rgba(255,255,255,0.05))] rounded-xl p-4 flex flex-col gap-3 hover:border-[var(--category-control-border,rgba(59,130,246,0.4))] transition-all cursor-pointer"
+                                  onClick={() => setPersonSelection({ scope: linkedModalScope, documentId: person.documentId, listId: person._listId })}
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-violet-950/40 ring-2 ring-white/10">
                                       {avatarSrc ? (
-                                        <img src={avatarSrc} alt={person.name} className="w-full h-full object-cover" loading="lazy" />
+                                        <img src={avatarSrc} alt={personName} className="w-full h-full object-cover" loading="lazy" />
                                       ) : (
                                         <div className="w-full h-full flex items-center justify-center bg-violet-900/20">
                                           <Users size={16} className="text-violet-400/40" />
@@ -1708,8 +1733,8 @@ const PublicHome = memo(() => {
                                       )}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <p className="font-semibold text-sm text-white truncate">{person.name}</p>
-                                      {person.headline && <p className="text-xs text-gray-400 truncate">{person.headline}</p>}
+                                      <p className="font-semibold text-sm text-[var(--category-text,#FFFFFF)] truncate">{personName}</p>
+                                      {person.headline && <p className="text-xs text-[var(--category-muted,#9CA3AF)] truncate">{person.headline}</p>}
                                     </div>
                                   </div>
                                   {person.skills_tags && person.skills_tags.length > 0 && (
@@ -1719,7 +1744,7 @@ const PublicHome = memo(() => {
                                       ))}
                                     </div>
                                   )}
-                                  <p className="text-[10px] text-gray-500">List: {person._listName}</p>
+                                  <p className="text-[10px] text-[var(--category-muted,#6B7280)]">List: {person._listName}</p>
                                 </div>
                               );
                             })
@@ -1731,17 +1756,17 @@ const PublicHome = memo(() => {
                       {activeTab === "products" && (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-4">
                           {linkedProducts.length === 0 ? (
-                            <h1 className="flex text-white items-center justify-center font-poppins font-semibold col-span-3 py-8">
+                            <h1 className="flex text-[var(--category-text,#FFFFFF)] items-center justify-center font-poppins font-semibold col-span-3 py-8">
                               No Products linked to this location.
                             </h1>
                           ) : (
                             linkedProducts.map((product: any, index: number) => (
                               <div
                                 key={product.documentId || `linked-product-${index}`}
-                                className="bg-white/5 border border-white/5 rounded-xl overflow-hidden hover:border-blue-500/40 transition-all cursor-pointer flex flex-col justify-between"
-                                onClick={() => setSelectedProduct(product)}
+                                className="bg-[var(--category-card,rgba(255,255,255,0.05))] border border-[var(--category-control-border,rgba(255,255,255,0.05))] rounded-xl overflow-hidden hover:border-[var(--category-control-border,rgba(59,130,246,0.4))] transition-all cursor-pointer flex flex-col justify-between"
+                                onClick={() => setProductSelection({ scope: linkedModalScope, documentId: product.documentId, listId: product._listId })}
                               >
-                                <div className="h-32 bg-black/40 flex items-center justify-center overflow-hidden">
+                                <div className="h-32 bg-[var(--category-card,rgba(0,0,0,0.4))] flex items-center justify-center overflow-hidden">
                                   {product.logo_url ? (
                                     <img src={product.logo_url} alt={product.title} className="h-full w-full object-cover" loading="lazy" />
                                   ) : (
@@ -1749,12 +1774,12 @@ const PublicHome = memo(() => {
                                   )}
                                 </div>
                                 <div className="p-3">
-                                  <p className="font-semibold text-sm text-white truncate">{product.title}</p>
-                                  {product.brand && <p className="text-xs text-gray-400 truncate">{product.brand}</p>}
+                                  <p className="font-semibold text-sm text-[var(--category-text,#FFFFFF)] truncate">{product.title}</p>
+                                  {product.brand && <p className="text-xs text-[var(--category-muted,#9CA3AF)] truncate">{product.brand}</p>}
                                   {product.price != null && (
-                                    <p className="text-xs text-blue-400 font-semibold mt-1">{product.currency || ""} {product.price}</p>
+                                    <p className="text-xs text-[var(--category-accent,#60A5FA)] font-semibold mt-1">{product.currency || ""} {product.price}</p>
                                   )}
-                                  <p className="text-[10px] text-gray-500 mt-1">List: {product._listName}</p>
+                                  <p className="text-[10px] text-[var(--category-muted,#6B7280)] mt-1">List: {product._listName}</p>
                                 </div>
                               </div>
                             ))
@@ -1767,7 +1792,7 @@ const PublicHome = memo(() => {
 
                 {/* Floating Map Toggle button - Glassy Blue FAB */}
                 {PublishedCities && PublishedCities.length > 0 && (
-                  <div className="fixed bottom-[4.2rem] md:bottom-16 left-1/2 -translate-x-1/2 z-40 bg-black/35 rounded-full p-1 backdrop-blur-md border border-white/10 shadow-lg shadow-blue-500/20 transition-all duration-300">
+                  <div className="fixed bottom-[4.2rem] md:bottom-16 left-1/2 -translate-x-1/2 z-40 bg-[var(--category-card,rgba(0,0,0,0.35))] rounded-full p-1 backdrop-blur-md border border-[var(--category-control-border,rgba(255,255,255,0.1))] shadow-lg shadow-blue-500/20 transition-all duration-300">
                     <Button
                       startIcon={
                         <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className="mr-1">
@@ -1778,7 +1803,7 @@ const PublicHome = memo(() => {
                       variant="primary"
                       size="xsmall"
                       onClickHandler={handleMapNavigation}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold tracking-wide rounded-full px-5 py-2 hover:scale-105 transition-all duration-200"
+                      className="bg-[var(--category-accent,#2563EB)] hover:bg-[var(--category-accent,#1D4ED8)] text-[var(--category-accent-ink,#FFFFFF)] font-bold tracking-wide rounded-full px-5 py-2 hover:scale-105 transition-all duration-200"
                     />
                   </div>
                 )}
@@ -1797,39 +1822,52 @@ const PublicHome = memo(() => {
                   />
                 )}
 
-                {isExpanded.visible && (
-                  <div className="fixed inset-0 bg-black md:bg-opacity-40 md:backdrop-blur-md z-[150]"></div>
-                )}
-                <div
-                  className={`fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-0 z-[150] transition-transform duration-300 ease-in-out overflow-x-hidden ${isExpanded.visible ? "translate-y-0" : "translate-y-full"
-                    }`}
-                >
+                <AnimatePresence>
                   {isExpanded.visible && (
-                    <PlaceOverview
-                      placeId={isExpanded.documentId}
-                      onClose={() =>
-                        setIsExpanded({ visible: false, documentId: null, type: null })
-                      }
-                      isPublicProfile={true}
-                    />
+                    <PublicBlockingOverlay
+                      key="public-place-details"
+                      label="Place details"
+                      onClose={() => setIsExpanded({ visible: false, documentId: null, type: null })}
+                      returnFocusRef={placeOverlayOpenerRef}
+                    >
+                      <div className="fixed inset-0 bg-black md:bg-opacity-40 md:backdrop-blur-md z-[150]" />
+                      <motion.div
+                        initial={{ y: "100%" }}
+                        animate={{ y: 0 }}
+                        exit={{ y: "100%" }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        className="fixed md:max-w-4xl md:mx-auto inset-x-0 bottom-0 top-0 z-[150] overflow-x-hidden"
+                      >
+                        <PlaceOverview
+                          placeId={isExpanded.documentId}
+                          publicPlace={expandedPlace as Record<string, unknown>}
+                          parentListThumbnail={selectedCity?.List_Name_Details?.thumbnail}
+                          onClose={() =>
+                            setIsExpanded({ visible: false, documentId: null, type: null })
+                          }
+                          isPublicProfile={true}
+                          scrollLockOwner="wrapper"
+                        />
+                      </motion.div>
+                    </PublicBlockingOverlay>
                   )}
-                </div>
+                </AnimatePresence>
 
                 {/* Product Detail Modal */}
                 <ProductDetailModal
                   open={!!selectedProduct}
                   product={selectedProduct}
-                  onClose={() => setSelectedProduct(null)}
+                  onClose={() => setProductSelection(null)}
                 />
 
                 {/* Person Detail Modal */}
                 <PersonDetailModal
                   open={!!selectedPerson}
                   person={selectedPerson}
-                  onClose={() => setSelectedPerson(null)}
+                  onClose={() => setPersonSelection(null)}
                 />
               </>
-            ) : (
+            ) : hasSettledEmptyPlacesCategory ? (
               /* Empty State - Show consistent profile with 0 places and 0 contributions */
               <>
                 <ShareModal
@@ -1846,10 +1884,10 @@ const PublicHome = memo(() => {
                 {/* Empty State Content */}
                 <div className="flex-grow flex flex-col items-center justify-center px-4 py-16">
                   <div className="text-center max-w-md">
-                    <h3 className="text-xl font-poppins font-semibold text-white mb-4">
+                    <h3 className="text-xl font-poppins font-semibold text-[var(--category-text,#FFFFFF)] mb-4">
                       No Places Yet
                     </h3>
-                    <p className="text-gray-400 text-sm mb-8">
+                    <p className="text-[var(--category-muted,#9CA3AF)] text-sm mb-8">
                       {accountData?.Account_Name} hasn't shared any
                       recommendations yet. Check back later for amazing places
                       to discover!
@@ -1865,21 +1903,23 @@ const PublicHome = memo(() => {
                   </div>
                 </div>
               </>
-            )}
+            ) : null}
           </>
         ) : (
           /* Profile not found */
           <div className="flex items-center justify-center min-h-screen">
-            <div className="text-white text-center">
+            <div className="text-[var(--category-text,#FFFFFF)] text-center">
               <h2 className="text-lg font-poppins font-semibold mb-2">
                 Profile not found
               </h2>
-              <p className="text-gray-400 text-sm">
+              <p className="text-[var(--category-muted,#9CA3AF)] text-sm">
                 This user profile is not available.
               </p>
             </div>
           </div>
         )}
+
+        {!placeSlug && <PublicScrollContinuation {...categoryPage} label="city lists" />}
 
         {/* CircularPlacesModal */}
         {showAllPlaces && (
@@ -1895,4 +1935,4 @@ const PublicHome = memo(() => {
   );
 });
 
-export default PublicHome;
+export default withGoogleMapsProvider(PublicHome);

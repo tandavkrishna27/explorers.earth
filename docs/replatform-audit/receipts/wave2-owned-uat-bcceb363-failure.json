@@ -1,0 +1,43 @@
+{
+  "version": "wave2-owned-uat-failure/v1",
+  "commit": "bcceb36375af145d541b0a67f2bbcc57fa2bf266",
+  "sourceHash": "5fd8913520c172ee25a8806c857bc9cf5a4e4effda9d6fbc0c4548cd6e23dc6e",
+  "manifestHash": "20f40465234da0dc3f0f67621e8ba6629ea1aecb22ad779884265153fac93cd5",
+  "dirtyAtStart": false,
+  "exitCode": 1,
+  "qualification": "failed",
+  "rawSanitizedLogSha256": "7b5d878c0993be3b310a7249dd575dd8f130f4f03342c700c1b5d5d54628fa96",
+  "observedVitestSummary": {
+    "files": 21,
+    "filesPassed": 3,
+    "filesFailed": 18,
+    "tests": 242,
+    "passed": 94,
+    "failed": 50,
+    "downstreamSkipped": 98
+  },
+  "firstFailure": {
+    "file": "server/test/migrations/music-migration.integration.test.ts",
+    "title": "fails closed on checksum changes, catalog drift, missing/future migrations, and unversioned application tables",
+    "kind": "postgres-wal-enospc",
+    "site": {
+      "line": 42,
+      "column": 3
+    },
+    "callsite": {
+      "line": 784,
+      "column": 22
+    },
+    "temporaryFilesystemLimitBytes": 536870912
+  },
+  "cleanup": {
+    "exactOwnedContainerAbsentAfterRun": true,
+    "databaseDrop": "unproven",
+    "passingProducerEnvelope": false
+  },
+  "evidenceLimits": [
+    "Counts are observed sanitized child summary, not a passing finalized producer envelope.",
+    "New canonical Music regressions failed downstream and did not qualify behavior.",
+    "No browser run on this commit."
+  ]
+}

@@ -49,14 +49,19 @@
         "explorers story",
         "who we are explorers"
       ],
-      "title": "Explorers of Earth | About Us"
+      "title": "Explorers of Earth | About Us",
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
     },
     "subtitle": {
       "line1": "İnsanlar, kültür ve paylaştığımız gezegen için özenle keşfeden insanların küresel topluluğu.",
       "line2": "Keşif bizim için ne kadar uzağa gittiğimizle ilgili değil.",
       "line3": "Ne kadar derin bağlandığımızla ilgili."
     },
-    "title": "Dünyanın Kaşifleri"
+    "title": "Dünyanın Kaşifleri",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe"
   },
   "analytics": {
     "dashboard": {
@@ -268,7 +273,6 @@
       "message": "This account has been deactivated.",
       "reactivateLink": "Click here to reactivate your account →"
     },
-    "claimAccount": "Claim Account?",
     "confirmPassword": "Şifreyi Onayla",
     "confirmPasswordPlaceholder": "Şifrenizi tekrar girin",
     "email": "E-posta",
@@ -325,7 +329,8 @@
         "mobileNumberPlaceholder": "Cep telefonu numaranızı girin",
         "next": "İleri",
         "title": "İletişim Detayları"
-      }
+      },
+      "stepCount": "Step {{current}} of {{total}}"
     },
     "or": "veya",
     "password": "Şifre",
@@ -340,8 +345,7 @@
     "signupSubtitle": "explorers özelliklerinin keyfini çıkarmak için kayıt olun",
     "signUpWithGoogle": "Google ile Kayıt Ol",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Kullanıcı Adı",
@@ -775,6 +779,12 @@
       "addLocation": "Add Location",
       "addLocationLabel": "Add",
       "addRecommendations": "Öneriler Ekle",
+      "analytics": {
+        "ariaLabel": "{{label}}: {{value}}",
+        "loading": "Loading",
+        "unavailable": "Unavailable",
+        "viewsLast90Days": "Views · last 90 days"
+      },
       "draft": "Taslak",
       "error": {
         "message": "An error occurred while loading your data",
@@ -937,6 +947,97 @@
       "tabs": {
         "account": "Hesap",
         "publicProfile": "Halka Açık Profil"
+      },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "{{category}} taşıma işlemi iptal edildi. Sıra geri yüklendi.",
+          "drop": "{{category}}, {{total}} içinde {{position}}. konuma bırakıldı.",
+          "handle": "{{category}} öğesini sürükle",
+          "instructions": "Kaldırmak için Boşluk veya Enter tuşuna basın. Taşımak için ok tuşlarını ya da Home ve End tuşlarını kullanın. Bırakmak için Boşluk veya Enter, iptal etmek için Escape tuşuna basın.",
+          "lift": "{{category}} kaldırıldı. {{total}} içinde {{position}}. konum.",
+          "move": "{{category}}, {{total}} içinde {{position}}. konuma taşındı."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
+      },
+      "themeAppearance": {
+        "accentTitle": "Accent color",
+        "firstView": {
+          "business": "Business",
+          "categoryFirst": "Recommendations — {{category}} first",
+          "gallery": "Gallery",
+          "help": "Category choices promote that category but keep all other public categories.",
+          "label": "First view",
+          "savedOrder": "Recommendations — saved order"
+        },
+        "presetTitle": "Select theme preset",
+        "recommendations": {
+          "categories": {
+            "apps": "Apps & Tools",
+            "books": "Books",
+            "games": "Games",
+            "guides": "Guides",
+            "movies": "Movies & Shows",
+            "music": "Music",
+            "people": "People",
+            "places": "Places",
+            "products": "Products"
+          },
+          "featured": "Featured",
+          "help": "Choose how recommendation categories are arranged on your public profile.",
+          "layoutLegend": "Recommendations layout",
+          "layouts": {
+            "featured": {
+              "description": "A larger first category followed by compact rows.",
+              "label": "Featured First"
+            },
+            "grid": {
+              "description": "A compact grid that makes categories easy to scan.",
+              "label": "Category Mosaic"
+            },
+            "shelves": {
+              "description": "Horizontal shelves with recommendation previews.",
+              "label": "Classic Shelves"
+            }
+          },
+          "moved": "{{category}} moved to position {{position}} of {{total}}",
+          "moveDown": "Move {{category}} down",
+          "moveUp": "Move {{category}} up",
+          "orderHelp": "Move categories into the order visitors should scan them.",
+          "orderTitle": "Category order",
+          "position": "{{position}} of {{total}}",
+          "previewCaption": "Illustrative preview",
+          "previewLabel": "Recommendations layout preview",
+          "publicVisibilityNote": "Public Visibility controls whether a category appears.",
+          "title": "Recommendations presentation"
+        },
+        "wallpaperLabel": "Wallpaper and cover style",
+        "wallpaperOptions": {
+          "ambientGradient": "Ambient mesh gradient",
+          "bannerTop": "Top cover banner photo",
+          "fullWallpaperImage": "Full-screen background image",
+          "solidColor": "Solid minimal background"
+        }
       }
     },
     "recommendations": {
@@ -1115,7 +1216,8 @@
         "listVisibilityError": "Öneri listesi görünürlüğü güncellenemedi.",
         "qrDownloadError": "QR kodu indirilemedi. Lütfen tekrar deneyin.",
         "qrDownloadSuccess": "QR kodu başarıyla indirildi!",
-        "qrNotReady": "QR kodu indirme için hazır değil"
+        "qrNotReady": "QR kodu indirme için hazır değil",
+        "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "Yerel gibi seyahat et",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -1163,7 +1265,8 @@
       "privacy": "Gizlilik Politikası",
       "cookies": "Çerez Politikası",
       "product": "Ürün",
-      "shareAnywhere": "Her yerde paylaşın"
+      "shareAnywhere": "Her yerde paylaşın",
+      "useCases": "Use Cases"
     },
     "copyright": "© 2025 kaşifler. Her hakkı saklıdır.",
     "madeWithLove": "Yeryüzünde sevgiyle yaratıldı",
@@ -1179,7 +1282,8 @@
       "product": "Ürün",
       "share": "Paylaşmak",
       "openMenu": "Gezinme menüsünü aç",
-      "closeMenu": "Gezinme menüsünü kapat"
+      "closeMenu": "Gezinme menüsünü kapat",
+      "useCases": "Use Cases"
     },
     "auth": {
       "login": "Giriş Yap",
@@ -1324,16 +1428,16 @@
       },
       "steps": [
         {
-          "title": "Önerdiklerinizi ekleyin",
-          "body": "Yerler, kişiler, ürünler, kitaplar, filmler, şovlar, müzik, oyunlar, uygulamalar, kılavuzlar ve notlar."
+          "body": "Yerler, kişiler, ürünler, kitaplar, filmler, şovlar, müzik, oyunlar, uygulamalar, kılavuzlar ve notlar.",
+          "title": "Önerdiklerinizi ekleyin"
         },
         {
-          "title": "Kendi yönteminizle düzenleyin",
-          "body": "İnsanların doğal bir şekilde keşfedebilmesi için şehre, temaya, listeye, kategoriye, yolculuğa veya ana göre gruplandırın."
+          "body": "İnsanların doğal bir şekilde keşfedebilmesi için şehre, temaya, listeye, kategoriye, yolculuğa veya ana göre gruplandırın.",
+          "title": "Kendi yönteminizle düzenleyin"
         },
         {
-          "title": "Bir bağlantı paylaşın veya QR",
-          "body": "Aynı bağlantı ve QR her yerde çalışmaya devam ederken sayfanız istediğiniz zaman güncellenir."
+          "body": "Aynı bağlantı ve QR her yerde çalışmaya devam ederken sayfanız istediğiniz zaman güncellenir.",
+          "title": "Bir bağlantı paylaşın veya QR"
         }
       ]
     },
@@ -1352,20 +1456,20 @@
       "tokyoFoodGuide": "Tokyo yemek rehberim explorers.earth/jane",
       "cards": [
         {
-          "title": "Bağlantı bio'da",
-          "eyebrow": "Profile hazır"
+          "eyebrow": "Profile hazır",
+          "title": "Bağlantı bio'da"
         },
         {
-          "title": "QR kodları",
-          "eyebrow": "Çevrimdışı kullanıma hazır"
+          "eyebrow": "Çevrimdışı kullanıma hazır",
+          "title": "QR kodları"
         },
         {
-          "title": "Mesajlar",
-          "eyebrow": "Sohbete hazır"
+          "eyebrow": "Sohbete hazır",
+          "title": "Mesajlar"
         },
         {
-          "title": "Hoş geldiniz rehberleri",
-          "eyebrow": "Konuk hazır"
+          "eyebrow": "Konuk hazır",
+          "title": "Hoş geldiniz rehberleri"
         }
       ],
       "visual": {
@@ -1408,49 +1512,6 @@
       "earnedThisMonth": "Bu ay kazanılan",
       "passiveTitle": "Önerileri pasif ödüllere dönüştürün",
       "networkTitle": "Ağınızı oluşturun ve otomatik kazanın"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Keşfederken dinleyin",
-      "body": "Keşif sadece görsel değildir. Ses hafıza, bağlam ve duygu taşır.\n\nTunes, yerler, yolculuklar ve ruh halleri için müzik parçaları toplamanıza ve paylaşmanıza olanak tanır — yolda keşfedilen müzik olsun veya sizin için bir yeri tanımlayan sesler olsun.\n\nExplorer profilinizle sorunsuz bir şekilde bağlanır.",
-      "exploreButton": "Tunes'u Keşfet",
-      "featuresHeading": "Güçlü Özellikler",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Gerçek Zamanlı İşbirliği",
-          "description": "Misafirlerin çalma listenize anında şarkı eklemesine izin verin, çalan içeriği tam kontrol altında tutun."
-        },
-        "qrCodeSharing": {
-          "title": "QR Kod Paylaşımı",
-          "description": "Basit bir QR kod taramasıyla müzik deneyiminizi paylaşın — uygulama veya indirme gerekmez."
-        },
-        "youtubeIntegration": {
-          "title": "YouTube Entegrasyonu",
-          "description": "Milyonlarca şarkıya erişmek ve mükemmel atmosferi yaratmak için YouTube ile sorunsuz bir şekilde entegre olun."
-        },
-        "voteLikeSystem": {
-          "title": "Oylama ve Beğeni Sistemi",
-          "description": "Misafirler favori şarkılarına oy vererek çalma listesi kuyruğunu gerçek zamanlı olarak etkileyebilir."
-        },
-        "silentParties": {
-          "title": "Sessiz Partiler",
-          "description": "Herkesin kendi kulaklıklarından dinlediği benzersiz sessiz partiler düzenleyin."
-        },
-        "karaokeReady": {
-          "title": "Karaoke Hazır",
-          "description": "İşbirlikçi çalma listeleri ve gerçek zamanlı şarkı istekleriyle karaoke geceleri için mükemmel."
-        }
-      },
-      "venueHeading": "Her Mekan İçin Mükemmel",
-      "venues": {
-        "barsPubs": "Barlar ve Pub'lar",
-        "restaurants": "Restoranlar",
-        "coffeeShops": "Kahve Dükkanları",
-        "eventsWeddings": "Etkinlikler ve Düğünler",
-        "retailStores": "Perakende Mağazalar",
-        "gymsFitness": "Spor Salonları ve Fitness"
-      },
-      "closingStatement": "Tunes keşfetmek için <strong>ücretsiz</strong>dir ve ücretli özellikler için daha sonra yükseltebilirsiniz."
     },
     "whoIsFor": {
       "headline": "Zevkleri başkalarına yardımcı olan insanlar için tasarlandı.",
@@ -1532,7 +1593,23 @@
         "Havalimanları",
         "STK'lar",
         "Hükümet ekipleri"
-      ]
+      ],
+      "explore": "See this perspective",
+      "eyebrow": "Ways to use explorers",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
+        },
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
+        },
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
+        }
+      }
     },
     "testimonials": {
       "headline": "Gezginler, yaratıcılar ve ev sahipleri tarafından sevilir",
@@ -1542,45 +1619,45 @@
       "items": [
         {
           "id": "1",
-          "name": "Priya Sharma",
-          "role": "Seyahat Blogcusu",
           "location": "Mumbai, Hindistan",
-          "quote": "kaşifler seyahat bilgilerimi paylaşma biçimimi değiştirdi. Takipçilerim, özenle seçilmiş önerilerime anında erişmeyi seviyor!"
+          "name": "Priya Sharma",
+          "quote": "kaşifler seyahat bilgilerimi paylaşma biçimimi değiştirdi. Takipçilerim, özenle seçilmiş önerilerime anında erişmeyi seviyor!",
+          "role": "Seyahat Blogcusu"
         },
         {
           "id": "2",
-          "name": "Raj Patel",
-          "role": "Airbnb Ana Bilgisayar",
           "location": "Delhi, Hindistan",
-          "quote": "Misafirlerim, karşılama kitlerindeki kişiselleştirilmiş QR kodunu kesinlikle seviyorlar. Bu benim imza dokunuşum haline geldi!"
+          "name": "Raj Patel",
+          "quote": "Misafirlerim, karşılama kitlerindeki kişiselleştirilmiş QR kodunu kesinlikle seviyorlar. Bu benim imza dokunuşum haline geldi!",
+          "role": "Airbnb Ana Bilgisayar"
         },
         {
           "id": "3",
-          "name": "Yuki Tanaka",
-          "role": "Restoran Sahibi",
           "location": "Tokyo, Japonya",
-          "quote": "Diğer yerel noktaları önermek için kaşiflerimizi müşterilerimizle paylaşıyoruz. Harika topluluk bağlantıları yarattı."
+          "name": "Yuki Tanaka",
+          "quote": "Diğer yerel noktaları önermek için kaşiflerimizi müşterilerimizle paylaşıyoruz. Harika topluluk bağlantıları yarattı.",
+          "role": "Restoran Sahibi"
         },
         {
           "id": "4",
-          "name": "Maria Silva",
-          "role": "Tur Rehberi",
           "location": "São Paulo, Brezilya",
-          "quote": "kaşifler uzmanlığımı tur saatlerinin ötesine taşımama yardımcı oluyor. Müşteriler önerilerime istedikleri zaman erişebilirler!"
+          "name": "Maria Silva",
+          "quote": "kaşifler uzmanlığımı tur saatlerinin ötesine taşımama yardımcı oluyor. Müşteriler önerilerime istedikleri zaman erişebilirler!",
+          "role": "Tur Rehberi"
         },
         {
           "id": "5",
-          "name": "James Wilson",
-          "role": "Seyahat Etkileyici",
           "location": "Sidney, Avustralya",
-          "quote": "Bir seyahat fenomeni olarak kaşifler, favori yerlerimi izleyicilerimle paylaşmayı çok kolaylaştırıyor. QR kodu özelliği harika!"
+          "name": "James Wilson",
+          "quote": "Bir seyahat fenomeni olarak kaşifler, favori yerlerimi izleyicilerimle paylaşmayı çok kolaylaştırıyor. QR kodu özelliği harika!",
+          "role": "Seyahat Etkileyici"
         },
         {
           "id": "6",
-          "name": "Sophie Martin",
-          "role": "Yerel Rehber",
           "location": "Paris, Fransa",
-          "quote": "Müşterilerime yürüyüş turları oluşturmak için kaşifleri kullanıyorum. QR'ı tarayabilir ve kendi hızlarında keşfedebilirler!"
+          "name": "Sophie Martin",
+          "quote": "Müşterilerime yürüyüş turları oluşturmak için kaşifleri kullanıyorum. QR'ı tarayabilir ve kendi hızlarında keşfedebilirler!",
+          "role": "Yerel Rehber"
         }
       ]
     },
@@ -1591,24 +1668,24 @@
       "error": "SSS yüklenirken hata oluştu. Lütfen daha sonra tekrar deneyin.",
       "fallbackItems": [
         {
-          "Sequence": 1,
+          "Answer": "Yerler, kişiler, ürünler, kitaplar, filmler, şovlar, müzik, oyunlar, uygulamalar, kılavuzlar ve notlar.",
           "Question": "Explorer sayfama neler ekleyebilirim?",
-          "Answer": "Yerler, kişiler, ürünler, kitaplar, filmler, şovlar, müzik, oyunlar, uygulamalar, kılavuzlar ve notlar."
+          "Sequence": 1
         },
         {
-          "Sequence": 2,
+          "Answer": "Evet. Explorer sayfanız profiller, mesajlar, tablolar, kartlar ve basılı kılavuzlar için bir bağlantı veya QR olarak paylaşılabilir.",
           "Question": "QR koduyla paylaşabilir miyim?",
-          "Answer": "Evet. Explorer sayfanız profiller, mesajlar, tablolar, kartlar ve basılı kılavuzlar için bir bağlantı veya QR olarak paylaşılabilir."
+          "Sequence": 2
         },
         {
-          "Sequence": 3,
+          "Answer": "Evet. Aynı bağlantı ve QR çalışmaya devam ederken sayfanızı güncel tutabilirsiniz.",
           "Question": "Önerilerimi daha sonra güncelleyebilir miyim?",
-          "Answer": "Evet. Aynı bağlantı ve QR çalışmaya devam ederken sayfanızı güncel tutabilirsiniz."
+          "Sequence": 3
         },
         {
-          "Sequence": 4,
+          "Answer": "Evet. Sayfa, ödeme ağırlıklı bir dil olmadan ücretsiz vaadi net bir şekilde iletebilir.",
           "Question": "Kaşifler sonsuza kadar özgür mü?",
-          "Answer": "Evet. Sayfa, ödeme ağırlıklı bir dil olmadan ücretsiz vaadi net bir şekilde iletebilir."
+          "Sequence": 4
         }
       ]
     },
@@ -1668,52 +1745,52 @@
       },
       "categories": [
         {
+          "description": "İnsanların gerçekten ziyaret edebileceği restoranlar, mahalleler, müzeler, rotalar ve gizli mücevherler.",
           "id": "places",
           "label": "Yer",
-          "title": "Yerel noktalar, rehberler ve rotalar",
-          "description": "İnsanların gerçekten ziyaret edebileceği restoranlar, mahalleler, müzeler, rotalar ve gizli mücevherler."
+          "title": "Yerel noktalar, rehberler ve rotalar"
         },
         {
+          "description": "Yaratıcılar, kurucular, rehberler, sanatçılar, öğretmenler, uzmanlar ve zevkinizi şekillendiren insanlar.",
           "id": "people",
           "label": "İnsanlar",
-          "title": "Takip etmeye veya öğrenmeye değer kişiler",
-          "description": "Yaratıcılar, kurucular, rehberler, sanatçılar, öğretmenler, uzmanlar ve zevkinizi şekillendiren insanlar."
+          "title": "Takip etmeye veya öğrenmeye değer kişiler"
         },
         {
+          "description": "Sohbetlerde, notlarda, haber bültenlerinde ve seyahat sohbetlerinde önermeye devam ettiğiniz kitaplar.",
           "id": "books",
           "label": "Kitaplar",
-          "title": "Kitaplar ve okuma listeleri",
-          "description": "Sohbetlerde, notlarda, haber bültenlerinde ve seyahat sohbetlerinde önermeye devam ettiğiniz kitaplar."
+          "title": "Kitaplar ve okuma listeleri"
         },
         {
+          "description": "Her türlü ruh haline ve izleyiciye uygun filmler, diziler, belgeseller ve izleme listeleri.",
           "id": "movies",
           "label": "Filmler ve TV",
-          "title": "Filmler, şovlar ve izleme listeleri",
-          "description": "Her türlü ruh haline ve izleyiciye uygun filmler, diziler, belgeseller ve izleme listeleri."
+          "title": "Filmler, şovlar ve izleme listeleri"
         },
         {
+          "description": "İnsanların bundan sonra denemesi gereken oyunlar, görevler, dünyalar ve deneyimler.",
           "id": "games",
           "label": "Oyunlar",
-          "title": "Keşfedilecek oyunlar ve dünyalar",
-          "description": "İnsanların bundan sonra denemesi gereken oyunlar, görevler, dünyalar ve deneyimler."
+          "title": "Keşfedilecek oyunlar ve dünyalar"
         },
         {
+          "description": "Yerlere ve anlara bağlı sanatçılar, albümler, şarkılar, çalma listeleri ve film müzikleri.",
           "id": "music",
           "label": "Müzik",
-          "title": "Albümler, sanatçılar ve çalma listeleri",
-          "description": "Yerlere ve anlara bağlı sanatçılar, albümler, şarkılar, çalma listeleri ve film müzikleri."
+          "title": "Albümler, sanatçılar ve çalma listeleri"
         },
         {
+          "description": "Gündelik favoriler, seyahat malzemeleri, yaratıcı araçlar, hediyeler ve tasarruf edilmeye değer ürünler.",
           "id": "products",
           "label": "Ürünler",
-          "title": "İnsanların gerçekten tavsiye ettiği ürünler",
-          "description": "Gündelik favoriler, seyahat malzemeleri, yaratıcı araçlar, hediyeler ve tasarruf edilmeye değer ürünler."
+          "title": "İnsanların gerçekten tavsiye ettiği ürünler"
         },
         {
+          "description": "Hayatı kolaylaştıran yazılımlar, web siteleri, şablonlar, araçlar ve kaynaklar.",
           "id": "apps",
           "label": "Uygulamalar ve Araçlar",
-          "title": "Uygulamalar, araçlar ve faydalı bağlantılar",
-          "description": "Hayatı kolaylaştıran yazılımlar, web siteleri, şablonlar, araçlar ve kaynaklar."
+          "title": "Uygulamalar, araçlar ve faydalı bağlantılar"
         }
       ]
     }
@@ -2286,5 +2363,115 @@
     "unavailable": "Kullanıcı adı mevcut değil.",
     "confirmOnSignup": "Kayıt sırasında kullanılabilirliği doğrulayacağız.",
     "checkingAvailability": "Kullanılabilirlik kontrol ediliyor..."
+  },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
+  "useCases": {
+    "cta": {
+      "button": "Claim your Explorer page",
+      "description": "Start with the recommendations you already share. Give them one place to live.",
+      "title": "Make a home for what you would pass on."
+    },
+    "hero": {
+      "chooseLabel": "Choose a perspective",
+      "description": "Whether the point of view is personal, creative, or shared by a brand, explorers gives it a thoughtful home.",
+      "eyebrow": "Ways to explore",
+      "title": "Different perspectives. One place to share them.",
+      "visualAlt": "Three perspectives connected through a place, an Explorer profile, and a storefront."
+    },
+    "journey": {
+      "description": "The shape changes with the person behind it. The rhythm stays simple.",
+      "eyebrow": "One simple rhythm",
+      "steps": {
+        "collect": {
+          "description": "Bring together what you genuinely recommend across the parts of life that matter to you.",
+          "title": "Collect"
+        },
+        "shape": {
+          "description": "Organize it with enough context for someone else to understand why it belongs.",
+          "title": "Shape"
+        },
+        "share": {
+          "description": "Offer one living link or QR that people can save, scan, and return to.",
+          "title": "Share"
+        }
+      },
+      "title": "Three perspectives. One way of sharing with care."
+    },
+    "perspectives": {
+      "brands": {
+        "description": "Curate the places, products, guides, and ideas that express what your organization genuinely values.",
+        "label": "Brands",
+        "points": [
+          "Build collections with a clear and human perspective.",
+          "Connect locations, products, and useful context.",
+          "Give people something thoughtful to save and revisit."
+        ],
+        "title": "Turn your point of view into an experience people can enter."
+      },
+      "creators": {
+        "description": "Turn the recommendations scattered across posts, videos, conversations, and notes into something people can return to.",
+        "label": "Creators",
+        "points": [
+          "Create a durable home for your point of view.",
+          "Organize recommendations around stories and themes.",
+          "Share through one link or QR wherever people find you."
+        ],
+        "title": "Give your audience more than a feed."
+      },
+      "personal": {
+        "description": "Keep the places, books, films, tools, people, and small discoveries you return to in one living collection.",
+        "label": "Personal",
+        "points": [
+          "Bring different kinds of recommendations together.",
+          "Add the context that makes each choice yours.",
+          "Share one page that can keep evolving with you."
+        ],
+        "title": "A home for the things that shape your world."
+      }
+    },
+    "seo": {
+      "description": "See how people, creators, and brands can collect what they value, shape it with context, and share it through one thoughtful Explorer page.",
+      "keywords": [
+        "explorers use cases",
+        "personal recommendations page",
+        "creator recommendations",
+        "brand curation",
+        "share recommendations",
+        "curated collections"
+      ],
+      "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
+      "title": "Use Cases | explorers.earth"
+    }
   }
 }

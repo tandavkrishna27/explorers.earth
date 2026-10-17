@@ -1,97 +1,258 @@
-name: Deploy tunes to Hetzner
+name: Tunes production deploy authority
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'tunes/**'
+  workflow_call:
+    inputs:
+      digest: { type: string, required: true }
+      commit: { type: string, required: true }
+    secrets:
+      TUNES_DEPLOY_HOST: { required: true }
+      TUNES_DEPLOY_KEY: { required: true }
   workflow_dispatch:
+    inputs:
+      operation:
+        description: "One-time bootstrap or a retained-digest rollback"
+        required: true
+        default: rollback
+        type: choice
+        options: [rollback, bootstrap]
+      target_digest:
+        description: "Attested bootstrap digest or previously retained rollback digest"
+        required: true
+        type: string
+      target_commit:
+        description: "Full attested commit for bootstrap; empty for rollback"
+        required: false
+        default: ""
+        type: string
+      compose_project:
+        description: "Observed legacy Compose project for bootstrap; empty for rollback"
+        required: false
+        default: ""
+        type: string
+      legacy_service:
+        description: "Observed live Tunes container for bootstrap; empty for rollback"
+        required: false
+        default: ""
+        type: string
 
-env:
-  REGISTRY: ghcr.io
+permissions:
+  contents: read
+  packages: read
+  attestations: read
+
+concurrency:
+  group: tunes-production-deploy
+  cancel-in-progress: false
 
 jobs:
-  # ────────────────────────────────────────────────────────────────────────────
-  build-and-push:
-    name: Build tunes image & push to GHCR
-    runs-on: ubuntu-latest
+  production-authority-preflight:
+    # Non-main dispatches fail this no-secret protected-main policy check.
+    runs-on: ubuntu-24.04
     permissions:
+      actions: read
       contents: read
-      packages: write
-
-    outputs:
-      image_tag: ${{ github.sha }}
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set lowercase image name
-        run: echo "TUNES_IMAGE=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/tunes" >> $GITHUB_ENV
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          sparse-checkout: tunes/deployment/verify-production-environment-policy.mjs
+          sparse-checkout-cone-mode: false
+      - name: Require main as the sole protected production branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tunes/deployment/verify-production-environment-policy.mjs
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push tunes image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./tunes
-          file: ./tunes/Dockerfile
-          push: true
-          platforms: linux/amd64
-          tags: |
-            ${{ env.TUNES_IMAGE }}:latest
-            ${{ env.TUNES_IMAGE }}:${{ github.sha }}
-          build-args: |
-            VITE_API_URL=${{ secrets.VITE_API_URL }}
-            VITE_REST_API_URL=${{ secrets.VITE_REST_API_URL }}
-            VITE_PUBLIC_ACCESS_TOKEN=${{ secrets.VITE_PUBLIC_ACCESS_TOKEN }}
-            VITE_CLARITY_PROJECT_ID=${{ secrets.VITE_CLARITY_PROJECT_ID }}
-          cache-from: type=gha,scope=tunes
-          cache-to: type=gha,mode=max,scope=tunes
-
-  # ────────────────────────────────────────────────────────────────────────────
   deploy:
-    name: Deploy tunes to Hetzner
-    needs: build-and-push
-    runs-on: ubuntu-latest
-
+    # The protected environment reviewer is the deliberate release decision.
+    needs: production-authority-preflight
+    if: needs.production-authority-preflight.result == 'success' && github.ref == 'refs/heads/main'
+    environment: tunes-production
+    runs-on: ubuntu-24.04
     steps:
-      - name: SSH into server and deploy tunes
-        uses: appleboy/ssh-action@v1.2.0
+      - name: Validate production credentials before deployment
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.TUNES_DEPLOY_HOST }}
+          DEPLOY_KEY: ${{ secrets.TUNES_DEPLOY_KEY }}
+          KNOWN_HOSTS: ${{ secrets.TUNES_DEPLOY_KNOWN_HOSTS }}
+          STATE_HMAC_KEY: ${{ secrets.MUSIC_DEPLOY_STATE_HMAC_KEY }}
+        run: |
+          set -euo pipefail
+          invalid=0
+          for name in DEPLOY_HOST DEPLOY_KEY KNOWN_HOSTS STATE_HMAC_KEY; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Required production credential $name is unavailable in tunes-production."
+              invalid=1
+            fi
+          done
+          if [[ -n "$STATE_HMAC_KEY" && ${#STATE_HMAC_KEY} -lt 32 ]]; then
+            echo "::error::Production state signing key must contain at least 32 characters."
+            invalid=1
+          fi
+          [[ "$invalid" = 0 ]]
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: ${{ secrets.HETZNER_USER }}
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          script_stop: true
-          script: |
-            set -e
+          fetch-depth: 0
+          sparse-checkout: |
+            tunes/deployment/music-deploy.sh
+            tunes/deployment/music-deploy-engine.sh
+            tunes/deployment/music-hmac.mjs
+            tunes/deployment/verify-publication-authority.mjs
+          sparse-checkout-cone-mode: false
 
-            echo "Navigating to app directory..."
-            cd /opt/app
+      - name: Derive and verify immutable request
+        id: request
+        shell: bash
+        env:
+          CALL_DIGEST: ${{ inputs.digest }}
+          CALL_COMMIT: ${{ inputs.commit }}
+          DISPATCH_OPERATION: ${{ inputs.operation }}
+          TARGET_DIGEST: ${{ inputs.target_digest }}
+          TARGET_COMMIT: ${{ inputs.target_commit }}
+          BOOTSTRAP_COMPOSE_PROJECT: ${{ inputs.compose_project }}
+          BOOTSTRAP_LEGACY_SERVICE: ${{ inputs.legacy_service }}
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          [[ "$owner" =~ ^[a-z0-9]([a-z0-9_.-]{0,37}[a-z0-9])?$ ]]
+          IMAGE_REPOSITORY="ghcr.io/${owner}/explorers-tunes"
+          IMAGE_SOURCE="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+          if [[ -z "$CALL_DIGEST" ]]; then
+            operation="$DISPATCH_OPERATION"
+            digest="$TARGET_DIGEST"
+            if [[ "$operation" = bootstrap ]]; then
+              commit="$TARGET_COMMIT"
+              compose_project="$BOOTSTRAP_COMPOSE_PROJECT"
+              legacy_service="$BOOTSTRAP_LEGACY_SERVICE"
+              [[ "$commit" =~ ^[a-f0-9]{40}$ ]]
+              git merge-base --is-ancestor "$commit" "$GITHUB_SHA"
+              [[ "$compose_project" =~ ^[a-z0-9][a-z0-9_-]{0,62}$ ]]
+              [[ "$legacy_service" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$ ]]
+            else
+              [[ "$operation" = rollback ]]
+              commit=-
+              compose_project=-
+              legacy_service=-
+              [[ -z "$TARGET_COMMIT" && -z "$BOOTSTRAP_COMPOSE_PROJECT" && -z "$BOOTSTRAP_LEGACY_SERVICE" ]]
+            fi
+          else
+            [[ "$GITHUB_WORKFLOW_REF" == "$GITHUB_REPOSITORY/.github/workflows/tunes.yml@refs/heads/main" ]]
+            operation=deploy
+            digest="$CALL_DIGEST"
+            commit="$CALL_COMMIT"
+            compose_project=-
+            legacy_service=-
+            [[ "$commit" =~ ^[a-f0-9]{40}$ ]]
+            [[ "$commit" == "$GITHUB_SHA" ]]
+          fi
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          {
+            echo "operation=$operation"
+            echo "digest=$digest"
+            echo "commit=$commit"
+            echo "compose_project=$compose_project"
+            echo "legacy_service=$legacy_service"
+            echo "repository=$IMAGE_REPOSITORY"
+            echo "source=$IMAGE_SOURCE"
+          } >> "$GITHUB_OUTPUT"
 
-            echo "Logging into GHCR..."
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Authenticate the private GHCR image for provenance verification
+        if: inputs.digest != '' || inputs.operation == 'bootstrap'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
 
-            echo "Setting image tag to git SHA: ${{ github.sha }}"
-            export IMAGE_TAG=${{ github.sha }}
-            export GITHUB_REPOSITORY_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+      - name: Verify GitHub build provenance for deploy or bootstrap
+        if: inputs.digest != '' || inputs.operation == 'bootstrap'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE_REPOSITORY: ${{ steps.request.outputs.repository }}
+          DIGEST: ${{ steps.request.outputs.digest }}
+          COMMIT: ${{ steps.request.outputs.commit }}
+        run: >-
+          gh attestation verify "oci://${IMAGE_REPOSITORY}@${DIGEST}"
+          --repo "$GITHUB_REPOSITORY"
+          --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/tunes.yml"
+          --source-ref refs/heads/main
+          --source-digest "$COMMIT"
 
-            echo "Pulling new tunes image..."
-            docker compose pull tunes
+      - name: Configure pinned SSH host identity
+        shell: bash
+        env:
+          SSH_KEY: ${{ secrets.TUNES_DEPLOY_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.TUNES_DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          install -m 600 /dev/null "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$SSH_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
 
-            echo "Restarting tunes container only..."
-            docker compose up -d --no-deps tunes
-
-            echo "Cleaning up dangling images..."
-            docker image prune -f
-
-            echo "Deployment complete at $(date)"
+      - name: Run checked-in transactional deploy executable
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.TUNES_DEPLOY_HOST }}
+          DEPLOY_USER: deploy
+          GHCR_DEPLOY_USER: ${{ github.actor }}
+          GHCR_DEPLOY_READ_TOKEN: ${{ github.token }}
+          MUSIC_DEPLOY_STATE_HMAC_KEY: ${{ secrets.MUSIC_DEPLOY_STATE_HMAC_KEY }}
+          OPERATION: ${{ steps.request.outputs.operation }}
+          DIGEST: ${{ steps.request.outputs.digest }}
+          COMMIT: ${{ steps.request.outputs.commit }}
+          COMPOSE_PROJECT: ${{ steps.request.outputs.compose_project }}
+          LEGACY_SERVICE: ${{ steps.request.outputs.legacy_service }}
+          IMAGE_REPOSITORY: ${{ steps.request.outputs.repository }}
+          IMAGE_SOURCE: ${{ steps.request.outputs.source }}
+        run: |
+          set -euo pipefail
+          hmac_key_value="$MUSIC_DEPLOY_STATE_HMAC_KEY"
+          unset MUSIC_DEPLOY_STATE_HMAC_KEY
+          [[ "$DEPLOY_USER" =~ ^[A-Za-z_][A-Za-z0-9_-]{0,31}$ ]]
+          [[ "$DEPLOY_HOST" =~ ^([A-Za-z0-9][A-Za-z0-9.-]{0,252}|[0-9a-fA-F:]+)$ ]]
+          [[ "$GHCR_DEPLOY_USER" =~ ^[A-Za-z0-9_.-]+$ ]]
+          [[ ${#hmac_key_value} -ge 32 ]]
+          bundle="$(mktemp -d)"
+          archive="$(mktemp)"
+          cleanup() {
+            rm -f -- "$bundle/music-deploy.sh" "$bundle/music-deploy-engine.sh" "$bundle/music-hmac.mjs" "$bundle/verify-publication-authority.mjs" "$bundle/request.txt" "$bundle/authority.txt" \
+              "$bundle/hmac.key" "$bundle/ghcr.token" "$archive"
+            rmdir -- "$bundle" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          install -m 700 tunes/deployment/music-deploy.sh "$bundle/music-deploy.sh"
+          install -m 700 tunes/deployment/music-deploy-engine.sh "$bundle/music-deploy-engine.sh"
+          install -m 600 tunes/deployment/music-hmac.mjs "$bundle/music-hmac.mjs"
+          install -m 600 tunes/deployment/verify-publication-authority.mjs "$bundle/verify-publication-authority.mjs"
+          printf '%s\n' music-deploy-request-v2 "operation=$OPERATION" "digest=$DIGEST" "commit=$COMMIT" "compose_project=$COMPOSE_PROJECT" "legacy_service=$LEGACY_SERVICE" > "$bundle/request.txt"
+          printf '%s\n' music-deploy-authority-v1 "repository=$IMAGE_REPOSITORY" "source=$IMAGE_SOURCE" "ghcr_user=$GHCR_DEPLOY_USER" > "$bundle/authority.txt"
+          printf '%s' "$hmac_key_value" > "$bundle/hmac.key"
+          unset hmac_key_value
+          printf '%s' "$GHCR_DEPLOY_READ_TOKEN" > "$bundle/ghcr.token"
+          chmod 600 "$bundle"/*
+          tar -C "$bundle" -czf - . | base64 -w0 > "$archive"
+          # Only base64 reaches stdin. The remote command is fixed text: no caller
+          # input, digest, commit, package owner, or secret is interpolated into it.
+          ssh -i "$HOME/.ssh/id_ed25519" "${DEPLOY_USER}@${DEPLOY_HOST}" '
+            set -euo pipefail
+            incoming="$(mktemp -d /opt/explorers/deployment-transactions/incoming.XXXXXX)"
+            cleanup() {
+              rm -f -- "$incoming/music-deploy.sh" "$incoming/music-deploy-engine.sh" "$incoming/music-hmac.mjs" "$incoming/verify-publication-authority.mjs" "$incoming/request.txt" "$incoming/authority.txt" \
+                "$incoming/hmac.key" "$incoming/ghcr.token"
+              rmdir -- "$incoming" 2>/dev/null || true
+            }
+            trap cleanup EXIT
+            base64 -d | tar -xzf - -C "$incoming"
+            chmod 700 "$incoming/music-deploy.sh" "$incoming/music-deploy-engine.sh"
+            chmod 600 "$incoming/music-hmac.mjs" "$incoming/verify-publication-authority.mjs" "$incoming/request.txt" "$incoming/authority.txt" "$incoming/hmac.key" "$incoming/ghcr.token"
+            MUSIC_DEPLOY_REQUEST_FILE="$incoming/request.txt" \
+            MUSIC_DEPLOY_AUTHORITY_FILE="$incoming/authority.txt" \
+            MUSIC_DEPLOY_HMAC_KEY_FILE="$incoming/hmac.key" \
+            MUSIC_DEPLOY_HMAC_HELPER_FILE="$incoming/music-hmac.mjs" \
+            MUSIC_PUBLICATION_AUTHORITY_HELPER_FILE="$incoming/verify-publication-authority.mjs" \
+            MUSIC_DEPLOY_GHCR_TOKEN_FILE="$incoming/ghcr.token" \
+            MUSIC_DEPLOY_EPHEMERAL_CREDENTIAL_FILES=1 \
+            bash "$incoming/music-deploy.sh"
+          ' < "$archive"

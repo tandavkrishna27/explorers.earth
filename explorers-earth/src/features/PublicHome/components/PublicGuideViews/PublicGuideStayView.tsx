@@ -1,3 +1,4 @@
+import { selectGuidePlaceThumbnail } from "../../utils/publicGuidePhotoViewModel";
 import { memo, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { parseStay } from "../../../Guides/utils/guideDataParser";
@@ -16,27 +17,6 @@ const PublicGuideStayView = memo(({ sections, guide: _guide, selectedDay: extern
     visible: false,
     place: null,
   });
-  // Helper function to get S3 image from guide data by place_id
-  const getS3ImageForPlace = useMemo(() => {
-    const imageMap: Record<string, string | null> = {};
-
-    // Iterate through all sections to find activity photos (accommodations may also be in activities)
-    sections.forEach((section) => {
-      if (section.Recommendation_Activity?.activities) {
-        section.Recommendation_Activity.activities.forEach((activity: any) => {
-          if (activity.place_id && activity.photos && activity.photos.length > 0) {
-            // Use first photo from S3
-            const firstPhoto = activity.photos[0];
-            if (firstPhoto.url) {
-              imageMap[activity.place_id] = firstPhoto.url;
-            }
-          }
-        });
-      }
-    });
-
-    return imageMap;
-  }, [sections]);
 
   // Get all sections with stay data
   const daysWithStay = useMemo(() => {
@@ -108,28 +88,16 @@ const PublicGuideStayView = memo(({ sections, guide: _guide, selectedDay: extern
     });
   }, [daysWithStay]);
 
-  // Get image URL for a place - prioritize S3 images from guide data
-  const getPlaceImage = (place: any): string => {
-    if (!place?.place_id) return "https://placehold.co/800x600/1a1a1a/666666?text=Accommodation";
-
-    // First check S3 images from guide data
-    const s3Image = getS3ImageForPlace[place.place_id];
-    if (s3Image) {
-      return s3Image;
-    }
-
-    // Fallback to placeholder
-    return "https://placehold.co/800x600/1a1a1a/666666?text=Accommodation";
-  };
+  const getPlaceImage = (place: unknown): string => selectGuidePlaceThumbnail(place, sections)?.url ?? "https://placehold.co/800x600/1a1a1a/666666?text=Accommodation";
 
 
   if (allAccommodations.length === 0) {
     return (
-      <div className="bg-gray-900 rounded-lg p-3 sm:p-4 md:p-6 border border-gray-700">
-        <h2 className="text-white text-base sm:text-lg md:text-xl font-poppins font-bold mb-1 sm:mb-2">
+      <div className="bg-[var(--category-card,#111827)] rounded-lg p-3 sm:p-4 md:p-6 border border-[var(--category-control-border,#374151)]">
+        <h2 className="text-[var(--category-text,#FFFFFF)] text-base sm:text-lg md:text-xl font-poppins font-bold mb-1 sm:mb-2">
           Stay
         </h2>
-        <p className="text-gray-400 text-xs sm:text-sm font-poppins">
+        <p className="text-[var(--category-muted,#9CA3AF)] text-xs sm:text-sm font-poppins">
           No accommodation information available yet.
         </p>
       </div>
@@ -153,20 +121,20 @@ const PublicGuideStayView = memo(({ sections, guide: _guide, selectedDay: extern
                 className="space-y-6 sm:space-y-7 md:space-y-9"
               >
                 {/* Day Heading - Standard Typography (Matching Journey Tab) */}
-                <div className="flex items-center gap-3 pb-2 border-b border-gray-700/50">
+                <div className="flex items-center gap-3 pb-2 border-b border-[var(--category-control-border,rgba(55,65,81,0.5))]">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-1 h-8 sm:h-10 bg-gradient-to-b from-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] rounded-full"></div>
-                    <h2 className="text-white font-poppins font-bold text-xl sm:text-2xl md:text-3xl tracking-tight" style={{
+                    <div className="w-1 h-8 sm:h-10 bg-gradient-to-b from-[var(--category-accent,hsl(var(--blue-cta)))] to-[var(--category-accent,hsl(var(--blue-final)))] rounded-full"></div>
+                    <h2 className="text-[var(--category-text,#FFFFFF)] font-poppins font-bold text-xl sm:text-2xl md:text-3xl tracking-tight" style={{
                       textShadow: '0 2px 6px rgba(0,0,0,0.5)',
                       textRendering: 'optimizeLegibility',
                       WebkitFontSmoothing: 'antialiased',
                       MozOsxFontSmoothing: 'grayscale'
                     }}>
-                      <span className="bg-gradient-to-r from-[hsl(var(--blue-cta))] via-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] bg-clip-text text-transparent">
+                      <span className="bg-gradient-to-r from-[var(--category-text,hsl(var(--blue-cta)))] via-[var(--category-text,hsl(var(--blue-cta)))] to-[var(--category-text,hsl(var(--blue-final)))] bg-clip-text text-transparent">
                         Day {dayNum}
                       </span>
                       {section.Title && (
-                        <span className="text-white font-semibold ml-2.5 text-base sm:text-lg md:text-xl tracking-normal" style={{
+                        <span className="text-[var(--category-text,#FFFFFF)] font-semibold ml-2.5 text-base sm:text-lg md:text-xl tracking-normal" style={{
                           textShadow: '0 2px 8px rgba(0,0,0,0.6)',
                           textRendering: 'optimizeLegibility',
                           WebkitFontSmoothing: 'antialiased',
@@ -206,7 +174,7 @@ const PublicGuideStayView = memo(({ sections, guide: _guide, selectedDay: extern
                             setSelectedGooglePlace({ visible: true, place: accom });
                           }}
                         >
-                          <div className="relative bg-gradient-to-br from-gray-900/95 to-gray-800/95 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-700/50 hover:border-[hsl(var(--blue-cta))]/50">
+                          <div className="relative bg-gradient-to-br from-[var(--category-card,rgba(17,24,39,0.95))] to-[var(--category-card,rgba(31,41,55,0.95))] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-[var(--category-control-border,rgba(55,65,81,0.5))] hover:border-[hsl(var(--blue-cta))]/50">
                             {/* Standard Large Image Height - Smaller on desktop for overview */}
                             <div className="relative w-full aspect-square md:h-56 lg:h-64 overflow-hidden">
                               <img
@@ -269,8 +237,8 @@ const PublicGuideStayView = memo(({ sections, guide: _guide, selectedDay: extern
 
         if (!selectedSection || selectedSection.accommodations.length === 0) {
           return (
-            <div className="bg-gray-900 rounded-lg p-3 sm:p-4 md:p-6 border border-gray-700">
-              <p className="text-gray-400 text-xs sm:text-sm font-poppins">
+            <div className="bg-[var(--category-card,#111827)] rounded-lg p-3 sm:p-4 md:p-6 border border-[var(--category-control-border,#374151)]">
+              <p className="text-[var(--category-muted,#9CA3AF)] text-xs sm:text-sm font-poppins">
                 No accommodation information available for this day.
               </p>
             </div>
@@ -282,20 +250,20 @@ const PublicGuideStayView = memo(({ sections, guide: _guide, selectedDay: extern
         return (
           <div className="space-y-6 sm:space-y-8">
             {/* Day Heading - Standard Typography (Matching Journey Tab) */}
-            <div className="flex items-center gap-3 pb-2 border-b border-gray-700/50">
+            <div className="flex items-center gap-3 pb-2 border-b border-[var(--category-control-border,rgba(55,65,81,0.5))]">
               <div className="flex items-center gap-2.5">
-                <div className="w-1 h-8 sm:h-10 bg-gradient-to-b from-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] rounded-full"></div>
-                <h2 className="text-white font-poppins font-bold text-xl sm:text-2xl md:text-3xl tracking-tight" style={{
+                <div className="w-1 h-8 sm:h-10 bg-gradient-to-b from-[var(--category-accent,hsl(var(--blue-cta)))] to-[var(--category-accent,hsl(var(--blue-final)))] rounded-full"></div>
+                <h2 className="text-[var(--category-text,#FFFFFF)] font-poppins font-bold text-xl sm:text-2xl md:text-3xl tracking-tight" style={{
                   textShadow: '0 2px 6px rgba(0,0,0,0.5)',
                   textRendering: 'optimizeLegibility',
                   WebkitFontSmoothing: 'antialiased',
                   MozOsxFontSmoothing: 'grayscale'
                 }}>
-                  <span className="bg-gradient-to-r from-[hsl(var(--blue-cta))] via-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-[var(--category-text,hsl(var(--blue-cta)))] via-[var(--category-text,hsl(var(--blue-cta)))] to-[var(--category-text,hsl(var(--blue-final)))] bg-clip-text text-transparent">
                     Day {dayNum}
                   </span>
                   {section.Title && (
-                    <span className="text-white font-semibold ml-2.5 text-base sm:text-lg md:text-xl tracking-normal" style={{
+                    <span className="text-[var(--category-text,#FFFFFF)] font-semibold ml-2.5 text-base sm:text-lg md:text-xl tracking-normal" style={{
                       textShadow: '0 2px 8px rgba(0,0,0,0.6)',
                       textRendering: 'optimizeLegibility',
                       WebkitFontSmoothing: 'antialiased',
@@ -335,7 +303,7 @@ const PublicGuideStayView = memo(({ sections, guide: _guide, selectedDay: extern
                         setSelectedGooglePlace({ visible: true, place: accom });
                       }}
                     >
-                      <div className="relative bg-gradient-to-br from-gray-900/95 to-gray-800/95 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-700/50 hover:border-[hsl(var(--blue-cta))]/50">
+                      <div className="relative bg-gradient-to-br from-[var(--category-card,rgba(17,24,39,0.95))] to-[var(--category-card,rgba(31,41,55,0.95))] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-[var(--category-control-border,rgba(55,65,81,0.5))] hover:border-[hsl(var(--blue-cta))]/50">
                         {/* Standard Large Image Height - Smaller on desktop for overview */}
                         <div className="relative w-full aspect-square md:h-56 lg:h-64 overflow-hidden">
                           <img

@@ -5,15 +5,16 @@
 - **ORM**: Drizzle ORM 0.39 with type-safe query building
 - **Driver**: `@neondatabase/serverless` for PostgreSQL connections
 - **Validation**: `drizzle-zod` generates Zod schemas from table definitions
-- **Migrations**: Drizzle Kit (`drizzle-kit push`) for schema synchronization
+- **Migrations**: reviewed, ordered SQL in `tunes/migrations/`, enforced by the Music migration contract
 - **Config**: `tunes/drizzle.config.ts`
-- **Schema**: `tunes/shared/schema.ts` (single source of truth)
+- **Schema**: `tunes/shared/schema.ts` is the schema model; the append-only migration manifest/chain is deployment authority
 
 ## Commands
 
 ```bash
-# Push schema changes to database (no migration files)
-npm run db:push
+# From the repository root: apply and verify the reviewed chain on the guarded fixture only
+npm run music:db:migrate -- --mode fixture --target test
+npm run music:db:verify -- --mode fixture --target test
 
 # Type check the schema
 npm run check
@@ -194,6 +195,7 @@ users ──┬── playlists ── playlist_songs
 
 1. Modify table definitions in `shared/schema.ts`
 2. Add/update Zod insert schemas and export types
-3. Run `npm run db:push` to sync changes to the database
+3. Add the next reviewed, append-only SQL file under `tunes/migrations/` and update `tunes/shared/music-migration-contract.ts`
 4. Update `server/storage.ts` with new query methods if needed
-5. Drizzle Kit handles the diff — no manual migration files needed
+5. From the repository root, run `npm run music:db:migrate -- --mode fixture --target test` and `npm run music:db:verify -- --mode fixture --target test`
+6. Commit the migration and contract together; application startup and production deployment never infer or push a schema diff

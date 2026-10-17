@@ -77,10 +77,10 @@ const BookCoverCard = memo(({ book, onClick }: BookCoverCardProps) => {
       </div>
 
       {/* Title & Author */}
-      <p className="text-xs font-semibold text-white/90 line-clamp-2 leading-tight mb-0.5">
+      <p className="text-xs font-semibold text-[color:var(--category-text,rgba(255,255,255,0.9))] line-clamp-2 leading-tight mb-0.5">
         {book.title}
       </p>
-      <p className="text-[10px] text-white/45 truncate">{authors}</p>
+      <p className="text-[10px] text-[color:var(--category-muted,rgba(255,255,255,0.45))] truncate">{authors}</p>
     </button>
   );
 });

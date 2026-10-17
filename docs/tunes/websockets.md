@@ -195,6 +195,52 @@ Socket.IO handles reconnection automatically with exponential backoff. The clien
 - Re-joining the user's room after reconnection
 - Re-fetching playlist state on reconnect to ensure consistency
 
+### Public Music operational events
+
+Public Music live synchronization emits a separate operational stream; it is
+never sent to product analytics. Backend records use `music-public-ops/v1` and
+browser records use `music-public-browser-ops/v1`. Allowed dimensions are fixed
+enums: lifecycle outcome, HTTP operation/status, socket role/reason,
+invalidation kind, parser class, and bounded duration. Slugs, Account/User
+identity, capabilities, queries, media URLs, credentials, and socket room names
+are forbidden.
+
+The socket is only an invalidation signal. `music_public_change` contains
+`version`, `kind`, and `revision`; accepted events refetch canonical HTTP state.
+Operational events cover admission/rejection/disconnect, reconnect,
+invalidation acceptance/staleness, fallback polling, and revocation enforcement.
+Browser collectors also emit identifier-free active-session lifecycle counters;
+`started - stopped` is the denominator and fallback `entered - exited` is the
+numerator, so repeated retries cannot inflate the rate. Listener reconnect records
+carry bounded `disconnectMs`, so no instance or connection label is required.
+
+Public admission uses either the public slug or the unlisted capability for the
+same slug and rechecks current publication/lifecycle authority. After reconnect,
+the browser rejoins, refetches canonical HTTP state, ignores stale revisions,
+and coalesces bursts. When transport remains unavailable, foreground polling
+backs off through 30/60/120/240/300 seconds and stops while hidden, offline, or
+unmounted. Revocation removes cached unlisted content. Capabilities never appear
+in events, URLs, logs, trace attachments, or analytics payloads.
+
+Public socket admission is a handshake field, never a URL query string:
+
+```json
+{"auth":{"role":"guest","publicSlug":"public_slug-123","capability":"header-equivalent-secret"}}
+```
+
+Successful invalidation contains no identity or secret:
+
+```json
+{"version":"music-public-change/v1","kind":"queue","revision":8}
+```
+
+On `connect_error`, `disconnect`, a revision gap, or a newer revision, the
+client announces reconnecting, rejoins the authorized slug, and performs a
+canonical HTTP refetch before rendering. A revision less than or equal to the
+rendered revision is ignored. Private publication or capability revocation
+clears rendered and cached content and returns the same `PUBLIC_NOT_FOUND`
+recovery surface; it never retries with stale content.
+
 ## Key Files
 
 | File | Purpose |

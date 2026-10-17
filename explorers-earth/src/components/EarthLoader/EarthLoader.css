@@ -42,6 +42,15 @@
   display: block;
 }
 
+.earth-loader__plane-static {
+  display: block;
+  margin: 0 auto;
+  width: max-content;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 2rem;
+  transform: translateX(4rem) rotate(-12deg);
+}
+
 @keyframes earth-loader-spin {
   0% {
     transform: rotate(0deg);
@@ -74,6 +83,11 @@
     0 0 30px rgba(0, 153, 204, 0.15),
     0 0 60px rgba(0, 153, 204, 0.08),
     inset 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.earth-loader__earth-static {
+  background-image: radial-gradient(circle at 35% 30%, #6fc8dc 0 12%, #1888aa 13% 48%, #07506e 49% 100%);
+  background-size: auto;
 }
 
 @keyframes earth-loader-earthAnim {
@@ -142,6 +156,12 @@
   transition:
     opacity 0.4s cubic-bezier(0.7, 0, 0.84, 0),
     transform 0.4s cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+.earth-loader__text--static {
+  opacity: 1;
+  transform: translateY(-50%) translateX(-50%);
+  left: 50%;
 }
 
 /* ---- Fill variant (fills parent container, no min-height) ---- */
@@ -274,5 +294,17 @@
 
   .earth-loader__text {
     font-size: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .earth-loader__plane-img,
+  .earth-loader__earth {
+    animation: none !important;
+  }
+
+  .earth-loader__text {
+    animation: none !important;
+    transition: none !important;
   }
 }

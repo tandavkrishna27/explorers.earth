@@ -1,0 +1,30 @@
+import {beforeEach,describe,it,expect,vi} from 'vitest';
+import {renderHook,waitFor,act} from '@testing-library/react';
+import useAuthStore from '../../../../store/store';
+import {explorersApiClient} from '../../../../lib/explorersApiClient';
+import {useBooksNavigation} from '../useBooksNavigation';
+vi.mock('../../../../lib/explorersApiClient',()=>({explorersApiClient:{getMyProfile:vi.fn(),getCompleteMyCategoryTopPicks:vi.fn(),updateAccount:vi.fn()}}));
+vi.mock('../../../PublicHome/api/publicProfileInvalidation',()=>({publishPublicProfileInvalidation:vi.fn()}));
+const profile=(revision=1)=>({id:'owner',revision,handle:'reader',categories:[{category:'books',isPublic:false,pinnedOrder:0},{category:'music',isPublic:true,pinnedOrder:1}],navigationOrderMode:'auto'});
+describe('canonical Books navigation',()=>{
+ beforeEach(()=>{vi.clearAllMocks();useAuthStore.setState({generation:2,accountId:'owner'});vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(profile() as never);vi.mocked(explorersApiClient.updateAccount).mockImplementation(async input=>({...profile(input.expectedRevision+1),categories:input.categories}) as never);vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue({collections:[{visibility:'public',publicationState:'published'}]} as never);});
+ it('uses a fresh revision on consecutive saves and preserves other categories',async()=>{
+  const {result}=renderHook(()=>useBooksNavigation());await waitFor(()=>expect(result.current.authority).toBeTruthy());
+  vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(profile(3) as never);
+  await act(()=>result.current.request({category:'public_books',action:'publish'},result.current.authority));
+  expect(explorersApiClient.updateAccount).toHaveBeenLastCalledWith({expectedRevision:3,categories:[{category:'books',isPublic:true,pinnedOrder:0},{category:'music',isPublic:true,pinnedOrder:1}]});
+  vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(profile(4) as never);
+  await act(()=>result.current.request({category:'public_books',action:'unpublish'},result.current.authority));
+  expect(explorersApiClient.updateAccount).toHaveBeenLastCalledWith({expectedRevision:4,categories:[{category:'books',isPublic:false,pinnedOrder:null},{category:'music',isPublic:true,pinnedOrder:1}]});
+ });
+ it('rejects publishing without an eligible list and rejects prior authority',async()=>{
+  vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue({collections:[{visibility:'private',publicationState:'published'}]} as never);
+  const {result}=renderHook(()=>useBooksNavigation());await waitFor(()=>expect(result.current.authority).toBeTruthy());
+  await act(()=>result.current.request({category:'public_books',action:'publish'},result.current.authority));expect(result.current.error).toBe('no-content');expect(explorersApiClient.updateAccount).not.toHaveBeenCalled();
+  await act(()=>result.current.request({category:'public_books',action:'publish'},{generation:1,accountDocumentId:'owner'}));expect(explorersApiClient.updateAccount).not.toHaveBeenCalled();
+ });
+ it('does not write visibility when a content refresh fails',async()=>{vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockRejectedValue(new Error('Offline'));const {result}=renderHook(()=>useBooksNavigation());await waitFor(()=>expect(result.current.authority).toBeTruthy());await act(()=>result.current.request({category:'public_books',action:'publish'},result.current.authority));expect(result.current.error).toBe('Offline');expect(explorersApiClient.updateAccount).not.toHaveBeenCalled();});
+ it('disables requests while a save is pending and retains confirmed visibility',async()=>{let finish:(v:any)=>void=()=>{};vi.mocked(explorersApiClient.updateAccount).mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));const {result}=renderHook(()=>useBooksNavigation());await waitFor(()=>expect(result.current.authority).toBeTruthy());let saving:Promise<void>;act(()=>{saving=result.current.request({category:'public_books',action:'publish'},result.current.authority);});await waitFor(()=>expect(result.current.busy).toBe(true));expect(result.current.snapshot?.visibility.public_books).toBe('No');await act(()=>result.current.request({category:'public_books',action:'publish'},result.current.authority));expect(explorersApiClient.updateAccount).toHaveBeenCalledTimes(1);await act(async()=>{finish({...profile(2),categories:[{category:'books',isPublic:true}]});await saving!;});expect(result.current.busy).toBe(false);expect(result.current.snapshot?.visibility.public_books).toBe('Yes');});
+ it('never accepts a different selected account from the profile read',async()=>{vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue({...profile(),id:'other'} as never);const {result}=renderHook(()=>useBooksNavigation());await waitFor(()=>expect(result.current.error).toContain('Account changed'));expect(result.current.authority).toBeUndefined();expect(explorersApiClient.updateAccount).not.toHaveBeenCalled();});
+ it('does not rebind an old confirmation after logout and re-verification',async()=>{const {result}=renderHook(()=>useBooksNavigation());await waitFor(()=>expect(result.current.authority).toBeTruthy());const origin=result.current.authority;await act(async()=>{useAuthStore.setState({generation:3,accountId:'owner'});});await act(()=>result.current.request({category:'public_books',action:'publish'},origin));expect(explorersApiClient.updateAccount).not.toHaveBeenCalled();});
+ it('refreshes category state without writing category settings',async()=>{const {result}=renderHook(()=>useBooksNavigation());await waitFor(()=>expect(result.current.authority).toBeTruthy());vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue({...profile(2),categories:[{category:'books',isPublic:true,pinnedOrder:0}]} as never);await act(()=>result.current.refresh());expect(result.current.snapshot?.visibility.public_books).toBe('Yes');expect(explorersApiClient.updateAccount).not.toHaveBeenCalled();});});

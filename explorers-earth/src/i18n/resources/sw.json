@@ -49,14 +49,19 @@
         "hadithi ya explorers",
         "sisi ni nani explorers"
       ],
-      "title": "Wachunguzi wa Dunia | Kuhusu Sisi"
+      "title": "Wachunguzi wa Dunia | Kuhusu Sisi",
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
     },
     "subtitle": {
       "line1": "Jumuiya ya kimataifa ya watu wanaochunguza kwa uangalifu — kwa watu, tamaduni na sayari tunayoshiriki.",
       "line2": "Uchunguzi kwetu sio kuhusu umbali tunaloenda.",
       "line3": "Ni kuhusu kina tunachounganisha."
     },
-    "title": "Wachunguzi wa Dunia"
+    "title": "Wachunguzi wa Dunia",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe"
   },
   "analytics": {
     "dashboard": {
@@ -268,7 +273,6 @@
       "message": "This account has been deactivated.",
       "reactivateLink": "Click here to reactivate your account →"
     },
-    "claimAccount": "Claim Account?",
     "confirmPassword": "Thibitisha Nenosiri",
     "confirmPasswordPlaceholder": "Ingiza nenosiri lako tena",
     "email": "Barua pepe",
@@ -325,7 +329,8 @@
         "mobileNumberPlaceholder": "Ingiza nambari yako ya simu ya mkononi",
         "next": "Ifuatayo",
         "title": "Maelezo ya Mawasiliano"
-      }
+      },
+      "stepCount": "Step {{current}} of {{total}}"
     },
     "or": "au",
     "password": "Nenosiri",
@@ -340,8 +345,7 @@
     "signupSubtitle": "Jisajili ili kufurahia vipengele vya explorers",
     "signUpWithGoogle": "Jisajili na Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Jina la Mtumiaji",
@@ -775,6 +779,12 @@
       "addLocation": "Add Location",
       "addLocationLabel": "Add",
       "addRecommendations": "Ongeza Mapendekezo",
+      "analytics": {
+        "ariaLabel": "{{label}}: {{value}}",
+        "loading": "Loading",
+        "unavailable": "Unavailable",
+        "viewsLast90Days": "Views · last 90 days"
+      },
       "draft": "Rasimu",
       "error": {
         "message": "An error occurred while loading your data",
@@ -937,6 +947,97 @@
       "tabs": {
         "account": "Akaunti",
         "publicProfile": "Wasifu wa Umma"
+      },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "Uhamishaji wa {{category}} umeghairiwa. Mpangilio umerejeshwa.",
+          "drop": "{{category}} imewekwa katika nafasi ya {{position}} kati ya {{total}}.",
+          "handle": "Buruta {{category}}",
+          "instructions": "Bonyeza Space au Enter ili kuinua. Tumia vitufe vya mishale au Home na End kusogeza. Bonyeza Space au Enter ili kuweka, au Escape kughairi.",
+          "lift": "{{category}} imeinuliwa. Nafasi ya {{position}} kati ya {{total}}.",
+          "move": "{{category}} imehamishwa hadi nafasi ya {{position}} kati ya {{total}}."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
+      },
+      "themeAppearance": {
+        "accentTitle": "Accent color",
+        "firstView": {
+          "business": "Business",
+          "categoryFirst": "Recommendations — {{category}} first",
+          "gallery": "Gallery",
+          "help": "Category choices promote that category but keep all other public categories.",
+          "label": "First view",
+          "savedOrder": "Recommendations — saved order"
+        },
+        "presetTitle": "Select theme preset",
+        "recommendations": {
+          "categories": {
+            "apps": "Apps & Tools",
+            "books": "Books",
+            "games": "Games",
+            "guides": "Guides",
+            "movies": "Movies & Shows",
+            "music": "Music",
+            "people": "People",
+            "places": "Places",
+            "products": "Products"
+          },
+          "featured": "Featured",
+          "help": "Choose how recommendation categories are arranged on your public profile.",
+          "layoutLegend": "Recommendations layout",
+          "layouts": {
+            "featured": {
+              "description": "A larger first category followed by compact rows.",
+              "label": "Featured First"
+            },
+            "grid": {
+              "description": "A compact grid that makes categories easy to scan.",
+              "label": "Category Mosaic"
+            },
+            "shelves": {
+              "description": "Horizontal shelves with recommendation previews.",
+              "label": "Classic Shelves"
+            }
+          },
+          "moved": "{{category}} moved to position {{position}} of {{total}}",
+          "moveDown": "Move {{category}} down",
+          "moveUp": "Move {{category}} up",
+          "orderHelp": "Move categories into the order visitors should scan them.",
+          "orderTitle": "Category order",
+          "position": "{{position}} of {{total}}",
+          "previewCaption": "Illustrative preview",
+          "previewLabel": "Recommendations layout preview",
+          "publicVisibilityNote": "Public Visibility controls whether a category appears.",
+          "title": "Recommendations presentation"
+        },
+        "wallpaperLabel": "Wallpaper and cover style",
+        "wallpaperOptions": {
+          "ambientGradient": "Ambient mesh gradient",
+          "bannerTop": "Top cover banner photo",
+          "fullWallpaperImage": "Full-screen background image",
+          "solidColor": "Solid minimal background"
+        }
       }
     },
     "recommendations": {
@@ -1115,7 +1216,8 @@
         "listVisibilityError": "Failed to update recommendation list visibility.",
         "qrDownloadError": "Failed to download QR code. Please try again.",
         "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrNotReady": "QR code not ready for download"
+        "qrNotReady": "QR code not ready for download",
+        "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "Safari kama mwenyeji",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -1163,7 +1265,8 @@
       "privacy": "Sera ya Faragha",
       "cookies": "Sera ya Vidakuzi",
       "product": "Bidhaa",
-      "shareAnywhere": "Shiriki popote"
+      "shareAnywhere": "Shiriki popote",
+      "useCases": "Use Cases"
     },
     "copyright": "© 2025 wagunduzi. Haki zote zimehifadhiwa.",
     "madeWithLove": "Imetengenezwa kwa upendo duniani",
@@ -1179,7 +1282,8 @@
       "product": "Bidhaa",
       "share": "Shiriki",
       "openMenu": "Fungua menyu ya kusogeza",
-      "closeMenu": "Funga menyu ya kusogeza"
+      "closeMenu": "Funga menyu ya kusogeza",
+      "useCases": "Use Cases"
     },
     "auth": {
       "login": "Ingia",
@@ -1324,16 +1428,16 @@
       },
       "steps": [
         {
-          "title": "Ongeza unachopendekeza",
-          "body": "Maeneo, watu, bidhaa, vitabu, filamu, vipindi, muziki, michezo, programu, miongozo na madokezo."
+          "body": "Maeneo, watu, bidhaa, vitabu, filamu, vipindi, muziki, michezo, programu, miongozo na madokezo.",
+          "title": "Ongeza unachopendekeza"
         },
         {
-          "title": "Panga kwa njia yako",
-          "body": "Kikundi kwa jiji, mandhari, orodha, kategoria, safari, au wakati ili watu waweze kugundua kawaida."
+          "body": "Kikundi kwa jiji, mandhari, orodha, kategoria, safari, au wakati ili watu waweze kugundua kawaida.",
+          "title": "Panga kwa njia yako"
         },
         {
-          "title": "Shiriki kiungo kimoja au QR",
-          "body": "Ukurasa wako unasasishwa wakati wowote huku kiungo sawa na QR kikiendelea kufanya kazi kila mahali."
+          "body": "Ukurasa wako unasasishwa wakati wowote huku kiungo sawa na QR kikiendelea kufanya kazi kila mahali.",
+          "title": "Shiriki kiungo kimoja au QR"
         }
       ]
     },
@@ -1352,20 +1456,20 @@
       "tokyoFoodGuide": "Mwongozo wangu wa chakula wa Tokyo explorers.earth/jane",
       "cards": [
         {
-          "title": "Link kwenye bio",
-          "eyebrow": "Profaili-tayari"
+          "eyebrow": "Profaili-tayari",
+          "title": "Link kwenye bio"
         },
         {
-          "title": "Nambari za QR",
-          "eyebrow": "Tayari nje ya mtandao"
+          "eyebrow": "Tayari nje ya mtandao",
+          "title": "Nambari za QR"
         },
         {
-          "title": "Ujumbe",
-          "eyebrow": "Tayari gumzo"
+          "eyebrow": "Tayari gumzo",
+          "title": "Ujumbe"
         },
         {
-          "title": "Karibu viongozi",
-          "eyebrow": "Mgeni tayari"
+          "eyebrow": "Mgeni tayari",
+          "title": "Karibu viongozi"
         }
       ],
       "visual": {
@@ -1408,49 +1512,6 @@
       "earnedThisMonth": "Imepatikana mwezi huu",
       "passiveTitle": "Badilisha mapendekezo kuwa malipo ya kujitegemea",
       "networkTitle": "Jenga mtandao wako na pata kiotomatiki"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Sikiliza wakati unachunguza",
-      "body": "Uchunguzi sio wa kuona tu. Sauti hubeba kumbukumbu, muktadha na hisia.\n\nTunes inakuruhusu kukusanya na kushiriki sauti za maeneo, safari na hali — iwe ni muziki uliogunduliwa njiani au sauti zinazofafanua eneo kwako.\n\nImeunganishwa kwa urahisi na wasifu wako wa Explorer.",
-      "exploreButton": "Chunguza Tunes",
-      "featuresHeading": "Vipengele Vikuu",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Ushirikiano wa Wakati Halisi",
-          "description": "Wacha wageni waongeze nyimbo kwenye orodha yako ya kucheza mara moja huku ukidumisha udhibiti kamili wa kinachochezwa."
-        },
-        "qrCodeSharing": {
-          "title": "Kushiriki Msimbo wa QR",
-          "description": "Shiriki uzoefu wako wa muziki kwa kuchanganua msimbo wa QR kwa urahisi — hakuna programu au upakuaji unahitajika."
-        },
-        "youtubeIntegration": {
-          "title": "Ujumuishaji wa YouTube",
-          "description": "Jumuisha kwa urahisi na YouTube ili kufikia mamilioni ya nyimbo na kuunda hali kamili."
-        },
-        "voteLikeSystem": {
-          "title": "Mfumo wa Kupiga Kura na Kupenda",
-          "description": "Wageni wanaweza kupiga kura kwa nyimbo zao za kupenda ili kuathiri foleni ya orodha ya kucheza kwa wakati halisi."
-        },
-        "silentParties": {
-          "title": "Sherehe za Kimya",
-          "description": "Andaa sherehe za kimya za kipekee ambapo kila mtu anasikiliza kupitia vichwa vya kusikilizia vyake."
-        },
-        "karaokeReady": {
-          "title": "Tayari kwa Karaoke",
-          "description": "Bora kwa usiku wa karaoke na orodha za kucheza za ushirikiano na maombi ya nyimbo kwa wakati halisi."
-        }
-      },
-      "venueHeading": "Bora kwa Kila Eneo",
-      "venues": {
-        "barsPubs": "Baa na Pubs",
-        "restaurants": "Mikahawa",
-        "coffeeShops": "Vikahawa",
-        "eventsWeddings": "Matukio na Arusi",
-        "retailStores": "Maduka",
-        "gymsFitness": "Vyumba vya Mazoezi na Fitness"
-      },
-      "closingStatement": "Tunes ni <strong>bure</strong> kuchunguza, na kwa vipengele vilivyolipwa unaweza kuboresha baadaye."
     },
     "whoIsFor": {
       "headline": "Imeundwa kwa watu ambao ladha yao husaidia wengine.",
@@ -1532,7 +1593,23 @@
         "Viwanja vya ndege",
         "NGOs",
         "Timu za serikali"
-      ]
+      ],
+      "explore": "See this perspective",
+      "eyebrow": "Ways to use explorers",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
+        },
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
+        },
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
+        }
+      }
     },
     "testimonials": {
       "headline": "Inapendwa na wasafiri, watayarishi na waandaji",
@@ -1542,45 +1619,45 @@
       "items": [
         {
           "id": "1",
-          "name": "Priya Sharma",
-          "role": "Blogger ya Kusafiri",
           "location": "Mumbai, India",
-          "quote": "wagunduzi walibadilisha jinsi ninavyoshiriki maarifa yangu ya kusafiri. Wafuasi wangu wanapenda kupata ufikiaji wa papo hapo kwa mapendekezo yangu yaliyoratibiwa!"
+          "name": "Priya Sharma",
+          "quote": "wagunduzi walibadilisha jinsi ninavyoshiriki maarifa yangu ya kusafiri. Wafuasi wangu wanapenda kupata ufikiaji wa papo hapo kwa mapendekezo yangu yaliyoratibiwa!",
+          "role": "Blogger ya Kusafiri"
         },
         {
           "id": "2",
-          "name": "Raj Patel",
-          "role": "Mpangishi wa Airbnb",
           "location": "Delhi, India",
-          "quote": "Wageni wangu wanapenda kabisa msimbo wa QR uliobinafsishwa katika vifaa vyao vya kukaribisha. Imekuwa mguso wangu wa saini!"
+          "name": "Raj Patel",
+          "quote": "Wageni wangu wanapenda kabisa msimbo wa QR uliobinafsishwa katika vifaa vyao vya kukaribisha. Imekuwa mguso wangu wa saini!",
+          "role": "Mpangishi wa Airbnb"
         },
         {
           "id": "3",
-          "name": "Yuki Tanaka",
-          "role": "Mmiliki wa Mgahawa",
           "location": "Tokyo, Japan",
-          "quote": "Tunashiriki wagunduzi wetu na wateja ili kupendekeza maeneo mengine ya karibu. Imeunda miunganisho ya ajabu ya jamii."
+          "name": "Yuki Tanaka",
+          "quote": "Tunashiriki wagunduzi wetu na wateja ili kupendekeza maeneo mengine ya karibu. Imeunda miunganisho ya ajabu ya jamii.",
+          "role": "Mmiliki wa Mgahawa"
         },
         {
           "id": "4",
-          "name": "Maria Silva",
-          "role": "Mwongozo wa Watalii",
           "location": "São Paulo, Brazili",
-          "quote": "wagunduzi hunisaidia kupanua ujuzi wangu zaidi ya saa za ziara. Wateja wanaweza kufikia mapendekezo yangu wakati wowote!"
+          "name": "Maria Silva",
+          "quote": "wagunduzi hunisaidia kupanua ujuzi wangu zaidi ya saa za ziara. Wateja wanaweza kufikia mapendekezo yangu wakati wowote!",
+          "role": "Mwongozo wa Watalii"
         },
         {
           "id": "5",
-          "name": "James Wilson",
-          "role": "Mshawishi wa Kusafiri",
           "location": "Sydney, Australia",
-          "quote": "Kama mshawishi wa usafiri, wagunduzi hurahisisha sana kushiriki maeneo ninayopenda na hadhira yangu. Kipengele cha nambari ya QR ni nzuri!"
+          "name": "James Wilson",
+          "quote": "Kama mshawishi wa usafiri, wagunduzi hurahisisha sana kushiriki maeneo ninayopenda na hadhira yangu. Kipengele cha nambari ya QR ni nzuri!",
+          "role": "Mshawishi wa Kusafiri"
         },
         {
           "id": "6",
-          "name": "Sophie Martin",
-          "role": "Mjuzi wa Mitaa",
           "location": "Paris, Ufaransa",
-          "quote": "Ninatumia wagunduzi kuunda safari za kutembea kwa wateja wangu. Wanaweza kuchanganua QR na kuchunguza kwa mwendo wao wenyewe!"
+          "name": "Sophie Martin",
+          "quote": "Ninatumia wagunduzi kuunda safari za kutembea kwa wateja wangu. Wanaweza kuchanganua QR na kuchunguza kwa mwendo wao wenyewe!",
+          "role": "Mjuzi wa Mitaa"
         }
       ]
     },
@@ -1591,24 +1668,24 @@
       "error": "Hitilafu katika kupakia FAQ. Tafadhali jaribu tena baadaye.",
       "fallbackItems": [
         {
-          "Sequence": 1,
+          "Answer": "Maeneo, watu, bidhaa, vitabu, filamu, vipindi, muziki, michezo, programu, miongozo na madokezo.",
           "Question": "Ninaweza kuongeza nini kwenye ukurasa wangu wa Explorer?",
-          "Answer": "Maeneo, watu, bidhaa, vitabu, filamu, vipindi, muziki, michezo, programu, miongozo na madokezo."
+          "Sequence": 1
         },
         {
-          "Sequence": 2,
+          "Answer": "Ndiyo. Ukurasa wako wa Explorer unaweza kushirikiwa kama kiungo au QR kwa wasifu, ujumbe, majedwali, kadi na miongozo iliyochapishwa.",
           "Question": "Je! ninaweza kuishiriki na nambari ya QR?",
-          "Answer": "Ndiyo. Ukurasa wako wa Explorer unaweza kushirikiwa kama kiungo au QR kwa wasifu, ujumbe, majedwali, kadi na miongozo iliyochapishwa."
+          "Sequence": 2
         },
         {
-          "Sequence": 3,
+          "Answer": "Ndiyo. Unaweza kuweka ukurasa wako upya huku kiungo sawa na QR kikiendelea kufanya kazi.",
           "Question": "Je, ninaweza kusasisha mapendekezo yangu baadaye?",
-          "Answer": "Ndiyo. Unaweza kuweka ukurasa wako upya huku kiungo sawa na QR kikiendelea kufanya kazi."
+          "Sequence": 3
         },
         {
-          "Sequence": 4,
+          "Answer": "Ndiyo. Ukurasa unaweza kuwasiliana ahadi ya bure kwa uwazi bila lugha nzito ya malipo.",
           "Question": "Je, wagunduzi ni bure milele?",
-          "Answer": "Ndiyo. Ukurasa unaweza kuwasiliana ahadi ya bure kwa uwazi bila lugha nzito ya malipo."
+          "Sequence": 4
         }
       ]
     },
@@ -1668,52 +1745,52 @@
       },
       "categories": [
         {
+          "description": "Migahawa, vitongoji, makumbusho, njia, na vito vilivyofichwa ambavyo watu wanaweza kutembelea.",
           "id": "places",
           "label": "Maeneo",
-          "title": "Maeneo ya ndani, miongozo na njia",
-          "description": "Migahawa, vitongoji, makumbusho, njia, na vito vilivyofichwa ambavyo watu wanaweza kutembelea."
+          "title": "Maeneo ya ndani, miongozo na njia"
         },
         {
+          "description": "Watayarishi, waanzilishi, waelekezi, wasanii, walimu, wataalamu na watu walioboresha ladha yako.",
           "id": "people",
           "label": "Watu",
-          "title": "Watu wanaofaa kufuatwa au kujifunza kutoka kwao",
-          "description": "Watayarishi, waanzilishi, waelekezi, wasanii, walimu, wataalamu na watu walioboresha ladha yako."
+          "title": "Watu wanaofaa kufuatwa au kujifunza kutoka kwao"
         },
         {
+          "description": "Vitabu unavyoendelea kupendekeza katika gumzo, madokezo, majarida na mazungumzo ya usafiri.",
           "id": "books",
           "label": "Vitabu",
-          "title": "Vitabu na orodha ya kusoma",
-          "description": "Vitabu unavyoendelea kupendekeza katika gumzo, madokezo, majarida na mazungumzo ya usafiri."
+          "title": "Vitabu na orodha ya kusoma"
         },
         {
+          "description": "Filamu, mfululizo, hali halisi na orodha za kutazama za kila aina ya hisia au hadhira.",
           "id": "movies",
           "label": "Filamu na TV",
-          "title": "Filamu, maonyesho na orodha za kutazama",
-          "description": "Filamu, mfululizo, hali halisi na orodha za kutazama za kila aina ya hisia au hadhira."
+          "title": "Filamu, maonyesho na orodha za kutazama"
         },
         {
+          "description": "Michezo, Mapambano, ulimwengu, na matukio ambayo watu wanapaswa kujaribu ijayo.",
           "id": "games",
           "label": "Michezo",
-          "title": "Michezo na ulimwengu wa kuchunguza",
-          "description": "Michezo, Mapambano, ulimwengu, na matukio ambayo watu wanapaswa kujaribu ijayo."
+          "title": "Michezo na ulimwengu wa kuchunguza"
         },
         {
+          "description": "Wasanii, albamu, nyimbo, orodha za kucheza na nyimbo zilizounganishwa kwenye maeneo na matukio.",
           "id": "music",
           "label": "Muziki",
-          "title": "Albamu, wasanii na orodha za kucheza",
-          "description": "Wasanii, albamu, nyimbo, orodha za kucheza na nyimbo zilizounganishwa kwenye maeneo na matukio."
+          "title": "Albamu, wasanii na orodha za kucheza"
         },
         {
+          "description": "Vipendwa vya kila siku, zana za usafiri, zana za watayarishi, zawadi na bidhaa zinazostahili kuhifadhiwa.",
           "id": "products",
           "label": "Bidhaa",
-          "title": "Bidhaa ambazo watu hupendekeza kweli",
-          "description": "Vipendwa vya kila siku, zana za usafiri, zana za watayarishi, zawadi na bidhaa zinazostahili kuhifadhiwa."
+          "title": "Bidhaa ambazo watu hupendekeza kweli"
         },
         {
+          "description": "Programu, tovuti, violezo, zana na nyenzo zinazorahisisha maisha.",
           "id": "apps",
           "label": "Programu na Zana",
-          "title": "Programu, zana na viungo muhimu",
-          "description": "Programu, tovuti, violezo, zana na nyenzo zinazorahisisha maisha."
+          "title": "Programu, zana na viungo muhimu"
         }
       ]
     }
@@ -2286,5 +2363,115 @@
     "unavailable": "Jina la mtumiaji halipatikani.",
     "confirmOnSignup": "Tutathibitisha upatikanaji wakati wa kujisajili.",
     "checkingAvailability": "Inakagua upatikanaji..."
+  },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
+  "useCases": {
+    "cta": {
+      "button": "Claim your Explorer page",
+      "description": "Start with the recommendations you already share. Give them one place to live.",
+      "title": "Make a home for what you would pass on."
+    },
+    "hero": {
+      "chooseLabel": "Choose a perspective",
+      "description": "Whether the point of view is personal, creative, or shared by a brand, explorers gives it a thoughtful home.",
+      "eyebrow": "Ways to explore",
+      "title": "Different perspectives. One place to share them.",
+      "visualAlt": "Three perspectives connected through a place, an Explorer profile, and a storefront."
+    },
+    "journey": {
+      "description": "The shape changes with the person behind it. The rhythm stays simple.",
+      "eyebrow": "One simple rhythm",
+      "steps": {
+        "collect": {
+          "description": "Bring together what you genuinely recommend across the parts of life that matter to you.",
+          "title": "Collect"
+        },
+        "shape": {
+          "description": "Organize it with enough context for someone else to understand why it belongs.",
+          "title": "Shape"
+        },
+        "share": {
+          "description": "Offer one living link or QR that people can save, scan, and return to.",
+          "title": "Share"
+        }
+      },
+      "title": "Three perspectives. One way of sharing with care."
+    },
+    "perspectives": {
+      "brands": {
+        "description": "Curate the places, products, guides, and ideas that express what your organization genuinely values.",
+        "label": "Brands",
+        "points": [
+          "Build collections with a clear and human perspective.",
+          "Connect locations, products, and useful context.",
+          "Give people something thoughtful to save and revisit."
+        ],
+        "title": "Turn your point of view into an experience people can enter."
+      },
+      "creators": {
+        "description": "Turn the recommendations scattered across posts, videos, conversations, and notes into something people can return to.",
+        "label": "Creators",
+        "points": [
+          "Create a durable home for your point of view.",
+          "Organize recommendations around stories and themes.",
+          "Share through one link or QR wherever people find you."
+        ],
+        "title": "Give your audience more than a feed."
+      },
+      "personal": {
+        "description": "Keep the places, books, films, tools, people, and small discoveries you return to in one living collection.",
+        "label": "Personal",
+        "points": [
+          "Bring different kinds of recommendations together.",
+          "Add the context that makes each choice yours.",
+          "Share one page that can keep evolving with you."
+        ],
+        "title": "A home for the things that shape your world."
+      }
+    },
+    "seo": {
+      "description": "See how people, creators, and brands can collect what they value, shape it with context, and share it through one thoughtful Explorer page.",
+      "keywords": [
+        "explorers use cases",
+        "personal recommendations page",
+        "creator recommendations",
+        "brand curation",
+        "share recommendations",
+        "curated collections"
+      ],
+      "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
+      "title": "Use Cases | explorers.earth"
+    }
   }
 }

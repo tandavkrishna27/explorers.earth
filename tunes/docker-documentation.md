@@ -11,7 +11,7 @@
 1. **Create a Dockerfile in the project root**
 
 ```dockerfile
-FROM node:18-alpine AS base
+FROM node:22.12-alpine AS base
 
 # Set working directory
 WORKDIR /app
@@ -45,6 +45,11 @@ EXPOSE 5000
 # Set the default command
 CMD ["node", "dist/server/index.js"]
 ```
+
+This example reflects the supported Node 22.12 minimum. Release builds use the
+repository's checked-in `tunes/Dockerfile`, immutable base-image digest, and
+`.github/workflows/tunes.yml`; do not build or promote a production image from
+this illustrative snippet.
 
 2. **Create a Docker Compose file**
 
@@ -138,29 +143,12 @@ docker-compose logs -f
 3. **Access the Dockerized application**
    - Application: `http://localhost:5000`
 
-### Docker in Production
+### Production authority
 
-For production deployments, consider the following best practices:
-
-1. **Use Docker Swarm or Kubernetes**
-   - For improved scalability and high availability
-   - Configure resource limits and health checks
-
-2. **Implement Container Orchestration**
-   - Deploy multiple instances behind a load balancer
-   - Configure auto-scaling based on load
-
-3. **Container Security**
-   - Use non-root users in containers
-   - Scan images for vulnerabilities with tools like Trivy
-   - Implement proper secret management
-
-4. **Database Considerations**
-   - Use a managed database service in production
-   - Implement proper backup strategies
-   - Set up database replication
-
-5. **CI/CD Integration**
-   - Build and test Docker images in CI pipeline
-   - Push to container registry (ECR, Docker Hub)
-   - Deploy using automated workflows
+The Compose example above is for local orientation only. Production images are
+built once by `.github/workflows/tunes.yml` from the checked-in digest-pinned
+`tunes/Dockerfile`, scanned and attested at the exact commit, and promoted by
+immutable GHCR digest through the protected deployment workflow. Follow the
+[Music immutable deployment runbook](../docs/operations/music-deploy-runbook.md);
+do not build locally, publish a mutable tag, or treat this example as deployment
+authority.

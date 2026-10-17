@@ -1,3 +1,4 @@
+import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Clock, User, ExternalLink, Share2, Tv, ChevronLeft, ChevronRight } from "lucide-react";
@@ -5,6 +6,7 @@ import type { RecommendedMovie, TMDBCastMember } from "../../types";
 import { buildPosterUrl, buildBackdropUrl, buildLogoUrl, formatRating, formatRuntime, getGenreNames, extractNoteText } from "../../utils/movieHelpers";
 import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
+import SafePublicRichText from "../../../PublicHome/components/SafePublicRichText";
 
 interface MovieDetailModalProps {
   movie: RecommendedMovie | null;
@@ -15,6 +17,7 @@ interface MovieDetailModalProps {
 const FALLBACK_POSTER = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'><rect width='300' height='450' fill='%23171e2e'/></svg>`;
 
 const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
+  const categoryStyles = usePublicCategoryThemeStyles();
   const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [photoIndex, setPhotoIndex] = useState(0);
   const [dragStartY, setDragStartY] = useState<number | null>(null);
@@ -103,7 +106,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
     }
     if (movie.media_details?.imageDetails) {
       movie.media_details.imageDetails.forEach((snap: any, index: number) => {
-        const url = snap.url.startsWith('http') ? snap.url : (snap.url.startsWith('/') ? `${import.meta.env.VITE_REST_API_URL?.replace('/api', '') || 'http://localhost:1337'}${snap.url}` : snap.url);
+        const url = snap.url;
         items.push({
           id: `snap-${index}`,
           url,
@@ -164,7 +167,9 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
           {/* Modal panel wrapper */}
           <div className="fixed inset-0 pt-[88px] md:pt-8 flex items-end justify-center z-[150] pointer-events-none">
             <motion.div
-              className="relative bg-[#0d1117] rounded-t-2xl w-full h-full md:max-w-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-white/10 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
+              data-category-detail-panel
+              style={categoryStyles ?? undefined}
+              className="relative bg-[var(--category-panel,#0d1117)] rounded-t-2xl w-full h-full md:max-w-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-[color:var(--category-border,rgba(255,255,255,0.1))] hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
               initial={{ y: "100%", opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}
@@ -178,12 +183,12 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                 {backdropUrl ? (
                   <img src={backdropUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#1a2332] to-[#0d1117]" />
+                  <div className="w-full h-full bg-gradient-to-br from-[#1a2332] to-[var(--category-panel,#0d1117)]" />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-[#0d1117]/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[var(--category-panel,#0d1117)] via-[#0d1117]/40 to-transparent" />
 
                 {/* Drag handle (mobile) */}
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-white/30 md:hidden" />
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-[var(--category-card,rgba(255,255,255,0.3))] md:hidden" />
 
                 {/* Close button */}
                 <button
@@ -198,9 +203,9 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
               <div ref={contentRef} className="flex-1 pb-24 md:pb-6 w-full">
                 <div className="flex gap-4 px-5 -mt-16 relative z-10">
                   {/* Poster */}
-                  <div 
+                  <div
                     onClick={() => handleImageClick("poster")}
-                    className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-white/10 shadow-2xl cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                    className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-[color:var(--category-border,rgba(255,255,255,0.1))] shadow-2xl cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                   >
                     <img
                       src={posterUrl || FALLBACK_POSTER}
@@ -214,14 +219,14 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                   <div className="flex-1 pt-16 min-w-0">
                     <div className="flex items-start gap-2 flex-wrap">
                       {movie.media_type === "TV" && (
-                        <span className="flex items-center gap-1 text-xs bg-blue-600/80 text-white px-2 py-0.5 rounded-full">
+                        <span style={categoryStyles ? { backgroundColor: '#1D4ED8' } : undefined} className="flex items-center gap-1 text-xs bg-blue-600/80 text-white px-2 py-0.5 rounded-full">
                           <Tv size={10} /> Series
                         </span>
                       )}
                     </div>
-                    <h2 className="text-xl font-bold text-white mt-1 leading-tight">{movie.title}</h2>
+                    <h2 className="text-xl font-bold text-[color:var(--category-text,#fff)] mt-1 leading-tight">{movie.title}</h2>
                     {movie.original_title && movie.original_title !== movie.title && (
-                      <p className="text-xs text-white/40 mt-0.5">{movie.original_title}</p>
+                      <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.4))] mt-0.5">{movie.original_title}</p>
                     )}
                   </div>
                 </div>
@@ -230,25 +235,25 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                   {/* Metadata pills */}
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     {movie.year && (
-                      <span className="text-white/60">{movie.year}</span>
+                      <span className="text-[color:var(--category-muted,rgba(255,255,255,0.6))]">{movie.year}</span>
                     )}
                     {rating && (
-                      <span className="flex items-center gap-1 text-yellow-400 font-semibold">
-                        <Star size={13} fill="currentColor" /> {rating}
+                      <span className="flex items-center gap-1 text-[color:var(--category-text,#facc15)] font-semibold">
+                        <Star size={13} fill="currentColor" className="text-[color:var(--category-rating,#facc15)]" /> {rating}
                       </span>
                     )}
                     {runtime && (
-                      <span className="flex items-center gap-1 text-white/50">
+                      <span className="flex items-center gap-1 text-[color:var(--category-muted,rgba(255,255,255,0.5))]">
                         <Clock size={13} /> {runtime}
                       </span>
                     )}
                     {movie.director && (
-                      <span className="flex items-center gap-1 text-white/50">
+                      <span className="flex items-center gap-1 text-[color:var(--category-muted,rgba(255,255,255,0.5))]">
                         <User size={13} /> {movie.director}
                       </span>
                     )}
                     {movie.season_count && (
-                      <span className="text-white/50">{movie.season_count} season{movie.season_count > 1 ? "s" : ""}</span>
+                      <span className="text-[color:var(--category-muted,rgba(255,255,255,0.5))]">{movie.season_count} season{movie.season_count > 1 ? "s" : ""}</span>
                     )}
                   </div>
 
@@ -256,7 +261,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                   {genres.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {genres.map((g) => (
-                        <span key={g} className="text-xs bg-white/8 text-white/60 px-2.5 py-1 rounded-full border border-white/10">
+                        <span key={g} className="text-xs bg-[var(--category-card,rgba(255,255,255,0.08))] text-[color:var(--category-muted,rgba(255,255,255,0.6))] px-2.5 py-1 rounded-full border border-[color:var(--category-border,rgba(255,255,255,0.1))]">
                           {g}
                         </span>
                       ))}
@@ -265,28 +270,31 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
 
                   {/* Overview */}
                   {movie.overview && (
-                    <p className="text-sm text-white/60 leading-relaxed">{movie.overview}</p>
+                    <p className="text-sm text-[color:var(--category-muted,rgba(255,255,255,0.6))] leading-relaxed">{movie.overview}</p>
                   )}
 
                   {/* Creator note */}
                   {noteText && (
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-                      <p className="text-xs font-semibold text-blue-400 mb-1.5 uppercase tracking-wider">Creator's Note</p>
-                      <div className="text-sm text-white/80 leading-relaxed [&_p]:mb-2 [&_p]:last:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h2]:text-md [&_h3]:text-base font-normal max-w-none" dangerouslySetInnerHTML={{ __html: noteText }} />
+                      <p className="text-xs font-semibold text-[color:var(--category-text,#60a5fa)] mb-1.5 uppercase tracking-wider">Creator's Note</p>
+                      <SafePublicRichText
+                        className="text-sm text-[color:var(--category-text,rgba(255,255,255,0.8))] leading-relaxed [&_p]:mb-2 [&_p]:last:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h2]:text-md [&_h3]:text-base font-normal max-w-none"
+                        html={noteText}
+                      />
                     </div>
                   )}
 
                   {/* Creator Rating */}
                   {movie.user_rating && (
                     <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 flex items-center justify-between">
-                      <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">Creator's Rating</p>
+                      <p className="text-xs font-semibold text-[color:var(--category-text,#eab308)] uppercase tracking-wider">Creator's Rating</p>
                       <div className="flex gap-1 flex-wrap justify-end">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(star => (
-                          <Star 
-                            key={star} 
-                            size={16} 
-                            fill={movie.user_rating! >= star ? "currentColor" : "none"} 
-                            className={movie.user_rating! >= star ? "text-yellow-400" : "text-white/20"} 
+                          <Star
+                            key={star}
+                            size={16}
+                            fill={movie.user_rating! >= star ? "currentColor" : "none"}
+                            className={movie.user_rating! >= star ? "text-[color:var(--category-rating,#facc15)]" : "text-[color:var(--category-muted,rgba(255,255,255,0.2))]"}
                           />
                         ))}
                       </div>
@@ -296,7 +304,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                   {/* Cast */}
                   {cast.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Cast</p>
+                      <p className="text-xs font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.5))] uppercase tracking-wider mb-3">Cast</p>
                       <div className="relative group">
                         <button
                           onClick={() => scrollCast("left")}
@@ -307,21 +315,21 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                         <div ref={castScrollRef} className="flex overflow-x-auto pb-4 -mx-5 px-5 gap-3 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                           {cast.map(c => (
                             <div key={c.id} className="flex flex-col flex-shrink-0 w-20 gap-1 rounded-xl">
-                              <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border border-white/10 bg-[#1a2332]">
+                              <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border border-[color:var(--category-border,rgba(255,255,255,0.1))] bg-[var(--category-card,#1a2332)]">
                                 {c.profile_path ? (
-                                  <img 
-                                    src={c.profile_path.startsWith('http') ? c.profile_path : (c.profile_path.startsWith('/') ? `${import.meta.env.VITE_REST_API_URL?.replace('/api', '') || 'http://localhost:1337'}${c.profile_path}` : `https://image.tmdb.org/t/p/w185${c.profile_path}`)} 
-                                    className="w-full h-full object-cover" 
-                                    alt="" 
+                                  <img
+                                    src={buildPosterUrl(c.profile_path, 'w185')}
+                                    className="w-full h-full object-cover"
+                                    alt=""
                                   />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-white/20">
+                                  <div className="w-full h-full flex items-center justify-center text-[color:var(--category-muted,rgba(255,255,255,0.2))]">
                                     <User size={24} />
                                   </div>
                                 )}
                               </div>
-                              <span className="text-xs text-center leading-tight mt-1 text-white/90">{c.name}</span>
-                              <span className="text-[10px] text-center text-white/40 leading-tight">{c.character}</span>
+                              <span className="text-xs text-center leading-tight mt-1 text-[color:var(--category-text,rgba(255,255,255,0.9))]">{c.name}</span>
+                              <span className="text-[10px] text-center text-[color:var(--category-muted,rgba(255,255,255,0.4))] leading-tight">{c.character}</span>
                             </div>
                           ))}
                         </div>
@@ -338,7 +346,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                   {/* Manual Snapshots */}
                   {movie.media_details?.imageDetails && movie.media_details.imageDetails.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">
+                      <p className="text-xs font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.5))] uppercase tracking-wider mb-3">
                         Snapshots from {movie.media_type === "TV" ? "Show" : "Movie"}
                       </p>
                       <div className="relative group">
@@ -350,15 +358,15 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                         </button>
                         <div ref={snapshotsScrollRef} className="flex overflow-x-auto pb-4 -mx-5 px-5 gap-3 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                           {movie.media_details.imageDetails.map((snap: any, i: number) => (
-                            <div 
-                              key={snap.id} 
+                            <div
+                              key={snap.id}
                               onClick={() => handleImageClick("snap", i)}
-                              className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                              className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-[color:var(--category-border,rgba(255,255,255,0.1))] bg-[var(--category-card,#1a2332)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                             >
-                              <img 
-                                src={snap.url.startsWith('http') ? snap.url : (snap.url.startsWith('/') ? `${import.meta.env.VITE_REST_API_URL?.replace('/api', '') || 'http://localhost:1337'}${snap.url}` : snap.url)} 
-                                className="w-full h-full object-cover" 
-                                alt="Snapshot" 
+                              <img
+                                src={snap.url}
+                                className="w-full h-full object-cover"
+                                alt="Snapshot"
                               />
                             </div>
                           ))}
@@ -376,7 +384,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                   {/* Watch providers */}
                   {watchProviders.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Where to Watch</p>
+                      <p className="text-xs font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.5))] uppercase tracking-wider mb-3">Where to Watch</p>
                       <div className="flex flex-wrap gap-2">
                         {watchProviders.map((p, i) => (
                           p.link ? (
@@ -385,18 +393,18 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                               href={p.link}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-2 bg-white/8 hover:bg-white/12 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/80 transition-colors"
+                              className="flex items-center gap-2 bg-[var(--category-card,rgba(255,255,255,0.08))] hover:bg-[var(--category-hover,rgba(255,255,255,0.12))] border border-[color:var(--category-border,rgba(255,255,255,0.1))] rounded-lg px-3 py-2 text-sm text-[color:var(--category-text,rgba(255,255,255,0.8))] transition-colors"
                             >
                               {p.logo_path && (
                                 <img src={buildLogoUrl(p.logo_path)} alt="" className="w-5 h-5 rounded" />
                               )}
                               {p.provider_name}
-                              <ExternalLink size={11} className="text-white/30" />
+                              <ExternalLink size={11} className="text-[color:var(--category-muted,rgba(255,255,255,0.3))]" />
                             </a>
                           ) : (
                             <span
                               key={i}
-                              className="flex items-center gap-2 bg-white/8 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/80"
+                              className="flex items-center gap-2 bg-[var(--category-card,rgba(255,255,255,0.08))] border border-[color:var(--category-border,rgba(255,255,255,0.1))] rounded-lg px-3 py-2 text-sm text-[color:var(--category-text,rgba(255,255,255,0.8))]"
                             >
                               {p.logo_path && (
                                 <img src={buildLogoUrl(p.logo_path)} alt="" className="w-5 h-5 rounded" />
@@ -412,11 +420,11 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                   {/* Creator photos */}
                   {photos.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Photos</p>
+                      <p className="text-xs font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.5))] uppercase tracking-wider mb-3">Photos</p>
                       <div className="relative">
-                        <div 
+                        <div
                           onClick={() => handleImageClick("photo", photoIndex)}
-                          className="aspect-video rounded-xl overflow-hidden bg-white/5 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200"
+                          className="aspect-video rounded-xl overflow-hidden bg-[var(--category-card,rgba(255,255,255,0.05))] cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200"
                         >
                           <img src={photos[photoIndex]?.url} alt="" className="w-full h-full object-cover" />
                         </div>
@@ -425,15 +433,15 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                             <button
                               onClick={() => setPhotoIndex(i => Math.max(0, i - 1))}
                               disabled={photoIndex === 0}
-                              className="p-1 text-white/50 hover:text-white disabled:opacity-30"
+                              className="p-1 text-[color:var(--category-muted,rgba(255,255,255,0.5))] hover:text-[color:var(--category-text,#fff)] disabled:opacity-30"
                             >
                               <ChevronLeft size={20} />
                             </button>
-                            <span className="text-xs text-white/40">{photoIndex + 1} / {photos.length}</span>
+                            <span className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.4))]">{photoIndex + 1} / {photos.length}</span>
                             <button
                               onClick={() => setPhotoIndex(i => Math.min(photos.length - 1, i + 1))}
                               disabled={photoIndex === photos.length - 1}
-                              className="p-1 text-white/50 hover:text-white disabled:opacity-30"
+                              className="p-1 text-[color:var(--category-muted,rgba(255,255,255,0.5))] hover:text-[color:var(--category-text,#fff)] disabled:opacity-30"
                             >
                               <ChevronRight size={20} />
                             </button>
@@ -445,17 +453,17 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
 
                   {/* Source list */}
                   {movie.movie_list && (
-                    <p className="text-xs text-white/30">
-                      From the list: <span className="text-blue-400">{movie.movie_list.List_Name}</span>
+                    <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.3))]">
+                      From the list: <span className="text-[color:var(--category-text,#60a5fa)]">{movie.movie_list.List_Name}</span>
                     </p>
                   )}
                 </div>
               </div>
 
-              <div className="flex-shrink-0 border-t border-white/8 px-5 py-3 flex items-center justify-end gap-2 bg-[#0d1117]">
+              <div className="flex-shrink-0 border-t border-[color:var(--category-border,rgba(255,255,255,0.08))] px-5 py-3 flex items-center justify-end gap-2 bg-[var(--category-panel,#0d1117)]">
                 <button
                   onClick={handleShare}
-                  className="flex items-center gap-1.5 text-sm text-white/60 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/8 transition-all"
+                  className="flex items-center gap-1.5 text-sm text-[color:var(--category-muted,rgba(255,255,255,0.6))] hover:text-[color:var(--category-text,#fff)] px-3 py-1.5 rounded-lg hover:bg-[var(--category-hover,rgba(255,255,255,0.08))] transition-all"
                 >
                   <Share2 size={14} /> Share
                 </button>

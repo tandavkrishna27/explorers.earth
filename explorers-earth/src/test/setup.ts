@@ -2,15 +2,22 @@
  * Vitest Global Setup
  * Runs before every test file.
  */
+import './contained-unit-worker-check';
 import '@testing-library/jest-dom';
 import { afterEach, vi } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 
-// ── Test env: provide IGDB credentials so igdbService doesn't short-circuit ──
-// igdbService reads these at module load; they must be set before any test
-// file imports it, so this lives in the global setup (runs first).
-vi.stubEnv('VITE_IGDB_CLIENT_ID', 'test-client-id');
-vi.stubEnv('VITE_IGDB_CLIENT_SECRET', 'test-client-secret');
+// testing-library's asyncUtilTimeout default is 1000ms, which this project never set
+// deliberately -- far tighter than the vitest test budget, so a loaded CI runner expires the
+// waitFor long before the test itself. AppEnrichmentPanel flaked exactly that way
+// ("expected vi.fn() to be called at least once" from an awaited waitFor), passing in the
+// sibling run of the identical commit.
+//
+// Raising it cannot make a passing assertion fail: waitFor only ever fails by TIMING OUT, so
+// nothing passes because the window was short. The five call sites that pass an explicit
+// { timeout } still win over this default, and 5000ms stays well inside the 30s vitest
+// budget so a genuine failure still reports as the assertion rather than a test timeout.
+configure({ asyncUtilTimeout: 5000 });
 
 // Automatically clean up DOM and env stubs after each test
 afterEach(() => {

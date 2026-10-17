@@ -227,3 +227,18 @@ Render empty states whenever list fetches return empty arrays:
 *   **Phase 1:** Unify buttons and remove duplicate components (e.g. accordion variants).
 *   **Phase 2:** Refactor modal wrappers to share a common backdrop portal.
 *   **Phase 3:** Extract nested layout spacing into standard CSS classes.
+
+---
+
+## 24. Reusable status and lifecycle guidance
+
+When a capability has independent identity, entitlement, publication, content, and lifecycle states, do not collapse them into one connected/disconnected badge. Show only the state that determines the user's next action:
+
+*   Healthy automatic identity projection is invisible.
+*   Temporary checking/outage states preserve the current page and use a polite live region.
+*   Suspended and pending-deletion states explain the authoritative recovery action without exposing internal service, token, or database language.
+*   Pending deletion remains visible across reloads and tabs until completed or validly cancelled.
+*   Private, unlisted, and public are explicit publication controls, not identity health.
+*   Unknown entitlement may show nonblocking checking, while included core Music remains usable.
+
+Use existing semantic colors, status components, dialogs, focus rules, reduced-motion behavior, and 320/375px responsive acceptance. Never use color alone, a toast alone, or optimistic disappearance to communicate an irreversible lifecycle boundary.

@@ -9,7 +9,16 @@ import session from "express-session";
 import cookieParser from 'cookie-parser';
 import { getGeoInfo } from "./utils/geolocation";
 import { emailService } from "./services/email-service";
-import { sanitizeUser } from "./utils/sanitize-user";
+import { sanitizeUser } from "./utils/sanitize-user"; import { requestIdFor, sendContainmentError } from "./security-containment";
+
+function retiredRegistrationIdentity(): {
+  strapiUserDocumentId: string;
+  strapiAccountDocumentId: string;
+  lifecycleOperationId: string;
+  guestCapabilityHash: string;
+} {
+  throw new Error("Native registration cannot establish a server-owned identity");
+}
 
 // Helper functions for device detection
 export function extractBrowserInfo(userAgent: string): { name: string, version: string } {
@@ -203,7 +212,9 @@ function checkSSOCookie(req: Request, res: Response, next: NextFunction) {
       allowGuestPlayOnDevice: userData.allowGuestPlayOnDevice !== undefined ? userData.allowGuestPlayOnDevice : true,
       allowPlaylistSharing: userData.allowPlaylistSharing !== undefined ? userData.allowPlaylistSharing : false,
       allowRecentlyPlayedVisibility: userData.allowRecentlyPlayedVisibility !== undefined ? userData.allowRecentlyPlayedVisibility : true,
-      accountManagerId: userData.accountManagerId || null
+      allowQueueVisibility: userData.allowQueueVisibility !== undefined ? userData.allowQueueVisibility : false,
+      accountManagerId: userData.accountManagerId || null,
+      musicQueueRevision: Number(userData.musicQueueRevision ?? 0),
     };
 
     // Create a session for the SSO user
@@ -274,8 +285,8 @@ export function setupAuth(app: Express) {
     rolling: true, // Extend session lifetime on each request
     cookie: {
       httpOnly: true,
-      secure: false, // Set to false for localhost development
-      sameSite: 'lax', // Use 'lax' for localhost instead of 'none'
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for better persistence
       path: '/'
       // Domain will be set dynamically per request
@@ -285,8 +296,7 @@ export function setupAuth(app: Express) {
   // Configure cookie parser with secret
   app.use(cookieParser(cookieSecret));
 
-  // Always trust proxies on Replit environment regardless of environment
-  app.set('trust proxy', true); // true instead of 1 to trust all proxies
+  // Proxy trust is configured once by app.ts from the explicit bounded hop count.
 
   // Log session setup with more details
   console.log('Session setup with PostgreSQL store', {
@@ -297,6 +307,7 @@ export function setupAuth(app: Express) {
 
   // Create session middleware with dynamic domain handling
   const sessionMiddleware = session(sessionSettings);
+  app.set('music session middleware', sessionMiddleware);
 
   // Wrap the session middleware to handle domain dynamically
   app.use((req, res, next) => {
@@ -328,8 +339,8 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // SSO Cookie-based authentication middleware (after passport is initialized)
-  app.use(checkSSOCookie);
+  // Embedded clients must never synthesize a native session from a browser
+  // cookie. The standalone local-account session remains the only native path.
 
   passport.use(
     new LocalStrategy(async (username, password, done) => {
@@ -403,14 +414,16 @@ export function setupAuth(app: Express) {
 
       if (!user) {
         console.log('Authentication failed:', info?.message);
-        return res.status(401).json({ message: info?.message || "Invalid username or password" });
+        return sendContainmentError(res, 401, "AUTH_INVALID", requestIdFor(req));
       }
 
-      req.login(user, (err) => {
-        if (err) {
-          console.error('Session creation error:', err);
-          return next(err);
-        }
+      req.session.regenerate((rotationError) => {
+        if (rotationError) return next(rotationError);
+        req.login(user, (err) => {
+          if (err) {
+            console.error('Session creation error:', err);
+            return next(err);
+          }
 
         // Ensure session is saved before sending response
         req.session.save(async (err) => {
@@ -468,7 +481,8 @@ export function setupAuth(app: Express) {
             // Continue anyway - this is non-critical functionality
           }
 
-          res.json(sanitizeUser(user));
+            res.json(sanitizeUser(user));
+          });
         });
       });
     })(req, res, next);
@@ -476,6 +490,8 @@ export function setupAuth(app: Express) {
 
   // Registration endpoint
   app.post("/api/register", async (req, res) => {
+    return sendContainmentError(res, 410, "LEGACY_IDENTITY_ROUTE_REMOVED", requestIdFor(req));
+    /* c8 ignore start -- retained only until the retired registration body is removed. */
     try {
       console.log('Registration attempt:', {
         username: req.body.username,
@@ -524,6 +540,7 @@ export function setupAuth(app: Express) {
 
       const user = await storage.createUser({
         ...userData,
+        ...retiredRegistrationIdentity(),
         password: hashedPassword,
         isEmailVerified: false // Ensure new users start with unverified email
       });
@@ -572,8 +589,11 @@ export function setupAuth(app: Express) {
         }
       }
 
-      // Log in the user after registration
-      req.login(user, (err) => {
+      // Rotate before post-registration login so a supplied session identifier
+      // cannot survive the authentication boundary.
+      req.session.regenerate((rotationError) => {
+        if (rotationError) return res.status(500).json({ message: "Registration succeeded but login failed" });
+        req.login(user, (err) => {
         if (err) {
           console.error('Login error after registration:', err);
           return res.status(500).json({ message: "Registration succeeded but login failed" });
@@ -637,13 +657,15 @@ export function setupAuth(app: Express) {
           });
         });
       });
+      });
     } catch (error) {
       console.error('Registration error:', error);
       res.status(500).json({
         message: "Registration failed",
-        error: error instanceof Error ? error.message : "Unknown error"
+        error: "Unknown error"
       });
     }
+    /* c8 ignore stop */
   });
 
   app.post("/api/logout", (req, res, next) => {
@@ -668,8 +690,8 @@ export function setupAuth(app: Express) {
           const cookieOptions = {
             path: '/',
             httpOnly: true,
-            secure: false, // Match the session cookie settings
-            sameSite: 'lax' as const // Match the session cookie settings
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax' as const
           };
 
           // Only add domain if it was explicitly set
@@ -691,7 +713,7 @@ export function setupAuth(app: Express) {
           // Clear SSO cookie (non-httpOnly cookie)
           const ssoCookieOptions = {
             path: '/',
-            secure: false,
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax' as const
           };
 
@@ -728,7 +750,7 @@ export function setupAuth(app: Express) {
     // Set the token as a cookie
     res.cookie('XSRF-TOKEN', token, {
       httpOnly: false, // Allow client-side access
-      secure: false, // Match session cookie settings
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax', // Match session cookie settings
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       path: '/'

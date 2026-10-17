@@ -1,4 +1,24 @@
 {
+  "music": {
+    "publication": {
+      "label": "Music public visibility",
+      "visibility": "Public Visibility",
+      "checking": "Checking Music publication…",
+      "published": "Music is public.",
+      "private": "Music is private.",
+      "saving": "Saving and verifying Music publication…",
+      "attention": "Music sharing needs attention. Review or make it private.",
+      "notReady": "Music is not ready for this account. Other settings remain available.",
+      "unknown": "Music publication was not confirmed. Refresh or retry the previous action.",
+      "conflict": "Music changed or the previous action expired. Confirm a new action after reviewing the current state.",
+      "refresh": "Refresh Music status",
+      "retry": "Retry previous action",
+      "makePrivate": "Make private",
+      "confirm_private": "Confirm new private action",
+      "confirm_public": "Confirm new public action",
+      "confirm_unlisted": "Confirm new unlisted action"
+    }
+  },
   "about": {
     "closing": "If you're curious.\nIf you're thoughtful.\nIf you're willing to slow down and look closer —\nyou already belong here.",
     "heroEyebrow": "Our shared perspective",
@@ -237,7 +257,9 @@
           "today": "No analytics data available for today. Please select a different time range to view your data."
         },
         "noDataMessage": "No analytics data found for your account. Analytics will appear here once people start viewing and interacting with your QR codes.",
-        "title": "No Analytics Data"
+        "title": "No Analytics Data",
+        "unavailableTitle": "Detailed Analytics Unavailable",
+        "unavailableMessage": "Detailed analytics are temporarily unavailable while we move this dashboard to our new platform. This does not mean your pages have had no visitors — your activity is still being recorded, and it will appear here once the move is complete."
       },
       "error": {
         "errorLabel": "Error:",
@@ -273,7 +295,6 @@
       "message": "This account has been deactivated.",
       "reactivateLink": "Click here to reactivate your account →"
     },
-    "claimAccount": "Claim Account?",
     "confirmPassword": "Confirm Password",
     "confirmPasswordPlaceholder": "Re-enter your password",
     "email": "Email",
@@ -346,8 +367,7 @@
     "signupSubtitle": "Sign up to enjoy the features of explorers",
     "signUpWithGoogle": "Sign up with Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Username",
@@ -781,6 +801,12 @@
       "addLocation": "Add Location",
       "addLocationLabel": "Add",
       "addRecommendations": "Add Recommendations",
+      "analytics": {
+        "ariaLabel": "{{label}}: {{value}}",
+        "loading": "Loading",
+        "unavailable": "Unavailable",
+        "viewsLast90Days": "Views · last 90 days"
+      },
       "draft": "Draft",
       "error": {
         "message": "An error occurred while loading your data",
@@ -943,6 +969,97 @@
       "tabs": {
         "account": "Account",
         "publicProfile": "Public Profile"
+      },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "Cancelled moving {{category}}. Order restored.",
+          "drop": "Dropped {{category}} at position {{position}} of {{total}}.",
+          "handle": "Drag {{category}}",
+          "instructions": "Press Space or Enter to lift. Use Arrow keys or Home and End to move. Press Space or Enter to drop, or Escape to cancel.",
+          "lift": "Lifted {{category}}. Position {{position}} of {{total}}.",
+          "move": "{{category}} moved to position {{position}} of {{total}}."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
+      },
+      "themeAppearance": {
+        "accentTitle": "Accent color",
+        "firstView": {
+          "business": "Business",
+          "categoryFirst": "Recommendations — {{category}} first",
+          "gallery": "Gallery",
+          "help": "Category choices promote that category but keep all other public categories.",
+          "label": "First view",
+          "savedOrder": "Recommendations — saved order"
+        },
+        "presetTitle": "Select theme preset",
+        "recommendations": {
+          "categories": {
+            "apps": "Apps & Tools",
+            "books": "Books",
+            "games": "Games",
+            "guides": "Guides",
+            "movies": "Movies & Shows",
+            "music": "Music",
+            "people": "People",
+            "places": "Places",
+            "products": "Products"
+          },
+          "featured": "Featured",
+          "help": "Choose how recommendation categories are arranged on your public profile.",
+          "layoutLegend": "Recommendations layout",
+          "layouts": {
+            "featured": {
+              "description": "A larger first category followed by compact rows.",
+              "label": "Featured First"
+            },
+            "grid": {
+              "description": "A compact grid that makes categories easy to scan.",
+              "label": "Category Mosaic"
+            },
+            "shelves": {
+              "description": "Horizontal shelves with recommendation previews.",
+              "label": "Classic Shelves"
+            }
+          },
+          "moved": "{{category}} moved to position {{position}} of {{total}}",
+          "moveDown": "Move {{category}} down",
+          "moveUp": "Move {{category}} up",
+          "orderHelp": "Move categories into the order visitors should scan them.",
+          "orderTitle": "Category order",
+          "position": "{{position}} of {{total}}",
+          "previewCaption": "Illustrative preview",
+          "previewLabel": "Recommendations layout preview",
+          "publicVisibilityNote": "Public Visibility controls whether a category appears.",
+          "title": "Recommendations presentation"
+        },
+        "wallpaperLabel": "Wallpaper and cover style",
+        "wallpaperOptions": {
+          "ambientGradient": "Ambient mesh gradient",
+          "bannerTop": "Top cover banner photo",
+          "fullWallpaperImage": "Full-screen background image",
+          "solidColor": "Solid minimal background"
+        }
       }
     },
     "recommendations": {
@@ -1411,16 +1528,16 @@
       },
       "steps": [
         {
-          "title": "Add what you recommend",
-          "body": "Places, people, products, books, movies, shows, music, games, apps, guides, and notes."
+          "body": "Places, people, products, books, movies, shows, music, games, apps, guides, and notes.",
+          "title": "Add what you recommend"
         },
         {
-          "title": "Organize it your way",
-          "body": "Group by city, theme, list, category, journey, or moment so people can explore naturally."
+          "body": "Group by city, theme, list, category, journey, or moment so people can explore naturally.",
+          "title": "Organize it your way"
         },
         {
-          "title": "Share one link or QR",
-          "body": "Your page updates anytime while the same link and QR keep working everywhere."
+          "body": "Your page updates anytime while the same link and QR keep working everywhere.",
+          "title": "Share one link or QR"
         }
       ]
     },
@@ -1442,20 +1559,20 @@
       "tokyoFoodGuide": "My Tokyo food guide explorers.earth/jane",
       "cards": [
         {
-          "title": "Link in bio",
-          "eyebrow": "Profile-ready"
+          "eyebrow": "Profile-ready",
+          "title": "Link in bio"
         },
         {
-          "title": "QR codes",
-          "eyebrow": "Offline-ready"
+          "eyebrow": "Offline-ready",
+          "title": "QR codes"
         },
         {
-          "title": "Messages",
-          "eyebrow": "Chat-ready"
+          "eyebrow": "Chat-ready",
+          "title": "Messages"
         },
         {
-          "title": "Welcome guides",
-          "eyebrow": "Guest-ready"
+          "eyebrow": "Guest-ready",
+          "title": "Welcome guides"
         }
       ],
       "visual": {
@@ -1485,49 +1602,6 @@
       "engagement": "Engagement",
       "referrals": "Referrals",
       "livePreview": "Live preview"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Listen as you explore",
-      "body": "Exploration isn't only visual. Sound carries memory, context, and emotion.\n\nLocalTunes lets you collect and share soundtracks for places, journeys, and moods — whether it's music discovered on the road or sounds that define a place for you.\n\nSeamlessly connected to your Explorer profile.",
-      "exploreButton": "Explore Tunes",
-      "featuresHeading": "Powerful Features",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Real-time Collaboration",
-          "description": "Let guests add songs to your playlist instantly while you maintain full control over what plays."
-        },
-        "qrCodeSharing": {
-          "title": "QR Code Sharing",
-          "description": "Share your music experience with a simple QR code scan - no apps or downloads required."
-        },
-        "youtubeIntegration": {
-          "title": "YouTube Integration",
-          "description": "Seamlessly integrate with YouTube to access millions of songs and create the perfect atmosphere."
-        },
-        "voteLikeSystem": {
-          "title": "Vote & Like System",
-          "description": "Guests can vote for their favorite songs to influence the playlist queue in real-time."
-        },
-        "silentParties": {
-          "title": "Silent Parties",
-          "description": "Host unique silent parties where everyone listens through their own headphones."
-        },
-        "karaokeReady": {
-          "title": "Karaoke Ready",
-          "description": "Perfect for karaoke nights with collaborative playlists and real-time song requests."
-        }
-      },
-      "venueHeading": "Perfect for Every Venue",
-      "venues": {
-        "barsPubs": "Bars & Pubs",
-        "restaurants": "Restaurants",
-        "coffeeShops": "Coffee Shops",
-        "eventsWeddings": "Events & Weddings",
-        "retailStores": "Retail Stores",
-        "gymsFitness": "Gyms & Fitness"
-      },
-      "closingStatement": "Tunes is <strong>free</strong> to explore, and for paid features you can upgrade afterwards."
     },
     "referEarn": {
       "headline": "Share, refer, and earn",
@@ -1645,45 +1719,45 @@
       "items": [
         {
           "id": "1",
-          "name": "Priya Sharma",
-          "role": "Travel Blogger",
           "location": "Mumbai, India",
-          "quote": "explorers transformed how I share my travel knowledge. My followers love getting instant access to my curated recommendations!"
+          "name": "Priya Sharma",
+          "quote": "explorers transformed how I share my travel knowledge. My followers love getting instant access to my curated recommendations!",
+          "role": "Travel Blogger"
         },
         {
           "id": "2",
-          "name": "Raj Patel",
-          "role": "Airbnb Host",
           "location": "Delhi, India",
-          "quote": "My guests absolutely love the personalized QR code in their welcome kit. It's become my signature touch!"
+          "name": "Raj Patel",
+          "quote": "My guests absolutely love the personalized QR code in their welcome kit. It's become my signature touch!",
+          "role": "Airbnb Host"
         },
         {
           "id": "3",
-          "name": "Yuki Tanaka",
-          "role": "Restaurant Owner",
           "location": "Tokyo, Japan",
-          "quote": "We share our explorers with customers to recommend other local spots. It's created amazing community connections."
+          "name": "Yuki Tanaka",
+          "quote": "We share our explorers with customers to recommend other local spots. It's created amazing community connections.",
+          "role": "Restaurant Owner"
         },
         {
           "id": "4",
-          "name": "Maria Silva",
-          "role": "Tour Guide",
           "location": "São Paulo, Brazil",
-          "quote": "explorers helps me extend my expertise beyond tour hours. Clients can access my recommendations anytime!"
+          "name": "Maria Silva",
+          "quote": "explorers helps me extend my expertise beyond tour hours. Clients can access my recommendations anytime!",
+          "role": "Tour Guide"
         },
         {
           "id": "5",
-          "name": "James Wilson",
-          "role": "Travel Influencer",
           "location": "Sydney, Australia",
-          "quote": "As a travel influencer, explorers makes it so easy to share my favorite spots with my audience. The QR code feature is brilliant!"
+          "name": "James Wilson",
+          "quote": "As a travel influencer, explorers makes it so easy to share my favorite spots with my audience. The QR code feature is brilliant!",
+          "role": "Travel Influencer"
         },
         {
           "id": "6",
-          "name": "Sophie Martin",
-          "role": "Local Guide",
           "location": "Paris, France",
-          "quote": "I use explorers to create walking tours for my clients. They can scan the QR and explore at their own pace!"
+          "name": "Sophie Martin",
+          "quote": "I use explorers to create walking tours for my clients. They can scan the QR and explore at their own pace!",
+          "role": "Local Guide"
         }
       ]
     },
@@ -1694,24 +1768,24 @@
       "error": "Error loading FAQs. Please try again later.",
       "fallbackItems": [
         {
-          "Sequence": 1,
+          "Answer": "Places, people, products, books, movies, shows, music, games, apps, guides, and notes.",
           "Question": "What can I add to my Explorer page?",
-          "Answer": "Places, people, products, books, movies, shows, music, games, apps, guides, and notes."
+          "Sequence": 1
         },
         {
-          "Sequence": 2,
+          "Answer": "Yes. Your Explorer page can be shared as a link or QR for profiles, messages, tables, cards, and printed guides.",
           "Question": "Can I share it with a QR code?",
-          "Answer": "Yes. Your Explorer page can be shared as a link or QR for profiles, messages, tables, cards, and printed guides."
+          "Sequence": 2
         },
         {
-          "Sequence": 3,
+          "Answer": "Yes. You can keep your page fresh while the same link and QR continue to work.",
           "Question": "Can I update my recommendations later?",
-          "Answer": "Yes. You can keep your page fresh while the same link and QR continue to work."
+          "Sequence": 3
         },
         {
-          "Sequence": 4,
+          "Answer": "Yes. The page can communicate the free promise clearly without payment-heavy language.",
           "Question": "Is explorers free forever?",
-          "Answer": "Yes. The page can communicate the free promise clearly without payment-heavy language."
+          "Sequence": 4
         }
       ]
     },
@@ -1771,52 +1845,52 @@
       },
       "categories": [
         {
+          "description": "Restaurants, neighborhoods, museums, routes, and hidden gems people can actually visit.",
           "id": "places",
           "label": "Places",
-          "title": "Local spots, guides, and routes",
-          "description": "Restaurants, neighborhoods, museums, routes, and hidden gems people can actually visit."
+          "title": "Local spots, guides, and routes"
         },
         {
+          "description": "Creators, founders, guides, artists, teachers, experts, and people who shaped your taste.",
           "id": "people",
           "label": "People",
-          "title": "People worth following or learning from",
-          "description": "Creators, founders, guides, artists, teachers, experts, and people who shaped your taste."
+          "title": "People worth following or learning from"
         },
         {
+          "description": "Books you keep recommending in chats, notes, newsletters, and travel conversations.",
           "id": "books",
           "label": "Books",
-          "title": "Books and reading lists",
-          "description": "Books you keep recommending in chats, notes, newsletters, and travel conversations."
+          "title": "Books and reading lists"
         },
         {
+          "description": "Movies, series, documentaries, and watchlists for every kind of mood or audience.",
           "id": "movies",
           "label": "Movies & TV",
-          "title": "Films, shows, and watchlists",
-          "description": "Movies, series, documentaries, and watchlists for every kind of mood or audience."
+          "title": "Films, shows, and watchlists"
         },
         {
+          "description": "Games, quests, worlds, and experiences people should try next.",
           "id": "games",
           "label": "Games",
-          "title": "Games and worlds to explore",
-          "description": "Games, quests, worlds, and experiences people should try next."
+          "title": "Games and worlds to explore"
         },
         {
+          "description": "Artists, albums, songs, playlists, and soundtracks connected to places and moments.",
           "id": "music",
           "label": "Music",
-          "title": "Albums, artists, and playlists",
-          "description": "Artists, albums, songs, playlists, and soundtracks connected to places and moments."
+          "title": "Albums, artists, and playlists"
         },
         {
+          "description": "Everyday favorites, travel gear, creator tools, gifts, and products worth saving.",
           "id": "products",
           "label": "Products",
-          "title": "Products people actually recommend",
-          "description": "Everyday favorites, travel gear, creator tools, gifts, and products worth saving."
+          "title": "Products people actually recommend"
         },
         {
+          "description": "Software, websites, templates, tools, and resources that make life easier.",
           "id": "apps",
           "label": "Apps & Tools",
-          "title": "Apps, tools, and useful links",
-          "description": "Software, websites, templates, tools, and resources that make life easier."
+          "title": "Apps, tools, and useful links"
         }
       ]
     }
@@ -1866,6 +1940,36 @@
     }
   },
   "settings": {
+    "publicNavigation": {
+      "saving": "Saving category settings…",
+      "verifying": "Verifying your account before changing category settings…",
+      "refresh": "Refresh",
+      "not-public": "Publish this category before pinning it.",
+      "no-content": "Publish at least one list in this category before making it public.",
+      "unknown": "Could not verify publication. Refresh and try again.",
+      "slot-limit": "You can select up to 5 tabs, including Profile. Unpin another tab first.",
+      "manual-required": "Choose Manual mode in Settings before changing saved pins.",
+      "invalid-pins": "Saved navigation could not be verified. Refresh before changing pins.",
+      "title": "Pinned Navigation Tabs",
+      "summary": "Navigation · Manage your 5 public navigation slots, including Profile",
+      "musicVisibility": "Music profile visibility",
+      "on": "On",
+      "off": "Off",
+      "musicHelp": "This saved preference does not confirm Music is published or available. Manage publication in Music.",
+      "available": "Music is available on your public profile.",
+      "loading": "Checking Music publication…",
+      "unavailable": "Music is temporarily unavailable. Your saved settings are unchanged.",
+      "notPublic": "Music is not shown publicly. Enable visibility and publish from Music.",
+      "retry": "Retry Music availability",
+      "autoPin": "Auto-pin navigation tabs",
+      "autoDescription": "Available Music is prioritized, followed by public categories ranked by list count.",
+      "autoHelp": "Auto-pinning is active. Available Music comes first, then categories with the most lists, within 5 tabs including Profile.",
+      "manualHelp": "Select up to 5 saved tabs including Profile. Unavailable Music keeps its saved pin and returns when available.",
+      "musicTab": "Music Tab",
+      "pinMusic": "Pin Music Tab",
+      "slotLimit": "You can select up to 5 tabs, including Profile. Unpin another tab first.",
+      "saveFailed": "Could not confirm navigation settings were saved. Showing your last confirmed settings. Reload to check."
+    },
     "account": {
       "changePassword": {
         "accountDetailsRequired": "Enter your account Details to proceed further!!",
@@ -2389,5 +2493,37 @@
     "unavailable": "Username is not available.",
     "confirmOnSignup": "We will confirm availability on signup.",
     "checkingAvailability": "Checking availability..."
+  },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
   }
 }

@@ -1,24 +1,11 @@
-import { describe, it, expect } from "vitest";
-import {
-  BOOKS_BY_LIST,
-  BOOKS_BY_LIST_PAGE_SIZE,
-  booksByListVars,
-  refetchBooksByList,
-} from "../query";
-
-describe("Books list-query variable helpers", () => {
-  it("is the exact page-0 window the list view queries", () => {
-    expect(BOOKS_BY_LIST_PAGE_SIZE).toBe(200);
-    expect(booksByListVars("abc123")).toEqual({
-      bookListDocumentId: "abc123",
-      page: 0,
-      pageSize: BOOKS_BY_LIST_PAGE_SIZE,
-    });
-  });
-
-  it("refetch descriptor targets BOOKS_BY_LIST with matching variables", () => {
-    const [descriptor] = refetchBooksByList("abc123");
-    expect(descriptor.query).toBe(BOOKS_BY_LIST);
-    expect(descriptor.variables).toEqual(booksByListVars("abc123"));
-  });
+import {describe,it,expect,vi,beforeEach} from 'vitest';
+import {renderHook,waitFor} from '@testing-library/react';
+import useAuthStore from '../../../../store/store';
+import {readBooksOwnerContent} from '../booksClient';
+import {useBooksOwnerContent} from '../useBooksOwnerContent';
+vi.mock('../booksClient',()=>({readBooksOwnerContent:vi.fn()}));
+describe('canonical Books list observation',()=>{
+ beforeEach(()=>{vi.clearAllMocks();useAuthStore.setState({generation:2,accountId:'owner'});});
+ it('filters a fully observed category by canonical list id without a page-0 fake completeness window',async()=>{vi.mocked(readBooksOwnerContent).mockResolvedValue({lists:[{documentId:'list'},{documentId:'other'}],observation:{},details:new Map()} as never);const {result}=renderHook(()=>useBooksOwnerContent('list'));await waitFor(()=>expect(result.current.loading).toBe(false));expect(result.current.data?.bookLists).toEqual([{documentId:'list'}]);expect(readBooksOwnerContent).toHaveBeenCalledWith(expect.any(AbortSignal));});
+ it('shows failure without fabricating a complete empty list',async()=>{vi.mocked(readBooksOwnerContent).mockRejectedValue(new Error('Incomplete hydration'));const {result}=renderHook(()=>useBooksOwnerContent('list'));await waitFor(()=>expect(result.current.loading).toBe(false));expect(result.current.error?.message).toBe('Incomplete hydration');expect(result.current.data).toBeUndefined();});
 });

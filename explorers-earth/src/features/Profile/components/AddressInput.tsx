@@ -1,3 +1,6 @@
+import axios from "axios";
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
+import { browserPlacesProvider, type BrowserPlaceSuggestion } from "../../../lib/browserPlacesProvider";
 import { useState, useEffect, useRef, FC } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { Places } from "../types/types";
@@ -5,12 +8,12 @@ import { getCurrentLocation } from "../../../utils/getCurrentLocation";
 import CurrLocation from "../../../assets/icons/CurrLocation";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import axios from "axios";
+import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
 
 interface AddressInputProps {
   value?: string;
   type?: "title" | "address" | "listName" | "primaryAddressCombined";
-  onChange: (value: string) => void;
+  onChange: (value: string, origin?: "input" | "selection") => void;
   label: string;
   setPlaces?: (places: Places) => void;
   placeHolder?: string;
@@ -20,7 +23,7 @@ interface AddressInputProps {
   showDetectLocation?: boolean;
 }
 
-const AddressInput: FC<AddressInputProps> = ({
+const GoogleAddressInput: FC<AddressInputProps> = ({
   value = "",
   type,
   initalValue,
@@ -132,7 +135,7 @@ const AddressInput: FC<AddressInputProps> = ({
         const place = autocomplete?.getPlace();
         if (!place || !place.geometry) {
           setAddress("");
-          onChangeRef.current?.("");
+          onChangeRef.current?.("", "input");
           return;
         }
 
@@ -170,7 +173,7 @@ const AddressInput: FC<AddressInputProps> = ({
               `https://places.googleapis.com/v1/places/${place.place_id}`,
               {
                 headers: {
-                  "X-Goog-Api-Key": import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+                  "X-Goog-Api-Key": mapsBrowserKey(),
                   "X-Goog-FieldMask": "id,displayName,formattedAddress,types,primaryType,primaryTypeDisplayName,addressComponents,location,rating",
                 },
               }
@@ -212,7 +215,7 @@ const AddressInput: FC<AddressInputProps> = ({
         // report this (now stale) selection's value.
         if (requestTokenRef.current !== requestToken) return;
         // Call onChange with the appropriate value
-        onChangeRef.current?.(returnValue);
+        onChangeRef.current?.(returnValue, "selection");
       });
     } catch (error) {
       console.error("Error initializing autocomplete:", error);
@@ -275,7 +278,7 @@ const AddressInput: FC<AddressInputProps> = ({
     }
 
     // Call onChange with the appropriate value
-    onChange(returnValue);
+    onChange(returnValue, "selection");
 
     toast.success("Location detected successfully!");
   };
@@ -389,7 +392,7 @@ const AddressInput: FC<AddressInputProps> = ({
     // async metadata fetch so it can't overwrite what the user is typing.
     requestTokenRef.current += 1;
     setAddress(nextAddress);
-    onChange(nextAddress);
+    onChange(nextAddress, "input");
   };
 
   return (
@@ -431,4 +434,59 @@ const AddressInput: FC<AddressInputProps> = ({
   );
 };
 
-export default AddressInput;
+const GoogleAddressInputBoundary = withGoogleMapsProvider(GoogleAddressInput);
+
+const OwnedAddressInput: FC<AddressInputProps> = ({ value = "", initalValue, onChange, setPlaces, type, label, disabled, placeHolder, className }) => {
+  const { t } = useTranslation();
+  const [address, setAddress] = useState(initalValue ?? value);
+  const [results, setResults] = useState<BrowserPlaceSuggestion[]>([]);
+  const token = useRef(0);
+  const pending = useRef<AbortController>();
+  const callbacks = useRef({ onChange, setPlaces });
+  callbacks.current = { onChange, setPlaces };
+  const invalidate = () => { token.current++; pending.current?.abort(); };
+  useEffect(() => { setAddress(value); }, [value]);
+  useEffect(() => { if (initalValue !== undefined) setAddress(initalValue); }, [initalValue]);
+  useEffect(() => () => invalidate(), []);
+  const input = async (next: string) => {
+    invalidate();
+    const intent = token.current;
+    const controller = new AbortController(); pending.current = controller;
+    setAddress(next); setResults([]); callbacks.current.onChange(next, "input");
+    try {
+      const matches = await browserPlacesProvider.search(next, controller.signal);
+      if (intent === token.current) setResults(matches);
+    } catch { if (intent === token.current) setResults([]); }
+  };
+  const select = async (id: string) => {
+    invalidate(); const intent = token.current;
+    const controller = new AbortController(); pending.current = controller; setResults([]);
+    try {
+      const place = await browserPlacesProvider.selection(id, controller.signal);
+      if (intent !== token.current) return;
+      let selected = place.formatted_address || "";
+      if (type === "primaryAddressCombined") {
+        const city = place.address_components.find(c => c.types.includes("locality"))?.long_name || "";
+        const country = place.address_components.find(c => c.types.includes("country"))?.long_name || "";
+        selected = city && country ? `${city}, ${country}` : city || country;
+      }
+      setAddress(type === "title" || type === "listName" ? place.name : selected);
+      callbacks.current.setPlaces?.(place);
+      callbacks.current.onChange(selected, "selection");
+    } catch { /* Invalid or canceled selections never produce place data. */ }
+  };
+  return <>
+    {label && <label className="block text-sm font-poppins text-white font-semibold mb-1">{label}</label>}
+    <div className="relative w-full">
+      <input type="text" disabled={disabled} value={address} onChange={e => void input(e.target.value)}
+        placeholder={placeHolder || t("dashboard.profile.account.fields.addressPlaceholder")}
+        className={`w-full placeholder:text-dashboard-muted outline-none p-3 border border-dashboard bg-dashboard-muted font-poppins rounded-md text-sm text-dashboard ${className || ""}`} />
+      {results.length > 0 && <ul aria-label="Place suggestions">{results.map(result => <li key={result.id}>
+        <button type="button" disabled={disabled} onClick={() => void select(result.id)}>{result.label}</button>
+      </li>)}</ul>}
+    </div>
+  </>;
+};
+export default function AddressInput(props: AddressInputProps) {
+  return browserPlacesProvider.kind === "owned-http" ? <OwnedAddressInput {...props} /> : <GoogleAddressInputBoundary {...props} />;
+}

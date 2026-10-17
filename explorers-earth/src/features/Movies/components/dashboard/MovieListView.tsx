@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { createMoviesOwnerDiagnostic, type MoviesOwnerObserver } from '../../api/moviesOwnerDiagnostic';
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
+import { useMoviesOwner, changeMovieList, archiveMovieList, archiveMovie, toggleMoviePin } from "../../api/explorersAdapter";
 import { AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, MoreHorizontal, Trash2, Edit,
@@ -11,13 +12,8 @@ import Accordion from "../../../../components/ui/Accordian";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 
-import { MOVIES_BY_LIST, moviesByListVars } from "../../api/query";
-import {
-  DELETE_RECOMMENDED_MOVIE,
-  TOGGLE_MOVIE_PIN,
-  UPDATE_MOVIE_LIST,
-  DELETE_MOVIE_LIST,
-} from "../../api/mutation";
+
+
 import type { RecommendedMovie } from "../../types";
 import {
   buildPosterUrl,
@@ -142,7 +138,7 @@ const MovieRow = ({
                 onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(); }}
                 className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
               >
-                <Trash2 size={13} /> Delete
+                <Trash2 size={13} /> Archive recommendation
               </button>
             </div>
           )}
@@ -173,20 +169,30 @@ const MovieListView = () => {
     listName: string;
   } | null>(null);
 
-  const { data, loading, refetch } = useQuery(MOVIES_BY_LIST, {
-    variables: moviesByListVars(listId ?? ""),
-    skip: !listId,
-    fetchPolicy: "cache-and-network",
-  });
+  const diagnosticRef = useRef<ReturnType<typeof createMoviesOwnerDiagnostic>>(undefined);
+  const attemptObserverRef = useRef<MoviesOwnerObserver | undefined>(undefined);
+  useEffect(() => {
+    diagnosticRef.current = createMoviesOwnerDiagnostic(globalThis);
+    return () => { diagnosticRef.current?.deactivate(); diagnosticRef.current = undefined; attemptObserverRef.current = undefined; };
+  }, []);
+  const observeOwner = useCallback<MoviesOwnerObserver>(event => {
+    if ('owner' in event && ['pending','disabled','no-account'].includes(event.owner)) {
+      attemptObserverRef.current = diagnosticRef.current?.beginAttempt();
+    }
+    attemptObserverRef.current?.(event);
+  }, []);
+  const { content, data, loading, error, refetch } = useMoviesOwner(listId, Boolean(listId), observeOwner);
 
-  const [togglePin] = useMutation(TOGGLE_MOVIE_PIN);
-  const [deleteMovie] = useMutation(DELETE_RECOMMENDED_MOVIE);
-  const [updateList, { loading: isUpdating }] = useMutation(UPDATE_MOVIE_LIST);
-  const [deleteList, { loading: deletingList }] = useMutation(DELETE_MOVIE_LIST);
+  const [isUpdating,setIsUpdating]=useState(false),[deletingList,setDeletingList]=useState(false);
+  const togglePin=async({variables}:{variables:{documentId:string;is_pinned:boolean;pin_order?:number|null};refetchQueries?:unknown[]})=>toggleMoviePin(variables.documentId,variables.is_pinned);
+  const deleteMovie=async({variables}:{variables:{documentId:string};refetchQueries?:unknown[]})=>archiveMovie(variables.documentId);
+  const updateList=async({variables}:{variables:{documentId:string;Visibility?:boolean;List_Name?:string;list_description?:string|null};optimisticResponse?:unknown;refetchQueries?:unknown[]})=>{setIsUpdating(true);try{return await changeMovieList(variables.documentId,{...(variables.Visibility===undefined?{}:{visibility:variables.Visibility}),...(variables.List_Name===undefined?{}:{title:variables.List_Name}),...(variables.list_description===undefined?{}:{description:variables.list_description})});}finally{setIsUpdating(false);}};
+  const deleteList=async({variables}:{variables:{documentId:string}})=>{setDeletingList(true);try{await archiveMovieList(variables.documentId);}finally{setDeletingList(false);}};
 
   const list = data?.movieLists?.[0];
   const movies = deduplicateMovies(list?.recommended_movies as RecommendedMovie[]);
-  const pinnedCount = movies.filter(m => m.is_pinned).length;
+  const categoryMovies = deduplicateMovies(content?.lists.flatMap(value=>value.recommended_movies) ?? movies);
+  const pinnedCount = categoryMovies.filter(m => m.is_pinned).length;
 
   // One-shot guard: consume the post-create/post-add route-state signal exactly
   // once. Prevents an infinite re-render loop (BUG-3): the prompt setter builds a
@@ -214,6 +220,18 @@ const MovieListView = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, location.pathname, list?.documentId, movies.length, navigate]);
 
+  // Visibility means public AND published in the existing view model; draft
+  // records the existing !Visibility branch, not a separate publication state.
+  useEffect(() => {
+    diagnosticRef.current?.commit({
+      list: loading && !list ? 'loading' : error && !list ? 'error' : !list ? 'missing' : movies.length ? 'ready-nonempty' : 'ready-empty',
+      visibility: !list ? 'unavailable' : list.Visibility ? 'public' : 'draft',
+      signal: location.state?.justAddedRecommendation || location.state?.justCreatedList ? 'present' : 'absent',
+      guard: promptShownRef.current ? 'consumed' : 'fresh',
+      prompt: list && listVisibilityPrompt?.isOpen ? 'open' : 'closed',
+    });
+  });
+
   // Public share URL
   const shareUrl = list ? `${VITE_BASE_URL}/${list.account?.username || ""}/movies/${list.slug}` : "";
 
@@ -238,7 +256,7 @@ const MovieListView = () => {
             top_picks_heading: list.top_picks_heading || null,
           }
         },
-        refetchQueries: [MOVIES_BY_LIST],
+        refetchQueries: [],
       });
       toast.success(list.Visibility ? "List set to draft." : "List published!");
     } catch {
@@ -259,7 +277,7 @@ const MovieListView = () => {
           is_pinned: !movie.is_pinned,
           pin_order: !movie.is_pinned ? pinnedCount : null,
         },
-        refetchQueries: [MOVIES_BY_LIST],
+        refetchQueries: [],
       });
     } catch {
       toast.error("Failed to update pin.");
@@ -269,10 +287,10 @@ const MovieListView = () => {
   };
 
   const handleDeleteMovie = async (documentId: string) => {
-    if (!window.confirm("Remove this movie from the list?")) return;
+    if (!window.confirm("Archive this recommendation from all lists?")) return;
     try {
-      await deleteMovie({ variables: { documentId }, refetchQueries: [MOVIES_BY_LIST] });
-      toast.success("Movie removed.");
+      await deleteMovie({ variables: { documentId }, refetchQueries: [] });
+      toast.success("Recommendation archived from all lists.");
     } catch {
       toast.error("Failed to remove movie.");
     }
@@ -282,10 +300,10 @@ const MovieListView = () => {
     if (!list) return;
     try {
       await deleteList({ variables: { documentId: list.documentId } });
-      toast.success("List deleted.");
+      toast.success("List archived. Recommendations in other lists are preserved.");
       navigate("/recommendations/movies");
     } catch {
-      toast.error("Failed to delete list.");
+      toast.error("Failed to archive list.");
     }
   };
 
@@ -310,7 +328,7 @@ const MovieListView = () => {
   if (!loading && !list) {
     return (
       <div className="p-6">
-        <p className="text-red-400">List not found. <Link to="/recommendations/movies" className="text-blue-400 underline">Go back</Link></p>
+        <p className="text-red-400" role="alert">{error ? 'List could not be loaded.' : 'List not found.'} <Link to="/recommendations/movies" className="text-blue-400 underline">Go back</Link></p>
       </div>
     );
   }
@@ -406,7 +424,7 @@ const MovieListView = () => {
                   className="flex flex-row text-center gap-2 items-center rounded-md font-poppins w-full text-sm border border-white px-4 py-3 hover:border-gray-500 text-white hover:text-gray-500 justify-center font-medium transition-all duration-300"
                 >
                   <Trash2 size={16} />
-                  <span>Delete</span>
+                  <span>Archive list</span>
                 </button>
                 {isEditingList ? (
                   <div className="bg-dashboard-sidebar border border-white/10 rounded-lg p-5 space-y-4 mt-2 mb-2 text-left">
@@ -415,8 +433,8 @@ const MovieListView = () => {
                       <input
                         defaultValue={list?.List_Name}
                         onBlur={async (e) => {
-                          if (e.target.value && e.target.value !== list?.List_Name) {
-                            await updateList({ variables: { documentId: list?.documentId, List_Name: e.target.value }, refetchQueries: [MOVIES_BY_LIST] });
+                          if (list && e.target.value && e.target.value !== list.List_Name) {
+                            await updateList({ variables: { documentId: list.documentId, List_Name: e.target.value }, refetchQueries: [] });
                             toast.success("List name updated.");
                           }
                         }}
@@ -429,8 +447,8 @@ const MovieListView = () => {
                         defaultValue={list?.list_description ?? ""}
                         rows={3}
                         onBlur={async (e) => {
-                          if (e.target.value !== (list?.list_description ?? "")) {
-                            await updateList({ variables: { documentId: list?.documentId, list_description: e.target.value }, refetchQueries: [MOVIES_BY_LIST] });
+                          if (list && e.target.value !== (list.list_description ?? "")) {
+                            await updateList({ variables: { documentId: list.documentId, list_description: e.target.value }, refetchQueries: [] });
                             toast.success("Description updated.");
                           }
                         }}
@@ -540,8 +558,8 @@ const MovieListView = () => {
       <AnimatePresence>
         {showTopPicks && listId && (
           <TopPicksManager
-            movies={movies.filter(m => m.is_pinned)}
-            allMovies={movies}
+            movies={categoryMovies.filter(m => m.is_pinned)}
+            allMovies={categoryMovies}
             onClose={() => setShowTopPicks(false)}
             onRefetch={() => refetch()}
             listId={listId}
@@ -553,9 +571,9 @@ const MovieListView = () => {
       {showDeleteListModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
           <div className="bg-dashboard-card rounded-2xl border border-dashboard-border p-6 w-full max-w-sm">
-            <h3 className="text-lg font-semibold text-dashboard mb-2">Delete List?</h3>
+            <h3 className="text-lg font-semibold text-dashboard mb-2">Archive List?</h3>
             <p className="text-sm text-dashboard-muted mb-5">
-              This will permanently delete "{list?.List_Name}" and all its movies. This cannot be undone.
+              This will archive "{list?.List_Name}" and remove its memberships. Recommendations in other lists are preserved.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setShowDeleteListModal(false)} className="flex-1 py-2.5 rounded-lg border border-dashboard-border text-sm text-dashboard-muted hover:text-dashboard transition-colors">
@@ -567,7 +585,7 @@ const MovieListView = () => {
                 className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-sm text-white font-medium flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {deletingList ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                Delete
+                Archive list
               </button>
             </div>
           </div>
@@ -590,7 +608,7 @@ const MovieListView = () => {
             try {
               await updateList({
                 variables: { documentId: list.documentId, Visibility: true },
-                refetchQueries: [MOVIES_BY_LIST],
+                refetchQueries: [],
               });
               refetch();
               toast.success(`"${list.List_Name}" published!`);

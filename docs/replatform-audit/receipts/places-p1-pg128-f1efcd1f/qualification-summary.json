@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "kind": "sanitized-derived-qualification-summary",
+  "originalReceiptSha256": "81ef028a2e090315110c9a6909a3a8e54ae982f21ba79805d71c937656de41d9",
+  "commit": "f1efcd1f80a63db388737fb8623ce312ae57c23a",
+  "worktreeClean": true,
+  "manifestSha256": "24da12057c823f892691ef16a165f7a61feb2b9560154266810a90270d0b1a26",
+  "nodeVersion": "v24.21.0",
+  "image": "postgres@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81",
+  "tests": {
+    "status": "passed",
+    "suite": "Places P1 actual PostgreSQL acceptance (authored, requires approved guard)",
+    "protocol": "vitest4-finite-v1",
+    "runReason": "passed",
+    "failureReasons": [],
+    "caseCount": 128,
+    "nonPassed": 0
+  },
+  "cleanup": {
+    "status": "passed",
+    "exactIdAbsent": true,
+    "exactOwnershipAbsent": true,
+    "ownedAnonymousVolumesAbsent": true,
+    "ownedAnonymousVolumeIds": [
+      "193fd4c6f636b61fa34f7634f545f387e1c7881abb027000a37d091db0661b6e"
+    ]
+  },
+  "sourceIntact": true,
+  "closure": {
+    "p1Closure": false
+  }
+}

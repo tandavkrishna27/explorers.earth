@@ -1,0 +1,116 @@
+<style>
+  :root { --ink:#f8fafc; --muted:#94a3b8; --panel:#111827; --line:rgba(255,255,255,.11); --green:#10b981; }
+  .intro { max-width: 980px; margin: 0 auto 22px; }
+  .variant-grid { display:grid; grid-template-columns:repeat(3,minmax(285px,1fr)); gap:18px; align-items:start; }
+  .variant { background:#0b1220; border:1px solid var(--line); border-radius:20px; overflow:hidden; cursor:pointer; transition:.18s ease; box-shadow:0 16px 40px rgba(0,0,0,.24); }
+  .variant:hover { transform:translateY(-3px); border-color:rgba(16,185,129,.7); }
+  .variant.selected { outline:3px solid var(--green); outline-offset:3px; }
+  .variant-head { display:flex; gap:10px; align-items:center; padding:14px 15px; background:#111827; border-bottom:1px solid var(--line); }
+  .letter-pill { display:grid; place-items:center; width:28px; height:28px; border-radius:9px; background:var(--green); color:#022c22; font-weight:900; }
+  .variant-title { color:var(--ink); font-size:14px; font-weight:800; margin:0; }
+  .variant-sub { color:var(--muted); font-size:10px; margin-top:2px; }
+  .dashboard { margin:12px; border:1px solid var(--line); border-radius:14px; background:#111827; padding:12px; }
+  .eyebrow { color:#6ee7b7; font-size:9px; font-weight:800; letter-spacing:.11em; text-transform:uppercase; }
+  .control-title { color:white; font-size:12px; font-weight:800; margin:5px 0 4px; }
+  .control-help { color:var(--muted); font-size:9px; line-height:1.35; margin-bottom:9px; }
+  .layout-pills { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-bottom:10px; }
+  .layout-pill { border:1px solid var(--line); border-radius:7px; padding:6px 3px; color:#94a3b8; font-size:8px; text-align:center; background:#0b1220; }
+  .layout-pill.on { border-color:var(--green); color:#d1fae5; background:rgba(16,185,129,.12); }
+  .order-list { display:grid; gap:5px; }
+  .order-item { display:flex; align-items:center; gap:7px; border:1px solid var(--line); background:#0b1220; border-radius:8px; padding:6px 7px; color:#e2e8f0; font-size:9px; }
+  .drag { color:#64748b; letter-spacing:-2px; font-size:11px; }
+  .rank { margin-left:auto; color:#6ee7b7; font-weight:800; }
+  .public { margin:12px; border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#090d16; }
+  .public-hero { height:54px; background:linear-gradient(135deg,#064e3b,#0f172a 55%,#312e81); position:relative; }
+  .avatar { width:37px; height:37px; border:2px solid var(--green); border-radius:50%; position:absolute; left:14px; bottom:-18px; background:linear-gradient(145deg,#f59e0b,#7c3aed); }
+  .identity { padding:22px 13px 8px; }
+  .name { color:white; font-size:12px; font-weight:850; }
+  .bio { color:#94a3b8; font-size:8px; margin-top:2px; }
+  .tabs { display:flex; justify-content:center; gap:34px; border-bottom:1px solid var(--line); padding:8px 0 0; }
+  .tab { color:#64748b; font-size:13px; padding-bottom:7px; }
+  .tab.on { color:white; border-bottom:2px solid var(--green); }
+  .rec-body { padding:10px; }
+  .section-head { display:flex; justify-content:space-between; color:white; font-size:9px; font-weight:800; margin:7px 0; }
+  .see { color:#60a5fa; font-size:7px; }
+  .shelf { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .mini-card { min-height:48px; border-radius:8px; background:linear-gradient(145deg,#1f2937,#334155); border:1px solid var(--line); padding:5px; color:#e2e8f0; font-size:7px; display:flex; align-items:end; }
+  .mini-card.gold { background:linear-gradient(145deg,#78350f,#f59e0b); }
+  .mini-card.blue { background:linear-gradient(145deg,#172554,#2563eb); }
+  .mini-card.pink { background:linear-gradient(145deg,#500724,#db2777); }
+  .category-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:7px; }
+  .category-tile { border-radius:10px; min-height:76px; padding:8px; border:1px solid var(--line); color:white; display:flex; flex-direction:column; justify-content:space-between; }
+  .category-tile strong { font-size:9px; }
+  .category-tile span { font-size:7px; color:rgba(255,255,255,.7); }
+  .emerald { background:linear-gradient(145deg,#052e2b,#047857); }
+  .purple { background:linear-gradient(145deg,#2e1065,#7e22ce); }
+  .amber { background:linear-gradient(145deg,#451a03,#d97706); }
+  .indigo { background:linear-gradient(145deg,#1e1b4b,#4f46e5); }
+  .featured { min-height:105px; border-radius:12px; padding:10px; color:white; background:linear-gradient(125deg,rgba(0,0,0,.15),rgba(0,0,0,.35)),linear-gradient(140deg,#4c1d95,#db2777 55%,#f59e0b); display:flex; flex-direction:column; justify-content:flex-end; }
+  .featured small { opacity:.75; font-size:7px; text-transform:uppercase; letter-spacing:.1em; }
+  .featured strong { font-size:13px; margin-top:2px; }
+  .compact-row { display:grid; grid-template-columns:42px 1fr auto; align-items:center; gap:7px; border-bottom:1px solid var(--line); padding:7px 0; color:white; font-size:8px; }
+  .thumb { width:42px; height:30px; border-radius:7px; background:linear-gradient(145deg,#1e3a8a,#38bdf8); }
+  .compact-row:nth-child(3) .thumb { background:linear-gradient(145deg,#713f12,#f59e0b); }
+  .compact-row:nth-child(4) .thumb { background:linear-gradient(145deg,#4c0519,#f43f5e); }
+  .why { padding:0 13px 14px; color:#94a3b8; font-size:9px; line-height:1.45; }
+  .why strong { color:#e2e8f0; }
+  .scope-note { max-width:980px; margin:18px auto 0; border:1px solid rgba(56,189,248,.25); background:rgba(56,189,248,.06); color:#bae6fd; border-radius:12px; padding:11px 13px; font-size:11px; }
+  @media (max-width:1050px){ .variant-grid{grid-template-columns:1fr;} .variant{max-width:620px;margin:0 auto;width:100%;} }
+</style>
+
+<div class="intro">
+  <h2>Recommendations tab: ordering + layout</h2>
+  <p class="subtitle">All globally public categories stay eligible. Owners drag them into order and choose one presentation. Gallery and Business remain unchanged. Click a direction to select it.</p>
+</div>
+
+<div class="variant-grid">
+  <div class="variant card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="variant-head"><div class="letter-pill">A</div><div><div class="variant-title">Classic Shelves</div><div class="variant-sub">Familiar, scannable horizontal category rows</div></div></div>
+    <div class="dashboard">
+      <div class="eyebrow">Dashboard control</div><div class="control-title">Recommendations presentation</div>
+      <div class="control-help">All public categories are included. Drag to choose what visitors see first.</div>
+      <div class="layout-pills"><div class="layout-pill on">Rows</div><div class="layout-pill">Grid</div><div class="layout-pill">Featured</div></div>
+      <div class="order-list"><div class="order-item"><span class="drag">⠿</span> Places <span class="rank">1</span></div><div class="order-item"><span class="drag">⠿</span> Music <span class="rank">2</span></div><div class="order-item"><span class="drag">⠿</span> Books <span class="rank">3</span></div></div>
+    </div>
+    <div class="public">
+      <div class="public-hero"><div class="avatar"></div></div><div class="identity"><div class="name">Taylor's discoveries</div><div class="bio">Places, sounds and stories worth sharing.</div></div>
+      <div class="tabs"><div class="tab on">♥</div><div class="tab">▦</div><div class="tab">⌖</div></div>
+      <div class="rec-body"><div class="section-head"><span>📍 Places</span><span class="see">See all →</span></div><div class="shelf"><div class="mini-card gold">Jaipur</div><div class="mini-card">Goa</div><div class="mini-card blue">Kyoto</div></div><div class="section-head"><span>♫ Music</span><span class="see">See all →</span></div><div class="shelf"><div class="mini-card pink">Night drive</div><div class="mini-card blue">Focus</div><div class="mini-card">Sunday</div></div></div>
+    </div>
+    <div class="why"><strong>Best for:</strong> preserving the current interaction model with the lowest learning cost. Category order is obvious and each row still supports “See all.”</div>
+  </div>
+
+  <div class="variant card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="variant-head"><div class="letter-pill">B</div><div><div class="variant-title">Category Mosaic</div><div class="variant-sub">Denser two-column overview with visual category blocks</div></div></div>
+    <div class="dashboard">
+      <div class="eyebrow">Dashboard control</div><div class="control-title">Recommendations presentation</div>
+      <div class="control-help">Order controls reading priority; the grid adapts from two columns to one on narrow screens.</div>
+      <div class="layout-pills"><div class="layout-pill">Rows</div><div class="layout-pill on">Grid</div><div class="layout-pill">Featured</div></div>
+      <div class="order-list"><div class="order-item"><span class="drag">⠿</span> Music <span class="rank">1</span></div><div class="order-item"><span class="drag">⠿</span> Places <span class="rank">2</span></div><div class="order-item"><span class="drag">⠿</span> People <span class="rank">3</span></div></div>
+    </div>
+    <div class="public">
+      <div class="public-hero"><div class="avatar"></div></div><div class="identity"><div class="name">Taylor's discoveries</div><div class="bio">Places, sounds and stories worth sharing.</div></div>
+      <div class="tabs"><div class="tab on">♥</div><div class="tab">▦</div><div class="tab">⌖</div></div>
+      <div class="rec-body"><div class="category-grid"><div class="category-tile purple"><strong>♫ Music</strong><span>4 playlists · 38 songs</span></div><div class="category-tile emerald"><strong>📍 Places</strong><span>6 lists · 42 places</span></div><div class="category-tile indigo"><strong>◉ People</strong><span>3 lists · 18 people</span></div><div class="category-tile amber"><strong>▤ Books</strong><span>5 lists · 26 books</span></div></div></div>
+    </div>
+    <div class="why"><strong>Best for:</strong> visitors who need a fast overview. It is compact, but shows fewer individual recommendations before the visitor opens a category.</div>
+  </div>
+
+  <div class="variant card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="variant-head"><div class="letter-pill">C</div><div><div class="variant-title">Featured First</div><div class="variant-sub">The first ordered category becomes a visual spotlight</div></div></div>
+    <div class="dashboard">
+      <div class="eyebrow">Dashboard control</div><div class="control-title">Recommendations presentation</div>
+      <div class="control-help">Position 1 becomes the featured block; remaining public categories follow in the saved order.</div>
+      <div class="layout-pills"><div class="layout-pill">Rows</div><div class="layout-pill">Grid</div><div class="layout-pill on">Featured</div></div>
+      <div class="order-list"><div class="order-item"><span class="drag">⠿</span> Music <span class="rank">Featured</span></div><div class="order-item"><span class="drag">⠿</span> Books <span class="rank">2</span></div><div class="order-item"><span class="drag">⠿</span> Places <span class="rank">3</span></div></div>
+    </div>
+    <div class="public">
+      <div class="public-hero"><div class="avatar"></div></div><div class="identity"><div class="name">Taylor's discoveries</div><div class="bio">Places, sounds and stories worth sharing.</div></div>
+      <div class="tabs"><div class="tab on">♥</div><div class="tab">▦</div><div class="tab">⌖</div></div>
+      <div class="rec-body"><div class="featured"><small>Featured category</small><strong>♫ Music for every mood</strong><span class="see">Explore 4 playlists →</span></div><div class="compact-row"><div class="thumb"></div><div><strong>Books</strong><br><span style="color:#94a3b8">5 public lists</span></div><span class="see">Open →</span></div><div class="compact-row"><div class="thumb"></div><div><strong>Places</strong><br><span style="color:#94a3b8">6 public lists</span></div><span class="see">Open →</span></div><div class="compact-row"><div class="thumb"></div><div><strong>People</strong><br><span style="color:#94a3b8">3 public lists</span></div><span class="see">Open →</span></div></div>
+    </div>
+    <div class="why"><strong>Best for:</strong> creators who want one category to define their profile. Strong hierarchy, though it gives position 1 more visual weight than every other category.</div>
+  </div>
+</div>
+
+<div class="scope-note"><strong>Shared rule in all three:</strong> this setting does not change category privacy. Existing Public Visibility controls decide eligibility; empty or private categories are omitted safely, and the remaining categories keep their saved relative order.</div>

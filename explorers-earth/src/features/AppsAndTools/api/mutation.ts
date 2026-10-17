@@ -71,17 +71,6 @@ export const UPDATE_APP_LIST = gql`
 `;
 
 // ─────────────────────────────────────────────────────────────
-// Mutation 2.3 — Delete App List
-// ─────────────────────────────────────────────────────────────
-export const DELETE_APP_LIST = gql`
-  mutation DeleteAppList($documentId: ID!) {
-    deleteAppList(documentId: $documentId) {
-      documentId
-    }
-  }
-`;
-
-// ─────────────────────────────────────────────────────────────
 // Mutation 2.4 — Create Recommended App
 // ─────────────────────────────────────────────────────────────
 export const CREATE_RECOMMENDED_APP = gql`
@@ -178,17 +167,6 @@ export const UPDATE_RECOMMENDED_APP = gql`
       pin_order
       display_order
       user_recommendation_note
-    }
-  }
-`;
-
-// ─────────────────────────────────────────────────────────────
-// Mutation 2.6 — Delete Recommended App
-// ─────────────────────────────────────────────────────────────
-export const DELETE_RECOMMENDED_APP = gql`
-  mutation DeleteRecommendedApp($documentId: ID!) {
-    deleteRecommendedApp(documentId: $documentId) {
-      documentId
     }
   }
 `;

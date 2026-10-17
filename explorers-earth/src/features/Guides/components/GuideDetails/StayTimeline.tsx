@@ -251,7 +251,6 @@ const StayTimeline: React.FC<StayTimelineProps> = ({ guide }) => {
           stay={editingStay.stay}
           sectionId={editingStay.sectionId}
           sectionTitle={editingStay.sectionTitle}
-          guideId={guide.documentId}
           onSuccess={() => {
             // Modal will handle refetching, just close it
             setEditingStay(null);

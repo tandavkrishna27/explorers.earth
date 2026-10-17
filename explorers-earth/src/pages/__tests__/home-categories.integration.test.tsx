@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React, { useState } from 'react';
 import { MockedProvider } from '@apollo/client/testing';
 import { CreateMovieListModal } from '../../features/Movies/components/dashboard/MoviesHome';
-import { CREATE_MOVIE_LIST } from '../../features/Movies/api/mutation';
+import { explorersApiClient } from '../../lib/explorersApiClient';
 
 // Mock getCanonicalUrl / domain helpers
 vi.mock('../../utils/getCurrentDomain', () => ({
@@ -86,7 +86,7 @@ const HomeCategoriesDashboard = () => {
 describe('Home Categories Tab switching and List creation integration', () => {
   it('renders all 9 category tabs and displays correct empty states or contents', () => {
     render(
-      <MockedProvider mocks={[]} addTypename={false}>
+      <MockedProvider mocks={[]}>
         <HomeCategoriesDashboard />
       </MockedProvider>
     );
@@ -107,36 +107,11 @@ describe('Home Categories Tab switching and List creation integration', () => {
     expect(screen.getByTestId('list-content')).toHaveTextContent('My Books List');
   });
 
-  // 30s test timeout: multi-step Formik + Apollo flow needs headroom on slow CI runners.
+  // Retains Formik validation and native observed creation through the actual modal.
   it('opens movie creation modal, triggers Formik validation, and creates list successfully on submit', { timeout: 30000 }, async () => {
-    const createListMock = {
-      request: {
-        query: CREATE_MOVIE_LIST,
-        variables: {
-          List_Name: 'Top Sci-Fi Movies',
-          list_description: 'My favorite mind-bending movies',
-          slug: 'top-sci-fi-movies',
-          Visibility: false,
-          display_order: 0,
-          account: 'acc_123'
-        }
-      },
-      result: {
-        data: {
-          createMovieList: {
-            __typename: 'MovieList',
-            documentId: 'movie_list_doc_id',
-            List_Name: 'Top Sci-Fi Movies',
-            slug: 'top-sci-fi-movies',
-            Visibility: false,
-            display_order: 0,
-          }
-        }
-      }
-    };
-
+    const createList=vi.spyOn(explorersApiClient,'createMyCollection').mockResolvedValue({id:'movie_list_doc_id'} as never);
     render(
-      <MockedProvider mocks={[createListMock]} addTypename={false}>
+      <MockedProvider mocks={[]}>
         <HomeCategoriesDashboard />
       </MockedProvider>
     );
@@ -165,6 +140,7 @@ describe('Home Categories Tab switching and List creation integration', () => {
     await waitFor(() => {
       expect(screen.queryByRole('heading', { name: 'Create New List' })).not.toBeInTheDocument();
       expect(screen.getByTestId('list-content')).toHaveTextContent('New List ID: movie_list_doc_id');
+      expect(createList).toHaveBeenCalledWith(expect.objectContaining({category:'movies',title:'Top Sci-Fi Movies',description:'My favorite mind-bending movies',slug:'top-sci-fi-movies',visibility:'private',publicationState:'draft'}),expect.any(String));
     });
   });
 });

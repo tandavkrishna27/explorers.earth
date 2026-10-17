@@ -6,6 +6,8 @@ import React from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { acquireGuestMusicCapability, GuestCapabilityRequiredError, guestMusicRequest, guestMusicSearch, guestMusicVideoFromUrl } from "@/lib/musicCredential";
+import GuestCapabilityImport from "@/components/guest-capability-import";
 import { useToast } from "@/hooks/use-toast";
 import { useUserSubscriptionPlanInfo } from "@/lib/strapi-queries";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -24,7 +26,7 @@ import {
   ListMusic,
 } from "lucide-react";
 
-type SearchMode = "search" | "url" | "import";
+type SearchMode = "search" | "url";
 
 type SearchResult = {
   id: { videoId: string };
@@ -69,13 +71,6 @@ const MODES: { key: SearchMode; label: string; icon: React.ReactNode; placeholde
     placeholder: "Paste a YouTube URL or video ID...",
     hint: "Add any YouTube video directly — free & unlimited, no quota used",
   },
-  {
-    key: "import",
-    label: "Import Playlist",
-    icon: <ListMusic className="h-3.5 w-3.5" />,
-    placeholder: "Paste YouTube Music or Spotify playlist URL...",
-    hint: "Import a full YouTube Music or Spotify playlist at once",
-  },
 ];
 
 export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Props) {
@@ -88,10 +83,10 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
     songsQuota,
     isLoading: isLoadingSubscription,
     isActivePlan,
-  } = useUserSubscriptionPlanInfo(usernameForCheck || undefined);
+  } = useUserSubscriptionPlanInfo(guestUrl ? undefined : usernameForCheck || undefined);
 
-  const isLimitReached = songsQuota > 0 && songRequests >= songsQuota;
-  const isPlanExpired = !isLoadingSubscription && !isActivePlan;
+  const isLimitReached = !guestUrl && songsQuota > 0 && songRequests >= songsQuota;
+  const isPlanExpired = !guestUrl && !isLoadingSubscription && !isActivePlan;
 
   const [mode, setMode] = useState<SearchMode>("search");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -107,6 +102,7 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchId, setSearchId] = useState(Date.now());
   const [hasSearched, setHasSearched] = useState(false);
+  const [guestCapabilityRequired, setGuestCapabilityRequired] = useState(false);
 
   const chevronBtnRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -159,16 +155,11 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
   const addSongMutation = useMutation({
     mutationFn: async (songData: { youtubeId: string; title: string; artist: string; thumbnailUrl: string }) => {
       if (playlistId) {
-        return apiRequest("POST", `/api/playlists/${playlistId}/songs${user?.username ? `?username=${user.username}` : ""}`, {
-          songs: [songData],
-        });
+        return apiRequest("POST", `/api/playlists/${playlistId}/songs`, songData);
       }
-      const url = guestUrl
-        ? `/api/playlist/songs?guestUrl=${encodeURIComponent(guestUrl)}`
-        : user?.username
-          ? `/api/playlist/songs?username=${user.username}`
-          : "/api/playlist/songs";
-      return apiRequest("POST", url, songData);
+      return guestUrl
+        ? guestMusicRequest(acquireGuestMusicCapability(guestUrl) ?? "", songData, guestUrl)
+        : apiRequest("POST", "/api/playlist/songs", songData);
     },
     onSuccess: () => {
       if (playlistId) {
@@ -179,6 +170,7 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
       toast({ title: "Success", description: playlistId ? "Song added to playlist" : "Song added to queue" });
     },
     onError: (error) => {
+      if (error instanceof GuestCapabilityRequiredError) setGuestCapabilityRequired(true);
       toast({ title: "Failed to add song", description: error instanceof Error ? error.message : "Could not add song", variant: "destructive" });
     },
   });
@@ -186,12 +178,9 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
   const fetchResults = async (q: string, pageToken?: string) => {
     if (!q.trim()) return null;
     try {
-      const response = await fetch("/api/youtube/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ query: q, pageToken, username: usernameForCheck }),
-      });
+      const response = guestUrl
+        ? await guestMusicSearch(acquireGuestMusicCapability(guestUrl) ?? "", { query: q, pageToken }, guestUrl)
+        : await apiRequest("POST", "/api/youtube/search", { query: q, pageToken });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || `Search failed: ${response.statusText}`);
@@ -199,6 +188,7 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
       const data = await response.json();
       return { items: data.items || [], nextPageToken: data.nextPageToken || null };
     } catch (error) {
+      if (error instanceof GuestCapabilityRequiredError) setGuestCapabilityRequired(true);
       toast({ title: "Search failed", description: error instanceof Error ? error.message : "Could not search", variant: "destructive" });
       return null;
     }
@@ -206,12 +196,9 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
 
   const fetchVideoFromUrl = async (url: string): Promise<SearchResult | null> => {
     try {
-      const response = await fetch("/api/youtube/video-from-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ url }),
-      });
+      const response = guestUrl
+        ? await guestMusicVideoFromUrl(acquireGuestMusicCapability(guestUrl) ?? "", url, guestUrl)
+        : await apiRequest("POST", "/api/youtube/video-from-url", { url });
       const ct = response.headers.get("content-type");
       if (ct?.includes("text/html")) throw new Error("Endpoint not available");
       if (!response.ok) {
@@ -220,6 +207,7 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
       }
       return await response.json();
     } catch (error) {
+      if (error instanceof GuestCapabilityRequiredError) setGuestCapabilityRequired(true);
       toast({ title: "Failed to fetch video", description: error instanceof Error ? error.message : "Could not fetch", variant: "destructive" });
       return null;
     }
@@ -269,7 +257,7 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
       return;
     }
 
-    if (mode === "import") {
+    if ((mode as string) === "import") {
       if (!val) { toast({ title: "Enter URL", description: "Please enter a playlist URL", variant: "destructive" }); return; }
 
       // Detect platform — matching import-playlist-modal.tsx detection logic
@@ -286,45 +274,18 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
 
       // Build API URL — same pattern as import-playlist-modal.tsx
       let playlistApiUrl: string;
-      const resolvedUsername = user?.username || usernameForCheck;
       if (playlistId) {
         // Saved playlist — always append username so JWT auth branch can resolve user
-        playlistApiUrl = resolvedUsername
-          ? `/api/playlists/${playlistId}/import-${platform}?username=${encodeURIComponent(resolvedUsername)}`
-          : `/api/playlists/${playlistId}/import-${platform}`;
-      } else if (guestUrl) {
-        playlistApiUrl = `/api/playlist/import-${platform}?guestUrl=${encodeURIComponent(guestUrl)}`;
+        playlistApiUrl = `/api/playlists/${playlistId}/import-${platform}`;
       } else {
         // Authenticated user with JWT — server needs username to map JWT → Neon DB user
-        playlistApiUrl = resolvedUsername
-          ? `/api/playlist/import-${platform}?username=${encodeURIComponent(resolvedUsername)}`
-          : `/api/playlist/import-${platform}`;
+        playlistApiUrl = `/api/playlist/import-${platform}`;
       }
 
       setIsImporting(true);
       try {
-        const res = await apiRequest("POST", playlistApiUrl, { url: val });
-        // Parse count from response (same as import-playlist-modal.tsx)
-        const data = res && typeof res === "object" ? res as any : {};
-        const addedCount = platform === "youtube"
-          ? (Number(data.videosAdded) || 0)
-          : (Number(data.songsAdded) || 0);
-        toast({
-          title: "Playlist imported",
-          description: addedCount > 0
-            ? `Added ${addedCount} song${addedCount !== 1 ? "s" : ""} from ${platform === "youtube" ? "YouTube" : "Spotify"} playlist`
-            : "Songs have been added to your queue",
-        });
-        setInputValue("");
-        // Invalidate the right query
-        if (playlistId) {
-          queryClient.invalidateQueries({ queryKey: ["/api/playlists", user?.id] });
-        } else {
-          const playlistUrl = guestUrl || user?.guestUrl;
-          if (playlistUrl) {
-            queryClient.invalidateQueries({ queryKey: [`/api/playlist/${playlistUrl}`] });
-          }
-        }
+        void playlistApiUrl;
+        throw new Error("Playlist import requires a separately authorized Music entitlement.");
       } catch (error) {
         const msg = error instanceof Error ? error.message : "";
         if (msg.toLowerCase().includes('private') || msg.toLowerCase().includes('public')) {
@@ -394,6 +355,10 @@ export default function SearchSongs({ guestUrl, playlistId, ownerUsername }: Pro
 
   return (
     <div className="w-full space-y-0">
+      {guestUrl && guestCapabilityRequired && <div className="mb-4 space-y-3">
+        <p role="alert" className="text-sm text-destructive">Guest access expired. Paste the owner's latest handoff to request songs again.</p>
+        <GuestCapabilityImport guestUrl={guestUrl} onImported={() => setGuestCapabilityRequired(false)} />
+      </div>}
       {/* ── Quota / plan alerts ───────────────────────────────────────── */}
       {isPlanExpired && (
         <Alert variant="destructive" className="py-2.5 px-4 mb-3">

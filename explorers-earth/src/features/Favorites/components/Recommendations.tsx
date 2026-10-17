@@ -13,27 +13,23 @@ import {
 import { useTranslation } from "react-i18next";
 import Button from "../../../components/ui/Button";
 import { AddIcon } from "../../../assets/icons/AddIcon";
-import { useMutation, useQuery } from "@apollo/client";
 import { toast } from "sonner";
-import {
-  recommendedPlacesQuery,
-  allRecommendedPlacesQuery,
-  recommendationListQuery,
-  recommendedListByIdQuery,
-} from "../api/query";
-import { useNavigate } from "react-router-dom";
+import { usePeopleOwner } from "../../People/hooks/usePeopleOwner";
+import { useProductsOwner } from "../../Products/hooks/useProductsOwner";
+import { useNavigate, useLocation } from "react-router-dom";
 import DeleteIcon from "../../../assets/icons/DeleteIcon";
 import Modal from "../../../components/ui/Modal";
-import {
-  deleteRecommendedPlaceMutation,
-  updateRecommendationListVisiblity,
-} from "../api/mutation";
+import { usePlacesOwner } from "../hooks/usePlacesOwner";
+import { usePlacesCommands } from "../api/placesCommands";
+import {PlacePinsEditor} from './PlacePinsEditor';
+import type {PlacesOwnerContent} from '../api/explorersAdapter';
+import { PlacesClient } from "../api/placesClient";
+import type { CompleteTaxonomyCatalog } from "../../../lib/explorersApiClient";
+import useAuthStore from "../../../store/store";
 import { EarthLoader } from "../../../components/EarthLoader";
 import RecommendationCardSkeleton from "../../../components/ui/RecommendationCardSkeleton";
 import PlaceOverview from "../../PublicHome/components/PlaceDetails/PlaceOverview";
 import EditIcon from "../../../assets/icons/EditIcon";
-import axios from "axios";
-import useAuthStore from "../../../store/store";
 import { useCityStore } from "../../../store/useCityStore";
 import useSetupStore from "../../../store/useSetupStore";
 import TopPlacesByCategory from "./TopPlacesByCategory";
@@ -76,12 +72,6 @@ export interface SelectedCity {
   recommendations?: Recommendation[] | undefined;
 }
 
-// type for categories
-type RecommendedPlaceCategory = {
-  Place_Details: { Place_Name: string; Place_Id: string };
-  recommendation_category: { Category_Name: string };
-  documentId?: string;
-};
 
 // Helper function to get person image with avatar fallback
 const getPersonImageUrl = (data: any): string => {
@@ -94,12 +84,16 @@ const getPersonImageUrl = (data: any): string => {
 };
 
 // type for card data utems
+// The card shape, as the native DTO actually presents it. Strapi returned these fields
+// always populated; the typed DTO is honest about what a place may not have - a manual
+// place has no provider id or rating, a recommendation may carry no media of its own,
+// and an absent coordinate pair stays absent.
 type CardDataItem = {
+  is_pinned?:boolean;
   Media?: {
     url?: string;
   }[];
-  media_details: {
-    scalarId: string;
+  media_details?: {
     thumbnail: {
       id?: string;
       url?: string;
@@ -108,21 +102,23 @@ type CardDataItem = {
       id: string;
       url: string;
     }[];
-  };
+  } | null;
   Place_Details?: {
-    Photos: string[];
-    Place_Address: string;
-    Place_Id: string;
+    Photos: { url: string }[];
+    Place_Address: string | null;
+    Place_Id: string | null;
     Place_Name: string;
-    Rating: number;
-    Rating_Count: number;
+    Rating: number | null;
+    Rating_Count: number | null;
     Title: string;
   };
   Recommendation_Type?: "place" | "person";
-  Contact_Name?: string;
+  Contact_Name?: string | null;
   user_rating?: number | null;
   google_rating?: number | null;
   documentId: string;
+  recommendation_category?: {id: string; label: string | null; unavailable: boolean} | null;
+  recommendation_sub_category?: {id: string; label: string | null; unavailable: boolean} | null;
 };
 
 const KebabDropdown: FC<{
@@ -148,6 +144,8 @@ const KebabDropdown: FC<{
   return (
     <div ref={containerRef} className="relative">
       <button
+        aria-label="Place actions"
+        aria-expanded={showMenu}
         onClick={() => setShowMenu(!showMenu)}
         className="w-6 h-6 flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer"
       >
@@ -203,15 +201,11 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   const [selectedPerson, setSelectedPerson] = useState<any | null>(null);
   // local state for handling delete recommended Place
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-  // mutatio for deleting recommendedPlace (reminder: segregate this logic to reduce the complexity)
-  const [deleteRecommendedPlace] = useMutation(deleteRecommendedPlaceMutation);
-  const [updateRecommendationListVisibility] = useMutation(
-    updateRecommendationListVisiblity,
-    {
-      refetchQueries: [recommendationListQuery],
-      fetchPolicy: "network-only",
-    }
-  );
+  // Ticket 5.1. Places, and the list publication flag, come from the native owner API.
+  const commands = usePlacesCommands(selectedCity?.documentId);
+  const [pinsRequest,setPinsRequest]=useState<{scope:string;id:string;nonce:number}>();
+  // Finding 6. Retention is state, not a ref written during render.
+  const [pinsOwner,setPinsOwner]=useState<{key:string;owner:PlacesOwnerContent}>();
   // local state for handle catgeories
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   // local state for handling the deleting of place
@@ -222,8 +216,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   const [showTopPlaces, setShowTopPlaces] = useState<boolean>(false);
   // local state to trigger TopPlaces refresh when a place is added
   const [topPlacesKey, setTopPlacesKey] = useState<number>(0);
-  // local state to track if there are more items to load
-  const [hasMoreData, setHasMoreData] = useState<boolean>(true);
   // local state for Instagram import modal
   const [showInstagramModal, setShowInstagramModal] = useState<boolean>(false);
   // local state for Add Place overlay
@@ -233,8 +225,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   const addDropdownRef = useRef<HTMLDivElement>(null);
   // active tab: places | people | products
   const [activeTab, setActiveTab] = useState<"places" | "people" | "products">("places");
-  // fetching data from global state
-  const { token } = useAuthStore();
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -253,18 +243,43 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   // ref for the entire suggestions section (button + content)
   const suggestionsContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch linked person_lists and product_lists for this location
-  const { data: locationLinkedData } = useQuery(recommendedListByIdQuery, {
-    variables: {
-      documentId: selectedCity?.documentId,
-      pagination: { page: 1, pageSize: 1 }, // minimal places — we only need the linked lists
-    },
-    fetchPolicy: "cache-and-network",
-    skip: !selectedCity?.documentId,
-  });
 
-  const linkedPersonLists: any[] = locationLinkedData?.recommendationList?.person_lists || [];
-  const linkedProductLists: any[] = locationLinkedData?.recommendationList?.product_lists || [];
+
+  // The owner read returns this list complete and bounded, so the two Strapi reads - one
+  // paginated for the grid and one unpaginated for the suggestion comparison - become one
+  // read, and the ten-at-a-time reveal is a window over it rather than another round trip.
+  const owner = usePlacesOwner(selectedCity?.documentId, Boolean(selectedCity?.documentId));
+  // Finding 6. The retained snapshot is keyed on the fetch scope AND the selected list,
+  // because the fetch scope no longer carries the list id (finding 2), and it is written
+  // from an effect rather than during render - a render-phase ref write is discarded under
+  // a concurrent re-render.
+  const editorKey=`${owner.scope}|${selectedCity?.documentId??''}`;
+  useEffect(()=>{if(owner.content)setPinsOwner({key:editorKey,owner:owner.content});},[owner.content,editorKey]);
+  const retainedOwner=pinsOwner?.key===editorKey?pinsOwner.owner:undefined;
+  // Live content always wins over the retained snapshot. The snapshot only bridges the
+  // window where a save's invalidatePlaces has cleared content and the re-read is in
+  // flight; the editor is DISABLED for that window, so a stale draft.observation can no
+  // longer be committed into a guaranteed 409 that loses the user's edit.
+  const editorOwner=owner.content??retainedOwner;
+  const loading = owner.loading;
+  const ownerList = useMemo(
+    () => owner.data?.recommendationLists?.find((list) => list.documentId === selectedCity?.documentId),
+    [owner.data, selectedCity?.documentId]
+  );
+  const ownerPlaces = useMemo(() => ownerList?.recommended_places ?? [], [ownerList]);
+  // Ticket 5.2. The lists linked to this location come from the owner reads: the location
+  // says which ids are linked, and each category's own read supplies those lists. Copying
+  // their contents into the location's read would make two sources for one list.
+  const peopleOwner = usePeopleOwner(undefined, Boolean(selectedCity?.documentId));
+  const productsOwner = useProductsOwner(undefined, Boolean(selectedCity?.documentId));
+  const linkedPersonLists: any[] = useMemo(() => {
+    const ids = new Set(ownerList?.linked_person_list_ids ?? []);
+    return (peopleOwner.data?.personLists ?? []).filter((list) => ids.has(list.documentId));
+  }, [peopleOwner.data, ownerList]);
+  const linkedProductLists: any[] = useMemo(() => {
+    const ids = new Set(ownerList?.linked_product_list_ids ?? []);
+    return (productsOwner.data?.productLists ?? []).filter((list) => ids.has(list.documentId));
+  }, [productsOwner.data, ownerList]);
 
   // Flatten all linked people and products
   const linkedPeople = useMemo(() => {
@@ -287,75 +302,23 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     );
     return deduplicateProducts(raw);
   }, [linkedProductLists]);
+  const [revealed, setRevealed] = useState<number>(10);
+  const placesData = useMemo(() => ({ recommendedPlaces: ownerPlaces.slice(0, revealed) }), [ownerPlaces, revealed]);
+  const allPlacesData = useMemo(() => ({ recommendationList: { recommended_places: ownerPlaces } }), [ownerPlaces]);
+  const refetchPlaces = owner.refetch;
+  const refetchAllPlaces = owner.refetch;
 
-  // Fetch paginated places
-  const {
-    data: placesData,
-    loading,
-    fetchMore,
-    refetch: refetchPlaces,
-  } = useQuery(recommendedPlacesQuery, {
-    variables: {
-      pagination: {
-        page: 1,
-        pageSize: 10,
-      },
-      filters: {
-        recommendation_list: {
-          documentId: {
-            eq: selectedCity?.documentId,
-          },
-        },
-      },
-    },
-    fetchPolicy: "network-only",
-    skip: !selectedCity?.documentId,
-  });
-
-  // Fetch ALL recommended places for comparison with top places (to avoid duplicates)
-  const { data: allPlacesData, refetch: refetchAllPlaces } = useQuery(
-    allRecommendedPlacesQuery,
-    {
-      variables: {
-        documentId: selectedCity?.documentId,
-      },
-      fetchPolicy: "network-only",
-      skip: !selectedCity?.documentId,
-    }
-  );
-
-  // Create a proper refetch function that updates the useCityStore
+  // Refresh both the owner read and whatever the parent holds.
   const refetchCitiesInternal = useCallback(async () => {
     try {
-      // Refetch the recommendation list query to get fresh data
-      const result = await refetchPlaces();
-
-
-      // Find the updated city in the fetched data
-      if (result.data?.recommendationList) {
-        const updatedCity = {
-          ...selectedCity,
-          Visibility: result.data.recommendationList.Visibility,
-        };
-
-
-        // Update the useCityStore with the latest Visibility value
-        setSelectedCity(updatedCity);
-      }
-
-
-      // Call the parent refetchCities if provided
-      if (refetchCities) {
-        await refetchCities();
-      }
-
-
-      return result;
+      refetchPlaces();
+      if (refetchCities) await refetchCities();
+      return undefined;
     } catch (error) {
       console.error("Error refetching cities:", error);
       throw error;
     }
-  }, [refetchPlaces, selectedCity, setSelectedCity, refetchCities]);
+  }, [refetchPlaces, refetchCities]);
 
   // ⭐ Walkthrough Hook Initialization (must come AFTER showTopPlaces + useQuery)
   const {
@@ -452,58 +415,12 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   // ⭐ Expose walkthrough control globally for other components
 
 
-  // Set up intersection observer for infinite scroll
+  // Reveal more of the list already in hand, rather than fetching another page.
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (
-          entries[0].isIntersecting &&
-          !loading &&
-          hasMoreData &&
-          placesData?.recommendedPlaces?.length > 0
-        ) {
-          // Check if we have more than 0 items and current length is divisible by page size
-          // This indicates we might have more pages to load
-          const currentLength = placesData.recommendedPlaces.length;
-          if (currentLength % 10 === 0) {
-            fetchMore({
-              variables: {
-                pagination: {
-                  page: Math.ceil(currentLength / 10) + 1,
-                  pageSize: 10,
-                },
-                filters: {
-                  recommendation_list: {
-                    documentId: {
-                      eq: selectedCity?.documentId,
-                    },
-                  },
-                },
-              },
-              updateQuery: (prev, { fetchMoreResult }) => {
-                if (
-                  !fetchMoreResult ||
-                  !fetchMoreResult.recommendedPlaces?.length
-                ) {
-                  setHasMoreData(false);
-                  return prev;
-                }
-                // If we get less than the page size, we've reached the end
-                if (fetchMoreResult.recommendedPlaces.length < 10) {
-                  setHasMoreData(false);
-                }
-                return {
-                  recommendedPlaces: [
-                    ...prev.recommendedPlaces,
-                    ...fetchMoreResult.recommendedPlaces,
-                  ],
-                };
-              },
-            }).catch((error) => {
-              console.error("Error fetching more places:", error);
-              setHasMoreData(false);
-            });
-          }
+        if (entries[0].isIntersecting && !loading && revealed < ownerPlaces.length) {
+          setRevealed((shown) => shown + 10);
         }
       },
       { threshold: 1.0 }
@@ -514,7 +431,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     }
 
     return () => observer.disconnect();
-  }, [loading, placesData, fetchMore, selectedCity?.documentId, hasMoreData]);
+  }, [loading, revealed, ownerPlaces.length]);
 
   // Handle outside click/touch detection for TopPlaces component
   useEffect(() => {
@@ -544,71 +461,41 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     };
   }, [showTopPlaces]);
 
-  // Get categories from the paginated data - memoized to prevent unnecessary recalculations
-  const categories: string[] = useMemo(() => {
-    if (!placesData?.recommendedPlaces) return [];
-
-
-    return Array.from(
-      new Set(
-        placesData.recommendedPlaces
-          .map(
-            (place: RecommendedPlaceCategory) =>
-              place?.recommendation_category?.Category_Name
-          )
-          .filter(Boolean) // Filter out any undefined/null values
-      )
-    );
-  }, [placesData?.recommendedPlaces]);
-
-  // Function to get translated category name
-  const getTranslatedCategoryName = (categoryName: string): string => {
-    // Debug logging to see exact category names
-    console.log('Category name from DB:', categoryName);
-
-    const categoryMap: { [key: string]: string } = {
-      "Food & Drinks": "dashboard.recommendations.categories.foodDrinks",
-      Lodging: "dashboard.recommendations.categories.lodging",
-      "Health & Wellness":
-        "dashboard.recommendations.categories.healthWellness",
-      Shopping: "dashboard.recommendations.categories.shopping",
-      Entertainment: "dashboard.recommendations.categories.entertainment",
-      Transportation: "dashboard.recommendations.categories.transportation",
-      Services: "dashboard.recommendations.categories.services",
-      Tourism: "dashboard.recommendations.categories.tourism",
-      "Natural Features":
-        "dashboard.recommendations.categories.naturalFeatures",
-      "Food and Drink": "dashboard.recommendations.categories.foodDrinks",
-      "Health and Wellness":
-        "dashboard.recommendations.categories.healthWellness",
-      "Natural Feature": "dashboard.recommendations.categories.naturalFeatures",
-    };
-
-
-    const translationKey = categoryMap[categoryName];
-    if (translationKey) {
-      return t(translationKey);
+  const location = useLocation();
+  const accountId = useAuthStore(state => state.accountId);
+  const generation = useAuthStore(state => state.generation);
+  const taxonomyScope = JSON.stringify([accountId, generation, location.pathname, selectedCity?.documentId]);
+  const [catalogResult, setCatalogResult] = useState<{scope: string; catalog?: CompleteTaxonomyCatalog; error?: boolean}>();
+  const [catalogRetry, setCatalogRetry] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    setCatalogResult(undefined);
+    setSelectedCategory("");
+    if (accountId && selectedCity?.documentId) {
+      void PlacesClient.readTaxonomyCatalog(controller.signal).then(catalog => {
+        if (!controller.signal.aborted) setCatalogResult({scope: taxonomyScope, catalog});
+      }).catch(() => {
+        if (!controller.signal.aborted) setCatalogResult({scope: taxonomyScope, error: true});
+      });
     }
-
-
-    // Fallback to original category name
-    return categoryName;
+    return () => controller.abort();
+  }, [taxonomyScope, catalogRetry, accountId, selectedCity?.documentId]);
+  const currentCatalog = catalogResult?.scope === taxonomyScope ? catalogResult : undefined;
+  const categories = useMemo(() => currentCatalog?.catalog?.items.filter(term => term.parentId === null) ?? [], [currentCatalog]);
+  // Filter the complete hydrated list before applying the existing reveal window.
+  const allFilteredPlaces = useMemo(() => ownerPlaces.filter(place => !selectedCategory || place.recommendation_category?.id === selectedCategory).slice(0, revealed), [ownerPlaces, selectedCategory, revealed]);
+  const categoryLabel = (selection: NonNullable<CardDataItem['recommendation_category']>) => {
+    const available = currentCatalog?.catalog?.items.find(term => term.id === selection.id);
+    return selection.unavailable ? `${selection.label ? selection.label + ' — ' : ''}Category unavailable (${selection.id})` : available?.label ?? selection.label ?? `Category unavailable (${selection.id})`;
   };
-
-  // Filter places by category and split by recommendation type
-  const allFilteredPlaces = selectedCategory
-    ? placesData?.recommendedPlaces?.filter(
-      (place: RecommendedPlaceCategory) =>
-        place?.recommendation_category?.Category_Name === selectedCategory
-    )
-    : placesData?.recommendedPlaces;
 
   // Calculate center coordinates for TopPlaces component
   const selectedCityCoordinates = useMemo(() => {
     // First, check if the location itself has coordinates stored (for draft locations)
     if (selectedCity?.List_Name_Details?.location) {
       const locationCoords = selectedCity.List_Name_Details.location;
-      if (locationCoords.latitude && locationCoords.longitude) {
+      // Zero is a real coordinate, so presence is tested rather than truthiness.
+      if (locationCoords.latitude != null && locationCoords.longitude != null) {
         return {
           lat: parseFloat(locationCoords.latitude.toString()),
           lng: parseFloat(locationCoords.longitude.toString()),
@@ -620,7 +507,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     if (placesData?.recommendedPlaces) {
       const validCoordinates = placesData.recommendedPlaces
         .map((place: any) => place.Place_Details?.Geometry)
-        .filter((geometry: any) => geometry && geometry.lat && geometry.lng);
+        .filter((geometry: any) => geometry && geometry.lat != null && geometry.lng != null);
 
       if (validCoordinates.length === 0) {
         return null;
@@ -652,9 +539,9 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     setTopPlacesKey((prev) => prev + 1);
   }, [allPlacesData?.recommendationList?.recommended_places?.length]);
 
-  // Reset hasMoreData when selectedCity changes
+  // Start each list at the first ten again.
   useEffect(() => {
-    setHasMoreData(true);
+    setRevealed(10);
   }, [selectedCity?.documentId]);
 
   // Effect to preserve selectedCategory when categories change
@@ -664,7 +551,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     if (
       selectedCategory &&
       categories.length > 0 &&
-      !categories.includes(selectedCategory)
+      !categories.some(term => term.id === selectedCategory)
     ) {
       setSelectedCategory("");
     }
@@ -676,7 +563,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
       if (selectedCity?.documentId) {
         refetchPlaces();
         refetchAllPlaces();
-        setHasMoreData(true);
+        setRevealed(10);
         setTopPlacesKey((prev) => prev + 1);
       }
     };
@@ -685,7 +572,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
       if (!document.hidden && selectedCity?.documentId) {
         refetchPlaces();
         refetchAllPlaces();
-        setHasMoreData(true);
+        setRevealed(10);
         setTopPlacesKey((prev) => prev + 1);
       }
     };
@@ -699,151 +586,47 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     };
   }, [selectedCity?.documentId, refetchPlaces, refetchAllPlaces]);
 
-  // function to delete the place
+  // Archiving the place, on the native owner command.
+  //
+  // Media is no longer deleted here. Owned assets have a server-side lifecycle, and
+  // deleting them by id through Strapi's upload API no longer applies - nor would it be
+  // right to, since a shared place's gallery is not one recommendation's to erase.
   const handleConfirmPlaceDelete = async (
     documentId: string,
-    imageIds: string[]
+    _imageIds: string[]
   ) => {
     try {
       setIsDeleting(true);
+      await commands.archivePlace(documentId);
 
-      // Delete the recommended place
-      await deleteRecommendedPlace({
-        variables: { documentId },
-      });
+      const remaining = ownerPlaces.filter((place) => place.documentId !== documentId);
 
-      try {
-        // Delete the images from the media library
-        await Promise.all(
-          imageIds.map((id) =>
-            axios.delete(
-              `${import.meta.env.VITE_REST_API_URL}/upload/files/${id}`,
-              {
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            )
-          )
-        );
-      } catch (error) {
-        console.error("Error deleting images:", error);
-      }
-
-      // Use refetch instead of fetchMore to properly reset pagination state
-      const { data } = await refetchPlaces({
-        pagination: {
-          page: 1,
-          pageSize: 10,
-        },
-        filters: {
-          recommendation_list: {
-            documentId: {
-              eq: selectedCity?.documentId,
-            },
-          },
-        },
-      });
-
-      // Update visibility if no places left
-      if (data?.recommendedPlaces?.length === 0) {
-        const visibilityResponse = await updateRecommendationListVisibility({
-          variables: {
-            documentId: selectedCity?.documentId,
-            data: {
-              Visibility: false,
-            },
-          },
-        });
-
-        // Update the selected city state with the new visibility status
-        if (visibilityResponse?.data?.updateRecommendationList) {
-          setSelectedCity({
-            ...selectedCity,
-            Visibility: false,
-            recommended_places: [],
-          });
-
-          // Refetch cities to update the UI
-          if (refetchCities) {
-            await refetchCities();
-            // Refetch cities to get fresh data from Strapi
-            let refetchedCitiesData = null;
-            if (refetchCities) {
-              const refetchResult = await refetchCities();
-              refetchedCitiesData = refetchResult?.data;
-            }
-
-            // Find the updated city from the refetched data
-            const updatedCity = refetchedCitiesData?.recommendationLists?.find(
-              (city: any) => city.documentId === selectedCity?.documentId
-            );
-
-            // Update selectedCity with fresh data from Strapi (includes correct Visibility)
-            if (updatedCity) {
-              setSelectedCity({
-                ...updatedCity,
-                recommended_places: [],
-              });
-            } else {
-              // Fallback: update with local state if refetch didn't work
-              setSelectedCity({
-                ...selectedCity,
-                Visibility: false,
-                recommended_places: [],
-              });
-            }
-          }
-        } else {
-          // Update the selected city state with the latest data
-          setSelectedCity({
-            ...selectedCity,
-            recommended_places: data?.recommendedPlaces || [],
-          });
+      // A list with nothing left in it stops being public, as it did before.
+      if (remaining.length === 0 && selectedCity?.documentId) {
+        try {
+          await commands.publishList(selectedCity.documentId, false);
+        } catch (error) {
+          console.warn("The place was removed, but the list could not be unpublished:", error);
         }
-
-        // Refetch all places to update the comparison list
-        await refetchAllPlaces();
-
-        // Reset pagination state
-        setHasMoreData(true);
-
-        setIsDeleting(false);
+        setSelectedCity({ ...selectedCity, Visibility: false, recommended_places: [] });
       } else {
-        // Update the selected city state with the latest data
         setSelectedCity({
           ...selectedCity,
-          recommended_places: data?.recommendedPlaces || [],
+          recommended_places: remaining.map((place) => ({ documentId: place.documentId })),
         });
-
-        // Refetch all places to update the comparison list
-        await refetchAllPlaces();
-
-        // Reset pagination state
-        setHasMoreData(true);
-
-        setIsDeleting(false);
       }
 
-      // Show appropriate toast message
-      if (data?.recommendedPlaces?.length === 0) {
-        toast(
-          t("dashboard.recommendations.deleteSuccess.unpublished")
-        );
-      } else {
-        toast(t("dashboard.recommendations.deleteSuccess.success"));
-      }
+      refetchPlaces();
+      if (refetchCities) await refetchCities();
+      setRevealed(10);
+      setIsDeleting(false);
 
-      // Refresh TopPlaces after deletion
+      toast(remaining.length === 0
+        ? t("dashboard.recommendations.deleteSuccess.unpublished")
+        : t("dashboard.recommendations.deleteSuccess.success"));
+
+      // Refresh the suggestions, which compare against what is already recommended.
       setTopPlacesKey((prev) => prev + 1);
-
-      // Refresh the page to update the UI and close any open modals/tabs
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000); // Small delay to show the toast message
-
-      // Close any open modals/expanded views
       setShowDeleteModal(false);
       setIsExpanded({ visible: false, documentId: null, type: null });
     } catch (error) {
@@ -1022,6 +805,13 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
         </div>
       )}
 
+      {activeTab === "places" && accountId && selectedCity?.documentId && (
+        <div role="status" className="text-sm text-white/70">
+          {!currentCatalog ? "Loading categories…" : currentCatalog.error ? <>
+            Categories could not be loaded. <button type="button" onClick={() => setCatalogRetry(value => value + 1)}>Retry loading categories</button>
+          </> : currentCatalog.catalog?.state === "UNCONFIGURED" ? "Category catalog is not configured." : !categories.length ? "No categories are configured." : null}
+        </div>
+      )}
       {/* Categories filters only visible on Places tab */}
       {activeTab === "places" && categories && categories.length >= 1 && (
         <div className="overflow-x-auto whitespace-nowrap py-4 scrollbar-hide">
@@ -1033,13 +823,13 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
               onClickHandler={() => setSelectedCategory("")}
               size="xsmall"
             />
-            {categories?.map((tag: string, index: number) => (
+            {categories.map(tag => (
               <Button
-                key={index}
-                btnText={getTranslatedCategoryName(tag)}
+                key={tag.id}
+                btnText={tag.label}
                 type="button"
-                variant={selectedCategory === tag ? "tagSelected" : "tag"}
-                onClickHandler={() => setSelectedCategory(tag)}
+                variant={selectedCategory === tag.id ? "tagSelected" : "tag"}
+                onClickHandler={() => setSelectedCategory(tag.id)}
                 size="xsmall"
               />
             ))}
@@ -1206,6 +996,8 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
 
       {/* ── Places Tab ── */}
       {activeTab === "places" && (
+      <>
+      {editorOwner&&selectedCity?.documentId&&<PlacePinsEditor key={editorKey} owner={editorOwner} listId={selectedCity.documentId} reload={owner.refetch} disabled={owner.loading} request={pinsRequest?.scope===editorKey?pinsRequest:undefined}/>}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-2 mb-20 md:mb-0">
         {loading && !placesData?.recommendedPlaces?.length ? (
           // Skeleton cards while loading — sit directly in the grid
@@ -1257,6 +1049,18 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                     >
                       <KebabDropdown
                         menuItems={[
+                          ...(editorOwner&&selectedCity?.documentId?[{
+                            icon:<span aria-hidden="true">⌖</span>,
+                            // Finding 10. The label used to be derived from live
+                            // data.is_pinned while the action toggles against the editor
+                            // DRAFT, so with an open draft that had already unpinned a
+                            // row, "Unpin in this list" re-pinned it. Label and action now
+                            // agree on one source - the draft - by naming the toggle
+                            // instead of asserting a direction the draft may already have
+                            // reversed.
+                            label:'Pin or unpin in this list',
+                            action:()=>setPinsRequest(previous=>({scope:editorKey,id:data.documentId,nonce:(previous?.nonce??0)+1})),
+                          }]:[]),
                           {
                             icon: <DeleteIcon stroke="var(--dash-danger)" />,
                             label: "Delete",
@@ -1285,6 +1089,8 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                     <span className="places-grid-card-title font-poppins font-bold text-white text-xs md:text-sm line-clamp-1 leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)]">
                       {title}
                     </span>
+                    {data.recommendation_category && <span className="text-xs text-white/70">{categoryLabel(data.recommendation_category)}</span>}
+                    {data.recommendation_sub_category && <span className="text-xs text-white/70">{categoryLabel(data.recommendation_sub_category)}</span>}
                     {!isPersonType && (rating !== undefined || reviews !== undefined) && (
                       <div className="places-grid-card-meta flex items-center gap-1 text-[10px] md:text-xs text-white font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)]">
                         <span className="text-dashboard-accent">★</span>
@@ -1298,7 +1104,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
             })}
             <div ref={observerTarget} className="h-10 w-full" />
             {/* Loading indicator for infinite scroll */}
-            {loading && hasMoreData && (
+            {loading && revealed < ownerPlaces.length && (
               <div className="col-span-2 md:col-span-3 flex justify-center py-4">
                 <EarthLoader context="general" size="small" />
               </div>
@@ -1306,6 +1112,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
           </>
         ) : null}
       </div>
+      </>
       )}
 
       {/* Empty State - Show only when no recommendations */}
@@ -1333,6 +1140,9 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
         {isExpanded.visible && (
           <PlaceOverview
             placeId={isExpanded.documentId}
+            // The dashboard already holds this place from its own owner read, so it is
+            // handed over rather than fetched again inside the modal.
+            publicPlace={allFilteredPlaces?.find((place: {documentId: string}) => place.documentId === isExpanded.documentId)}
             onClose={() => setIsExpanded({ visible: false, documentId: null, type: null })}
           />
         )}

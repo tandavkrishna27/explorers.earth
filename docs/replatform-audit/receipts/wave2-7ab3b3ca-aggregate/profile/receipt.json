@@ -1,0 +1,198 @@
+{
+  "version": 1,
+  "lane": "profile",
+  "provenance": {
+    "commit": "7ab3b3ca7768f8bdff6e3af0b017b6cbea680b75",
+    "sourceHash": "e10b782edd27a4c2997c54b75d58175dd45d58e15a8060f48fa011d0712e3aad",
+    "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+    "dirty": false
+  },
+  "config": "explorers-earth/playwright.config.ts",
+  "spec": "explorers-earth/e2e/replatform/profile.spec.ts",
+  "projects": [
+    "chromium-pr-safe"
+  ],
+  "discovery": [
+    {
+      "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+      "titlePath": [
+        "canonical onboarding and profile round-trip at 1365px"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+      "titlePath": [
+        "canonical onboarding and profile round-trip at 390px"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+      "titlePath": [
+        "canonical navigation: native Books Movies and Games publish and hide through verified owner preferences"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+      "titlePath": [
+        "canonical navigation: external account preference refresh preserves all nine saved rows"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+      "titlePath": [
+        "canonical navigation: external revision contention reports conflict without replay or lost profile update"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+      "titlePath": [
+        "canonical navigation: a foreign signed owner cannot read content or mutate another owner preference scope"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    }
+  ],
+  "results": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+        "titlePath": [
+          "canonical onboarding and profile round-trip at 1365px"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+        "titlePath": [
+          "canonical onboarding and profile round-trip at 390px"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+        "titlePath": [
+          "canonical navigation: native Books Movies and Games publish and hide through verified owner preferences"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+        "titlePath": [
+          "canonical navigation: external account preference refresh preserves all nine saved rows"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+        "titlePath": [
+          "canonical navigation: external revision contention reports conflict without replay or lost profile update"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+        "titlePath": [
+          "canonical navigation: a foreign signed owner cannot read content or mutate another owner preference scope"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "cleanup": {
+    "status": "passed"
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  },
+  "authority": {
+    "owned": true,
+    "database": "music_uat_ed0f2a144555b57c7da63b3b10820ac5",
+    "containerId": "abd337dd0cb0e5ce152a550bb9ab051500f6be273dc4126b9ace98ca3b684069",
+    "imageId": "sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81"
+  },
+  "child": {
+    "status": 0,
+    "signal": null
+  },
+  "startedAt": "2026-10-10T01:05:37.113Z",
+  "endedAt": "2026-10-10T01:06:24.647Z",
+  "playwright": "1.61.1"
+}

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "kind": "sanitized-owned-database-red-diagnostic",
+  "commit": "3e519bc9603ab7d55972fe9f928b747c8c7bf12d",
+  "nativeExit": 1,
+  "files": {"total": 24, "passed": 22, "failed": 2},
+  "tests": {"total": 325, "passed": 317, "failed": 8},
+  "failedTitles": [
+    "creates a child list already linked, and leaves no orphan when the parent is bad",
+    "guarded parent create preserves ordinary compatibility and rejects invalid revision pairs",
+    "guarded parent create links Products and People atomically and refuses parents without orphans",
+    "guarded parent create replays its full receipt concurrently and after later parent mutation",
+    "guarded parent create with two keys at one expected revision commits once and refuses the stale contender",
+    "guarded parent create HTTP strictly validates pairs and preserves ordinary collection DTOs",
+    "guarded parent create HTTP links Products and People and gives equal foreign missing refusals without orphans",
+    "Places native client renames title and share slug, preserves aggregates, reloads and enforces public gates"
+  ],
+  "observedClassifications": ["expected201-actual422", "expected422-actual201", "parent-result-or-refusal-assertion-failed"],
+  "repositoryRegressionsExecuted": true,
+  "sqlFixtureErrorDetected": false,
+  "sourceCleanAndIntactObserved": true,
+  "ownedContainerAbsentObserved": true,
+  "evidenceLimits": "Not a passing UAT envelope. Database-drop receipt unavailable from the passing-only producer. Guarded contract production repair and fresh GREEN are required."
+}

@@ -1,121 +1,79 @@
 # Getting Started
 
-## Prerequisites
+## Supported local fixture
 
-- **Node.js 18+** — [Download](https://nodejs.org/)
-- **PostgreSQL 15+** — Required for tunes only. [Download](https://www.postgresql.org/download/)
-- **YouTube Data API key** — Required for tunes song search. [Get API Key](https://console.cloud.google.com/)
-- **Google Maps API key** — Required for explorers-earth. [Get API Key](https://console.cloud.google.com/)
-- **Strapi CMS** — explorers-earth requires an external Strapi instance for its backend
+The supported integrated Music development path uses Node.js 24.21.0 (24.x), npm, Docker,
+and Docker Compose v2. It starts deterministic fixture Strapi, disposable
+PostgreSQL 15, the production-built Tunes service, and the production-built
+Explorer client. You do not need a local PostgreSQL or Strapi service for this
+flow.
 
-## Installation
+From a clean checkout at the repository root:
 
-```bash
-# Clone the repository
-git clone <repository-url>
-cd explorers.earth-main
-
-# Install dependencies for both apps
-npm run install:all
+```text
+npm ci
+npm run music:bootstrap -- --mode fixture
+npm run music:doctor -- --mode fixture
+npm run music:up -- --mode fixture --detach --wait
+npm run music:test:smoke -- --mode fixture
 ```
 
-This runs `npm install` in both `tunes/` and `explorers-earth/` directories.
+Bootstrap installs the locked Tunes and Explorer dependencies and creates the
+guarded, ignored fixture authority. Do not create or export `DATABASE_URL`.
+Fixture database commands use only the generated `DATABASE_URL_TEST` for
+`music_migrator@127.0.0.1:55432/music_fixture`; application startup applies the
+reviewed append-only migration chain rather than synchronizing schema implicitly.
+Do not inspect, copy, or commit `.env.music.test` or generated credential files.
 
-## Environment Setup
+## Open and verify the applications
 
-Both apps require `.env` files. See [Environment Variables](environment-variables.md) for the complete reference.
+- Explorer fixture: `http://127.0.0.1:55173`
+- Tunes fixture and API: `http://127.0.0.1:55000`
+- Live API documentation: `http://127.0.0.1:55000/api-docs`
+- Deterministic fixture Strapi: `http://127.0.0.1:51337`
 
-### explorers-earth
+Use `npm run music:test:public-e2e`; its guarded runner generates the scoped callback token and completes the deterministic fixture Google callback without printing owner authority. Then navigate to
+`http://127.0.0.1:55173/recommendations/music`. Explorer loads the fixture's
+authenticated identity and selected Account and forwards its proof only to the bodyless
+`POST /api/music/identity/ensure` boundary. Tunes projects the canonical identity
+and returns a short-lived Music credential; owner routes use only that credential.
+The retired native registration journey is not part of embedded Music.
 
-Create `explorers-earth/.env`:
+The smoke command verifies readiness across Explorer, Tunes, PostgreSQL, and the
+fixture identity boundary. For deeper lanes, follow the
+[Music identity testing guide](testing/music-identity-testing.md).
 
-```env
-VITE_API_URL=your_graphql_api_endpoint
-VITE_REST_API_URL=your_rest_api_endpoint
-VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+For the public Music browser surface, run these from the repository root:
+
+```text
+npm run music:test:public-fast
+npm run music:test:public-pr
+npm run music:test:public-e2e
+npm run music:fixture:public:verify
 ```
 
-### tunes
+The third command is the hard-gated authorized live-write lane, not a default local smoke test. See `docs/testing.md` for the complete disposable-account, loopback-service, scoped Strapi token, and exact-reset environment tuple. The verify command and the public fast/PR commands remain non-mutating.
 
-Create `tunes/.env`:
+The first two use read-only or route-mocked coverage. The E2E command accepts
+only the disposable loopback fixture. Each run records a sanitized manifest
+below `.artifacts/music-public/<runId>/`.
 
-```env
-DATABASE_URL=postgresql://user:password@localhost:5432/tunes
-SESSION_SECRET=your-session-secret
-YOUTUBE_API_KEY=your-youtube-api-key
+When finished, stop the same isolated fixture lifecycle:
+
+```text
+npm run music:down -- --mode fixture
 ```
 
-## Database Setup (tunes only)
+`music:down` preserves guarded fixture volumes. Destructive reset requires the
+exact disposable target and confirmation tuple documented in the testing guide.
+Production mutation is never authorized by these commands; use the
+[immutable deployment runbook](operations/music-deploy-runbook.md) for release
+policy and evidence requirements.
 
-1. Ensure PostgreSQL is running and you have a database created
-2. Set `DATABASE_URL` in `tunes/.env`
-3. Push the schema:
+## Other development and documentation
 
-```bash
-npm run db:push
-```
-
-This uses Drizzle Kit to synchronize the schema from `tunes/shared/schema.ts` to your database.
-
-## Running the Applications
-
-### Both apps simultaneously
-
-```bash
-npm run dev
-```
-
-This uses `concurrently` to start both dev servers:
-- **tunes**: `http://localhost:5000` (frontend + API + WebSocket)
-- **explorers-earth**: `http://localhost:5173`
-
-### Individual apps
-
-```bash
-# tunes only
-npm run dev:tunes
-
-# explorers-earth only
-npm run dev:explorers-earth
-```
-
-### Building for production
-
-```bash
-# Build both
-npm run build:all
-
-# Build individually
-cd tunes && npm run build
-cd explorers-earth && npm run build
-```
-
-## Verifying It Works
-
-### explorers-earth
-- Open `http://localhost:5173`
-- You should see the landing page
-- Login/register functionality requires a running Strapi CMS backend
-
-### tunes
-- Open `http://localhost:5000`
-- You should see the login/register page
-- Register a new venue account
-- After login, the dashboard should load with an empty playlist queue
-- API docs are available at `http://localhost:5000/api-docs` (Swagger UI)
-
-## Agentic Environments (Superpower Skills)
-
-If you are developing this project using an AI agent (such as Claude Code, Cursor, or Gemini CLI) and the personal skills library is configured at `D:\superpowers\skills\`, you **must** use the superpower skills to guide your workflow.
-
-Refer to the superpowers skills library to enforce best practices for:
-- **Planning**: Use `writing-plans` and `executing-plans` to create and track implementation progress.
-- **TDD (Test-Driven Development)**: Follow `test-driven-development` strictly to write tests before implementation.
-- **Verification**: Use `verification-before-completion` to run checks and gather evidence before declaring a task complete.
-- **Debugging**: Use `systematic-debugging` to trace and isolate root causes of issues.
-
-## What's Next
-
-- [Architecture](architecture.md) — Understand the codebase structure
-- [Contributing](contributing.md) — Code style and PR process
-- [Troubleshooting](troubleshooting.md) — Common issues and fixes
+The two applications also have independent development modes, but they require
+their own correctly configured external services and are not a substitute for
+the integrated fixture proof above. See [environment variables](environment-variables.md),
+[architecture](architecture.md), [contributing](contributing.md), and
+[troubleshooting](troubleshooting.md) for those separate concerns.

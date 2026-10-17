@@ -1,0 +1,243 @@
+{
+  "version": 1,
+  "lane": "place-links",
+  "provenance": {
+    "commit": "6b0431c612d46ef2afa0a18afc207ed64572dceb",
+    "sourceHash": "c3d62aa402fbd2790dd7e1c1a7082a895b6989b2156a1bd7df8495351c769e6c",
+    "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+    "dirty": false
+  },
+  "results": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+        "titlePath": [
+          "Place links: existing Products and People lists attach detach and survive reload"
+        ],
+        "project": "place-links-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+        "titlePath": [
+          "Place links: retained create forms atomically create and link Products and People lists"
+        ],
+        "project": "place-links-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "timedOut",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+        "titlePath": [
+          "Place links: public children obey parent child category and account visibility"
+        ],
+        "project": "place-links-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+        "titlePath": [
+          "Place links: stale and foreign link commands preserve both lists"
+        ],
+        "project": "place-links-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+        "titlePath": [
+          "Place links: existing Products and People lists attach detach and survive reload"
+        ],
+        "project": "place-links-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+        "titlePath": [
+          "Place links: retained create forms atomically create and link Products and People lists"
+        ],
+        "project": "place-links-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+        "titlePath": [
+          "Place links: public children obey parent child category and account visibility"
+        ],
+        "project": "place-links-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+        "titlePath": [
+          "Place links: stale and foreign link commands preserve both lists"
+        ],
+        "project": "place-links-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    }
+  ],
+  "child": {
+    "status": 1,
+    "signal": null
+  },
+  "diagnostics": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+        "titlePath": [
+          "Place links: retained create forms atomically create and link Products and People lists"
+        ],
+        "project": "place-links-desktop",
+        "repeat": 0
+      },
+      "kind": "timeout",
+      "matcher": "unknown",
+      "locations": []
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+        "titlePath": [
+          "Place links: retained create forms atomically create and link Products and People lists"
+        ],
+        "project": "place-links-desktop",
+        "repeat": 0
+      },
+      "kind": "error",
+      "matcher": "unknown",
+      "locations": [],
+      "placeLinksAtomic": {
+        "version": 1,
+        "category": "products",
+        "phase": "lost-ack",
+        "boundary": "replay-click",
+        "body": "unknown",
+        "cleanup": "not-entered",
+        "elapsed": "one-to-ten",
+        "remaining": "sixty-plus"
+      }
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+        "titlePath": [
+          "Place links: retained create forms atomically create and link Products and People lists"
+        ],
+        "project": "place-links-desktop",
+        "repeat": 0
+      },
+      "kind": "timeout",
+      "matcher": "unknown",
+      "locations": [
+        {
+          "line": 314,
+          "column": 33
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+        "titlePath": [
+          "Place links: retained create forms atomically create and link Products and People lists"
+        ],
+        "project": "place-links-desktop",
+        "repeat": 0
+      },
+      "kind": "assertion",
+      "matcher": "unknown",
+      "locations": [
+        {
+          "line": 439,
+          "column": 295
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "status": "passed"
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  }
+}

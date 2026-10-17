@@ -81,6 +81,39 @@ export class EmailService {
         throw new Error(configValidation.message);
       }
       
+      /*
+       * Suppression gate. Decision D2, 2026-10-08.
+       *
+       * This is the only place in the server that calls Resend, so this one check covers
+       * every email the product sends - verification and reactivation today, anything
+       * added later by construction rather than by remembering.
+       *
+       * It runs before the template is loaded and before the log row is created, so a
+       * suppressed address costs one indexed lookup and nothing else. The log row is
+       * written anyway, with status 'suppressed': an email that was deliberately not sent
+       * is a fact worth keeping, and without it the only record of honouring an
+       * unsubscribe would be the absence of a record.
+       *
+       * `isEmailSuppressed` throws rather than returning false when the lookup fails, and
+       * that propagates deliberately. "The database was unreachable" is not evidence of
+       * consent, so an outage must not become a send.
+       */
+      if (await storage.isEmailSuppressed(recipient)) {
+        const suppressedLog = await storage.createEmailLog({
+          recipient,
+          subject: subject ?? `template:${templateId}`,
+          templateId,
+          status: 'suppressed',
+          apiTokenId,
+          metadata: variables as any,
+        });
+        return {
+          success: false,
+          error: 'Recipient has unsubscribed from email',
+          emailLogId: suppressedLog.id,
+        };
+      }
+
       // Get template
       const template = await storage.getEmailTemplateById(templateId);
       if (!template) {

@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "lane": "music",
+  "provenance": {
+    "commit": "752c06fb366accbd719990ee2da61941e63d281f",
+    "sourceHash": "0511933880c37e0ffab0f73e407423f3032ae2780da3244ea223f9d500bbceeb",
+    "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+    "dirty": false
+  },
+  "phase": "execution",
+  "interrupted": false,
+  "sourceIntact": true,
+  "cleanup": {
+    "status": "passed",
+    "failures": []
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  },
+  "counts": {
+    "discovered": 24,
+    "executed": 24,
+    "passed": 22,
+    "failed": 2,
+    "skipped": 0,
+    "attempts": 24
+  }
+}

@@ -3,7 +3,7 @@
  * Handles fetching place details from Google Places API
  */
 
-import axios from "axios";
+import { browserPlacesProvider } from "../../../lib/browserPlacesProvider";
 
 /**
  * Price information returned from Google Places API
@@ -23,24 +23,17 @@ export const fetchPlacePriceLevel = async (
 ): Promise<PlacePriceInfo | undefined> => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   
-  if (!apiKey) {
+  if (browserPlacesProvider.kind === "google-sdk" && !apiKey) {
     console.error("Google Maps API key not found");
     return undefined;
   }
 
   try {
     // Fetch place details including priceLevel and priceRange using Places API (New)
-    const detailsUrl = `https://places.googleapis.com/v1/places/${placeId}`;
-    
-    const response = await axios.get(detailsUrl, {
-      headers: {
-        'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'priceLevel,priceRange',
-      },
-    });
+    const data = await browserPlacesProvider.details(placeId, "priceLevel,priceRange", undefined, apiKey);
 
-    const priceLevel = response.data?.priceLevel;
-    const priceRange = response.data?.priceRange;
+    const priceLevel = data?.priceLevel;
+    const priceRange = data?.priceRange;
     
     const result: PlacePriceInfo = {};
     

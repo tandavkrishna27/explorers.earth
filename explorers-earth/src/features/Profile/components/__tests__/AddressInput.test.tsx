@@ -14,7 +14,10 @@ const { AutocompleteMock, addListener, placesLib } = vi.hoisted(() => {
   return { AutocompleteMock, addListener, placesLib: { Autocomplete: AutocompleteMock } };
 });
 
-vi.mock("@vis.gl/react-google-maps", () => ({ useMapsLibrary: () => placesLib }));
+vi.mock("@vis.gl/react-google-maps", () => ({
+  APIProvider: ({ children }: { children?: React.ReactNode }) => children,
+  useMapsLibrary: () => placesLib,
+}));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (k: string) => k }) }));
 
 describe("AddressInput — Google Autocomplete lifecycle", () => {

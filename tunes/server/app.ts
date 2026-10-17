@@ -1,9 +1,22 @@
+import { contentBodyParser } from './application/contentBodyParser';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes/index";
-import { log } from "./vite";
+import { log } from "./runtime";
 import cookieParser from "cookie-parser";
 import type { Server } from "http";
 import { storage } from "./storage";
+import { pool } from "./db";
+import { assertContainmentStartup, containmentErrorHandler, installSafeConsole, requestIdFor } from "./security-containment";
+import { setupMusicIdentityBodylessPreflight } from "./routes/musicIdentityRoutes";
+import type { MusicIdentityRuntimeConfig } from "./config/music-identity-config";
+import { MusicIdentityError, musicErrorEnvelope } from "../shared/musicError";
+import { StrapiIdentityAbsenceProof } from "./services/strapiIdentityAbsenceProof";
+import { assertValidatedLocalMusicProfile, type ValidatedLocalMusicProfile } from "./config/music-local-profile";
+import { createLocalMusicRuntimeShutdown, failAfterLocalMusicOwnedCleanup } from "./config/music-local-shutdown";
+
+export function sanitizedRequestLogTarget(request: Pick<Request, "path">): string {
+  return request.path;
+}
 
 /**
  * Builds the Express app with all middleware + routes wired, and returns it
@@ -20,22 +33,79 @@ import { storage } from "./storage";
  *   setupVite / serveStatic
  *   server.listen(...)                                               request(app)...
  */
-export async function createApp(): Promise<{ app: express.Express; server: Server }> {
+export async function createApp(musicIdentityConfig: MusicIdentityRuntimeConfig, localProfile?: ValidatedLocalMusicProfile, apiOnly = false, combined = false): Promise<{
+  app: express.Express;
+  server: Server;
+  shutdown?: () => Promise<void>;
+}> {
+  try {
+    return await composeApp(musicIdentityConfig, localProfile, apiOnly, combined);
+  } catch (error) {
+    if (localProfile || apiOnly) return failAfterLocalMusicOwnedCleanup(error, {
+      closeSessionStore: closeLocalSessionStore,
+      closePool: async () => { await pool.end(); },
+    });
+    throw error;
+  }
+}
+
+async function composeApp(musicIdentityConfig: MusicIdentityRuntimeConfig, localProfile: ValidatedLocalMusicProfile | undefined, apiOnly: boolean, combined = false): Promise<Awaited<ReturnType<typeof createApp>>> {
+  installSafeConsole();
+  if (localProfile) {
+    assertValidatedLocalMusicProfile(localProfile, process.env);
+    if (!process.env.COOKIE_SECRET || !process.env.SESSION_SECRET
+        || process.env.COOKIE_SECRET === process.env.SESSION_SECRET) {
+      throw new Error("Local runtime cookie and session authorities are required");
+    }
+  } else assertContainmentStartup(process.env);
   const app = express();
 
   // Enable trust proxy FIRST, before any middleware
   // This is critical for secure cookies to work properly
-  app.set("trust proxy", true);
+  app.set("trust proxy", (peerAddress: string) => musicIdentityConfig.isTrustedProxy(peerAddress));
 
   // Basic middleware setup
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
+  app.use((req, res, next) => {
+    res.setHeader("X-Request-Id", requestIdFor(req));
+    next();
+  });
+  app.use((req, res, next) => {
+    const declared = req.get("content-length");
+    if (declared && /^\d+$/.test(declared) && Number(declared) > 64 * 1024) {
+      const requestId = requestIdFor(req); let sent = false;
+      const reject = () => { if (sent) return; sent = true; res.setHeader("Connection", "close"); res.status(413).json(musicErrorEnvelope(new MusicIdentityError("PAYLOAD_TOO_LARGE", 413, "The Music request payload is too large.", "none", false), requestId)); };
+      const deadline = setTimeout(reject, 25); deadline.unref();
+      req.once("end", reject); req.resume(); return;
+    }
+    next();
+  });
+  setupMusicIdentityBodylessPreflight(app);
+  /*
+   * Platform fixture combined startup. The canonical route graph is delegated in
+   * HERE, and nowhere later, for two reasons:
+   *   - it is after the declared-content-length guard above, so an oversized body
+   *     is still refused by Music before any canonical handler sees it;
+   *   - it is before `contentBodyParser()`, because Better Auth has to consume the
+   *     original request stream. A delegate appended after `createApp` would read
+   *     an already-drained body on a real auth POST.
+   * It also precedes `registerRoutes`, so the canonical `/api/auth` handler wins
+   * over `setupMusicSurfaceBoundary`, which otherwise answers that retired prefix
+   * 410 from inside the Music route registry.
+   */
+  if (combined) {
+    const { createCanonicalDelegate } = await import("./auth/canonicalDelegate");
+    app.use(await createCanonicalDelegate(pool, process.env));
+  }
+  app.use(contentBodyParser());
+  app.use(express.urlencoded({ extended: false, limit: "64kb" }));
   app.use(cookieParser(process.env.COOKIE_SECRET || 'dev-only-cookie-secret'));
 
   // Serve favicon and related files directly from root and public directories
   // This ensures maximum browser compatibility for favicon display
-  app.use(express.static('.')); // Serve files from root directory
-  app.use(express.static('public')); // Serve files from public directory
+  if (!localProfile && !apiOnly) {
+    app.use(express.static('.')); // Serve files from root directory
+    app.use(express.static('public')); // Serve files from public directory
+  }
 
   // Enhanced CORS configuration for all environments
   // This is critical for cookie persistence and cross-origin requests
@@ -65,10 +135,11 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
 
       // Allow credentials (cookies, authorization headers, etc)
       res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Access-Control-Expose-Headers", "Retry-After");
       // Allow necessary headers
       res.header(
         "Access-Control-Allow-Headers",
-        "Origin, X-Requested-With, Content-Type, Accept, Cookie, Authorization, X-CSRF-Token, X-Username"
+        "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token, Idempotency-Key, X-Music-Guest-Capability"
       );
       // Allow necessary methods
       res.header(
@@ -80,7 +151,7 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
     }
 
     // Handle preflight OPTIONS requests
-    if (req.method === "OPTIONS") {
+    if (req.method === "OPTIONS" && req.get("access-control-request-method")) {
       return res.sendStatus(200);
     }
 
@@ -98,18 +169,9 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
     // Detailed request logging for API routes
     if (isApiRoute || isPost) {
       console.log(`\n🟦 ============================================`);
-      console.log(`🟦 [Request Logger] ${req.method} ${req.originalUrl}`);
+      console.log(`🟦 [Request Logger] ${req.method} ${sanitizedRequestLogTarget(req)}`);
       console.log(`🟦 Path: ${path}`);
       console.log(`🟦 Content-Type: ${req.headers['content-type']}`);
-      if (isPost) {
-        // Log body preview for POST requests
-        try {
-          const bodyPreview = JSON.stringify(req.body).substring(0, 200);
-          console.log(`🟦 Body Preview: ${bodyPreview}...`);
-        } catch (e) {
-          console.log('🟦 Body not serializable');
-        }
-      }
       console.log(`🟦 ============================================\n`);
     }
 
@@ -128,16 +190,43 @@ export async function createApp(): Promise<{ app: express.Express; server: Serve
   });
 
   console.log('Starting server initialization...');
-  const server = await registerRoutes(app, storage);
+  const { lifecycleProofToken, ...routeMusicConfig } = musicIdentityConfig;
+  const identityAbsenceProof = new StrapiIdentityAbsenceProof({
+    baseUrl: musicIdentityConfig.strapiOrigin,
+    accessToken: lifecycleProofToken,
+    fetchImpl: musicIdentityConfig.fetchImpl,
+    timeoutMs: Math.min(musicIdentityConfig.overallTimeoutMs, 30_000),
+  });
+  const registered = await registerRoutes(app, storage, routeMusicConfig, {
+    proveAbsence: (identity) => identityAbsenceProof.prove(identity),
+    fixtureReadToken: musicIdentityConfig.mode === "fixture" ? lifecycleProofToken : undefined,
+  }, localProfile);
+  const { server } = registered;
 
   // Error handling middleware (registered after routes, before the Vite/static
   // catch-all that the entrypoint adds — preserves the original ordering)
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    console.error('Error:', err);
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({ message });
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+    containmentErrorHandler(err, req, res);
   });
 
-  return { app, server };
+  if (!localProfile && !apiOnly) return { app, server };
+  return {
+    app,
+    server,
+    shutdown: createLocalMusicRuntimeShutdown({
+      server,
+      stopRoutes: registered.shutdown,
+      closeSessionStore: closeLocalSessionStore,
+      closePool: async () => { await pool.end(); },
+    }),
+  };
+}
+
+async function closeLocalSessionStore(): Promise<void> {
+  const sessionStore = storage.sessionStore as typeof storage.sessionStore & {
+    close?: () => void | Promise<void>;
+    stopInterval?: () => void;
+  };
+  if (sessionStore.close) await sessionStore.close();
+  else sessionStore.stopInterval?.();
 }

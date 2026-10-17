@@ -1,3 +1,4 @@
+import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
@@ -15,6 +16,7 @@ interface ProductDetailModalProps {
 const FALLBACK_IMAGE = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'><rect width='300' height='300' fill='%23171e2e'/></svg>`;
 
 const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps) => {
+  const categoryStyles = usePublicCategoryThemeStyles();
   const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [imgIdx, setImgIdx] = useState(0);
   const [dragStartY, setDragStartY] = useState<number | null>(null);
@@ -109,7 +111,9 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
           {/* Modal panel wrapper */}
           <div className="fixed inset-0 pt-[88px] md:pt-8 flex items-end justify-center z-[150] pointer-events-none">
             <motion.div
-              className="relative bg-[#0d1117] rounded-t-2xl w-full h-full md:max-w-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-white/10 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
+              data-category-detail-panel
+              style={categoryStyles ?? undefined}
+              className="relative bg-[var(--category-panel,#0d1117)] rounded-t-2xl w-full h-full md:max-w-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-[color:var(--category-border,rgba(255,255,255,0.1))] hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
               initial={{ y: "100%", opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}
@@ -123,12 +127,12 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                 {backdropUrl ? (
                   <img src={backdropUrl} alt="" className="w-full h-full object-cover filter brightness-75" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#1a2332] to-[#0d1117]" />
+                  <div className="w-full h-full bg-gradient-to-br from-[#1a2332] to-[var(--category-panel,#0d1117)]" />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-[#0d1117]/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[var(--category-panel,#0d1117)] via-[#0d1117]/40 to-transparent" />
 
                 {/* Drag handle (mobile) */}
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-white/30 md:hidden" />
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-[var(--category-card,rgba(255,255,255,0.3))] md:hidden" />
 
                 {/* Close button */}
                 <button
@@ -145,7 +149,7 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                   {/* Primary product image container */}
                   <div 
                     onClick={() => handleImageClick(0)}
-                    className="flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden ring-2 ring-white/10 shadow-2xl bg-[#1a2332] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                    className="flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden ring-2 ring-[color:var(--category-border,rgba(255,255,255,0.1))] shadow-2xl bg-[var(--category-card,#1a2332)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                   >
                     <img
                       src={mainImg || FALLBACK_IMAGE}
@@ -157,9 +161,9 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
 
                   {/* Title and Brand */}
                   <div className="flex-1 pt-16 min-w-0">
-                    <h2 className="text-xl font-bold text-white mt-1 leading-tight">{product.title}</h2>
+                    <h2 className="text-xl font-bold text-[color:var(--category-text,#fff)] mt-1 leading-tight">{product.title}</h2>
                     {product.brand && (
-                      <p className="text-sm text-white/40 mt-0.5">{product.brand}</p>
+                      <p className="text-sm text-[color:var(--category-muted,rgba(255,255,255,0.4))] mt-0.5">{product.brand}</p>
                     )}
                   </div>
                 </div>
@@ -168,39 +172,39 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                   {/* Metadata pills */}
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     {priceStr && (
-                      <span className="text-emerald-400 font-bold text-base mr-2">{priceStr}</span>
+                      <span className="text-[color:var(--category-text,#34d399)] font-bold text-base mr-2">{priceStr}</span>
                     )}
                     {product.user_rating && (
-                      <span className="flex items-center gap-1 text-yellow-400 font-semibold">
-                        <Star size={13} fill="currentColor" /> {product.user_rating}/10
+                      <span className="flex items-center gap-1 text-[color:var(--category-text,#facc15)] font-semibold">
+                        <Star size={13} fill="currentColor" className="text-[color:var(--category-rating,#facc15)]" /> {product.user_rating}/10
                       </span>
                     )}
                   </div>
 
                   {/* Overview */}
                   {product.description && (
-                    <p className="text-sm text-white/60 leading-relaxed">{product.description}</p>
+                    <p className="text-sm text-[color:var(--category-muted,rgba(255,255,255,0.6))] leading-relaxed">{product.description}</p>
                   )}
 
                   {/* Creator note */}
                   {noteText && (
                     <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
-                      <p className="text-xs font-semibold text-emerald-400 mb-1.5 uppercase tracking-wider">Creator's Note</p>
-                      <p className="text-sm text-white/80 leading-relaxed italic">"{noteText}"</p>
+                      <p className="text-xs font-semibold text-[color:var(--category-text,#34d399)] mb-1.5 uppercase tracking-wider">Creator's Note</p>
+                      <p className="text-sm text-[color:var(--category-text,rgba(255,255,255,0.8))] leading-relaxed italic">"{noteText}"</p>
                     </div>
                   )}
 
                   {/* Creator Rating */}
                   {product.user_rating && (
                     <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 flex items-center justify-between">
-                      <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">Creator's Rating</p>
+                      <p className="text-xs font-semibold text-[color:var(--category-text,#eab308)] uppercase tracking-wider">Creator's Rating</p>
                       <div className="flex gap-1 flex-wrap justify-end">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(star => (
                           <Star 
                             key={star} 
                             size={16} 
                             fill={product.user_rating! >= star ? "currentColor" : "none"} 
-                            className={product.user_rating! >= star ? "text-yellow-400" : "text-white/20"} 
+                            className={product.user_rating! >= star ? "text-[color:var(--category-rating,#facc15)]" : "text-[color:var(--category-muted,rgba(255,255,255,0.2))]"}
                           />
                         ))}
                       </div>
@@ -210,12 +214,12 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                   {/* Specs */}
                   {hasSpecs && (
                     <div>
-                      <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Specifications</p>
-                      <div className="rounded-xl border border-white/10 overflow-hidden bg-[#161e2e]/30">
+                      <p className="text-xs font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.5))] uppercase tracking-wider mb-2">Specifications</p>
+                      <div className="rounded-xl border border-[color:var(--category-border,rgba(255,255,255,0.1))] overflow-hidden bg-[var(--category-card,rgba(22,30,46,0.3))]">
                         {Object.entries(specs).map(([key, val], i) => (
-                          <div key={key} className={`flex items-center px-4 py-2.5 text-xs ${i % 2 === 0 ? "bg-white/[0.02]" : ""}`}>
-                            <span className="text-white/40 w-1/3 font-medium">{key}</span>
-                            <span className="text-white/80 flex-1">{val}</span>
+                          <div key={key} className={`flex items-center px-4 py-2.5 text-xs ${i % 2 === 0 ? "bg-[var(--category-card,rgba(255,255,255,0.02))]" : ""}`}>
+                            <span className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] w-1/3 font-medium">{key}</span>
+                            <span className="text-[color:var(--category-text,rgba(255,255,255,0.8))] flex-1">{val}</span>
                           </div>
                         ))}
                       </div>
@@ -225,7 +229,7 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                   {/* Product Images Gallery Row (Movie style snapshots) */}
                   {allImages.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">
+                      <p className="text-xs font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.5))] uppercase tracking-wider mb-3">
                         Product Gallery
                       </p>
                       <div className="relative group">
@@ -243,7 +247,7 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                                 setImgIdx(i);
                                 handleImageClick(i);
                               }}
-                              className={`flex-shrink-0 w-56 aspect-square rounded-xl overflow-hidden border transition-all ${i === imgIdx ? 'border-emerald-400 scale-[1.01]' : 'border-white/10 opacity-70 hover:opacity-100'} bg-[#1a2332] hover:scale-[1.01] active:scale-[0.99] duration-200`}
+                              className={`flex-shrink-0 w-56 aspect-square rounded-xl overflow-hidden border transition-all ${i === imgIdx ? 'border-[color:var(--category-focus,#34d399)] scale-[1.01]' : 'border-[color:var(--category-border,rgba(255,255,255,0.1))] opacity-70 hover:opacity-100'} bg-[var(--category-card,#1a2332)] hover:scale-[1.01] active:scale-[0.99] duration-200`}
                             >
                               <img 
                                 src={url} 
@@ -265,18 +269,18 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
 
                   {/* Source list */}
                   {product.product_list && (
-                    <p className="text-xs text-white/30">
-                      From the list: <span className="text-emerald-400">{product.product_list.List_Name}</span>
+                    <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.3))]">
+                      From the list: <span className="text-[color:var(--category-text,#34d399)]">{product.product_list.List_Name}</span>
                     </p>
                   )}
                 </div>
               </div>
 
               {/* Footer actions matching Movie modal exactly */}
-              <div className="flex-shrink-0 border-t border-white/8 px-5 py-4 flex items-center justify-between gap-3 bg-[#0d1117]">
+              <div className="flex-shrink-0 border-t border-[color:var(--category-border,rgba(255,255,255,0.08))] px-5 py-4 flex items-center justify-between gap-3 bg-[var(--category-panel,#0d1117)]">
                 <button
                   onClick={handleShare}
-                  className="flex items-center gap-1.5 text-sm text-white/60 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/8 transition-all"
+                  className="flex items-center gap-1.5 text-sm text-[color:var(--category-muted,rgba(255,255,255,0.6))] hover:text-[color:var(--category-text,#fff)] px-3 py-1.5 rounded-lg hover:bg-[var(--category-hover,rgba(255,255,255,0.08))] transition-all"
                 >
                   <Share2 size={14} /> Share
                 </button>
@@ -286,7 +290,7 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                       href={product.buy_url || product.product_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-sm text-white font-medium transition-colors"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--category-accent,#059669)] hover:bg-[var(--category-accent,#047857)] text-sm text-[color:var(--category-accent-ink,#fff)] font-medium transition-colors"
                     >
                       <ExternalLink size={14} /> {product.buy_url ? "Buy Now" : "View Product"}
                     </a>

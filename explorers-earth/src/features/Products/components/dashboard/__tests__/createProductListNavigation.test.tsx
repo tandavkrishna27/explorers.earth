@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { loginSurface, surfaceHarness } from "../../../../navigation/__tests__/surfaceHarness";
 
 const navigateSpy = vi.fn();
 vi.mock("react-router-dom", async (importOriginal) => {
@@ -9,50 +9,23 @@ vi.mock("react-router-dom", async (importOriginal) => {
   return { ...actual, useNavigate: () => navigateSpy };
 });
 
-vi.mock("../../../../../store/store", () => ({
-  default: () => ({ user: { documentId: "u1", username: "qa" } }),
-}));
-
-const createFn = vi.fn(async () => ({
-  data: { createProductList: { documentId: "product-1" } },
-}));
-vi.mock("@apollo/client", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@apollo/client")>();
-  return {
-    ...actual,
-    useMutation: () => [createFn, { loading: false }],
-    useQuery: (query: { definitions: Array<{ name?: { value: string } }> }) => {
-      const opName = query?.definitions?.[0]?.name?.value;
-      if (opName === "MyAccountForProducts") {
-        return {
-          data: {
-            usersPermissionsUser: {
-              accounts: [{ documentId: "acc-1", public_products: "No" }],
-            },
-          },
-          loading: false,
-          refetch: vi.fn(),
-        };
-      }
-      return { data: { productLists: [] }, loading: false, refetch: vi.fn() };
-    },
-  };
-});
-
+const createFn = vi.hoisted(() => vi.fn(async () => ({ id: 'product-1' })));
+vi.mock('../../../api/productsClient', () => ({ ProductsClient: { createCollection: createFn } }));
+vi.mock('../../../hooks/useProductsOwner', () => ({ useProductsOwner: () => ({ data: { productLists: [] }, loading: false, refetch: vi.fn() }), invalidateProducts: vi.fn() }));
 import ProductsHome from "../ProductsHome";
 
 describe("ProductsHome create-list navigation (BUG-3)", () => {
   beforeEach(() => {
+    loginSurface();
     navigateSpy.mockClear();
     createFn.mockClear();
   });
 
   it("navigates into the newly created list with justCreatedList state", async () => {
-    render(
-      <MemoryRouter>
-        <ProductsHome />
-      </MemoryRouter>
-    );
+    const h = surfaceHarness(<ProductsHome />, { initial: { documentId: "acc-1", public_products: "No" },
+      respond: name => name === "CreateProductList" ? Promise.resolve({}) : undefined,
+    });
+    await h.ready();
 
     const newListButtons = await screen.findAllByRole("button", {
       name: /New List/i,
@@ -76,5 +49,6 @@ describe("ProductsHome create-list navigation (BUG-3)", () => {
         { state: { justCreatedList: true } }
       )
     );
+    expect(h.writes).toEqual([]);
   });
 });

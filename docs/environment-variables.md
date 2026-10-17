@@ -88,12 +88,15 @@ All environment variables for both applications. Each app has its own `.env` fil
 | `SPOTIFY_CLIENT_ID` | No | Spotify app client ID (playlist import) | `abc123...` |
 | `SPOTIFY_CLIENT_SECRET` | No | Spotify app client secret | `secret...` |
 
-### Strapi CMS (Cross-App SSO)
+### Strapi CMS (Music identity boundary)
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
 | `STRAPI_URL` | No | Strapi CMS URL (server-side) | `http://localhost:1337` |
 | `STRAPI_ACCESS_TOKEN` | No | Strapi API token (server-side) | `token...` |
+| `STRAPI_ANALYTICS_ACCESS_TOKEN` | Yes | Dedicated server-side token for public-profile analytics validation and event reads/writes | `token...` |
+| `EXPLORERS_PUBLIC_PROFILE_GATEWAY_ENABLED` | No | Enables the server-owned public profile gateway; set to `true` only after the dedicated reader credential and CORS origin are installed | `true` |
+| `STRAPI_PUBLIC_PROFILE_READ_TOKEN` | Required when gateway is enabled | Dedicated Custom read-only Strapi credential for Local Tunes only. Store it in the protected Tunes runtime secret configuration; never use a `VITE_` variable, browser header, or Explorers build secret. | `token...` |
 | `VITE_API_URL` | No | Strapi GraphQL endpoint (client-side, for embedded auth) | `http://localhost:1337/graphql` |
 | `VITE_REST_API_URL` | No | Strapi REST endpoint (client-side) | `http://localhost:1337` |
 | `VITE_PUBLIC_ACCESS_TOKEN` | No | Public access token for unauthenticated requests | `token...` |

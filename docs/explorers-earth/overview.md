@@ -61,8 +61,8 @@ A major embedded component (`src/components/MusicDashboard.tsx`) that brings the
 - Playlist management (create, edit, delete, import from YouTube/Spotify)
 - Song search via YouTube
 - Guest control features for venue scenarios
-- Data fetching via `useTunesDashboard` hook which syncs the Strapi user with the tunes Neon DB
-- Background SSO via `AuthSyncManager` component (fires once per session, skips public pages and onboarding)
+- Account-scoped data fetching via `useTunesDashboard`; canonical owner requests use the in-memory Music credential
+- Authoritative identity/Account selection via `AuthSyncManager`, followed by bodyless single-flight Music ensure
 
 ## Frontend Architecture
 

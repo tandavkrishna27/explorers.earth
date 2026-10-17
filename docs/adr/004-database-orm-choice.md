@@ -1,7 +1,9 @@
 # ADR-004: PostgreSQL with Drizzle ORM
 
 ## Status
-Accepted
+Accepted (superseded in part by [ADR-005](005-music-identity-migration-deployment-authority.md))
+
+> Historical record: the decision text below is preserved as accepted. ADR-005 is the current authority for Music migrations and immutable deployment.
 
 ## Context
 tunes needs a relational database for structured data (users, playlists, songs, sessions) with support for complex queries (analytics, aggregations, regional statistics). The ORM choice affects developer experience, type safety, and query performance.

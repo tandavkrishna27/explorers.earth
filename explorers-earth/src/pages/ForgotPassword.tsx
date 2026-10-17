@@ -1,10 +1,7 @@
-import { useMutation } from "@apollo/client";
-import { forgotPasswordMutation } from "../features/Authentication/api/mutation";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { toast } from "sonner";
 import { EarthLoader } from "../components/EarthLoader";
-import { ApolloError } from "@apollo/client";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import SEO from "../components/SEO";
@@ -13,9 +10,24 @@ import { isManualAuthEnabled } from "../config/featureFlags";
 import { useEffect } from "react";
 import AuthShell from "../components/auth/AuthShell";
 
+/**
+ * Ticket 2.4. Password authentication does not exist canonically - `betterAuth.ts` sets
+ * `emailAndPassword: {enabled: false}` and Login offers only Google - so there is no
+ * canonical operation for this page to call, and the Strapi one it used to call wrote
+ * credentials that no sign-in path would have accepted.
+ *
+ * The page already redirects to Google sign-in (ENABLE_MANUAL_AUTH is false), which is the
+ * visible change ticket 2.4 line 45 records as agreed. That redirect runs in an effect, so
+ * it happens a frame after the first render; this makes the submit path refuse by
+ * construction rather than merely be unreached in practice.
+ */
+const manualAuthUnavailable = () => {
+  throw new Error('Password sign-in is unavailable. Please continue with Google.');
+};
+
 const ForgotPassword = () => {
   const { t } = useTranslation();
-  const [forgotPassword, { loading }] = useMutation(forgotPasswordMutation);
+  const loading = false;
   const navigate = useNavigate();
 
   // MANUAL AUTH DISABLED - Redirect to login for OAuth-only mode
@@ -32,39 +44,8 @@ const ForgotPassword = () => {
     email: Yup.string().email(t('auth.validations.email.invalidFormat')).required(t('auth.validations.email.required')),
   });
 
-  const handleSubmit = async (values: typeof initialValues) => {
-    try {
-      const response = await forgotPassword({
-        variables: { email: values.email },
-      });
-
-      if (response.data.forgotPassword.ok) {
-        toast.success(t('toast.success.resetLinkSent'));
-        navigate("/reset-link-sent", { state: { email: values.email } });
-      } else {
-        toast.error(t('toast.error.resetLinkFailed'));
-      }
-    } catch (error: unknown) {
-      if (error instanceof ApolloError) {
-        const serverError = error.graphQLErrors?.[0]?.message;
-        if (serverError) {
-          if (serverError.toLowerCase().includes("email not found")) {
-            toast.error(t('toast.error.emailNotFound'));
-          } else if (serverError.toLowerCase().includes("invalid email")) {
-            toast.error(t('toast.error.invalidEmailFormat'));
-          } else if (serverError.toLowerCase().includes("rate limit")) {
-            toast.error(t('toast.error.rateLimitExceeded'));
-          } else {
-            toast.error(t('toast.error.resetLinkFailed'));
-          }
-        } else {
-          toast.error(t('toast.error.resetLinkFailed'));
-        }
-      } else {
-        toast.error(t('toast.error.resetLinkFailed'));
-      }
-      console.error(error);
-    }
+  const handleSubmit = async (_values: typeof initialValues) => {
+    manualAuthUnavailable();
   };
 
   if (loading)

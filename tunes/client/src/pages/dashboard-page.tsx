@@ -11,7 +11,7 @@ import { useAnalytics, AnalyticsEventCategory, AnalyticsEventAction } from "@/ho
 import { BottomNavigation } from "@/components/bottom-navigation";
 import { MiniPlayerControl } from "@/components/mini-player-control";
 import { useUserSubscriptionPlanInfo } from "@/lib/strapi-queries";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"; import { guestCapabilityHandoff } from "@/lib/musicCredential"; import { requestUnlistedShareCapability } from "@/lib/musicPublicationClient";
 // UI Components
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -187,7 +187,7 @@ function SubscriptionPlanCard({ username }: { username: string }) {
   );
 }
 
-// Update the playlist query type
+const OWNER_PLAYBACK_URL = "/api/music/dashboard";
 export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -200,7 +200,7 @@ export default function DashboardPage() {
   const [editPlaylistId, setEditPlaylistId] = useState<number | null>(null);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<number | null>(null);
   const [playlistToReplace, setPlaylistToReplace] = useState<{ id: number; songs: Song[]; type: 'play' | 'shuffle' } | null>(null);
-
+  const [shareCapability, setShareCapability] = useState<string>();
   // Local state for guest controls to ensure UI updates immediately
   const [allowSongRequests, setAllowSongRequests] = useState(user?.allowSongRequests ?? false);
   const [allowGuestPlayOnDevice, setAllowGuestPlayOnDevice] = useState(user?.allowGuestPlayOnDevice ?? false);
@@ -246,7 +246,7 @@ export default function DashboardPage() {
 
   // Move playlists query inside component
   const { data: playlists } = useQuery<(Playlist & { songs: PlaylistSong[] })[]>({
-    queryKey: [user?.username ? `/api/playlists?username=${user.username}` : "/api/playlists", user?.id],
+    queryKey: ["/api/playlists", user?.id],
     enabled: !!user?.username,
   });
 
@@ -261,7 +261,7 @@ export default function DashboardPage() {
     currentlyPlaying?: Song;
     playedSongs: Song[];
   }>({
-    queryKey: [`/api/playlist/${user?.guestUrl}`],
+    queryKey: [OWNER_PLAYBACK_URL],
     enabled: !!user?.guestUrl && user.guestUrl !== null && user.guestUrl !== undefined && user.guestUrl !== '',
     refetchInterval: 5000, // Poll for updates
     retry: 3, // Retry up to 3 times on error
@@ -292,14 +292,14 @@ export default function DashboardPage() {
 
       for (const songId of songIds) {
         console.log(`DashboardPage: Deleting song ${songId}...`);
-        await apiRequest("DELETE", `/api/playlist/songs/${songId}?username=${user.username}`);
+        await apiRequest("DELETE", `/api/playlist/songs/${songId}`);
       }
 
       console.log("DashboardPage: Successfully deleted all selected songs");
     },
     onSuccess: () => {
       if (user?.guestUrl) {
-        queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
       }
       toast({
         title: "Songs removed",
@@ -337,12 +337,12 @@ export default function DashboardPage() {
       for (let index = 0; index < songs.length; index++) {
         const song = songs[index];
         try {
-          const addedSong = await apiRequest("POST", `/api/playlist/songs?username=${user.username}`, {
+          const addedSong = await apiRequest("POST", "/api/playlist/songs", {
             youtubeId: song.youtubeId,
             title: song.title,
             artist: song.artist,
             thumbnailUrl: song.thumbnailUrl,
-            position: playlist?.songs.length ? playlist.songs.length + index : index, // Add to end of playlist
+            // Queue position is assigned by the owner-predicated repository.
           });
           console.log(`Successfully added song ${index + 1}:`, addedSong);
           addedSongs.push(addedSong);
@@ -355,7 +355,7 @@ export default function DashboardPage() {
     },
     onSuccess: () => {
       if (user?.guestUrl) {
-        queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
       }
       toast({
         title: "Songs added",
@@ -379,7 +379,7 @@ export default function DashboardPage() {
     },
     onSuccess: () => {
       if (user?.guestUrl) {
-        queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
       }
       toast({
         title: "History cleared",
@@ -404,15 +404,15 @@ export default function DashboardPage() {
         await new Promise(resolve => setTimeout(resolve, 500)); // Small delay
       }
       if (!user) throw new Error("User not authenticated");
-      const url = `/api/playlist/currently-playing?${new URLSearchParams({
-        username: user.username,
-      }).toString()}`;
+      const url = "/api/playlist/currently-playing";
+
+
       await apiRequest("POST", url, { songId });
     },
     onSuccess: (_, songId) => {
       // Only invalidate queries when setting a new song
       if (songId !== null && user?.guestUrl) {
-        queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
       }
     },
     onError: (error) => {
@@ -427,11 +427,11 @@ export default function DashboardPage() {
   const removeSongMutation = useMutation({
     mutationFn: async (songId: number) => {
       if (!user?.guestUrl || !user?.username) return;
-      await apiRequest("DELETE", `/api/playlist/songs/${songId}?username=${user.username}`);
+      await apiRequest("DELETE", `/api/playlist/songs/${songId}`);
     },
     onSuccess: () => {
       if (user?.guestUrl) {
-        queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
       }
     },
     onError: (error) => {
@@ -445,12 +445,13 @@ export default function DashboardPage() {
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (allowSongRequests: boolean) => {
-      await apiRequest("PATCH", "/api/user", { allowSongRequests });
+      void allowSongRequests;
+      await Promise.reject(new Error("Music guest settings are managed in Explorer."));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       if (user?.guestUrl) {
-        queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
       }
       toast({
         title: "Settings updated",
@@ -469,11 +470,11 @@ export default function DashboardPage() {
   const deleteSongMutation = useMutation({
     mutationFn: async (songId: number) => {
       if (!user?.guestUrl || !user?.username) return;
-      await apiRequest("DELETE", `/api/playlist/songs/${songId}?username=${user.username}`);
+      await apiRequest("DELETE", `/api/playlist/songs/${songId}`);
     },
     onSuccess: () => {
       if (user?.guestUrl) {
-        queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
       }
       toast({
         title: "Song removed",
@@ -492,11 +493,11 @@ export default function DashboardPage() {
   const deleteSongFromQueueMutation = useMutation({
     mutationFn: async (songId: number) => {
       if (!user?.guestUrl || !user?.username) return;
-      await apiRequest("DELETE", `/api/playlist/songs/${songId}?username=${user.username}`);
+      await apiRequest("DELETE", `/api/playlist/songs/${songId}`);
     },
     onSuccess: () => {
       if (user?.guestUrl) {
-        queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
       }
       toast({
         title: "Song removed",
@@ -518,7 +519,6 @@ export default function DashboardPage() {
 
       console.log("Making position update request:", { songId, position });
       try {
-        // X-Username header is attached automatically by apiRequest via auth-storage
         await apiRequest("PATCH", `/api/playlist/songs/${songId}/position`, { position });
       } catch (error) {
         console.error("Position update request failed:", error);
@@ -527,7 +527,7 @@ export default function DashboardPage() {
     },
     onSuccess: () => {
       if (user?.guestUrl) {
-        queryClient.refetchQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        queryClient.refetchQueries({ queryKey: [OWNER_PLAYBACK_URL] });
       }
     },
     onError: (error) => {
@@ -572,7 +572,7 @@ export default function DashboardPage() {
         songId: song.id
       });
 
-      await queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+      await queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
     } catch (error) {
       console.error("Error playing song:", error);
       toast({
@@ -612,7 +612,7 @@ export default function DashboardPage() {
       }
 
       if (user?.guestUrl) {
-        await queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        await queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
       }
     } catch (error) {
       console.error("Error handling song finished:", error);
@@ -635,18 +635,17 @@ export default function DashboardPage() {
     }
   }, [playlist?.songs, user?.guestUrl]);
 
+  const ensureShareCapability = async () => { if (shareCapability) return shareCapability; const ownerId = user?.id; if (!ownerId) throw new Error("Music sharing requires an authenticated owner."); const capability = await requestUnlistedShareCapability(ownerId); setShareCapability(capability); return capability; };
   const handleCopyLink = async () => {
     if (!user?.guestUrl) return;
-    const guestUrl = `${window.location.origin}/playlist/${user.guestUrl}`;
 
     try {
-      await navigator.clipboard.writeText(guestUrl);
+      const capability = await ensureShareCapability();
+      await navigator.clipboard.writeText(guestCapabilityHandoff(capability, user.guestUrl));
       toast({
-        title: "Link Copied",
-        description: "Playlist link has been copied to clipboard",
+        title: "Guest access copied",
+        description: "The header-only playlist handoff has been copied to the clipboard.",
       });
-
-      // Track link copy event for analytics
       trackEvent({
         category: AnalyticsEventCategory.PLAYLIST,
         action: AnalyticsEventAction.SHARE_PLAYLIST,
@@ -675,14 +674,15 @@ export default function DashboardPage() {
 
   const handleShare = async () => {
     if (!user?.guestUrl) return;
-    const guestUrl = `${window.location.origin}/playlist/${user.guestUrl}`;
+
 
     if (navigator.share) {
       try {
+        const capability = await ensureShareCapability();
         await navigator.share({
           title: `${user.venueName}'s Playlist`,
-          text: "Join our playlist and request songs!",
-          url: guestUrl,
+          text: guestCapabilityHandoff(capability, user.guestUrl),
+          url: `${window.location.origin}/playlist/${user.guestUrl}`,
         });
 
         // Track share event for analytics
@@ -826,7 +826,7 @@ export default function DashboardPage() {
   const createPlaylistMutation = useMutation({
     mutationFn: async (data: { name: string; description: string }) => {
       if (!user) throw new Error("User not authenticated");
-      const url = `/api/playlists?username=${user.username}`;
+      const url = "/api/playlists";
       return apiRequest("POST", url, data);
     },
     onSuccess: (result) => {
@@ -869,7 +869,7 @@ export default function DashboardPage() {
   const updatePlaylistMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: { name: string; description: string } }) => {
       if (!user) throw new Error("User not authenticated");
-      const url = `/api/playlists/${id}?username=${user.username}`;
+      const url = `/api/playlists/${id}`;
       return apiRequest("PATCH", url, data);
     },
     onSuccess: () => {
@@ -937,7 +937,7 @@ export default function DashboardPage() {
   const deletePlaylistMutation = useMutation({
     mutationFn: async (playlistId: number) => {
       if (!user) throw new Error("User not authenticated");
-      await apiRequest("DELETE", `/api/playlists/${playlistId}?username=${user.username}`);
+      await apiRequest("DELETE", `/api/playlists/${playlistId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/playlists", user?.id] });
@@ -959,10 +959,10 @@ export default function DashboardPage() {
   // Update mutation handlers to work with new PlaylistSong type
   const addSongsToPlaylistMutation = useMutation({
     mutationFn: async ({ playlistId, songs }: { playlistId: number; songs: Song[] }) => {
-      // Create new songs specifically for this playlist
-      const newSongs = songs.map((song) => ({ ...song, addedAt: new Date() }));
-      const url = `/api/playlists/${playlistId}/songs${user?.username ? `?username=${user.username}` : ''}`;
-      return apiRequest("POST", url, { songs: newSongs });
+      const url = `/api/playlists/${playlistId}/songs`;
+      return Promise.all(songs.map((song) => apiRequest("POST", url, {
+        youtubeId: song.youtubeId, title: song.title, artist: song.artist, thumbnailUrl: song.thumbnailUrl,
+      })));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/playlists", user?.id] });
@@ -1000,7 +1000,7 @@ export default function DashboardPage() {
 
   const deletePlaylistSongMutation = useMutation({
     mutationFn: async ({ playlistId, songId }: { playlistId: number; songId: number }) => {
-      const url = `/api/playlists/${playlistId}/songs/${songId}${user?.username ? `?username=${user.username}` : ''}`;
+      const url = `/api/playlists/${playlistId}/songs/${songId}`;
       await apiRequest("DELETE", url);
     },
     onSuccess: () => {
@@ -1032,17 +1032,17 @@ export default function DashboardPage() {
     mutationFn: async (song: Song) => {
       if (!user) throw new Error("User not authenticated");
       // Add song to main playlist at position 0
-      await apiRequest("POST", `/api/playlist/songs?username=${user.username}`, {
+      await apiRequest("POST", "/api/playlist/songs", {
         youtubeId: song.youtubeId,
         title: song.title,
         artist: song.artist,
         thumbnailUrl: song.thumbnailUrl,
-        position: 0, // Add to top of playlist
+        // Queue position is assigned by the owner-predicated repository.
       });
     },
     onSuccess: () => {
       if (user?.guestUrl) {
-        queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
       }
       toast({
         title: "Song added",
@@ -1065,12 +1065,12 @@ export default function DashboardPage() {
       if (!user) throw new Error("User not authenticated");
       console.log("Adding song to queue:", song);
       try {
-        const response = await apiRequest("POST", `/api/playlist/songs?username=${user.username}`, {
+        const response = await apiRequest("POST", "/api/playlist/songs", {
           youtubeId: song.youtubeId,
           title: song.title,
           artist: song.artist,
           thumbnailUrl: song.thumbnailUrl,
-          position: playlist?.songs.length || 0, // Add to end of playlist
+          // Queue position is assigned by the owner-predicated repository.
         });
         console.log("Successfully added song to queue:", response);
         return response;
@@ -1081,7 +1081,7 @@ export default function DashboardPage() {
     },
     onSuccess: (result, song) => {
       if (user?.guestUrl) {
-        queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
       }
       toast({
         title: "Song added",
@@ -1127,7 +1127,7 @@ export default function DashboardPage() {
 
       // Then play it
       if (user?.guestUrl) {
-        const response = await fetch(`/api/playlist/${user.guestUrl}`);
+        const response = await apiRequest("GET", OWNER_PLAYBACK_URL);
         const data = await response.json();
         const addedSong = data.songs.find((s: Song) => s.youtubeId === song.youtubeId);
         if (addedSong) {
@@ -1325,14 +1325,14 @@ export default function DashboardPage() {
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Get current queue after stopping song
-        const response = await fetch(`/api/playlist/${user?.guestUrl}`);
+        const response = await apiRequest("GET", OWNER_PLAYBACK_URL);
         const currentQueue = await response.json();
 
         // Delete existing songs one by one
         if (currentQueue.songs?.length > 0) {
           console.log("Clearing current queue:", currentQueue.songs.length, "songs");
           for (const song of currentQueue.songs) {
-            await apiRequest("DELETE", `/api/playlist/songs/${song.id}?username=${user.username}`);
+            await apiRequest("DELETE", `/api/playlist/songs/${song.id}`);
           }
         }
 
@@ -1344,12 +1344,12 @@ export default function DashboardPage() {
         for (let i = 0; i < songs.length; i++) {
           const song = songs[i];
           try {
-            const addedSong = await apiRequest("POST", `/api/playlist/songs?username=${user.username}`, {
+            const addedSong = await apiRequest("POST", "/api/playlist/songs", {
               youtubeId: song.youtubeId,
               title: song.title,
               artist: song.artist,
               thumbnailUrl: song.thumbnailUrl,
-              position: i,
+              // Queue position is assigned by the owner-predicated repository.
             });
             console.log(`Added song ${i + 1}:`, addedSong);
           } catch (error) {
@@ -1362,7 +1362,7 @@ export default function DashboardPage() {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Get the updated queue
-        const updatedResponse = await fetch(`/api/playlist/${user?.guestUrl}`);
+        const updatedResponse = await apiRequest("GET", OWNER_PLAYBACK_URL);
         const updatedQueue = await updatedResponse.json();
 
         // Start playing the first song
@@ -1385,7 +1385,7 @@ export default function DashboardPage() {
     },
     onSuccess: () => {
       if (user?.guestUrl) {
-        queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
       }
       toast({
         title: "Playlist Started",
@@ -1420,14 +1420,14 @@ export default function DashboardPage() {
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Get current queue after stopping song
-        const response = await fetch(`/api/playlist/${user?.guestUrl}`);
+        const response = await apiRequest("GET", OWNER_PLAYBACK_URL);
         const currentQueue = await response.json();
 
         // Delete existing songs one by one
         if (currentQueue.songs?.length > 0) {
           console.log("Clearing current queue:", currentQueue.songs.length, "songs");
           for (const song of currentQueue.songs) {
-            await apiRequest("DELETE", `/api/playlist/songs/${song.id}?username=${user.username}`);
+            await apiRequest("DELETE", `/api/playlist/songs/${song.id}`);
           }
         }
 
@@ -1442,12 +1442,12 @@ export default function DashboardPage() {
         for (let i = 0; i < shuffledSongs.length; i++) {
           const song = shuffledSongs[i];
           try {
-            const addedSong = await apiRequest("POST", `/api/playlist/songs?username=${user.username}`, {
+            const addedSong = await apiRequest("POST", "/api/playlist/songs", {
               youtubeId: song.youtubeId,
               title: song.title,
               artist: song.artist,
               thumbnailUrl: song.thumbnailUrl,
-              position: i,
+              // Queue position is assigned by the owner-predicated repository.
             });
             console.log(`Added song ${i + 1}:`, addedSong);
           } catch (error) {
@@ -1460,7 +1460,7 @@ export default function DashboardPage() {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Get the updated queue
-        const updatedResponse = await fetch(`/api/playlist/${user?.guestUrl}`);
+        const updatedResponse = await apiRequest("GET", OWNER_PLAYBACK_URL);
         const updatedQueue = await updatedResponse.json();
 
         // Start playing the first song
@@ -1483,7 +1483,7 @@ export default function DashboardPage() {
     },
     onSuccess: () => {
       if (user?.guestUrl) {
-        queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+        queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
       }
       toast({
         title: "Playlist Shuffled",
@@ -1541,7 +1541,7 @@ export default function DashboardPage() {
             className="mt-4"
             onClick={() => {
               if (user?.guestUrl) {
-                queryClient.invalidateQueries({ queryKey: [`/api/playlist/${user.guestUrl}`] });
+                queryClient.invalidateQueries({ queryKey: [OWNER_PLAYBACK_URL] });
               }
             }}
           >
@@ -1616,7 +1616,7 @@ export default function DashboardPage() {
 
               <Accordion type="single" collapsible>
                 <AccordionItem value="qr">
-                  <AccordionTrigger>
+                  <AccordionTrigger onClick={() => { void ensureShareCapability(); }}>
                     <div className="flex items-center">
                       <QrCode className="h-4 w-4 mr-2" />
                       Show QR Code
@@ -1626,7 +1626,7 @@ export default function DashboardPage() {
                     <div className="flex flex-col items-center gap-4">
                       <div className="bg-white p-4 rounded-lg qr-code-container">
                         <QRCode
-                          value={`${window.location.origin}/playlist/${user.guestUrl}`}
+                          value={shareCapability ? guestCapabilityHandoff(shareCapability, user.guestUrl) : "explorers-music-guest/v1\nCapability loading"}
                           style={{ width: "200px", height: "200px" }}
                         />
                       </div>
@@ -1703,7 +1703,7 @@ export default function DashboardPage() {
                       fetchCurrentSong={async () => {
                         if (!user?.guestUrl) return undefined;
                         try {
-                          const response = await fetch(`/api/playlist/${user.guestUrl}`);
+                          const response = await apiRequest("GET", OWNER_PLAYBACK_URL);
                           const data = await response.json();
                           return data.currentlyPlaying;
                         } catch (error) {
@@ -1854,18 +1854,18 @@ export default function DashboardPage() {
                               Song Requests
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              Allow guests to search and request songs
+                              Managed in Explorer settings; this control is read-only here
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Switch
-                              checked={allowSongRequests}
+                              checked={allowSongRequests} disabled
                               onCheckedChange={async (checked) => {
                                 try {
                                   // Update local state immediately for responsive UI
                                   setAllowSongRequests(checked);
 
-                                  await apiRequest("PATCH", "/api/user", { allowSongRequests: checked });
+                                  await Promise.reject(new Error("Music guest settings are managed in Explorer."));
 
                                   // Send WebSocket message to update guests in real-time
                                   if (user?.guestUrl) {
@@ -1878,7 +1878,7 @@ export default function DashboardPage() {
                                   queryClient.invalidateQueries({ queryKey: ["/api/user"] });
                                   if (user?.guestUrl) {
                                     queryClient.invalidateQueries({
-                                      queryKey: [`/api/playlist/${user.guestUrl}`],
+                                      queryKey: [OWNER_PLAYBACK_URL],
                                     });
                                   }
                                   toast({
@@ -1915,18 +1915,18 @@ export default function DashboardPage() {
                               Play on Guest Device
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              Allow guests to play music on their own device
+                              Managed in Explorer settings; this control is read-only here
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Switch
-                              checked={allowGuestPlayOnDevice}
+                              checked={allowGuestPlayOnDevice} disabled
                               onCheckedChange={async (checked) => {
                                 try {
                                   // Update local state immediately for responsive UI
                                   setAllowGuestPlayOnDevice(checked);
 
-                                  await apiRequest("PATCH", "/api/user", { allowGuestPlayOnDevice: checked });
+                                  await Promise.reject(new Error("Music device settings are managed in Explorer."));
 
                                   // Send WebSocket message to update guests in real-time
                                   if (user?.guestUrl) {
@@ -1939,7 +1939,7 @@ export default function DashboardPage() {
                                   queryClient.invalidateQueries({ queryKey: ["/api/user"] });
                                   if (user?.guestUrl) {
                                     queryClient.invalidateQueries({
-                                      queryKey: [`/api/playlist/${user.guestUrl}`],
+                                      queryKey: [OWNER_PLAYBACK_URL],
                                     });
                                   }
                                   toast({
@@ -1976,18 +1976,18 @@ export default function DashboardPage() {
                               Playlist Sharing
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              Allow guests to see and play your saved playlists
+                              Use saved-playlist visibility controls; this legacy switch is read-only
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Switch
-                              checked={allowPlaylistSharing}
+                              checked={allowPlaylistSharing} disabled
                               onCheckedChange={async (checked) => {
                                 try {
                                   // Update local state immediately for responsive UI
                                   setAllowPlaylistSharing(checked);
 
-                                  await apiRequest("PATCH", "/api/user", { allowPlaylistSharing: checked });
+                                  await Promise.reject(new Error("Music sharing settings are managed through playlist visibility."));
 
                                   // Send WebSocket message to update guests in real-time
                                   if (user?.guestUrl) {
@@ -2000,7 +2000,7 @@ export default function DashboardPage() {
                                   queryClient.invalidateQueries({ queryKey: ["/api/user"] });
                                   if (user?.guestUrl) {
                                     queryClient.invalidateQueries({
-                                      queryKey: [`/api/playlist/${user.guestUrl}`],
+                                      queryKey: [OWNER_PLAYBACK_URL],
                                     });
                                   }
                                   toast({
@@ -2037,18 +2037,18 @@ export default function DashboardPage() {
                               Recently Played Visibility
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              Allow guests to see your recently played songs
+                              Managed in Explorer settings; this control is read-only here
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Switch
-                              checked={allowRecentlyPlayedVisibility}
+                              checked={allowRecentlyPlayedVisibility} disabled
                               onCheckedChange={async (checked) => {
                                 try {
                                   // Update local state immediately for responsive UI
                                   setAllowRecentlyPlayedVisibility(checked);
 
-                                  await apiRequest("PATCH", "/api/user", { allowRecentlyPlayedVisibility: checked });
+                                  await Promise.reject(new Error("Music history visibility is managed in Explorer."));
 
                                   // Send WebSocket message to update guests in real-time
                                   if (user?.guestUrl) {
@@ -2061,7 +2061,7 @@ export default function DashboardPage() {
                                   queryClient.invalidateQueries({ queryKey: ["/api/user"] });
                                   if (user?.guestUrl) {
                                     queryClient.invalidateQueries({
-                                      queryKey: [`/api/playlist/${user.guestUrl}`],
+                                      queryKey: [OWNER_PLAYBACK_URL],
                                     });
                                   }
                                   toast({

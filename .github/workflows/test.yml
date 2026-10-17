@@ -1,0 +1,454 @@
+name: Backend validation
+
+on:
+  pull_request: {}
+  push:
+    branches: [main, develop, codex/unified-replatform]
+  schedule:
+    - cron: "41 2 * * *"
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: Highest non-production lane to exercise
+        type: choice
+        options: [pr, nightly]
+        default: pr
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "music-test-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.lane || github.event_name == 'schedule' && 'nightly' || 'default' }}"
+  cancel-in-progress: true
+
+jobs:
+  docs-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - name: Validate documentation, routes, errors, commands, environment, and migrations
+        run: npm test --prefix tunes -- --run server/test/contracts/music-documentation-contract.test.ts server/test/contracts/music-openapi-contract.test.ts server/test/contracts/runtime-surface-inventory.test.ts server/test/contracts/runtime-table-manifest.test.ts server/test/contracts/music-environment-contract.test.ts server/test/contracts/music-forbidden-authority-search.test.ts
+
+  static:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      # These two installs used to sit below, just above `node --test`. They are needed
+      # HERE: the C0 scope reaches explorers-earth sources transitively through
+      # `server/test/contracts/guides-*.test.ts`, which import the real harness
+      # (`guides-harness-client`) and the real frontend types (`travelModeConfig`). Without
+      # `explorers-earth/node_modules` the typecheck below reports TS2307 for `react`,
+      # `dompurify`, `zod/v3` and `@playwright/test` - errors that read as source defects
+      # but are a missing install. Narrowing the C0 scope instead would mean excluding all
+      # of `explorers-earth/**`, which is most of what those contract tests exist to check.
+      # The `node --test` cases further down need them too; see the comment there.
+      - run: npm ci
+      - run: npm ci --prefix explorers-earth
+      - run: npm run music:types:scoped
+      - run: npm run music:types:baseline
+      # The repository's own script tests - 232 cases that ran on no lane. Only
+      # `image-ci-disk` and `node-runtime-alignment` were named anywhere, in `tunes.yml`,
+      # which is `pull_request: branches: [main]` behind a path filter and so never runs
+      # on this branch; the other six were named nowhere at all. Running them found an
+      # assertion in `replatform-e2e.test.mjs` that could not pass at any commit.
+      #
+      # A glob rather than a list, deliberately: a named list is what went stale in the
+      # `database` job's pinned selector, and `node --test` accepts patterns.
+      #
+      # The root and explorers-earth installs (now near the top of this job, because the
+      # typecheck needs them too) plus the playwright step below are the correction to a
+      # claim I made when first gating
+      # this: that no install was needed because "every import is a local sibling module".
+      # That is true of the tests' own imports and false of the code they exercise.
+      # `snapshotSource` in `replatform-e2e.mjs` hashes `node_modules/.package-lock.json`
+      # for the root, `tunes/`, `explorers-earth/` and `tunes/auth-runtime/`, and one case
+      # spawns `explorers-earth/node_modules/@playwright/test` against a spec that calls
+      # `page.goto`, so it needs a browser binary. 230 of the 232 cases passed without
+      # them; the two that did not are the provenance and artifact-redaction cases, which
+      # are worth the ~2 minutes.
+      #
+      # `tunes/auth-runtime` needs no step of its own: `tunes/package.json` has
+      # `"postinstall": "npm ci --prefix auth-runtime --omit=dev"` and no `.npmrc` here
+      # sets `ignore-scripts`, so the tunes install above already covers it.
+      #
+      # `git show HEAD:` works on the default shallow checkout, which one case relies on.
+      - run: npx --prefix explorers-earth playwright install --with-deps chromium
+      - run: node --test "scripts/*.test.mjs" "scripts/*.test.cjs"
+
+  unit-coverage:
+    # Native Windows ACL behavior has injected unit contracts and a native local proof;
+    # the portable coverage gate must not inherit hosted-runner ACL policy.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: |
+            tunes/package-lock.json
+            explorers-earth/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - run: npm ci --prefix explorers-earth
+      - run: npm run test:music-critical-coverage --prefix tunes -- --maxWorkers=1 --fileParallelism=false
+      - run: npm run test:music-critical-coverage --prefix explorers-earth
+
+  contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      # Several of these contract suites read explorers-earth sources and resolve
+      # `@playwright/test` and a CSS asset out of `explorers-earth/node_modules` at RUNTIME,
+      # not just at typecheck: `public-parity-spec-contract` imports
+      # `public-parity-spec-support`, and `guides-native-diagnostic` requires
+      # `explorers-earth/node_modules/@playwright/test` and
+      # `react-vertical-timeline-component/style.min.css` by path.
+      - run: npm ci --prefix explorers-earth
+      # The whole tree, deliberately, and as one argument so this can never go stale.
+      #
+      # It was `server/test/contracts` alone, which left **79 of 176** tunes unit files in no
+      # CI job at all - counted 2026-10-09, and three separate defects reached CI through
+      # that gap in a single day. Naming directories or files instead would just move the
+      # staleness; a tree argument grows with the tree.
+      #
+      # Safe because `tunes/vitest.config.ts:24` excludes `*.integration.test.ts`,
+      # `account-recovery.test.ts` and `*.real-tool.test.ts`, so this cannot pull a
+      # database-dependent or credentialed file into this database-less job. Measured before
+      # landing: 168 of 170 files pass locally, and both exceptions are environment, not code
+      # - `music-cli-contract` needs a gitignored `.env.music.test` that CI's checkout has no
+      # reason to lack, and `music-docker-release-authority` reads the git index, so it fails
+      # only if the tree changes mid-run (46/46 on a static tree, which a CI checkout is).
+      #
+      # It does re-run the deployment files that `image-deploy-contract` also runs. That
+      # duplication is accepted: a second execution costs a few seconds, and the alternative
+      # is an exclusion list that needs maintaining.
+      - run: npm test --prefix tunes -- --run server/test
+
+  database:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: music_fixture
+          POSTGRES_USER: music_migrator
+          POSTGRES_PASSWORD: music
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U music_migrator -d music_fixture"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
+    env:
+      DATABASE_URL_TEST: postgresql://music_migrator:music@127.0.0.1:55432/music_fixture
+      MUSIC_C3_POSTGRES_TEST: "1"
+      MUSIC_C4_POSTGRES_TEST: "1"
+      MUSIC_C5_POSTGRES_TEST: "1"
+      MUSIC_C6_POSTGRES_TEST: "1"
+      MUSIC_C7_POSTGRES_TEST: "1"
+      MUSIC_C8_POSTGRES_TEST: "1"
+      MUSIC_C9_PUBLICATION_POSTGRES_TEST: "1"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - name: Refuse any non-disposable database target
+        run: node -e "const u=new URL(process.env.DATABASE_URL_TEST);if(u.protocol!=='postgresql:'||u.username!=='music_migrator'||u.hostname!=='127.0.0.1'||u.port!=='55432'||u.pathname!=='/music_fixture')process.exit(5)"
+      # Thirty-one files added 2026-10-09, because 34 of 52 tunes integration files were
+      # named in no workflow - roughly 429 cases.
+      #
+      # Stated carefully, because the first version of this comment overstated it: those
+      # files were *unnamed*, not unrun. `tunes.yml`'s `build-test-scan-push` runs
+      # `npm run test:integration` with no file arguments, which is every integration
+      # file, inside its owned C10 container. The gap is which pull requests reach that
+      # lane: `tunes.yml` is `pull_request: branches: [main]` behind a path filter, while
+      # this workflow is `pull_request: {}`. So on a PR to any base other than `main` -
+      # the entire replatform branch included - or one touching none of those paths, this
+      # job was the only lane executing integration files, and it named 16 of 52.
+      #
+      # Naming is the fix rather than a directory argument because `vitest.config.ts:24`
+      # excludes `*.integration.test.ts` from the default config, so a database-less job
+      # cannot reach them the way `contracts` reaches the unit tree.
+      #
+      # Measured before landing, not assumed. All 34 were run on a fresh
+      # `postgres:15-alpine` matching this service, then the full 47-file set this step
+      # now names was run together - 41 passed, 5 skipped (environment-gated), 1 failed,
+      # and that one failure is `music-runtime-role` reading `whoami.exe /user`, which
+      # only executes when `process.platform === 'win32'`. It passes on this runner today.
+      #
+      # Two of the 34 are deliberately NOT here:
+      #   - `explorers/games.integration.test.ts` and `games-public-gateway.integration.test.ts`
+      #     fail with "Explicit owned Games PG authority required". Not a missing env var:
+      #     `captureGamesOwnedPostgres` demands an *attested* owned C10 container whose
+      #     port equals `DATABASE_URL_TEST`'s, and `music-qualification-postgres.ts:67`
+      #     rejects 55432 outright as "the five-service fixture port is reserved". A
+      #     GitHub service container cannot satisfy that by construction. These two are
+      #     covered by `tunes.yml`'s owned-container lane, which is the only lane that can
+      #     attest such authority - so they are excluded here, not untested.
+      #
+      # `user-leak.integration.test.ts` was briefly excluded as a third, on the strength of
+      # a failure with `immutable external identity is tombstoned` from
+      # `enforce_music_identity_insert()`. Re-measured against this exact 48-file set on a
+      # fresh container it passes - 42 files passed, 5 skipped, 630 tests. The earlier
+      # failure came from running it in company with the two Games files, which throw in
+      # `beforeAll`; the pollution was theirs, not a property of this suite. It is gated.
+      - name: Run migrations and real PostgreSQL owner/lifecycle/reconciliation contracts
+        run: npm run test:integration --prefix tunes -- server/test/migrations/music-migration.integration.test.ts server/test/music-identity-projection.integration.test.ts server/test/music-credential.integration.test.ts server/test/music-domain-repository.integration.test.ts server/test/musicLifecycle.integration.test.ts server/test/musicReconciler.integration.test.ts server/test/reconciliationRepository.integration.test.ts server/test/music-socket-handshake.integration.test.ts server/test/explorers/apps.integration.test.ts server/test/canonical-music-identity.integration.test.ts server/test/explorers-lifecycle.integration.test.ts server/test/explorers-recovery-callback.integration.test.ts server/test/explorers-authorization.integration.test.ts server/test/music-runtime-role.integration.test.ts server/test/explorers/publicVisibility.integration.test.ts server/test/explorers/movies.integration.test.ts server/test/book-catalog.integration.test.ts server/test/book-cover-import.integration.test.ts server/test/books-public-gateway.integration.test.ts server/test/explorers-account-provision.integration.test.ts server/test/explorers-analytics-events.integration.test.ts server/test/explorers-auth.integration.test.ts server/test/explorers-content-revision.integration.test.ts server/test/explorers-manual-overrides.integration.test.ts server/test/explorers-media.integration.test.ts server/test/explorers-media-cover.integration.test.ts server/test/explorers-owner-content.integration.test.ts server/test/explorers-profile.integration.test.ts server/test/explorers-public-content.integration.test.ts server/test/explorers-recommendation-api.integration.test.ts server/test/explorers-recommendations.integration.test.ts server/test/explorers-recovery.integration.test.ts server/test/explorers-search.integration.test.ts server/test/explorers/category-write-path.integration.test.ts server/test/explorers/guides.integration.test.ts server/test/explorers/people.integration.test.ts server/test/explorers/placeLinks.integration.test.ts server/test/explorers/places.integration.test.ts server/test/explorers/products.integration.test.ts server/test/google-sync.integration.test.ts server/test/load/music-load-http-postgres.integration.test.ts server/test/load/music-load-postgres.integration.test.ts server/test/migrations/music-runtime.integration.test.ts server/test/movie-media-import.integration.test.ts server/test/movies-public-gateway.integration.test.ts server/test/music-e2e-identity-count-adapter.integration.test.ts server/test/music-e2e-initial-capture.integration.test.ts server/test/music-e2e-state-restore.integration.test.ts server/test/user-leak.integration.test.ts --maxWorkers=1 --fileParallelism=false
+
+  security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - run: npm test --prefix tunes -- --run server/test/contracts/music-authorization-matrix.test.ts server/test/security/music-security-qualification.test.ts server/test/music-surface-policy.test.ts server/test/music-surface-routes.test.ts server/test/music-identity-route.test.ts server/test/music-socket-server.test.ts
+
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: explorers-earth/package-lock.json
+      - run: npm ci --prefix explorers-earth
+      # Required once this job runs the WHOLE suite rather than five selectors, and found
+      # the hard way: `src/test/__tests__/category-discovery.test.ts` spawns Playwright's
+      # Node loader (`@playwright/test/cli.js --list`), which loads shared runtime schemas
+      # owned by `tunes`. Without this, three tests fail here while passing everywhere
+      # else. `ci.yml`'s unit-tests job has carried the same step, with the same reason in
+      # a comment, since before this job existed - broadening the selector without
+      # bringing the prerequisite along is what broke it.
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      # Argument-less, so this is the whole frontend unit suite - the same change made to
+      # `contracts` (whole `server/test` tree) and `database` (48 named files), for the
+      # same reason.
+      #
+      # It previously named five selectors. The whole suite does run argument-less in
+      # `ci.yml` (`npm run test:coverage`), but `ci.yml` is
+      # `pull_request: branches: [main, develop]`, and this workflow is
+      # `pull_request: {}`. So on a pull request to any other base - the entire replatform
+      # branch - roughly 4100 of 4554 frontend tests were not running anywhere.
+      #
+      # Measured at `f2afbd4a` before landing: 325 files, 4554 tests, all passing.
+      # `test:unit` is `run-contained-vitest.cjs run`, which carries no coverage gate, so
+      # this adds reach without adding a threshold that could fail for unrelated reasons.
+      # The critical-coverage gate stays separate, on the `unit-coverage` job.
+      - run: npm run test:unit --prefix explorers-earth
+
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: explorers-earth/package-lock.json
+      - run: npm ci --prefix explorers-earth
+      - run: npx --prefix explorers-earth playwright install --with-deps chromium firefox webkit
+      - name: Run Music E2E and accessibility contracts
+        env:
+          VITE_API_URL: http://localhost:5173/graphql
+          VITE_GOOGLE_MAPS_API_KEY: fixture-placeholder
+          VITE_PUBLIC_ACCESS_TOKEN: fixture-placeholder
+          VITE_LOCAL_TUNES_ENABLED: "true"
+          VITE_LOCAL_TUNES_API_URL: https://localtunes.test
+        # Anchored to `e2e/`, as ci.yml already does. Playwright treats each filter as a
+        # regex over the FULL test path, so a bare `music.spec.ts` also matched
+        # `e2e/replatform/music.spec.ts`, which throws `Owned Music fixture missing` at
+        # import because MUSIC_E2E_FIXTURE_PATH is set in no workflow -- so this lane exited
+        # 1 before a single browser test ran. The replatform spec keeps its own protected
+        # lane in frontend-e2e-qualification.yml; nothing is skipped here.
+        run: npm run test:e2e --prefix explorers-earth -- e2e/music.spec.ts e2e/account-lifecycle.spec.ts e2e/music-accessibility.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual --retries=0
+      # This workflow previously contained no upload-artifact step at all, so the
+      # traces Playwright writes under trace: 'retain-on-failure' were discarded
+      # with the runner and this lane's failures were reconstructible only from log
+      # text. Diagnostics only; it adds no gate and changes no result.
+      - name: Upload browser diagnostics
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: browser-diagnostics
+          path: explorers-earth/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  load-chaos:
+    needs: browser
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.lane == 'nightly')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci
+      - name: Provision the protected Linux qualification Node and npm
+        env:
+          NODE_ARCHIVE_SHA256: fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/node-v24.21.0-linux-x64.tar.xz"
+          root="$RUNNER_TEMP/node-v24.21.0-linux-x64"
+          curl --fail --location --proto '=https' --tlsv1.2 https://nodejs.org/download/release/v24.21.0/node-v24.21.0-linux-x64.tar.xz --output "$archive"
+          printf '%s  %s\n' "$NODE_ARCHIVE_SHA256" "$archive" | /usr/bin/sha256sum --check --strict
+          tar --extract --xz --file "$archive" --directory "$RUNNER_TEMP"
+          sudo install -o root -g root -m 0755 "$root/bin/node" /usr/bin/node
+          npm_authority=/opt/explorers-music-node-v24.21.0
+          npm_root="$npm_authority/lib/node_modules/npm"
+          sudo install -d -o root -g root -m 0755 "$npm_authority/bin" "$npm_root"
+          sudo cp -aL "$root/lib/node_modules/npm/." "$npm_root/"
+          sudo chown -R root:root "$npm_authority"
+          sudo chmod -R go-w "$npm_authority"
+          sudo chmod 0755 "$npm_root/bin/npm-cli.js"
+          printf '%s\n' '#!/bin/sh' 'exec /usr/bin/node /opt/explorers-music-node-v24.21.0/lib/node_modules/npm/bin/npm-cli.js "$@"' | sudo tee "$npm_authority/bin/npm" >/dev/null
+          sudo chown root:root "$npm_authority/bin/npm"
+          sudo chmod 0755 "$npm_authority/bin/npm"
+          printf '%s  %s\n' '8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7' "$npm_root/bin/npm-cli.js" | /usr/bin/sha256sum --check --strict
+          test "$(/usr/bin/node --version)" = v24.21.0
+          test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/node)" = 0:0:755
+          test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/sha256sum)" = 0:0:755
+          test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/git)" = 0:0:755
+      - run: npm run music:bootstrap -- --mode fixture
+      - name: Install the pinned protected Playwright Chromium authority
+        run: |
+          set -euo pipefail
+          browser_stage="$RUNNER_TEMP/explorers-music-playwright"
+          PLAYWRIGHT_BROWSERS_PATH="$browser_stage" /usr/bin/node /opt/explorers-music-node-v24.21.0/lib/node_modules/npm/bin/npm-cli.js exec --prefix explorers-earth -- playwright install --with-deps chromium
+          sudo install -d -o root -g root -m 0755 /opt/explorers-music-playwright
+          sudo cp -aL "$browser_stage/." /opt/explorers-music-playwright/
+          sudo chown -R root:root /opt/explorers-music-playwright
+          sudo chmod -R go-w /opt/explorers-music-playwright
+          mapfile -t chromium_executables < <(/usr/bin/find /opt/explorers-music-playwright -xdev -type f -path '*/chrome-linux*/chrome' -print)
+          test "${#chromium_executables[@]}" -eq 1
+          sudo chmod 0755 "${chromium_executables[0]}"
+          browser_digest=$(/usr/bin/sha256sum "${chromium_executables[0]}")
+          browser_digest=${browser_digest%% *}
+          printf '%s\n' "$browser_digest" | sudo tee /opt/explorers-music-playwright/.chromium-executable.sha256 >/dev/null
+          sudo chown root:root /opt/explorers-music-playwright/.chromium-executable.sha256
+          sudo chmod 0644 /opt/explorers-music-playwright/.chromium-executable.sha256
+      - name: Run the authoritative native nightly qualification lane
+        run: /usr/bin/env -i HOME=/ PATH=/usr/bin:/bin /bin/sh tunes/scripts/music-release-launcher.sh nightly
+
+  image-deploy-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: tunes/package-lock.json
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - name: Prove immutable image, migration, readiness, rollback floor, and kill-switch contracts
+        env:
+          MUSIC_C3_TRAEFIK_TEST: "1"
+        run: >-
+          npm test --prefix tunes -- --run
+          server/test/deployment/music-command-plan.test.ts
+          server/test/deployment/music-deploy-executable.test.ts
+          server/test/deployment/music-deploy-workflow-security.test.ts
+          server/test/deployment/music-deployment-files.test.ts
+          server/test/deployment/music-deployment.test.ts
+          server/test/deployment/music-health-routes.test.ts
+          server/test/deployment/music-docker-release-authority.test.ts
+          server/test/deployment/music-production-policy.test.ts
+          server/test/deployment/music-publication-authority-verifier.test.ts
+          server/test/deployment/music-readiness.test.ts
+          server/test/deployment/registration-compat-process.test.ts
+          --maxWorkers=1 --fileParallelism=false
+      - name: Prove Traefik registration compatibility with the real tool
+        env:
+          MUSIC_C3_TRAEFIK_TEST: "1"
+        # The real-tool test is intentionally fail-closed and uses --pull=never.
+        # Provision the reviewed linux/amd64 image explicitly so clean hosted
+        # runners exercise the same immutable Traefik build as local CI.
+        run: |
+          docker pull traefik@sha256:8516638b18e67e999d293e4ff0e5baf7807674cd4bdd3d36d448497bcbf0a174
+          docker tag traefik@sha256:8516638b18e67e999d293e4ff0e5baf7807674cd4bdd3d36d448497bcbf0a174 traefik:v3.1
+          npm run test:real-tool --prefix tunes -- \
+            server/test/deployment/registration-compat-traefik.real-tool.test.ts \
+            --maxWorkers=1 --fileParallelism=false
+
+  platform-fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tunes/package-lock.json
+            explorers-earth/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix tunes --legacy-peer-deps
+      - run: npm ci --prefix explorers-earth
+      - name: Provision disposable local platform
+        run: npm run platform:local -- provision
+      - name: Verify repeatable current-domain seed and mounted routes
+        run: |
+          npm run platform:seed -- --dataset acceptance
+          npm run platform:seed -- --dataset acceptance
+          npm run platform:test:routes
+      - name: Stop disposable services
+        if: always()
+        run: npm run platform:local -- stop
+
+  music-required:
+    name: music-required
+    runs-on: ubuntu-24.04
+    if: always()
+    needs: [docs-contracts, static, unit-coverage, contracts, database, security, frontend, browser, load-chaos, image-deploy-contract, platform-fixture]
+    steps:
+      - name: Require every Music and local-platform validation job to succeed
+        env:
+          REQUIRED_RESULTS: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
+          LANE: ${{ inputs.lane }}
+        run: |
+          node -e "const results=JSON.parse(process.env.REQUIRED_RESULTS); const nightly=process.env.EVENT_NAME === 'schedule' || (process.env.EVENT_NAME === 'workflow_dispatch' && process.env.LANE === 'nightly'); const failures=Object.entries(results).filter(([name, job]) => name === 'load-chaos' && !nightly && job.result === 'skipped' ? false : job.result !== 'success'); if(failures.length){ console.error('Required Music validation did not succeed:', failures.map(([name, job]) => name + '=' + job.result).join(', ')); process.exit(1) }"

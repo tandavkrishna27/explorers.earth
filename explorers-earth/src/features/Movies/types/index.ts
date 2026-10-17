@@ -22,6 +22,7 @@ export interface MovieList {
 }
 
 export interface RecommendedMovie {
+  entity_id?: string;
   documentId: string;
   tmdb_id: string;
   media_type: "Movie" | "TV";

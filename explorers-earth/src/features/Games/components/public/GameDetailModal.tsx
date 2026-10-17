@@ -1,3 +1,4 @@
+import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Gamepad2, Calendar, Share2, ChevronLeft, ChevronRight, Trophy } from "lucide-react";
@@ -5,6 +6,7 @@ import type { RecommendedGame } from "../../types";
 import { buildCoverUrl, extractNoteText } from "../../utils/gameHelpers";
 import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
+import SafePublicRichText from "../../../PublicHome/components/SafePublicRichText";
 
 interface GameDetailModalProps {
   game: RecommendedGame | null;
@@ -15,6 +17,7 @@ interface GameDetailModalProps {
 const FALLBACK_COVER = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'><rect width='300' height='450' fill='%23171e2e'/></svg>`;
 
 const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
+  const categoryStyles = usePublicCategoryThemeStyles();
   const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [dragStartY, setDragStartY] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -67,9 +70,7 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
   const lightboxMediaItems = useMemo(() => {
     if (!game) return [];
     const coverUrl = buildCoverUrl(game.cover_url_large || game.cover_url);
-    const screenshots = game.media_details?.imageDetails?.length 
-      ? game.media_details.imageDetails.map((img: any) => buildCoverUrl(img.url))
-      : (game.screenshot_ids?.map((id: string) => `https://images.igdb.com/igdb/image/upload/t_1080p/${id}.jpg`) || []);
+    const screenshots = (game.Media ?? []).map(image => buildCoverUrl(image.url)).filter(Boolean);
 
     const items: any[] = [];
     if (coverUrl && coverUrl !== FALLBACK_COVER) {
@@ -94,9 +95,7 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
   if (!game) return null;
 
   const coverUrl = buildCoverUrl(game.cover_url_large || game.cover_url);
-  const screenshots = game.media_details?.imageDetails?.length 
-    ? game.media_details.imageDetails.map((img: any) => buildCoverUrl(img.url))
-    : (game.screenshot_ids?.map((id: string) => `https://images.igdb.com/igdb/image/upload/t_1080p/${id}.jpg`) || []);
+  const screenshots = (game.Media ?? []).map(image => buildCoverUrl(image.url)).filter(Boolean);
 
   const backdropUrl = screenshots.length > 0 ? screenshots[0] : null;
   const noteText = extractNoteText(game.user_recommendation_note);
@@ -128,7 +127,9 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
           {/* Modal panel wrapper */}
           <div className="fixed inset-0 pt-[88px] md:pt-8 flex items-end justify-center z-[150] pointer-events-none">
             <motion.div
-              className="relative bg-[#0d1117] rounded-t-2xl w-full h-full md:max-w-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-white/10 hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
+              data-category-detail-panel
+              style={categoryStyles ?? undefined}
+              className="relative bg-[var(--category-panel,#0d1117)] rounded-t-2xl w-full h-full md:max-w-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-[color:var(--category-border,rgba(255,255,255,0.1))] hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
               initial={{ y: "100%", opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}
@@ -142,12 +143,12 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
                 {backdropUrl ? (
                   <img src={backdropUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#1a2332] to-[#0d1117]" />
+                  <div className="w-full h-full bg-gradient-to-br from-[#1a2332] to-[var(--category-panel,#0d1117)]" />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-[#0d1117]/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[var(--category-panel,#0d1117)] via-[#0d1117]/40 to-transparent" />
 
                 {/* Drag handle (mobile) */}
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-white/30 md:hidden" />
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-[var(--category-card,rgba(255,255,255,0.3))] md:hidden" />
 
                 {/* Close button */}
                 <button
@@ -164,7 +165,7 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
                   {/* Poster */}
                   <div 
                     onClick={() => handleImageClick("cover")}
-                    className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-white/10 shadow-2xl bg-[#161b22] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                    className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-[color:var(--category-border,rgba(255,255,255,0.1))] shadow-2xl bg-[var(--category-card,#161b22)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                   >
                     <img
                       src={coverUrl || FALLBACK_COVER}
@@ -178,14 +179,14 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
                   <div className="flex-1 pt-16 min-w-0">
                     <div className="flex items-start gap-2 flex-wrap">
                       {game.is_pinned && (
-                        <span className="flex items-center gap-1 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                        <span className="flex items-center gap-1 text-xs bg-[var(--category-accent,#2563eb)] text-[color:var(--category-accent-ink,#fff)] px-2 py-0.5 rounded-full">
                           <Trophy size={10} className="fill-current" /> Top Pick
                         </span>
                       )}
                     </div>
-                    <h2 className="text-xl font-bold text-white mt-1 leading-tight">{game.title}</h2>
+                    <h2 className="text-xl font-bold text-[color:var(--category-text,#fff)] mt-1 leading-tight">{game.title}</h2>
                     {game.developer && (
-                      <p className="text-xs text-white/40 mt-0.5">{game.developer}</p>
+                      <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.4))] mt-0.5">{game.developer}</p>
                     )}
                   </div>
                 </div>
@@ -194,17 +195,17 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
                   {/* Metadata pills */}
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     {game.release_year && (
-                      <span className="text-white/60 flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
+                      <span className="text-[color:var(--category-muted,rgba(255,255,255,0.6))] flex items-center gap-1.5 bg-[var(--category-card,rgba(255,255,255,0.05))] px-2.5 py-1 rounded-lg border border-[color:var(--category-border,rgba(255,255,255,0.05))]">
                         <Calendar size={13} /> {game.release_year}
                       </span>
                     )}
                     {game.igdb_rating && (
-                      <span className="flex items-center gap-1.5 text-blue-400 font-semibold bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/10">
+                      <span className="flex items-center gap-1.5 text-[color:var(--category-text,#60a5fa)] font-semibold bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/10">
                         <Star size={13} fill="currentColor" /> {game.igdb_rating.toFixed(1)} IGDB
                       </span>
                     )}
                     {game.platforms && game.platforms.length > 0 && (
-                      <span className="flex items-center gap-1.5 text-white/50 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
+                      <span className="flex items-center gap-1.5 text-[color:var(--category-muted,rgba(255,255,255,0.5))] bg-[var(--category-card,rgba(255,255,255,0.05))] px-2.5 py-1 rounded-lg border border-[color:var(--category-border,rgba(255,255,255,0.05))]">
                         <Gamepad2 size={13} /> {game.platforms[0]}
                       </span>
                     )}
@@ -214,7 +215,7 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
                   {game.genres && game.genres.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {game.genres.map((g) => (
-                        <span key={g} className="text-xs bg-white/8 text-white/60 px-2.5 py-1 rounded-full border border-white/10">
+                        <span key={g} className="text-xs bg-[var(--category-card,rgba(255,255,255,0.08))] text-[color:var(--category-muted,rgba(255,255,255,0.6))] px-2.5 py-1 rounded-full border border-[color:var(--category-border,rgba(255,255,255,0.1))]">
                           {g}
                         </span>
                       ))}
@@ -223,28 +224,31 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
 
                   {/* Summary */}
                   {game.summary && (
-                    <p className="text-sm text-white/60 leading-relaxed">{game.summary}</p>
+                    <p className="text-sm text-[color:var(--category-muted,rgba(255,255,255,0.6))] leading-relaxed">{game.summary}</p>
                   )}
 
                    {/* Creator note */}
                    {noteText && (
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-                      <p className="text-xs font-semibold text-blue-400 mb-1.5 uppercase tracking-wider">Creator's Note</p>
-                      <div className="text-sm text-white/80 leading-relaxed font-normal max-w-none prose prose-invert prose-sm" dangerouslySetInnerHTML={{ __html: noteText }} />
+                      <p className="text-xs font-semibold text-[color:var(--category-text,#60a5fa)] mb-1.5 uppercase tracking-wider">Creator's Note</p>
+                      <SafePublicRichText
+                        className="text-sm text-[color:var(--category-text,rgba(255,255,255,0.8))] leading-relaxed font-normal max-w-none prose prose-invert prose-sm"
+                        html={noteText}
+                      />
                     </div>
                   )}
 
                   {/* Creator Rating */}
                   {game.user_rating && (
                     <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 flex items-center justify-between">
-                      <p className="text-xs font-semibold text-yellow-500 uppercase tracking-wider">Creator's Rating</p>
+                      <p className="text-xs font-semibold text-[color:var(--category-text,#eab308)] uppercase tracking-wider">Creator's Rating</p>
                       <div className="flex gap-1 flex-wrap justify-end">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(star => (
                           <Star 
                             key={star} 
                             size={16} 
                             fill={game.user_rating! >= star ? "currentColor" : "none"} 
-                            className={game.user_rating! >= star ? "text-yellow-400" : "text-white/20"} 
+                            className={game.user_rating! >= star ? "text-[color:var(--category-rating,#facc15)]" : "text-[color:var(--category-muted,rgba(255,255,255,0.2))]"}
                           />
                         ))}
                       </div>
@@ -254,7 +258,7 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
                   {/* Screenshots gallery */}
                   {screenshots.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">
+                      <p className="text-xs font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.5))] uppercase tracking-wider mb-3">
                         Screenshots & Media
                       </p>
                       <div className="relative group">
@@ -269,7 +273,7 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
                             <div 
                               key={i} 
                               onClick={() => handleImageClick("screenshot", i)}
-                              className="flex-shrink-0 w-64 aspect-video rounded-xl overflow-hidden border border-white/10 bg-[#1a2332] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                              className="flex-shrink-0 w-64 aspect-video rounded-xl overflow-hidden border border-[color:var(--category-border,rgba(255,255,255,0.1))] bg-[var(--category-card,#1a2332)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                             >
                               <img 
                                 src={url} 
@@ -291,18 +295,18 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
 
                   {/* Source list */}
                   {game.game_list && (
-                    <p className="text-xs text-white/30">
-                      From the list: <span className="text-blue-400">{game.game_list.List_Name}</span>
+                    <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.3))]">
+                      From the list: <span className="text-[color:var(--category-text,#60a5fa)]">{game.game_list.List_Name}</span>
                     </p>
                   )}
                 </div>
               </div>
 
               {/* Footer actions */}
-              <div className="flex-shrink-0 border-t border-white/8 px-5 py-3 flex items-center justify-end gap-2 bg-[#0d1117]">
+              <div className="flex-shrink-0 border-t border-[color:var(--category-border,rgba(255,255,255,0.08))] px-5 py-3 flex items-center justify-end gap-2 bg-[var(--category-panel,#0d1117)]">
                 <button
                   onClick={handleShare}
-                  className="flex items-center gap-1.5 text-sm text-white/60 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/8 transition-all"
+                  className="flex items-center gap-1.5 text-sm text-[color:var(--category-muted,rgba(255,255,255,0.6))] hover:text-[color:var(--category-text,#fff)] px-3 py-1.5 rounded-lg hover:bg-[var(--category-hover,rgba(255,255,255,0.08))] transition-all"
                 >
                   <Share2 size={14} /> Share
                 </button>

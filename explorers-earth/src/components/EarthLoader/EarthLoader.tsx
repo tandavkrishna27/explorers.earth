@@ -32,6 +32,13 @@ const EarthLoader: React.FC<EarthLoaderProps> = memo(
         showText = true,
         statusMessage,
     }) => {
+        const prefersReducedMotion = useMemo(
+            () =>
+                typeof window !== "undefined" &&
+                window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+            [],
+        );
+
         // Shuffle texts once on mount so repeat loads feel fresh
         const texts = useMemo(() => getShuffledTexts(context), [context]);
 
@@ -61,6 +68,8 @@ const EarthLoader: React.FC<EarthLoaderProps> = memo(
 
         // Initial entry
         useEffect(() => {
+            if (prefersReducedMotion || (!showText && !statusMessage)) return;
+
             // Trigger the first text to animate in
             const entryTimer = requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
@@ -69,14 +78,14 @@ const EarthLoader: React.FC<EarthLoaderProps> = memo(
             });
 
             return () => cancelAnimationFrame(entryTimer);
-        }, []);
+        }, [prefersReducedMotion, showText, statusMessage]);
 
         // Interval
         useEffect(() => {
-            if (!showText && !statusMessage) return;
+            if (prefersReducedMotion || !showText || statusMessage) return;
             const interval = setInterval(cycle, TEXT_INTERVAL_MS);
             return () => clearInterval(interval);
-        }, [cycle, showText, statusMessage]);
+        }, [cycle, prefersReducedMotion, showText, statusMessage]);
 
         const sizeClass =
             size === "small"
@@ -91,30 +100,34 @@ const EarthLoader: React.FC<EarthLoaderProps> = memo(
             <div
                 className={`earth-loader-wrapper ${sizeClass} ${className}`}
                 style={bgColor ? { backgroundColor: bgColor } : undefined}
+                role="status"
+                aria-label="Earth loading"
             >
                 {/* Globe + Plane animation */}
-                <div className="earth-loader">
+                <div className="earth-loader" aria-hidden="true">
                     {/* Rotating plane */}
                     <div className="earth-loader__plane">
-                        <img
-                            src={PLANE_GIF_URL}
-                            className="earth-loader__plane-img"
-                            alt=""
-                            aria-hidden="true"
-                        />
+                        {prefersReducedMotion
+                            ? <span className="earth-loader__plane-static">✈</span>
+                            : <img
+                                src={PLANE_GIF_URL}
+                                className="earth-loader__plane-img"
+                                alt=""
+                                aria-hidden="true"
+                            />}
                     </div>
 
                     {/* Spinning earth */}
                     <div className="earth-loader__earth-wrapper">
-                        <div className="earth-loader__earth" />
+                        <div className={`earth-loader__earth${prefersReducedMotion ? " earth-loader__earth-static" : ""}`} />
                     </div>
                 </div>
 
                 {/* Rotating supporting text */}
                 {(showText || statusMessage) && (
-                    <div className="earth-loader__text-area" aria-live="polite">
+                    <div className="earth-loader__text-area">
                         <span
-                            className={`earth-loader__text earth-loader__text--${textState}`}
+                            className={`earth-loader__text earth-loader__text--${prefersReducedMotion ? "static" : textState}`}
                             key={currentIndex}
                         >
                             {displayText}

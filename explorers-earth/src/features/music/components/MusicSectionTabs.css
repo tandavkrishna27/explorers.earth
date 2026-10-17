@@ -1,0 +1,14 @@
+.dashboard-theme .music-section-tab {
+  color: var(--dash-text) !important;
+  background-color: transparent !important;
+  transition: none !important;
+}
+
+.dashboard-theme .music-section-tab-selected,
+.dashboard-theme .music-section-tab-selected * {
+  color: var(--dash-accent-text) !important;
+}
+
+.dashboard-theme .music-section-tab-selected {
+  background-color: var(--dash-accent) !important;
+}

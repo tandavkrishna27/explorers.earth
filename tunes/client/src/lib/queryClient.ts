@@ -1,17 +1,29 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getCsrfToken } from "./csrf";
+import { clearGuestMusicCapability, getGuestMusicCapability, isMusicOwnerRequest, musicCredentialForRequest } from "./musicCredential";
 
-/** Read the logged-in username from the persisted Zustand auth store in localStorage. */
-function getAuthUsername(): string | null {
-  try {
-    const raw = localStorage.getItem('auth-storage');
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.state?.user?.username ?? null;
-  } catch {
-    return null;
-  }
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -28,15 +40,29 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+const AUTOMATICALLY_RETRYABLE_METHODS = new Set(["GET", "HEAD", "PUT", "DELETE", "OPTIONS", "TRACE"]);
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/;
+
+function hasDurablePublicationIdempotency(method: string, url: string, requestHeaders: Record<string, string>): boolean {
+  if (method.toUpperCase() !== "POST" || url.split(/[?#]/, 1)[0] !== "/api/music/publication") return false;
+  const idempotencyKey = Object.entries(requestHeaders)
+    .find(([name]) => name.toLowerCase() === "idempotency-key")?.[1];
+  return typeof idempotencyKey === "string" && IDEMPOTENCY_KEY_PATTERN.test(idempotencyKey);
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
   retryCount: number = 0,
-  maxRetries: number = 3
+  maxRetries: number = 3,
+  requestHeaders: Record<string, string> = {},
 ): Promise<Response> {
+  const retryAllowed = AUTOMATICALLY_RETRYABLE_METHODS.has(method.toUpperCase())
+    || hasDurablePublicationIdempotency(method, url, requestHeaders);
   const headers: HeadersInit = {
     "Accept": "application/json",
+    ...requestHeaders,
   };
 
   if (data) {
@@ -44,15 +70,10 @@ export async function apiRequest(
   }
 
   // Add JWT token from localStorage (Strapi auth)
-  const token = localStorage.getItem('qrtoken');
+  const musicOwnerRequest = isMusicOwnerRequest(url);
+  const token = musicOwnerRequest ? await musicCredentialForRequest() : localStorage.getItem('qrtoken');
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  // Add username so the server can map the Strapi JWT to the Neon DB user
-  const authUsername = getAuthUsername();
-  if (authUsername) {
-    headers["X-Username"] = authUsername;
   }
 
   // Add CSRF token using our standardized function
@@ -67,7 +88,7 @@ export async function apiRequest(
 
   // Prepare request body with CSRF token if needed
   let body = data;
-  if (data && typeof data === 'object' && !Array.isArray(data)) {
+  if (!musicOwnerRequest && data && typeof data === 'object' && !Array.isArray(data)) {
     body = {
       ...data,
       _csrf: csrfToken
@@ -84,7 +105,7 @@ export async function apiRequest(
     });
 
     // Special handling for 503 Service Unavailable
-    if (res.status === 503) {
+    if (res.status === 503 && retryAllowed) {
       if (retryCount < maxRetries) {
         console.warn(`Server returned 503 for ${url}. Retrying (${retryCount + 1}/${maxRetries})...`);
         // Increased backoff times for 503 errors with randomized jitter
@@ -96,7 +117,7 @@ export async function apiRequest(
 
         console.log(`Waiting ${Math.round(delay)}ms before retry attempt ${retryCount + 1}`);
         await new Promise(resolve => setTimeout(resolve, delay));
-        return apiRequest(method, url, data, retryCount + 1, maxRetries);
+        return apiRequest(method, url, data, retryCount + 1, maxRetries, requestHeaders);
       } else {
         console.error(`Server unavailable (503) after ${maxRetries} retries:`, url);
         // Create a more descriptive error for the UI
@@ -111,7 +132,7 @@ export async function apiRequest(
   } catch (error) {
     // Network error handling (fetch() will reject for network errors but not HTTP errors)
     if (error instanceof TypeError && error.message.includes('fetch')) {
-      if (retryCount < maxRetries) {
+      if (retryAllowed && retryCount < maxRetries) {
         console.warn(`Network error for ${url}. Retrying (${retryCount + 1}/${maxRetries})...`);
         // Apply similar backoff strategy as 503 errors for network errors
         const baseDelay = 1000 * Math.pow(2, retryCount);
@@ -120,7 +141,7 @@ export async function apiRequest(
 
         console.log(`Waiting ${Math.round(delay)}ms before retry attempt ${retryCount + 1} for network error`);
         await new Promise(resolve => setTimeout(resolve, delay));
-        return apiRequest(method, url, data, retryCount + 1, maxRetries);
+        return apiRequest(method, url, data, retryCount + 1, maxRetries, requestHeaders);
       } else {
         // Create a user-friendly error message for network failures
         const friendlyError = new Error("Unable to connect to the server. Please check your internet connection and try again.");
@@ -167,15 +188,15 @@ export const getQueryFn: <T>(options: GetQueryFnOptions) => QueryFunction<T> =
         };
 
         // Add JWT token from localStorage (Strapi auth)
-        const token = localStorage.getItem('qrtoken');
+        const token = isMusicOwnerRequest(url) ? await musicCredentialForRequest() : localStorage.getItem('qrtoken');
         if (token) {
           headers["Authorization"] = `Bearer ${token}`;
         }
-
-        // Add username so the server can map the Strapi JWT to the Neon DB user
-        const authUsername = getAuthUsername();
-        if (authUsername) {
-          headers["X-Username"] = authUsername;
+        const guestMatch = /^\/api\/playlist\/([^/]+)$/.exec(url);
+        const guestUrl = guestMatch ? decodeURIComponent(guestMatch[1]) : undefined;
+        if (guestUrl) {
+          const guestCapability = getGuestMusicCapability(guestUrl);
+          if (guestCapability) headers["X-Music-Guest-Capability"] = guestCapability;
         }
 
         // Add CSRF token to headers using our helper function
@@ -185,11 +206,14 @@ export const getQueryFn: <T>(options: GetQueryFnOptions) => QueryFunction<T> =
           headers["X-CSRF-Token"] = csrfToken;
         }
 
-        const res = await fetch(url, {
+        let res = await fetch(url, {
           credentials: "include",
           mode: "cors",
           headers
         });
+        if (res.status === 404 && guestUrl) {
+          clearGuestMusicCapability(guestUrl);
+        }
 
         // Handle 503 Service Unavailable with exponential backoff
         if (res.status === 503) {
@@ -250,7 +274,7 @@ export const queryClient = new QueryClient({
           return true;
         }
       }),
-      retry: (failureCount, error: any, context) => {
+      retry: (failureCount: number, error: any) => {
         // Don't retry expected auth failures
         if (error instanceof Error &&
           error.message === "Unauthorized" &&
@@ -260,7 +284,7 @@ export const queryClient = new QueryClient({
 
         // Retry server errors (like 503 Service Unavailable) more aggressively
         if (error && error.status >= 500 && error.status < 600) {
-          console.warn(`Retrying server error (${error.status}) for ${context?.queryKey}. Attempt ${failureCount + 1}`);
+          console.warn(`Retrying server error (${error.status}). Attempt ${failureCount + 1}`);
           return failureCount < 5; // More retries for server errors
         }
 
@@ -286,14 +310,9 @@ export const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000, // 5 minutes
     },
     mutations: {
-      retry: (failureCount, error: any) => {
-        // Retry server errors for mutations too
-        if (error && error.status >= 500 && error.status < 600) {
-          return failureCount < 3;
-        }
-        return false; // Don't retry other mutation errors
-      },
-      retryDelay: (attemptIndex) => Math.min(1000 * Math.pow(2, attemptIndex), 8000),
+      // apiRequest owns method- and idempotency-aware retries. A global mutation
+      // retry cannot know whether the server committed the previous attempt.
+      retry: false,
     },
   },
 });

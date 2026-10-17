@@ -51,6 +51,17 @@ Comprehensive documentation for the explorers.earth monorepo containing two appl
 - [ADR-003: Real-time with WebSockets](adr/003-realtime-websockets.md)
 - [ADR-004: Database & ORM Choice](adr/004-database-orm-choice.md)
 
+### Music identity and operations
+
+- [Identity architecture](architecture/music-identity.md) — Identity, Account context, entitlement, publication, content, and lifecycle axes
+- [Executable API contract](api/music-identity-contract.md) — Route/event authority, stable errors, credential and guest-capability lifecycle
+- [Authentication model](security/music-auth-model.md) — Trust boundaries, owner predicates, keys, sessions, and redaction
+- [Testing guide](testing/music-identity-testing.md) — Clean-checkout fixture flow and CI lanes
+- [Public Music browser lanes](testing.md#public-music-browser-lanes) — PR-safe, disposable fixture, visual, evidence, and cleanup commands
+- [Immutable deployment runbook](operations/music-deploy-runbook.md) — Preflight, migration, readiness, digest, rollback floors, kill switch
+- [Reconciliation runbook](operations/music-reconciliation-runbook.md) — Report-only-first scan, approval, repair, and recovery
+- [Incident runbook](operations/music-incident-runbook.md) — Containment, lifecycle repair, rollback, and escalation
+
 ## AI Agent Context
 
 For AI agents (Claude Code, Cursor, etc.), start with:

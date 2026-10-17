@@ -60,6 +60,7 @@ const TopPicksMobileHero = ({ movies, onMovieClick, showManageButton = false, on
           return (
             <motion.div
               key={movie.documentId}
+              data-public-category-artwork={diff === 0 ? true : undefined}
               variants={variants}
               initial={false}
               animate={position}
@@ -107,7 +108,7 @@ const TopPicksMobileHero = ({ movies, onMovieClick, showManageButton = false, on
                 <div className="flex items-center gap-3 mt-4 pointer-events-auto">
                   {showManageButton ? (
                     <button 
-                      className="flex-1 bg-dashboard-accent hover:opacity-90 text-white font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
+                      className="flex-1 bg-[var(--category-accent,var(--dash-accent,#3b82f6))] hover:opacity-90 text-[color:var(--category-accent-ink,#fff)] font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
                       onClick={(e) => {
                         e.stopPropagation();
                         onManageClick?.();
@@ -117,7 +118,7 @@ const TopPicksMobileHero = ({ movies, onMovieClick, showManageButton = false, on
                     </button>
                   ) : (
                     <button 
-                      className="flex-1 bg-dashboard-accent hover:opacity-90 text-white font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
+                      className="flex-1 bg-[var(--category-accent,var(--dash-accent,#3b82f6))] hover:opacity-90 text-[color:var(--category-accent-ink,#fff)] font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
                       onClick={(e) => {
                         e.stopPropagation();
                         onMovieClick(movie);

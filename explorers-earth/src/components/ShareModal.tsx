@@ -1,4 +1,5 @@
 import React, { ReactNode, useState } from "react";
+import { usePublicCategoryThemeStyles } from "../features/PublicHome/components/PublicCategoryThemeContext";
 import { useTranslation } from "react-i18next";
 import CopyIcon from "../assets/icons/CopyIcon";
 import CopiedIcon from "../assets/icons/CopiedIcon";
@@ -33,6 +34,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
   backgroundImage,
   hideQRTab = false,
 }) => {
+  const categoryStyles = usePublicCategoryThemeStyles();
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'share' | 'qr'>('share');
@@ -143,7 +145,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <div
-        className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl 2xl:max-w-4xl mx-auto"
+        className={categoryStyles ? "w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl 2xl:max-w-4xl mx-auto [&_button:focus-visible]:!outline [&_button:focus-visible]:!outline-2 [&_button:focus-visible]:!outline-offset-2 [&_button:focus-visible]:!outline-[var(--category-focus)] [&_button:focus-visible]:!transform-none" : "w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl 2xl:max-w-4xl mx-auto"}
         style={{
           boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.15), inset 0 0 40px rgba(0, 0, 0, 0.1)'
         }}
@@ -159,8 +161,8 @@ const ShareModal: React.FC<ShareModalProps> = ({
                   : 'text-dashboard-light hover:text-dashboard hover:bg-dashboard-muted'
                   }`}
                 style={{
-                  color: activeTab === 'share' ? '#ffffff' : '#d1d5db',
-                  backgroundColor: activeTab === 'share' ? 'var(--dash-accent)' : 'transparent'
+                  color: categoryStyles ? (activeTab === 'share' ? 'var(--category-accent-ink)' : 'var(--category-muted)') : activeTab === 'share' ? '#ffffff' : '#d1d5db',
+                  backgroundColor: activeTab === 'share' ? (categoryStyles ? 'var(--category-accent)' : 'var(--dash-accent)') : 'transparent'
                 }}
               >
                 Share
@@ -172,8 +174,8 @@ const ShareModal: React.FC<ShareModalProps> = ({
                   : 'text-[hsl(var(--text-light))] hover:text-white hover:bg-[hsl(var(--charcoal))]'
                   }`}
                 style={{
-                  color: activeTab === 'qr' ? '#ffffff' : '#d1d5db',
-                  backgroundColor: activeTab === 'qr' ? 'hsl(var(--blue-cta))' : 'transparent'
+                  color: categoryStyles ? (activeTab === 'qr' ? 'var(--category-accent-ink)' : 'var(--category-muted)') : activeTab === 'qr' ? '#ffffff' : '#d1d5db',
+                  backgroundColor: activeTab === 'qr' ? (categoryStyles ? 'var(--category-accent)' : 'hsl(var(--blue-cta))') : 'transparent'
                 }}
               >
                 QR
@@ -186,15 +188,16 @@ const ShareModal: React.FC<ShareModalProps> = ({
             <>
               {/* URL Copy Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-[hsl(var(--charcoal))] to-[hsl(var(--deep-charcoal))] rounded-xl border border-[hsl(var(--border))] shadow-lg">
+                <div data-category-share-link={categoryStyles ? true : undefined} style={categoryStyles ? { backgroundImage: 'none', backgroundColor: 'var(--category-card)', borderColor: 'var(--category-control-border)' } : undefined} className="flex items-center gap-3 p-4 bg-gradient-to-r from-[hsl(var(--charcoal))] to-[hsl(var(--deep-charcoal))] rounded-xl border border-[hsl(var(--border))] shadow-lg">
                   <div className="flex-1 min-w-0">
-                    <label className="block text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1 uppercase tracking-wide">
+                    <label style={categoryStyles ? { color: 'var(--category-muted)' } : undefined} className="block text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1 uppercase tracking-wide">
                       Share Link
                     </label>
                     <input
                       type="text"
                       value={finalUrl}
                       readOnly
+                      style={categoryStyles ? { color: 'var(--category-text)' } : undefined}
                       className="w-full text-sm text-[hsl(var(--text-light))] bg-transparent border-none outline-none truncate font-mono"
                     />
                   </div>
@@ -208,16 +211,17 @@ const ShareModal: React.FC<ShareModalProps> = ({
                       : "bg-gradient-to-r from-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] text-white hover:from-[hsl(var(--blue-final))] hover:to-[hsl(var(--blue-final))] shadow-lg hover:shadow-xl"
                       }`}
                     style={{
-                      backgroundColor: copied ? '#10b981' : undefined,
-                      color: '#ffffff',
+                      backgroundColor: categoryStyles ? 'var(--category-accent)' : copied ? '#10b981' : undefined,
+                      backgroundImage: categoryStyles ? 'none' : undefined,
+                      color: categoryStyles ? 'var(--category-accent-ink)' : '#ffffff',
                       visibility: 'visible',
                       opacity: 1
                     }}
                   >
-                    <div style={{ color: '#ffffff', visibility: 'visible', opacity: 1 }}>
+                    <div style={{ color: categoryStyles ? 'var(--category-accent-ink)' : '#ffffff', visibility: 'visible', opacity: 1 }}>
                       {copied ? <CopiedIcon /> : <CopyIcon />}
                     </div>
-                    <span style={{ color: '#ffffff', visibility: 'visible', opacity: 1 }}>
+                    <span style={{ color: categoryStyles ? 'var(--category-accent-ink)' : '#ffffff', visibility: 'visible', opacity: 1 }}>
                       {copied ? "Copied!" : "Copy"}
                     </span>
                   </button>
@@ -226,7 +230,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
               {/* Social Media Buttons */}
               <div className="mb-4">
-                <h3 className="text-sm font-medium text-gray-400 mb-4 text-center uppercase tracking-wide">
+                <h3 style={categoryStyles ? { color: 'var(--category-muted)' } : undefined} className="text-sm font-medium text-gray-400 mb-4 text-center uppercase tracking-wide">
                   Share on Social Media
                 </h3>
                 <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 xl:gap-10">
@@ -336,7 +340,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
               {/* Download and Share Options */}
               <div className="mb-4">
-                <h3 className="text-sm font-medium text-gray-400 mb-4 text-center uppercase tracking-wide">
+                <h3 style={categoryStyles ? { color: 'var(--category-muted)' } : undefined} className="text-sm font-medium text-gray-400 mb-4 text-center uppercase tracking-wide">
                   Share & Download
                 </h3>
                 <div className="grid grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-6 xl:gap-8">
@@ -414,7 +418,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
                       border: 'none'
                     }}
                   >
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 xl:w-12 xl:h-12 transition-transform duration-200 hover:scale-110">
+                    <div className={`w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 xl:w-12 xl:h-12 transition-transform duration-200 hover:scale-110 ${categoryStyles ? "text-[var(--category-text)] [&_svg]:stroke-current" : ""}`}>
                       <DownloadIcon />
                     </div>
                   </button>

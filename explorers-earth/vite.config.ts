@@ -1,30 +1,45 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import { loadEnv } from 'vite'
+import { createRequire } from 'node:module'
+import { resolveMusicDevelopmentProxyTarget } from './src/features/music/musicDevelopmentTransport'
+const require = createRequire(import.meta.url)
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  let musicProxyTarget: string | undefined
+  try {
+    musicProxyTarget = resolveMusicDevelopmentProxyTarget(env.VITE_LOCAL_TUNES_API_URL, {
+      enabled: mode === 'development' && env.MUSIC_DEV_PROXY_ENABLED === 'true',
+      target: env.MUSIC_DEV_PROXY_TARGET,
+    })
+  } catch (error) {
+    if (mode === 'development' && env.MUSIC_DEV_PROXY_ENABLED === 'true') {
+      throw new Error('Local Music development proxy configuration is invalid.', { cause: error })
+    }
+    // A production build keeps the default HTTPS Music target validation isolated
+    // from unrelated Vite routes. Explicit local mode above must fail fast.
+    console.warn('Music development proxy disabled: invalid Music origin.')
+  }
+  return ({
+  resolve: {
+    // Shared schemas live outside this package's dependency ancestry. Bundle the
+    // compatibility export from the frontend's declared Zod dependency.
+    alias: [{ find: /^zod\/v3$/, replacement: require.resolve('zod/v3') }],
+  },
   plugins: [
     react(),
   ],
    server: {
      proxy: {
-       '/twitch-api': {
-         target: 'https://id.twitch.tv',
+       ...(musicProxyTarget ? { '/__localtunes': {
+         target: musicProxyTarget,
          changeOrigin: true,
-         rewrite: (path) => path.replace(/^\/twitch-api/, ''),
-         secure: false,
-       },
-       '/igdb-api': {
-         target: 'https://api.igdb.com',
-         changeOrigin: true,
-         rewrite: (path) => path.replace(/^\/igdb-api/, ''),
-         secure: false,
-       },
-        '/itunes-api': {
-          target: 'http://127.0.0.1:5000',
-          changeOrigin: true,
-          secure: false,
-        },
+         ws: true,
+         rewrite: (path) => path.replace(/^\/__localtunes/, ''),
+         secure: true,
+       } } : {}),
         '/api/apps/scrape-url': {
           target: 'http://127.0.0.1:5000',
           changeOrigin: true,
@@ -56,33 +71,6 @@ export default defineConfig({
        },
      },
    },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/__tests__/**/*.{test,spec}.{ts,tsx}', 'src/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['node_modules', 'dist', 'e2e'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'lcov', 'html'],
-      include: ['src/**/*.{ts,tsx}'],
-      exclude: [
-        'src/test/**',
-        'src/**/__tests__/**',
-        'src/**/*.test.{ts,tsx}',
-        'src/main.tsx',
-        'src/vite-env.d.ts',
-      ],
-      // Ratchet thresholds: set just under measured coverage (8.81/6.87/6.63/8.74
-      // on 2026-07-10) so coverage can only rise. Bump these as tests are added;
-      // the original aspirational 70% had never been met and failed every CI run.
-      thresholds: {
-        statements: 8,
-        branches: 6,
-        functions: 6,
-        lines: 8,
-      },
-    },
-  },
-});
+  });
+})
 

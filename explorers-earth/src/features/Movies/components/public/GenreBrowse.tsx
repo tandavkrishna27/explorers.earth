@@ -2,7 +2,6 @@ import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronRight, ChevronLeft } from "lucide-react";
-import { genreToSlug, extractUniqueGenres } from "../../utils/movieHelpers";
 import type { RecommendedMovie } from "../../types";
 
 interface GenreBrowseProps {
@@ -47,28 +46,28 @@ const GenreBrowse = ({ movies, username }: GenreBrowseProps) => {
       scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
-  const allGenreArrays = movies.map(m => m.genres);
-  const genres = extractUniqueGenres(allGenreArrays);
-
-  // Count movies per genre
+  // Browse uses assigned catalog terms, matching the canonical genre route.
+  const genreSlugs = new Map<string, string>();
   const genreCount: Record<string, number> = {};
-  for (const g of genres) {
-    genreCount[g] = movies.filter(m => {
-      const names = Array.isArray(m.genres)
-        ? m.genres.map((x: any) => typeof x === "string" ? x : x?.name).filter(Boolean)
-        : [];
-      return names.includes(g);
-    }).length;
+  for (const movie of movies) {
+    const counted = new Set<string>();
+    for (const term of movie.movie_categories ?? []) {
+      const slug = 'slug' in term && typeof term.slug === 'string' ? term.slug : undefined;
+      if (!slug || counted.has(term.genre_name)) continue;
+      counted.add(term.genre_name);
+      genreSlugs.set(term.genre_name, slug);
+      genreCount[term.genre_name] = (genreCount[term.genre_name] ?? 0) + 1;
+    }
   }
 
   // Only show genres with at least 1 movie
-  const visibleGenres = genres.filter(g => genreCount[g] > 0);
+  const visibleGenres = [...genreSlugs.keys()];
 
   if (visibleGenres.length === 0) return null;
 
   return (
     <section className="mt-10 mb-8">
-      <h2 className="text-lg font-semibold text-white mb-4 px-4 md:px-0">Browse by Genre</h2>
+      <h2 className="text-lg font-semibold text-[color:var(--category-text,#fff)] mb-4 px-4 md:px-0">Browse by Genre</h2>
       <div className="relative group">
         {canScrollLeft && (
           <button
@@ -107,17 +106,17 @@ const GenreBrowse = ({ movies, username }: GenreBrowseProps) => {
               transition={{ type: "spring", stiffness: 300 }}
             >
               <Link
-                to={`/${username}/movies/genre/${genreToSlug(genre)}`}
-                className="relative flex flex-col justify-between h-24 rounded-xl overflow-hidden p-3 border border-white/10 hover:border-blue-500/40 transition-all group"
+                to={`/${username}/movies/genre/${genreSlugs.get(genre)}`}
+                className="relative flex flex-col justify-between h-24 rounded-xl overflow-hidden p-3 border border-[color:var(--category-border,rgba(255,255,255,0.1))] hover:border-[color:var(--category-focus,rgba(59,130,246,0.4))] transition-all group"
                 style={{
-                  background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`,
+                  background: `var(--category-card,linear-gradient(135deg, ${gradient[0]}, ${gradient[1]}))`,
                 }}
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <ChevronRight size={14} className="self-end text-white/30 group-hover:text-white/60 transition-colors" />
+                <ChevronRight size={14} className="self-end text-[color:var(--category-muted,rgba(255,255,255,0.3))] group-hover:text-[color:var(--category-muted,rgba(255,255,255,0.6))] transition-colors" />
                 <div>
-                  <p className="text-sm font-semibold text-white">{genre}</p>
-                  <p className="text-xs text-white/40">{genreCount[genre]} movie{genreCount[genre] !== 1 ? "s" : ""}</p>
+                  <p className="text-sm font-semibold text-[color:var(--category-text,#fff)]">{genre}</p>
+                  <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.4))]">{genreCount[genre]} movie{genreCount[genre] !== 1 ? "s" : ""}</p>
                 </div>
               </Link>
             </motion.div>

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, jsonb, bigint, primaryKey, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -29,10 +29,104 @@ export const users = pgTable("users", {
   allowGuestPlayOnDevice: boolean("allow_guest_play_on_device").default(true).notNull(),
   allowPlaylistSharing: boolean("allow_playlist_sharing").default(false).notNull(),
   allowRecentlyPlayedVisibility: boolean("allow_recently_played_visibility").default(true).notNull(),
+  allowQueueVisibility: boolean("allow_queue_visibility").default(false).notNull(),
   accountManagerId: integer("account_manager_id").references(() => teamMembers.id),
   isAdmin: boolean("is_admin").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  // Immutable server-owned identity projection. Username/email/Account names
+  // remain mutable display snapshots and are never identity lookup keys.
+  strapiUserDocumentId: text("strapi_user_document_id").notNull().unique(),
+  strapiAccountDocumentId: text("strapi_account_document_id").notNull().unique(),
+  strapiUsernameSnapshot: text("strapi_username_snapshot"),
+  strapiEmailSnapshot: text("strapi_email_snapshot"),
+  strapiProviderSnapshot: text("strapi_provider_snapshot").notNull().default("legacy-unknown").$type<"legacy-unknown" | "local" | "google">(),
+  strapiAccountNameSnapshot: text("strapi_account_name_snapshot"),
+  strapiAccountTypeSnapshot: text("strapi_account_type_snapshot"),
+  strapiAccountMobileSnapshot: text("strapi_account_mobile_snapshot"),
+  identityStatus: text("identity_status").notNull().default("active").$type<"active" | "suspended" | "pending_deletion">(),
+  sessionVersion: integer("session_version").notNull().default(1),
+  lastIdentitySyncAt: timestamp("last_identity_sync_at", { withTimezone: true }),
+  entitlementState: text("entitlement_state").notNull().default("unknown").$type<"unknown" | "included" | "eligible" | "entitled" | "revoked">(),
+  entitlementVersion: bigint("entitlement_version", { mode: "number" }).notNull().default(0),
+  entitlementSourceUpdatedAt: timestamp("entitlement_source_updated_at", { withTimezone: true }),
+  lastReconciledAt: timestamp("last_reconciled_at", { withTimezone: true }),
+  reconciliationObservationVersion: bigint("reconciliation_observation_version", { mode: "number" }).notNull().default(0),
+  reconciliationMismatchCount: integer("reconciliation_mismatch_count").notNull().default(0),
+  // Points to the migration-owned music_identity_lifecycle_operations control
+  // table. It remains raw-repository-owned so legacy Drizzle insert/update
+  // shapes cannot gain a lifecycle-operation mass-assignment surface. Nullable
+  // since migration 0040: a canonically provisioned venue has no Strapi-keyed
+  // lifecycle operation to reference, and the legacy path still supplies one.
+  lifecycleOperationId: text("lifecycle_operation_id"),
+  lifecycleState: text("lifecycle_state").notNull().default("none").$type<"none" | "requested" | "running" | "completed" | "failed" | "cancelled">(),
+  lifecycleAttemptCount: integer("lifecycle_attempt_count").notNull().default(0),
+  lifecycleLastAttemptAt: timestamp("lifecycle_last_attempt_at", { withTimezone: true }),
+  lifecycleErrorCode: text("lifecycle_error_code"),
+  lifecycleRetentionStage: text("lifecycle_retention_stage").notNull().default("identity-active"),
+  guestCapabilityHash: text("guest_capability_hash").notNull().unique(),
+  guestCapabilityIssuedAt: timestamp("guest_capability_issued_at", { withTimezone: true }).defaultNow().notNull(),
+  guestCapabilityRotatedAt: timestamp("guest_capability_rotated_at", { withTimezone: true }),
+  guestCapabilityRevokedAt: timestamp("guest_capability_revoked_at", { withTimezone: true }),
+  guestDiscoverable: boolean("guest_discoverable").notNull().default(false),
+  musicQueueRevision: bigint("music_queue_revision", { mode: "number" }).notNull().default(0),
+});
+
+export const musicOwnerOperations = pgTable("music_owner_operations", {
+  musicUserId: integer("music_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  operation: text("operation").notNull(),
+  idempotencyKeyHash: text("idempotency_key_hash").notNull(),
+  requestHash: text("request_hash").notNull(),
+  statusCode: integer("status_code").notNull(),
+  responseBody: jsonb("response_body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+}, (table) => [primaryKey({ columns: [table.musicUserId, table.operation, table.idempotencyKeyHash] })]);
+
+// Migration-owned idempotency history. `musicUserId` deliberately has no
+// reference to users: it must survive the user row and bind deletion replay to
+// the retired numeric resource rather than only to a caller-provided saga ID.
+export const musicIdentityLifecycleOperations = pgTable("music_identity_lifecycle_operations", {
+  operationId: text("operation_id").primaryKey(),
+  strapiUserDocumentId: text("strapi_user_document_id").notNull(),
+  strapiAccountDocumentId: text("strapi_account_document_id").notNull(),
+  musicUserId: integer("music_user_id"),
+  operationKind: text("operation_kind").notNull(),
+  requestedIdentityStatus: text("requested_identity_status").notNull(),
+  operationState: text("operation_state").notNull().default("requested"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  resultSessionVersion: integer("result_session_version"),
+  errorCode: text("error_code"),
+  operationPhase: text("operation_phase").notNull().default("single"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Durable C5 credential-revocation idempotency history. It deliberately has
+// no users foreign key so the immutable operation/resource tuple survives a
+// later identity deletion.
+export const musicCredentialRevocationOperations = pgTable("music_credential_revocation_operations", {
+  operationId: text("operation_id").primaryKey(),
+  musicUserId: integer("music_user_id").notNull(),
+  strapiUserDocumentId: text("strapi_user_document_id").notNull(),
+  strapiAccountDocumentId: text("strapi_account_document_id").notNull(),
+  reason: text("reason").notNull().$type<"logout_all" | "entitlement_security_revocation" | "credential_compromise">(),
+  expectedSessionVersion: integer("expected_session_version").notNull(),
+  resultSessionVersion: integer("result_session_version").notNull(),
+  operationState: text("operation_state").notNull().default("completed").$type<"completed">(),
+  completedAt: timestamp("completed_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const musicIdentityTombstones = pgTable("music_identity_tombstones", {
+  strapiUserDocumentId: text("strapi_user_document_id").primaryKey(),
+  strapiAccountDocumentId: text("strapi_account_document_id").notNull().unique(),
+  musicUserId: integer("music_user_id").unique(),
+  reason: text("reason").notNull(),
+  lifecycleOperationId: text("lifecycle_operation_id").notNull().unique()
+    .references(() => musicIdentityLifecycleOperations.operationId),
+  retentionStage: text("retention_stage").notNull().default("tombstone-retained"),
+  sourceUpdatedAt: timestamp("source_updated_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Add playlists table
@@ -97,6 +191,7 @@ export const youtubeApiUsage = pgTable("youtube_api_usage", {
   id: serial("id").primaryKey(),
   endpointType: text("endpoint_type").notNull(),
   userId: integer("user_id").references(() => users.id),
+  quotaCost: integer("quota_cost").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -134,6 +229,20 @@ export const analyticsSnapshots = pgTable("analytics_snapshots", {
   totalPlaylistsCreated: integer("total_playlists_created").notNull(),
   totalSongsPlayed: integer("total_songs_played").notNull(),
   additionalMetrics: jsonb("additional_metrics"),
+});
+
+// Idempotency receipts for explorers.earth analytics ingestion. The event
+// payload remains in Strapi; this table stores only delivery state and hashes,
+// never visitor IP addresses or analytics metadata.
+export const explorersAnalyticsReceipts = pgTable("explorers_analytics_receipts", {
+  eventId: text("event_id").primaryKey(),
+  payloadHash: text("payload_hash").notNull(),
+  status: text("status").notNull().default("pending"),
+  strapiDocumentId: text("strapi_document_id"),
+  lastError: text("last_error"),
+  leaseId: text("lease_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Add user_activity table
@@ -215,15 +324,53 @@ export const emailLogs = pgTable("email_logs", {
   recipient: text("recipient").notNull(),
   subject: text("subject").notNull(),
   templateId: integer("template_id").references(() => emailTemplates.id),
-  status: text("status").notNull(), // sent, delivered, bounced, failed
+  status: text("status").notNull(), // pending, sent, delivered, bounced, failed, suppressed
   errorMessage: text("error_message"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deliveredAt: timestamp("delivered_at"),
   apiTokenId: integer("api_token_id").references(() => apiTokens.id),
-  messageId: text("message_id"), // AWS SES message ID
+  messageId: text("message_id"), // Resend message id
   metadata: jsonb("metadata").default({}),
   isTest: boolean("is_test").default(false),
   variables: text("variables")
+});
+
+/**
+ * Addresses that must not be contacted. Decision D2, 2026-10-08. DDL lives in
+ * migration 0051; this is the access definition for the one sender that exists.
+ *
+ * Keyed on the ADDRESS, not an account: a bounce, a complaint and an unsubscribe click all
+ * arrive carrying nothing but an address, and an address that never had an account can
+ * still land here.
+ *
+ * `email` is always stored normalised - lower(btrim(...)) - and the migration enforces it
+ * with a CHECK, so writes must normalise before inserting or the send-time lookup will
+ * never match the row. Use `normalizeSuppressionEmail`.
+ *
+ * There is no UPDATE or DELETE grant for the runtime role. Un-suppressing an address is the
+ * one operation here that can cause mail to reach somebody who asked for none.
+ */
+export const emailSuppressions = pgTable("email_suppressions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull(),
+  reason: text("reason").notNull(), // unsubscribe, bounce, complaint, manual
+  source: text("source"),
+  suppressedAt: timestamp("suppressed_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/**
+ * The single normalisation rule for a suppression address. Migration 0051 enforces the same
+ * rule as a CHECK, so this is the only shape that can be written.
+ */
+export function normalizeSuppressionEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+export const insertEmailSuppressionSchema = createInsertSchema(emailSuppressions).pick({
+  email: true,
+  reason: true,
+  source: true,
 });
 
 // Add relations
@@ -363,7 +510,40 @@ export const insertEmailLogSchema = createInsertSchema(emailLogs)
 // Export types
 export type Theme = z.infer<typeof themeSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export type MusicIdentityFields = Pick<typeof users.$inferSelect,
+  | "strapiUserDocumentId"
+  | "strapiAccountDocumentId"
+  | "strapiUsernameSnapshot"
+  | "strapiEmailSnapshot"
+  | "strapiProviderSnapshot"
+  | "strapiAccountNameSnapshot"
+  | "strapiAccountTypeSnapshot"
+  | "strapiAccountMobileSnapshot"
+  | "identityStatus"
+  | "sessionVersion"
+  | "lastIdentitySyncAt"
+  | "entitlementState"
+  | "entitlementVersion"
+  | "entitlementSourceUpdatedAt"
+  | "lastReconciledAt"
+  | "reconciliationObservationVersion"
+  | "reconciliationMismatchCount"
+  | "lifecycleOperationId"
+  | "lifecycleState"
+  | "lifecycleAttemptCount"
+  | "lifecycleLastAttemptAt"
+  | "lifecycleErrorCode"
+  | "lifecycleRetentionStage"
+  | "guestCapabilityHash"
+  | "guestCapabilityIssuedAt"
+  | "guestCapabilityRotatedAt"
+  | "guestCapabilityRevokedAt"
+  | "guestDiscoverable"
+>;
+// Legacy route/application code receives only its pre-C3 user projection.
+// New identity/lifecycle code must use MusicIdentityRepository so immutable
+// fields cannot accidentally become mass-assignment inputs in Task 4.
+export type User = Omit<typeof users.$inferSelect, keyof MusicIdentityFields>;
 export type Song = typeof songs.$inferSelect;
 export type InsertSong = z.infer<typeof insertSongSchema>;
 export type TeamMember = typeof teamMembers.$inferSelect;
@@ -384,6 +564,8 @@ export type UserProfile = typeof userProfiles.$inferSelect;
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
 export type ApiToken = typeof apiTokens.$inferSelect;
 export type InsertApiToken = z.infer<typeof insertApiTokenSchema>;
+export type EmailSuppression = typeof emailSuppressions.$inferSelect;
+export type InsertEmailSuppression = z.infer<typeof insertEmailSuppressionSchema>;
 export type EmailTemplate = typeof emailTemplates.$inferSelect;
 export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
 export type EmailLog = typeof emailLogs.$inferSelect;

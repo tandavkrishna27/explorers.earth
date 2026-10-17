@@ -1,3 +1,4 @@
+import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, ChevronLeft, ChevronRight, Star } from "lucide-react";
@@ -12,6 +13,7 @@ interface TopPicksHeroProps {
 }
 
 const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManageClick }: TopPicksHeroProps) => {
+  const categoryStyles = usePublicCategoryThemeStyles();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -63,7 +65,7 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
   };
 
   return (
-    <div className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden bg-black shadow-2xl group/hero mb-12">
+    <div data-public-category-artwork className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden bg-black shadow-2xl group/hero mb-12">
       {/* Background Presentation & Click Target */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -144,7 +146,7 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
               {showManageButton ? (
                 <button 
                   onClick={(e) => { e.stopPropagation(); onManageClick?.(); }}
-                  className="flex items-center gap-2 bg-dashboard-accent hover:opacity-90 text-white font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105"
+                  className={`flex items-center gap-2 ${categoryStyles ? 'bg-[var(--category-accent)]' : 'bg-dashboard-accent'} hover:opacity-90 ${categoryStyles ? 'text-[color:var(--category-accent-ink)]' : 'text-white'} font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105`}
                 >
                   <Star size={20} fill="currentColor" />
                   Manage Top Picks
@@ -152,7 +154,7 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
               ) : (
                 <button 
                   onClick={() => onMovieClick(activeMovie)}
-                  className="flex items-center gap-2 bg-dashboard-accent hover:opacity-90 text-white font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105"
+                  className={`flex items-center gap-2 ${categoryStyles ? 'bg-[var(--category-accent)]' : 'bg-dashboard-accent'} hover:opacity-90 ${categoryStyles ? 'text-[color:var(--category-accent-ink)]' : 'text-white'} font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105`}
                 >
                   <Play size={20} fill="currentColor" />
                   See Details

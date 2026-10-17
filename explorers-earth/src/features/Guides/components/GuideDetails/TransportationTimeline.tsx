@@ -16,7 +16,7 @@ import {
   TravelMode,
 } from "../../types/guideSectionTypes";
 import { getTransportSegments } from "../../utils/guideHelpers";
-import { parseTimeline } from "../../utils/guideDataParser";
+import { parseTimeline, parseStay, parseActivity } from "../../utils/guideDataParser";
 import {
   getTravelModeConfig,
   getTravelModeLabel,
@@ -25,9 +25,7 @@ import { calculateDistance } from "../../utils/distanceCalculator";
 import TransportationIcon from "../../../../assets/icons/TransportationIcon";
 import DirectionIcon from "../../../../assets/icons/DirectionIcon";
 import { motion, AnimatePresence } from "framer-motion";
-import { useMutation } from "@apollo/client";
-import { UPDATE_GUIDE_SECTION_MUTATION } from "../../api/mutations";
-import { GET_GUIDE_BY_ID_QUERY } from "../../api/queries";
+import {useGuideEditing} from '../../context/GuideEditingProvider';
 import { TravelModeSelector } from "../TravelModeSelector";
 import { toast } from "sonner";
 
@@ -131,18 +129,7 @@ const TransportationTimeline: React.FC<TransportationTimelineProps> = ({
     return null;
   }, [guide.Place_Details]);
 
-  const [updateGuideSectionMutation] = useMutation(
-    UPDATE_GUIDE_SECTION_MUTATION,
-    {
-      refetchQueries: [
-        {
-          query: GET_GUIDE_BY_ID_QUERY,
-          variables: { documentId: guide.documentId },
-        },
-      ],
-      awaitRefetchQueries: true,
-    }
-  );
+  const {getSection, saveSection} = useGuideEditing();
 
   // Group transport segments by section
   const sectionGroups = useMemo(() => {
@@ -172,6 +159,8 @@ const TransportationTimeline: React.FC<TransportationTimelineProps> = ({
         ...(timelineData.morning || []),
         ...(timelineData.afternoon || []),
         ...(timelineData.evening || []),
+        ...parseStay(section.Stay).accommodations,
+        ...parseActivity(section.Recommendation_Activity).activities,
       ];
 
       const sectionNodes: TransportNode[] = [];
@@ -179,9 +168,9 @@ const TransportationTimeline: React.FC<TransportationTimelineProps> = ({
       // Create nodes for each transport segment
       transportSegments.forEach((segment) => {
         const fromPlace = allPlaces.find(
-          (p) => p.place_id === segment.fromPlaceId
+          (p) => p.id === segment.fromPlaceId
         );
-        const toPlace = allPlaces.find((p) => p.place_id === segment.toPlaceId);
+        const toPlace = allPlaces.find((p) => p.id === segment.toPlaceId);
 
         if (fromPlace && toPlace) {
           // Create unique ID for this segment
@@ -281,14 +270,13 @@ const TransportationTimeline: React.FC<TransportationTimelineProps> = ({
         return seg;
       });
 
-      // Update the section with new transport data
-      await updateGuideSectionMutation({
-        variables: {
-          documentId: sectionDocumentId,
-          data: {
-            Transport: JSON.stringify({ segments: updatedSegments }),
-          },
-        },
+      // Only transport changes; every other block keeps its current value.
+      const target = getSection(sectionDocumentId);
+      if (!target) throw new Error("That part of the guide is no longer there. Refresh and try again.");
+      await saveSection(sectionDocumentId, {
+        title: target.Title,
+        description: target.Description ?? null,
+        Transport: {segments: updatedSegments},
       });
 
       toast.success("Travel mode updated successfully");

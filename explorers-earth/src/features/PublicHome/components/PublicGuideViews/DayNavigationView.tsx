@@ -1,3 +1,4 @@
+import { selectGuidePlaceThumbnail } from "../../utils/publicGuidePhotoViewModel";
 import { memo, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { parseTimeline } from "../../../Guides/utils/guideDataParser";
@@ -7,6 +8,8 @@ import DayDetailModal from "./DayDetailModal";
 import PlaceOverview from "../PlaceDetails/PlaceOverview";
 import GooglePlaceModal from "./GooglePlaceModal";
 import TransportationIcon from "../../../../assets/icons/TransportationIcon";
+import { usePublicCategoryThemeStyles } from "../PublicCategoryThemeContext";
+import { guideDescriptionText } from "../../../../utils/guideDescriptionText";
 
 interface DayNavigationViewProps {
   sections: any[];
@@ -26,6 +29,7 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
     place: null,
   });
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const categoryStyles = usePublicCategoryThemeStyles();
 
   // Helper function to remove redundant "Day X:" prefix from title
   const cleanTitle = (title: string, dayNumber: number): string => {
@@ -146,54 +150,13 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
   };
 
   // Get guide description
-  const guideDescription = useMemo(() => {
-    if (!guide?.Description) return null;
-    if (typeof guide.Description === "string") {
-      return guide.Description;
-    }
-    if (Array.isArray(guide.Description)) {
-      return guide.Description.map((block: any) =>
-        block.children?.map((child: any) => child.text).join(" ")
-      ).join(" ");
-    }
-    return null;
-  }, [guide?.Description]);
+  const guideDescription = useMemo(
+    () => guideDescriptionText(guide?.Description) || null,
+    [guide?.Description],
+  );
 
-  // Helper function to get S3 image from guide data by place_id
-  const getS3ImageForPlace = useMemo(() => {
-    const imageMap: Record<string, string | null> = {};
 
-    // Iterate through all sections to find activity photos
-    sections.forEach((section) => {
-      if (section.Recommendation_Activity?.activities) {
-        section.Recommendation_Activity.activities.forEach((activity: any) => {
-          if (activity.place_id && activity.photos && activity.photos.length > 0) {
-            // Use first photo from S3
-            const firstPhoto = activity.photos[0];
-            if (firstPhoto.url) {
-              imageMap[activity.place_id] = firstPhoto.url;
-            }
-          }
-        });
-      }
-    });
-
-    return imageMap;
-  }, [sections]);
-
-  // Get image URL for a place - prioritize S3 images from guide data
-  const getPlaceImage = (place: any): string => {
-    if (!place?.place_id) return "https://placehold.co/400x400";
-
-    // First check S3 images from guide data
-    const s3Image = getS3ImageForPlace[place.place_id];
-    if (s3Image) {
-      return s3Image;
-    }
-
-    // Fallback to placeholder
-    return "https://placehold.co/400x400";
-  };
+  const getPlaceImage = (place: unknown): string => selectGuidePlaceThumbnail(place, sections)?.url ?? "https://placehold.co/400x400";
 
   // Filter days based on selected tab
   const displayedDays = useMemo(() => {
@@ -206,11 +169,11 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
 
   if (daysWithData.length === 0) {
     return (
-      <div className="bg-gray-900 rounded-lg p-3 sm:p-4 md:p-6 border border-gray-700">
-        <h2 className="text-white text-base sm:text-lg md:text-xl font-poppins font-bold mb-1 sm:mb-2">
+      <div className="bg-[var(--category-card,#111827)] rounded-lg p-3 sm:p-4 md:p-6 border border-[var(--category-control-border,#374151)]">
+        <h2 className="text-[var(--category-text,#FFFFFF)] text-base sm:text-lg md:text-xl font-poppins font-bold mb-1 sm:mb-2">
           Journey
         </h2>
-        <p className="text-gray-400 text-xs sm:text-sm font-poppins">
+        <p className="text-[var(--category-muted,#9CA3AF)] text-xs sm:text-sm font-poppins">
           No journey information available yet.
         </p>
       </div>
@@ -230,23 +193,23 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              className="relative bg-gradient-to-br from-gray-900/98 via-gray-800/95 to-gray-900/98 rounded-2xl p-6 sm:p-8 md:p-10 border border-gray-700/80 backdrop-blur-md shadow-2xl overflow-hidden group hover:border-[hsl(var(--blue-cta))]/40 transition-all duration-300"
+              className="relative bg-gradient-to-br from-[var(--category-card,rgba(17,24,39,0.98))] via-[var(--category-card,rgba(31,41,55,0.95))] to-[var(--category-card,rgba(17,24,39,0.98))] rounded-2xl p-6 sm:p-8 md:p-10 border border-[var(--category-control-border,rgba(55,65,81,0.8))] backdrop-blur-md shadow-2xl overflow-hidden group hover:border-[hsl(var(--blue-cta))]/40 transition-all duration-300"
             >
               {/* Decorative gradient overlay */}
               <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--blue-cta))]/5 via-transparent to-[hsl(var(--blue-final))]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
               {/* Content */}
               <div className="relative z-10">
-                <div className="flex items-center gap-3 pb-2 border-b border-gray-700/50 mb-4">
+                <div className="flex items-center gap-3 pb-2 border-b border-[var(--category-control-border,rgba(55,65,81,0.5))] mb-4">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-1 h-8 sm:h-10 bg-gradient-to-b from-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] rounded-full"></div>
-                    <h3 className="text-white font-poppins font-bold text-xl sm:text-2xl md:text-3xl tracking-tight" style={{
+                    <div className="w-1 h-8 sm:h-10 bg-gradient-to-b from-[var(--category-accent,hsl(var(--blue-cta)))] to-[var(--category-accent,hsl(var(--blue-final)))] rounded-full"></div>
+                    <h3 className="text-[var(--category-text,#FFFFFF)] font-poppins font-bold text-xl sm:text-2xl md:text-3xl tracking-tight" style={{
                       textShadow: '0 2px 6px rgba(0,0,0,0.5)',
                       textRendering: 'optimizeLegibility',
                       WebkitFontSmoothing: 'antialiased',
                       MozOsxFontSmoothing: 'grayscale'
                     }}>
-                      <span className="bg-gradient-to-r from-[hsl(var(--blue-cta))] via-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] bg-clip-text text-transparent">
+                      <span className="bg-gradient-to-r from-[var(--category-text,hsl(var(--blue-cta)))] via-[var(--category-text,hsl(var(--blue-cta)))] to-[var(--category-text,hsl(var(--blue-final)))] bg-clip-text text-transparent">
                         About This Journey
                       </span>
                     </h3>
@@ -254,7 +217,7 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                 </div>
                 <div className="relative">
                   <p
-                    className={`text-gray-300 font-poppins text-sm sm:text-base md:text-lg font-normal leading-relaxed transition-all duration-300 ${!isDescriptionExpanded ? 'line-clamp-3' : ''
+                    className={`text-[var(--category-muted,#D1D5DB)] font-poppins text-sm sm:text-base md:text-lg font-normal leading-relaxed transition-all duration-300 ${!isDescriptionExpanded ? 'line-clamp-3' : ''
                       }`}
                     style={{
                       textRendering: 'optimizeLegibility',
@@ -268,7 +231,7 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                   {guideDescription && guideDescription.length > 300 && (
                     <button
                       onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                      className="mt-3 text-[hsl(var(--blue-cta))] hover:text-[hsl(var(--blue-final))] font-medium text-sm sm:text-base transition-colors duration-200 flex items-center gap-1.5 group"
+                      className={`mt-3 text-[var(--category-text,hsl(var(--blue-cta)))] hover:text-[var(--category-text,hsl(var(--blue-final)))] font-medium text-sm sm:text-base transition-colors duration-200 flex items-center gap-1.5 group ${categoryStyles ? "focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-[var(--category-focus)] focus-visible:!transform-none" : ""}`}
                     >
                       <span>{isDescriptionExpanded ? 'Read Less' : 'Read More'}</span>
                       <svg
@@ -307,24 +270,24 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                 className="space-y-6 sm:space-y-7 md:space-y-9"
               >
                 {/* Day Heading - Standard Typography (Matching Transport Tab) */}
-                <div className="flex items-center gap-3 pb-2 border-b border-gray-700/50">
+                <div className="flex items-center gap-3 pb-2 border-b border-[var(--category-control-border,rgba(55,65,81,0.5))]">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-1 h-8 sm:h-10 bg-gradient-to-b from-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] rounded-full"></div>
-                    <h2 className="text-white font-poppins font-bold text-xl sm:text-2xl md:text-3xl tracking-tight" style={{
+                    <div className="w-1 h-8 sm:h-10 bg-gradient-to-b from-[var(--category-accent,hsl(var(--blue-cta)))] to-[var(--category-accent,hsl(var(--blue-final)))] rounded-full"></div>
+                    <h2 className="text-[var(--category-text,#FFFFFF)] font-poppins font-bold text-xl sm:text-2xl md:text-3xl tracking-tight" style={{
                       textShadow: '0 2px 6px rgba(0,0,0,0.5)',
                       textRendering: 'optimizeLegibility',
                       WebkitFontSmoothing: 'antialiased',
                       MozOsxFontSmoothing: 'grayscale'
                     }}>
-                      <span className="text-[hsl(var(--blue-cta))]">
+                      <span className="text-[var(--category-text,hsl(var(--blue-cta)))]">
                         Day {dayNum}
                       </span>
                       {day.Title && (() => {
                         const cleanedTitle = cleanTitle(day.Title, dayNum);
                         return cleanedTitle ? (
                           <>
-                            <span className="text-gray-400/60 mx-2">|</span>
-                            <span className="text-white font-semibold text-base sm:text-lg md:text-xl tracking-normal" style={{
+                            <span className="text-[var(--category-muted,rgba(156,163,175,0.6))] mx-2">|</span>
+                            <span className="text-[var(--category-text,#FFFFFF)] font-semibold text-base sm:text-lg md:text-xl tracking-normal" style={{
                               textShadow: '0 2px 8px rgba(0,0,0,0.6)',
                               textRendering: 'optimizeLegibility',
                               WebkitFontSmoothing: 'antialiased',
@@ -367,7 +330,7 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                             setSelectedGooglePlace({ visible: true, place });
                           }}
                         >
-                          <div className="relative bg-gradient-to-br from-gray-900/95 to-gray-800/95 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-700/50 hover:border-[hsl(var(--blue-cta))]/50">
+                          <div className="relative bg-gradient-to-br from-[var(--category-card,rgba(17,24,39,0.95))] to-[var(--category-card,rgba(31,41,55,0.95))] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-700/50 hover:border-[hsl(var(--blue-cta))]/50">
                             {/* Enhanced Index Badge - Exact top-left corner, fully rounded to match card */}
                             <div className="absolute top-2 left-2 z-10 bg-black/40 backdrop-blur-sm text-white px-1.5 py-0.5 rounded-2xl text-[10px] font-poppins font-bold shadow-md border border-white/20">
                               {badgeLabel}
@@ -448,9 +411,9 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
-                    className="bg-gray-900 rounded-lg p-4 sm:p-6 border border-gray-700"
+                    className="bg-[var(--category-card,#111827)] rounded-lg p-4 sm:p-6 border border-[var(--category-control-border,#374151)]"
                   >
-                    <p className="text-gray-400 font-poppins text-sm sm:text-base">
+                    <p className="text-[var(--category-muted,#9CA3AF)] font-poppins text-sm sm:text-base">
                       No places available for this day.
                     </p>
                   </motion.div>
@@ -468,19 +431,19 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                 >
                   {/* Day Heading - Title and Location with Equal Prominence (Matching Transport Tab) */}
                   <div className="mb-20 sm:mb-24 md:mb-28">
-                    <div className="flex items-center gap-3 pb-3 border-b border-gray-700/50 mb-4">
+                    <div className="flex items-center gap-3 pb-3 border-b border-[var(--category-control-border,rgba(55,65,81,0.5))] mb-4">
                       <div className="flex items-center gap-2.5 flex-1">
-                        <div className="w-1 h-8 sm:h-10 bg-gradient-to-b from-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] rounded-full flex-shrink-0"></div>
+                        <div className="w-1 h-8 sm:h-10 bg-gradient-to-b from-[var(--category-accent,hsl(var(--blue-cta)))] to-[var(--category-accent,hsl(var(--blue-final)))] rounded-full flex-shrink-0"></div>
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-1">
                           {/* Location - Blue gradient color (First) */}
                           {dayLocation && (
-                            <h2 className="text-white font-poppins font-bold text-xl sm:text-2xl md:text-3xl tracking-tight" style={{
+                            <h2 className="text-[var(--category-text,#FFFFFF)] font-poppins font-bold text-xl sm:text-2xl md:text-3xl tracking-tight" style={{
                               textShadow: '0 2px 6px rgba(0,0,0,0.5)',
                               textRendering: 'optimizeLegibility',
                               WebkitFontSmoothing: 'antialiased',
                               MozOsxFontSmoothing: 'grayscale'
                             }}>
-                              <span className="bg-gradient-to-r from-[hsl(var(--blue-cta))] via-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] bg-clip-text text-transparent">
+                              <span className="bg-gradient-to-r from-[var(--category-text,hsl(var(--blue-cta)))] via-[var(--category-text,hsl(var(--blue-cta)))] to-[var(--category-text,hsl(var(--blue-final)))] bg-clip-text text-transparent">
                                 {dayLocation}
                               </span>
                             </h2>
@@ -489,9 +452,9 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                           {day.Title && (
                             <div className="flex items-center gap-2">
                               {dayLocation && (
-                                <span className="text-gray-500 hidden sm:inline">•</span>
+                                <span className="text-[var(--category-muted,#6B7280)] hidden sm:inline">•</span>
                               )}
-                              <span className="text-white font-poppins font-semibold text-base sm:text-lg md:text-xl tracking-normal" style={{
+                              <span className="text-[var(--category-text,#FFFFFF)] font-poppins font-semibold text-base sm:text-lg md:text-xl tracking-normal" style={{
                                 textShadow: '0 2px 8px rgba(0,0,0,0.6)',
                                 textRendering: 'optimizeLegibility',
                                 WebkitFontSmoothing: 'antialiased',
@@ -551,18 +514,20 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                                 className="absolute left-1/2 -translate-x-1/2 -top-32 sm:-top-36 md:-top-40 z-10 flex items-center gap-3 sm:gap-4"
                               >
                                 {/* Left Side - Distance */}
-                                <div className="flex items-center gap-1 sm:gap-1.5 text-gray-300 font-poppins text-xs sm:text-sm">
-                                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0 text-[hsl(var(--blue-cta))]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="flex items-center gap-1 sm:gap-1.5 text-[var(--category-muted,#D1D5DB)] font-poppins text-xs sm:text-sm">
+                                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0 text-[var(--category-accent,hsl(var(--blue-cta)))]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                   </svg>
-                                  <span className="whitespace-nowrap">{transportInfo.distanceKm.toFixed(1)} km</span>
+                                  {transportInfo.distanceKm !== null && (
+                                    <span className="whitespace-nowrap">{transportInfo.distanceKm.toFixed(1)} km</span>
+                                  )}
                                 </div>
 
                                 {/* Center - Dynamic Transport Icon */}
-                                <div className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[hsl(var(--blue-cta))]/20 flex items-center justify-center border border-[hsl(var(--blue-cta))]/40">
+                                <div className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[var(--category-accent,hsl(var(--blue-cta)))]/20 flex items-center justify-center border border-[hsl(var(--blue-cta))]/40">
                                   {modeConfig?.icon ? (
-                                    <div className="text-[hsl(var(--blue-cta))] flex items-center justify-center w-full h-full">
+                                    <div className="text-[var(--category-accent,hsl(var(--blue-cta)))] flex items-center justify-center w-full h-full">
                                       <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex items-center justify-center">
                                         {modeConfig.icon}
                                       </div>
@@ -575,8 +540,8 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                                 </div>
 
                                 {/* Right Side - Time */}
-                                <div className="flex items-center gap-1 sm:gap-1.5 text-gray-300 font-poppins text-xs sm:text-sm">
-                                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0 text-[hsl(var(--blue-cta))]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="flex items-center gap-1 sm:gap-1.5 text-[var(--category-muted,#D1D5DB)] font-poppins text-xs sm:text-sm">
+                                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0 text-[var(--category-accent,hsl(var(--blue-cta)))]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                   </svg>
                                   <span className="whitespace-nowrap">{transportInfo.estimatedMinutes} min</span>
@@ -591,8 +556,8 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
 
                             {/* Numbered Circle - Centered on Timeline Line, Positioned to Not Overlap Card - First Circle Moved Down */}
                             <div className={`absolute left-1/2 -translate-x-1/2 z-20 ${placeIndex === 0 ? '-top-16 sm:-top-18 md:-top-20' : '-top-24 sm:-top-26 md:-top-28'}`}>
-                              <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-gradient-to-br from-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] border-2 border-gray-900 shadow-xl flex items-center justify-center">
-                                <span className="text-white text-sm sm:text-base md:text-lg font-poppins font-extrabold">
+                              <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-gradient-to-br from-[var(--category-accent,hsl(var(--blue-cta)))] to-[var(--category-accent,hsl(var(--blue-final)))] border-2 border-[var(--category-control-border,#111827)] shadow-xl flex items-center justify-center">
+                                <span className="text-[var(--category-accent-ink,#FFFFFF)] text-sm sm:text-base md:text-lg font-poppins font-extrabold">
                                   {placeNumber}
                                 </span>
                               </div>
@@ -610,7 +575,7 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                                 setSelectedGooglePlace({ visible: true, place });
                               }}
                             >
-                              <div className="bg-gradient-to-br from-gray-900/95 to-gray-800/95 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-700/50 hover:border-[hsl(var(--blue-cta))]/50">
+                              <div className="bg-gradient-to-br from-[var(--category-card,rgba(17,24,39,0.95))] to-[var(--category-card,rgba(31,41,55,0.95))] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-700/50 hover:border-[hsl(var(--blue-cta))]/50">
                                 {/* Standard Large Image Height */}
                                 <div className="relative w-full aspect-square md:h-80 lg:h-96 overflow-hidden">
                                   <img

@@ -1,26 +1,53 @@
 import { test, expect } from '@playwright/test';
 import { setupMockAuthentication } from './setup/auth';
+import { denyHostedEgress } from './setup/deny-hosted-egress';
 
 test.beforeEach(async ({ context, page }) => {
+  await denyHostedEgress(page);
   await setupMockAuthentication(context);
+  let recommendationCreated = false;
+  const account = {
+    documentId: 'acc-789',
+    username: 'testuser',
+    Account_Name: 'Test Account',
+    Account_Type: 'business',
+    mobile_number: '1234567890',
+    profile_picture: null,
+    public_recommendations: 'No',
+    public_profile: 'Yes',
+    pinned_nav_tabs: [],
+    auto_pinning: false,
+    localtunes_integrated: false,
+    public_books: 'No',
+    public_movie: 'No',
+    public_games: 'No',
+    public_music: 'No',
+    public_guides: 'No',
+    public_apps: 'No',
+    public_products: 'No',
+    public_people: 'No',
+  };
 
   await page.route('**/graphql', async route => {
     const payload = route.request().postDataJSON();
 
-    if (payload?.query?.includes('CheckOnboardingStatus')) {
+    if (payload?.query?.includes('CheckOnboardingStatus') || payload?.query?.includes('MyAccountForBooks') || payload?.query?.includes('UsersPermissionsUser') || payload?.query?.includes('usersPermissionsUser')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           data: {
             usersPermissionsUser: {
-              accounts: [
-                {
-                  Account_Name: 'Test Account',
-                  Account_Type: 'business',
-                  mobile_number: '1234567890'
-                }
-              ]
+              id: 'fixture-user',
+              documentId: 'fixture-user',
+              username: 'testuser',
+              email: 'test@example.test',
+              provider: 'local',
+              confirmed: true,
+              blocked: false,
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              accounts: [account],
             }
           }
         })
@@ -34,14 +61,19 @@ test.beforeEach(async ({ context, page }) => {
             createBookList: {
               documentId: 'book-list-123',
               List_Name: 'My Summer Reads',
+              list_description: null,
               slug: 'my-summer-reads',
               visibility: false,
+              cover_image: null,
+              top_reads_heading: null,
               display_order: 0,
+              account: { documentId: account.documentId, username: account.username },
             }
           }
         })
       });
     } else if (payload?.query?.includes('createRecommendedBook')) {
+      recommendationCreated = true;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -49,25 +81,10 @@ test.beforeEach(async ({ context, page }) => {
           data: {
             createRecommendedBook: {
               documentId: 'book-rec-456',
+              volume_id: 'clean-code-id',
               title: 'Clean Code',
-            }
-          }
-        })
-      });
-    } else if (payload?.query?.includes('MyAccountForBooks') || payload?.query?.includes('Account')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            usersPermissionsUser: {
-              accounts: [
-                {
-                  documentId: 'acc-789',
-                  Account_Name: 'Test Account',
-                  public_books: 'No',
-                }
-              ]
+              display_order: 0,
+              is_pinned: false,
             }
           }
         })
@@ -82,9 +99,13 @@ test.beforeEach(async ({ context, page }) => {
               {
                 documentId: 'book-list-123',
                 List_Name: 'My Summer Reads',
+                list_description: null,
                 slug: 'my-summer-reads',
                 visibility: false,
+                cover_image: null,
+                top_reads_heading: null,
                 display_order: 0,
+                account: { documentId: account.documentId, username: account.username },
                 recommended_books: []
               }
             ]
@@ -101,10 +122,14 @@ test.beforeEach(async ({ context, page }) => {
               {
                 documentId: 'book-list-123',
                 List_Name: 'My Summer Reads',
+                list_description: null,
                 slug: 'my-summer-reads',
                 visibility: false,
+                cover_image: null,
+                top_reads_heading: null,
                 display_order: 0,
-                recommended_books: [
+                account: { documentId: account.documentId, username: account.username },
+                recommended_books: recommendationCreated ? [
                   {
                     documentId: 'book-rec-456',
                     volume_id: 'clean-code-id',
@@ -131,11 +156,17 @@ test.beforeEach(async ({ context, page }) => {
                     book_categories: [],
                     Media: []
                   }
-                ]
+                ] : []
               }
             ]
           }
         })
+      });
+    } else if (payload?.query?.includes('bookCategories')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { bookCategories: [] } }),
       });
     } else {
       await route.fulfill({
@@ -144,6 +175,36 @@ test.beforeEach(async ({ context, page }) => {
         body: JSON.stringify({ data: {} })
       });
     }
+  });
+
+  await page.route('**/books/content**', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'image/png',
+      body: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    });
+  });
+
+  await page.route('**/api/instagram/media-proxy**', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'image/png',
+      body: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    });
+  });
+
+  await page.route('**/upload', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{ url: '/uploads/fixture-book-cover.jpg' }]),
+    });
   });
 
   // Mock Google Books API search call
@@ -173,6 +234,16 @@ test.beforeEach(async ({ context, page }) => {
 });
 
 test('Flow 2: Books List and Recommendation creation E2E', async ({ page }) => {
+  const consoleErrors: string[] = [];
+  const failedResponses: string[] = [];
+  page.on('console', message => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
+  page.on('response', response => {
+    if (response.status() >= 400) {
+      failedResponses.push(`${response.status()} ${response.url()}`);
+    }
+  });
   await page.goto('/recommendations/books');
 
   const addListBtn = page.locator('button:has-text("New List")').first();
@@ -208,5 +279,10 @@ test('Flow 2: Books List and Recommendation creation E2E', async ({ page }) => {
   await saveBtn.click();
 
   await expect(page).toHaveURL(/\/recommendations\/books\/book-list-123/);
+  await expect(page.getByRole('heading', { name: 'Publish this list?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Keep Draft' }).click();
+  await expect(page.getByRole('heading', { name: 'Publish this list?' })).toBeHidden();
   await expect(page.locator('text=Clean Code')).toBeVisible();
+  expect(failedResponses).toEqual([]);
+  expect(consoleErrors).toEqual([]);
 });

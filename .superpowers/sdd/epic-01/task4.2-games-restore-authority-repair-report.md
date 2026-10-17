@@ -1,0 +1,9 @@
+# Games restore authority repair: review ready
+
+Immutable70223d preserved, no staging/commit/push/PG/UAT. Same three original-owned test paths frozen in task4.2-games-restore-authority-repair-hashes.json.
+
+Accepted plan precision implemented: frozen scalar source commit/containerId/imageId/complete validated target+digest; beforeAll initial snapshot distinct from local mutable restoreURL. Each native invoke freshly resolves actualHEAD and validates full current C10/strictDB against every scalar before Docker exec. Existing fixed safe attestation/child errors,15s64MiB, strict source identifier, owned comment/runtime role/cleanup and all12test identities/assertions preserved. Both remaining historical51642 predicates now absent from complete owned native/helper source; fixture51644 and in-process authorigin51643 intentional.
+
+SupportedNode24.21 with existing physically owned locked70223d dependency facility: executable oldrestore51642 RED35PASS9FAIL; full selected GREEN116PASS0FAIL0SKIP. Additional9 restore cases cover approved51644 twice, immutable mutation/source-destination separation, second-call crosscommit/DB/role/container/missing/image and changedVALIDimageID whose fresh image/container receipts are internally consistent. Actual existing attestation runs, continuation is inert spy, no native dump/PG resources. strict/scoped/baseline0; diffcheck0. Evidence C:/Users/TK/.codex/tmp/games-native-followup-70223d5-26b526853be64fd8a2d1341f7a564f8e/restore-{red,green}.json/log and restore-{strict,scoped,baseline}.log. Primary/private exact3 source bytes bound by updated manifest.
+
+Historical70223d actual11PASS1restore-before-dumpFAIL retained,42b1native84/12blocked separate. No native12/canonical82 qualification claim until independent review, separate follow-up commit and newly allocated fresh currentHEAD authority.

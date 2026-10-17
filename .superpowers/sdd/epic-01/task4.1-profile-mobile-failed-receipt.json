@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "lane": "profile",
+  "provenance": {
+    "commit": "0c0b1075d7b577e95dbd6fdb3556f2635e3ec250",
+    "sourceHash": "f49a04806e5c3fd2aaf0d51d06cd7dbb2f6d70b3d7062c58ea60d7da2ffffa52",
+    "manifestHash": "791bc1f2c9e105eb3aeed24d89c824e157d4bd07120f6f5e3fcae1cdda4944d5",
+    "dirty": true
+  },
+  "results": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+        "titlePath": [
+          "canonical onboarding and profile round-trip at 1365px"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+        "titlePath": [
+          "canonical onboarding and profile round-trip at 390px"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "retry": 0
+        }
+      ]
+    }
+  ],
+  "child": {
+    "status": 1,
+    "signal": null
+  },
+  "diagnostics": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+        "titlePath": [
+          "canonical onboarding and profile round-trip at 390px"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "kind": "timeout",
+      "matcher": "toMatchObject",
+      "locations": [
+        {
+          "line": 111,
+          "column": 17
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "status": "passed"
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  }
+}

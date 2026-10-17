@@ -1,8 +1,10 @@
+import { NavigationStatus } from "../features/navigation/NavigationStatus";
+import { useCategoryNavigation } from "../features/navigation/CategoryNavigationProvider";
+import type { CategoryId } from "../features/navigation/categoryNavigationPolicy";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { useQuery, useMutation, type ApolloCache } from "@apollo/client";
 import {
   MapPin, Music, Film, BookOpen, Gamepad2,
   ChevronRight, Smartphone, ShoppingBag, Users,
@@ -12,14 +14,9 @@ import {
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
-import {
-  accountQuery,
-  updateAccountMutation,
-} from "../features/Settings/api/mutation";
-import { useQuery as useReactQuery } from "@tanstack/react-query";
-import { localTunesRequest } from "../lib/apiClient";
-import { getPublicCategoryListCountsQuery } from "../features/PublicHome/api/query";
-import { computePinnedNavTabIds, getVisibleNavTabIds, resolveAutoPinning } from "../utils/navPinning";
+import { computePinnedNavTabIds, getNavSlotExclusion, getVisibleNavTabIds } from "../utils/navPinning";
+import MusicNavLimitNotice from "../components/MusicNavLimitNotice";
+import { publicMusicClient } from "../features/music/publicMusicClient";
 
 type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 
@@ -30,8 +27,8 @@ interface CategoryConfig {
   description: string;
   color: string;
   path: string;
-  visibilityField: string;
-  tabId: string;
+  visibilityField: CategoryId;
+  tabId: CategoryId;
 }
 
 const CATEGORIES: CategoryConfig[] = [
@@ -145,13 +142,9 @@ const Bird = ({ delay }: { delay: number }) => (
       stroke="currentColor" 
       strokeWidth="1.5" 
       strokeLinecap="round" 
-      animate={{ 
-        d: [
-          "M2 10 C 6 6, 10 6, 12 8 C 14 6, 18 6, 22 10", 
-          "M4 6 C 8 8, 10 8, 12 8 C 14 8, 16 8, 20 6"
-        ] 
-      }} 
+      animate={{ scaleY: [1, 0.55, 1], y: [0, -1, 0] }}
       transition={{ duration: 1.5, repeat: Infinity, repeatType: "reverse", delay: delay, ease: "easeInOut" }} 
+      style={{ transformOrigin: "12px 8px" }}
     />
   </motion.svg>
 );
@@ -170,14 +163,9 @@ const AmbientMotion = ({ category }: { category: CategoryKey }) => {
           <motion.path
             d="M0 50 Q 25 30, 50 50 T 100 50 V100 H0 Z"
             fill="white"
-            animate={{ 
-              d: [
-                "M0 50 Q 25 30, 50 50 T 100 50 V100 H0 Z", 
-                "M0 50 Q 25 70, 50 50 T 100 50 V100 H0 Z", 
-                "M0 50 Q 25 30, 50 50 T 100 50 V100 H0 Z"
-              ] 
-            }}
+            animate={{ opacity: [0.7, 1, 0.7], scaleY: [1, 0.82, 1] }}
             transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+            style={{ transformOrigin: "50px 100px" }}
           />
         </svg>
       </div>
@@ -255,7 +243,14 @@ const MusicAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
       <motion.div className="absolute bottom-[-10%] left-[-5%] w-48 h-48 border border-purple-500/10 rounded-full" animate={{ scale: [1, 1.3, 1], opacity: [0.1, 0.3, 0.1] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} />
       <motion.div style={{ y: yMoon }} className="absolute top-[-10px] left-[15%] w-32 h-32 bg-purple-500/10 rounded-full blur-[50px]" />
       <motion.svg style={{ y: y1 }} className="absolute bottom-0 w-full h-[50%] opacity-20" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <motion.path d="M0 50 Q 25 40, 50 50 T 100 50 V 100 H 0 Z" fill="currentColor" className="text-purple-300" animate={{ d: ["M0 50 Q 25 40, 50 50 T 100 50 V 100 H 0 Z", "M0 50 Q 25 60, 50 50 T 100 50 V 100 H 0 Z", "M0 50 Q 25 40, 50 50 T 100 50 V 100 H 0 Z"] }} transition={{ duration: 6, repeat: Infinity }} />
+        <motion.path
+          d="M0 50 Q 25 40, 50 50 T 100 50 V 100 H 0 Z"
+          fill="currentColor"
+          className="text-purple-300"
+          animate={{ opacity: [0.75, 1, 0.75], scaleY: [1, 0.86, 1] }}
+          transition={{ duration: 6, repeat: Infinity }}
+          style={{ transformOrigin: "50px 100px" }}
+        />
       </motion.svg>
       <FloatingItem x={30} delay={0} duration={20}><Music size={14}/></FloatingItem>
       <FloatingItem x={70} delay={5} duration={25}><Music size={18}/></FloatingItem>
@@ -562,6 +557,9 @@ interface RecommendationCardProps {
   onTogglePin: (cat: CategoryConfig) => void;
   onToggleVisibility: (cat: CategoryConfig) => void;
   isUpdating: boolean;
+  automatic: boolean;
+  pinSelected: boolean;
+  unverified: boolean;
 }
 
 const RecommendationCard = ({
@@ -571,6 +569,9 @@ const RecommendationCard = ({
   onTogglePin,
   onToggleVisibility,
   isUpdating,
+  automatic,
+  pinSelected,
+  unverified,
 }: RecommendationCardProps) => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -672,7 +673,11 @@ const RecommendationCard = ({
       </div>
 
       {/* Top Status & Kebab Menu Bar */}
-      <div className="absolute top-3.5 right-3.5 z-40 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+      {cat.key === "music" ? (
+        <div className="absolute right-3.5 top-3.5 z-40 rounded-full border border-white/10 bg-slate-900/80 px-2.5 py-1 text-xs font-semibold text-white/70">
+          Sharing in Music
+        </div>
+      ) : <div className="absolute top-3.5 right-3.5 z-40 flex items-center gap-2" onClick={e => e.stopPropagation()}>
         {/* Pin indicator — icon only (a pinned category is always public too) */}
         {isPinned && (
           <div
@@ -720,8 +725,10 @@ const RecommendationCard = ({
                 style={{ position: "fixed", top: menuPos.top, left: menuPos.left, width: 208 }}
                 className="rounded-xl bg-slate-950/95 border border-white/15 backdrop-blur-xl shadow-2xl p-1.5 z-[100] flex flex-col gap-0.5 text-xs font-medium text-white max-h-[70vh] overflow-y-auto"
               >
-              {/* Action 1: Pin/Unpin to Nav Bar */}
-              <button
+              {/* Placement changes require an explicit Manual mode choice. */}
+              {automatic ? <button onClick={() => navigate("/settings#public-navigation")} className="px-3 py-2 text-left">Automatic placement · Manual mode in Settings</button> : <button
+                disabled={isUpdating || unverified || (!isPublic && !pinSelected)}
+                title={!isPublic && !pinSelected ? "Publish this category before pinning it." : undefined}
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowKebab(false);
@@ -729,7 +736,7 @@ const RecommendationCard = ({
                 }}
                 className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg hover:bg-white/10 text-dashboard-muted hover:text-white transition-colors text-left"
               >
-                {isPinned ? (
+                {pinSelected ? (
                   <>
                     <PinOff size={13} className="text-amber-400 shrink-0" />
                     <span>Unpin from Public Nav</span>
@@ -740,10 +747,11 @@ const RecommendationCard = ({
                     <span>Pin to Public Nav (Max 5)</span>
                   </>
                 )}
-              </button>
+              </button>}
 
               {/* Action 2: Enable/Disable Public URL */}
               <button
+                disabled={isUpdating || unverified}
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowKebab(false);
@@ -786,7 +794,7 @@ const RecommendationCard = ({
           </AnimatePresence>,
           document.body
         )}
-      </div>
+      </div>}
 
       <div className="absolute inset-0 p-6 md:p-7 flex items-center z-20">
         <div className="flex flex-col min-w-0">
@@ -865,298 +873,69 @@ const RecommendationCard = ({
 // --- Main RecommendationsHub Component ---
 
 const RecommendationsHub = () => {
-  const { user } = useAuthStore();
-  const { data: accountData, refetch: refetchAccount } = useQuery(accountQuery, {
-    variables: { filters: { username: { eq: user?.username } } },
-    skip: !user?.username,
-    // Revalidate on every hub mount so pinned/visibility state isn't stale after
-    // returning from a category flow (default cache-first would serve old data).
-    fetchPolicy: "cache-and-network",
-  });
+  const navigation = useCategoryNavigation();
+  const account = useMemo(() => navigation.snapshot ? {
+    documentId: navigation.snapshot.scope.accountDocumentId, ...navigation.snapshot.visibility,
+    auto_pinning: navigation.snapshot.autoPinning, pinned_nav_tabs: navigation.snapshot.savedPins,
+  } : undefined, [navigation.snapshot]);
+  const [canonicalMusicAvailable, setCanonicalMusicAvailable] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    setCanonicalMusicAvailable(false);
+    if (account?.public_music === "Yes" && account?.documentId) {
+      publicMusicClient.discover(account.documentId, controller.signal)
+        .then(() => { if (!controller.signal.aborted) setCanonicalMusicAvailable(true); })
+        .catch(() => { if (!controller.signal.aborted) setCanonicalMusicAvailable(false); });
+    }
+    return () => controller.abort();
+  }, [account?.documentId, account?.public_music]);
 
-  const account = accountData?.accounts?.[0];
-  const accountDocumentId = account?.documentId;
-
-  // Published-list counts per category — drives both the nav auto-ranking and the
-  // "has publishable content" guard. Same query PublicNav uses, so counts match.
-  const {
-    data: listCountsData,
-    loading: countsLoading,
-    error: countsError,
-  } = useQuery(getPublicCategoryListCountsQuery, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    // Default cache-first serves a stale (possibly empty) count after the user
-    // creates a list elsewhere and returns to the hub, wrongly blocking
-    // enable/pin via hasPublishedContent. Revalidate from network on mount, and
-    // guard the content check on countsLoading/countsError (see contentNotReady)
-    // so we never validate against stale/undefined counts mid-revalidation.
-    fetchPolicy: "cache-and-network",
-  });
-
+  // Counts are display-only auto-ranking inputs. Publication eligibility is
+  // freshly checked by the shared writer after the explicit owner action.
+  //
+  // These come from the canonical owner-content read now, not the legacy
+  // PublicCategoryListCounts query, which asked Strapi for an account's lists and
+  // is one of the four operations the contained E2E fixture denies outright.
+  // A category whose canonical producer does not exist yet contributes 0: we will
+  // not claim a count we have no canonical source for, and Settings already
+  // labels those categories "No content".
+  const canonicalCounts = navigation.content?.counts;
   const countMap: Record<string, number> = useMemo(() => ({
-    public_recommendations: listCountsData?.recommendationLists?.length ?? 0,
-    public_movie:           listCountsData?.movieLists?.length ?? 0,
-    public_books:           listCountsData?.bookLists?.length ?? 0,
-    public_games:           listCountsData?.gameLists?.length ?? 0,
-    public_apps:            listCountsData?.appLists?.length ?? 0,
-    public_products:        listCountsData?.productLists?.length ?? 0,
-    public_people:          listCountsData?.personLists?.length ?? 0,
-    public_guides:          listCountsData?.guides?.length ?? 0,
+    public_recommendations: canonicalCounts?.public_recommendations ?? 0,
+    public_movie:           canonicalCounts?.public_movie ?? 0,
+    public_books:           canonicalCounts?.public_books ?? 0,
+    public_games:           canonicalCounts?.public_games ?? 0,
+    public_apps:            canonicalCounts?.public_apps ?? 0,
+    public_products:        canonicalCounts?.public_products ?? 0,
+    public_people:          canonicalCounts?.public_people ?? 0,
+    public_guides:          canonicalCounts?.public_guides ?? 0,
     public_music:           0,
     public_profile:         0,
-  }), [listCountsData]);
-
-  const [updateAccount] = useMutation(updateAccountMutation);
-  // Track which single category is mid-mutation so only that card shows a spinner
-  const [updatingKey, setUpdatingKey] = useState<CategoryKey | null>(null);
-  // Synchronous re-entrancy lock. pin/unpin/visibility all write the same account,
-  // and updatingKey is React state that doesn't flip until a re-render — so rapid
-  // clicks can enter two handlers before it updates. This ref flips synchronously
-  // before the first await and is released after the refetch settles.
-  const accountMutationLock = useRef(false);
-
-  // Account isn't normalized in apolloCache (its onboarding query omits documentId),
-  // so a successful updateAccount only reaches the hub via refetchAccount(). If that
-  // refetch fails, pinnedTabIds stays on the pre-mutation snapshot and a later pin
-  // overwrites the change. Patch the account query cache from the mutation result so
-  // the successful write is authoritative regardless of the refetch outcome.
-  const reconcileAccountCache = (
-    cache: ApolloCache<unknown>,
-    updated: Record<string, unknown> | null | undefined
-  ) => {
-    if (!updated) return;
-    cache.updateQuery<{ accounts: Record<string, unknown>[] }>(
-      { query: accountQuery, variables: { filters: { username: { eq: user?.username } } } },
-      (existing) =>
-        existing?.accounts?.length
-          ? { accounts: [{ ...existing.accounts[0], ...updated }, ...existing.accounts.slice(1)] }
-          : existing ?? undefined
-    );
-  };
+  }), [canonicalCounts]);
 
   // Effective public-nav state, derived exactly like PublicNav (the live nav).
   const visibleSet = useMemo(() => getVisibleNavTabIds(account), [account]);
-  const pinnedTabIds = useMemo(() => computePinnedNavTabIds(account, countMap), [account, countMap]);
+  const musicAvailable = account?.public_music === "Yes" && canonicalMusicAvailable;
+  const pinnedTabIds = useMemo(() => computePinnedNavTabIds(account, countMap, { musicAvailable }), [account, countMap, musicAvailable]);
   const pinnedSet = useMemo(() => new Set(pinnedTabIds), [pinnedTabIds]);
+  const musicSlotExclusion = getNavSlotExclusion(account, "public_music", { musicAvailable });
 
-  // Music lives in LocalTunes (not Strapi); fetch the user's playlists so the hub
-  // applies the same guest-visible-playlist guard that Settings and the modal use.
-  const {
-    data: musicPlaylists,
-    // isFetching (not isLoading): React Query reports isLoading:false whenever
-    // cached data exists, so a background refetch (e.g. after changing playlist
-    // visibility in MusicDashboard and returning to the hub) would otherwise be
-    // treated as "ready" and validated against the stale cached array.
-    isFetching: musicFetching,
-    isError: musicError,
-  } = useReactQuery<any[]>({
-    queryKey: ["tunes-playlists", user?.username],
-    queryFn: () => localTunesRequest("GET", `/api/playlists?username=${user?.username}`),
-    enabled: !!user?.username,
-  });
-
-  // A category can be made public once it has publishable content.
-  const hasPublishedContent = (cat: CategoryConfig): boolean => {
-    if (cat.key === "music") {
-      return account?.localtunes_integrated === "Yes" &&
-        (musicPlaylists?.some((pl: any) => pl.isVisibleToGuests === true) ?? false);
-    }
-    return (countMap[cat.tabId] ?? 0) > 0;
+  // Saved manual intent is distinct from effective (availability-filtered) tabs.
+  const savedPins = Array.isArray(navigation.snapshot?.savedPins) ? navigation.snapshot.savedPins : [];
+  const handleTogglePin = (cat: CategoryConfig) => {
+    const origin = navigation.authority;
+    if (!origin || navigation.busy || navigation.snapshot?.autoPinning || cat.key === "music") return;
+    void navigation.request({ category: cat.tabId, action: savedPins.includes(cat.tabId) ? "unpin" : "pin" }, origin);
   };
-
-  // hasPublishedContent's data source differs by category: music reads the Local
-  // Tunes playlists (a separate React Query), everything else reads the Strapi
-  // count query (cache-and-network can expose stale/empty counts mid-revalidation).
-  // Guard on the RIGHT source's loading/error so we never validate against data
-  // that hasn't loaded — and don't block one category on another query's error.
-  // Returns true (and toasts) if the relevant source isn't ready.
-  const contentNotReady = (cat: CategoryConfig): boolean => {
-    if (cat.key === "music") {
-      if (musicFetching) {
-        toast.info("Checking your Music, please wait…");
-        return true;
-      }
-      if (musicError) {
-        toast.error("Couldn't verify your Music. Please try again.");
-        return true;
-      }
-      return false;
-    }
-    if (countsLoading) {
-      toast.info("Checking your published lists, please wait…");
-      return true;
-    }
-    if (countsError) {
-      toast.error("Couldn't verify your published lists. Please try again.");
-      return true;
-    }
-    return false;
-  };
-
-  // Handle Toggle Pin
-  const handleTogglePin = async (cat: CategoryConfig) => {
-    if (!accountDocumentId) {
-      toast.error("Account data not loaded. Please try again.");
-      return;
-    }
-
-    // Serialize account mutations. pinned_nav_tabs is derived from the current
-    // pinnedTabIds snapshot, so a second pin/unpin that runs before the first
-    // mutation + refetch land would overwrite it. updatingKey is React state and
-    // lags a render, so a rapid double-click can pass it twice; a ref-backed lock
-    // flips synchronously (before the first await) and is released after refetch.
-    if (accountMutationLock.current) return;
-
-    // Basis = the effective set actually shown in the nav (auto or manual), so the
-    // card's pin state and this action can never disagree. Any pin/unpin switches
-    // the account to manual mode (auto_pinning: false) — we tell the user when it does.
-    const wasAuto = resolveAutoPinning(account);
-    const isCurrentlyPinned = pinnedSet.has(cat.tabId);
-
-    if (isCurrentlyPinned) {
-      // Unpin
-      const updatedPinned = pinnedTabIds.filter(id => id !== cat.tabId);
-      accountMutationLock.current = true;
-      setUpdatingKey(cat.key);
-      try {
-        await updateAccount({
-          variables: {
-            documentId: accountDocumentId,
-            data: {
-              pinned_nav_tabs: updatedPinned,
-              auto_pinning: false,
-            },
-          },
-          update: (cache, res) => reconcileAccountCache(cache, res.data?.updateAccount),
-        });
-        toast.success(wasAuto
-          ? `Unpinned ${cat.label}. Nav switched to manual mode.`
-          : `Unpinned ${cat.label} from public navigation.`);
-        await refetchAccount();
-      } catch (err: any) {
-        toast.error(`Failed to unpin ${cat.label}: ${err.message || ""}`);
-      } finally {
-        setUpdatingKey(null);
-        accountMutationLock.current = false;
-      }
-    } else {
-      // Pin: enforce the 5-slot cap (profile counts as slot 1)
-      if (pinnedTabIds.length >= 5) {
-        toast.error("Maximum 5 tabs can be pinned to your public navigation bar. Unpin an existing tab first.");
-        return;
-      }
-
-      // Pinning forces the category public — require content if it isn't already
-      // visible. Guard on the counts query first (cache-and-network can expose
-      // stale counts mid-revalidation) so we never wrongly reject a category that
-      // actually has content.
-      if (!visibleSet.has(cat.tabId)) {
-        if (contentNotReady(cat)) return;
-        if (!hasPublishedContent(cat)) {
-          toast.error(`Create and publish at least 1 list in ${cat.label} before pinning it to your public profile.`);
-          return;
-        }
-      }
-
-      const updatedPinned = [...pinnedTabIds, cat.tabId];
-      accountMutationLock.current = true;
-      setUpdatingKey(cat.key);
-      try {
-        await updateAccount({
-          variables: {
-            documentId: accountDocumentId,
-            data: {
-              pinned_nav_tabs: updatedPinned,
-              auto_pinning: false,
-              [cat.visibilityField]: "Yes",
-            },
-          },
-          update: (cache, res) => reconcileAccountCache(cache, res.data?.updateAccount),
-        });
-        toast.success(wasAuto
-          ? `Pinned ${cat.label}. Nav switched to manual mode.`
-          : `Pinned ${cat.label} to public navigation!`);
-        await refetchAccount();
-      } catch (err: any) {
-        toast.error(`Failed to pin ${cat.label}: ${err.message || ""}`);
-      } finally {
-        setUpdatingKey(null);
-        accountMutationLock.current = false;
-      }
-    }
-  };
-
-  // Handle Toggle Public Visibility
-  const handleToggleVisibility = async (cat: CategoryConfig) => {
-    if (!accountDocumentId) {
-      toast.error("Account data not loaded. Please try again.");
-      return;
-    }
-
-    // Serialize with the other account mutations (shares the account write): the
-    // ref-backed lock flips synchronously, so a rapid click can't enter while one
-    // is in flight and derive its update from a stale account snapshot.
-    if (accountMutationLock.current) return;
-
-    const currentlyPublic = visibleSet.has(cat.tabId);
-
-    if (currentlyPublic) {
-      // Turn off the public URL. A hidden tab drops out of the nav automatically
-      // (computePinnedNavTabIds filters by visibility), so pins are left untouched.
-      accountMutationLock.current = true;
-      setUpdatingKey(cat.key);
-      try {
-        await updateAccount({
-          variables: {
-            documentId: accountDocumentId,
-            data: {
-              [cat.visibilityField]: "No",
-            },
-          },
-          update: (cache, res) => reconcileAccountCache(cache, res.data?.updateAccount),
-        });
-        toast.success(`${cat.label} public URL is now disabled.`);
-        await refetchAccount();
-      } catch (err: any) {
-        toast.error(`Failed to update ${cat.label} visibility: ${err.message || ""}`);
-      } finally {
-        setUpdatingKey(null);
-        accountMutationLock.current = false;
-      }
-    } else {
-      // Turn On Visibility
-      if (contentNotReady(cat)) return;
-      if (!hasPublishedContent(cat)) {
-        toast.error(`Create and publish at least 1 list in ${cat.label} before enabling public visibility.`);
-        return;
-      }
-
-      accountMutationLock.current = true;
-      setUpdatingKey(cat.key);
-      try {
-        await updateAccount({
-          variables: {
-            documentId: accountDocumentId,
-            data: {
-              [cat.visibilityField]: "Yes",
-            },
-          },
-          update: (cache, res) => reconcileAccountCache(cache, res.data?.updateAccount),
-        });
-        toast.success(`${cat.label} public URL is now enabled!`);
-        await refetchAccount();
-      } catch (err: any) {
-        toast.error(`Failed to enable ${cat.label} visibility: ${err.message || ""}`);
-      } finally {
-        setUpdatingKey(null);
-        accountMutationLock.current = false;
-      }
-    }
+  const handleToggleVisibility = (cat: CategoryConfig) => {
+    const origin = navigation.authority;
+    if (!origin || navigation.busy || cat.visibilityField === "public_music") return;
+    void navigation.request({ category: cat.visibilityField, action: visibleSet.has(cat.tabId) ? "unpublish" : "publish" }, origin);
   };
 
   return (
     <div className="min-h-screen bg-dashboard-bg text-dashboard px-4 md:px-8 py-6 md:py-8 pb-24 max-w-7xl mx-auto">
+      <NavigationStatus navigation={navigation} />
       {/* Header Banner */}
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white uppercase font-poppins">
@@ -1166,6 +945,8 @@ const RecommendationsHub = () => {
           Curate, organize, and share your favorite places, movies, books, games, tools, and guides across the world.
         </p>
       </div>
+
+      {musicSlotExclusion && <MusicNavLimitNotice maxSlots={musicSlotExclusion.maxSlots} />}
 
       {/* Main 3x3 Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
@@ -1177,7 +958,10 @@ const RecommendationsHub = () => {
             isPublic={visibleSet.has(cat.tabId)}
             onTogglePin={handleTogglePin}
             onToggleVisibility={handleToggleVisibility}
-            isUpdating={updatingKey === cat.key}
+            isUpdating={navigation.busy}
+            automatic={navigation.snapshot?.autoPinning ?? true}
+            pinSelected={savedPins.includes(cat.tabId)}
+            unverified={!navigation.authority}
           />
         ))}
       </div>

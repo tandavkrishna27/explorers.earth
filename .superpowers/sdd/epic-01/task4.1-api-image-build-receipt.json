@@ -1,0 +1,30 @@
+{
+  "qualification": "local current source build/import only, no hosted scan/release proof",
+  "baseHead": "0c0b1075d7b577e95dbd6fdb3556f2635e3ec250",
+  "source": "exactprivate150 archived base plus frozen reviewed overlays",
+  "imageId": "sha256:45a97b06f840e63df2070c1a1dfd8ea5766e9badf9c73ae9de4a0fdd712a9d2f",
+  "platform": "linux/amd64",
+  "buildExit": 0,
+  "productionGraphSmokeExit": 0,
+  "network": "none",
+  "migrationHashesMatchPrivate": true,
+  "migrationCount": 38,
+  "entrypointsPresent": true,
+  "npmPresent": false,
+  "tsxPresent": false,
+  "logs": [
+    "task4.1-api-image-build.log",
+    "task4.1-api-image-graph-smoke.log",
+    "task4.1-api-image-content.json"
+  ],
+  "releaseQualified": false,
+  "vulnerabilityScan": "not run locally; hosted gate pending",
+  "limitation": "local tag and dirty source; basecommit label does not claim committedB image provenance",
+  "logArchivalTransformation": {
+    "kind": "archival log copy; not raw tool output",
+    "transformation": "only trailing line spaces/tabs removed; line endings preserved",
+    "rawPrivatePath": "C:\\Users\\TK\\.codex\\tmp\\movies-b-qualification-36301b7c8cf5\\.api-image-qualification.log",
+    "rawSha256": "ce7b4dd8b11e8aab38eac8def05d1d585268be7777b6100b33eaf60ea077350e",
+    "archivalSha256": "dc2155cc471320505eae62a665b2395cab274be7fe446b7e8d88fadd748595da"
+  }
+}

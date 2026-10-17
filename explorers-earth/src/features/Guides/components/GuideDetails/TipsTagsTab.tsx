@@ -12,14 +12,14 @@ import type { Guide } from "../../types";
 interface TipsTagsTabProps {
   guide: Guide;
   guideId: string;
-  updateGuide: any; // Mutation function from useMutation
+  saveTips: (input: {tipsNotes: unknown; tags: string[]}) => Promise<void>;
   onUpdate?: () => void;
 }
 
 const TipsTagsTab: React.FC<TipsTagsTabProps> = ({
   guide,
   guideId,
-  updateGuide,
+  saveTips,
   onUpdate,
 }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -44,7 +44,7 @@ const TipsTagsTab: React.FC<TipsTagsTabProps> = ({
 
   const needsExpansion = tipsContent.length > 400; // Approximate 6 lines
 
-  // Note: This component expects updateGuide mutation to be passed or handled via hook
+  // Ticket 5.3. This tab only presents and delegates; the page owns the write.
   // For now, we'll return the component structure and handle mutation in parent
   return (
     <div className="space-y-6">
@@ -196,7 +196,7 @@ const TipsTagsTab: React.FC<TipsTagsTabProps> = ({
         onClose={() => setIsEditModalOpen(false)}
         guide={guide}
         guideId={guideId}
-        updateGuide={updateGuide}
+        saveTips={saveTips}
         onSuccess={() => {
           if (onUpdate) onUpdate();
           setIsEditModalOpen(false);

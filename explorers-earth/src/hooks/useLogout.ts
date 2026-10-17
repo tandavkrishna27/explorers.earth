@@ -3,6 +3,11 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useApolloClient } from "@apollo/client";
 import useAuthStore from "../store/store";
+import { closeLocalMusicSession } from "../features/music/musicSessionBoundary";
+import { queryClient } from "../lib/queryClient";
+import { clearAllMusicWorkspaceQueries } from "./useTunesDashboard";
+import { authClient } from "../lib/authClient";
+import useSetupStore from "../store/useSetupStore";
 
 /**
  * Shared logout flow used by the header and the sidebar account menu.
@@ -16,37 +21,38 @@ export const useLogout = () => {
   const { t } = useTranslation();
   const client = useApolloClient();
 
-  return async () => {
+  return async (options: { serverRevoked?: boolean } = {}) => {
+    const logoutAttemptId = useAuthStore.getState().setLogoutError(true);
     logout();
+    closeLocalMusicSession();
 
     // Clear all explorers storage
     localStorage.removeItem("auth-storage");
     localStorage.removeItem("qrtoken");
 
-    // Clear Local Tunes session
-    localStorage.removeItem("localTunes_session");
-
-    // Clear session storage (user credentials)
-    sessionStorage.removeItem("explorers_user_credentials");
-
-    // Clear all other possible storage
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // Clear all cookies
-    document.cookie.split(";").forEach(function (c) {
-      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-    });
+    useSetupStore.setState({ accountScope: null, sessionGeneration: null, isProfileComplete: false, isRecommendationsComplete: false });
+    void queryClient.cancelQueries();
+    queryClient.removeQueries({ queryKey: ["explorers-account"] });
 
     // Reset the Apollo cache so the next login/account starts from server truth
     // (prevents a stale `accounts` read from surviving a same-tab account switch).
     try {
-      await client.clearStore();
+      await Promise.all([
+        client.clearStore(),
+        clearAllMusicWorkspaceQueries(queryClient),
+      ]);
     } catch (err) {
       console.warn("Failed to clear Apollo cache on logout:", err);
     }
 
-    navigate("/login");
-    toast(t("toast.success.loggedOutSuccessfully"));
+    try {
+      if (!options.serverRevoked) await authClient.signOut();
+      useAuthStore.getState().setLogoutError(false, logoutAttemptId);
+      navigate("/login");
+      toast(t("toast.success.loggedOutSuccessfully"));
+    } catch {
+      navigate("/login?error=logout_incomplete");
+      toast.error("Server sign-out failed. Retry to finish signing out.");
+    }
   };
 };

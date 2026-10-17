@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "status": "reviewed-input-not-applied",
+  "sourceHost": "api.localqr.earth",
+  "observedDate": "2026-10-13",
+  "provenance": "User selected Google Maps labels and manually saved them in Strapi; neither exhaustive nor current Google vocabulary",
+  "inputs": {
+    "places-import.json": {
+      "sha256": "8c95f6695476cdb3bd2d796e607b9ca18058e64db3467627c47f5519b1643cc7",
+      "inputHash": "c62c0eecd00db1cd13372d14ea984804e62d410e868bcb16d8093cbdd9084678"
+    },
+    "people-import.json": {
+      "sha256": "fd8857edbf2979f663970c10e398ae6e3440e693ae60035eea265345c585d186",
+      "inputHash": "a91c358a4490341cd2341fd9ae1d4371eca217c9ed4730caf09cb1d500cf9c63"
+    }
+  },
+  "counts": {
+    "roots": 25,
+    "children": 310,
+    "terms": 335,
+    "sourceMappings": 335,
+    "peopleTerms": 0
+  },
+  "rawSourceHashes": {
+    "old": "dcdf291f2034e864d37eedcd296a64f5576033e10fa2e53062daf9dd0066312f",
+    "proposal": "648e5576ea11d7864d2d111907f8ee91468de2a30589635e7f38dde27dd39c19",
+    "currentRoots": "15267deeb57e6aba84fbd2b37262a61f8475a45132fff5fa2979c878e9357e60",
+    "currentChildren": "a09084881b1292103a5cda404b4e598df909dd501420cd0c5a76a97299658331"
+  },
+  "reconciliation": {
+    "roots": 25,
+    "children": 310,
+    "exactCurrentLabelParentMatches": 335,
+    "mismatches": 0,
+    "documentIds": "Retained older export; not all335 freshly reread",
+    "spotcheck": {
+      "sourceNumericId": 76,
+      "label": "Zoo",
+      "documentId": "ydjfncpu1g0ju340641wldsl",
+      "parentLabel": "Entertainment and Recreation",
+      "observation": "Root reported current logged-in UI detail URL matching retained documentId"
+    }
+  },
+  "ratification": {
+    "namespace": "c534822b-86e9-5c40-be1f-f9b3833dab21",
+    "identityTemplate": "api.localqr.earth/{root|child}/{sourceDocumentId}",
+    "slugPolicy": {
+      "normalization": "NFKD; ASCII transliteration by dropping non-ASCII; lowercase; non-alphanumeric runs to hyphen; trim hyphens",
+      "root": "normalized label",
+      "child": "root normalized label + -- + normalized child label",
+      "collisionResolution": "Append -- plus full canonical UUID to every member of pre-resolution collision group",
+      "changePolicy": "Persist ratified slug; source renames/reparenting require explicit slug/alias review; do not recompute persisted slugs implicitly"
+    },
+    "defaultLocale": "en",
+    "active": "all retained records; explicit migration policy",
+    "order": "Global ASCII-lowercase label, exact label, documentId, entityKind; zero-based position",
+    "people": "Current logged-in unlocalized collection observed zero rows; configured empty; no invented sectors",
+    "mixedMovies": "Preserve all generic source rows within Places; no native movie taxonomy writes",
+    "legacyAliases": "Empty: taxonomy labels were filters; historical taxonomy redirect URLs not evidenced"
+  },
+  "peopleRelationAudit": {
+    "sha256": "ef5decdfa13a0904d589096de3b0bea2550e9521c1ccfd0c4168ff5df63610f8",
+    "recommendations": 25,
+    "selectedRelations": 0
+  }
+}

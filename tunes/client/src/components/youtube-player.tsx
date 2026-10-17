@@ -11,6 +11,7 @@ import { MusicLoader } from "@/components/ui/music-loader";
 import { ConnectionStatus } from "@/components/connection-status";
 import ReactPlayer from "react-player";
 import { useWebSocket } from '@/hooks/use-websocket';
+import { apiRequest } from "@/lib/queryClient";
 
 type Props = {
   currentSong?: Song;
@@ -293,15 +294,7 @@ export default function YoutubePlayer({
     if (!onSongFinished) return;
 
     try {
-      const url = username
-        ? `/api/playlist/currently-playing?username=${username}`
-        : '/api/playlist/currently-playing';
-
-      await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ songId: null })
-      });
+      await apiRequest("POST", "/api/playlist/currently-playing", { songId: null });
 
       onSongFinished();
     } catch (error) {
@@ -367,15 +360,7 @@ export default function YoutubePlayer({
 
       try {
         // Ensure we clear the currently playing song before moving to next
-        const url = username
-          ? `/api/playlist/currently-playing?username=${username}`
-          : '/api/playlist/currently-playing';
-
-        await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ songId: null })
-        });
+        await apiRequest("POST", "/api/playlist/currently-playing", { songId: null });
 
         // Small delay before triggering next song to prevent rapid skips
         await new Promise(resolve => setTimeout(resolve, 1000));

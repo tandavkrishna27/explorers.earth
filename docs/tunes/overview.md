@@ -81,7 +81,7 @@ In development, Vite middleware provides HMR. In production, pre-built static fi
 
 | Route File | Base Path | Responsibility |
 |------------|-----------|----------------|
-| `authRoutes.ts` | `/api/auth/*` | Register, login, logout, email verify, OTP |
+| `authRoutes.ts` | `/api/login`, `/api/register`, `/api/logout`, `/api/check`, `/api/csrf-token` | Explicit standalone native-session endpoints |
 | `playlistRoutes.ts` | `/api/playlists/*` | Playlist CRUD, songs, WebSocket setup |
 | `adminRoutes.ts` | `/api/admin/*` | User management, statistics, team |
 | `youtubeRoutes.ts` | `/api/search/*` | YouTube song search |
@@ -89,7 +89,6 @@ In development, Vite middleware provides HMR. In production, pre-built static fi
 | `emailRoutes.ts` | `/api/email/*` | Email templates, sending |
 | `geminiRoutes.ts` | `/api/gemini/*` | AI music recommendations |
 | `instagramRoutes.ts` | `/api/instagram/*` | Instagram webhook |
-| `strapiRoutes.ts` | `/api/strapi/*` | Strapi CMS sync |
 | `subscriptionRoutes.ts` | `/api/subscription/*` | Subscription management |
 | `pageRoutes.ts` | `/api/pages/*` | CMS page content |
 | `reactivationRoutes.ts` | `/api/user/*` | Account reactivation (request magic link, unblock) |
@@ -104,7 +103,6 @@ In development, Vite middleware provides HMR. In production, pre-built static fi
 | `reactivation-service.ts` | Handles self-service account reactivation logic (token store, email template seeding, Strapi integration) |
 | `spotify-playlist-import.ts` | Import playlists from Spotify |
 | `youtube-playlist-import.ts` | Import playlists from YouTube |
-| `strapi-service.ts` | Strapi CMS data sync |
 | `system-settings-service.ts` | App-wide key-value configuration |
 | `user-sync-service.ts` | User data synchronization |
 

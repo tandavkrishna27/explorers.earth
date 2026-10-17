@@ -1,28 +1,30 @@
-import { useQuery } from '@apollo/client';
-import { useTranslation } from 'react-i18next';
-import { GET_PLATFORM_TERMS } from '../api/queries';
+import { useReferenceContent } from './useReferenceContent';
+import type { RichTextBlock } from '../../../content/reference';
 
 export type PlatformTerms = {
-  Terms_and_Condition: any[];
-  Privacy_and_Policy: any[];
-  Cookie_Policy: any[];
+  Terms_and_Condition: RichTextBlock[];
+  Privacy_and_Policy: RichTextBlock[];
+  Cookie_Policy: RichTextBlock[];
 };
 
+/**
+ * The Terms / Privacy / Cookie bodies. Read from the in-repo reference content,
+ * not Strapi.
+ *
+ * Each section falls back to English independently, which is why a Hindi
+ * visitor sees Hindi terms and the English privacy policy rather than a blank
+ * page — Strapi only ever held `privacy` and `cookies` in English. `error` is
+ * kept in the shape the three pages branch on and is always `undefined`: there
+ * is no failure path left (see `useReferenceContent`).
+ */
 export const usePlatformTerms = () => {
-  const { i18n } = useTranslation();
-  const currentLocale = i18n.language;
-  
-  const { data, loading, error } = useQuery<{ platformTerms: PlatformTerms[] }>(GET_PLATFORM_TERMS, {
-    variables: { locale: currentLocale },
-    fetchPolicy: 'cache-and-network', // Ensure fresh data when language changes
-    notifyOnNetworkStatusChange: true,
-  });
+  const { content, loading } = useReferenceContent();
 
   return {
-    terms: data?.platformTerms[0]?.Terms_and_Condition || [],
-    privacy: data?.platformTerms[0]?.Privacy_and_Policy || [],
-    cookies: data?.platformTerms[0]?.Cookie_Policy || [],
+    terms: content.terms,
+    privacy: content.privacy,
+    cookies: content.cookies,
     loading,
-    error
+    error: undefined,
   };
-}; 
+};

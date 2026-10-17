@@ -1,11 +1,9 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
-import { Users, Share2 } from "lucide-react";
-import { PUBLIC_PEOPLE_DATA } from "../../api/query";
-import { deduplicatePeople, extractUniqueCategories } from "../../utils/personHelpers";
-import { toast } from "sonner";
-import type { RecommendedPerson, PersonList } from "../../types";
+import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
+import { Users } from "lucide-react";
+import { publicPeopleLists, publicPeopleSectors } from "../../api/publicPeopleSectorViewModel";
+import { subscribePublicProfileInvalidation } from "../../../PublicHome/api/publicProfileInvalidation";
+import type { RecommendedPerson } from "../../types";
 import PersonCarouselRow from "./PersonCarouselRow";
 import PersonDetailModal from "./PersonDetailModal";
 import SEO from "../../../../components/SEO";
@@ -13,60 +11,68 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import PersonTopPicksHero from "./PersonTopPicksHero";
 import PersonTopPicksMobileHero from "./PersonTopPicksMobileHero";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
-
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernamePeople($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-        profile_picture {
-          url
-        }
-      }
-    }
-  }
-`;
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
+import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
+import { PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
+import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
+import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
 
 const PublicPeople = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
+  const location = useLocation();
+  const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
 
   const [modalState, setModalState] = useState<{ open: boolean; person: RecommendedPerson | null }>({
     open: false,
     person: null,
   });
 
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
-
-  const { data, loading: peopleLoading } = useQuery(PUBLIC_PEOPLE_DATA, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
+  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
+  const eligible=accountData?.public_people === "Yes";
+  const query = usePublicRecommendationCategory(username, "people", eligible);
+  const { data, loading: peopleLoading, error: peopleError, refetch: refetchPeople } = query;
 
   const loading = userLoading || peopleLoading;
+  const mapped=useMemo(()=>{try{return {lists:eligible&&data?publicPeopleLists(data):[],error:null};}catch(error){return {lists:[],error};}},[data,eligible]);
+  const lists=mapped.lists;
+  const queryError = userError || peopleError || mapped.error || (!userLoading&&!eligible?new Error('PUBLIC_PROFILE_404'):null);
+  const hasUsableData = Boolean(data)&&!mapped.error&&eligible;
+  useEffect(()=>{setModalState({open:false,person:null});},[username,eligible]);
+  useEffect(()=>subscribePublicProfileInvalidation(event=>{if(event.username.trim().toLowerCase()===username?.trim().toLowerCase()&&(event.category==='public_people'||event.category==='public_profile'))setModalState({open:false,person:null});}),[username]);
 
   useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
-  const lists: PersonList[] = data?.personLists ?? [];
+  const handleRetry = useCallback(async () => {
+    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchPeople : undefined);
+  }, [accountDocumentId, refetchPeople, refetchUser]);
+
+  const analytics = useTrackAnalytics(
+    createAnalyticsOptions.people(accountDocumentId || "", username),
+  );
+
+  const owningListByPersonId = useMemo(() => {
+    const ownership = new Map<string, { documentId: string; name: string }>();
+    lists.forEach((list) => {
+      list.recommended_people?.forEach((person) => {
+        ownership.set(person.documentId, {
+          documentId: list.documentId,
+          name: list.List_Name,
+        });
+      });
+    });
+    return ownership;
+  }, [lists]);
 
   const allPeople = useMemo(() => {
-    return deduplicatePeople(lists.flatMap((l) => l.recommended_people ?? []));
+    return lists.flatMap((l) => l.recommended_people);
   }, [lists]);
 
   const topPicks = useMemo(() => {
@@ -76,28 +82,34 @@ const PublicPeople = () => {
   }, [allPeople]);
 
   const allCategories = useMemo(() => {
-    return extractUniqueCategories(allPeople.map((p) => p.people_category?.Category_name ? [p.people_category.Category_name] : []));
+    return publicPeopleSectors(allPeople);
   }, [allPeople]);
 
   const handlePersonClick = useCallback((person: RecommendedPerson) => {
     setModalState({ open: true, person });
-  }, []);
+    const owningList = owningListByPersonId.get(person.documentId);
+    analytics.trackClick("person-card", {
+      id: person.documentId,
+      listId: person.person_list?.documentId || owningList?.documentId,
+      listName: person.person_list?.List_Name || owningList?.name,
+      title: person.name,
+      platform: person.primary_platform || undefined,
+      category: person.people_category?.Category_name,
+    });
+  }, [analytics, owningListByPersonId]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try { await navigator.share({ title: `${creatorName}'s People`, url }); } catch { /* ignore */ }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied!");
-    }
-  };
+  usePublicHeaderDescriptor({
+    navigationKey: location.key,
+    title: `${creatorName}'s People`,
+    url: window.location.href,
+    analyticsContext: "people-header",
+  });
 
   const personCount = allPeople.length;
   const listCount = lists.length;
   const pageTitle = `${creatorName} | People & Creators | explorers`;
   const metaDescription = personCount > 0
-    ? `Browse people and creator recommendations curated by ${creatorName} on explorers. Explore ${listCount} list${listCount !== 1 ? 's' : ''} featuring ${personCount} inspiring person${personCount !== 1 ? 's' : ''}.`
+    ? `Browse people and creator recommendations curated by ${creatorName} on explorers. Explore ${listCount}${query.hasMore || query.error ? '+' : ''} list${listCount !== 1 ? 's' : ''} featuring ${personCount} loaded inspiring person${personCount !== 1 ? 's' : ''}.`
     : `Explore people recommendations shared by ${creatorName} on explorers.`;
 
   const seoKeywords = [
@@ -111,7 +123,7 @@ const PublicPeople = () => {
 
   return (
     <>
-      {!loading && userLookup && (
+      {!loading && accountData && (
         <SEO
           title={pageTitle}
           description={metaDescription}
@@ -123,33 +135,11 @@ const PublicPeople = () => {
         />
       )}
 
-      <div className="min-h-screen bg-[#0d1117] text-white">
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="text-white font-bold text-2xl cursor-pointer"
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={handleShare}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Share"
-              >
-                <Share2 size={16} />
-              </button>
-
-            </div>
-          </div>
-        </div>
-
+      <div data-category-page className="min-h-screen bg-[var(--category-page,#0d1117)] text-[color:var(--category-text,#fff)]">
         {/* Content */}
-        <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
-          {loading ? (
-            (window as any).__publicProfileLoaded ? (
+        <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16" aria-busy={loading || undefined}>
+          {loading && !hasUsableData ? (
+            outletContext?.isShellRevealed ? (
               <div className="space-y-10 mt-4">
                 <div className="hidden lg:block">
                   <HeroSkeleton accentColor="purple" showThumbnails />
@@ -160,14 +150,14 @@ const PublicPeople = () => {
                 {[1, 2, 3].map((i) => (
                   <section key={i} className="mb-8">
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="w-1.5 h-[22px] bg-white/10 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
-                      <div className="h-5 w-32 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
+                      <div className="w-1.5 h-[22px] bg-[var(--category-skeleton,rgba(255,255,255,0.1))] rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
+                      <div className="h-5 w-32 bg-[var(--category-skeleton,rgba(255,255,255,0.08))] rounded skeleton-shimmer relative overflow-hidden" />
                     </div>
                     <div className="flex gap-5 overflow-hidden">
                       {[1, 2, 3, 4, 5].map((idx) => (
                         <div key={idx} className="flex-shrink-0 flex flex-col items-center gap-2">
-                          <div className="w-20 h-20 rounded-full bg-white/5 skeleton-shimmer relative overflow-hidden" />
-                          <div className="w-16 h-3 rounded bg-white/5 skeleton-shimmer relative overflow-hidden" />
+                          <div className="w-20 h-20 rounded-full bg-[var(--category-skeleton,rgba(255,255,255,0.05))] skeleton-shimmer relative overflow-hidden" />
+                          <div className="w-16 h-3 rounded bg-[var(--category-skeleton,rgba(255,255,255,0.05))] skeleton-shimmer relative overflow-hidden" />
                         </div>
                       ))}
                     </div>
@@ -175,14 +165,17 @@ const PublicPeople = () => {
                 ))}
               </div>
             ) : null
+          ) : queryError && !hasUsableData ? (
+            <PublicRouteErrorState title="People unavailable" error={queryError} onRetry={handleRetry} />
           ) : (
             <>
+              {Boolean(queryError) && <PublicRoutePartialNotice message="Some people data is unavailable." />}
               {/* Empty state */}
-              {lists.length === 0 ? (
+              {allPeople.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
-                  <Users size={48} className="text-white/20 mb-4" />
-                  <p className="text-white/40 text-lg font-medium">No people shared yet</p>
-                  <p className="text-white/25 text-sm mt-1">Check back later for recommendations</p>
+                  <Users size={48} className="text-[color:var(--category-muted,rgba(255,255,255,0.2))] mb-4" />
+                  <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-lg font-medium">No people shared yet</p>
+                  <p className="text-[color:var(--category-muted,rgba(255,255,255,0.25))] text-sm mt-1">Check back later for recommendations</p>
                 </div>
               ) : (
                 <>
@@ -211,7 +204,13 @@ const PublicPeople = () => {
                         key={list.documentId}
                         list={list}
                         onPersonClick={handlePersonClick}
-                        onViewAll={() => navigate(`/${username}/people/${list.slug}`)}
+                        onViewAll={() => {
+                          analytics.trackClick("person-list", {
+                            listId: list.documentId,
+                            listName: list.List_Name,
+                          });
+                          navigate(`/${username}/people/${list.slug}`);
+                        }}
                       />
                     ))}
                   </div>
@@ -219,13 +218,13 @@ const PublicPeople = () => {
                   {/* Category browse */}
                   {allCategories.length > 0 && (
                     <div className="mt-10">
-                      <p className="text-sm font-semibold text-white/60 mb-3">Browse by Category</p>
+                      <p className="text-sm font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.6))] mb-3">Browse by Category</p>
                       <div className="flex flex-wrap gap-2">
                         {allCategories.map((cat) => (
                           <button
                             key={cat.slug}
                             onClick={() => navigate(`/${username}/people/sector/${cat.slug}`)}
-                            className="text-xs text-violet-400/80 bg-violet-900/20 hover:bg-violet-900/40 border border-violet-800/20 px-3 py-1.5 rounded-full transition-all"
+                            className="text-xs text-[color:var(--category-text,rgba(167,139,250,0.8))] bg-violet-900/20 hover:bg-violet-900/40 border border-violet-800/20 px-3 py-1.5 rounded-full transition-all"
                           >
                             {cat.name}
                           </button>
@@ -237,11 +236,12 @@ const PublicPeople = () => {
               )}
             </>
           )}
+          <PublicScrollContinuation {...query} label="people lists" />
         </div>
 
         <PersonDetailModal
-          open={modalState.open}
-          person={modalState.person}
+          open={eligible && !peopleLoading && modalState.open}
+          person={eligible && !peopleLoading ? modalState.person : null}
           onClose={() => setModalState({ open: false, person: null })}
         />
       </div>

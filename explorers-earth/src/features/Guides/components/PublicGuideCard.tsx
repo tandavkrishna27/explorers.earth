@@ -89,21 +89,21 @@ const PublicGuideCard: FC<PublicGuideCardProps> = memo(
     return (
       <div
         onClick={() => onClickHandler(guide)}
-        className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden relative flex flex-col min-h-[200px] cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:border-white/[0.15]"
+        className="bg-[var(--category-card,rgba(255,255,255,0.03))] border border-[var(--category-control-border,rgba(255,255,255,0.06))] rounded-2xl overflow-hidden relative flex flex-col min-h-[200px] cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:border-[var(--category-control-border,rgba(255,255,255,0.15))]"
       >
         {/* Cover Image */}
         <div
-          className="h-[110px] w-full bg-cover bg-center border-b border-white/[0.06] relative"
+          className="h-[110px] w-full bg-cover bg-center border-b border-[var(--category-control-border,rgba(255,255,255,0.06))] relative"
           style={{ backgroundImage: `url('${coverImage}')` }}
         />
 
         {/* Card Details */}
         <div className="p-3 flex flex-col justify-between flex-grow">
           <div>
-            <h3 className="text-[0.72rem] md:text-[0.82rem] font-bold text-white leading-snug line-clamp-2 mb-1 font-poppins">
+            <h3 className="text-[0.72rem] md:text-[0.82rem] font-bold text-[var(--category-text,#FFFFFF)] leading-snug line-clamp-2 mb-1 font-poppins">
               {guide.Title}
             </h3>
-            <span className="text-[0.58rem] text-white/45 font-medium font-poppins block">
+            <span className="text-[0.58rem] text-[var(--category-muted,rgba(255,255,255,0.45))] font-medium font-poppins block">
               ★ {rating.toFixed(1)} &middot; {guide.Number_Of_Days || 0} {guide.Number_Of_Days === 1 ? "Day" : "Days"} &middot; {guide.Guide_Type || "Itinerary"}
             </span>
           </div>
@@ -114,7 +114,7 @@ const PublicGuideCard: FC<PublicGuideCardProps> = memo(
               {locationTags.slice(0, 3).map((tag, index) => (
                 <span
                   key={index}
-                  className="text-[0.52rem] bg-white/[0.06] px-1.5 py-0.5 rounded text-white/75 font-poppins truncate max-w-[80px]"
+                  className="text-[0.52rem] bg-[var(--category-card,rgba(255,255,255,0.06))] px-1.5 py-0.5 rounded text-[var(--category-muted,rgba(255,255,255,0.75))] font-poppins truncate max-w-[80px]"
                   title={tag}
                 >
                   {tag}

@@ -1,0 +1,93 @@
+# Current ticket and delivered-slice status
+
+> **Current reconciliation (2026-10-09):** [All 39 ticket dispositions and integrated versus pending evidence](reconciliation-2026-10-09.md) · [Corrected execution sequence](../superpowers/plans/2026-10-09-replatform-reconciled-sequence.md). This notice supersedes older current-status, blocker and next-package claims below; original requirements and historical receipts remain preserved.
+
+Checked against the durable execution ledger on 2026-10-05. This summary corrects planning ambiguity; it does not rerun tests, reopen accepted tickets or turn bounded acceptance into full parity.
+
+The organizer PASS is **structural custody only**: document count, card presence and dependency cycles. It does not verify this ledger summary, application source, semantic requirement coverage or independent acceptance. Recording an outstanding requirement under a blocker or downstream owner does not satisfy ticket closure; every mandatory obligation still needs accepted evidence or an explicit authorized scope decision.
+
+## Completed tickets
+
+| Ticket | Completed scope | Recorded acceptance checkpoint |
+|---|---|---|
+| 1.1 | Baseline and scope matrix | Final41949fb5 independently accepted; wider journey evidence remains separately owned |
+| 1.2 | Reproducible current-domain local foundation |9bd0973b; independent findings closed; later seeds/storage extended by owning tickets |
+| 1.3 | CI/deployment separation |c64a274e exact hosted gates and required-check configuration; settings receipt3c89e6cd |
+| 1.4 | API-only build/runtime seam |de339c6b exact hosted acceptance and independent review |
+| 2.1 | Auth/ownership foundation |e65de223; all four hosted workflows successful |
+| 2.2 | Actor/authorization and Music boundary contract |c91cef4a; all four hosted workflows successful; contract is not full Music implementation |
+| 2.3 | Profile/onboarding/base media integration |8ce5277665cda33b36b59ab0495ab51c9c39c8f7; independent review and all four hosted workflows successful |
+
+The original 2.3 ticket was explicitly completed on 2026-10-01. Later navigation6 checks qualify a newer shared repair overlay; their pending review/hosted gates do not erase that acceptance. Live Google, AWS and deployed QA duties remain with their separately recorded owners. Seven tickets are explicitly completed here; other tickets must not be counted complete solely from individual passing packages.
+
+## Implemented and verified slices with remaining obligations
+
+Column 2 was headed "Preserve as delivered". Renamed 2026-10-05 to "Delivered scope, with its custody" because one row (Latest navigation repair) is **not** delivered and was being carried under a header that asserted it was. Each cell now names the custody state of its own evidence: committed, dirty overlay, locally qualified, authored-only, or hosted.
+
+| Ticket/area | Delivered scope, with its custody | Still open |
+|---|---|---|
+| 2.4 lifecycle | Canonical lifecycle implementation and **10 committed** lifecycle cases. `tunes/scripts/lifecycle-browser-guards.ts:1-12` at `225d83e5` defines exactly 10 case identities, and the committed suite manifest counts the lifecycle lane as 10. The later "12 pass" receipt was independently reviewed but qualified the **uncommitted overlay** (`dirty:true`); cases 11-12 exist only in the working tree, so **2 of those 12 are pending overlay scope, not delivered** | Commit and re-qualify overlay cases 11-12; remaining original18+recovery3 behavior mapping (the frozen 18+3 map does not exist in source); Google/recovery limits and Music socket revocation obligations |
+| 3.1 core | Reviewed entity/recommendation/collection, paging, top-pick and notes packages. **CORE-REPLACE is delivered, not absent**: `replaceRecommendationEntity` is implemented at `tunes/server/repositories/explorersRecommendationRepository.ts:301` and mounted at `tunes/server/routes/explorersRecommendationRoutes.ts:89`, landed in commit `4aa1f67e` and present in the frozen runtime-surface inventory | Whole-ticket closure and downstream consumer/scale obligations as recorded, rather than rebuilding accepted packages. Genuinely outstanding on CORE-REPLACE: the **UI consumer**, plus foreign-owner and unchanged-other-creator negatives |
+| 3.2 media/catalog | Shared media and Books provider packages exercised by accepted feature slices | Unexecuted live-provider/storage and downstream category extensions; no blanket3.2 completion assertion |
+| 3.3 Books | Reviewed persisted owner/public/browser slice, including the **Books lane's 20** canonical cases. Those 20 are a **component of the single 82-identity committed suite**, not an independent total — do not add them to the 82. Its `46eea549` checkpoint was **3 of 4 red hosted**; see [Hosted conclusions](#hosted-conclusions-for-the-cited-checkpoints) | Whole milestone/QA and separately recorded external integration obligations; "no Books flow requires Strapi" is unproven at an exact SHA |
+| 3.4 analytics | Reviewed backend/frontend foundation; producer chain real and mounted. The 10 desktop/mobile browser identities (5 tests x 2 projects) are **authored but unattested** — there is no analytics lane in the protected runner or suite manifest, no npm script invokes the fixture, and the result JSON was deleted on exit, so "10 cases" is prose, not a receipt. Later native image checks stand on their own scope | Register an analytics lane and attest the 10 identities at an exact SHA; Dashboard7.2, other categories/Music, operational QA/full acceptance |
+| 3.5 QA | Reviewed offline artifact/schema/OCI and local runtime/browser packages | Trusted candidate, required hosted gate closure, actual authorized QA deployment/provider evidence and milestone report |
+| 4.1 Movies | Typed implementation and the **Movies lane's finite 24** canonical cases. Those 24 are a **component of the same single 82-identity committed suite** as Books 20 and Games 20 — do not add them together. Its `46eea549` checkpoint was **3 of 4 red hosted**; see [Hosted conclusions](#hosted-conclusions-for-the-cited-checkpoints) | Remaining provider/full-ticket/QA requirements; do not restart the accepted slice |
+| 4.2 Games | Manual Games slice independently reviewed, committed/pushed. **The Games lane is 20 identities, not 82.** 82 is the whole six-lane committed suite (auth 6 + profile 2 + books 20 + lifecycle 10 + movies 24 + games 20 = 82); labelling it "canonical82" overstated the Games lane roughly fourfold while the same table counted its Books-20 and Movies-24 components separately. Its `46eea549` checkpoint was **3 of 4 red hosted**; see [Hosted conclusions](#hosted-conclusions-for-the-cited-checkpoints) | IGDB/search/taxonomy provider parity, required full-QA/operational obligations; the IGDB/Twitch provider chain has no production constructor and is unreachable behind an unconditional 503 |
+| Image/C0 repair | Exact1a5c native hosted success and preserved security gates. **Neither image nor C0 is a protected required context**, and at `1a5c6942` both protected aggregates were red. At the current head `225d83e5` the API image and Music C0 are success again; see [Hosted conclusions](#hosted-conclusions-for-the-cited-checkpoints) | Does not make Backend/Explorers red required browser gates pass |
+| Latest navigation repair | **Not delivered.** Reviewed component packages only. The frozen canonical **6 pass** was qualified **locally against uncommitted source** (`dirty:true`) and has **no independent review**; the contained Category B 17/26 result is an original failing run preserved for attribution, not an acceptance | Independent review of the navigation receipt is **open**; the overlay must be committed and re-qualified before any delivery claim; new committed-source hosted evidence and missing category/Music consumers still outstanding. The overlay also makes `e2e/setup/category-navigation.ts` throw for operations that unmigrated `category-navigation-a.spec.ts` and `music-publish-controls.spec.ts` still assert |
+
+## Hosted conclusions for the cited checkpoints
+
+Added 2026-10-05. Rows above previously cited "committed46ee acceptance" without disclosing what 46ee actually concluded. A local or frozen-source acceptance is not a hosted conclusion, and the checkpoint SHAs this table names were mostly red.
+
+| SHA | API image | Music C0 contracts | Backend validation (emits `music-required`) | Explorers validation (emits `replatform-required`) |
+|---|---|---|---|---|
+| `46eea549` — the "committed46ee" checkpoint | **FAILURE** 37265897012 | success 37265896566 | **FAILURE** 37265896557 | **FAILURE** 37265896585 |
+| `1a5c6942` — application baseline | success 37301052427 | success 37301051739 | **FAILURE** 37301051901 | **FAILURE** 37301051889 |
+| `225d83e5` — current head (docs-only child of 1a5c) | SUCCESS | SUCCESS | **FAILURE** (`music-required` FAILURE, `browser` FAILURE) | E2E Category A **FAILURE**, Category B **FAILURE**, Publishing **FAILURE**, Public shell SUCCESS, Music-and-account still running, so `replatform-required` had **not concluded** |
+
+Three disclosures this table makes that earlier text omitted:
+
+1. **`46eea549` was 3 of 4 red**, including the **API image failure 37265897012**. The ledger's [46ee remaining-cause map](../../.superpowers/sdd/epic-01/checkpoint-46ee-hosted-remaining-cause-map.md) maps only the Backend and Explorers failures (`:3`) and omits the API image failure entirely, so it is not a complete cause map for that SHA.
+2. **The current head has its own hosted results.** Any statement framed as "exact1a5c" is now historical: `1a5c6942` is the application baseline, but `225d83e5` is the SHA whose results bind today.
+3. **Naming trap.** `music-required` is emitted by `test.yml:300` ("Backend validation"), **not** by the green "Music C0 contracts" workflow. A green Music C0 run never satisfies `music-required`.
+
+Both protected required contexts are `replatform-required` and `music-required`. Neither the API image nor Music C0 is a protected context, so their successes cannot stand in for a required gate. No merge, QA-deployment or release decision is supported at any SHA in this table.
+
+## Count custody
+
+Counts are separate scopes and must not be added into a fabricated aggregate. Source-bound46ee82, lifecycle12, navigation6 and image1a5c have different source/environment custody. Latest fixture18 does not add backend acceptance.
+
+Corrected 2026-10-05, so the table above obeys that rule:
+
+- **82 is one suite, counted once.** The committed suite manifest holds exactly **82 identities in six lanes**: auth 6, profile 2, books 20, lifecycle 10, movies 24, games 20. Books 20, Movies 24 and Games 20 are **lanes inside that 82**, not addends to it. The earlier "canonical82" label on the Games row both mislabelled the Games lane (20) and double-counted Books and Movies, which the no-fabricated-aggregate rule in this very section forbids.
+- **The working tree is a different tree, and its total is 88**: profile 6 and lifecycle 12 there. 82 and 88 are two custody states of the same manifest; **never add them and never present 88 as committed scope**.
+- **"Contained route regressions 18 pass" was never run.** No 18-case run exists. The only receipts are **8 PASS** ([navigation-fault-reconciliation.md:17](../../.superpowers/sdd/epic-01/navigation-fault-reconciliation.md)) and **10 PASS** ([category-b-preference-reconciliation.md:7](../../.superpowers/sdd/epic-01/category-b-preference-reconciliation.md)), recorded at **two different source freezes**, and the spec file `explorers-earth/e2e/setup/category-navigation-route.test.ts` is **untracked**. 8 + 10 = 18 is exactly the forbidden summation.
+- **navigation6 and lifecycle12 are dirty-overlay receipts** (`dirty:true`), not committed scope. navigation6 additionally has no independent review.
+
+## What execution resumes
+
+Continue the [re-groomed plan](../superpowers/plans/2026-10-05-replatform-regroomed-execution.md) from remaining gates: current shared repair review, lifecycle missing behaviors, canonical Music6.1 startup, independent remaining category packages, then full public/analytics/QA. Accepted foundations and delivered feature packages are inputs to those tasks, not new implementation work. No merge/deployment or full-parity decision has been made.
+
+Corrected 2026-10-05: **zero execution packages are dispatch-ready as written.** The next package is **6.1 / M2 (token-null Music startup)**, and only after the plan's blocking preflights — chief among them superseding **ADR-005**. **Superseded 2026-10-05, the same day this was written, and this sentence is stale: do not act on it.** [ADR-006](../adr/006-canonical-music-identity-supersedes-strapi-proof.md) is `Accepted (2026-10-05)` and states "Ticket 6.1 is unblocked by this acceptance"; [ADR-007](../adr/007-music-venue-profile-owned-by-canonical-account.md) and [ADR-008](../adr/008-canonical-account-is-the-music-credential-subject.md) followed on 2026-10-06. ADR-005 remains authority only for the schema model, append-only migrations and image-digest deployment, which 6.1 does not touch. See the plan's "Blocking preflights", "Next package" and "Stop conditions" sections.
+
+**Evidence authority:** [Durable ledger](../../.superpowers/sdd/epic-01/progress.md), especially its explicit1.1–1.4/2.1–2.3 completion entries, analytics browser review, committed Games acceptance and exact1a5c hosted report. These are historical verified records; this documentation check is not a new live CI poll. The "exact1a5c hosted report" is **historical and superseded for current-state purposes**: `1a5c6942` is the application baseline, and the current head `225d83e5` has its own hosted results recorded under [Hosted conclusions](#hosted-conclusions-for-the-cited-checkpoints).
+
+## Corrections applied 2026-10-05
+
+Audit log for this document, applying an independent read-only review of `codex/unified-replatform` @ `225d83e5`. Every entry records the prior claim and why it changed. No requirement was weakened, no gate removed and no checkbox ticked.
+
+| # | Prior claim | Correction | Why |
+|---|---|---|---|
+| C1 | 4.2 row: "committed46ee **canonical82** and native Games checks" | Games lane restated as **20**; 82 described as the whole six-lane committed suite; double count of Books 20 and Movies 24 called out in the 3.3 and 4.1 rows and in Count custody | The committed manifest is 82 identities across six lanes (auth 6, profile 2, books 20, lifecycle 10, movies 24, games 20). Presenting 82 as a Games count overstated that lane roughly fourfold while its Books and Movies components were counted separately in the same table — the fabricated aggregate this document already forbids |
+| C2 | 2.4 row: "original10 acceptance; later12 receipt independently reviewed" | Restated as **10 committed + 2 pending overlay** | `tunes/scripts/lifecycle-browser-guards.ts:1-12` at `225d83e5` defines 10 cases; the committed manifest lifecycle lane is 10. Cases 11-12 exist only in the uncommitted working tree (manifest there: 12), and the 12-pass receipt is `dirty:true` |
+| C3 | 3.3, 4.1, 4.2 rows cited "committed46ee acceptance" with no hosted disclosure | Added the [Hosted conclusions](#hosted-conclusions-for-the-cited-checkpoints) table and pointed all three rows at it | `46eea549` was **3 of 4 red**: API image FAILURE 37265897012, Backend FAILURE 37265896557, Explorers FAILURE 37265896585, Music C0 success 37265896566. The ledger's cause map (`checkpoint-46ee-hosted-remaining-cause-map.md:3`) omits the API image failure, so it was not a complete record either |
+| C4 | No current-head hosted state recorded; "exact1a5c" framed as current | Added the `225d83e5` row and labelled the 1a5c framing historical | The head commit is docs-only but triggered a fresh run. At `225d83e5`: API image SUCCESS, Music C0 SUCCESS, Backend validation FAILURE (`music-required` FAILURE, `browser` FAILURE), Explorers Category A/B/Publishing FAILURE, Public shell SUCCESS, Music-and-account still running so `replatform-required` had not concluded |
+| C5 | Navigation row sat in the "Preserve as delivered" column: "frozen canonical6 locally passed" | Restated as **not delivered — locally qualified against uncommitted source, independent review open** | The 6-pass receipt is `dirty:true` and carries no independent review. The same overlay makes `e2e/setup/category-navigation.ts` deny GraphQL operations that unmigrated `category-navigation-a.spec.ts` and `music-publish-controls.spec.ts` still assert, so the overlay is itself under revision |
+| C6 | Count custody paragraph stated the rule but the table broke it | Expanded into a **Count custody** section naming the 82/88 split, the lane breakdown, the dirty-overlay receipts and the never-run 18 | "Contained route regressions 18 pass" has no run behind it: receipts record **8 PASS** (`navigation-fault-reconciliation.md:17`) and **10 PASS** (`category-b-preference-reconciliation.md:7`) at two different freezes, and the spec `explorers-earth/e2e/setup/category-navigation-route.test.ts` is **untracked** |
+| C7 | 3.1 row implied CORE-REPLACE status was open; the head commit introduced a "not delivered" claim elsewhere | Recorded CORE-REPLACE as **delivered and mounted**, with only the UI consumer and two negatives outstanding | `replaceRecommendationEntity` at `tunes/server/repositories/explorersRecommendationRepository.ts:301`, mounted at `tunes/server/routes/explorersRecommendationRoutes.ts:89`, landed in `4aa1f67e`. The false-absence claim was introduced by `225d83e5` itself and would have had a writer re-implement reviewed, route-registered code |
+| C8 | 3.4 row: "10 actual desktop/mobile browser cases" | Restated as **authored but unattested** | There is no analytics lane in the protected runner or suite manifest, no npm script invokes the fixture, and the result JSON was deleted on exit. 10 identities exist in source; 0 are attested |
+| C9 | Slice table column headed "Preserve as delivered" | Renamed to "Delivered scope, with its custody" | A not-delivered row (navigation) sat under a header that asserted delivery. Each cell now states its own custody — committed, dirty overlay, locally qualified, authored-only or hosted — which is the distinction this document's preamble already requires |
+
+No requirement was weakened, no gate removed and no checkbox ticked by these corrections; every entry either lowers a claim or adds disclosure. Corrections to `ticket-3-1.md`, `execution-packages.json`, `ci-audit-2026-10-05.md`, the ADR-006 draft and the ledger's 46ee cause map are separately owned and not made here.

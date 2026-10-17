@@ -60,6 +60,7 @@ const PersonTopPicksMobileHero = ({ people, onPersonClick, showManageButton = fa
           return (
             <motion.div
               key={person.documentId}
+              data-public-category-artwork={diff === 0 ? true : undefined}
               variants={variants}
               initial={false}
               animate={position}
@@ -126,7 +127,7 @@ const PersonTopPicksMobileHero = ({ people, onPersonClick, showManageButton = fa
                 <div className="flex items-center gap-3 mt-4 pointer-events-auto">
                   {showManageButton ? (
                     <button
-                      className="flex-1 bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
+                      className="flex-1 bg-[var(--category-accent,#7c3aed)] hover:bg-[var(--category-accent,#6d28d9)] text-[color:var(--category-accent-ink,#fff)] font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
                       onClick={(e) => {
                         e.stopPropagation();
                         onManageClick?.();
@@ -136,7 +137,7 @@ const PersonTopPicksMobileHero = ({ people, onPersonClick, showManageButton = fa
                     </button>
                   ) : (
                     <button
-                      className="flex-1 bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
+                      className="flex-1 bg-[var(--category-accent,#7c3aed)] hover:bg-[var(--category-accent,#6d28d9)] text-[color:var(--category-accent-ink,#fff)] font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
                       onClick={(e) => {
                         e.stopPropagation();
                         onPersonClick(person);

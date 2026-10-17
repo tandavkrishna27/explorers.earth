@@ -1,0 +1,721 @@
+{
+  "schemaVersion": "music-runtime-table-manifest/v1",
+  "migrationChain": {
+    "engine": "postgresql-15",
+    "expectedId": "0056_explorers_app_enrichment_jobs",
+    "files": [
+      "0001_runtime_baseline.sql",
+      "0002_identity_lifecycle.sql",
+      "0003_identity_lifecycle_hardening.sql",
+      "0004_identity_delete_saga.sql",
+      "0005_resource_bound_deletion_history.sql",
+      "0006_numeric_identity_lock.sql",
+      "0007_identity_provider_snapshot.sql",
+      "0008_credential_revocation_operations.sql",
+      "0009_credential_revocation_history_immutability.sql",
+      "0010_least_privilege_runtime_role.sql",
+      "0011_durable_publication_idempotency.sql",
+      "0012_publication_replay_expiry_guard.sql",
+      "0013_publication_operation_database_clock.sql",
+      "0014_durable_reactivation_authority.sql",
+      "0015_publication_operation_archive.sql",
+      "0016_publication_operation_retention.sql",
+      "0017_publication_idempotency_key_retirement.sql",
+      "0018_transactional_queue_replacement.sql",
+      "0019_queue_visibility_control.sql",
+      "0020_public_snapshot_revision.sql",
+      "0021_explorers_analytics_receipts.sql",
+      "0022_explorers_identity.sql",
+      "0023_explorers_authorization.sql",
+      "0024_explorers_profile_media.sql",
+      "0025_explorers_media_attachment_guard.sql",
+      "0026_explorers_media_slot_compatibility.sql",
+      "0027_explorers_lifecycle.sql",
+      "0028_explorers_recovery_proof_retention.sql",
+      "0029_explorers_recommendations.sql",
+      "0030_explorers_media_purpose_guard.sql",
+      "0031_explorers_content_revision.sql",
+      "0032_explorers_owner_page_indexes.sql",
+      "0033_explorers_recommendation_display_overrides.sql",
+      "0034_explorers_books_provider_context.sql",
+      "0035_explorers_book_cover_import.sql",
+      "0036_explorers_analytics_events.sql",
+      "0037_explorers_movies_provider_context.sql",
+      "0038_explorers_movie_media.sql",
+      "0039_music_venue_account_ownership.sql",
+      "0040_canonical_music_venue_provisioning.sql",
+      "0041_canonical_music_venue_release.sql",
+      "0042_canonical_music_venue_release_function.sql",
+      "0043_explorers_apps_provider_context.sql",
+      "0044_explorers_products_offer_context.sql",
+      "0045_explorers_people_catalog.sql",
+      "0046_explorers_places_catalog.sql",
+      "0047_explorers_place_photo_media.sql",
+      "0048_explorers_place_location_aggregate.sql",
+      "0049_explorers_collection_location_links.sql",
+      "0050_explorers_guide_sections.sql",
+      "0051_explorers_launch_controls.sql",
+      "0052_canonical_music_numeric_retirement.sql",
+      "0053_explorers_taxonomy_catalogs.sql",
+      "0054_explorers_place_individual_pins.sql",
+      "0055_explorers_app_enrichment.sql",
+      "0056_explorers_app_enrichment_jobs.sql"
+    ],
+    "controlTables": [
+      "music_schema_migrations",
+      "music_identity_tombstones",
+      "music_identity_lifecycle_operations",
+      "music_credential_revocation_operations",
+      "music_publication_operations",
+      "music_publication_operation_archive",
+      "music_reactivation_tokens",
+      "music_owner_operations",
+      "explorers_analytics_receipts",
+      "canonical_music_numeric_retirements",
+      "taxonomy_catalogs",
+      "taxonomy_source_mappings",
+      "taxonomy_legacy_slug_mappings",
+      "taxonomy_import_receipts",
+      "places_collection_mutation_state",
+      "places_pin_validation_dirty",
+      "places_chunk_validation_dirty"
+    ]
+  },
+  "generatedFrom": [
+    "tunes/shared/schema.ts",
+    "tunes/shared/authSchema.ts",
+    "tunes/shared/explorersSchema.ts",
+    "tunes/server/**/*.ts"
+  ],
+  "tables": [
+    {
+      "name": "account_category_content_state",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-data-free-tombstone-counters"
+    },
+    {
+      "name": "account_category_pin_state",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "account_category_settings",
+      "managedBy": "drizzle",
+      "family": "profile",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "account_lifecycle_operations",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "retain-minimal"
+    },
+    {
+      "name": "account_memberships",
+      "managedBy": "drizzle",
+      "family": "identity",
+      "lifecycle": "retain-tombstone-binding"
+    },
+    {
+      "name": "account_music_identity",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "identity",
+      "lifecycle": "delete-with-music-owner"
+    },
+    {
+      "name": "account_presentation",
+      "managedBy": "drizzle",
+      "family": "profile",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "account_recovery_proofs",
+      "managedBy": "drizzle",
+      "family": "security-audit",
+      "lifecycle": "expire-delete"
+    },
+    {
+      "name": "activity_logs",
+      "managedBy": "drizzle",
+      "family": "security-audit",
+      "lifecycle": "retain-policy"
+    },
+    {
+      "name": "analytics_event_receipts",
+      "managedBy": "drizzle",
+      "family": "analytics",
+      "lifecycle": "retain-minimized-retry-markers"
+    },
+    {
+      "name": "analytics_events",
+      "managedBy": "drizzle",
+      "family": "analytics",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "analytics_snapshots",
+      "managedBy": "drizzle",
+      "family": "analytics",
+      "lifecycle": "anonymize-retain"
+    },
+    {
+      "name": "api_tokens",
+      "managedBy": "drizzle",
+      "family": "security-audit",
+      "lifecycle": "revoke-delete"
+    },
+    {
+      "name": "app_enrichment_acceptances",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "app_enrichment_bindings",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "app_enrichment_entitlements",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "app_enrichment_generation_retirements",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "app_enrichment_generations",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "app_enrichment_job_candidates",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "app_enrichment_jobs",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "app_enrichment_retention_policy",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "retain-approved-policy"
+    },
+    {
+      "name": "app_enrichment_snapshots",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "app_enrichment_source_approvals",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "retain-approved-policy"
+    },
+    {
+      "name": "app_enrichment_worker_run_authorities",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "retain-bounded-receipts"
+    },
+    {
+      "name": "app_enrichment_worker_runs",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "retain-bounded-receipts"
+    },
+    {
+      "name": "app_entity_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "application_command_receipts",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "retire-response"
+    },
+    {
+      "name": "auth_account",
+      "managedBy": "drizzle",
+      "family": "identity-credential",
+      "lifecycle": "retain-minimal-binding"
+    },
+    {
+      "name": "auth_session",
+      "managedBy": "drizzle",
+      "family": "identity-credential",
+      "lifecycle": "expire-delete"
+    },
+    {
+      "name": "auth_user",
+      "managedBy": "drizzle",
+      "family": "identity",
+      "lifecycle": "retain-minimal-binding"
+    },
+    {
+      "name": "auth_verification",
+      "managedBy": "drizzle",
+      "family": "identity-credential",
+      "lifecycle": "expire-delete"
+    },
+    {
+      "name": "book_entity_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "book_recommendation_context",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "category_recommendation_pins",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "collection_items",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "collection_location_links",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "collection_media",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "collection_place_pins",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "collections",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "creator_accounts",
+      "managedBy": "drizzle",
+      "family": "profile",
+      "lifecycle": "retain-tombstone-binding"
+    },
+    {
+      "name": "deletion_feedback",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "pii",
+      "lifecycle": "purge-on-deletion-or-30-days"
+    },
+    {
+      "name": "email_logs",
+      "managedBy": "drizzle",
+      "family": "pii",
+      "lifecycle": "anonymize-retain-policy"
+    },
+    {
+      "name": "email_suppressions",
+      "managedBy": "drizzle",
+      "family": "pii",
+      "lifecycle": "retain-policy"
+    },
+    {
+      "name": "email_templates",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-owner-policy"
+    },
+    {
+      "name": "entities",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "entity_identifiers",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "guest_interactions",
+      "managedBy": "drizzle",
+      "family": "analytics",
+      "lifecycle": "anonymize-retain"
+    },
+    {
+      "name": "guide_collection_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "guide_section_photos",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "guide_sections",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "initial_account_bindings",
+      "managedBy": "drizzle",
+      "family": "identity",
+      "lifecycle": "retain-tombstone-binding"
+    },
+    {
+      "name": "media_assets",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "delete-after-storage-cleanup"
+    },
+    {
+      "name": "media_objects",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "delete-after-storage-cleanup"
+    },
+    {
+      "name": "movie_entity_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "movie_entity_provider_genres",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "movie_provider_genre_terms",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "movie_recommendation_context",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "music_request_quota",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "analytics",
+      "lifecycle": "delete-with-music-owner"
+    },
+    {
+      "name": "page_contents",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-owner-policy"
+    },
+    {
+      "name": "person_entity_details",
+      "managedBy": "drizzle",
+      "family": "pii",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "place_collection_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "place_entity_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "place_pin_draft_chunks",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "place_pin_draft_items",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "place_pin_drafts",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "place_recommendation_context",
+      "managedBy": "drizzle",
+      "family": "pii",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "playback_states",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "delete"
+    },
+    {
+      "name": "played_songs",
+      "managedBy": "drizzle",
+      "family": "analytics",
+      "lifecycle": "anonymize-retain"
+    },
+    {
+      "name": "playlist_songs",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "delete"
+    },
+    {
+      "name": "playlists",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "delete"
+    },
+    {
+      "name": "product_entity_details",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "product_recommendation_context",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "profile_feed_items",
+      "managedBy": "drizzle",
+      "family": "profile",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "profile_media",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "recommendation_app_screenshots",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "recommendation_book_covers",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "recommendation_display_overrides",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "recommendation_media",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "recommendation_movie_media",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "recommendation_place_photos",
+      "managedBy": "drizzle",
+      "family": "media",
+      "lifecycle": "detach-on-deletion"
+    },
+    {
+      "name": "recommendation_taxonomy",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "recommendations",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "seo_settings",
+      "managedBy": "drizzle",
+      "family": "analytics",
+      "lifecycle": "remove-identifiers-retain"
+    },
+    {
+      "name": "session",
+      "managedBy": "drizzle",
+      "family": "security-audit",
+      "lifecycle": "expire-delete"
+    },
+    {
+      "name": "songs",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "delete"
+    },
+    {
+      "name": "system_settings",
+      "managedBy": "drizzle",
+      "family": "security-audit",
+      "lifecycle": "rotate-delete-secrets"
+    },
+    {
+      "name": "taxonomy_term_translations",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "taxonomy_terms",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "team_members",
+      "managedBy": "drizzle",
+      "family": "pii",
+      "lifecycle": "delete-after-reassignment"
+    },
+    {
+      "name": "user_activity",
+      "managedBy": "drizzle",
+      "family": "analytics",
+      "lifecycle": "anonymize-retain"
+    },
+    {
+      "name": "user_profiles",
+      "managedBy": "drizzle",
+      "family": "pii",
+      "lifecycle": "delete-anonymize"
+    },
+    {
+      "name": "user_security_state",
+      "managedBy": "drizzle",
+      "family": "security-audit",
+      "lifecycle": "retain-minimal-binding"
+    },
+    {
+      "name": "user_sessions",
+      "managedBy": "drizzle",
+      "family": "security-audit",
+      "lifecycle": "delete-anonymize-policy"
+    },
+    {
+      "name": "users",
+      "managedBy": "drizzle",
+      "family": "pii",
+      "lifecycle": "delete-anonymize"
+    },
+    {
+      "name": "widgets",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "delete"
+    },
+    {
+      "name": "youtube_api_calls",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "analytics",
+      "lifecycle": "anonymize-retain"
+    },
+    {
+      "name": "youtube_api_usage",
+      "managedBy": "drizzle",
+      "family": "analytics",
+      "lifecycle": "anonymize-retain"
+    },
+    {
+      "name": "youtube_music",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "delete"
+    },
+    {
+      "name": "youtube_music_playlists",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "delete"
+    },
+    {
+      "name": "youtube_playlists",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "delete"
+    },
+    {
+      "name": "youtube_tokens",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "revoke-delete"
+    }
+  ],
+  "systemReferences": [
+    "pg_stat_activity"
+  ],
+  "controlTablePolicies": [
+    {
+      "name": "places_collection_mutation_state",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "cascade-on-collection-deletion"
+    },
+    {
+      "name": "places_pin_validation_dirty",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "transaction-final-validation-delete"
+    },
+    {
+      "name": "places_chunk_validation_dirty",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "transaction-final-validation-delete"
+    }
+  ]
+}

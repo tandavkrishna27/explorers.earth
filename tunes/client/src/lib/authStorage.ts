@@ -169,7 +169,9 @@ function checkCookieSSO(): SelectUser | null {
       allowGuestPlayOnDevice: userData.allowGuestPlayOnDevice !== undefined ? userData.allowGuestPlayOnDevice : true,
       allowPlaylistSharing: userData.allowPlaylistSharing !== undefined ? userData.allowPlaylistSharing : false,
       allowRecentlyPlayedVisibility: userData.allowRecentlyPlayedVisibility !== undefined ? userData.allowRecentlyPlayedVisibility : true,
-      accountManagerId: userData.accountManagerId || null
+      allowQueueVisibility: userData.allowQueueVisibility !== undefined ? userData.allowQueueVisibility : false,
+      accountManagerId: userData.accountManagerId || null,
+      musicQueueRevision: Number(userData.musicQueueRevision ?? 0),
     };
     
     return ssoUser;
@@ -221,7 +223,9 @@ function checkLocalStorageSSO(): SelectUser | null {
           allowGuestPlayOnDevice: userData.allowGuestPlayOnDevice !== undefined ? userData.allowGuestPlayOnDevice : true,
           allowPlaylistSharing: userData.allowPlaylistSharing !== undefined ? userData.allowPlaylistSharing : false,
           allowRecentlyPlayedVisibility: userData.allowRecentlyPlayedVisibility !== undefined ? userData.allowRecentlyPlayedVisibility : true,
-          accountManagerId: userData.accountManagerId || null
+          allowQueueVisibility: userData.allowQueueVisibility !== undefined ? userData.allowQueueVisibility : false,
+          accountManagerId: userData.accountManagerId || null,
+          musicQueueRevision: Number(userData.musicQueueRevision ?? 0),
         };
         
         return ssoUser;

@@ -49,14 +49,19 @@
         "explorers story",
         "who we are explorers"
       ],
-      "title": "Explorers of Earth | About Us"
+      "title": "Explorers of Earth | About Us",
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
     },
     "subtitle": {
       "line1": "Μια παγκόσμια κοινότητα ανθρώπων που εξερευνούν με προσοχή — για τους ανθρώπους, τον πολιτισμό και τον πλανήτη που μοιραζόμαστε.",
       "line2": "Η εξερεύνηση για εμάς δεν είναι για το πόσο μακριά πηγαίνουμε.",
       "line3": "Είναι για το πόσο βαθιά συνδεόμαστε."
     },
-    "title": "Εξερευνητές της Γης"
+    "title": "Εξερευνητές της Γης",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe"
   },
   "analytics": {
     "dashboard": {
@@ -268,7 +273,6 @@
       "message": "This account has been deactivated.",
       "reactivateLink": "Click here to reactivate your account →"
     },
-    "claimAccount": "Claim Account?",
     "confirmPassword": "Επιβεβαίωση κωδικού",
     "confirmPasswordPlaceholder": "Εισάγετε ξανά τον κωδικό πρόσβασης σας",
     "email": "Email",
@@ -325,7 +329,8 @@
         "mobileNumberPlaceholder": "Εισάγετε τον αριθμό κινητού σας",
         "next": "Επόμενο",
         "title": "Λεπτομέρειες επαφής"
-      }
+      },
+      "stepCount": "Step {{current}} of {{total}}"
     },
     "or": "ή",
     "password": "Κωδικός πρόσβασης",
@@ -340,8 +345,7 @@
     "signupSubtitle": "Εγγραφείτε για να απολαύσετε τις δυνατότητες του explorers",
     "signUpWithGoogle": "Εγγραφή με Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Όνομα χρήστη",
@@ -775,6 +779,12 @@
       "addLocation": "Add Location",
       "addLocationLabel": "Add",
       "addRecommendations": "Προσθήκη Συστάσεων",
+      "analytics": {
+        "ariaLabel": "{{label}}: {{value}}",
+        "loading": "Loading",
+        "unavailable": "Unavailable",
+        "viewsLast90Days": "Views · last 90 days"
+      },
       "draft": "Πρόχειρο",
       "error": {
         "message": "An error occurred while loading your data",
@@ -937,6 +947,97 @@
       "tabs": {
         "account": "Λογαριασμός",
         "publicProfile": "Δημόσιο Προφίλ"
+      },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "Η μετακίνηση του στοιχείου {{category}} ακυρώθηκε. Η σειρά επαναφέρθηκε.",
+          "drop": "Το στοιχείο {{category}} τοποθετήθηκε στη θέση {{position}} από {{total}}.",
+          "handle": "Σύρετε το στοιχείο {{category}}",
+          "instructions": "Πατήστε Space ή Enter για ανύψωση. Χρησιμοποιήστε τα βέλη ή τα Home και End για μετακίνηση. Πατήστε Space ή Enter για απόθεση ή Escape για ακύρωση.",
+          "lift": "Το στοιχείο {{category}} ανυψώθηκε. Θέση {{position}} από {{total}}.",
+          "move": "Το στοιχείο {{category}} μετακινήθηκε στη θέση {{position}} από {{total}}."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
+      },
+      "themeAppearance": {
+        "accentTitle": "Accent color",
+        "firstView": {
+          "business": "Business",
+          "categoryFirst": "Recommendations — {{category}} first",
+          "gallery": "Gallery",
+          "help": "Category choices promote that category but keep all other public categories.",
+          "label": "First view",
+          "savedOrder": "Recommendations — saved order"
+        },
+        "presetTitle": "Select theme preset",
+        "recommendations": {
+          "categories": {
+            "apps": "Apps & Tools",
+            "books": "Books",
+            "games": "Games",
+            "guides": "Guides",
+            "movies": "Movies & Shows",
+            "music": "Music",
+            "people": "People",
+            "places": "Places",
+            "products": "Products"
+          },
+          "featured": "Featured",
+          "help": "Choose how recommendation categories are arranged on your public profile.",
+          "layoutLegend": "Recommendations layout",
+          "layouts": {
+            "featured": {
+              "description": "A larger first category followed by compact rows.",
+              "label": "Featured First"
+            },
+            "grid": {
+              "description": "A compact grid that makes categories easy to scan.",
+              "label": "Category Mosaic"
+            },
+            "shelves": {
+              "description": "Horizontal shelves with recommendation previews.",
+              "label": "Classic Shelves"
+            }
+          },
+          "moved": "{{category}} moved to position {{position}} of {{total}}",
+          "moveDown": "Move {{category}} down",
+          "moveUp": "Move {{category}} up",
+          "orderHelp": "Move categories into the order visitors should scan them.",
+          "orderTitle": "Category order",
+          "position": "{{position}} of {{total}}",
+          "previewCaption": "Illustrative preview",
+          "previewLabel": "Recommendations layout preview",
+          "publicVisibilityNote": "Public Visibility controls whether a category appears.",
+          "title": "Recommendations presentation"
+        },
+        "wallpaperLabel": "Wallpaper and cover style",
+        "wallpaperOptions": {
+          "ambientGradient": "Ambient mesh gradient",
+          "bannerTop": "Top cover banner photo",
+          "fullWallpaperImage": "Full-screen background image",
+          "solidColor": "Solid minimal background"
+        }
       }
     },
     "recommendations": {
@@ -1115,7 +1216,8 @@
         "listVisibilityError": "Failed to update recommendation list visibility.",
         "qrDownloadError": "Failed to download QR code. Please try again.",
         "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrNotReady": "QR code not ready for download"
+        "qrNotReady": "QR code not ready for download",
+        "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "Ταξιδέψτε σαν ντόπιος",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -1163,7 +1265,8 @@
       "privacy": "Πολιτική Απορρήτου",
       "cookies": "Πολιτική cookie",
       "product": "Προϊόν",
-      "shareAnywhere": "Μοιραστείτε οπουδήποτε"
+      "shareAnywhere": "Μοιραστείτε οπουδήποτε",
+      "useCases": "Use Cases"
     },
     "copyright": "© 2025 εξερευνητές. Με την επιφύλαξη παντός δικαιώματος.",
     "madeWithLove": "Φτιαγμένο με αγάπη στη γη",
@@ -1179,7 +1282,8 @@
       "product": "Προϊόν",
       "share": "Μερίδιο",
       "openMenu": "Ανοίξτε το μενού πλοήγησης",
-      "closeMenu": "Κλείσιμο μενού πλοήγησης"
+      "closeMenu": "Κλείσιμο μενού πλοήγησης",
+      "useCases": "Use Cases"
     },
     "auth": {
       "login": "Σύνδεση",
@@ -1324,16 +1428,16 @@
       },
       "steps": [
         {
-          "title": "Προσθέστε αυτό που προτείνετε",
-          "body": "Μέρη, άτομα, προϊόντα, βιβλία, ταινίες, εκπομπές, μουσική, παιχνίδια, εφαρμογές, οδηγοί και σημειώσεις."
+          "body": "Μέρη, άτομα, προϊόντα, βιβλία, ταινίες, εκπομπές, μουσική, παιχνίδια, εφαρμογές, οδηγοί και σημειώσεις.",
+          "title": "Προσθέστε αυτό που προτείνετε"
         },
         {
-          "title": "Οργάνωσε το με τον δικό σου τρόπο",
-          "body": "Ομαδοποιήστε ανά πόλη, θέμα, λίστα, κατηγορία, ταξίδι ή στιγμή, ώστε οι άνθρωποι να μπορούν να εξερευνήσουν φυσικά."
+          "body": "Ομαδοποιήστε ανά πόλη, θέμα, λίστα, κατηγορία, ταξίδι ή στιγμή, ώστε οι άνθρωποι να μπορούν να εξερευνήσουν φυσικά.",
+          "title": "Οργάνωσε το με τον δικό σου τρόπο"
         },
         {
-          "title": "Κοινή χρήση ενός συνδέσμου ή QR",
-          "body": "Η σελίδα σας ενημερώνεται ανά πάσα στιγμή, ενώ ο ίδιος σύνδεσμος και το QR συνεχίζουν να λειτουργούν παντού."
+          "body": "Η σελίδα σας ενημερώνεται ανά πάσα στιγμή, ενώ ο ίδιος σύνδεσμος και το QR συνεχίζουν να λειτουργούν παντού.",
+          "title": "Κοινή χρήση ενός συνδέσμου ή QR"
         }
       ]
     },
@@ -1352,20 +1456,20 @@
       "tokyoFoodGuide": "Ο οδηγός τροφίμων μου για το Τόκιο explorers.earth/jane",
       "cards": [
         {
-          "title": "Link στο bio",
-          "eyebrow": "Έτοιμο για προφίλ"
+          "eyebrow": "Έτοιμο για προφίλ",
+          "title": "Link στο bio"
         },
         {
-          "title": "Κωδικοί QR",
-          "eyebrow": "Έτοιμο εκτός σύνδεσης"
+          "eyebrow": "Έτοιμο εκτός σύνδεσης",
+          "title": "Κωδικοί QR"
         },
         {
-          "title": "Μηνύματα",
-          "eyebrow": "Έτοιμη για συνομιλία"
+          "eyebrow": "Έτοιμη για συνομιλία",
+          "title": "Μηνύματα"
         },
         {
-          "title": "Οδηγοί υποδοχής",
-          "eyebrow": "Έτοιμος για επισκέπτες"
+          "eyebrow": "Έτοιμος για επισκέπτες",
+          "title": "Οδηγοί υποδοχής"
         }
       ],
       "visual": {
@@ -1408,49 +1512,6 @@
       "earnedThisMonth": "Κερδισμένο αυτόν τον μήνα",
       "passiveTitle": "Μετατρέψτε συστάσεις σε παθητικές ανταμοιβές",
       "networkTitle": "Χτίστε το δίκτυό σας και κερδίστε αυτόματα"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Ακούστε ενώ εξερευνείτε",
-      "body": "Η εξερεύνηση δεν είναι μόνο οπτική. Ο ήχος μεταφέρει μνήμη, πλαίσιο και συναίσθημα.\n\nΤο Tunes σας επιτρέπει να συλλέγετε και να μοιράζεστε μουσικές ταινίες για μέρη, ταξίδια και διαθέσεις — είτε είναι μουσική που ανακαλύφθηκε στο δρόμο είτε ήχοι που ορίζουν ένα μέρος για εσάς.\n\nΣυνδεδεμένο απρόσκοπτα με το προφίλ Explorer σας.",
-      "exploreButton": "Εξερευνήστε Tunes",
-      "featuresHeading": "Ισχυρές Λειτουργίες",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Συνεργασία σε Πραγματικό Χρόνο",
-          "description": "Επιτρέψτε στους επισκέπτες να προσθέσουν τραγούδια στη λίστα αναπαραγωγής σας αμέσως διατηρώντας πλήρη έλεγχο σε αυτό που παίζεται."
-        },
-        "qrCodeSharing": {
-          "title": "Κοινοποίηση QR Κώδικα",
-          "description": "Μοιραστείτε τη μουσική εμπειρία σας με μια απλή σάρωση QR κώδικα — δεν απαιτούνται εφαρμογές ή λήψεις."
-        },
-        "youtubeIntegration": {
-          "title": "Ενσωμάτωση YouTube",
-          "description": "Ενσωματωθείτε απρόσκοπτα με το YouTube για πρόσβαση σε εκατομμύρια τραγούδια και δημιουργία της τέλειας ατμόσφαιρας."
-        },
-        "voteLikeSystem": {
-          "title": "Σύστημα Ψηφοφορίας και Αρέσει",
-          "description": "Οι επισκέπτες μπορούν να ψηφίσουν τα αγαπημένα τους τραγούδια για να επηρεάσουν την ουρά λίστας αναπαραγωγής σε πραγματικό χρόνο."
-        },
-        "silentParties": {
-          "title": "Σιωπηλά Πάρτι",
-          "description": "Οργανώστε μοναδικά σιωπηλά πάρτι όπου όλοι ακούν μέσω των δικών τους ακουστικών."
-        },
-        "karaokeReady": {
-          "title": "Έτοιμο για Καραόκε",
-          "description": "Ιδανικό για βραδιές καραόκε με συνεργατικές λίστες αναπαραγωγής και αιτήματα τραγουδιών σε πραγματικό χρόνο."
-        }
-      },
-      "venueHeading": "Τέλειο για Κάθε Τόπο",
-      "venues": {
-        "barsPubs": "Μπαρ και Παμπ",
-        "restaurants": "Εστιατόρια",
-        "coffeeShops": "Καφετέριες",
-        "eventsWeddings": "Εκδηλώσεις και Γάμοι",
-        "retailStores": "Καταστήματα",
-        "gymsFitness": "Γυμναστήρια και Φιτνες"
-      },
-      "closingStatement": "Το Tunes είναι <strong>δωρεάν</strong> για εξερεύνηση, και για πληρωμένες λειτουργίες μπορείτε να αναβαθμίσετε αργότερα."
     },
     "whoIsFor": {
       "headline": "Σχεδιασμένο για ανθρώπους των οποίων το γούστο βοηθά τους άλλους.",
@@ -1532,7 +1593,23 @@
         "Αεροδρόμια",
         "ΜΚΟ",
         "Κυβερνητικές ομάδες"
-      ]
+      ],
+      "explore": "See this perspective",
+      "eyebrow": "Ways to use explorers",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
+        },
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
+        },
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
+        }
+      }
     },
     "testimonials": {
       "headline": "Αγαπήθηκε από ταξιδιώτες, δημιουργούς και οικοδεσπότες",
@@ -1542,45 +1619,45 @@
       "items": [
         {
           "id": "1",
-          "name": "Priya Sharma",
-          "role": "Travel Blogger",
           "location": "Βομβάη, Ινδία",
-          "quote": "εξερευνητές μεταμόρφωσαν τον τρόπο με τον οποίο μοιράζομαι τις ταξιδιωτικές μου γνώσεις. Οι ακόλουθοί μου λατρεύουν να έχουν άμεση πρόσβαση στις επιμελημένες προτάσεις μου!"
+          "name": "Priya Sharma",
+          "quote": "εξερευνητές μεταμόρφωσαν τον τρόπο με τον οποίο μοιράζομαι τις ταξιδιωτικές μου γνώσεις. Οι ακόλουθοί μου λατρεύουν να έχουν άμεση πρόσβαση στις επιμελημένες προτάσεις μου!",
+          "role": "Travel Blogger"
         },
         {
           "id": "2",
-          "name": "Raj Patel",
-          "role": "Airbnb Κεντρικός υπολογιστής",
           "location": "Δελχί, Ινδία",
-          "quote": "Οι καλεσμένοι μου αγαπούν απόλυτα τον εξατομικευμένο κωδικό QR στο κιτ καλωσορίσματος. Έγινε το χαρακτηριστικό μου άγγιγμα!"
+          "name": "Raj Patel",
+          "quote": "Οι καλεσμένοι μου αγαπούν απόλυτα τον εξατομικευμένο κωδικό QR στο κιτ καλωσορίσματος. Έγινε το χαρακτηριστικό μου άγγιγμα!",
+          "role": "Airbnb Κεντρικός υπολογιστής"
         },
         {
           "id": "3",
-          "name": "Γιούκι Τανάκα",
-          "role": "Ιδιοκτήτης εστιατορίου",
           "location": "Τόκιο, Ιαπωνία",
-          "quote": "Μοιραζόμαστε τους εξερευνητές μας με πελάτες για να προτείνουμε άλλα τοπικά σημεία. Έχει δημιουργήσει εκπληκτικές συνδέσεις με την κοινότητα."
+          "name": "Γιούκι Τανάκα",
+          "quote": "Μοιραζόμαστε τους εξερευνητές μας με πελάτες για να προτείνουμε άλλα τοπικά σημεία. Έχει δημιουργήσει εκπληκτικές συνδέσεις με την κοινότητα.",
+          "role": "Ιδιοκτήτης εστιατορίου"
         },
         {
           "id": "4",
-          "name": "Μαρία Σίλβα",
-          "role": "Ξεναγός",
           "location": "Σάο Πάολο, Βραζιλία",
-          "quote": "Το explorers με βοηθά να επεκτείνω την τεχνογνωσία μου πέρα ​​από τις ώρες της περιοδείας. Οι πελάτες μπορούν να έχουν πρόσβαση στις συστάσεις μου ανά πάσα στιγμή!"
+          "name": "Μαρία Σίλβα",
+          "quote": "Το explorers με βοηθά να επεκτείνω την τεχνογνωσία μου πέρα ​​από τις ώρες της περιοδείας. Οι πελάτες μπορούν να έχουν πρόσβαση στις συστάσεις μου ανά πάσα στιγμή!",
+          "role": "Ξεναγός"
         },
         {
           "id": "5",
-          "name": "Τζέιμς Γουίλσον",
-          "role": "Travel Influencer",
           "location": "Σίδνεϊ, Αυστραλία",
-          "quote": "Ως άτομο που επηρεάζει τα ταξίδια, οι εξερευνητές καθιστούν τόσο εύκολο να μοιράζομαι τα αγαπημένα μου σημεία με το κοινό μου. Η δυνατότητα κωδικού QR είναι εξαιρετική!"
+          "name": "Τζέιμς Γουίλσον",
+          "quote": "Ως άτομο που επηρεάζει τα ταξίδια, οι εξερευνητές καθιστούν τόσο εύκολο να μοιράζομαι τα αγαπημένα μου σημεία με το κοινό μου. Η δυνατότητα κωδικού QR είναι εξαιρετική!",
+          "role": "Travel Influencer"
         },
         {
           "id": "6",
-          "name": "Σοφί Μάρτιν",
-          "role": "Τοπικός οδηγός",
           "location": "Παρίσι, Γαλλία",
-          "quote": "Χρησιμοποιώ εξερευνητές για να δημιουργήσω περιηγήσεις με τα πόδια για τους πελάτες μου. Μπορούν να σαρώσουν το QR και να εξερευνήσουν με τον δικό τους ρυθμό!"
+          "name": "Σοφί Μάρτιν",
+          "quote": "Χρησιμοποιώ εξερευνητές για να δημιουργήσω περιηγήσεις με τα πόδια για τους πελάτες μου. Μπορούν να σαρώσουν το QR και να εξερευνήσουν με τον δικό τους ρυθμό!",
+          "role": "Τοπικός οδηγός"
         }
       ]
     },
@@ -1591,24 +1668,24 @@
       "error": "Σφάλμα φόρτωσης FAQ. Δοκιμάστε ξανά αργότερα.",
       "fallbackItems": [
         {
-          "Sequence": 1,
+          "Answer": "Μέρη, άτομα, προϊόντα, βιβλία, ταινίες, εκπομπές, μουσική, παιχνίδια, εφαρμογές, οδηγοί και σημειώσεις.",
           "Question": "Τι μπορώ να προσθέσω στη σελίδα μου Explorer;",
-          "Answer": "Μέρη, άτομα, προϊόντα, βιβλία, ταινίες, εκπομπές, μουσική, παιχνίδια, εφαρμογές, οδηγοί και σημειώσεις."
+          "Sequence": 1
         },
         {
-          "Sequence": 2,
+          "Answer": "Ναί. Η σελίδα σας Explorer μπορεί να κοινοποιηθεί ως σύνδεσμος ή QR για προφίλ, μηνύματα, πίνακες, κάρτες και έντυπους οδηγούς.",
           "Question": "Μπορώ να το μοιραστώ με έναν κωδικό QR;",
-          "Answer": "Ναί. Η σελίδα σας Explorer μπορεί να κοινοποιηθεί ως σύνδεσμος ή QR για προφίλ, μηνύματα, πίνακες, κάρτες και έντυπους οδηγούς."
+          "Sequence": 2
         },
         {
-          "Sequence": 3,
+          "Answer": "Ναί. Μπορείτε να διατηρήσετε τη σελίδα σας φρέσκια ενώ ο ίδιος σύνδεσμος και το QR συνεχίζουν να λειτουργούν.",
           "Question": "Μπορώ να ενημερώσω τις προτάσεις μου αργότερα;",
-          "Answer": "Ναί. Μπορείτε να διατηρήσετε τη σελίδα σας φρέσκια ενώ ο ίδιος σύνδεσμος και το QR συνεχίζουν να λειτουργούν."
+          "Sequence": 3
         },
         {
-          "Sequence": 4,
+          "Answer": "Ναί. Η σελίδα μπορεί να επικοινωνήσει με σαφήνεια τη δωρεάν υπόσχεση χωρίς γλώσσα βαριάς πληρωμής.",
           "Question": "Είναι οι εξερευνητές δωρεάν για πάντα;",
-          "Answer": "Ναί. Η σελίδα μπορεί να επικοινωνήσει με σαφήνεια τη δωρεάν υπόσχεση χωρίς γλώσσα βαριάς πληρωμής."
+          "Sequence": 4
         }
       ]
     },
@@ -1668,52 +1745,52 @@
       },
       "categories": [
         {
+          "description": "Εστιατόρια, γειτονιές, μουσεία, διαδρομές και κρυμμένα πετράδια που μπορούν πραγματικά να επισκεφτούν οι άνθρωποι.",
           "id": "places",
           "label": "Μέρη",
-          "title": "Τοπικά σημεία, οδηγοί και διαδρομές",
-          "description": "Εστιατόρια, γειτονιές, μουσεία, διαδρομές και κρυμμένα πετράδια που μπορούν πραγματικά να επισκεφτούν οι άνθρωποι."
+          "title": "Τοπικά σημεία, οδηγοί και διαδρομές"
         },
         {
+          "description": "Δημιουργοί, ιδρυτές, οδηγοί, καλλιτέχνες, δάσκαλοι, ειδικοί και άνθρωποι που διαμόρφωσαν το γούστο σας.",
           "id": "people",
           "label": "Ανθρωποι",
-          "title": "Άνθρωποι που αξίζει να ακολουθήσετε ή να μάθετε από αυτούς",
-          "description": "Δημιουργοί, ιδρυτές, οδηγοί, καλλιτέχνες, δάσκαλοι, ειδικοί και άνθρωποι που διαμόρφωσαν το γούστο σας."
+          "title": "Άνθρωποι που αξίζει να ακολουθήσετε ή να μάθετε από αυτούς"
         },
         {
+          "description": "Βιβλία που συνεχίζετε να προτείνετε σε συνομιλίες, σημειώσεις, ενημερωτικά δελτία και ταξιδιωτικές συνομιλίες.",
           "id": "books",
           "label": "Βιβλία",
-          "title": "Βιβλία και λίστες ανάγνωσης",
-          "description": "Βιβλία που συνεχίζετε να προτείνετε σε συνομιλίες, σημειώσεις, ενημερωτικά δελτία και ταξιδιωτικές συνομιλίες."
+          "title": "Βιβλία και λίστες ανάγνωσης"
         },
         {
+          "description": "Ταινίες, σειρές, ντοκιμαντέρ και λίστες παρακολούθησης για κάθε είδους διάθεση ή κοινό.",
           "id": "movies",
           "label": "Ταινίες και τηλεόραση",
-          "title": "Ταινίες, εκπομπές και λίστες παρακολούθησης",
-          "description": "Ταινίες, σειρές, ντοκιμαντέρ και λίστες παρακολούθησης για κάθε είδους διάθεση ή κοινό."
+          "title": "Ταινίες, εκπομπές και λίστες παρακολούθησης"
         },
         {
+          "description": "Παιχνίδια, αποστολές, κόσμοι και εμπειρίες που οι άνθρωποι θα πρέπει να δοκιμάσουν στη συνέχεια.",
           "id": "games",
           "label": "Παιχνίδια",
-          "title": "Παιχνίδια και κόσμοι για εξερεύνηση",
-          "description": "Παιχνίδια, αποστολές, κόσμοι και εμπειρίες που οι άνθρωποι θα πρέπει να δοκιμάσουν στη συνέχεια."
+          "title": "Παιχνίδια και κόσμοι για εξερεύνηση"
         },
         {
+          "description": "Καλλιτέχνες, άλμπουμ, τραγούδια, λίστες αναπαραγωγής και soundtrack που συνδέονται με μέρη και στιγμές.",
           "id": "music",
           "label": "Μουσική",
-          "title": "Άλμπουμ, καλλιτέχνες και λίστες αναπαραγωγής",
-          "description": "Καλλιτέχνες, άλμπουμ, τραγούδια, λίστες αναπαραγωγής και soundtrack που συνδέονται με μέρη και στιγμές."
+          "title": "Άλμπουμ, καλλιτέχνες και λίστες αναπαραγωγής"
         },
         {
+          "description": "Αγαπημένα καθημερινά, ταξιδιωτικά εργαλεία, εργαλεία δημιουργών, δώρα και προϊόντα που αξίζει να σώσετε.",
           "id": "products",
           "label": "Προϊόντα",
-          "title": "Προϊόντα που πραγματικά προτείνουν οι άνθρωποι",
-          "description": "Αγαπημένα καθημερινά, ταξιδιωτικά εργαλεία, εργαλεία δημιουργών, δώρα και προϊόντα που αξίζει να σώσετε."
+          "title": "Προϊόντα που πραγματικά προτείνουν οι άνθρωποι"
         },
         {
+          "description": "Λογισμικό, ιστότοποι, πρότυπα, εργαλεία και πόροι που κάνουν τη ζωή ευκολότερη.",
           "id": "apps",
           "label": "Εφαρμογές και εργαλεία",
-          "title": "Εφαρμογές, εργαλεία και χρήσιμοι σύνδεσμοι",
-          "description": "Λογισμικό, ιστότοποι, πρότυπα, εργαλεία και πόροι που κάνουν τη ζωή ευκολότερη."
+          "title": "Εφαρμογές, εργαλεία και χρήσιμοι σύνδεσμοι"
         }
       ]
     }
@@ -2286,5 +2363,115 @@
     "unavailable": "Το όνομα χρήστη δεν είναι διαθέσιμο.",
     "confirmOnSignup": "Θα επιβεβαιώσουμε τη διαθεσιμότητα κατά την εγγραφή.",
     "checkingAvailability": "Έλεγχος διαθεσιμότητας..."
+  },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
+  "useCases": {
+    "cta": {
+      "button": "Claim your Explorer page",
+      "description": "Start with the recommendations you already share. Give them one place to live.",
+      "title": "Make a home for what you would pass on."
+    },
+    "hero": {
+      "chooseLabel": "Choose a perspective",
+      "description": "Whether the point of view is personal, creative, or shared by a brand, explorers gives it a thoughtful home.",
+      "eyebrow": "Ways to explore",
+      "title": "Different perspectives. One place to share them.",
+      "visualAlt": "Three perspectives connected through a place, an Explorer profile, and a storefront."
+    },
+    "journey": {
+      "description": "The shape changes with the person behind it. The rhythm stays simple.",
+      "eyebrow": "One simple rhythm",
+      "steps": {
+        "collect": {
+          "description": "Bring together what you genuinely recommend across the parts of life that matter to you.",
+          "title": "Collect"
+        },
+        "shape": {
+          "description": "Organize it with enough context for someone else to understand why it belongs.",
+          "title": "Shape"
+        },
+        "share": {
+          "description": "Offer one living link or QR that people can save, scan, and return to.",
+          "title": "Share"
+        }
+      },
+      "title": "Three perspectives. One way of sharing with care."
+    },
+    "perspectives": {
+      "brands": {
+        "description": "Curate the places, products, guides, and ideas that express what your organization genuinely values.",
+        "label": "Brands",
+        "points": [
+          "Build collections with a clear and human perspective.",
+          "Connect locations, products, and useful context.",
+          "Give people something thoughtful to save and revisit."
+        ],
+        "title": "Turn your point of view into an experience people can enter."
+      },
+      "creators": {
+        "description": "Turn the recommendations scattered across posts, videos, conversations, and notes into something people can return to.",
+        "label": "Creators",
+        "points": [
+          "Create a durable home for your point of view.",
+          "Organize recommendations around stories and themes.",
+          "Share through one link or QR wherever people find you."
+        ],
+        "title": "Give your audience more than a feed."
+      },
+      "personal": {
+        "description": "Keep the places, books, films, tools, people, and small discoveries you return to in one living collection.",
+        "label": "Personal",
+        "points": [
+          "Bring different kinds of recommendations together.",
+          "Add the context that makes each choice yours.",
+          "Share one page that can keep evolving with you."
+        ],
+        "title": "A home for the things that shape your world."
+      }
+    },
+    "seo": {
+      "description": "See how people, creators, and brands can collect what they value, shape it with context, and share it through one thoughtful Explorer page.",
+      "keywords": [
+        "explorers use cases",
+        "personal recommendations page",
+        "creator recommendations",
+        "brand curation",
+        "share recommendations",
+        "curated collections"
+      ],
+      "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
+      "title": "Use Cases | explorers.earth"
+    }
   }
 }

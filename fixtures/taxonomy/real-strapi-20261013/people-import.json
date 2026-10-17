@@ -1,0 +1,9 @@
+{
+  "version": "explorers-taxonomy-import/v1",
+  "catalogVersion": 1,
+  "category": "people",
+  "defaultLocale": "en",
+  "terms": [],
+  "sourceMappings": [],
+  "legacySlugMappings": []
+}

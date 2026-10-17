@@ -60,6 +60,7 @@ const ProductTopPicksMobileHero = ({ products, onProductClick, showManageButton 
           return (
             <motion.div
               key={product.documentId}
+              data-public-category-artwork={diff === 0 ? true : undefined}
               variants={variants}
               initial={false}
               animate={position}
@@ -103,7 +104,7 @@ const ProductTopPicksMobileHero = ({ products, onProductClick, showManageButton 
                 <div className="flex items-center gap-3 mt-4 pointer-events-auto">
                   {showManageButton ? (
                     <button 
-                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
+                      className="flex-1 bg-[var(--category-accent,#059669)] hover:bg-[var(--category-accent,#047857)] text-[color:var(--category-accent-ink,#fff)] font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
                       onClick={(e) => {
                         e.stopPropagation();
                         onManageClick?.();
@@ -113,7 +114,7 @@ const ProductTopPicksMobileHero = ({ products, onProductClick, showManageButton 
                     </button>
                   ) : (
                     <button 
-                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
+                      className="flex-1 bg-[var(--category-accent,#059669)] hover:bg-[var(--category-accent,#047857)] text-[color:var(--category-accent-ink,#fff)] font-bold py-3 px-4 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl"
                       onClick={(e) => {
                         e.stopPropagation();
                         onProductClick(product);

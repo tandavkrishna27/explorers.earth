@@ -1,18 +1,23 @@
 import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-serverless';
+import type { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
 
 import pg from 'pg';
 import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
 import * as schema from "@shared/schema";
 import dotenv from 'dotenv';
+import { hasValidatedLocalMusicRuntime } from './config/music-local-profile';
+import { hasValidatedOwnedBrowserMusicRuntime } from './config/music-owned-browser-profile';
 
 // Load environment variables first
-dotenv.config();
+if (!hasValidatedLocalMusicRuntime(process.env) && !hasValidatedOwnedBrowserMusicRuntime(process.env)) dotenv.config();
 
 let pool: any;
-let db: any;
+type AppDatabase = NeonDatabase<typeof schema> | NodePgDatabase<typeof schema>;
+let db: AppDatabase;
 
 try {
   const isNeon = process.env.DATABASE_URL?.includes('neon.tech');

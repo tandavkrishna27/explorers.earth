@@ -9,13 +9,14 @@ describe('gameHelpers extra cases', () => {
     expect(buildCoverUrl('/uploads/cover.png')).toContain('/uploads/cover.png');
   });
 
-  it('should deduplicate games matching igdb_id', () => {
+  it('preserves distinct native recommendation identities sharing igdb_id', () => {
     const list = [
       { documentId: '1', igdb_id: 12345, is_pinned: false },
       { documentId: '2', igdb_id: 12345, is_pinned: true }
     ];
     const res = deduplicateGames(list as any);
-    expect(res.length).toBe(1);
-    expect(res[0].is_pinned).toBe(true);
+    expect(res.length).toBe(2);
+    expect(res.map(row=>row.documentId)).toEqual(['1','2']);
+    expect(res[1].is_pinned).toBe(true);
   });
 });

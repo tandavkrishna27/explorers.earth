@@ -1,891 +1,260 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
-import {
-  ArrowLeft, Star, Loader2, Check, Users, Link as LinkIcon,
-  AlertCircle, Upload, X, Instagram, Linkedin, Github, Youtube, Globe,
-} from "lucide-react";
-import { toast } from "sonner";
-import axios from "axios";
-import useAuthStore from "../../../../store/store";
-import { PEOPLE_BY_LIST, PERSON_CATEGORIES, peopleByListVars, refetchPeopleByList } from "../../api/query";
-import { CREATE_RECOMMENDED_PERSON, UPDATE_RECOMMENDED_PERSON } from "../../api/mutation";
-import {
-  deduplicatePeople, buildImageUrl, generateSlug, detectPlatform, getPlatformColor,
-} from "../../utils/personHelpers";
-import type { RecommendedPerson, PeopleCategory } from "../../types";
-import TiptapEditor from "../../../Favorites/components/TiptapEditor";
-import {
-  generatePersonUploadPath,
-  generateRandomFileName,
-  sanitizeUsername,
-} from "../../../../utils/uploadPathGenerator";
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Loader2, Users, X } from 'lucide-react';
+import { toast } from 'sonner';
+import useAuthStore from '../../../../store/store';
+import type { RecommendationObservation, CompleteTaxonomyCatalog } from '../../../../lib/explorersApiClient';
+import { PeopleClient, type ManualPersonIntent } from '../../api/peopleClient';
+import { usePeopleCommands } from '../../api/query';
+import { invalidatePeople, usePeopleOwner } from '../../hooks/usePeopleOwner';
+import { PERSON_PLATFORMS, safePersonUrlSchema, type PersonPlatform } from '../../../../../../tunes/shared/explorersPersonContract';
+import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
+import TiptapEditor from '../../../Favorites/components/TiptapEditor';
 
-// ─────────────────────────────────────────────────────────────
-// URL Scrape Panel
-// ─────────────────────────────────────────────────────────────
-const UrlScrapePanel = ({
-  onScraped,
-}: {
-  onScraped: (data: any) => void;
-}) => {
-  const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleScrape = async () => {
-    if (!url.trim()) return;
-    setLoading(true);
-    setError("");
-    try {
-      const resp = await fetch(
-        `/api/people/scrape-profile`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) }
-      );
-      if (!resp.ok) throw new Error("Scrape failed");
-      const data = await resp.json();
-      const detectedPlatform = detectPlatform(url);
-      onScraped({ ...data, profile_url: url, platform: data.platform || detectedPlatform });
-      toast.success("Profile metadata fetched!");
-    } catch {
-      setError("Could not fetch profile data — fill in the details below.");
-      const detectedPlatform = detectPlatform(url);
-      onScraped({ profile_url: url, platform: detectedPlatform });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <LinkIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-dashboard-muted" />
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://instagram.com/username or linkedin.com/in/..."
-            className="w-full bg-dashboard-muted border border-dashboard-border rounded-xl pl-9 pr-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors"
-            onKeyDown={(e) => e.key === "Enter" && handleScrape()}
-          />
-        </div>
-        <button
-          onClick={handleScrape}
-          disabled={loading || !url.trim()}
-          className="px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2 disabled:opacity-50"
-        >
-          {loading ? <Loader2 size={14} className="animate-spin" /> : "Fetch"}
-        </button>
-      </div>
-      {error && (
-        <div className="flex items-center gap-2 text-xs text-amber-400/80 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2">
-          <AlertCircle size={12} /> {error}
-        </div>
-      )}
-    </div>
-  );
+// twitter is stored; the form has always offered x, so the option carries both.
+const PLATFORM_LABELS: Record<PersonPlatform, string> = {
+ instagram: 'Instagram', linkedin: 'LinkedIn', twitter: 'X', github: 'GitHub',
+ youtube: 'YouTube', website: 'Website', other: 'Other',
 };
 
-// ─────────────────────────────────────────────────────────────
-// Platform selector
-// ─────────────────────────────────────────────────────────────
-const PLATFORMS = [
-  { value: "instagram", label: "Instagram", Icon: Instagram },
-  { value: "linkedin", label: "LinkedIn", Icon: Linkedin },
-  { value: "x", label: "X / Twitter", Icon: () => (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-  )},
-  { value: "github", label: "GitHub", Icon: Github },
-  { value: "youtube", label: "YouTube", Icon: Youtube },
-  { value: "website", label: "Website", Icon: Globe },
-  { value: "other", label: "Other", Icon: Globe },
-];
+/**
+ * Ticket 4.5. Native People add/edit page.
+ *
+ * Removed rather than ported:
+ *
+ *  - The paste-a-profile step posted to /api/people/scrape-profile. The server has no
+ *    such route and music-security-containment.test.ts asserts the path stays absent, so
+ *    the step called a dead endpoint and discarded the draft when it failed. Every field
+ *    is owner-entered now, which is what "enrichment failure must not erase a manual
+ *    draft" asks for - there is no enrichment left to fail.
+ *  - Scraped screenshots: imagery is owner media through the native route. Nothing here
+ *    copies an image from a third party's profile.
+ *
+ * One field genuinely has nowhere to go. The Strapi form had separate "Headline / Role"
+ * and "Bio / Description" inputs, but the target schema's person_entity_details has only
+ * headline, and RecommendedPerson already declares bio as a compatibility alias of it.
+ * So this page keeps one headline input and bio reads from it. That is a deliberate
+ * narrowing recorded in the ticket, not an oversight.
+ */
+export default function AddPersonPage() {
+ const { listId, personId } = useParams<{ listId: string; personId?: string }>();
+ const location = useLocation(), navigate = useNavigate();
+ const generation = useAuthStore(state => state.generation), accountId = useAuthStore(state => state.accountId);
+ const scope = JSON.stringify([generation, accountId, location.pathname, listId, personId]);
+ const currentScope = useRef(scope); currentScope.current = scope;
+ const active = useRef(0), controller = useRef<AbortController>();
+ const owner = usePeopleOwner(undefined, true), commands = usePeopleCommands();
 
-// ─────────────────────────────────────────────────────────────
-// Tags editor
-// ─────────────────────────────────────────────────────────────
-const TagsEditor = ({ tags, onChange }: { tags: string[]; onChange: (t: string[]) => void }) => {
-  const [input, setInput] = useState("");
+ const [existingId, setExistingId] = useState('');
+ const existingPeople = [...new Map((owner.content?.view.lists.flatMap(list => list.recommended_people) ?? []).filter(person => !owner.content?.view.lists.find(list => list.documentId === listId)?.recommended_people.some(member => member.documentId === person.documentId)).map(person => [person.documentId, person])).values()];
 
-  const addTag = () => {
-    const trimmed = input.trim();
-    if (trimmed && !tags.includes(trimmed)) {
-      onChange([...tags, trimmed]);
+ const [name, setName] = useState(''), [profileUrl, setProfileUrl] = useState('');
+ const [platform, setPlatform] = useState<PersonPlatform | ''>('');
+ const [handle, setHandle] = useState(''), [headline, setHeadline] = useState('');
+ const [locationText, setLocationText] = useState(''), [followers, setFollowers] = useState('');
+ const [tags, setTags] = useState<string[]>([]), [tagDraft, setTagDraft] = useState('');
+ const [note, setNote] = useState(''), [rating, setRating] = useState<number | null>(null);
+ const [media, setMedia] = useState<{ id: string; url: string }[]>([]), [pending, setPending] = useState(0);
+ const [saving, setSaving] = useState(false), [error, setError] = useState('');
+ const [sectorId,setSectorId]=useState(''),[sectorTouched,setSectorTouched]=useState(false);
+ const [catalog,setCatalog]=useState<CompleteTaxonomyCatalog>(),[catalogLoading,setCatalogLoading]=useState(true),[catalogError,setCatalogError]=useState(''),[catalogRetry,setCatalogRetry]=useState(0);
+ const [existingSector,setExistingSector]=useState<{id:string;slug:string;label:string|null;unavailable:boolean}|null>(null);
+ const initialized = useRef(''), draftObservation = useRef<RecommendationObservation>();
+ const intent = useRef<{ scope: string; signature: string; value: ManualPersonIntent }>();
+ const updateKey = useRef<{ signature: string; key: string }>();
+ const mounted = useRef(true);
+
+ useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); active.current++; }; }, []);
+ useEffect(()=>{
+  const captured=scope,abort=new AbortController();let live=true;
+  setCatalog(undefined);setCatalogLoading(true);setCatalogError('');
+  PeopleClient.readSectorCatalog(abort.signal).then(value=>{if(live&&mounted.current&&currentScope.current===captured&&!abort.signal.aborted)setCatalog(value);},failure=>{if(live&&mounted.current&&currentScope.current===captured&&!abort.signal.aborted)setCatalogError(failure instanceof Error?failure.message:'Sectors could not be loaded');}).finally(()=>{if(live&&mounted.current&&currentScope.current===captured&&!abort.signal.aborted)setCatalogLoading(false);});
+  return()=>{live=false;abort.abort();};
+ },[scope,catalogRetry]);
+ useEffect(()=>{setSectorId('');setSectorTouched(false);setExistingSector(null);},[scope]);
+ useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setName(''); setProfileUrl(''); setPlatform(''); setHandle(''); setHeadline(''); setLocationText(''); setFollowers(''); setTags([]); setTagDraft(''); setNote(''); setRating(null); setMedia([]); setPending(0); setSaving(false); setError(''); setExistingId(''); }, [scope]);
+
+ useEffect(() => {
+  if (!personId || !owner.content || initialized.current === scope) return;
+  const person = owner.content.view.lists.find(list => list.documentId === listId)?.recommended_people.find(row => row.documentId === personId);
+  const observed = owner.content.details.get(personId);
+  if (!person || !observed) return;
+  initialized.current = scope; draftObservation.current = observed;
+  const stored=observed.detail.peopleSector?.sector??null;setExistingSector(stored);setSectorId(stored?.id??'');setSectorTouched(false);
+  setName(person.name); setHandle(person.username_handle ?? ''); setHeadline(person.headline ?? '');
+  setLocationText(person.location ?? ''); setFollowers(person.follower_count ?? '');
+  setPlatform((person.primary_platform as PersonPlatform | null) ?? '');
+  setProfileUrl(person.profile_url ?? '');
+  setTags(person.skills_tags ?? []);
+  setNote(typeof person.user_recommendation_note === 'string' ? person.user_recommendation_note : '');
+  setRating(person.user_rating);
+  // Without this the form starts empty and save() sends mediaIds: [], silently detaching
+  // every snapshot the owner already uploaded. mediaIds is on every recommendation detail,
+  // so unlike appScreenshots it needs no category guard.
+  setMedia((observed.detail.mediaIds ?? []).map(id => ({ id, url: `/api/explorers/v1/media/${id}/content` })));
+ }, [owner.content, scope, personId, listId]);
+
+ const valid = (captured: string, operation?: number) => mounted.current && currentScope.current === captured && (operation === undefined || active.current === operation);
+ const assertCurrent = (captured: string, operation: number) => { if (!valid(captured, operation) || controller.current?.signal.aborted) throw new Error('Person owner or route changed'); };
+ const blank = (value: string) => { const trimmed = value.trim(); return trimmed === '' ? null : trimmed; };
+
+ // Reported before any command is dispatched, so the draft is never discarded to find out.
+ const urlProblem = profileUrl.trim() !== '' && !safePersonUrlSchema.safeParse(profileUrl.trim()).success
+  ? 'Enter a full http(s) profile address.' : undefined;
+
+ const addTag = () => {
+  const value = tagDraft.trim();
+  if (!value || tags.includes(value) || tags.length >= 32) { setTagDraft(''); return; }
+  setTags(current => [...current, value]); setTagDraft('');
+ };
+
+ const attachExisting = async () => {
+  const captured = scope;
+  try { await commands.membership(existingId, listId!, true); if (valid(captured)) navigate(`/recommendations/people/${listId}`); }
+  catch (failure) { if (valid(captured)) setError(failure instanceof Error ? failure.message : 'Person could not be added'); }
+ };
+
+ const upload = async (files: File[]) => {
+  const captured = scope; setPending(value => value + files.length); setError('');
+  for (const file of files) {
+   if (!valid(captured)) return;
+   try { const result = await PeopleClient.upload(file, crypto.randomUUID()); if (!valid(captured)) return; setMedia(value => [...value, { id: result.id, url: `/api/explorers/v1/media/${result.id}/content` }]); }
+   catch (failure) { if (valid(captured)) setError(failure instanceof Error ? failure.message : 'Upload failed'); }
+   finally { if (valid(captured)) setPending(value => value - 1); }
+  }
+ };
+
+ const save = async () => {
+  if (!listId || pending || saving || !name.trim() || urlProblem || (personId && initialized.current !== scope)) return;
+  const captured = scope, operation = ++active.current; controller.current?.abort(); controller.current = new AbortController(); const signal = controller.current.signal;
+  setSaving(true); setError('');
+  try {
+   const sectorPatch=sectorTouched?{peopleSectorTermId:sectorId||null}:{};
+   if(sectorTouched&&sectorId&&(!catalog||catalog.category!=='people'||catalog.state!=='CONFIGURED'||!catalog.items.some(item=>item.id===sectorId&&item.category==='people'&&item.parentId===null)))throw new Error('Reload sectors and choose an available sector before saving');
+   const link = blank(profileUrl);
+   // The stated platform's link and the explicit primary are the same address here;
+   // keying it under both is what lets the projection resolve a primary either way.
+   const socialUrls = link === null ? {} : {primary: link, ...(platform === '' ? {} : {[platform]: link})};
+   const facts = { usernameHandle: blank(handle), headline: blank(headline), locationText: blank(locationText),
+    avatarUrl: null, primaryPlatform: platform === '' ? null : platform, socialUrls,
+    skillsTags: tags, externalFollowerCountText: blank(followers) };
+   const draft = { title: name.trim(), ...facts, note: richNoteFromEditor(note), userRating: rating, mediaIds: media.map(item => item.id),...sectorPatch };
+   const signature = JSON.stringify(draft);
+   assertCurrent(captured, operation);
+   if (personId) {
+    const observed = owner.content?.details.get(personId);
+    if (!observed || draftObservation.current !== observed) throw new Error('Reload the person before saving');
+    if (updateKey.current?.signature !== signature) updateKey.current = { signature, key: crypto.randomUUID() };
+    assertCurrent(captured, operation);
+    // usernameHandle is absent here on purpose: it is not in the override vocabulary,
+    // because a handle is how a person is identified on a platform.
+    const {usernameHandle: _handle, ...overridable} = facts;
+    await PeopleClient.updateRecommendation(observed, { displayOverrides: { title: draft.title, ...overridable }, note: draft.note, userRating: rating, mediaIds: draft.mediaIds,...sectorPatch }, updateKey.current.key, signal);
+    assertCurrent(captured, operation);
+   } else {
+    if (intent.current?.scope !== captured || intent.current.signature !== signature) {
+     const parent = await PeopleClient.observeCollection(listId, signal); assertCurrent(captured, operation);
+     intent.current = { scope: captured, signature, value: PeopleClient.prepareManualIntent(parent, draft) };
     }
-    setInput("");
-  };
+    assertCurrent(captured, operation); await PeopleClient.createManual(intent.current.value, signal); assertCurrent(captured, operation);
+   }
+   invalidatePeople(); toast.success('Person saved'); navigate(`/recommendations/people/${listId}`, { state: { justAddedRecommendation: true } });
+  } catch (failure) { if (valid(captured, operation)) setError(failure instanceof Error ? failure.message : 'Person could not be saved'); }
+  finally { if (valid(captured, operation)) setSaving(false); }
+ };
 
-  return (
-    <div>
-      <div className="flex flex-wrap gap-2 mb-2">
-        {tags.map((tag) => (
-          <span key={tag} className="flex items-center gap-1 text-xs bg-dashboard-accent/20 border border-dashboard-accent/30 text-white px-2.5 py-1 rounded-full">
-            {tag}
-            <button onClick={() => onChange(tags.filter((t) => t !== tag))} className="hover:text-red-400 transition-colors ml-0.5">
-              <X size={10} />
-            </button>
-          </span>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
-          placeholder="Add a tag (press Enter)"
-          className="flex-1 bg-dashboard-muted border border-dashboard-border rounded-lg px-3 py-2 text-xs text-white placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent"
-        />
-        <button onClick={addTag} className="px-3 py-2 rounded-lg bg-dashboard-accent/30 text-white text-xs hover:bg-dashboard-accent/50 transition-colors">
-          Add
-        </button>
-      </div>
-    </div>
-  );
-};
+ // Edit controls require the actual complete owner observation. A loaded draft stays
+ // owned by its original observation across refreshes and never rebases.
+ if (personId && initialized.current !== scope) {
+  return <div className="min-h-screen text-dashboard p-4" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+   <button aria-label="Back to person list" onClick={() => navigate(`/recommendations/people/${listId}`)}><ArrowLeft size={20} /></button>
+   <h1 className="font-semibold">Edit Person</h1>
+   {owner.loading ? <p role="status">Loading person…</p> : <div role="alert"><p>{owner.error?.message || 'Person could not be loaded. Refresh before editing.'}</p><button onClick={owner.refetch}>Retry loading person</button></div>}
+  </div>;
+ }
 
-// ─────────────────────────────────────────────────────────────
-// Main AddPersonPage
-// ─────────────────────────────────────────────────────────────
-const AddPersonPage = () => {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const redirectBack = searchParams.get("redirectBack");
-  const { listId, personId } = useParams<{ listId: string; personId: string }>();
-  const { user, token } = useAuthStore();
-  const isEdit = !!personId;
+ return <div className="min-h-screen text-dashboard">
+  <header className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3">
+   <button aria-label="Back to person list" onClick={() => navigate(`/recommendations/people/${listId}`)}><ArrowLeft size={20} /></button>
+   <h1 className="font-semibold">{personId ? 'Edit Person' : 'Add Person'}</h1>
+  </header>
+  <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-6" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+   {!personId && existingPeople.length > 0 && <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-3">
+    <label className="block">Existing person
+     <select value={existingId} onChange={event => setExistingId(event.target.value)} disabled={commands.loading} className="block w-full bg-dashboard-muted rounded-xl p-3">
+      <option value="">Select a person</option>
+      {existingPeople.map(person => <option key={person.documentId} value={person.documentId}>{person.name}</option>)}
+     </select>
+    </label>
+    <button disabled={!existingId || commands.loading} onClick={attachExisting}>Add existing person to this list</button>
+   </section>}
 
-  const [step, setStep] = useState<"url" | "form">(isEdit ? "form" : "url");
-  const [formData, setFormData] = useState<Partial<RecommendedPerson>>({
-    platform: null,
-    tags: [],
-  });
-  const [note, setNote] = useState<any>(null);
-  const [userRating, setUserRating] = useState<number | null>(null);
-  const [isPinned, setIsPinned] = useState(false);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
-  const [saving, setSaving] = useState(false);
-  // Avatar upload
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string>("");
-  // Manual file uploads -> S3 (Gallery/Screenshots)
-  const [existingSnapshots, setExistingSnapshots] = useState<{ id: string; url: string }[]>([]);
-  const [newSnapshots, setNewSnapshots] = useState<File[]>([]);
-  // Scraped screenshots from the profile
-  const [scrapedScreenshots, setScrapedScreenshots] = useState<{ url: string; selected: boolean }[]>([]);
+   <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-5">
+    <h2 className="font-semibold flex gap-2"><Users size={18} />{personId ? 'My Person' : 'Add manually'}</h2>
+    {personId && owner.loading && <p role="status">Loading person…</p>}
+    {owner.error && <p role="alert">{owner.error.message}</p>}
 
-  // Proxy helper: routes external CDN images (Instagram, YouTube, etc.) through our server
-  // to avoid referrer/token blocking issues when displaying them in the browser.
-  const proxyImageUrl = (imgUrl: string): string => {
-    if (!imgUrl) return imgUrl;
-    // Only proxy external CDN URLs, not our own S3 or relative paths
-    const needsProxy = (
-      imgUrl.includes("fbcdn.net") ||
-      imgUrl.includes("cdninstagram.com") ||
-      imgUrl.includes("ytimg.com") ||
-      imgUrl.includes("pbs.twimg.com") ||
-      imgUrl.includes("media.licdn.com")
-    );
-    if (!needsProxy) return imgUrl;
-    const apiBase = import.meta.env.VITE_REST_API_URL || "http://localhost:5000/api";
-    return `${apiBase}/proxy-image?url=${encodeURIComponent(imgUrl)}`;
-  };
+    <label className="block">Full Name<input value={name} onChange={event => setName(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    <label className="block">Sector
+     <select aria-label="Sector" value={sectorId} onChange={event=>{setSectorId(event.target.value);setSectorTouched(true);}} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3">
+      <option value="">No sector</option>
+      {existingSector&&!catalog?.items.some(item=>item.id===existingSector.id)&&<option value={existingSector.id} disabled>{existingSector.label??existingSector.slug} (unavailable)</option>}
+      {catalog?.items.filter(item=>item.category==='people'&&item.parentId===null).map(item=><option key={item.id} value={item.id}>{item.label}</option>)}
+     </select>
+    </label>
+    {catalogLoading&&<p role="status">Loading sectors…</p>}
+    {catalog?.state==='UNCONFIGURED'&&<p role="status">Sector catalog is not configured.</p>}
+    {existingSector&&(existingSector.unavailable||catalog&&!catalog.items.some(item=>item.id===existingSector.id))&&<p role="status">Existing sector is unavailable.</p>}
+    {catalogError&&<div role="alert"><p>{catalogError}</p><button onClick={()=>setCatalogRetry(value=>value+1)}>Retry loading sectors</button></div>}
+    <p className="text-sm text-dashboard-muted">Details are not fetched automatically. Fill in whatever you know; nothing you type is discarded.</p>
 
-  const { data: listData } = useQuery(PEOPLE_BY_LIST, {
-    variables: peopleByListVars(listId!),
-    skip: !listId,
-  });
+    <label className="block">Profile URL<input value={profileUrl} onChange={event => setProfileUrl(event.target.value)} disabled={saving} placeholder="https://example.com/their-profile" className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    {urlProblem && <p role="alert">{urlProblem}</p>}
+    <label className="block">Platform
+     <select value={platform} onChange={event => setPlatform(event.target.value as PersonPlatform | '')} disabled={saving} className="block bg-dashboard-muted p-2">
+      <option value="">Unspecified</option>
+      {PERSON_PLATFORMS.map(value => <option key={value} value={value}>{PLATFORM_LABELS[value]}</option>)}
+     </select>
+    </label>
 
-  const { data: categoryData } = useQuery(PERSON_CATEGORIES);
-  const categories: PeopleCategory[] = categoryData?.peopleCategories ?? [];
+    <label className="block">Handle / Username<input value={handle} onChange={event => setHandle(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    {personId && <p className="text-sm text-dashboard-muted">The handle identifies this person on their platform and is shared with everyone who recommends them, so changing it here does not re-point the shared record.</p>}
+    <label className="block">Headline / Role<input value={headline} onChange={event => setHeadline(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    <label className="block">Location<input value={locationText} onChange={event => setLocationText(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    <label className="block">Followers<input value={followers} onChange={event => setFollowers(event.target.value)} disabled={saving} placeholder="12.4k" className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    <p className="text-sm text-dashboard-muted">Follower counts are text you record for presentation. Nothing here follows anyone.</p>
 
-  const existingPerson: RecommendedPerson | null = isEdit
-    ? (deduplicatePeople(listData?.personLists?.[0]?.recommended_people ?? []).find(
-        (p) => p.documentId === personId
-      ) as RecommendedPerson | undefined) ?? null
-    : null;
+    <fieldset><legend>Tags</legend>
+     <div className="flex gap-2">
+      <input aria-label="New tag" value={tagDraft} disabled={saving || tags.length >= 32} onChange={event => setTagDraft(event.target.value)} className="bg-dashboard-muted rounded-xl p-2" />
+      <button disabled={saving || !tagDraft.trim() || tags.length >= 32} onClick={addTag}>Add tag</button>
+     </div>
+     <div className="flex flex-wrap gap-2">{tags.map((tag, index) => <span key={tag} className="px-2 py-1 rounded-lg border border-white/10 text-sm">
+      {tag}<button aria-label={`Remove tag ${tag}`} disabled={saving} onClick={() => setTags(value => value.filter((_row, at) => at !== index))}><X size={12} /></button>
+     </span>)}</div>
+    </fieldset>
 
-  useEffect(() => {
-    if (isEdit && existingPerson) {
-      setFormData({
-        profile_url: existingPerson.profile_url,
-        full_name: existingPerson.full_name,
-        handle: existingPerson.handle ?? "",
-        headline: existingPerson.headline ?? "",
-        bio: existingPerson.bio ?? "",
-        avatar_url: existingPerson.avatar_url ?? "",
-        platform: existingPerson.platform,
-        follower_count: existingPerson.follower_count ?? "",
-        location: existingPerson.location ?? "",
-        tags: existingPerson.tags ?? [],
-      });
-      setNote(existingPerson.user_recommendation_note);
-      setUserRating(existingPerson.user_rating);
-      setIsPinned(existingPerson.is_pinned);
-      setSelectedCategoryId(existingPerson.people_category?.documentId ?? "");
-      if (existingPerson.avatar_url) {
-        setAvatarPreview(buildImageUrl(existingPerson.avatar_url));
-      }
-      // Populate existing snapshots from saved images
-      if (existingPerson.media_details?.imageDetails) {
-        setExistingSnapshots(existingPerson.media_details.imageDetails);
-      }
-    }
-  }, [isEdit, existingPerson?.documentId]);
+    <label className="block">Your rating
+     <select value={rating ?? ''} onChange={event => setRating(event.target.value ? Number(event.target.value) : null)} disabled={saving} className="block bg-dashboard-muted p-2">
+      <option value="">No rating</option>
+      {Array.from({ length: 10 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}
+     </select>
+    </label>
 
-  const [createPerson] = useMutation(CREATE_RECOMMENDED_PERSON);
-  const [updatePerson] = useMutation(UPDATE_RECOMMENDED_PERSON);
+    <div><h3>My Thoughts</h3><TiptapEditor value={note} onChange={setNote} placeholder="Why do you recommend this person?" /></div>
 
-  const currentPeopleCount = deduplicatePeople(
-    listData?.personLists?.[0]?.recommended_people ?? []
-  ).length;
+    <label className="block">Snapshots<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>
+    {pending > 0 && <p role="status">Uploading snapshots…</p>}
+    <div className="flex flex-wrap gap-3">{media.map(item => <div key={item.id}>
+     <img className="w-24 h-24 object-cover rounded" src={item.url} alt="Person snapshot" />
+     <button aria-label="Remove snapshot" disabled={saving} onClick={() => setMedia(value => value.filter(row => row.id !== item.id))}><X size={16} /></button>
+    </div>)}</div>
 
-  const handleSave = useCallback(async () => {
-    if (!formData.full_name?.trim()) {
-      toast.error("Full name is required.");
-      return;
-    }
-    if (!formData.profile_url?.trim()) {
-      toast.error("Profile URL is required.");
-      return;
-    }
-    setSaving(true);
-    try {
-      const uploadFileToStrapi = async (file: File, titleForSlug: string): Promise<string> => {
-        const usernameStr = sanitizeUsername(user?.username || "user");
-        const slugBase = generateSlug(titleForSlug || "person");
-        const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-        const randomFileName = generateRandomFileName(safeName);
-        const fullS3Path = generatePersonUploadPath(usernameStr, listId!, slugBase, randomFileName);
-        const directoryPath = fullS3Path.substring(0, fullS3Path.lastIndexOf("/"));
-
-        const fd = new FormData();
-        fd.append("files", file, randomFileName);
-        fd.append("path", directoryPath);
-
-        const uploadRes = await axios.post(
-          `${import.meta.env.VITE_REST_API_URL}/upload`,
-          fd,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-          }
-        );
-        return uploadRes.data?.[0]?.url || "";
-      };
-
-      const uploadUrlToS3 = async (imageUrl: string, label: string, titleForSlug: string, silent: boolean = false): Promise<string> => {
-        try {
-          if (!silent) {
-            toast.loading(`Uploading ${label}...`, { id: `upload-${label}` });
-          }
-          
-          let blob: Blob | null = null;
-
-          // If the server returned a base64 data URL, convert it directly to a Blob
-          if (imageUrl.startsWith("data:")) {
-            const [header, b64data] = imageUrl.split(",");
-            const mimeType = header.match(/data:([^;]+)/)?.[1] || "image/jpeg";
-            const binaryStr = atob(b64data);
-            const bytes = new Uint8Array(binaryStr.length);
-            for (let i = 0; i < binaryStr.length; i++) {
-              bytes[i] = binaryStr.charCodeAt(i);
-            }
-            blob = new Blob([bytes], { type: mimeType });
-          } else {
-            try {
-              const directResponse = await axios.get(imageUrl, { responseType: "blob", timeout: 5000 });
-              if (directResponse?.data) {
-                blob = directResponse.data;
-              }
-            } catch {
-              const apiBase = import.meta.env.VITE_REST_API_URL || "http://localhost:5000/api";
-              const proxyUrl = `${apiBase}/proxy-image?url=${encodeURIComponent(imageUrl)}`;
-              const proxyResponse = await axios.get(proxyUrl, { responseType: "blob", timeout: 15000 });
-              blob = proxyResponse.data;
-            }
-          }
-
-          if (!blob) throw new Error("Could not download image");
-
-          const fileType = blob.type || "image/jpeg";
-          const ext = fileType.split("/")[1] || "jpg";
-
-          const usernameStr = sanitizeUsername(user?.username || "user");
-          const slugBase = generateSlug(titleForSlug || "person");
-          const randomFileName = generateRandomFileName(`${label}.${ext}`);
-          const fullS3Path = generatePersonUploadPath(usernameStr, listId!, slugBase, randomFileName);
-          const directoryPath = fullS3Path.substring(0, fullS3Path.lastIndexOf("/"));
-
-          const fd = new FormData();
-          fd.append("files", new File([blob], randomFileName, { type: fileType }));
-          fd.append("path", directoryPath);
-
-          const uploadRes = await axios.post(
-            `${import.meta.env.VITE_REST_API_URL}/upload`,
-            fd,
-            {
-              headers: {
-                "Content-Type": "multipart/form-data",
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              },
-            }
-          );
-
-          if (!silent) {
-            toast.success(`${label} uploaded!`, { id: `upload-${label}` });
-          }
-          if (uploadRes.data?.[0]?.url) return uploadRes.data[0].url;
-        } catch (err) {
-          console.error(`S3 upload failed for ${label}:`, err);
-          if (!silent) {
-            toast.error(`Could not upload ${label}, using original URL.`, { id: `upload-${label}` });
-          }
-        }
-        return imageUrl;
-      };
-
-      let avatarUrl = formData.avatar_url || "";
-      if (avatarFile) {
-        avatarUrl = await uploadFileToStrapi(avatarFile, formData.full_name || "person");
-      } else if (avatarUrl && (avatarUrl.startsWith("data:") || avatarUrl.startsWith("http"))) {
-        // base64 data URL (from server-side Instagram download) or external CDN URL — upload to S3
-        const isExternal = avatarUrl.startsWith("data:") || (
-          avatarUrl.startsWith("http") &&
-          !avatarUrl.includes("amazonaws.com") &&
-          !avatarUrl.includes("digitaloceanspaces.com") &&
-          !avatarUrl.includes("/uploads/")
-        );
-        
-        if (isExternal) {
-          avatarUrl = await uploadUrlToS3(avatarUrl, "avatar", formData.full_name || "person");
-        }
-      }
-
-      let uploadedSnapshots = [...existingSnapshots];
-
-      // Upload selected scraped screenshots
-      const selectedScraped = scrapedScreenshots.filter(s => s.selected).map(s => s.url);
-      if (selectedScraped.length > 0) {
-        toast.loading("Uploading profile images...", { id: "upload-scraped" });
-        try {
-          const scrapedUploads = await Promise.all(
-            selectedScraped.map(async (imgUrl, idx) => {
-              try {
-                const s3Url = await uploadUrlToS3(imgUrl, `scraped_${idx}`, formData.full_name || "person", true);
-                if (s3Url) {
-                  return { id: `scraped_${Date.now()}_${idx}`, url: s3Url };
-                }
-                return null;
-              } catch (e) {
-                console.error("Scraped image S3 upload failed:", e);
-                return null;
-              }
-            })
-          );
-          uploadedSnapshots = [
-            ...uploadedSnapshots,
-            ...(scrapedUploads.filter(Boolean) as { id: string; url: string }[]),
-          ];
-          toast.success("Profile images uploaded!", { id: "upload-scraped" });
-        } catch {
-          toast.error("Failed to upload some profile images.", { id: "upload-scraped" });
-        }
-      }
-
-      if (newSnapshots.length > 0) {
-        toast.loading("Uploading screenshots...", { id: "upload-snapshots" });
-        try {
-          const manualUploads = await Promise.all(
-            newSnapshots.map(async (file, idx) => {
-              try {
-                const s3Url = await uploadFileToStrapi(file, formData.full_name || "person");
-                if (s3Url) {
-                  return { id: `snap_${Date.now()}_${idx}`, url: s3Url };
-                }
-                return null;
-              } catch (e) {
-                console.error("Snapshot upload failed:", e);
-                return null;
-              }
-            })
-          );
-          uploadedSnapshots = [
-            ...uploadedSnapshots,
-            ...(manualUploads.filter(Boolean) as { id: string; url: string }[]),
-          ];
-          toast.success("Screenshots uploaded!", { id: "upload-snapshots" });
-        } catch {
-          toast.error("Some screenshots failed to upload.", { id: "upload-snapshots" });
-        }
-      }
-
-      const mediaDetails = {
-        imageDetails: uploadedSnapshots,
-        bio: formData.bio || null,
-        follower_count: formData.follower_count || null,
-      };
-
-      // Persist the selected category selection as a tag inside the skills_tags JSON field
-      const selectedCategory = categories.find((c) => c.documentId === selectedCategoryId);
-      const tagsList = formData.tags && formData.tags.length > 0 ? [...formData.tags] : [];
-      if (selectedCategory && !tagsList.includes(selectedCategory.Category_name)) {
-        tagsList.push(selectedCategory.Category_name);
-      }
-
-      const variables = {
-        name: formData.full_name,
-        username_handle: formData.handle || null,
-        headline: formData.headline || null,
-        location: formData.location || null,
-        avatar_path: avatarUrl || null,
-        primary_platform: formData.platform === "x" ? "twitter" : (formData.platform || "website"),
-        social_urls: {
-          primary: formData.profile_url,
-          [formData.platform || "website"]: formData.profile_url
-        },
-        skills_tags: tagsList,
-        user_recommendation_note: note || null,
-        user_rating: userRating,
-        is_pinned: isPinned,
-        pin_order: isPinned ? currentPeopleCount : null,
-        display_order: isEdit ? existingPerson?.display_order ?? currentPeopleCount : currentPeopleCount,
-        person_list: listId!,
-        people_category: selectedCategoryId || null,
-        media_details: mediaDetails,
-      };
-
-      if (isEdit && personId) {
-        await updatePerson({
-          variables: { documentId: personId, ...variables },
-          refetchQueries: refetchPeopleByList(listId!),
-        });
-        toast.success("Person updated!");
-      } else {
-        await createPerson({
-          variables,
-          refetchQueries: refetchPeopleByList(listId!),
-        });
-        toast.success("Person added!");
-      }
-      if (redirectBack) {
-        navigate(redirectBack, { state: { justAddedRecommendation: true } });
-      } else {
-        navigate(`/recommendations/people/${listId}`, { state: { justAddedRecommendation: true } });
-      }
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to save. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  }, [formData, note, userRating, isPinned, selectedCategoryId, avatarFile, isEdit, personId, listId, currentPeopleCount, user, token, existingSnapshots, newSnapshots, scrapedScreenshots]);
-
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
-  };
-
-  const showForm = isEdit || step === "form";
-
-  return (
-    <div className="min-h-screen text-dashboard bg-dashboard-bg">
-      {/* Sticky header */}
-      <div className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 bg-dashboard-bg z-40 w-full">
-        <button
-          onClick={() => step === "form" && !isEdit ? setStep("url") : (redirectBack ? navigate(redirectBack) : navigate(`/recommendations/people/${listId}`))}
-          className="text-white/40 hover:text-white transition-colors"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex-1">
-          <h1 className="text-base font-semibold text-dashboard">
-            {isEdit ? "Edit Person" : "Add Person"}
-          </h1>
-          <p className="text-xs text-dashboard-muted mt-0.5">
-            {isEdit
-              ? "Update the details and save your changes"
-              : selectedCategoryId
-                ? "Edit the details below before saving"
-                : "Paste a profile URL to fetch metadata"}
-          </p>
-        </div>
-        {saving && (
-          <div className="flex items-center gap-2 text-xs text-blue-400">
-            <Loader2 size={14} className="animate-spin" />
-            Saving changes…
-          </div>
-        )}
-      </div>
-
-      {/* Single-column form container */}
-      <div className="max-w-2xl mx-auto px-6 pt-6 pb-40 md:pb-8 space-y-5">
-        {/* Step 1: URL input */}
-        {!isEdit && step === "url" && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-sm font-semibold text-white mb-1">Paste Profile Link</h2>
-              <p className="text-xs text-dashboard-muted mb-4">Instagram, LinkedIn, GitHub, X — any public profile URL</p>
-              <UrlScrapePanel
-                onScraped={(data: any) => {
-                  setFormData((prev) => ({ ...prev, ...data }));
-                  if (data.avatar_url) {
-                    // If the server already returned a base64 data URL, use it directly.
-                    // Otherwise, route through our image proxy (for session-expiry CDN URLs).
-                    setAvatarPreview(
-                      data.avatar_url.startsWith("data:") ? data.avatar_url : proxyImageUrl(data.avatar_url)
-                    );
-                  }
-                  if (data.screenshots) {
-                    setScrapedScreenshots(
-                      data.screenshots.map((sUrl: any) => ({
-                        url: sUrl.startsWith("data:") ? sUrl : proxyImageUrl(sUrl),
-                        selected: true,
-                      }))
-                    );
-                  }
-                  setStep("form");
-                }}
-              />
-            </div>
-            <div className="text-center">
-              <button onClick={() => setStep("form")} className="text-xs text-dashboard-muted hover:text-white/70 transition-colors underline">
-                Skip — fill in manually
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Form */}
-        {showForm && (
-          <>
-            {/* Backdrop + avatar strip */}
-            <div className="relative rounded-xl overflow-hidden bg-white/5 mb-2 h-32 flex items-end">
-              {avatarPreview ? (
-                <img src={avatarPreview} alt="" className="absolute inset-0 w-full h-full object-cover opacity-25 filter blur-sm scale-110" referrerPolicy="no-referrer" />
-              ) : (
-                <div className={`absolute inset-0 bg-gradient-to-r ${formData.platform ? getPlatformColor(formData.platform) : "from-blue-900/20 to-purple-900/20"} opacity-20`} />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-dashboard-bg via-transparent to-transparent" />
-              <div className="absolute bottom-3 left-4 flex items-end gap-3 z-10">
-                <div className="relative w-16 h-16 rounded-full overflow-hidden shadow-xl border border-white/10 flex-shrink-0 bg-dashboard-muted">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Users size={24} className="text-white/20" />
-                    </div>
-                  )}
-                  <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 cursor-pointer transition-opacity">
-                    <Upload size={12} className="text-white" />
-                    <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-                  </label>
-                </div>
-                <div className="pb-1">
-                  <p className="text-sm font-semibold text-white leading-tight">{formData.full_name || "Person Name"}</p>
-                  <p className="text-xs text-dashboard-muted mt-0.5">{formData.handle ? `@${formData.handle}` : formData.profile_url || "No URL yet"}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-5">
-              {/* Profile URL */}
-              <div>
-                <label className="text-sm font-semibold text-white/90 mb-2 block">Profile URL *</label>
-                <input
-                  type="url"
-                  value={formData.profile_url || ""}
-                  onChange={(e) => setFormData((p) => ({ ...p, profile_url: e.target.value, platform: detectPlatform(e.target.value) }))}
-                  placeholder="https://instagram.com/username"
-                  className="w-full bg-dashboard-muted border border-dashboard-border rounded-xl px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors"
-                />
-              </div>
-
-              {/* Full Name */}
-              <div>
-                <label className="text-sm font-semibold text-white/90 mb-2 block">Full Name *</label>
-                <input
-                  type="text"
-                  value={formData.full_name || ""}
-                  onChange={(e) => setFormData((p) => ({ ...p, full_name: e.target.value }))}
-                  placeholder="e.g. John Doe"
-                  className="w-full bg-dashboard-muted border border-dashboard-border rounded-xl px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors"
-                />
-              </div>
-
-              {/* Handle */}
-              <div>
-                <label className="text-sm font-semibold text-white/90 mb-2 block">Handle / Username</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dashboard-muted text-sm">@</span>
-                  <input
-                    type="text"
-                    value={formData.handle || ""}
-                    onChange={(e) => setFormData((p) => ({ ...p, handle: e.target.value }))}
-                    placeholder="username"
-                    className="w-full bg-dashboard-muted border border-dashboard-border rounded-xl pl-7 pr-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* Platform */}
-              <div>
-                <label className="text-sm font-semibold text-white/90 mb-2 block">Platform</label>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                  {PLATFORMS.map(({ value, label, Icon }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setFormData((p) => ({ ...p, platform: value as RecommendedPerson["platform"] }))}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
-                        formData.platform === value
-                          ? "bg-dashboard-accent/30 border-dashboard-accent/60 text-white"
-                          : "bg-dashboard-muted border-dashboard-border text-white/50 hover:border-white/20"
-                      }`}
-                    >
-                      <Icon size={12} />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Headline */}
-              <div>
-                <label className="text-sm font-semibold text-white/90 mb-2 block">Headline / Role</label>
-                <input
-                  type="text"
-                  value={formData.headline || ""}
-                  onChange={(e) => setFormData((p) => ({ ...p, headline: e.target.value }))}
-                  placeholder="e.g. Tech Entrepreneur · Speaker"
-                  className="w-full bg-dashboard-muted border border-dashboard-border rounded-xl px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors"
-                />
-              </div>
-
-              {/* Bio */}
-              <div>
-                <label className="text-sm font-semibold text-white/90 mb-2 block">Bio / Description</label>
-                <textarea
-                  value={formData.bio || ""}
-                  onChange={(e) => setFormData((p) => ({ ...p, bio: e.target.value }))}
-                  placeholder="Short bio or description"
-                  rows={3}
-                  className="w-full bg-dashboard-muted border border-dashboard-border rounded-xl px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors resize-none"
-                />
-              </div>
-
-              {/* Location & Followers */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-semibold text-white/90 mb-2 block">Location</label>
-                  <input
-                    type="text"
-                    value={formData.location || ""}
-                    onChange={(e) => setFormData((p) => ({ ...p, location: e.target.value }))}
-                    placeholder="e.g. San Francisco"
-                    className="w-full bg-dashboard-muted border border-dashboard-border rounded-xl px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-white/90 mb-2 block">Followers</label>
-                  <input
-                    type="text"
-                    value={formData.follower_count || ""}
-                    onChange={(e) => setFormData((p) => ({ ...p, follower_count: e.target.value }))}
-                    placeholder="e.g. 1.2M"
-                    className="w-full bg-dashboard-muted border border-dashboard-border rounded-xl px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* Tags */}
-              <div>
-                <label className="text-sm font-semibold text-white/90 mb-2 block">Tags</label>
-                <TagsEditor tags={formData.tags || []} onChange={(tags) => setFormData((p) => ({ ...p, tags }))} />
-              </div>
-
-              {/* Category */}
-              {categories.length > 0 && (
-                <div>
-                  <label className="text-sm font-semibold text-white/90 mb-2 block">Category</label>
-                  <select
-                    value={selectedCategoryId}
-                    onChange={(e) => setSelectedCategoryId(e.target.value)}
-                    className="w-full bg-dashboard-muted border border-dashboard-border rounded-xl px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors"
-                  >
-                    <option value="">No category</option>
-                    {categories.map((cat) => (
-                      <option key={cat.documentId} value={cat.documentId}>{cat.Category_name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Rating */}
-              <div>
-                <label className="text-sm font-semibold text-white/90 mb-2 block">Your Rating</label>
-                <div className="flex gap-1.5 flex-wrap">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setUserRating(userRating === star ? null : star)}
-                      className={`p-1 transition-all hover:scale-110 active:scale-95 ${userRating && userRating >= star ? "text-yellow-400" : "text-white/20 hover:text-white/40"}`}
-                    >
-                      <Star size={24} fill={userRating && userRating >= star ? "currentColor" : "none"} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Scraped Images Section */}
-              {scrapedScreenshots.length > 0 && (
-                <div>
-                  <label className="text-sm font-semibold text-white/90 mb-2 block">
-                    Profile Feed / Images ({scrapedScreenshots.filter(s => s.selected).length} selected)
-                  </label>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-4">
-                    {scrapedScreenshots.map((item, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          setScrapedScreenshots(prev =>
-                            prev.map((s, i) => (i === idx ? { ...s, selected: !s.selected } : s))
-                          );
-                        }}
-                        className={`relative aspect-square rounded-xl overflow-hidden border group transition-all ${
-                          item.selected ? "border-dashboard-accent ring-2 ring-dashboard-accent/30" : "border-white/10 opacity-60 hover:opacity-100"
-                        }`}
-                      >
-                        <img src={item.url} className="w-full h-full object-cover" alt={`Profile Feed Image ${idx}`} referrerPolicy="no-referrer" />
-                        <div className={`absolute top-1 right-1 p-0.5 rounded-full ${item.selected ? "bg-dashboard-accent text-white" : "bg-black/60 text-white/50"}`}>
-                          <Check size={10} />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Additional Media — manual file uploads */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-semibold text-white/90">Manual Screenshots / Portfolio Images (Optional)</label>
-                </div>
-                <div className="flex flex-col gap-3">
-                  {/* Existing Snapshots */}
-                  {existingSnapshots.length > 0 && (
-                    <div className="flex flex-wrap gap-3 mb-2">
-                      {existingSnapshots.map((snap) => (
-                        <div key={snap.id} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group">
-                          <img
-                            src={snap.url.startsWith("http") ? snap.url : `${import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337"}${snap.url}`}
-                            className="w-full h-full object-cover"
-                            alt="Snapshot"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setExistingSnapshots((prev) => prev.filter((s) => s.id !== snap.id))}
-                            className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* New Snapshots Preview */}
-                  {newSnapshots.length > 0 && (
-                    <div className="flex flex-wrap gap-3 mb-2">
-                      {newSnapshots.map((file, i) => (
-                        <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group border border-white/10">
-                          <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt="New Snapshot preview" />
-                          <button
-                            type="button"
-                            onClick={() => setNewSnapshots((prev) => prev.filter((_, idx) => idx !== i))}
-                            className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Upload Button */}
-                  <label className="w-full md:w-auto self-start cursor-pointer flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 border-dashed rounded-xl px-5 py-3 text-sm text-white/70 transition-colors">
-                    <Upload size={16} className="text-white/50" />
-                    <span>Upload Images</span>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files) {
-                          setNewSnapshots((prev) => [...prev, ...Array.from(e.target.files!)]);
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {/* Note */}
-              <div>
-                <label className="text-sm font-semibold text-white/90 mb-2 block">Your Recommendation Note (optional)</label>
-                <div className="bg-dashboard-muted border border-dashboard-border rounded-xl overflow-hidden focus-within:border-dashboard-accent transition-colors">
-                  <TiptapEditor value={note} onChange={setNote} placeholder="Why do you recommend this person? What makes them special?" />
-                </div>
-              </div>
-
-              {/* Pin */}
-              <div className="flex items-center justify-between p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl">
-                <div>
-                  <p className="text-sm font-medium text-amber-400">Pin to Top Picks</p>
-                  <p className="text-xs text-dashboard-muted mt-0.5">Featured prominently on your profile</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsPinned(!isPinned)}
-                  className={`p-2 rounded-lg transition-all ${isPinned ? "bg-amber-400/20 text-amber-400" : "bg-white/5 text-white/30 hover:text-amber-400"}`}
-                >
-                  <Star size={18} fill={isPinned ? "currentColor" : "none"} />
-                </button>
-              </div>
-
-              {/* Actions Section */}
-              <div className="pt-4 border-t border-dashboard-border">
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/recommendations/people/${listId}`)}
-                    className="px-6 py-3 rounded-xl bg-dashboard-muted hover:bg-white/10 text-sm text-white font-medium transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving || !formData.full_name?.trim()}
-                    className="flex-1 py-3 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                  >
-                    {saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-                    {isEdit ? "Save Changes" : "Add to List"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default AddPersonPage;
+    {error && <p role="alert">{error}</p>}
+    <button onClick={save} disabled={saving || pending > 0 || !name.trim() || Boolean(urlProblem) || Boolean(personId && initialized.current !== scope)} className="bg-dashboard-accent text-white rounded-xl px-5 py-3">
+     {saving && <Loader2 className="inline animate-spin mr-2" size={16} />}Save person
+    </button>
+   </section>
+  </div>
+ </div>;
+}

@@ -67,25 +67,6 @@ export interface CreateAppListFormValues {
   slug: string;
 }
 
-// --- iTunes Search Types ---
-
-export interface ItunesResult {
-  trackId: number;
-  trackName: string;
-  artworkUrl512: string;
-  artworkUrl100: string;
-  description: string;
-  sellerName: string;
-  formattedPrice: string;
-  price: number;
-  primaryGenreName: string;
-  trackViewUrl: string;
-  version: string;
-  averageUserRating?: number;
-  supportedDevices?: string[];
-  kind: string;
-}
-
 // --- UI State Types ---
 
 export type AppDetailModalState = {

@@ -1,3 +1,4 @@
+import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, ChevronLeft, ChevronRight, Star } from "lucide-react";
@@ -12,6 +13,7 @@ interface TopReadsHeroProps {
 }
 
 const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageClick }: TopReadsHeroProps) => {
+  const categoryStyles = usePublicCategoryThemeStyles();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -61,7 +63,7 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
   const subjects = activeBook.subjects?.slice(0, 3) || [];
 
   return (
-    <div className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden bg-black shadow-2xl group/hero mb-12">
+    <div data-public-category-artwork className="relative w-full h-[60vh] min-h-[500px] max-h-[700px] rounded-2xl overflow-hidden bg-black shadow-2xl group/hero mb-12">
       {/* Cinematic Background Presentation */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -178,7 +180,7 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
               {showManageButton ? (
                 <button 
                   onClick={(e) => { e.stopPropagation(); onManageClick?.(); }}
-                  className="flex items-center gap-2 bg-dashboard-accent hover:opacity-90 text-white font-bold py-4 px-10 rounded-xl shadow-2xl shadow-blue-500/20 transition-all hover:scale-105 active:scale-95"
+                  className={`flex items-center gap-2 ${categoryStyles ? 'bg-[var(--category-accent)]' : 'bg-dashboard-accent'} hover:opacity-90 ${categoryStyles ? 'text-[color:var(--category-accent-ink)]' : 'text-white'} font-bold py-4 px-10 rounded-xl shadow-2xl shadow-blue-500/20 transition-all hover:scale-105 active:scale-95`}
                 >
                   <Star size={20} fill="currentColor" />
                   Manage Top Reads
@@ -186,7 +188,7 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
               ) : (
                 <button 
                   onClick={() => onBookClick(activeBook)}
-                  className="flex items-center gap-2 bg-dashboard-accent hover:opacity-90 text-white font-bold py-4 px-10 rounded-xl shadow-2xl shadow-blue-500/20 transition-all hover:scale-105 active:scale-95"
+                  className={`flex items-center gap-2 ${categoryStyles ? 'bg-[var(--category-accent)]' : 'bg-dashboard-accent'} hover:opacity-90 ${categoryStyles ? 'text-[color:var(--category-accent-ink)]' : 'text-white'} font-bold py-4 px-10 rounded-xl shadow-2xl shadow-blue-500/20 transition-all hover:scale-105 active:scale-95`}
                 >
                   <BookOpen size={20} />
                   See Details

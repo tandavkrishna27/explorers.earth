@@ -3,19 +3,60 @@
   "version": "1.0.0",
   "description": "Monorepo runner for tunes and explorers-earth",
   "private": true,
+  "engines": {
+    "node": "^24.21.0"
+  },
   "scripts": {
     "dev": "concurrently --names \"TUNES,EXPLORERS-EARTH\" --prefix-colors \"cyan.bold,magenta.bold\" --kill-others-on-fail \"npm run dev --prefix tunes\" \"npm run dev --prefix explorers-earth\"",
     "dev:tunes": "npm run dev --prefix tunes",
     "dev:explorers-earth": "npm run dev --prefix explorers-earth",
     "install:all": "npm install --prefix tunes && npm install --prefix explorers-earth",
-    "db:push": "npm run db:push --prefix tunes",
-    "build:all": "npm run build --prefix tunes && npm run build --prefix explorers-earth"
+    "build:all": "npm run build --prefix tunes && npm run build --prefix explorers-earth",
+    "build:api": "npm run build:api --prefix tunes",
+    "music-cli": "tsx tunes/scripts/music-cli.ts",
+    "music:bootstrap": "npm run --silent music-cli -- bootstrap",
+    "music:doctor": "npm run --silent music-cli -- doctor",
+    "music:up": "npm run --silent music-cli -- up",
+    "music:test:smoke": "npm run --silent music-cli -- test:smoke",
+    "music:test:all": "npm run --silent music-cli -- test:all",
+    "music:test:fast": "npm run --silent music-cli -- test:fast",
+    "music:test:pr": "npm run --silent music-cli -- test:pr",
+    "music:test:nightly": "npm run --silent music-cli -- test:nightly",
+    "music:test:uat-database": "npm --prefix tunes run music:test:uat-database --",
+    "music:local:check": "npm --prefix tunes run music:local:check --",
+    "music:local:provision": "npm --prefix tunes run music:local:provision --",
+    "music:local:start": "npm --prefix tunes run music:local:start --",
+    "music:test:public-fast": "npm --prefix explorers-earth run music:test:public-fast --",
+    "music:test:public-pr": "npm --prefix explorers-earth run music:test:public-pr --",
+    "music:test:public-e2e": "npm --prefix explorers-earth run music:test:public-e2e --",
+    "music:test:public-c14": "npm --prefix explorers-earth run music:test:public-c14 --",
+    "music:test:public-c15": "npm --prefix explorers-earth run music:test:public-c15 --",
+    "music:fixture:public:verify": "npm --prefix explorers-earth run music:fixture:public:verify --",
+    "music:fixture:authority:attest": "tsx tunes/scripts/music-fixture-authority-attest.ts",
+    "music:down": "npm run --silent music-cli -- down",
+    "music:db:status": "npm run --silent music-cli -- db:status",
+    "music:db:migrate": "npm run --silent music-cli -- db:migrate",
+    "music:db:verify": "npm run --silent music-cli -- db:verify",
+    "music:db:reset": "npm run --silent music-cli -- db:reset",
+    "music:fixtures:capture": "npm run --silent music-cli -- fixtures:capture",
+    "music:reconcile": "npm run --silent music-cli -- reconcile",
+    "music:types:scoped": "npm run music:types:scoped --prefix tunes",
+    "music:types:baseline": "npm run music:types:baseline --prefix tunes",
+    "platform:release": "tsx scripts/platform-release.ts",
+    "platform:local": "tsx scripts/replatform-local.ts",
+    "platform:test:integration": "tsx scripts/replatform-local.ts test:integration",
+    "platform:test:routes": "tsx scripts/replatform-local.ts test:routes",
+    "platform:test:browser-egress": "node explorers-earth/scripts/replatform-browser-egress.mjs",
+    "platform:test:e2e": "node scripts/replatform-e2e.mjs",
+    "platform:seed": "tsx scripts/replatform-local.ts seed"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "tsx": "^4.23.12"
   },
   "dependencies": {
-    "@marsidev/react-turnstile": "^1.5.0"
+    "@marsidev/react-turnstile": "^1.5.0",
+    "zod": "^3.25.76"
   },
   "overrides": {
     "shell-quote": "^1.9.0"

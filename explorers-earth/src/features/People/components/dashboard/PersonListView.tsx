@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, MoreVertical, Trash2, Loader2, Users, Edit, Copy, Check, Share2, Download
@@ -10,8 +9,8 @@ import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import Accordion from "../../../../components/ui/Accordian";
 import useAuthStore from "../../../../store/store";
-import { PEOPLE_BY_LIST, peopleByListVars } from "../../api/query";
-import { UPDATE_PERSON_LIST, DELETE_PERSON_LIST, TOGGLE_PERSON_PIN, DELETE_RECOMMENDED_PERSON } from "../../api/mutation";
+import { usePeopleCommands, usePeopleCallerCustody } from "../../api/query";
+import { usePeopleOwner } from "../../hooks/usePeopleOwner";
 import { deduplicatePeople, buildImageUrl, extractNoteText } from "../../utils/personHelpers";
 import type { RecommendedPerson, PersonList } from "../../types";
 import Switch from "../../../../components/ui/Switch";
@@ -141,16 +140,13 @@ const PersonListView = () => {
     listName: string;
   } | null>(null);
 
-  const { data, loading, refetch } = useQuery(PEOPLE_BY_LIST, {
-    variables: peopleByListVars(listId!),
-    skip: !listId,
-    fetchPolicy: "cache-and-network",
-  });
-
-  const [updatePersonList, { loading: isUpdating }] = useMutation(UPDATE_PERSON_LIST);
-  const [deletePersonList, { loading: deletingList }] = useMutation(DELETE_PERSON_LIST);
-  const [togglePin] = useMutation(TOGGLE_PERSON_PIN);
-  const [deletePerson] = useMutation(DELETE_RECOMMENDED_PERSON);
+  const { data, content, loading, refetch } = usePeopleOwner(listId, Boolean(listId));
+  const commands = usePeopleCommands(), isUpdating = commands.loading, deletingList = commands.loading;
+  const beginEffects = usePeopleCallerCustody();
+  const updatePersonList = ({ variables }: { variables: { documentId?: string; Visibility?: boolean; List_Name?: string; list_description?: string | null; top_people_heading?: string }; optimisticResponse?: unknown; refetchQueries?: unknown[] }) => commands.updateList(variables.documentId!, { ...(variables.Visibility === undefined ? {} : { visibility: variables.Visibility ? 'public' : 'private', publicationState: variables.Visibility ? 'published' : 'draft' }), ...(variables.List_Name === undefined ? {} : { title: variables.List_Name }), ...(variables.list_description === undefined ? {} : { description: variables.list_description }), ...(variables.top_people_heading === undefined ? {} : { heading: variables.top_people_heading }) });
+  const deletePersonList = ({ variables }: { variables: { documentId: string } }) => commands.archiveList(variables.documentId);
+  const togglePin = ({ variables }: { variables: { documentId: string; is_pinned: boolean; pin_order: number | null }; refetchQueries?: unknown[] }) => commands.pin(variables.documentId, listId!, variables.is_pinned);
+  const deletePerson = ({ variables }: { variables: { documentId: string }; refetchQueries?: unknown[] }) => commands.membership(variables.documentId, listId!, false);
 
   const listData: PersonList | null = data?.personLists?.[0] ?? null;
   const people = deduplicatePeople(listData?.recommended_people ?? []);
@@ -191,6 +187,7 @@ const PersonListView = () => {
       toast.error("Add at least one person before publishing.");
       return;
     }
+    const current = beginEffects();
     try {
       await updatePersonList({
         variables: { documentId: listData.documentId, Visibility: !listData.Visibility },
@@ -206,41 +203,55 @@ const PersonListView = () => {
             top_people_heading: listData.top_people_heading || null,
           }
         },
-        refetchQueries: [{ query: PEOPLE_BY_LIST, variables: peopleByListVars(listId!) }],
       });
+      if (!current()) return;
       toast.success(listData.Visibility ? "List set to draft." : "List published!");
     } catch {
-      toast.error("Failed to update visibility.");
+      if (current()) toast.error("Failed to update visibility.");
     }
   };
 
   const handlePinToggle = async (person: RecommendedPerson) => {
+    const current = beginEffects();
     setPinningId(person.documentId);
     try {
       const newPinned = !person.is_pinned;
       const newPinOrder = newPinned ? (pinnedCount) : null;
       await togglePin({
         variables: { documentId: person.documentId, is_pinned: newPinned, pin_order: newPinOrder },
-        refetchQueries: [{ query: PEOPLE_BY_LIST, variables: peopleByListVars(listId!) }],
       });
+      if (!current()) return;
       toast.success(newPinned ? "Added to Top Picks!" : "Removed from Top Picks");
     } catch {
-      toast.error("Failed to update pin.");
+      if (current()) toast.error("Failed to update pin.");
     } finally {
-      setPinningId(null);
+      if (current()) setPinningId(null);
     }
   };
 
   const handleDelete = async (person: RecommendedPerson) => {
     if (!window.confirm(`Delete "${person.full_name}"? This cannot be undone.`)) return;
+    const current = beginEffects();
     try {
       await deletePerson({
         variables: { documentId: person.documentId },
-        refetchQueries: [{ query: PEOPLE_BY_LIST, variables: peopleByListVars(listId!) }],
       });
+      if (!current()) return;
       toast.success("Person deleted.");
     } catch {
-      toast.error("Failed to delete.");
+      if (current()) toast.error("Failed to delete.");
+    }
+  };
+
+  const handleRecommendationPublication = async (person: RecommendedPerson, published: boolean) => {
+    const current = beginEffects();
+    try {
+      await commands.publishRecommendation(person.documentId, published);
+      if (!current()) return;
+      toast.success(published ? 'Person published.' : 'Person kept as draft.');
+    } catch {
+      if (!current()) return;
+      toast.error('Person publication could not be saved. Please retry.');
     }
   };
 
@@ -338,8 +349,8 @@ const PersonListView = () => {
           ) : (
             <div className="space-y-0">
               {people.map((person) => (
+                <div key={person.documentId}>
                 <PersonRow
-                  key={person.documentId}
                   person={person}
                   onPinToggle={handlePinToggle}
                   onEdit={(p) => navigate(`/recommendations/people/${listId}/edit/${p.documentId}`)}
@@ -347,6 +358,19 @@ const PersonListView = () => {
                   onClick={setSelectedPerson}
                   isPinning={pinningId === person.documentId}
                 />
+                {/* A published list serves only published recommendations, so the row
+                    carries its own publication state rather than inheriting the list's. */}
+                <div className="flex items-center justify-between gap-3 pb-3 text-xs text-dashboard-muted">
+                  <span>Recommendation is {content?.details.get(person.documentId)?.detail.publicationState === 'published' ? 'Published' : 'Draft'}</span>
+                  <button
+                    disabled={commands.loading || !content?.details.has(person.documentId)}
+                    onClick={() => handleRecommendationPublication(person, content?.details.get(person.documentId)?.detail.publicationState !== 'published')}
+                    className="text-dashboard-accent"
+                  >
+                    {content?.details.get(person.documentId)?.detail.publicationState === 'published' ? `Keep ${person.name} as draft` : `Publish ${person.name}`}
+                  </button>
+                </div>
+                </div>
               ))}
             </div>
           )}
@@ -556,7 +580,6 @@ const PersonListView = () => {
             try {
               await updatePersonList({
                 variables: { documentId: listData.documentId, Visibility: true },
-                refetchQueries: [{ query: PEOPLE_BY_LIST, variables: peopleByListVars(listId!) }],
               });
               refetch();
               toast.success(`"${listData.List_Name}" published!`);

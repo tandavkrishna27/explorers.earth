@@ -1,0 +1,207 @@
+{
+  "version": 1,
+  "lane": "places",
+  "provenance": {
+    "commit": "0ae17262ac62eddc54a969957a524969fa49e70e",
+    "sourceHash": "e71353dcd2e55b529f3545fc1bc2d5e54f8bfe94f5baf4b542b90f063e95bcb0",
+    "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+    "dirty": false
+  },
+  "results": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: retained location create edit and reload preserve zero and absent coordinates"
+        ],
+        "project": "places-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: complete owner and anonymous pages contain every seeded list and recommendation"
+        ],
+        "project": "places-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: owned image bytes disappear after the final public attachment is hidden"
+        ],
+        "project": "places-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: foreign owner edits and private contact reads cannot disclose owner data"
+        ],
+        "project": "places-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: retained location create edit and reload preserve zero and absent coordinates"
+        ],
+        "project": "places-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: complete owner and anonymous pages contain every seeded list and recommendation"
+        ],
+        "project": "places-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: owned image bytes disappear after the final public attachment is hidden"
+        ],
+        "project": "places-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: foreign owner edits and private contact reads cannot disclose owner data"
+        ],
+        "project": "places-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    }
+  ],
+  "child": {
+    "status": 1,
+    "signal": null
+  },
+  "diagnostics": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: retained location create edit and reload preserve zero and absent coordinates"
+        ],
+        "project": "places-desktop",
+        "repeat": 0
+      },
+      "kind": "assertion",
+      "matcher": "toBe",
+      "locations": [
+        {
+          "line": 301,
+          "column": 29
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: retained location create edit and reload preserve zero and absent coordinates"
+        ],
+        "project": "places-mobile",
+        "repeat": 0
+      },
+      "kind": "assertion",
+      "matcher": "toBe",
+      "locations": [
+        {
+          "line": 301,
+          "column": 29
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "status": "passed"
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  }
+}

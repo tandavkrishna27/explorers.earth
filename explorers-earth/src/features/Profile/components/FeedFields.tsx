@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../../../components/ui/Button";
 import { EarthLoader } from "../../../components/EarthLoader";
@@ -15,24 +16,29 @@ import { toast } from "sonner";
 import useAuthStore from "../../../store/store";
 import AddressInput from "./AddressInput";
 import DeleteIcon from "../../../assets/icons/DeleteIcon";
-import SwitchButton from "../../../components/ui/SwitchButton";
+import { ChevronDown, Images, Instagram } from "lucide-react";
 import {
   detectMediaAspectRatio,
   detectUrlAspectRatio,
   SupportedAspectRatio,
 } from "../../../utils/aspectRatioUtils";
 import {
-  generateFeedUploadPath,
   generateRandomFileName,
-  sanitizeUsername,
 } from "../../../utils/uploadPathGenerator";
 import { useFileUpload } from "../../../hooks/useFileUpload";
+import { explorersApiClient } from "../../../lib/explorersApiClient";
+import type {
+  FeedAsyncOperation,
+  FeedAsyncState,
+} from "../types/profileWorkspaces";
 
-interface FeedFieldsProps {
+export interface FeedFieldsProps {
   values: any;
   setFieldValue: (field: string, value: any) => void;
   onFeedDataChange?: () => void; // Callback to notify when Feed_Data changes
   onFormDirtyChange?: () => void; // Callback to mark form as dirty for any interaction
+  onAsyncStateChange?: (state: FeedAsyncState) => void;
+  showHeading?: boolean;
 }
 
 type FeedMedia = {
@@ -49,12 +55,21 @@ type FeedMedia = {
 
 const MemoFeed = React.memo(FeedLayout);
 
-const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDataChange, onFormDirtyChange }) => {
+const FeedFields: React.FC<FeedFieldsProps> = ({
+  values,
+  setFieldValue,
+  onFeedDataChange,
+  onFormDirtyChange,
+  onAsyncStateChange,
+  showHeading = true,
+}) => {
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   // importing state now represented by isFetching for Google fetch
   const [isUploading, setIsUploading] = useState(false);
-  const { token, user } = useAuthStore();
+  const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
+  const importDisclosureId = `gallery-import-sources-${useId().replace(/:/g, "")}`;
+  const { token } = useAuthStore();
 
   // MediaViewer state
   const {
@@ -78,49 +93,71 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
   const [igFetchedMedia, setIgFetchedMedia] = useState<FeedMedia[]>([]);
   const [igSelectedIds, setIgSelectedIds] = useState<Set<string>>(new Set());
   const [isScrapingIg, setIsScrapingIg] = useState(false);
+  const activeOperationsRef = useRef(new Map<string, FeedAsyncOperation>());
+  const operationSequenceRef = useRef(0);
+  const googleFetchGenerationRef = useRef(0);
+  const onAsyncStateChangeRef = useRef(onAsyncStateChange);
+
+  useEffect(() => {
+    onAsyncStateChangeRef.current = onAsyncStateChange;
+  }, [onAsyncStateChange]);
+
+  const beginAsyncOperation = useCallback(
+    (operation: FeedAsyncOperation) => {
+      operationSequenceRef.current += 1;
+      const requestId = `${operation}-${operationSequenceRef.current}`;
+      activeOperationsRef.current.set(requestId, operation);
+      onAsyncStateChangeRef.current?.({ pending: true, operation, requestId });
+      return requestId;
+    },
+    [],
+  );
+
+  const finishAsyncOperation = useCallback((requestId: string) => {
+    const operation = activeOperationsRef.current.get(requestId);
+    if (!operation) return;
+    activeOperationsRef.current.delete(requestId);
+    onAsyncStateChangeRef.current?.({ pending: false, operation, requestId });
+  }, []);
+
+  const hasActiveOperation = useCallback(
+    (...operations: FeedAsyncOperation[]) =>
+      Array.from(activeOperationsRef.current.values()).some((operation) =>
+        operations.includes(operation),
+      ),
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      activeOperationsRef.current.forEach((operation, requestId) => {
+        onAsyncStateChangeRef.current?.({
+          pending: false,
+          operation,
+          requestId,
+        });
+      });
+      activeOperationsRef.current.clear();
+    },
+    [],
+  );
 
   // Handle validated files for upload
   const handleValidFiles = async (validFiles: File[]) => {
     setIsUploading(true);
+    const requestId = beginAsyncOperation("manual-upload");
     try {
       const uploads = await Promise.all(
         validFiles.map(async (file) => {
-          // Generate structured path for feed media
-          const mediaType = file.type.startsWith("video/")
-            ? "videos"
-            : "images";
-          const username = sanitizeUsername(user?.username || "user");
-          const randomFileName = generateRandomFileName(file.name);
-          const structuredPath = generateFeedUploadPath(
-            username,
-            mediaType,
-            randomFileName
-          );
-
-          // Upload the file with structured path
-          const formData = new FormData();
-          formData.append("files", file);
-          formData.append("path", structuredPath);
-
-          const resp = await axios.post(
-            `${import.meta.env.VITE_REST_API_URL}/upload`,
-            formData,
-            {
-              headers: {
-                "Content-Type": "multipart/form-data",
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              },
-            }
-          );
-          const item = resp.data?.[0];
-          if (item?.url) {
+          const item = await explorersApiClient.createMedia(file, "feed");
+          if (item.url) {
             // Detect aspect ratio for the uploaded file
             try {
               const aspectRatioInfo = await detectMediaAspectRatio(file);
               return {
                 id: `feed-uploaded-${item.id}`,
                 url: item.url,
-                documentId: item.documentId,
+                documentId: item.id,
                 fileName: file.name,
                 type: file.type.startsWith("video/") ? "video" : "image",
                 aspectRatio: aspectRatioInfo.aspectRatio,
@@ -137,7 +174,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
               return {
                 id: `feed-uploaded-${item.id}`,
                 url: item.url,
-                documentId: item.documentId,
+                documentId: item.id,
                 fileName: file.name,
                 type: file.type.startsWith("video/") ? "video" : "image",
                 aspectRatio: "4:5", // Default fallback
@@ -167,12 +204,16 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
       console.error("Upload error:", error);
       toast.error(t('dashboard.profile.common.failedToUploadFiles'));
     } finally {
-      setIsUploading(false);
+      finishAsyncOperation(requestId);
+      setIsUploading(
+        hasActiveOperation("manual-upload", "google-import", "instagram-import"),
+      );
     }
   };
 
   // File upload validation hook
   const { handleFileSelection, acceptString } = useFileUpload({
+    canonicalPurpose: "feed",
     allowImages: true,
     allowVideos: true,
     onValidFiles: handleValidFiles,
@@ -184,10 +225,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
     ? values.Feed_Data
     : [];
 
-  /**
-   * Upload Google image to S3 with structured path
-   * Downloads the image from Google and uploads to our S3 with proper path structure
-   */
+  /** Copy an imported image into the account's private local media store. */
   const uploadGoogleImageToS3 = async (
     imageUrl: string,
     fileName: string
@@ -202,40 +240,14 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
 
       const imageBlob = await imageResponse.blob();
 
-      // Generate structured path for Google import
-      const username = sanitizeUsername(user?.username || "user");
       const randomFileName = generateRandomFileName(fileName);
-      const structuredPath = generateFeedUploadPath(
-        username,
-        "google-import",
-        randomFileName
-      );
-
-      // Upload to our S3 with structured path
-      const formData = new FormData();
-      formData.append(
-        "files",
-        new File([imageBlob], randomFileName, { type: imageBlob.type })
-      );
-      formData.append("path", structuredPath);
-
-      const resp = await axios.post(
-        `${import.meta.env.VITE_REST_API_URL}/upload`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        }
-      );
-
-      const item = resp.data?.[0];
+      const item = await explorersApiClient.createMedia(new File([imageBlob], randomFileName,
+        { type: imageBlob.type }), "feed");
       if (item?.url) {
         return {
           id: `feed-google-${item.id}`,
           url: item.url,
-          documentId: item.documentId,
+          documentId: item.id,
           fileName: randomFileName,
           type: "image",
           aspectRatio: aspectRatioInfo.aspectRatio,
@@ -246,7 +258,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
       }
       return null;
     } catch (error) {
-      console.error("Error uploading Google image to S3:", error);
+      console.error("Error importing Google image:", error);
       return null;
     }
   };
@@ -337,6 +349,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
     }
 
     setIsScrapingIg(true);
+    const requestId = beginAsyncOperation("instagram-fetch");
     setIgFetchedMedia([]);
     setIgSelectedIds(new Set());
 
@@ -399,14 +412,12 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
       const errorMsg = error.response?.data?.message || error.message || "Failed to scrape Instagram account";
       toast.error(errorMsg);
     } finally {
-      setIsScrapingIg(false);
+      finishAsyncOperation(requestId);
+      setIsScrapingIg(hasActiveOperation("instagram-fetch"));
     }
   };
 
-  /**
-   * Upload an Instagram image to S3 with structured path.
-   * Downloads via proxy and re-uploads to our storage.
-   */
+  /** Copy an imported Instagram image into the account's private local media store. */
   const uploadInstagramImageToS3 = async (
     proxyImageUrl: string,
     fileName: string,
@@ -433,33 +444,14 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
         } catch { /* fallback to default */ }
       }
 
-      // Generate structured path for Instagram import
-      const username = sanitizeUsername(user?.username || 'user');
       const randomFileName = generateRandomFileName(fileName);
-      const structuredPath = generateFeedUploadPath(username, 'instagram-import', randomFileName);
-
-      // Upload to our S3
-      const formData = new FormData();
-      formData.append('files', new File([imageBlob], randomFileName, { type: imageBlob.type }));
-      formData.append('path', structuredPath);
-
-      const resp = await axios.post(
-        `${import.meta.env.VITE_REST_API_URL}/upload`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        }
-      );
-
-      const item = resp.data?.[0];
+      const item = await explorersApiClient.createMedia(new File([imageBlob], randomFileName,
+        { type: imageBlob.type }), "feed");
       if (item?.url) {
         return {
           id: `feed-ig-${item.id}`,
           url: item.url,
-          documentId: item.documentId,
+          documentId: item.id,
           fileName: randomFileName,
           type: mediaType,
           aspectRatio: aspectRatioInfo.aspectRatio,
@@ -470,7 +462,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
       }
       return null;
     } catch (error) {
-      console.error('Error uploading Instagram image to S3:', error);
+      console.error('Error importing Instagram image:', error);
       return null;
     }
   };
@@ -496,8 +488,9 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
       return;
     }
 
+    setIsUploading(true);
+    const requestId = beginAsyncOperation("instagram-import");
     try {
-      setIsUploading(true);
       toast.info(`Uploading ${imageItems.length} images to feed...`);
 
       const uploadPromises = imageItems.map(async (img) => {
@@ -531,7 +524,10 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
       console.error('Error saving Instagram images to feed:', error);
       toast.error("Failed to save images to feed");
     } finally {
-      setIsUploading(false);
+      finishAsyncOperation(requestId);
+      setIsUploading(
+        hasActiveOperation("manual-upload", "google-import", "instagram-import"),
+      );
     }
   };
 
@@ -577,12 +573,20 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
       return;
     }
     const placeId = selectedPlace.place_id as string;
+    const placeName = selectedPlace.name || "place";
+    const placeAddress = selectedPlace.formatted_address || "";
+    googleFetchGenerationRef.current += 1;
+    const generation = googleFetchGenerationRef.current;
+    const isLatestGeneration = () =>
+      generation === googleFetchGenerationRef.current;
     setIsFetching(true);
+    const requestId = beginAsyncOperation("google-fetch");
     try {
       const details = await axios.get(
-        `${GOOGLE_PLACES_API_BASE_URL}/${placeId}?fields=photos&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+        `${GOOGLE_PLACES_API_BASE_URL}/${placeId}?fields=photos&key=${mapsBrowserKey()
         }`
       );
+      if (!isLatestGeneration()) return;
       const refs: string[] = (details.data?.photos || [])
         .map((p: { name: string }) => p.name.split(`${placeId}/`)[1])
         .filter(Boolean);
@@ -591,7 +595,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
       if (limited.length > 0) {
         imported = await Promise.all(
           limited.map(async (ref, i) => {
-            const direct = `${GOOGLE_PLACES_API_BASE_URL}/${placeId}/${ref}/media?maxWidthPx=800&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+            const direct = `${GOOGLE_PLACES_API_BASE_URL}/${placeId}/${ref}/media?maxWidthPx=800&key=${mapsBrowserKey()
               }`;
             // Best-effort availability check
             try {
@@ -601,7 +605,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
             return {
               id: `google-${placeId}-${i}`,
               url: direct,
-              fileName: `${selectedPlace.name || "place"}-${i}.jpg`,
+              fileName: `${placeName}-${i}.jpg`,
               type: "image",
               uploadSource: "google-import",
             } as FeedMedia;
@@ -612,8 +616,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
       if (imported.length === 0) {
         // Fallback to Google Custom Search
         try {
-          const query = `${selectedPlace.name || ""} ${selectedPlace.formatted_address || ""
-            }`.trim();
+          const query = `${placeName} ${placeAddress}`.trim();
           const resp = await axios.get(
             `https://www.googleapis.com/customsearch/v1`,
             {
@@ -628,6 +631,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
               },
             }
           );
+          if (!isLatestGeneration()) return;
           imported = (resp.data?.items || []).map(
             (item: { link: string; title: string }, i: number) => ({
               id: `gcs-${Date.now()}-${i}`,
@@ -642,6 +646,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
         }
       }
 
+      if (!isLatestGeneration()) return;
       if (imported.length === 0) {
         toast.error(t('toast.error.noImagesFoundForPlace'));
         setFetchedImages([]);
@@ -676,6 +681,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
         })
       );
 
+      if (!isLatestGeneration()) return;
       setFetchedImages(imagesWithAspectRatio);
       setSelectedIds(new Set());
 
@@ -697,10 +703,12 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
 
       toast.success(message);
     } catch (err) {
+      if (!isLatestGeneration()) return;
       console.error("Google fetch failed", err);
       toast.error(t('toast.error.failedToFetchImages'));
     } finally {
-      setIsFetching(false);
+      finishAsyncOperation(requestId);
+      setIsFetching(hasActiveOperation("google-fetch"));
     }
   };
 
@@ -733,8 +741,9 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
       return;
     }
 
+    setIsUploading(true);
+    const requestId = beginAsyncOperation("google-import");
     try {
-      setIsUploading(true);
       toast.info(t('toast.success.uploadingImagesToFeed'));
 
       // Upload each selected Google image to S3 with structured path
@@ -786,17 +795,32 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
       console.error("Error saving images to feed:", error);
       toast.error(t('dashboard.profile.common.failedToSaveImagesToFeed'));
     } finally {
-      setIsUploading(false);
+      finishAsyncOperation(requestId);
+      setIsUploading(
+        hasActiveOperation("manual-upload", "google-import", "instagram-import"),
+      );
     }
   };
 
   return (
-    <div className="w-full bg-dashboard-sidebar rounded-lg">
+    <div
+      className={`w-full ${showHeading ? "bg-dashboard-sidebar rounded-lg" : ""}`}
+    >
       <div className="mb-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-poppins text-sm text-white">{t('dashboard.profile.publicProfile.sections.feed')}</h2>
+        <div
+          className={`flex items-center ${showHeading ? "justify-between" : "justify-end"}`}
+        >
+          {showHeading && (
+            <h2 className="font-poppins text-sm text-white">
+              {t('dashboard.profile.publicProfile.sections.feed')}
+            </h2>
+          )}
           {/* Desktop/tablet controls */}
-          <div className="hidden md:flex items-center gap-4">
+          <div
+            aria-label={t("dashboard.profile.editor.headings.gallery", "Gallery")}
+            className="gallery-desktop-actions flex flex-wrap items-center justify-end gap-2"
+            role="group"
+          >
             <Button
               variant="primary"
               size="xsmall"
@@ -805,75 +829,72 @@ const FeedFields: React.FC<FeedFieldsProps> = ({ values, setFieldValue, onFeedDa
               onClickHandler={handleAddClick}
               disabled={isUploading}
             />
-            {/* Google Import Toggle */}
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-white font-poppins">
-                Google
-              </span>
-              <SwitchButton
-                isChecked={showImporter}
-                onChange={toggleImporter}
-                variant="purple"
-                disabled={isFetching}
+            <button
+              aria-controls={importDisclosureId}
+              aria-expanded={isImportMenuOpen}
+              aria-label={t(
+                "dashboard.profile.gallery.importPhotos",
+                "Import photos",
+              )}
+              className="gallery-import-trigger inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-dashboard bg-dashboard-muted px-4 font-poppins text-sm font-semibold text-dashboard transition-colors hover:border-dashboard-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent"
+              onClick={() => setIsImportMenuOpen((open) => !open)}
+              type="button"
+            >
+              <Images aria-hidden="true" size={18} strokeWidth={1.75} />
+              <span>{t("dashboard.profile.gallery.import", "Import")}</span>
+              <ChevronDown
+                aria-hidden="true"
+                className={`transition-transform duration-150 ${isImportMenuOpen ? "rotate-180" : ""}`}
+                size={18}
+                strokeWidth={1.75}
               />
+            </button>
+          </div>
+        </div>
+        {isImportMenuOpen && (
+          <div
+            aria-label={t(
+              "dashboard.profile.gallery.importSources",
+              "Import sources",
+            )}
+            className="gallery-import-disclosure mt-3 grid grid-cols-1 gap-2 rounded-lg border border-dashboard bg-dashboard-muted p-2 sm:grid-cols-2"
+            id={importDisclosureId}
+            role="region"
+          >
+            <button
+              aria-label="Google Photos"
+              aria-pressed={showImporter}
+              className="gallery-import-source inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-dashboard bg-dashboard-sidebar px-4 font-poppins text-sm font-semibold text-dashboard transition-colors hover:border-dashboard-accent aria-pressed:border-dashboard-accent aria-pressed:bg-dashboard-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isFetching}
+              onClick={toggleImporter}
+              type="button"
+            >
+              <Images aria-hidden="true" size={18} strokeWidth={1.75} />
+              <span>Google Photos</span>
               {isFetching && (
-                <span className="text-xs text-dashboard-accent animate-pulse">
-                  {t('dashboard.profile.common.fetching')}
+                <span aria-hidden="true" className="animate-pulse text-xs text-dashboard-light">
+                  {t("dashboard.profile.common.fetching")}
                 </span>
               )}
-            </div>
-            {/* Instagram Import Toggle */}
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-white font-poppins">
-                Instagram
-              </span>
-              <SwitchButton
-                isChecked={showInstagramImporter}
-                onChange={toggleInstagramImporter}
-                variant="purple"
-                disabled={isScrapingIg}
-              />
+            </button>
+            <button
+              aria-label="Instagram"
+              aria-pressed={showInstagramImporter}
+              className="gallery-import-source inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-dashboard bg-dashboard-sidebar px-4 font-poppins text-sm font-semibold text-dashboard transition-colors hover:border-dashboard-accent aria-pressed:border-dashboard-accent aria-pressed:bg-dashboard-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isScrapingIg}
+              onClick={toggleInstagramImporter}
+              type="button"
+            >
+              <Instagram aria-hidden="true" size={18} strokeWidth={1.75} />
+              <span>Instagram</span>
               {isScrapingIg && (
-                <span className="text-xs text-pink-400 animate-pulse">
-                  Scraping...
+                <span aria-hidden="true" className="animate-pulse text-xs text-dashboard-light">
+                  {t("dashboard.profile.common.fetching")}
                 </span>
               )}
-            </div>
+            </button>
           </div>
-        </div>
-        {/* Mobile controls (compact) */}
-        <div className="mt-3 flex items-center justify-between md:hidden">
-          <Button
-            variant="primary"
-            size="xsmall"
-            btnText={t('dashboard.profile.common.add')}
-            endIcon={<AddIcon size="5" />}
-            onClickHandler={handleAddClick}
-            disabled={isUploading}
-          />
-          <div className="flex items-center gap-3">
-            {/* Google Import Toggle */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-white font-poppins">Google</span>
-              <SwitchButton
-                isChecked={showImporter}
-                onChange={toggleImporter}
-                variant="purple"
-                disabled={isFetching}
-              />
-            </div>
-            {/* Instagram Import Toggle */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-white font-poppins">IG</span>
-              <SwitchButton
-                isChecked={showInstagramImporter}
-                onChange={toggleInstagramImporter}
-                variant="purple"
-                disabled={isScrapingIg}
-              />
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       {showImporter && (

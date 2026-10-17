@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "commit": "c3ceb5cfaf3bb23eab2188316175a20cbf30330d",
+  "kind": "retained-fixture-recovery",
+  "runId": "b1b0579261e7d0ffd2c3410bc77b5d5d",
+  "status": "failed",
+  "child": { "exitCode": 1, "diagnostic": "APPS_RETAINED_RECOVERY_FAILED" },
+  "qualification": false,
+  "browserCounts": null,
+  "observationsAfterClose": {
+    "fixtureRootPresent": true,
+    "recoveryLeasePresent": false,
+    "containerRunning": true,
+    "containerHealth": "healthy"
+  },
+  "diagnosis": "Read-only inspection found the exact immutable image and container share DOCKER_PG_LLVM_DEPS, omitted by the recovery environment-name validator. Original failure stage was not emitted; preflight completion is not independently attested by this diagnostic.",
+  "cleanupClaim": "none"
+}

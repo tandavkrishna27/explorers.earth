@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { AnalyticsEvent } from '../../api/queries';
 import { useResponsiveChart } from '../../../../hooks/useResponsiveChart';
 import EmptyState from '../EmptyState';
+import { resolveTrafficSource } from '../../utils/trafficSource';
 
 /**
  * Props interface for TrafficSourceChart component
@@ -80,7 +81,7 @@ const TrafficSourceChart: React.FC<TrafficSourceChartProps> = ({ events }) => {
     viewEvents.forEach(event => {
       // Extract traffic source from utmParams.utm_source
       // Default to 'direct' if utm_source is missing or empty
-      const trafficSource = event.utmParams?.utm_source || 'direct';
+      const trafficSource = resolveTrafficSource(event);
       
       // Convert timestamp to date string (YYYY-MM-DD) for grouping
       const date = new Date(event.timestamp).toISOString().split('T')[0];
@@ -277,7 +278,7 @@ const TrafficSourceChart: React.FC<TrafficSourceChartProps> = ({ events }) => {
 
       {/* Chart */}
       <div className="w-full px-2 sm:px-0" style={{ height: `${chartConfig.chartHeight}px` }}>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 1, height: 1 }}>
           <LineChart
             data={filteredData}
             margin={{

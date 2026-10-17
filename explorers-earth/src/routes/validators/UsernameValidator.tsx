@@ -1,104 +1,102 @@
-import { useEffect } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { useQuery } from "@apollo/client";
-import { gql } from "@apollo/client";
-import { EarthLoader } from "../../components/EarthLoader";
+import { useEffect, type ReactNode } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { usePublicColdEntry } from "../../layouts/PublicColdEntryBoundary";
 import NotFound from "../../pages/NotFound";
+import { usePublicAccountIdentity } from "../../features/music/PublicMusicAvailabilityProvider";
 
-// Query to check if username exists — intentionally minimal
-const checkUsernameQuery = gql`
-  query CheckUsername($username: String!) {
-    accounts(filters: { username: { eq: $username } }) {
-      documentId
-      Account_Name
-    }
+interface UsernameValidatorProps { children: ReactNode }
+
+const VALID_ROUTES = new Set([
+  "places", "music", "guides", "movies", "books", "games", "apps", "products", "people",
+]);
+
+function decodedLowerSegments(pathname: string): string[] {
+  return pathname.replace(/\/+$/, "").split("/").filter(Boolean).map((segment) => {
+    try { return decodeURIComponent(segment.trim()).toLowerCase(); }
+    catch { return segment.trim().toLowerCase(); }
+  });
+}
+
+function isValidPublicPath(pathname: string): boolean {
+  const [, ...restSegments] = decodedLowerSegments(pathname);
+  if (restSegments.length === 0) return true;
+  const currentRoute = restSegments[0];
+  if (!VALID_ROUTES.has(currentRoute)) return false;
+  if (currentRoute === "places") {
+    if (restSegments.length > 3) return false;
+    if (restSegments.length === 3 && !["map", "placesmap"].includes(restSegments[2])) return false;
+    return true;
   }
-`;
+  return !(
+    (currentRoute === "music" && restSegments.length !== 1)
+    || (currentRoute === "guides" && ![1, 2].includes(restSegments.length))
+    || (currentRoute === "movies" && !(restSegments.length === 1 || restSegments.length === 2 || (restSegments.length === 3 && restSegments[1] === "genre")))
+    || (currentRoute === "books" && !(restSegments.length === 1 || restSegments.length === 2 || (restSegments.length === 3 && restSegments[1] === "subject")))
+    || (currentRoute === "games" && !(restSegments.length === 1 || restSegments.length === 2 || (restSegments.length === 3 && restSegments[1] === "genre")))
+    || (currentRoute === "apps" && restSegments.length > 2)
+    || (currentRoute === "products" && ![1, 2].includes(restSegments.length))
+    || (currentRoute === "people" && !(restSegments.length === 1 || restSegments.length === 2 || (restSegments.length === 3 && restSegments[1] === "sector")))
+  );
+}
 
-interface UsernameValidatorProps {
-  children: React.ReactNode;
+function withCanonicalUsername(pathname: string, canonicalUsername: string): string {
+  const segments = pathname.split("/").filter(Boolean);
+  return `/${[canonicalUsername, ...segments.slice(1)].join("/")}`;
 }
 
 const UsernameValidator = ({ children }: UsernameValidatorProps) => {
   const { username } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-
-  const { data, loading, error } = useQuery(checkUsernameQuery, {
-    variables: { username },
-    skip: !username,
-  });
+  const cold = usePublicColdEntry();
+  const normalizedUsername = username?.trim().toLowerCase();
+  const identity = usePublicAccountIdentity();
+  const loading = identity.status === "loading";
+  const error = identity.status === "terminal-error"
+    ? identity.error ?? new Error("PROFILE_UNAVAILABLE")
+    : undefined;
+  const account = identity.account as { username?: unknown } | undefined;
+  const canonicalUsername = typeof account?.username === "string"
+    ? account.username.trim().toLowerCase()
+    : undefined;
+  const accountMatches = !!normalizedUsername && canonicalUsername === normalizedUsername;
+  const canonicalPathname = canonicalUsername
+    ? withCanonicalUsername(location.pathname, canonicalUsername)
+    : undefined;
+  const needsCanonicalRedirect = accountMatches && canonicalPathname !== location.pathname;
+  const validPath = isValidPublicPath(location.pathname);
+  const [, routeSegment, ...remainingSegments] = decodedLowerSegments(location.pathname);
+  const allowsInlineRecovery = Boolean(error)
+    && !String(error).includes("PUBLIC_PROFILE_404")
+    && routeSegment === "music"
+    && remainingSegments.length === 0;
 
   useEffect(() => {
-    if (!loading && !error && data) {
-      const account = data.accounts[0];
-
-      // If username doesn't exist, show 404
-      if (!account) {
-        return; // This will render NotFound component
+    if (accountMatches) {
+      if (!validPath) {
+        navigate({ pathname: `/${canonicalUsername}`, search: location.search, hash: location.hash }, { replace: true });
+        return;
       }
-
-      // Normalize the path to handle trailing slashes
-      // Remove trailing slash and split
-      const normalizedPath = location.pathname.replace(/\/$/, '');
-      const pathSegments = normalizedPath.split('/');
-
-      // If we have exactly 2 segments (e.g., /correctUsername), don't redirect
-      if (pathSegments.length === 2) {
-        return; // Allow the route to render normally
+      if (needsCanonicalRedirect && canonicalPathname) {
+        navigate({ pathname: canonicalPathname, search: location.search, hash: location.hash }, { replace: true });
+        return;
       }
-
-      // If we have more than 2 segments, validate the nested route
-      if (pathSegments.length > 2) {
-        const validRoutes = ['places', 'community', 'music', 'guides', 'movies', 'books', 'games', 'apps', 'products', 'people'];
-        const currentRoute = pathSegments[2];
-
-        // Check if the current route is valid
-        if (!validRoutes.includes(currentRoute)) {
-          // Redirect to the user's places page
-          navigate(`/${username}/places`, { replace: true });
-          return;
-        }
-
-        // Additional validation for places sub-routes
-        if (currentRoute === 'places' && pathSegments.length > 3) {
-          const validPlacesSubRoutes = ['map'];
-          const placesSubRoute = pathSegments[3];
-
-          // If it's not a valid places sub-route and not a placeSlug (which can be anything), redirect
-          if (!validPlacesSubRoutes.includes(placesSubRoute) &&
-            !/^[a-zA-Z0-9-_]+$/.test(placesSubRoute)) {
-            navigate(`/${username}/places`, { replace: true });
-            return;
-          }
-        }
-      }
+      cold.reportValidation("valid");
+      return;
     }
-  }, [data, loading, error, username, navigate, location.pathname]);
+    if (allowsInlineRecovery) { cold.reportValidation("valid"); return; }
+    if (loading) { cold.reportValidation("pending"); return; }
+    cold.reportValidation("terminal-invalid");
+  }, [accountMatches, canonicalPathname, canonicalUsername, cold.reportValidation, error, loading,
+    location.hash, location.search, navigate, needsCanonicalRedirect, validPath, allowsInlineRecovery]);
 
-  useEffect(() => {
-    (window as any).__publicProfileLoaded = false;
-    return () => {
-      (window as any).__publicProfileLoaded = false;
-    };
-  }, []);
-
-  // Show loading while checking username
-  if (loading) {
-    return (
-      <div className="bg-black min-h-screen">
-        <EarthLoader context="general" size="default" />
-      </div>
-    );
+  if (accountMatches) {
+    if (needsCanonicalRedirect || !validPath) return null;
+    return <>{children}</>;
   }
-
-  // Show 404 if username doesn't exist
-  if (!loading && (!data || !data.accounts[0])) {
-    return <NotFound />;
-  }
-
-  // Render children if username is valid
-  return <>{children}</>;
+  if (allowsInlineRecovery) return <>{children}</>;
+  if (loading) return null;
+  return <NotFound />;
 };
 
-export default UsernameValidator; 
+export default UsernameValidator;

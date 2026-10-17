@@ -32,14 +32,14 @@ src/
 │   ├── Movies/         # Curated lists of favorite movies
 │   ├── Books/          # Curated lists of favorite books
 │   ├── Games/          # Curated lists of favorite games
-│   ├── Guides/         # AI-powered guide generation
+│   ├── Guides/         # Curated multi-day guides and itineraries
 │   ├── Analytics/      # Usage tracking and dashboards
 │   ├── Settings/       # User preferences and account settings
 │   ├── LandingPage/    # Marketing/home page
 │   └── PublicHome/     # Public-facing recommendation pages
 ├── components/         # Shared UI components
-│   ├── MusicDashboard.tsx      # Embedded tunes player dashboard (major component)
-│   ├── AuthSyncManager.tsx     # Background SSO sync with Local Tunes
+│   ├── MusicDashboard.tsx      # Canonical Music workspace and sharing controls
+│   ├── AuthSyncManager.tsx     # Post-auth Music identity convergence
 │   ├── Header.tsx / Navbar.tsx # Navigation
 │   ├── InteractiveMap.tsx      # Google Maps component
 │   ├── ImageCropper.tsx        # Image crop utility
@@ -50,12 +50,11 @@ src/
 │   ├── ReactivateConfirm.tsx # Confirm account reactivation page
 │   └── public/         # Public (unauthenticated) pages
 ├── hooks/              # Custom hooks
-│   ├── useTunesDashboard.ts            # Local Tunes data fetching + user sync
+│   ├── useTunesDashboard.ts            # Canonical Music workspace data fetching
 │   ├── useProfileWalkthrough.ts        # Profile setup guided walkthrough
 │   ├── useRecommendationsWalkthrough.ts # Recommendations guided walkthrough
 │   ├── useQRActions.tsx                # QR code generation, download, sharing
 │   ├── useQRContext.tsx                # QR actions React context provider
-│   ├── useAIGuideQuota.ts              # AI guide generation quota tracking
 │   ├── useDeviceDetection.tsx          # Mobile/tablet/desktop detection
 │   ├── useDistanceValidation.ts        # Location distance validation
 │   ├── useFileUpload.ts                # Image upload flow (crop → compress → REST)
@@ -63,26 +62,21 @@ src/
 │   ├── usePageTracking.ts              # GA4 page-view tracking
 │   ├── useResponsiveChart.ts           # Chart dimensions from viewport
 │   ├── useToast.ts                     # Toast notifications
-│   ├── useUsernameValidation.ts        # Async username availability check
-│   └── useWebSocket.ts                 # Socket.IO for tunes real-time
+│   └── useUsernameValidation.ts        # Async username availability check
 ├── lib/
-│   └── apiClient.ts    # Local Tunes API client (JWT auth, CSRF, retry logic)
+│   ├── localTunesApiClient.ts # Bodyless identity ensure and in-memory Music credential
+│   └── apolloCache.ts          # Immutable-ID GraphQL normalization policy
 ├── store/              # Zustand global state
 │   ├── store.ts        # Main app store (auth, user data)
 │   ├── useCityStore.ts # Selected city state
 │   ├── useEmailStore.ts# Email composition state
 │   └── useSetupStore.ts# Onboarding setup state
 ├── services/           # API service functions
-│   ├── ssoService.ts           # Cross-app SSO with Local Tunes
-│   ├── aiGuideService.ts       # AI guide generation
 │   ├── analyticsService.ts     # Analytics tracking
-│   ├── geminiService.ts        # Google Gemini AI integration
 │   ├── googleBooksService.ts   # Google Books API (book search + metadata)
 │   ├── igdbService.ts          # IGDB via Twitch OAuth (game search + metadata)
 │   ├── instagramService.ts     # Instagram integration
-│   ├── localTunesService.ts    # Local Tunes API communication
 │   ├── paymentService.ts       # Payment processing
-│   ├── requestTrackingService.ts # Request tracking
 │   ├── subscriptionService.ts  # Subscription management
 │   └── tmdbService.ts          # TMDB (movie/show search, metadata, posters)
 ├── utils/              # Utility functions
@@ -110,15 +104,15 @@ src/
 - QR codes generated dynamically with qrcode.react, exportable as PNG
 - Maps: Google Maps with custom markers, clustering, geocoding
 
-## Cross-App SSO (Local Tunes Integration)
+## Music identity and workspace
 
-explorers-earth has deep integration with tunes via SSO:
-- `AuthSyncManager.tsx` runs background sync after login (skips public pages and onboarding, fires once per session)
-- `ssoService.ts` handles the full SSO flow: authenticate with tunes API, extract guestUrl, store cross-domain auth data
-- `apiClient.ts` sends JWT + `X-Username` header for Strapi → Neon DB user mapping
-- `useTunesDashboard.ts` syncs Strapi user with tunes DB and fetches playlist data
-- `MusicDashboard.tsx` renders embedded music player with queue, playlists, guest controls
-- **Account Reactivation Flow**: `ReactivateAccount.tsx` and `ReactivateConfirm.tsx` pages handle unblocking deactivated Strapi accounts by calling tunes endpoints (`/api/user/request-reactivation` and `/api/user/reactivate`).
+- `AuthSyncManager.tsx` is the sole automatic identity trigger. It runs only after verified authentication and completed onboarding and selects the unique complete Account by immutable `documentId`.
+- `localTunesApiClient.ts` sends a bodyless identity ensure request and holds the short-lived Music credential in memory only, with single-flight refresh.
+- `musicIdentityCoordinator.ts` coalesces concurrent identity work for Google and email authentication paths.
+- `musicWorkspaceClient.ts` uses canonical owner routes. `publicMusicClient.ts` uses immutable public slugs and an optional fragment-carried guest capability.
+- `Music.tsx` delegates lifecycle, entitlement, identity, loading, and ready precedence to `musicState.ts`; `MusicDashboard.tsx` owns private/unlisted/public controls.
+- Profile username changes never change Music ownership or identity. Retired username headers, native credentials, browser persistence, and cross-app login routes must not be reintroduced.
+- **Account Reactivation Flow**: `ReactivateAccount.tsx` and `ReactivateConfirm.tsx` handle the separate Explorer account lifecycle endpoints.
 
 ## Common Tasks
 

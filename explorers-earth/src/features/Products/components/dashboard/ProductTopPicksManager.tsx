@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { motion, Reorder } from "framer-motion";
-import { useMutation } from "@apollo/client";
 import { X, Star, Minus, Loader2, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { UPDATE_RECOMMENDED_PRODUCT } from "../../api/mutation";
+import { useProductsCommands, useProductsCallerCustody } from "../../api/query";
 import type { RecommendedProduct } from "../../types";
 import { buildImageUrl } from "../../utils/productHelpers";
 
@@ -25,7 +24,8 @@ const ProductTopPicksManager = ({
     [...products].sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999))
   );
   const [saving, setSaving] = useState(false);
-  const [updateProduct] = useMutation(UPDATE_RECOMMENDED_PRODUCT);
+  const commands = useProductsCommands();
+  const beginEffects = useProductsCallerCustody();
 
   const unpinnedProducts = allProducts.filter(
     (p) => !pinnedProducts.find((pp) => pp.documentId === p.documentId)
@@ -48,7 +48,6 @@ const ProductTopPicksManager = ({
     setPinnedProducts((prev) => {
       const next = [...prev];
       [next[index - 1], next[index]] = [next[index], next[index - 1]];
-      syncOrder(next);
       return next;
     });
   };
@@ -58,61 +57,32 @@ const ProductTopPicksManager = ({
     setPinnedProducts((prev) => {
       const next = [...prev];
       [next[index + 1], next[index]] = [next[index], next[index + 1]];
-      syncOrder(next);
       return next;
     });
   };
 
-  const syncOrder = async (orderToSync: RecommendedProduct[]) => {
-    try {
-      for (let i = 0; i < orderToSync.length; i++) {
-        await updateProduct({
-          variables: {
-            documentId: orderToSync[i].documentId,
-            is_pinned: true,
-            pin_order: i,
-          },
-        });
-      }
-      onRefetch();
-    } catch {
-      toast.error("Failed to auto-save new order.");
-    }
-  };
-
+  // The whole pin set is written in one command, so the order is the array order and an
+  // unpin needs no separate pass. The Strapi path wrote one mutation per row and could
+  // leave the set half-applied; reordering is now local until Save.
   const handleSave = async () => {
+    const current = beginEffects();
     setSaving(true);
     try {
-      // Save pin states for pinned products
-      for (let i = 0; i < pinnedProducts.length; i++) {
-        await updateProduct({
-          variables: {
-            documentId: pinnedProducts[i].documentId,
-            is_pinned: true,
-            pin_order: i,
-          },
-        });
-      }
-      // Unpin the rest
-      for (const p of unpinnedProducts) {
-        if (products.find((pp) => pp.documentId === p.documentId)) {
-          // was pinned, now unpinned
-          await updateProduct({
-            variables: {
-              documentId: p.documentId,
-              is_pinned: false,
-              pin_order: null,
-            },
-          });
-        }
-      }
+      const pins = pinnedProducts.map((product) => {
+        if (!product.product_list?.documentId) throw new Error("Product membership unavailable");
+        return { recommendationId: product.documentId, collectionId: product.product_list.documentId };
+      });
+      await commands.savePins(pins);
+      if (!current()) return;
       toast.success("Top picks updated!");
+      if (!current()) return;
       onRefetch();
+      if (!current()) return;
       onClose();
     } catch {
-      toast.error("Failed to save. Please try again.");
+      if (current()) toast.error("Failed to save. Please try again.");
     } finally {
-      setSaving(false);
+      if (current()) setSaving(false);
     }
   };
 
@@ -160,7 +130,6 @@ const ProductTopPicksManager = ({
                   <Reorder.Item
                     key={product.documentId}
                     value={product}
-                    onDragEnd={() => syncOrder(pinnedProducts)}
                     className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0 bg-[#0d1117] cursor-grab active:cursor-grabbing"
                   >
                     <div className="flex flex-col items-center gap-1 flex-shrink-0">

@@ -1,0 +1,28 @@
+import { it, expect, vi } from 'vitest';
+import { startAnalyticsMaintenance } from '../analyticsMaintenance';
+it('runs immediately without overlap, catches a failure independently and awaits owned work at stop', async () => {
+    vi.useFakeTimers();
+    let complete!: () => void;
+    const query = vi.fn(() => new Promise<void>(resolve => { complete = resolve; }));
+    const failure = vi.fn();
+    const stop = startAnalyticsMaintenance({ query } as any, failure);
+    expect(query).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(120000);
+    expect(query).toHaveBeenCalledTimes(1);
+    let stopped = false;
+    const stopping = stop().then(() => { stopped = true; });
+    await Promise.resolve();
+    expect(stopped).toBe(false);
+    complete();
+    await stopping;
+    await vi.advanceTimersByTimeAsync(60000);
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(failure).not.toHaveBeenCalled();
+    const failed = vi.fn().mockRejectedValue(Error('private failure')), report = vi.fn();
+    const stopFailed = startAnalyticsMaintenance({ query: failed } as any, report);
+    await Promise.resolve();
+    await Promise.resolve();
+    await stopFailed();
+    expect(report).toHaveBeenCalledWith();
+    vi.useRealTimers();
+});

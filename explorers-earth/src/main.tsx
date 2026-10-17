@@ -1,3 +1,4 @@
+import { isCanonicalRuntime } from "./lib/publicRuntimeConfig";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
@@ -11,41 +12,26 @@ import {
 import { setContext } from "@apollo/client/link/context";
 import { typePolicies } from "./lib/apolloCache";
 import { Toaster } from "sonner";
-import { APIProvider } from "@vis.gl/react-google-maps";
 import {HelmetProvider} from "react-helmet-async";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { ThemeProvider } from "./components/theme-provider";
 import { initAnalytics } from "./utils/analytics";
 
-// setting headers for authentication
+// Retained Strapi GraphQL calls are public or gated by their own legacy adapter.
+// A canonical Better Auth cookie or persisted JWT is never forwarded here.
 const authLink = setContext((_, { headers }) => {
-  // get the authentication token from local storage if it exists
-  const token = localStorage.getItem("qrtoken");
-  
-  // For login/register operations and public operations, don't send any authorization header
-  // Check if this is an authentication operation by looking at the operation name
-  const operationName = _.operationName;
-  const isAuthOperation = operationName === 'login' || operationName === 'register' || operationName === 'forgotPassword' || operationName === 'resetPassword' || operationName === 'CheckUsernameAvailability';
-  const isPublicOperation = operationName === 'Faqs' || operationName === 'PlatformTerms' || operationName === 'SubscriptionPlanBases';
-  
-  // return the headers to the context so httpLink can read them
+  const { authorization: _authorization, Authorization: _Authorization,
+    "x-account-id": _accountId, "x-user-id": _userId, ...safeHeaders } = headers ?? {};
   return {
-    headers: {
-      ...headers,
-      // Only add authorization header for non-auth and non-public operations
-      ...(isAuthOperation || isPublicOperation ? {} : {
-        authorization: token
-          ? `Bearer ${token}`
-          : `Bearer ${import.meta.env.VITE_PUBLIC_ACCESS_TOKEN}`,
-      }),
-    },
+    headers: safeHeaders,
   };
 });
 
 // create a httpLink with the help of Graphql
 const httpLink = createHttpLink({
-  uri: import.meta.env.VITE_API_URL,
+  uri: isCanonicalRuntime() ? "/graphql" : import.meta.env.VITE_API_URL,
+  credentials: "omit",
 });
 
 // initalising the apollo client
@@ -62,7 +48,6 @@ initAnalytics();
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <HelmetProvider>
-    <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}>
       <ApolloProvider client={client}>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
@@ -71,7 +56,6 @@ createRoot(document.getElementById("root")!).render(
           </ThemeProvider>
         </QueryClientProvider>
       </ApolloProvider>
-    </APIProvider>
     </HelmetProvider>
   </StrictMode>
 );

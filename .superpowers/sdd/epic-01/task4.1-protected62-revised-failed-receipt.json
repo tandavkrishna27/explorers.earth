@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "scope": "delivered-auth-profile-books",
+  "scopeContents": [
+    "auth",
+    "profile",
+    "books",
+    "lifecycle",
+    "movies"
+  ],
+  "scopeCompatibilityIdentifier": true,
+  "deliveredSlice": "failed",
+  "overallMilestone": "incomplete",
+  "fullParity": "incomplete",
+  "releaseEligible": false,
+  "provenance": {
+    "commit": "0c0b1075d7b577e95dbd6fdb3556f2635e3ec250",
+    "sourceHash": "f49a04806e5c3fd2aaf0d51d06cd7dbb2f6d70b3d7062c58ea60d7da2ffffa52",
+    "manifestHash": "791bc1f2c9e105eb3aeed24d89c824e157d4bd07120f6f5e3fcae1cdda4944d5",
+    "dirty": true
+  },
+  "children": [
+    {
+      "lane": "auth",
+      "status": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "lane": "profile",
+      "status": 1,
+      "signal": null,
+      "error": null,
+      "failure": {
+        "version": 1,
+        "lane": "profile",
+        "provenance": {
+          "commit": "0c0b1075d7b577e95dbd6fdb3556f2635e3ec250",
+          "sourceHash": "f49a04806e5c3fd2aaf0d51d06cd7dbb2f6d70b3d7062c58ea60d7da2ffffa52",
+          "manifestHash": "791bc1f2c9e105eb3aeed24d89c824e157d4bd07120f6f5e3fcae1cdda4944d5",
+          "dirty": true
+        },
+        "results": [
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+              "titlePath": [
+                "canonical onboarding and profile round-trip at 1365px"
+              ],
+              "project": "chromium-pr-safe",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "expected",
+            "attempts": [
+              {
+                "status": "passed",
+                "retry": 0
+              }
+            ]
+          },
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+              "titlePath": [
+                "canonical onboarding and profile round-trip at 390px"
+              ],
+              "project": "chromium-pr-safe",
+              "repeat": 0
+            },
+            "expectedStatus": "passed",
+            "status": "unexpected",
+            "attempts": [
+              {
+                "status": "failed",
+                "retry": 0
+              }
+            ]
+          }
+        ],
+        "child": {
+          "status": 1,
+          "signal": null
+        },
+        "diagnostics": [
+          {
+            "identity": {
+              "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+              "titlePath": [
+                "canonical onboarding and profile round-trip at 390px"
+              ],
+              "project": "chromium-pr-safe",
+              "repeat": 0
+            },
+            "kind": "timeout",
+            "matcher": "toMatchObject",
+            "locations": [
+              {
+                "line": 111,
+                "column": 17
+              }
+            ]
+          }
+        ],
+        "cleanup": {
+          "status": "passed"
+        },
+        "artifacts": {
+          "trace": "off",
+          "video": "off",
+          "screenshot": "off",
+          "cleanup": "passed"
+        }
+      }
+    }
+  ],
+  "error": "Protected lane or qualification contract failed",
+  "pending": [
+    {
+      "ticket": "2.4",
+      "obligation": "Configured deployed Google callback and consent evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.4",
+      "obligation": "Analytics acceptance",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.5",
+      "obligation": "Unified QA deployment, image/schema and trusted producer evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "4/5",
+      "obligation": "Remaining canonical category producer families and their own acceptance evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "6.1-6.3",
+      "obligation": "Music mapped-owner HTTP/socket and feature parity",
+      "status": "pending"
+    },
+    {
+      "ticket": "7.1/7.2",
+      "obligation": "Cross-category consumers and all nine categories",
+      "status": "pending"
+    },
+    {
+      "ticket": "8.1-8.4",
+      "obligation": "Removal, rename, exact QA digest promotion and deployment",
+      "status": "pending"
+    }
+  ]
+}

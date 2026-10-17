@@ -1,7 +1,6 @@
 import { Users } from "lucide-react";
 import type { PersonList, RecommendedPerson } from "../../types";
 import { buildImageUrl } from "../../utils/personHelpers";
-import { deduplicatePeople } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
 
 interface PersonCarouselRowProps {
@@ -11,21 +10,21 @@ interface PersonCarouselRowProps {
 }
 
 const PersonCarouselRow = ({ list, onPersonClick, onViewAll }: PersonCarouselRowProps) => {
-  const people = deduplicatePeople(list.recommended_people ?? []);
+  const people = list.recommended_people;
   if (people.length === 0) return null;
 
   return (
     <div className="px-4 md:px-6">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h2 className="text-sm font-bold text-white">{list.List_Name}</h2>
+          <h2 className="text-sm font-bold text-[color:var(--category-text,#fff)]">{list.List_Name}</h2>
           {list.list_description && (
-            <p className="text-xs text-white/40 mt-0.5 line-clamp-1">{list.list_description}</p>
+            <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.4))] mt-0.5 line-clamp-1">{list.list_description}</p>
           )}
         </div>
         <button
           onClick={onViewAll}
-          className="text-xs text-violet-400/70 hover:text-violet-400 font-medium transition-colors whitespace-nowrap"
+          className="text-xs text-[color:var(--category-text,rgba(167,139,250,0.7))] hover:text-[color:var(--category-text,#a78bfa)] font-medium transition-colors whitespace-nowrap"
         >
           View all →
         </button>
@@ -39,12 +38,12 @@ const PersonCarouselRow = ({ list, onPersonClick, onViewAll }: PersonCarouselRow
             className="flex-shrink-0 w-[110px] flex flex-col items-center gap-2 text-center group"
           >
             {/* Circular avatar */}
-            <div className="relative w-20 h-20 rounded-full overflow-hidden bg-white/5 ring-2 ring-white/10 group-hover:ring-violet-400/50 transition-all shadow-lg group-hover:scale-105 duration-200">
+            <div className="relative w-20 h-20 rounded-full overflow-hidden bg-[var(--category-card,rgba(255,255,255,0.05))] ring-2 ring-[color:var(--category-border,rgba(255,255,255,0.1))] group-hover:ring-[color:var(--category-focus,rgba(167,139,250,0.5))] transition-all shadow-lg group-hover:scale-105 duration-200">
               {person.avatar_url ? (
                 <img src={buildImageUrl(person.avatar_url)} alt={person.full_name} className="w-full h-full object-cover" loading="lazy" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <Users size={24} className="text-white/20" />
+                  <Users size={24} className="text-[color:var(--category-muted,rgba(255,255,255,0.2))]" />
                 </div>
               )}
               {person.platform && (
@@ -54,12 +53,12 @@ const PersonCarouselRow = ({ list, onPersonClick, onViewAll }: PersonCarouselRow
               )}
             </div>
             <div className="w-full">
-              <p className="text-xs font-semibold text-white line-clamp-1">{person.full_name}</p>
+              <p className="text-xs font-semibold text-[color:var(--category-text,#fff)] line-clamp-1">{person.full_name}</p>
               {person.handle && (
-                <p className="text-[10px] text-white/40 truncate">@{person.handle}</p>
+                <p className="text-[10px] text-[color:var(--category-muted,rgba(255,255,255,0.4))] truncate">@{person.handle}</p>
               )}
               {person.headline && (
-                <p className="text-[10px] text-white/30 line-clamp-1 mt-0.5">{person.headline}</p>
+                <p className="text-[10px] text-[color:var(--category-muted,rgba(255,255,255,0.3))] line-clamp-1 mt-0.5">{person.headline}</p>
               )}
             </div>
           </button>

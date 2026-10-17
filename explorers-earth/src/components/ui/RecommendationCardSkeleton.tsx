@@ -1,4 +1,5 @@
 import { FC, memo } from "react";
+import { usePublicCategoryThemeStyles } from "../../features/PublicHome/components/PublicCategoryThemeContext";
 
 /** Controls which colour palette the skeleton uses */
 export type SkeletonVariant = "public" | "dashboard";
@@ -25,15 +26,17 @@ interface SkeletonCardProps {
  * Uses a subtle shimmer animation for a premium loading feel.
  */
 const SkeletonCard = memo(({ variant }: SkeletonCardProps) => {
+    const categoryStyles = usePublicCategoryThemeStyles();
+    const isCategory = variant === 'public' && categoryStyles;
     const isDashboard = variant === "dashboard";
-    const bg = isDashboard ? "var(--skeleton-bg, var(--dash-muted, #3C4E40))" : "#1a1a1a";
-    const iconBg = isDashboard
+    const bg = isCategory ? "var(--category-card)" : isDashboard ? "var(--skeleton-bg, var(--dash-muted, #3C4E40))" : "#1a1a1a";
+    const iconBg = isCategory ? "var(--category-skeleton)" : isDashboard
         ? "var(--skeleton-shimmer-base, rgba(255,255,255,0.08))"
         : "rgba(255,255,255,0.06)";
-    const textBg = isDashboard
+    const textBg = isCategory ? "var(--category-skeleton)" : isDashboard
         ? "var(--skeleton-shimmer-bright, rgba(255,255,255,0.12))"
         : "rgba(255,255,255,0.10)";
-    const borderColor = isDashboard
+    const borderColor = isCategory ? "var(--category-border)" : isDashboard
         ? "var(--dash-border, rgba(60,78,64,0.6))"
         : "rgba(255,255,255,0.04)";
 
@@ -68,7 +71,7 @@ const SkeletonCard = memo(({ variant }: SkeletonCardProps) => {
             <div
                 className="absolute bottom-0 left-0 right-0 p-3"
                 style={{
-                    background: isDashboard
+                    background: isCategory ? "var(--category-card)" : isDashboard
                         ? "linear-gradient(to top, rgba(0,0,0,0.60) 0%, rgba(0,0,0,0.20) 70%, transparent 100%)"
                         : "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 65%, transparent 100%)",
                 }}

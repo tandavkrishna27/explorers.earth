@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-
-const GA_MEASUREMENT_ID = "G-C3QBWP3ZSK";
+import { hasAnalyticsConsent } from "../services/explorersAnalyticsClient";
+import { GA_MEASUREMENT_ID } from "../utils/analytics";
 
 // Optional typing for global gtag function
 declare global {
@@ -16,6 +16,7 @@ const usePageTracking = () => {
   const location = useLocation();
 
   useEffect(() => {
+    if (!hasAnalyticsConsent()) return;
     window.gtag?.("config", GA_MEASUREMENT_ID, {
       page_path: location.pathname,
     });

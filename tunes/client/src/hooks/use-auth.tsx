@@ -20,6 +20,8 @@ import {
   hasValidSSOAuth
 } from "../lib/authStorage";
 import { useAuthStore } from "@/stores/authStore";
+import { musicPrincipalForRequest } from "@/lib/musicCredential";
+import { clearPendingMusicPublicationCommands } from "@/lib/musicPublicationCommandRegistry";
 
 type AuthContextType = {
   user: SelectUser | null;
@@ -90,17 +92,16 @@ export function AuthProvider({ children, skipAuthCheck = false }: AuthProviderPr
     }
 
     console.log('🔄 Fetching Neon DB user for:', strapiUser.username);
-    fetch(`/api/auth/user-data?username=${encodeURIComponent(strapiUser.username)}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.user) {
-          console.log('✅ Loaded Neon DB user data for:', strapiUser.username);
-          setLocalUser(data.user);
-        } else {
-          console.warn('⚠️ Neon DB user not found for:', strapiUser.username);
-        }
-      })
+    musicPrincipalForRequest()
+      .then(identity => setLocalUser({ ...strapiUser, id: identity.musicUserId } as unknown as SelectUser))
       .catch(err => console.error('Failed to fetch Neon user:', err));
+
+
+
+
+
+
+
   }, [skipAuthCheck, strapiIsAuthenticated, strapiUser?.username]);
 
   // Query server for user data, with fallback to local storage
@@ -123,13 +124,13 @@ export function AuthProvider({ children, skipAuthCheck = false }: AuthProviderPr
       return failureCount < 3;
     },
     enabled: !skipAuthCheck,
-    // If this fails but we have local storage, don't show error
-    onError: (error) => {
-      if (localUser) {
-        console.log('Using cached user data from local storage due to API error:', error.message);
-      }
-    }
   });
+
+  // React Query v5 removed query-level onError callbacks. Preserve the cached
+  // identity fallback without weakening the query's typed result.
+  useEffect(() => {
+    if (error && localUser) console.log('Using cached user data from local storage due to API error:', error.message);
+  }, [error, localUser]);
   
   // Combine server and local data
   const user = serverUser || localUser;
@@ -347,6 +348,7 @@ export function AuthProvider({ children, skipAuthCheck = false }: AuthProviderPr
         queryClient.setQueryData(["/api/user"], null);
         queryClient.setQueryData(["/api/user/profile"], null);
         clearAuthStorage();
+        clearPendingMusicPublicationCommands();
         setLocalUser(null);
         
         // Get CSRF token using our helper function
@@ -356,7 +358,7 @@ export function AuthProvider({ children, skipAuthCheck = false }: AuthProviderPr
         console.log('Attempting logout with CSRF token:', (csrfToken || '').substring(0, 6) + '...');
         
         // Return the promise so it can be awaited
-        return apiRequest("POST", "/api/logout", { _csrf: csrfToken || '' });
+        await apiRequest("POST", "/api/logout", { _csrf: csrfToken || '' });
       } finally {
         // Reset the flag after a delay to allow for cleanup
         setTimeout(() => {

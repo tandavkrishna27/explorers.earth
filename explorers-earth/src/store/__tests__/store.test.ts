@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import useAuthStore from '../store';
+import { getMusicCredential, setMusicCredential } from '../../lib/musicCredentialStore';
 
 describe('useAuthStore', () => {
   const initialData = {
@@ -53,6 +54,42 @@ describe('useAuthStore', () => {
     expect(state.token).toBeNull();
   });
 
+  it('synchronously clears the Music credential for direct, Settings, and Onboarding logout selectors', () => {
+    const logoutPaths = [
+      useAuthStore.getState().logout,
+      useAuthStore.getState().logout,
+      useAuthStore.getState().logout,
+    ];
+    for (const logout of logoutPaths) {
+      setMusicCredential({ token: 'account-a.music.credential', expiresAt: Date.now() + 60_000 });
+      logout();
+      expect(getMusicCredential()).toBeUndefined();
+    }
+  });
+
+  it('cannot carry account A Music authority into a same-tab account B login', () => {
+    useAuthStore.getState().login(initialData);
+    setMusicCredential({ token: 'account-a.music.credential', expiresAt: Date.now() + 60_000 });
+    useAuthStore.getState().login({ ...initialData, id: 'user456', documentId: 'doc456', token: 'account-b-jwt' });
+    expect(getMusicCredential()).toBeUndefined();
+  });
+
+  it('clears an orphaned Music credential before the first replacement login', () => {
+    setMusicCredential({ token: 'orphaned.music.credential', expiresAt: Date.now() + 60_000 });
+    useAuthStore.getState().login(initialData);
+    expect(getMusicCredential()).toBeUndefined();
+  });
+
+  it('updates a mutable profile username without replacing immutable Music authority', () => {
+    useAuthStore.getState().login(initialData);
+    setMusicCredential({ token: 'stable.music.credential', expiresAt: Date.now() + 60_000 });
+
+    useAuthStore.getState().updateUsername('renamed-explorer');
+
+    expect(useAuthStore.getState().user).toMatchObject({ documentId: 'doc123', username: 'renamed-explorer' });
+    expect(getMusicCredential()?.token).toBe('stable.music.credential');
+  });
+
   it('should update user blocked status', () => {
     // Login
     useAuthStore.getState().login(initialData);
@@ -77,18 +114,34 @@ describe('useAuthStore', () => {
     expect(state.user).toBeNull();
   });
 
-  it('should persist state to localStorage', () => {
-    // Note: Vitest jsdom provides localStorage
+  it('does not persist browser authority to localStorage', () => {
     useAuthStore.getState().login(initialData);
-    
     const storedStr = localStorage.getItem('auth-storage');
-    expect(storedStr).not.toBeNull();
-    
     if (storedStr) {
       const stored = JSON.parse(storedStr);
-      expect(stored.state.isAuthenticated).toBe(true);
-      expect(stored.state.token).toBe('fake-jwt-token');
-      expect(stored.state.user.username).toBe('testuser');
+      expect(stored.state).not.toHaveProperty('isAuthenticated');
+      expect(stored.state).not.toHaveProperty('token');
+      expect(stored.state).not.toHaveProperty('user');
     }
+  });
+
+  it('does not revive a persisted Strapi credential or grant owner access before session verification', () => {
+    localStorage.setItem('auth-storage', JSON.stringify({ state: {
+      isAuthenticated: true, token: 'old-jwt', user: initialData,
+    }, version: 0 }));
+    useAuthStore.persist.rehydrate();
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(useAuthStore.getState().token).toBeNull();
+  });
+
+  it('rejects an old verification result after an A to B to A session change', () => {
+    const oldGeneration = useAuthStore.getState().beginVerification();
+    useAuthStore.getState().logout();
+    const nextGeneration = useAuthStore.getState().beginVerification();
+    expect(nextGeneration).not.toBe(oldGeneration);
+    useAuthStore.getState().acceptVerified(oldGeneration, {
+      id: 'account-a', userId: 'user-a', username: 'A', email: 'a@example.invalid', onboardingStatus: 'complete', revision: 1,
+    });
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
   });
 });

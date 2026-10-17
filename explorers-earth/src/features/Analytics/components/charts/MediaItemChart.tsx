@@ -118,7 +118,7 @@ const MediaItemChart: React.FC<MediaItemChartProps> = ({
           <p className="text-xs font-semibold dt-label uppercase tracking-wider mb-3">
             Top {top10.length} Most Clicked {pageLabel}
           </p>
-          <ResponsiveContainer width="100%" height={Math.max(200, top10.length * 36)}>
+          <ResponsiveContainer width="100%" height={Math.max(200, top10.length * 36)} minWidth={0} initialDimension={{ width: 1, height: 1 }}>
             <BarChart data={top10} layout="vertical" margin={{ left: 8, right: 32, top: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
               <XAxis

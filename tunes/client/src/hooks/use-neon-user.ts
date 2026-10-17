@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import { musicPrincipalForRequest } from '@/lib/musicCredential';
 
 export interface NeonUser {
   id: number;
@@ -39,21 +40,10 @@ export function useNeonUser() {
 
     console.log('🔍 Fetching Neon DB user data for:', strapiUser.username);
 
-    fetch(`/api/auth/user-data?username=${strapiUser.username}`)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error('Failed to fetch user data');
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (data.success && data.user) {
-          console.log('✅ Neon DB user data loaded:', data.user.username);
-          setNeonUser(data.user);
-          setError(null);
-        } else {
-          throw new Error('User data not found');
-        }
+    musicPrincipalForRequest()
+      .then((identity) => {
+        setNeonUser({ ...strapiUser, id: identity.musicUserId } as unknown as NeonUser);
+        setError(null);
       })
       .catch((err) => {
         console.error('❌ Error fetching Neon DB user data:', err);

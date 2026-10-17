@@ -1,5 +1,3 @@
-import { ApolloClient, NormalizedCacheObject } from '@apollo/client';
-import { CHECK_USERNAME_AVAILABILITY } from './usernameAPI';
 
 /**
  * USERNAME VALIDATION UTILITY
@@ -275,26 +273,35 @@ export const suggestAlternatives = (username: string): string[] => {
  * @param apolloClient - Apollo client instance (required)
  * @returns Promise with availability result
  */
+/**
+ * Whether a handle is free, from the canonical public read.
+ *
+ * This is a hint, not an authority. The authority is the unique index on the account
+ * handle, which refuses a duplicate at write time; the answer can change between this call
+ * and that write, so the conflict still has to be handled where the handle is saved. What
+ * this buys is telling a creator about a collision while they are typing rather than after
+ * they submit a whole onboarding form.
+ *
+ * A failure reports NOT available. That is deliberate and it is the conservative direction:
+ * offering a handle as free when the check did not run would turn an outage into a form the
+ * creator cannot submit, and this way the only cost is an unnecessary retry. It is also why
+ * the submit path cannot rely on this and must handle the conflict itself.
+ */
 export const checkUsernameAvailability = async (
   username: string,
-  apolloClient: ApolloClient<NormalizedCacheObject>
+  signal?: AbortSignal
 ): Promise<UsernameAvailabilityResult> => {
   try {
-    // Execute the GraphQL query
-    const { data } = await apolloClient.query({
-      query: CHECK_USERNAME_AVAILABILITY,
-      variables: { username: username.toLowerCase() },
-      fetchPolicy: 'network-only', // Always fetch fresh data
-    });
-
-    // If accounts array is empty, username is available
-    const isAvailable = !data.accounts || data.accounts.length === 0;
-
-    return {
-      isAvailable,
-      error: isAvailable ? undefined : 'Username is already taken'
-    };
-
+    const response = await fetch(
+      `/api/explorers/v1/public/handles/${encodeURIComponent(username.toLowerCase())}/available`,
+      { cache: 'no-store', ...(signal ? { signal } : {}) }
+    );
+    if (!response.ok) throw new Error(`Availability check failed with ${response.status}`);
+    const body = await response.json() as { available?: unknown };
+    // A body that does not say `available: true` is not an availability.
+    if (body.available === true) return { isAvailable: true };
+    if (body.available === false) return { isAvailable: false, error: 'Username is already taken' };
+    throw new Error('Availability response was not understood');
   } catch (error) {
     console.error('Error checking username availability:', error);
     return {

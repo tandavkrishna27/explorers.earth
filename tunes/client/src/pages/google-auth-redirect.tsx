@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { musicCredentialForRequest } from '@/lib/musicCredential';
 import {
   STRAPI_GRAPHQL_URL,
   parseAccessToken,
@@ -45,17 +46,9 @@ export default function GoogleAuthRedirect() {
 
         // Mirror the Strapi user into tunes' Neon DB (same as regular login).
         // This MUST succeed before /dashboard: the dashboard hooks
-        // (use-auth.tsx / use-neon-user.ts) only READ /api/auth/user-data and
         // error if the Neon user is missing — they do NOT re-sync. So a failed
         // sync here would land a first-time Google user on a broken dashboard.
-        const syncRes = await fetch('/api/auth/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ strapiUser: me }),
-        });
-        if (!syncRes.ok) {
-          throw new Error('Could not finish setting up your tunes account. Please try again.');
-        }
+        await musicCredentialForRequest();
 
         setLocation('/dashboard');
       } catch (e) {

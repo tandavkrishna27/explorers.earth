@@ -1,7 +1,9 @@
 # ADR-002: Different Authentication Strategies Per App
 
 ## Status
-Accepted
+Accepted (superseded in part by [ADR-005](005-music-identity-migration-deployment-authority.md))
+
+> Historical record: the decision text below is preserved as accepted. ADR-005 is the current authority for embedded Music identity and credentials.
 
 ## Context
 The two apps have fundamentally different backend architectures:

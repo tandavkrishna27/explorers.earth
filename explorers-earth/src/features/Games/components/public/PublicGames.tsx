@@ -1,8 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
-import { Gamepad2, Share2 } from "lucide-react";
-import { PUBLIC_GAME_DATA } from "../../api/query";
+import { useParams, useOutletContext, useLocation } from "react-router-dom";
+import { Gamepad2 } from "lucide-react";
 import { deduplicateGames } from "../../utils/gameHelpers";
 import type { RecommendedGame, GameList } from "../../types";
 import GameCarouselRow from "./GameCarouselRow";
@@ -13,57 +11,55 @@ import GenreBrowse from "./GenreBrowse";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
+import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
+import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
+import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
 
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsername($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-        profile_picture {
-          url
-        }
-      }
-    }
-  }
-`;
+const isRenderableGameList = (value: unknown): value is GameList =>
+  isNonNullObject(value) && Array.isArray(value.recommended_games);
 
 const PublicGames = () => {
   const { username } = useParams<{ username: string }>();
-  const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
+  const location = useLocation();
+  const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
   
   const [modalState, setModalState] = useState<{ open: boolean; game: RecommendedGame | null }>({
     open: false,
     game: null,
   });
 
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
+  useEffect(() => setModalState({ open: false, game: null }), [username]);
 
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
-
-  const { data, loading: gamesLoading } = useQuery(PUBLIC_GAME_DATA, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
+  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
+  const query = usePublicRecommendationCategory(username, "games", accountData?.public_games === "Yes");
+  const { data, loading: gamesLoading, error: gamesError, refetch: refetchGames } = query;
 
   const loading = userLoading || gamesLoading;
+  const queryError = userError || gamesError;
+  const rawLists = data?.gameLists;
+  const lists: GameList[] = (Array.isArray(rawLists) ? rawLists : [])
+    .filter(isRenderableGameList)
+    .map((list) => ({
+      ...list,
+      recommended_games: list.recommended_games.filter(isNonNullObject) as GameList["recommended_games"],
+    }));
+  const completeCollection = Array.isArray(rawLists) && rawLists.every(isRenderableGameList);
+  const hasUsableData = queryError ? lists.length > 0 : completeCollection;
 
   useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
-  const lists: GameList[] = data?.gameLists ?? [];
+  const handleRetry = useCallback(async () => {
+    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchGames : undefined);
+  }, [accountDocumentId, refetchGames, refetchUser]);
+
 
   // Initialize analytics — auto-tracks the page view once accountId resolves
   const analytics = useTrackAnalytics(
@@ -75,31 +71,28 @@ const PublicGames = () => {
   }, [lists]);
 
   const topPicks = useMemo(() => {
-    return allGames
-      .filter((g) => g.is_pinned)
+    return (Array.isArray(data?.topPicks) ? data.topPicks : []).filter((value): value is RecommendedGame => isNonNullObject(value) && typeof value.documentId === 'string' && typeof value.title === 'string' && isNonNullObject(value.game_list))
       .sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999));
-  }, [allGames]);
+  }, [data?.topPicks]);
 
   const handleGameClick = useCallback((game: RecommendedGame) => {
     setModalState({ open: true, game });
     // Track which game was clicked — sends Recommendation_Id to Strapi
     analytics.trackClick('game-card', {
       id: game.documentId,
+      listId: game.game_list?.documentId,
       title: game.title,
       genres: game.genres?.join(', '),
       listName: game.game_list?.List_Name,
     });
   }, [analytics]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try { await navigator.share({ title: `${creatorName}'s Games`, url }); } catch { /* ignore */ }
-    } else {
-      await navigator.clipboard.writeText(url);
-    }
-    analytics.trackClick('share-button', { context: 'games-header' });
-  };
+  usePublicHeaderDescriptor({
+    navigationKey: location.key,
+    title: `${creatorName}'s Games`,
+    url: window.location.href,
+    analyticsContext: "games-header",
+  });
 
   // Dynamic SEO details
   const profileName = creatorName || username || "User";
@@ -108,7 +101,7 @@ const PublicGames = () => {
   
   const pageTitle = `${profileName} | Favorite Games | explorers`;
   const metaDescription = gameCount > 0
-    ? `Explore curated video game recommendations and lists shared by ${profileName} on explorers. Browse ${listCount} gaming list${listCount !== 1 ? 's' : ''} containing ${gameCount} game${gameCount !== 1 ? 's' : ''}.`
+    ? `Explore curated video game recommendations and lists shared by ${profileName} on explorers. Browse ${listCount}${query.hasMore || query.error ? '+' : ''} gaming list${listCount !== 1 ? 's' : ''} containing ${gameCount} loaded game${gameCount !== 1 ? 's' : ''}.`
     : `Explore game recommendations shared by ${profileName} on explorers.`;
 
   const seoKeywords = [
@@ -122,7 +115,7 @@ const PublicGames = () => {
 
   return (
     <>
-      {!loading && userLookup && (
+      {!loading && accountData && (
         <SEO
           title={pageTitle}
           description={metaDescription}
@@ -133,42 +126,20 @@ const PublicGames = () => {
           siteName="explorers"
         />
       )}
-      <div className="min-h-screen bg-[#0d1117] text-white">
-      {/* Fixed Header */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-        <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-          <span
-            className="text-white font-bold text-2xl cursor-pointer"
-            onClick={() => navigate("/")}
-          >
-            explorers.earth
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={handleShare}
-              className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-              aria-label="Share"
-            >
-              <Share2 size={16} />
-            </button>
-
-          </div>
-        </div>
-      </div>
-
+      <div data-category-page className="min-h-screen bg-[var(--category-page,#0d1117)] text-[color:var(--category-text,#fff)]">
       {/* Content */}
-      <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
-        {loading ? (
-          (window as any).__publicProfileLoaded ? (
+      <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16" aria-busy={loading || undefined}>
+        {loading && !hasUsableData ? (
+          outletContext?.isShellRevealed ? (
             <div className="space-y-10 mt-4">
               {[1, 2, 3].map(i => (
                 <section key={i}>
-                  <div className="h-5 w-40 bg-white/5 animate-pulse rounded mb-4" />
+                  <div className="h-5 w-40 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse rounded mb-4" />
                   <div className="flex gap-3 overflow-hidden">
                     {[1, 2, 3, 4, 5].map(j => (
                       <div key={j} className="w-36 flex-shrink-0">
-                        <div className="aspect-[3/4] rounded-xl bg-white/5 animate-pulse" />
-                        <div className="h-3 mt-2 bg-white/5 animate-pulse rounded w-4/5" />
+                        <div className="aspect-[3/4] rounded-xl bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse" />
+                        <div className="h-3 mt-2 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse rounded w-4/5" />
                       </div>
                     ))}
                   </div>
@@ -176,14 +147,17 @@ const PublicGames = () => {
               ))}
             </div>
           ) : null
+        ) : queryError && !hasUsableData ? (
+          <PublicRouteErrorState title="Games unavailable" error={queryError} onRetry={handleRetry} />
         ) : (
           <>
+            {queryError && <PublicRoutePartialNotice message="Some game data is unavailable." />}
             {/* Empty state */}
-            {lists.length === 0 ? (
+            {allGames.length === 0 && topPicks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
-                <Gamepad2 size={48} className="text-white/20 mb-4" />
-                <p className="text-white/40 text-lg font-medium">No games shared yet</p>
-                <p className="text-white/25 text-sm mt-1">Check back later for recommendations</p>
+                <Gamepad2 size={48} className="text-[color:var(--category-muted,rgba(255,255,255,0.2))] mb-4" />
+                <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-lg font-medium">No games shared yet</p>
+                <p className="text-[color:var(--category-muted,rgba(255,255,255,0.25))] text-sm mt-1">Check back later for recommendations</p>
               </div>
             ) : (
               <>
@@ -229,6 +203,7 @@ const PublicGames = () => {
             )}
           </>
         )}
+      <PublicScrollContinuation {...query} label="game lists" />
       </div>
 
       <GameDetailModal

@@ -1,0 +1,178 @@
+import { spawn } from 'node:child_process';
+import { lstat, realpath } from 'node:fs/promises';
+import path from 'node:path';
+import { readSecureMusicSecretFile } from '../server/config/secure-music-secret-file';
+
+export function localMusicOsEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const allowed = new Set(['PATH', 'SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'USERPROFILE', 'HOME', 'LOCALAPPDATA', 'APPDATA']);
+  return Object.fromEntries(Object.entries(env).filter(([name, value]) => value !== undefined && allowed.has(name.toUpperCase())));
+}
+export function assertNoDockerOverrides(env: NodeJS.ProcessEnv): void {
+  if (Object.entries(env).some(([key, value]) => value !== undefined && /^DOCKER_/i.test(key))) throw new Error('LOCAL_MUSIC_DOCKER_OVERRIDE');
+}
+export function validateLocalManifestPath(file: string, root: string): string {
+  const base = path.join(root, 'ExplorersMusicLocal');
+  const parts = path.relative(base, file).split(path.sep);
+  if (!path.isAbsolute(file) || path.resolve(file) !== file || file.startsWith('\\\\') || /[,\x00-\x1f\x7f]/.test(file)
+    || parts.length !== 2 || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(parts[0]) || parts[1] !== 'manifest.json') throw new Error('LOCAL_MUSIC_STATE_PATH');
+  return path.dirname(file);
+}
+export async function runLocalProcess(executable: string, args: string[], input?: string): Promise<{ stdout: string; exitCode: number; stderr: string; spawnError: string }> {
+  return await new Promise((resolve) => {
+    const child = spawn(executable, args, { shell: false, windowsHide: true, env: localMusicOsEnvironment(process.env), stdio: ['pipe', 'pipe', 'pipe'] });
+    let stdout = ''; let overflow = false;
+    // 120s, raised from 30s. This is a LATENCY bound on one child, not one of the protected
+    // probes: every ACL, ancestry, owner and path assertion the helper makes is untouched.
+    // Measured on the hosted Windows runner, where each invocation costs tens of seconds:
+    // `provides a read-only host root probe` failed at 30042ms -- the old bound exactly -- and
+    // cases that pass there take 11736ms, 81913ms and 88178ms. A killed child resolves with
+    // empty stdout and empty stderr and exit 1, so the breach surfaced as
+    // `exited 1: no reason supplied (stdout empty)` and read as a helper refusal rather than
+    // the deadline it was. 120s still catches a genuinely hung child. Same reasoning as the
+    // places writer guard bootstrap budget (placesWriterGuardTransport.ts), raised 1000 -> 5000ms.
+    // Scope, wider than the evidence above: runLocalProcess is also the transport for
+    // runDocker (music-local.ts:76) and two git reads (:227 rev-parse, :228 status), plus a
+    // direct call in music-local-state.test.ts:126. A hung docker or git child therefore now
+    // waits 120s too. That is latency only -- no caller asserts a completion deadline -- and
+    // runDocker is the DEFAULT dependency, so an injected one is unaffected.
+    const timer = setTimeout(() => child.kill(), 120_000);
+    child.stdout.on('data', (data: Buffer) => { if (stdout.length + data.length > 1024 * 1024) { overflow = true; stdout = ''; child.kill(); } else if (!overflow) stdout += data.toString('utf8'); });
+    // External stderr may contain credentials or raw system errors. Never retain it.
+    // MUSIC_LOCAL_STATE_STDERR is an explicit, opt-in diagnostic escape hatch: unset -- the
+    // default, and every production path -- behaves exactly as before and the stream is drained
+    // without ever being read. It exists because this Windows failure has now been chased through
+    // three layers of discarded detail (a JSON SyntaxError, then `exited 1`, then
+    // `exited 1: no reason supplied`) and the remaining fact lives only on stderr. It is set on
+    // the Windows CI leg alone, whose only secret-bearing input is a synthetic fixture, and the
+    // capture is capped at 4 KiB so a hostile child cannot flood the log. The cap TRUNCATES
+    // rather than dropping: testing the length before appending without counting data.length
+    // let one 64 KiB pipe chunk arriving at 4095 bytes retain 69631 bytes (measured) against
+    // a documented 4096 -- and rejecting an oversized chunk outright would instead retain
+    // NOTHING when a child writes its whole stderr in one write, which is the blindness this
+    // capture exists to cure. Byte-counted, because data.length is bytes while a JS string
+    // length is UTF-16 units, and this buffer is the credential boundary.
+    let stderr = '';
+    if (process.env.MUSIC_LOCAL_STATE_STDERR === '1') child.stderr.on('data', (data: Buffer) => { if (Buffer.byteLength(stderr, 'utf8') < 4096) stderr = Buffer.from(stderr + data.toString('utf8'), 'utf8').subarray(0, 4096).toString('utf8'); });
+    else child.stderr.resume();
+    // A spawn failure and a child that produced nothing were indistinguishable: both arrived as
+    // empty stdout with exit 1, which is why CI could only ever say `no reason supplied`. The
+    // error's code (ENOENT, EACCES, EPERM) is a syscall outcome, not credential-bearing, so it
+    // is kept; the message is not, so it is not.
+    child.on('error', (error: NodeJS.ErrnoException) => { clearTimeout(timer); resolve({ stdout: '', exitCode: 1, stderr, spawnError: error.code ?? 'unknown' }); });
+    child.on('close', (code) => { clearTimeout(timer); resolve({ stdout: overflow ? '' : stdout, exitCode: overflow ? 1 : code ?? 1, stderr, spawnError: '' }); });
+    child.stdin.on('error', () => undefined);
+    child.stdin.end(input);
+  });
+}
+export interface LocalOsIdentity { ownerId: string; localAppData: string }
+export interface LocalOsIdentityEvidence extends LocalOsIdentity {
+  unredirectedLocalAppData: string;
+  authority: 'current-token' | 'packaged-ancestor';
+  packageFamily?: string;
+  canonical: true;
+  reparseFree: true;
+  ownerVerified: true;
+  ancestryVerified: true;
+  packageIdentityVerified?: true;
+}
+function isSafeWindowsAbsolutePath(value: unknown): value is string {
+  if (typeof value !== 'string' || !path.win32.isAbsolute(value) || path.win32.resolve(value) !== value || value.startsWith('\\\\')
+    || /[,\x00-\x1f\x7f]/.test(value)) return false;
+  return !value.slice(path.win32.parse(value).root.length).includes(':');
+}
+export function resolveLocalMusicOsIdentityEvidence(value: unknown): LocalOsIdentity {
+  const evidence = value as Partial<LocalOsIdentityEvidence> | null;
+  if (!evidence || typeof evidence.ownerId !== 'string' || !/^S-1-\d+(?:-\d+)+$/.test(evidence.ownerId)
+    || !isSafeWindowsAbsolutePath(evidence.localAppData) || !isSafeWindowsAbsolutePath(evidence.unredirectedLocalAppData)
+    || evidence.canonical !== true || evidence.reparseFree !== true || evidence.ownerVerified !== true || evidence.ancestryVerified !== true) throw new Error('LOCAL_MUSIC_OS_IDENTITY');
+  if (evidence.authority === 'current-token') {
+    if (evidence.localAppData.toLowerCase() !== evidence.unredirectedLocalAppData.toLowerCase() || evidence.packageFamily !== undefined
+      || evidence.packageIdentityVerified !== undefined) throw new Error('LOCAL_MUSIC_OS_IDENTITY');
+  } else if (evidence.authority === 'packaged-ancestor') {
+    if (typeof evidence.packageFamily !== 'string' || !/^[A-Za-z0-9.-]{1,50}_[A-Za-z0-9]{13}$/.test(evidence.packageFamily)
+      || evidence.packageIdentityVerified !== true) throw new Error('LOCAL_MUSIC_OS_IDENTITY');
+    const expected = path.win32.join(evidence.unredirectedLocalAppData, 'Packages', evidence.packageFamily, 'LocalCache', 'Local');
+    if (evidence.localAppData.toLowerCase() !== expected.toLowerCase()) throw new Error('LOCAL_MUSIC_OS_IDENTITY');
+  } else throw new Error('LOCAL_MUSIC_OS_IDENTITY');
+  return { ownerId: evidence.ownerId, localAppData: evidence.localAppData };
+}
+async function privateHelper(operation: string, file?: string, input?: string): Promise<Record<string, unknown>> {
+  if (process.platform !== 'win32') throw new Error('LOCAL_MUSIC_PLATFORM_UNSUPPORTED');
+  // -ExecutionPolicy Bypass is required because this is the only PowerShell entry point in
+  // the repo invoked as `-File <script.ps1>`; the others use -Command or -EncodedCommand,
+  // which script-file execution policy does not gate. A Restricted policy blocks the file
+  // before its first line, so the script's own try/catch never runs: stderr carries the
+  // refusal (and is deliberately discarded), stdout is EMPTY and the exit status is 1.
+  // That is exactly what CI reported at every stage of this diagnosis -- first as a JSON
+  // SyntaxError, then `exited 1`, then `exited 1: no reason supplied`. Bypass changes no
+  // assertion in the helper; every ACL, ancestry and path check it makes is untouched.
+  const helper = path.resolve(import.meta.dirname, 'music-local-private-files.ps1');
+  const result = await runLocalProcess('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', helper, operation, ...(file ? [file] : [])], input);
+  // Check the exit status BEFORE parsing. Parsing first turned every helper failure into a
+  // generic `SyntaxError: Unexpected end of JSON input` -- which is exactly what CI reported
+  // once the cause was attached -- and discarded the exit code, the one fact that separates a
+  // killed child from a helper that refused. Operation name and exit code are metadata, not
+  // credentials; the child's stdout and stderr are still never surfaced.
+  try {
+    if (result.exitCode !== 0) {
+      // The helper writes {ok:false,reason} to stdout AND exits non-zero, so read the reason
+      // before refusing. Checking the status first was right -- it stopped a helper failure
+      // reading as a JSON SyntaxError -- but on its own it then hid the reason, which is the
+      // fact worth having.
+      let reason = 'no reason supplied';
+      // `no reason supplied` was itself ambiguous on the Windows runner: empty stdout, stdout that
+      // is not JSON, and JSON without a `reason` are three different faults and all three read
+      // the same. They are now named apart. Only the BYTE COUNT of stdout is reported, never its
+      // content, so an ownerId or path in it is still never surfaced.
+      if (!result.stdout) reason = 'no reason supplied (stdout empty)';
+      else try { const reported: unknown = JSON.parse(result.stdout); const value = (reported as { reason?: unknown } | null)?.reason;
+        reason = typeof value === 'string' ? value : `no reason supplied (parsed, no reason field, ${Buffer.byteLength(result.stdout, 'utf8')} bytes)`; }
+      catch { reason = `no reason supplied (stdout not JSON, ${Buffer.byteLength(result.stdout, 'utf8')} bytes)`; }
+      // The stderr tail appears only when MUSIC_LOCAL_STATE_STDERR=1 was set deliberately;
+      // otherwise it is empty and this message is byte-identical to before.
+      // A spawn failure is reported as its own cause rather than as a helper refusal, because the
+      // helper never ran at all in that case.
+      if (result.spawnError) throw new Error(`helper '${operation}' could not be started: ${result.spawnError}`);
+      throw new Error(`helper '${operation}' exited ${result.exitCode}: ${reason}${result.stderr ? ` | stderr: ${result.stderr.trim()}` : ''}`);
+    }
+    if (!result.stdout) throw new Error(`helper '${operation}' produced no output`);
+    const value = JSON.parse(result.stdout);
+    if (value.ok !== true) throw new Error(`helper '${operation}' did not report ok: ${typeof value.reason === 'string' ? value.reason : 'no reason supplied'}`);
+    return value;
+  }
+  catch (cause) { throw new Error('LOCAL_MUSIC_PRIVATE_FILE_REFUSED', { cause }); }
+}
+export async function localMusicOsIdentity(): Promise<LocalOsIdentity> {
+  const result = await privateHelper('identity');
+  return resolveLocalMusicOsIdentityEvidence(result);
+}
+export async function assertCanonicalLocalPath(file: string): Promise<void> {
+  if (!path.isAbsolute(file) || path.resolve(file) !== file || file.startsWith('\\\\') || /[:]/.test(file.slice(path.parse(file).root.length))) throw new Error('LOCAL_MUSIC_STATE_PATH');
+  for (let candidate = file; ; candidate = path.dirname(candidate)) {
+    const stat = await lstat(candidate);
+    if (stat.isSymbolicLink() || path.relative(await realpath(candidate), candidate) !== '') throw new Error('LOCAL_MUSIC_STATE_PATH');
+    if (candidate === path.dirname(candidate)) break;
+  }
+}
+export async function createLocalPrivateDirectory(file: string): Promise<void> {
+  await assertCanonicalLocalPath(path.dirname(file));
+  await privateHelper('create-directory', file);
+}
+export async function createLocalPrivateFile(file: string, value: string): Promise<void> {
+  await assertCanonicalLocalPath(path.dirname(file));
+  await privateHelper('create-file', file, value);
+}
+export async function assertLocalPrivatePath(file: string): Promise<void> {
+  await assertCanonicalLocalPath(file);
+  await privateHelper('inspect', file);
+}
+export async function readLocalPrivateSecret(file: string, options: { maxBytes?: number } = {}): Promise<string> {
+  try {
+    await assertLocalPrivatePath(path.dirname(file));
+    await assertLocalPrivatePath(file);
+    const secret = await readSecureMusicSecretFile(file, { mode: 'live', childEnvironment: localMusicOsEnvironment(process.env), ...options });
+    await assertLocalPrivatePath(file);
+    await assertLocalPrivatePath(path.dirname(file));
+    return secret;
+  } catch (cause) { throw new Error('LOCAL_MUSIC_PRIVATE_FILE_REFUSED', { cause }); }
+}

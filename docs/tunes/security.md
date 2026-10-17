@@ -35,22 +35,20 @@
 4. User submits OTP for verification
 5. Server validates OTP and expiry, then clears the OTP fields
 
-### Cross-App JWT Authentication (SSO from explorers-earth)
+### Cross-App Music Credential (explorers-earth)
 
-tunes supports a **dual auth system** — both session-based (native) and JWT-based (cross-app SSO).
+tunes separates the embedded Explorer identity boundary from the standalone native-session exception.
 
-The JWT flow (`server/jwt-auth-middleware.ts`):
-1. explorers-earth authenticates user via Strapi CMS and obtains a JWT
-2. explorers-earth calls tunes API with `Authorization: Bearer <jwt>` + `X-Username` header
-3. `jwt-auth-middleware.ts` validates the JWT token
-4. Server maps the Strapi user to a Neon DB user via `X-Username` lookup
-5. Request proceeds as authenticated with the mapped user
+The embedded flow:
+1. explorers-earth verifies the current Strapi user and one completed Account selection
+2. explorers-earth sends a bodyless `POST /api/music/identity/ensure` with the authoritative Strapi bearer
+3. tunes validates that proof and the upstream user/Account response shapes, then atomically projects the immutable document IDs
+4. tunes returns a ten-minute Music credential bound to the numeric Music user and current session version
+5. canonical owner REST and Socket.IO operations verify that credential and derive every SQL owner predicate server-side
 
-**Middleware exports**:
-- `requireAuth()` — Requires session auth (legacy)
-- `requireAnyAuth()` — Accepts either session OR JWT auth
+Caller-supplied usernames, emails, owner IDs, Account IDs, or resource IDs never establish ownership. See the [Music authentication model](../security/music-auth-model.md) for the normative trust boundaries.
 
-**Legacy routes** (`server/legacy-routes.ts`) support a multi-auth fallback chain: session → JWT → query params/body, ensuring backward compatibility during the auth migration.
+The separately opened native Tunes experience may use its documented session login/logout/check/CSRF endpoints. Native sessions are not an embedded Explorer fallback and do not authorize canonical Music owner routes.
 
 ### Account Reactivation (Self-Service)
 
@@ -82,7 +80,7 @@ For accounts that have been deactivated (the `blocked` flag is set to `true` on 
 
 ### Logout
 
-1. Client calls `POST /api/auth/logout`
+1. Client calls `POST /api/logout`
 2. Server destroys the session in PostgreSQL
 3. Session cookie is cleared from the browser
 4. Client clears auth state in Zustand store
@@ -151,7 +149,7 @@ API endpoints are protected with rate limiting middleware to prevent abuse. Rate
 
 ### Server-side
 
-The `requireAuth` middleware checks for valid session on protected API routes. Unauthenticated requests receive a 401 response.
+The standalone native endpoints use their explicit session middleware and return 401 when the session is absent. Canonical embedded Music routes instead verify the short-lived Music credential with `musicPrincipal` and derive the numeric owner server-side.
 
 Admin routes additionally check `user.isAdmin` for super admin access.
 

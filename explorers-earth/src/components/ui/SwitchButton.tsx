@@ -1,5 +1,6 @@
 import { FC, memo, useContext } from "react";
 import { DashboardThemeContext } from "../../contexts/DashboardThemeContext";
+import { usePublicCategoryThemeStyles } from "../../features/PublicHome/components/PublicCategoryThemeContext";
 
 interface SwitchButtonProps {
   isChecked?: boolean;
@@ -24,6 +25,7 @@ const useThemeSafe = (): "light" | "dark" => {
 const SwitchButton: FC<SwitchButtonProps> = memo(
   ({ isChecked, onChange, variant = "dark", disabled = false }) => {
     const theme = useThemeSafe();
+    const categoryStyles = usePublicCategoryThemeStyles();
     return (
       <label
         className={`relative inline-flex items-center transition-all duration-200 ${
@@ -38,6 +40,7 @@ const SwitchButton: FC<SwitchButtonProps> = memo(
           className="sr-only"
         />
         <div
+          style={categoryStyles ? { backgroundColor: isChecked ? 'var(--category-accent)' : 'var(--category-control-border)', opacity: disabled ? .5 : undefined } : undefined}
           className={`w-11 h-6 rounded-full transition-all duration-300 ${
             disabled
               ? "opacity-50 bg-gray-600"
@@ -63,6 +66,7 @@ const SwitchButton: FC<SwitchButtonProps> = memo(
           }`}
         />
         <span
+          style={categoryStyles ? { backgroundColor: isChecked ? 'var(--category-accent-ink)' : 'var(--category-panel)' } : undefined}
           className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow-md transition-all duration-300 transform ${
             disabled
               ? "bg-gray-400"

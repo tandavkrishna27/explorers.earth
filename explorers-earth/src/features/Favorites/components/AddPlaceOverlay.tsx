@@ -10,6 +10,7 @@ import { createPlaceQueryParams } from "../../../utils/transformGooglePlace";
 import { toast } from "sonner";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import axios from "axios";
+import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
 import { instagramService } from "../../../services/instagramService";
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -18,8 +19,10 @@ type InstagramMode = "place" | "person";
 interface AddPlaceOverlayProps {
     isOpen: boolean;
     onClose: () => void;
+    // A manually entered place has no provider id, and the native DTO says so rather
+    // than substituting an internal id for one.
     existingRecommendations?: Array<{
-        Place_Details: { Place_Id: string; Place_Name: string; Title: string };
+        Place_Details: { Place_Id: string | null; Place_Name: string; Title: string };
     }>;
     selectedLocationCoords?: { lat: number; lng: number } | null;
     onPlaceAdded?: () => void;
@@ -451,4 +454,4 @@ const AddPlaceOverlay = memo(
     }
 );
 
-export default AddPlaceOverlay;
+export default withGoogleMapsProvider(AddPlaceOverlay);

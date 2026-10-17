@@ -11,7 +11,6 @@ import FAQ from '../features/LandingPage/components/FAQ';
 // import Features from '../features/LandingPage/components/Features';
 import FinalCTA from '../features/LandingPage/components/FinalCTA';
 import Footer from '../features/LandingPage/components/Footer';
-import CookieConsent from '../features/LandingPage/components/CookieConsent';
 import SEO from '../components/SEO';
 import { createOrganizationGEOData } from '../utils/geoHelpers';
 import { createCanonicalUrl, getBaseUrl } from '../utils/getCurrentDomain';
@@ -133,7 +132,6 @@ export default function Landing() {
         {/* <Features /> */}
         <FinalCTA />
         <Footer />
-        <CookieConsent />
       </div>
     </>
   );

@@ -1,10 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
-import { ShoppingBag, Share2 } from "lucide-react";
-import { PUBLIC_PRODUCT_DATA } from "../../api/query";
+import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
+import { ShoppingBag } from "lucide-react";
 import { deduplicateProducts } from "../../utils/productHelpers";
-import { toast } from "sonner";
 import type { RecommendedProduct, ProductList } from "../../types";
 import ProductCarouselRow from "./ProductCarouselRow";
 import ProductDetailModal from "./ProductDetailModal";
@@ -13,57 +10,72 @@ import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import ProductTopPicksHero from "./ProductTopPicksHero";
 import ProductTopPicksMobileHero from "./ProductTopPicksMobileHero";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
+import { createAnalyticsOptions, useTrackAnalytics } from "../../../../services/analyticsService";
+import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
+import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
+import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
+import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
 
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsernameProducts($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-        profile_picture {
-          url
-        }
-      }
-    }
-  }
-`;
+const isRenderableProductList = (value: unknown): value is ProductList =>
+  isNonNullObject(value) && Array.isArray(value.recommended_products);
 
 const PublicProducts = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
+  const location = useLocation();
+  const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
 
   const [modalState, setModalState] = useState<{ open: boolean; product: RecommendedProduct | null }>({
     open: false,
     product: null,
   });
 
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
+  const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
+  const query = usePublicRecommendationCategory(username, "products", accountData?.public_products === "Yes");
+  const { data, loading: productsLoading, error: productsError, refetch: refetchProducts } = query;
 
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
-  const creatorName = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.Account_Name || username;
-
-  const { data, loading: productsLoading } = useQuery(PUBLIC_PRODUCT_DATA, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
 
   const loading = userLoading || productsLoading;
+  const queryError = userError || productsError;
+  const rawLists = data?.productLists;
+  const lists: ProductList[] = (Array.isArray(rawLists) ? rawLists : [])
+    .filter(isRenderableProductList)
+    .map((list) => ({
+      ...list,
+      recommended_products: list.recommended_products.filter(isNonNullObject) as ProductList["recommended_products"],
+    }));
+  const completeCollection = Array.isArray(rawLists) && rawLists.every(isRenderableProductList);
+  const hasUsableData = queryError ? lists.length > 0 : completeCollection;
 
   useEffect(() => {
-    if (!loading) {
-      (window as any).__publicProfileLoaded = true;
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
-  const lists: ProductList[] = data?.productLists ?? [];
+  const handleRetry = useCallback(async () => {
+    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchProducts : undefined);
+  }, [accountDocumentId, refetchProducts, refetchUser]);
+
+  const analytics = useTrackAnalytics(
+    createAnalyticsOptions.products(accountDocumentId || "", username),
+  );
+
+  const owningListByProductId = useMemo(() => {
+    const ownership = new Map<string, { documentId: string; name: string }>();
+    lists.forEach((list) => {
+      list.recommended_products?.forEach((product) => {
+        ownership.set(product.documentId, {
+          documentId: list.documentId,
+          name: list.List_Name,
+        });
+      });
+    });
+    return ownership;
+  }, [lists]);
 
   const allProducts = useMemo(() => {
     return deduplicateProducts(lists.flatMap((l) => l.recommended_products ?? []));
@@ -81,23 +93,28 @@ const PublicProducts = () => {
 
   const handleProductClick = useCallback((product: RecommendedProduct) => {
     setModalState({ open: true, product });
-  }, []);
+    const owningList = owningListByProductId.get(product.documentId);
+    analytics.trackClick("product-card", {
+      id: product.documentId,
+      listId: product.product_list?.documentId || owningList?.documentId,
+      listName: product.product_list?.List_Name || owningList?.name,
+      title: product.title,
+      category: product.product_category?.name,
+    });
+  }, [analytics, owningListByProductId]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try { await navigator.share({ title: `${creatorName}'s Products`, url }); } catch { /* ignore */ }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied!");
-    }
-  };
+  usePublicHeaderDescriptor({
+    navigationKey: location.key,
+    title: `${creatorName}'s Products`,
+    url: window.location.href,
+    analyticsContext: "products-header",
+  });
 
   const productCount = allProducts.length;
   const listCount = lists.length;
   const pageTitle = `${creatorName} | Favorite Products | explorers`;
   const metaDescription = productCount > 0
-    ? `Browse curated product lists and recommendations shared by ${creatorName} on explorers. Explore ${listCount} product list${listCount !== 1 ? 's' : ''} containing ${productCount} favorite product${productCount !== 1 ? 's' : ''}.`
+    ? `Browse curated product lists and recommendations shared by ${creatorName} on explorers. Explore ${listCount}${query.hasMore || query.error ? '+' : ''} product list${listCount !== 1 ? 's' : ''} containing ${productCount} loaded favorite product${productCount !== 1 ? 's' : ''}.`
     : `Explore product recommendations shared by ${creatorName} on explorers.`;
 
   const seoKeywords = [
@@ -112,7 +129,7 @@ const PublicProducts = () => {
 
   return (
     <>
-      {!loading && userLookup && (
+      {!loading && accountData && (
         <SEO
           title={pageTitle}
           description={metaDescription}
@@ -124,33 +141,11 @@ const PublicProducts = () => {
         />
       )}
 
-      <div className="min-h-screen bg-[#0d1117] text-white">
-        {/* Fixed Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-          <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-            <span
-              className="text-white font-bold text-2xl cursor-pointer"
-              onClick={() => navigate("/")}
-            >
-              explorers.earth
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={handleShare}
-                className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center"
-                aria-label="Share"
-              >
-                <Share2 size={16} />
-              </button>
-
-            </div>
-          </div>
-        </div>
-
+      <div data-category-page className="min-h-screen bg-[var(--category-page,#0d1117)] text-[color:var(--category-text,#fff)]">
         {/* Content */}
-        <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16 pt-20">
-          {loading ? (
-            (window as any).__publicProfileLoaded ? (
+        <div className="relative z-10 max-w-5xl mx-auto px-4 pb-16" aria-busy={loading || undefined}>
+          {loading && !hasUsableData ? (
+            outletContext?.isShellRevealed ? (
               <div className="space-y-10 mt-4">
                 {/* Hero skeleton — Desktop (lg screens) */}
                 <div className="hidden lg:block">
@@ -165,27 +160,30 @@ const PublicProducts = () => {
                   <section key={i} className="mb-8">
                     {/* Row header */}
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="w-1.5 h-[22px] bg-white/10 rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
-                      <div className="h-5 w-32 bg-white/8 rounded skeleton-shimmer relative overflow-hidden" />
+                      <div className="w-1.5 h-[22px] bg-[var(--category-skeleton,rgba(255,255,255,0.1))] rounded-sm flex-shrink-0 skeleton-shimmer relative overflow-hidden" />
+                      <div className="h-5 w-32 bg-[var(--category-skeleton,rgba(255,255,255,0.08))] rounded skeleton-shimmer relative overflow-hidden" />
                     </div>
                     {/* Poster strip skeleton equivalent for products */}
                     <div className="flex gap-3 overflow-hidden">
                       {[1, 2, 3, 4, 5].map((idx) => (
-                        <div key={idx} className="flex-shrink-0 w-32 h-44 rounded-xl bg-white/5 skeleton-shimmer relative overflow-hidden" />
+                        <div key={idx} className="flex-shrink-0 w-32 h-44 rounded-xl bg-[var(--category-skeleton,rgba(255,255,255,0.05))] skeleton-shimmer relative overflow-hidden" />
                       ))}
                     </div>
                   </section>
                 ))}
               </div>
             ) : null
+          ) : queryError && !hasUsableData ? (
+            <PublicRouteErrorState title="Products unavailable" error={queryError} onRetry={handleRetry} />
           ) : (
             <>
+              {queryError && <PublicRoutePartialNotice message="Some product data is unavailable." />}
               {/* Empty state */}
-              {lists.length === 0 ? (
+              {allProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
-                  <ShoppingBag size={48} className="text-white/20 mb-4" />
-                  <p className="text-white/40 text-lg font-medium">No products shared yet</p>
-                  <p className="text-white/25 text-sm mt-1">Check back later for recommendations</p>
+                  <ShoppingBag size={48} className="text-[color:var(--category-muted,rgba(255,255,255,0.2))] mb-4" />
+                  <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-lg font-medium">No products shared yet</p>
+                  <p className="text-[color:var(--category-muted,rgba(255,255,255,0.25))] text-sm mt-1">Check back later for recommendations</p>
                 </div>
               ) : (
                 <>
@@ -214,7 +212,13 @@ const PublicProducts = () => {
                         key={list.documentId}
                         list={list}
                         onProductClick={handleProductClick}
-                        onViewAll={() => navigate(`/${username}/products/${list.slug}`)}
+                        onViewAll={() => {
+                          analytics.trackClick("product-list", {
+                            listId: list.documentId,
+                            listName: list.List_Name,
+                          });
+                          navigate(`/${username}/products/${list.slug}`);
+                        }}
                       />
                     ))}
                   </div>
@@ -222,13 +226,13 @@ const PublicProducts = () => {
                   {/* Category browse - hidden for now as category pages are not registered/implemented
                   {allCategories.length > 0 && (
                     <div className="mt-10">
-                      <p className="text-sm font-semibold text-white/60 mb-3">Browse by Category</p>
+                      <p className="text-sm font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.6))] mb-3">Browse by Category</p>
                       <div className="flex flex-wrap gap-2">
                         {allCategories.map((cat) => (
                           <button
                             key={cat.slug}
                             onClick={() => navigate(`/${username}/products/category/${cat.slug}`)}
-                            className="text-xs text-emerald-400/80 bg-emerald-900/20 hover:bg-emerald-900/40 border border-emerald-800/20 px-3 py-1.5 rounded-full transition-all"
+                            className="text-xs text-[color:var(--category-text,rgba(52,211,153,0.8))] bg-emerald-900/20 hover:bg-emerald-900/40 border border-emerald-800/20 px-3 py-1.5 rounded-full transition-all"
                           >
                             {cat.name}
                           </button>
@@ -241,6 +245,7 @@ const PublicProducts = () => {
               )}
             </>
           )}
+          <PublicScrollContinuation {...query} label="product lists" />
         </div>
 
         <ProductDetailModal

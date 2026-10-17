@@ -1,6 +1,4 @@
-import { useQuery } from '@apollo/client';
-import { useTranslation } from 'react-i18next';
-import { GET_FAQS } from '../api/queries';
+import { useReferenceContent } from './useReferenceContent';
 
 export type Faq = {
   locale: string;
@@ -9,23 +7,21 @@ export type Faq = {
   Sequence: number;
 };
 
+/**
+ * The landing page FAQ. Read from the in-repo reference content, not Strapi.
+ *
+ * The files are pre-sorted by `Sequence`, so the runtime sort this hook used to
+ * do is gone. `error` is kept in the shape its consumer branches on and is
+ * always `undefined`: there is no failure path left (see `useReferenceContent`).
+ */
 export const useFaqs = () => {
-  const { i18n } = useTranslation();
-  const currentLocale = i18n.language;
-  
-  const { data, loading, error } = useQuery<{ faqs: Faq[] }>(GET_FAQS, {
-    variables: { locale: currentLocale },
-    fetchPolicy: 'cache-and-network', // Ensure fresh data when language changes
-    notifyOnNetworkStatusChange: true,
-  });
+  const { content, loading } = useReferenceContent();
 
-  const sortedFaqs = data?.faqs
-    ? [...data.faqs].sort((a, b) => a.Sequence - b.Sequence)
-    : [];
+  const faqs: Faq[] = content.faqs.map((faq) => ({ ...faq, locale: content.locale }));
 
   return {
-    faqs: sortedFaqs,
+    faqs,
     loading,
-    error
+    error: undefined,
   };
-}; 
+};

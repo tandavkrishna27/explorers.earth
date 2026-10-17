@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useState, useRef } from 'react';
-import { useQuery, gql } from '@apollo/client';
-import { GET_PUBLIC_PAGE_ANALYTICS, AnalyticsEvent, PublicPageAnalyticsData } from '../api/queries';
+import { useCanonicalAccount } from '../../Profile/api/useCanonicalAccount';
+import { AnalyticsEvent, PublicPageAnalyticsData } from '../api/queries';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../../store/store';
 import TopCountriesChart from './charts/TopCountriesChart';
@@ -14,38 +14,34 @@ import PageViewsTrendChart from './charts/PageViewsTrendChart';
 import MediaListEngagementChart from './charts/MediaListEngagementChart';
 import MediaItemsInListChart from './charts/MediaItemsInListChart';
 import GuidesChart from './charts/GuidesChart';
-import { batchResolveIPsToCountries } from '../utils/geolocationService';
+import AnalyticsDateRangeControls from './AnalyticsDateRangeControls';
+import { readExplorersAnalyticsEvents } from '../../../services/explorersAnalyticsClient';
+import {
+  AnalyticsTimeFilter,
+  getAnalyticsDateRange,
+} from '../utils/analyticsDateRange';
 
 // Time filter types
 type TimeFilter = 'today' | 'last7days' | 'last30days' | 'custom';
-
-interface TimeFilterState {
-  type: TimeFilter;
-  startDate?: Date;
-  endDate?: Date;
-}
 
 // Time filter options will be created using translations
 
 /**
  * Analytics Dashboard Component
  * 
- * Fetches analytics data, resolves IP addresses to countries,
+ * Fetches an authenticated, account-scoped analytics window from Local Tunes
  * and renders summary metrics with interactive charts.
  */
 const AnalyticsDashboard: React.FC = () => {
   const { t } = useTranslation();
-  const { user, isAuthenticated, token } = useAuthStore();
   const [eventsWithCountries, setEventsWithCountries] = useState<AnalyticsEvent[]>([]);
-  const [isResolvingCountries, setIsResolvingCountries] = useState(false);
-  const [geolocationError, setGeolocationError] = useState<string | null>(null);
   const [accountAnalyticsData, setAccountAnalyticsData] = useState<PublicPageAnalyticsData[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<Error | null>(null);
 
   // Time filter state
-  const [timeFilter, setTimeFilter] = useState<TimeFilterState>({
+  const [timeFilter, setTimeFilter] = useState<AnalyticsTimeFilter>({
     type: 'last30days',
-    startDate: undefined,
-    endDate: undefined
   });
 
   // Time filter dropdown state
@@ -60,30 +56,33 @@ const AnalyticsDashboard: React.FC = () => {
     { value: 'custom', label: t('analytics.dashboard.timeFilter.custom') },
   ] as const, [t]);
 
-  // Fetch analytics data from Strapi
-  const { data, loading, error } = useQuery(GET_PUBLIC_PAGE_ANALYTICS, {
-    errorPolicy: 'all', // Return data even if there are errors
-    fetchPolicy: 'cache-and-network', // Always fetch fresh data while showing cached instantly
-    skip: !isAuthenticated || !user?.documentId || !token, // Skip query if not authenticated
-  });
-
-  // Fetch account data to get the correct account ID for filtering analytics
-  const { data: accountData } = useQuery(gql`
-    query GetAccountId($documentId: ID!) {
-      usersPermissionsUser(documentId: $documentId) {
-        createdAt
-        accounts {
-          documentId
-          createdAt
-        }
-      }
-    }
-  `, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-  });
-
-  const accountDocumentId = accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
+  const { isAuthenticated, token } = useAuthStore();
+  // Ticket 3.4. The canonical account read, which is already scoped to the signed-in
+  // owner - so there is no user document to look up and no completed account to select
+  // from a list. One owner, one account.
+  const canonicalAccount = useCanonicalAccount();
+  const accountLoading = canonicalAccount.isPending;
+  const accountError = canonicalAccount.error ?? undefined;
+  const accountDocumentId = canonicalAccount.data?.id;
+  const loading = accountLoading || analyticsLoading;
+  const error = accountError || analyticsError;
+  /**
+   * The detailed event read needs an auth-store `token`, and canonical sign-in never
+   * issues one: `acceptVerified` sets `token: null`, and the only action that sets a
+   * token is the retired Strapi password `login`, which nothing calls. So for a
+   * signed-in owner this is always true today, and the panel below has no data to
+   * show through no fault of the owner's.
+   *
+   * It must not be reported as "you have no analytics yet" - that is a false
+   * statement about their account - and it is not an `error` either, because there is
+   * no failure to surface and nothing for them to retry. `pages/Home.tsx:346` already
+   * models exactly this as its own `unavailable` state; this mirrors it.
+   *
+   * Removing it depends on repointing this dashboard at the canonical
+   * `GET /api/explorers/analytics/summary`, which is ticket 3.4's own package. See
+   * docs/replatform-audit/strapi-server-classification.md, section D.
+   */
+  const detailedAnalyticsUnavailable = isAuthenticated && !token;
 
   useEffect(() => {
     if (!loading) {
@@ -91,55 +90,17 @@ const AnalyticsDashboard: React.FC = () => {
     }
   }, [loading]);
 
-  // Calculate date range based on time filter
-  const getDateRange = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    switch (timeFilter.type) {
-      case 'today':
-        return {
-          startDate: today,
-          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1) // End of today
-        };
-      case 'last7days': {
-        const sevenDaysAgo = new Date(today);
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // Include today
-        return {
-          startDate: sevenDaysAgo,
-          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
-        };
-      }
-      case 'last30days': {
-        const thirtyDaysAgo = new Date(today);
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29); // Include today
-        return {
-          startDate: thirtyDaysAgo,
-          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
-        };
-      }
-      case 'custom':
-        // For custom range, both dates must be provided
-        if (!timeFilter.startDate || !timeFilter.endDate) {
-          return null; // Return null to indicate incomplete custom range
-        }
-        return {
-          startDate: timeFilter.startDate,
-          endDate: timeFilter.endDate
-        };
-      default:
-        return {
-          startDate: today,
-          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
-        };
-    }
-  }, [timeFilter]);
+  const getDateRange = useMemo(() => getAnalyticsDateRange(timeFilter), [timeFilter]);
 
   // Check if custom range is complete
-  const isCustomRangeComplete = useMemo(() => {
+  const isCustomRangeValid = useMemo(() => {
     if (timeFilter.type !== 'custom') return true;
-    return timeFilter.startDate && timeFilter.endDate;
-  }, [timeFilter]);
+    if (!timeFilter.startDate || !timeFilter.endDate) return false;
+    return getDateRange !== null;
+  }, [getDateRange, timeFilter]);
+  const isCustomRangeComplete =
+    timeFilter.type !== 'custom' ||
+    Boolean(timeFilter.startDate && timeFilter.endDate && isCustomRangeValid);
 
   // Filter events by date range
   const filteredEvents = useMemo(() => {
@@ -167,18 +128,18 @@ const AnalyticsDashboard: React.FC = () => {
   // Check if there's any analytics data at all (before date filtering)
   // MUST be before any early returns to follow Rules of Hooks
   const hasAnyAnalyticsData = useMemo(() => {
-    if (!data?.publicPageAnalytics || !accountDocumentId) return false;
-    const accountData = data.publicPageAnalytics.filter(
-      (item: PublicPageAnalyticsData) => item.Account_Id === accountDocumentId
-    );
-    // Check if there are any events in the account's analytics data
-    return accountData.some((item: PublicPageAnalyticsData) =>
+    return accountAnalyticsData.some((item: PublicPageAnalyticsData) =>
       item.Stats && item.Stats.length > 0
     );
-  }, [data?.publicPageAnalytics, accountDocumentId]);
+  }, [accountAnalyticsData]);
 
   // Generate context-aware empty state message
   const getEmptyStateMessage = () => {
+    // Checked before the range and the data, because when the read cannot run at all
+    // neither of those is the reason the panel is empty.
+    if (detailedAnalyticsUnavailable) {
+      return t('analytics.dashboard.emptyState.unavailableMessage');
+    }
     // Check if custom range is incomplete
     if (timeFilter.type === 'custom' && !isCustomRangeComplete) {
       if (!timeFilter.startDate && !timeFilter.endDate) {
@@ -188,6 +149,10 @@ const AnalyticsDashboard: React.FC = () => {
       } else if (!timeFilter.endDate) {
         return t('analytics.dashboard.emptyState.customRange.endMissing');
       }
+      return t('analytics.dashboard.dateRange.maxRange', {
+        days: 93,
+        defaultValue: 'Choose a date range of 93 days or less.',
+      });
     }
     if (!hasAnyAnalyticsData) {
       return t('analytics.dashboard.emptyState.noDataMessage');
@@ -205,12 +170,12 @@ const AnalyticsDashboard: React.FC = () => {
         return t('analytics.dashboard.emptyState.noDataForPeriod.last30days');
 
       case 'custom': {
-        const startDateStr = timeFilter.startDate
-          ? timeFilter.startDate.toLocaleDateString()
+        const startDateStr = getDateRange?.startDate
+          ? getDateRange.startDate.toLocaleDateString()
           : t('analytics.dashboard.dateRange.from');
 
-        const endDateStr = timeFilter.endDate
-          ? timeFilter.endDate.toLocaleDateString()
+        const endDateStr = getDateRange?.endDate
+          ? getDateRange.endDate.toLocaleDateString()
           : t('analytics.dashboard.dateRange.to');
 
         return t('analytics.dashboard.emptyState.noDataForPeriod.custom', {
@@ -238,68 +203,57 @@ const AnalyticsDashboard: React.FC = () => {
     };
   }, []);
 
-  // Effect to resolve countries for IP addresses when data changes
+  // Fetch only the authenticated account and selected date window. Country is
+  // already reduced to a coarse ISO code by the server; raw IP never reaches UI.
   useEffect(() => {
-    const resolveCountries = async () => {
-      if (!data?.publicPageAnalytics || !accountDocumentId) {
-        setEventsWithCountries([]);
+    let active = true;
+    if (
+      !isAuthenticated ||
+      !token ||
+      !accountDocumentId ||
+      !getDateRange ||
+      !isCustomRangeComplete
+    ) {
+      setAnalyticsLoading(false);
+      setAnalyticsError(null);
+      setEventsWithCountries([]);
+      setAccountAnalyticsData([]);
+      return () => {
+        active = false;
+      };
+    }
+
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    void readExplorersAnalyticsEvents({
+      accountId: accountDocumentId,
+      fromDate: getDateRange.fromDate,
+      toDate: getDateRange.toDate,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      token,
+    })
+      .then((records) => {
+        if (!active) return;
+        const accountRecords = records as PublicPageAnalyticsData[];
+        setAccountAnalyticsData(accountRecords);
+        setEventsWithCountries(accountRecords.flatMap((item) => item.Stats || []));
+      })
+      .catch((caught) => {
+        if (!active) return;
         setAccountAnalyticsData([]);
-        return;
-      }
+        setEventsWithCountries([]);
+        setAnalyticsError(
+          caught instanceof Error ? caught : new Error('Analytics read failed'),
+        );
+      })
+      .finally(() => {
+        if (active) setAnalyticsLoading(false);
+      });
 
-      // Filter data by account ID
-      const accountData = data.publicPageAnalytics.filter(
-        (item: PublicPageAnalyticsData) => item.Account_Id === accountDocumentId
-      );
-
-      // Store the raw account data for LocationEngagementChart
-      setAccountAnalyticsData(accountData);
-
-      // Flatten all events from the filtered data
-      const allEvents: AnalyticsEvent[] = accountData.flatMap(
-        (item: PublicPageAnalyticsData) => item.Stats || []
-      );
-
-      // Get unique IP addresses from view events
-      const viewEvents = allEvents.filter(event => event.type === 'view' && event.ipAddress);
-      const uniqueIPs = [...new Set(viewEvents.map(event => event.ipAddress!))];
-
-      if (uniqueIPs.length === 0) {
-        setEventsWithCountries(allEvents);
-        return;
-      }
-
-      setIsResolvingCountries(true);
-      setGeolocationError(null);
-
-      try {
-        // Resolve IP addresses to countries
-        const ipToCountryMap = await batchResolveIPsToCountries(uniqueIPs);
-
-        // Add country information to events
-        const eventsWithCountryInfo = allEvents.map(event => ({
-          ...event,
-          country: event.ipAddress ? ipToCountryMap.get(event.ipAddress) : undefined
-        }));
-
-        setEventsWithCountries(eventsWithCountryInfo);
-
-        // Check if we got any country data
-        const resolvedCount = Array.from(ipToCountryMap.values()).filter(country => country !== null).length;
-        if (resolvedCount === 0 && uniqueIPs.length > 0) {
-          setGeolocationError(t('analytics.dashboard.charts.topCountries.unableToResolve'));
-        }
-      } catch (error) {
-        // Error resolving countries - handled gracefully
-        setEventsWithCountries(allEvents);
-        setGeolocationError(t('analytics.dashboard.charts.topCountries.failedToResolve'));
-      } finally {
-        setIsResolvingCountries(false);
-      }
+    return () => {
+      active = false;
     };
-
-    resolveCountries();
-  }, [data, accountDocumentId]);
+  }, [accountDocumentId, getDateRange, isAuthenticated, isCustomRangeComplete, token]);
 
   // Calculate metrics from filtered events
   const processedData = useMemo(() => {
@@ -458,12 +412,13 @@ const AnalyticsDashboard: React.FC = () => {
                           key={option.value}
                           type="button"
                           onClick={() => {
-                            setTimeFilter(prev => ({
-                              ...prev,
-                              type: option.value as TimeFilter,
-                              startDate: option.value === 'custom' ? prev.startDate : undefined,
-                              endDate: option.value === 'custom' ? prev.endDate : undefined
-                            }));
+                            setTimeFilter(prev => option.value === 'custom'
+                              ? {
+                                type: 'custom',
+                                startDate: prev.type === 'custom' ? prev.startDate : '',
+                                endDate: prev.type === 'custom' ? prev.endDate : '',
+                              }
+                              : { type: option.value as Exclude<TimeFilter, 'custom'> });
                             setIsTimeFilterDropdownOpen(false);
                           }}
                           className={`w-full px-3 py-2 text-left dt-label hover:bg-dashboard-muted transition-colors ${timeFilter.type === option.value ? 'bg-dashboard-muted text-dashboard-accent' : ''
@@ -480,42 +435,22 @@ const AnalyticsDashboard: React.FC = () => {
 
             {/* Custom Date Range Inputs */}
             {timeFilter.type === 'custom' && (
-              <div className="mt-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                <div className="flex items-center gap-2">
-                  <label className="dt-label text-sm">
-                    {t('analytics.dashboard.dateRange.from')} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={timeFilter.startDate ? timeFilter.startDate.toISOString().split('T')[0] : ''}
-                    onChange={(e) => {
-                      const date = e.target.value ? new Date(e.target.value) : undefined;
-                      setTimeFilter(prev => ({ ...prev, startDate: date }));
-                    }}
-                    className={`dt-input px-3 py-2 text-sm border rounded-lg bg-dashboard-surface text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent ${timeFilter.type === 'custom' && !timeFilter.startDate
-                        ? 'border-red-300'
-                        : 'border-dashboard-border'
-                      }`}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="dt-label text-sm">
-                    {t('analytics.dashboard.dateRange.to')} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={timeFilter.endDate ? timeFilter.endDate.toISOString().split('T')[0] : ''}
-                    onChange={(e) => {
-                      const date = e.target.value ? new Date(e.target.value) : undefined;
-                      setTimeFilter(prev => ({ ...prev, endDate: date }));
-                    }}
-                    className={`dt-input px-3 py-2 text-sm border rounded-lg bg-dashboard-surface text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent ${timeFilter.type === 'custom' && !timeFilter.endDate
-                        ? 'border-red-300'
-                        : 'border-dashboard-border'
-                      }`}
-                  />
-                </div>
-              </div>
+              <AnalyticsDateRangeControls
+                startDate={timeFilter.startDate}
+                endDate={timeFilter.endDate}
+                error={!isCustomRangeValid && timeFilter.startDate && timeFilter.endDate
+                  ? t('analytics.dashboard.dateRange.maxRange', {
+                    days: 93,
+                    defaultValue: 'Choose a date range of 93 days or less.',
+                  })
+                  : null}
+                onStartDateChange={(startDate) => setTimeFilter(prev => (
+                  prev.type === 'custom' ? { ...prev, startDate } : prev
+                ))}
+                onEndDateChange={(endDate) => setTimeFilter(prev => (
+                  prev.type === 'custom' ? { ...prev, endDate } : prev
+                ))}
+              />
             )}
           </div>
 
@@ -528,21 +463,27 @@ const AnalyticsDashboard: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                 </div>
-                <h3 className="dt-heading mb-2">{t('analytics.dashboard.emptyState.title')}</h3>
+                <h3 className="dt-heading mb-2">{t(detailedAnalyticsUnavailable
+                  ? 'analytics.dashboard.emptyState.unavailableTitle'
+                  : 'analytics.dashboard.emptyState.title')}</h3>
                 <p className="dt-subtext mb-4">
                   {getEmptyStateMessage()}
                 </p>
               </div>
 
-              <div className="space-y-2 text-left">
-                <h4 className="dt-label mb-2">{t('analytics.dashboard.emptyState.howToStart.title')}</h4>
-                <ul className="dt-subtext space-y-1">
-                  <li>{t('analytics.dashboard.emptyState.howToStart.shareQR')}</li>
-                  <li>{t('analytics.dashboard.emptyState.howToStart.includeQR')}</li>
-                  <li>{t('analytics.dashboard.emptyState.howToStart.askFriends')}</li>
-                  <li>{t('analytics.dashboard.emptyState.howToStart.viewProfile')}</li>
-                </ul>
-              </div>
+              {/* These tips tell the owner to share QR codes to start seeing data. When
+                  the read is unavailable that is advice for a problem they do not have. */}
+              {!detailedAnalyticsUnavailable && (
+                <div className="space-y-2 text-left">
+                  <h4 className="dt-label mb-2">{t('analytics.dashboard.emptyState.howToStart.title')}</h4>
+                  <ul className="dt-subtext space-y-1">
+                    <li>{t('analytics.dashboard.emptyState.howToStart.shareQR')}</li>
+                    <li>{t('analytics.dashboard.emptyState.howToStart.includeQR')}</li>
+                    <li>{t('analytics.dashboard.emptyState.howToStart.askFriends')}</li>
+                    <li>{t('analytics.dashboard.emptyState.howToStart.viewProfile')}</li>
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -589,17 +530,18 @@ const AnalyticsDashboard: React.FC = () => {
                   <div className="absolute top-full left-0 right-0 mt-1 dt-surface border border-dashboard rounded-lg shadow-dashboard-elevated z-50 max-h-60 overflow-y-auto scrollbar-hide">
                     {TIME_FILTER_OPTIONS.map(option => (
                       <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => {
-                          setTimeFilter(prev => ({
-                            ...prev,
-                            type: option.value as TimeFilter,
-                            startDate: option.value === 'custom' ? prev.startDate : undefined,
-                            endDate: option.value === 'custom' ? prev.endDate : undefined
-                          }));
-                          setIsTimeFilterDropdownOpen(false);
-                        }}
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            setTimeFilter(prev => option.value === 'custom'
+                              ? {
+                                type: 'custom',
+                                startDate: prev.type === 'custom' ? prev.startDate : '',
+                                endDate: prev.type === 'custom' ? prev.endDate : '',
+                              }
+                              : { type: option.value as Exclude<TimeFilter, 'custom'> });
+                            setIsTimeFilterDropdownOpen(false);
+                          }}
                         className={`w-full px-3 py-2 text-left dt-label hover:bg-dashboard-muted transition-colors ${timeFilter.type === option.value ? 'bg-dashboard-muted text-dashboard-accent' : ''
                           }`}
                       >
@@ -614,32 +556,22 @@ const AnalyticsDashboard: React.FC = () => {
 
           {/* Custom Date Range Inputs */}
           {timeFilter.type === 'custom' && (
-            <div className="mt-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-              <div className="flex items-center gap-2">
-                <label className="dt-label text-sm">{t('analytics.dashboard.dateRange.from')}</label>
-                <input
-                  type="date"
-                  value={timeFilter.startDate ? timeFilter.startDate.toISOString().split('T')[0] : ''}
-                  onChange={(e) => {
-                    const date = e.target.value ? new Date(e.target.value) : undefined;
-                    setTimeFilter(prev => ({ ...prev, startDate: date }));
-                  }}
-                  className="dt-input px-3 py-2 text-sm border border-dashboard-border rounded-lg bg-dashboard-surface text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="dt-label text-sm">{t('analytics.dashboard.dateRange.to')}</label>
-                <input
-                  type="date"
-                  value={timeFilter.endDate ? timeFilter.endDate.toISOString().split('T')[0] : ''}
-                  onChange={(e) => {
-                    const date = e.target.value ? new Date(e.target.value) : undefined;
-                    setTimeFilter(prev => ({ ...prev, endDate: date }));
-                  }}
-                  className="dt-input px-3 py-2 text-sm border border-dashboard-border rounded-lg bg-dashboard-surface text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
-                />
-              </div>
-            </div>
+            <AnalyticsDateRangeControls
+              startDate={timeFilter.startDate}
+              endDate={timeFilter.endDate}
+              error={!isCustomRangeValid && timeFilter.startDate && timeFilter.endDate
+                ? t('analytics.dashboard.dateRange.maxRange', {
+                  days: 93,
+                  defaultValue: 'Choose a date range of 93 days or less.',
+                })
+                : null}
+              onStartDateChange={(startDate) => setTimeFilter(prev => (
+                prev.type === 'custom' ? { ...prev, startDate } : prev
+              ))}
+              onEndDateChange={(endDate) => setTimeFilter(prev => (
+                prev.type === 'custom' ? { ...prev, endDate } : prev
+              ))}
+            />
           )}
         </div>
 
@@ -675,31 +607,10 @@ const AnalyticsDashboard: React.FC = () => {
         <div className="space-y-6 pb-20 md:pb-6">
           {/* Top Countries Chart */}
           <div className="dt-surface p-6 rounded-lg">
-            <div className="flex justify-between items-center mb-4">
+            <div className="mb-4">
               <h2 className="dt-heading">{t('analytics.dashboard.charts.topCountries.title')}</h2>
-              {geolocationError && (
-                <button
-                  onClick={() => {
-                    setGeolocationError(null);
-                    // Force re-run the effect by clearing events
-                    setEventsWithCountries([]);
-                  }}
-                  className="dt-button-text px-3 py-1 text-sm bg-dashboard-accent text-white rounded hover:opacity-90 transition-opacity"
-                >
-                  {t('analytics.dashboard.charts.topCountries.retryGeolocation')}
-                </button>
-              )}
             </div>
-
-            {geolocationError && (
-              <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
-                <p className="text-sm text-yellow-800">
-                  <strong>{t('analytics.dashboard.charts.topCountries.geolocationIssue')}</strong> {geolocationError}
-                </p>
-              </div>
-            )}
-
-            <TopCountriesChart events={filteredEvents} isResolvingCountries={isResolvingCountries} />
+            <TopCountriesChart events={filteredEvents} isResolvingCountries={false} />
           </div>
 
           {/* World Map Chart */}
@@ -711,7 +622,7 @@ const AnalyticsDashboard: React.FC = () => {
               </p>
             </div>
 
-            <WorldMapChart events={filteredEvents} isResolvingCountries={isResolvingCountries} />
+            <WorldMapChart events={filteredEvents} isResolvingCountries={false} />
           </div>
 
           {/* Traffic Source Chart */}

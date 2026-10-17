@@ -1,29 +1,54 @@
 import { test, expect } from '@playwright/test';
 import { setupMockAuthentication } from './setup/auth';
+import { denyHostedEgress } from './setup/deny-hosted-egress';
 
 test.beforeEach(async ({ context, page }) => {
-  page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
-  page.on('pageerror', err => console.log('BROWSER ERROR:', err.message));
+  await denyHostedEgress(page);
   await setupMockAuthentication(context);
+  let recommendationCreated = false;
+  const account = {
+    documentId: 'acc-789',
+    username: 'testuser',
+    Account_Name: 'Test Account',
+    Account_Type: 'business',
+    mobile_number: '1234567890',
+    profile_picture: null,
+    public_movie: 'No',
+    public_recommendations: 'No',
+    public_profile: 'Yes',
+    pinned_nav_tabs: [],
+    auto_pinning: false,
+    localtunes_integrated: false,
+    public_books: 'No',
+    public_games: 'No',
+    public_music: 'No',
+    public_guides: 'No',
+    public_apps: 'No',
+    public_products: 'No',
+    public_people: 'No',
+  };
 
   // Intercept GraphQL queries
   await page.route('**/graphql', async route => {
     const payload = route.request().postDataJSON();
     
-    if (payload?.query?.includes('CheckOnboardingStatus')) {
+    if (payload?.query?.includes('CheckOnboardingStatus') || payload?.query?.includes('MyAccountForMovies') || payload?.query?.includes('UsersPermissionsUser') || payload?.query?.includes('usersPermissionsUser')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           data: {
             usersPermissionsUser: {
-              accounts: [
-                {
-                  Account_Name: 'Test Account',
-                  Account_Type: 'business',
-                  mobile_number: '1234567890'
-                }
-              ]
+              id: 'fixture-user',
+              documentId: 'fixture-user',
+              username: 'testuser',
+              email: 'test@example.test',
+              provider: 'local',
+              confirmed: true,
+              blocked: false,
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              accounts: [account],
             }
           }
         })
@@ -37,14 +62,19 @@ test.beforeEach(async ({ context, page }) => {
             createMovieList: {
               documentId: 'movie-list-123',
               List_Name: 'My Favorite Sci-Fi',
+              list_description: null,
               slug: 'my-favorite-sci-fi',
               Visibility: false,
+              cover_image: null,
+              top_picks_heading: null,
               display_order: 0,
+              account: { documentId: account.documentId, username: account.username },
             }
           }
         })
       });
     } else if (payload?.query?.includes('createRecommendedMovie')) {
+      recommendationCreated = true;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -52,29 +82,11 @@ test.beforeEach(async ({ context, page }) => {
           data: {
             createRecommendedMovie: {
               documentId: 'movie-rec-456',
+              tmdb_id: '157336',
+              media_type: 'movie',
               title: 'Interstellar',
-            }
-          }
-        })
-      });
-    } else if (payload?.query?.includes('MyAccountForMovies')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            usersPermissionsUser: {
-              accounts: [
-                {
-                  documentId: 'acc-789',
-                  Account_Name: 'Test Account',
-                  public_movie: 'No',
-                  public_recommendations: 'No',
-                  public_books: 'No',
-                  public_games: 'No',
-                  public_music: 'No',
-                }
-              ]
+              display_order: 0,
+              is_pinned: false,
             }
           }
         })
@@ -89,9 +101,13 @@ test.beforeEach(async ({ context, page }) => {
               {
                 documentId: 'movie-list-123',
                 List_Name: 'My Favorite Sci-Fi',
+                list_description: null,
                 slug: 'my-favorite-sci-fi',
                 Visibility: false,
+                cover_image: null,
+                top_picks_heading: null,
                 display_order: 0,
+                account: { documentId: account.documentId, username: account.username },
                 recommended_movies: []
               }
             ]
@@ -108,10 +124,14 @@ test.beforeEach(async ({ context, page }) => {
               {
                 documentId: 'movie-list-123',
                 List_Name: 'My Favorite Sci-Fi',
+                list_description: null,
                 slug: 'my-favorite-sci-fi',
                 Visibility: false,
+                cover_image: null,
+                top_picks_heading: null,
                 display_order: 0,
-                recommended_movies: [
+                account: { documentId: account.documentId, username: account.username },
+                recommended_movies: recommendationCreated ? [
                   {
                     documentId: 'movie-rec-456',
                     tmdb_id: '157336',
@@ -138,11 +158,17 @@ test.beforeEach(async ({ context, page }) => {
                     movie_categories: [],
                     Media: []
                   }
-                ]
+                ] : []
               }
             ]
           }
         })
+      });
+    } else if (payload?.query?.includes('movieCategories')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { movieCategories: [] } }),
       });
     } else {
       // Default empty query mock fallback
@@ -152,6 +178,14 @@ test.beforeEach(async ({ context, page }) => {
         body: JSON.stringify({ data: {} })
       });
     }
+  });
+
+  await page.route('**/upload', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{ url: '/uploads/fixture-movie-cover.jpg' }]),
+    });
   });
 
   // Mock TMDB API call
@@ -191,6 +225,10 @@ test.beforeEach(async ({ context, page }) => {
 });
 
 test('Flow 1: Movies List and Recommendation creation E2E', async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on('console', message => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
   // Phase 1: Navigate and Create List
   await page.goto('/recommendations/movies');
   
@@ -232,5 +270,9 @@ test('Flow 1: Movies List and Recommendation creation E2E', async ({ page }) => 
 
   // Redirected back to detail page and item listed
   await expect(page).toHaveURL(/\/recommendations\/movies\/movie-list-123/);
+  await expect(page.getByRole('heading', { name: 'Publish this list?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Keep Draft' }).click();
+  await expect(page.getByRole('heading', { name: 'Publish this list?' })).toBeHidden();
   await expect(page.locator('text=Interstellar')).toBeVisible();
+  expect(consoleErrors).toEqual([]);
 });

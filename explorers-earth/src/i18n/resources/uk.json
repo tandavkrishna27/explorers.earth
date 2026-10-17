@@ -49,14 +49,19 @@
         "explorers story",
         "who we are explorers"
       ],
-      "title": "Explorers of Earth | About Us"
+      "title": "Explorers of Earth | About Us",
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
     },
     "subtitle": {
       "line1": "Глобальна спільнота людей, які досліджують з турботою — для людей, культури та планети, яку ми ділимося.",
       "line2": "Дослідження для нас не про те, як далеко ми йдемо.",
       "line3": "Це про те, як глибоко ми з'єднуємося."
     },
-    "title": "Дослідники Землі"
+    "title": "Дослідники Землі",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe"
   },
   "analytics": {
     "dashboard": {
@@ -268,7 +273,6 @@
       "message": "This account has been deactivated.",
       "reactivateLink": "Click here to reactivate your account →"
     },
-    "claimAccount": "Claim Account?",
     "confirmPassword": "Підтвердіть пароль",
     "confirmPasswordPlaceholder": "Введіть ваш пароль знову",
     "email": "Електронна пошта",
@@ -325,7 +329,8 @@
         "mobileNumberPlaceholder": "Введіть ваш номер мобільного телефону",
         "next": "Далі",
         "title": "Деталі контакту"
-      }
+      },
+      "stepCount": "Step {{current}} of {{total}}"
     },
     "or": "або",
     "password": "Пароль",
@@ -340,8 +345,7 @@
     "signupSubtitle": "Зареєструйтеся, щоб насолоджуватися функціями explorers",
     "signUpWithGoogle": "Зареєструватися через Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "Ім'я користувача",
@@ -775,6 +779,12 @@
       "addLocation": "Add Location",
       "addLocationLabel": "Add",
       "addRecommendations": "Додати Рекомендації",
+      "analytics": {
+        "ariaLabel": "{{label}}: {{value}}",
+        "loading": "Loading",
+        "unavailable": "Unavailable",
+        "viewsLast90Days": "Views · last 90 days"
+      },
       "draft": "Чернетка",
       "error": {
         "message": "An error occurred while loading your data",
@@ -937,6 +947,97 @@
       "tabs": {
         "account": "Обліковий Запис",
         "publicProfile": "Публічний Профіль"
+      },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "Переміщення {{category}} скасовано. Порядок відновлено.",
+          "drop": "{{category}} розміщено на позиції {{position}} з {{total}}.",
+          "handle": "Перетягнути {{category}}",
+          "instructions": "Натисніть Пробіл або Enter, щоб підняти. Для переміщення використовуйте стрілки або клавіші Home та End. Натисніть Пробіл або Enter, щоб опустити, або Escape для скасування.",
+          "lift": "{{category}} піднято. Позиція {{position}} з {{total}}.",
+          "move": "{{category}} переміщено на позицію {{position}} з {{total}}."
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
+      },
+      "themeAppearance": {
+        "accentTitle": "Accent color",
+        "firstView": {
+          "business": "Business",
+          "categoryFirst": "Recommendations — {{category}} first",
+          "gallery": "Gallery",
+          "help": "Category choices promote that category but keep all other public categories.",
+          "label": "First view",
+          "savedOrder": "Recommendations — saved order"
+        },
+        "presetTitle": "Select theme preset",
+        "recommendations": {
+          "categories": {
+            "apps": "Apps & Tools",
+            "books": "Books",
+            "games": "Games",
+            "guides": "Guides",
+            "movies": "Movies & Shows",
+            "music": "Music",
+            "people": "People",
+            "places": "Places",
+            "products": "Products"
+          },
+          "featured": "Featured",
+          "help": "Choose how recommendation categories are arranged on your public profile.",
+          "layoutLegend": "Recommendations layout",
+          "layouts": {
+            "featured": {
+              "description": "A larger first category followed by compact rows.",
+              "label": "Featured First"
+            },
+            "grid": {
+              "description": "A compact grid that makes categories easy to scan.",
+              "label": "Category Mosaic"
+            },
+            "shelves": {
+              "description": "Horizontal shelves with recommendation previews.",
+              "label": "Classic Shelves"
+            }
+          },
+          "moved": "{{category}} moved to position {{position}} of {{total}}",
+          "moveDown": "Move {{category}} down",
+          "moveUp": "Move {{category}} up",
+          "orderHelp": "Move categories into the order visitors should scan them.",
+          "orderTitle": "Category order",
+          "position": "{{position}} of {{total}}",
+          "previewCaption": "Illustrative preview",
+          "previewLabel": "Recommendations layout preview",
+          "publicVisibilityNote": "Public Visibility controls whether a category appears.",
+          "title": "Recommendations presentation"
+        },
+        "wallpaperLabel": "Wallpaper and cover style",
+        "wallpaperOptions": {
+          "ambientGradient": "Ambient mesh gradient",
+          "bannerTop": "Top cover banner photo",
+          "fullWallpaperImage": "Full-screen background image",
+          "solidColor": "Solid minimal background"
+        }
       }
     },
     "recommendations": {
@@ -1115,7 +1216,8 @@
         "listVisibilityError": "Failed to update recommendation list visibility.",
         "qrDownloadError": "Failed to download QR code. Please try again.",
         "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrNotReady": "QR code not ready for download"
+        "qrNotReady": "QR code not ready for download",
+        "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "Подорожуйте як місцевий",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -1163,7 +1265,8 @@
       "privacy": "Політика конфіденційності",
       "cookies": "Політика використання файлів cookie",
       "product": "Продукт",
-      "shareAnywhere": "Поділіться будь-де"
+      "shareAnywhere": "Поділіться будь-де",
+      "useCases": "Use Cases"
     },
     "copyright": "© 2025 дослідники. Всі права захищені.",
     "madeWithLove": "Зроблено з любов'ю на землі",
@@ -1179,7 +1282,8 @@
       "product": "Продукт",
       "share": "Поділіться",
       "openMenu": "Відкрити навігаційне меню",
-      "closeMenu": "Закрити навігаційне меню"
+      "closeMenu": "Закрити навігаційне меню",
+      "useCases": "Use Cases"
     },
     "auth": {
       "login": "Увійти",
@@ -1324,16 +1428,16 @@
       },
       "steps": [
         {
-          "title": "Додайте те, що ви рекомендуєте",
-          "body": "Місця, люди, продукти, книги, фільми, шоу, музика, ігри, програми, путівники та нотатки."
+          "body": "Місця, люди, продукти, книги, фільми, шоу, музика, ігри, програми, путівники та нотатки.",
+          "title": "Додайте те, що ви рекомендуєте"
         },
         {
-          "title": "Організуйте це по-своєму",
-          "body": "Групуйте за містом, темою, списком, категорією, подорожжю або моментом, щоб люди могли досліджувати природним шляхом."
+          "body": "Групуйте за містом, темою, списком, категорією, подорожжю або моментом, щоб люди могли досліджувати природним шляхом.",
+          "title": "Організуйте це по-своєму"
         },
         {
-          "title": "Поділіться одним посиланням або QR",
-          "body": "Ваша сторінка оновлюється в будь-який час, а те саме посилання та QR продовжують працювати всюди."
+          "body": "Ваша сторінка оновлюється в будь-який час, а те саме посилання та QR продовжують працювати всюди.",
+          "title": "Поділіться одним посиланням або QR"
         }
       ]
     },
@@ -1352,20 +1456,20 @@
       "tokyoFoodGuide": "Мій путівник по їжі в Токіо explorers.earth/jane",
       "cards": [
         {
-          "title": "Посилання в біо",
-          "eyebrow": "Профіль готовий"
+          "eyebrow": "Профіль готовий",
+          "title": "Посилання в біо"
         },
         {
-          "title": "Коди QR",
-          "eyebrow": "Готовий до автономної роботи"
+          "eyebrow": "Готовий до автономної роботи",
+          "title": "Коди QR"
         },
         {
-          "title": "Повідомлення",
-          "eyebrow": "Готовий до чату"
+          "eyebrow": "Готовий до чату",
+          "title": "Повідомлення"
         },
         {
-          "title": "Вітаємо гідів",
-          "eyebrow": "Готовий до гостей"
+          "eyebrow": "Готовий до гостей",
+          "title": "Вітаємо гідів"
         }
       ],
       "visual": {
@@ -1408,49 +1512,6 @@
       "earnedThisMonth": "Зароблено цього місяця",
       "passiveTitle": "Перетворіть рекомендації на пасивні винагороди",
       "networkTitle": "Побудуйте вашу мережу та заробляйте автоматично"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "Слухайте, поки досліджуєте",
-      "body": "Дослідження — це не лише візуальне. Звук несе пам'ять, контекст і емоції.\n\nTunes дозволяє збирати та ділитися саундтреками для місць, подорожей і настроїв — чи це музика, знайдена в дорозі, чи звуки, які визначають місце для вас.\n\nБезшовно підключено до вашого профілю Explorer.",
-      "exploreButton": "Дослідити Tunes",
-      "featuresHeading": "Потужні Функції",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "Співпраця в Реальному Часі",
-          "description": "Дозвольте гостям миттєво додавати пісні до вашого плейлисту, зберігаючи повний контроль над тим, що відтворюється."
-        },
-        "qrCodeSharing": {
-          "title": "Обмін QR Кодом",
-          "description": "Поділіться своїм музичним досвідом простим скануванням QR коду — не потрібні додатки або завантаження."
-        },
-        "youtubeIntegration": {
-          "title": "Інтеграція YouTube",
-          "description": "Безшовно інтегруйтеся з YouTube для доступу до мільйонів пісень і створення ідеальної атмосфери."
-        },
-        "voteLikeSystem": {
-          "title": "Система Голосування та Вподобань",
-          "description": "Гості можуть голосувати за свої улюблені пісні, щоб впливати на чергу плейлисту в реальному часі."
-        },
-        "silentParties": {
-          "title": "Тихі Вечірки",
-          "description": "Організуйте унікальні тихі вечірки, де всі слухають через свої навушники."
-        },
-        "karaokeReady": {
-          "title": "Готово до Караоке",
-          "description": "Ідеально для караоке вечорів з колаборативними плейлистами та запитами пісень у реальному часі."
-        }
-      },
-      "venueHeading": "Ідеально для Кожного Місця",
-      "venues": {
-        "barsPubs": "Бари та Паби",
-        "restaurants": "Ресторани",
-        "coffeeShops": "Кав'ярні",
-        "eventsWeddings": "Події та Весілля",
-        "retailStores": "Магазини",
-        "gymsFitness": "Спортзали та Фітнес"
-      },
-      "closingStatement": "Tunes <strong>безкоштовний</strong> для дослідження, а для платних функцій ви можете оновити пізніше."
     },
     "whoIsFor": {
       "headline": "Створено для людей, чий смак допомагає іншим.",
@@ -1532,7 +1593,23 @@
         "Аеропорти",
         "НУО",
         "Урядові команди"
-      ]
+      ],
+      "explore": "See this perspective",
+      "eyebrow": "Ways to use explorers",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
+        },
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
+        },
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
+        }
+      }
     },
     "testimonials": {
       "headline": "Люблять мандрівники, творці та господарі",
@@ -1542,45 +1619,45 @@
       "items": [
         {
           "id": "1",
-          "name": "Прія Шарма",
-          "role": "Туристичний блогер",
           "location": "Мумбаї, Індія",
-          "quote": "Дослідники змінили те, як я ділюся своїми знаннями про подорожі. Мої підписники люблять отримувати миттєвий доступ до моїх підібраних рекомендацій!"
+          "name": "Прія Шарма",
+          "quote": "Дослідники змінили те, як я ділюся своїми знаннями про подорожі. Мої підписники люблять отримувати миттєвий доступ до моїх підібраних рекомендацій!",
+          "role": "Туристичний блогер"
         },
         {
           "id": "2",
-          "name": "Радж Патель",
-          "role": "Хост Airbnb",
           "location": "Делі, Індія",
-          "quote": "Моїм гостям дуже подобається персоналізований код QR у їхньому вітальному наборі. Це стало моїм фірмовим штрихом!"
+          "name": "Радж Патель",
+          "quote": "Моїм гостям дуже подобається персоналізований код QR у їхньому вітальному наборі. Це стало моїм фірмовим штрихом!",
+          "role": "Хост Airbnb"
         },
         {
           "id": "3",
-          "name": "Юкі Танака",
-          "role": "Власник ресторану",
           "location": "Токіо, Японія",
-          "quote": "Ми ділимося нашими дослідниками з клієнтами, щоб рекомендувати інші місцеві місця. Це створило дивовижні зв’язки між спільнотою."
+          "name": "Юкі Танака",
+          "quote": "Ми ділимося нашими дослідниками з клієнтами, щоб рекомендувати інші місцеві місця. Це створило дивовижні зв’язки між спільнотою.",
+          "role": "Власник ресторану"
         },
         {
           "id": "4",
-          "name": "Марія Сільва",
-          "role": "Екскурсовод",
           "location": "Сан-Паулу, Бразилія",
-          "quote": "explores допомагає мені розширити свій досвід поза межами годин екскурсій. Клієнти можуть отримати доступ до моїх рекомендацій у будь-який час!"
+          "name": "Марія Сільва",
+          "quote": "explores допомагає мені розширити свій досвід поза межами годин екскурсій. Клієнти можуть отримати доступ до моїх рекомендацій у будь-який час!",
+          "role": "Екскурсовод"
         },
         {
           "id": "5",
-          "name": "Джеймс Вілсон",
-          "role": "Інфлюенсер подорожей",
           "location": "Сідней, Австралія",
-          "quote": "Оскільки дослідники впливають на подорожі, мені так легко ділитися моїми улюбленими місцями зі своєю аудиторією. Функція коду QR чудова!"
+          "name": "Джеймс Вілсон",
+          "quote": "Оскільки дослідники впливають на подорожі, мені так легко ділитися моїми улюбленими місцями зі своєю аудиторією. Функція коду QR чудова!",
+          "role": "Інфлюенсер подорожей"
         },
         {
           "id": "6",
-          "name": "Софі Мартін",
-          "role": "Місцевий гід",
           "location": "Париж, Франція",
-          "quote": "Я використовую дослідники, щоб створювати пішохідні екскурсії для своїх клієнтів. Вони можуть сканувати QR і досліджувати у своєму власному темпі!"
+          "name": "Софі Мартін",
+          "quote": "Я використовую дослідники, щоб створювати пішохідні екскурсії для своїх клієнтів. Вони можуть сканувати QR і досліджувати у своєму власному темпі!",
+          "role": "Місцевий гід"
         }
       ]
     },
@@ -1591,24 +1668,24 @@
       "error": "Помилка завантаження FAQ. Спробуйте пізніше.",
       "fallbackItems": [
         {
-          "Sequence": 1,
+          "Answer": "Місця, люди, продукти, книги, фільми, шоу, музика, ігри, програми, путівники та нотатки.",
           "Question": "Що я можу додати до своєї сторінки Explorer?",
-          "Answer": "Місця, люди, продукти, книги, фільми, шоу, музика, ігри, програми, путівники та нотатки."
+          "Sequence": 1
         },
         {
-          "Sequence": 2,
+          "Answer": "так Вашою сторінкою Explorer можна поділитися як посиланням або QR для профілів, повідомлень, таблиць, карток і друкованих посібників.",
           "Question": "Чи можу я поділитися ним за допомогою коду QR?",
-          "Answer": "так Вашою сторінкою Explorer можна поділитися як посиланням або QR для профілів, повідомлень, таблиць, карток і друкованих посібників."
+          "Sequence": 2
         },
         {
-          "Sequence": 3,
+          "Answer": "так Ви можете підтримувати свою сторінку свіжою, поки те саме посилання та QR продовжують працювати.",
           "Question": "Чи можу я оновити свої рекомендації пізніше?",
-          "Answer": "так Ви можете підтримувати свою сторінку свіжою, поки те саме посилання та QR продовжують працювати."
+          "Sequence": 3
         },
         {
-          "Sequence": 4,
+          "Answer": "так Сторінка може чітко повідомляти про безкоштовну обіцянку без важких слів щодо оплати.",
           "Question": "Чи дослідники безкоштовні назавжди?",
-          "Answer": "так Сторінка може чітко повідомляти про безкоштовну обіцянку без важких слів щодо оплати."
+          "Sequence": 4
         }
       ]
     },
@@ -1668,52 +1745,52 @@
       },
       "categories": [
         {
+          "description": "Ресторани, райони, музеї, маршрути та приховані перлини, які люди можуть відвідати.",
           "id": "places",
           "label": "Місця",
-          "title": "Місцеві місця, путівники та маршрути",
-          "description": "Ресторани, райони, музеї, маршрути та приховані перлини, які люди можуть відвідати."
+          "title": "Місцеві місця, путівники та маршрути"
         },
         {
+          "description": "Творці, засновники, гіди, художники, вчителі, експерти та люди, які сформували ваш смак.",
           "id": "people",
           "label": "люди",
-          "title": "Люди, яких варто наслідувати чи вчитися",
-          "description": "Творці, засновники, гіди, художники, вчителі, експерти та люди, які сформували ваш смак."
+          "title": "Люди, яких варто наслідувати чи вчитися"
         },
         {
+          "description": "Книги, які ви постійно рекомендуєте в чатах, нотатках, інформаційних бюлетенях і розмовах про подорожі.",
           "id": "books",
           "label": "Книги",
-          "title": "Книги та списки літератури",
-          "description": "Книги, які ви постійно рекомендуєте в чатах, нотатках, інформаційних бюлетенях і розмовах про подорожі."
+          "title": "Книги та списки літератури"
         },
         {
+          "description": "Фільми, серіали, документальні фільми та списки перегляду для будь-якого настрою чи аудиторії.",
           "id": "movies",
           "label": "Фільми та ТБ",
-          "title": "Фільми, шоу та списки перегляду",
-          "description": "Фільми, серіали, документальні фільми та списки перегляду для будь-якого настрою чи аудиторії."
+          "title": "Фільми, шоу та списки перегляду"
         },
         {
+          "description": "Ігри, квести, світи та досвід, які люди повинні спробувати далі.",
           "id": "games",
           "label": "Ігри",
-          "title": "Ігри та світи для дослідження",
-          "description": "Ігри, квести, світи та досвід, які люди повинні спробувати далі."
+          "title": "Ігри та світи для дослідження"
         },
         {
+          "description": "Виконавці, альбоми, пісні, списки відтворення та саундтреки, пов’язані з місцями та моментами.",
           "id": "music",
           "label": "музика",
-          "title": "Альбоми, виконавці та списки відтворення",
-          "description": "Виконавці, альбоми, пісні, списки відтворення та саундтреки, пов’язані з місцями та моментами."
+          "title": "Альбоми, виконавці та списки відтворення"
         },
         {
+          "description": "Щоденне улюблене, туристичне спорядження, інструменти для творчості, подарунки та продукти, які варто заощадити.",
           "id": "products",
           "label": "Продукти",
-          "title": "Продукти, які люди дійсно рекомендують",
-          "description": "Щоденне улюблене, туристичне спорядження, інструменти для творчості, подарунки та продукти, які варто заощадити."
+          "title": "Продукти, які люди дійсно рекомендують"
         },
         {
+          "description": "Програмне забезпечення, веб-сайти, шаблони, інструменти та ресурси, які полегшують життя.",
           "id": "apps",
           "label": "Програми та інструменти",
-          "title": "Програми, інструменти та корисні посилання",
-          "description": "Програмне забезпечення, веб-сайти, шаблони, інструменти та ресурси, які полегшують життя."
+          "title": "Програми, інструменти та корисні посилання"
         }
       ]
     }
@@ -2286,5 +2363,115 @@
     "unavailable": "Ім'я користувача недоступне.",
     "confirmOnSignup": "Ми підтвердимо наявність під час реєстрації.",
     "checkingAvailability": "Перевірка наявності..."
+  },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
+  "useCases": {
+    "cta": {
+      "button": "Claim your Explorer page",
+      "description": "Start with the recommendations you already share. Give them one place to live.",
+      "title": "Make a home for what you would pass on."
+    },
+    "hero": {
+      "chooseLabel": "Choose a perspective",
+      "description": "Whether the point of view is personal, creative, or shared by a brand, explorers gives it a thoughtful home.",
+      "eyebrow": "Ways to explore",
+      "title": "Different perspectives. One place to share them.",
+      "visualAlt": "Three perspectives connected through a place, an Explorer profile, and a storefront."
+    },
+    "journey": {
+      "description": "The shape changes with the person behind it. The rhythm stays simple.",
+      "eyebrow": "One simple rhythm",
+      "steps": {
+        "collect": {
+          "description": "Bring together what you genuinely recommend across the parts of life that matter to you.",
+          "title": "Collect"
+        },
+        "shape": {
+          "description": "Organize it with enough context for someone else to understand why it belongs.",
+          "title": "Shape"
+        },
+        "share": {
+          "description": "Offer one living link or QR that people can save, scan, and return to.",
+          "title": "Share"
+        }
+      },
+      "title": "Three perspectives. One way of sharing with care."
+    },
+    "perspectives": {
+      "brands": {
+        "description": "Curate the places, products, guides, and ideas that express what your organization genuinely values.",
+        "label": "Brands",
+        "points": [
+          "Build collections with a clear and human perspective.",
+          "Connect locations, products, and useful context.",
+          "Give people something thoughtful to save and revisit."
+        ],
+        "title": "Turn your point of view into an experience people can enter."
+      },
+      "creators": {
+        "description": "Turn the recommendations scattered across posts, videos, conversations, and notes into something people can return to.",
+        "label": "Creators",
+        "points": [
+          "Create a durable home for your point of view.",
+          "Organize recommendations around stories and themes.",
+          "Share through one link or QR wherever people find you."
+        ],
+        "title": "Give your audience more than a feed."
+      },
+      "personal": {
+        "description": "Keep the places, books, films, tools, people, and small discoveries you return to in one living collection.",
+        "label": "Personal",
+        "points": [
+          "Bring different kinds of recommendations together.",
+          "Add the context that makes each choice yours.",
+          "Share one page that can keep evolving with you."
+        ],
+        "title": "A home for the things that shape your world."
+      }
+    },
+    "seo": {
+      "description": "See how people, creators, and brands can collect what they value, shape it with context, and share it through one thoughtful Explorer page.",
+      "keywords": [
+        "explorers use cases",
+        "personal recommendations page",
+        "creator recommendations",
+        "brand curation",
+        "share recommendations",
+        "curated collections"
+      ],
+      "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
+      "title": "Use Cases | explorers.earth"
+    }
   }
 }

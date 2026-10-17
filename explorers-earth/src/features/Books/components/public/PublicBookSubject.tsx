@@ -1,85 +1,88 @@
 import { useState, useCallback, useEffect } from "react";
-import { useParams, useOutletContext } from "react-router-dom";
-import { useQuery, gql } from "@apollo/client";
-import { ArrowLeft, Share2 } from "lucide-react";
-import { toast } from "sonner";
-import { BOOKS_BY_SUBJECT } from "../../api/query";
+import { useParams, useOutletContext, useLocation } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { deduplicateBooks, slugToSubjectName } from "../../utils/bookHelpers";
 import type { RecommendedBook } from "../../types";
 import BookCoverCard from "./BookCoverCard";
 import BookDetailModal from "./BookDetailModal";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
+import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
+import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settlePublicRouteRetries } from "../../../PublicHome/components/PublicRouteContentState";
+import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
+import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
+import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
 
-const ACCOUNT_BY_USERNAME = gql`
-  query AccountByUsername($username: String!) {
-    usersPermissionsUsers(filters: { username: { eq: $username } }) {
-      documentId
-      username
-      accounts {
-        documentId
-        Account_Name
-      }
-    }
-  }
-`;
+const isRenderableBook = (value: unknown): value is RecommendedBook =>
+  isNonNullObject(value) &&
+  typeof value.documentId === "string" &&
+  Array.isArray(value.subjects) &&
+  Array.isArray(value.authors);
 
 const PublicBookSubject = () => {
   const { username, subjectSlug } = useParams<{ username: string; subjectSlug: string }>();
+  const location = useLocation();
   const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
   const subjectName = slugToSubjectName(subjectSlug ?? "");
 
-  const { data: userLookup, loading: userLoading } = useQuery(ACCOUNT_BY_USERNAME, {
-    variables: { username },
-    skip: !username,
-  });
-
-  const accountDocumentId = userLookup?.usersPermissionsUsers?.[0]?.accounts?.[0]?.documentId;
+  const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
 
   const [modalState, setModalState] = useState<{ open: boolean; book: RecommendedBook | null }>({
     open: false,
     book: null,
   });
 
-  const { data, loading: booksLoading } = useQuery(BOOKS_BY_SUBJECT, {
-    variables: { accountDocumentId },
-    skip: !accountDocumentId,
-    fetchPolicy: "cache-and-network",
-  });
+  const page = usePublicRecommendationCategory(
+    username,
+    "books",
+    accountData?.public_books === "Yes",
+  );
 
+  const {data,loading:booksLoading,error:booksError,refetch:refetchBooks}=page;
   const loading = userLoading || booksLoading;
+  const queryError = userError || booksError;
+  const rawLists = data?.bookLists;
+  const rawBooks = Array.isArray(rawLists)
+    ? rawLists.flatMap((list) =>
+      isNonNullObject(list) && Array.isArray(list.recommended_books) ? list.recommended_books : [],
+    )
+    : undefined;
+  const renderableBooks = (Array.isArray(rawBooks) ? rawBooks : []).filter(isRenderableBook);
+  const completeCollection = Array.isArray(rawBooks) && rawBooks.every(isRenderableBook);
+  const hasUsableData = queryError ? renderableBooks.length > 0 : completeCollection;
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading || hasUsableData) {
       outletContext?.setIsPageLoaded?.(true);
     }
-  }, [loading, outletContext]);
+  }, [hasUsableData, loading, outletContext]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try { await navigator.share({ title: `${subjectName} Books`, url }); } catch { /* ignore */ }
-    } else {
-      try {
-        await navigator.clipboard.writeText(url);
-        toast.success("Link copied!");
-      } catch (error) {
-        console.error("Failed to copy text:", error);
-      }
-    }
-  };
+  const handleRetry = useCallback(async () => {
+    await settlePublicRouteRetries(refetchUser, accountData?.public_books === "Yes" ? refetchBooks : undefined);
+  }, [accountData?.public_books, refetchBooks, refetchUser]);
+
+  usePublicHeaderDescriptor(subjectSlug && hasUsableData && accountData?.public_books === "Yes" ? {
+    navigationKey: location.key,
+    title: `${subjectName} Books`,
+    url: window.location.href,
+    analyticsContext: "books-subject-header",
+    analyticsMetadata: { subject: subjectSlug },
+  } : undefined);
 
   // Filter locally by subject slug
-  const allBooks: RecommendedBook[] = deduplicateBooks(data?.recommendedBooks ?? []);
+  const allBooks: RecommendedBook[] = deduplicateBooks(renderableBooks);
   const subjectBooks = allBooks.filter((b) =>
     (b.subjects ?? []).some(
       (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") === subjectSlug
     )
   );
 
+  const analytics = useTrackAnalytics({ ...createAnalyticsOptions.books(typeof accountData?.documentId === 'string' ? accountData.documentId : '', username), ready: hasUsableData && accountData?.public_books === 'Yes' });
   const handleBookClick = useCallback((book: RecommendedBook) => {
     setModalState({ open: true, book });
-  }, []);
+    analytics.trackClick('book-card', { id: book.documentId, listId: book.book_list?.documentId, title: book.title });
+  }, [analytics]);
 
   const pageTitle = `${subjectName} Books | ${username}'s Book List | explorers`;
   const metaDescription = `Explore ${subjectBooks.length} book${subjectBooks.length !== 1 ? "s" : ""} on ${subjectName} recommended by ${username} on explorers.`;
@@ -98,50 +101,33 @@ const PublicBookSubject = () => {
           siteName="explorers"
         />
       )}
-      <div className="min-h-screen bg-black text-white">
-      {/* Fixed Header */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-[#2a2a2a]/90 backdrop-blur-sm border-b border-gray-700 h-14">
-        <div className="max-w-4xl mx-auto flex items-center justify-between h-full px-6">
-          <span
-            className="text-white font-bold text-2xl cursor-pointer"
-            onClick={() => window.location.href = "/"}
-          >
-            explorers.earth
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={handleShare}
-              className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-all duration-300 flex items-center justify-center cursor-pointer"
-              aria-label="Share"
-            >
-              <Share2 size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="pt-20 pb-20 px-4 md:px-8 max-w-6xl mx-auto">
+      <div data-category-page className="min-h-screen bg-[var(--category-page,#000)] text-[color:var(--category-text,#fff)]" aria-busy={loading || undefined}>
+      <div className="pb-20 px-4 md:px-8 max-w-6xl mx-auto">
         <div className="py-4">
-          <a href={`/${username}/books`} className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors">
+          <a href={`/${username}/books`} className="flex items-center gap-2 text-sm text-[color:var(--category-muted,rgba(255,255,255,0.5))] hover:text-[color:var(--category-text,#fff)] transition-colors">
             <ArrowLeft size={14} /> All Books
           </a>
         </div>
 
         <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-white">{subjectName}</h1>
-          <p className="text-white/30 text-sm mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold text-[color:var(--category-text,#fff)]">{subjectName}</h1>
+          <p className="text-[color:var(--category-muted,rgba(255,255,255,0.3))] text-sm mt-1">
             {subjectBooks.length} book{subjectBooks.length !== 1 ? "s" : ""}
           </p>
         </div>
 
-        {loading && !data ? (
+        {Boolean(queryError) && hasUsableData && <PublicRoutePartialNotice message="Some book data is unavailable." />}
+
+        {loading && !hasUsableData ? (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
             {[...Array(12)].map((_, i) => (
-              <div key={i} className="aspect-[2/3] bg-white/8 rounded-xl animate-pulse" />
+              <div key={i} className="aspect-[2/3] bg-[var(--category-skeleton,rgba(255,255,255,0.08))] rounded-xl animate-pulse" />
             ))}
           </div>
-        ) : subjectBooks.length === 0 ? (
-          <p className="text-center text-white/30 py-16">No books found for this subject.</p>
+        ) : queryError && !hasUsableData ? (
+          <PublicRouteErrorState title="Book subject unavailable" error={queryError} onRetry={handleRetry} />
+        ) : subjectBooks.length === 0 && !page.hasMore ? (
+          <p className="text-center text-[color:var(--category-muted,rgba(255,255,255,0.3))] py-16">No books found for this subject.</p>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
             {subjectBooks.map((book) => (
@@ -151,7 +137,8 @@ const PublicBookSubject = () => {
         )}
       </div>
 
-      <BookDetailModal
+      <PublicScrollContinuation {...page} label="book lists" />
+      <BookDetailModal onTrackClick={analytics.trackClick}
         book={modalState.book}
         open={modalState.open}
         onClose={() => setModalState({ open: false, book: null })}

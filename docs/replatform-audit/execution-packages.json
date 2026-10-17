@@ -1,0 +1,622 @@
+{
+  "schemaVersion": 2,
+  "sourceCommit": "46274e061ffb44f5b7ec5bdea84cd57e4748a541",
+  "pendingCommit": "67260702ecca801d5e10301161ade8fefafcbece",
+  "reviewStatus": "Four read-only domain reviews completed; source/planning only, runtime receipts not re-executed.",
+  "historicalLedger": "execution-packages-2026-10-05.json",
+  "statusAuthority": "reconciliation-2026-10-09.md",
+  "sequenceAuthority": "../superpowers/plans/2026-10-09-replatform-reconciled-sequence.md",
+  "reviewAuthority": "independent-regroom-review-2026-10-09.md",
+  "tickets": [
+    {
+      "id": "1.1",
+      "integratedScope": "Accepted baseline, bounded to its recorded marketing routes",
+      "pendingOrResidual": "Preserve accepted scope; no reimplementation.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "1.2",
+      "integratedScope": "Harness accepted; canonical route invariant open (`b4975654`)",
+      "pendingOrResidual": "Red deliberately accepted. Coordinated runtime/fixture cutover still needed for closure.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "1.1"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "1.3",
+      "integratedScope": "Accepted CI separation",
+      "pendingOrResidual": "Pending whole-tree test gating; reconcile lifecycle protected evidence and branch-filter gaps.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "1.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "1.4",
+      "integratedScope": "Accepted API-only seam",
+      "pendingOrResidual": "Preserve; packaged image proof still belongs to retirement/release.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "1.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "2.1",
+      "integratedScope": "Accepted identity/ownership schema",
+      "pendingOrResidual": "Real Google callback receipt recorded in `bd802e22`; receipt is not re-executed here.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "1.2",
+        "1.4"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "2.2",
+      "integratedScope": "Accepted authorization boundary",
+      "pendingOrResidual": "Preserve; pending logout socket revocation strengthens lifecycle closure.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "2.1"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "2.3",
+      "integratedScope": "Accepted profile/onboarding",
+      "pendingOrResidual": "Delivering commit `79edeea8`; do not reopen from stale execution cards.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "2.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "2.4",
+      "integratedScope": "Observation contract delivered; L19 and legacy replacement map are partial",
+      "pendingOrResidual": "Google first-consent receipt and session-bound principal revocation pending; actual held terminal completions, live socket sign-out and hosted acceptance remain.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "2.2",
+        "2.3"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "3.1",
+      "integratedScope": "Core revision-checked replacement, Places consumer and negative assertions delivered",
+      "pendingOrResidual": "Bind exact execution receipts; no missing-consumer or foreign-owner implementation package.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "2.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "3.2",
+      "integratedScope": "Owned media/catalog foundation delivered, bounded",
+      "pendingOrResidual": "Canonical media URL defects fixed in pending package. Qualify retained uploads and actual storage policy; selection hook presence is not upload acceptance.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "2.3",
+        "3.1"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "3.3",
+      "integratedScope": "Books 20-case bounded acceptance",
+      "pendingOrResidual": "Static no-Strapi proof/cover fix `d6209e77`, `3d7f3ed8`; exact hosted re-attestation remains.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "3.1",
+        "3.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "3.4",
+      "integratedScope": "Producer and canonical summary delivered; detailed owner analytics intentionally unavailable",
+      "pendingOrResidual": "Pending owner decision defers dashboard port. Analytics browser lane exists but milestone attestation remains pending. Do not add manifest entries without receipts. Historical events route remains Strapi-dependent; final retirement must resolve that route explicitly.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "3.1"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "3.5",
+      "integratedScope": "QA deployment/milestone evidence blocked",
+      "pendingOrResidual": "Named artifact-producing workflows and QA hostname/credentials required; current CI is not hosted QA.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "1.3",
+        "1.4",
+        "2.4",
+        "3.3",
+        "3.4"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "4.1",
+      "integratedScope": "Movies manual implementation and bounded acceptance",
+      "pendingOrResidual": "Named tests/traceability and integration gating `e951e5b8`, `6acaca3d`, `1b966866`; live TMDB smoke open.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "3.1",
+        "3.2",
+        "3.3"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "4.2",
+      "integratedScope": "Games manual slice; provider incomplete",
+      "pendingOrResidual": "IGDB path remains unconditional 503 in recorded inventory. Keep provider scope separate from retirement, with explicit launch disposition.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "3.1",
+        "3.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "4.3",
+      "integratedScope": "Apps migration/owner/public implementation delivered",
+      "pendingOrResidual": "Reserved protected category qualification and scraper-era nightly assertions remain.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "3.1",
+        "3.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "4.4",
+      "integratedScope": "Products migration/owner/public implementation delivered",
+      "pendingOrResidual": "Same qualification obligation; preserve offer/media contracts.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "3.1",
+        "3.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "4.5",
+      "integratedScope": "People migration/owner/public implementation delivered",
+      "pendingOrResidual": "Same qualification obligation; preserve contact disclosure and suppression.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "3.1",
+        "3.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "5.1",
+      "integratedScope": "Places implementation delivered; taxonomy deferred",
+      "pendingOrResidual": "Named unit suite `796c6380` in pending package. Protected Places lane, taxonomy/sector browse and per-place pin decision remain.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "3.1",
+        "3.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "5.2",
+      "integratedScope": "Place-links implementation delivered (`0049`, `61043b99`)",
+      "pendingOrResidual": "Protected place-links lane/manifest receipt remains. This is linked collections, not the guide aggregate.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "4.4",
+        "4.5",
+        "5.1"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "5.3",
+      "integratedScope": "Guides owner/public aggregate and category picker delivered (`0050`, `004e5873`, `f84f96df`)",
+      "pendingOrResidual": "Exact full feature qualification remains; do not recreate deleted `guideService.ts` or invent category vocabulary.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "3.1",
+        "3.2",
+        "5.1"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "5.4",
+      "integratedScope": "Dropped by D4; removed `7399cfe1`",
+      "pendingOrResidual": "Authorized exclusion, not unstarted implementation. Keep reserved handle protection.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "2.2",
+        "3.2",
+        "5.1"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "6.1",
+      "integratedScope": "Canonical Music provisioning delivered",
+      "pendingOrResidual": "Named real-PG acceptance `111466e6`; logout revocation `e809d57b`.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "2.2",
+        "3.1"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "6.2",
+      "integratedScope": "Owner implementation and split browser/real-stack proofs delivered, as October 7 ticket note records",
+      "pendingOrResidual": "Full two-origin real-stack browser acceptance remains a recorded deviation. Do not label implementation unstarted.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "6.1"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "6.3",
+      "integratedScope": "Guest capability, ticket-only socket admission and revocation implementation/proofs delivered",
+      "pendingOrResidual": "Pending remeasurement finds `public-music-revision-contract.test.ts` and existing reconnect browser coverage. Missing milestone lane/receipt remains; do not duplicate transposed-name test.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "6.1",
+        "6.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "6.4",
+      "integratedScope": "Release function0042 delivered in24b6d46f using account deletion operation retirement record",
+      "pendingOrResidual": "Gated proof/guard hardening pending; amend ADR008 stale claim and establish separate numeric retired-ID nonreuse proof.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        null
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "7.1",
+      "integratedScope": "Canonical navigation and eight non-Music public producers delivered",
+      "pendingOrResidual": "Media boundary/URL builders, visibility matrix, reserved handles and route bodies in pending package (`f16b6202`, `1b18157e`, `9e3e00d2`, `0ecb7eea`, `c2ff8ca6`). Remaining full browser traversal/ETag/Music milestone obligations need mapping.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "4.1",
+        "4.2",
+        "4.3",
+        "4.4",
+        "4.5",
+        "5.1",
+        "5.2",
+        "5.3",
+        "5.4",
+        "6.3"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "7.2",
+      "integratedScope": "Repo reference content delivered `cc9f3e4b`",
+      "pendingOrResidual": "Brand fix `f1940ac8`; legal entity/jurisdiction/contact placeholders remain owner input. Locale widening `b1297182` already integrated. Detailed analytics is owned by 3.4 and deferred.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "3.4",
+        "7.1"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "7.3",
+      "integratedScope": "Full all-category milestone not accepted",
+      "pendingOrResidual": "Runner/manifest scopes and actual protected receipts must be built/reconciled; existing six-lane manifest is not all-category acceptance.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "2.4",
+        "3.5",
+        "7.1",
+        "7.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "8.1",
+      "integratedScope": "Classification/scan delivered; retirement incomplete",
+      "pendingOrResidual": "Pending helper move `550a5924`, dead REST/gql/server cleanup (`8a07f479`, `db153810`, `edff0514`, `30475300`). Runtime cutover, ops, absence-proof authority and historical events route remain.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "7.3"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "8.2",
+      "integratedScope": "Duplicate frontend not removed",
+      "pendingOrResidual": "Pending note confirms coverage rehoming prerequisite satisfied. Image inspection + production graph/browser acceptance precede atomic removal.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "8.1"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "8.3",
+      "integratedScope": "Mechanical backend rename not delivered",
+      "pendingOrResidual": "After 8.1/8.2; update paths/scripts/images/contracts together.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "8.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "8.4",
+      "integratedScope": "Synthetic topology/verifier scaffolding",
+      "pendingOrResidual": "Replace placeholders with real image/evidence identities and join to 8.5 recovery acceptance. Deployment authorization is separate.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "3.5",
+        "8.3"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "8.5",
+      "integratedScope": "Restore drill/final web acceptance not delivered",
+      "pendingOrResidual": "Real backup/restore, promotion and recovery evidence required.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "8.4"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "9.1",
+      "integratedScope": "Not started",
+      "pendingOrResidual": "Public MCP tools after 8.5; reuse application operations.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "8.5"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "9.2",
+      "integratedScope": "Not started",
+      "pendingOrResidual": "Discovery quality/observability after 9.1. Absence of adapter is not evidence of permission quality.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "9.1",
+        "3.4"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "10.1",
+      "integratedScope": "Not started",
+      "pendingOrResidual": "OAuth linking/delegation after web acceptance and scoped consent design.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "9.1",
+        "2.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "10.2",
+      "integratedScope": "Not started",
+      "pendingOrResidual": "Creator catalog after10.1; extends its already-owned minimal profile probe and registration.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "10.1"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    },
+    {
+      "id": "10.3",
+      "integratedScope": "Not started",
+      "pendingOrResidual": "Publication qualification after 10.2; external submission separately authorized.",
+      "dispatchable": false,
+      "dispatchReason": "Planning review is complete; implementation needs the package-specific frozen source, evidence map, ownership/resource allocation and any named authority. Do not dispatch from historical cards.",
+      "historicalPrerequisites": [
+        "9.2",
+        "10.2"
+      ],
+      "closure": "No new whole-ticket acceptance granted",
+      "authority": "reconciliation-2026-10-09.md#independent-audit-corrections"
+    }
+  ],
+  "packages": [
+    {
+      "id": "A",
+      "after": [],
+      "scope": "Review existing PR121 and consolidate exact source/check custody",
+      "mode": "preparation-now"
+    },
+    {
+      "id": "B",
+      "after": [
+        "A"
+      ],
+      "scope": "Residual maps, lifecycle coverage and ADR/numeric retirement proof",
+      "mode": "freeze-required"
+    },
+    {
+      "id": "C",
+      "after": [
+        "B"
+      ],
+      "scope": "Local protected combined Music/lifecycle/category/public qualification",
+      "mode": "resources-and-authority-required"
+    },
+    {
+      "id": "Q1",
+      "after": [],
+      "scope": "QA artifact/workflow/config preparation",
+      "mode": "preparation-now"
+    },
+    {
+      "id": "D",
+      "after": [
+        "C"
+      ],
+      "scope": "Bounded coordinated runtime/fixture topology cutover",
+      "mode": "design-and-authority-required"
+    },
+    {
+      "id": "E",
+      "after": [
+        "D",
+        "Q1"
+      ],
+      "scope": "Exact required green, trusted candidate, authorized QA/provider/hosted evidence",
+      "mode": "external-inputs-required"
+    },
+    {
+      "id": "F",
+      "after": [
+        "E"
+      ],
+      "scope": "Operational retirement, duplicate frontend removal and rename",
+      "mode": "retirement-authority-required"
+    },
+    {
+      "id": "G",
+      "after": [
+        "F"
+      ],
+      "scope": "Post-rename candidate, recovery, final QA and web acceptance",
+      "mode": "promotion-authority-required"
+    },
+    {
+      "id": "9.1",
+      "after": [
+        "G"
+      ],
+      "scope": "Public adapter; existing Milestone3 gate retained",
+      "mode": "future"
+    },
+    {
+      "id": "9.2",
+      "after": [
+        "9.1"
+      ],
+      "scope": "Discovery quality and consent-aware analytics producer",
+      "mode": "future"
+    },
+    {
+      "id": "10.1",
+      "after": [
+        "9.1"
+      ],
+      "scope": "Delegated grants plus minimal profile probe; accepted2.2 consumed",
+      "mode": "future"
+    },
+    {
+      "id": "10.2",
+      "after": [
+        "10.1"
+      ],
+      "scope": "Creator catalog extending same profile registration",
+      "mode": "future"
+    },
+    {
+      "id": "10.3",
+      "after": [
+        "9.2",
+        "10.2"
+      ],
+      "scope": "Actual-client/publication readiness; external publication separate",
+      "mode": "future"
+    }
+  ]
+}

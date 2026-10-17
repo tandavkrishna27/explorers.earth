@@ -1,22 +1,9 @@
-import { gql, useMutation } from "@apollo/client";
-import { KeyValuePair } from "../components/ProfileForm";
-import { toast } from "sonner";
 import useAuthStore from "../../../store/store";
-import { useTranslation } from "react-i18next";
-import { updateLocalTunesUsername } from "../../../services/localTunesService";
-import { mobileNumberField } from "./mobileNumberField";
-
-
-// Utility function to convert English account type keys to translated values
-const getAccountTypeValue = (key: string, t: any): string => {
-  const accountTypeMap: { [key: string]: string } = {
-    'personal': t('dashboard.profile.publicProfile.accountTypes.personal'),
-    'creator': t('dashboard.profile.publicProfile.accountTypes.creator'),
-    'business': t('dashboard.profile.publicProfile.accountTypes.business')
-  };
-
-  return accountTypeMap[key] || t('dashboard.profile.publicProfile.accountTypes.personal');
-};
+import { readSocialVisibility } from "../config/socialVisibility";
+import type { KeyValuePair } from "../types/profileSave";
+import { explorersApiClient } from "../../../lib/explorersApiClient";
+import { musicApi } from "../../music/musicApi";
+import { toAccountUpdate, toProfileViewModel } from "../api/profileClient";
 
 export interface Visibility {
   Instagram?: boolean;
@@ -31,347 +18,205 @@ export interface Visibility {
   Gmail?: boolean;
   X?: boolean;
   YoutubeMusic?: boolean;
+  "Youtube Music"?: boolean;
   AppleMusic?: boolean;
+  "Apple Music"?: boolean;
   Spotify?: boolean;
 }
 
-const onboardingQuery = gql`
-  mutation createAccount($data: AccountInput!) {
-    createAccount(data: $data) {
-      Account_Name
-      Account_Type
-      username
-      Bio
-      Addresss
-    }
-  }
-`;
-
-// Corrected mutation - matches the one in api/mutation.ts
-const updateProfileMutation = gql`
-  mutation UpdateAccount($documentId: ID!, $data: AccountInput!) {
-    updateAccount(documentId: $documentId, data: $data) {
-      documentId
-      username
-      Bio
-      Addresss
-      Primary_Address
-      Account_Type
-      Account_Name
-      mobile_number
-      mobile_number_visibility
-      social_media
-      Public_Profile_Address
-  Feed_Data
-      profile_picture {
-        url
-        alternativeText
-      }
-      bg_picture {
-        url
-        alternativeText
-      }
-    }
-  }
-`;
-
 export type BooleanKeyValuePair = { [key in keyof Visibility]?: boolean };
 
-export const useUpdateProfile = (
-  documentId: string | undefined,
-  refetch: () => void
-) => {
-  // mutation for profile uploading
-  const { user } = useAuthStore();
-  const { t } = useTranslation();
-  const [updateProfile] = useMutation(updateProfileMutation);
-  const [createAccount] = useMutation(onboardingQuery);
-  const [updateUser] = useMutation(gql`
-    mutation UpdateUsersPermissionsUser($id: ID!, $data: UsersPermissionsUserInput!) {
-      updateUsersPermissionsUser(id: $id, data: $data) {
-        data {
-          username
-        }
-      }
-    }
-  `);
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 
-  // submit function for updating profile values
-  const handleSubmit = async (values: KeyValuePair) => {
-    try {
-      if (!documentId) {
-        const visibility: BooleanKeyValuePair = (values.visibility ??
-          {}) as BooleanKeyValuePair;
-        // If documentId is undefined, create a new account
-        const response = await createAccount({
-          variables: {
-            data: {
-              Bio: values.bio,
-              Addresss: {
-                streetNumber: values.streetNumber,
-                streetName: values.streetName,
-                postalCode: values.postalCode,
-                state: values.state,
-                city: values.city,
-                country: values.country,
-                address: values.address,
-              },
-              Primary_Address: {
-                address: values.primaryAddressCombined,
-              },
-              Public_Profile_Address: values.Public_Profile_Address || null,
-              Feed_Data: values.Feed_Data || [],
-              social_media: {
-                instagram: {
-                  link: values.instagramLink,
-                  visibility: visibility.Instagram ?? false,
-                },
-                youtube: {
-                  link: values.youtubeLink,
-                  visibility: visibility.Youtube ?? false,
-                },
-                whatsapp: {
-                  link: values.whatsappLink,
-                  visibility: visibility.Whatsapp ?? false,
-                },
-                website: {
-                  link: values.websiteLink,
-                  visibility: visibility.Website ?? false,
-                },
-                facebook: {
-                  link: values.facebookLink,
-                  visibility: visibility.Facebook ?? false,
-                },
-                linkedin: {
-                  link: values.linkedinLink,
-                  visibility: visibility.Linkedin ?? false,
-                },
-                snapchat: {
-                  link: values.snapchatLink,
-                  visibility: visibility.Snapchat ?? false,
-                },
-                tiktok: {
-                  link: values.tiktokLink,
-                  visibility: visibility.Tiktok ?? false,
-                },
-                email: {
-                  link: values.gmailLink,
-                  visibility: visibility.Gmail ?? false,
-                },
-                X: {
-                  link: values.XLink,
-                  visibility: visibility.X ?? false,
-                },
-                spotify: {
-                  link: values.spotifyLink,
-                  visibility: visibility.Spotify ?? false,
-                },
-                youtubeMusic: {
-                  link: values.youtubeMusicLink,
-                  visibility: visibility.YoutubeMusic ?? false,
-                },
-                appleMusic: {
-                  link: values.appleMusicLink,
-                  visibility: visibility.AppleMusic ?? false,
-                },
-              },
-              Account_Type: getAccountTypeValue(values.accountType, t),
-              Account_Name: values.accountName,
-              username: values.username,
-              mobile_number_visibility: values.mobilenumberVisiblity,
-              mobile_number: values.mobilenumberLink,
-              users_permissions_users: user?.documentId,
-            },
-          },
-        });
+const mergePlatform = (
+  socialMedia: Record<string, unknown>,
+  key: string,
+  link: unknown,
+  visibility: boolean,
+) => ({
+  ...asRecord(socialMedia[key]),
+  link: typeof link === "string" ? link : "",
+  visibility,
+});
 
-        if (response.data) {
-          toast.success(t('dashboard.profile.common.savedAndPublishedSuccessfully'));
-          refetch();
-        }
-      } else {
-        // If documentId exists, update the profile
-        const visibility: BooleanKeyValuePair = (values.visibility ?? {}) as BooleanKeyValuePair;
-        // Determine if username actually changed compared to current authenticated user
-        // This prevents unnecessary updates to the UsersPermissionsUser record which would
-        // otherwise bump updatedAt and incorrectly reset username cooldown.
-        const currentUsername = user?.username ?? "";
-        const incomingUsername: string | undefined = values.username;
-        const usernameChanged = Boolean(
-          incomingUsername && incomingUsername.trim() !== currentUsername
-        );
-
-        // 1. Update Account (all fields including username)
-        const response = await updateProfile({
-          variables: {
-            documentId: documentId,
-            data: {
-              Bio: values.bio,
-              Account_Name: values.accountName,
-              // Only include username in Account update if it actually changed
-              ...(usernameChanged && incomingUsername
-                ? { username: incomingUsername }
-                : {}),
-              Addresss: {
-                streetNumber: values.streetNumber,
-                streetName: values.streetName,
-                postalCode: values.postalCode,
-                state: values.state,
-                city: values.city,
-                country: values.country,
-                address: values.address,
-              },
-              Primary_Address: {
-                address: values.primaryAddressCombined,
-              },
-              Public_Profile_Address: values.Public_Profile_Address || null,
-              Feed_Data: values.Feed_Data || [],
-              social_media: {
-                instagram: {
-                  link: values.instagramLink,
-                  visibility: visibility.Instagram ?? false,
-                },
-                youtube: {
-                  link: values.youtubeLink,
-                  visibility: visibility.Youtube ?? false,
-                },
-                whatsapp: {
-                  link: values.whatsappLink,
-                  visibility: visibility.Whatsapp ?? false,
-                },
-                website: {
-                  link: values.websiteLink,
-                  visibility: visibility.Website ?? false,
-                },
-                facebook: {
-                  link: values.facebookLink,
-                  visibility: visibility.Facebook ?? false,
-                },
-                linkedin: {
-                  link: values.linkedinLink,
-                  visibility: visibility.Linkedin ?? false,
-                },
-                snapchat: {
-                  link: values.snapchatLink,
-                  visibility: visibility.Snapchat ?? false,
-                },
-                tiktok: {
-                  link: values.tiktokLink,
-                  visibility: visibility.Tiktok ?? false,
-                },
-                email: {
-                  link: values.gmailLink,
-                  visibility: visibility.Gmail ?? false,
-                },
-                X: {
-                  link: values.XLink,
-                  visibility: visibility.X ?? false,
-                },
-                spotify: {
-                  link: values.spotifyLink,
-                  visibility: visibility.Spotify ?? false,
-                },
-                youtubeMusic: {
-                  link: values.youtubeMusicLink,
-                  visibility: visibility.YoutubeMusic ?? false,
-                },
-                appleMusic: {
-                  link: values.appleMusicLink,
-                  visibility: visibility.AppleMusic ?? false,
-                },
-              },
-              Account_Type: getAccountTypeValue(values.accountType, t),
-              mobile_number_visibility: values.mobilenumberVisiblity,
-              ...mobileNumberField(values.mobilenumberLink),
-            },
-          },
-        });
-
-        // 2. Update User (username field) ONLY when username actually changed
-        if (user?.id && usernameChanged && incomingUsername) {
-          await updateUser({
-            variables: {
-              id: user.id,
-              data: { username: incomingUsername },
-            },
-          });
-        }
-
-        // ✅ FIXED: Proper response validation with backend confirmation
-        if (response.data?.updateAccount?.documentId) {
-          // Update auth store with new username only if it changed
-          if (user && usernameChanged && incomingUsername) {
-            const authStore = useAuthStore.getState();
-            authStore.login({
-              ...user,
-              username: incomingUsername,
-              token: authStore.token || "", // Preserve existing token
-            });
-
-            // Sync username change with LocalTunes
-            console.log('🔄 Starting LocalTunes username sync...', {
-              currentUsername: currentUsername,
-              newUsername: incomingUsername
-            });
-            try {
-              // Pass user details for sync
-              const localTunesResult = await updateLocalTunesUsername(
-                incomingUsername,
-                currentUsername
-              );
-              console.log('LocalTunes username sync result:', localTunesResult);
-              if (localTunesResult.success) {
-                console.log('✅ Username synced with LocalTunes');
-                toast.success('Username changed successfully in both explorers and LocalTunes!');
-              } else {
-                console.warn('⚠️ LocalTunes username sync warning:', localTunesResult.message);
-                // Show a warning but don't fail the username change
-                if (localTunesResult.message &&
-                  !localTunesResult.message.includes('disabled') &&
-                  !localTunesResult.message.includes('not found')) {
-                  // Check if it's the development mode restriction
-                  if (localTunesResult.message.includes('development mode')) {
-                    toast.warning('Username changed in explorers. Please also change your username in LocalTunes manually.');
-                  } else {
-                    toast.warning(`explorers username changed, but ${localTunesResult.message}`);
-                  }
-                }
-              }
-            } catch (localTunesError) {
-              console.error('❌ LocalTunes username sync error:', localTunesError);
-              // Don't fail the entire username change process
-              toast.warning('Username changed in explorers, but could not sync with LocalTunes');
-            }
-          }
-
-          toast.success(t('dashboard.profile.common.savedAndPublishedSuccessfully'));
-          // Only refetch after confirmed backend success
-          refetch();
-        } else {
-          // Backend did not confirm profile update
-          toast.error(t('dashboard.profile.common.saveAndPublishFailed'));
-        }
-      }
-    } catch (error) {
-      if (typeof error === "object" && error !== null) {
-        const err = error as any;
-
-        // Provide specific error messages based on error type
-        if (err.graphQLErrors?.length > 0) {
-          const graphQLError = err.graphQLErrors[0];
-          toast.error(t("toast.error.updateFailedWithError", { error: graphQLError.message || t("toast.error.graphQLErrorOccurred") }));
-        } else if (err.networkError) {
-          toast.error(t('dashboard.profile.common.networkError'));
-        } else {
-          toast.error(t('dashboard.profile.common.unexpectedError'));
-        }
-      } else {
-        toast.error(t('dashboard.profile.common.somethingWentWrong'));
-      }
-    }
-  };
+export function buildSocialMediaInput(
+  values: KeyValuePair,
+): Record<string, unknown> {
+  const socialMedia = asRecord(values.social_media);
+  const visibility = asRecord(values.visibility);
+  const rawTheme = asRecord(socialMedia.theme_settings);
+  const editedTheme = asRecord(values.theme_settings);
+  const rawRecommendations = asRecord(rawTheme.recommendations);
+  const editedRecommendations = asRecord(editedTheme.recommendations);
+  const hasRecommendations =
+    Object.keys(rawRecommendations).length > 0 ||
+    Object.keys(editedRecommendations).length > 0;
 
   return {
-    handleSubmit,
+    ...socialMedia,
+    theme_settings: {
+      ...rawTheme,
+      ...editedTheme,
+      ...(hasRecommendations
+        ? {
+            recommendations: {
+              ...rawRecommendations,
+              ...editedRecommendations,
+            },
+          }
+        : {}),
+    },
+    instagram: mergePlatform(
+      socialMedia,
+      "instagram",
+      values.instagramLink,
+      readSocialVisibility(visibility, "Instagram"),
+    ),
+    youtube: mergePlatform(
+      socialMedia,
+      "youtube",
+      values.youtubeLink,
+      readSocialVisibility(visibility, "Youtube"),
+    ),
+    whatsapp: mergePlatform(
+      socialMedia,
+      "whatsapp",
+      values.whatsappLink,
+      readSocialVisibility(visibility, "Whatsapp"),
+    ),
+    website: mergePlatform(
+      socialMedia,
+      "website",
+      values.websiteLink,
+      readSocialVisibility(visibility, "Website"),
+    ),
+    facebook: mergePlatform(
+      socialMedia,
+      "facebook",
+      values.facebookLink,
+      readSocialVisibility(visibility, "Facebook"),
+    ),
+    linkedin: mergePlatform(
+      socialMedia,
+      "linkedin",
+      values.linkedinLink,
+      readSocialVisibility(visibility, "Linkedin"),
+    ),
+    snapchat: mergePlatform(
+      socialMedia,
+      "snapchat",
+      values.snapchatLink,
+      readSocialVisibility(visibility, "Snapchat"),
+    ),
+    tiktok: mergePlatform(
+      socialMedia,
+      "tiktok",
+      values.tiktokLink,
+      readSocialVisibility(visibility, "Tiktok"),
+    ),
+    email: mergePlatform(
+      socialMedia,
+      "email",
+      values.gmailLink,
+      readSocialVisibility(visibility, "Gmail"),
+    ),
+    X: mergePlatform(
+      socialMedia,
+      "X",
+      values.XLink,
+      readSocialVisibility(visibility, "X"),
+    ),
+    spotify: mergePlatform(
+      socialMedia,
+      "spotify",
+      values.spotifyLink,
+      readSocialVisibility(visibility, "Spotify"),
+    ),
+    youtubeMusic: mergePlatform(
+      socialMedia,
+      "youtubeMusic",
+      values.youtubeMusicLink,
+      readSocialVisibility(visibility, "YoutubeMusic"),
+    ),
+    appleMusic: mergePlatform(
+      socialMedia,
+      "appleMusic",
+      values.appleMusicLink,
+      readSocialVisibility(visibility, "AppleMusic"),
+    ),
   };
+}
+
+/**
+ * Ticket 3.4. Saving the profile.
+ *
+ * This held four paths: a canonical update, a Strapi createAccount for an owner with no
+ * account yet, a Strapi updateAccount for a non-UUID id, and a Strapi write mirroring the
+ * username onto usersPermissionsUser. Both callers - Profile and ProfileAccountSettings -
+ * already read the account through useCanonicalAccount, so the id reaching this hook is
+ * always a canonical UUID and the three Strapi paths were already unreachable.
+ *
+ * The create path is not replaced by a canonical equivalent, because canonically the
+ * client cannot create an account: ensureInitialAccount provisions one, with its category
+ * settings and presentation row, during authentication. An owner who is signed in has an
+ * account. So a missing id is not "create one" - it is a form submitted before its own
+ * snapshot arrived, and that is refused rather than guessed at.
+ *
+ * Two behaviours lived only in the removed code.
+ *
+ * The username write-back is kept, below, because it is load-bearing. Every public link
+ * and QR code in the dashboard is built from the auth store's user.username, not from the
+ * account query, so a rename that updates only the account leaves every one of those links
+ * pointing at the old handle until the next full reload. Nothing else in the app writes
+ * that field.
+ *
+ * musicApi.refreshIdentity() is kept, but only because the server side was fixed. It was
+ * inert when this hook was first migrated: it re-mints the credential against the ensure
+ * endpoint, and that endpoint returned early for an already-mapped account, so a renamed
+ * display name never reached Music - users.venue_name was written once, at provision, and
+ * nothing updated it afterwards. ensureMusicAccount now converges the venue name on reuse,
+ * which makes this call carry the rename it always looked like it carried. The call stays
+ * best-effort: a Music name one save stale must not fail an Explorers profile save.
+ */
+export const useUpdateProfile = (
+  documentId: string | undefined,
+  refetch: () => unknown | Promise<unknown>,
+) => {
+  const { user } = useAuthStore();
+
+  const handleSubmit = async (values: KeyValuePair) => {
+    if (!documentId || !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(documentId))
+      throw new Error("Profile form snapshot is unavailable");
+    // The snapshot the form was built from has to be the account being written, at the
+    // revision it was read at, or the update is a blind overwrite of someone else's edit.
+    if (values.documentId !== documentId || !Number.isSafeInteger(values.revision) || values.revision < 1)
+      throw new Error("Profile form snapshot is unavailable");
+
+    const currentUsername = user?.username ?? "";
+    const incomingUsername =
+      typeof values.username === "string" ? values.username.trim() : "";
+    const usernameChanged = Boolean(
+      incomingUsername && incomingUsername !== currentUsername,
+    );
+
+    const updated = await explorersApiClient.updateAccount(toAccountUpdate(
+      { ...values, social_media: buildSocialMediaInput(values) }, { revision: values.revision },
+    ));
+
+    // After the account has accepted the handle, never before: a rejected save must not
+    // leave the store advertising a username the account does not have.
+    if (usernameChanged) useAuthStore.getState().updateUsername(incomingUsername);
+
+    // Best-effort, after the account has accepted the change: this propagates the new
+    // display name to the Music venue and must never turn a saved profile into a failure.
+    void musicApi.refreshIdentity().catch(() => undefined);
+
+    await refetch();
+    return toProfileViewModel(updated);
+  };
+
+  return { handleSubmit };
 };

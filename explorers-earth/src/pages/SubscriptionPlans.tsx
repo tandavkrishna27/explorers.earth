@@ -1,5 +1,3 @@
-import { useQuery, useMutation } from "@apollo/client";
-import { gql } from "@apollo/client";
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery as useReactQuery } from "@tanstack/react-query";
@@ -9,54 +7,19 @@ import { toast } from "sonner";
 import { EarthLoader } from "../components/EarthLoader";
 import { Check, Music2, Sparkles, Zap, Crown, X } from "lucide-react";
 import useAuthStore from "../store/store";
-import {
-  createLocalTunesUserWithRetry,
-  prepareLocalTunesUserData,
-  isLocalTunesEnabled
-} from "../services/localTunesService";
-import {
-  getCredentialsForLocalTunes,
-  removeUserCredentials
-} from "../utils/sessionCredentials";
 import { isFreePlan } from "../services/paymentService";
 import { getSubscriptionPlans, getUserSubscriptionPlans, getSongLimits, updateSongLimit as updateSongLimitAPI, createSongLimit, createUserSubscriptionPlan } from "../services/subscriptionService";
+import { MUSIC_SUBSCRIPTION_FLOWS_ENABLED, MusicSubscriptionUnavailable } from "../components/MusicSubscriptionContainment";
 
 
-const UPDATE_USER_IS_SUBSCRIBED_MUTATION = gql`
-  mutation UpdateUsersPermissionsUser($id: ID!, $data: UsersPermissionsUserInput!) {
-    updateUsersPermissionsUser(id: $id, data: $data) {
-      data {
-        documentId
-        is_subscribed
-      }
-    }
-  }
-`;
-
-const GET_USER_ACCOUNT_QUERY = gql`
-  query UsersPermissionsUser($documentId: ID!) {
-    usersPermissionsUser(documentId: $documentId) {
-      username
-      email
-      accounts {
-        documentId
-        Account_Name
-        localtunes_integrated
-      }
-    }
-  }
-`;
-
-
-
-const UPDATE_ACCOUNT_MUTATION = gql`
-  mutation UpdateAccount($documentId: ID!, $data: AccountInput!) {
-    updateAccount(documentId: $documentId, data: $data) {
-      documentId
-      localtunes_integrated
-    }
-  }
-`;
+const subscriptionWriteUnavailable = () => {
+  // Ticket 7.3 / step 9. The Strapi subscription write is gone and no canonical
+  // subscription state exists to replace it - decision D1 owns whether monetization returns
+  // and in what shape. Until then this throws rather than silently succeeding, so that
+  // flipping MUSIC_SUBSCRIPTION_FLOWS_ENABLED without porting the flow fails loudly instead
+  // of writing to a retired backend.
+  throw new Error('Music subscription changes are unavailable');
+};
 
 interface SubscriptionPlan {
   documentId: string;
@@ -86,7 +49,7 @@ interface SubscriptionPlansProps {
   fromOnboarding?: boolean;
 }
 
-const SubscriptionPlans = ({
+const ActiveSubscriptionPlans = ({
   onComplete,
   fromMusic: propFromMusic,
   fromSettings: propFromSettings,
@@ -115,12 +78,6 @@ const SubscriptionPlans = ({
     refetchOnWindowFocus: false,
   });
 
-  const { data: userAccountData, refetch: refetchUserAccount } = useQuery(GET_USER_ACCOUNT_QUERY, {
-    variables: { documentId: authUser?.documentId },
-    skip: !authUser?.documentId,
-    fetchPolicy: 'cache-and-network', // Always fetch fresh data
-  });
-
   // Query to get user's current subscription from backend API
   const { data: userSubscriptionData } = useReactQuery({
     queryKey: ['userSubscriptionPlans', authUser?.documentId],
@@ -130,8 +87,6 @@ const SubscriptionPlans = ({
     refetchOnWindowFocus: false,
   });
 
-  const [updateUserIsSubscribed] = useMutation(UPDATE_USER_IS_SUBSCRIBED_MUTATION);
-  const [updateAccount] = useMutation(UPDATE_ACCOUNT_MUTATION);
 
   const plans: SubscriptionPlan[] = plansData || [];
 
@@ -359,120 +314,7 @@ const SubscriptionPlans = ({
       // Step 2: Store selected plan in localStorage
       localStorage.setItem('selectedSubscriptionPlan', selectedPlan);
 
-      // Step 3: Refetch user account data to get latest localtunes_integrated status
-      // This ensures we have the most up-to-date data after registration
-      console.log('Refetching user account data to verify LocalTunes integration status...');
-      const { data: refreshedUserAccountData } = await refetchUserAccount();
-
-      // Step 4: Handle LocalTunes integration and verify both registration and subscription are successful
-      const accountDocumentId = refreshedUserAccountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
-      let localTunesIntegrated = refreshedUserAccountData?.usersPermissionsUser?.accounts?.[0]?.localtunes_integrated === "Yes";
-      const accountName = refreshedUserAccountData?.usersPermissionsUser?.accounts?.[0]?.Account_Name ||
-        userAccountData?.usersPermissionsUser?.accounts?.[0]?.Account_Name ||
-        state?.formData?.accountName ||
-        authUser.username || '';
-
-      let localTunesRegistrationSuccessful = false;
-
-      if (fromOnboarding) {
-        // Local Tunes account was already created during onboarding
-        // Just update the localtunes_integrated field if not already set
-        if (accountDocumentId && !localTunesIntegrated) {
-          try {
-            await updateAccount({
-              variables: {
-                documentId: accountDocumentId,
-                data: {
-                  localtunes_integrated: "Yes"
-                }
-              }
-            });
-            console.log('Account localtunes_integrated updated successfully');
-            localTunesIntegrated = true;
-          } catch (updateError) {
-            console.warn('Failed to update account localtunes_integrated:', updateError);
-          }
-        }
-        // For onboarding, if localtunes_integrated is already true, registration was successful
-        localTunesRegistrationSuccessful = localTunesIntegrated;
-      } else if ((fromMusic || fromSettings) && isLocalTunesEnabled()) {
-        // For Music/Settings pages, check if already integrated
-        if (localTunesIntegrated) {
-          console.log('User already has LocalTunes integrated');
-          localTunesRegistrationSuccessful = true;
-        } else {
-          // User is not integrated yet - this should not happen if flow is correct
-          // (registration should happen before showing subscription plans)
-          // But handle it gracefully just in case
-          console.log('User not integrated yet. Attempting to create Local Tunes account...');
-
-          const storedCredentials = getCredentialsForLocalTunes();
-
-          if (storedCredentials) {
-            const localTunesUserData = prepareLocalTunesUserData({
-              username: authUser.username || '',
-              email: storedCredentials.email,
-              password: storedCredentials.password,
-              accountName: accountName,
-              businessName: accountName,
-            });
-
-            const localTunesResult = await createLocalTunesUserWithRetry(localTunesUserData);
-
-            if (localTunesResult) {
-              console.log('Local Tunes account created successfully');
-
-              // Update localtunes_integrated in Account
-              if (accountDocumentId) {
-                try {
-                  await updateAccount({
-                    variables: {
-                      documentId: accountDocumentId,
-                      data: {
-                        localtunes_integrated: "Yes"
-                      }
-                    }
-                  });
-                  console.log('Account localtunes_integrated updated successfully');
-                  localTunesIntegrated = true;
-                  localTunesRegistrationSuccessful = true;
-                } catch (updateError) {
-                  console.warn('Failed to update account localtunes_integrated:', updateError);
-                }
-              }
-
-              toast.success('Local Tunes account created successfully!');
-              removeUserCredentials();
-            } else {
-              console.log('Local Tunes account creation failed');
-              toast.info('Subscription activated. Local Tunes account creation will be available later.');
-            }
-          } else {
-            console.log('No stored credentials for Local Tunes');
-            toast.info('Subscription activated. Please connect to Local Tunes from the Music or Settings page.');
-          }
-        }
-      } else {
-        // Not from Music/Settings and not onboarding - no LocalTunes integration required
-        localTunesRegistrationSuccessful = true;
-      }
-
-      // Step 5: Update is_subscribed to true in User collection ONLY if both registration AND subscription creation are successful
-      if (localTunesRegistrationSuccessful) {
-        console.log('Both LocalTunes registration and subscription creation successful. Updating is_subscribed to true...');
-        await updateUserIsSubscribed({
-          variables: {
-            id: authUser.id,
-            data: {
-              is_subscribed: true
-            }
-          }
-        });
-        console.log('is_subscribed updated successfully');
-      } else {
-        console.warn('LocalTunes registration not successful. is_subscribed will not be updated.');
-        toast.warning('Subscription created but LocalTunes integration incomplete. Please complete LocalTunes setup to activate subscription.');
-      }
+      subscriptionWriteUnavailable();
 
       toast.success("Subscription activated successfully!");
 
@@ -557,7 +399,7 @@ const SubscriptionPlans = ({
               <div className="relative bg-black p-4 rounded-2xl border border-dashboard-accent/30">
                 <img
                   src="/locar-tunes.png"
-                  alt="Local Tunes Logo"
+                  alt="Music"
                   className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
@@ -576,7 +418,7 @@ const SubscriptionPlans = ({
             Choose Your Plan
           </h1>
           <p className="text-gray-400 text-base sm:text-lg max-w-2xl mx-auto">
-            Select the perfect subscription plan to unlock Local Tunes features and enhance your music experience
+            Select the perfect subscription plan to unlock Music features and enhance your music experience
           </p>
         </div>
 
@@ -999,6 +841,11 @@ const SubscriptionPlans = ({
       `}</style>
     </div>
   );
+};
+
+const SubscriptionPlans = (props: SubscriptionPlansProps) => {
+  if (!MUSIC_SUBSCRIPTION_FLOWS_ENABLED) return <MusicSubscriptionUnavailable />;
+  return <ActiveSubscriptionPlans {...props} />;
 };
 
 export default SubscriptionPlans;

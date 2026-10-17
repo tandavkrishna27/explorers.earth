@@ -1,50 +1,63 @@
+import { isCanonicalRuntime, getPublicRuntimeConfig } from "../lib/publicRuntimeConfig";
+import { hasAnalyticsConsent } from '../services/explorersAnalyticsClient';
+
+type ClarityQueue = ((...args: unknown[]) => void) & { q?: unknown[][] };
+
 declare global {
   interface Window {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     dataLayer: any[];
     gtag?: (...args: any[]) => void;
     /* eslint-enable @typescript-eslint/no-explicit-any */
+    clarity?: ClarityQueue;
   }
 }
 
-let gaLoaded = false;
+// Preserve the destinations previously bootstrapped directly by index.html.
+export const GA_MEASUREMENT_ID = 'G-C3QBWP3ZSK';
+const CLARITY_PROJECT_ID = 't7xux4xstk';
 
 export const loadAnalytics = (): void => {
-  if (gaLoaded || window.gtag) return;
+  const config = isCanonicalRuntime() ? getPublicRuntimeConfig() : undefined;
+  if (config && !config.analytics?.enabled) return;
+  if (!hasAnalyticsConsent()) return;
+  const measurementId = config?.analytics?.identifier ?? GA_MEASUREMENT_ID;
 
-  const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
-  if (!measurementId) return;
+  // Each vendor is independent: an existing GA global must not skip Clarity.
+  if (!window.gtag) {
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = (...args: unknown[]): void => {
+      window.dataLayer.push(args);
+    };
+    window.gtag('js', new Date());
+    window.gtag('config', measurementId);
 
-  const script = document.createElement('script');
-  script.id = 'ga-script';
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
-  document.head.appendChild(script);
-
-  window.dataLayer = window.dataLayer || [];
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  function gtag(...args: any[]): void {
-    window.dataLayer.push(args);
+    if (!document.getElementById('ga-script')) {
+      const script = document.createElement('script');
+      script.id = 'ga-script';
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
+      document.head.appendChild(script);
+    }
   }
-  /* eslint-enable @typescript-eslint/no-explicit-any */
-  window.gtag = gtag;
-  gtag('js', new Date());
-  gtag('config', measurementId);
 
-  gaLoaded = true;
+  if (!config && !window.clarity) {
+    const clarity: ClarityQueue = (...args) => {
+      (clarity.q ??= []).push(args);
+    };
+    window.clarity = clarity;
+    if (!document.getElementById('clarity-script')) {
+      const script = document.createElement('script');
+      script.id = 'clarity-script';
+      script.async = true;
+      script.src = `https://www.clarity.ms/tag/${CLARITY_PROJECT_ID}`;
+      document.head.appendChild(script);
+    }
+  }
 };
 
 export const initAnalytics = (): void => {
-  const storedConsent = localStorage.getItem('explorers-cookie-consent');
-  if (!storedConsent) return;
-  try {
-    const consent = JSON.parse(storedConsent);
-    if (consent.analytics) {
-      loadAnalytics();
-    }
-  } catch {
-    // ignore parse errors
-  }
+  loadAnalytics();
 };
 
 export default loadAnalytics;

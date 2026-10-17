@@ -1,0 +1,2046 @@
+{
+  "version": 1,
+  "scope": "delivered-auth-profile-books",
+  "inventoryBoundary": "Exact protected fixture discovery must match at every run",
+  "lanes": [
+    {
+      "name": "auth",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/auth.spec.ts",
+      "projects": [
+        "chromium-pr-safe"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+          "titlePath": [
+            "stale local auth never opens a private deep link; public login remains reachable"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+          "titlePath": [
+            "failed Google start returns the routed login form with a retryable error"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+          "titlePath": [
+            "failed recovery start returns the routed recovery form with a retryable error"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+          "titlePath": [
+            "failed logout fences a receiving tab after reload and a newly opened tab"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+          "titlePath": [
+            "real local session gates onboarding and cross-tab logout revokes both tabs"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+          "titlePath": [
+            "purpose-bound proof recovers once against real API and requires a fresh ordinary session"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "profile",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/profile.spec.ts",
+      "projects": [
+        "chromium-pr-safe"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+          "titlePath": [
+            "canonical onboarding and profile round-trip at 1365px"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+          "titlePath": [
+            "canonical onboarding and profile round-trip at 390px"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+          "titlePath": [
+            "canonical navigation: native Books Movies and Games publish and hide through verified owner preferences"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+          "titlePath": [
+            "canonical navigation: external account preference refresh preserves all nine saved rows"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+          "titlePath": [
+            "canonical navigation: external revision contention reports conflict without replay or lost profile update"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/profile.spec.ts",
+          "titlePath": [
+            "canonical navigation: a foreign signed owner cannot read content or mutate another owner preference scope"
+          ],
+          "project": "chromium-pr-safe",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "books",
+      "runner": "tunes/scripts/books-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/books.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/books.spec.ts",
+      "projects": [
+        "books-desktop",
+        "books-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "owner form create, Add with all fields, publication, repeat edits and archive reload"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "owner form create, Add with all fields, publication, repeat edits and archive reload"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "anonymous later list, complete subject children, full eligible hero and modal"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "anonymous later list, complete subject children, full eligible hero and modal"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "cover success, one-slot failure and both fallback remain distinct real API Add outcomes"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "cover success, one-slot failure and both fallback remain distinct real API Add outcomes"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "fresh privacy gates, real bytes, altered owner denial and stale revision retention"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "fresh privacy gates, real bytes, altered owner denial and stale revision retention"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "15 across lists, rejected 16th, staged unpin plus immediate reorder and explicit Save"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "15 across lists, rejected 16th, staged unpin plus immediate reorder and explicit Save"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "snapshot transport failure keeps Add draft and successful retry creates one recommendation"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "snapshot transport failure keeps Add draft and successful retry creates one recommendation"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "Add retry after pin transport failure patches changed draft without duplicate creation or covers"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "Add retry after pin transport failure patches changed draft without duplicate creation or covers"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "committed create with lost response replays original receipt and retains cover identity"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "committed create with lost response replays original receipt and retains cover identity"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "delayed canonical catalog continuation cannot append after query change or search unmount"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "delayed canonical catalog continuation cannot append after query change or search unmount"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "unsent invalid buy URL can be corrected and saved once"
+          ],
+          "project": "books-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/books.spec.ts",
+          "titlePath": [
+            "unsent invalid buy URL can be corrected and saved once"
+          ],
+          "project": "books-mobile",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "lifecycle",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/lifecycle.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+      "projects": [
+        "lifecycle-chromium"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "active Settings requires trimmed feedback and retries one durable submission"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "foreign feedback and stale revision cannot delete an active owner"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "UI deactivation revokes both tabs and the old session"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "UI deletion is cancelled by a real Google recovery callback"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "recovery proof expires and cannot grant ordinary authority"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "concurrent recovery completes exactly once and rejects replay"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "wrong provider identity cannot recover a retained account"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "terminal maintenance preserves tombstone and denies recovery"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "foreign and absent origins cannot mutate lifecycle state"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "delayed old lifecycle response cannot navigate a new owner"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held feedback cannot mutate navigate or log out verified replacement B"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held feedback cannot mutate navigate or log out a fresh verified returning A session"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held deletion completion preserves verified replacement B"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held deletion completion preserves a fresh verified returning A session"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held deactivation completion preserves verified replacement B"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held deactivation completion preserves a fresh verified returning A session"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held recovery completion preserves verified replacement B"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/lifecycle.spec.ts",
+          "titlePath": [
+            "held recovery completion preserves a fresh verified returning A session"
+          ],
+          "project": "lifecycle-chromium",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "movies",
+      "runner": "tunes/scripts/movies-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/movies.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/movies.spec.ts",
+      "projects": [
+        "movies-desktop",
+        "movies-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "owner manual form all fields snapshot repeat edits and archive reload"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "owner manual form all fields snapshot repeat edits and archive reload"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "canonical both-kind provider search resolves typed facts and copies original cast slots"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "canonical both-kind provider search resolves typed facts and copies original cast slots"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "anonymous category later list complete hero and modal preserve zero fields"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "anonymous category later list complete hero and modal preserve zero fields"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "global TMDB taxonomy and signed genre continuation include later list memberships"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "global TMDB taxonomy and signed genre continuation include later list memberships"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "optional provider image failures and immutable replay remain separate from manual snapshots"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "optional provider image failures and immutable replay remain separate from manual snapshots"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "real copied bytes respect fresh list privacy on GET HEAD and conditional reads"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "real copied bytes respect fresh list privacy on GET HEAD and conditional reads"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "foreign owner denial and original edit observation preserve an unsaved stale draft"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "foreign owner denial and original edit observation preserve an unsaved stale draft"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "category-wide fifteen pins reject a sixteenth and retained manager keeps staged selection"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "delayed real canonical search continuation cannot append after query replacement"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "delayed real canonical search continuation cannot append after query replacement"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "manual television zero season is typed and does not acquire provider authority"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "manual television zero season is typed and does not acquire provider authority"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "provider source replacement retires old copied assets while retaining a uploaded snapshot"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "provider source replacement retires old copied assets while retaining a uploaded snapshot"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "public signed continuations deny malformed cross-scope and changed-limit tokens"
+          ],
+          "project": "movies-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/movies.spec.ts",
+          "titlePath": [
+            "public signed continuations deny malformed cross-scope and changed-limit tokens"
+          ],
+          "project": "movies-mobile",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "games",
+      "runner": "tunes/scripts/games-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/games.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/games.spec.ts",
+      "projects": [
+        "games-desktop",
+        "games-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: Home creates a native list and distinct same-title recommendations"
+          ],
+          "project": "games-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: note and creator rating survive edit and reload without provider facts"
+          ],
+          "project": "games-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: complete owner pages preserve memberships reorder and pin position zero"
+          ],
+          "project": "games-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: Keep draft and Publish preserve keyboard decision and public state"
+          ],
+          "project": "games-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: ready uploaded cover and gallery bytes enforce owner public and foreign attachment"
+          ],
+          "project": "games-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: provider unavailable preserves draft and forbids browser credential authority"
+          ],
+          "project": "games-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: anonymous category and list continuation reveal later rows and terminal state"
+          ],
+          "project": "games-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: ancestor hide archive and suspension deny fresh and inflight public bytes"
+          ],
+          "project": "games-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: two anonymous contexts and username transition never reuse private or late rows"
+          ],
+          "project": "games-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: account and route changes fence every deferred save continuation"
+          ],
+          "project": "games-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: Home creates a native list and distinct same-title recommendations"
+          ],
+          "project": "games-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: note and creator rating survive edit and reload without provider facts"
+          ],
+          "project": "games-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: complete owner pages preserve memberships reorder and pin position zero"
+          ],
+          "project": "games-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: Keep draft and Publish preserve keyboard decision and public state"
+          ],
+          "project": "games-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: ready uploaded cover and gallery bytes enforce owner public and foreign attachment"
+          ],
+          "project": "games-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: provider unavailable preserves draft and forbids browser credential authority"
+          ],
+          "project": "games-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: anonymous category and list continuation reveal later rows and terminal state"
+          ],
+          "project": "games-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: ancestor hide archive and suspension deny fresh and inflight public bytes"
+          ],
+          "project": "games-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: two anonymous contexts and username transition never reuse private or late rows"
+          ],
+          "project": "games-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/games.spec.ts",
+          "titlePath": [
+            "Games manual: account and route changes fence every deferred save continuation"
+          ],
+          "project": "games-mobile",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "music",
+      "runner": "tunes/scripts/canonical-music-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/music.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/music.spec.ts",
+      "projects": [
+        "music-desktop",
+        "music-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "canonical cookie ensure opens one owner workspace and survives reload"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "owner playlists songs queue playback and history preserve transactions"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "foreign playlist song and venue identifiers deny owner access"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "expired owner credential refresh safely replays one mutation"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "transport reconnect mints a new HTTP socket ticket"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "browser sign out revokes same session activity and preserves another session"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "owner publication replay and stale revisions preserve public state"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "guest request owner acceptance and player updates use separate authority"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "public unlisted and revoked sharing deny hidden data"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "newer public revisions survive delayed and out of order notifications"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "provider outage and retry preserve owner draft and bounded controls"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "origin expiry and guest request limits fail closed"
+          ],
+          "project": "music-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "canonical cookie ensure opens one owner workspace and survives reload"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "owner playlists songs queue playback and history preserve transactions"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "foreign playlist song and venue identifiers deny owner access"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "expired owner credential refresh safely replays one mutation"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "transport reconnect mints a new HTTP socket ticket"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "browser sign out revokes same session activity and preserves another session"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "owner publication replay and stale revisions preserve public state"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "guest request owner acceptance and player updates use separate authority"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "public unlisted and revoked sharing deny hidden data"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "newer public revisions survive delayed and out of order notifications"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "provider outage and retry preserve owner draft and bounded controls"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/music.spec.ts",
+          "titlePath": [
+            "origin expiry and guest request limits fail closed"
+          ],
+          "project": "music-mobile",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "places",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/places.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/places.spec.ts",
+      "projects": [
+        "places-desktop",
+        "places-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: retained location create edit and reload preserve zero and absent coordinates"
+          ],
+          "project": "places-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: complete owner and anonymous pages contain every seeded list and recommendation"
+          ],
+          "project": "places-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: owned image bytes disappear after the final public attachment is hidden"
+          ],
+          "project": "places-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: foreign owner edits and private contact reads cannot disclose owner data"
+          ],
+          "project": "places-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: retained location create edit and reload preserve zero and absent coordinates"
+          ],
+          "project": "places-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: complete owner and anonymous pages contain every seeded list and recommendation"
+          ],
+          "project": "places-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: owned image bytes disappear after the final public attachment is hidden"
+          ],
+          "project": "places-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: foreign owner edits and private contact reads cannot disclose owner data"
+          ],
+          "project": "places-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive pinned-first owner traversal and signed seek survive reload and list navigation"
+          ],
+          "project": "places-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive public pinned pages omit private members and restart without mixed rows"
+          ],
+          "project": "places-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive complete70 staged pin order commits in advertised chunks and replays a lost acknowledgement once"
+          ],
+          "project": "places-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive complete70 resource refusal and session replacement keep the returned fence authoritative"
+          ],
+          "project": "places-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive pinned-first owner traversal and signed seek survive reload and list navigation"
+          ],
+          "project": "places-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive public pinned pages omit private members and restart without mixed rows"
+          ],
+          "project": "places-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive complete70 staged pin order commits in advertised chunks and replays a lost acknowledgement once"
+          ],
+          "project": "places-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive complete70 resource refusal and session replacement keep the returned fence authoritative"
+          ],
+          "project": "places-mobile",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "place-links",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/place-links.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/place-links.spec.ts",
+      "projects": [
+        "place-links-desktop",
+        "place-links-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+          "titlePath": [
+            "Place links: existing Products and People lists attach detach and survive reload"
+          ],
+          "project": "place-links-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+          "titlePath": [
+            "Place links: retained create forms atomically create and link Products and People lists"
+          ],
+          "project": "place-links-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+          "titlePath": [
+            "Place links: public children obey parent child category and account visibility"
+          ],
+          "project": "place-links-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+          "titlePath": [
+            "Place links: stale and foreign link commands preserve both lists"
+          ],
+          "project": "place-links-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+          "titlePath": [
+            "Place links: existing Products and People lists attach detach and survive reload"
+          ],
+          "project": "place-links-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+          "titlePath": [
+            "Place links: retained create forms atomically create and link Products and People lists"
+          ],
+          "project": "place-links-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+          "titlePath": [
+            "Place links: public children obey parent child category and account visibility"
+          ],
+          "project": "place-links-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/place-links.spec.ts",
+          "titlePath": [
+            "Place links: stale and foreign link commands preserve both lists"
+          ],
+          "project": "place-links-mobile",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "apps",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/apps.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/apps.spec.ts",
+      "projects": [
+        "apps-desktop",
+        "apps-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: list and complete typed recommendation create edit archive and reload"
+          ],
+          "project": "apps-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: ordered owned screenshots replacement and visibility enforce real bytes"
+          ],
+          "project": "apps-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: Keep Draft Publish and ancestor withdrawal preserve public state"
+          ],
+          "project": "apps-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: category top picks save reorder unpin and limit survive reload"
+          ],
+          "project": "apps-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: list and complete typed recommendation create edit archive and reload"
+          ],
+          "project": "apps-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: ordered owned screenshots replacement and visibility enforce real bytes"
+          ],
+          "project": "apps-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: Keep Draft Publish and ancestor withdrawal preserve public state"
+          ],
+          "project": "apps-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps.spec.ts",
+          "titlePath": [
+            "Apps manual: category top picks save reorder unpin and limit survive reload"
+          ],
+          "project": "apps-mobile",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "guides",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/guides.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/guides.spec.ts",
+      "projects": [
+        "guides-desktop",
+        "guides-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: complete non-ASCII wizard metadata and creator categories survive reload"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: retained section editors preserve every untouched block after reload"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: stale sections retain drafts and wrong guide owner matches missing"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: section reorder deletion and archive preserve exact persisted scope"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: complete owner and public guide pages retain every section and filter order"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: native cover failure preserves old bytes and fresh retry replaces cover"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: native section photo import persists metadata and public views after reload"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: publication pin and ancestor withdrawal enforce cold public media access"
+          ],
+          "project": "guides-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: complete non-ASCII wizard metadata and creator categories survive reload"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: retained section editors preserve every untouched block after reload"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: stale sections retain drafts and wrong guide owner matches missing"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: section reorder deletion and archive preserve exact persisted scope"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: complete owner and public guide pages retain every section and filter order"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: native cover failure preserves old bytes and fresh retry replaces cover"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: native section photo import persists metadata and public views after reload"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/guides.spec.ts",
+          "titlePath": [
+            "Guides: publication pin and ancestor withdrawal enforce cold public media access"
+          ],
+          "project": "guides-mobile",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "public-parity",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/public-parity.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+      "projects": [
+        "public-parity-desktop",
+        "public-parity-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: eight canonical category and nested cold entries render owned positive content"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: category list item catalog and guide continuations preserve every ordered seeded ID"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: same slugs resolve independently for two owners and canonical handles"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: profile category list and item visibility refuse hidden anonymous and foreign reads"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: missing private draft and archived details share the public unavailable response"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: account and category withdrawal deny previously issued continuation cursors"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: unpublish revalidation never returns cached private content as 304"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: logout and account replacement cannot reuse another account public cache"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: cross tab unpublish remains hidden during failed and stale refresh"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: duplicate and wrong account invalidations preserve the correct profile"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: rapid username changes and history never reveal a late previous profile"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: invalid handles and terminal API failures release the cold entry overlay"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: uploaded images videos and ranges obey every media ancestor boundary"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: pinned navigation top picks themes and fallback attribution remain compatible"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: genre subject sector and linked child routes render eligible nested content"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: keyboard focus and long names preserve the baseline public shells"
+          ],
+          "project": "public-parity-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: eight canonical category and nested cold entries render owned positive content"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: category list item catalog and guide continuations preserve every ordered seeded ID"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: same slugs resolve independently for two owners and canonical handles"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: profile category list and item visibility refuse hidden anonymous and foreign reads"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: missing private draft and archived details share the public unavailable response"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: account and category withdrawal deny previously issued continuation cursors"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: unpublish revalidation never returns cached private content as 304"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: logout and account replacement cannot reuse another account public cache"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: cross tab unpublish remains hidden during failed and stale refresh"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: duplicate and wrong account invalidations preserve the correct profile"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: rapid username changes and history never reveal a late previous profile"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: invalid handles and terminal API failures release the cold entry overlay"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: uploaded images videos and ranges obey every media ancestor boundary"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: pinned navigation top picks themes and fallback attribution remain compatible"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: genre subject sector and linked child routes render eligible nested content"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/public-parity.spec.ts",
+          "titlePath": [
+            "Public parity: keyboard focus and long names preserve the baseline public shells"
+          ],
+          "project": "public-parity-mobile",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "people",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/people.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/people.spec.ts",
+      "projects": [
+        "people-desktop",
+        "people-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: native manual list and typed person create edit and reload preserve nullable facts and notes"
+          ],
+          "project": "people-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: same-name records and matching account handles remain distinct without identity authority"
+          ],
+          "project": "people-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: shared-person presentation and immutable handle preserve owner isolation and stale drafts"
+          ],
+          "project": "people-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: native draft publication and public detail retain explicit social fields without private owner data"
+          ],
+          "project": "people-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: pre-suppressed public omission preserves the original owner record and eligible control"
+          ],
+          "project": "people-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: configured-empty sector input preserves ordinary recommendations and refuses unknown public sectors"
+          ],
+          "project": "people-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: native manual list and typed person create edit and reload preserve nullable facts and notes"
+          ],
+          "project": "people-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: same-name records and matching account handles remain distinct without identity authority"
+          ],
+          "project": "people-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: shared-person presentation and immutable handle preserve owner isolation and stale drafts"
+          ],
+          "project": "people-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: native draft publication and public detail retain explicit social fields without private owner data"
+          ],
+          "project": "people-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: pre-suppressed public omission preserves the original owner record and eligible control"
+          ],
+          "project": "people-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/people.spec.ts",
+          "titlePath": [
+            "People: configured-empty sector input preserves ordinary recommendations and refuses unknown public sectors"
+          ],
+          "project": "people-mobile",
+          "repeat": 0
+        }
+      ]
+    },
+    {
+      "name": "apps-enrichment",
+      "runner": "tunes/scripts/profile-browser-fixture.ts",
+      "config": "explorers-earth/e2e/replatform/apps-enrichment.playwright.config.ts",
+      "spec": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+      "projects": [
+        "apps-desktop",
+        "apps-mobile"
+      ],
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+          "titlePath": [
+            "Apps enrichment: explicit approved source choices and selected-field acceptance survive reload"
+          ],
+          "project": "apps-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+          "titlePath": [
+            "Apps enrichment: disable same-source re-enable and different-source rebind preserve manual values"
+          ],
+          "project": "apps-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+          "titlePath": [
+            "Apps enrichment: explicit approved source choices and selected-field acceptance survive reload"
+          ],
+          "project": "apps-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/apps-enrichment.spec.ts",
+          "titlePath": [
+            "Apps enrichment: disable same-source re-enable and different-source rebind preserve manual values"
+          ],
+          "project": "apps-mobile",
+          "repeat": 0
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "Auth is one Chromium desktop project",
+    "Profile uses two viewport cases in one desktop project; 390px is not a mobile device project",
+    "Books has desktop and mobile Chromium projects",
+    "Lifecycle is one Chromium desktop project; provider simulation is not deployed Google acceptance",
+    "The stable delivered-auth-profile-books CLI scope is a compatibility identifier; actual scope includes Movies desktop/mobile Chromium in its separate exact24-identity lane, not live TMDB or deployed QA qualification.",
+    "Places and place-links append16 proposed local identities; Maps selection and Google REST are simulated with no provider photo import. Linked arrays are bounded12, Places traversal53 is distinct from all-category parity.",
+    "Apps adds eight manual desktop/mobile Chromium identities; native source integration and protected execution remain unqualified; no nightly provider fetch, scheduler or complete public pagination evidence.",
+    "Guides adds sixteen complete desktop/mobile Chromium source identities; clean frozen exact-head discovery and protected native execution remain unqualified. Public32 and new feature obligations remain mandatory."
+  ],
+  "pending": [
+    {
+      "ticket": "2.4",
+      "obligation": "Configured deployed Google callback and consent evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.4",
+      "obligation": "Analytics acceptance",
+      "status": "pending"
+    },
+    {
+      "ticket": "3.5",
+      "obligation": "Unified QA deployment, image/schema and trusted producer evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "4/5",
+      "obligation": "Remaining canonical category producer families and their own acceptance evidence",
+      "status": "pending"
+    },
+    {
+      "ticket": "6.1-6.3",
+      "obligation": "Music mapped-owner HTTP/socket and feature parity",
+      "status": "pending"
+    },
+    {
+      "ticket": "7.1/7.2",
+      "obligation": "Cross-category consumers and all nine categories",
+      "status": "pending"
+    },
+    {
+      "ticket": "8.1-8.4",
+      "obligation": "Removal, rename, exact QA digest promotion and deployment",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.1/5.2",
+      "obligation": "Places/link16 proposed inventory awaits independent source review and actual protected execution; provider photo/gallery closure, taxonomy/pins and hosted acceptance remain pending",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.3/5.4",
+      "obligation": "Apps manual8 awaits integrated owned fixture and protected native execution; provider enrichment, taxonomy and complete public pagination remain independently pending",
+      "status": "pending"
+    },
+    {
+      "ticket": "5.5/5.6",
+      "obligation": "Guides complete16 awaits independently reviewed clean exact-head discovery and protected owned native execution; Public32 and new feature acceptance remain pending",
+      "status": "pending"
+    }
+  ],
+  "scopeContents": [
+    "auth",
+    "profile",
+    "books",
+    "lifecycle",
+    "movies",
+    "games",
+    "music",
+    "places",
+    "place-links",
+    "apps",
+    "guides",
+    "public-parity",
+    "people",
+    "apps-enrichment"
+  ],
+  "scopeCompatibilityIdentifier": true,
+  "additiveRegistrations": [
+    {
+      "scope": "places-pins-p2-reader-p3-complete70",
+      "lane": "places",
+      "originalIdentityCount": 8,
+      "originalIdentityDigest": "02f972f77de8e2d236989077c1cbca4e723cfb7f977871f4116bef39a890eda7",
+      "status": "authored-not-executed",
+      "qualified": false,
+      "note": "Registered separately from the original eleven lanes and 158 identities, which are unchanged. No native run has executed any identity in this block, so none of them is qualified; the full native inventory has never had a complete pass.",
+      "identities": [
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive pinned-first owner traversal and signed seek survive reload and list navigation"
+          ],
+          "project": "places-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive public pinned pages omit private members and restart without mixed rows"
+          ],
+          "project": "places-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive complete70 staged pin order commits in advertised chunks and replays a lost acknowledgement once"
+          ],
+          "project": "places-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive complete70 resource refusal and session replacement keep the returned fence authoritative"
+          ],
+          "project": "places-desktop",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive pinned-first owner traversal and signed seek survive reload and list navigation"
+          ],
+          "project": "places-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive public pinned pages omit private members and restart without mixed rows"
+          ],
+          "project": "places-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive complete70 staged pin order commits in advertised chunks and replays a lost acknowledgement once"
+          ],
+          "project": "places-mobile",
+          "repeat": 0
+        },
+        {
+          "file": "explorers-earth/e2e/replatform/places.spec.ts",
+          "titlePath": [
+            "Places: additive complete70 resource refusal and session replacement keep the returned fence authoritative"
+          ],
+          "project": "places-mobile",
+          "repeat": 0
+        }
+      ],
+      "fixturePrerequisites": [
+        "The owned Places fixture must declare these four case identifiers before they can run; an undeclared case is refused at reset, so today these identities fail at setup rather than reporting a pass.",
+        "The owned Places seed plan must seed one list whose complete active membership is the complete70 acceptance size. 70 is an acceptance fixture size, never a product pin cap.",
+        "The owned Places fixture must supply its labelled synthetic place-pins policy. With no policy configured the feature is correctly unavailable and these identities cannot pass; no client default may stand in for it.",
+        "The existing resource-free contract that pins the declared Places case list at four entries belongs to the fixture owner and must be updated with those declarations."
+      ]
+    }
+  ]
+}

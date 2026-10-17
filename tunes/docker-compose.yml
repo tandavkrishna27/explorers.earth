@@ -1,77 +1,8 @@
-services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - VITE_API_URL=${VITE_API_URL}
-        - VITE_REST_API_URL=${VITE_REST_API_URL}
-        - VITE_PUBLIC_ACCESS_TOKEN=${VITE_PUBLIC_ACCESS_TOKEN}
+# This file is intentionally non-runnable.
+x-explorers-compose-authority:
+  status: superseded
+  production: ../docker-compose.yml
+  disposable: ../docker-compose.music-test.yml
+  reason: Root Compose owns production and music-test owns disposable rehearsal.
 
-    ports:
-      - "5001:5000"
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL}
-      - SESSION_SECRET=${SESSION_SECRET}
-      - COOKIE_SECRET=${COOKIE_SECRET}
-      - EMAIL_HOST=${EMAIL_HOST}
-      - EMAIL_PORT=${EMAIL_PORT}
-      - EMAIL_USER=${EMAIL_USER}
-      - EMAIL_PASS=${EMAIL_PASS}
-      - EMAIL_FROM=${EMAIL_FROM}
-      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
-      - CLARITY_PROJECT_ID=${CLARITY_PROJECT_ID}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
-      - STRAPI_URL=${STRAPI_URL}
-      - STRAPI_ACCESS_TOKEN=${STRAPI_ACCESS_TOKEN}
-      - STRAPI_GRAPHQL_ENDPOINT=${STRAPI_GRAPHQL_ENDPOINT}
-      - STRAPI_API_KEY=${STRAPI_API_KEY}
-      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
-      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
-      - SPOTIFY_REFRESH_TOKEN=${SPOTIFY_REFRESH_TOKEN}
-      - SPOTIFY_REDIRECT_URI=${SPOTIFY_REDIRECT_URI}
-      - RAZORPAY_KEY_ID_DEV=${RAZORPAY_KEY_ID_DEV}
-      - RAZORPAY_KEY_SECRET_DEV=${RAZORPAY_KEY_SECRET_DEV}
-      - RAZORPAY_PLAN_ID_MONTHLY_DEV=${RAZORPAY_PLAN_ID_MONTHLY_DEV}
-      - RAZORPAY_PLAN_ID_MONTHLY_PRO_DEV=${RAZORPAY_PLAN_ID_MONTHLY_PRO_DEV}
-      - RAZORPAY_PLAN_ID_YEARLY_DEV=${RAZORPAY_PLAN_ID_YEARLY_DEV}
-      - RAZORPAY_PLAN_ID_YEARLY_PRO_DEV=${RAZORPAY_PLAN_ID_YEARLY_PRO_DEV}
-      - RAZORPAY_KEY_ID_PROD=${RAZORPAY_KEY_ID_PROD}
-      - RAZORPAY_KEY_SECRET_PROD=${RAZORPAY_KEY_SECRET_PROD}
-      - RAZORPAY_PLAN_ID_MONTHLY_PROD=${RAZORPAY_PLAN_ID_MONTHLY_PROD}
-      - RAZORPAY_PLAN_ID_MONTHLY_PRO_PROD=${RAZORPAY_PLAN_ID_MONTHLY_PRO_PROD}
-      - RAZORPAY_PLAN_ID_YEARLY_PROD=${RAZORPAY_PLAN_ID_YEARLY_PROD}
-      - RAZORPAY_PLAN_ID_YEARLY_PRO_PROD=${RAZORPAY_PLAN_ID_YEARLY_PRO_PROD}
-      - VITE_API_URL=${VITE_API_URL}
-      - VITE_REST_API_URL=${VITE_REST_API_URL}
-      - VITE_PUBLIC_ACCESS_TOKEN=${VITE_PUBLIC_ACCESS_TOKEN}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-
-    depends_on:
-      - db
-    restart: unless-stopped
-    networks:
-      - cosmic-network
-
-  db:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_USER=${DB_USER:-cosmic}
-      - POSTGRES_PASSWORD=${DB_PASS:-cosmicpass}
-      - POSTGRES_DB=${DB_NAME:-cosmic}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    ports:
-      - "5433:5432"
-    restart: unless-stopped
-    networks:
-      - cosmic-network
-
-networks:
-  cosmic-network:
-    driver: bridge
-
-volumes:
-  postgres-data:
+services: {}

@@ -1,179 +1,263 @@
-# docker-compose.yml
-# Root-level orchestration for the explorers.earth monorepo on Hetzner.
-#
-# Services:
-#   traefik   - Reverse proxy with automatic Let's Encrypt TLS
-#   db        - PostgreSQL 15 (internal only, not internet-exposed)
-#   tunes     - Node.js/Express + React SPA (localtunes.earth)
-#   explorers - Static React SPA served by Nginx (explorers.earth)
-#
-# Networks:
-#   proxy    - Traefik-facing network (traefik + app containers)
-#   internal - Private network for DB access (db + tunes only, no internet egress)
+# Sole production Compose authority for explorers.earth.
+# Tunes is blue/green: neither slot owns a Traefik Docker route. The deploy
+# authority atomically replaces /opt/explorers/deployment-routing/music-router.yml
+# only after the private candidate passes the same-image gate and readiness.
+name: explorers-production
 
-version: "3.9"
+x-tunes-environment: &tunes-environment
+  NODE_ENV: production
+  EXPLORERS_API_MODE: legacy-music
+  PORT: "5000"
+  MUSIC_DATABASE_HOST: db
+  MUSIC_DATABASE_PORT: "5432"
+  MUSIC_DATABASE_NAME: ${DB_NAME:?DB_NAME is required}
+  MUSIC_DATABASE_USER: ${DB_RUNTIME_USER:?DB_RUNTIME_USER is required}
+  MUSIC_DATABASE_MIGRATOR_USER: ${DB_MIGRATOR_USER:?DB_MIGRATOR_USER is required}
+  MUSIC_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
+  SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+  COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required}
+  STRAPI_URL: ${STRAPI_URL:?STRAPI_URL is required}
+  MUSIC_MODE: live
+  MUSIC_STRAPI_ALLOWED_ORIGINS: ${MUSIC_STRAPI_ALLOWED_ORIGINS:?MUSIC_STRAPI_ALLOWED_ORIGINS is required}
+  TRUST_PROXY_HOPS: "1"
+  MUSIC_TRUSTED_PROXY_IP: ${TRAEFIK_PROXY_IP:-172.31.250.2}
+  STRAPI_ACCESS_TOKEN: ${STRAPI_ACCESS_TOKEN:?STRAPI_ACCESS_TOKEN is required}
+  STRAPI_ANALYTICS_ACCESS_TOKEN: ${STRAPI_ANALYTICS_ACCESS_TOKEN:?STRAPI_ANALYTICS_ACCESS_TOKEN is required}
+  STRAPI_LIFECYCLE_PROOF_TOKEN_FILE: /run/secrets/strapi-lifecycle-proof
+  STRAPI_JWT_SECRET: ${STRAPI_JWT_SECRET:?STRAPI_JWT_SECRET is required}
+  STRAPI_GRAPHQL_ENDPOINT: ${STRAPI_GRAPHQL_ENDPOINT:-}
+  STRAPI_API_KEY: ${STRAPI_API_KEY:-}
+  EMAIL_HOST: ${EMAIL_HOST:-}
+  EMAIL_PORT: ${EMAIL_PORT:-}
+  EMAIL_USER: ${EMAIL_USER:-}
+  EMAIL_PASS: ${EMAIL_PASS:-}
+  EMAIL_FROM: ${EMAIL_FROM:-}
+  AWS_REGION: ${AWS_REGION:-}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+  YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  CLARITY_PROJECT_ID: ${CLARITY_PROJECT_ID:-}
+  SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
+  SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
+  SPOTIFY_REFRESH_TOKEN: ${SPOTIFY_REFRESH_TOKEN:-}
+  SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-}
+  RAZORPAY_KEY_ID_PROD: ${RAZORPAY_KEY_ID_PROD:-}
+  RAZORPAY_KEY_SECRET_PROD: ${RAZORPAY_KEY_SECRET_PROD:-}
+  RAZORPAY_PLAN_ID_MONTHLY_PROD: ${RAZORPAY_PLAN_ID_MONTHLY_PROD:-}
+  RAZORPAY_PLAN_ID_MONTHLY_PRO_PROD: ${RAZORPAY_PLAN_ID_MONTHLY_PRO_PROD:-}
+  RAZORPAY_PLAN_ID_YEARLY_PROD: ${RAZORPAY_PLAN_ID_YEARLY_PROD:-}
+  RAZORPAY_PLAN_ID_YEARLY_PRO_PROD: ${RAZORPAY_PLAN_ID_YEARLY_PRO_PROD:-}
+  MUSIC_GATE_ATTESTATION_KEY: ${MUSIC_GATE_ATTESTATION_KEY:?MUSIC_GATE_ATTESTATION_KEY is required}
+  MUSIC_DEPLOYMENT_HEALTH_ENABLED: "true"
+  MUSIC_NEW_ENTRY_KILL_SWITCH: ${MUSIC_NEW_ENTRY_KILL_SWITCH:-true}
+  MUSIC_COHORT_ENABLED: ${MUSIC_COHORT_ENABLED:-false}
+  MUSIC_COHORT_USER_DOCUMENT_IDS: ${MUSIC_COHORT_USER_DOCUMENT_IDS:-}
+  MUSIC_WORKSPACE_KILL_SWITCH: ${MUSIC_WORKSPACE_KILL_SWITCH:-true}
+  MUSIC_FEATURE_COHORT_SALT: ${MUSIC_FEATURE_COHORT_SALT:-}
+  MUSIC_FEATURE_COHORT_VERSION: ${MUSIC_FEATURE_COHORT_VERSION:-disabled-v1}
+  MUSIC_FEATURE_OWNER_WORKSPACE_ALLOWLIST: ${MUSIC_FEATURE_OWNER_WORKSPACE_ALLOWLIST:-}
+  MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: ${MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT:-0}
+  MUSIC_FEATURE_GUEST_WORKSPACE_ALLOWLIST: ${MUSIC_FEATURE_GUEST_WORKSPACE_ALLOWLIST:-}
+  MUSIC_FEATURE_GUEST_WORKSPACE_PERCENT: ${MUSIC_FEATURE_GUEST_WORKSPACE_PERCENT:-0}
+  MUSIC_FEATURE_PLAYLIST_IMPORTS_ALLOWLIST: ${MUSIC_FEATURE_PLAYLIST_IMPORTS_ALLOWLIST:-}
+  MUSIC_FEATURE_PLAYLIST_IMPORTS_PERCENT: ${MUSIC_FEATURE_PLAYLIST_IMPORTS_PERCENT:-0}
+  MUSIC_IDENTITY_MAX_CONCURRENCY: ${MUSIC_IDENTITY_MAX_CONCURRENCY:-8}
+  MUSIC_IDENTITY_MAX_PENDING: ${MUSIC_IDENTITY_MAX_PENDING:-32}
+  MUSIC_IDENTITY_MAX_INFLIGHT: ${MUSIC_IDENTITY_MAX_INFLIGHT:-32}
+  MUSIC_IDENTITY_RETRIES: ${MUSIC_IDENTITY_RETRIES:-2}
+  MUSIC_CONNECT_TIMEOUT_MS: ${MUSIC_CONNECT_TIMEOUT_MS:-2000}
+  MUSIC_READ_TIMEOUT_MS: ${MUSIC_READ_TIMEOUT_MS:-4000}
+  MUSIC_IDENTITY_OVERALL_TIMEOUT_MS: ${MUSIC_IDENTITY_OVERALL_TIMEOUT_MS:-10000}
+  MUSIC_IDENTITY_CACHE_TTL_MS: ${MUSIC_IDENTITY_CACHE_TTL_MS:-30000}
+  MUSIC_CIRCUIT_FAILURE_THRESHOLD: ${MUSIC_CIRCUIT_FAILURE_THRESHOLD:-3}
+  MUSIC_IDENTITY_CIRCUIT_OPEN_MS: ${MUSIC_IDENTITY_CIRCUIT_OPEN_MS:-15000}
+  MUSIC_RATE_LIMIT_PER_MINUTE: ${MUSIC_RATE_LIMIT_PER_MINUTE:-30}
+  MUSIC_IDENTITY_GLOBAL_RATE_PER_MINUTE: ${MUSIC_IDENTITY_GLOBAL_RATE_PER_MINUTE:-300}
+  MUSIC_IDENTITY_RATE_MAX_ENTRIES: ${MUSIC_IDENTITY_RATE_MAX_ENTRIES:-10000}
+  MUSIC_TOKEN_CURRENT_KID: ${MUSIC_TOKEN_CURRENT_KID:?MUSIC_TOKEN_CURRENT_KID is required}
+  MUSIC_TOKEN_CURRENT_SECRET_FILE: /run/secrets/music-token/current
+  MUSIC_TOKEN_LIFETIME_SECONDS: "600"
+  MUSIC_TOKEN_CLOCK_SKEW_SECONDS: ${MUSIC_TOKEN_CLOCK_SKEW_SECONDS:-15}
+  MUSIC_TOKEN_PREVIOUS_KID: ${MUSIC_TOKEN_PREVIOUS_KID:-}
+  MUSIC_TOKEN_PREVIOUS_SECRET_FILE: ${MUSIC_TOKEN_PREVIOUS_SECRET_FILE:-}
+  MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL: ${MUSIC_TOKEN_PREVIOUS_ACCEPT_UNTIL:-}
+  MUSIC_PUBLICATION_RESPONSE_CURRENT_KID: ${MUSIC_PUBLICATION_RESPONSE_CURRENT_KID:?MUSIC_PUBLICATION_RESPONSE_CURRENT_KID is required}
+  MUSIC_PUBLICATION_RESPONSE_CURRENT_KEY_FILE: /run/secrets/music-publication-response/current
+  MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID: ${MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KID:-}
+  MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE: ${MUSIC_PUBLICATION_RESPONSE_PREVIOUS_KEY_FILE:-}
+  MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL: ${MUSIC_PUBLICATION_RESPONSE_PREVIOUS_ACCEPT_UNTIL:-}
+  MUSIC_PUBLIC_ID_HMAC_KEY_FILE: /run/secrets/music-publication-response/public-id
+  ALLOWED_ORIGINS: https://localtunes.earth,https://explorers.earth
+  EXPLORERS_MEDIA_ENVIRONMENT: ${EXPLORERS_MEDIA_ENVIRONMENT:?EXPLORERS_MEDIA_ENVIRONMENT is required}
+  EXPLORERS_DEPLOYMENT_TIER: ${EXPLORERS_DEPLOYMENT_TIER:?EXPLORERS_DEPLOYMENT_TIER is required}
+  EXPLORERS_MEDIA_S3_BUCKET: ${EXPLORERS_MEDIA_S3_BUCKET:?EXPLORERS_MEDIA_S3_BUCKET is required}
+  EXPLORERS_MEDIA_S3_REGION: ${EXPLORERS_MEDIA_S3_REGION:?EXPLORERS_MEDIA_S3_REGION is required}
+
+x-tunes-service: &tunes-service
+  restart: unless-stopped
+  depends_on:
+    db:
+      condition: service_healthy
+  volumes:
+    - music-gate-attestations:/deployment-gates:ro
+    - ${MUSIC_TOKEN_SECRET_DIRECTORY_HOST:?MUSIC_TOKEN_SECRET_DIRECTORY_HOST is required}:/run/secrets/music-token:ro
+    - ${MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST:?MUSIC_PUBLICATION_RESPONSE_KEY_DIRECTORY_HOST is required}:/run/secrets/music-publication-response:ro
+    - ${DB_RUNTIME_PASSWORD_FILE_HOST:?DB_RUNTIME_PASSWORD_FILE_HOST is required}:/run/secrets/music-db-runtime:ro
+    - ${STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST:?STRAPI_LIFECYCLE_PROOF_TOKEN_FILE_HOST is required}:/run/secrets/strapi-lifecycle-proof:ro
+  networks:
+    - proxy
+    - internal
+  healthcheck:
+    test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+    interval: 15s
+    timeout: 3s
+    retries: 3
 
 services:
-
-  # ── Traefik Reverse Proxy + Automatic SSL ──────────────────────────────────
   traefik:
     image: traefik:v3.1
-    container_name: traefik
     restart: unless-stopped
     command:
-      # Dashboard disabled in production (enable temporarily for debugging if needed)
-      - "--api.dashboard=false"
-
-      # Docker provider — Traefik watches container labels for routing config
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-
-      # Entrypoints
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-
-      # Auto-redirect all HTTP traffic to HTTPS
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
-
-      # Let's Encrypt via TLS-ALPN-01 challenge (no port 80 config needed)
-      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - --api.dashboard=false
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.file.directory=/deployment-routing
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
     ports:
-      - "80:80"
-      - "443:443"
+      - 80:80
+      - 443:443
     volumes:
-      # Docker socket (read-only) so Traefik can watch container events
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # Persist Let's Encrypt certificates across container restarts
       - letsencrypt-data:/letsencrypt
+      - /opt/explorers/deployment-routing:/deployment-routing:ro
     networks:
-      - proxy
+      proxy:
+        ipv4_address: ${TRAEFIK_PROXY_IP:-172.31.250.2}
 
-  # ── PostgreSQL Database ────────────────────────────────────────────────────
   db:
     image: postgres:15-alpine
-    container_name: tunes-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASS}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_MIGRATOR_USER:?DB_MIGRATOR_USER is required}
+      POSTGRES_PASSWORD_FILE: /run/secrets/music-db-migrator
+      POSTGRES_DB: ${DB_NAME:?DB_NAME is required}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    # ⚠️  NO ports: mapping — the database is ONLY accessible within the
-    #     internal Docker network. It is completely unreachable from the internet.
+      - ${DB_MIGRATOR_PASSWORD_FILE_HOST:?DB_MIGRATOR_PASSWORD_FILE_HOST is required}:/run/secrets/music-db-migrator:ro
     networks:
       - internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
 
-  # ── Tunes Application (Node.js + Express + React Frontend) ────────────────
-  tunes:
-    image: ghcr.io/${GITHUB_REPOSITORY_LOWER}/tunes:${IMAGE_TAG:-latest}
-    container_name: tunes-app
-    restart: unless-stopped
+  tunes-blue:
+    <<: *tunes-service
+    image: ${TUNES_BLUE_IMAGE:?TUNES_BLUE_IMAGE must be ghcr.io owner explorers-tunes at sha256 digest}
     environment:
-      NODE_ENV: production
-      PORT: 5000
+      <<: *tunes-environment
+      MUSIC_IMAGE_DIGEST: ${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}
+      MUSIC_IMAGE_COMMIT: ${TUNES_BLUE_COMMIT:?TUNES_BLUE_COMMIT is required}
+      MUSIC_MIGRATION_MARKER: ${TUNES_BLUE_MIGRATION:-0056_explorers_app_enrichment_jobs}
+      MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}.json
+    labels:
+      com.explorers.music.slot: blue
+      com.explorers.music.commit: ${TUNES_BLUE_COMMIT:?TUNES_BLUE_COMMIT is required}
+      com.explorers.music.digest: ${TUNES_BLUE_DIGEST:?TUNES_BLUE_DIGEST is required}
+      com.explorers.music.migration: ${TUNES_BLUE_MIGRATION:-0056_explorers_app_enrichment_jobs}
 
-      # Database — connects to the 'db' service via internal Docker DNS
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASS}@db:5432/${DB_NAME}
+  tunes-green:
+    <<: *tunes-service
+    image: ${TUNES_GREEN_IMAGE:?TUNES_GREEN_IMAGE must be ghcr.io owner explorers-tunes at sha256 digest}
+    environment:
+      <<: *tunes-environment
+      MUSIC_IMAGE_DIGEST: ${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}
+      MUSIC_IMAGE_COMMIT: ${TUNES_GREEN_COMMIT:?TUNES_GREEN_COMMIT is required}
+      MUSIC_MIGRATION_MARKER: ${TUNES_GREEN_MIGRATION:-0056_explorers_app_enrichment_jobs}
+      MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}.json
+    labels:
+      com.explorers.music.slot: green
+      com.explorers.music.commit: ${TUNES_GREEN_COMMIT:?TUNES_GREEN_COMMIT is required}
+      com.explorers.music.digest: ${TUNES_GREEN_DIGEST:?TUNES_GREEN_DIGEST is required}
+      com.explorers.music.migration: ${TUNES_GREEN_MIGRATION:-0056_explorers_app_enrichment_jobs}
 
-      # Auth & Session
-      SESSION_SECRET: ${SESSION_SECRET}
-      COOKIE_SECRET: ${COOKIE_SECRET}
-
-      # CORS — allow requests from both frontend domains
-      ALLOWED_ORIGINS: "https://localtunes.earth,https://explorers.earth"
-
-      # Email (SMTP)
-      EMAIL_HOST: ${EMAIL_HOST}
-      EMAIL_PORT: ${EMAIL_PORT}
-      EMAIL_USER: ${EMAIL_USER}
-      EMAIL_PASS: ${EMAIL_PASS}
-      EMAIL_FROM: ${EMAIL_FROM}
-
-      # AWS SES (alternative to SMTP)
-      AWS_REGION: ${AWS_REGION}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-
-      # External APIs
-      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      CLARITY_PROJECT_ID: ${CLARITY_PROJECT_ID}
-
-      # Strapi (explorers.earth auth backend)
-      STRAPI_URL: ${STRAPI_URL}
-      STRAPI_ACCESS_TOKEN: ${STRAPI_ACCESS_TOKEN}
-      STRAPI_GRAPHQL_ENDPOINT: ${STRAPI_GRAPHQL_ENDPOINT}
-      STRAPI_API_KEY: ${STRAPI_API_KEY}
-
-      # Spotify
-      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID}
-      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET}
-      SPOTIFY_REFRESH_TOKEN: ${SPOTIFY_REFRESH_TOKEN}
-      SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI}
-
-      # Razorpay (production keys)
-      RAZORPAY_KEY_ID_PROD: ${RAZORPAY_KEY_ID_PROD}
-      RAZORPAY_KEY_SECRET_PROD: ${RAZORPAY_KEY_SECRET_PROD}
-      RAZORPAY_PLAN_ID_MONTHLY_PROD: ${RAZORPAY_PLAN_ID_MONTHLY_PROD}
-      RAZORPAY_PLAN_ID_MONTHLY_PRO_PROD: ${RAZORPAY_PLAN_ID_MONTHLY_PRO_PROD}
-      RAZORPAY_PLAN_ID_YEARLY_PROD: ${RAZORPAY_PLAN_ID_YEARLY_PROD}
-      RAZORPAY_PLAN_ID_YEARLY_PRO_PROD: ${RAZORPAY_PLAN_ID_YEARLY_PRO_PROD}
-
+  tunes-gate:
+    profiles: [deployment]
+    image: ${TUNES_CANDIDATE_IMAGE:?TUNES_CANDIDATE_IMAGE must be immutable}
+    restart: "no"
+    command: ["node", "${TUNES_GATE_ENTRYPOINT:-dist/server/deployment/run-migration-gate.js}"]
+    environment:
+      MUSIC_MODE: live
+      MUSIC_DATABASE_HOST: db
+      MUSIC_DATABASE_PORT: "5432"
+      MUSIC_DATABASE_NAME: ${DB_NAME:?DB_NAME is required}
+      MUSIC_DATABASE_USER: ${DB_MIGRATOR_USER:?DB_MIGRATOR_USER is required}
+      MUSIC_DATABASE_PASSWORD_FILE: /run/secrets/music-db-migrator
+      MUSIC_RUNTIME_DATABASE_USER: ${DB_RUNTIME_USER:?DB_RUNTIME_USER is required}
+      MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
+      MUSIC_IMAGE_DIGEST: ${TUNES_CANDIDATE_DIGEST:?TUNES_CANDIDATE_DIGEST is required}
+      MUSIC_IMAGE_COMMIT: ${TUNES_CANDIDATE_COMMIT:?TUNES_CANDIDATE_COMMIT is required}
+      MUSIC_MIGRATION_MARKER: ${TUNES_CANDIDATE_MIGRATION:-0056_explorers_app_enrichment_jobs}
+      MUSIC_GATE_ATTESTATION_KEY: ${MUSIC_GATE_ATTESTATION_KEY:?MUSIC_GATE_ATTESTATION_KEY is required}
+      MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${TUNES_CANDIDATE_DIGEST:?TUNES_CANDIDATE_DIGEST is required}.json
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - music-gate-attestations:/deployment-gates
+      - ${DB_MIGRATOR_PASSWORD_FILE_HOST:?DB_MIGRATOR_PASSWORD_FILE_HOST is required}:/run/secrets/music-db-migrator:ro
+      - ${DB_RUNTIME_PASSWORD_FILE_HOST:?DB_RUNTIME_PASSWORD_FILE_HOST is required}:/run/secrets/music-db-runtime:ro
     networks:
-      - proxy    # Traefik needs to reach this container
-      - internal # Database connection
-    labels:
-      - "traefik.enable=true"
-      # Route all traffic for localtunes.earth to this service
-      - "traefik.http.routers.tunes.rule=Host(`localtunes.earth`)"
-      - "traefik.http.routers.tunes.entrypoints=websecure"
-      - "traefik.http.routers.tunes.tls=true"
-      - "traefik.http.routers.tunes.tls.certresolver=letsencrypt"
-      # Tell Traefik which internal port to forward to
-      - "traefik.http.services.tunes.loadbalancer.server.port=5000"
+      - internal
 
-  # ── Explorers Earth (Static React SPA via Nginx) ──────────────────────────
+  tunes-register-compat:
+    profiles: [deployment]
+    image: ${TUNES_COMPAT_IMAGE:?TUNES_COMPAT_IMAGE must be immutable}
+    restart: unless-stopped
+    command: ["node", "dist/server/deployment/run-registration-compat.js"]
+    environment:
+      PORT: "5100"
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5100/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   explorers:
-    image: ghcr.io/${GITHUB_REPOSITORY_LOWER}/explorers-earth:${IMAGE_TAG:-latest}
-    container_name: explorers-app
+    image: ${EXPLORERS_IMAGE:?EXPLORERS_IMAGE must be immutable}
     restart: unless-stopped
     networks:
       - proxy
     labels:
-      - "traefik.enable=true"
-      # Route all traffic for explorers.earth to this service
-      - "traefik.http.routers.explorers.rule=Host(`explorers.earth`)"
-      - "traefik.http.routers.explorers.entrypoints=websecure"
-      - "traefik.http.routers.explorers.tls=true"
-      - "traefik.http.routers.explorers.tls.certresolver=letsencrypt"
-      # Internal Nginx listens on port 80
-      - "traefik.http.services.explorers.loadbalancer.server.port=80"
+      traefik.enable: "true"
+      traefik.http.routers.explorers.rule: Host(`explorers.earth`)
+      traefik.http.routers.explorers.entrypoints: websecure
+      traefik.http.routers.explorers.tls: "true"
+      traefik.http.routers.explorers.tls.certresolver: letsencrypt
+      traefik.http.services.explorers.loadbalancer.server.port: "80"
 
-# ── Networks ───────────────────────────────────────────────────────────────
 networks:
   proxy:
     driver: bridge
+    ipam:
+      config:
+        - subnet: ${TRAEFIK_PROXY_SUBNET:-172.31.250.0/24}
   internal:
     driver: bridge
-    internal: true  # This network has NO internet egress — DB is isolated
+    internal: true
 
-# ── Volumes ────────────────────────────────────────────────────────────────
 volumes:
   postgres-data:
-    driver: local
   letsencrypt-data:
-    driver: local
+  music-gate-attestations:

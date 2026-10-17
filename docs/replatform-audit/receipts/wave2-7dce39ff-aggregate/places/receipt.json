@@ -1,0 +1,251 @@
+{
+  "version": 1,
+  "lane": "places",
+  "provenance": {
+    "commit": "7dce39ffd22d24de6ce3b2474ffc2dde7920cf06",
+    "sourceHash": "e5bc1ac20ebd1f4e7e5c6a8be249b5a60ab88434de2f43eb307148f6c627ae68",
+    "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+    "dirty": false
+  },
+  "config": "explorers-earth/e2e/replatform/places.playwright.config.ts",
+  "spec": "explorers-earth/e2e/replatform/places.spec.ts",
+  "projects": [
+    "places-desktop",
+    "places-mobile"
+  ],
+  "discovery": [
+    {
+      "file": "explorers-earth/e2e/replatform/places.spec.ts",
+      "titlePath": [
+        "Places: retained location create edit and reload preserve zero and absent coordinates"
+      ],
+      "project": "places-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/places.spec.ts",
+      "titlePath": [
+        "Places: complete owner and anonymous pages contain every seeded list and recommendation"
+      ],
+      "project": "places-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/places.spec.ts",
+      "titlePath": [
+        "Places: owned image bytes disappear after the final public attachment is hidden"
+      ],
+      "project": "places-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/places.spec.ts",
+      "titlePath": [
+        "Places: foreign owner edits and private contact reads cannot disclose owner data"
+      ],
+      "project": "places-desktop",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/places.spec.ts",
+      "titlePath": [
+        "Places: retained location create edit and reload preserve zero and absent coordinates"
+      ],
+      "project": "places-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/places.spec.ts",
+      "titlePath": [
+        "Places: complete owner and anonymous pages contain every seeded list and recommendation"
+      ],
+      "project": "places-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/places.spec.ts",
+      "titlePath": [
+        "Places: owned image bytes disappear after the final public attachment is hidden"
+      ],
+      "project": "places-mobile",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/places.spec.ts",
+      "titlePath": [
+        "Places: foreign owner edits and private contact reads cannot disclose owner data"
+      ],
+      "project": "places-mobile",
+      "repeat": 0
+    }
+  ],
+  "results": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: retained location create edit and reload preserve zero and absent coordinates"
+        ],
+        "project": "places-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: complete owner and anonymous pages contain every seeded list and recommendation"
+        ],
+        "project": "places-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: owned image bytes disappear after the final public attachment is hidden"
+        ],
+        "project": "places-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: foreign owner edits and private contact reads cannot disclose owner data"
+        ],
+        "project": "places-desktop",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: retained location create edit and reload preserve zero and absent coordinates"
+        ],
+        "project": "places-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: complete owner and anonymous pages contain every seeded list and recommendation"
+        ],
+        "project": "places-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: owned image bytes disappear after the final public attachment is hidden"
+        ],
+        "project": "places-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/places.spec.ts",
+        "titlePath": [
+          "Places: foreign owner edits and private contact reads cannot disclose owner data"
+        ],
+        "project": "places-mobile",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "cleanup": {
+    "status": "passed"
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  },
+  "authority": {
+    "owned": true,
+    "database": "music_uat_c9b0ff5158aae2ce5e5ec3b78edc54f6",
+    "containerId": "097857121de2044014339560298d6ae239bcff589db73eb5d31d1ba9f1f14a2b",
+    "imageId": "sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81"
+  },
+  "child": {
+    "status": 0,
+    "signal": null
+  },
+  "startedAt": "2026-10-09T23:25:17.355Z",
+  "endedAt": "2026-10-09T23:25:59.194Z",
+  "playwright": "1.61.1"
+}

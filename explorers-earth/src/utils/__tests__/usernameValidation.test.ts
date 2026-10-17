@@ -2,11 +2,10 @@
  * Unit Tests: usernameValidation.ts
  *
  * Pure functions need no mocks.
- * checkUsernameAvailability() uses a hand-rolled Apollo mock (no MockedProvider needed).
+ * checkUsernameAvailability() calls the canonical public read, so fetch is stubbed.
  * Coverage target: 95%+
  */
-import { describe, it, expect, vi } from 'vitest';
-import type { ApolloClient, NormalizedCacheObject } from '@apollo/client';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import {
   validateUsername,
@@ -20,17 +19,12 @@ import {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Build a minimal Apollo mock that resolves with the given data */
-const mockApollo = (data: Record<string, unknown>) =>
-  ({
-    query: vi.fn().mockResolvedValue({ data }),
-  }) as unknown as ApolloClient<NormalizedCacheObject>;
-
-/** Build a minimal Apollo mock that rejects */
-const mockApolloError = (message = 'Network error') =>
-  ({
-    query: vi.fn().mockRejectedValue(new Error(message)),
-  }) as unknown as ApolloClient<NormalizedCacheObject>;
+/** Stub the canonical availability read with one response body. */
+const stubAvailability = (body: unknown, ok = true) => {
+  const fetchMock = vi.fn(async () => new Response(JSON.stringify(body), { status: ok ? 200 : 503 }));
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // validateUsername
@@ -355,62 +349,71 @@ describe('suggestAlternatives', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// checkUsernameAvailability (async – Apollo mock)
+// checkUsernameAvailability (canonical public read)
 // ─────────────────────────────────────────────────────────────────────────────
 describe('checkUsernameAvailability', () => {
-  it('returns isAvailable=true when accounts array is empty', async () => {
-    const client = mockApollo({ accounts: [] });
-    const result = await checkUsernameAvailability('johndoe', client);
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('reports an available handle', async () => {
+    stubAvailability({ available: true });
+    const result = await checkUsernameAvailability('johndoe');
     expect(result.isAvailable).toBe(true);
     expect(result.error).toBeUndefined();
   });
 
-  it('returns isAvailable=true when accounts is null/undefined', async () => {
-    const client = mockApollo({ accounts: null });
-    const result = await checkUsernameAvailability('johndoe', client);
-    expect(result.isAvailable).toBe(true);
-  });
-
-  it('returns isAvailable=false and error message when username is taken', async () => {
-    const client = mockApollo({
-      accounts: [{ documentId: 'doc1', username: 'johndoe', Account_Name: 'John' }],
-    });
-    const result = await checkUsernameAvailability('johndoe', client);
+  it('reports a taken handle with a message', async () => {
+    stubAvailability({ available: false });
+    const result = await checkUsernameAvailability('johndoe');
     expect(result.isAvailable).toBe(false);
     expect(result.error).toBe('Username is already taken');
   });
 
-  it('always queries with lowercased username', async () => {
-    const client = mockApollo({ accounts: [] });
-    await checkUsernameAvailability('JohnDoe', client);
-    expect(client.query).toHaveBeenCalledWith(
-      expect.objectContaining({
-        variables: { username: 'johndoe' },
-      }),
-    );
+  it('always asks about the lowercased handle', async () => {
+    const fetchMock = stubAvailability({ available: true });
+    await checkUsernameAvailability('JohnDoe');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/explorers/v1/public/handles/johndoe/available');
   });
 
-  it('uses network-only fetch policy', async () => {
-    const client = mockApollo({ accounts: [] });
-    await checkUsernameAvailability('johndoe', client);
-    expect(client.query).toHaveBeenCalledWith(
-      expect.objectContaining({ fetchPolicy: 'network-only' }),
-    );
+  // Replaces the old "uses network-only fetch policy" case: the reason that existed was
+  // that a cached answer is worse than no answer, and no-store is how that is said now.
+  it('never reads a cached answer', async () => {
+    const fetchMock = stubAvailability({ available: true });
+    await checkUsernameAvailability('johndoe');
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ cache: 'no-store' });
   });
 
-  it('returns isAvailable=false and a user-friendly error on network failure', async () => {
-    const client = mockApolloError('Request failed');
-    const result = await checkUsernameAvailability('johndoe', client);
+  it('percent-encodes the handle rather than building the path from raw input', async () => {
+    const fetchMock = stubAvailability({ available: true });
+    await checkUsernameAvailability('a/../b');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/explorers/v1/public/handles/a%2F..%2Fb/available');
+  });
+
+  // The conservative direction, asserted because the opposite is the dangerous one: an
+  // outage must not offer a handle as free and send the creator into a form they cannot
+  // submit. The submit path handles the write-time conflict either way.
+  it.each([
+    ['a failed request', { available: true }, false],
+    ['a body with no verdict', {}, true],
+    ['a non-boolean verdict', { available: 'yes' }, true],
+  ])('reports unavailable on %s', async (_label, body, ok) => {
+    stubAvailability(body, ok);
+    const result = await checkUsernameAvailability('johndoe');
     expect(result.isAvailable).toBe(false);
-    expect(result.error).toMatch(/unable to check/i);
+    expect(result.error).toBe('Unable to check username availability. Please try again.');
   });
 
-  it('handles GraphQL errors (no data field) gracefully', async () => {
-    const client = mockApolloError('GraphQL error');
-    const result = await checkUsernameAvailability('johndoe', client);
-    expect(result.isAvailable).toBe(false);
-    expect(result.error).toBeTruthy();
+  it('reports unavailable when the transport throws', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
+    const result = await checkUsernameAvailability('johndoe');
+    expect(result).toEqual({ isAvailable: false, error: 'Unable to check username availability. Please try again.' });
   });
+
+  // Two Apollo-error cases stood here. They survived the rewrite and kept passing - but for
+  // the wrong reason: the client they passed as a second argument is now read as an
+  // AbortSignal, so fetch threw on the argument rather than on a network failure, and the
+  // catch returned exactly what they asserted. A test that passes because its input is
+  // malformed is worse than no test. Their subject - a failed transport reports
+  // unavailable - is covered by the cases above, against the real signature.
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

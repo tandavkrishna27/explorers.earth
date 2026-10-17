@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useStrapiAuth } from '@/hooks/use-strapi-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
+import { musicPrincipalForRequest } from '@/lib/musicCredential';
 
 // Fake user type that matches the old schema for compatibility
 interface CompatUser {
@@ -51,13 +52,8 @@ export function AuthCompatProvider({ children, skipAuthCheck = false }: AuthComp
   useState(() => {
     if (strapiUser && !neonUser) {
       // Fetch Neon DB user data
-      fetch(`/api/auth/user-data?username=${strapiUser.username}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success && data.user) {
-            setNeonUser(data.user);
-          }
-        })
+      musicPrincipalForRequest()
+        .then((identity) => setNeonUser({ ...strapiUser, id: identity.musicUserId } as unknown as CompatUser))
         .catch((err) => {
           console.error('Failed to fetch Neon DB user data:', err);
         });
@@ -69,11 +65,8 @@ export function AuthCompatProvider({ children, skipAuthCheck = false }: AuthComp
     if (!strapiUser) return;
     
     try {
-      const res = await fetch(`/api/auth/user-data?username=${strapiUser.username}`);
-      const data = await res.json();
-      if (data.success && data.user) {
-        setNeonUser(data.user);
-      }
+      const identity = await musicPrincipalForRequest();
+      setNeonUser({ ...strapiUser, id: identity.musicUserId } as unknown as CompatUser);
     } catch (error) {
       console.error('Error refetching user data:', error);
     }

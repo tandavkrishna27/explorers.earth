@@ -20,5 +20,3 @@ export type * from "./types";
 export * from "./utils/bookHelpers";
 
 // API
-export * from "./api/query";
-export * from "./api/mutation";

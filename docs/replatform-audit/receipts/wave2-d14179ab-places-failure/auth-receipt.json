@@ -1,0 +1,198 @@
+{
+  "version": 1,
+  "lane": "auth",
+  "provenance": {
+    "commit": "d14179ab481dd913b05446dd0dd388748d8fe29f",
+    "sourceHash": "806bcaf7a114652a303a8b86daa904c71d5af9e091bae4489fbcd2dcf94d4289",
+    "manifestHash": "6edbdcd2dbabe14731abffcb550d7f2406bd1c4b6983f29f8b42a9b4c8ee2039",
+    "dirty": false
+  },
+  "config": "explorers-earth/playwright.config.ts",
+  "spec": "explorers-earth/e2e/replatform/auth.spec.ts",
+  "projects": [
+    "chromium-pr-safe"
+  ],
+  "discovery": [
+    {
+      "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+      "titlePath": [
+        "stale local auth never opens a private deep link; public login remains reachable"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+      "titlePath": [
+        "failed Google start returns the routed login form with a retryable error"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+      "titlePath": [
+        "failed recovery start returns the routed recovery form with a retryable error"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+      "titlePath": [
+        "failed logout fences a receiving tab after reload and a newly opened tab"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+      "titlePath": [
+        "real local session gates onboarding and cross-tab logout revokes both tabs"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    },
+    {
+      "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+      "titlePath": [
+        "purpose-bound proof recovers once against real API and requires a fresh ordinary session"
+      ],
+      "project": "chromium-pr-safe",
+      "repeat": 0
+    }
+  ],
+  "results": [
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+        "titlePath": [
+          "stale local auth never opens a private deep link; public login remains reachable"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+        "titlePath": [
+          "failed Google start returns the routed login form with a retryable error"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+        "titlePath": [
+          "failed recovery start returns the routed recovery form with a retryable error"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+        "titlePath": [
+          "failed logout fences a receiving tab after reload and a newly opened tab"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+        "titlePath": [
+          "real local session gates onboarding and cross-tab logout revokes both tabs"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "explorers-earth/e2e/replatform/auth.spec.ts",
+        "titlePath": [
+          "purpose-bound proof recovers once against real API and requires a fresh ordinary session"
+        ],
+        "project": "chromium-pr-safe",
+        "repeat": 0
+      },
+      "expectedStatus": "passed",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "cleanup": {
+    "status": "passed"
+  },
+  "artifacts": {
+    "trace": "off",
+    "video": "off",
+    "screenshot": "off",
+    "cleanup": "passed"
+  },
+  "authority": {
+    "owned": true,
+    "database": "music_uat_171264ac63833aca395da08d5773a3d5",
+    "containerId": "64d068414fca142dd61d2e54a3ff5910bb32788d50041497f39a45a51c126939",
+    "imageId": "sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81"
+  },
+  "child": {
+    "status": 0,
+    "signal": null
+  },
+  "startedAt": "2026-10-09T21:17:01.439Z",
+  "endedAt": "2026-10-09T21:17:29.461Z",
+  "playwright": "1.61.1"
+}

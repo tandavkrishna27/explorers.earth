@@ -11,7 +11,7 @@ import SearchSongs from "@/components/search-songs";
 import { Music2, Volume2, Share2, Copy, History, Search, PlayCircle, ChevronDown, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { acquireGuestMusicCapability, getGuestMusicCapability, guestMusicRequest } from "@/lib/musicCredential";
 import {
   Accordion,
   AccordionContent,
@@ -30,9 +30,9 @@ import { useTheme } from "@/components/theme-provider";
 import { GuestBottomNavigation } from "@/components/guest-bottom-navigation";
 import { useUserSubscriptionPlanInfo } from "@/lib/strapi-queries";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"; import GuestCapabilityImport from "@/components/guest-capability-import";
+import { PUBLIC_PLAYLIST_POLLING_INTERVAL_MS } from "@/lib/publicPlaylistPolling";
 
-const POLLING_INTERVAL = 1000;
 
 interface PlaylistResponse {
   songs: Song[];
@@ -60,7 +60,7 @@ export default function PlaylistPage() {
   // Query for playlist data
   const { data: playlist, isLoading, error } = useQuery<PlaylistResponse>({
     queryKey: [`/api/playlist/${guestUrl}`],
-    refetchInterval: POLLING_INTERVAL,
+    refetchInterval: PUBLIC_PLAYLIST_POLLING_INTERVAL_MS,
     staleTime: 0,
     retry: true,
     retryDelay: 1000,
@@ -82,12 +82,12 @@ export default function PlaylistPage() {
     }
   }, [playlist?.user?.theme?.primary, updateTheme, themeUpdated]);
   
-  // Check host's subscription plan expiry
-  const { isActivePlan, isLoading: isLoadingSubscription } = useUserSubscriptionPlanInfo(
-    playlist?.user?.username || undefined
-  );
-  
-  const isPlanExpired = !isLoadingSubscription && !isActivePlan;
+
+  // Guest pages deliberately do not read the owner-only entitlement endpoint.
+  // Song-request authorization comes only from the slug-bound guest capability.
+  // No browser username or plan assertion participates in guest authorization.
+  void useUserSubscriptionPlanInfo; void Alert;
+  void AlertDescription; void AlertCircle;
 
   // Handle WebSocket messages
   const handleMessage = (message: any) => {
@@ -199,16 +199,12 @@ export default function PlaylistPage() {
   // Add new mutation for adding songs to queue
   const addSongToQueueMutation = useMutation({
     mutationFn: async (song: Song) => {
-      const params = new URLSearchParams();
-      if (guestUrl) {
-        params.append('guestUrl', guestUrl);
-      }
-      return apiRequest("POST", `/api/playlist/songs?${params}`, {
+      return guestMusicRequest(acquireGuestMusicCapability(guestUrl ?? "") ?? "", {
         youtubeId: song.youtubeId,
         title: song.title,
         artist: song.artist,
         thumbnailUrl: song.thumbnailUrl,
-      });
+      }, guestUrl ?? "");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/playlist/${guestUrl}`] });
@@ -230,8 +226,8 @@ export default function PlaylistPage() {
   // Delete single song mutation
   const deleteSongMutation = useMutation({
     mutationFn: async (songId: number) => {
-      console.log('Attempting to delete song:', songId);
-      return apiRequest("DELETE", `/api/playlist/songs/${songId}`);
+      void songId;
+      throw new Error("Guests cannot remove owner queue or history entries.");
     },
     onSuccess: () => {
       if (guestUrl) {
@@ -255,8 +251,8 @@ export default function PlaylistPage() {
   // Delete multiple songs mutation
   const deleteMultipleSongsMutation = useMutation({
     mutationFn: async (songIds: number[]) => {
-      console.log('Attempting to delete multiple songs:', songIds);
-      return apiRequest("DELETE", `/api/playlist/songs/bulk`, { songIds });
+      void songIds;
+      throw new Error("Guests cannot remove owner queue or history entries.");
     },
     onSuccess: () => {
       if (guestUrl) {
@@ -281,19 +277,14 @@ export default function PlaylistPage() {
   const addMultipleSongsMutation = useMutation({
     mutationFn: async (songs: Song[]) => {
       console.log('Adding multiple songs:', songs);
-      const params = new URLSearchParams();
-      if (guestUrl) {
-        params.append('guestUrl', guestUrl);
-      }
-
+      const capability = acquireGuestMusicCapability(guestUrl ?? "") ?? "";
       const addPromises = songs.map(song =>
-        apiRequest("POST", `/api/playlist/songs?${params}`, {
+        guestMusicRequest(capability, {
           youtubeId: song.youtubeId,
           title: song.title,
           artist: song.artist,
           thumbnailUrl: song.thumbnailUrl,
-          position: 999,
-        })
+        }, guestUrl ?? "")
       );
 
       try {
@@ -326,7 +317,7 @@ export default function PlaylistPage() {
   // Clear history mutation
   const clearHistoryMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("DELETE", `/api/playlist/history`);
+      throw new Error("Guests cannot clear owner playback history.");
     },
     onSuccess: () => {
       if (guestUrl) {
@@ -401,6 +392,15 @@ export default function PlaylistPage() {
   };
 
   const handleShare = async () => {
+
+
+
+
+
+
+
+
+
     console.log('Share button clicked, guestUrl:', guestUrl);
     if (!guestUrl) {
       console.error('No guestUrl available');
@@ -498,7 +498,7 @@ export default function PlaylistPage() {
             </h1>
             <p className="text-muted-foreground">
               The playlist you're looking for doesn't exist or has been removed.
-            </p>
+            </p>{guestUrl && <div className="mt-6"><GuestCapabilityImport guestUrl={guestUrl} onImported={() => { void queryClient.invalidateQueries({ queryKey: [`/api/playlist/${guestUrl}`] }); }} /></div>}
           </CardContent>
         </Card>
       </div>
@@ -615,14 +615,14 @@ export default function PlaylistPage() {
         {/* Search Songs Section - Only show if song requests are allowed */}
         {playlist?.user.allowSongRequests && (
           <>
-            {/* Show plan expiry alert */}
-            {isPlanExpired && (
-              <Alert variant="destructive" className="mb-4 py-4 px-5">
-                <AlertCircle className="h-5 w-5" />
-                <AlertDescription className="text-base leading-relaxed">
-                  No Active Subscription Plan - Song requests are disabled because there's no active subscription plan. Please subscribe to a plan to enable song requests. <strong>You can still add songs using the "Add by YouTube URL" feature below, which is free and unlimited.</strong>
-                </AlertDescription>
-              </Alert>
+            {guestUrl && (
+
+              <GuestCapabilityImport
+                guestUrl={guestUrl}
+                onImported={() => {
+                  void queryClient.invalidateQueries({ queryKey: [`/api/playlist/${guestUrl}`] });
+                }}
+              />
             )}
             
             <Accordion 
@@ -851,7 +851,7 @@ export default function PlaylistPage() {
                           fetchCurrentSong={async () => {
                             if (!guestUrl) return undefined;
                             try {
-                              const response = await fetch(`/api/playlist/${guestUrl}`);
+                              const response = await fetch(`/api/playlist/${guestUrl}`, { headers: ((guestCapability) => guestCapability ? { "X-Music-Guest-Capability": guestCapability } : undefined)(getGuestMusicCapability(guestUrl)) });
                               const data = await response.json();
                               return data.currentlyPlaying;
                             } catch (error) {

@@ -179,6 +179,7 @@ const PlacesIllustration = () => {
               <motion.circle
                 cx={cx} cy={cy} r={14}
                 stroke={city.color} strokeWidth="1" fill="none"
+                initial={{ r: 10, opacity: 0.6 }}
                 animate={{ r: [10, 22], opacity: [0.6, 0] }}
                 transition={{ repeat: Infinity, duration: 2.4, ease: "easeOut", delay: i * 0.28 }}
               />
@@ -420,6 +421,7 @@ const GamesIllustration = () => (
       <rect x="40" y="30" width="180" height="28" rx="4" fill="#0d0020" stroke="#f43f5e" strokeWidth="1" strokeOpacity={0.5}/>
       <text x="54" y="49" fontSize="11" fill="#f43f5e" fontFamily="monospace" fontWeight="bold">HP</text>
       <motion.rect x="78" y="37" height="14" rx="3" fill="url(#neonPink)"
+        initial={{ width: 80 }}
         animate={{ width: [80, 90, 70, 85, 80] }}
         transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
       />
@@ -428,6 +430,7 @@ const GamesIllustration = () => (
       <rect x="580" y="30" width="180" height="28" rx="4" fill="#0d0020" stroke="#06b6d4" strokeWidth="1" strokeOpacity={0.5}/>
       <text x="594" y="49" fontSize="11" fill="#06b6d4" fontFamily="monospace" fontWeight="bold">XP</text>
       <motion.rect x="618" y="37" height="14" rx="3" fill="url(#neonCyan)"
+        initial={{ width: 60 }}
         animate={{ width: [60, 110, 75, 95, 60] }}
         transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
       />
@@ -455,6 +458,7 @@ const GamesIllustration = () => (
         {/* Joysticks */}
         <circle cx="355" cy="215" r="22" fill="#100020" stroke="#a855f7" strokeWidth="1.5"/>
         <motion.circle cx="355" cy="215" r="12" fill="#1a0035" stroke="#c084fc" strokeWidth="1"
+          initial={{ cx: 355, cy: 215 }}
           animate={{ cx: [355, 350, 360, 355], cy: [215, 210, 220, 215] }}
           transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
         />
@@ -636,6 +640,7 @@ const GuidesIllustration = () => (
           <circle cx={m.cx} cy={m.cy} r="14" fill="#052e16" stroke="#34d399" strokeWidth="1.5"/>
           <text x={m.cx} y={m.cy + 5} textAnchor="middle" fontSize="11" fill="#34d399" fontWeight="bold" fontFamily="monospace">{m.label}</text>
           <motion.circle cx={m.cx} cy={m.cy} r="20" stroke="#34d399" strokeWidth="1" fill="none"
+            initial={{ r: 14, opacity: 0.5 }}
             animate={{ r: [14, 26], opacity: [0.5, 0] }}
             transition={{ repeat: Infinity, duration: 2, ease: "easeOut", delay: m.delay }}
           />
@@ -705,6 +710,7 @@ const AppsIllustration = () => {
             <g key={i}>
               <line x1={n1.x} y1={n1.y} x2={n2.x} y2={n2.y} stroke="#2dd4bf" strokeWidth="1" strokeOpacity={0.15}/>
               <motion.circle r="3" fill="#2dd4bf" fillOpacity={0.8}
+                initial={{ cx: n1.x, cy: n1.y, opacity: 0 }}
                 animate={{ cx: [n1.x, n2.x], cy: [n1.y, n2.y], opacity: [0, 0.8, 0] }}
                 transition={{ repeat: Infinity, duration: 2 + i * 0.4, ease: "easeInOut", delay: i * 0.3 }}
               />

@@ -1,0 +1,114 @@
+name: Tunes read-only host preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_read_only:
+        description: "Confirm that this run may inspect sanitized host metadata"
+        required: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tunes-host-preflight
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    if: github.ref == 'refs/heads/main' && inputs.confirm_read_only
+    environment: tunes-production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check protected deployment credential availability
+        shell: bash
+        env:
+          KNOWN_HOSTS: ${{ secrets.TUNES_DEPLOY_KNOWN_HOSTS }}
+          STATE_HMAC_KEY: ${{ secrets.MUSIC_DEPLOY_STATE_HMAC_KEY }}
+        run: |
+          set -euo pipefail
+          invalid=0
+          if [[ -z "$KNOWN_HOSTS" ]]; then
+            echo "::error::TUNES_DEPLOY_KNOWN_HOSTS is unavailable in tunes-production."
+            invalid=1
+          fi
+          if [[ ${#STATE_HMAC_KEY} -lt 32 ]]; then
+            echo "::error::MUSIC_DEPLOY_STATE_HMAC_KEY is unavailable or shorter than 32 characters."
+            invalid=1
+          fi
+          [[ "$invalid" = 0 ]]
+
+      - name: Inspect Tunes host without mutation
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        with:
+          host: ${{ secrets.TUNES_DEPLOY_HOST }}
+          username: deploy
+          key: ${{ secrets.TUNES_DEPLOY_KEY }}
+          fingerprint: ${{ secrets.TUNES_DEPLOY_SSH_FINGERPRINT }}
+          port: 22
+          command_timeout: 2m
+          script: |
+            set -euo pipefail
+            printf '%s\n' '=== identity ==='
+            id
+            uname -a
+            printf '%s\n' '=== ssh host fingerprints ==='
+            ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+            ssh-keygen -lf /etc/ssh/ssh_host_rsa_key.pub
+            printf '%s\n' '=== runtime ==='
+            docker version --format 'client={{.Client.Version}} server={{.Server.Version}}'
+            docker compose version
+            printf '%s\n' '=== storage ==='
+            df -P /
+            for path in /home/deploy/tunes /home/deploy/tunes/tunes /opt /opt/explorers; do
+              if [ -e "$path" ]; then
+                stat -c '%A %U:%G %n' "$path"
+                if [ -w "$path" ]; then
+                  printf 'writable=yes path=%s\n' "$path"
+                else
+                  printf 'writable=no path=%s\n' "$path"
+                fi
+              else
+                printf 'present=no path=%s\n' "$path"
+              fi
+            done
+            # Migration inventory
+            printf '%s\n' '=== deployment control runtime ==='
+            if command -v node; then node --version; else printf '%s\n' 'node=absent'; fi
+            printf '%s\n' '=== listening TCP ports ==='
+            printf '%s\n' 'Process attribution is limited to deploy-user visibility; missing attribution does not prove a port is unowned.'
+            if command -v ss; then ss -lntp; else printf '%s\n' 'ss=absent'; fi
+            printf '%s\n' '=== existing Tunes project identity and mounts ==='
+            for container in $(docker ps --filter label=com.docker.compose.project=tunes --format '{{.ID}}'); do
+              docker inspect --format 'name={{.Name}} project={{index .Config.Labels "com.docker.compose.project"}} service={{index .Config.Labels "com.docker.compose.service"}} image={{.Image}} mounts={{range .Mounts}}type={{.Type}} volume={{.Name}} destination={{.Destination}};{{end}} networks={{range $name, $_ := .NetworkSettings.Networks}}{{$name}};{{end}}' "$container"
+              docker image inspect --format 'platform={{.Os}}/{{.Architecture}}' "$(docker inspect --format '{{.Image}}' "$container")"
+            done
+            printf '%s\n' '=== database readiness and catalog size ==='
+            if docker exec tunes-db-1 pg_isready; then
+              printf '%s\n' 'database=ready'
+              docker exec tunes-db-1 psql -U postgres -d postgres -Atqc 'SELECT current_database(), pg_database_size(current_database());' || printf '%s\n' 'catalog_size=unavailable'
+            else
+              printf '%s\n' 'database=not-ready-or-command-unavailable'
+            fi
+            printf '%s\n' '=== backup evidence (names and sizes only) ==='
+            compose_dir=/home/deploy/tunes/tunes
+            if [ -d "$compose_dir/deployment-backups" ]; then
+              find "$compose_dir/deployment-backups" -maxdepth 2 -type f -printf '%f %s bytes\n' | sort | tail -20
+            else
+              printf '%s\n' 'backup_directory=absent'
+            fi
+            # End migration inventory
+            printf '%s\n' '=== compose projects ==='
+            docker compose ls
+            printf '%s\n' '=== containers ==='
+            docker ps --format 'name={{.Names}} image={{.Image}} status={{.Status}} ports={{.Ports}}'
+            printf '%s\n' '=== networks ==='
+            docker network ls --format 'name={{.Name}} driver={{.Driver}} scope={{.Scope}}'
+            printf '%s\n' '=== volumes ==='
+            docker volume ls --format 'name={{.Name}} driver={{.Driver}}'
+            printf '%s\n' '=== tunes compose labels ==='
+            for container in $(docker ps --filter label=com.docker.compose.service=tunes --format '{{.ID}}'); do
+              docker inspect --format 'name={{.Name}} project={{index .Config.Labels "com.docker.compose.project"}} service={{index .Config.Labels "com.docker.compose.service"}} networks={{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' "$container"
+            done

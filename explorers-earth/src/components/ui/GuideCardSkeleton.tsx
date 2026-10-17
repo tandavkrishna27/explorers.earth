@@ -1,4 +1,5 @@
 import { FC, memo } from "react";
+import { usePublicCategoryThemeStyles } from "../../features/PublicHome/components/PublicCategoryThemeContext";
 import type { SkeletonVariant } from "./RecommendationCardSkeleton";
 
 interface GuideCardSkeletonProps {
@@ -20,13 +21,15 @@ interface SingleGuideSkeletonProps {
  * Guide cards are landscape (16:9 → 4:3) and include a days-badge and location pills.
  */
 const SingleGuideSkeleton = memo(({ variant }: SingleGuideSkeletonProps) => {
+    const categoryStyles = usePublicCategoryThemeStyles();
+    const isCategory = variant === 'public' && categoryStyles;
     const isDashboard = variant === "dashboard";
 
     return (
         <div
             className="relative w-full aspect-[16/9] md:aspect-[4/3] max-w-none mx-auto rounded-xl overflow-hidden skeleton-card"
             style={{
-                background: isDashboard ? "var(--dash-muted, #3C4E40)" : "#1c1c1c",
+                background: isCategory ? "var(--category-card)" : isDashboard ? "var(--dash-muted, #3C4E40)" : "#1c1c1c",
             }}
         >
             {/* Shimmer sweep */}
@@ -36,7 +39,7 @@ const SingleGuideSkeleton = memo(({ variant }: SingleGuideSkeletonProps) => {
             <div
                 className="absolute z-10 left-2 top-2 h-6 w-16 rounded-md"
                 style={{
-                    background: isDashboard
+                    background: isCategory ? "var(--category-skeleton)" : isDashboard
                         ? "rgba(255,255,255,0.13)"
                         : "rgba(255,255,255,0.10)",
                 }}
@@ -46,7 +49,7 @@ const SingleGuideSkeleton = memo(({ variant }: SingleGuideSkeletonProps) => {
             <div
                 className="absolute bottom-0 left-0 right-0 p-3"
                 style={{
-                    background: isDashboard
+                    background: isCategory ? "var(--category-skeleton)" : isDashboard
                         ? "linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)"
                         : "linear-gradient(to top, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)",
                 }}
@@ -55,7 +58,7 @@ const SingleGuideSkeleton = memo(({ variant }: SingleGuideSkeletonProps) => {
                 <div
                     className="h-3.5 w-3/5 rounded mb-2"
                     style={{
-                        background: isDashboard
+                        background: isCategory ? "var(--category-skeleton)" : isDashboard
                             ? "rgba(255,255,255,0.14)"
                             : "rgba(255,255,255,0.12)",
                     }}
@@ -69,7 +72,7 @@ const SingleGuideSkeleton = memo(({ variant }: SingleGuideSkeletonProps) => {
                             className="h-4 rounded"
                             style={{
                                 width: `${w * 2}px`,
-                                background: isDashboard
+                                background: isCategory ? "var(--category-skeleton)" : isDashboard
                                     ? "rgba(255,255,255,0.12)"
                                     : "rgba(255,255,255,0.10)",
                             }}
@@ -85,7 +88,7 @@ const SingleGuideSkeleton = memo(({ variant }: SingleGuideSkeletonProps) => {
                             className="h-3 rounded"
                             style={{
                                 width: `${w}px`,
-                                background: isDashboard
+                                background: isCategory ? "var(--category-skeleton)" : isDashboard
                                     ? "rgba(255,255,255,0.12)"
                                     : "rgba(255,255,255,0.10)",
                             }}

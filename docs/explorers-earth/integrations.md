@@ -143,7 +143,7 @@ Single sign-on via Google accounts.
 
 **Usage**: Client-side Razorpay checkout integration for subscription payments. Payment verification is handled server-side.
 
-## Local Tunes Integration (Cross-App SSO)
+## Local Tunes Integration (Music identity boundary)
 
 **Purpose**: Deep cross-app integration connecting explorers-earth with the tunes music platform. Users get an embedded music dashboard within explorers-earth.
 
@@ -154,25 +154,25 @@ Single sign-on via Google accounts.
 - `VITE_LOCAL_TUNES_RETRY_ATTEMPTS` — Retry count
 
 **Key Files**:
-- `src/lib/apiClient.ts` — API client with JWT auth, CSRF tokens, retry logic with exponential backoff
-- `src/services/ssoService.ts` — Full SSO flow (authenticate, extract guestUrl, cross-domain auth storage)
-- `src/components/AuthSyncManager.tsx` — Background SSO sync after login
+- `src/lib/localTunesApiClient.ts` — Music credential client, single-flight ensure, typed errors, and bounded retry
+- `src/features/music/musicApi.ts` — Canonical Music API and identity coordinator
+- `src/components/AuthSyncManager.tsx` — Authoritative identity and Account selection after login
 - `src/components/MusicDashboard.tsx` — Embedded music player dashboard
-- `src/hooks/useTunesDashboard.ts` — Data fetching hook (syncs Strapi user → tunes DB)
+- `src/hooks/useTunesDashboard.ts` — Account-scoped Music data fetching
 
-**SSO Flow**:
+**Identity and credential flow**:
 1. User logs in to explorers-earth (Strapi JWT)
-2. `AuthSyncManager` triggers post-login sync (once per session, skips public pages and onboarding)
-3. `ssoService.performLocalTunesSSO()` authenticates with tunes API using Strapi JWT
-4. tunes server validates JWT via `jwt-auth-middleware.ts`, maps user via `X-Username` header
-5. Guest URL and auth data are stored for cross-domain access
-6. `MusicDashboard` renders embedded player with full playlist management
+2. `AuthSyncManager` verifies the authoritative user and completed Account selection
+3. `musicIdentityCoordinator` makes one bodyless identity ensure request using the Strapi bearer
+4. tunes validates the upstream identity, projects immutable user/Account document IDs, and returns a short-lived Music credential
+5. the credential remains in module memory and canonical requests derive the numeric Music owner server-side
+6. `MusicDashboard` renders Account-scoped playlist management; logout or Account change clears credential and cached state
 
 **Authentication**:
-- JWT token sent in `Authorization: Bearer <token>` header
-- `X-Username` header maps Strapi user to tunes Neon DB user
-- CSRF token support via `X-CSRF-Token` header
-- Cross-domain auth data stored in localStorage/sessionStorage
+- the embedded Music client sends the Strapi bearer only to `POST /api/music/identity/ensure` at the identity/lifecycle boundary
+- short-lived Music bearer authorizes canonical owner REST and Socket.IO operations
+- browser usernames, emails, owner IDs, and Account IDs are not authorization authority
+- the Music credential is kept in memory, refreshed single-flight, and cleared on logout or Account change
 
 ## Integration Architecture
 
@@ -190,5 +190,5 @@ explorers-earth Client
   ├── IGDB (via Twitch OAuth) ─────────── IGDB API (game search)
   ├── Instagram Graph API ─────────────── Meta (social integration)
   ├── Razorpay SDK (dev + prod keys) ───── Razorpay (payments)
-  └── apiClient + SSO ──── JWT+REST ───── tunes API (music, playlists, SSO)
+  └── localTunesApiClient ─ Music bearer ─ tunes API (identity, playlists, publication)
 ```

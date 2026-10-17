@@ -49,14 +49,19 @@
         "explorers story",
         "who we are explorers"
       ],
-      "title": "Explorers of Earth | About Us"
+      "title": "Explorers of Earth | About Us",
+      "purpose": "Understand the perspective behind explorers.earth and the thoughtful community it hopes to grow."
     },
     "subtitle": {
       "line1": "ชุมชนระดับโลกของผู้คนที่สำรวจด้วยความใส่ใจ — สำหรับผู้คน วัฒนธรรม และโลกที่เราแบ่งปัน",
       "line2": "การสำรวจสำหรับเราไม่เกี่ยวกับว่าเราไปไกลแค่ไหน",
       "line3": "มันเกี่ยวกับว่าเราเชื่อมต่อกันลึกซึ้งแค่ไหน"
     },
-    "title": "นักสำรวจโลก"
+    "title": "นักสำรวจโลก",
+    "heroEyebrow": "Our shared perspective",
+    "join": "Join explorers",
+    "productVisualAlt": "An Explorer profile connecting places, books, and ideas worth sharing.",
+    "readBeliefs": "Read what we believe"
   },
   "analytics": {
     "dashboard": {
@@ -268,7 +273,6 @@
       "message": "This account has been deactivated.",
       "reactivateLink": "Click here to reactivate your account →"
     },
-    "claimAccount": "Claim Account?",
     "confirmPassword": "ยืนยันรหัสผ่าน",
     "confirmPasswordPlaceholder": "กรอกรหัสผ่านของคุณอีกครั้ง",
     "email": "อีเมล",
@@ -325,7 +329,8 @@
         "mobileNumberPlaceholder": "ป้อนหมายเลขโทรศัพท์มือถือของคุณ",
         "next": "ถัดไป",
         "title": "รายละเอียดการติดต่อ"
-      }
+      },
+      "stepCount": "Step {{current}} of {{total}}"
     },
     "or": "หรือ",
     "password": "รหัสผ่าน",
@@ -340,8 +345,7 @@
     "signupSubtitle": "สมัครสมาชิกเพื่อเพลิดเพลินกับฟีเจอร์ของ explorers",
     "signUpWithGoogle": "สมัครสมาชิกด้วย Google",
     "status": {
-      "authenticating": "Authenticating...",
-      "syncingLocalTunes": "Syncing with LocalTunes..."
+      "authenticating": "Authenticating..."
     },
     "termsAndConditions": "Terms and Conditions",
     "username": "ชื่อผู้ใช้",
@@ -775,6 +779,12 @@
       "addLocation": "Add Location",
       "addLocationLabel": "Add",
       "addRecommendations": "เพิ่มคำแนะนำ",
+      "analytics": {
+        "ariaLabel": "{{label}}: {{value}}",
+        "loading": "Loading",
+        "unavailable": "Unavailable",
+        "viewsLast90Days": "Views · last 90 days"
+      },
       "draft": "ร่าง",
       "error": {
         "message": "An error occurred while loading your data",
@@ -937,6 +947,97 @@
       "tabs": {
         "account": "บัญชี",
         "publicProfile": "โปรไฟล์สาธารณะ"
+      },
+      "editor": {
+        "appearance": {
+          "categoryOrder": "Category order",
+          "hideFullPreview": "Hide full preview",
+          "promoted": "Promoted",
+          "publicLanding": "Public landing",
+          "publicLandingDescription": "Choose which public profile view visitors see first.",
+          "recommendationsLayout": "Recommendations layout",
+          "showFullPreview": "Show full preview",
+          "themeStyle": "Theme style",
+          "themeStyleDescription": "Choose the visual foundation visitors see across your public profile."
+        },
+        "drag": {
+          "cancel": "ยกเลิกการย้าย {{category}} แล้ว และคืนค่าลำดับเดิมแล้ว",
+          "drop": "วาง {{category}} ที่ตำแหน่ง {{position}} จาก {{total}}",
+          "handle": "ลาก {{category}}",
+          "instructions": "กด Space หรือ Enter เพื่อยก ใช้ปุ่มลูกศรหรือ Home และ End เพื่อย้าย กด Space หรือ Enter เพื่อวาง หรือกด Escape เพื่อยกเลิก",
+          "lift": "ยก {{category}} แล้ว ตำแหน่ง {{position}} จาก {{total}}",
+          "move": "ย้าย {{category}} ไปยังตำแหน่ง {{position}} จาก {{total}} แล้ว"
+        },
+        "headings": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile details"
+        },
+        "tablist": "Public profile editor",
+        "tabs": {
+          "appearance": "Appearance",
+          "gallery": "Gallery",
+          "profile": "Profile"
+        }
+      },
+      "themeAppearance": {
+        "accentTitle": "Accent color",
+        "firstView": {
+          "business": "Business",
+          "categoryFirst": "Recommendations — {{category}} first",
+          "gallery": "Gallery",
+          "help": "Category choices promote that category but keep all other public categories.",
+          "label": "First view",
+          "savedOrder": "Recommendations — saved order"
+        },
+        "presetTitle": "Select theme preset",
+        "recommendations": {
+          "categories": {
+            "apps": "Apps & Tools",
+            "books": "Books",
+            "games": "Games",
+            "guides": "Guides",
+            "movies": "Movies & Shows",
+            "music": "Music",
+            "people": "People",
+            "places": "Places",
+            "products": "Products"
+          },
+          "featured": "Featured",
+          "help": "Choose how recommendation categories are arranged on your public profile.",
+          "layoutLegend": "Recommendations layout",
+          "layouts": {
+            "featured": {
+              "description": "A larger first category followed by compact rows.",
+              "label": "Featured First"
+            },
+            "grid": {
+              "description": "A compact grid that makes categories easy to scan.",
+              "label": "Category Mosaic"
+            },
+            "shelves": {
+              "description": "Horizontal shelves with recommendation previews.",
+              "label": "Classic Shelves"
+            }
+          },
+          "moved": "{{category}} moved to position {{position}} of {{total}}",
+          "moveDown": "Move {{category}} down",
+          "moveUp": "Move {{category}} up",
+          "orderHelp": "Move categories into the order visitors should scan them.",
+          "orderTitle": "Category order",
+          "position": "{{position}} of {{total}}",
+          "previewCaption": "Illustrative preview",
+          "previewLabel": "Recommendations layout preview",
+          "publicVisibilityNote": "Public Visibility controls whether a category appears.",
+          "title": "Recommendations presentation"
+        },
+        "wallpaperLabel": "Wallpaper and cover style",
+        "wallpaperOptions": {
+          "ambientGradient": "Ambient mesh gradient",
+          "bannerTop": "Top cover banner photo",
+          "fullWallpaperImage": "Full-screen background image",
+          "solidColor": "Solid minimal background"
+        }
       }
     },
     "recommendations": {
@@ -1115,7 +1216,8 @@
         "listVisibilityError": "Failed to update recommendation list visibility.",
         "qrDownloadError": "Failed to download QR code. Please try again.",
         "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrNotReady": "QR code not ready for download"
+        "qrNotReady": "QR code not ready for download",
+        "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "เดินทางแบบคนท้องถิ่น",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -1163,7 +1265,8 @@
       "privacy": "นโยบายความเป็นส่วนตัว",
       "cookies": "นโยบายคุกกี้",
       "product": "ผลิตภัณฑ์",
-      "shareAnywhere": "แบ่งปันได้ทุกที่"
+      "shareAnywhere": "แบ่งปันได้ทุกที่",
+      "useCases": "Use Cases"
     },
     "copyright": "© 2025 นักสำรวจ สงวนลิขสิทธิ์.",
     "madeWithLove": "ทำด้วยความรักบนโลก",
@@ -1179,7 +1282,8 @@
       "product": "ผลิตภัณฑ์",
       "share": "แบ่งปัน",
       "openMenu": "เปิดเมนูนำทาง",
-      "closeMenu": "ปิดเมนูนำทาง"
+      "closeMenu": "ปิดเมนูนำทาง",
+      "useCases": "Use Cases"
     },
     "auth": {
       "login": "เข้าสู่ระบบ",
@@ -1324,16 +1428,16 @@
       },
       "steps": [
         {
-          "title": "เพิ่มสิ่งที่คุณแนะนำ",
-          "body": "สถานที่ ผู้คน ผลิตภัณฑ์ หนังสือ ภาพยนตร์ รายการ เพลง เกม แอพ คู่มือ และบันทึกย่อ"
+          "body": "สถานที่ ผู้คน ผลิตภัณฑ์ หนังสือ ภาพยนตร์ รายการ เพลง เกม แอพ คู่มือ และบันทึกย่อ",
+          "title": "เพิ่มสิ่งที่คุณแนะนำ"
         },
         {
-          "title": "จัดระเบียบในแบบของคุณ",
-          "body": "จัดกลุ่มตามเมือง ธีม รายการ หมวดหมู่ การเดินทาง หรือช่วงเวลา เพื่อให้ผู้คนสามารถสำรวจได้อย่างเป็นธรรมชาติ"
+          "body": "จัดกลุ่มตามเมือง ธีม รายการ หมวดหมู่ การเดินทาง หรือช่วงเวลา เพื่อให้ผู้คนสามารถสำรวจได้อย่างเป็นธรรมชาติ",
+          "title": "จัดระเบียบในแบบของคุณ"
         },
         {
-          "title": "แชร์หนึ่งลิงค์หรือ QR",
-          "body": "เพจของคุณอัปเดตได้ตลอดเวลาในขณะที่ลิงก์เดียวกันและ QR ยังคงทำงานได้ทุกที่"
+          "body": "เพจของคุณอัปเดตได้ตลอดเวลาในขณะที่ลิงก์เดียวกันและ QR ยังคงทำงานได้ทุกที่",
+          "title": "แชร์หนึ่งลิงค์หรือ QR"
         }
       ]
     },
@@ -1352,20 +1456,20 @@
       "tokyoFoodGuide": "คู่มืออาหารโตเกียวของฉัน explorers.earth/jane",
       "cards": [
         {
-          "title": "ลิงค์ในประวัติ",
-          "eyebrow": "โปรไฟล์พร้อมแล้ว"
+          "eyebrow": "โปรไฟล์พร้อมแล้ว",
+          "title": "ลิงค์ในประวัติ"
         },
         {
-          "title": "รหัส QR",
-          "eyebrow": "พร้อมออฟไลน์"
+          "eyebrow": "พร้อมออฟไลน์",
+          "title": "รหัส QR"
         },
         {
-          "title": "ข้อความ",
-          "eyebrow": "พร้อมสนทนา"
+          "eyebrow": "พร้อมสนทนา",
+          "title": "ข้อความ"
         },
         {
-          "title": "ยินดีต้อนรับผู้แนะนำ",
-          "eyebrow": "แขกพร้อม"
+          "eyebrow": "แขกพร้อม",
+          "title": "ยินดีต้อนรับผู้แนะนำ"
         }
       ],
       "visual": {
@@ -1408,49 +1512,6 @@
       "earnedThisMonth": "ได้รับในเดือนนี้",
       "passiveTitle": "เปลี่ยนคำแนะนำเป็นรางวัลแบบพาสซีฟ",
       "networkTitle": "สร้างเครือข่ายของคุณและรับรายได้อัตโนมัติ"
-    },
-    "localTunes": {
-      "mainHeading": "Tunes",
-      "title": "ฟังขณะที่คุณสำรวจ",
-      "body": "การสำรวจไม่ใช่แค่ภาพ เสียงนำพาความทรงจำ บริบท และอารมณ์\n\nTunes ช่วยให้คุณรวบรวมและแชร์เพลงประกอบสำหรับสถานที่ การเดินทาง และอารมณ์ — ไม่ว่าจะเป็นเพลงที่ค้นพบระหว่างทางหรือเสียงที่กำหนดสถานที่สำหรับคุณ\n\nเชื่อมต่ออย่างราบรื่นกับโปรไฟล์ Explorer ของคุณ",
-      "exploreButton": "สำรวจ Tunes",
-      "featuresHeading": "คุณสมบัติที่ทรงพลัง",
-      "features": {
-        "realtimeCollaboration": {
-          "title": "การทำงานร่วมกันแบบเรียลไทม์",
-          "description": "ให้แขกเพิ่มเพลงลงในเพลย์ลิสต์ของคุณทันทีในขณะที่คุณควบคุมสิ่งที่เล่นได้อย่างสมบูรณ์"
-        },
-        "qrCodeSharing": {
-          "title": "แชร์ QR Code",
-          "description": "แชร์ประสบการณ์ดนตรีของคุณด้วยการสแกน QR Code แบบง่าย — ไม่ต้องใช้แอปหรือดาวน์โหลด"
-        },
-        "youtubeIntegration": {
-          "title": "การรวม YouTube",
-          "description": "รวมเข้ากับ YouTube อย่างราบรื่นเพื่อเข้าถึงเพลงนับล้านและสร้างบรรยากาศที่สมบูรณ์แบบ"
-        },
-        "voteLikeSystem": {
-          "title": "ระบบโหวตและไลค์",
-          "description": "แขกสามารถโหวตเพลงโปรดของพวกเขาเพื่อส่งผลต่อคิวเพลย์ลิสต์แบบเรียลไทม์"
-        },
-        "silentParties": {
-          "title": "ปาร์ตี้เงียบ",
-          "description": "จัดปาร์ตี้เงียบที่ไม่เหมือนใครที่ทุกคนฟังผ่านหูฟังของตัวเอง"
-        },
-        "karaokeReady": {
-          "title": "พร้อมคาราโอเกะ",
-          "description": "เหมาะสำหรับค่ำคืนคาราโอเกะด้วยเพลย์ลิสต์แบบร่วมมือและคำขอเพลงแบบเรียลไทม์"
-        }
-      },
-      "venueHeading": "เหมาะสำหรับทุกสถานที่",
-      "venues": {
-        "barsPubs": "บาร์และผับ",
-        "restaurants": "ร้านอาหาร",
-        "coffeeShops": "ร้านกาแฟ",
-        "eventsWeddings": "งานอีเวนต์และงานแต่งงาน",
-        "retailStores": "ร้านค้าปลีก",
-        "gymsFitness": "ยิมและฟิตเนส"
-      },
-      "closingStatement": "Tunes <strong>ฟรี</strong>สำหรับการสำรวจ และสำหรับคุณสมบัติแบบชำระเงินคุณสามารถอัปเกรดได้ในภายหลัง"
     },
     "whoIsFor": {
       "headline": "สร้างขึ้นสำหรับผู้ที่มีรสนิยมช่วยเหลือผู้อื่น",
@@ -1532,7 +1593,23 @@
         "สนามบิน",
         "องค์กรพัฒนาเอกชน",
         "ทีมรัฐบาล"
-      ]
+      ],
+      "explore": "See this perspective",
+      "eyebrow": "Ways to use explorers",
+      "perspectives": {
+        "brands": {
+          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
+          "title": "Brands"
+        },
+        "creators": {
+          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
+          "title": "Creators"
+        },
+        "personal": {
+          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
+          "title": "Personal"
+        }
+      }
     },
     "testimonials": {
       "headline": "เป็นที่ชื่นชอบของนักเดินทาง ผู้สร้าง และเจ้าของที่พัก",
@@ -1542,45 +1619,45 @@
       "items": [
         {
           "id": "1",
-          "name": "ปรียา ชาร์มา",
-          "role": "บล็อกเกอร์ท่องเที่ยว",
           "location": "มุมไบ, อินเดีย",
-          "quote": "นักสำรวจเปลี่ยนวิธีการแบ่งปันความรู้ด้านการเดินทางของฉัน ผู้ติดตามของฉันชอบที่จะเข้าถึงคำแนะนำที่รวบรวมไว้ของฉันทันที!"
+          "name": "ปรียา ชาร์มา",
+          "quote": "นักสำรวจเปลี่ยนวิธีการแบ่งปันความรู้ด้านการเดินทางของฉัน ผู้ติดตามของฉันชอบที่จะเข้าถึงคำแนะนำที่รวบรวมไว้ของฉันทันที!",
+          "role": "บล็อกเกอร์ท่องเที่ยว"
         },
         {
           "id": "2",
-          "name": "ราช ปาเตล",
-          "role": "Airbnb โฮสต์",
           "location": "เดลี, อินเดีย",
-          "quote": "แขกของฉันชอบรหัส QR ส่วนตัวในชุดต้อนรับของพวกเขามาก มันกลายเป็นสัมผัสอันเป็นเอกลักษณ์ของฉัน!"
+          "name": "ราช ปาเตล",
+          "quote": "แขกของฉันชอบรหัส QR ส่วนตัวในชุดต้อนรับของพวกเขามาก มันกลายเป็นสัมผัสอันเป็นเอกลักษณ์ของฉัน!",
+          "role": "Airbnb โฮสต์"
         },
         {
           "id": "3",
-          "name": "ยูกิ ทานากะ",
-          "role": "เจ้าของร้านอาหาร",
           "location": "โตเกียวประเทศญี่ปุ่น",
-          "quote": "เราแบ่งปันนักสำรวจกับลูกค้าเพื่อแนะนำสถานที่อื่นๆ ในท้องถิ่น มันสร้างการเชื่อมต่อชุมชนที่น่าทึ่ง"
+          "name": "ยูกิ ทานากะ",
+          "quote": "เราแบ่งปันนักสำรวจกับลูกค้าเพื่อแนะนำสถานที่อื่นๆ ในท้องถิ่น มันสร้างการเชื่อมต่อชุมชนที่น่าทึ่ง",
+          "role": "เจ้าของร้านอาหาร"
         },
         {
           "id": "4",
-          "name": "มาเรีย ซิลวา",
-          "role": "ไกด์นำเที่ยว",
           "location": "เซาเปาโล, บราซิล",
-          "quote": "นักสำรวจช่วยให้ฉันขยายความเชี่ยวชาญของฉันนอกเหนือจากชั่วโมงทัวร์ ลูกค้าสามารถเข้าถึงคำแนะนำของฉันได้ตลอดเวลา!"
+          "name": "มาเรีย ซิลวา",
+          "quote": "นักสำรวจช่วยให้ฉันขยายความเชี่ยวชาญของฉันนอกเหนือจากชั่วโมงทัวร์ ลูกค้าสามารถเข้าถึงคำแนะนำของฉันได้ตลอดเวลา!",
+          "role": "ไกด์นำเที่ยว"
         },
         {
           "id": "5",
-          "name": "เจมส์ วิลสัน",
-          "role": "ผู้ทรงอิทธิพลด้านการท่องเที่ยว",
           "location": "ซิดนีย์, ออสเตรเลีย",
-          "quote": "ในฐานะผู้มีอิทธิพลด้านการท่องเที่ยว นักสำรวจทำให้การแชร์สถานที่โปรดของฉันกับผู้ชมเป็นเรื่องง่ายมาก ฟีเจอร์โค้ด QR นั้นยอดเยี่ยมมาก!"
+          "name": "เจมส์ วิลสัน",
+          "quote": "ในฐานะผู้มีอิทธิพลด้านการท่องเที่ยว นักสำรวจทำให้การแชร์สถานที่โปรดของฉันกับผู้ชมเป็นเรื่องง่ายมาก ฟีเจอร์โค้ด QR นั้นยอดเยี่ยมมาก!",
+          "role": "ผู้ทรงอิทธิพลด้านการท่องเที่ยว"
         },
         {
           "id": "6",
-          "name": "โซฟี มาร์ติน",
-          "role": "มัคคุเทศก์ท้องถิ่น",
           "location": "ปารีส, ฝรั่งเศส",
-          "quote": "ฉันใช้นักสำรวจเพื่อสร้างทัวร์เดินเท้าให้กับลูกค้าของฉัน พวกเขาสามารถสแกน QR และสำรวจได้ตามต้องการ!"
+          "name": "โซฟี มาร์ติน",
+          "quote": "ฉันใช้นักสำรวจเพื่อสร้างทัวร์เดินเท้าให้กับลูกค้าของฉัน พวกเขาสามารถสแกน QR และสำรวจได้ตามต้องการ!",
+          "role": "มัคคุเทศก์ท้องถิ่น"
         }
       ]
     },
@@ -1591,24 +1668,24 @@
       "error": "เกิดข้อผิดพลาดในการโหลด FAQ กรุณาลองใหม่ภายหลัง",
       "fallbackItems": [
         {
-          "Sequence": 1,
+          "Answer": "สถานที่ ผู้คน ผลิตภัณฑ์ หนังสือ ภาพยนตร์ รายการ เพลง เกม แอพ คู่มือ และบันทึกย่อ",
           "Question": "ฉันจะเพิ่มอะไรลงในหน้า Explorer ของฉันได้บ้าง",
-          "Answer": "สถานที่ ผู้คน ผลิตภัณฑ์ หนังสือ ภาพยนตร์ รายการ เพลง เกม แอพ คู่มือ และบันทึกย่อ"
+          "Sequence": 1
         },
         {
-          "Sequence": 2,
+          "Answer": "ใช่. คุณสามารถแชร์เพจ Explorer ของคุณเป็นลิงก์หรือ QR สำหรับโปรไฟล์ ข้อความ ตาราง การ์ด และคำแนะนำที่พิมพ์ออกมา",
           "Question": "ฉันสามารถแบ่งปันด้วยรหัส QR ได้หรือไม่",
-          "Answer": "ใช่. คุณสามารถแชร์เพจ Explorer ของคุณเป็นลิงก์หรือ QR สำหรับโปรไฟล์ ข้อความ ตาราง การ์ด และคำแนะนำที่พิมพ์ออกมา"
+          "Sequence": 2
         },
         {
-          "Sequence": 3,
+          "Answer": "ใช่. คุณสามารถทำให้เพจของคุณสดใหม่ในขณะที่ลิงก์เดิมและ QR ยังคงทำงานต่อไป",
           "Question": "ฉันสามารถอัปเดตคำแนะนำของฉันในภายหลังได้หรือไม่",
-          "Answer": "ใช่. คุณสามารถทำให้เพจของคุณสดใหม่ในขณะที่ลิงก์เดิมและ QR ยังคงทำงานต่อไป"
+          "Sequence": 3
         },
         {
-          "Sequence": 4,
+          "Answer": "ใช่. เพจสามารถสื่อสารสัญญาฟรีได้ชัดเจนโดยไม่ต้องเสียเงินหนัก",
           "Question": "นักสำรวจฟรีตลอดไปหรือไม่?",
-          "Answer": "ใช่. เพจสามารถสื่อสารสัญญาฟรีได้ชัดเจนโดยไม่ต้องเสียเงินหนัก"
+          "Sequence": 4
         }
       ]
     },
@@ -1668,52 +1745,52 @@
       },
       "categories": [
         {
+          "description": "ร้านอาหาร ละแวกใกล้เคียง พิพิธภัณฑ์ เส้นทาง และอัญมณีที่ซ่อนอยู่ที่ผู้คนสามารถเยี่ยมชมได้จริง",
           "id": "places",
           "label": "สถานที่",
-          "title": "จุดท้องถิ่น ไกด์ และเส้นทาง",
-          "description": "ร้านอาหาร ละแวกใกล้เคียง พิพิธภัณฑ์ เส้นทาง และอัญมณีที่ซ่อนอยู่ที่ผู้คนสามารถเยี่ยมชมได้จริง"
+          "title": "จุดท้องถิ่น ไกด์ และเส้นทาง"
         },
         {
+          "description": "ผู้สร้าง ผู้ก่อตั้ง ไกด์ ศิลปิน ครู ผู้เชี่ยวชาญ และบุคคลที่กำหนดรสนิยมของคุณ",
           "id": "people",
           "label": "ประชากร",
-          "title": "บุคคลที่ควรค่าแก่การติดตามหรือเรียนรู้จาก",
-          "description": "ผู้สร้าง ผู้ก่อตั้ง ไกด์ ศิลปิน ครู ผู้เชี่ยวชาญ และบุคคลที่กำหนดรสนิยมของคุณ"
+          "title": "บุคคลที่ควรค่าแก่การติดตามหรือเรียนรู้จาก"
         },
         {
+          "description": "หนังสือที่คุณคอยแนะนำในแชท บันทึกย่อ จดหมายข่าว และบทสนทนาเกี่ยวกับการเดินทาง",
           "id": "books",
           "label": "หนังสือ",
-          "title": "หนังสือและรายการอ่าน",
-          "description": "หนังสือที่คุณคอยแนะนำในแชท บันทึกย่อ จดหมายข่าว และบทสนทนาเกี่ยวกับการเดินทาง"
+          "title": "หนังสือและรายการอ่าน"
         },
         {
+          "description": "ภาพยนตร์ ซีรีส์ สารคดี และรายการเฝ้าดูสำหรับทุกอารมณ์หรือผู้ชม",
           "id": "movies",
           "label": "ภาพยนตร์และทีวี",
-          "title": "ภาพยนตร์ รายการ และรายการเฝ้าดู",
-          "description": "ภาพยนตร์ ซีรีส์ สารคดี และรายการเฝ้าดูสำหรับทุกอารมณ์หรือผู้ชม"
+          "title": "ภาพยนตร์ รายการ และรายการเฝ้าดู"
         },
         {
+          "description": "เกม ภารกิจ โลก และประสบการณ์ที่ผู้คนควรลองต่อไป",
           "id": "games",
           "label": "เกมส์",
-          "title": "เกมและโลกที่จะสำรวจ",
-          "description": "เกม ภารกิจ โลก และประสบการณ์ที่ผู้คนควรลองต่อไป"
+          "title": "เกมและโลกที่จะสำรวจ"
         },
         {
+          "description": "ศิลปิน อัลบั้ม เพลง เพลย์ลิสต์ และเพลงประกอบที่เชื่อมโยงกับสถานที่และช่วงเวลาต่างๆ",
           "id": "music",
           "label": "ดนตรี",
-          "title": "อัลบั้ม ศิลปิน และเพลย์ลิสต์",
-          "description": "ศิลปิน อัลบั้ม เพลง เพลย์ลิสต์ และเพลงประกอบที่เชื่อมโยงกับสถานที่และช่วงเวลาต่างๆ"
+          "title": "อัลบั้ม ศิลปิน และเพลย์ลิสต์"
         },
         {
+          "description": "ของโปรดในชีวิตประจำวัน อุปกรณ์การเดินทาง เครื่องมือสำหรับสร้างสรรค์ ของขวัญ และผลิตภัณฑ์ที่ควรค่าแก่การประหยัด",
           "id": "products",
           "label": "สินค้า",
-          "title": "สินค้าที่คนแนะนำจริงๆ",
-          "description": "ของโปรดในชีวิตประจำวัน อุปกรณ์การเดินทาง เครื่องมือสำหรับสร้างสรรค์ ของขวัญ และผลิตภัณฑ์ที่ควรค่าแก่การประหยัด"
+          "title": "สินค้าที่คนแนะนำจริงๆ"
         },
         {
+          "description": "ซอฟต์แวร์ เว็บไซต์ เทมเพลต เครื่องมือ และทรัพยากรที่ทำให้ชีวิตง่ายขึ้น",
           "id": "apps",
           "label": "แอพและเครื่องมือ",
-          "title": "แอป เครื่องมือ และลิงก์ที่เป็นประโยชน์",
-          "description": "ซอฟต์แวร์ เว็บไซต์ เทมเพลต เครื่องมือ และทรัพยากรที่ทำให้ชีวิตง่ายขึ้น"
+          "title": "แอป เครื่องมือ และลิงก์ที่เป็นประโยชน์"
         }
       ]
     }
@@ -2286,5 +2363,115 @@
     "unavailable": "ชื่อผู้ใช้ไม่สามารถใช้งานได้",
     "confirmOnSignup": "เราจะยืนยันความพร้อมในการสมัคร",
     "checkingAvailability": "กำลังตรวจสอบห้องว่าง..."
+  },
+  "publicProfile": {
+    "recommendations": {
+      "counts": {
+        "app_one": "{{formattedCount}}{{suffix}} app",
+        "app_other": "{{formattedCount}}{{suffix}} apps",
+        "book_one": "{{formattedCount}}{{suffix}} book",
+        "book_other": "{{formattedCount}}{{suffix}} books",
+        "game_one": "{{formattedCount}}{{suffix}} game",
+        "game_other": "{{formattedCount}}{{suffix}} games",
+        "list_one": "{{formattedCount}} list",
+        "list_other": "{{formattedCount}} lists",
+        "movie_one": "{{formattedCount}}{{suffix}} movie",
+        "movie_other": "{{formattedCount}}{{suffix}} movies",
+        "person_one": "{{formattedCount}}{{suffix}} person",
+        "person_other": "{{formattedCount}}{{suffix}} people",
+        "place_one": "{{formattedCount}}{{suffix}} place",
+        "place_other": "{{formattedCount}}{{suffix}} places",
+        "product_one": "{{formattedCount}}{{suffix}} product",
+        "product_other": "{{formattedCount}}{{suffix}} products",
+        "song_one": "{{formattedCount}}{{suffix}} song",
+        "song_other": "{{formattedCount}}{{suffix}} songs"
+      },
+      "empty": "No public recommendations yet",
+      "emptyHelp": "Check back later for new recommendations.",
+      "loadError": "Couldn’t load recommendations",
+      "loadErrorHelp": "Try again to load the unavailable categories.",
+      "partialError": "Some categories are unavailable",
+      "regionLabel": "Recommendations",
+      "retry": "Try again",
+      "retrying": "Retrying…"
+    }
+  },
+  "useCases": {
+    "cta": {
+      "button": "Claim your Explorer page",
+      "description": "Start with the recommendations you already share. Give them one place to live.",
+      "title": "Make a home for what you would pass on."
+    },
+    "hero": {
+      "chooseLabel": "Choose a perspective",
+      "description": "Whether the point of view is personal, creative, or shared by a brand, explorers gives it a thoughtful home.",
+      "eyebrow": "Ways to explore",
+      "title": "Different perspectives. One place to share them.",
+      "visualAlt": "Three perspectives connected through a place, an Explorer profile, and a storefront."
+    },
+    "journey": {
+      "description": "The shape changes with the person behind it. The rhythm stays simple.",
+      "eyebrow": "One simple rhythm",
+      "steps": {
+        "collect": {
+          "description": "Bring together what you genuinely recommend across the parts of life that matter to you.",
+          "title": "Collect"
+        },
+        "shape": {
+          "description": "Organize it with enough context for someone else to understand why it belongs.",
+          "title": "Shape"
+        },
+        "share": {
+          "description": "Offer one living link or QR that people can save, scan, and return to.",
+          "title": "Share"
+        }
+      },
+      "title": "Three perspectives. One way of sharing with care."
+    },
+    "perspectives": {
+      "brands": {
+        "description": "Curate the places, products, guides, and ideas that express what your organization genuinely values.",
+        "label": "Brands",
+        "points": [
+          "Build collections with a clear and human perspective.",
+          "Connect locations, products, and useful context.",
+          "Give people something thoughtful to save and revisit."
+        ],
+        "title": "Turn your point of view into an experience people can enter."
+      },
+      "creators": {
+        "description": "Turn the recommendations scattered across posts, videos, conversations, and notes into something people can return to.",
+        "label": "Creators",
+        "points": [
+          "Create a durable home for your point of view.",
+          "Organize recommendations around stories and themes.",
+          "Share through one link or QR wherever people find you."
+        ],
+        "title": "Give your audience more than a feed."
+      },
+      "personal": {
+        "description": "Keep the places, books, films, tools, people, and small discoveries you return to in one living collection.",
+        "label": "Personal",
+        "points": [
+          "Bring different kinds of recommendations together.",
+          "Add the context that makes each choice yours.",
+          "Share one page that can keep evolving with you."
+        ],
+        "title": "A home for the things that shape your world."
+      }
+    },
+    "seo": {
+      "description": "See how people, creators, and brands can collect what they value, shape it with context, and share it through one thoughtful Explorer page.",
+      "keywords": [
+        "explorers use cases",
+        "personal recommendations page",
+        "creator recommendations",
+        "brand curation",
+        "share recommendations",
+        "curated collections"
+      ],
+      "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
+      "title": "Use Cases | explorers.earth"
+    }
   }
 }

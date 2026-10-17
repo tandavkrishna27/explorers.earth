@@ -1,0 +1,37 @@
+{
+  "sourceCommit": "da090a6346cdc2d70867b174e202ad3e41fe84f9",
+  "runId": "09d1e404c035eb1d1e1b18381a1172d4",
+  "qualification": false,
+  "counts": {
+    "discovered": 8,
+    "executed": 8,
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "attempts": 8
+  },
+  "originalExitCode": 1,
+  "diagnostic": {
+    "stage": "cleanup",
+    "category": "deadline",
+    "cleanupStep": "request-drain",
+    "nativeUnknownOrigin": "clock-callback",
+    "nativeUnknownStage": "cleanup",
+    "nativeUnknownStep": "request-drain",
+    "nativeUnknownBudgetMs": 15000,
+    "requestDrainPhase": "canonical-wait",
+    "requestDrainHandlers": 0,
+    "requestDrainStatus": "unsettled",
+    "requestDrainSealed": true,
+    "requestDrainRequests": 58,
+    "requestDrainFrames": 0,
+    "requestDrainUnknown": false,
+    "requestDrainUncertain": true,
+    "requestDrainReason": "request-aborted"
+  },
+  "sourceIntact": true,
+  "interrupted": false,
+  "guardedOwnerClosed": true,
+  "freshOwnerAndChildrenAbsent": true,
+  "exactRetainedRecovery": "pending"
+}

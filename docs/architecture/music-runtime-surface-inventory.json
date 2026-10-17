@@ -1,0 +1,2706 @@
+{
+  "schemaVersion": "music-runtime-surface-inventory/v1",
+  "retiredSurfaces": [
+    {
+      "family": "legacy-browser-identity",
+      "disposition": "typed-410-boundary",
+      "reason": "Browser-selected identity bridges cannot establish Music ownership."
+    },
+    {
+      "family": "graphql-service-proxy",
+      "disposition": "typed-410-boundary",
+      "reason": "Unrestricted service-token GraphQL authority is prohibited."
+    },
+    {
+      "family": "legacy-admin",
+      "disposition": "typed-410-boundary",
+      "reason": "No internal Music admin principal exists."
+    },
+    {
+      "family": "swagger",
+      "disposition": "canonical-replacement",
+      "reason": "A minimal typed OpenAPI document describes only live canonical endpoints."
+    },
+    {
+      "family": "legacy-mixed-auth-owner-handlers",
+      "disposition": "canonical-replacement-or-typed-410",
+      "reason": "C5 owner routes replace product-required operations; the remainder retire fail-closed."
+    },
+    {
+      "family": "request",
+      "disposition": "canonical-replacement",
+      "reason": "Guest requests use the capability-only REST/socket allowlist."
+    },
+    {
+      "family": "queue",
+      "disposition": "canonical-replacement",
+      "reason": "Owner queue read/update/delete operations use principal-predicated SQL."
+    },
+    {
+      "family": "playlist",
+      "disposition": "canonical-replacement",
+      "reason": "Saved and active playlists use principal-predicated canonical routes."
+    },
+    {
+      "family": "settings",
+      "disposition": "canonical-replacement-or-typed-410",
+      "reason": "Playlist visibility is canonical; legacy identity/system settings retire."
+    },
+    {
+      "family": "device",
+      "disposition": "typed-410-boundary",
+      "reason": "Device-session authority remains outside the local Music principal."
+    },
+    {
+      "family": "analytics",
+      "disposition": "typed-410-boundary",
+      "reason": "Legacy mixed-auth analytics lacks a local scoped repository."
+    },
+    {
+      "family": "subscription",
+      "disposition": "typed-410-boundary",
+      "reason": "Caller-target subscription handlers are prohibited; entitlement is server-derived."
+    },
+    {
+      "family": "youtube",
+      "disposition": "canonical-replacement-or-typed-410",
+      "reason": "Typed C5 read-only search/video lookup remains; every broad or mutating sibling retires."
+    },
+    {
+      "family": "playback",
+      "disposition": "canonical-replacement",
+      "reason": "Playback state changes require C5 and owner-predicated queue SQL."
+    },
+    {
+      "family": "venue",
+      "disposition": "typed-410-boundary",
+      "reason": "Venue identity mutations remain authoritative in Explorer identity."
+    },
+    {
+      "family": "public",
+      "disposition": "canonical-replacement",
+      "reason": "Explicit publication and hashed capability reads replace implicit guest URLs."
+    },
+    {
+      "family": "admin",
+      "disposition": "typed-410-boundary",
+      "reason": "No internal Music admin principal exists."
+    },
+    {
+      "family": "payment",
+      "disposition": "typed-410-boundary",
+      "reason": "Legacy caller-target payment mutations cannot derive server authority safely."
+    },
+    {
+      "family": "scrape",
+      "disposition": "typed-410-boundary",
+      "reason": "Unrestricted scrape and image proxy operations are not Music owner functions."
+    },
+    {
+      "family": "instagram",
+      "disposition": "typed-410-boundary",
+      "reason": "The legacy mixed-auth upstream proxy is not an approved Music surface."
+    },
+    {
+      "family": "gemini",
+      "disposition": "typed-410-boundary",
+      "reason": "The legacy paid upstream proxy has no approved server-derived operation."
+    }
+  ],
+  "retirementMatchers": [
+    {
+      "family": "graphql-service-proxy",
+      "path": "/graphql",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "graphql-service-proxy",
+      "path": "/api/strapi/graphql",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "graphql-service-proxy",
+      "path": "/api/strapi/config",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "graphql-service-proxy",
+      "path": "/api/debug/strapi",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/auth",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/register",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/connect/google",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "legacy-admin",
+      "path": "/api/admin",
+      "match": "prefix",
+      "classification": "admin-tombstone"
+    },
+    {
+      "family": "swagger",
+      "path": "/api-docs",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "settings",
+      "path": "/api/page-contents",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/verify-email",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/resend-verification",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "venue",
+      "path": "/api/user",
+      "match": "prefix",
+      "classification": "tombstone",
+      "exclusions": [
+        "/api/user/request-reactivation",
+        "/api/user/reactivate"
+      ]
+    },
+    {
+      "family": "settings",
+      "path": "/api/system-settings",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "youtube",
+      "path": "/api/youtube",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "instagram",
+      "path": "/api/instagram",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "payment",
+      "path": "/api/payments",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "subscription",
+      "path": "/api/subscriptions",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "gemini",
+      "path": "/api/gemini",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "settings",
+      "path": "/api/email",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "analytics",
+      "path": "/api/seo",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/api/apps",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/api/products",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/api/people",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/api/proxy-image",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "itunes",
+      "path": "/itunes-api",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/apps",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/products",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/people",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "scrape",
+      "path": "/proxy-image",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "playlist",
+      "path": "/api/playlists",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "playlist",
+      "path": "/api/playlist",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "request",
+      "path": "/api/music/guest/request",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "publication",
+      "path": "/api/music/guest-capability",
+      "match": "prefix",
+      "classification": "tombstone"
+    },
+    {
+      "family": "publication",
+      "path": "/api/music/publication/publish",
+      "match": "exact",
+      "classification": "tombstone"
+    },
+    {
+      "family": "publication",
+      "path": "/api/music/publication/unpublish",
+      "match": "exact",
+      "classification": "tombstone"
+    }
+  ],
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/login",
+      "classification": "native-session",
+      "ownerSource": "native-session-only",
+      "policy": "standalone-native-only",
+      "lifecycle": "request",
+      "source": "tunes/server/auth.ts",
+      "line": 401
+    },
+    {
+      "method": "POST",
+      "path": "/api/register",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/auth.ts",
+      "line": 492
+    },
+    {
+      "method": "POST",
+      "path": "/api/logout",
+      "classification": "native-session",
+      "ownerSource": "native-session-only",
+      "policy": "standalone-native-only",
+      "lifecycle": "request",
+      "source": "tunes/server/auth.ts",
+      "line": 671
+    },
+    {
+      "method": "GET",
+      "path": "/api/check",
+      "classification": "native-session",
+      "ownerSource": "native-session-only",
+      "policy": "standalone-native-only",
+      "lifecycle": "request",
+      "source": "tunes/server/auth.ts",
+      "line": 737
+    },
+    {
+      "method": "GET",
+      "path": "/api/csrf-token",
+      "classification": "native-session",
+      "ownerSource": "native-session-only",
+      "policy": "standalone-native-only",
+      "lifecycle": "request",
+      "source": "tunes/server/auth.ts",
+      "line": 746
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/get-session",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 69
+    },
+    {
+      "method": "USE",
+      "path": "/api/auth",
+      "classification": "canonical-explorers-auth",
+      "ownerSource": "better-auth-session-or-provider-flow",
+      "policy": "better-auth-handler+trusted-origin-for-mutations",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 70
+    },
+    {
+      "method": "ALL",
+      "path": "/api/auth",
+      "classification": "canonical-explorers-auth",
+      "ownerSource": "better-auth-session-or-provider-flow",
+      "policy": "better-auth-handler+trusted-origin-for-mutations",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 77
+    },
+    {
+      "method": "ALL",
+      "path": "/api/auth/*splat",
+      "classification": "canonical-explorers-auth",
+      "ownerSource": "better-auth-session-or-provider-flow",
+      "policy": "better-auth-handler+trusted-origin-for-mutations",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 78
+    },
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 82
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recovery/start",
+      "classification": "canonical-explorers-recovery",
+      "ownerSource": "trusted-origin+signed-short-lived-recovery-intent",
+      "policy": "trusted-origin+signed-short-lived-recovery-intent",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 119
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/me",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 137
+    },
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/deployment/music-health.ts",
+      "line": 43
+    },
+    {
+      "method": "GET",
+      "path": "/health/ready",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/deployment/music-health.ts",
+      "line": 47
+    },
+    {
+      "method": "GET",
+      "path": "/api/music-entry/status",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/deployment/music-health.ts",
+      "line": 70
+    },
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/deployment/music-local-health.ts",
+      "line": 32
+    },
+    {
+      "method": "GET",
+      "path": "/health/ready",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/deployment/music-local-health.ts",
+      "line": 36
+    },
+    {
+      "method": "GET",
+      "path": "/api/music-entry/status",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/deployment/music-local-health.ts",
+      "line": 72
+    },
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/publicProfile/localPublicProfileGatewayApp.ts",
+      "line": 28
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/account",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAccountRoutes.ts",
+      "line": 11
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/analytics/music-account/:accountDocumentId/events",
+      "classification": "public",
+      "ownerSource": "active-local-binding-from-account-descriptor",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "line": 191
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/analytics/music/:publicSlug/events",
+      "classification": "guest-capability",
+      "ownerSource": "hashed-guest-capability-or-explicit-publication",
+      "policy": "hashed-capability+guest-allowlist",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "line": 228
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/analytics/events",
+      "classification": "public",
+      "ownerSource": "consent+live-canonical-public-target",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "line": 280
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/analytics/events",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "historical-strapi-bearer-owner-until-7.2",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "line": 328
+    },
+    {
+      "method": "PUT",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 26
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 27
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/acceptances",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 28
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/sources",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 29
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 30
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/suggestions",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 31
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/sources",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 33
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 34
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/acceptances",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 35
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/suggestions",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "line": 36
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/analytics/summary",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-Actor+analytics:read+current-session-lifecycle",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts",
+      "line": 29
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/catalog/taxonomy",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "line": 14
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/catalog/taxonomy",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "line": 15
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/catalog/games",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "line": 16
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/catalog/games",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "line": 21
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/catalog/movie-genres",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "line": 22
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/catalog/movie-genres",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "line": 23
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/catalog/books",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "line": 24
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/catalog/books",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "line": 29
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/catalog/movies",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "line": 30
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/catalog/movies",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "line": 31
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/account/lifecycle",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "line": 25
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/account/deletion-feedback",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "line": 29
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/account/deactivation",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "block-or-deactivate",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "line": 35
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/account/deletion",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "line": 41
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recovery/status",
+      "classification": "canonical-explorers-recovery",
+      "ownerSource": "google-bound-recovery-proof-within-expiry-read-only",
+      "policy": "google-bound-five-minute-proof+origin-on-mutation",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "line": 56
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recovery/complete",
+      "classification": "canonical-explorers-recovery",
+      "ownerSource": "single-use-google-bound-recovery-proof",
+      "policy": "google-bound-five-minute-proof+origin-on-mutation",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "line": 86
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/media",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersMediaRoutes.ts",
+      "line": 19
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/media/:id",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/explorersMediaRoutes.ts",
+      "line": 39
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/media/:id/content",
+      "classification": "public",
+      "ownerSource": "owner-or-visible-public-profile-attachment",
+      "policy": "ready-media+owner-or-live-public-profile-or-book-recommendation-attachment",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersMediaRoutes.ts",
+      "line": 101
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/explorers/v1/media/:id/content",
+      "classification": "public",
+      "ownerSource": "owner-or-visible-public-profile-attachment",
+      "policy": "ready-media+owner-or-live-public-profile-or-book-recommendation-attachment",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersMediaRoutes.ts",
+      "line": 102
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/music/identity/ensure",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersMusicIdentityRoutes.ts",
+      "line": 31
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/collections/:id/place-pins/availability",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "line": 37
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/place-pins/availability",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "line": 38
+    },
+    {
+      "method": "PUT",
+      "path": "/api/explorers/v1/collections/:id/place-pins",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "line": 39
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/place-pins",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "line": 40
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "line": 41
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "line": 42
+    },
+    {
+      "method": "PUT",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId/chunks/:chunkIndex",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "line": 43
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId/chunks/:chunkIndex",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "line": 44
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId/commit",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "line": 45
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId/commit",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "line": 46
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "line": 47
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "line": 48
+    },
+    {
+      "method": "USE",
+      "path": "/api/explorers/v1/public/recommendations",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 10
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/public/recommendations/search",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 11
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/public/recommendations/search",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 21
+    },
+    {
+      "method": "USE",
+      "path": "/api/explorers/v1/public/handles",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 25
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/public/handles/:handle/available",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 26
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/public/handles/:handle/available",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 35
+    },
+    {
+      "method": "USE",
+      "path": "/api/explorers/v1/public/profiles",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 36
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/public/profiles/:username/collections/:category",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 49
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 50
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations/:id",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 51
+    },
+    {
+      "method": "USE",
+      "path": "/api/explorers/v1/public/email/unsubscribe",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 80
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/public/email/unsubscribe",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 81
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/public/email/unsubscribe",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 86
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/public/email/unsubscribe",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "line": 98
+    },
+    {
+      "method": "USE",
+      "path": "/api/explorers/v1/profiles",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "line": 45
+    },
+    {
+      "method": "USE",
+      "path": "/api/explorers/v1/profiles",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "line": 52
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "line": 56
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username/recommendations/:category",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "line": 70
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username/recommendations/movies/genres/:genreSlug",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "line": 92
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "line": 97
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username/recommendations/:category/:slug",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "line": 102
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/collections",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 66
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/collections/:id/memberships/:recommendationId",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 67
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/collections/:id/memberships/:recommendationId",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 68
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/memberships/:recommendationId",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 69
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/collections/:id/location",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 71
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/collections/:id/location",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 72
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/location",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 73
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/collections/:id/guide",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 78
+    },
+    {
+      "method": "PUT",
+      "path": "/api/explorers/v1/collections/:id/guide",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 79
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/collections/:id/guide/sections/order",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 80
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/collections/:id/guide/sections",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 81
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/collections/:id/guide/sections/:sectionId",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 82
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/collections/:id/guide/sections/:sectionId",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 83
+    },
+    {
+      "method": "PUT",
+      "path": "/api/explorers/v1/collections/:id/guide/cover",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 84
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/guide",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 85
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/guide/sections/order",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 86
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/guide/sections",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 87
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/guide/sections/:sectionId",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 88
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/guide/cover",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 89
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/collections/:id",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 90
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/collections/:id/editable",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 91
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 92
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/categories/:category/content-snapshot",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 93
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/categories/:category/content-snapshot/validate",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 94
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/categories/:category/memberships",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 95
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/categories/:category/top-picks",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 96
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/entities/resolve",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 99
+    },
+    {
+      "method": "PUT",
+      "path": "/api/explorers/v1/categories/:category/top-picks",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 100
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/categories/:category/top-picks/order",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 101
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/collections",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 102
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/collections/:id",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 103
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/collections/:id/order",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 104
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/collections/:id",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 105
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/search",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 106
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/search",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 111
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 112
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id/editable",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 113
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recommendations",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 114
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recommendations/:id/movie-media/import",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 115
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recommendations/:id/book-covers",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 116
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recommendations/:id/entity",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 117
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/recommendations/:id",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 118
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/recommendations/:id",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 119
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/entities/resolve",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 120
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 121
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 122
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/editable",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 123
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/order",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 124
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 125
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 126
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/editable",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 127
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/movie-media/import",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 128
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/book-covers",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 129
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/entity",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 130
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/content-snapshot",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 131
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/content-snapshot/validate",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 132
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/memberships",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 133
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/top-picks",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 134
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/top-picks/order",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 135
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/features",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicFeatureRoutes.ts",
+      "line": 13
+    },
+    {
+      "method": "GET",
+      "path": "/api/music-fixture/readiness",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicFixtureProbe.ts",
+      "line": 23
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/ensure",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+selected-account",
+      "policy": "c5-mint-boundary",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 83
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/prepare",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 196
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/identity/lifecycle/status",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 197
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/boundary",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 198
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/cancel",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 199
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/suspend",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "suspend",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 235
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/resume",
+      "classification": "strapi-identity-boundary",
+      "ownerSource": "authoritative-strapi-user+stored-account-binding",
+      "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 238
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/identity/current",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "line": 244
+    },
+    {
+      "method": "GET",
+      "path": "/api-docs",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicOpenApiRoutes.ts",
+      "line": 810
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/public-profile/:accountDocumentId",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 172
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/public-resource/v1/:publicSlug",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 197
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlists",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 220
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlists",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 224
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlists/:playlistId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 240
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlists/:playlistId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 248
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlists/:playlistId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 260
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlists/:playlistId/songs",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 267
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlists/:playlistId/songs/:songId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 283
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlists/:playlistId/reorder",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 292
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlists/:playlistId/visibility",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 303
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlist/songs",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 314
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/queue/replace",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 318
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/socket-ticket",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 345
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/dashboard",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 361
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/queue/append",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 365
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/music/guest-controls",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 390
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/guest-controls",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 398
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/songs",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 406
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/currently-playing",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 414
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist/songs/bulk",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 449
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist/songs/:songId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 458
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlist/songs/:songId/position",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 465
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist/history",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 479
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist/history/:songId",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "delete",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 483
+    },
+    {
+      "method": "POST",
+      "path": "/api/youtube/search",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 499
+    },
+    {
+      "method": "POST",
+      "path": "/api/youtube/video-from-url",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 511
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/publication",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 523
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/paid/import",
+      "classification": "paid-local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+fresh-entitlement+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 557
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/entitlement",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 567
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlist/:guestUrl",
+      "classification": "guest-capability",
+      "ownerSource": "hashed-guest-capability-or-explicit-publication",
+      "policy": "hashed-capability+guest-allowlist",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 583
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/:guestUrl/youtube/search",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 605
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/:guestUrl/youtube/video-from-url",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 619
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/:guestUrl/requests",
+      "classification": "guest-capability",
+      "ownerSource": "hashed-guest-capability-or-explicit-publication",
+      "policy": "hashed-capability+guest-allowlist",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 632
+    },
+    {
+      "method": "ALL",
+      "path": "/{*musicRetiredPath}",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "normalized-executable-retirement-matcher",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "line": 735
+    },
+    {
+      "method": "POST",
+      "path": "/api/user/request-reactivation",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "reactivate",
+      "source": "tunes/server/routes/reactivationRoutes.ts",
+      "line": 134
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/reactivate",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "reactivate",
+      "source": "tunes/server/routes/reactivationRoutes.ts",
+      "line": 165
+    },
+    {
+      "method": "GET",
+      "path": "/robots.txt",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/seo-routes.ts",
+      "line": 178
+    },
+    {
+      "method": "GET",
+      "path": "/sitemap.xml",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/seo-routes.ts",
+      "line": 195
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers-sitemap.xml",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/seo-routes.ts",
+      "line": 216
+    }
+  ],
+  "events": [
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 167
+    },
+    {
+      "direction": "emit",
+      "event": "music_public_change",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 182
+    },
+    {
+      "direction": "emit",
+      "event": "music_owner_change",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 196
+    },
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 199
+    },
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 256
+    },
+    {
+      "direction": "receive",
+      "event": "connection",
+      "classification": "c5-or-guest-handshake",
+      "policy": "sender-event-time-recheck+role-allowlist",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 319
+    },
+    {
+      "direction": "emit",
+      "event": "connection_status",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 347
+    },
+    {
+      "direction": "receive",
+      "event": "disconnect",
+      "classification": "socket-lifecycle",
+      "policy": "sender-event-time-recheck+role-allowlist",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "disconnect",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 348
+    },
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 352
+    },
+    {
+      "direction": "receive",
+      "event": "player_state",
+      "classification": "local-music-owner-event",
+      "policy": "sender-event-time-recheck+role-allowlist",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 373
+    },
+    {
+      "direction": "emit",
+      "event": "player_state",
+      "classification": "socket-recipient-revalidated",
+      "policy": "recipient-lifecycle+capability-recheck-before-delivery",
+      "ownerSource": "recipient.hashed-guest-capability",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 382
+    },
+    {
+      "direction": "receive",
+      "event": "guest_request",
+      "classification": "guest-capability-event",
+      "policy": "sender-event-time-recheck+role-allowlist",
+      "ownerSource": "hashed-guest-capability",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 386
+    },
+    {
+      "direction": "emit",
+      "event": "guest_request",
+      "classification": "socket-recipient-revalidated",
+      "policy": "recipient-lifecycle+capability-recheck-before-delivery",
+      "ownerSource": "recipient.socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 397
+    },
+    {
+      "direction": "emit",
+      "event": "guest_request_status",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 398
+    },
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "classification": "socket-response",
+      "policy": "socket-response",
+      "ownerSource": "socket.musicPrincipal",
+      "lifecycle": "event",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "line": 403
+    }
+  ],
+  "jobs": [
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/app.ts",
+      "line": 77
+    },
+    {
+      "kind": "setInterval",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/application/analyticsMaintenance.ts",
+      "line": 8
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/application/appEnrichmentLocalScheduler.ts",
+      "line": 4
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/application/appEnrichmentWorker.ts",
+      "line": 17
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/application/movieMediaImport.ts",
+      "line": 50
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/auth/canonicalHandlerCustody.ts",
+      "line": 64
+    },
+    {
+      "kind": "setInterval",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/auth/canonicalStartup.ts",
+      "line": 60
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/deployment/platform-native-attestation.ts",
+      "line": 249
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/deployment/platform-native-attestation.ts",
+      "line": 252
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/deployment/run-registration-compat.ts",
+      "line": 58
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/publicProfile/publicGamesProjection.ts",
+      "line": 87
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/publicProfile/publicGamesProjection.ts",
+      "line": 182
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/publicProfile/strapiPublicProfileGateway.ts",
+      "line": 116
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/repositories/explorersAppEnrichmentRetentionRepository.ts",
+      "line": 27
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/repositories/explorersAppEnrichmentWorkerRepository.ts",
+      "line": 61
+    },
+    {
+      "kind": "setInterval",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/routes/index.ts",
+      "line": 279
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/appEnrichmentFetch.ts",
+      "line": 88
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/appEnrichmentOwnedDecoder.ts",
+      "line": 71
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/appEnrichmentOwnedDecoder.ts",
+      "line": 75
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/appEnrichmentOwnedDecoder.ts",
+      "line": 77
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/bookCatalog.ts",
+      "line": 60
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/bookCoverFetch.ts",
+      "line": 35
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/gameCatalog.ts",
+      "line": 24
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/gameProviderTransport.ts",
+      "line": 39
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/movieImageFetch.ts",
+      "line": 77
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/musicPublicChangeListener.ts",
+      "line": 70
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/objectStorage.ts",
+      "line": 57
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/objectStorage.ts",
+      "line": 70
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/objectStorage.ts",
+      "line": 77
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "reactivation-token-cleanup",
+      "source": "tunes/server/services/reactivation-service.ts",
+      "line": 223
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "reactivation-token-cleanup",
+      "source": "tunes/server/services/reactivation-service.ts",
+      "line": 235
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/strapiIdentityAbsenceProof.ts",
+      "line": 41
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/strapiIdentityGateway.ts",
+      "line": 132
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/strapiIdentityGateway.ts",
+      "line": 198
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/upstreamResponseBody.ts",
+      "line": 33
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/youtubeReadService.ts",
+      "line": 13
+    },
+    {
+      "kind": "setInterval",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/workers/musicLifecycleWorker.ts",
+      "line": 96
+    }
+  ]
+}

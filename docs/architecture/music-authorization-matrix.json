@@ -1,0 +1,5251 @@
+{
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/login",
+      "source": "tunes/server/auth.ts",
+      "decision": "native-session",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": true
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/register",
+      "source": "tunes/server/auth.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/logout",
+      "source": "tunes/server/auth.ts",
+      "decision": "native-session",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": true
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/check",
+      "source": "tunes/server/auth.ts",
+      "decision": "native-session",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": true
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/csrf-token",
+      "source": "tunes/server/auth.ts",
+      "decision": "native-session",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": true
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/get-session",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "USE",
+      "path": "/api/auth",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "decision": "explorers-auth",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": true,
+        "otherUser": false,
+        "suspended": true,
+        "pendingDeletion": true,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      },
+      "flowAccess": {
+        "purpose": "provider-authentication",
+        "grantsApplicationAuthority": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/auth",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "decision": "explorers-auth",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": true,
+        "otherUser": false,
+        "suspended": true,
+        "pendingDeletion": true,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      },
+      "flowAccess": {
+        "purpose": "provider-authentication",
+        "grantsApplicationAuthority": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/auth/*splat",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "decision": "explorers-auth",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": true,
+        "otherUser": false,
+        "suspended": true,
+        "pendingDeletion": true,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      },
+      "flowAccess": {
+        "purpose": "provider-authentication",
+        "grantsApplicationAuthority": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recovery/start",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "decision": "explorers-recovery",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": true,
+        "pendingDeletion": true,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      },
+      "flowAccess": {
+        "purpose": "recovery-intent-issuance",
+        "grantsApplicationAuthority": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/me",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "source": "tunes/server/deployment/music-health.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/health/ready",
+      "source": "tunes/server/deployment/music-health.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music-entry/status",
+      "source": "tunes/server/deployment/music-health.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "source": "tunes/server/deployment/music-local-health.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/health/ready",
+      "source": "tunes/server/deployment/music-local-health.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music-entry/status",
+      "source": "tunes/server/deployment/music-local-health.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "source": "tunes/server/publicProfile/localPublicProfileGatewayApp.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/account",
+      "source": "tunes/server/routes/explorersAccountRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/analytics/music-account/:accountDocumentId/events",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/analytics/music/:publicSlug/events",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "decision": "guest",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": true,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/analytics/events",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/analytics/events",
+      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
+      "decision": "strapi-identity",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/acceptances",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/sources",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/suggestions",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/sources",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/binding",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/acceptances",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/app-enrichment/suggestions",
+      "source": "tunes/server/routes/explorersAppEnrichmentRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/analytics/summary",
+      "source": "tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/catalog/taxonomy",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/catalog/taxonomy",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/catalog/games",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/catalog/games",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/catalog/movie-genres",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/catalog/movie-genres",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/catalog/books",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/catalog/books",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/catalog/movies",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/catalog/movies",
+      "source": "tunes/server/routes/explorersCatalogRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/account/lifecycle",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/account/deletion-feedback",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/account/deactivation",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/account/deletion",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recovery/status",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "decision": "explorers-recovery",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": true,
+        "pendingDeletion": true,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      },
+      "flowAccess": {
+        "purpose": "recovery-proof-consumption",
+        "grantsApplicationAuthority": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recovery/complete",
+      "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
+      "decision": "explorers-recovery",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": true,
+        "pendingDeletion": true,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      },
+      "flowAccess": {
+        "purpose": "recovery-proof-consumption",
+        "grantsApplicationAuthority": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/media",
+      "source": "tunes/server/routes/explorersMediaRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/media/:id",
+      "source": "tunes/server/routes/explorersMediaRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/media/:id/content",
+      "source": "tunes/server/routes/explorersMediaRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/explorers/v1/media/:id/content",
+      "source": "tunes/server/routes/explorersMediaRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/music/identity/ensure",
+      "source": "tunes/server/routes/explorersMusicIdentityRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/collections/:id/place-pins/availability",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/place-pins/availability",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/explorers/v1/collections/:id/place-pins",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/place-pins",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId/chunks/:chunkIndex",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId/chunks/:chunkIndex",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId/commit",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId/commit",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId",
+      "source": "tunes/server/routes/explorersPlacePinsRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "USE",
+      "path": "/api/explorers/v1/public/recommendations",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/public/recommendations/search",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/public/recommendations/search",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "USE",
+      "path": "/api/explorers/v1/public/handles",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/public/handles/:handle/available",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/public/handles/:handle/available",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "USE",
+      "path": "/api/explorers/v1/public/profiles",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/public/profiles/:username/collections/:category",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/public/profiles/:username/collections/:category/:slug/recommendations/:id",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "USE",
+      "path": "/api/explorers/v1/public/email/unsubscribe",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/public/email/unsubscribe",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/public/email/unsubscribe",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/public/email/unsubscribe",
+      "source": "tunes/server/routes/explorersPublicContentRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "USE",
+      "path": "/api/explorers/v1/profiles",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "USE",
+      "path": "/api/explorers/v1/profiles",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username/recommendations/:category",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username/recommendations/movies/genres/:genreSlug",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/profiles/:username/recommendations/:category/:slug",
+      "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/collections",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/collections/:id/memberships/:recommendationId",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/collections/:id/memberships/:recommendationId",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/memberships/:recommendationId",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/collections/:id/location",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/collections/:id/location",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/location",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/collections/:id/guide",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/explorers/v1/collections/:id/guide",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/collections/:id/guide/sections/order",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/collections/:id/guide/sections",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/collections/:id/guide/sections/:sectionId",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/collections/:id/guide/sections/:sectionId",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/explorers/v1/collections/:id/guide/cover",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/guide",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/guide/sections/order",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/guide/sections",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/guide/sections/:sectionId",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/guide/cover",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/collections/:id",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/collections/:id/editable",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/categories/:category/content-snapshot",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/categories/:category/content-snapshot/validate",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/categories/:category/memberships",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/categories/:category/top-picks",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/entities/resolve",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/explorers/v1/categories/:category/top-picks",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/categories/:category/top-picks/order",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/collections",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/collections/:id",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/collections/:id/order",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/collections/:id",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/search",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/search",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/recommendations/:id/editable",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recommendations",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recommendations/:id/movie-media/import",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recommendations/:id/book-covers",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/recommendations/:id/entity",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/recommendations/:id",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/recommendations/:id",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/entities/resolve",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/editable",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/order",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/editable",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/movie-media/import",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/book-covers",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/recommendations/:id/entity",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/content-snapshot",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/content-snapshot/validate",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/memberships",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/top-picks",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/categories/:category/top-picks/order",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/features",
+      "source": "tunes/server/routes/musicFeatureRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music-fixture/readiness",
+      "source": "tunes/server/routes/musicFixtureProbe.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/ensure",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "decision": "strapi-identity",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/prepare",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "decision": "strapi-identity",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/identity/lifecycle/status",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "decision": "strapi-identity",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/boundary",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "decision": "strapi-identity",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/cancel",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "decision": "strapi-identity",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/suspend",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "decision": "strapi-identity",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/identity/lifecycle/resume",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "decision": "strapi-identity",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/identity/current",
+      "source": "tunes/server/routes/musicIdentityRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api-docs",
+      "source": "tunes/server/routes/musicOpenApiRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/public-profile/:accountDocumentId",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/public-resource/v1/:publicSlug",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlists",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlists",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlists/:playlistId",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlists/:playlistId",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlists/:playlistId",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlists/:playlistId/songs",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlists/:playlistId/songs/:songId",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlists/:playlistId/reorder",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlists/:playlistId/visibility",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlist/songs",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/queue/replace",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/socket-ticket",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/dashboard",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/queue/append",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/music/guest-controls",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/guest-controls",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/songs",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/currently-playing",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist/songs/bulk",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist/songs/:songId",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlist/songs/:songId/position",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist/history",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist/history/:songId",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/youtube/search",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/youtube/video-from-url",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/publication",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/music/paid/import",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "paid-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/music/entitlement",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlist/:guestUrl",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "guest",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": true,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/:guestUrl/youtube/search",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/:guestUrl/youtube/video-from-url",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist/:guestUrl/requests",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "guest",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": true,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/{*musicRetiredPath}",
+      "source": "tunes/server/routes/musicSurfaceRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/user/request-reactivation",
+      "source": "tunes/server/routes/reactivationRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/reactivate",
+      "source": "tunes/server/routes/reactivationRoutes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/robots.txt",
+      "source": "tunes/server/seo-routes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/sitemap.xml",
+      "source": "tunes/server/seo-routes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers-sitemap.xml",
+      "source": "tunes/server/seo-routes.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    }
+  ],
+  "events": [
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "emit",
+      "event": "music_public_change",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "emit",
+      "event": "music_owner_change",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "receive",
+      "event": "connection",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "owner-or-guest",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": true,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "emit",
+      "event": "connection_status",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "receive",
+      "event": "disconnect",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "receive",
+      "event": "player_state",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "emit",
+      "event": "player_state",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "guest",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": true,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "receive",
+      "event": "guest_request",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "guest",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": true,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "emit",
+      "event": "guest_request",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": true,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "emit",
+      "event": "guest_request_status",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "direction": "emit",
+      "event": "music_error",
+      "source": "tunes/server/socket/musicSocketServer.ts",
+      "decision": "public",
+      "allowed": {
+        "unauthenticated": true,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    }
+  ],
+  "jobs": [
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/app.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setInterval",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/application/analyticsMaintenance.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/application/appEnrichmentLocalScheduler.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/application/appEnrichmentWorker.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/application/movieMediaImport.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/auth/canonicalHandlerCustody.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setInterval",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/auth/canonicalStartup.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/deployment/platform-native-attestation.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/deployment/platform-native-attestation.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/deployment/run-registration-compat.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/publicProfile/publicGamesProjection.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/publicProfile/publicGamesProjection.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/publicProfile/strapiPublicProfileGateway.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/repositories/explorersAppEnrichmentRetentionRepository.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/repositories/explorersAppEnrichmentWorkerRepository.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setInterval",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/routes/index.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/appEnrichmentFetch.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/appEnrichmentOwnedDecoder.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/appEnrichmentOwnedDecoder.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/appEnrichmentOwnedDecoder.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/bookCatalog.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/bookCoverFetch.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/gameCatalog.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/gameProviderTransport.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/movieImageFetch.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/musicPublicChangeListener.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/objectStorage.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/objectStorage.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/objectStorage.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "reactivation-token-cleanup",
+      "source": "tunes/server/services/reactivation-service.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "reactivation-token-cleanup",
+      "source": "tunes/server/services/reactivation-service.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/strapiIdentityAbsenceProof.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/strapiIdentityGateway.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/strapiIdentityGateway.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/upstreamResponseBody.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/youtubeReadService.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setInterval",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/workers/musicLifecycleWorker.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    }
+  ],
+  "retirementMatchers": [
+    {
+      "family": "graphql-service-proxy",
+      "path": "/graphql",
+      "match": "exact",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "graphql-service-proxy",
+      "path": "/api/strapi/graphql",
+      "match": "exact",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "graphql-service-proxy",
+      "path": "/api/strapi/config",
+      "match": "exact",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "graphql-service-proxy",
+      "path": "/api/debug/strapi",
+      "match": "exact",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api",
+      "match": "exact",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/auth",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/register",
+      "match": "exact",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/connect/google",
+      "match": "exact",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "legacy-admin",
+      "path": "/api/admin",
+      "match": "prefix",
+      "classification": "admin-tombstone",
+      "decision": "admin-tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "swagger",
+      "path": "/api-docs",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "settings",
+      "path": "/api/page-contents",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/verify-email",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "legacy-browser-identity",
+      "path": "/api/resend-verification",
+      "match": "exact",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "venue",
+      "path": "/api/user",
+      "match": "prefix",
+      "classification": "tombstone",
+      "exclusions": [
+        "/api/user/request-reactivation",
+        "/api/user/reactivate"
+      ],
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "settings",
+      "path": "/api/system-settings",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "youtube",
+      "path": "/api/youtube",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "instagram",
+      "path": "/api/instagram",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "payment",
+      "path": "/api/payments",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "subscription",
+      "path": "/api/subscriptions",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "gemini",
+      "path": "/api/gemini",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "settings",
+      "path": "/api/email",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "analytics",
+      "path": "/api/seo",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "scrape",
+      "path": "/api/apps",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "scrape",
+      "path": "/api/products",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "scrape",
+      "path": "/api/people",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "scrape",
+      "path": "/api/proxy-image",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "itunes",
+      "path": "/itunes-api",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "scrape",
+      "path": "/apps",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "scrape",
+      "path": "/products",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "scrape",
+      "path": "/people",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "scrape",
+      "path": "/proxy-image",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "playlist",
+      "path": "/api/playlists",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "playlist",
+      "path": "/api/playlist",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "request",
+      "path": "/api/music/guest/request",
+      "match": "exact",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "publication",
+      "path": "/api/music/guest-capability",
+      "match": "prefix",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "publication",
+      "path": "/api/music/publication/publish",
+      "match": "exact",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "family": "publication",
+      "path": "/api/music/publication/unpublish",
+      "match": "exact",
+      "classification": "tombstone",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    }
+  ]
+}

@@ -15,8 +15,8 @@ const SubjectBrowse = memo(({ subjects, username }: SubjectBrowseProps) => {
     <section className="mb-8">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-1.5 h-[22px] bg-amber-400 rounded-sm flex-shrink-0" />
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <BookOpen size={18} className="text-amber-400" /> Browse by Subject
+        <h2 className="text-xl font-bold text-[color:var(--category-text,#fff)] flex items-center gap-2">
+          <BookOpen size={18} className="text-[color:var(--category-text,#fbbf24)]" /> Browse by Subject
         </h2>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -24,7 +24,7 @@ const SubjectBrowse = memo(({ subjects, username }: SubjectBrowseProps) => {
           <Link
             key={subject}
             to={`/${username}/books/subject/${subjectToSlug(subject)}`}
-            className="px-3 py-1.5 rounded-full text-xs font-medium bg-white/8 text-white/70 hover:bg-amber-400/20 hover:text-amber-300 border border-white/10 hover:border-amber-400/30 transition-all"
+            className="px-3 py-1.5 rounded-full text-xs font-medium bg-[var(--category-card,rgba(255,255,255,0.08))] text-[color:var(--category-muted,rgba(255,255,255,0.7))] hover:bg-amber-400/20 hover:text-[color:var(--category-text,#fcd34d)] border border-[color:var(--category-border,rgba(255,255,255,0.1))] hover:border-[color:var(--category-focus,rgba(251,191,36,0.3))] transition-all"
           >
             {subject}
           </Link>

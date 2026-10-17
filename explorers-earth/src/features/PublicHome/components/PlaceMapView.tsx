@@ -1,13 +1,13 @@
-import { AdvancedMarker, Map, MapCameraChangedEvent, Pin } from "@vis.gl/react-google-maps";
+import { AdvancedMarker, Map, MapCameraChangedEvent, Pin, useApiIsLoaded } from "@vis.gl/react-google-maps";
+import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
 import { memo, useState, useCallback, useEffect } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import WhiteMap from "../../../assets/icons/WhiteMap";
-import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@apollo/client";
-import { getPlaceCoordinatesByListQuery } from "../api/query";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import Card from "../../../components/ui/Card";
-import { EarthLoader } from "../../../components/EarthLoader";
+import { isNonNullObject, PublicRouteErrorState, PublicRouteLoadingState, PublicRoutePartialNotice } from "./PublicRouteContentState";
+import { usePublicRecommendationCategory } from "../api/usePublicRecommendationCategory";
 
 type List = {
   recommended_places: {
@@ -15,7 +15,7 @@ type List = {
       Place_Address: string;
       Place_Id: string;
       Place_Name: string;
-      Geometry?: {
+      Geometry: {
         lat: number;
         lng: number;
       };
@@ -31,11 +31,28 @@ type List = {
   }[];
 };
 
+type MapPlace = List["recommended_places"][number];
+
+const isRenderableMapPlace = (value: unknown): value is MapPlace => {
+  if (!isNonNullObject(value) || !isNonNullObject(value.Place_Details)) return false;
+  const geometry = value.Place_Details.Geometry;
+  return isNonNullObject(geometry)
+    && Number.isFinite(geometry.lat)
+    && Number.isFinite(geometry.lng)
+    && Array.isArray(value.Media)
+    && typeof value.documentId === "string";
+};
+
+const isRenderableMapList = (value: unknown): value is List =>
+  isNonNullObject(value) && Array.isArray(value.recommended_places);
+
 type Geometry = {
   lat: number;
   lng: number;
 };
 const PlaceMapView = memo(() => {
+  const outlet = useOutletContext<{ setIsPageLoaded?: (loaded: boolean) => void } | null>();
+  const mapsApiLoaded = useApiIsLoaded();
   const [currentCoords, setCurrentCoords] = useState<Geometry | null>(null);
   const [activeMarker, setActiveMarker] = useState<Geometry | null>(null);
   // local state for handle catgeories
@@ -73,33 +90,42 @@ const PlaceMapView = memo(() => {
   };
 
   const { username, place } = useParams();
-  const { data, loading } = useQuery(getPlaceCoordinatesByListQuery, {
-    variables: {
-      filters: {
-        username: {
-          eq: username,
-        },
-      },
-      listFilters: {
-        List_Name: {
-          eq: place,
-        },
-      },
-    },
-  });
+  const { data, loading, error, refetch } = usePublicRecommendationCategory(username, "places", Boolean(username));
+  const rawRecommendationLists = Array.isArray(data?.recommendationLists)
+    ? data.recommendationLists.filter((list: any) => list?.slug === place || list?.List_Name === place)
+    : [];
+  const recommendationLists: List[] = (Array.isArray(rawRecommendationLists) ? rawRecommendationLists : [])
+    .filter(isRenderableMapList)
+    .map((list) => ({
+      ...list,
+      recommended_places: list.recommended_places.filter(isRenderableMapPlace),
+    }));
+  const completeCollection = Array.isArray(rawRecommendationLists)
+    && rawRecommendationLists.every((list) => (
+      isRenderableMapList(list) && list.recommended_places.every(isRenderableMapPlace)
+    ));
+  const hasUsableData = error
+    ? recommendationLists.some((list) => list.recommended_places.length > 0)
+    : completeCollection;
   const navigate = useNavigate();
 
-  const latLngArray = data?.accounts?.[0].recommendation_lists.flatMap(
+  useEffect(() => {
+    if (!loading || hasUsableData) outlet?.setIsPageLoaded?.(true);
+  }, [hasUsableData, loading, outlet?.setIsPageLoaded]);
+
+  const latLngArray = recommendationLists.flatMap(
     (list: List) =>
       list?.recommended_places.map((place) => place.Place_Details.Geometry)
-  );
+  ).filter((geometry: Geometry | undefined): geometry is Geometry => Boolean(
+    geometry && Number.isFinite(geometry.lat) && Number.isFinite(geometry.lng),
+  ));
 
   const handleCardClick = (geometry: Geometry) => {
     setCurrentCoords(geometry);
     setActiveMarker(geometry);
   };
 
-  const placeData = data?.accounts?.[0].recommendation_lists.flatMap(
+  const placeData = recommendationLists.flatMap(
     (list: List) =>
       list?.recommended_places.map((place) => ({
         ...place.Place_Details,
@@ -120,15 +146,66 @@ const PlaceMapView = memo(() => {
     )
     : placeData;
 
-  if (loading)
+  if (loading && !hasUsableData)
+    return <PublicRouteLoadingState label="Place map loading" />;
+
+  if (error && !hasUsableData)
     return (
-      <div className="flex bg-black items-center justify-center min-h-screen">
-        <EarthLoader context="general" size="small" />
+      <div className="min-h-screen" style={{ background: "var(--bg-page, #090d16)", color: "var(--text-primary, #fff)" }}>
+        <PublicRouteErrorState
+          title="Place map unavailable"
+          error={error}
+          onRetry={refetch}
+          backAction={(
+            <button
+              type="button"
+              onClick={() => navigate(`/${username}/places/${place}`)}
+              className="min-h-11 rounded-xl border px-4 py-2 font-poppins text-sm font-semibold"
+              style={{ borderColor: "var(--category-control-border, var(--border-card, #ffffff1a))" }}
+            >
+              Back to Places
+            </button>
+          )}
+        />
+      </div>
+    );
+
+  if (!mapsApiLoaded)
+    return (
+      <div
+        className="flex items-center justify-center min-h-screen px-6"
+        aria-busy={loading || undefined}
+        style={{ background: "var(--bg-page, #090d16)", color: "var(--text-primary, #fff)" }}
+      >
+        <div className="text-center max-w-sm">
+          {Boolean(error) && hasUsableData && <PublicRoutePartialNotice message="Some map data is unavailable." />}
+          <h2 className="text-xl font-semibold mb-2">Map Unavailable</h2>
+          <p className="mb-5" style={{ color: "var(--category-muted, var(--text-secondary, #9ca3af))" }}>
+            Your saved places are still available in the list while the map service reconnects.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate(`/${username}/places/${place}`)}
+            className="min-h-11 rounded-xl border px-4 py-2 font-poppins text-sm font-semibold"
+            style={{
+              background: "var(--bg-card, #111827)",
+              borderColor: "var(--category-control-border, var(--border-card, #ffffff1a))",
+              color: "var(--text-primary, #fff)",
+            }}
+          >
+            Back to Places
+          </button>
+        </div>
       </div>
     );
 
   return (
-    <div className="relative">
+    <div className="relative" aria-busy={loading || undefined}>
+      {Boolean(error) && hasUsableData && (
+        <div className="absolute left-4 right-4 top-4 z-[60]">
+          <PublicRoutePartialNotice message="Some map data is unavailable." />
+        </div>
+      )}
       <Map
         defaultCenter={currentCoords ?? latLngArray[0]}
         center={currentCoords}
@@ -171,19 +248,19 @@ const PlaceMapView = memo(() => {
           onClickHandler={() =>
             navigate(`/${username}/places/${place}`)
           }
-          className="bg-[hsl(var(--blue-cta))] hover:bg-[hsl(var(--blue-final))]"
+          className="bg-[var(--category-accent,hsl(var(--blue-cta)))] hover:bg-[var(--category-accent,hsl(var(--blue-final)))]"
         />
       </div>
       {/* Fullscreen Button (Four Corners Button - Top Right of Second Row / aligned with MapView) */}
       <button
         onClick={toggleFullscreen}
-        className="absolute top-14 right-3 z-50 bg-white hover:bg-gray-100 text-gray-700 p-2.5 rounded-lg shadow-md transition-all duration-200 cursor-pointer flex items-center justify-center border border-gray-200"
+        className="absolute top-14 right-3 z-50 bg-[var(--category-panel,#FFFFFF)] hover:bg-[var(--category-hover,#F3F4F6)] text-[var(--category-muted,#374151)] p-2.5 rounded-lg shadow-md transition-all duration-200 cursor-pointer flex items-center justify-center border border-[var(--category-control-border,#E5E7EB)]"
         aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
       >
         {isFullscreen ? (
-          <Minimize2 className="w-4 h-4 text-gray-700" />
+          <Minimize2 className="w-4 h-4 text-[var(--category-muted,#374151)]" />
         ) : (
-          <Maximize2 className="w-4 h-4 text-gray-700" />
+          <Maximize2 className="w-4 h-4 text-[var(--category-muted,#374151)]" />
         )}
       </button>
       <div className="absolute bottom-[13rem] w-full  flex flex-row gap-2 items-center flex-nowrap whitespace-nowrap  py-4 overflow-x-auto " style={{ scrollbarWidth: "none" }}>
@@ -214,16 +291,7 @@ const PlaceMapView = memo(() => {
         style={{ scrollbarWidth: "none" }}
       >
         {filteredPlaces.map(
-          (
-            place: {
-              Title: string;
-              Media: { url: string }[];
-              Rating: number;
-              Rating_Count: number;
-              Geometry: Geometry;
-            },
-            index: number
-          ) => (
+          (place, index: number) => (
             <Card
               key={index}
               title={place?.Title}
@@ -240,4 +308,4 @@ const PlaceMapView = memo(() => {
   );
 });
 
-export default PlaceMapView;
+export default withGoogleMapsProvider(PlaceMapView);

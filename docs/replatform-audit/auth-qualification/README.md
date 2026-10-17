@@ -1,0 +1,3 @@
+# Historical auth schema qualification material
+
+These generated schemas, probe sources, package snapshots, hashes and results preserve earlier discovery evidence. They are not current production files or maintained executable test entrypoints. Probe import filenames refer to their original isolated scratch layout and differ from the archived generated filenames here. Do not execute them against an existing database or substitute these historical results for current auth/OAuth acceptance. The embedded database credential is a synthetic local-only probe value, not a deployment secret. Current execution uses the guarded package/fixture contracts in the individual ticket plans.

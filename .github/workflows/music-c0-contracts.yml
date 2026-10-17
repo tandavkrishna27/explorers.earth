@@ -1,0 +1,170 @@
+name: Music C0 contracts
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "tunes/**"
+      - "explorers-earth/**"
+      - "fixtures/**"
+      - "scripts/replatform-local.ts"
+      - "scripts/generate-music-fixture-dockerignore.mjs"
+      - ".dockerignore"
+      - "docker-compose.music-test.yml"
+      - "docker-compose.replatform.yml"
+      - ".env.music*.example"
+      - ".github/workflows/**"
+      - ".github/workflows/music-c0-contracts.yml"
+      - ".github/workflows/test.yml"
+      - ".github/workflows/music-reconcile.yml"
+      - "docs/**"
+  push:
+    branches: [main, develop]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - "tunes/**"
+      - "explorers-earth/**"
+      - "fixtures/**"
+      - "scripts/replatform-local.ts"
+      - "scripts/generate-music-fixture-dockerignore.mjs"
+      - ".dockerignore"
+      - "docker-compose.music-test.yml"
+      - "docker-compose.replatform.yml"
+      - ".env.music*.example"
+      - ".github/workflows/**"
+      - ".github/workflows/music-c0-contracts.yml"
+      - ".github/workflows/test.yml"
+      - ".github/workflows/music-reconcile.yml"
+      - "docs/**"
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: Music contracts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tunes/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix tunes
+      # Must precede BOTH the Linux contracts run below and `music:types:scoped` at the end
+      # of this job: several C0 contract suites read explorers-earth sources and resolve
+      # `react`, `dompurify`, `zod/v3` and `@playwright/test` out of
+      # `explorers-earth/node_modules`, at runtime as well as at typecheck.
+      - run: npm ci --prefix explorers-earth
+      - name: Prove public JSON command on Node 24.21.0
+        run: node node_modules/tsx/dist/cli.mjs tunes/scripts/music-cli.ts fixtures:capture --format json
+      - if: runner.os == 'Linux'
+        run: npm test --prefix tunes -- --run server/test/contracts
+      # Preflight for the Guides bootstrap gate. `shell: pwsh` is itself the runner's PowerShell 7,
+      # so this step cannot start at all without PS7 present; it then resolves pwsh from PATH and
+      # exports the RESOLVED ABSOLUTE path, rather than hardcoding an install location that moves
+      # between runner image versions. A missing or non-PS7 host is a hard failure, never a skip.
+      - name: Resolve hosted PowerShell 7 for the Guides bootstrap gate
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if ($PSVersionTable.PSVersion.Major -lt 7) { throw "GUIDES_GATE_PREFLIGHT_FAILED: host shell is PowerShell $($PSVersionTable.PSVersion), not 7+" }
+          $resolved = (Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+          if (-not $resolved) { throw 'GUIDES_GATE_PREFLIGHT_FAILED: no pwsh executable on PATH' }
+          if (-not (Test-Path -LiteralPath $resolved -PathType Leaf)) { throw 'GUIDES_GATE_PREFLIGHT_FAILED: resolved pwsh path is not a regular file' }
+          # assertGuidesPowerShellRuntime demands a canonical, non-symlink, native-separator absolute
+          # path (path.resolve(x) === x and realpath(x) === x), so normalise and assert that here.
+          $item = Get-Item -LiteralPath $resolved
+          if ($item.LinkType) { throw "GUIDES_GATE_PREFLIGHT_FAILED: resolved pwsh is a $($item.LinkType), not a real file" }
+          $resolved = $item.FullName
+          if ($resolved -ne [IO.Path]::GetFullPath($resolved) -or $resolved.Contains('/')) { throw 'GUIDES_GATE_PREFLIGHT_FAILED: resolved pwsh path is not canonical' }
+          "GUIDES_POWERSHELL_EXECUTABLE=$resolved" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      # Prints the temp-root shape the Windows custody predicates depend on. Both
+      # secure-music-secret-file.ts:227-228 and assertCanonicalLocalPath require
+      # realpath identity, and a non-canonical TEMP (an 8.3 short-name component, or a
+      # junction) makes them refuse for a reason that is not a product defect. No secret
+      # material is involved; this is paths only, and it turns that diagnosis into a fact.
+      - name: Report the runner temp-root canonical shape
+        if: runner.os == 'Windows'
+        # Walks every ANCESTOR, because assertCanonicalLocalPath checks realpath identity at
+        # each level: the leaf can report canonical while an intermediate (C:\Users\RUNNER~1)
+        # does not, which is what the first, leaf-only probe missed.
+        run: node -e "const os=require('os'),fs=require('fs'),path=require('path');const walk=(label,root)=>{if(!root)return console.log(JSON.stringify({label,root:null}));const out=[];for(let c=path.resolve(root);;c=path.dirname(c)){let rp=null,err=null;try{rp=fs.realpathSync(c)}catch(e){err=e.code}out.push({c,rp,ok:rp===c,err});if(c===path.dirname(c))break}console.log(JSON.stringify({label,root,ancestors:out}))};walk('tmpdir',os.tmpdir());walk('RUNNER_TEMP',process.env.RUNNER_TEMP)"
+      # Read-only. ValidateRoot (music-local-private-files.ps1:75) compares the LocalAppData
+      # root's ACL owner to the token's User SID, and the Windows lane refuses with
+      # `identity: root owner mismatch`. Nobody has measured WHICH principal owns that root on a
+      # hosted runner, and the helper redacts it by design, so the refusal cannot be told apart
+      # from a product defect. This prints only BOOLEANS -- this repository is public, so its CI
+      # logs are world-readable and no SID is emitted. ownerMatchesOwner is the discriminator: the
+      # token's Owner SID is what Windows stamps on objects this token creates, and differs from
+      # User for an elevated administrator. continue-on-error because a diagnostic must never be
+      # able to fail the lane (pwsh steps run with $ErrorActionPreference = stop).
+      # Both ValidateRoot inputs are reported: it is called on the no-package-redirection root
+      # (:80) and on the redirection target (:102/:106), which need not be the same directory.
+      - name: Report the runner LocalAppData owner shape (booleans only)
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $id = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+          $principal = New-Object System.Security.Principal.WindowsPrincipal($id)
+          $report = [ordered]@{ isAdmin = $principal.IsInRole([System.Security.Principal.WindowsBuiltinRole]::Administrator); tokenUserEqualsTokenOwner = ($id.User.Value -eq $id.Owner.Value) }
+          foreach ($entry in @(@{ label = 'localAppData'; path = [Environment]::GetFolderPath('LocalApplicationData') }, @{ label = 'userProfile'; path = [Environment]::GetFolderPath('UserProfile') })) {
+            $owner = $null
+            try { $owner = (Get-Acl -LiteralPath $entry.path -ErrorAction Stop).GetOwner([System.Security.Principal.SecurityIdentifier]).Value } catch { $report[$entry.label + 'Error'] = $_.Exception.GetType().Name }
+            if ($null -ne $owner) {
+              $report[$entry.label + 'OwnerMatchesUser']  = ($owner -eq $id.User.Value)
+              $report[$entry.label + 'OwnerMatchesOwner'] = ($owner -eq $id.Owner.Value)
+              $report[$entry.label + 'OwnerIsWellKnown']  = @('S-1-5-18','S-1-5-32-544') -contains $owner
+            }
+          }
+          $report | ConvertTo-Json -Compress
+      - if: runner.os == 'Windows'
+        env:
+          # Belt and braces: the test refuses to skip when this is set, so the lane cannot go green
+          # unless the Guides bootstrap gate actually executed.
+          GUIDES_BOOTSTRAP_GATE_REQUIRED: "1"
+          PUBLIC_PARITY_WINDOWS_JOB_REQUIRED: "1"
+          # Same contract for the native lifecycle cases: lifecycle-browser-support now
+          # resolves its PowerShell host from GUIDES_POWERSHELL_EXECUTABLE (resolved by the
+          # preflight step above) instead of a committed personal path, and refuses to skip
+          # when this is set -- so this lane cannot go green unless those cases really ran.
+          LIFECYCLE_BROWSER_GATE_REQUIRED: "1"
+          # Apps private custody is Windows ACL/path semantics end to end, so it skips off
+          # win32 and would otherwise run in no CI job at all. Named below with this flag set
+          # so the Windows lane is where it actually executes.
+          APPS_PRIVATE_CUSTODY_GATE_REQUIRED: "1"
+          # Opt-in diagnostic for music-local-state: capture the private-file helper's stderr tail
+          # (capped at 4 KiB) and attach it to the thrown message. The reason for this lane's Windows
+          # failures was discarded three times over -- as a JSON SyntaxError, then `exited 1`, then
+          # `exited 1: no reason supplied` -- because stderr is dropped by default. Inert off win32,
+          # where the helper refuses before spawning anything.
+          MUSIC_LOCAL_STATE_STDERR: "1"
+        run: >-
+          npm test --prefix tunes -- --run
+          server/test/contracts/music-reconciliation-workflow.test.ts
+          server/test/contracts/music-documentation-contract.test.ts
+          server/test/contracts/music-openapi-contract.test.ts
+          server/test/contracts/guides-bootstrap-contract.test.ts
+          server/test/contracts/lifecycle-browser-support.test.ts
+          server/test/contracts/apps-private-custody.test.ts
+          server/test/contracts/public-parity-windows-job.test.ts
+          server/test/contracts/music-local-state.test.ts
+          server/test/contracts/music-cli-contract-authority.test.ts
+          server/test/contracts/music-owned-browser-profile.test.ts
+          server/test/contracts/music-fixture-services.test.ts
+      - run: npm run music:types:scoped
+      - run: npm run music:types:baseline
+      - if: runner.os == 'Linux'
+        run: docker compose --env-file .env.music.test.example -p explorers-music-fixture -f docker-compose.music-test.yml config --quiet

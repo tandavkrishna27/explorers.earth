@@ -71,17 +71,6 @@ export const UPDATE_MOVIE_LIST = gql`
 `;
 
 // ─────────────────────────────────────────────────────────────
-// Mutation 2.3 — Delete Movie List
-// ─────────────────────────────────────────────────────────────
-export const DELETE_MOVIE_LIST = gql`
-  mutation DeleteMovieList($documentId: ID!) {
-    deleteMovieList(documentId: $documentId) {
-      documentId
-    }
-  }
-`;
-
-// ─────────────────────────────────────────────────────────────
 // Mutation 2.4 — Create Recommended Movie
 // ─────────────────────────────────────────────────────────────
 export const CREATE_RECOMMENDED_MOVIE = gql`
@@ -184,17 +173,6 @@ export const UPDATE_RECOMMENDED_MOVIE = gql`
       pin_order
       display_order
       user_recommendation_note
-    }
-  }
-`;
-
-// ─────────────────────────────────────────────────────────────
-// Mutation 2.6 — Delete Recommended Movie
-// ─────────────────────────────────────────────────────────────
-export const DELETE_RECOMMENDED_MOVIE = gql`
-  mutation DeleteRecommendedMovie($documentId: ID!) {
-    deleteRecommendedMovie(documentId: $documentId) {
-      documentId
     }
   }
 `;

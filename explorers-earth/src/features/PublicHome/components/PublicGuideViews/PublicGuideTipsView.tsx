@@ -1,6 +1,7 @@
 import { memo, useMemo, useState } from "react";
 import { parseTimeline } from "../../../Guides/utils/guideDataParser";
 import TipsIcon from "../../../../assets/icons/TipsIcon";
+import { usePublicCategoryThemeStyles } from "../PublicCategoryThemeContext";
 
 interface PublicGuideTipsViewProps {
   guide: any;
@@ -13,6 +14,7 @@ const PublicGuideTipsView = memo(({ guide, sections, selectedDay: externalSelect
   const selectedDay = externalSelectedDay !== undefined ? externalSelectedDay : internalSelectedDay;
   const [isMasterTipsExpanded, setIsMasterTipsExpanded] = useState<boolean>(false);
   const [expandedTips, setExpandedTips] = useState<Set<string>>(new Set());
+  const categoryStyles = usePublicCategoryThemeStyles();
 
   // Helper function to remove redundant "Day X:" prefix from title
   const cleanTitle = (title: string, dayNumber: number): string => {
@@ -117,12 +119,12 @@ const PublicGuideTipsView = memo(({ guide, sections, selectedDay: externalSelect
   // Show empty state only if there are no tips at all (neither master nor day-wise)
   if (sectionGroups.length === 0 && !masterTips) {
     return (
-      <div className="bg-gray-900 rounded-lg p-3 sm:p-4 md:p-6 border border-gray-700">
+      <div className="bg-[var(--category-card,#111827)] rounded-lg p-3 sm:p-4 md:p-6 border border-[var(--category-control-border,#374151)]">
         <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
           <TipsIcon size="5" color="#F59E0B" />
-          <h2 className="text-white text-base sm:text-lg md:text-xl font-poppins font-bold">Tips</h2>
+          <h2 className="text-[var(--category-text,#FFFFFF)] text-base sm:text-lg md:text-xl font-poppins font-bold">Tips</h2>
         </div>
-        <p className="text-gray-400 text-xs sm:text-sm font-poppins">
+        <p className="text-[var(--category-muted,#9CA3AF)] text-xs sm:text-sm font-poppins">
           No tips available yet.
         </p>
       </div>
@@ -133,7 +135,7 @@ const PublicGuideTipsView = memo(({ guide, sections, selectedDay: externalSelect
     <div className="space-y-6 sm:space-y-8">
       {/* Master Tips Section - Only show in overview */}
       {selectedDay === "overview" && masterTips && (
-        <div className="bg-gradient-to-br from-gray-900 via-gray-900/95 to-gray-800/90 rounded-lg border border-gray-700/80 shadow-xl overflow-hidden">
+        <div className="bg-gradient-to-br from-[var(--category-card,rgba(17,24,39,1))] via-[var(--category-card,rgba(17,24,39,0.95))] to-[var(--category-card,rgba(31,41,55,0.9))] rounded-lg border border-[var(--category-control-border,rgba(55,65,81,0.8))] shadow-xl overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-amber-600/20 via-orange-500/20 to-amber-600/20 border-b border-amber-500/30 px-4 sm:px-6 py-4 sm:py-5">
             <div className="flex items-center gap-3">
@@ -143,10 +145,10 @@ const PublicGuideTipsView = memo(({ guide, sections, selectedDay: externalSelect
                 </svg>
               </div>
               <div>
-                <h3 className="text-white text-base sm:text-lg md:text-xl font-poppins font-bold bg-gradient-to-r from-amber-400 via-orange-400 to-amber-300 bg-clip-text text-transparent">
+                <h3 className="text-[var(--category-text,#FFFFFF)] text-base sm:text-lg md:text-xl font-poppins font-bold bg-gradient-to-r from-[var(--category-text,#FBBF24)] via-[var(--category-text,#FB923C)] to-[var(--category-text,#FCD34D)] bg-clip-text text-transparent">
                   Essential Travel Guide & Packing Tips
                 </h3>
-                <p className="text-gray-400 text-xs sm:text-sm font-poppins mt-0.5">
+                <p className="text-[var(--category-muted,#9CA3AF)] text-xs sm:text-sm font-poppins mt-0.5">
                   General recommendations for your entire journey
                 </p>
               </div>
@@ -157,13 +159,13 @@ const PublicGuideTipsView = memo(({ guide, sections, selectedDay: externalSelect
           <div className="px-4 sm:px-6 py-4 sm:py-6">
             <div className="prose prose-invert max-w-none">
               <div 
-                className={`text-gray-200 text-sm sm:text-base font-poppins leading-relaxed whitespace-pre-wrap break-words space-y-3 transition-all duration-300 ${
+                className={`text-[var(--category-muted,#E5E7EB)] text-sm sm:text-base font-poppins leading-relaxed whitespace-pre-wrap break-words space-y-3 transition-all duration-300 ${
                   !isMasterTipsExpanded ? 'line-clamp-6' : ''
                 }`}
               >
                 {masterTips.split("\n\n").map((paragraph: string, idx: number) => (
                   paragraph.trim() && (
-                    <p key={idx} className="text-gray-200 leading-relaxed">
+                    <p key={idx} className="text-[var(--category-muted,#E5E7EB)] leading-relaxed">
                       {paragraph.trim()}
                     </p>
                   )
@@ -173,7 +175,7 @@ const PublicGuideTipsView = memo(({ guide, sections, selectedDay: externalSelect
               {masterTips && masterTips.length > 400 && (
                 <button
                   onClick={() => setIsMasterTipsExpanded(!isMasterTipsExpanded)}
-                  className="mt-4 text-[hsl(var(--blue-cta))] hover:text-[hsl(var(--blue-final))] font-medium text-sm sm:text-base transition-colors duration-200 flex items-center gap-1.5 group"
+                  className={`mt-4 text-[var(--category-text,hsl(var(--blue-cta)))] hover:text-[var(--category-text,hsl(var(--blue-final)))] font-medium text-sm sm:text-base transition-colors duration-200 flex items-center gap-1.5 group ${categoryStyles ? "focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-[var(--category-focus)] focus-visible:!transform-none" : ""}`}
                 >
                   <span>{isMasterTipsExpanded ? 'See Less' : 'See More'}</span>
                   <svg 
@@ -193,8 +195,8 @@ const PublicGuideTipsView = memo(({ guide, sections, selectedDay: externalSelect
 
       {/* Tips by Day - Card Layout */}
       {displayedGroups.length === 0 ? (
-        <div className="bg-gray-900 rounded-lg border border-gray-700 p-6 sm:p-8 text-center">
-          <p className="text-gray-400 text-sm sm:text-base font-poppins">
+        <div className="bg-[var(--category-card,#111827)] rounded-lg border border-[var(--category-control-border,#374151)] p-6 sm:p-8 text-center">
+          <p className="text-[var(--category-muted,#9CA3AF)] text-sm sm:text-base font-poppins">
             No tips available for this day.
           </p>
         </div>
@@ -203,19 +205,19 @@ const PublicGuideTipsView = memo(({ guide, sections, selectedDay: externalSelect
           {displayedGroups.map((group) => (
             <div key={group.sectionId} className="space-y-4 sm:space-y-5">
               {/* Day Heading - Format: Day X | {title} */}
-              <div className="flex items-center gap-3 pb-2 border-b border-gray-700/50">
+              <div className="flex items-center gap-3 pb-2 border-b border-[var(--category-control-border,rgba(55,65,81,0.5))]">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-1 h-8 sm:h-10 bg-gradient-to-b from-[hsl(var(--blue-cta))] to-[hsl(var(--blue-final))] rounded-full"></div>
-                  <h2 className="text-white font-poppins font-bold text-xl sm:text-2xl md:text-3xl tracking-tight">
-                    <span className="text-[hsl(var(--blue-cta))]">
+                  <div className="w-1 h-8 sm:h-10 bg-gradient-to-b from-[var(--category-accent,hsl(var(--blue-cta)))] to-[var(--category-accent,hsl(var(--blue-final)))] rounded-full"></div>
+                  <h2 className="text-[var(--category-text,#FFFFFF)] font-poppins font-bold text-xl sm:text-2xl md:text-3xl tracking-tight">
+                    <span className="text-[var(--category-text,hsl(var(--blue-cta)))]">
                       Day {group.sectionSequence || 0}
                     </span>
                     {group.sectionTitle && (() => {
                       const cleanedTitle = cleanTitle(group.sectionTitle, group.sectionSequence);
                       return cleanedTitle ? (
                         <>
-                          <span className="text-gray-400/60 mx-2">|</span>
-                          <span className="text-white font-semibold text-base sm:text-lg md:text-xl tracking-normal">
+                          <span className="text-[var(--category-muted,rgba(156,163,175,0.6))] mx-2">|</span>
+                          <span className="text-[var(--category-text,#FFFFFF)] font-semibold text-base sm:text-lg md:text-xl tracking-normal">
                             {cleanedTitle}
                           </span>
                         </>
@@ -236,7 +238,7 @@ const PublicGuideTipsView = memo(({ guide, sections, selectedDay: externalSelect
                   return (
                     <div
                       key={tipId}
-                      className="w-full rounded-xl border border-gray-700/40 bg-gradient-to-br from-gray-900/50 via-gray-800/30 to-gray-900/20 backdrop-blur-sm p-4 sm:p-5 md:p-6 hover:border-[hsl(var(--blue-cta))]/50 hover:shadow-lg transition-all duration-300"
+                      className="w-full rounded-xl border border-[var(--category-control-border,rgba(55,65,81,0.4))] bg-gradient-to-br from-[var(--category-card,rgba(17,24,39,0.5))] via-[var(--category-card,rgba(31,41,55,0.3))] to-[var(--category-card,rgba(17,24,39,0.2))] backdrop-blur-sm p-4 sm:p-5 md:p-6 hover:border-[hsl(var(--blue-cta))]/50 hover:shadow-lg transition-all duration-300"
                     >
                       <div className="flex items-start gap-3 sm:gap-4">
                         {/* Tips Icon */}
@@ -246,11 +248,11 @@ const PublicGuideTipsView = memo(({ guide, sections, selectedDay: externalSelect
                         
                         {/* Content */}
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-white font-poppins font-semibold text-sm sm:text-base md:text-lg mb-2 sm:mb-3">
+                          <h4 className="text-[var(--category-text,#FFFFFF)] font-poppins font-semibold text-sm sm:text-base md:text-lg mb-2 sm:mb-3">
                             {item.placeName}
                           </h4>
                           <p 
-                            className={`text-gray-200 font-poppins text-sm sm:text-base leading-relaxed transition-all duration-300 ${
+                            className={`text-[var(--category-muted,#E5E7EB)] font-poppins text-sm sm:text-base leading-relaxed transition-all duration-300 ${
                               !isExpanded && needsExpansion ? 'line-clamp-3' : ''
                             }`}
                           >
@@ -260,7 +262,7 @@ const PublicGuideTipsView = memo(({ guide, sections, selectedDay: externalSelect
                           {needsExpansion && (
                             <button
                               onClick={() => toggleTipExpansion(tipId)}
-                              className="mt-2 text-[hsl(var(--blue-cta))] hover:text-[hsl(var(--blue-final))] font-medium text-xs sm:text-sm transition-colors duration-200 flex items-center gap-1.5 group"
+                              className={`mt-2 text-[var(--category-text,hsl(var(--blue-cta)))] hover:text-[var(--category-text,hsl(var(--blue-final)))] font-medium text-xs sm:text-sm transition-colors duration-200 flex items-center gap-1.5 group ${categoryStyles ? "focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-[var(--category-focus)] focus-visible:!transform-none" : ""}`}
                             >
                               <span>{isExpanded ? 'See Less' : 'See More'}</span>
                               <svg 

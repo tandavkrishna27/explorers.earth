@@ -1,19 +1,20 @@
 import { useState, useEffect } from "react";
-import {
-  ApolloQueryResult,
-  OperationVariables,
-  useMutation,
-} from "@apollo/client";
-import {
-  DeleteRecommendedListMutation,
-  deleteRecommendedPlaceMutation,
-  updateRecommendationListVisiblity,
-} from "../api/mutation";
 import { toast } from "sonner";
 import { useCityStore } from "../../../store/useCityStore";
-import { recommendationListQuery, recommendedPlacesQuery } from "../api/query";
 import { useTranslation } from "react-i18next";
+import { usePlacesCommands } from "../api/placesCommands";
+import { usePlacesOwner } from "./usePlacesOwner";
 
+/**
+ * Ticket 5.1. The list menu — delete and publish — on the native owner commands.
+ *
+ * Publishing is where the two models differ. Strapi had one Visibility flag on the list
+ * and nothing per place; the native model publishes a list and each recommendation
+ * separately, and the public projection serves only published rows of a published public
+ * list. So publishing a list publishes the places in it, which is what the single toggle
+ * has always meant to a creator. Unpublishing only takes the list private: the places keep
+ * their own state, because taking a list private is not a decision about each place in it.
+ */
 export const useMenuItems = ({
   refetchCities,
   setShowConfirmDeleteModal,
@@ -21,9 +22,8 @@ export const useMenuItems = ({
   advanceToNextStep,
   advanceToNextStepRef,
 }: {
-  refetchCities: (
-    variables?: Partial<OperationVariables> | undefined
-  ) => Promise<ApolloQueryResult<unknown>>;
+  /** Any refresh the caller holds. Nothing here depends on an Apollo result shape. */
+  refetchCities: () => Promise<unknown>;
   setShowConfirmDeleteModal: (show: boolean) => void;
   onDeleteSuccess?: () => void;
   advanceToNextStep?: () => void;
@@ -31,6 +31,8 @@ export const useMenuItems = ({
 }) => {
   const { t } = useTranslation();
   const { selectedCity, setSelectedCity } = useCityStore();
+  const commands = usePlacesCommands();
+  const owner = usePlacesOwner();
   const [isPublished, setIsPublished] = useState<boolean>(
     selectedCity?.Visibility || false
   );
@@ -39,70 +41,36 @@ export const useMenuItems = ({
     setIsPublished(selectedCity?.Visibility || false);
   }, [selectedCity]);
 
-  const [updateRecommendationListVisibility] = useMutation(
-    updateRecommendationListVisiblity,
-    {
-      refetchQueries: [recommendationListQuery, recommendedPlacesQuery],
-      fetchPolicy: "network-only",
-    }
-  );
-
-  const [deleteRecommendedList] = useMutation(DeleteRecommendedListMutation, {
-    refetchQueries: [recommendationListQuery],
-    fetchPolicy: "network-only",
-  });
-  const [deleteRecommendedPlace] = useMutation(deleteRecommendedPlaceMutation);
+  /** The list as the owner read sees it, which is where the place ids come from. */
+  const observedList = () =>
+    owner.data?.recommendationLists?.find((list) => list.documentId === selectedCity?.documentId);
 
   const handleDeleteRecommendedList = async () => {
+    const listId = selectedCity?.documentId;
+    if (!listId) return;
     try {
-      // First, delete all individual places in the list
-      if (selectedCity?.recommended_places && selectedCity.recommended_places.length > 0) {
-        const deletePromises = selectedCity.recommended_places.map((place: any) => 
-          deleteRecommendedPlace({ 
-            variables: { 
-              documentId: place.documentId 
-            } 
-          })
-        );
-        
-        try {
-          await Promise.all(deletePromises);
-        } catch (placeError) {
-          console.error("Error deleting individual places:", placeError);
-          // Continue with list deletion even if some places fail
-        }
+      // Archive the places first, as the Strapi flow deleted them first — a failure here
+      // must not stop the list from being archived.
+      const places = observedList()?.recommended_places ?? [];
+      try {
+        await Promise.all(places.map((place) => commands.archivePlace(place.documentId)));
+      } catch (placeError) {
+        console.error("Error archiving individual places:", placeError);
       }
 
-      // Then delete the recommendation list itself
-      const response = await deleteRecommendedList({
-        variables: {
-          documentId: selectedCity?.documentId,
-        },
-      });
+      await commands.archiveList(listId);
 
-      if (response) {
-        // Refetch cities to get the updated list
-        const refetchResult = await refetchCities();
-        
-        // Set the next available city or clear if no cities left
-        const updatedLists = (refetchResult as any)?.data?.recommendationLists;
-        
-        if (updatedLists && updatedLists.length > 0) {
-          // Set to the first available list after deletion
-          setSelectedCity(updatedLists[0]);
-        } else {
-          // No lists left, clear the selected city
-          setSelectedCity(null);
-        }
-
-        toast.success(t("toast.success.recommendedCityDeleted"));
-        setShowConfirmDeleteModal(false);
-        
-        // Call the success callback to switch to Recommendations tab
-        if (onDeleteSuccess) {
-          onDeleteSuccess();
-        }
+      const refetchResult = await refetchCities();
+      const updatedLists = (refetchResult as { data?: { recommendationLists?: unknown[] } } | undefined)?.data?.recommendationLists;
+      if (updatedLists && updatedLists.length > 0) {
+        setSelectedCity(updatedLists[0] as never);
+      } else {
+        setSelectedCity(null);
       }
+
+      toast.success(t("toast.success.recommendedCityDeleted"));
+      setShowConfirmDeleteModal(false);
+      if (onDeleteSuccess) onDeleteSuccess();
     } catch (error) {
       console.error("Error deleting recommendation list:", error);
       toast.error(t("toast.error.failedToDeleteRecommendationList"));
@@ -110,70 +78,51 @@ export const useMenuItems = ({
   };
 
   const handleRecommendationListVisibility = async () => {
-    if (
-      selectedCity?.recommended_places?.length &&
-      selectedCity?.recommended_places?.length >= 1
-    ) {
-      try {
-        const response = await updateRecommendationListVisibility({
-          variables: {
-            documentId: selectedCity?.documentId,
-            data: {
-              Visibility: !isPublished,
-            },
-          },
-        });
+    const listId = selectedCity?.documentId;
+    const places = observedList()?.recommended_places ?? selectedCity?.recommended_places ?? [];
+    if (!listId || places.length < 1) {
+      toast.error(t("dashboard.recommendations.toastMessages.listPublishError"));
+      return;
+    }
 
-        if (response) {
-          const newVisibility = response.data.updateRecommendationList.Visibility;
-          
-          // Update local state immediately
-          setIsPublished(newVisibility);
-          
-          // Update the useCityStore with the new Visibility value
-          setSelectedCity({
-            ...selectedCity,
-            Visibility: newVisibility,
-          });
-
-          // Refetch cities to ensure data consistency
-          refetchCities();
-
-          toast.success(
-            t(
-              !isPublished
-                ? "dashboard.recommendations.toastMessages.listPublished"
-                : "dashboard.recommendations.toastMessages.listUnpublished"
-            )
-          );
-          
-          // Advance walkthrough to next step after successful publish toggle
-          // Use the same pattern as useAddRecommendation (window.__walkthrough)
-          if (newVisibility) {
-            console.log('🚀 Calling advanceToNextStep() after publish toggle success');
-            // Small delay to ensure state is updated and UI is ready
-            setTimeout(() => {
-              // Use window.__walkthrough pattern (same as working steps 0→1, 1→2)
-              if (window.__walkthrough?.advanceToNextStepRef?.current) {
-                window.__walkthrough.advanceToNextStepRef.current();
-              } else if (advanceToNextStepRef?.current) {
-                advanceToNextStepRef.current();
-              } else if (advanceToNextStep) {
-                advanceToNextStep();
-              } else {
-                console.warn('⚠️ advanceToNextStep is not available, cannot advance walkthrough');
-              }
-            }, 300);
-          }
-        }
-      } catch (error) {
-        console.error("Error updating visibility:", error);
-        toast.error(t("dashboard.recommendations.toastMessages.listVisibilityError"));
+    const newVisibility = !isPublished;
+    try {
+      await commands.publishList(listId, newVisibility);
+      // A published list serves only its published places, so publishing the list
+      // publishes them. Unpublishing leaves each place's own state alone.
+      if (newVisibility) {
+        await Promise.all(places.map((place) => commands.publishPlace(place.documentId, true)));
       }
-    } else {
-      toast.error(
-        t("dashboard.recommendations.toastMessages.listPublishError")
+
+      setIsPublished(newVisibility);
+      setSelectedCity({ ...selectedCity, Visibility: newVisibility });
+      refetchCities();
+
+      toast.success(
+        t(
+          newVisibility
+            ? "dashboard.recommendations.toastMessages.listPublished"
+            : "dashboard.recommendations.toastMessages.listUnpublished"
+        )
       );
+
+      if (newVisibility) {
+        // Small delay so the state is updated and the UI is ready.
+        setTimeout(() => {
+          if (window.__walkthrough?.advanceToNextStepRef?.current) {
+            window.__walkthrough.advanceToNextStepRef.current();
+          } else if (advanceToNextStepRef?.current) {
+            advanceToNextStepRef.current();
+          } else if (advanceToNextStep) {
+            advanceToNextStep();
+          } else {
+            console.warn("advanceToNextStep is not available, cannot advance walkthrough");
+          }
+        }, 300);
+      }
+    } catch (error) {
+      console.error("Error updating visibility:", error);
+      toast.error(t("dashboard.recommendations.toastMessages.listVisibilityError"));
     }
   };
 

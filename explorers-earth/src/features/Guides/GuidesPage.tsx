@@ -1,13 +1,14 @@
-import React, { useState, useMemo, useEffect } from "react";
+import { NavigationStatus } from "../navigation/NavigationStatus";
+import type { IntentAuthority } from "../navigation/categoryNavigationPolicy";
+import { useCategoryNavigation } from "../navigation/CategoryNavigationProvider";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client";
 import Button from "../../components/ui/Button";
 import GuideCard from "./components/GuideCard";
 import TopPicksHero from "./components/TopPicksHero";
 import TopPicksMobileHero from "./components/TopPicksMobileHero";
-import { GET_GUIDES_QUERY, GET_USER_ACCOUNT_QUERY } from "./api/queries";
-import { DELETE_GUIDE_MUTATION, UPDATE_GUIDE_MUTATION } from "./api/mutations";
-import { updateTabVisibilityMutation } from "../../features/Settings/api/mutation";
+import { useGuidesOwner } from "./hooks/useGuidesOwner";
+import { archiveGuide, setGuidePin, setGuidePublished } from "./api/guideListWrites";
 import GuideCardSkeleton from "../../components/ui/GuideCardSkeleton";
 import HeroSkeleton from "../../components/ui/HeroSkeleton";
 import Modal from "../../components/ui/Modal";
@@ -30,6 +31,8 @@ interface FilterState {
 }
 
 const GuidesPage: React.FC = () => {
+  const navigation = useCategoryNavigation();
+  const categoryVisible = navigation.snapshot?.visibility.public_guides === "Yes";
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
@@ -50,26 +53,22 @@ const GuidesPage: React.FC = () => {
     isOpen: boolean;
     categoryName: string;
     visibilityField: string;
+    origin?: IntentAuthority;
     defaultValue: boolean;
   } | null>(null);
 
-  // Get account documentId
-  const { data: accountData, loading: accountLoading } = useQuery(GET_USER_ACCOUNT_QUERY, {
-    variables: { documentId: user?.documentId },
-    skip: !user?.documentId,
-  });
-
-  const accountDocumentId =
-    accountData?.usersPermissionsUser?.accounts?.[0]?.documentId;
-
+  // Ticket 5.3. No account lookup: the canonical owner read is already scoped to the
+  // signed-in owner, so there is nothing to filter by and nothing to wait for.
   const location = useLocation();
 
+  const promptedLocation = useRef<string | null>(null);
   useEffect(() => {
-    if (location.state?.justCreatedGuide && accountData) {
-      const acc = accountData?.usersPermissionsUser?.accounts?.[0];
-      const isPublic = acc?.public_guides === "Yes";
-      if (!isPublic) {
+    if (location.state?.justCreatedGuide && navigation.authority && promptedLocation.current !== location.key) {
+      promptedLocation.current = location.key;
+      const isPublic = navigation.snapshot?.visibility.public_guides === "Yes";
+      if (!isPublic && navigation.authority) {
         setVisibilityPrompt({
+          origin: navigation.authority,
           isOpen: true,
           categoryName: "Guides",
           visibilityField: "public_guides",
@@ -78,92 +77,47 @@ const GuidesPage: React.FC = () => {
       }
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, accountData]);
+  }, [location.state, location.key, navigation.authority, navigation.snapshot]);
 
 
 
-  // Fetch guides with account filter
-  const {
-    data: guidesData,
-    loading,
-    error,
-    refetch,
-  } = useQuery(GET_GUIDES_QUERY, {
-    variables: {
-      filters: {
-        account: {
-          documentId: {
-            eq: accountDocumentId,
-          },
-        },
-      },
-      pagination: {
-        limit: 100,
-      },
-    },
-    fetchPolicy: "network-only",
-    skip: !accountDocumentId,
-  });
+  // One bracketed owner read for every guide and its sections, replacing the Strapi
+  // guides query. `lists` carries the editable collection observation each write needs.
+  const { guides: ownedGuides, content, loading, error, refresh: refetch } = useGuidesOwner();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const observedList = (documentId: string) => content?.lists.get(documentId);
 
-  // Delete guide mutation
-  const [deleteGuide, { loading: isDeleting }] = useMutation(
-    DELETE_GUIDE_MUTATION,
-    {
-      onCompleted: () => {
-        toast.success("Guide deleted successfully");
-        refetch();
-        setShowDeleteModal(false);
-        setDeletingGuideId("");
-      },
-      onError: (error) => {
-        toast.error(`Failed to delete guide: ${error.message}`);
-        setShowDeleteModal(false);
-        setDeletingGuideId("");
-      },
+  // Archiving a guide keeps its sections, fields and media and removes it from every
+  // active listing, which is the same semantics every other category's list delete has.
+  const deleteGuide = async (documentId: string) => {
+    const list = observedList(documentId);
+    if (!list) {
+      toast.error("Guide could not be loaded. Refresh and try again.");
+      return;
     }
-  );
-
-  // Update tab visibility mutation
-  const [updateTabVisibility] = useMutation(updateTabVisibilityMutation, {
-    onCompleted: (data) => {
-      const isPublic = data.updateAccount.public_guides === "Yes";
-      toast.success(`Public visibility updated to ${isPublic ? "Public" : "Private"}`);
+    setIsDeleting(true);
+    try {
+      await archiveGuide(list);
+      toast.success("Guide deleted successfully");
       refetch();
-    },
-    onError: (error) => {
-      toast.error(`Failed to update public visibility: ${error.message}`);
+    } catch (failure: any) {
+      toast.error(`Failed to delete guide: ${failure?.message ?? "unknown error"}`);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setDeletingGuideId("");
     }
-  });
-
-  const handleVisibilityToggle = () => {
-    if (!accountData?.usersPermissionsUser?.accounts?.[0]) return;
-    
-    const account = accountData.usersPermissionsUser.accounts[0];
-    const currentVisibility = account.public_guides;
-    const newVisibility = currentVisibility === "Yes" ? "No" : "Yes";
-    
-    if (newVisibility === "Yes") {
-      const hasPublishedGuide = allGuides.some((g) => g.Visibility === true);
-      if (!hasPublishedGuide) {
-        toast.error("You must have at least one published guide to make Guides public.");
-        return;
-      }
-    }
-    
-    updateTabVisibility({
-      variables: {
-        documentId: account.documentId,
-        data: {
-          public_guides: newVisibility,
-        }
-      }
-    });
   };
 
-  const allGuides: Guide[] = guidesData?.guides || [];
+  const handleVisibilityToggle = () => {
+    const origin = navigation.authority;
+    if (origin && !navigation.busy) void navigation.request({ category: "public_guides", action: categoryVisible ? "unpublish" : "publish" }, origin);
+  };
 
-  // True when data is still being fetched (either account or guides query)
-  const isLoading = accountLoading || loading || (!accountDocumentId && !accountData);
+  const allGuides: Guide[] = (ownedGuides ?? []) as Guide[];
+
+  // One read now, so one loading flag.
+  const isLoading = loading;
 
   useEffect(() => {
     if (!isLoading) {
@@ -485,47 +439,26 @@ const GuidesPage: React.FC = () => {
   };
 
   const handleConfirmDelete = () => {
-    if (deletingGuideId) {
-      deleteGuide({
-        variables: { documentId: deletingGuideId },
-      });
-    }
+    if (deletingGuideId) void deleteGuide(deletingGuideId);
   };
 
-  const [updateGuide] = useMutation(UPDATE_GUIDE_MUTATION, {
-    onCompleted: (data) => {
-      const isPublic = data.updateGuide.Visibility;
-      toast.success(`Guide is now ${isPublic ? 'Public' : 'Draft'}`);
-    },
-    onError: (error) => {
-      toast.error(`Failed to update guide status: ${error.message}`);
+  const handleToggleVisibility = async (documentId: string, currentVisibility: boolean) => {
+    const list = observedList(documentId);
+    if (!list) {
+      toast.error("Guide could not be loaded. Refresh and try again.");
+      return;
     }
-  });
-
-  const handleToggleVisibility = (documentId: string, currentVisibility: boolean) => {
-    const guide = allGuides.find((g) => g.documentId === documentId);
     const nextVisibility = !currentVisibility;
-    
-    const updateData: any = { Visibility: nextVisibility };
-    if (!nextVisibility && guide?.is_pinned) {
-      updateData.is_pinned = false;
-      updateData.pin_order = null;
+    try {
+      // Unpublishing also unpins, inside the one server transaction. That rule used to
+      // live here, in UI code that set is_pinned/pin_order alongside the visibility
+      // change - where any other caller would simply not have done it.
+      await setGuidePublished(list, nextVisibility);
+      refetch();
+      toast.success(`Guide is now ${nextVisibility ? "Public" : "Draft"}`);
+    } catch (failure: any) {
+      toast.error(`Failed to update guide status: ${failure?.message ?? "unknown error"}`);
     }
-
-    updateGuide({
-      variables: {
-        documentId,
-        data: updateData
-      },
-      optimisticResponse: {
-        updateGuide: {
-          __typename: "Guide",
-          documentId,
-          Visibility: nextVisibility,
-          ...( (!nextVisibility && guide?.is_pinned) ? { is_pinned: false, pin_order: null } : {} )
-        }
-      }
-    });
   };
 
   const handleTogglePin = async (documentId: string) => {
@@ -548,15 +481,12 @@ const GuidesPage: React.FC = () => {
     }
 
     try {
-      await updateGuide({
-        variables: {
-          documentId,
-          data: {
-            is_pinned: nextPinnedValue,
-            pin_order: pinOrder,
-          },
-        },
-      });
+      const list = observedList(documentId);
+      if (!list) throw new Error("Guide could not be loaded. Refresh and try again.");
+      // The client still refuses to pin an unpublished guide above, so the user gets a
+      // specific message; the server refuses it too, which is what makes the rule hold
+      // for every other caller.
+      await setGuidePin(list, nextPinnedValue ? pinOrder : null);
       refetch();
       toast.success(`${guide.Title} ${nextPinnedValue ? "pinned as Top Pick" : "unpinned"}`);
     } catch (error: any) {
@@ -584,15 +514,9 @@ const GuidesPage: React.FC = () => {
     }
 
     try {
-      await updateGuide({
-        variables: {
-          documentId: docId,
-          data: {
-            is_pinned: nextPinnedValue,
-            pin_order: pinOrder,
-          },
-        },
-      });
+      const list = observedList(docId);
+      if (!list) throw new Error("Guide could not be loaded. Refresh and try again.");
+      await setGuidePin(list, nextPinnedValue ? pinOrder : null);
       refetch();
       toast.success(`${guide.Title} ${nextPinnedValue ? "pinned" : "unpinned"}`);
     } catch (error) {
@@ -607,18 +531,13 @@ const GuidesPage: React.FC = () => {
     const nextOrder = guideB.pin_order || 0;
 
     try {
-      await updateGuide({
-        variables: {
-          documentId: guideA.documentId,
-          data: { pin_order: nextOrder },
-        },
-      });
-      await updateGuide({
-        variables: {
-          documentId: guideB.documentId,
-          data: { pin_order: tempOrder },
-        },
-      });
+      const listA = observedList(guideA.documentId), listB = observedList(guideB.documentId);
+      if (!listA || !listB) throw new Error("Guides could not be loaded. Refresh and try again.");
+      // Two commands, so a failure between them leaves one guide moved. The reload below
+      // shows the real state rather than the order the swap intended, which is why the
+      // toast is not raised until both have succeeded.
+      await setGuidePin(listA, nextOrder);
+      await setGuidePin(listB, tempOrder);
       refetch();
       toast.success("Order updated");
     } catch (error) {
@@ -660,6 +579,7 @@ const GuidesPage: React.FC = () => {
         author={username}
       />
       <div className="dashboard-theme bg-dashboard-bg min-h-screen">
+        <NavigationStatus navigation={navigation} />
         <div className="w-full h-full mx-auto max-w-5xl px-4 md:px-6 pt-2 md:pt-4 pb-16 md:pb-6">
           {/* Header row with Add Button and Visibility Toggle (matches Recommendations) */}
           {/* Header row with Add Button and Visibility Toggle */}
@@ -668,8 +588,9 @@ const GuidesPage: React.FC = () => {
             <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 border border-white/5">
               <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
                 <SwitchButton
-                  isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_guides === "Yes"}
+                  isChecked={categoryVisible}
                   onChange={handleVisibilityToggle}
+                  disabled={navigation.busy || !navigation.authority}
                   variant="blue"
                 />
                 <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap font-medium">Public Visibility</span>
@@ -764,12 +685,13 @@ const GuidesPage: React.FC = () => {
               <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-[100] border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center md:hidden">
                 <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-bold uppercase ${accountData?.usersPermissionsUser?.accounts?.[0]?.public_guides === "Yes" ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                    {accountData?.usersPermissionsUser?.accounts?.[0]?.public_guides === "Yes" ? "Pub" : "Draft"}
+                  <span className={`text-[10px] font-bold uppercase ${categoryVisible ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                    {categoryVisible ? "Pub" : "Draft"}
                   </span>
                   <SwitchButton
-                    isChecked={accountData?.usersPermissionsUser?.accounts?.[0]?.public_guides === "Yes"}
+                    isChecked={categoryVisible}
                     onChange={handleVisibilityToggle}
+                    disabled={navigation.busy || !navigation.authority}
                     variant="blue"
                   />
                 </div>
@@ -1404,13 +1326,13 @@ const GuidesPage: React.FC = () => {
           )}
         </div >
       </div >
-      {visibilityPrompt && accountDocumentId && (
+      {visibilityPrompt && (
         <CategoryVisibilityModal
           isOpen={visibilityPrompt.isOpen}
           onClose={() => setVisibilityPrompt(null)}
           categoryName={visibilityPrompt.categoryName}
-          visibilityField={visibilityPrompt.visibilityField}
-          accountDocumentId={accountDocumentId}
+          visibilityField={visibilityPrompt.visibilityField} origin={visibilityPrompt.origin}
+          accountDocumentId={visibilityPrompt.origin?.accountDocumentId ?? ""}
           onSuccess={() => {
             refetch();
           }}

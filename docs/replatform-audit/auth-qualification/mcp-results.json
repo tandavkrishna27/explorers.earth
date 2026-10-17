@@ -1,0 +1,999 @@
+{
+  "passed": 5,
+  "results": [
+    "MCP/JWT/CIMD composition initializes with generated PostgreSQL schema",
+    "catalog has 12 generated tables",
+    "plugin registers one canonical OAuth resource",
+    "discovery metadata returns 200: /.well-known/oauth-authorization-server/api/auth",
+    "discovery metadata returns 200: /.well-known/oauth-protected-resource/mcp"
+  ],
+  "columns": [
+    {
+      "table_name": "auth_account",
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_account",
+      "column_name": "account_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_account",
+      "column_name": "provider_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_account",
+      "column_name": "user_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_account",
+      "column_name": "access_token",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_account",
+      "column_name": "refresh_token",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_account",
+      "column_name": "id_token",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_account",
+      "column_name": "access_token_expires_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_account",
+      "column_name": "refresh_token_expires_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_account",
+      "column_name": "scope",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_account",
+      "column_name": "password",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_account",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "auth_account",
+      "column_name": "updated_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_session",
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_session",
+      "column_name": "expires_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_session",
+      "column_name": "token",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_session",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "auth_session",
+      "column_name": "updated_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_session",
+      "column_name": "ip_address",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_session",
+      "column_name": "user_agent",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_session",
+      "column_name": "user_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_user",
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_user",
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_user",
+      "column_name": "email",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_user",
+      "column_name": "email_verified",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "column_default": "false"
+    },
+    {
+      "table_name": "auth_user",
+      "column_name": "image",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_user",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "auth_user",
+      "column_name": "updated_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "auth_verification",
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_verification",
+      "column_name": "identifier",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_verification",
+      "column_name": "value",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_verification",
+      "column_name": "expires_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "auth_verification",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "auth_verification",
+      "column_name": "updated_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "jwks",
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "jwks",
+      "column_name": "public_key",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "jwks",
+      "column_name": "private_key",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "jwks",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "jwks",
+      "column_name": "expires_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "jwks",
+      "column_name": "alg",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "jwks",
+      "column_name": "crv",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "token",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "client_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "session_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "user_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "reference_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "authorization_code_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "resources",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "requested_user_info_claims",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "refresh_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "expires_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "revoked",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "confirmation",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_access_token",
+      "column_name": "scopes",
+      "data_type": "ARRAY",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "client_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "client_secret",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "client_discovery_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "disabled",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "skip_consent",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "enable_end_session",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "subject_type",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "scopes",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "client_credentials_scopes",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "user_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "updated_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "uri",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "icon",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "contacts",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "tos",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "policy",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "software_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "software_version",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "software_statement",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "redirect_uris",
+      "data_type": "ARRAY",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "post_logout_redirect_uris",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "backchannel_logout_uri",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "backchannel_logout_session_required",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "token_endpoint_auth_method",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "application_type",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "jwks",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "jwks_uri",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "grant_types",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "response_types",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "require_pkce",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "dpop_bound_access_tokens",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "reference_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client",
+      "column_name": "metadata",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client_assertion",
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client_assertion",
+      "column_name": "expires_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client_resource",
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client_resource",
+      "column_name": "client_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client_resource",
+      "column_name": "resource_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client_resource",
+      "column_name": "metadata",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_client_resource",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_consent",
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_consent",
+      "column_name": "client_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_consent",
+      "column_name": "user_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_consent",
+      "column_name": "reference_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_consent",
+      "column_name": "resources",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_consent",
+      "column_name": "requested_user_info_claims",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_consent",
+      "column_name": "scopes",
+      "data_type": "ARRAY",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_consent",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_consent",
+      "column_name": "updated_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "token",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "client_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "session_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "user_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "reference_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "authorization_code_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "resources",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "requested_user_info_claims",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "expires_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "revoked",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "rotated_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "rotation_replay_response",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "rotation_replay_expires_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "auth_time",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "confirmation",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_refresh_token",
+      "column_name": "scopes",
+      "data_type": "ARRAY",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "identifier",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "access_token_ttl",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "refresh_token_ttl",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "signing_algorithm",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "signing_key_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "allowed_scopes",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "custom_claims",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "dpop_bound_access_tokens_required",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "disabled",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": "false"
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "updated_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "policy_version",
+      "data_type": "integer",
+      "is_nullable": "YES",
+      "column_default": "1"
+    },
+    {
+      "table_name": "oauth_resource",
+      "column_name": "metadata",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null
+    }
+  ]
+}

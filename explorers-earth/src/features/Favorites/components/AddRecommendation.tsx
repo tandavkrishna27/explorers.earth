@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import SwitchButton from "../../../components/ui/SwitchButton";
 import RecommendationForm, {
@@ -6,11 +6,8 @@ import RecommendationForm, {
 } from "./RecommendForm";
 import { AddIcon } from "../../../assets/icons/AddIcon";
 import { toast } from "sonner";
-import { useQuery } from "@apollo/client";
-import {
-  recommendationCategoriesQuery,
-  recommendedPlaceQuery,
-} from "../api/query";
+import { usePlacesOwner } from "../hooks/usePlacesOwner";
+
 import { Places } from "../../Profile/types/types";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { EarthLoader } from "../../../components/EarthLoader";
@@ -27,6 +24,9 @@ import StarIcon from "../../../assets/icons/StarIcon";
 import Modal from "../../../components/ui/Modal";
 import { Tooltip } from "react-tooltip";
 import { useTranslation } from "react-i18next";
+import { PlacesClient } from "../api/placesClient";
+import type { CompleteTaxonomyCatalog, RecommendationObservation } from "../../../lib/explorersApiClient";
+import { useLocation } from "react-router-dom";
 import { resizeImageToAspectRatio } from "../../../utils/resizeMediaToAspectRatio";
 
 // Add new type for Custom Search API response
@@ -194,43 +194,71 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     }
   }, [searchParams]);
 
-  // fetching the place in case of updation
-  const { data: fetchedPlace, loading: isPlaceLoading } = useQuery(recommendedPlaceQuery, {
-    variables: {
-      documentId: placeId,
-    },
-    fetchPolicy: "network-only",
-    skip: !placeId,
-  });
+  // Ticket 5.1. The place being edited comes from the native owner read, which returns
+  // every list complete, so the recommendation is found in it rather than fetched by id.
+  const accountId = useAuthStore(s=>s.accountId), generation = useAuthStore(s=>s.generation);
+  const location = useLocation();
+  const catalogScope = JSON.stringify([accountId,generation,location.pathname]);
+  // Finding 2. Retention is state, not a ref written during render — a render-phase ref
+  // write is discarded under a concurrent re-render, which would silently lose the
+  // hydration the form must stay bound to while owner.loading flips during a save re-read.
+  type EditHydration={scope:string;place:NonNullable<ReturnType<typeof usePlacesOwner>['data']>['recommendationLists'][number]['recommended_places'][number];observation:RecommendationObservation};
+  const [hydration,setHydration]=useState<EditHydration>();
+  const [reviewMessage,setReviewMessage]=useState<string>();
+  const [,setReviewVersion]=useState(0);
+  const reviewController=useRef<AbortController>();
+  useEffect(()=>()=>reviewController.current?.abort(),[catalogScope]);
+  const owner = usePlacesOwner(undefined, Boolean(placeId));
+  const isPlaceLoading = owner.loading;
+  const candidatePlace = useMemo(() => {
+    if (!placeId) return undefined;
+    for (const list of owner.data?.recommendationLists ?? []) {
+      const found = list.recommended_places.find((place: { documentId: string }) => place.documentId === placeId);
+      if (found) return found;
+    }
+    return undefined;
+  }, [owner.data, placeId]);
+  const candidateObservation=placeId?owner.content?.details.get(placeId):undefined;
+  // A hydration from a superseded authority scope is ignored rather than cleared in render.
+  const retainedHydration=hydration?.scope===catalogScope?hydration:undefined;
+  // The candidate is derived, so a discarded render costs nothing: it is recomputed from
+  // live data on the retry and only the commit below turns it into retained state. Using it
+  // in the same render keeps the hydrated form available on the very first render that can
+  // build it, exactly as the render-phase ref write did.
+  const freshHydration=useMemo<EditHydration|undefined>(()=>retainedHydration||!candidatePlace||!candidateObservation?undefined:{scope:catalogScope,place:candidatePlace,observation:candidateObservation},[retainedHydration,candidatePlace,candidateObservation,catalogScope]);
+  useEffect(()=>{if(freshHydration)setHydration(freshHydration);},[freshHydration]);
+  const editHydration=retainedHydration??freshHydration;
+  const editHydrationScope=useRef<string>();
+  useEffect(()=>{editHydrationScope.current=editHydration?.scope;},[editHydration?.scope]);
+  const editedPlace=editHydration?.place;
+  const editObservation=editHydration?.observation;
+  useEffect(()=>{if(type==='edit' && editedPlace)setRecommendationType(editedPlace.Recommendation_Type);},[editedPlace,type]);
+  // The form remains bound to the original hydration until the owner explicitly reviews a refresh.
+  const fetchedPlace = useMemo(() => (editedPlace ? { recommendedPlace: editedPlace } : undefined), [editedPlace]);
   const navigate = useNavigate();
 
   // google places place_id for further usage
+  // A manual place has no provider id, which is absent rather than an empty string.
   const googlePlaceRefId =
-    fetchedPlace?.recommendedPlace?.Place_Details?.Place_Id;
+    fetchedPlace?.recommendedPlace?.Place_Details?.Place_Id ?? undefined;
   // custom hooke for handling the recommendation form fields
   const { formFields, validationSchema, initialValues, editInitialValues } =
     useRecommendationFields({ places, isCustom: true, fetchedPlace, recommendationType, instagramLink, instagramCaption, personName });
 
-  // meida details
-  const media_details = fetchedPlace?.recommendedPlace?.media_details;
-
   const transformImages = (
-    imageDetails: { url: string; id: string; documentId: string }[],
-    thumbnail: { url: string; id: string; documentId: string } | null
-  ) => {
-    // Transform imageDetails array with isThumbnail: false
-    const transformedImages = imageDetails?.map((image) => ({
+    imageDetails: { url: string; id: string; documentId?: string }[] | undefined,
+    thumbnail: { url?: string; id?: string; documentId?: string } | null | undefined
+  ): GoogleMedia[] => {
+    const items = imageDetails ?? [];
+    const transformedImages: GoogleMedia[] = items.map((image) => ({
       url: image.url,
       id: image.id,
       documentId: image.documentId,
       isThumbnail: false,
     }));
 
-    // Check if thumbnail exists and is not already included in imageDetails
-    if (
-      thumbnail?.url &&
-      !imageDetails.some((img) => img.url === thumbnail.url)
-    ) {
+    // The thumbnail joins the gallery unless it is already in it.
+    if (thumbnail?.url && thumbnail.id && !items.some((img) => img.url === thumbnail.url)) {
       transformedImages.push({
         url: thumbnail.url,
         id: thumbnail.id,
@@ -257,6 +285,12 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     handleFileChange,
     handleDeleteUserImage,
     handleUploadMedia,
+    mediaStatus,
+    mediaFeedback,
+    retryMediaUpload,
+    continueWithoutImage,
+    editConflict, clearEditConflict,
+    retireDraftIntent,
   } = useAddRecommendation({
     places,
     googlePlaceRefId,
@@ -265,7 +299,6 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     placeId,
     listId,
     fetchedListId,
-    media_details,
     fetchedGoogleMedia,
     instagramMedia,
     recommendationType,
@@ -273,16 +306,24 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     setIsLoading,
     userInputRef,
     fetchedPlace,
+    editObservation,
   });
+  const hasMediaFailure = mediaStatus === "upload-failed" || mediaStatus === "metadata-failed";
 
-  // fetching the created categories
-  const {
-    data: fetchedCategories,
-    loading,
-    error,
-  } = useQuery(recommendationCategoriesQuery, {
-  });
-
+  const [catalogResult,setCatalogResult] = useState<{scope:string;catalog?:CompleteTaxonomyCatalog;error?:string}>();
+  const [catalogAttempt,setCatalogAttempt] = useState(0);
+  useEffect(()=>{
+    const controller=new AbortController();setCatalogResult(undefined);
+    void PlacesClient.readTaxonomyCatalog(controller.signal).then(catalog=>{
+      const terms=new Map(catalog.items.map(term=>[term.id,term]));
+      if(catalog.items.some(term=>term.category!=='places'||term.parentId!==null&&(!terms.has(term.parentId)||terms.get(term.parentId)?.parentId!==null||term.parentId===term.id)))throw new Error('Invalid Places taxonomy hierarchy. Retry loading taxonomy.');
+      if(!controller.signal.aborted)setCatalogResult({scope:catalogScope,catalog});
+    }).catch(error=>{if(!controller.signal.aborted)setCatalogResult({scope:catalogScope,error:(error.message || 'Places taxonomy could not be loaded.').replace(/sectors/g,'Places taxonomy')});});
+    return ()=>controller.abort();
+  },[catalogScope,catalogAttempt]);
+  const catalog=catalogResult?.scope===catalogScope?catalogResult.catalog:undefined;
+  const catalogError=catalogResult?.scope===catalogScope?catalogResult.error:undefined;
+  const fetchedCategories={recommendationCategories:(catalog?.items || []).filter(t=>t.parentId===null).map(root=>({documentId:root.id,Category_Name:root.label,slug:root.slug,recommendation_sub_categories:(catalog?.items || []).filter(t=>t.parentId===root.id).map(child=>({documentId:child.id,sub_category:child.label,slug:child.slug}))}))};
   useEffect(() => {
     // function to fetch google photos
     const fetchGoogleMedia = async () => {
@@ -723,9 +764,6 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     };
   }, [isDropdownOpen]);
 
-  if (error) {
-    return toast.error(t("toast.error.errorLoadingCategories"));
-  }
 
   // Handle the removal of an image
   const handleRemoveImage = async (image: GoogleMedia) => {
@@ -912,7 +950,8 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
   };
 
   // Show loading if fetching place data in edit mode
-  if (type === "edit" && isPlaceLoading) {
+  // The full-screen loader can never replace an already hydrated form.
+  if (type === "edit" && isPlaceLoading && !editHydration) {
     return (
       <div className="flex bg-dashboard-bg z-50 items-center justify-center min-h-screen">
         <EarthLoader context="general" size="small" />
@@ -947,11 +986,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
         </div>,
         document.body
       )}
-      {!isLoading && loading ? (
-        <div className="flex items-center justify-center min-h-screen">
-          <EarthLoader context="general" size="small" />
-        </div>
-      ) : !isLoading ? (
+      {(
         <div className="flex relative flex-col mb-10 items-center max-w-full gap-4">
           <div className="flex flex-row gap-4 md:w-[70%] w-full md:justify-between justify-between md:mt-0 mt-4 mx-6 md:mx-0 items-center">
             <Button
@@ -961,6 +996,37 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
               startIcon={<BackIcon stroke="var(--dash-accent)" size="size-6" />}
             />
           </div>
+
+          {hasMediaFailure && (
+            <div
+              role="alert"
+              data-media-status={mediaStatus}
+              className="w-full max-w-3xl rounded-xl border border-amber-400/50 bg-amber-400/10 p-4 text-dashboard"
+            >
+              <h2 className="font-poppins text-sm font-semibold">
+                Place saved; image needs attention
+              </h2>
+              <p className="mt-1 font-poppins text-xs text-dashboard-light">
+                {mediaFeedback}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => void retryMediaUpload()}
+                  className="min-h-11 rounded-lg bg-dashboard-accent px-4 font-poppins text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                >
+                  Retry image save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void continueWithoutImage()}
+                  className="min-h-11 rounded-lg border border-dashboard px-4 font-poppins text-sm font-semibold text-dashboard transition-colors hover:border-dashboard-accent"
+                >
+                  Continue without image
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Recommendation Type Selector - Only show for new recommendations (not edit) */}
           {type !== "edit" && (
@@ -1028,9 +1094,27 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
             </div>
           )}
 
+          {editConflict && <div role="alert">This recommendation changed. Your draft is retained.<button type="button" onClick={async()=>{
+            if(!placeId || !editHydration)return;
+            const captured=catalogScope;
+            reviewController.current?.abort();const controller=new AbortController();reviewController.current=controller;
+            try{const observation=await PlacesClient.observeRecommendation(placeId,controller.signal);if(controller.signal.aborted||editHydrationScope.current!==captured)return;setHydration(previous=>previous&&previous.scope===captured?{...previous,observation}:previous);clearEditConflict();setReviewMessage('Current revision loaded. Review your draft, then save again.');setReviewVersion(n=>n+1);}catch(error){if(!controller.signal.aborted)toast.error(error instanceof Error?error.message:'Refresh failed');}
+          }}>Refresh and review</button></div>}
+          {reviewMessage && <div>
+            <p role="status">{reviewMessage}</p>
+            <dl>
+              <dt>Current saved title</dt><dd>{editObservation?.detail.displayTitle}</dd>
+              <dt>Current saved category</dt><dd>{editObservation?.detail.placesTaxonomy?.category?.label ?? editObservation?.detail.placesTaxonomy?.category?.id ?? 'Unassigned'}{editObservation?.detail.placesTaxonomy?.category?.unavailable ? ' (unavailable)' : ''}</dd>
+              <dt>Current saved subcategory</dt><dd>{editObservation?.detail.placesTaxonomy?.subcategory?.label ?? editObservation?.detail.placesTaxonomy?.subcategory?.id ?? 'No subcategory'}{editObservation?.detail.placesTaxonomy?.subcategory?.unavailable ? ' (unavailable)' : ''}</dd>
+            </dl>
+          </div>}
           <RecommendationForm
+            onDraftChange={retireDraftIntent}
             ref={formRef}
             categories={fetchedCategories.recommendationCategories}
+            taxonomyState={catalogError ? "error" : !catalog ? "loading" : catalog.state === "UNCONFIGURED" ? "unconfigured" : "configured"}
+            taxonomyError={catalogError}
+            retryTaxonomy={()=>setCatalogAttempt(n=>n+1)}
             setPlaces={setPlaces}
             places={places}
             isCustom={true}
@@ -1370,21 +1454,21 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
 
                 }`}
               type="button"
-              onClickHandler={isImagesLoading ? undefined : handleButtonClick}
+              onClickHandler={isImagesLoading || hasMediaFailure ? undefined : handleButtonClick}
               endIcon={isImagesLoading ? (
                 <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
               ) : <AddIcon size="4" />}
-              variant={isImagesLoading ? "google" : "primary"}
+              variant={isImagesLoading || hasMediaFailure ? "google" : "primary"}
               size="medium"
               className={`w-auto text-sm md:text-base py-2 md:py-3 transition-all duration-300 ${isImagesLoading ? "opacity-60 cursor-not-allowed pointer-events-none" : ""
-                }`}
+                } ${hasMediaFailure ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
             />
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 });

@@ -63,7 +63,7 @@ const GenreBrowse = ({ games, username }: GenreBrowseProps) => {
 
   return (
     <section className="mt-10 mb-8">
-      <h2 className="text-lg font-semibold text-white mb-4 px-4 md:px-0">Browse by Genre</h2>
+      <h2 className="text-lg font-semibold text-[color:var(--category-text,#fff)] mb-4 px-4 md:px-0">Browse by Genre</h2>
       <div className="relative group">
         {canScrollLeft && (
           <button
@@ -103,16 +103,16 @@ const GenreBrowse = ({ games, username }: GenreBrowseProps) => {
             >
               <Link
                 to={`/${username}/games/genre/${genreToSlug(genre)}`}
-                className="relative flex flex-col justify-between h-24 rounded-xl overflow-hidden p-3 border border-white/10 hover:border-dashboard-accent/40 transition-all group"
+                className="relative flex flex-col justify-between h-24 rounded-xl overflow-hidden p-3 border border-[color:var(--category-border,rgba(255,255,255,0.1))] hover:border-[color:var(--category-focus,color-mix(in_srgb,var(--dash-accent,#3b82f6)_40%,transparent))] transition-all group"
                 style={{
-                  background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`,
+                  background: `var(--category-card,linear-gradient(135deg, ${gradient[0]}, ${gradient[1]}))`,
                 }}
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <ChevronRight size={14} className="self-end text-white/30 group-hover:text-white/60 transition-colors" />
+                <ChevronRight size={14} className="self-end text-[color:var(--category-muted,rgba(255,255,255,0.3))] group-hover:text-[color:var(--category-muted,rgba(255,255,255,0.6))] transition-colors" />
                 <div>
-                  <p className="text-sm font-semibold text-white">{genre}</p>
-                  <p className="text-xs text-white/40">{genreCount[genre]} game{genreCount[genre] !== 1 ? "s" : ""}</p>
+                  <p className="text-sm font-semibold text-[color:var(--category-text,#fff)]">{genre}</p>
+                  <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.4))]">{genreCount[genre]} game{genreCount[genre] !== 1 ? "s" : ""}</p>
                 </div>
               </Link>
             </motion.div>
