@@ -23,9 +23,13 @@ const verify = (accountId: string) => {
 
 describe("AuthSyncManager canonical session boundary", () => {
   beforeEach(() => { vi.clearAllMocks(); useAuthStore.getState().logout(); });
-  it("starts cookie verification on mount", () => {
+  // It used to bootstrap here, which meant an auth request on every anonymous public
+  // profile view. The surfaces that gate on auth status own that now; this component only
+  // clears private caches on a generation change. sessionBootstrap.test.tsx covers the
+  // positive half, so neither side of the behaviour is asserted only in prose.
+  it("does not start cookie verification for a visitor who needs no auth state", () => {
     render(<AuthSyncManager />);
-    expect(calls.refresh).toHaveBeenCalledTimes(1);
+    expect(calls.refresh).not.toHaveBeenCalled();
   });
   it("reconciles Music owner provisioning from the verified canonical session", async () => {
     // Nothing called reconcile() before this, so isReadyFor() stayed false and every

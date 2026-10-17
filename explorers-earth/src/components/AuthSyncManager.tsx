@@ -1,14 +1,20 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useApolloClient } from "@apollo/client";
 import useAuthStore from "../store/store";
-import { authClient } from "../lib/authClient";
 import { queryClient } from "../lib/queryClient";
 import { musicApi, musicIdentityCoordinator } from "../features/music/musicApi";
 import { musicSessionBoundary } from "../features/music/musicSessionBoundary";
 import { clearMusicPublicationCommands } from "../features/music/musicPublicationCommandRegistry";
 import { clearAllMusicWorkspaceQueries } from "../hooks/useTunesDashboard";
 
-/** Bootstrap cookie authority once and clear mounted private caches on each generation change. */
+/**
+ * Clear mounted private caches on each generation change.
+ *
+ * This no longer bootstraps cookie authority. Doing so here put an auth request on every
+ * anonymous public profile view, which is both waste on the most cacheable pages and what
+ * profile-tab hit testing counts as denied authority. The surfaces that gate on auth
+ * status now bootstrap it themselves through useSessionBootstrap.
+ */
 export default function AuthSyncManager() {
   const apollo = useApolloClient();
   const { generation, status, isAuthenticated, user, accountId } = useAuthStore();
@@ -21,7 +27,6 @@ export default function AuthSyncManager() {
     musicSessionBoundary.getAccountGenerationSnapshot,
   );
   const previous = useRef<number | null>(null);
-  useEffect(() => { void authClient.refresh(); }, []);
   useEffect(() => {
     if (previous.current === null) { previous.current = generation; return; }
     if (previous.current === generation) return;
