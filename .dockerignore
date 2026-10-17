@@ -1032,6 +1032,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/lib/publicRuntimeConfig.ts
 !explorers-earth/src/lib/publicRuntimeContract.ts
 !explorers-earth/src/lib/queryClient.ts
+!explorers-earth/src/lib/sessionBootstrap.ts
 !explorers-earth/src/lib/utils.ts
 !explorers-earth/src/main.tsx
 !explorers-earth/src/pages/About.tsx
