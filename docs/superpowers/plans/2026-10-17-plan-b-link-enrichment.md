@@ -2,13 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Let an owner paste a URL when adding a Product, App or Person, see the title, description and images found there, confirm which of them to keep, and have the confirmed images stored in our own private S3 and shown on the public page.
+**Goal:** Let an owner paste a URL when adding a Product, App or Person, see the title, description and images found there, confirm which to keep, and have the confirmed images stored in our own private S3 and shown on the public page.
 
-**Architecture:** Two on-demand owner routes. *Observe* fetches the pasted page through a new hardened open-host fetcher (SSRF floor, robots honoured, denylist, per-account budget) and returns candidate text fields plus candidate **remote** image URLs — nothing is stored yet. *Accept* fetches only the images the owner selected, stores each through `MediaService.createMedia`, and attaches them to the category's existing media table inside a three-phase command receipt. Public visibility then comes for free from Plan A's gate.
+**Architecture:** Two on-demand owner routes. *Observe* fetches the pasted page through a new hardened open-host fetcher (SSRF floor, robots honoured, denylist, request-metered budget), decodes it **in a worker thread**, and returns candidate text fields plus candidate remote image URLs together with an HMAC over that candidate set — nothing is stored. *Accept* verifies the HMAC, fetches only the images the owner selected, stores each through `MediaService.createMedia`, and attaches them inside a three-phase command receipt. Public visibility then comes from Plan A's gate.
 
-**Tech Stack:** TypeScript (strict), Node `https` with pinned DNS, PostgreSQL via `pg`, Express, Vitest, React 18.
+**Tech Stack:** TypeScript (strict), Node `https` with pinned DNS, `node:worker_threads`, PostgreSQL via `pg`, Express, Vitest, React 18.
 
-**Prerequisite:** **Plan A must land first.** Plan B stores products and people images in `recommendation_media`, which only becomes publicly servable once Plan A widens the gate (`mediaRepository.ts:101-102`). Without it, enrichment would store images the public can never load.
+**Prerequisite:** **Plan A must land first.** Products and people images go into `recommendation_media`, which only becomes publicly servable once Plan A widens the gate and its projections.
+
+**Revision:** v2, after a security review and an integration review. v1 had one critical exploitable defect and four blockers; each correction is marked **[v1 defect]**.
 
 ---
 
@@ -19,49 +21,42 @@
 | Categories | **Products, Apps, People** |
 | Host policy | **Any public host**, robots.txt honoured, plus a denylist editable without a deploy |
 | Images | **Owner confirms each** before anything is fetched or stored |
-| Trigger | **On demand** when the owner pastes, with a per-account budget |
+| Trigger | **On demand**, request-metered per account |
 | Blocked sites | **Fail gracefully** to manual entry plus upload. No bot-detection evasion. |
 
-## Scope boundary stated once
+## Scope boundary
 
-The retired implementation worked partly by evading bot detection — a stealth plugin, spoofed `Referer`/`Origin` headers to bypass Instagram's protections, LinkedIn routed via DuckDuckGo. **None of that is reinstated.** This fetcher identifies itself honestly, honours robots.txt and honours a block. The consequence is accepted up front: for sites that refuse automated access — Instagram and LinkedIn in particular — enrichment will fail and the owner falls back to manual entry plus upload. People will therefore benefit least of the three categories.
+The retired implementation evaded bot detection — a stealth plugin, spoofed `Referer`/`Origin` to bypass Instagram, LinkedIn via DuckDuckGo. **None of that is reinstated.** This fetcher identifies itself honestly, honours robots.txt and honours a block. Sites that refuse automated access — Instagram and LinkedIn especially — will fail, and the owner falls back to manual entry plus upload. People benefits least of the three.
 
-`tunes/server/utils/priceParsing.ts:5-6` records that the old endpoints are tombstoned and that "reviving it is forbidden by epic-04 and epic-07". That prohibition was raised with the owner, who directed this work to proceed on the terms above. This plan deliberately does **not** revive any tombstoned path.
+`tunes/server/utils/priceParsing.ts:5-6` records the prohibition in epic-04 and epic-07. It was raised with the owner, who directed this work to proceed on the terms above. No tombstoned path is revived.
+
+## Security posture: what actually contains this
+
+Stated once, because v1 got the emphasis wrong.
+
+**The real SSRF containment is TLS identity, not the address policy.** `https:`-and-443-only, plus `rejectUnauthorized:true` with `servername` set to the request hostname (`bookCoverFetch.ts:23`) and `checkServerIdentity` (`appEnrichmentFetch.ts:4,70`). An internal service cannot present a certificate valid for the attacker's hostname, so the request is never written. This matters because `publicAddress()` **does** admit our own Hetzner and AWS global IPv6 — verified: `2a01:4f8:1:2::3` and `2600:1f00:1234::1` both return `true`. The address policy is a floor, not the wall.
+
+**Confirmed sound and to be preserved verbatim:** DNS resolved once, every returned address checked, then pinned into the connect `lookup` with `autoSelectFamily:false` — no in-request rebinding window. One whole-call deadline plus `maxRequests` bounding total work, not per hop. Redirect re-validation that rejects scheme and port changes. `169.254.169.254` and every IPv6 special form refused (`::1`, `::ffff:10.0.0.1`, `64:ff9b::/96`, `fc00::/7`, `fe80::/10`, 6to4, `2001:db8::`). `media.ts:106`'s sniff-forced content type plus `X-Content-Type-Options: nosniff` on every media response, which closes stored XSS — no polyglot can be served as a document.
+
+**Do not edit `publicAddress()`.** It is shared with the book-cover and movie-poster fetchers. Note the consequence: `:16` rejects all of `2001::/16`, and the caller rejects if **any** resolved address fails, so a host with a `2001::/16` AAAA record is unfetchable. That is a product failure to surface gracefully, never a reason to widen a shared floor. Task 2 adds a contract test pinning its rejection set so a Plan-B-driven widening fails CI.
+
+**Add a network-layer egress floor** outside the application: deny RFC1918, `127/8`, `169.254/16`, `fc00::/7`, `fe80::/10` and **our own VPC/Hetzner prefixes** for the fetching process. In-process filtering is one bug from total; this is the only control that survives a mistake in Task 2.
 
 ## What this plan does NOT need (verified)
 
-Because Plan A makes `recommendation_media` publicly servable for products and people, and `recommendation_app_screenshots` already is for apps:
-
-- **No migration.** No new attachment table, so no guard triggers, and no edit to the three `TG_TABLE_NAME` allowlists (the current versions live in `tunes/migrations/0054_explorers_place_individual_pins.sql`, not 0035).
-- **No new `isPublicAttachment` arm.** Products and people reuse the generic arm; apps reuses its typed arm.
-- **No change to `appEnrichmentFetch.ts`.** It is in live use by Apps enrichment and sealed by contract tests. Relaxing its `allowedHosts` validator would *break* it anyway: the URL gate at `appEnrichmentFetch.ts:90` independently requires `allowedHosts.includes(url.hostname)`, so an empty list rejects every URL. Plan B adds a **separate** fetcher and leaves that one untouched.
-- **No new media purpose.** `purpose:'recommendation'` already carries a 5 MiB limit (`tunes/server/application/media.ts:28-29`) and satisfies every attachment guard.
-
-## Staging without a staging table
-
-Unattached `media_assets` rows are already the staging mechanism: the gate requires an attachment, so a stored-but-unattached asset is owner-visible and publicly refused, and `MediaRepository.abandoned` (`mediaRepository.ts:149-166`) sweeps `ready` assets with no attachment after 24 hours. Accept therefore stores and attaches in one flow, and a failure path deletes what it uploaded — exactly as `bookCoverImport.ts:66` does.
+- **No migration.** `recommendation_media` and `recommendation_app_screenshots` are already in all three `TG_TABLE_NAME` allowlists and all three `scope_sql` recommendation-join arms of the *current* content-revision functions, which live in `tunes/migrations/0054_explorers_place_individual_pins.sql:313,347,381` — not 0035. Both guards accept `purpose:'recommendation'` with the four image MIMEs and ≤ 5 MiB, matching our image profile exactly.
+- **No new `isPublicAttachment` arm.** Products and people reuse the generic arm Plan A widens; apps reuses its typed arm.
+- **No change to `appEnrichmentFetch.ts`.** It is sealed by contract tests, and relaxing its `allowedHosts` would break it anyway — `urlFor` at `:91` independently requires `allowedHosts.includes(url.hostname)`, so an empty list rejects every URL. Plan B adds a separate fetcher.
+- **No new media purpose.** `purpose:'recommendation'` carries a 5 MiB limit (`media.ts:28-29`) and satisfies every guard.
+- **No new error codes.** `RATE_LIMITED` and `PROVIDER_UNAVAILABLE` already exist (`explorersContract.ts:130`).
 
 ---
 
-## File structure
+## Task 1: Robots policy, standards-compliant and fail-closed
 
-| File | Responsibility |
-|---|---|
-| `tunes/server/services/robotsPolicy.ts` | **New.** Fetch, parse and cache a host's robots.txt; answer "may we fetch this path". Nothing in the repo does this today. |
-| `tunes/server/services/linkEnrichmentFetch.ts` | **New.** Open-host hardened fetcher with an HTML profile and an image profile. |
-| `tunes/server/services/linkEnrichmentBudget.ts` | **New.** Per-account and global budget, modelled on `GameProviderCoordinator`. |
-| `tunes/server/application/linkEnrichmentDecode.ts` | **New.** Pure extraction of title/description/image URLs from fetched HTML. |
-| `tunes/server/application/linkEnrichmentImport.ts` | **New.** Observe and accept commands, three-phase receipt. |
-| `tunes/server/routes/explorersLinkEnrichmentRoutes.ts` | **New.** Two owner POSTs plus their `ALL` 405 guards. |
-| `tunes/shared/explorersLinkEnrichmentContract.ts` | **New.** Zod request/response contracts. |
-| `tunes/server/policies/musicSurfacePolicy.ts` | Allowlist the two new routes as `explorers-owner`. |
-| `explorers-earth/src/features/*/components/dashboard/LinkEnrichmentPanel.tsx` | **New.** Shared owner panel; mounted by Products, Apps and People add/edit pages. |
+Nothing in the repo reads a third party's robots.txt — every existing hit serves our own. This is the gate that makes open-host fetching defensible, so it must actually work.
 
----
-
-## Task 1: Robots policy
-
-Nothing in the repo reads a third-party robots.txt — verified by searching `robots`, `robotstxt`, `user-agent:` and `disallow`; every hit is our own served `robots.txt` or a `<meta name="robots">`. This is built from scratch, and it is the gate that makes open-host fetching defensible.
+**[v1 defect — it failed open in the cases that matter]** v1 used `path.startsWith(rule.path)` with no wildcard support, so `Disallow: /*` — how Amazon's robots.txt is built, and Amazon is named in v1's own risk list — matched nothing and read as full permission. It consulted only the first `User-agent: *` group, matched our token by exact equality, treated a failing fetch as permission, and its `"unreadable"` branch was unreachable for garbage input, so the test named "fails closed on an unparsable body" only ever exercised the oversized case.
 
 **Files:**
 - Create: `tunes/server/services/robotsPolicy.ts`
@@ -75,13 +70,31 @@ import { parseRobots, robotsAllows } from "../../services/robotsPolicy";
 
 describe("robots policy", () => {
   it("honours a wildcard disallow", () => {
-    const rules = parseRobots("User-agent: *\nDisallow: /private\n");
-    expect(robotsAllows(rules, "/private/thing")).toBe(false);
-    expect(robotsAllows(rules, "/public")).toBe(true);
+    expect(robotsAllows(parseRobots("User-agent: *\nDisallow: /private\n"), "/private/x")).toBe(false);
+    expect(robotsAllows(parseRobots("User-agent: *\nDisallow: /private\n"), "/public")).toBe(true);
   });
 
-  it("prefers our own user-agent group over the wildcard", () => {
-    const rules = parseRobots("User-agent: *\nDisallow: /\n\nUser-agent: ExplorersEarthBot\nAllow: /products\nDisallow: /\n");
+  // RFC 9309 2.2.3. Without this, a blanket wildcard disallow reads as permission.
+  it("supports the * wildcard", () => {
+    expect(robotsAllows(parseRobots("User-agent: *\nDisallow: /*\n"), "/anything")).toBe(false);
+    expect(robotsAllows(parseRobots("User-agent: *\nDisallow: /gp/*/reviews\n"), "/gp/abc/reviews")).toBe(false);
+    expect(robotsAllows(parseRobots("User-agent: *\nDisallow: /gp/*/reviews\n"), "/gp/abc/other")).toBe(true);
+  });
+
+  it("supports the $ end anchor", () => {
+    expect(robotsAllows(parseRobots("User-agent: *\nDisallow: /*.php$\n"), "/a/b.php")).toBe(false);
+    expect(robotsAllows(parseRobots("User-agent: *\nDisallow: /*.php$\n"), "/a/b.php?x=1")).toBe(true);
+  });
+
+  // RFC 9309 2.2.1: all records matching the token are merged.
+  it("merges every group matching our token", () => {
+    const rules = parseRobots("User-agent: *\nDisallow: /a\n\nUser-agent: *\nDisallow: /b\n");
+    expect(robotsAllows(rules, "/a")).toBe(false);
+    expect(robotsAllows(rules, "/b")).toBe(false);
+  });
+
+  it("matches our product token case-insensitively and ignores version suffixes", () => {
+    const rules = parseRobots("User-agent: *\nDisallow: /\n\nUser-agent: explorersearthbot/2.0\nAllow: /products\nDisallow: /\n");
     expect(robotsAllows(rules, "/products/1")).toBe(true);
     expect(robotsAllows(rules, "/other")).toBe(false);
   });
@@ -92,16 +105,35 @@ describe("robots policy", () => {
     expect(robotsAllows(rules, "/a/x")).toBe(false);
   });
 
+  it("matches path and query together", () => {
+    expect(robotsAllows(parseRobots("User-agent: *\nDisallow: /s?k=\n"), "/s?k=shoes")).toBe(false);
+    expect(robotsAllows(parseRobots("User-agent: *\nDisallow: /s?k=\n"), "/s")).toBe(true);
+  });
+
+  it("compares percent-encoding equivalently", () => {
+    expect(robotsAllows(parseRobots("User-agent: *\nDisallow: /caf%C3%A9\n"), "/caf%C3%A9/x")).toBe(false);
+  });
+
   it("treats an empty disallow as permission", () => {
     expect(robotsAllows(parseRobots("User-agent: *\nDisallow:\n"), "/anything")).toBe(true);
   });
 
-  it("fails closed on an unparsable or oversized body", () => {
+  it("allows everything when robots.txt is absent or 4xx", () => {
+    expect(robotsAllows("absent", "/a")).toBe(true);
+  });
+
+  // RFC 9309 2.3.1.4. A site shedding load, or refusing bots with 503, must not read as consent.
+  it("disallows everything when robots.txt is unavailable", () => {
+    expect(robotsAllows("unavailable", "/a")).toBe(false);
+  });
+
+  it("fails closed on an oversized body", () => {
     expect(robotsAllows(parseRobots("x".repeat(500_001)), "/a")).toBe(false);
   });
 
-  it("allows everything when robots.txt is absent", () => {
-    expect(robotsAllows(parseRobots(undefined), "/a")).toBe(true);
+  // [v1 defect] v1 returned {groups:[]} here, which allowed everything.
+  it("fails closed on a body with no parsable directives", () => {
+    expect(robotsAllows(parseRobots("<!doctype html><html><body>Not found</body></html>"), "/a")).toBe(false);
   });
 });
 ```
@@ -112,150 +144,106 @@ describe("robots policy", () => {
 cd tunes && npx vitest run server/test/contracts/robots-policy.test.ts
 ```
 
-Expected: FAIL — module not found.
-
 - [ ] **Step 3: Implement**
 
-```ts
-/**
- * Third-party robots.txt. Nothing in this repository read one before: the only robots
- * code served our own. Open-host fetching is only defensible if a site's stated wishes
- * are honoured, so this is a gate, not a nicety.
- *
- * Deliberately conservative: an absent robots.txt permits (that is the standard), but an
- * oversized or unparsable one refuses, because we cannot claim consent we could not read.
- */
-export type RobotsRules = { groups: Array<{ agents: string[]; rules: Array<{ allow: boolean; path: string }> }> } | "unreadable" | "absent";
-export const USER_AGENT = "ExplorersEarthBot";
+Signature: `parseRobots(body: string | undefined): RobotsRules` where `RobotsRules = {groups: […]} | "absent" | "unavailable" | "unreadable"`, and `robotsAllows(rules, pathAndQuery)`.
 
-export function parseRobots(body: string | undefined): RobotsRules {
-  if (body === undefined) return "absent";
-  if (body.length > 500_000) return "unreadable";
-  const groups: Array<{ agents: string[]; rules: Array<{ allow: boolean; path: string }> }> = [];
-  let current: { agents: string[]; rules: Array<{ allow: boolean; path: string }> } | undefined;
-  let lastWasAgent = false;
-  for (const raw of body.split(/\r?\n/)) {
-    const line = raw.split("#")[0].trim();
-    if (!line) continue;
-    const colon = line.indexOf(":");
-    if (colon < 0) continue;
-    const field = line.slice(0, colon).trim().toLowerCase(), value = line.slice(colon + 1).trim();
-    if (field === "user-agent") {
-      if (!current || !lastWasAgent) { current = { agents: [], rules: [] }; groups.push(current); }
-      current.agents.push(value.toLowerCase()); lastWasAgent = true;
-    } else if (field === "allow" || field === "disallow") {
-      if (!current) { current = { agents: ["*"], rules: [] }; groups.push(current); }
-      lastWasAgent = false;
-      // An empty Disallow is explicit permission; an empty Allow says nothing.
-      if (value === "") { if (field === "disallow") current.rules.push({ allow: true, path: "/" }); }
-      else current.rules.push({ allow: field === "allow", path: value });
-    } else lastWasAgent = false;
-  }
-  return { groups };
-}
+Required behaviour, each pinned by a test above:
+- `absent` (404/410, or no robots route) → allow. `unavailable` (5xx, timeout, connection error) → **deny all**. `unreadable` (over 500 KB, or a body that yields zero valid directives) → deny all.
+- Group selection: collect **every** group whose agent list contains a token matching ours case-insensitively, comparing only up to any `/` so `explorersearthbot/2.0` matches; merge their rules. Fall back to the union of all `*` groups.
+- Rule matching: translate the rule into an anchored matcher where `*` is "any sequence" and a trailing `$` anchors the end; compare against `pathname + search`, both percent-decoded consistently. Longest **rule literal** wins; a tie goes to `allow`.
+- The caller must treat a non-`text/plain` robots response as `unreadable`, so an SPA's HTML 404 cannot read as permission.
 
-export function robotsAllows(rules: RobotsRules, path: string): boolean {
-  if (rules === "absent") return true;
-  if (rules === "unreadable") return false;
-  const ours = rules.groups.find(g => g.agents.includes(USER_AGENT.toLowerCase()));
-  const group = ours ?? rules.groups.find(g => g.agents.includes("*"));
-  if (!group) return true;
-  // Longest match wins; a tie goes to allow, per the de facto standard.
-  let best: { allow: boolean; path: string } | undefined;
-  for (const rule of group.rules) {
-    if (!path.startsWith(rule.path)) continue;
-    if (!best || rule.path.length > best.path.length || (rule.path.length === best.path.length && rule.allow)) best = rule;
-  }
-  return best ? best.allow : true;
-}
-```
+Implement rule matching by escaping the literal, replacing `\*` with `.*`, and anchoring — not by a hand-rolled scanner. Bound the rule count (1 000) and each rule's length (2 000).
 
-- [ ] **Step 4: Run and confirm pass**
+- [ ] **Step 4: Run, confirm pass, commit**
 
 ```bash
 cd tunes && npx vitest run server/test/contracts/robots-policy.test.ts
-```
-
-Expected: 6 passed.
-
-- [ ] **Step 5: Commit**
-
-```bash
 git add tunes/server/services/robotsPolicy.ts tunes/server/test/contracts/robots-policy.test.ts
-git commit -m "feat(enrichment): honour a third-party robots.txt"
+git commit -m "feat(enrichment): standards-compliant robots.txt gate that fails closed"
 ```
 
 ---
 
 ## Task 2: Open-host hardened fetcher
 
-Copy the hardening of `bookCoverFetch.ts` — which pins its host *in the type system* (`servername:'books.google.com'` is a literal type) — and generalise the host while keeping every other control. The SSRF floor is host-independent, which is why opening the host list does not weaken it.
-
 **Files:**
 - Create: `tunes/server/services/linkEnrichmentFetch.ts`
 - Test: `tunes/server/test/contracts/link-enrichment-fetch.test.ts`
+- Test: `tunes/server/test/contracts/public-address-policy.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Pin the shared address policy before anything depends on it**
 
-Drive them through the deterministic fixture seam, exactly as `bookCoverFetch.ts` does (`Fixture` with `resolve`/`connect`), so no test performs real I/O.
+Create `public-address-policy.test.ts` asserting `publicAddress()`'s exact rejection set — every case listed under "Security posture" above, plus the Hetzner/AWS globals it **does** admit. This exists so a future "our fetcher can't reach site X" bug cannot be fixed by widening a floor three fetchers share.
+
+- [ ] **Step 2: Write the failing fetcher tests**
+
+Use the deterministic fixture seam (`Fixture` with `resolve`/`connect`, `bookCoverFetch.ts:21`) so no test performs real I/O. Each assertion below is the specific one that bites — a bare "rejects" would pass for the wrong reason.
 
 ```ts
-it("refuses a host that resolves to a private address", async () => {
-  const fetcher = createLinkFetcher({ profile: "html", fixture: { mode: "deterministic-fixture", resolve: async () => [{ address: "10.0.0.5", family: 4 }], connect: async () => { throw new Error("must not connect"); } } });
-  await expect(fetcher.fetch("https://example.com/p")).rejects.toThrow();
-});
-
-it("refuses a denylisted host before resolving it", async () => {
-  const fetcher = createLinkFetcher({ profile: "html", denylist: ["blocked.example"], fixture: { mode: "deterministic-fixture", resolve: async () => { throw new Error("must not resolve"); }, connect: async () => { throw new Error("must not connect"); } } });
-  await expect(fetcher.fetch("https://blocked.example/p")).rejects.toThrow();
-});
-
-it("refuses a path robots.txt disallows", async () => { /* robots fixture returns Disallow: /p */ });
-it("refuses a declared length over the cap", async () => { /* connect returns length 6 MiB */ });
-it("refuses when streamed bytes exceed the cap", async () => { /* body yields 6 MiB in chunks */ });
-it("refuses an image whose magic bytes contradict its content-type", async () => { /* image profile, png header, jpeg type */ });
-it("refuses a redirect to a different host under same-host policy", async () => { /* 302 cross-host */ });
-it("accepts a well-formed html document", async () => { /* status 200, text/html, small body */ });
-```
-
-Fill each stub using the fixture shape; every one must assert a rejection or a concrete success value, not merely "does not throw".
-
-- [ ] **Step 2: Run and confirm failure**
-
-```bash
-cd tunes && npx vitest run server/test/contracts/link-enrichment-fetch.test.ts
+it("refuses a host that resolves to a private address", /* assert connect never called */);
+it("refuses a same-host redirect whose second resolve is private", /* THE real SSRF bypass: resolve count 2, connect count 1 */);
+it("refuses a cross-host redirect under same-host policy", /* assert resolve count 1 */);
+it("refuses a denylisted host before resolving it", /* assert resolve never called */);
+it("refuses a denylisted parent domain for a subdomain", /* cdn.blocked.example */);
+it("refuses a host whose robots disallows the path", /* assert the page connect never called */);
+it("refuses when robots is unavailable (5xx)", /* assert the page connect never called */);
+it("re-checks robots after a same-host redirect into a disallowed path", /* assert rejection */);
+it("caches robots per host for an hour", /* second fetch: robots connect count still 1 */);
+it("refuses a declared length over the cap", /* assert the body iterator was never consumed */);
+it("refuses when streamed bytes exceed the cap", /* assert the generator was abandoned at the cap */);
+it("refuses a body delivering below the minimum throughput", /* assert rejection before the deadline */);
+it("refuses an image whose magic bytes contradict its content-type", /* assert the FETCHER rejects, since media.ts re-sniffs independently */);
+it("refuses a response with a non-identity content-encoding", /* gzip */);
+it("refuses a duplicate Content-Type header", /* via rawHeaders */);
+it("refuses an incomplete body", /* complete() false, or length !== bytes */);
+it("refuses a bracketed IP literal host", /* https://[::1]/ */);
+it("refuses a trailing-dot host", /* https://example.com./ */);
+it("does not retry 403, 429 or 503", /* assert connect count 1 and a typed graceful outcome */);
+it("sends no Referer or Origin", /* assert the header set */);
+it("accepts a well-formed html document", /* assert bytes, mimeType and final URL */);
 ```
 
 - [ ] **Step 3: Implement**
 
-Reuse these verbatim from `tunes/server/services/bookCoverFetch.ts`: `publicAddress()` (export and import it rather than copying — it is already exported at `:9`), `connect()`'s option set (`agent:false`, `family`, `autoSelectFamily:false`, `servername` set to the request hostname, `rejectUnauthorized:true`, and the `lookup` callback returning the pinned literal address), and `sniff()`.
+Import `publicAddress` from `bookCoverFetch.ts:9` (already exported). **`sniff` is not exported** — export it there or copy it.
 
-Differences to implement deliberately:
+**[v1 defect]** v1 said to copy `bookCoverFetch`'s option set. Copy **`appEnrichmentFetch`'s** instead; `bookCoverFetch`'s omits five controls:
+- `urlFor` (`appEnrichmentFetch.ts:91`): rejects strings over 4096, `/[\x00-\x20\x7f\\]/`, non-`https:`, userinfo, `url.hash`, any port but 443.
+- the hostname regex at `:82` verbatim — `/^([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/` plus `isIP(h)===0` and length ≤ 253. **This is the mechanism**, and v1 only described the rule in prose. `isIP(hostname)!==0` does **not** reject `[::1]` — verified, `isIP("[::1]")` is `0` — and the regex is also what rejects the trailing dot that otherwise bypasses the denylist.
+- the 64-address cap (`:96`), `maxHeaderSize:16384` and `maxHeadersCount=64` (`:70,:72`).
+- response `content-encoding !== identity` → reject (`:104`). Setting the *request* header is not the same thing.
+- `admitsContentType` (`:34-40`) permitting at most one explicit `utf-8`, `nativeContentType` (`:42-46`) returning `undefined` on a duplicate Content-Type from `rawHeaders`, and `:109`'s `complete()` **and** `Content-Length === bytes`.
+
+Host policy as a discriminated union so "any host" is expressible without loosening a shared validator:
 
 ```ts
 export type LinkHostPolicy = { kind: "any"; denylist: readonly string[] } | { kind: "allowlist"; hosts: readonly string[] };
-export type LinkProfile = "html" | "image";
+export type LinkProfile = "html" | "image" | "robots";
 ```
 
-- URL gate: `https:` only, length ≤ 2048, no userinfo, port absent or `443`, hostname must be a dotted name and **not** an IP literal, and — for `kind:"any"` — hostname must not match the denylist (compare the full hostname and any parent domain suffix, so `cdn.blocked.example` is covered by `blocked.example`).
-- Robots: before connecting, fetch `https://<host>/robots.txt` through this same fetcher with an internal `robots` profile (cap 500 KB, 2 s deadline, cached per host for 1 hour, and **not** itself robots-gated), then `robotsAllows(rules, url.pathname)`. A robots fetch that errors is treated as `"absent"`; a robots fetch that returns a body too large is `"unreadable"` and therefore refuses.
-- Profiles: `html` admits only `text/html` and caps at 1 MiB; `image` admits `image/png|jpeg|webp|gif`, caps at 5 MiB to match the `recommendation` purpose limit (`media.ts:28-29`), and requires `sniff(bytes) === declared mimeType`.
-- Redirects: at most 3, `same-host` only, each hop re-validated through the full gate including `publicAddress` — mirroring `appEnrichmentFetch.ts:96`, which re-checks per hop.
-- Identify honestly: send `User-Agent: ExplorersEarthBot (+https://explorers.earth/bot)` and `Accept-Encoding: identity`. Do not set `Referer` or `Origin`. Do not retry a `403`, `429` or `503` — surface it so the caller can fall back to manual entry.
+Profiles: `html` admits only `text/html`, caps 1 MiB, deadline 10 s. `image` admits the four image MIMEs, caps 5 MiB to match the `recommendation` purpose limit, deadline 15 s, and requires `sniff(bytes) === mimeType`. `robots` admits only `text/plain`, caps 500 KB, deadline 2 s, is not itself robots-gated, and **is** denylist- and `publicAddress`-gated.
 
-- [ ] **Step 4: Run and confirm pass, then commit**
+Add a **minimum throughput** check: abort if the body delivers under 8 KB/s over any 5-second window. Without it, each fetch holds its slot for the whole deadline and 64 slow targets kill the feature (see Task 3).
+
+Robots: resolve the gate for the **sourceUrl host and every image host** before connecting, re-check after each same-host redirect, and cache per host in an **LRU with a hard entry count (1 000) and byte ceiling**. v1's unbounded host-keyed cache let wildcard DNS insert an entry per observation.
+
+Identify honestly: `User-Agent: ExplorersEarthBot (+https://explorers.earth/bot)`, `Accept-Encoding: identity`, no `Referer`, no `Origin`. Do not retry `403`/`429`/`503`; return a typed outcome the route maps to a graceful message.
+
+- [ ] **Step 4: Run, confirm pass, commit**
 
 ```bash
-cd tunes && npx vitest run server/test/contracts/link-enrichment-fetch.test.ts
-git add tunes/server/services/linkEnrichmentFetch.ts tunes/server/test/contracts/link-enrichment-fetch.test.ts
-git commit -m "feat(enrichment): open-host fetcher with the pinned-host hardening retained"
+cd tunes && npx vitest run server/test/contracts/link-enrichment-fetch.test.ts server/test/contracts/public-address-policy.test.ts
+git add tunes/server/services/linkEnrichmentFetch.ts tunes/server/test/contracts/
+git commit -m "feat(enrichment): open-host fetcher with the full appEnrichment hardening"
 ```
 
 ---
 
-## Task 3: Per-account budget
+## Task 3: Request-metered budget
 
-Owner enrichment routes have **no** HTTP rate limit today; `express-rate-limit` is applied only to public reads. An on-demand fetcher behind owner auth is an outbound-request amplifier, so this is required, not optional.
+**[v1 defect]** v1 metered **observations** at 30/account/minute. One observation costs roughly 30 outbound requests once robots, redirects, the re-observe and ten image fetches with their own robots are counted — so v1 authorised ~900 requests/account/minute, with no global ceiling and nothing keyed on the destination. With N accounts that is a reflector operating from our IP with our honest User-Agent, and the first consequence is our own IP blocklisted.
 
 **Files:**
 - Create: `tunes/server/services/linkEnrichmentBudget.ts`
@@ -263,107 +251,140 @@ Owner enrichment routes have **no** HTTP rate limit today; `express-rate-limit` 
 
 - [ ] **Step 1: Write the failing tests**
 
-Model the shape on `GameProviderCoordinator` (`tunes/server/services/gameProviderBudget.ts`), including its injected clock so tests are deterministic.
-
 ```ts
-it("allows 30 observations per account per minute and refuses the 31st", () => { /* advance clock, assert 429 */ });
-it("refuses a second concurrent request for the same account", () => { /* reserveAccount twice */ });
-it("releases a slot idempotently", () => { /* call release twice, assert one slot freed */ });
-it("caps global concurrent callers", () => { /* reserveCaller beyond the ceiling throws busy */ });
-it("caps concurrent image bytes in flight", () => { /* reserveMemory beyond ceiling throws busy */ });
+it("meters outbound requests, not observations", /* 1 observation consuming 5 requests costs 5 */);
+it("refuses the request past the per-account window", /* 200 then the 201st throws RATE_LIMITED */);
+it("re-admits after the window elapses", /* clock + 60_001ms, one more succeeds */);
+it("anchors the window at the first call, not a sliding window", /* fixed-window behaviour pinned */);
+it("refuses past a global per-window request ceiling", /* independent of account count */);
+it("refuses past a per-destination-host ceiling", /* same host from two accounts */);
+it("allows only one in-flight request per account", /* reserveAccount twice throws */);
+it("caps concurrent image bytes by reserving the profile maximum up front", /* not the declared length */);
+it("releases every reservation idempotently", /* double release frees one slot */);
+it("keeps the feature's caller ceiling below the global one", /* enrichment cannot starve the process */);
 ```
 
-- [ ] **Step 2: Run, confirm failure, then implement**
+- [ ] **Step 2: Run, confirm failure, implement**
 
-Copy `GameProviderCoordinator`'s four mechanisms verbatim in structure: `reserveCaller()` against a global ceiling, `reserveAccount()` as a `Set` giving one in flight per account, `rate(account)` as a fixed 60 s window anchored at the first call with a 30-per-account cap and a 10 000 distinct-account ceiling, and `reserveMemory(n)` for concurrent image bytes. Every reservation returns an idempotent `once()` release so a double release cannot leak a slot.
+Copy `GameProviderCoordinator`'s structure (`gameProviderBudget.ts:4-12`) — `reserveCaller`, `reserveMemory`, `reserveAccount`, `rate`, injected `now()`, idempotent `once()` releases, and the fixed window anchored at the first call (`at: r?.at ?? now`). Add what it lacks: a **global** per-window request ceiling, a **per-destination-host** ceiling (and per-/24 and per-/48 on the resolved address), and a feature caller ceiling well under `LIMITS.callers = 64` so enrichment cannot consume every slot.
+
+`reserveMemory` must be called **before buffering**, reserving the profile maximum — the declared `Content-Length` is attacker-controlled and may be absent. Cap concurrent image fetches per account at 1.
 
 - [ ] **Step 3: Confirm pass and commit**
 
 ```bash
 cd tunes && npx vitest run server/test/contracts/link-enrichment-budget.test.ts
 git add tunes/server/services/linkEnrichmentBudget.ts tunes/server/test/contracts/link-enrichment-budget.test.ts
-git commit -m "feat(enrichment): per-account and global fetch budget"
+git commit -m "feat(enrichment): request-metered budget with global and per-destination ceilings"
 ```
 
 ---
 
-## Task 4: Denylist, editable without a deploy
+## Task 4: Denylist, in a canonical module
 
-`system_settings` is in the canonical chain (`tunes/migrations/0001_runtime_baseline.sql`), so the denylist needs **no migration**.
+**[v1 defect]** v1 said to modify `tunes/server/services/system-settings.ts`. **That file does not exist.** The real one is `system-settings-service.ts`: it exposes only `getSettingValue` and `getAppUrl`, has **no setter**, talks to the legacy Drizzle `storage` singleton rather than a `pg.Pool`, and is never mounted from `canonicalApp.ts`. Importing it into the canonical closure would drag the Drizzle layer in.
+
+The table itself is fine and needs no migration: `0001_runtime_baseline.sql:239-249` gives `key text UNIQUE, value text NOT NULL, category text NOT NULL, …`, and `0010_least_privilege_runtime_role.sql:21` grants `music_runtime` select/insert/update/delete on all public tables with no later revoke. **`category` is `NOT NULL` with no default**, so every insert must supply it.
 
 **Files:**
-- Modify: `tunes/server/services/system-settings.ts`
+- Create: `tunes/server/services/linkEnrichmentDenylist.ts` (canonical, `pg.Pool`)
 - Test: `tunes/server/test/contracts/link-enrichment-denylist.test.ts`
 
-- [ ] **Step 1: Confirm the table's shape before relying on it**
-
-```bash
-cd tunes && grep -n "system_settings" migrations/0001_runtime_baseline.sql
-grep -n "export" server/services/system-settings.ts | head -20
-```
-
-If `system_settings` is not a key/value shape that can hold a JSON array, stop and add a four-line migration creating `enrichment_host_denylist(host text primary key, added_at timestamptz not null default now())` with a `music_runtime` grant, and append it to the chain per `tunes/shared/music-migration-contract.ts` (constant at `:1`, chain array `:56-59`, markers array `:116-119`, plus `music-migration-contract.test.ts:28,75` and `docs/architecture/music-documentation-contract.json`).
-
-- [ ] **Step 2: Write the failing test**
+- [ ] **Step 1: Write the failing tests**
 
 ```ts
-it("refuses a denylisted host and its subdomains", async () => {
-  await setEnrichmentDenylist(pool, ["blocked.example"]);
-  expect(await enrichmentHostDenied(pool, "blocked.example")).toBe(true);
-  expect(await enrichmentHostDenied(pool, "cdn.blocked.example")).toBe(true);
-  expect(await enrichmentHostDenied(pool, "notblocked.example")).toBe(false);
-});
-
-it("treats an unreadable denylist as denying everything", async () => {
-  await pool.query("UPDATE system_settings SET value='not json' WHERE key='enrichment_host_denylist'");
-  expect(await enrichmentHostDenied(pool, "anything.example")).toBe(true);
-});
+it("refuses a denylisted host and its subdomains", /* blocked.example, cdn.blocked.example */);
+it("does not refuse a host that merely ends with the denied string", /* notblocked.example, xblocked.example */);
+it("normalises case, punycode and a trailing dot on both write and read", /* BLOCKED.Example, blöcked.example, blocked.example. */);
+it("denies everything when the stored value is unparsable", /* 'not json' */);
+it("denies everything when the read fails", /* inject a failing query */);
+it("denies everything when the row is absent", /* distinct from unparsable */);
+it("re-reads within a bounded TTL so an edit takes effect without a restart", /* clock-driven */);
+it("keeps denying on a refresh failure rather than reverting to the last good value", /* fail closed */);
+it("bounds the entry count and each entry's length", /* reject an oversized list */);
 ```
 
-The second case is the important one: a corrupt denylist must fail **closed**, or a bad write silently reopens every blocked host.
+The absent-row case matters: v1 made it fail *open* by construction, so a `DELETE` or a key typo would silently disable the only lever for answering a complaint. Seed the row with `[]` and treat a missing row as deny-all.
 
-- [ ] **Step 3: Implement, confirm pass, commit**
+- [ ] **Step 2: Implement**
+
+Normalise every host on **write and read**: lowercase, `new URL`/`domainToASCII` for punycode, strip a trailing dot. Match as `host === denied || host.endsWith("." + denied)`. Read per fetch through a TTL cache (60 s) with a bounded entry count, failing closed on a refresh error.
+
+- [ ] **Step 3: Give it a write surface, or say there is none**
+
+**[v1 defect]** v1 promised "editable without a deploy" but added no route or CLI, and `/api/system-settings` is tombstoned (`musicRetirementPolicy.ts:30`). Either add a `tunes/scripts/` CLI subcommand for set/list/remove — the cheapest honest option — or state in the plan and the risk register that the denylist is edited by direct SQL on the production database. Do not leave the claim unqualified.
+
+- [ ] **Step 4: Confirm pass and commit**
 
 ```bash
 cd tunes && npx vitest run server/test/contracts/link-enrichment-denylist.test.ts
-git add tunes/server/services/system-settings.ts tunes/server/test/contracts/link-enrichment-denylist.test.ts
-git commit -m "feat(enrichment): host denylist that fails closed"
+git add tunes/server/services/linkEnrichmentDenylist.ts tunes/server/test/contracts/link-enrichment-denylist.test.ts tunes/scripts/
+git commit -m "feat(enrichment): fail-closed host denylist with a write surface"
 ```
 
 ---
 
-## Task 5: Decode fetched HTML into candidates
+## Task 5: Decode in a worker thread
 
-Untrusted HTML must not be parsed inline. The codebase already isolates this: `appEnrichmentOwnedDecoder.ts` runs decoding in a worker thread under a custody policy. Match that rather than parsing in the request path.
+**[v1 defect — critical and exploitable]** v1's own task header said untrusted HTML must not be parsed inline, and its implementation step then specified "a regex/streaming extractor over the bounded body". A regex cannot be interrupted: it does not yield to the event loop and ignores `AbortSignal`. An attacker page returning 1 MiB of `"<meta "` with no closing `>` gives any og:image pattern quadratic behaviour — roughly 10¹² character steps — and the whole Express process, which also serves every public page, stops answering. One request, one owner account.
+
+What the worker buys is not tidiness: `resourceLimits` so an OOM kills a worker rather than the server, and `terminate()` on a deadline so a runaway parse can be killed. The existing code also uses a real tokenizer, not regex (`appEnrichmentProviderCore.mjs:217`), with a JSON-LD block cap at `:234`.
 
 **Files:**
-- Create: `tunes/server/application/linkEnrichmentDecode.ts`
+- Create: `tunes/server/application/linkEnrichmentDecode.ts` (host side)
+- Create: `tunes/server/services/linkEnrichmentDecoderThread.mjs` (worker)
 - Test: `tunes/server/test/contracts/link-enrichment-decode.test.ts`
 
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-it("extracts Open Graph title, description and images", () => { /* og:title, og:description, og:image */ });
-it("falls back to <title> and meta description", () => {});
-it("extracts JSON-LD Product name, description and image array", () => {});
-it("resolves relative image URLs against the document URL", () => {});
-it("discards non-https and data: image URLs", () => {});
-it("caps candidates at 10 images and bounds every string", () => {});
-it("never executes script content", () => { /* body containing <script>throw</script> decodes cleanly */ });
+it("extracts Open Graph title, description and images", …);
+it("falls back to <title> and meta description", …);
+it("extracts JSON-LD Product name, description and image array", …);
+it("resolves relative image URLs against the document URL", …);
+it("discards non-https and data: image URLs", …);
+it("caps candidates at 10 images and bounds every string", …);
+it("caps the number of JSON-LD blocks it will parse", /* 1000 blocks: bounded, not all parsed */);
+it("bounds JSON-LD nesting depth", /* deeply nested object rejected, not traversed */);
+it("rejects invalid UTF-8 and NUL bytes", …);
+it("strips control characters that the owner contract would reject", /* VT and FF in og:description */);
+
+// The oracle for the critical defect. [v1 defect] v1's "never executes script content"
+// was vacuous with a regex extractor: no DOM is loaded, so it could not fail.
+it("terminates a pathological body within the deadline instead of blocking", async () => {
+  const body = "<meta ".repeat(180_000); // ~1 MiB, no '>' and no quote
+  const started = Date.now();
+  await expect(decodeLinkDocument(body, "https://x.example/p")).rejects.toThrow();
+  expect(Date.now() - started).toBeLessThan(3_000);
+});
+
+it("keeps the host responsive while a pathological body decodes", async () => {
+  const slow = decodeLinkDocument("<meta ".repeat(180_000), "https://x.example/p").catch(() => undefined);
+  // The event loop must still turn. On the main thread this assertion cannot pass.
+  const ticks = await new Promise<number>(done => { let n = 0; const t = setInterval(() => { if (++n >= 5) { clearInterval(t); done(n); } }, 10); });
+  expect(ticks).toBe(5);
+  await slow;
+});
+
+it("does not harvest an og:image inside a comment, noscript, svg or template", …);
 ```
 
-The retired decoder's helpers are recoverable for reference — `git show c7d8a6b7^:tunes/server/utils/scrapeUtils.ts` has `extractMeta`, `extractTitle`, `extractJsonLd`, `parseProductJsonLd`, `decodeHtmlEntities` — but reimplement rather than restore, because the old file also carried the evasion behaviour this plan excludes.
+The last two are the ones that distinguish a worker from a regex. Keep them.
 
-- [ ] **Step 2: Run, confirm failure, implement as a pure function over a string**
+- [ ] **Step 2: Run, confirm failure, implement**
 
-Bound every output: title ≤ 300 chars, description ≤ 2000, at most 10 image URLs, each ≤ 2048 chars and `https:` only. Return `{ title?, description?, imageUrls: string[] }`. No DOM library that executes script; a regex/streaming extractor over the bounded body is sufficient and is what the bounds exist to permit.
+Host side: `decodeLinkDocument(body, documentUrl)` posts to a worker, reusing the custody and lifecycle pattern of `tunes/server/services/appEnrichmentOwnedDecoder.ts` — `createAppDecoderCustody` (`:34`), `resourceLimits` (`:68`), the deadline timer and `worker.terminate()` (`:71,:76`), and `withAdmission` with a concurrency cap (`:36-37`).
+
+Worker side: a **linear tokenizer**, never a backtracking regex. Cap JSON-LD blocks at 20, parse each through a bounded JSON reader with a depth limit (32) and node budget, and decode strictly as UTF-8 rejecting NUL, as `decodeProviderUtf8` does (`providerCore:214-216`).
+
+Bound and normalise every output: title ≤ 300, description ≤ 2 000 with control characters stripped (`text(8192)` rejects `[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]` and lone surrogates — `explorersProductContract.ts:101` — and real `og:description` routinely carries a vertical tab, so without normalisation accept would 422 on ordinary pages), at most 10 image URLs, each ≤ 2 048 and `https:` only.
 
 - [ ] **Step 3: Confirm pass and commit**
 
 ```bash
 cd tunes && npx vitest run server/test/contracts/link-enrichment-decode.test.ts
-git add tunes/server/application/linkEnrichmentDecode.ts tunes/server/test/contracts/link-enrichment-decode.test.ts
-git commit -m "feat(enrichment): bounded decode of fetched page metadata"
+git add tunes/server/application/linkEnrichmentDecode.ts tunes/server/services/linkEnrichmentDecoderThread.mjs tunes/server/test/contracts/link-enrichment-decode.test.ts
+git commit -m "feat(enrichment): decode fetched pages in a terminable worker thread"
 ```
 
 ---
@@ -373,106 +394,200 @@ git commit -m "feat(enrichment): bounded decode of fetched page metadata"
 **Files:**
 - Create: `tunes/shared/explorersLinkEnrichmentContract.ts`
 - Create: `tunes/server/application/linkEnrichmentImport.ts`
-- Test: `tunes/server/test/explorers/link-enrichment.integration.test.ts`
+- Test: `tunes/server/test/explorers/link-enrichment.integration.test.ts` (run after Task 8 mounts the router)
 
-- [ ] **Step 1: Define the contract**
+- [ ] **Step 1: Define the contract, with a signed candidate set**
+
+**[v1 defect — the claim was false]** v1 said accept "re-validates against a fresh observe of the same sourceUrl, so a client cannot smuggle an arbitrary URL into the image fetcher." A client can, trivially and with no race: host a page whose `og:image` is the target URL and paste that page. The candidate set is attacker-defined on **both** fetches by construction. The re-observe was therefore not a security control, it doubled accept's outbound cost, and it broke every honest site serving signed or cache-busted CDN URLs (S3 presigned, Cloudinary, Shopify), which legitimately differ on the second fetch.
+
+State plainly in the code: **the image fetcher's own gate is the only control.** The signed set authorises nothing about the fetch; every image URL runs the full gate independently.
 
 ```ts
-export const observeLinkSchema = z.object({ url: z.string().url().max(2048), expectedRevision: z.number().int().nonnegative() }).strict();
-export const linkCandidateSchema = z.object({ title: z.string().max(300).nullable(), description: z.string().max(2000).nullable(),
-  imageUrls: z.array(z.string().url().max(2048)).max(10), sourceUrl: z.string().url(), observedAt: z.string() }).strict();
-export const acceptLinkSchema = z.object({ expectedRevision: z.number().int().nonnegative(), sourceUrl: z.string().url().max(2048),
-  fields: z.array(z.enum(["title", "description"])).max(2), imageUrls: z.array(z.string().url().max(2048)).max(10) }).strict();
+export const observeLinkSchema = z.object({
+  url: z.string().url().max(2048).refine(v => new URL(v).protocol === "https:", "https is required"),
+}).strict();
+export const linkCandidateSchema = z.object({
+  title: z.string().max(300).nullable(), description: z.string().max(2000).nullable(),
+  imageUrls: z.array(z.string().url().max(2048)).max(10),
+  sourceUrl: z.string().url(), observedAt: z.string(), candidateToken: z.string().max(512),
+}).strict();
+export const acceptLinkSchema = z.object({
+  expectedRevision: z.number().int().nonnegative(), candidateToken: z.string().max(512),
+  fields: z.array(z.enum(["title", "description"])).max(2),
+  imageUrls: z.array(z.string().url().max(2048)).max(10),
+}).strict();
 ```
 
-Accept carries the **URLs the owner chose**, re-validated server side against a fresh observe of the same `sourceUrl`, so a client cannot smuggle an arbitrary URL into the image fetcher.
+`observeLinkSchema` carries no `expectedRevision` — observe mutates nothing. `z.string().url()` alone admits `javascript:`, `file:` and `http:`, hence the refine, so a bad scheme is a 422 at the contract boundary rather than something the fetcher must catch.
+
+`candidateToken` is an HMAC over `{accountId, recommendationId, sourceUrl, sorted imageUrls, title, description, observedAt, nonce}` with a 10-minute TTL and a single-use nonce. Accept verifies the MAC, the TTL, that `chosen ⊆ signed`, and burns the nonce. `application_command_receipts` already provides single-use plus `replay_until` (`bookCoverImport.ts:28-29`), so persisting the observation under an opaque id is an equally good variant.
+
+**`description` is not a People override key.** `personDisplayFieldsSchema` (`explorersPersonContract.ts:41-61`) is `{headline, locationText, avatarUrl, primaryPlatform, socialUrls, skillsTags, externalFollowerCountText}`. `recommendation_display_overrides` has no key validation at the DB level, so a bad write **succeeds** — and then `editableOwnerRecommendationSchema`'s superRefine runs `personDisplayFieldsSchema.safeParse` on **read** (`explorersOwnerContentContract.ts:65-66`) and raises "Inconsistent category overrides" forever, permanently breaking `GET /recommendations/:id/editable` for that recommendation. So the accepted-field enum must be **per category**: `title`/`description` for products and apps, `title`/`headline` for people.
 
 - [ ] **Step 2: Write the failing integration tests**
 
 ```ts
-it("observes candidates without storing anything", async () => { /* assert no media_assets row created */ });
-it("stores only the images the owner accepted", async () => { /* 3 candidates, accept 1, assert exactly 1 media row attached */ });
-it("rejects an accepted URL that the page does not actually offer", async () => { /* 422 */ });
-it("is idempotent under a replayed Idempotency-Key", async () => { /* second call returns the first response, no second upload */ });
-it("deletes uploaded bytes when attachment fails", async () => { /* force a stale revision, assert media pending_delete */ });
-it("refuses when the account is over budget", async () => { /* 429 */ });
-it("surfaces a 403 from the target as a graceful failure, not a 500", async () => {});
+it("observes candidates without storing anything", /* assert no media_assets row */);
+it("authorizes the actor on :id before any outbound request", /* foreign account: fetcher call count 0, 404 */);
+it("stores only the images the owner accepted", /* 3 candidates, accept 1, exactly 1 attached */);
+it("rejects an image URL that was not in the signed set", /* 422, fetcher not called for it */);
+it("rejects a replayed candidate token", /* second accept 409 */);
+it("rejects an expired candidate token", /* clock + 11 min, 422 */);
+it("is idempotent under a replayed Idempotency-Key", /* same response, no second upload */);
+it("refuses to exceed the 20-id recommendation_media bound", /* 422, owner read still parses */);
+it("refuses rather than discarding when apps already has ten screenshots", /* 422, no orphan */);
+it("surfaces a target 403 as a graceful failure, not a 500", …);
+it("surfaces a zero-byte image as a graceful failure, not a 500", …);
+it("refuses when the account is over budget", /* 429 RATE_LIMITED */);
+it("deletes uploaded bytes when attachment fails", async () => {
+  // [v1 defect] v1 asserted pending_delete. With a working storage fixture the
+  // compensation path completes, so the terminal state is 'deleted' — see
+  // book-cover-import.integration.test.ts:83, which observes pending_delete only
+  // because it sets failDelete first.
+  expect(status).toBe("deleted");
+  expect(storageFixture.has(key)).toBe(false);
+  expect(attachedRows).toBe(0);
+  expect(revisionAfter).toBe(revisionBefore);
+  expect(receipt).toMatchObject({ status: "retired", response: null });
+});
 ```
 
-- [ ] **Step 3: Implement, following `bookCoverImport.ts` structure exactly**
+Every HTTP test needs `.set("origin", config.baseURL)` — `mutation` returns 403 otherwise — and no query parameters, which it rejects with 422.
 
-Copy its flow, substituting the attachment target. Specifically reuse: the advisory lock with its **own** namespace integer — `44035` is the book-cover receipt serializer, `44024` is the media upload gate, `44031` is the category content-revision namespace, so pick an unused one and comment it; the `application_command_receipts` three-phase lifecycle (`pending` at `bookCoverImport.ts:35` → staged updates `:43,:47` → `completed` `:61` or `retired` + media deletion `:66`); `this.media.usingConnection(db)` so the upload shares the reserved connection; the `createMedia(actor, {purpose:'recommendation', filename, mimeType, length, bytes}, context, readyWrite)` call with the receipt staged **inside** `readyWrite`; and the lock release in `finally`.
+- [ ] **Step 3: Implement**
 
-Attachment target by category:
+Order is load-bearing: **authorize the actor against `:id` first, then take the budget, then fetch.** Any arrangement where network I/O precedes the ownership check makes observe an SSRF primitive for any authenticated user against any recommendation id.
+
+Follow `bookCoverImport.ts` for the rest: a fresh advisory-lock namespace integer (44035 is book covers, 44024 is media upload, 44031 is category revisions — pick an unused one and comment it), the `pending` → staged → `completed`/`retired` receipt, `this.media.usingConnection(db)`, `createMedia(actor, {purpose:'recommendation', filename, mimeType, length, bytes}, context, readyWrite)` with the receipt staged inside `readyWrite`, the compensating delete, and the unlock in `finally`.
+
+Use a **constant server-side filename** such as `'link-image'`: `media.ts:106` requires `/^[\w. -]{1,255}$/`, so any filename derived from a remote URL path throws.
+
+Attachment, with both caps enforced as refusals rather than silent drops:
 
 ```ts
- // Products and people reuse the generic table Plan A made public; apps uses its typed one.
- if (category === 'apps') await writeAppScreenshots(db, accountId, id, [...existing, ...accepted].slice(0, 10));
+ // recommendationDtoSchema caps mediaIds at 20 (explorersContract.ts:71,116); exceeding it
+ // makes the owner AND public reads fail to parse. Refuse instead.
+ if (category !== 'apps' && existingCount + accepted.length > 20) throw new RecommendationFailure(422, 'Media limit reached');
+ if (category === 'apps') await writeAppScreenshots(db, id, accountId, [...existing, ...accepted]);
  else for (const [position, mediaId] of accepted.entries())
    await db.query('INSERT INTO recommendation_media(recommendation_id,account_id,media_id,display_order) VALUES($1,$2,$3,$4)', [id, accountId, mediaId, existingCount + position]);
 ```
 
-Accepted text fields go through the existing display-overrides path, mirroring `explorersAppEnrichmentRepository.ts:79-81`: read `recommendation_display_overrides … FOR UPDATE`, merge, write back, and bump `recommendations.revision` only if something changed.
+**[v1 defects]** The argument order is `writeAppScreenshots(db, recommendationId, accountId, mediaIds)` (`appCatalogRepository.ts:39`) — v1 swapped the middle two. And v1's `.slice(0, 10)` kept `existing` first, so with ten screenshots already present every accepted image was fetched, uploaded, then discarded, leaving orphans; passing the full list lets `writeAppScreenshots` raise a clean 422 above ten (`appCatalogRepository.ts:40`).
 
-- [ ] **Step 4: Confirm pass and commit**
+Accepted text fields go through `recommendation_display_overrides` as `explorersAppEnrichmentRepository.ts:79-81` does — read `FOR UPDATE`, merge, write back, bump `recommendations.revision` only if changed — using the per-category key set from Step 1.
+
+- [ ] **Step 4: Confirm pass and commit** (after Task 8)
 
 ```bash
 cd tunes && npx vitest run --config vitest.integration.config.ts server/test/explorers/link-enrichment.integration.test.ts
-git add tunes/shared/explorersLinkEnrichmentContract.ts tunes/server/application/linkEnrichmentImport.ts tunes/server/test/explorers/link-enrichment.integration.test.ts
-git commit -m "feat(enrichment): observe and accept commands with a durable receipt"
+git add tunes/shared/explorersLinkEnrichmentContract.ts tunes/server/application/linkEnrichmentImport.ts tunes/server/test/explorers/
+git commit -m "feat(enrichment): observe and accept with a signed candidate set"
 ```
 
 ---
 
-## Task 7: Routes, policy and the generated inventory
-
-Three artifacts move together here. Getting this wrong fails the contract suite rather than production, but it fails it loudly.
+## Task 7: Routes, with their own origin check and policy arm
 
 **Files:**
 - Create: `tunes/server/routes/explorersLinkEnrichmentRoutes.ts`
 - Modify: `tunes/server/policies/musicSurfacePolicy.ts`
-- Modify: `docs/architecture/music-runtime-surface-inventory.json`, `docs/architecture/music-authorization-matrix.json`
-- Modify: `tunes/server/test/contracts/runtime-surface-inventory.test.ts:13-23`
-- Modify: `.github/workflows/test.yml:225`
+- Modify: `tunes/server/test/contracts/runtime-surface-inventory.test.ts:11,22-24`
+- Modify: `.github/workflows/test.yml:224`
 
-- [ ] **Step 1: Register the routes, literally**
+- [ ] **Step 1: Register the routes with file-local helpers**
 
-Registrations must be literal string arguments — interpolated or looped paths are invisible to the AST inventory (`explorersRecommendationRoutes.ts:97-98` says so). Follow `:116` and its guard at `:129`:
+Registrations must be literal strings — interpolated or looped paths are invisible to the AST inventory (`explorersRecommendationRoutes.ts:97-98`).
 
 ```ts
-  routes.post('/api/explorers/v1/recommendations/:id/link-enrichment/observe',mutation((a,id,b,c)=>enrichment.observe(a,id,b,c),'linkEnrichmentObserve'));
-  routes.post('/api/explorers/v1/recommendations/:id/link-enrichment/accept',mutation((a,id,b,c)=>enrichment.accept(a,id,b,c),'linkEnrichmentAccept'));
-  routes.all('/api/explorers/v1/recommendations/:id/link-enrichment/observe',unsupported);
-  routes.all('/api/explorers/v1/recommendations/:id/link-enrichment/accept',unsupported);
+  routes.post('/api/explorers/v1/recommendations/:id/link-enrichment/observe', …);
+  routes.post('/api/explorers/v1/recommendations/:id/link-enrichment/accept', …);
+  routes.all('/api/explorers/v1/recommendations/:id/link-enrichment/observe', unsupported);
+  routes.all('/api/explorers/v1/recommendations/:id/link-enrichment/accept', unsupported);
 ```
 
-These paths are canonical and collide with **none** of the retirement guards: the tombstones cover `/api/products`, `/api/people`, `/api/apps`, `/api/proxy-image` and their unprefixed twins, so the 410 `SURFACE_REMOVED` contract is untouched.
+These paths collide with no retirement rule — the `scrape` family covers `/api/products`, `/api/people`, `/api/apps`, `/api/proxy-image` and their unprefixed twins, and nothing prefixes `/api/explorers`.
 
-- [ ] **Step 2: Allowlist both as `explorers-owner`**
+**[v1 defect — this one is a vulnerability if missed]** v1's snippet used `mutation` and `unsupported`, which are **function-locals of `explorersRecommendationRoutes.ts`** (`:34-35`). A new router file must define its own — and `mutation` is where the CSRF defence lives (`:38`, `request.get('origin') !== config.baseURL` → 403). A router that omits it turns this feature into **CSRF-to-SSRF**: any page could make a signed-in owner's browser trigger outbound fetches and, on accept, publish attacker-chosen images to that owner's public profile. Follow `explorersAppEnrichmentRoutes.ts:17`'s per-file pattern.
 
-The allowlist is fail-closed — an undeclared route classifies as a tombstone (`musicSurfacePolicy.ts:215-218`). Add both POSTs, one method and path at a time, to the block that ends at `:226`. Do **not** list the `ALL` guards; they classify as tombstones by design (`:233-234`).
+Add error-to-status arms for the budget rejection (`429 RATE_LIMITED`) and a graceful target failure (`PROVIDER_UNAVAILABLE`), plus `MediaInputError`. Without them each reaches `sendActorError` → **500**, defeating three of Task 6's tests.
 
-- [ ] **Step 3: Regenerate both documents, in this order**
+- [ ] **Step 2: Add a new source-gated policy arm**
 
-The matrix reads the inventory **file**, so a reversed order rebuilds it from a stale inventory.
+**[v1 defect]** Every arm of `decisionForRoute` is gated on `route.source`. v1 said to add the entries to the block ending at `:226`, which begins at `:187` with `route.source === "tunes/server/routes/explorersRecommendationRoutes.ts"` — so entries there match nothing and both POSTs fall through to the fail-closed default at `:278`, classifying as tombstones. Add a **new** arm keyed on `explorersLinkEnrichmentRoutes.ts`, shaped like the App-enrichment block at `:178-186`. Do not list the `ALL` guards; they are tombstones by design (`:232-234`).
+
+- [ ] **Step 3: Register the integration test in the PR lane**
+
+Add `server/test/explorers/link-enrichment.integration.test.ts` to the explicit list on the `run:` line at `.github/workflows/test.yml:224`.
+
+- [ ] **Step 4: Commit** (regeneration happens in Task 9)
+
+```bash
+git add tunes/server/routes/explorersLinkEnrichmentRoutes.ts tunes/server/policies/musicSurfacePolicy.ts .github/workflows/test.yml
+git commit -m "feat(enrichment): routes with a file-local origin check and policy arm"
+```
+
+---
+
+## Task 8: Mount the router
+
+**[v1 defect]** No task in v1 mounted it — and the contract suite would have passed anyway, because `inventoryRuntimeSurfaces` is a pure AST walk over `tunes/server` (`inventory-runtime-surfaces.ts:130-141`) and cannot tell a mounted router from an unmounted one. The counts, the matrix and the containment tests are all blind to it.
+
+**Files:**
+- Modify: `tunes/server/auth/canonicalApp.ts:107-113`
+- Test: `tunes/server/test/explorers/link-enrichment.integration.test.ts`
+
+- [ ] **Step 1: Write the failing test** — an HTTP request to the observe route must return 401/403/422 rather than 404.
+- [ ] **Step 2: Add the `setupExplorersLinkEnrichmentRoutes(app, …)` call** alongside the other `setupExplorers*Routes` calls.
+- [ ] **Step 3: Run Task 6's full integration suite** — all of it depends on this mount.
+- [ ] **Step 4: Commit.**
+
+---
+
+## Task 9: Composition, quotas and the outbound log
+
+**Files:**
+- Modify: `tunes/server/auth/canonicalApp.ts`
+- Create: `tunes/server/services/linkEnrichmentAudit.ts`
+- Test: `tunes/server/test/contracts/link-enrichment-composition.test.ts`
+
+- [ ] **Step 1: Write the failing tests**
+
+```ts
+it("composes a live fetcher with the database denylist and the budget", …);
+it("performs no I/O when enrichment is disabled by configuration", async () => {
+  // [v1 defect] v1 asserted on construction, which never fetches. Drive a request.
+  const response = await request(app).post(observeUrl).set("origin", config.baseURL).send({ url: "https://x.example/p" });
+  expect(fetcher.calls).toBe(0);
+  expect(response.status).toBe(404);
+});
+it("records every outbound request with its resolved address", …);
+it("refuses past the per-account stored-asset quota", …);
+it("refuses an image whose pixel dimensions exceed the cap", …);
+```
+
+- [ ] **Step 2: Implement composition**
+
+Construct as `canonicalApp.ts:107` does for book covers, adding `linkFetcher?` to the options type on `constructCanonicalApp` (`:52-57`); `createCanonicalApp` and `createCanonicalAppWithCustody` type their options as `Parameters<typeof constructCanonicalApp>[2]` (`:172-173`), so the test seam propagates for free. Gate the whole feature behind an explicit option so it can be switched off, as Apps enrichment is by `options.appEnrichmentChoices ?? []` (`:108`).
+
+- [ ] **Step 3: Add the outbound audit log**
+
+**[v1 defect]** v1 recorded nothing for observe — the SSRF, probe and reflector primitive — so there was no way to answer an abuse report or identify which account scanned what. Append-only: account id, recommendation id, requested URL, **resolved IP and family**, final URL after redirects, status, byte count, outcome, timestamp. The resolved address is the field that matters and the one nothing currently captures.
+
+- [ ] **Step 4: Add storage quotas and image bounds**
+
+Per-account stored-asset count and total-byte quotas, since the feature otherwise makes us an abuse-hosting CDN at a stable public URL. Cap pixel dimensions — a valid 5 MiB PNG can be 50 000 × 50 000, which our server never decodes but every viewer's browser does — and strip EXIF, since we would otherwise republish third parties' GPS and embedded payloads verbatim.
+
+- [ ] **Step 5: Regenerate the committed documents — after this task, not before**
+
+The committed inventory stores a `line` per route, so Task 8's edit to `canonicalApp.ts` shifts the lines of every route registered there. No test catches a stale `line` (`authorizationMatrixFromInventory` drops it), so regenerate last:
 
 ```bash
 cd tunes && npx tsx scripts/inventory-runtime-surfaces.ts --write && npx tsx scripts/generate-music-authorization-matrix.ts
+node -e "const i=require('../docs/architecture/music-runtime-surface-inventory.json');console.log('routes',i.routes.length,'events',i.events.length,'jobs',i.jobs.length)"
 ```
 
-- [ ] **Step 4: Update the count pins to the regenerated values**
-
-`runtime-surface-inventory.test.ts:21-23` pins exact counts. Read the regenerated JSON and set them to the actual numbers — do not guess:
-
-```bash
-cd tunes && node -e "const i=require('../docs/architecture/music-runtime-surface-inventory.json');console.log('routes',i.routes.length,'events',i.events.length,'jobs',i.jobs.length)"
-```
-
-Expect routes to rise by 4 (two POSTs plus two `ALL` guards) and jobs to rise by the number of `setTimeout`/`setInterval` calls the new fetcher and robots cache introduce — `appEnrichmentFetch.ts`'s deadline timer is already counted as a job at `:25`, so the new fetcher's will be too. Update the arithmetic comment at `:13` to explain the delta, in the style already there.
-
-- [ ] **Step 5: Register the new integration test in the PR lane**
-
-`.github/workflows/test.yml:225` names every integration file explicitly. Add `server/test/explorers/link-enrichment.integration.test.ts`, or it never runs on a PR.
+Order matters: the matrix reads the inventory **file**. Baseline before this plan is `routes 199 events 15 jobs 37`. Update the pins at `runtime-surface-inventory.test.ts:22-24` to the regenerated numbers and the arithmetic comment at `:11` — four new routes, plus one job per `setTimeout`/`setInterval` in the new services.
 
 - [ ] **Step 6: Run the full contract suite and commit**
 
@@ -482,89 +597,19 @@ cd tunes && npx vitest run server/test/contracts/
 
 Expected: PASS, including `runtime-surface-inventory`, `music-authorization-matrix` and `music-security-containment` — the last confirms the tombstoned paths still answer 410.
 
-```bash
-git add tunes/server/routes/explorersLinkEnrichmentRoutes.ts tunes/server/policies/musicSurfacePolicy.ts docs/architecture/ tunes/server/test/contracts/runtime-surface-inventory.test.ts .github/workflows/test.yml
-git commit -m "feat(enrichment): register the observe and accept routes with regenerated inventory"
-```
-
----
-
-## Task 8: Owner panel
-
-One shared component, mounted by all three add/edit pages. Model it on `AppEnrichmentPanel.tsx`, whose acceptance discipline is the pattern to copy.
-
-**Files:**
-- Create: `explorers-earth/src/features/shared/components/LinkEnrichmentPanel.tsx`
-- Modify: `AddProductPage.tsx`, `AddAppPage.tsx`, `AddPersonPage.tsx`
-- Test: `explorers-earth/src/features/shared/components/__tests__/linkEnrichmentPanel.test.tsx`
-
-- [ ] **Step 1: Write the failing tests**
-
-```tsx
-it("stores nothing until the owner accepts", async () => { /* observe, assert no accept call */ });
-it("accepts only the checked fields and images", async () => { /* check 1 of 3 images, assert payload */ });
-it("resets the selection when the owner or route changes", async () => {});
-it("blocks accepting while manual edits are unsaved", async () => {});
-it("shows a manual-entry fallback when the site refuses", async () => { /* 403 -> message, upload still available */ });
-it("disables every control while a command is in flight", async () => {});
-```
-
-- [ ] **Step 2: Implement, carrying over three structural choices from `AppEnrichmentPanel.tsx`**
-
-Selection scoped to one observation (`{sourceUrl, fields[], imageUrls[]}`), so two observations cannot be mixed into one acceptance (`:8`). Selection reset on any scope change (`:15`, keyed on account, generation, resource, route). And a single `locked` predicate gating every control (`:13`), with the explicit warning that unsaved manual edits are not included (`:21-22`).
-
-Add what Apps does not have: a per-image checkbox with the **remote** preview and its source link, plus the sentence that accepting copies that image onto Explorers' own storage. The owner is told what the action does before they take it.
-
-- [ ] **Step 3: Confirm pass, run the serial lane, commit**
-
-```bash
-cd explorers-earth && npx vitest run src/features/shared && npx vitest run --no-file-parallelism
-git add explorers-earth/src/features
-git commit -m "feat(enrichment): owner panel that confirms each field and image"
-```
-
----
-
-## Task 9: Wire the fetcher into production composition
-
-`appEnrichmentFetch` ships **dormant** — `canonicalApp.ts:108` passes `options.appEnrichmentChoices ?? []`, and only the fixture app supplies a registry. Plan B's fetcher must be deliberately switched on, with the denylist read from the database rather than baked in.
-
-**Files:**
-- Modify: `tunes/server/auth/canonicalApp.ts`
-- Test: `tunes/server/test/contracts/link-enrichment-composition.test.ts`
-
-- [ ] **Step 1: Write the failing test**
-
-```ts
-it("composes a live fetcher with the database denylist and a budget", () => { /* assert the service is constructed with both */ });
-it("performs no I/O when enrichment is disabled by configuration", () => { /* assert fetch is never called */ });
-```
-
-The second keeps the dormant-by-configuration property: enrichment must be switchable off without removing the code.
-
-- [ ] **Step 2: Implement, confirm pass, commit**
-
-Construct the service as `canonicalApp.ts:107` does for book covers — `new LinkEnrichmentService(pool, new MediaService(pool, options.mediaStorage), options.linkFetcher)` — defaulting `options.linkFetcher` to a live fetcher whose host policy is `{ kind: "any", denylist }` read from the database, and gate the whole feature behind an explicit option so it can be disabled.
-
-```bash
-cd tunes && npx vitest run server/test/contracts/link-enrichment-composition.test.ts
-git add tunes/server/auth/canonicalApp.ts tunes/server/test/contracts/link-enrichment-composition.test.ts
-git commit -m "feat(enrichment): compose the live fetcher with the database denylist"
-```
-
 ---
 
 ## Risks accepted, recorded once
 
-- **Open-host fetching rehosts third parties' images.** The per-image owner confirmation is the mitigation: a human decides before anything is stored, and the panel says plainly what accepting does. The legal exposure is broader than a curated allowlist would carry, and the owner has accepted that; the denylist is the lever for responding to a complaint without a deploy.
-- **Sites that block automation will fail.** No evasion is added, so Instagram and LinkedIn will mostly refuse. The fallback is manual entry plus upload, which Plan A makes publicly visible.
-- **SSRF is the one risk open hosts do not increase.** `publicAddress()` is host-independent and is re-checked per redirect hop with DNS pinned into the connect. Reuse it; do not write a second address policy.
-- **Amazon's terms prohibit scraping**, and its product images are the most likely target. A denylist entry is the mechanism if that becomes a problem.
+- **Open-host fetching rehosts third parties' images.** Per-image owner confirmation is the mitigation; the panel must say plainly that accepting copies the image onto our storage. The legal exposure is broader than a curated allowlist would carry, and the owner has accepted it. The denylist is the response lever — note it is per-hostname whack-a-mole with no org or ASN control, and that `amazon.com` and `images-na.ssl-images-amazon.com` are separate entries.
+- **Sites that block automation will fail.** No evasion. Instagram and LinkedIn will mostly refuse.
+- **Residual blind scanning.** Even with TLS identity containment, an attacker can distinguish port-443 liveness by timing, metered per account. The outbound log and the network egress floor are the answers.
+- **`Cache-Control: public, max-age=300`** on media (`explorersMediaRoutes.ts:72`) keeps takedown-pending bytes in shared caches for five minutes.
 - **The old Puppeteer path stays retired** along with its 248-finding CVE suppression. Nothing here launches a browser.
 
 ## Out of scope
 
-- Books, movies and games — they already have real provider imports (Google Books, TMDB) that fetch and store correctly.
+- Books, movies and games — they already have working provider imports.
 - Reviving any tombstoned path. All four stay 410.
-- Changing `appEnrichmentFetch.ts` or the Apps enrichment registry. Plan B is additive.
-- A GPT/MCP plugin that searches and hands back a URL. Worth noting as the owner's own idea and a genuinely cheaper path, since it puts the fetch on the user's side — but it is a separate piece of work.
+- Changing `appEnrichmentFetch.ts` or the Apps registry. Plan B is additive.
+- A GPT/MCP plugin that searches and returns a URL for the owner to upload. The owner's own idea, genuinely cheaper because the fetch happens on the user's side — separate work.
