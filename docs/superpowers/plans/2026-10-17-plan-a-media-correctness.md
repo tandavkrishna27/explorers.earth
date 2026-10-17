@@ -759,7 +759,15 @@ git commit -m "fix(auth): bootstrap the session where it is needed, not on every
 - Unifying the two storage patterns (generic `recommendation_media` vs typed per-category tables). Typed tables exist where provider imports or slot ordering need their own semantics; collapsing them needs migrations and changes nothing a user sees.
 - Production cutover — `docs/replatform-audit/production-cutover-runbook.md`.
 - `explorersRecommendationRepository.ts:501-506`'s ref-count list omits `recommendation_app_screenshots` and `recommendation_place_photos`. It runs only on the `category==='movies'` branch (`:495`), so this plan does not regress it, but it is a parallel list that is already wrong.
-- `real-stack lifecycle` and `real-stack books`, neither ever green. **Triage `lifecycle` before executing this plan**: it failed because owner A's session refresh returned owner B's account id, and if that is a real cross-owner leak rather than harness reuse, it outranks everything here.
+- `real-stack books`, never green — `books.spec.ts:205` times out on `locator.click` at 120 s, desktop and mobile. Needs its own triage.
+
+### `real-stack lifecycle` is a harness defect, not a cross-owner leak — triaged 2026-10-17
+
+It is **not** a blocker, and not a security bug. `requireActor` (`tunes/server/middleware/explorersPrincipal.ts:9-33`) resolves the actor purely from the request's own headers: `auth.api.getSession({headers: fromNodeHeaders(request.headers)})`, then a query keyed `WHERE s.id=$1 AND s.user_id=$2` with the account reached through `initial_account_bindings` on `b.user_id=s.user_id`. There is no cache and no module-level state, so a `/me` response carrying an account id means **that request presented that account's cookie**. The server cannot answer with another owner's account.
+
+The defect is in the oracle. `verifyReplacement` (`explorers-earth/e2e/replatform/lifecycle.spec.ts:181-200`) registers `page.waitForResponse(r => new URL(r.url()).pathname === …)` for `/api/auth/get-session` and `/me`, matching on **pathname alone** with no correlation to the `authClient.refresh()` it then triggers. It swaps the context cookie first (`:183`), so any app-initiated refresh already in flight — or triggered by the swap — produces a response with the same pathname that the waiter will happily capture. In the `returningA` case that is owner B's response, which is exactly the observed `5ca00a15…` vs `d75d80fb…` mismatch.
+
+Two consequences. **Task 8 should reduce or remove this flake as a side effect**, because the unconditional mount-time `authClient.refresh()` it deletes is the main source of the uncorrelated in-flight refreshes. And the oracle wants fixing independently: correlate each wait to its own request (match on the request object the evaluate initiates, or assert against the response whose request carried the expected cookie) rather than on pathname. Re-run the lane after Task 8 before spending more on it.
 
 ## What the reviews changed
 
