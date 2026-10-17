@@ -254,6 +254,7 @@ type Diagnostic = Readonly<{
     nativeUnknownOrigin?:NativeUnknownDetail;requestDrainBoundary?:RequestDrainBoundary;requestDrain?:AppsRequestDrainDiagnostic;requestDrainPending?:RequestDrainPending;
     control?: AppsControllerDiagnostic;
     vite?:AppsViteDiagnostic;databaseAcquisition?:OwnedUatDatabaseAcquisitionDiagnostic;enrichmentRefresh?:AppsEnrichmentRefreshDiagnostic;enrichmentReset?:AppsEnrichmentResetDiagnostic;
+    preflightStep?:AppsPreflightStep;
 }>;
 const diagnostics = new WeakMap<object, Diagnostic>();
 /** Only runner-branded errors expose finite sanitized diagnostics; foreign getters are never read. */
@@ -263,6 +264,16 @@ export function extractAppsFixtureDiagnostic(error: unknown): Diagnostic | undef
 class Refusal extends Error {
     constructor() { super('Apps owned fixture failed'); }
 }
+/**
+ * Preflight refuses from a dozen independent checks and used to report nothing but
+ * `stage=preflight; category=refusal`, so a lane that failed here every scheduled night
+ * carried no diagnosable signal at all. These tokens are a closed enumeration - never a
+ * path, a digest or any other private value - and the parent decoder validates them
+ * against the same list, exactly as it does for `databaseAcquisitionStage`.
+ */
+const PREFLIGHT_STEPS = Object.freeze(['node-executable', 'private-files-helper', 'playwright-cli', 'vite-cli', 'playwright-config', 'vite-config', 'browser-spec', 'helper-digest', 'temporary-root', 'windows-powershell', 'contract-import', 'source-commit', 'support-binding'] as const);
+export type AppsPreflightStep = typeof PREFLIGHT_STEPS[number];
+let observedPreflightStep: AppsPreflightStep | undefined;
 const uuid = z.string().uuid(), baseline = z.object({ id: uuid, revision: z.number().int().positive().safe(), displayName: z.string().nullable(), handle: z.string().nullable() });
 /** Construction and import perform no allocation. Complete adapters are synthetic. */
 export function createAppsBrowserFixture(dependencies?: Dependencies, family: 'apps'|'apps-enrichment'='apps'): {
@@ -280,7 +291,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies, family: 'a
     let readViteDiagnostic:(()=>AppsViteDiagnostic|undefined)|undefined;
     const registerViteDiagnostic=(reader:()=>AppsViteDiagnostic|undefined)=>{readViteDiagnostic=reader;};
     const safeViteDiagnostic=()=>{if(stage!=='vite')return undefined;try{return readViteDiagnostic?.();}catch{return undefined;}};
-    const snapshot = (control?:unknown,options?:unknown): Diagnostic => {const enrichmentReset=family==='apps-enrichment'&&stage==='execution'&&category==='refusal'&&typeof extractAppsEnrichmentResetDiagnostic==='function'?extractAppsEnrichmentResetDiagnostic(control):undefined;const enrichmentRefresh=family==='apps-enrichment'&&stage==='execution'&&category==='refusal'&&typeof extractAppsEnrichmentRefreshDiagnostic==='function'?extractAppsEnrichmentRefreshDiagnostic(control):undefined;const vite=safeViteDiagnostic(),detail=extractAppsControlDiagnostic(control),requestDrain=extractAppsRequestDrainDiagnostic(options),requestDrainPending=deadlinePending??(stage==='cleanup'&&cleanupStep==='request-drain'?safeDrainPending():undefined);return Object.freeze({stage,category,...(enrichmentReset?{enrichmentReset}:{}),...(enrichmentRefresh?{enrichmentRefresh}:{}),...(stage==='create-database'&&category==='refusal'&&databaseAcquisition?{databaseAcquisition}:{}),...(vite?{vite}:{}),...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{}),...(nativeUnknownOrigin?{nativeUnknownOrigin}:{}),...(requestDrainBoundary?{requestDrainBoundary}:{}),...(requestDrain?{requestDrain}:{}),...(requestDrainPending?{requestDrainPending}:{})});};
+    const snapshot = (control?:unknown,options?:unknown): Diagnostic => {const enrichmentReset=family==='apps-enrichment'&&stage==='execution'&&category==='refusal'&&typeof extractAppsEnrichmentResetDiagnostic==='function'?extractAppsEnrichmentResetDiagnostic(control):undefined;const enrichmentRefresh=family==='apps-enrichment'&&stage==='execution'&&category==='refusal'&&typeof extractAppsEnrichmentRefreshDiagnostic==='function'?extractAppsEnrichmentRefreshDiagnostic(control):undefined;const vite=safeViteDiagnostic(),detail=extractAppsControlDiagnostic(control),requestDrain=extractAppsRequestDrainDiagnostic(options),requestDrainPending=deadlinePending??(stage==='cleanup'&&cleanupStep==='request-drain'?safeDrainPending():undefined);return Object.freeze({stage,category,...(enrichmentReset?{enrichmentReset}:{}),...(enrichmentRefresh?{enrichmentRefresh}:{}),...(stage==='preflight'&&category==='refusal'&&observedPreflightStep?{preflightStep:observedPreflightStep}:{}),...(stage==='create-database'&&category==='refusal'&&databaseAcquisition?{databaseAcquisition}:{}),...(vite?{vite}:{}),...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{}),...(nativeUnknownOrigin?{nativeUnknownOrigin}:{}),...(requestDrainBoundary?{requestDrainBoundary}:{}),...(requestDrain?{requestDrain}:{}),...(requestDrainPending?{requestDrainPending}:{})});};
     const recordCategory = (value: DiagnosticCategory) => { if (category === 'refusal')
         category = value; };
     let nativeFailure:(()=>void)|undefined;
@@ -937,28 +948,42 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
     return { platform: process.platform, argv: process.argv.slice(2), environment: process.env, temporaryRoot, clock: nativeClock(), randomHex: n => randomBytes(n).toString('hex'), installSignals(callback) { process.on('SIGINT', callback); process.on('SIGTERM', callback); return () => { process.removeListener('SIGINT', callback); process.removeListener('SIGTERM', callback); }; },
         async preflight() {
             const fs = await import('node:fs/promises');
-            for (const file of [process.execPath, helper, cli, viteCli, path.join(frontend, family==='apps-enrichment'?'e2e/replatform/apps-enrichment.playwright.config.ts':'e2e/replatform/apps.playwright.config.ts'), path.join(frontend, 'e2e/replatform/profile.vite.config.ts'), path.join(frontend, family==='apps-enrichment'?'e2e/replatform/apps-enrichment.spec.ts':'e2e/replatform/apps.spec.ts')]) {
+            // Every refusal below now names the check that produced it. The token is set
+            // immediately before the check runs, so whichever one throws leaves its own
+            // name behind for the sealed diagnostic to carry out.
+            const at = (step: AppsPreflightStep) => { observedPreflightStep = step; };
+            const fileSteps: readonly AppsPreflightStep[] = ['node-executable', 'private-files-helper', 'playwright-cli', 'vite-cli', 'playwright-config', 'vite-config', 'browser-spec'];
+            const files = [process.execPath, helper, cli, viteCli, path.join(frontend, family==='apps-enrichment'?'e2e/replatform/apps-enrichment.playwright.config.ts':'e2e/replatform/apps.playwright.config.ts'), path.join(frontend, 'e2e/replatform/profile.vite.config.ts'), path.join(frontend, family==='apps-enrichment'?'e2e/replatform/apps-enrichment.spec.ts':'e2e/replatform/apps.spec.ts')];
+            for (const [index, file] of files.entries()) {
+                at(fileSteps[index]);
                 await canonical(file);
                 if (!(await fs.lstat(file)).isFile())
                     throw new Refusal();
             }
+            at('helper-digest');
             if (createHash('sha256').update(await fs.readFile(helper)).digest('hex') !== 'a43bb8db3ae88ae440fb73d77801a400d2b5fadc0151fd6ac10e61a3cd26bac0')
                 throw new Refusal();
+            at('temporary-root');
             await canonical(temporaryRoot);
             if (process.platform === 'win32') {
+                at('windows-powershell');
                 await canonical(ps);
                 if (!(await fs.lstat(ps)).isFile() || !/^5\.1\.\d+\.\d+$/.test(await fixedPowerShell(['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', '$PSVersionTable.PSVersion.ToString()'])))
                     throw new Refusal();
             }
+            at('contract-import');
             const contract = await import(pathToFileURL(path.join(root, 'scripts/replatform-e2e.mjs')).href);
             const source = contract.snapshotSource(root);if(family==='apps-enrichment')sourceSnapshot=JSON.stringify(source);
+            at('source-commit');
             const commit = source.provenance.commit;
             if (!/^[a-f0-9]{40}$/.test(commit))
                 throw new Refusal();
+            at('support-binding');
             const binding = await support();
             for (const key of ['admitAppsFixtureRequest', 'sealAppsFixtureRequests', 'drainAppsFixtureRequests'] as const)
                 if (typeof binding[key] !== 'function')
                     throw new Refusal();
+            observedPreflightStep = undefined;
             const port = (min: number, max: number) => min + randomBytes(2).readUInt16BE() % (max - min + 1);
             return { commit, pgPort: port(56000, 60999), apiPort: port(54000, 55999), webPort: port(52000, 53999) };
         },

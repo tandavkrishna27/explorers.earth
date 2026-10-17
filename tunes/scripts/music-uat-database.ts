@@ -88,6 +88,23 @@ function authorityError(message: string): Error {
   return new Error(`Task-4 UAT database authority rejected: ${message}`);
 }
 
+// Same dead-signal bug as the C10 standalone fixture: a bare `catch {}` collapsed every
+// distinct Docker failure into one generic sentence. Keep the sentence as the prefix and
+// append the argv, the exit status and the stderr tail behind it.
+function describeDockerFailure(args: string[], cause: unknown): string {
+  const failure = cause as { status?: number | null; signal?: string | null; stderr?: unknown; message?: unknown };
+  const parts: string[] = [`docker ${args.join(" ")}`];
+  if (typeof failure?.status === "number") parts.push(`exit ${failure.status}`);
+  if (failure?.signal) parts.push(`signal ${String(failure.signal)}`);
+  const stderr = typeof failure?.stderr === "string"
+    ? failure.stderr
+    : Buffer.isBuffer(failure?.stderr) ? failure.stderr.toString("utf8") : "";
+  const detail = (stderr.trim() || (typeof failure?.message === "string" ? failure.message.trim() : ""))
+    .split(/\r?\n/).filter((line) => line.trim()).slice(-3).join("; ").slice(0, 500);
+  if (detail) parts.push(detail);
+  return parts.join(" | ");
+}
+
 function normalizedEnvironment(environment: NodeJS.ProcessEnv): Map<string, string> {
   const normalized = new Map<string, string>();
   for (const [key, value] of Object.entries(environment)) {
@@ -223,8 +240,8 @@ function defaultDockerRead(args: string[]): string {
     return execFileSync(dockerExecutable(), args, {
       encoding: "utf8", windowsHide: true, timeout: 15_000, stdio: ["ignore", "pipe", "pipe"],
     });
-  } catch {
-    throw authorityError("read-only Docker attestation failed");
+  } catch (cause) {
+    throw authorityError(`read-only Docker attestation failed: ${describeDockerFailure(args, cause)}`);
   }
 }
 
@@ -240,8 +257,8 @@ function defaultDockerRun(args: string[]): string {
     return execFileSync(dockerExecutable(), args, {
       encoding: "utf8", windowsHide: true, timeout: 45_000, stdio: ["ignore", "pipe", "pipe"],
     }).trim();
-  } catch {
-    throw authorityError("owned Docker mutation failed");
+  } catch (cause) {
+    throw authorityError(`owned Docker mutation failed: ${describeDockerFailure(args, cause)}`);
   }
 }
 
