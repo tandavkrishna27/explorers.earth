@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { lstatSync, realpathSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join, resolve, win32 } from "node:path";
+import { join, posix, resolve, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
 import { buildUatEvidenceEnvelope, MUSIC_UAT_DATABASE_TEST_FILES } from "./music-vitest-evidence";
 export { MUSIC_UAT_DATABASE_TEST_FILES } from "./music-vitest-evidence";
@@ -409,17 +409,45 @@ function stagedCustody(
   path: string,
   fileSystem: StagedDatabaseDependencies["fileSystem"],
 ): readonly string[] {
-  if (typeof path !== "string" || path.length > 512 || !win32.isAbsolute(path)
-      || !/^[A-Za-z]:\\/.test(path) || /[\x00-\x1f\x7f/,]/.test(path)
-      || path.slice(2).includes(":")
-      || path.slice(3).split("\\").some(segment => !segment || segment === "." || segment === "..")
-      || fileSystem.realpath(path) !== path) throw authorityError("secret custody is invalid");
+  // The branch is chosen by the runtime platform and never by the shape of the incoming
+  // string. Choosing by appearance would let a crafted path select whichever rule set is
+  // weaker for the filesystem it actually lands on, which is the whole predicate gone.
+  const windows = process.platform === "win32";
+  const platformPath = windows ? win32 : posix;
+  if (typeof path !== "string" || path.length > 512 || !platformPath.isAbsolute(path)) {
+    throw authorityError("secret custody is invalid");
+  }
+  if (windows) {
+    if (!/^[A-Za-z]:\\/.test(path) || /[\x00-\x1f\x7f/,]/.test(path)
+        || path.slice(2).includes(":")
+        || path.slice(3).split("\\").some(segment => !segment || segment === "." || segment === "..")) {
+      throw authorityError("secret custody is invalid");
+    }
+  } else {
+    // `/` appears in the Windows rejection class because there it is an alternate
+    // separator that must never reach a path this predicate has already canonicalised on
+    // backslashes. On POSIX that same character IS the separator, so it cannot also be a
+    // rejection trigger - it moves from the character class into the segment walk below,
+    // which enforces exactly what the Windows branch enforces: no empty segment, no `.`,
+    // no `..`. Everything else in the class still applies. `,` matters most: this path is
+    // interpolated into `--mount type=bind,src=<path>,dst=...`, where a comma would start
+    // a new mount option. `:` is legal in a POSIX filename but is the separator in
+    // Docker's `-v` syntax, and `\` is legal but would make a POSIX path read as a
+    // Windows one; nothing this fixture generates needs either, so both stay refused
+    // rather than left to a consumer to re-parse.
+    const segments = path.split("/").slice(1);
+    if (/[\x00-\x1f\x7f,:\\]/.test(path) || segments.length === 0
+        || segments.some(segment => !segment || segment === "." || segment === "..")) {
+      throw authorityError("secret custody is invalid");
+    }
+  }
+  if (fileSystem.realpath(path) !== path) throw authorityError("secret custody is invalid");
   const paths = [path];
-  let ancestor = win32.dirname(path);
+  let ancestor = platformPath.dirname(path);
   while (true) {
     paths.push(ancestor);
-    if (ancestor === win32.parse(path).root) break;
-    ancestor = win32.dirname(ancestor);
+    if (ancestor === platformPath.parse(path).root) break;
+    ancestor = platformPath.dirname(ancestor);
   }
   return paths.map((candidate, index) => {
     if (fileSystem.realpath(candidate) !== candidate) throw authorityError("secret ancestor custody is invalid");

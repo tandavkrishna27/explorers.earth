@@ -67,7 +67,15 @@ function ownedInspect() {
 }
 
 describe("staged owned UAT database acquisition", () => {
-  const passwordFile = String.raw`C:\Users\TK\fixture\current-secret`;
+  // The custody predicate branches on the runtime platform, so the accepted spelling has
+  // to follow it. A fixed Windows path passed here on Linux is exactly the shape the
+  // POSIX branch is built to refuse, and pinning it would have asserted the Linux lane
+  // could never acquire a database - which is the defect this suite should catch, not
+  // encode. The filesystem is injected either way, so neither path is ever touched.
+  const windowsHost = process.platform === "win32";
+  const passwordFile = windowsHost
+    ? String.raw`C:\Users\TK\fixture\current-secret`
+    : "/home/runner/fixture/current-secret";
   const input = { runId, database, commit, port: 58543, passwordFile };
   const ok = (stdout = "") => ({ status: 0, stdout, timedOut: false });
   function deferred<T>() {
@@ -91,6 +99,7 @@ describe("staged owned UAT database acquisition", () => {
     let image = imageId;
     let readFailure = "";
     let now = 0;
+    const lstatPaths: string[] = [];
     const timers = new Map<number, { at: number; callback: () => void }>();
     let timerId = 0;
     const dependencies = {
@@ -118,13 +127,14 @@ describe("staged owned UAT database acquisition", () => {
       },
       fileSystem: {
         realpath: (path: string) => path === passwordFile ? canonical : path,
-        lstat: (path: string) => ({ dev: 1n, ino: path === passwordFile ? inode : ancestorInode,
+        lstat: (path: string) => (lstatPaths.push(path), { dev: 1n, ino: path === passwordFile ? inode : ancestorInode,
           mode: 0o600n, uid: 1n, gid: 1n, size: 32n, nlink: 1n, mtimeNs: 1n, ctimeNs: 1n,
           isFile: () => path === passwordFile, isDirectory: () => path !== passwordFile,
           isSymbolicLink: () => false }),
       },
     };
-    return { dependencies, commands, setInspect: (value: typeof inspect) => { inspect = value; },
+    return { dependencies, commands, custodyPaths: () => [...lstatPaths],
+      setInspect: (value: typeof inspect) => { inspect = value; },
       getInspect: () => inspect, setAbsent: (value: typeof absent) => { absent = value; },
       setCreation: (value: typeof creation) => { creation = value; },
       setRemoval: (value: typeof removal) => { removal = value; },
@@ -349,12 +359,30 @@ describe("staged owned UAT database acquisition", () => {
     await expect(stage.dispose(async () => {})).rejects.toThrow();
     expect(f.commands.filter(a => a.includes("ls"))).toHaveLength(1);
   });
+  // Every spelling below is refused on both platforms. The Windows-shaped ones are not
+  // absolute under POSIX and the POSIX-shaped ones are not absolute under Windows, so
+  // each list also proves the other branch rejects the foreign shape outright rather
+  // than reinterpreting it.
   it.each([String.raw`c:\Users\TK\fixture\current-secret`, "C:/Users/TK/fixture/current-secret",
     String.raw`C:\Users\TK\fixture\..\current-secret`, String.raw`C:\Users\TK\fixture\\current-secret`,
-    String.raw`\\host\secret`, String.raw`C:\Users\TK\fixture\current-secret:stream`])(
+    String.raw`\\host\secret`, String.raw`C:\Users\TK\fixture\current-secret:stream`,
+    "home/runner/fixture/current-secret", "/home/runner/fixture/../current-secret",
+    "/home/runner/fixture//current-secret", "/home/runner/fixture/./current-secret",
+    "/home/runner/fixture/current,secret", "/home/runner/fixture/current:secret",
+    String.raw`/home/runner/fixture/current\secret`, "/home/runner/fixture/current\u0000secret",
+    "/home/runner/fixture/current\u001fsecret", "/home/runner/fixture/current\u007fsecret", "/", ""])(
     "refuses unknown canonical custody spelling %s", async path => {
       const f = fixture(); await expect(prepareOwnedUatDatabaseAcquisition({ ...input, passwordFile: path }, f.dependencies)).rejects.toThrow();
     });
+  it("walks the accepted secret's ancestors to the platform root", async () => {
+    const f = fixture(); const stage = await prepareOwnedUatDatabaseAcquisition(input, f.dependencies);
+    expect(stage.intent.passwordFile).toBe(passwordFile);
+    // The predicate runs twice (retained, then fresh), so the same chain is walked twice;
+    // the distinct order is what states "walks to the platform root".
+    expect([...new Set(f.custodyPaths())]).toEqual(windowsHost
+      ? [String.raw`C:\Users\TK\fixture\current-secret`, String.raw`C:\Users\TK\fixture`, String.raw`C:\Users\TK`, String.raw`C:\Users`, "C:\\"]
+      : ["/home/runner/fixture/current-secret", "/home/runner/fixture", "/home/runner", "/home", "/"]);
+  });
 });
 
 describe("owned Task-4 UAT database lane", () => {
