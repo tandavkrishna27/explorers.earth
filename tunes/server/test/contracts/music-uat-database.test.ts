@@ -36,6 +36,14 @@ function authorityEnvironment(overrides: NodeJS.ProcessEnv = {}): NodeJS.Process
   };
 }
 
+// The custody predicate branches on the runtime platform, so every accepted spelling in
+// this suite has to follow it. A fixed Windows path on Linux is exactly the shape the
+// POSIX branch is built to refuse, and pinning one would assert that the Linux lane can
+// never acquire a database - the defect this suite should catch, not encode. The
+// filesystem is injected throughout, so neither spelling is ever touched on disk.
+const windowsHost = process.platform === "win32";
+const ownedSecretPath = (name: string) => windowsHost ? `C:\\Users\\TK\\fixture\\${name}` : `/home/runner/fixture/${name}`;
+
 function ownedInspect() {
   return {
     Id: containerId,
@@ -67,15 +75,7 @@ function ownedInspect() {
 }
 
 describe("staged owned UAT database acquisition", () => {
-  // The custody predicate branches on the runtime platform, so the accepted spelling has
-  // to follow it. A fixed Windows path passed here on Linux is exactly the shape the
-  // POSIX branch is built to refuse, and pinning it would have asserted the Linux lane
-  // could never acquire a database - which is the defect this suite should catch, not
-  // encode. The filesystem is injected either way, so neither path is ever touched.
-  const windowsHost = process.platform === "win32";
-  const passwordFile = windowsHost
-    ? String.raw`C:\Users\TK\fixture\current-secret`
-    : "/home/runner/fixture/current-secret";
+  const passwordFile = ownedSecretPath("current-secret");
   const input = { runId, database, commit, port: 58543, passwordFile };
   const ok = (stdout = "") => ({ status: 0, stdout, timedOut: false });
   function deferred<T>() {
@@ -783,7 +783,7 @@ describe("owned Task-4 UAT database lane", () => {
 });
 
 describe('readonly staged owned database attestation',()=>{
- const passwordFile=String.raw`C:\Users\TK\fixture\current-secret`,authority={owned:true as const,runId,database,commit,containerId,port:58543,imageId,contextHost};
+ const passwordFile=ownedSecretPath("current-secret"),authority={owned:true as const,runId,database,commit,containerId,port:58543,imageId,contextHost};
  function fixture(){let inspect={...ownedInspect(),Config:{...ownedInspect().Config,Image:imageId},Mounts:[{...ownedInspect().Mounts[0],Source:passwordFile}]},host=contextHost,image=imageId,inode=1n,ancestor=2n;const reads:string[][]=[];const dependencies={dockerRead:(args:string[])=>{reads.push([...args]);if(args[0]==='context'&&args[1]==='show')return'desktop-linux';if(args[0]==='context')return JSON.stringify(host);if(args.includes('image'))return image;return JSON.stringify(inspect);},fileSystem:{realpath:(path:string)=>path,lstat:(path:string)=>({dev:1n,ino:path===passwordFile?inode:ancestor,mode:0o600n,uid:1n,gid:1n,size:32n,nlink:1n,mtimeNs:1n,ctimeNs:1n,isFile:()=>path===passwordFile,isDirectory:()=>path!==passwordFile,isSymbolicLink:()=>false})}};return{dependencies,reads,get inspect(){return inspect;},set inspect(value){inspect=value;},set host(value:string){host=value;},set image(value:string){image=value;},mutateSecret(){inode++;},mutateAncestor(){ancestor++;}};}
  it('accepts the actual pinned staged image while legacy tagged attestation continues refusing it',async()=>{const module=await import('../../../scripts/music-uat-database'),f=fixture();expect(()=>module.attestUatDatabaseAuthority(authorityEnvironment(),commit,{dockerRead:f.dependencies.dockerRead})).toThrow();expect(module.attestOwnedStagedUatDatabaseAuthority).toBeTypeOf('function');expect(module.attestOwnedStagedUatDatabaseAuthority(authority,passwordFile,f.dependencies)).toEqual(authority);expect(f.reads.every(args=>!args.some(arg=>['run','rm','create','start','stop'].includes(arg)))).toBe(true);expect(f.reads.some(args=>args.includes('image')&&args.at(-1)===imageId)).toBe(true);});
  it.each(['cid','commit','image','context','mount','health'] as const)('refuses foreign %s without mutation',async mode=>{const module=await import('../../../scripts/music-uat-database'),f=fixture();if(mode==='cid')f.inspect={...f.inspect,Id:'d'.repeat(64)};if(mode==='commit')f.inspect.Config.Labels['com.explorers.music.commit']='d'.repeat(40);if(mode==='image')f.image='sha256:'+'d'.repeat(64);if(mode==='context')f.host='npipe:////./pipe/docker_engine';if(mode==='mount')f.inspect.Mounts[0].Source=passwordFile+'-foreign';if(mode==='health')f.inspect.State.Health.Status='unhealthy';expect(()=>module.attestOwnedStagedUatDatabaseAuthority(authority,passwordFile,f.dependencies)).toThrow();});
