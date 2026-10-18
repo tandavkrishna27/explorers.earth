@@ -137,7 +137,23 @@ describe("replatform workflow authority", () => {
     expect(frontend.on).not.toHaveProperty("workflow_run");
     expect(frontend.on).not.toHaveProperty("push");
     expect(frontend.on).not.toHaveProperty("pull_request");
-    expect(frontend.jobs["build-and-deploy"].if).toBe("${{ false }}");
+    // explorers.yml (P2 Task 7) replaced the disabled `build-and-deploy` job with an
+    // `authorize` gate and a `deploy` job. Dispatch is its only trigger, and every job
+    // except the gate itself must statically require dispatch, main, the typed
+    // cutover phrase and the gate's success - so no push or PR can reach one.
+    expect(Object.keys(frontend.on)).toEqual(["workflow_dispatch"]);
+    expect(frontend.jobs).not.toHaveProperty("build-and-deploy");
+    const gated = Object.entries(frontend.jobs).filter(([name]) => name !== "authorize");
+    expect(gated.map(([name]) => name)).toEqual(["deploy"]);
+    for (const [name, job] of gated as Array<[string, any]>) {
+      expect(job.needs, name).toBe("authorize");
+      expect(job.if, name).toContain("needs.authorize.result == 'success'");
+      expect(job.if, name).toContain("github.event_name == 'workflow_dispatch'");
+      expect(job.if, name).toContain("github.ref == 'refs/heads/main'");
+      expect(job.if, name).toContain("inputs.confirm_cutover == 'replace-explorers-host'");
+      expect(job.if, name).not.toMatch(/\|\||always\(\)|!cancelled\(\)|failure\(\)/);
+    }
+    expect(JSON.stringify(frontend.jobs.authorize)).not.toMatch(/secrets\./);
     const image = workflow("tunes");
     expect(image.jobs["deploy-production"].if).toContain("github.event_name == 'workflow_dispatch'");
     expect(image.jobs["deploy-production"].if).toContain("inputs.release_production");
