@@ -119,6 +119,18 @@ function canonicalWrongReason(path: string, field: string, value: string): strin
   return `canonical handler mismatch: ${path} is mounted but ${field} was not ${value}. ${INVARIANT_NOTE}`;
 }
 
+/*
+ * Until 2026-10-18 this test carried a literal backspace byte (0x08) where `\b` was
+ * meant, so it could never match: every SPA-shell answer surfaced as a JSON
+ * SyntaxError (`ingress-malformed-body`) instead of `ingress-html-shell`.
+ */
+function assertNotApplicationShell(response: Response): void {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (/^\s*text\/html\b/i.test(contentType)) {
+    throw new Error("ingress served the application shell where JSON was expected");
+  }
+}
+
 export async function verifyPlatformIngress(origin: string, fetchImpl: typeof fetch = fetch): Promise<number> {
   let checked = 0;
   for (const probe of PLATFORM_ROUTE_PROBES) {
@@ -146,10 +158,7 @@ export async function verifyPlatformIngress(origin: string, fetchImpl: typeof fe
      * The thrown message still carries no path - `classifyPlatformIngressFailure` maps it
      * to a fixed category and nothing else is printed.
      */
-    const contentType = response.headers.get("content-type") ?? "";
-    if (/^\s*text\/html/i.test(contentType)) {
-      throw new Error("ingress served the application shell where JSON was expected");
-    }
+    assertNotApplicationShell(response);
     const body = await response.json() as Record<string, unknown>;
     const field = readField(body, probe.field);
     if (probe.value === "nonempty" ? typeof field !== "string" || !field.length : field !== probe.value) {
@@ -162,6 +171,81 @@ export async function verifyPlatformIngress(origin: string, fetchImpl: typeof fe
   const strapi = await fetchImpl(`${origin}/api/users/me`, { signal: AbortSignal.timeout(5000) });
   const strapiBody = await strapi.json() as Record<string, unknown>;
   if (strapi.status !== 403 || strapiBody.error !== "fixture identity authority denied") throw new Error("fixture Strapi boundary mismatch");
+  checked++;
+  return checked;
+}
+
+/** A category the probed owner has hidden. Only a hidden one proves the privacy gate. */
+export type HiddenCategoryTarget = { handle: string; category: string };
+
+/**
+ * The ingress probe for a deployed canonical-only host (P2 Task 6).
+ *
+ * `verifyPlatformIngress` is the local fixture's invariant: it also probes five legacy
+ * Music paths and the fixture's Strapi boundary, none of which exist on the production
+ * host, and its count is pinned until P3 retires `combined`. This runs only
+ * `CANONICAL_ROUTES` - whose anonymous `/api/explorers/v1/me` -> 401 is the probe that
+ * reaches the database, so a 503 there fails - plus two probes that tell a working
+ * deployment from a plausible-looking one:
+ *
+ *   - anonymous `GET /api/auth/get-session` must be 200, `Cache-Control: no-store`, body
+ *     literally `null` (Better Auth 1.7.6 `getSession`). A 401 means Better Auth is not
+ *     answering, `{"session":null}` is the fixture stub, and a `text/html` 200 is the
+ *     nginx SPA fallback;
+ *   - a hidden category on a public profile must be 404 from the public read model. An
+ *     empty but public category correctly answers 200, so only a hidden one proves the
+ *     privacy gate is live.
+ *
+ * Unlike the fixture probe, failures name the path: a deployed host has no secret paths.
+ */
+export async function verifyCanonicalIngress(
+  origin: string,
+  hidden: HiddenCategoryTarget,
+  fetchImpl: typeof fetch = fetch,
+): Promise<number> {
+  const get = (path: string, method: ProbeMethod = "GET") =>
+    fetchImpl(`${origin}${path}`, { method, signal: AbortSignal.timeout(5000) });
+  let checked = 0;
+  for (const probe of CANONICAL_ROUTES) {
+    const response = await get(probe.path, probe.method);
+    if (response.status !== probe.status) {
+      throw new Error(`canonical ingress mismatch: ${probe.path} answered ${response.status}, expected ${probe.status}`);
+    }
+    assertNotApplicationShell(response);
+    const field = readField(await response.json() as Record<string, unknown>, probe.field);
+    if (probe.value === "nonempty" ? typeof field !== "string" || !field.length : field !== probe.value) {
+      throw new Error(`canonical handler mismatch: ${probe.path} is mounted but ${probe.field} was not ${probe.value}`);
+    }
+    checked++;
+  }
+
+  const sessionPath = "/api/auth/get-session";
+  const session = await get(sessionPath);
+  if (session.status !== 200) {
+    throw new Error(`canonical ingress mismatch: ${sessionPath} answered ${session.status}, expected 200`);
+  }
+  assertNotApplicationShell(session);
+  const directives = (session.headers.get("cache-control") ?? "").split(",").map((value) => value.trim().toLowerCase());
+  if (!directives.includes("no-store")) {
+    throw new Error(`canonical ingress mismatch: ${sessionPath} is cacheable (Cache-Control must be no-store)`);
+  }
+  let anonymous: unknown;
+  try { anonymous = JSON.parse(await session.text()); } catch { anonymous = undefined; }
+  if (anonymous !== null) {
+    throw new Error(`canonical handler mismatch: ${sessionPath} did not answer the anonymous session as null`);
+  }
+  checked++;
+
+  const hiddenPath = `/api/explorers/v1/profiles/${encodeURIComponent(hidden.handle)}`
+    + `/recommendations/${encodeURIComponent(hidden.category)}`;
+  const gated = await get(hiddenPath);
+  assertNotApplicationShell(gated);
+  if (gated.status !== 404) {
+    throw new Error(`canonical privacy gate not live: ${hiddenPath} answered ${gated.status}, expected 404 for a hidden category`);
+  }
+  if (readField(await gated.json() as Record<string, unknown>, "error.code") !== "NOT_FOUND") {
+    throw new Error(`canonical privacy gate not live: ${hiddenPath} 404 did not come from the public read model`);
+  }
   checked++;
   return checked;
 }

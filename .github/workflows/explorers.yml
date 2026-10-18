@@ -1,105 +1,288 @@
-name: Deploy Explorers Frontend
+name: Deploy explorers.earth (canonical)
+
+# P2 Task 7: the whole application onto the explorers host - SPA, API, database.
+#
+# DORMANT BY DESIGN. It runs only on a manual dispatch from main, and only when
+# `confirm_cutover` is typed exactly; anything else refuses before a secret or an
+# SSH connection is touched. The first real run replaces what the explorers host
+# serves today.
+#
+# It builds no image. The API image is the one tunes.yml's publish-image job
+# pushed, scanned and attested (auditDeploymentAuthority keeps tunes.yml the single
+# build authority); this verifies that attestation for this commit and deploys it
+# by digest.
+#
+# Host layout (shared with deploy/nginx/explorers.conf and deploy/host/explorers-deploy.sh):
+#   /srv/explorers/releases/<sha>/{dist,runtime/headers.conf}
+#   /srv/explorers/current -> releases/<sha>
+#   /opt/explorers/{production.env,production.compose.yml}
+#
+# Repository variables (Settings > Secrets and variables > Actions > Variables):
+#   EXPLORERS_PUBLIC_JSON           the production public.json (P2 Task 5 Step 2)
+#   EXPLORERS_SERVER_NAME           the one public hostname; must match public.json's origin
+#   EXPLORERS_TLS_CERTIFICATE       full-chain PEM path on the host
+#   EXPLORERS_TLS_CERTIFICATE_KEY   private key path on the host
+#   EXPLORERS_NGINX_SITE_PATH       the site file nginx includes, under /etc/nginx/
+# Secrets:
+#   EXPLORERS_DEPLOY_HOST, EXPLORERS_DEPLOY_USER, EXPLORERS_DEPLOY_KEY,
+#   EXPLORERS_DEPLOY_KNOWN_HOSTS (pinned host key), optional DEPLOY_PORT.
+#   The deploy user needs passwordless sudo.
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm_cutover:
+        description: 'Type "replace-explorers-host" to deploy over the live explorers host. Anything else refuses.'
+        required: true
+        default: ""
+        type: string
+      image_digest:
+        description: "sha256 digest tunes.yml's publish-image job pushed for this same commit on main"
+        required: true
+        type: string
 
 permissions:
   contents: read
 
+concurrency:
+  group: explorers-production-deploy
+  cancel-in-progress: false
+
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    # Legacy static deployment has no recorded immutable artifact digest or
-    # source-revision verification. Keep it unavailable until the release
-    # workflow owned by Epic 8 replaces this path.
-    if: ${{ false }}
-
+  authorize:
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - name: Refuse unless the cutover is explicitly confirmed
+        shell: bash
+        env:
+          CONFIRM: ${{ inputs.confirm_cutover }}
+          DIGEST: ${{ inputs.image_digest }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" != workflow_dispatch ]]; then
+            echo "::error::This workflow deploys only on a manual dispatch."; exit 1
+          fi
+          if [[ "$GITHUB_REF" != refs/heads/main ]]; then
+            echo "::error::Deploy only from main (got $GITHUB_REF)."; exit 1
+          fi
+          if [[ "$CONFIRM" != "replace-explorers-host" ]]; then
+            echo "::error::confirm_cutover was not 'replace-explorers-host'. Nothing was deployed."; exit 1
+          fi
+          if [[ ! "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "::error::image_digest must be a sha256 digest from tunes.yml's publish-image job."; exit 1
+          fi
 
-      - name: Create .env
+  deploy:
+    needs: authorize
+    # Repeats the authorize job's checks statically, so this job is unreachable from
+    # a push, a PR or a non-main ref even if authorize were edited to pass.
+    if: needs.authorize.result == 'success' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.confirm_cutover == 'replace-explorers-host'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    # Add required reviewers to this environment for a second human gate.
+    environment: explorers-production
+    permissions:
+      contents: read
+      packages: read
+      attestations: read
+    env:
+      IMAGE_DIGEST: ${{ inputs.image_digest }}
+      PUBLIC_JSON: ${{ vars.EXPLORERS_PUBLIC_JSON }}
+      EXPLORERS_SERVER_NAME: ${{ vars.EXPLORERS_SERVER_NAME }}
+      EXPLORERS_TLS_CERTIFICATE: ${{ vars.EXPLORERS_TLS_CERTIFICATE }}
+      EXPLORERS_TLS_CERTIFICATE_KEY: ${{ vars.EXPLORERS_TLS_CERTIFICATE_KEY }}
+      NGINX_SITE_PATH: ${{ vars.EXPLORERS_NGINX_SITE_PATH }}
+    steps:
+      - name: Require every deploy input before doing any work
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.EXPLORERS_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.EXPLORERS_DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.EXPLORERS_DEPLOY_KEY }}
+          KNOWN_HOSTS: ${{ secrets.EXPLORERS_DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          missing=0
+          if [[ -z "$PUBLIC_JSON" ]]; then
+            echo "::error::Repository variable EXPLORERS_PUBLIC_JSON is not set. It is the production public.json the SPA renders from (P2 Task 5 Step 2); without it the SPA shows 'The application configuration is unavailable.'"
+            missing=1
+          fi
+          for name in EXPLORERS_SERVER_NAME EXPLORERS_TLS_CERTIFICATE EXPLORERS_TLS_CERTIFICATE_KEY NGINX_SITE_PATH; do
+            if [[ -z "${!name}" ]]; then echo "::error::Repository variable ${name/#NGINX_SITE_PATH/EXPLORERS_NGINX_SITE_PATH} is not set."; missing=1; fi
+          done
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_KEY KNOWN_HOSTS; do
+            if [[ -z "${!name}" ]]; then echo "::error::Secret EXPLORERS_$name is not set."; missing=1; fi
+          done
+          [[ "$missing" == 0 ]]
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Require the production compose file
+        run: |
+          # deploy/production.compose.yml arrives with PR #129 (P2 Task 3).
+          test -f deploy/production.compose.yml || { echo "::error::deploy/production.compose.yml is not on main yet (P2 Task 3)."; exit 1; }
+
+      - name: Check public.json agrees with the nginx server name
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$PUBLIC_JSON" > "$RUNNER_TEMP/public.json"
+          origin="$(jq -er '.origin' "$RUNNER_TEMP/public.json")" \
+            || { echo "::error::EXPLORERS_PUBLIC_JSON is not JSON with an origin."; exit 1; }
+          # Five couplings (runtime-config origin check, Better Auth trustedOrigins,
+          # the Origin guard, SameSite cookies, root-relative fetches) force one origin.
+          if [[ "$origin" != "https://$EXPLORERS_SERVER_NAME" ]]; then
+            echo "::error::public.json origin '$origin' is not https://$EXPLORERS_SERVER_NAME."; exit 1
+          fi
+          echo "Rendering for $origin:"; jq . "$RUNNER_TEMP/public.json"
+
+      - name: Authenticate to GHCR for provenance verification
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Verify the image is tunes.yml's attested build of this commit
+        id: image
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          image_name="ghcr.io/${owner}/explorers-tunes"
+          # The SPA is built from this checkout, so the API must be the same commit.
+          gh attestation verify "oci://${image_name}@${IMAGE_DIGEST}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/tunes.yml" \
+            --source-ref refs/heads/main \
+            --source-digest "$GITHUB_SHA"
+          echo "image_name=$image_name" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          cache: npm
+          cache-dependency-path: explorers-earth/package-lock.json
+
+      # A platform build inlines no VITE_* variable (vite.platform.config.ts sets
+      # envPrefix: []). Everything the browser needs comes from runtime-config.json.
+      - name: Build the platform SPA
         working-directory: explorers-earth
         run: |
-          echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" >> .env
-          echo "VITE_REST_API_URL=${{ secrets.VITE_REST_API_URL }}" >> .env
-          echo "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}" >> .env
-          echo "VITE_PUBLIC_ACCESS_TOKEN=${{ secrets.VITE_PUBLIC_ACCESS_TOKEN }}" >> .env
-          echo "VITE_PUBLIC_SHAREABLE_LINK=${{ secrets.VITE_PUBLIC_SHAREABLE_LINK }}" >> .env
-          echo "VITE_GOOGLE_CUSTOM_SEARCH_API_KEY=${{ secrets.VITE_GOOGLE_CUSTOM_SEARCH_API_KEY }}" >> .env
-          echo "VITE_GOOGLE_CUSTOM_SEARCH_ENGINE_ID=${{ secrets.VITE_GOOGLE_CUSTOM_SEARCH_ENGINE_ID }}" >> .env
-          echo "VITE_LOCAL_TUNES_API_URL=${{ secrets.VITE_LOCAL_TUNES_API_URL }}" >> .env
-          echo "VITE_LOCAL_TUNES_ENABLED=${{ secrets.VITE_LOCAL_TUNES_ENABLED }}" >> .env
-          echo "VITE_LOCAL_TUNES_TIMEOUT=${{ secrets.VITE_LOCAL_TUNES_TIMEOUT }}" >> .env
-          echo "VITE_LOCAL_TUNES_RETRY_ATTEMPTS=${{ secrets.VITE_LOCAL_TUNES_RETRY_ATTEMPTS }}" >> .env
-          echo "VITE_INSTAGRAM_API_URL=${{ secrets.VITE_INSTAGRAM_API_URL }}" >> .env
-          echo "VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY }}" >> .env
-          echo "VITE_TMDB_API_KEY=${{ secrets.VITE_TMDB_API_KEY }}" >> .env
-          echo "VITE_TMDB_ACCESS_TOKEN=${{ secrets.VITE_TMDB_ACCESS_TOKEN }}" >> .env
-          echo "VITE_GOOGLE_BOOKS_API_KEY=${{ secrets.VITE_GOOGLE_BOOKS_API_KEY }}" >> .env
+          npm ci
+          npm run landing:check
+          npx tsc -b
+          npx vite build --config vite.platform.config.ts --mode platform
+          node scripts/check-music-production-bundle.mjs
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - name: Assemble the release and render the nginx site
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="$RUNNER_TEMP/stage"
+          mkdir -p "$stage"
+          sh deploy/assemble-release.sh "$RUNNER_TEMP/public.json" explorers-earth/dist "$RUNNER_TEMP/release/$GITHUB_SHA"
+          tar -C "$RUNNER_TEMP/release" -czf "$stage/release.tar.gz" "$GITHUB_SHA"
+          sh deploy/nginx/render-site.sh deploy/nginx/explorers.conf "$stage/explorers.conf"
+          cp deploy/production.compose.yml "$stage/production.compose.yml"
+          cp deploy/host/explorers-deploy.sh "$stage/explorers-deploy.sh"
+          {
+            echo "IMAGE_NAME=${{ steps.image.outputs.image_name }}"
+            echo "IMAGE_DIGEST=$IMAGE_DIGEST"
+            echo "COMMIT=$GITHUB_SHA"
+            echo "NGINX_SITE_PATH=$NGINX_SITE_PATH"
+            echo "SERVER_NAME=$EXPLORERS_SERVER_NAME"
+          } > "$stage/deploy.env"
+          echo "--- rendered headers.conf"; cat "$RUNNER_TEMP/release/$GITHUB_SHA/runtime/headers.conf"
 
-      - name: Install dependencies
-        working-directory: explorers-earth
-        run: npm i
+      - name: Configure SSH with the pinned host key
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.EXPLORERS_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.EXPLORERS_DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.EXPLORERS_DEPLOY_KEY }}
+          KNOWN_HOSTS: ${{ secrets.EXPLORERS_DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          install -m 600 /dev/null "$HOME/.ssh/explorers_deploy"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/explorers_deploy"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          {
+            echo "Host explorers"
+            echo "  HostName $DEPLOY_HOST"
+            echo "  User $DEPLOY_USER"
+            echo "  Port ${DEPLOY_PORT:-22}"
+            echo "  IdentityFile $HOME/.ssh/explorers_deploy"
+            echo "  IdentitiesOnly yes"
+            echo "  StrictHostKeyChecking yes"
+            echo "  BatchMode yes"
+            echo "  ServerAliveInterval 30"
+          } > "$HOME/.ssh/config"
+          chmod 600 "$HOME/.ssh/config"
 
-      - name: Build
-        working-directory: explorers-earth
-        run: npm run build
+      - name: Upload the release and stage the API
+        id: stage
+        shell: bash
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          remote="/tmp/explorers-deploy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          echo "remote=$remote" >> "$GITHUB_OUTPUT"
+          ssh explorers "rm -rf '$remote' && install -d -m 700 '$remote'"
+          scp -q "$RUNNER_TEMP"/stage/* "explorers:$remote/"
+          # The job token is read-only and expires with the job; logged out in the last step.
+          printf '%s' "$GHCR_TOKEN" | ssh explorers "sudo docker login ghcr.io -u '$GHCR_USER' --password-stdin"
+          ssh explorers "sudo bash '$remote/explorers-deploy.sh' stage '$remote'"
 
-      - name: Clean server directory
-        uses: appleboy/ssh-action@v1.2.2
-        with:
-          host: ${{ secrets.EXPLORERS_DEPLOY_HOST }}
-          username: ${{ secrets.EXPLORERS_DEPLOY_USER }}
-          key: ${{ secrets.EXPLORERS_DEPLOY_KEY }}
-          script: |
-            rm -rf /home/deployuser/explorers-frontend/*
-            mkdir -p /home/deployuser/explorers-frontend
+      # The API is live from here; the SPA is still the previous one. Fail now rather
+      # than after the swap.
+      - name: API acceptance checks, before the SPA switches
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -f -N -o ExitOnForwardFailure=yes -L 15000:127.0.0.1:5000 explorers
+          api=http://127.0.0.1:15000
+          # Present as nginx does, so the API sees the production host and scheme.
+          probe() { curl -s --max-time 10 -H "Host: $EXPLORERS_SERVER_NAME" -H "X-Forwarded-Proto: https" "$@"; }
+          check() {
+            local path="$1" want_status="$2" want_body="$3" out status type body
+            out="$(probe -D - "$api$path")" || { echo "::error::$path did not answer"; return 1; }
+            status="$(printf '%s' "$out" | head -n 1 | awk '{print $2}')"
+            type="$(printf '%s' "$out" | tr -d '\r' | grep -i '^content-type:' | head -n 1 || true)"
+            body="$(printf '%s' "$out" | tr -d '\r' | awk 'f{print} /^$/{f=1}')"
+            [[ "$status" == "$want_status" ]] || { echo "::error::$path answered $status, expected $want_status"; return 1; }
+            [[ "$type" =~ application/json ]] || { echo "::error::$path is not JSON ($type) - the SPA shell or a proxy answered"; return 1; }
+            [[ "$body" =~ $want_body ]] || { echo "::error::$path body did not match $want_body: $body"; return 1; }
+            echo "ok $path -> $status"
+          }
+          check /health/ready 200 '"ready":true'
+          # The probe that actually reaches the database through the auth stack.
+          check /api/explorers/v1/me 401 'UNAUTHENTICATED'
+          # Better Auth itself answering: 200, literally null, never cacheable.
+          check /api/auth/get-session 200 '^null$'
+          probe -D - -o /dev/null "$api/api/auth/get-session" | tr -d '\r' | grep -iq '^cache-control:.*no-store' \
+            || { echo "::error::/api/auth/get-session is cacheable"; exit 1; }
+          # TODO(P2 Task 6, PR #133): replace the checks above with
+          #   verifyCanonicalIngress(origin, { handle, category }, fetchImpl)
+          # from scripts/replatform-route-parity.ts once #133 merges. It also proves the
+          # hidden-category privacy gate, which needs a real handle with a hidden
+          # category - so pass one in, and send the Host header as above.
 
-      - name: Upload build
-        uses: appleboy/scp-action@v1.0.0
-        with:
-          host: ${{ secrets.EXPLORERS_DEPLOY_HOST }}
-          username: ${{ secrets.EXPLORERS_DEPLOY_USER }}
-          key: ${{ secrets.EXPLORERS_DEPLOY_KEY }}
-          port: ${{ secrets.DEPLOY_PORT }}
-          source: "explorers-earth/dist/"
-          target: "/home/deployuser/explorers-frontend"
+      - name: Switch the SPA and the nginx site
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh explorers "sudo bash '${{ steps.stage.outputs.remote }}/explorers-deploy.sh' activate '${{ steps.stage.outputs.remote }}'"
 
-      - name: Validate and activate Nginx
-        uses: appleboy/ssh-action@v1.2.2
-        with:
-          host: ${{ secrets.EXPLORERS_DEPLOY_HOST }}
-          username: ${{ secrets.EXPLORERS_DEPLOY_USER }}
-          key: ${{ secrets.EXPLORERS_DEPLOY_KEY }}
-          script: |
-            print_nginx_diagnostics() {
-              sudo systemctl status nginx --no-pager -l || true
-              sudo journalctl -u nginx -n 100 --no-pager || true
-            }
-
-            if ! sudo nginx -t; then
-              print_nginx_diagnostics
-              exit 1
-            fi
-
-            if sudo systemctl is-active --quiet nginx; then
-              if ! sudo systemctl reload nginx; then
-                print_nginx_diagnostics
-                exit 1
-              fi
-            else
-              if ! sudo systemctl start nginx; then
-                print_nginx_diagnostics
-                exit 1
-              fi
-            fi
-
-            if ! sudo systemctl is-active --quiet nginx; then
-              print_nginx_diagnostics
-              exit 1
-            fi
+      - name: Log out of GHCR and remove the staging directory
+        if: always() && steps.stage.outputs.remote != ''
+        shell: bash
+        run: |
+          ssh explorers "sudo docker logout ghcr.io; rm -rf '${{ steps.stage.outputs.remote }}'" || true
+          pkill -f 'ssh -f -N -o ExitOnForwardFailure=yes -L 15000' || true

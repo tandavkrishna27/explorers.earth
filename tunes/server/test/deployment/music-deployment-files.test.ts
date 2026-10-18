@@ -268,7 +268,9 @@ describe("Music deployment authority files", () => {
   it("finds no competing Tunes host deployment authority in another workflow", () => {
     const workflowDirectory = resolve(repoRoot, ".github/workflows");
     const competitors = readdirSync(workflowDirectory)
-      .filter((name) => !["tunes.yml", "tunes-deploy.yml"].includes(name))
+      // explorers.yml (P2 Task 7) deploys the same image to a different host, the
+      // canonical stack. It is held to its own contract in the next test.
+      .filter((name) => !["tunes.yml", "tunes-deploy.yml", "explorers.yml"].includes(name))
       .filter((name) => {
         const source = read(`.github/workflows/${name}`)
           .split(/\r?\n/)
@@ -281,6 +283,22 @@ describe("Music deployment authority files", () => {
         return deploysTunes && /(ssh|scp|docker\s+compose\s+up)/i.test(source);
       });
     expect(competitors).toEqual([]);
+  });
+
+  it("lets explorers.yml deploy only tunes.yml's attested image, and never to the Music host", () => {
+    // The one sanctioned second deployer of explorers-tunes. It must not become a
+    // second build authority or a second route onto the Music host and its stack.
+    const source = read(".github/workflows/explorers.yml")
+      .split(/\r?\n/)
+      .filter((line) => !line.trimStart().startsWith("#"))
+      .join("\n");
+    expect(source).not.toMatch(/build-push-action|docker\s+build|--build\b/);
+    expect(source).toContain('--signer-workflow "$GITHUB_REPOSITORY/.github/workflows/tunes.yml"');
+    expect(source).toContain('--source-digest "$GITHUB_SHA"');
+    expect(source).toContain("secrets.EXPLORERS_DEPLOY_HOST");
+    expect(source).not.toMatch(/TUNES_DEPLOY_|MUSIC_DEPLOY_|music-deploy/);
+    expect(source).toContain("deploy/production.compose.yml");
+    expect(source).not.toMatch(/(^|[\s/])docker-compose\.yml/m);
   });
 
   it("bootstraps the floor from a verified C2 image without assuming C1 has C2 health metadata", () => {
