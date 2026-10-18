@@ -11,6 +11,13 @@ export interface AnalyticsRequestContext {
 const unavailable = () => new AuthorizationError(404, 'NOT_FOUND', 'Analytics target is unavailable');
 const categoryByPage: Record<string, string> = { 'public-home': 'places', 'recommendation-detail': 'places', 'public-movies': 'movies', 'public-books': 'books', 'public-games': 'games', 'public-apps': 'apps', 'public-products': 'products', 'public-people': 'people', 'public-guides': 'guides' };
 const uuid = z.string().uuid();
+export interface OwnerAnalyticsRecord {
+    Account_Id: string;
+    Location_Id: string | null;
+    Recommendation_Id: string | null;
+    Stats: Array<{ type: string; timestamp: string; page: string; element?: string; canonicalPath: string; country: string | null;
+        referrerOrigin?: string; utmParams?: Record<string, string>; metadata?: Record<string, unknown> }>;
+}
 export class ExplorersAnalyticsEventRepository {
     constructor(private readonly pool: Pool) { }
     private async target(db: PoolClient, input: ExplorersAnalyticsInput, context: AnalyticsRequestContext): Promise<string | null> {
@@ -99,5 +106,29 @@ export class ExplorersAnalyticsEventRepository {
         // Aggregate in PostgreSQL; raw payloads never cross the repository boundary.
         const result = await db.query(`WITH eligible AS MATERIALIZED (SELECT event_type,occurred_at,page,category,country_code,element,metadata,utm,referrer_origin,collection_id,recommendation_id FROM analytics_events WHERE account_id=$1 AND occurred_at >= $2 AND occurred_at < $3 AND occurred_at >= clock_timestamp()-interval '366 days' AND ($4::text IS NULL OR category=$4) AND ($5::uuid IS NULL OR collection_id=$5) AND ($6::uuid IS NULL OR recommendation_id=$6)), dimensions AS (SELECT e.event_type,d.dimension,d.key FROM eligible e CROSS JOIN LATERAL (VALUES ('total','total'),('daily',to_char(e.occurred_at AT TIME ZONE 'UTC','YYYY-MM-DD')),('page',e.page),('category',e.category),('country',e.country_code),('trafficSource',CASE WHEN e.utm->>'utm_source' IS NOT NULL THEN e.utm->>'utm_source' WHEN e.referrer_origin IS NOT NULL THEN regexp_replace(lower(e.referrer_origin),'^[^:]+://(www[.])?([^/:]+).*$','\\2') ELSE 'direct' END),('element',e.element),('platform',e.metadata->>'platform'),('collection',e.collection_id::text),('recommendation',e.recommendation_id::text)) d(dimension,key)) , grouped AS (SELECT dimension,coalesce(key,'unknown') AS key,count(*) FILTER(WHERE event_type='view') AS views,count(*) FILTER(WHERE event_type='click') AS clicks,count(*) FILTER(WHERE event_type='interaction') AS interactions FROM dimensions GROUP BY dimension,coalesce(key,'unknown')), ranked AS (SELECT *,row_number() OVER(PARTITION BY dimension ORDER BY views+clicks+interactions DESC,key COLLATE "C") AS position FROM grouped) SELECT dimension,key,views,clicks,interactions FROM ranked WHERE dimension IN ('total','daily') OR position<=100 UNION ALL SELECT dimension||':other','other',sum(views)::bigint,sum(clicks)::bigint,sum(interactions)::bigint FROM ranked WHERE dimension NOT IN ('total','daily') AND position>100 GROUP BY dimension`, [accountId, input.from, input.to, input.category ?? null, input.collectionId ?? null, input.recommendationId ?? null]);
         return result.rows;
+    }
+    /**
+     * The owner dashboard's event read (P5-1): the owner's own events in [from, to], in the
+     * record shape the dashboard has always aggregated client-side - one record per
+     * (collection, recommendation) target with its Stats. This is the one deliberate raw
+     * read, and it is scoped to the authorised owner's own account; summaries stay
+     * aggregate-only. Bounded: newest first, at most `limit` events.
+     */
+    async ownerEvents(db: PoolClient, accountId: string, from: string, to: string, limit: number): Promise<{ records: OwnerAnalyticsRecord[]; truncated: boolean }> {
+        const rows = (await db.query(`SELECT event_type,occurred_at,page,element,canonical_path,country_code,referrer_origin,utm,metadata,collection_id,recommendation_id
+            FROM analytics_events WHERE account_id=$1 AND occurred_at BETWEEN $2 AND $3 ORDER BY occurred_at DESC,id DESC LIMIT $4`, [accountId, from, to, limit + 1])).rows;
+        const truncated = rows.length > limit, records = new Map<string, OwnerAnalyticsRecord>();
+        for (const row of rows.slice(0, limit).reverse()) {
+            const key = `${row.collection_id ?? ''}:${row.recommendation_id ?? ''}`;
+            let record = records.get(key);
+            if (!record)
+                records.set(key, record = { Account_Id: accountId, Location_Id: row.collection_id, Recommendation_Id: row.recommendation_id, Stats: [] });
+            record.Stats.push({ type: row.event_type, timestamp: new Date(row.occurred_at).toISOString(), page: row.page,
+                ...(row.element ? { element: row.element } : {}), canonicalPath: row.canonical_path, country: row.country_code,
+                ...(row.referrer_origin ? { referrerOrigin: row.referrer_origin } : {}),
+                ...(Object.keys(row.utm ?? {}).length ? { utmParams: row.utm } : {}),
+                ...(Object.keys(row.metadata ?? {}).length ? { metadata: row.metadata } : {}) });
+        }
+        return { records: [...records.values()], truncated };
     }
 }

@@ -66,23 +66,10 @@ const AnalyticsDashboard: React.FC = () => {
   const accountDocumentId = canonicalAccount.data?.id;
   const loading = accountLoading || analyticsLoading;
   const error = accountError || analyticsError;
-  /**
-   * The detailed event read needs an auth-store `token`, and canonical sign-in never
-   * issues one: `acceptVerified` sets `token: null`, and the only action that sets a
-   * token is the retired Strapi password `login`, which nothing calls. So for a
-   * signed-in owner this is always true today, and the panel below has no data to
-   * show through no fault of the owner's.
-   *
-   * It must not be reported as "you have no analytics yet" - that is a false
-   * statement about their account - and it is not an `error` either, because there is
-   * no failure to surface and nothing for them to retry. `pages/Home.tsx:346` already
-   * models exactly this as its own `unavailable` state; this mirrors it.
-   *
-   * Removing it depends on repointing this dashboard at the canonical
-   * `GET /api/explorers/analytics/summary`, which is ticket 3.4's own package. See
-   * docs/replatform-audit/strapi-server-classification.md, section D.
-   */
-  const detailedAnalyticsUnavailable = isAuthenticated && !token;
+  // P5-1. The detailed read used to need an auth-store `token`, which canonical sign-in
+  // never issues, so every owner saw "Detailed Analytics Unavailable". It now rides the
+  // canonical session cookie and the server reads canonical analytics_events; a token is
+  // forwarded only if a legacy session still carries one.
 
   useEffect(() => {
     if (!loading) {
@@ -135,11 +122,6 @@ const AnalyticsDashboard: React.FC = () => {
 
   // Generate context-aware empty state message
   const getEmptyStateMessage = () => {
-    // Checked before the range and the data, because when the read cannot run at all
-    // neither of those is the reason the panel is empty.
-    if (detailedAnalyticsUnavailable) {
-      return t('analytics.dashboard.emptyState.unavailableMessage');
-    }
     // Check if custom range is incomplete
     if (timeFilter.type === 'custom' && !isCustomRangeComplete) {
       if (!timeFilter.startDate && !timeFilter.endDate) {
@@ -209,7 +191,6 @@ const AnalyticsDashboard: React.FC = () => {
     let active = true;
     if (
       !isAuthenticated ||
-      !token ||
       !accountDocumentId ||
       !getDateRange ||
       !isCustomRangeComplete
@@ -230,7 +211,7 @@ const AnalyticsDashboard: React.FC = () => {
       fromDate: getDateRange.fromDate,
       toDate: getDateRange.toDate,
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      token,
+      ...(token ? { token } : {}),
     })
       .then((records) => {
         if (!active) return;
@@ -463,17 +444,14 @@ const AnalyticsDashboard: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                 </div>
-                <h3 className="dt-heading mb-2">{t(detailedAnalyticsUnavailable
-                  ? 'analytics.dashboard.emptyState.unavailableTitle'
-                  : 'analytics.dashboard.emptyState.title')}</h3>
+                <h3 className="dt-heading mb-2">{t('analytics.dashboard.emptyState.title')}</h3>
                 <p className="dt-subtext mb-4">
                   {getEmptyStateMessage()}
                 </p>
               </div>
 
-              {/* These tips tell the owner to share QR codes to start seeing data. When
-                  the read is unavailable that is advice for a problem they do not have. */}
-              {!detailedAnalyticsUnavailable && (
+              {/* These tips tell the owner to share QR codes to start seeing data. */}
+              {(
                 <div className="space-y-2 text-left">
                   <h4 className="dt-label mb-2">{t('analytics.dashboard.emptyState.howToStart.title')}</h4>
                   <ul className="dt-subtext space-y-1">

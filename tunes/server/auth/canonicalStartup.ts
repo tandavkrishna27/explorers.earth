@@ -7,6 +7,7 @@ import { checkMusicDatabaseReadiness } from "../db/readiness";
 import { createCanonicalApp } from "./canonicalApp";
 import { resolveExplorersAuthConfig } from "./betterAuth";
 import { runAccountLifecycleMaintenance } from "../application/accountLifecycleMaintenance";
+import { runMediaCleanupMaintenance } from "../application/mediaCleanupMaintenance";
 import { resolveObjectStorage } from "../services/objectStorage";
 import {resolveAppProviderOwnerChoices} from '../config/app-provider-configuration';
 
@@ -81,6 +82,8 @@ export async function startCanonicalServer(
       if (maintenance || maintenanceAdmission.paused) return;
       maintenance = runAccountLifecycleMaintenance(pool!, storage).then(()=>undefined).catch(() => {
         process.stderr.write("Account lifecycle maintenance failed; retry is scheduled\n");
+      }).then(() => runMediaCleanupMaintenance(pool!, storage)).then(()=>undefined).catch(() => {
+        process.stderr.write("Media cleanup maintenance failed; retry is scheduled\n");
       }).finally(() => { maintenance = undefined; });
     };
     maintain();

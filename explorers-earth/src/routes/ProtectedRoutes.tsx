@@ -10,7 +10,6 @@ import Analytics from "../pages/Analytics";
 import SettingsPage from "../pages/SettingsPage";
 import Home from "../pages/Home";
 import RecommendationsHub from "../pages/RecommendationsHub";
-import Instagram from "../pages/Instagram";
 import AddRecommendation from "../features/Favorites/components/AddRecommendation";
 import {
   GuidesPage,
@@ -64,7 +63,6 @@ const ProtectedRoutes = ({
       <Route path="analytics" element={<Analytics />} />
       <Route path="settings" element={<SettingsPage />} />
       <Route path="home" element={<Home />} />
-      <Route path="instagram" element={<Instagram />} />
       <Route path="recommendations/movies" element={<MoviesHome />} />
       <Route path="recommendations/movies/:listId" element={<MovieListView />} />
       <Route path="recommendations/movies/:listId/add" element={<AddMoviePage />} />
@@ -122,7 +120,6 @@ const ProtectedRoutes = ({
       <Route path="analytics" element={<Analytics />} />
       <Route path="settings" element={<SettingsPage />} />
       <Route path="home" element={<Home />} />
-      <Route path="instagram" element={<Instagram />} />
       <Route path="recommendations/movies" element={<MoviesHome />} />
       <Route path="recommendations/movies/:listId" element={<MovieListView />} />
       <Route path="recommendations/movies/:listId/add" element={<AddMoviePage />} />

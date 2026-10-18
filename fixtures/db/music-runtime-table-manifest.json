@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0057_retire_music_category",
+    "expectedId": "0059_explorers_person_suppression_audit",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -60,7 +60,9 @@
       "0054_explorers_place_individual_pins.sql",
       "0055_explorers_app_enrichment.sql",
       "0056_explorers_app_enrichment_jobs.sql",
-      "0057_retire_music_category.sql"
+      "0057_retire_music_category.sql",
+      "0058_explorers_place_photo_backfill.sql",
+      "0059_explorers_person_suppression_audit.sql"
     ],
     "controlTables": [
       "music_schema_migrations",
@@ -448,6 +450,12 @@
       "managedBy": "drizzle",
       "family": "pii",
       "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "person_suppression_actions",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "security-audit",
+      "lifecycle": "retain-policy"
     },
     {
       "name": "place_collection_details",

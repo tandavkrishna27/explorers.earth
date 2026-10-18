@@ -684,7 +684,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts",
-      "line": 23
+      "line": 51
     },
     {
       "method": "GET",
@@ -2550,7 +2550,7 @@
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/auth/canonicalStartup.ts",
-      "line": 87
+      "line": 90
     },
     {
       "kind": "setTimeout",

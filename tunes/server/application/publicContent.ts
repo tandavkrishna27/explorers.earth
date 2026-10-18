@@ -1,3 +1,4 @@
+import {isReservedHandle} from '../../shared/explorersReservedHandles';
 import {publicPlaceReadFailure,readPublicPlaceEligibility,PublicPlaceRestartConflict,placePinsReadInteger,publicPlaceSuppressionGate,publicPlaceRowsStillEligible,placePinJoin,placePinBucket,placeSortPosition} from './placePinsRead';
 import {readManualGamePresentation} from '../repositories/gameManualRepository';
 import {readMovieProviderMedia} from '../repositories/movieMedia';
@@ -69,6 +70,9 @@ export class PublicContentService {
    // cannot then be refused as malformed by the write.
    const parsed=z.object({handle:z.string().trim().min(3).max(30)}).strict().safeParse(raw);
    if(!parsed.success)throw new PublicContentFailure(400);
+   // A reserved handle is never free: the write refuses it, so saying otherwise sends the
+   // creator through the whole onboarding to a 422 at the end (P5-2).
+   if(isReservedHandle(parsed.data.handle))return {available:false};
    const found=await this.pool.query<{taken:boolean}>(
     'SELECT EXISTS(SELECT 1 FROM creator_accounts WHERE handle_key=lower($1)) AS taken',
     [parsed.data.handle]);

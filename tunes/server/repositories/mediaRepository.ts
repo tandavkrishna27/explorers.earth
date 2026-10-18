@@ -6,6 +6,20 @@ export type MediaRecord = { id: string; account_id: string; purpose: string; sta
   storage_environment: string; storage_version_id: string | null; content_sha256: Buffer };
 export class MediaAccountInactive extends Error {}
 
+/** A stale upload reservation, or ready media older than a day that nothing references. */
+const ABANDONED = `(
+        (m.status='uploading' AND m.created_at < now()-interval '10 minutes') OR
+        (m.status='ready' AND m.created_at < now()-interval '24 hours'
+          AND NOT EXISTS (SELECT 1 FROM profile_media WHERE media_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM profile_feed_items WHERE media_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM collection_media WHERE media_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM guide_section_photos WHERE media_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM recommendation_media WHERE media_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM recommendation_book_covers WHERE media_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM recommendation_movie_media WHERE media_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM recommendation_app_screenshots WHERE media_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM recommendation_place_photos WHERE media_id=m.id)))`;
+
 /**
  * The two category lists inside isPublicAttachment, exported so the drift that caused a
  * real defect is checkable.
@@ -167,21 +181,21 @@ export class MediaRepository {
     return result.rows;
   }
 
+  /** Accounts with anything retryPendingDeletes would act on, oldest first. The same
+   * predicate as abandoned and pendingDeletes, so the scheduled sweep can never reach an
+   * asset the per-account pass would leave alone. */
+  async accountsNeedingCleanup(environment: StorageEnvironment, limit = 25): Promise<string[]> {
+    const result = await this.db.query<{ account_id: string }>(`SELECT m.account_id FROM media_assets m
+      JOIN media_objects o ON o.media_id=m.id AND o.variant='original'
+      WHERE o.storage_environment=$1 AND (m.status='pending_delete' OR ${ABANDONED})
+      GROUP BY m.account_id ORDER BY min(coalesce(m.delete_requested_at,m.created_at)),m.account_id LIMIT $2`, [environment, limit]);
+    return result.rows.map((row) => row.account_id);
+  }
+
   async abandoned(accountId: string, environment: StorageEnvironment, limit = 20): Promise<Array<{ id: string; status: string }>> {
     const result = await this.db.query<{ id: string; status: string }>(`SELECT m.id,m.status FROM media_assets m
       JOIN media_objects o ON o.media_id=m.id AND o.variant='original'
-      WHERE m.account_id=$1 AND o.storage_environment=$2 AND (
-        (m.status='uploading' AND m.created_at < now()-interval '10 minutes') OR
-        (m.status='ready' AND m.created_at < now()-interval '24 hours'
-          AND NOT EXISTS (SELECT 1 FROM profile_media WHERE media_id=m.id)
-          AND NOT EXISTS (SELECT 1 FROM profile_feed_items WHERE media_id=m.id)
-          AND NOT EXISTS (SELECT 1 FROM collection_media WHERE media_id=m.id)
-          AND NOT EXISTS (SELECT 1 FROM guide_section_photos WHERE media_id=m.id)
-          AND NOT EXISTS (SELECT 1 FROM recommendation_media WHERE media_id=m.id)
-          AND NOT EXISTS (SELECT 1 FROM recommendation_book_covers WHERE media_id=m.id)
-          AND NOT EXISTS (SELECT 1 FROM recommendation_movie_media WHERE media_id=m.id)
-          AND NOT EXISTS (SELECT 1 FROM recommendation_app_screenshots WHERE media_id=m.id)
-          AND NOT EXISTS (SELECT 1 FROM recommendation_place_photos WHERE media_id=m.id)))
+      WHERE m.account_id=$1 AND o.storage_environment=$2 AND ${ABANDONED}
       ORDER BY m.created_at,m.id LIMIT $3`, [accountId, environment, limit]);
     return result.rows;
   }

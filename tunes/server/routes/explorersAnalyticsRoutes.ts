@@ -128,7 +128,7 @@ const readScopeSchema = z.object({
 });
 
 export interface ExplorersAnalyticsRouteDependencies {
-  service: {ingest(input:z.infer<typeof explorersAnalyticsInputSchema>,context:{getIp:()=>string|null}):Promise<{status:'consent-denied'}|{status:'pending'|'dropped';duplicate:true}|{status:'committed';duplicate:boolean;documentId?:string;retired?:true}>;readAccountEvents(scope:{accountId:string;from:string;to:string}):Promise<unknown[]>};
+  service: {ingest(input:z.infer<typeof explorersAnalyticsInputSchema>,context:{getIp:()=>string|null}):Promise<{status:'consent-denied'}|{status:'pending'|'dropped';duplicate:true}|{status:'committed';duplicate:boolean;documentId?:string;retired?:true}>;readAccountEvents(scope:{accountId:string;from:string;to:string},request?:object):Promise<unknown[]>};
   authorizeOwner: (request: Request, accountId: string) => Promise<boolean>;
   validatePublicTarget: (
     input: z.infer<typeof explorersAnalyticsInputSchema>,
@@ -198,7 +198,7 @@ export function setupExplorersAnalyticsRoutes(
       if (!(await dependencies.authorizeOwner(req, parsed.data.accountId))) {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const events = await dependencies.service.readAccountEvents(parsed.data);
+      const events = await dependencies.service.readAccountEvents(parsed.data, req);
       return res.status(200).json({ events });
     } catch (error) {
       console.error("Explorers analytics read failed");

@@ -3,6 +3,7 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadMusicMigrations, migrateMusicDatabase, verifyMusicDatabase } from "../../db/migrate";
 import { validateIntegrationDatabaseTarget } from "../integration-global-setup";
+import { EXPECTED_MUSIC_MIGRATION_ID } from "../../../shared/music-migration-contract";
 
 /**
  * P3-6: 0057 retires the music category. Every case runs against ONE database that was
@@ -79,8 +80,9 @@ describePostgres("0057 retire music category", () => {
     seeded.booksEventId = await event(seeded.music, "public-books", "books");
 
     const upgraded = await migrateMusicDatabase(pool);
-    expect(upgraded.appliedIds).toEqual([RETIREMENT]);
-    expect((await verifyMusicDatabase(pool)).currentId).toBe(RETIREMENT);
+    // Later migrations apply on top; this suite is about 0057's effect, not the head.
+    expect(upgraded.appliedIds[0]).toBe(RETIREMENT);
+    expect((await verifyMusicDatabase(pool)).currentId).toBe(EXPECTED_MUSIC_MIGRATION_ID);
   }, 120_000);
 
   afterAll(async () => {
