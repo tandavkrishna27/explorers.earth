@@ -581,3 +581,238 @@ describe("retention", () => {
     expect(removed).toEqual([`prod/backups/${runFolderName(new Date(Date.UTC(2026, 9, 1, 2)), "scheduled", "a".repeat(32))}/`]);
   });
 });
+
+import {
+  PERMITTED_RESTORE_ROLES, RestoredMediaStore, assertReceiptDirectory, assertRestoredSchema, assertRowCounts,
+  buildDrillReceipt, buildRestoreCommand, drillProbePlan, planRoleBootstrap, signSessionCookie, writeDrillReceipt,
+} from "../../../../scripts/platform-restore-drill";
+import { PUBLIC_RECOMMENDATION_CATEGORIES } from "../../../server/publicProfile/publicProfilePolicy";
+import { createHmac, randomBytes } from "node:crypto";
+import { existsSync } from "node:fs";
+
+describe("role bootstrap", () => {
+  const globals = [
+    "CREATE ROLE music_runtime;",
+    "ALTER ROLE music_runtime WITH NOSUPERUSER INHERIT NOCREATEROLE NOCREATEDB NOLOGIN NOREPLICATION NOBYPASSRLS;",
+    "CREATE ROLE app_enrichment_worker;",
+    "ALTER ROLE app_enrichment_worker WITH NOSUPERUSER NOINHERIT NOCREATEROLE NOCREATEDB NOLOGIN NOREPLICATION NOBYPASSRLS;",
+    "CREATE ROLE app_enrichment_worker_owner;",
+    "CREATE ROLE app_enrichment_retention;",
+    "CREATE ROLE app_enrichment_retention_owner;",
+    "CREATE ROLE explorers_migrator;",
+    "ALTER ROLE explorers_migrator WITH SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN REPLICATION BYPASSRLS;",
+    "CREATE ROLE explorers_runtime;",
+  ].join("\n");
+
+  const manifest = { roles: [...PERMITTED_RESTORE_ROLES], migratorRole: "explorers_migrator", runtimeLoginRole: "explorers_runtime" };
+
+  it("creates exactly the five capability roles plus an unprivileged stand-in for the production migrator", () => {
+    const plan = planRoleBootstrap(globals, manifest, { existingRoles: ["music_migrator"] });
+    expect(plan.create).toEqual([
+      "music_runtime", "app_enrichment_worker", "app_enrichment_worker_owner",
+      "app_enrichment_retention", "app_enrichment_retention_owner", "explorers_migrator",
+    ]);
+    // prepareAppWorkerCustody creates the four Apps roles NOINHERIT and 0056 asserts it.
+    expect(plan.statements.join("\n")).toContain("CREATE ROLE app_enrichment_worker NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS");
+    expect(plan.statements.join("\n")).toContain("CREATE ROLE music_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT NOREPLICATION NOBYPASSRLS");
+  });
+
+  it("never creates a login, a password or a privileged role", () => {
+    const rendered = planRoleBootstrap(globals, manifest, { existingRoles: ["music_migrator"] }).statements.join("\n");
+    expect(rendered).not.toMatch(/PASSWORD/);
+    expect(rendered).not.toMatch(/ SUPERUSER/);
+    expect(rendered).not.toMatch(/ LOGIN/);
+    // 0056 refuses if app_enrichment_worker has any member.
+    expect(rendered).not.toMatch(/GRANT /);
+  });
+
+  it("refuses a role the manifest declares that is not a permitted capability role", () => {
+    expect(() => planRoleBootstrap(`${globals}\nCREATE ROLE attacker;`,
+      { ...manifest, roles: [...manifest.roles, "attacker"] }, { existingRoles: [] }))
+      .toThrow(/not a permitted restore role/);
+    expect(PERMITTED_RESTORE_ROLES).toEqual(["music_runtime", "app_enrichment_worker",
+      "app_enrichment_worker_owner", "app_enrichment_retention", "app_enrichment_retention_owner"]);
+  });
+
+  it("refuses a manifest role the globals capture does not declare", () => {
+    expect(() => planRoleBootstrap("CREATE ROLE music_runtime;", manifest, { existingRoles: [] }))
+      .toThrow(/absent from the globals capture/);
+  });
+
+  it("skips a role the disposable cluster already has", () => {
+    const plan = planRoleBootstrap(globals, manifest, { existingRoles: ["music_migrator", "music_runtime"] });
+    expect(plan.create).not.toContain("music_runtime");
+  });
+});
+
+describe("pg_restore invocation", () => {
+  it("restores with owners and ACLs into a single transaction and stops on error", () => {
+    const command = buildRestoreCommand({ containerId: "a".repeat(64), database: "explorers_restore_drill_aaaaaaaa",
+      user: "music_migrator", dumpPath: "/restore/dump.pgc" });
+    expect(command.args.slice(0, 3)).toEqual(["exec", "a".repeat(64), "pg_restore"]);
+    expect(command.args).toContain("--exit-on-error");
+    expect(command.args).toContain("--single-transaction");
+    expect(command.args).not.toContain("--no-owner");
+    expect(command.args).not.toContain("--no-acl");
+    expect(command.args).not.toContain("--clean");
+  });
+
+  it("refuses a database outside the drill namespace", () => {
+    expect(() => buildRestoreCommand({ containerId: "a".repeat(64), database: "explorers", user: "music_migrator", dumpPath: "/r" }))
+      .toThrow(/drill namespace/);
+  });
+});
+
+describe("restore fidelity oracle", () => {
+  const state = {
+    ready: true, currentId: "0056_explorers_app_enrichment_jobs",
+    currentChecksum: "e".repeat(64), schemaChecksum: "f".repeat(64),
+    appliedIds: Array.from({ length: 56 }, (_, index) => `${String(index + 1).padStart(4, "0")}_x`),
+    pendingIds: [] as string[],
+  };
+  const manifest = { migrationMarker: "0056_explorers_app_enrichment_jobs",
+    journalChecksum: "e".repeat(64), schemaChecksum: "f".repeat(64) };
+
+  it("accepts a restore whose journal and live fingerprint both match the manifest", () => {
+    expect(assertRestoredSchema(state, manifest)).toEqual({ rows: 56, currentId: state.currentId, pending: [] });
+  });
+
+  it("reports pending migrations for migrate-forward instead of refusing them", () => {
+    // Found during execution: restore-forward is the only recovery (see the plan's
+    // migration constraint), so a backup older than the drill's code must restore
+    // and then migrate forward, not be refused.
+    expect(assertRestoredSchema({ ...state, ready: false, pendingIds: ["0057_x"] }, manifest).pending).toEqual(["0057_x"]);
+  });
+
+  it.each([
+    ["a different chain tip", { currentId: "0055_explorers_app_enrichment" }],
+    ["a different migration checksum", { currentChecksum: "0".repeat(64) }],
+    // This is the case that catches a lossy dump: the journal row inside the dump
+    // records the fingerprint the migration produced, and inspectMusicDatabase
+    // recomputes it live (migrate.ts inspectWithClient). If pg_restore dropped a
+    // default, a trigger, an index or a function body, the two disagree.
+    ["a drifted schema fingerprint", { schemaChecksum: "0".repeat(64) }],
+    ["an unready journal with nothing pending", { ready: false }],
+  ])("refuses %s", (_name, override) => {
+    expect(() => assertRestoredSchema({ ...state, ...override }, manifest)).toThrow(/restored schema/);
+  });
+
+  it("compares every table's row count against the manifest and names the first divergence", () => {
+    expect(assertRowCounts({ creator_accounts: 2, auth_user: 2 }, { creator_accounts: 2, auth_user: 2 })).toBe(true);
+    expect(() => assertRowCounts({ creator_accounts: 1, auth_user: 2 }, { creator_accounts: 2, auth_user: 2 }))
+      .toThrow(/creator_accounts/);
+    expect(() => assertRowCounts({ creator_accounts: 2 }, { creator_accounts: 2, auth_user: 2 }))
+      .toThrow(/auth_user/);
+  });
+});
+
+describe("restored media store", () => {
+  it("reports the backup's environment so resolveMediaContent admits its keys unchanged", () => {
+    // media.ts refuses any row whose storage_environment differs from the store's.
+    // LocalObjectStorage hard-codes "local", so a prod-keyed restore cannot be served
+    // through it without mutating data.
+    expect(new RestoredMediaStore(tmpdir(), "prod").environment).toBe("prod");
+  });
+
+  it("serves bytes by the original key", async () => {
+    const root = mkdtempSync(join(tmpdir(), "restored-media-"));
+    const key = `prod/${ACCOUNT}/${MEDIA}`;
+    try {
+      mkdirSync(join(root, "prod", ACCOUNT), { recursive: true });
+      writeFileSync(join(root, "prod", ACCOUNT, MEDIA), Buffer.from("bytes"));
+      const store = new RestoredMediaStore(root, "prod");
+      expect((await store.get(key)).toString()).toBe("bytes");
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it("refuses a key outside the environment prefix and refuses every write", async () => {
+    const store = new RestoredMediaStore(tmpdir(), "prod");
+    await expect(store.get(`local/${ACCOUNT}/${MEDIA}`)).rejects.toThrow(/key/);
+    await expect(store.put(`prod/${ACCOUNT}/${MEDIA}`, Buffer.alloc(0))).rejects.toThrow(/read-only/);
+    await expect(store.delete(`prod/${ACCOUNT}/${MEDIA}`)).rejects.toThrow(/read-only/);
+  });
+});
+
+describe("drill probe plan", () => {
+  it("covers liveness, readiness, an unauthenticated principal and every public category", () => {
+    const plan = drillProbePlan({ handle: "owner" });
+    expect(plan.map(probe => probe.path)).toContain("/health/live");
+    expect(plan.map(probe => probe.path)).toContain("/health/ready");
+    expect(plan.find(probe => probe.path === "/api/explorers/v1/me")?.expect).toEqual([401]);
+    for (const category of PUBLIC_RECOMMENDATION_CATEGORIES) {
+      expect(plan.map(probe => probe.path)).toContain(`/api/explorers/v1/profiles/owner/recommendations/${category}`);
+    }
+  });
+
+  it("derives categories from the public policy rather than a literal list", () => {
+    // Found during execution: the plan probed categoryKeys, which still includes music
+    // and has no public route. PUBLIC_RECOMMENDATION_CATEGORIES is what the route serves.
+    expect(drillProbePlan({ handle: "owner" }).filter(probe => probe.category).length).toBe(PUBLIC_RECOMMENDATION_CATEGORIES.length);
+  });
+
+  it("probes only health when the restored database has no public profile", () => {
+    expect(drillProbePlan({ handle: undefined }).some(probe => probe.category)).toBe(false);
+  });
+});
+
+describe("restored session authentication", () => {
+  it("signs a restored session token exactly as Better Auth's cookie signer does", () => {
+    // The format the existing integration suites authenticate with
+    // (book-catalog.integration.test.ts persona()).
+    const secret = randomBytes(32).toString("hex");
+    expect(signSessionCookie("better-auth.session_token", "tok", secret))
+      .toBe(`better-auth.session_token=tok.${createHmac("sha256", secret).update("tok").digest("base64")}`);
+  });
+});
+
+describe("drill receipt", () => {
+  const receiptInput = () => ({
+    runId: "b".repeat(32), result: "passed" as const, drilledAt: "2026-10-18T09:14:00.000Z",
+    drillCommit: "c".repeat(40), manifestDigest: "7".repeat(64),
+    migrationMarker: "0056_explorers_app_enrichment_jobs", schemaChecksum: "f".repeat(64),
+    cleanup: "database-dropped-container-removed" as const,
+    phases: [{ phase: "pg-restore", milliseconds: 1000 }, { phase: "boot", milliseconds: 500 }],
+    proofs: {
+      journal: { rows: 56, currentId: "0056_explorers_app_enrichment_jobs" },
+      identity: { authUsers: 2, authSessions: 1, creatorAccounts: 2 },
+      categories: { books: 2 }, media: { objects: 1, hashesMatched: 1, gatedRouteResolved: 1 },
+      rowCountsMatched: true,
+    },
+  });
+
+  it("requires a fresh directory directly under the system temp directory", () => {
+    const parent = tmpdir();
+    const fresh = join(parent, `platform-restore-drill-${randomBytes(4).toString("hex")}`);
+    expect(assertReceiptDirectory(fresh)).toBe(resolve(fresh));
+    // The e2e runner's rule, for the same reason: a pre-existing directory could
+    // already hold a receipt someone would read as this run's evidence.
+    const existing = mkdtempSync(join(parent, "platform-restore-drill-exists-"));
+    try { expect(() => assertReceiptDirectory(existing)).toThrow(/must not exist/); }
+    finally { rmSync(existing, { recursive: true, force: true }); }
+    expect(() => assertReceiptDirectory("relative/dir")).toThrow(/absolute/);
+    expect(() => assertReceiptDirectory(join(parent, "nested", "platform-restore-drill-aaaaaaaa"))).toThrow(/temp/);
+    expect(() => assertReceiptDirectory(join(parent, "wrong-prefix-aaaaaaaa"))).toThrow(/name/);
+  });
+
+  it("sums phase timings into the recovery measurement", () => {
+    const receipt = buildDrillReceipt(receiptInput());
+    expect(receipt.recoveryMilliseconds).toBe(1500);
+    expect(() => drillReceiptSchema.parse(receipt)).not.toThrow();
+  });
+
+  it("writes the receipt owner-only and refuses to overwrite one", () => {
+    const directory = join(tmpdir(), `platform-restore-drill-${randomBytes(4).toString("hex")}`);
+    try {
+      const receipt = buildDrillReceipt(receiptInput());
+      const path = writeDrillReceipt(directory, receipt);
+      expect(existsSync(path)).toBe(true);
+      expect(JSON.parse(readFileSync(path, "utf8")).version).toBe("explorers-platform-restore-drill/v1");
+      expect(() => writeDrillReceipt(directory, receipt)).toThrow();
+    } finally { rmSync(directory, { recursive: true, force: true }); }
+  });
+
+  it("records a failed drill rather than throwing it away", () => {
+    const receipt = buildDrillReceipt({ ...receiptInput(), result: "failed", cleanup: "leaked", failure: "pg-restore: exit 1" });
+    expect(drillReceiptSchema.parse(receipt).result).toBe("failed");
+  });
+});

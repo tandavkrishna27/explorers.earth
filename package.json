@@ -49,7 +49,8 @@
     "platform:test:browser-egress": "node explorers-earth/scripts/replatform-browser-egress.mjs",
     "platform:test:e2e": "node scripts/replatform-e2e.mjs",
     "platform:seed": "tsx scripts/replatform-local.ts seed",
-    "platform:backup": "node tunes/deployment/platform-backup.mjs"
+    "platform:backup": "node tunes/deployment/platform-backup.mjs",
+    "platform:restore-drill": "tsx scripts/platform-restore-drill.ts"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
