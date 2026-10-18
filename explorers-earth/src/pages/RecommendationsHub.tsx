@@ -535,6 +535,12 @@ const RecommendationCard = ({
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Anchor the (portaled, position: fixed) dropdown under the trigger button
+  const anchorBelow = (rect: DOMRect) => {
+    const MENU_WIDTH = 208; // matches w-52 below
+    return { top: rect.bottom + 8, left: Math.max(8, rect.right - MENU_WIDTH) };
+  };
+
   // Open/close the kebab menu, positioning the (portaled) dropdown under the button
   const toggleKebab = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -543,14 +549,22 @@ const RecommendationCard = ({
       return;
     }
     const rect = kebabButtonRef.current?.getBoundingClientRect();
-    if (rect) {
-      const MENU_WIDTH = 208; // matches w-52 below
-      setMenuPos({ top: rect.bottom + 8, left: Math.max(8, rect.right - MENU_WIDTH) });
-    }
+    if (rect) setMenuPos(anchorBelow(rect));
     setShowKebab(true);
   };
 
-  // The dropdown is portaled to <body>, so close it on outside click, scroll, or resize
+  // The dropdown is portaled to <body>, so close it on outside click, and keep it
+  // under its trigger while the page scrolls or resizes.
+  //
+  // This used to close the menu on ANY scroll event. The `scroll` listener is a
+  // capture listener on window, so it also heard scrolls nobody asked for: the
+  // layout scroller is clamped or re-anchored whenever content above the grid
+  // appears or disappears ("Verifying your account…", "Saving category settings…",
+  // the route loader), and each of those closed an open menu within a few hundred
+  // milliseconds of opening it. A person lost the menu they had just opened; the
+  // E2E pin cases saw the menu button detach and timed out waiting for it.
+  // Following the trigger keeps the menu where it belongs; it only closes when the
+  // trigger itself is no longer on screen.
   useEffect(() => {
     if (!showKebab) return;
     const handlePointerDown = (e: MouseEvent) => {
@@ -561,14 +575,28 @@ const RecommendationCard = ({
       if (el?.closest("[data-kebab-menu]") || kebabButtonRef.current?.contains(node)) return;
       setShowKebab(false);
     };
-    const handleDismiss = () => setShowKebab(false);
+    let frame = 0;
+    const reposition = () => {
+      frame = 0;
+      const rect = kebabButtonRef.current?.getBoundingClientRect();
+      if (!rect || rect.bottom < 0 || rect.top > window.innerHeight) {
+        setShowKebab(false);
+        return;
+      }
+      const next = anchorBelow(rect);
+      setMenuPos(prev => (prev && prev.top === next.top && prev.left === next.left ? prev : next));
+    };
+    const scheduleReposition = () => {
+      if (!frame) frame = requestAnimationFrame(reposition);
+    };
     document.addEventListener("mousedown", handlePointerDown);
-    window.addEventListener("scroll", handleDismiss, true);
-    window.addEventListener("resize", handleDismiss);
+    window.addEventListener("scroll", scheduleReposition, true);
+    window.addEventListener("resize", scheduleReposition);
     return () => {
+      if (frame) cancelAnimationFrame(frame);
       document.removeEventListener("mousedown", handlePointerDown);
-      window.removeEventListener("scroll", handleDismiss, true);
-      window.removeEventListener("resize", handleDismiss);
+      window.removeEventListener("scroll", scheduleReposition, true);
+      window.removeEventListener("resize", scheduleReposition);
     };
   }, [showKebab]);
 

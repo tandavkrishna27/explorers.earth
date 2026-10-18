@@ -27,6 +27,10 @@ on:
       - .github/workflows/tunes.yml
       - .github/workflows/tunes-deploy.yml
       - .github/workflows/music-reconcile.yml
+      # Markdown-only changes cannot alter the image, and the docs-reading contracts run in
+      # test.yml (docs-contracts, contracts), which a docs-only PR never skips. The last
+      # matching pattern wins, so JSON, SQL and scripts under docs/ still trigger.
+      - "!**/*.md"
   push:
     branches: [main]
     paths:
@@ -53,6 +57,7 @@ on:
       - .github/workflows/tunes.yml
       - .github/workflows/tunes-deploy.yml
       - .github/workflows/music-reconcile.yml
+      - "!**/*.md"
   workflow_dispatch:
     inputs:
       release_production:

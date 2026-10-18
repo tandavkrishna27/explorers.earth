@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RecommendationsHub from '../RecommendationsHub';
 import { loginSurface, ordinaryCategories, surfaceHarness, writtenPins, writtenVisibility } from '../../features/navigation/__tests__/surfaceHarness';
@@ -49,5 +49,42 @@ describe('Hub navigation consent', () => {
   it('automatic placement links to Settings and does not silently change mode', async () => {
     const h = surfaceHarness(<RecommendationsHub />, { initial: { auto_pinning: true } }); await h.ready(); await openBooks();
     expect(screen.getByRole('button', { name: /Manual mode in Settings/ })).toBeInTheDocument(); expect(h.writes).toEqual([]);
+  });
+  // The pin E2E cases timed out in CI because the menu closed itself ~40ms after Playwright
+  // resolved its buttons: the menu dismissed on any scroll event, and the layout scroller
+  // emits them on its own whenever a banner above the grid appears or goes away.
+  describe('category menu under unsolicited scroll', () => {
+    const menu = () => document.querySelector<HTMLElement>('[data-kebab-menu]');
+    async function openAnchoredAt(bottom: { value: number }) {
+      const h = surfaceHarness(<RecommendationsHub />); await h.ready();
+      const trigger = (await screen.findAllByTitle('Category options'))[2];
+      trigger.getBoundingClientRect = () => ({ x: 400, y: bottom.value - 28, width: 28, height: 28, top: bottom.value - 28, bottom: bottom.value, left: 400, right: 428, toJSON: () => ({}) });
+      fireEvent.click(trigger);
+      await waitFor(() => expect(menu()).not.toBeNull());
+      return h;
+    }
+    it('stays open when a scroll does not move its trigger', async () => {
+      const bottom = { value: 120 }; await openAnchoredAt(bottom);
+      expect(menu()!.style.top).toBe('128px');
+      fireEvent.scroll(document.body); fireEvent.scroll(window);
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 100)); });
+      expect(menu()).not.toBeNull(); expect(screen.getByRole('button', { name: /Disable Public/ })).toBeInTheDocument();
+    });
+    it('follows its trigger instead of closing when the layout shifts under it', async () => {
+      const bottom = { value: 120 }; await openAnchoredAt(bottom);
+      bottom.value = 66; fireEvent.scroll(document.body);
+      await waitFor(() => expect(menu()!.style.top).toBe('74px'));
+      expect(screen.getByRole('button', { name: /Disable Public/ })).toBeInTheDocument();
+    });
+    it('still closes once its trigger has scrolled out of view', async () => {
+      const bottom = { value: 120 }; await openAnchoredAt(bottom);
+      bottom.value = -10; fireEvent.scroll(document.body);
+      await waitFor(() => expect(menu()).toBeNull());
+    });
+    it('still closes on a pointer press outside the menu', async () => {
+      const bottom = { value: 120 }; await openAnchoredAt(bottom);
+      fireEvent.mouseDown(document.body);
+      await waitFor(() => expect(menu()).toBeNull());
+    });
   });
 });

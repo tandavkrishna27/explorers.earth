@@ -23,6 +23,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ─────────────────────────────────────────
+  # Classify the change set
+  # ─────────────────────────────────────────
+  # A pull request that changes only Markdown skips the heavy lanes below. Two lanes never
+  # skip: `docs-contracts` and `contracts` read the documentation, READMEs and CLAUDE.md
+  # files (music-documentation-contract and friends), so a docs-only PR is still checked
+  # against them. `music-required` still runs and still decides the merge.
+  # scripts/ci-docs-only.cjs fails closed: every non-pull_request event (push, nightly,
+  # manual), every non-Markdown path and every doubt runs all lanes.
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      docs_only: ${{ steps.classify.outputs.docs_only }}
+    steps:
+      # Two commits: the PR merge commit and its base parent, which is what it diffs.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 2
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+      - name: Classify the change set
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: node scripts/ci-docs-only.cjs
+
   docs-contracts:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -40,6 +69,8 @@ jobs:
   static:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -95,6 +126,8 @@ jobs:
     # the portable coverage gate must not inherit hosted-runner ACL policy.
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -150,6 +183,8 @@ jobs:
   database:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     # The service pulls the GHCR base-image mirror (base-image-mirror.yml) at the same
     # digest Docker Hub's postgres:15-alpine resolved to; service containers ignore
     # docker/login-action, so they carry their own read-only credentials.
@@ -236,6 +271,8 @@ jobs:
   security:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -249,6 +286,8 @@ jobs:
   frontend:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -284,6 +323,8 @@ jobs:
   browser:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -403,6 +444,8 @@ jobs:
   image-deploy-contract:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -444,6 +487,8 @@ jobs:
   platform-fixture:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     # Base images come from this repository's GHCR mirror (base-image-mirror.yml);
     # anonymous public.ecr.aws pulls were throttled with 429 on shared runner IPs.
     permissions:
@@ -483,12 +528,18 @@ jobs:
     name: music-required
     runs-on: ubuntu-24.04
     if: always()
-    needs: [docs-contracts, static, unit-coverage, contracts, database, security, frontend, browser, load-chaos, image-deploy-contract, platform-fixture]
+    needs: [changes, docs-contracts, static, unit-coverage, contracts, database, security, frontend, browser, load-chaos, image-deploy-contract, platform-fixture]
     steps:
       - name: Require every Music and local-platform validation job to succeed
         env:
           REQUIRED_RESULTS: ${{ toJSON(needs) }}
           EVENT_NAME: ${{ github.event_name }}
           LANE: ${{ inputs.lane }}
+        # Every job must conclude success, with two exceptions. `load-chaos` may skip
+        # unless this is a nightly run. And on a docs-only pull request any lane that
+        # `changes` skipped may skip, except `docs-contracts` and `contracts`, which read
+        # the documentation and must succeed. The docs-only exception needs `changes` to
+        # have succeeded and said so: if the classifier fails or is cancelled, every
+        # dependent skips, `changes` is not success, and this aggregate fails.
         run: |
-          node -e "const results=JSON.parse(process.env.REQUIRED_RESULTS); const nightly=process.env.EVENT_NAME === 'schedule' || (process.env.EVENT_NAME === 'workflow_dispatch' && process.env.LANE === 'nightly'); const failures=Object.entries(results).filter(([name, job]) => name === 'load-chaos' && !nightly && job.result === 'skipped' ? false : job.result !== 'success'); if(failures.length){ console.error('Required Music validation did not succeed:', failures.map(([name, job]) => name + '=' + job.result).join(', ')); process.exit(1) }"
+          node -e "const results=JSON.parse(process.env.REQUIRED_RESULTS); const nightly=process.env.EVENT_NAME === 'schedule' || (process.env.EVENT_NAME === 'workflow_dispatch' && process.env.LANE === 'nightly'); const changes=results.changes||{}; const docsOnly=process.env.EVENT_NAME === 'pull_request' && changes.result === 'success' && !!changes.outputs && changes.outputs.docs_only === 'true'; const mustRun=['changes','docs-contracts','contracts']; const failures=Object.entries(results).filter(([name, job]) => (name === 'load-chaos' && !nightly && job.result === 'skipped') || (docsOnly && job.result === 'skipped' && !mustRun.includes(name)) ? false : job.result !== 'success'); if(failures.length){ console.error('Required Music validation did not succeed:', failures.map(([name, job]) => name + '=' + job.result).join(', ')); process.exit(1) }"
