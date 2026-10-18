@@ -46,6 +46,7 @@ import {BookCatalog} from '../services/bookCatalog';
 import { resolveTrustedProxy } from "../middleware/canonicalTerminator";
 import { setupCanonicalRetiredSurfaces } from "../routes/canonicalRetiredSurfaceRoutes";
 import { setupExplorersSeoRoutes } from "../routes/explorersSeoRoutes";
+import { checkMusicDatabaseReadiness } from "../db/readiness";
 
 function errorResponse(res: Response, status: number, code: ApiError["error"]["code"], message: string): void {
   res.status(status).json({ error: { code, message, requestId: randomUUID() } } satisfies ApiError);
@@ -90,6 +91,21 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   if(admission)app.use(admission.afterJsonParser);
   app.get("/health/live", (_request, response) => response.status(200).json({ status: "live" }));
   setupExplorersSeoRoutes(app, pool);
+  app.get("/health/ready", async (_request, response) => {
+    try {
+      await pool.query("SELECT 1");
+    } catch {
+      response.status(503).json({ ready: false, reason: "database-unreachable" });
+      return;
+    }
+    const readiness = await checkMusicDatabaseReadiness(pool)
+      .catch(() => ({ ready: false as const, reason: "migration-state-invalid" as const }));
+    if (!readiness.ready) {
+      response.status(503).json({ ready: false, reason: "migration-state-invalid" });
+      return;
+    }
+    response.status(200).json({ ready: true });
+  });
   setupExplorersAccountRoutes(app, pool, auth, config);
   // ADR-006 and ADR-008: canonical Music owner provisioning and credential issue.
   // The issuer is resolved on first use, not at boot. Optional Music configuration
