@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Host side of .github/workflows/explorers.yml (P2 Task 7). Runs as root via sudo.
 #
+#   explorers-deploy.sh backup   <staging-dir>
 #   explorers-deploy.sh stage    <staging-dir>
 #   explorers-deploy.sh activate <staging-dir>
 #
@@ -31,7 +32,7 @@ readonly KEEP_RELEASES=5
 
 fail() { echo "::error::$*" >&2; exit 1; }
 
-[[ "$#" -eq 2 ]] || fail "usage: explorers-deploy.sh stage|activate <staging-dir>"
+[[ "$#" -eq 2 ]] || fail "usage: explorers-deploy.sh backup|stage|activate <staging-dir>"
 phase="$1"
 staging="$2"
 [[ "$(id -u)" -eq 0 ]] || fail "run as root (sudo)"
@@ -79,6 +80,48 @@ preflight() {
 }
 
 migration_rank() { local id="$1"; printf '%d' "$((10#${id%%_*}))"; }
+
+# backup: before anything migrates, take the pre-deploy backup bound to the
+# candidate's identity (docs/replatform/release-and-recovery.md). There is no
+# rollback below the migration floor, only restore-forward, so this backup is what
+# makes a bad migration survivable. A host whose canonical database has never been
+# migrated has nothing to protect and says so in $staging/backup-result - only the
+# host can decide that. A database volume that exists while postgres is down is
+# refused: it cannot be backed up.
+backup() {
+  preflight
+  [[ -f "$staging/platform-backup.mjs" ]] || fail "staging is missing platform-backup.mjs"
+  install -d -m 0700 "$OPT"
+  install -m 0700 "$staging/platform-backup.mjs" "$OPT/platform-backup.mjs"
+  rm -f "$staging/backup-result" "$staging/backup-manifest.json"
+  local running volume db_head=""
+  running="$(docker ps -q --filter label=com.docker.compose.project=explorers-canonical --filter label=com.docker.compose.service=postgres)"
+  volume="$(docker volume ls -q --filter label=com.docker.compose.project=explorers-canonical --filter label=com.docker.compose.volume=postgres-data)"
+  if [[ -z "$running" && -n "$volume" ]]; then
+    fail "the explorers-canonical postgres-data volume exists but postgres is not running; refusing to deploy without a backup"
+  fi
+  if [[ -n "$running" ]]; then
+    db_head="$(docker exec -i "$running" sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA' <<'SQL'
+SELECT CASE WHEN to_regclass('music_schema_migrations') IS NULL THEN ''
+            ELSE (SELECT coalesce(max(id), '') FROM music_schema_migrations) END;
+SQL
+)" || fail "could not read the database migration journal"
+    db_head="$(printf '%s' "$db_head" | tr -d '[:space:]')"
+  fi
+  if [[ -z "$db_head" ]]; then
+    echo "no migrated canonical database on this host yet; nothing to back up"
+    printf 'fresh\n' > "$staging/backup-result"
+  else
+    command -v node >/dev/null || fail "node is not installed; the pre-deploy backup needs it"
+    node "$OPT/platform-backup.mjs" --environment prod --reason pre-deploy \
+      --candidate-digest "$IMAGE_DIGEST" --candidate-commit "$COMMIT" --output-manifest "$staging/backup-manifest.json" \
+      || fail "the pre-deploy backup failed; nothing was deployed"
+    printf 'backed-up\n' > "$staging/backup-result"
+  fi
+  # The workflow fetches these back as the deploy user, which owns the staging directory.
+  chown --reference="$staging" "$staging/backup-result"
+  [[ ! -f "$staging/backup-manifest.json" ]] || chown --reference="$staging" "$staging/backup-manifest.json"
+}
 
 stage() {
   preflight
@@ -217,6 +260,7 @@ activate() {
 }
 
 case "$phase" in
+  backup) backup ;;
   stage) stage ;;
   activate) activate ;;
   *) fail "unknown phase $phase" ;;

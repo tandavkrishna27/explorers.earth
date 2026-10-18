@@ -1,0 +1,8 @@
+# Install as /etc/cron.d/explorers-backup, mode 0644, owned by root.
+# Runs as root because /opt/explorers/production.env and the database secret files
+# are root-owned mode 0600 (deploy/host/explorers-deploy.sh refuses anything else),
+# and the archive must carry that ownership for a rebuild to be accepted.
+# deploy/host/explorers-deploy.sh installs platform-backup.mjs at the path below.
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+17 2 * * * root node /opt/explorers/platform-backup.mjs --environment prod --reason scheduled --prune >> /var/log/explorers-backup.log 2>&1
