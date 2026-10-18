@@ -17,7 +17,6 @@ vi.mock('../../Profile/api/useCanonicalAccount', () => ({ useCanonicalAccount: (
   data: { id: '11111111-1111-4111-8111-111111111111', revision: 1 }, isLoading: false,
 }) }));
 vi.mock('../components/ProfileAccountSettings', () => ({ default: () => null }));
-vi.mock('../components/BillingTab', () => ({ default: () => null }));
 vi.mock('../components/LanguageSelector', () => ({ default: () => null, LANGUAGES: [{ code: 'en', name: 'English' }] }));
 vi.mock('react-player', () => ({ default: () => null }));
 const dashboard = { playlists: [], dashboard: { queueRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode: 'private' as const, publicSlug: 'public-slug-123' } },

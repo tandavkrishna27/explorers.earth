@@ -1364,14 +1364,6 @@ test.describe("responsive and accessibility geometry gates", () => {
         "Test Country",
       ]));
 
-      const currentPlan = page.getByRole("button", {
-        name: "Current Plan",
-        exact: true,
-      });
-      await currentPlan.click();
-      await expect(page.getByText("No Active Plan", { exact: true }))
-        .toBeVisible();
-
       if (width === 375) {
         for (const tab of [accountTab, billingTab]) {
           const box = await tab.boundingBox();

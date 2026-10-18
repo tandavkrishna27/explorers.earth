@@ -893,7 +893,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Settings/accountDeactivationCoordinator.ts
 !explorers-earth/src/features/Settings/api/mutation.ts
 !explorers-earth/src/features/Settings/components/AccountDeletionLifecyclePanel.tsx
-!explorers-earth/src/features/Settings/components/BillingTab.tsx
 !explorers-earth/src/features/Settings/components/LanguageSelector.tsx
 !explorers-earth/src/features/Settings/components/ProfileAccountSettings.tsx
 !explorers-earth/src/features/Settings/components/UnpublishCategoryDialog.tsx
