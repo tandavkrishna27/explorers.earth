@@ -74,7 +74,9 @@ jobs:
 
   deploy:
     needs: authorize
-    if: needs.authorize.result == 'success'
+    # Repeats the authorize job's checks statically, so this job is unreachable from
+    # a push, a PR or a non-main ref even if authorize were edited to pass.
+    if: needs.authorize.result == 'success' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.confirm_cutover == 'replace-explorers-host'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     # Add required reviewers to this environment for a second human gate.
