@@ -186,7 +186,8 @@ describe("replatform workflow authority", () => {
     expect(ci.permissions).toEqual({ contents: "read" });
     expect(read("ci")).not.toMatch(/secrets\.(?:TUNES_DEPLOY|EXPLORERS_DEPLOY)/);
     const image = workflow("tunes");
-    expect(image.jobs["build-test-scan-push"].permissions).toEqual({ contents: "read" });
+    // packages: read pulls the GHCR base-image mirror only; any write scope stays refused.
+    expect(image.jobs["build-test-scan-push"].permissions).toEqual({ contents: "read", packages: "read" });
     const publish = image.jobs["publish-image"];
     expect(publish.if).toContain("github.event_name == 'workflow_dispatch'");
     expect(publish.if).toContain("github.ref == 'refs/heads/main'");
