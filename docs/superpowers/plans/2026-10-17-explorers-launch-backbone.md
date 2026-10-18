@@ -306,6 +306,8 @@ implemented.
 
 ### P6 — Strapi retirement *(gated on P2 + P3)*
 
+**Planned in full at `docs/superpowers/plans/2026-10-18-p6-strapi-retirement.md`; it supersedes this paragraph.** It opens with the guard, splits Phase A (safe now; P6-2 must precede P3-7) from Phase B (after cutover), and ends with the owner retiring Strapi.
+
 Six server call sites; the analytics events route is the last live dependency inside canonical,
 so P5-1 is its prerequisite. Frontend is mostly deletion — **no Apollo operation executes**;
 45 `gql` documents are inert. Close with `e2e/replatform/no-strapi.spec.ts`, which must have a

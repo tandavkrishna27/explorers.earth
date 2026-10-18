@@ -12,7 +12,7 @@ The guard comes **first**, not last. `e2e/replatform/no-strapi.spec.ts` lands as
 
 **Tech Stack:** TypeScript, Express 5, React 18 + Vite, PostgreSQL 15, Vitest, Playwright, GitHub Actions.
 
-**Revision 2 (2026-10-19).** Written against `fork/main` = `05a252f6`, then corrected by two independent adversarial reviews (see [Corrections from review](#corrections-from-review)). P6-1 and P6-2 were rewritten, because revision 1's guard could not go green and its P6-2 would have undone P5-1.
+**Revision 3 (2026-10-19).** Written against `fork/main` = `05a252f6`, then corrected by two independent adversarial reviews and a Codex cross-model review (see [Corrections from review](#corrections-from-review)). P6-1 and P6-2 were rewritten, because revision 1's guard could not go green and its P6-2 would have undone P5-1.
 
 **Evidence standard.** Every load-bearing claim cites `path:line` at that commit, or a command whose output was read. Line numbers drift as P3, P5 and P6 tickets land. Re-locate each one before editing; never edit by line number alone.
 
@@ -189,7 +189,7 @@ In a platform build `VITE_REST_API_URL` is `undefined` (`envPrefix: []`). So the
 | P6-5 | CI builds what deploys, and scans the bundle for Strapi | A | **P6-4 merged** (the bundle holds `undefined/upload` until then) | P6-12 |
 | P6-6 | Delete the 45 `gql` documents | B | P3-7 merged | P6-7 |
 | P6-7 | Delete Apollo Client | B | P6-6 | P6-9, P6-12 |
-| P6-8 | Retire the legacy SPA build and its Strapi configuration | B | **P2 proven in production**, P6-4 | P6-12 |
+| P6-8 | Retire the legacy SPA build and its Strapi configuration | B | **P2 proven in production**, P6-4, **P6-7** (its leak test forbids `VITE_API_URL`, which `main.tsx:33` reads until Apollo goes) | P6-12 |
 | P6-9 | Remove the fixture Strapi and the Strapi tooling | B | P3-7 merged **and P6-7 merged** | P6-10 |
 | P6-10 | Drop `users`, the `0001` baseline and the analytics receipts — next free migration number | B | **P3-9 merged** | P6-12 |
 | P6-11 | Rewrite the docs that describe Strapi as current | B | P6-9 | P6-12 |
@@ -226,6 +226,12 @@ Look each one up in the real code or a real run first.
 
 A test nobody runs reads as coverage and is worse than none.
 
+**Regenerate the generated `.dockerignore` files in every ticket that adds, moves or deletes a source file.** Both `.dockerignore` and `explorers-earth/Dockerfile.music-fixture.dockerignore` enumerate exact paths (P3 plan, "Facts an engineer needs"). This applies to P6-1, P6-2, P6-3, P6-6, P6-7, P6-8 and P6-9. A test pins the result (`music-fixture-services.test.ts:875`). Run:
+
+```bash
+node scripts/generate-music-fixture-dockerignore.mjs --write   # P3-8 may have renamed it; use the current name
+```
+
 **Typecheck commands, because the obvious ones lie:**
 - explorers-earth: `npx tsc --noEmit -p tsconfig.app.json`. `-p tsconfig.json` checks nothing and always reports zero errors.
 - tunes: `npx tsc --noEmit -p tsconfig.json 2>&1 | grep -E '^(shared|server)/'`. Read the result as "no new lines", because pre-existing errors live in `tunes/client/` until P3-7 deletes it.
@@ -254,16 +260,22 @@ In a fresh worktree, expect 8 environment-only collection failures unless `npm c
 - `MODE` is `development`, so `isCanonicalRuntime()` is false (`publicRuntimeConfig.ts:4`).
 - `runtimeOrigin()` returns its legacy argument, Apollo's `uri` is `VITE_API_URL` (`main.tsx:33`), and `bootstrap.ts` skips `/runtime-config.json`.
 
-So the guard exercises the **legacy-leaning** branches, where Strapi destinations are most reachable, and the poison makes every one of them visible. The **shipped** bundle is covered separately and statically by P6-5's scan. Running the guard against a `--mode platform` build with a served `/runtime-config.json` is a possible extension (Open question 8). It is not claimed here.
+So the guard exercises the **legacy-leaning** branches, where Strapi destinations are most reachable, and the poison makes every one of them visible. The **shipped** bundle is covered separately and statically by P6-5's scan. P6-12 Step 0a runs the same spec once against the real platform build, served by `vite preview` with a rendered `/runtime-config.json`, before P6 closes.
 
 Five properties, each of which fails loudly if the guard goes blind:
 
 | Property | What makes it real |
 |---|---|
 | **Poisoned origin** | Every Strapi-only destination the SPA can build (`VITE_API_URL`, `VITE_REST_API_URL`) points at `https://strapi.poison.invalid`, which never resolves (RFC 6761). The canonical app process gets `STRAPI_*` variables pointing at the same host. The real Strapi hosts (`api.localqr.earth`, `77.42.95.255`, `13.126.235.177`), port `1337` and Strapi's same-origin paths (`/graphql`, `/upload`, `/api/users`, …) are poisoned too. **Destinations shared with canonical are not poisoned**: `VITE_PUBLIC_PROFILE_GATEWAY_URL` is the origin for `/api/explorers/v1/profiles/…` (`publicProfileGatewayClient.ts:57-61,160-166`). Poisoning it would make every public page a false positive (review B measured this) |
-| **Monitor self-test** | Before any route runs, the guard fires one deliberate request down each channel: fetch, same-origin fetch, image, WebSocket, Worker fetch and beacon. It fails unless the monitor saw and refused every one. It also checks that a canonical call was seen and **allowed**, so the monitor is not simply blocking everything. The server-side monitor self-tests the same way, and the runner then drives the one canonical read that historically reached Strapi |
+| **Monitor self-test** | Before any route runs, the guard fires one deliberate request down each channel: fetch, same-origin fetch, image, WebSocket, Worker fetch and beacon. It fails unless the browser monitor saw and refused every one. It also checks that a canonical call was seen and **allowed**, so the monitor is not simply blocking everything. The server-side monitor is **detection only**: it records Node's outbound requests, and the poison's `.invalid` host is what makes them unreachable. It self-tests both Node channels against an owned loopback server. Only the exact nonces a self-test issued are exempt, on both sides. The runner then drives the one canonical read that historically reached Strapi |
 | **Closure-size floor** | The run fails unless at least `MODULE_FLOOR` distinct `/src/` modules were served, so an app that crashed on boot cannot pass. **This proves boot only.** Every route loads the same ~573 modules, because routes are imported statically (`ProtectedRoutes.tsx:6-28`; measured by review B). Per-route proof comes from the next two rows |
-| **Per-case landing and API proof** | Each case asserts the pathname it **landed** on. An owner case must never land on `/login` or `/onboarding`, and must observe a credentialed `GET /api/explorers/v1/me` answering 200. Without this, a broken sign-in silently turns every owner case into a visit to `/login` that passes. Across the run, an **API-surface floor** requires at least `API_FLOOR` distinct canonical API paths |
+| **Per-case landing and render proof** | Each case asserts four things:
+- the pathname it **landed** on;
+- that it does not end on a same-path broken state (the protected loader, the account-error screen or the hidden-category fallback);
+- where given, that a page-specific `marker` is visible;
+- for an owner case, that it never landed on `/login` or `/onboarding` and observed a credentialed `GET /api/explorers/v1/me` answering 200.
+
+Without these, a broken sign-in or a broken page silently passes on an unchanged URL. Across the run, an **API-surface floor** requires at least `API_FLOOR` distinct canonical API paths whose responses **succeeded** |
 | **Route-coverage floor** | Every **occurrence** of a `path="…"` literal in the route files must be claimed by exactly one case or exclusion, keyed `<file>:<path>#<n>`. Matching by set would hide repeats: `:listSlug` occurs six times in `PublicRoutes.tsx`, once per category. Stale claims fail too. `afterAll` requires at least `ROUTE_FLOOR` executed cases |
 
 **Files:**
@@ -293,9 +305,12 @@ describe('no-Strapi outbound monitor', () => {
     const monitor = installOutboundMonitor();
     try {
       await selfTestOutboundMonitor(monitor);
-      expect(monitor.strapi()).toEqual([]); // self-test traffic is excluded by nonce
+      expect(monitor.strapi()).toEqual([]); // only this run's self-test nonces are exempt
       await fetch('https://strapi.poison.invalid/graphql').catch(() => undefined);
       expect(monitor.strapi().map((o) => o.origin)).toContain('https://strapi.poison.invalid');
+      // An app request that merely carries the parameter is still a violation.
+      await fetch('https://strapi.poison.invalid/x?nostrapi-selftest=forged').catch(() => undefined);
+      expect(monitor.strapi().some((o) => o.path.includes('forged'))).toBe(true);
     } finally {
       monitor.dispose();
     }
@@ -339,6 +354,8 @@ export type OutboundMonitor = {
 /** Hosts, ports and paths that can only mean Strapi. Kept in step with no-strapi-monitor.ts. */
 const STRAPI = /strapi|localqr|:1337(?:\/|$)|77\.42\.95\.255|13\.126\.235\.177/i;
 const SELF_TEST = 'nostrapi-selftest=';
+/** Only nonces this process issued are exempt; an app request carrying the parameter is still a violation. */
+const issued = new Set<string>();
 
 export function installOutboundMonitor(): OutboundMonitor {
   const seen: OutboundObservation[] = [];
@@ -355,7 +372,7 @@ export function installOutboundMonitor(): OutboundMonitor {
   diagnostics_channel.subscribe('http.client.request.start', onHttp);
   return {
     seen,
-    strapi: () => seen.filter((o) => STRAPI.test(`${o.origin}${o.path}`) && !o.path.includes(SELF_TEST)),
+    strapi: () => seen.filter((o) => STRAPI.test(`${o.origin}${o.path}`) && ![...issued].some((nonce) => o.path.includes(`${SELF_TEST}${nonce}`))),
     dispose: () => {
       diagnostics_channel.unsubscribe('undici:request:create', onUndici);
       diagnostics_channel.unsubscribe('http.client.request.start', onHttp);
@@ -363,18 +380,31 @@ export function installOutboundMonitor(): OutboundMonitor {
   };
 }
 
-/** Fires one request down each channel and refuses to continue unless both were seen. */
+/**
+ * Fires one request down each channel and refuses to continue unless both were seen.
+ * Detection only: this monitor records, it does not block. Blocking comes from the poison itself:
+ * `.invalid` never resolves, so nothing reaches a poisoned host. The http probe goes to an owned
+ * loopback server, never to 1337, so the self-test cannot reach a real Strapi.
+ */
 export async function selfTestOutboundMonitor(monitor: OutboundMonitor): Promise<void> {
   const nonce = randomUUID();
-  await fetch(`https://strapi.poison.invalid/graphql?${SELF_TEST}${nonce}`).catch(() => undefined);
-  await new Promise<void>((done) => {
-    http.get(`http://127.0.0.1:1337/?${SELF_TEST}${nonce}`)
-      .on('response', (response) => { response.resume(); done(); })
-      .on('error', () => done());
-  });
+  issued.add(nonce);
+  await fetch(`https://strapi.poison.invalid/graphql?${SELF_TEST}${nonce}`, { signal: AbortSignal.timeout(5000) }).catch(() => undefined);
+  const owned = http.createServer((_request, response) => response.end('ok'));
+  await new Promise<void>((done) => owned.listen(0, '127.0.0.1', () => done()));
+  const port = (owned.address() as { port: number }).port;
+  try {
+    await new Promise<void>((done) => {
+      http.get(`http://127.0.0.1:${port}/strapi?${SELF_TEST}${nonce}`, { timeout: 5000 })
+        .on('response', (response) => { response.resume(); done(); })
+        .on('error', () => done()).on('timeout', () => done());
+    });
+  } finally {
+    owned.close();
+  }
   const hits = monitor.seen.filter((o) => o.path.includes(nonce));
   if (!hits.some((o) => o.channel === 'undici' && o.origin.includes('strapi.poison.invalid'))
-      || !hits.some((o) => o.channel === 'http' && o.origin.endsWith(':1337')))
+      || !hits.some((o) => o.channel === 'http' && o.origin.endsWith(`:${port}`)))
     throw new Error('NO_STRAPI_OUTBOUND_MONITOR_BLIND');
 }
 ```
@@ -448,10 +478,23 @@ if (suite === 'no-strapi') {
       displayName: 'No-Strapi Fixture', accountType: 'Personal', onboardingStatus: 'complete', publicProfile: true }),
   });
   if (onboarded.status !== 200) throw new Error(`No-Strapi owner onboarding failed: HTTP ${onboarded.status}`);
+  // Public category pages sit behind TabVisibilityGuard defaultVisible={false} (PublicRoutes.tsx:46,73,86,…),
+  // and ensureInitialAccount writes category settings without an explicit visibility (initialAccount.ts:25-28).
+  // Make every category public, or the public cases render a hidden-category state instead of the page under test.
+  const me = await (await fetch(`http://127.0.0.1:${apiPort}/api/explorers/v1/me`, { headers: { Cookie: owner.cookie } })).json() as
+    { account: { revision: number; categories: { category: string; isPublic: boolean; displayOrder: number; pinnedOrder: number | null }[] } };
+  const visible = await fetch(`http://127.0.0.1:${apiPort}/api/explorers/v1/account`, {
+    method: 'PATCH',
+    headers: { Cookie: owner.cookie, Origin: origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expectedRevision: me.account.revision, categories: me.account.categories.map((c) => ({ ...c, isPublic: true })) }),
+  });
+  if (visible.status !== 200) throw new Error(`No-Strapi category visibility failed: HTTP ${visible.status}`);
 }
 ```
 
 The `auth` branch already imports `ensureInitialAccount`; reuse that import.
+
+Before relying on them, confirm against `tunes/shared/explorersContract.ts` that the account DTO's `categories` entries are `{category, isPublic, displayOrder, pinnedOrder}` (`:231`) and that `updateAccountInputSchema` accepts that array (`:258`). The guard does **not** seed published lists, so `/:listSlug` cases render a not-found state. That is intended: the loader still runs. Each category **index** page must render the category itself; Step 11's per-case marker asserts it.
 
 (c) **Choose the Vite config by suite** at `:183`:
 
@@ -473,18 +516,20 @@ if (suite === 'no-strapi') {
 
 Confirm the query keys against `readScopeSchema` (`explorersAnalyticsRoutes.ts:75-80`: `accountId`, `fromDate`, `toDate` and `timeZone`) and against P5-1's version of the route.
 
-(e) **After the browser child exits**, and before cleanup, fail on any server-side Strapi request:
+(e) **Report the server monitor on every exit path.** A probe failure in (d), a browser failure or a thrown error must not skip the report. Otherwise the most useful diagnostic, *which* Strapi request was made, is lost exactly when it matters. Wrap everything from (a) to the browser's exit in `try`, and report in `finally`, before cleanup:
 
 ```ts
-if (outbound) {
+function reportOutbound(): string | undefined {
+  if (!outbound) return undefined;
   const strapi = outbound.strapi();
   outbound.dispose();
-  if (strapi.length) throw new Error(`NO_STRAPI_SERVER_VIOLATION ${JSON.stringify(strapi)}`);
-  console.log(JSON.stringify({ noStrapiServer: { observed: outbound.seen.length, strapi: 0 } }));
+  console.log(JSON.stringify({ noStrapiServer: { observed: outbound.seen.length, strapi: strapi.length, requests: strapi } }));
+  return strapi.length ? `NO_STRAPI_SERVER_VIOLATION ${JSON.stringify(strapi)}` : undefined;
 }
+// try { …(a)…(d)…browser… } finally { const violation = reportOutbound(); if (violation) failures.push(violation); }
 ```
 
-Put it where the browser exit code is already checked, so that a browser failure and a server violation both make `main()` return non-zero.
+Fit `failures` to the runner's existing failure accumulation; read how `assertOwnedCleanup` (`lifecycle-browser-guards.ts`) collects failures. A probe error and a server violation must both survive into the final error message, and `main()` must return non-zero for either one.
 
 (f) **Register the new dependency with the replatform source inventory — same commit.** `scripts/replatform-e2e.mjs` `snapshotSource()` (`:455-500`) follows every relative import out of `profile-browser-fixture.ts`, which is in its `overlay` set. It fails with `Unreviewed relative executed dependency` on any file that is neither `reviewed` nor `overlay`. `replatform-e2e.test.mjs:891-896` runs it on the real repo in the required `test.yml:121` lane. Add the new file the way `appsHelper` is added:
 
@@ -595,8 +640,12 @@ export class Monitor {
   readonly modules = new Set<string>();
   /** Canonical API paths, with ids and handles normalised, for the API-surface floor. */
   readonly apiPaths = new Set<string>();
+  /** Only the nonce this monitor's own self-test issued is exempt. */
+  private readonly nonces = new Set<string>();
+  issueNonce(nonce: string) { this.nonces.add(nonce); }
   violations(): Observation[] {
-    return this.observations.filter((o) => (o.verdict === 'poisoned' || o.verdict === 'unknown') && !o.url.includes('nostrapi-selftest='));
+    return this.observations.filter((o) => (o.verdict === 'poisoned' || o.verdict === 'unknown')
+      && ![...this.nonces].some((nonce) => o.url.includes(`nostrapi-selftest=${nonce}`)));
   }
   selfTest(nonce: string): Observation[] {
     return this.observations.filter((o) => o.url.includes(`nostrapi-selftest=${nonce}`));
@@ -614,8 +663,11 @@ export async function guardedContext(browser: Browser, monitor: Monitor, origin:
     if (verdict === 'local') {
       const path = new URL(request.url()).pathname;
       if (path.startsWith('/src/')) monitor.modules.add(path);
-      if (path.startsWith('/api/explorers/')) monitor.apiPaths.add(path.replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, ':id'));
-      return route.continue();
+      if (!path.startsWith('/api/explorers/')) return route.continue();
+      // Count a canonical API path only once it has succeeded, not when it was merely attempted.
+      const response = await route.fetch();
+      if (response.status() < 400) monitor.apiPaths.add(path.replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, ':id'));
+      return route.fulfill({ response });
     }
     if (verdict === 'stub')
       return request.resourceType() === 'image'
@@ -650,7 +702,7 @@ Expected: only tombstone rules in `policies/*` and legacy-only routes (`routes/i
 - `ProtectedRoutes.tsx` holds every literal **twice**, once in the desktop tree (`:42-`) and once in the mobile tree (`:100-`). The one exception is `/onboarding`, which appears once (`:159`). So a desktop case claims `#1` and its mobile case claims `#2`.
 - `PublicRoutes.tsx` holds `:listSlug` six times, in this order: movies, books, games, apps, products, people. It holds `genre/:genreSlug` twice: movies, then games.
 
-Each parameterised case takes a well-formed id that does not exist, so the page runs its loader and renders its not-found state. Strapi calls happen on load, so that is enough to catch them.
+Each parameterised case takes a well-formed id that does not exist, so the page runs its loader and renders its not-found state. That catches Strapi calls made **on load**. It does not catch calls made in **event handlers**, such as the upload fallback in `Profile.tsx:1703-1759,1803-1857` and the edit-mode delete in `AddRecommendation.tsx:770-782`. Those are covered by P6-4's static leak test, and by the one interaction case P6-4 adds to this spec.
 
 ```ts
 export type Viewport = 'desktop' | 'mobile';
@@ -664,6 +716,8 @@ export type RouteCase = {
   viewport?: Viewport;
   /** Where the page must end up. Defaults to the visited path. */
   lands?: RegExp;
+  /** A selector the intended page renders: a heading, landmark or test id. Required for category index and owner editor pages. */
+  marker?: string;
 };
 const ID = '00000000-0000-4000-8000-000000000000';
 
@@ -690,14 +744,11 @@ export const ROUTES: RouteCase[] = [
   ...owner(`/recommendations/guides/${ID}/edit`, 'recommendations/guides/:guideId/edit'),
   ...owner(`/recommendations/guides/${ID}/sections/new`, 'recommendations/guides/:guideId/sections/new'),
   ...owner(`/recommendations/guides/${ID}/sections/${ID}/edit`, 'recommendations/guides/:guideId/sections/:sectionId/edit'),
-  ...owner('/guides', 'guides', /^\/recommendations\/guides$/),
   ...owner('/guides/new', 'guides/new'),
   ...owner(`/guides/${ID}`, 'guides/:guideId'),
   ...owner(`/guides/${ID}/edit`, 'guides/:guideId/edit'),
   ...owner(`/guides/${ID}/sections/new`, 'guides/:guideId/sections/new'),
   ...owner(`/guides/${ID}/sections/${ID}/edit`, 'guides/:guideId/sections/:sectionId/edit'),
-  ...owner('/hub', 'hub', /^\/recommendations$/),
-  ...owner('/music', 'music', /^\/recommendations$/),
   ...owner('/recommendations/music', 'recommendations/music', /^\/recommendations$/),
   ...owner('/analytics', 'analytics'),
   ...owner('/settings', 'settings'),
@@ -721,17 +772,31 @@ export const ROUTES: RouteCase[] = [
   pub('/products', 'products#1'), pub('/products/no-such-list', ':listSlug#5'),
   pub('/people', 'people#1'), pub('/people/sector/technology', 'sector/:sectorSlug#1'), pub('/people/no-such-list', ':listSlug#6'),
   ...['/', '/login', '/contact', '/about', '/use-cases', '/privacy', '/cookies', '/terms', '/reactivate',
-    '/reactivate-confirm', '/google-auth/callback', '/email-verification'].map(auth),
-  { source: ['AppRoutes.tsx:/404#1', 'AppRoutes.tsx:*#1', 'PublicRoutes.tsx:*#1'], url: () => '/no/such/route/at/all', as: 'anon' },
+    '/reactivate-confirm', '/google-auth/callback'].map(auth),
+  // Three different elements, three cases: NotFound at /404 and at an unmatched top-level path
+  // (AppRoutes.tsx:43-46), and UsernameRootRedirect for an unknown tab under a profile (PublicRoutes.tsx:186).
+  { source: ['AppRoutes.tsx:/404#1'], url: () => '/404', as: 'anon' },
+  { source: ['AppRoutes.tsx:*#1'], url: () => '/no/such/route/at/all', as: 'anon' },
+  { source: ['PublicRoutes.tsx:*#1'], url: (h) => `/${h}/no-such-tab`, as: 'anon', lands: /^\/[^/]+\/?$/ },
+  // Top-level redirects (AppRoutes.tsx:25-27) visited directly, with the target asserted.
+  { source: ['AppRoutes.tsx:/guides#1'], url: () => '/guides', as: 'owner', lands: /^\/recommendations\/guides$/ },
+  { source: ['AppRoutes.tsx:/music/*#1'], url: () => '/music', as: 'owner', lands: /^\/recommendations$/ },
+  { source: ['AppRoutes.tsx:/hub#1'], url: () => '/hub', as: 'owner', lands: /^\/recommendations$/ },
 ];
 
 /** Occurrences deliberately not visited, each with the reason. A new occurrence must be claimed here or in ROUTES. */
 export const EXCLUDED: Record<string, string> = {
   'ProtectedRoutes.tsx:/*#1': 'desktop layout route; every child is visited',
   'ProtectedRoutes.tsx:/*#2': 'mobile layout route; every child is visited',
-  'AppRoutes.tsx:/guides#1': 'StatePreservingRedirect to /recommendations/guides, which is visited',
-  'AppRoutes.tsx:/music/*#1': 'StatePreservingRedirect to /recommendations, which is visited',
-  'AppRoutes.tsx:/hub#1': 'StatePreservingRedirect to /recommendations, which is visited',
+  // The same URLs are registered at top level (AppRoutes.tsx:25-27) and inside both protected trees.
+  // The top-level cases above visit each URL and assert its target; these occurrences are not separately reachable.
+  'ProtectedRoutes.tsx:guides#1': 'shadowed by AppRoutes.tsx:/guides (visited); same target',
+  'ProtectedRoutes.tsx:guides#2': 'shadowed by AppRoutes.tsx:/guides (visited); same target',
+  'ProtectedRoutes.tsx:hub#1': 'shadowed by AppRoutes.tsx:/hub (visited); same target',
+  'ProtectedRoutes.tsx:hub#2': 'shadowed by AppRoutes.tsx:/hub (visited); same target',
+  'ProtectedRoutes.tsx:music#1': 'shadowed by AppRoutes.tsx:/music/* (visited); same target',
+  'ProtectedRoutes.tsx:music#2': 'shadowed by AppRoutes.tsx:/music/* (visited); same target',
+  'AuthRoutes.tsx:/email-verification#1': 'Navigate to /login (AuthRoutes.tsx:27), which is visited',
   'AuthRoutes.tsx:/register#1': 'Navigate to /login (AuthRoutes.tsx:20-28), which is visited',
   'AuthRoutes.tsx:/forgot-password#1': 'Navigate to /login',
   'AuthRoutes.tsx:/reset-password#1': 'Navigate to /login',
@@ -740,7 +805,9 @@ export const EXCLUDED: Record<string, string> = {
 };
 ```
 
-The `/guides`, `/hub` and `/music` owner cases in `ProtectedRoutes.tsx` (`:52,55,61-62` and `:110,113,119-120`) are `<Navigate>` elements, and they are **visited, not excluded**. Their `lands` asserts the redirect target. `/instagram` renders `<Instagram />` (`:67,125`), so it is visited too. When P5-8 deletes the Instagram surface, the literal goes, and the inventory test forces this case out with it.
+`/guides`, `/hub` and `/music` are registered both at top level (`AppRoutes.tsx:25-27`) and in both protected trees (`ProtectedRoutes.tsx:55,61-62` and `:113,119-120`). Each URL is visited once, through its `AppRoutes` occurrence, and its `lands` asserts the redirect target. The protected-tree occurrences are excluded as shadowed: listing a key is not proof that its element ran, so a key is claimed only by the case that reaches it. `recommendations/music` exists only in the protected trees (`:52,110`), so it is visited there.
+
+**Index routes** (`<Route index …>`, nine of them in `PublicRoutes.tsx:39-170`) carry no `path` literal, so the occurrence scan cannot see them. They are reached through the category index URLs (`/<handle>/movies` and the rest), which the table visits. If a `path={…}` expression or a new route file appears, the scan's vacuity floor will not catch it. Extend the scan in that case. `/instagram` renders `<Instagram />` (`:67,125`), so it is visited too. When P5-8 deletes the Instagram surface, the literal goes, and the inventory test forces this case out with it.
 
 Re-derive the occurrence keys before running, and diff them against the table:
 
@@ -782,10 +849,19 @@ const API_FLOOR = 15;     // set to 90% of the first green run's RUN.apiPaths.si
 const VIEWPORT = { desktop: { width: 1365, height: 900 }, mobile: { width: 390, height: 844 } } as const;
 const CASES = ROUTES.flatMap((route) => (route.viewport ? [route.viewport] : (['desktop', 'mobile'] as const))
   .map((viewport) => ({ route, viewport })));
-const ROUTE_FLOOR = CASES.length;
+/** A fixed number, not CASES.length: moving a case into EXCLUDED must trip this, not silently lower it. Set from the first green run. */
+const ROUTE_FLOOR = 150;
 
 const RUN = new Monitor();
 const executed = new Set<string>();
+/**
+ * The two states a broken owner page ends on without changing its URL (ProtectedRoute.tsx:18-24):
+ * EarthLoader renders role="status" aria-label="Earth loading" (EarthLoader.tsx:103-104), and
+ * OnboardingCheckError renders the heading "Couldn't load your account" (OnboardingCheckError.tsx:24-26).
+ * A hidden category does not need one: TabVisibilityGuard redirects to the username root
+ * (TabVisibilityGuard.tsx:60,81), which the landing assertion catches.
+ */
+const BROKEN_STATE = `[role="status"][aria-label="Earth loading"], h1:has-text("Couldn't load your account")`;
 
 async function signIn(context: BrowserContext, persona: Persona) {
   // The session cookie is the whole sign-in. The persisted auth store discards anything put in
@@ -833,6 +909,7 @@ test('monitor self-test: every channel to Strapi is seen and refused, and canoni
     const page = await context.newPage();
     await page.goto('/about');
     const nonce = randomUUID();
+    monitor.issueNonce(nonce);
     const outcome = await page.evaluate(async ({ nonce, poison }) => {
       const q = `nostrapi-selftest=${nonce}`;
       const settle = (promise: Promise<unknown>) => promise.then(() => 'reached', () => 'refused');
@@ -887,6 +964,10 @@ for (const { route, viewport } of CASES) {
       await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
       expect(RUN.violations().slice(before)).toEqual([]);
       expect(landedOk(page, route, visited)).toBeNull();
+      // Same-path failure states: ProtectedRoute renders a loader or an error without navigating (ProtectedRoute.tsx:18-24),
+      // A hidden category redirects instead, and landedOk catches that. None may be what the case ends on.
+      await expect(page.locator(BROKEN_STATE)).toHaveCount(0);
+      if (route.marker) await expect(page.locator(route.marker).first()).toBeVisible();
       executed.add(title);
     } finally {
       await context.close();
@@ -905,7 +986,7 @@ test.afterAll(() => {
 
 Notes for the engineer:
 - **Tests built in a loop are invisible to a line-anchored grep for `test(`.** Count them instead: `npx playwright test e2e/replatform/no-strapi.spec.ts --list` (no fixture needed, because the fixture is read lazily). Expect `2 + CASES.length`.
-- **The first run sets two floors.** Some `:id` pages may redirect when the id does not exist. Record where each lands, then give it an explicit `lands` with a comment. Never use a catch-all `lands: /.*/`. Set `API_FLOOR` to 90% of `RUN.apiPaths.size` from the first green run, rounded down, and write the measured number next to it.
+- **The first run sets two floors.** Some `:id` pages may redirect when the id does not exist. Record where each lands, then give it an explicit `lands` with a comment. Never use a catch-all `lands: /.*/`. Set `API_FLOOR` to 90% of `RUN.apiPaths.size` from the first green run, rounded down, and write the measured number next to it. Set `ROUTE_FLOOR` to the first green run's executed count, and give each category index case and each owner editor case a `marker`.
 - **`serviceWorkers: 'block'` exists, and it is needed.** Without it, a service worker's own fetches bypass `context.route`. Review B confirmed that Worker fetches, `sendBeacon` (resource type `ping`), `<img>` and `abort('blockedbyclient')` are all intercepted in Playwright 1.61.1.
 
 - [ ] **Step 12: Type-check the e2e files**
@@ -952,7 +1033,7 @@ Each break must turn the run red and name its cause. Make the change, run Step 1
 1. **Browser monitor.** Add `void fetch('/graphql', { method: 'POST', body: '{}' });` as the first line of `src/main.tsx`. Every case should fail on a poisoned `/graphql`.
 2. **Self-test.** In `no-strapi-monitor.ts`, make the route handler `return route.continue()` for every verdict. The self-test should fail.
 3. **Owner proof.** In `signIn`, use `personas.ownerC.cookie.replace(/.$/, 'x')`, a corrupted session. Every owner case should fail on the `/me` 200 wait or on the bounce check, not pass on a `/login` page.
-4. **Server monitor.** In `explorersCanonicalAnalyticsRoutes.ts`, make `readAccountEvents` call the legacy `historical()` path unconditionally. This is the pre-P5-1 behaviour. Step 6d's probe should then make the runner fail with `NO_STRAPI_SERVER_VIOLATION` naming `strapi.poison.invalid`.
+4. **Server monitor.** At the top of the canonical `readAccountEvents` in `explorersCanonicalAnalyticsRoutes.ts`, add `await fetch(`${process.env.STRAPI_URL}/graphql`, { method: 'POST' }).catch(() => undefined);`, a reintroduced Strapi call. Step 6d's probe should then make the runner exit non-zero, with `NO_STRAPI_SERVER_VIOLATION` naming `strapi.poison.invalid` in the report. Do **not** use the pre-P5-1 `historical()` path for this check. Its ownership check returns `false` without a `Bearer` header (`explorers-analytics-adapters.ts:511`), so a cookie-only probe gets a 403 and makes no Strapi request at all.
 
 - [ ] **Step 15: Add the nightly lane**
 
@@ -1150,7 +1231,11 @@ The route, its OpenAPI entry, the authorization matrix, the inventory and the ro
 
 - [ ] **Step 8: Verify, including a real canonical boot**
 
-Integration tests inject a pool and skip startup attestation, so on their own they cannot see a boot failure (`canonicalStartup.ts:31-35`). Run all of these:
+Integration tests inject a pool and skip startup attestation, so on their own they cannot see a boot failure (`canonicalStartup.ts:31-35`). Neither can the no-Strapi run: its runner hands `createCanonicalApp` a migrator-owned pool (`profile-browser-fixture.ts:124-142`). The boot evidence is `startCanonicalServer` called **without** an injected pool. Two existing tests call it: `server/test/deployment/canonical-startup-listener.test.ts` and `server/test/explorers-auth.integration.test.ts`. Read both:
+- If one boots with no injected pool and provisioned runtime credentials, run it here.
+- If neither does, add that case to `canonical-startup-listener.test.ts`, and reuse it in P6-10 Step 7.
+
+Run all of these:
 
 ```bash
 npm test --prefix tunes -- --run server/test/contracts/canonical-analytics-no-strapi.test.ts
@@ -1274,13 +1359,26 @@ In `scripts/check-retired-dependencies.mjs`:
 
    P6-12 adds whichever of them survive. Report the list as `entries` (repo-relative) in the JSON report.
 
-2. **Resolve the `@shared/*` alias** in `resolveImport` (`:108-121`): map `@shared/x` to `tunes/shared/x`, using the same candidate list as relative specifiers. If a specifier starts with `@shared/` but resolves to nothing, push a `closure-incomplete` violation rather than returning `null`. Package imports stay ignored.
+2. **Resolve the `@shared/*` alias, in both places.**
+   - **The walk.** `walkClosure` drops every non-relative specifier with `if (!specifier.startsWith(".")) continue;` (`:167`) **before** it reaches `resolveImport` (`:108-121`), so changing the resolver alone changes nothing. Let `@shared/` specifiers through.
+   - **The resolver.** Map `@shared/x` to `tunes/shared/x`, using the same candidate list as relative specifiers. An `@shared/` specifier that resolves to nothing becomes a `closure-incomplete` violation rather than `null`.
+   - **Other edges.** Add `require("…")` edges to the specifier extraction (`:161-165`). Check `#auth-runtime` (`canonicalApp.ts:14`, `explorersPrincipal.ts:1`): it is a `package.json` `imports` alias for a local package. Either walk it, or record in the script why it is out of scope.
+   - **Other packages.** Ordinary package imports stay ignored.
 
 3. **Empty the last allowlist entry.** All three allowlists become `[]`. Keep the arrays and the stale-entry logic, so a re-added entry is still checked.
 
 4. **Add a floor.** Add `const MINIMUM_MODULES = <90% of the measured union count, rounded down>;`. Fail with invariant `closure-floor` when the union is smaller. Report it as `minimumModules`.
 
-5. **Change the success line** to `OK — no production entry point reaches a Strapi construction, a STRAPI_* read or a Strapi-named module.` Keep the existing "This does NOT mean Strapi is retired…" sentence until P6-12.
+5. **Widen the env detector, and stop it deleting code.**
+   - **The detector.** `ENV_READ` (`:106`) matches only reads through an identifier named `env`, so `environment.STRAPI_ANALYTICS_ACCESS_TOKEN` (`explorers-analytics-composition.ts:25`) is invisible to it. Replace it with: any `STRAPI_[A-Z0-9_]+` identifier or string in code is a violation. That is stricter, and correct once the allowlist is empty.
+   - **Comment stripping.** `codeOnly()` (`:143-149`) removes `//` to end of line without respecting strings, so a URL string hides the rest of its line. Replace it with a comment stripper built on TypeScript's scanner (`ts.createScanner` from the `typescript` package tunes already depends on). It must skip only comment tokens.
+6. **Add negative fixtures for the walker.** Under `scripts/__fixtures__/retired-deps/`, add small source trees. Run the scanner against each, through an entry-point override used only by the test, and expect a named violation:
+   - an `@shared/*` import of a module that reads `STRAPI_URL`;
+   - an unresolvable `@shared/missing`;
+   - an `environment.STRAPI_X` read;
+   - a `"https://x" + env.STRAPI_X` on one line;
+   - a `require("./strapi-reader")`.
+7. **Change the success line** to `OK — no production entry point reaches a Strapi construction, a STRAPI_* identifier or a Strapi-named module.` Keep the existing "This does NOT mean Strapi is retired…" sentence until P6-12.
 
 Run it before writing the floor, and read every violation it reports. **Resolving `@shared/*` will add modules**, and any of them may read `STRAPI_*`. Each new violation is a real coupling: either cut it in this ticket, the way Step 4 cut `music-health.ts`, or stop and report it. Never re-add an allowlist entry to get green.
 
@@ -1377,6 +1475,38 @@ The behaviour changes only when `accountQuery.data` is absent. In that case the 
 
 The old code already ran these two statements unconditionally after the `try` (`:792-795`), so this is the old behaviour minus a request that could never succeed. Check whether `axios`, `token` or `type` are now unused in the file, and remove only the unused ones.
 
+- [ ] **Step 4a: Add one interaction case to the guard**
+
+The guard's navigation cases cannot see calls made in event handlers. Add one owner case to `no-strapi.spec.ts` that **uploads a profile picture**. It covers the handler this ticket edits, and it would catch a reintroduced fallback:
+
+```ts
+/** A lead, not a fact: the walkthrough target (useProfileWalkthrough.ts:64) wraps the picture control. Confirm the real input. */
+const PROFILE_PICTURE_INPUT = '[data-walkthrough="profile-picture"] input[type="file"]';
+test('desktop owner profile-picture upload uses only canonical media', async ({ browser }) => {
+  const { origin, personas } = fixture();
+  const context = await guardedContext(browser, RUN, origin, VIEWPORT.desktop);
+  try {
+    await signIn(context, personas.ownerA);
+    const page = await context.newPage();
+    await page.goto('/profile');
+    const before = RUN.violations().length;
+    const media = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/explorers/v1/media' && r.request().method() === 'POST');
+    // A 1x1 PNG. Use the profile-picture file input the page really renders; read Profile.tsx for its selector.
+    await page.locator(PROFILE_PICTURE_INPUT).setInputFiles({ name: 'p.png', mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64') });
+    expect((await media).status()).toBeLessThan(400);
+    await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
+    expect(RUN.violations().slice(before)).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+```
+
+Confirm `PROFILE_PICTURE_INPUT` against the rendered page: the input may sit behind a cropper (`ImageCropper.tsx`), and the case must drive the same path a user does. This case needs media storage in the runner. `profile-browser-fixture.ts:142` passes `{mediaStorage: storage}` only when `storage` exists, so read how the `places` suites create it, and give `no-strapi` the same.
+
+The edit-mode image removal in `AddRecommendation.tsx` would need a seeded recommendation with media. It stays covered by Step 1's static leak test only, which is an accepted residual (Open question 8). **Teeth check:** temporarily restore one deleted `axios.post(... /upload ...)` fallback **without** its `accountQuery.data` guard. This case should go red on a poisoned `/api/upload`.
+
 - [ ] **Step 5: Run the test, the lane and the typecheck; commit**
 
 ```bash
@@ -1414,7 +1544,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { scanBundle } from './check-platform-bundle-strapi.mjs';
+import { scanBundle, MIN_JS_BYTES } from './check-platform-bundle-strapi.mjs';
 
 function bundle(files) {
   const dir = mkdtempSync(join(tmpdir(), 'bundle-'));
@@ -1422,18 +1552,28 @@ function bundle(files) {
   for (const [name, body] of Object.entries(files)) writeFileSync(join(dir, 'assets', name), body);
   return dir;
 }
-const big = 'x'.repeat(600_000);
+// Above the production floor, so a size finding can never stand in for a signature finding.
+const big = 'x'.repeat(MIN_JS_BYTES + 1);
 
-test('flags each Strapi signature', () => {
-  for (const marker of ['api.localqr.earth', 'undefined/upload', 'users_permissions_users', '/upload/files/'])
-    assert.ok(scanBundle(bundle({ 'a.js': big + marker }), { phase: 'A' }).findings.length > 0, marker);
+test('an above-floor bundle with no signature is clean (control)', () => {
+  assert.deepEqual(scanBundle(bundle({ 'a.js': big }), { phase: 'B' }).findings, []);
+});
+test('flags each Strapi signature by name', () => {
+  for (const marker of ['api.localqr.earth', 'undefined/upload', 'users_permissions_users', '/upload/files/',
+    'localhost:1337', '77.42.95.255', '13.126.235.177']) {
+    const findings = scanBundle(bundle({ 'a.js': big + marker }), { phase: 'A' }).findings;
+    assert.equal(findings.length, 1, marker);
+    assert.ok(findings[0].endsWith(`: ${marker}`), findings[0]);
+  }
 });
 test('a near-empty bundle fails the size floor instead of passing clean', () => {
-  assert.match(scanBundle(bundle({ 'a.js': 'ok' }), { phase: 'A' }).findings.join(), /floor/);
+  assert.deepEqual(scanBundle(bundle({ 'a.js': 'ok' }), { phase: 'A' }).findings.map((f) => /floor/.test(f)), [true]);
 });
-test('phase B also forbids /graphql and the Apollo client', () => {
-  assert.ok(scanBundle(bundle({ 'a.js': big + 'uri:"/graphql"' }), { phase: 'B' }).findings.length > 0);
-  assert.equal(scanBundle(bundle({ 'a.js': big + 'uri:"/graphql"' }), { phase: 'A' }).findings.length, 0);
+test('phase B also forbids /graphql in any form and the Apollo client; phase A does not', () => {
+  for (const marker of ['uri:"/graphql"', 'fetch(`${o}/graphql`)', 'ApolloClient']) {
+    assert.equal(scanBundle(bundle({ 'a.js': big + marker }), { phase: 'B' }).findings.length, 1, marker);
+    assert.deepEqual(scanBundle(bundle({ 'a.js': big + marker }), { phase: 'A' }).findings, [], marker);
+  }
 });
 ```
 
@@ -1452,10 +1592,12 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 /** Phase A holds after P6-4; phase B is switched on by P6-7, once Apollo is gone. */
-const ALWAYS = ['api.localqr.earth', 'localqr-strapi', 'undefined/upload', '/upload/files/', 'users_permissions_users', '77.42.95.255'];
-const PHASE_B = ['"/graphql"', "'/graphql'", '`/graphql`', 'ApolloClient', '__APOLLO_CLIENT__'];
+const ALWAYS = ['api.localqr.earth', 'localqr-strapi', 'undefined/upload', '/upload/files/', 'users_permissions_users',
+  'localhost:1337', '77.42.95.255', '13.126.235.177'];
+// Phase B: any occurrence of /graphql, not only a whole quoted literal. A template such as `${origin}/graphql` must fail too.
+const PHASE_B = ['/graphql', 'ApolloClient', '__APOLLO_CLIENT__'];
 /** The platform bundle is ~12 MB of JS; anything under half that is a broken build, not a clean one. */
-const MIN_JS_BYTES = 6_000_000; // measured 12.36 MB of JS at 05a252f6 (review A); re-measure
+export const MIN_JS_BYTES = 6_000_000; // measured 12.36 MB of JS at 05a252f6 (review A); re-measure
 
 function files(dir, found = []) {
   for (const entry of readdirSync(dir)) {
@@ -1619,13 +1761,24 @@ Delete `categoryNavigationAccountQuery` from `features/navigation/categoryNaviga
 | Consumer | Change |
 |---|---|
 | `e2e/public-shell-continuity.spec.ts:562-575` | Delete the `page.evaluate` that imports `PUBLIC_APP_DATA` and calls `window.__APOLLO_CLIENT__.cache.writeQuery`. Nothing reads the Apollo cache, so the seed is dead (no app code references `__APOLLO_CLIENT__`; Apollo exposes it in dev mode on its own). The canonical warm read the test checks next (`warmState.faults.set('PublicAppData', …)`) is unaffected. Run the spec to confirm |
-| `e2e/contained-auth-session.spec.ts:96-139` | Both tests extract `CategoryNavigationAccount` from source and POST it to the contained `/graphql` adapter to check that it denies a wrong owner. That adapter guards a surface the app no longer uses. Delete the two tests; keep the file's other tests |
+| `e2e/contained-auth-session.spec.ts:96-139` | Both tests extract `CategoryNavigationAccount` from source and POST it to the contained `/graphql` adapter to check that it denies a wrong owner. That adapter guards a surface the app no longer uses. **But the first test also asserts that a foreign session cannot reach the canonical session, identity and lifecycle surfaces** (`:103-105`, `:115-117`). Keep those canonical assertions, and delete only the document extraction, the GraphQL requests and their assertions. Delete the second test only if nothing canonical is left in it |
 | `src/features/Profile/components/__tests__/Profile.live-order-contract.test.tsx:64-67` | It reads `Settings/api/mutation.ts` and expects exactly one `mutation UpdateAccount` document, so it fails with ENOENT once the file goes. Seed its fixture directly, as its own comment suggests |
 | `src/features/__tests__/recommendationMutationsPublish.test.ts:18-87` | Delete the 25 mutation-document cases. Keep the Books/Favorites/Guides describe (`:123-145`) |
 | `features/Books/api/__tests__/detailQueryFields.test.ts`, `Games/api/__tests__/listVars.test.ts`, `Movies/api/__tests__/listVars.test.ts` | They test document shapes. Delete the files, or the document cases if anything else is in them |
 | `PublicHome/api/__tests__/publicPlacesQuery.contract.test.ts`, `PublicProfile.gallery-contract.test.tsx`, `routes/__tests__/UsernameValidator.test.tsx` | They import `accountsDetailQuery` / `getPublicAccountBasicQuery`. Delete those imports and the assertions built on them; keep what tests canonical behaviour |
 | `tunes/scripts/music-fixture-profile.ts`, `music-fixture-services.test.ts`, `scripts/music-public-prebrowser-qualification.mjs` | Only if they survived P3-7: delete the document scans |
 | `e2e/setup/category-navigation.ts:95-106` | Its registered-document set becomes empty. That is harmless, because the app sends no `/graphql`. Leave it; P6-9 decides the adapter's fate |
+
+- [ ] **Step 4a: Prune the served-source path lists — same commit as the deletions**
+
+`scripts/replatform-e2e.mjs:626` (`publicServedSourcePaths`) and `e2e/replatform/people-served-module-diagnostic.ts:2` list `PublicHome/api/query.ts`, `Settings/api/mutation.ts` and `Profile/api/query.ts`, which this ticket deletes. Find every consumer of those lists, then prune the deleted paths:
+
+```bash
+grep -rn "publicServedSourcePaths\|people-served-module-diagnostic" scripts explorers-earth tunes --include=*.mjs --include=*.ts | grep -v node_modules
+node --test scripts/replatform-e2e.test.mjs
+```
+
+P6-7 prunes `lib/apolloCache.ts` and its test from the same lists.
 
 - [ ] **Step 5: Regenerate the `.dockerignore` files if they list deleted files**
 
@@ -1683,11 +1836,11 @@ Run it. Expected: FAIL, listing the four source modules.
 
 - [ ] **Step 3: Remove the client**
 
-- **`src/main.tsx`.** Delete the Apollo imports (`:6-12`), `authLink` and `httpLink` (`:23-35`), `client` (`:38-44`) and the `<ApolloProvider client={client}>` wrapper (`:51`). Keep every other provider in the same order.
+- **`src/main.tsx`.** Delete the Apollo imports (`:6-12`), `authLink` and `httpLink` (`:23-35`), `client` (`:38-44`) and the `<ApolloProvider client={client}>` wrapper (`:51`). Keep every other provider in the same order. The `isCanonicalRuntime` import (`:1`) was used only by the deleted `uri` expression (`:33`), so remove it too, or `noUnusedLocals` fails.
 - **`AccountGenerationCacheReset.tsx:24` and `hooks/useLogout.ts:37`.** Delete the `client.clearStore()` calls and their `useApolloClient` hooks. The React Query clear next to them stays: it is the cache that holds account data now.
 - **`src/lib/apolloCache.ts` and `lib/__tests__/apolloCache.test.ts`.** Delete both.
 - **`src/__tests__/main.auth.test.tsx`.** It tests the Apollo auth link (`:77`, `:86`, `:97`). Delete those cases. Keep `:63` ("no eager Google Maps") if it is still meaningful.
-- **Stale path lists.** `scripts/replatform-e2e.mjs:626` (`publicServedSourcePaths`) and `e2e/replatform/people-served-module-diagnostic.ts:2` list `PublicHome/api/query.ts`, `Settings/api/mutation.ts`, `Profile/api/query.ts`, `lib/apolloCache.ts` and its test. Prune the deleted paths. Then run `node --test scripts/replatform-e2e.test.mjs`, because `replatform-e2e.mjs` is source-inventoried. Never regenerate a frozen constant to make that test pass.
+- **Stale path lists.** P6-6 Step 4a pruned the document files. Here, prune `lib/apolloCache.ts` and its test from `scripts/replatform-e2e.mjs:626` and `e2e/replatform/people-served-module-diagnostic.ts:2`. Then run `node --test scripts/replatform-e2e.test.mjs`, because `replatform-e2e.mjs` is source-inventoried. Never regenerate a frozen constant to make that test pass.
 - **The 32 importing test files.** For each one, remove the `MockedProvider` wrapper, or the hand-built client, and its import. A test that asserted Apollo behaviour is deleted, not rewritten.
 
 - [ ] **Step 4: Remove the dependency**
@@ -1732,7 +1885,12 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://explorers.earth/runtime-config
 sudo grep -rn "localqr\|1337" /etc/nginx/ 2>/dev/null | head
 ```
 
-Expected: `200` from `/runtime-config.json`. Only the platform build serves it (`bootstrap.ts:11-12`). And the grep finds no `localqr` or `1337` proxy. Anything else means P2 is not done, and this ticket waits.
+Expected:
+- **`/runtime-config.json` answers `200`**, and its body parses with `parsePublicRuntimeConfig` (`src/lib/publicRuntimeContract.ts`), with `origin` equal to `https://explorers.earth`. A 200 alone is not enough: an SPA fallback returns 200 for any path.
+- **The grep finds no `localqr` or `1337` proxy.**
+- **The served release is identified.** The owner records the deployed image digest or release directory from the P2 record, and it matches a `main` commit that contains the platform build.
+
+Anything else means P2 is not done, and this ticket waits.
 
 - [ ] **Step 2: Write the failing test**
 
@@ -1785,7 +1943,7 @@ Run each builder's unit tests. A test that expected `http://localhost:1337/uploa
 | Legacy env | `explorers-earth/.env.example:5-9,26` — the three Strapi variables |
 | Legacy dev proxy | `explorers-earth/vite.config.ts:58-71`. Point `/api` at the local canonical API (`http://127.0.0.1:5000`) and delete `/graphql`. Also remove the `musicDevelopmentTransport` import (`:5,13`) if P3 left it |
 | `build` script | `explorers-earth/package.json:11`. Make `build` the platform build: `npm run landing:check && tsc -b && vite build --config vite.platform.config.ts --mode platform && node scripts/check-music-production-bundle.mjs && node scripts/check-platform-bundle-strapi.mjs dist` |
-| Dead legacy modules | `store/store.ts:100-116` `login()` (no caller), `pages/public/PublicProfilePage.tsx` (imported nowhere). Check each with `grep -rn "<name>" explorers-earth/src` |
+| Dead legacy modules | `store/store.ts:100-116` `login()` (no caller). Delete the `login` member from the `AuthState` interface (`:25-32`) too, because `create<AuthState>()` (`:53`) requires every member. `pages/public/PublicProfilePage.tsx` (imported nowhere). Check each with `grep -rn "<name>" explorers-earth/src` |
 
 Before deleting the Dockerfile stages and `nginx.conf`, find who references them:
 
@@ -1970,7 +2128,7 @@ Extend this to every baseline table. Expected: zero everywhere, because the prod
 Write it from Step 2's output, in dependency order:
 1. triggers on the doomed tables;
 2. then their trigger functions;
-3. then the tables, children before parents, with `users` last;
+3. then the tables, children before parents, **in the order the FK graph gives**. That is not "`users` last": `users.account_manager_id` references `team_members` (`0001_runtime_baseline.sql:26`), so `users` is itself a child, and `team_members` drops after it;
 4. then any sequence not owned by a dropped column.
 
 Shape:
@@ -1986,8 +2144,9 @@ Shape:
 DROP TABLE public.explorers_analytics_receipts;
 DROP TABLE public.playback_states;
 DROP TABLE public.youtube_api_calls;
--- … every remaining baseline table, in the order Step 2's FK graph requires …
-DROP TABLE public.users;
+-- … every remaining baseline table that references users, in the order Step 2's FK graph requires …
+DROP TABLE public.users;          -- users.account_manager_id -> team_members (0001:26), so users goes before…
+DROP TABLE public.team_members;   -- …its parent
 -- (3) Sequences that outlive their tables (not OWNED BY a dropped column).
 ```
 
@@ -2128,6 +2287,18 @@ P3-8 may have renamed the contract test; find it with `ls tunes/server/test/cont
 
 ## P6-12: Close — final guard run and evidence
 
+- [ ] **Step 0a: Run the guard against the platform build once**
+
+The dev-mode guard exercises the legacy-leaning branches (P6-1, "What it does not run"), and P6-5's scan only reads the bundle statically. Before P6 closes, run the same spec once against the **shipped** artifact.
+
+1. **Build it:** `npx vite build --config vite.platform.config.ts --mode platform --outDir <temp>`.
+2. **Render the runtime files** into it with `node scripts/render-platform-runtime.mjs <config.json> <temp>/index.html <temp>`. Read its argument check (`process.argv.length!==5`) and `parsePublicRuntimeConfig` for the exact inputs. Use a QA config whose `origin` is the fixture web origin.
+3. **Serve it:** `vite preview` with a config whose `preview.proxy` sends `/api` to the in-process canonical API, on the fixture's web port.
+
+Wire it as a `no-strapi-platform` suite in `parseBrowserSuite`, with the runner choosing preview instead of dev. In that mode the spec's closure floor counts `/assets/*.js` chunks instead of `/src/` modules. Set its floor from the measured chunk count (the platform build emits about 119 assets).
+
+**Teeth check:** add a `fetch('http://13.126.235.177:1337/x')` behind `if (isCanonicalRuntime())` in `main.tsx`. It must fail this run and must not fail the dev-mode run.
+
 - [ ] **Step 0: Widen the ratchet to the rest of `build:api`**
 
 P3-7 has now dealt with the three entry points P6-3 left out. Add each that still exists to `PRODUCTION_ENTRIES` in `scripts/check-retired-dependencies.mjs`:
@@ -2238,7 +2409,7 @@ The engineer may run that command. The owner deletes in the GitHub UI, or with `
 1. **Stop** the Strapi process on LocalQR-Strapi-Prod and LocalQR-Strapi-Dev. Do not delete anything yet. `api.localqr.earth` now fails. Wait 48 hours, then look for breakage, such as the support inbox and any monitor.
 2. **DNS.** Remove the `api.localqr.earth` record, or point it at a static host answering `410 Gone`. Removing it is simpler; a 410 is kinder to anything that still calls it. The owner chooses.
 3. **Delete** the two Hetzner CAX21 servers, LocalQR-Strapi-Prod and LocalQR-Strapi-Dev (`database-change-feature.md:24-28`). Also check the older AWS Mumbai host `13.126.235.177` (`vite.config.ts:59,66`). If it or its database still exists, it is part of this step.
-4. **Delete** the RDS instance, **only after** Step 2's snapshot decision. This is irreversible.
+4. **Delete** the RDS instance, **only after** Step 2's snapshot decision, and **only after** listing its databases and connections. The owner runs `SELECT datname FROM pg_database` and checks `pg_stat_activity` over a day, to confirm that nothing but the two Strapi instances uses it. This is irreversible.
 5. **Delete** the Strapi S3 bucket, **only if** Step 3 confirmed it is separate. This is irreversible.
 6. **Archive** the `MeteoriteLabs/localqr-strapi-v2` repository on GitHub. Archive it rather than delete it: it is history.
 
@@ -2254,9 +2425,10 @@ Add a dated line to the backbone's P6 section: what was switched off, when, and 
 2. **The content export** (P6-13 Step 2): an RDS snapshot, an admin export, or nothing?
 3. **`api.localqr.earth` after switch-off:** remove the DNS record, or serve a static 410?
 4. **The legacy e2e `/graphql` mocks** (decision 6): leave them as harmless residue, or schedule a cleanup PR?
-5. **Making the no-Strapi lane required** (P6-1 Step 14). It is nightly here. P7 owns the cost trade-off.
+5. **Making the no-Strapi lane required** (P6-1 Step 15). It is nightly here. P7 owns the cost trade-off.
 6. **The AWS Mumbai host `13.126.235.177`** (`vite.config.ts:59,66`, `2026-07-08-production-e2e-run-notes.md:75`). Does it, or an RDS or EC2 behind it, still exist and bill? If so, P6-13 Step 5 retires it too.
 7. **Who runs the production row-count check in P6-10 Step 3?** It needs database access on the host, which the owner does not have yet.
+8. **Is the static leak test enough for `AddRecommendation.tsx`'s edit-mode image removal?** P6-4 adds an interaction case for the profile upload only. Covering removal needs a seeded recommendation with media. That is accepted as residual here; say if it should be built.
 
 ---
 
@@ -2376,3 +2548,35 @@ Also applied from the same reviews:
 - the `graphql` consumer list;
 - the Playwright config names;
 - the nightly lane's argument parsing.
+
+
+### Revision 3 — from the Codex cross-model review (2026-10-19)
+
+Codex's Windows sandbox refuses every shell call, so it ran without live repository access. It was given revision 2, the P3 plan's P3-7 to P3-9 sections, the backbone's P6 section, and the verbatim source of 40 load-bearing files and excerpts, including P5-1's version of the analytics route. It found sixteen things both Claude reviews missed. Each was checked against the code before it was applied.
+
+| # | Revision 2 said | The code says | Applied |
+|---|---|---|---|
+| 1 | P6-5's scanner tests use a 600 KB fixture | The floor is 6 MB, so the "clean" phase-A case always fails, and every positive case passes on the size finding alone | Fixtures above the floor, one named finding per marker, and an above-floor clean control |
+| 2 | `/email-verification` is an ordinary auth page | `AuthRoutes.tsx:27` is `<Navigate to="/login">`, so both its cases failed the landing assertion, and P6-1 could never go green | Moved to `EXCLUDED` with the reason |
+| 3 | Drop the baseline tables "with `users` last" | `users.account_manager_id` references `team_members` (`0001:26`), so `users` is a child. Dropping `team_members` before it fails without `CASCADE` | FK-graph order, with `users` before `team_members` |
+| 4 | Onboarding plus `publicProfile: true` makes public category pages reachable | They sit behind `TabVisibilityGuard defaultVisible={false}`, which redirects to the username root | The runner PATCHes every category public. A hidden category is caught by the landing assertion |
+| 5 | Per-case proof = pathname, `/me` 200 and no violations | `ProtectedRoute.tsx:18-24` renders a loader or an error **on the same path**. The API floor counted requests, not successes | Each case asserts no broken state (selectors read from `EarthLoader.tsx:103-104` and `OnboardingCheckError.tsx:24-26`), plus optional page `marker`s. The API floor counts only successful responses |
+| 6 | One navigation claims `/404`, the app wildcard and the public wildcard. The protected `/guides`, `/hub` and `/music` are visited. `ROUTE_FLOOR = CASES.length` | Three different elements; the protected redirects are shadowed by `AppRoutes.tsx:25-27`; a floor derived from the table shrinks when cases are excluded | Three separate wildcard cases. The top-level redirects are visited, and the protected occurrences are excluded as shadowed. `ROUTE_FLOOR` is a fixed number. Index routes are documented as covered by their category URLs |
+| 7 | "Strapi calls happen on load" | The four remaining calls run in event handlers (upload, edit-mode removal) | P6-4 adds a profile-upload interaction case, with a teeth check. Edit-mode removal stays static-only (Open question 8) |
+| 8 | The server monitor "refuses", and self-test traffic is "excluded by nonce" | It only records. Its exemption matched **any** `nostrapi-selftest=` value, and its self-test contacted `127.0.0.1:1337` | Described as detection only. The self-test uses an owned loopback server with timeouts. Only issued nonces are exempt, on both monitors, and a test proves a forged value is still a violation |
+| 9 | Teeth check 4: force the `historical()` path, and expect `NO_STRAPI_SERVER_VIOLATION` | With a cookie and no `Bearer`, legacy ownership returns `false` before any fetch (`explorers-analytics-adapters.ts:511`). The probe's 502/403 also threw before the report ran | Teeth check 4 reintroduces an explicit Strapi fetch. The server report runs in `finally`, on every exit path |
+| 10 | Resolve `@shared/*` in `resolveImport` | `walkClosure` drops non-relative specifiers at `:167` before the resolver sees them, and never extracts `require()` | Both places fixed; `require()` and `#auth-runtime` addressed; negative fixtures added |
+| 11 | "No production entry point reaches a STRAPI_* read" | `ENV_READ` misses `environment.STRAPI_*` (`composition.ts:25`), and `codeOnly()` deletes code after a `//` inside a string | Any `STRAPI_*` identifier or string is a violation; comments are stripped with TypeScript's scanner |
+| 12 | The static bundle scan covers the shipped build | It missed `localhost:1337` and `13.126.235.177`, and matched `/graphql` only as a whole quoted literal. A platform-only request would evade both checks | More markers, and any `/graphql` occurrence. P6-12 Step 0a runs the guard once against the real platform build, with a platform-only teeth check |
+| 13 | P6-8 gated on P2 and P6-4 | Its new leak test forbids `VITE_API_URL`, which `main.tsx:33` reads until P6-7 | Gated on P6-7 |
+| 14 | P6-2 verifies "including a real canonical boot" | Its runner injects a pool, so it never attests | Evidence comes from `startCanonicalServer` with no injected pool. The two existing tests that call it are named |
+| 15 | P6-7 deletes the Apollo setup; P6-8 deletes `login()` | The `isCanonicalRuntime` import (`main.tsx:1`) and the `AuthState.login` member (`store.ts:25-32`) are left behind, and break `tsc` | Both removed in the same tickets |
+| 16 | P6-6 deletes both contained-auth `/graphql` tests | The first also asserts canonical foreign-session denials (`:103-105,115-117`) | Those assertions are kept |
+
+**Also from Codex, previously unresolved:**
+- **Served-source lists.** They are pruned in P6-6, the ticket that deletes their files, and not left until P6-7.
+- **`.dockerignore` regeneration.** It is now a stated rule for every ticket that adds or deletes files, as P3 requires.
+- **Proof that production serves the platform build (P6-8 Step 1).** This now needs the parsed `runtime-config.json` contract and the release identity, not just a 200 status.
+- **RDS deletion.** It requires listing the instance's databases and connections first.
+
+**The P5-1 signature Codex could not confirm** is confirmed. `9e73fb75` widens `readAccountEvents(scope, request?)` in `explorersAnalyticsRoutes.ts:131`, and passes `req` at `:201`.
