@@ -22,9 +22,6 @@ All environment variables for both applications. Each app has its own `.env` fil
 | `VITE_IGDB_CLIENT_SECRET` | No | IGDB/Twitch Client Secret for game search | `secret...` |
 | `VITE_INSTAGRAM_API_URL` | No | Instagram Graph API base URL | `https://graph.instagram.com` |
 | `VITE_TURNSTILE_SITE_KEY` | No | Cloudflare Turnstile site key (bot protection on auth forms) | `0x4AAAAA...` |
-| `VITE_PAYMENT_API_URL` | No | Payment backend API URL | `https://pay.explorers.earth` |
-| `VITE_RAZORPAY_KEY_ID_DEV` | No | Razorpay key for dev/test environment | `rzp_test_...` |
-| `VITE_RAZORPAY_KEY_ID_PROD` | No | Razorpay key for production | `rzp_live_...` |
 | `VITE_PUBLIC_ACCESS_TOKEN` | No | Public access token for Strapi (unauthenticated reads) | `token...` |
 | `VITE_LOCAL_TUNES_API_URL` | No | tunes API URL for cross-app integration | `https://localtunes.earth` |
 | `VITE_LOCAL_TUNES_WS_URL` | No | tunes WebSocket URL | `wss://localtunes.earth` |
@@ -35,8 +32,6 @@ All environment variables for both applications. Each app has its own `.env` fil
 > **Note on IGDB**: IGDB uses Twitch OAuth for authentication. `VITE_IGDB_CLIENT_ID` and `VITE_IGDB_CLIENT_SECRET` are your Twitch app credentials. The token exchange is handled in `src/services/igdbService.ts`.
 
 > **Note on TMDB**: Both `VITE_TMDB_API_KEY` (v3 legacy) and `VITE_TMDB_ACCESS_TOKEN` (v4 Bearer) are used. The Bearer token is preferred for newer endpoints.
-
-> **Note on Razorpay**: Two separate keys are used — `VITE_RAZORPAY_KEY_ID_DEV` for test/staging and `VITE_RAZORPAY_KEY_ID_PROD` for production. The app selects based on environment.
 
 > Note: All explorers-earth env vars are prefixed with `VITE_` because Vite exposes these to the client bundle. Do not put secrets here.
 
@@ -112,13 +107,6 @@ All environment variables for both applications. Each app has its own `.env` fil
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
 | `CLARITY_PROJECT_ID` | No | Microsoft Clarity project ID | `abc123` |
-
-### Payments
-
-| Variable | Required | Description | Example |
-|----------|----------|-------------|---------|
-| `RAZORPAY_KEY_ID` | No | Razorpay API key | `rzp_test_...` |
-| `RAZORPAY_KEY_SECRET` | No | Razorpay secret | `secret...` |
 
 ## Security Notes
 

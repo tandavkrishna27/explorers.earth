@@ -95,7 +95,7 @@ Known raw SQL references are generated from `.query(...)` and tagged `sql`
 statements. They include the seven unmanaged deletion tables above,
 song-position arithmetic, last-30-day queries, and `pg_stat_activity`; and in
 `tunes/server/legacy-routes.ts`: request logging. All routes, storage, YouTube,
-playback, widgets, analytics, subscriptions, session, and deletion code are
+playback, widgets, analytics, session, and deletion code are
 within the source scan boundary `tunes/server/**/*.ts` plus
 `tunes/client/src/**/*.tsx`. External Strapi `songLimits` is a separate
 dependent data family (analytics/entitlement) and is not a Tunes table.
@@ -118,7 +118,7 @@ REST sources include `auth.ts`
 (user/devices), `legacy-routes.ts` (playlists, queue, public guest playlists,
 profile, verification, admin users/team/tokens/email/system/page content,
 YouTube, Strapi debug/config/GraphQL, analytics), `routes/*` (auth, playlist,
-admin, Strapi, YouTube, email, page, reactivation, payment, subscriptions,
+admin, Strapi, YouTube, email, page, reactivation,
 Gemini, Instagram, scrape), `seo-routes.ts` (SEO/robots/sitemaps), and
 `google-oauth-routes.ts`. Public routes include guest playlist, robots, sitemap
 and iTunes search. Native session routes are the Passport login/logout/check

@@ -19,7 +19,6 @@ vi.mock("../../Profile/api/useCanonicalAccount", () => ({ useCanonicalAccount: (
   data: { id: "account-a", handle: "alice", revision: 1, onboardingStatus: "complete" }, isLoading: false,
 }) }));
 vi.mock("../components/ProfileAccountSettings", () => ({ default: () => null }));
-vi.mock("../components/BillingTab", () => ({ default: () => null }));
 vi.mock("../components/LanguageSelector", () => ({ default: () => null, LANGUAGES: [{ code: "en", name: "English" }] }));
 vi.mock("react-router-dom", () => ({ useNavigate: () => vi.fn() }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: "en" } }) }));

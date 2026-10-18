@@ -106,9 +106,6 @@ vi.mock("../components/ProfileAccountSettings", () => ({
     <div data-testid={`moved-${section}`}>{section}</div>
   ),
 }));
-vi.mock("../components/BillingTab", () => ({
-  default: () => <div data-testid="existing-billing">Existing billing</div>,
-}));
 vi.mock("../components/LanguageSelector", () => ({
   default: () => null,
   LANGUAGES: [
@@ -474,7 +471,6 @@ describe("Settings moved profile data placement", async () => {
       "true",
     );
     expect(screen.getByTestId("moved-billing")).toBeInTheDocument();
-    expect(screen.getByTestId("existing-billing")).toBeInTheDocument();
     expect(screen.queryByTestId("moved-account")).not.toBeInTheDocument();
   });
 });

@@ -6,7 +6,7 @@ import {
 } from "../features/Authentication/data";
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../components/ui/Button";
@@ -310,7 +310,6 @@ const OnBoarding = () => {
   const endSession = useLogout();
   // const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
-  const location = useLocation();
  
   const [showLogoutModal, setShowLogoutModal] = useState(false);
  
@@ -320,8 +319,8 @@ const OnBoarding = () => {
   };
 
 
-  const [isCreatingSubscription, setIsCreatingSubscription] = useState(false);
-  // Synchronous re-entrancy lock for the free-plan finalize/create path (guards
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  // Synchronous re-entrancy lock for the finalize/create path (guards
   // against a double-click creating duplicate accounts; see onboardingFinalizeLock).
   const finalizeLockRef = useRef(createFinalizeLock());
 
@@ -370,35 +369,6 @@ const OnBoarding = () => {
       }));
     }
   }, [storedUsername, fetchedUsername]);
-
-  // Handle returning from subscription page
-  useEffect(() => {
-    const state = location.state as any;
-    if (state?.selectedPlan && !hasSubmitted && !isSubmitting) {
-      // User selected a plan, restore form data and continue with submission
-      const updatedFormData = {
-        ...formData,
-        ...(state.formData || {}),
-      };
-      setFormData(updatedFormData);
-      // Automatically submit the form
-      setTimeout(() => {
-        handleSubmit(updatedFormData);
-      }, 100);
-    } else if (state?.skipSubscription && !hasSubmitted && !isSubmitting) {
-      // The subscription choice is optional; onboarding completion remains authoritative.
-      const updatedFormData = {
-        ...formData,
-        ...(state.formData || {}),
-      };
-      setFormData(updatedFormData);
-      // Automatically submit the form
-      setTimeout(() => {
-        handleSubmit(updatedFormData);
-      }, 100);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state]);
 
   // Cleanup effect to prevent queries from running after component unmounts
   useEffect(() => {
@@ -615,12 +585,6 @@ const OnBoarding = () => {
     setIsSubmitting(true);
 
     try {
-      // Always advance to Step 5 (Subscription Plans) - subscription is now mandatory for all registrations
-      // Account creation will happen after subscription plan selection in handleSubscriptionSubmit
-      console.log('Advancing to Step 5 (Subscription Plans)...');
-      console.log('Account creation will happen after subscription plan selection');
-
-      // Just advance to Step 5 (subscription plans)
       setActiveStep(4);
       setIsSubmitting(false); // Reset submitting state since we're not creating account yet
       return;
@@ -665,15 +629,9 @@ const OnBoarding = () => {
       setFormData(updatedFormData);
 
       if (activeStep === 3) {
-        // TEMPORARILY SKIPPING subscription plan step — auto-register with free plan.
-        // To re-enable the plan selection UI, restore handleNext() here and
-        // uncomment the 'Subscription Plans' step in the steps array below.
-        console.log("Finalizing the selected plan...");
-        await handleSubscriptionSubmitWithFreePlan(updatedFormData);
+        await saveOnboardingAccount(updatedFormData);
       } else if (activeStep === 4) {
-        // Step 5 (Subscription Plans) - don't call handleSubmit, handled by handleSubscriptionSubmit
-        console.log("Step 5 (Subscription Plans) - handled separately");
-        // Do nothing here, the button in Step 5 UI calls handleSubscriptionSubmit directly
+        // No step 5 is rendered; there is nothing to submit here.
       } else if (activeStep === steps.length - 1) {
         // Fallback for other final steps
         console.log("Final step, calling handleSubmit with:", updatedFormData);
@@ -711,14 +669,16 @@ const OnBoarding = () => {
   };
 
 
-  // Handle Step 5 submission (subscription plan selection)
-  // Accepts optional explicit plan/formData for programmatic calls (e.g. auto-free-plan).
-  // When called from the plan selection UI, these params are undefined and state values are used.
-  const handleSubscriptionSubmit = async (currentFormData: typeof formData) => {
+  /**
+   * Finalizes the account at the end of onboarding: uploads any pending profile and
+   * background images, writes the account, and marks onboarding complete. The product
+   * is free, so there is no plan to select (backbone D3).
+   */
+  const saveOnboardingAccount = async (currentFormData: typeof formData) => {
 
     if (canonicalAccount.data) {
       if (!beginFinalize(finalizeLockRef.current)) return;
-      setIsCreatingSubscription(true);
+      setIsFinalizing(true);
       const uploaded: string[] = [];
       try {
         const current = await explorersApiClient.getMyProfile();
@@ -748,7 +708,7 @@ const OnBoarding = () => {
         await Promise.all(uploaded.map((id) => explorersApiClient.deleteMedia(id).catch(() => undefined)));
         toast.error(error?.message || "Couldn't save your account. Please try again.");
       } finally {
-        setIsCreatingSubscription(false);
+        setIsFinalizing(false);
         endFinalize(finalizeLockRef.current);
       }
       return;
@@ -758,26 +718,13 @@ const OnBoarding = () => {
 
   };
 
-  /**
-   * AUTO-FREE-PLAN: Programmatically registers the user with the free plan.
-   * Called from the final onboarding action instead of advancing to
-   * the plan selection UI (Step 5), which is temporarily hidden.
-   *
-   * To re-enable the plan selection step:
-   *   1. In handleStepSubmit (activeStep === 3), replace this call with handleNext()
-   *   2. Uncomment the 'Subscription Plans' entry in the steps array below
-   */
-  const handleSubscriptionSubmitWithFreePlan = async (currentFormData: typeof formData) => {
-    await handleSubscriptionSubmit(currentFormData);
-  };
-
-  // Final step (Address). Validates the address fields, then creates the account
-  // on the free plan. Music setup begins automatically only after this Account exists.
+  // Final step (Address). Validates the address fields, then creates the account.
+  // Music setup begins automatically only after this Account exists.
   const handleFinalizeAddress = async () => {
-    if (isSubmitting || hasSubmitted || isCreatingSubscription) return;
+    if (isSubmitting || hasSubmitted || isFinalizing) return;
     try {
       await addressValidationSchema(t).validate(formData, { abortEarly: false });
-      await handleSubscriptionSubmitWithFreePlan(formData);
+      await saveOnboardingAccount(formData);
     } catch (error) {
       if (error instanceof Yup.ValidationError) {
         error.errors.forEach((errorMessage) => toast.error(errorMessage));
@@ -1177,10 +1124,10 @@ const OnBoarding = () => {
             <button
               type="button"
               onClick={handleFinalizeAddress}
-              disabled={isSubmitting || hasSubmitted || isCreatingSubscription}
+              disabled={isSubmitting || hasSubmitted || isFinalizing}
               className="ob-primary"
             >
-              {isSubmitting || isCreatingSubscription
+              {isSubmitting || isFinalizing
                 ? t("auth.validations.general.processing")
                 : t("auth.onboarding.addressDetails.confirmDetails")}
             </button>
