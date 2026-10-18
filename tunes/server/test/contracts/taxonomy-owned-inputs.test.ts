@@ -6,7 +6,7 @@ vi.mock('node:fs', async (importOriginal) => {
     return { ...actual, readSync: vi.fn(actual.readSync) };
 });
 import { loadReviewedTaxonomyInputs, reviewedTaxonomyInputDirectory } from '../../../scripts/taxonomy-owned-import';
-const directory = resolve(import.meta.dirname, '../../../../fixtures/taxonomy/real-strapi-20261013');
+const directory = resolve(import.meta.dirname, '../../../fixtures/taxonomy/real-strapi-20261013');
 const manifestHash = '0087cf143b6f8ae68f60087539083bd0f7992c50c846b4c98a02dc1e9155ccff';
 it('loads exact real reviewed335 catalog and configured empty People through current importer', () => {
     expect(reviewedTaxonomyInputDirectory).toBe(directory);
