@@ -1071,7 +1071,13 @@ Owner actions, once, with the engineer present. Nothing in the repo does any of 
 >   and names the nginx file that serves the hostname today, which answers open question 1 and
 >   gives `EXPLORERS_NGINX_SITE_PATH`.
 > - **Step 1 (backup) has nothing to back up** on a start-fresh cutover; the first backup is after
->   the first deploy, with #141's tooling. **Step 1a is void** (no real users; #131 held out).
+>   the first deploy, with #141's tooling (runbook 6.4). **Step 1a is void** (no real users; #131
+>   held out).
+> - **Backups, rehearsed after #141 merged.** A backup on the stand-in restored in the drill in
+>   6.1s. Before cutover: set `EXPLORERS_BACKUP_AGE_RECIPIENT` (now in the env example and the
+>   bootstrap check), put Node 24 on the host, and commit a drill receipt at `0057`. The committed
+>   one is at `0056`, so the deploy gate refuses every deploy after the first,
+>   `DRILL_MARKER_MISMATCH`, rollbacks included.
 > - **Step 4 needs no action.** The postgres image creates the migrator from `DB_MIGRATOR_USER`,
 >   migration 0010 creates `music_runtime`, and the gate creates the runtime login.
 > - **Step 9's command is wrong.** The API is on two networks, so

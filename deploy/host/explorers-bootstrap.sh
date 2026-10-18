@@ -42,7 +42,7 @@ server_name="$2"
 # --- Step 2: tools and headroom ------------------------------------------------
 tools() {
   local tool
-  for tool in docker nginx curl openssl basenc stat find; do
+  for tool in docker nginx curl openssl basenc stat find node; do
     command -v "$tool" >/dev/null || problem "$tool is not installed"
   done
   if docker compose version >/dev/null 2>&1; then
@@ -52,6 +52,11 @@ tools() {
   fi
   docker info >/dev/null 2>&1 || problem "the docker daemon is not reachable"
   command -v nginx >/dev/null && ok "$(nginx -v 2>&1)"
+  # The pre-deploy and scheduled backups run platform-backup.mjs with the host's node.
+  if command -v node >/dev/null; then
+    local node_major; node_major="$(node -p 'process.versions.node.split(".")[0]')"
+    if (( node_major < 24 )); then problem "node $(node --version) is too old; the backups need Node 24"; else ok "node $(node --version)"; fi
+  fi
 
   local root free_gb memory_mb
   root="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker)"
@@ -101,7 +106,8 @@ directories() {
 readonly REQUIRED=(DB_NAME DB_MIGRATOR_USER DB_RUNTIME_USER DB_MIGRATOR_PASSWORD_FILE_HOST
   DB_RUNTIME_PASSWORD_FILE_HOST MUSIC_GATE_ATTESTATION_KEY EXPLORERS_PUBLIC_ORIGIN EXPLORERS_AUTH_SECRET
   GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET EXPLORERS_TRUSTED_PROXY_IP EXPLORERS_MEDIA_S3_BUCKET
-  EXPLORERS_MEDIA_S3_REGION AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY GOOGLE_BOOKS_API_KEY TMDB_ACCESS_TOKEN)
+  EXPLORERS_MEDIA_S3_REGION AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY GOOGLE_BOOKS_API_KEY TMDB_ACCESS_TOKEN
+  EXPLORERS_BACKUP_AGE_RECIPIENT)
 
 env_value() { sed -n "s/^$1=//p" "$ENV_FILE" | tail -n 1; }
 
@@ -131,6 +137,8 @@ check_env() {
     [[ "$name" =~ ^[a-z_][a-z0-9_]{0,62}$ ]] || problem "production.env: database user '$name' is not a plain lowercase identifier"
     [[ "$name" != postgres && "$name" != music_runtime ]] || problem "production.env: database user may not be '$name'"
   done
+  # platform-backup.mjs's assertAgeRecipient: a public key, never an identity.
+  [[ "$(env_value EXPLORERS_BACKUP_AGE_RECIPIENT)" =~ ^age1[0-9a-z]{58}$ ]] || problem "production.env: EXPLORERS_BACKUP_AGE_RECIPIENT must be the age PUBLIC key (age1 + 58 characters); every deploy after the first refuses without it"
   [[ "$(env_value EXPLORERS_TRUSTED_PROXY_IP)" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || problem "production.env: EXPLORERS_TRUSTED_PROXY_IP must be one IPv4 address"
   [[ "$(env_value DB_MIGRATOR_PASSWORD_FILE_HOST)" == "$SECRETS/db-migrator" ]] || note "DB_MIGRATOR_PASSWORD_FILE_HOST is not $SECRETS/db-migrator; checking it where it points"
   check_secret_file "$(env_value DB_MIGRATOR_PASSWORD_FILE_HOST)"

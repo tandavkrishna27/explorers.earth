@@ -103,11 +103,20 @@ backup() {
     fail "the explorers-canonical postgres-data volume exists but postgres is not running; refusing to deploy without a backup"
   fi
   if [[ -n "$running" ]]; then
-    db_head="$(docker exec -i "$running" sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA' <<'SQL'
-SELECT CASE WHEN to_regclass('music_schema_migrations') IS NULL THEN ''
-            ELSE (SELECT coalesce(max(id), '') FROM music_schema_migrations) END;
+    # Two queries for the same reason as in stage: a single statement naming the
+    # journal fails on a database that has none (a first deploy whose stage died
+    # after starting postgres and before migrating).
+    local journal_exists
+    journal_exists="$(docker exec -i "$running" sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA' <<'SQL'
+SELECT to_regclass('public.music_schema_migrations') IS NOT NULL;
+SQL
+)" || fail "could not query the database"
+    if [[ "$(printf '%s' "$journal_exists" | tr -d '[:space:]')" == t ]]; then
+      db_head="$(docker exec -i "$running" sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA' <<'SQL'
+SELECT coalesce(max(id), '') FROM public.music_schema_migrations;
 SQL
 )" || fail "could not read the database migration journal"
+    fi
     db_head="$(printf '%s' "$db_head" | tr -d '[:space:]')"
   fi
   if [[ -z "$db_head" ]]; then

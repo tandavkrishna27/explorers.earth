@@ -34,10 +34,16 @@ section says what each one means for the cutover.
    `tunes-deploy.yml` against the live Music host. **Do not dispatch it as it stands.** Fix it
    first: split the input so publishing and the Music deploy are separate choices, or land P3-7,
    which deletes `tunes-deploy.yml`.
-2. **Backup and restore are not rehearsed.** PR #141 (encrypted backups, the restore drill and
-   the deploy gate) was not merged when this was written. Before sign-ups open, merge it, re-run
-   the rehearsal with a backup and restore stage, and take the first real backup (step 6.4).
-   There is nothing to back up before the first deploy: the database starts empty.
+2. **The committed drill receipt is one migration behind, so every deploy after the first is
+   refused.** The deploy gate (#141) admits a deploy over an existing database only if
+   `docs/replatform/evidence/recovery-receipt.json` was drilled at the database's migration
+   head. The committed receipt is at `0056_explorers_app_enrichment_jobs`; the database will be at
+   `0057_retire_music_category`. The rehearsal ran the gate on its own backup and got
+   `DRILL_MARKER_MISMATCH` with the committed receipt and `admitted` with a fresh 0057 drill. This
+   matters on cutover day: if the first deploy migrates and then fails at `activate`, the re-run is
+   no longer a first deploy and is refused. That includes a rollback. **Before cutover, re-run the
+   fixture drill at 0057** (`docs/replatform/release-and-recovery.md`, "The monthly drill", fixture
+   form) **and commit the receipt.** It goes stale after 30 days, so do it close to cutover.
 3. **Better Auth's rate limiter cannot see client addresses.** On the first request the API logs
    `Rate limiting could not determine a client IP and is falling back to a single shared
    per-path bucket`. `EXPLORERS_TRUSTED_PROXY_IP` fixes Express (`req.ip`), but Better Auth reads
@@ -97,6 +103,21 @@ In Google Cloud console → APIs & Services → Credentials, on a **Web applicat
       `AWS_SECRET_ACCESS_KEY`. Nothing checks these at boot: wrong keys show up only when the first
       upload fails (step 6.2).
 
+### Backups (#141)
+
+- [ ] An **age identity on your own machine**, never on the host. `age-keygen -o explorers-backup.age`
+      writes it and prints `# public key: age1...`. Keep a second copy of the identity offline.
+      Without it no backup can be decrypted. The public key becomes
+      `EXPLORERS_BACKUP_AGE_RECIPIENT`.
+- [ ] The S3 IAM user above also needs `s3:ListBucket` on the bucket, limited to the
+      `prod/backups/` prefix, so backups can be pruned. Whether it may also delete under
+      `prod/backups/` is owner decision 2 in
+      [the backup plan](../superpowers/plans/2026-10-18-backup-restore-recovery.md). If it may not,
+      backups accumulate and report `BACKUP_DELETE_PERMISSION_UNAVAILABLE`.
+- [ ] **Node 24 on the host.** The pre-deploy and nightly backups run `platform-backup.mjs` with it.
+- [ ] Your own AWS credentials with read access to `prod/backups/`, for the monthly drill on your
+      machine.
+
 ### Third-party keys
 
 - [ ] A Google Maps **browser** key, restricted by HTTP referrer to `https://<host>/*`. It goes in
@@ -121,6 +142,7 @@ In Google Cloud console → APIs & Services → Credentials, on a **Web applicat
 | `EXPLORERS_TRUSTED_PROXY_IP` | Leave the example value; step 5.3 sets the real one |
 | `EXPLORERS_MEDIA_S3_BUCKET`, `EXPLORERS_MEDIA_S3_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | S3 |
 | `GOOGLE_BOOKS_API_KEY`, `TMDB_ACCESS_TOKEN` | Catalog providers |
+| `EXPLORERS_BACKUP_AGE_RECIPIENT` | The age **public** key (`age1` + 58 characters). Every deploy after the first refuses without it |
 | `EXPLORERS_API_IMAGE_NAME`, `EXPLORERS_API_DIGEST`, `EXPLORERS_API_COMMIT` | Leave the placeholders; every deploy overrides them |
 
 **GitHub repository variables** (Settings → Secrets and variables → Actions → Variables):
@@ -177,6 +199,7 @@ Expected, ending in `host is ready for the first deploy`:
 ```
 ok:   Docker version 29.1.3, ...; Docker Compose version 2.40.3...
 ok:   nginx version: nginx/1.24.0 (Ubuntu)
+ok:   node v24.21.0
 ok:   ...G free under /var/lib/docker
 ok:   ...MB memory available
 ok:   /opt/explorers (0700) and /srv/explorers exist
@@ -208,6 +231,8 @@ first start.
 Go only when every box is ticked.
 
 - [ ] Section 0, blocker 1 is fixed. Publishing the image must not deploy to the Music host.
+- [ ] Section 0, blocker 2 is fixed: `recovery-receipt.json` on `main` was drilled at the
+      migration head this deploy brings (today `0057_retire_music_category`) less than 30 days ago.
 - [ ] `bash deploy/rehearsal/rehearse.sh all` passed on the exact commit you will deploy.
 - [ ] `explorers-bootstrap.sh check <host>` passes on the host, today.
 - [ ] `~/nginx-T-before-cutover.txt` exists on the host.
@@ -250,7 +275,15 @@ two run IDs from section 3. When it finishes, copy the digest from the `publish-
 `confirm_cutover` = `replace-explorers-host`, `image_digest` = the digest. Approve the
 `explorers-production` environment when it asks.
 
-In the "Upload the release and stage the API" step, expect:
+The workflow's host steps, in order:
+
+- "Upload the release": no output on success.
+- "Take a pre-deploy backup on the host": `no migrated canonical database on this host yet;
+  nothing to back up`. On any later deploy this is a real backup to S3.
+- "Refuse the deploy without recovery evidence": on the first deploy, the notice
+  `The host has no migrated canonical database yet; the first deploy has nothing to back up.`
+  On later deploys this is the gate from section 0, blocker 2.
+- "Stage the API": expect
 
 ```
 image migration head: 0057_retire_music_category; database migration head: <none, fresh database>
@@ -357,8 +390,39 @@ The SPA smoke check stops before contacting Google. `spa-smoke.mjs` needs `npm c
 it); maps working only from your cache (use a private window); a stale `index.html` (6.1 checks
 `no-store`).
 
-**6.4 First backup.** Once #141 is merged: take a backup and run its restore drill before
-opening sign-ups to anyone outside the team. Until then this step is open; see section 0.
+**6.4 First backup and restore drill: before sign-ups open.** Do this after 6.2 and before
+anyone outside the team signs up. Rehearsed (section 9); mechanism and full procedure in
+[release-and-recovery.md](../replatform/release-and-recovery.md).
+
+1. Install the nightly backup (02:17 UTC). The deploy already put `platform-backup.mjs` in
+   `/opt/explorers/`. Copy `tunes/deployment/platform-backup.cron` to the host as
+   `~/platform-backup.cron`, then:
+
+   ```bash
+   sudo install -m 0644 -o root -g root ~/platform-backup.cron /etc/cron.d/explorers-backup
+   ```
+2. Take the first backup by hand:
+
+   ```bash
+   sudo node /opt/explorers/platform-backup.mjs --environment prod --reason manual
+   ```
+
+   Expected: three JSON lines, `"stage":"snapshot","migrationMarker":"0057_retire_music_category",...`,
+   `"stage":"media","objects":<n>`, and `"stage":"published","manifestKey":"prod/backups/<stamp>-manual-<run>/manifest.json",...`.
+   Exit 0. Anything else means there is no backup. Do not open sign-ups.
+3. On your machine, download that `manifest.json` and run the drill with your identity:
+
+   ```bash
+   npm run platform:restore-drill -- --manifest <manifest.json> --identity <your age identity> --receipt <TEMP>/platform-restore-drill-<8+ letters> --keep-archive
+   ```
+
+   Expected: a last line `{"drill":"...","result":"passed","recoveryMilliseconds":<n>,"receipt":"..."}`.
+   It restores into a disposable PostgreSQL on your machine, boots the canonical app against it,
+   and removes both. The recovery time to plan around is `recoveryMilliseconds` plus the
+   download.
+4. Commit the receipt as `docs/replatform/evidence/recovery-receipt.json` (and the run in
+   `docs/replatform/evidence/milestone-3.md`), then merge it. Until it is on `main`, every deploy
+   (rollbacks included) is refused once its marker or its 30 days run out.
 
 ---
 
@@ -390,9 +454,12 @@ Where did it fail?
 │      the meantime stay in the new database. Fix forward and deploy again.
 │
 ├─ After the switch, on a LATER deploy
+│    Every later deploy, a rollback included, first takes a pre-deploy backup
+│    and needs a passing drill receipt at the database's head, under 30 days
+│    old (DRILL_MARKER_MISMATCH / DRILL_STALE otherwise: run 6.4 steps 3-4).
 │    ├─ No migration between the two commits
 │    │    → Re-run the workflow with the previous commit's digest. Rehearsed
-│    │      (v2 → v1): 20s, at most 3.0s of API 503s, journal unchanged.
+│    │      (v2 → v1): 21s, at most 2.5s of API 503s, journal unchanged.
 │    └─ A migration came in between (P3-9's 0058 will be the first)
 │         The deploy refuses: "image bundles migrations up to X but the database
 │         is at Y; refusing an older image". The host is left exactly as it was,
@@ -402,7 +469,9 @@ Where did it fail?
 │           starts (rehearsed; the journal stayed at 0058).
 │
 └─ The database itself is damaged or lost
-     → Restore from backup with #141's tooling. NOT REHEARSED: section 0, blocker 2.
+     → "Data restore on production" or "Host loss" in release-and-recovery.md.
+       The restore itself was rehearsed with the drill (section 9: 6.1s from an
+       encrypted backup to a booted app); the production swap steps were not.
 ```
 
 Every deploy keeps the previous `production.compose.yml` as `production.compose.yml.previous`,
@@ -434,19 +503,32 @@ the rehearsal both came over a local network.
 | API image build (`docker build ./tunes`) | 60–65s | warm layer cache; CI starts colder |
 | Bootstrap `init`, then `check` | 1s each | |
 | Assemble the release, render the site, pack | 2–3s | |
-| **First `stage`** (pull, empty DB → 57 migrations, gate, API healthy) | **36s** | longest step |
+| Pre-deploy backup phase on a fresh host | 1s | reports `fresh`; nothing to back up |
+| **First `stage`** (pull, empty DB → 57 migrations, gate, API healthy) | **36s** | longest step; 17s when postgres is already pulled |
 | Set the trusted proxy (`up -d --wait api`) | 8s | |
 | API acceptance checks | <1s | |
 | `activate` (site swap, `nginx -t`, reload, HTTPS check) | 1s | |
 | Taxonomy dry run + apply + re-apply | 4s | 335 terms |
 | Probe + browser smoke | 7s | |
-| Redeploy, same schema (v1 → v2), whole deploy | 23s | `stage` 15s; **API 503s for at most 2.5s** (6 of 41 half-second polls) |
-| Roll back the image, same schema (v2 → v1) | 20s | at most 3.0s of 503s; journal unchanged at 57 |
-| Deploy a forward migration (v3, 0058) | 21s | journal 57 → 58 |
+| Backup on the host (`platform-backup.mjs`, local mode) | 1s | 118 tables, 0.8–0.9 MB encrypted archive (empty accounts + taxonomy) |
+| **Restore drill** (decrypt, fresh PostgreSQL, `pg_restore`, drift repair, schema and role attestation, boot the app, probe) | **6.1s** | decrypt 0.6s, start PostgreSQL 2.1s, `pg_restore` 0.9s, boot 1.7s; the database and container are removed afterwards |
+| Pre-deploy backup before each later deploy | 1s | local mode in the rehearsal; real ones add the S3 upload |
+| Redeploy, same schema (v1 → v2), whole deploy | 24s | `stage` 15s; **API 503s for at most 2.5s** (6 of 42 half-second polls) |
+| Roll back the image, same schema (v2 → v1) | 21s | at most 2.5s of 503s; journal unchanged at 57 |
+| Deploy a forward migration (v3, 0058) | 22s | journal 57 → 58 |
 | Refused rollback past a migration (v3 → v1) | 5s | nothing changed |
 
 Budget **20 minutes** of hands-on time for sections 5 and 6, plus however long the GitHub runs
 take. The visible switch, from `activate` to the site serving, took about a second.
+
+The restore number is for a nearly empty database and is dominated by fixed costs (starting
+PostgreSQL, booting the app). A production restore adds the S3 download and a `pg_restore`
+that grows with the data. Re-read `recoveryMilliseconds` from each monthly drill.
+
+In the rehearsal, backups use `platform-backup.mjs --environment local` (same dump, archive,
+encryption and manifest, written to a directory instead of S3), because the rehearsal never
+contacts S3. The deploy's own backup phase ran for real on the first deploy, where it reports
+`fresh`, including on a host whose postgres was running with an empty database.
 
 ---
 
@@ -486,3 +568,11 @@ Each of these is fixed in the repository or written into the steps above.
 10. **The workflow's acceptance checks were inline YAML**, so the rehearsal could not run the same
     code. They are now `deploy/host/api-acceptance.sh`, which both the workflow and the rehearsal
     run.
+11. **#141's backup phase repeated finding 1.** It read the journal with the same single `CASE`
+    statement, so re-running a first deploy whose stage had started postgres but not migrated
+    would fail the backup and block the deploy. Fixed the same way, and rehearsed.
+12. **Nothing told the owner to set `EXPLORERS_BACKUP_AGE_RECIPIENT`.** It was absent from
+    `production.env.example` and unchecked, and every deploy after the first refuses without it.
+    The example now has a deliberately invalid placeholder; `explorers-bootstrap.sh check`
+    validates it and checks for Node 24.
+13. **The committed drill receipt is at 0056 while `main` is at 0057.** See section 0, blocker 2.

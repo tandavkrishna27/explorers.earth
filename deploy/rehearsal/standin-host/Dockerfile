@@ -13,13 +13,21 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       docker.io docker-compose-v2 nginx curl jq openssl ca-certificates sudo \
-      iproute2 procps tini \
+      iproute2 procps tini xz-utils \
  && rm -rf /var/lib/apt/lists/*
 
-COPY systemctl journalctl /usr/local/bin/
+# The pre-deploy and scheduled backups (tunes/deployment/platform-backup.mjs) need
+# Node 24 on the host; apt's nodejs is 18. Same version the workflow and image use.
+ARG NODE_VERSION=24.21.0
+RUN arch="$(dpkg --print-architecture)"; case "$arch" in amd64) arch=x64 ;; arm64) arch=arm64 ;; esac \
+ && curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${arch}.tar.xz" \
+    | tar -xJ -C /usr/local --strip-components=1 --exclude='*/include' --exclude='*/share' \
+ && node --version
+
+COPY systemctl journalctl rehearsal-db-head /usr/local/bin/
 COPY entrypoint.sh /usr/local/sbin/standin-entrypoint
 COPY legacy-site.conf /etc/nginx/sites-available/explorers-legacy
-RUN chmod 0755 /usr/local/bin/systemctl /usr/local/bin/journalctl /usr/local/sbin/standin-entrypoint \
+RUN chmod 0755 /usr/local/bin/systemctl /usr/local/bin/journalctl /usr/local/bin/rehearsal-db-head /usr/local/sbin/standin-entrypoint \
  && ln -s /etc/nginx/sites-available/explorers-legacy /etc/nginx/sites-enabled/explorers-legacy \
  && install -d -m 0755 /srv/legacy-spa \
  && printf '<!doctype html><title>legacy explorers SPA</title><p>legacy-spa-marker</p>\n' > /srv/legacy-spa/index.html

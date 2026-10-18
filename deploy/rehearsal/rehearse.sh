@@ -7,7 +7,7 @@
 #   bash deploy/rehearsal/rehearse.sh <stage>... # individual stages, in order
 #   bash deploy/rehearsal/rehearse.sh down       # remove every rehearsal container and volume
 #
-# Stages: up bootstrap images first-deploy taxonomy verify redeploy rollback forward down
+# Stages: up bootstrap images first-deploy taxonomy verify backup redeploy rollback forward down
 #
 # What stands in for what:
 #   explorers host   a privileged Ubuntu 24.04 container (standin-host/) running
@@ -22,6 +22,11 @@
 #   explorers.yml    the same scripts it ships: assemble-release.sh,
 #                    render-site.sh, explorers-deploy.sh stage/activate and
 #                    api-acceptance.sh, copied in with `docker cp` instead of scp
+#   S3 (backups)     never contacted. The deploy's own backup phase runs while
+#                    the host has no migrated database (it reports 'fresh' without
+#                    S3); after that the same pre-deploy backup is taken in
+#                    platform-backup.mjs's local mode, and #141's restore drill
+#                    restores it into a disposable PostgreSQL on this machine
 #   DNS + TLS        explorers.rehearsal.test, a certificate from the rehearsal CA,
 #                    published on 127.0.0.1:$HTTPS_PORT; probe.ts and the browser
 #                    check dial that port while keeping the real hostname
@@ -160,6 +165,13 @@ stage_bootstrap() {
     set_value GOOGLE_BOOKS_API_KEY rehearsal-books-key
     set_value TMDB_ACCESS_TOKEN rehearsal-tmdb-token
     grep -c = \$f"
+  # The owner's age identity. In production it is generated on the owner's machine
+  # and only the public key reaches the host; here it is a throwaway, and the
+  # backup stage's drill reads the private half from $OUT.
+  docker cp "$(hp "$repo/tunes/deployment/platform-backup.mjs")" "$HOST:/root/deploy/platform-backup.mjs"
+  docker cp "$(hp "$here/standin-host/make-age-identity.sh")" "$HOST:/root/deploy/make-age-identity.sh"
+  step "generate the backup age identity; put its public key in production.env" on_host bash /root/deploy/make-age-identity.sh
+  on_host cat /root/rehearsal-keys/identity.age > "$OUT/age-identity.txt"
   step "bootstrap check (Task 9 Steps 2-4, 9)" on_host bash /root/deploy/explorers-bootstrap.sh check "$SERVER_NAME"
 }
 
@@ -224,6 +236,7 @@ stage_release() { # <commit> <site-path> <compose-file>
       EXPLORERS_TLS_CERTIFICATE_KEY=$TLS_DIR/privkey.pem sh '$repo/deploy/nginx/render-site.sh' '$repo/deploy/nginx/explorers.conf' '$stage/explorers.conf'
     cp '$compose_file' '$stage/production.compose.yml'
     cp '$repo/deploy/host/explorers-deploy.sh' '$stage/explorers-deploy.sh'
+    cp '$repo/tunes/deployment/platform-backup.mjs' '$stage/platform-backup.mjs'
     printf 'IMAGE_NAME=%s\nIMAGE_DIGEST=%s\nCOMMIT=%s\nNGINX_SITE_PATH=%s\nSERVER_NAME=%s\n' \
       '$IMAGE_NAME' '$(digest_of "$commit")' '$commit' '$site_path' '$SERVER_NAME' > '$stage/deploy.env'
     ls -l '$stage'"
@@ -238,8 +251,23 @@ deploy_accept() {
     docker exec $HOST bash /root/deploy/api-acceptance.sh http://127.0.0.1:5000 $SERVER_NAME"
 }
 deploy_activate() { step "explorers-deploy.sh activate ($1)" on_host bash "/tmp/explorers-deploy-$1/explorers-deploy.sh" activate "/tmp/explorers-deploy-$1"; }
+# explorers.yml's "Take a pre-deploy backup on the host". On a host with no
+# migrated database the real phase runs and must report 'fresh'. Once there is
+# one, the real phase uploads to S3, which the rehearsal never contacts, so the
+# same pre-deploy backup, bound to the same candidate, is taken in local mode.
+deploy_backup() { # <commit>
+  local commit="$1" remote="/tmp/explorers-deploy-$1"
+  if [[ -z "$(on_host rehearsal-db-head)" ]]; then
+    step "explorers-deploy.sh backup ($commit)" host_bash \
+      "bash $remote/explorers-deploy.sh backup $remote && echo backup-result: \$(cat $remote/backup-result) && grep -qx fresh $remote/backup-result"
+  else
+    step "pre-deploy backup ($commit; local mode stands in for the S3 phase)" host_bash \
+      "node /opt/explorers/platform-backup.mjs --environment local --reason pre-deploy --candidate-digest $(digest_of "$commit") --candidate-commit $commit --output-manifest $remote/backup-manifest.json && jq -c '{complete, migrationMarker, imageDigest, sourceCommit}' $remote/backup-manifest.json"
+  fi
+}
 deploy() { # <commit> <site-path> <compose-file>
   stage_release "$@"
+  deploy_backup "$1"
   deploy_stage "$1"
   deploy_accept
   deploy_activate "$1"
@@ -254,6 +282,13 @@ stage_first_deploy() {
   # a new file while the legacy site still claims the name, and it must refuse
   # and put everything back.
   stage_release "$v1" /etc/nginx/conf.d/explorers.conf "$repo/deploy/production.compose.yml"
+  deploy_backup "$v1"
+  # A first deploy whose stage died after starting postgres and before migrating
+  # leaves a running, empty database. The re-run's backup phase must still say
+  # 'fresh' (it used to fail on the missing journal).
+  step "start postgres alone, empty (a first stage that died before migrating)" host_bash \
+    "docker compose -f /tmp/explorers-deploy-$v1/production.compose.yml --env-file /opt/explorers/production.env up -d --wait postgres"
+  deploy_backup "$v1"
   deploy_stage "$v1"
   fix_trusted_proxy
   deploy_accept
@@ -325,6 +360,31 @@ trusted_proxy() {
     else echo 'trust proxy is NOT live: every visitor shares one rate-limit bucket'; exit 1; fi"
 }
 
+# Backup and restore with #141's tooling: a backup on the host, then the monthly
+# drill on the owner's machine (this one), which restores it into a disposable
+# PostgreSQL, boots the canonical app against it and writes a timed receipt.
+stage_backup() {
+  step "backup on the host (platform-backup.mjs, local mode)" host_bash \
+    "node /opt/explorers/platform-backup.mjs --environment local --reason manual && cat /var/backups/explorers/local/backups/LATEST.json"
+  local key folder receipt
+  key="$(on_host jq -r .manifestKey /var/backups/explorers/local/backups/LATEST.json)"
+  folder="$(basename "$(dirname "$key")")"
+  rm -rf "$OUT/backup" && mkdir -p "$OUT/backup"
+  step "copy the backup off the host ($folder)" docker cp "$HOST:/var/backups/explorers/local/backups/$folder" "$(hp "$OUT/backup")/$folder"
+  receipt="$(node "$here/drill-tools.mjs" receipt-path)"
+  printf '%s\n' "$receipt" > "$OUT/drill-receipt-path"
+  step "restore drill into a disposable PostgreSQL (npm run platform:restore-drill)" bash -c "
+    cd '$repo' && node node_modules/tsx/dist/cli.mjs scripts/platform-restore-drill.ts \
+      --manifest '$OUT/backup/$folder/manifest.json' --identity '$OUT/age-identity.txt' --receipt '$receipt'"
+  step "recovery time, from the drill receipt" node "$here/drill-tools.mjs" timings "$receipt/receipt.json"
+  # The deploy gate admits only prod manifests, so it is evaluated on this backup
+  # relabelled as prod: with the receipt committed in the repository, and with
+  # the one this drill just wrote.
+  step "deploy gate: committed receipt vs this drill's receipt (simulated prod manifest)" bash -c "
+    cd '$repo/tunes' && node node_modules/tsx/dist/cli.mjs '$here/drill-tools.mjs' gate \
+      '$OUT/backup/$folder/manifest.json' '$repo/docs/replatform/evidence/recovery-receipt.json' '$receipt/receipt.json'"
+}
+
 stage_redeploy() {
   local v1; v1="$(git -C "$repo" rev-parse HEAD)"
   step "journal before the redeploy" journal
@@ -392,7 +452,7 @@ run_stage() {
   local started=$SECONDS
   case "$1" in
     up) stage_up ;; bootstrap) stage_bootstrap ;; images) stage_images ;;
-    first-deploy) stage_first_deploy ;; taxonomy) stage_taxonomy ;; verify) stage_verify ;;
+    first-deploy) stage_first_deploy ;; taxonomy) stage_taxonomy ;; verify) stage_verify ;; backup) stage_backup ;;
     redeploy) stage_redeploy ;; rollback) stage_rollback ;; forward) stage_forward ;; down) stage_down ;;
     *) echo "unknown stage $1" >&2; exit 2 ;;
   esac
@@ -401,7 +461,7 @@ run_stage() {
 
 [[ "$#" -ge 1 ]] || { sed -n '2,10p' "$0"; exit 2; }
 if [[ "$1" == all ]]; then
-  set -- down up bootstrap images first-deploy taxonomy verify redeploy rollback forward
+  set -- down up bootstrap images first-deploy taxonomy verify backup redeploy rollback forward
 fi
 for stage in "$@"; do run_stage "$stage"; done
 log ""; log "timings: $timings"
