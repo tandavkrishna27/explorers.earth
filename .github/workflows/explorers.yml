@@ -31,9 +31,6 @@ jobs:
           echo "VITE_LOCAL_TUNES_ENABLED=${{ secrets.VITE_LOCAL_TUNES_ENABLED }}" >> .env
           echo "VITE_LOCAL_TUNES_TIMEOUT=${{ secrets.VITE_LOCAL_TUNES_TIMEOUT }}" >> .env
           echo "VITE_LOCAL_TUNES_RETRY_ATTEMPTS=${{ secrets.VITE_LOCAL_TUNES_RETRY_ATTEMPTS }}" >> .env
-          echo "VITE_RAZORPAY_KEY_ID_DEV=${{ secrets.VITE_RAZORPAY_KEY_ID_DEV }}" >> .env
-          echo "VITE_PAYMENT_API_URL=${{ secrets.VITE_PAYMENT_API_URL }}" >> .env
-          echo "VITE_RAZORPAY_KEY_ID_PROD=${{ secrets.VITE_RAZORPAY_KEY_ID_PROD }}" >> .env
           echo "VITE_INSTAGRAM_API_URL=${{ secrets.VITE_INSTAGRAM_API_URL }}" >> .env
           echo "VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY }}" >> .env
           echo "VITE_TMDB_API_KEY=${{ secrets.VITE_TMDB_API_KEY }}" >> .env
