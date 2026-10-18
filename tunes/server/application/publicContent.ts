@@ -8,6 +8,7 @@ import {personDisplayFieldsSchema} from '../../shared/explorersPersonContract';
 import {placeDisplayFieldsSchema} from '../../shared/explorersPlaceContract';
 import {readMovieEntity,readMovieContext,readMovieTerms,effectiveMovieDetails} from '../repositories/movieCatalogRepository';
 import {readBookCovers} from '../repositories/bookCovers';
+import {legacyHandleHoldBlocks} from './legacyHandleHolds';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import type { Pool } from 'pg';
 import { z } from 'zod/v3';
@@ -63,8 +64,12 @@ export class PublicContentService {
    * handle held by a private or incomplete account is still taken. That is also why this
    * cannot be answered by the public profile read next to it, where absence means "not
    * public" rather than "free".
+   *
+   * A pre-relaunch handle held for its original owner (legacyHandleHolds.ts) reads as taken
+   * for everyone except that owner's signed-in, verified Google account - the same answer the
+   * account write gives - so the hint and the write agree for every viewer.
    */
-  async handleAvailable(raw:unknown):Promise<{available:boolean}>{
+  async handleAvailable(raw:unknown,viewer:{userId:string;accountId:string}|null=null):Promise<{available:boolean}>{
    // The same shape rule as updateAccountInputSchema.handle, so a handle this says is free
    // cannot then be refused as malformed by the write.
    const parsed=z.object({handle:z.string().trim().min(3).max(30)}).strict().safeParse(raw);
@@ -72,7 +77,8 @@ export class PublicContentService {
    const found=await this.pool.query<{taken:boolean}>(
     'SELECT EXISTS(SELECT 1 FROM creator_accounts WHERE handle_key=lower($1)) AS taken',
     [parsed.data.handle]);
-   return {available:!found.rows[0]?.taken};
+   if(found.rows[0]?.taken)return {available:false};
+   return {available:!await legacyHandleHoldBlocks(this.pool,parsed.data.handle.toLowerCase(),viewer?.userId??null,viewer?.accountId??null)};
   }
 
   async getCollectionById(raw:unknown){

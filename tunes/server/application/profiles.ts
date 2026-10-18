@@ -3,6 +3,7 @@ import { accountDtoSchema, updateAccountRequestSchema, type AccountDto, type Req
   type RevisionInput, type UpdateAccountInput } from "../../shared/explorersContract";
 import type { Actor } from "./actor";
 import { authorizeOperation } from "./authorization";
+import { legacyHandleHoldBlocks } from "./legacyHandleHolds";
 import { AccountConflict, AccountInvalidAttachment, ExplorersAccountRepository } from "../repositories/explorersAccountRepository";
 
 export class ProfileInputError extends Error { constructor(message: string) { super(message); } }
@@ -28,6 +29,9 @@ export class ProfileService {
       normalized.handle = normalized.handle.toLowerCase();
       if (!/^[a-z][a-z0-9-]{2,29}$/.test(normalized.handle) || normalized.handle.includes("--")
         || normalized.handle.endsWith("-") || reserved.has(normalized.handle)) throw new ProfileInputError("Handle is unavailable");
+      // A pre-relaunch handle held for its original owner answers exactly like a reserved word,
+      // so the refusal does not reveal that the handle was ever in use.
+      if (await legacyHandleHoldBlocks(this.db, normalized.handle, actor.userId, actor.accountId)) throw new ProfileInputError("Handle is unavailable");
     }
     const { expectedRevision, ...editable } = normalized;
     try { return accountDtoSchema.parse(await this.repository.update(actor.accountId, editable, expectedRevision)); }

@@ -5,7 +5,7 @@ import type { Pool } from 'pg';
 import { PublicContentFailure, PublicContentService } from '../application/publicContent';
 import {SearchFailure} from '../application/searchQuery';
 import {readUnsubscribeToken,suppressEmail} from '../application/emailSuppression';
-export function setupExplorersPublicContentRoutes(app:Express,pool:Pool,secret:string,routerFactory:typeof Router=Router):void {
+export function setupExplorersPublicContentRoutes(app:Express,pool:Pool,secret:string,routerFactory:typeof Router=Router,resolveViewer:(req:Request)=>Promise<{userId:string;accountId:string}|null>=async()=>null):void {
   const router=routerFactory({caseSensitive:true,strict:true}),service=new PublicContentService(pool,secret);
   router.use('/api/explorers/v1/public/recommendations',(_req,res,next)=>{res.setHeader('Cache-Control','no-store');next();},rateLimit({windowMs:60_000,limit:120,standardHeaders:'draft-7',legacyHeaders:false}));
   router.get('/api/explorers/v1/public/recommendations/search',async(req,res)=>{
@@ -26,7 +26,7 @@ export function setupExplorersPublicContentRoutes(app:Express,pool:Pool,secret:s
   router.get('/api/explorers/v1/public/handles/:handle/available',async(req,res)=>{
     try {
       if(Object.keys(req.query).length)throw new PublicContentFailure(400);
-      return res.json(await service.handleAvailable({handle:req.params.handle}));
+      return res.json(await service.handleAvailable({handle:req.params.handle},await resolveViewer(req).catch(()=>null)));
     }catch(error){
       if(error instanceof PublicContentFailure)return res.status(error.status).json({version:'explorers-public-error/v1',error:{code:'BAD_REQUEST'}});
       return res.status(503).json({version:'explorers-public-error/v1',error:{code:'UNAVAILABLE',retryable:true}});

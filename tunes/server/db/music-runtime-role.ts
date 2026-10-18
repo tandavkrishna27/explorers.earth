@@ -57,6 +57,7 @@ const expectedRuntimeTables = [
   "guide_section_photos",
   "guide_sections",
   "initial_account_bindings",
+  "legacy_handle_holds",
   "media_assets",
   "media_objects",
   "movie_entity_details",
@@ -744,6 +745,11 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`GRANT SELECT ON taxonomy_catalogs,taxonomy_source_mappings,taxonomy_legacy_slug_mappings TO ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION lock_explorers_taxonomy_catalog(text),lock_recommendation_taxonomy_catalog(),validate_explorers_taxonomy_catalogs(),guard_explorers_taxonomy_catalogs(),guard_taxonomy_import_receipt_immutable() FROM ${capabilityRole}`);
     await client.query(`GRANT EXECUTE ON FUNCTION lock_explorers_taxonomy_catalog(text) TO ${capabilityRole}`);
+    // Legacy handle holds, migration 0057. The runtime only checks a claim against them; the
+    // migrator loads them. Re-revoked here because the GRANT ON ALL TABLES above re-grants
+    // what 0057 revoked.
+    await client.query(`REVOKE ALL ON legacy_handle_holds FROM ${capabilityRole}`);
+    await client.query(`GRANT SELECT ON legacy_handle_holds TO ${capabilityRole}`);
     await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON taxonomy_terms,taxonomy_term_translations,movie_provider_genre_terms FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION guard_movie_details(),guard_movie_genres(),lock_movie_genre_parent(),guard_movie_media(),lock_movie_media_parent(),validate_movie_media(uuid),guard_taxonomy_tree(),lock_taxonomy_tree(),validate_movie_context(uuid,text,bigint[]),guard_movie_context(),guard_recommendation_taxonomy(),lock_recommendation_taxonomy_parent() FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context(),guard_recommendation_book_cover(),guard_app_entity_details(),guard_recommendation_app_screenshot(),guard_product_entity_details(),guard_person_entity_details(),guard_place_entity_details(),guard_place_context_kind(),guard_recommendation_place_photo(),guard_place_collection_details(),guard_guide_section_media(),guard_guide_location_entity() FROM ${capabilityRole}`);
@@ -918,6 +924,10 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "DELETE FROM taxonomy_catalogs WHERE false",
     "DELETE FROM taxonomy_source_mappings WHERE false",
     "DELETE FROM taxonomy_legacy_slug_mappings WHERE false",
+    "INSERT INTO legacy_handle_holds(handle_key,email_sha256,held_until) VALUES ('runtime-probe',repeat('0',64),clock_timestamp())",
+    "UPDATE legacy_handle_holds SET held_until=held_until WHERE false",
+    "DELETE FROM legacy_handle_holds WHERE false",
+    "TRUNCATE TABLE legacy_handle_holds",
     "INSERT INTO music_publication_operation_archive(music_user_id,idempotency_key_hash,request_fingerprint,request_mode,completed_at,expires_at) VALUES (1,repeat('0',64),repeat('0',64),'public',clock_timestamp()-interval '24 hours',clock_timestamp())",
     "UPDATE music_publication_operation_archive SET request_mode=request_mode WHERE false",
     "DELETE FROM music_publication_operation_archive WHERE false",
@@ -970,7 +980,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
         ? [true, true, false, false]
       : row.object_name === "app_enrichment_bindings"
         ? [true, true, true, false]
-      : row.object_name === "music_schema_migrations" || row.object_name === "account_category_content_state" || ["taxonomy_terms","taxonomy_term_translations","movie_provider_genre_terms","taxonomy_catalogs","taxonomy_source_mappings","taxonomy_legacy_slug_mappings"].includes(row.object_name)
+      : row.object_name === "music_schema_migrations" || row.object_name === "account_category_content_state" || ["taxonomy_terms","taxonomy_term_translations","movie_provider_genre_terms","taxonomy_catalogs","taxonomy_source_mappings","taxonomy_legacy_slug_mappings","legacy_handle_holds"].includes(row.object_name)
       ? [true, false, false, false]
       : ["analytics_events","analytics_event_receipts"].includes(row.object_name)
         ? [true,true,false,false]

@@ -7,6 +7,10 @@
     "types": ["node", "vite/client", "passport"]
   },
   "include": [
+    "server/application/legacyHandleHolds.ts",
+    "server/deployment/run-legacy-handle-holds.ts",
+    "server/test/legacy-handle-holds.test.ts",
+    "server/test/explorers-legacy-handle-holds.integration.test.ts",
     "shared/explorersAppEnrichmentWorkerContract.ts",
     "server/application/appEnrichmentWorker.ts",
     "server/application/appEnrichmentWorkerValidation.ts",

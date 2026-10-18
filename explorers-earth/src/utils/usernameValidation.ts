@@ -294,7 +294,10 @@ export const checkUsernameAvailability = async (
   try {
     const response = await fetch(
       `/api/explorers/v1/public/handles/${encodeURIComponent(username.toLowerCase())}/available`,
-      { cache: 'no-store', ...(signal ? { signal } : {}) }
+      // Same-origin credentials, stated rather than left to the default: a handle held for
+      // its pre-relaunch owner reads as taken to everyone except that owner's signed-in
+      // session, exactly as the account write decides, so the session has to reach the check.
+      { cache: 'no-store', credentials: 'same-origin', ...(signal ? { signal } : {}) }
     );
     if (!response.ok) throw new Error(`Availability check failed with ${response.status}`);
     const body = await response.json() as { available?: unknown };

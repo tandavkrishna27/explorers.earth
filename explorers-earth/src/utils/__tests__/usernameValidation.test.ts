@@ -382,6 +382,16 @@ describe('checkUsernameAvailability', () => {
     expect(fetchMock.mock.calls[0][1]).toMatchObject({ cache: 'no-store' });
   });
 
+  // A pre-relaunch handle is held for its original owner. The server answers "available"
+  // only to that owner's signed-in session - the same answer the account write gives - so
+  // the check must carry the session cookie, or the owner is told their own handle is taken
+  // and cannot get past onboarding to reclaim it.
+  it('sends the signed-in session, so a held handle is answered for its owner', async () => {
+    const fetchMock = stubAvailability({ available: true });
+    await checkUsernameAvailability('johndoe');
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: 'same-origin' });
+  });
+
   it('percent-encodes the handle rather than building the path from raw input', async () => {
     const fetchMock = stubAvailability({ available: true });
     await checkUsernameAvailability('a/../b');

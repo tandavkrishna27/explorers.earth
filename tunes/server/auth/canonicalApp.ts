@@ -134,7 +134,7 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   const appSourceChoices=appSourceChoiceSchema.array().parse(options.appEnrichmentChoices??[]);
   setupExplorersAppEnrichmentRoutes(app, pool, auth, config, appSourceChoices.map(choice=>choice.identity), instrument?.routerFactory,appSourceChoices);
   setupExplorersCatalogRoutes(app,pool,auth,config,books,movies);
-  setupExplorersPublicContentRoutes(app, pool, config.secret,instrument?.routerFactory);
+  setupExplorersPublicContentRoutes(app, pool, config.secret,instrument?.routerFactory,async request=>request.headers.cookie?requireActor(request,auth,pool):null);
   setupExplorersLifecycleRoutes(app, pool, auth, config);
   setupExplorersMediaRoutes(app, pool, auth, config, new MediaService(pool, options.mediaStorage),admission?.beforeMediaCommand);
   // Privacy changes must be visible on the very next public request, including across app replicas.

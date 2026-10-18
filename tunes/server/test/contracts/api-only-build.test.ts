@@ -103,6 +103,8 @@ describe("API-only build and startup", () => {
     expect(packageJson.scripts["build:api"]).toContain("run-migration-gate.ts");
     expect(packageJson.scripts["build:api"]).toContain("run-registration-compat.ts");
     expect(packageJson.scripts["build:api"]).toContain("run-production-graph-smoke.ts");
+    // The legacy handle hold loader runs in the production image, which has no tsx or scripts/.
+    expect(packageJson.scripts["build:api"]).toContain("server/deployment/run-legacy-handle-holds.ts");
     const result = await build({
       absWorkingDir: tunesRoot,
       entryPoints: ["server/api.ts"],

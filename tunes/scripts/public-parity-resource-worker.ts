@@ -64,8 +64,8 @@ async function bootstrapNativeImplementation(init:PublicParityWorkerInit,signal:
  const configuration={host:'127.0.0.1',database:init.authority.database,port:init.authority.port,max:4,connectionTimeoutMillis:3000,statement_timeout:10000,lock_timeout:5000};
  const pool=tracked(new pg.Pool({...configuration,user:'music_migrator',password:init.databasePassword}));
  mark('database-identity');const actual=await pool.query('SELECT current_database() AS database,current_user AS role,current_setting($$server_version_num$$)::int AS version');assertPublicParityWorkerDatabaseIdentity(init,actual.rows);
- mark('migrations');const migrations=await import('../server/db/migrate');guard();if(migrations.loadMusicMigrations().length!==56)throw refused();
- const migration=await step(()=>init.initializeDatabase?migrations.migrateMusicDatabase(pool):migrations.verifyMusicDatabase(pool));if(!migration.ready||migration.appliedIds.length!==56||migration.pendingIds.length)throw refused();
+ mark('migrations');const migrations=await import('../server/db/migrate');guard();if(migrations.loadMusicMigrations().length!==57)throw refused();
+ const migration=await step(()=>init.initializeDatabase?migrations.migrateMusicDatabase(pool):migrations.verifyMusicDatabase(pool));if(!migration.ready||migration.appliedIds.length!==57||migration.pendingIds.length)throw refused();
  const {provisionMusicRuntimeLogin,verifyMusicRuntimeLogin}=await import('../server/db/music-runtime-role');guard();const runtimeRole=`public_parity_${init.runId}`,ownership=`owned-public-parity:${init.runId}:${init.commit}`;
  mark('runtime-provision');if(init.initializeDatabase)await step(()=>provisionMusicRuntimeLogin(pool,{loginRole:runtimeRole,password:init.runtimePassword},{ownershipComment:ownership}));
  guard();const runtime=tracked(new pg.Pool({...configuration,user:runtimeRole,password:init.runtimePassword}));

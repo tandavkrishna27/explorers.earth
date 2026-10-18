@@ -117,6 +117,7 @@ describe("owned image CI PostgreSQL wiring", () => {
       "server/test/explorers-analytics-events.integration.test.ts",
       "server/test/explorers-auth.integration.test.ts",
       "server/test/explorers-content-revision.integration.test.ts",
+      "server/test/explorers-legacy-handle-holds.integration.test.ts",
       "server/test/explorers-manual-overrides.integration.test.ts",
       "server/test/explorers-media-cover.integration.test.ts",
       "server/test/explorers-media.integration.test.ts",
@@ -150,8 +151,8 @@ describe("owned image CI PostgreSQL wiring", () => {
        */
       "server/test/user-leak.integration.test.ts",
     ]);
-    expect(selectors).toHaveLength(49);
-    expect(new Set(selectors).size).toBe(49);
+    expect(selectors).toHaveLength(50);
+    expect(new Set(selectors).size).toBe(50);
   });
 
   /*
