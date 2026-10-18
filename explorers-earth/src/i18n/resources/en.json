@@ -2299,6 +2299,7 @@
       "usernameTooShort": "Username is too short. Please choose a longer username.",
       "usernameUpdateFailed": "Username update failed. Please try again.",
       "validationError": "Validation error. Please check your input.",
+      "placePhotoLimit": "A place can hold up to {{limit}} photos. Remove {{count}} to continue.",
       "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
     },
     "info": {

@@ -53,6 +53,9 @@ declare global {
 }
 
 // 'self' = the creator pressed Recommend. 'suggestion' = they pressed + on a suggestion.
+/** 0047 bounds recommendation_place_photos.slot_index at 0..9. */
+export const PLACE_PHOTO_LIMIT = 10;
+
 const RECOMMENDATION_SOURCES = { SELF: "self", SUGGESTION: "suggestion" } as const;
 type RecommendationSource = typeof RECOMMENDATION_SOURCES[keyof typeof RECOMMENDATION_SOURCES];
 
@@ -233,6 +236,21 @@ export const useAddRecommendation = ({
   const { t } = useTranslation();
   const { user } = useAuthStore();
 
+  // A place holds ten photos (0047 bounds slot_index at 0..9). Every source counts against
+  // the same ten: provider photos and Instagram imports on create, the saved photos on edit.
+  const existingPlacePhotoIds = (): string[] => {
+    const observed = editObservation?.detail.category === 'places' ? editObservation.detail.placePhotos?.photoMediaIds : undefined;
+    return Array.isArray(observed) ? observed.filter(Boolean) : [];
+  };
+  const otherPhotoCount = (): number => type === "edit" ? existingPlacePhotoIds().length
+    : (Array.isArray(fetchedGoogleMedia) ? fetchedGoogleMedia : []).filter(media => media.photoBlob instanceof Blob).length
+      + (Array.isArray(instagramMedia) ? instagramMedia : []).filter(media => media.photoBlob instanceof Blob).length;
+  const refusePhotoOverflow = (total: number): boolean => {
+    if (total <= PLACE_PHOTO_LIMIT) return false;
+    toast.error(t("toast.error.placePhotoLimit", { limit: PLACE_PHOTO_LIMIT, count: total - PLACE_PHOTO_LIMIT }));
+    return true;
+  };
+
   const handleDeleteUserImage = (_fileName: string, index: number) => {
     retireDraftIntent();
     setUploadedUserMedia((prev) => prev.filter((_, i) => i !== index));
@@ -334,7 +352,7 @@ export const useAddRecommendation = ({
 
     try {
       await commands.updatePlace(attempt.recommendationId, {
-        placePhotos: { photoMediaIds: attempt.photoMediaIds.slice(0, 10) },
+        placePhotos: { photoMediaIds: attempt.photoMediaIds },
       });
       attempt.attached = true;
     } catch (error) {
@@ -421,6 +439,13 @@ export const useAddRecommendation = ({
         return;
       }
 
+      // Refuse before anything is created or uploaded, so the creator can remove photos
+      // and save again rather than learn afterwards that some were silently dropped.
+      if (refusePhotoOverflow(snapshotSelectedMedia().length)) {
+        setIsLoading(false);
+        return;
+      }
+
       const provider = isCustom && recommendationType === "place" ? await fetchProviderFacts(places?.place_id) : null;
       const source = determineRecommendationSource(new URLSearchParams(window.location.search));
       const title = provider?.displayName?.text || values.title || "Untitled";
@@ -498,6 +523,10 @@ export const useAddRecommendation = ({
         attempt={scope,observation:editObservation,signature,files,uploadedIds:[],patch:null};
         editAttempt.current=attempt;
       }
+      if (refusePhotoOverflow(existingPlacePhotoIds().length + uploadedUserMedia.length)) {
+        setIsLoading(false);
+        return;
+      }
       // Keep successful uploads and the exact patch across response loss or failure.
       for(let index=attempt.uploadedIds.length;index<uploadedUserMedia.length;index++){
         const {file,fileName}=uploadedUserMedia[index];
@@ -509,8 +538,7 @@ export const useAddRecommendation = ({
       // Read the existing photos from the authoritative owner detail, not from the
       // presentation view model: the patch preserves what the server says this
       // recommendation holds, and a view model is free to reshape or drop keys.
-      const observedPhotos = editObservation?.detail.category === 'places' ? editObservation.detail.placePhotos?.photoMediaIds : undefined;
-      const existingPhotoMediaIds = Array.isArray(observedPhotos) ? observedPhotos.filter(Boolean) : [];
+      const existingPhotoMediaIds = existingPlacePhotoIds();
 
       const existingContext: PlaceRecommendationContext | null = fetchedPlace?.Contact_Visibility
         ? {
@@ -525,7 +553,7 @@ export const useAddRecommendation = ({
         ...(values.placesTaxonomy===undefined?{}:{placesTaxonomy:placesTaxonomyAssignmentSchema.parse(values.placesTaxonomy)}),
         note: richNoteFromEditor(typeof values.reason === "string" ? values.reason : ""),
         userRating: toNumberOrNull(values.userRating),
-        placePhotos: { photoMediaIds: [...existingPhotoMediaIds, ...uploadedIds].slice(0, 10) },
+        placePhotos: { photoMediaIds: [...existingPhotoMediaIds, ...uploadedIds] },
         placeContext: recommendationContext(values, {
           recommendationType,
           source: determineRecommendationSource(new URLSearchParams(window.location.search)),
@@ -568,11 +596,11 @@ export const useAddRecommendation = ({
   };
 
   const stageFiles = async (files: File[]): Promise<File[]> => {
-    // Max 10 total, duplicates by name and size skipped.
-    const remainingSlots = 10 - uploadedUserMedia.length;
-    if (remainingSlots <= 0) {
-      toast.error(t("toast.error.youCanOnlyUpload4Files"));
-      return [];
+    // Max ten photos across every source, duplicates by name and size skipped.
+    const remainingSlots = PLACE_PHOTO_LIMIT - otherPhotoCount() - uploadedUserMedia.length;
+    if (remainingSlots <= 0 || files.length > remainingSlots) {
+      refusePhotoOverflow(PLACE_PHOTO_LIMIT - remainingSlots + files.length);
+      if (remainingSlots <= 0) return [];
     }
     const fileArray = files.slice(0, remainingSlots);
     const existingFileSignatures = uploadedUserMedia.map(item => `${item.file.name}-${item.file.size}`);
@@ -599,15 +627,13 @@ export const useAddRecommendation = ({
     const uploadedFiles = event.target.files;
     if (!uploadedFiles) return;
 
-    const remainingSlots = 10 - uploadedUserMedia.length;
+    const remainingSlots = PLACE_PHOTO_LIMIT - otherPhotoCount() - uploadedUserMedia.length;
     if (remainingSlots <= 0) {
-      toast.error(t("toast.error.youCanOnlyUpload4Files"));
+      refusePhotoOverflow(PLACE_PHOTO_LIMIT - remainingSlots + uploadedFiles.length);
+      if (event.target) event.target.value = "";
       return;
     }
     const fileArray = Array.from(uploadedFiles).slice(0, remainingSlots);
-    if (uploadedFiles.length > remainingSlots) {
-      toast.error(t("toast.error.youCanOnlyUploadMoreFiles", { count: remainingSlots }));
-    }
 
     const accepted = await stageFiles(fileArray);
     if (accepted.length === 0) {

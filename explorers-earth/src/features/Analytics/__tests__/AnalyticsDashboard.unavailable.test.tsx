@@ -80,47 +80,26 @@ describe('AnalyticsDashboard when the detailed read is unavailable', () => {
     });
   }
 
-  it('does not claim the owner has no analytics data', async () => {
+  // P5-1. This file used to pin the "Detailed Analytics Unavailable" placeholder for the
+  // token-less canonical session. The read now runs on the session cookie, so a canonical
+  // owner gets their analytics; the placeholder is gone.
+  it('reads the canonical owner analytics without a token', async () => {
     signInCanonically();
     render(<AnalyticsDashboard />);
 
-    await waitFor(() => expect(screen.getByText(UNAVAILABLE_TITLE)).toBeInTheDocument());
-
-    // The defect: both of these asserted something false about the account.
-    expect(screen.queryByText(NO_DATA_TITLE)).toBeNull();
-    expect(screen.queryByText(NO_DATA_MESSAGE)).toBeNull();
+    await waitFor(() => expect(readEvents).toHaveBeenCalledTimes(1));
+    expect(readEvents.mock.calls[0][0]).toMatchObject({ accountId: 'account-1' });
+    expect(readEvents.mock.calls[0][0]).not.toHaveProperty('token');
+    expect(screen.queryByText(UNAVAILABLE_TITLE)).toBeNull();
+    expect(screen.queryByText(UNAVAILABLE_MESSAGE)).toBeNull();
   });
 
-  it('says the detailed read is unavailable instead', async () => {
+  it('reports a genuine empty read honestly, with the start-sharing advice', async () => {
     signInCanonically();
     render(<AnalyticsDashboard />);
 
-    await waitFor(() => expect(screen.getByText(UNAVAILABLE_TITLE)).toBeInTheDocument());
-    expect(screen.getByText(UNAVAILABLE_MESSAGE)).toBeInTheDocument();
-  });
-
-  it('hides the "share your QR codes" advice, which is for a different problem', async () => {
-    signInCanonically();
-    render(<AnalyticsDashboard />);
-
-    await waitFor(() => expect(screen.getByText(UNAVAILABLE_TITLE)).toBeInTheDocument());
-    expect(screen.queryByText(HOW_TO_START)).toBeNull();
-  });
-
-  it('does not report an error, because there is no failure and nothing to retry', async () => {
-    signInCanonically();
-    render(<AnalyticsDashboard />);
-
-    await waitFor(() => expect(screen.getByText(UNAVAILABLE_TITLE)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(NO_DATA_TITLE)).toBeInTheDocument());
     expect(screen.queryByText(ERROR_TITLE)).toBeNull();
-  });
-
-  it('reaches no network, so an outage cannot be the reason it is empty', async () => {
-    signInCanonically();
-    render(<AnalyticsDashboard />);
-
-    await waitFor(() => expect(screen.getByText(UNAVAILABLE_TITLE)).toBeInTheDocument());
-    expect(readEvents).not.toHaveBeenCalled();
   });
 
   it('still reports a genuine absence of data when the read can run', async () => {

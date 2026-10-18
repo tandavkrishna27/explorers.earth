@@ -74,6 +74,7 @@ const expectedRuntimeTables = [
   "music_schema_migrations",
   "page_contents",
   "person_entity_details",
+  "person_suppression_actions",
   "place_collection_details",
   "place_entity_details",
   "place_pin_draft_chunks",
@@ -241,6 +242,7 @@ const expectedRuntimeFunctions = [
   "purge_expired_account_recovery_proofs(integer)",
   "purge_expired_analytics_events(integer)",
   "purge_explorers_account_content(uuid,uuid)",
+  "refuse_person_suppression_audit_change()",
   "reject_account_music_identity_mutation()",
   "reject_music_credential_revocation_history_mutation()",
   "reject_music_numeric_user_id_update()",
@@ -742,6 +744,9 @@ export async function provisionMusicRuntimeLogin(
       ON entity_identifiers,book_entity_details,app_entity_details,product_entity_details,person_entity_details,place_entity_details,movie_entity_details,movie_entity_provider_genres FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON taxonomy_catalogs,taxonomy_source_mappings,taxonomy_legacy_slug_mappings,taxonomy_import_receipts FROM ${capabilityRole}`);
     await client.query(`GRANT SELECT ON taxonomy_catalogs,taxonomy_source_mappings,taxonomy_legacy_slug_mappings TO ${capabilityRole}`);
+    // P5-9: the suppression audit is operator-only; the runtime never reads or writes it.
+    await client.query(`REVOKE ALL ON person_suppression_actions FROM ${capabilityRole}`);
+    await client.query(`REVOKE ALL ON FUNCTION refuse_person_suppression_audit_change() FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON FUNCTION lock_explorers_taxonomy_catalog(text),lock_recommendation_taxonomy_catalog(),validate_explorers_taxonomy_catalogs(),guard_explorers_taxonomy_catalogs(),guard_taxonomy_import_receipt_immutable() FROM ${capabilityRole}`);
     await client.query(`GRANT EXECUTE ON FUNCTION lock_explorers_taxonomy_catalog(text) TO ${capabilityRole}`);
     await client.query(`REVOKE INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON taxonomy_terms,taxonomy_term_translations,movie_provider_genre_terms FROM ${capabilityRole}`);
@@ -915,6 +920,7 @@ async function assertMusicRuntimeDirectPrivilegeBoundary(
     "UPDATE music_owner_operations SET status_code=status_code WHERE false",
     "SELECT * FROM music_publication_operation_archive LIMIT 0",
     "SELECT * FROM taxonomy_import_receipts LIMIT 0",
+    "SELECT * FROM person_suppression_actions LIMIT 0",
     "DELETE FROM taxonomy_catalogs WHERE false",
     "DELETE FROM taxonomy_source_mappings WHERE false",
     "DELETE FROM taxonomy_legacy_slug_mappings WHERE false",
@@ -981,7 +987,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       : row.object_name === "collection_location_links" || row.object_name === "guide_section_photos"
           || row.object_name === "place_pin_draft_chunks" || row.object_name === "place_pin_draft_items"
         ? [true, true, false, true]
-      : ["music_publication_operation_archive","taxonomy_import_receipts","places_collection_mutation_state","places_pin_validation_dirty","places_chunk_validation_dirty"].includes(row.object_name)
+      : ["music_publication_operation_archive","taxonomy_import_receipts","person_suppression_actions","places_collection_mutation_state","places_pin_validation_dirty","places_chunk_validation_dirty"].includes(row.object_name)
         ? [false, false, false, false]
       : row.object_name === "canonical_music_numeric_retirements"
         ? [true, true, false, false]
@@ -1041,7 +1047,7 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
           && !/^explorers_content_revision_(insert|update|delete|lifecycle)\(\)$/.test(row.function_signature)
           && !row.function_signature.startsWith("explorers_place")
           && !row.function_signature.startsWith("app_enrichment_")
-          && !["lock_recommendation_taxonomy_catalog()","validate_explorers_taxonomy_catalogs()","guard_explorers_taxonomy_catalogs()","guard_taxonomy_import_receipt_immutable()","guard_movie_details()","guard_movie_genres()","lock_movie_genre_parent()","guard_movie_media()","lock_movie_media_parent()","validate_movie_media(uuid)","guard_taxonomy_tree()","lock_taxonomy_tree()","validate_movie_context(uuid,text,bigint[])","guard_movie_context()","guard_recommendation_taxonomy()","lock_recommendation_taxonomy_parent()"].includes(row.function_signature)
+          && !["lock_recommendation_taxonomy_catalog()","validate_explorers_taxonomy_catalogs()","guard_explorers_taxonomy_catalogs()","guard_taxonomy_import_receipt_immutable()","refuse_person_suppression_audit_change()","guard_movie_details()","guard_movie_genres()","lock_movie_genre_parent()","guard_movie_media()","lock_movie_media_parent()","validate_movie_media(uuid)","guard_taxonomy_tree()","lock_taxonomy_tree()","validate_movie_context(uuid,text,bigint[])","guard_movie_context()","guard_recommendation_taxonomy()","lock_recommendation_taxonomy_parent()"].includes(row.function_signature)
           && !/^guard_book_(entity_details|recommendation_context)\(\)$/.test(row.function_signature) && row.function_signature!=="guard_recommendation_book_cover()"
           && !/^guard_(app_entity_details|recommendation_app_screenshot|product_entity_details|person_entity_details|place_entity_details|place_context_kind|recommendation_place_photo|place_collection_details|guide_section_media|guide_location_entity)\(\)$/.test(row.function_signature)))) {
     throw new Error("runtime database privilege matrix is unsafe");

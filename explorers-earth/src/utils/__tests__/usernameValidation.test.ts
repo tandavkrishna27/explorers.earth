@@ -529,3 +529,15 @@ describe('sanitizeUsernameForPath', () => {
     expect(result).toBe('user');
   });
 });
+
+// P5-2. The server refuses these handles with a 422 at the very end of onboarding, after
+// five steps and two image uploads. The SPA kept its own, looser list and let 14 of them
+// through (music, books, movies, recommendations...), so the refusal came last.
+describe('server-reserved handles', () => {
+  it('rejects every handle the server reserves, at the first step', async () => {
+    const { RESERVED_HANDLES } = await import('../../../../tunes/shared/explorersReservedHandles');
+    expect(RESERVED_HANDLES.length).toBeGreaterThan(0);
+    const accepted = RESERVED_HANDLES.filter((handle) => validateUsername(handle).isValid);
+    expect(accepted).toEqual([]);
+  });
+});

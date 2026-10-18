@@ -107,4 +107,43 @@ describe('reference content', () => {
       expect(content).toStrictEqual(englishReferenceContent);
     });
   });
+
+  // The [bracket] lint. Legal copy exported from Strapi still carries template slots
+  // ("[Your Company Name]", "[your app URL]") that render verbatim on the live Terms,
+  // Privacy and Cookie pages. Any square-bracketed run in a locale file fails here.
+  //
+  // PENDING_OWNER_COPY lists the slots that exist today, each waiting on owner-supplied
+  // legal text; it is not a licence to add more. When the owner fills one in, remove it
+  // from the list - the second case fails until that happens, so the list cannot go stale.
+  describe('legal copy has no unfilled [bracket] placeholders', () => {
+    // 44 occurrences across terms (en ar de es fr hi pt ru), privacy (en) and cookies (en).
+    // English privacy also has "Postal Address: [your app URL]" - a URL slot where an
+    // address belongs, so filling that slot is a wording fix as well as a value.
+    const PENDING_OWNER_COPY = new Set<string>([
+      '[Your Company Name]',
+      '[your app URL]',
+      '[Your Country/State]',
+      '[Your Contact Email]',
+      '[your contact email]',
+    ]);
+    const files = import.meta.glob('../*.json', { eager: true, import: 'default' }) as Record<string, unknown>;
+    const strings = (value: unknown): string[] => typeof value === 'string' ? [value]
+      : Array.isArray(value) ? value.flatMap(strings)
+        : value && typeof value === 'object' ? Object.values(value).flatMap(strings) : [];
+    const placeholders = Object.entries(files).flatMap(([file, content]) =>
+      strings(content).flatMap((text) => Array.from(text.matchAll(/\[[^\]\n]{1,80}\]/g), (match) => ({ file, slot: match[0] }))));
+
+    it('finds the locale files it lints', () => {
+      expect(Object.keys(files).length).toBeGreaterThanOrEqual(10);
+    });
+
+    it('carries no bracketed slot outside the owner-pending list', () => {
+      expect(placeholders.filter(({ slot }) => !PENDING_OWNER_COPY.has(slot))).toStrictEqual([]);
+    });
+
+    it('lists only slots that still exist', () => {
+      const present = new Set(placeholders.map(({ slot }) => slot));
+      expect([...PENDING_OWNER_COPY].filter((slot) => !present.has(slot))).toStrictEqual([]);
+    });
+  });
 });

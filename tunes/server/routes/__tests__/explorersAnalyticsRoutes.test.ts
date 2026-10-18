@@ -236,7 +236,9 @@ describe("explorers analytics routes", () => {
       });
 
     expect(response.status).toBe(200);
-    expect(service.readAccountEvents).toHaveBeenCalledWith({
+    // The second argument is the request, so a canonical read can reuse the actor the
+    // owner check resolved (P5-1); the scope itself stays exactly the authorised range.
+    expect(vi.mocked(service.readAccountEvents).mock.calls[0][0]).toEqual({
       accountId: "account-1",
       from: "2026-08-01T04:00:00.000Z",
       to: "2026-09-01T03:59:59.999Z",

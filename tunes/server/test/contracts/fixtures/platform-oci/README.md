@@ -8,7 +8,7 @@ Positive legal reference reuse includes the same config content across distinct 
 
 SHA256 receipt contents:
 
-- cases.json: 364217 bytes, 65a73413ce34ccc5ad4ed44c789a0b8031c8d39a2771db2f43eb5743d9739804
+- cases.json: 364217 bytes, dec17915ae085654fa874cc01fea6a531b72cd755b376cd4eb939230828b478b
 - layer.tar: 10240 bytes, 72b328d868963c3b4b755045274ec5cefafb9c06c3f09518be448e8a1eb65566
 - layer.tar.gz: 135 bytes, a319407e46ca167c67904fd3ba62f6b5c1956f9040a38f491fe4da3226f45724
 
