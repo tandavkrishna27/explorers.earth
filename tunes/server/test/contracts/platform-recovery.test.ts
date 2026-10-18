@@ -138,3 +138,53 @@ describe("platform recovery contract", () => {
     })).toEqual({ admitted: false, code });
   });
 });
+
+import { assertDisposableRestoreTarget, parseDrillCommand } from "../../../../scripts/platform-restore-drill";
+
+const target = () => ({
+  connectionString: "postgresql://music_migrator:pw@127.0.0.1:57421/explorers_restore_drill_aaaaaaaa",
+  containerId: "a".repeat(64),
+  owned: true as const,
+  port: 57421,
+});
+
+describe("disposable restore target", () => {
+  it("accepts an owned loopback target in the drill database namespace", () => {
+    expect(assertDisposableRestoreTarget(target(), {}).database).toBe("explorers_restore_drill_aaaaaaaa");
+  });
+
+  it.each([
+    ["a non-loopback host", { connectionString: "postgresql://music_migrator:pw@db.example.com:5432/explorers_restore_drill_aaaaaaaa" }],
+    ["a database outside the drill namespace", { connectionString: "postgresql://music_migrator:pw@127.0.0.1:57421/explorers" }],
+    ["a port outside the owned range", { connectionString: "postgresql://music_migrator:pw@127.0.0.1:5432/explorers_restore_drill_aaaaaaaa", port: 5432 }],
+    ["a target the harness does not own", { owned: false as unknown as true }],
+    ["a query string", { connectionString: "postgresql://music_migrator:pw@127.0.0.1:57421/explorers_restore_drill_aaaaaaaa?sslmode=require" }],
+    ["a mismatched container", { containerId: "short" }],
+  ])("refuses %s", (_name, override) => {
+    expect(() => assertDisposableRestoreTarget({ ...target(), ...override }, {})).toThrow(/restore target/);
+  });
+
+  it.each(["DATABASE_URL", "DATABASE_URL_TEST", "GATE_PROD", "DOCKER_HOST", "DOCKER_CONTEXT", "MUSIC_DEPLOY_PRODUCTION"])(
+    "refuses an ambient %s", (key) => {
+      expect(() => assertDisposableRestoreTarget(target(), { [key]: "anything" })).toThrow(/ambient/);
+    });
+
+  it("refuses a populated namespace", () => {
+    expect(() => assertDisposableRestoreTarget(target(), {}, { existingTables: ["creator_accounts"] }))
+      .toThrow(/populated/);
+  });
+});
+
+describe("drill command", () => {
+  it("requires a manifest, an identity and a receipt directory", () => {
+    expect(parseDrillCommand(["--manifest", "m.json", "--identity", "k.age", "--receipt", "r"]))
+      .toEqual({ manifest: "m.json", identity: "k.age", receipt: "r", keepArchive: false });
+  });
+
+  it.each([
+    [[]],
+    [["--manifest", "m.json"]],
+    [["--manifest", "m.json", "--identity", "k.age"]],
+    [["--manifest", "m.json", "--identity", "k.age", "--receipt", "r", "--target", "postgresql://prod/db"]],
+  ])("rejects %j", (args) => expect(() => parseDrillCommand(args)).toThrow(/arguments rejected/));
+});
