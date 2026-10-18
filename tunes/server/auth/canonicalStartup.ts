@@ -33,6 +33,8 @@ export async function startCanonicalServer(
     await verifyMusicRuntimeDatabaseConnection(connection, environment.MUSIC_DATABASE_MIGRATOR_USER ?? "");
     pool = new pg.Pool({ connectionString: connection.connectionString, max: 10 });
   }
+  /** Declared outside the try so the catch can close a listener the try opened. */
+  let listening: Server | undefined;
   try {
     const readiness = await checkMusicDatabaseReadiness(pool);
     if (!readiness.ready) throw new Error("Canonical identity schema is not ready");
@@ -47,6 +49,7 @@ export async function startCanonicalServer(
         resolve();
       });
     });
+    listening = httpServer;
     const storage = resolveObjectStorage(environment);
     const stopAnalyticsMaintenance=startAnalyticsMaintenance(pool);
     let maintenance: Promise<void> | undefined;
@@ -69,6 +72,12 @@ export async function startCanonicalServer(
       },
     };
   } catch (error) {
+    // Anything that throws after listen() resolves — resolveObjectStorage with a
+    // configured media tier but no bucket is the live example — used to rethrow with
+    // the listener still open. api.ts only sets process.exitCode, so the open handle
+    // kept the event loop alive: the process never exited, Docker never restarted it,
+    // and /health/live (the Dockerfile healthcheck) answered 200 forever.
+    if (listening) await new Promise<void>((resolve) => listening!.close(() => resolve()));
     if (ownsPool) await pool.end().catch(() => undefined);
     throw error;
   }
