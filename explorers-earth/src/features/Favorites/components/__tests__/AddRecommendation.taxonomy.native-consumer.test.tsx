@@ -218,3 +218,13 @@ it('retains mounted create draft through a deferred 503 and retries exact frozen
  mount();await screen.findByRole('option',{name:'Synthetic term 25'});await act(async()=>fireEvent.change(screen.getByLabelText('Category'),{target:{value:id(25)}}));await submitDraft();const form=document.querySelector('form');await waitFor(()=>expect(writes.filter(w=>w.url.endsWith('/recommendations'))).toHaveLength(1));expect(form).not.toBeNull();expect(screen.getByLabelText('Category')).toHaveValue(id(25));
  await act(async()=>release(reply({error:{code:'UNAVAILABLE',message:'Deferred failure',requestId:'synthetic'}},503)));expect(document.querySelector('[name="title"]')).toHaveValue('Draft title');expect(screen.getByLabelText('Category')).toHaveValue(id(25));await act(async()=>fireEvent.submit(document.querySelector('form')!));await screen.findByText('Saved');const creates=writes.filter(w=>w.url.endsWith('/recommendations'));expect(creates[1].options.body).toBe(creates[0].options.body);expect(new Headers(creates[1].options.headers).get('Idempotency-Key')).toBe(new Headers(creates[0].options.headers).get('Idempotency-Key'));
 });
+it('offers no Instagram fetch for a person and ignores the retired fromInstagram import',async()=>{
+ // Instagram import called /api/instagram, which the canonical backend does not serve.
+ sessionStorage.setItem('instagram_post_data',JSON.stringify({_type:'person',fullName:'Synthetic',username:'synthetic'}));
+ mount('?recommendationType=person&fromInstagram=true');await screen.findByRole('option',{name:'Synthetic term 25'});
+ await act(async()=>fireEvent.change(document.querySelector('[name="recommendation"]')!,{target:{value:'https://instagram.com/synthetic'}}));
+ expect(screen.queryByRole('button',{name:/Fetch/})).toBeNull();expect(screen.queryByText(/powered by Instagram/)).toBeNull();
+ expect(sessionStorage.getItem('instagram_post_data')).not.toBeNull();
+ expect(vi.mocked(fetch).mock.calls.some(([url])=>String(url).includes('/api/instagram'))).toBe(false);
+ sessionStorage.removeItem('instagram_post_data');
+});

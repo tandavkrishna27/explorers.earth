@@ -2,7 +2,6 @@ import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../../../components/ui/Button";
-import { EarthLoader } from "../../../components/EarthLoader";
 import { AddIcon } from "../../../assets/icons/AddIcon";
 import FeedLayout from "../../../components/ui/FeedLayout";
 import MediaViewer from "../../../components/ui/MediaViewer";
@@ -13,10 +12,9 @@ import {
 import { GOOGLE_PLACES_API_BASE_URL } from "../../../config";
 import axios from "axios";
 import { toast } from "sonner";
-import useAuthStore from "../../../store/store";
 import AddressInput from "./AddressInput";
 import DeleteIcon from "../../../assets/icons/DeleteIcon";
-import { ChevronDown, Images, Instagram } from "lucide-react";
+import { ChevronDown, Images } from "lucide-react";
 import {
   detectMediaAspectRatio,
   detectUrlAspectRatio,
@@ -69,7 +67,6 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
   const importDisclosureId = `gallery-import-sources-${useId().replace(/:/g, "")}`;
-  const { token } = useAuthStore();
 
   // MediaViewer state
   const {
@@ -87,12 +84,6 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isFetching, setIsFetching] = useState(false);
 
-  // Instagram importer state
-  const [showInstagramImporter, setShowInstagramImporter] = useState(false);
-  const [igUsername, setIgUsername] = useState("");
-  const [igFetchedMedia, setIgFetchedMedia] = useState<FeedMedia[]>([]);
-  const [igSelectedIds, setIgSelectedIds] = useState<Set<string>>(new Set());
-  const [isScrapingIg, setIsScrapingIg] = useState(false);
   const activeOperationsRef = useRef(new Map<string, FeedAsyncOperation>());
   const operationSequenceRef = useRef(0);
   const googleFetchGenerationRef = useRef(0);
@@ -206,7 +197,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
     } finally {
       finishAsyncOperation(requestId);
       setIsUploading(
-        hasActiveOperation("manual-upload", "google-import", "instagram-import"),
+        hasActiveOperation("manual-upload", "google-import"),
       );
     }
   };
@@ -309,235 +300,10 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
       setFetchedImages([]);
       setSelectedIds(new Set());
     }
-    // Close Instagram importer when Google opens
-    if (!showImporter) {
-      setShowInstagramImporter(false);
-      setIgFetchedMedia([]);
-      setIgSelectedIds(new Set());
-    }
     // Mark form as dirty when user toggles Google switch
     if (onFormDirtyChange) {
       onFormDirtyChange();
     }
-  };
-
-  const toggleInstagramImporter = () => {
-    setShowInstagramImporter((prev) => !prev);
-    if (showInstagramImporter) {
-      // reset when hiding
-      setIgUsername("");
-      setIgFetchedMedia([]);
-      setIgSelectedIds(new Set());
-    }
-    // Close Google importer when Instagram opens
-    if (!showInstagramImporter) {
-      setShowImporter(false);
-      setFetchedImages([]);
-      setSelectedIds(new Set());
-    }
-    if (onFormDirtyChange) {
-      onFormDirtyChange();
-    }
-  };
-
-  const INSTAGRAM_API_URL = import.meta.env.VITE_INSTAGRAM_API_URL || 'http://localhost:5000';
-
-  const fetchInstagramMedia = async () => {
-    if (!igUsername.trim()) {
-      toast.error("Please enter an Instagram username or profile URL");
-      return;
-    }
-
-    setIsScrapingIg(true);
-    const requestId = beginAsyncOperation("instagram-fetch");
-    setIgFetchedMedia([]);
-    setIgSelectedIds(new Set());
-
-    try {
-      // Extract username from input
-      let username = igUsername.trim();
-      if (username.includes('instagram.com/')) {
-        const urlMatch = username.match(/instagram\.com\/([^/?]+)/);
-        if (urlMatch && urlMatch[1]) {
-          username = urlMatch[1];
-        }
-      }
-      if (username.startsWith('@')) username = username.slice(1);
-
-      const response = await axios.post(
-        `${INSTAGRAM_API_URL}/api/instagram/account-posts`,
-        { username, maxScrolls: 20 },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 300000, // 5 min
-        }
-      );
-
-      if (response.data.success && response.data.data) {
-        const { posts, totalMedia } = response.data.data;
-
-        // Flatten all media items from all posts into a single FeedMedia array
-        const allMedia: FeedMedia[] = [];
-        for (const post of posts) {
-          if (post.media && Array.isArray(post.media)) {
-            for (let i = 0; i < post.media.length; i++) {
-              const m = post.media[i];
-              const id = `ig-${post.shortcode}-${i}`;
-              // Build proxy URL for display
-              const proxyUrl = `${INSTAGRAM_API_URL}/api/instagram/media-proxy?url=${encodeURIComponent(m.url)}&token=${encodeURIComponent(token || '')}`;
-              allMedia.push({
-                id,
-                url: proxyUrl,               // proxied URL for display
-                fileName: `ig-${post.shortcode}-${i}.${m.type === 'video' ? 'mp4' : 'jpg'}`,
-                type: m.type || 'image',
-                width: m.width,
-                height: m.height,
-                uploadSource: 'manual',       // will be re-uploaded to S3
-              });
-            }
-          }
-        }
-
-        setIgFetchedMedia(allMedia);
-        // Select all by default
-        setIgSelectedIds(new Set(allMedia.map(m => m.id!)));
-        toast.success(`Found ${totalMedia} media items from ${posts.length} posts`);
-      } else {
-        toast.error("Failed to scrape Instagram account");
-      }
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.message || error.message || "Failed to scrape Instagram account";
-      toast.error(errorMsg);
-    } finally {
-      finishAsyncOperation(requestId);
-      setIsScrapingIg(hasActiveOperation("instagram-fetch"));
-    }
-  };
-
-  /** Copy an imported Instagram image into the account's private local media store. */
-  const uploadInstagramImageToS3 = async (
-    proxyImageUrl: string,
-    fileName: string,
-    mediaType: 'image' | 'video' = 'image'
-  ): Promise<FeedMedia | null> => {
-    try {
-      // Fetch the image through our proxy
-      const imageResponse = await fetch(proxyImageUrl);
-      if (!imageResponse.ok) throw new Error("Failed to fetch Instagram image via proxy");
-
-      const imageBlob = await imageResponse.blob();
-
-      // Detect aspect ratio
-      let aspectRatioInfo: { aspectRatio: SupportedAspectRatio; width: number; height: number } = {
-        aspectRatio: '4:5',
-        width: 1080,
-        height: 1350,
-      };
-      if (mediaType === 'image') {
-        try {
-          const tempUrl = URL.createObjectURL(imageBlob);
-          aspectRatioInfo = await detectUrlAspectRatio(tempUrl, false);
-          URL.revokeObjectURL(tempUrl);
-        } catch { /* fallback to default */ }
-      }
-
-      const randomFileName = generateRandomFileName(fileName);
-      const item = await explorersApiClient.createMedia(new File([imageBlob], randomFileName,
-        { type: imageBlob.type }), "feed");
-      if (item?.url) {
-        return {
-          id: `feed-ig-${item.id}`,
-          url: item.url,
-          documentId: item.id,
-          fileName: randomFileName,
-          type: mediaType,
-          aspectRatio: aspectRatioInfo.aspectRatio,
-          width: aspectRatioInfo.width,
-          height: aspectRatioInfo.height,
-          uploadSource: 'manual',
-        } as FeedMedia;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error importing Instagram image:', error);
-      return null;
-    }
-  };
-
-  const saveSelectedInstagramToFeed = async () => {
-    const selected = igFetchedMedia.filter(
-      (img) => img.id && igSelectedIds.has(img.id)
-    );
-    if (selected.length === 0) {
-      toast.error("Select at least one media item");
-      return;
-    }
-
-    // Only upload images (skip videos for now as they are large)
-    const imageItems = selected.filter(item => item.type !== 'video');
-    const videoCount = selected.length - imageItems.length;
-    if (videoCount > 0) {
-      toast.info(`Skipping ${videoCount} video(s) — only images are uploaded to feed`);
-    }
-
-    if (imageItems.length === 0) {
-      toast.error("No images selected to upload (videos are not supported for feed)");
-      return;
-    }
-
-    setIsUploading(true);
-    const requestId = beginAsyncOperation("instagram-import");
-    try {
-      toast.info(`Uploading ${imageItems.length} images to feed...`);
-
-      const uploadPromises = imageItems.map(async (img) => {
-        return uploadInstagramImageToS3(
-          img.url,
-          img.fileName || 'ig-image.jpg',
-          (img.type || 'image') as 'image' | 'video'
-        );
-      });
-
-      const uploadResults = await Promise.all(uploadPromises);
-      const successfulUploads = uploadResults.filter(Boolean) as FeedMedia[];
-
-      if (successfulUploads.length > 0) {
-        const merged = [...feedItems, ...successfulUploads];
-        setFieldValue('Feed_Data', merged);
-        setFieldValue('feedImportedMedia', successfulUploads);
-        if (onFeedDataChange) onFeedDataChange();
-
-        toast.success(`${successfulUploads.length} image(s) uploaded to feed successfully`);
-
-        // Reset Instagram importer
-        setShowInstagramImporter(false);
-        setIgUsername('');
-        setIgFetchedMedia([]);
-        setIgSelectedIds(new Set());
-      } else {
-        toast.error("Failed to upload any images");
-      }
-    } catch (error) {
-      console.error('Error saving Instagram images to feed:', error);
-      toast.error("Failed to save images to feed");
-    } finally {
-      finishAsyncOperation(requestId);
-      setIsUploading(
-        hasActiveOperation("manual-upload", "google-import", "instagram-import"),
-      );
-    }
-  };
-
-  const igToggleSelect = (id: string) => {
-    setIgSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   };
 
   // Remove media overlay action (now supports both images and videos)
@@ -797,7 +563,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
     } finally {
       finishAsyncOperation(requestId);
       setIsUploading(
-        hasActiveOperation("manual-upload", "google-import", "instagram-import"),
+        hasActiveOperation("manual-upload", "google-import"),
       );
     }
   };
@@ -857,7 +623,7 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
               "dashboard.profile.gallery.importSources",
               "Import sources",
             )}
-            className="gallery-import-disclosure mt-3 grid grid-cols-1 gap-2 rounded-lg border border-dashboard bg-dashboard-muted p-2 sm:grid-cols-2"
+            className="gallery-import-disclosure mt-3 grid grid-cols-1 gap-2 rounded-lg border border-dashboard bg-dashboard-muted p-2"
             id={importDisclosureId}
             role="region"
           >
@@ -872,22 +638,6 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
               <Images aria-hidden="true" size={18} strokeWidth={1.75} />
               <span>Google Photos</span>
               {isFetching && (
-                <span aria-hidden="true" className="animate-pulse text-xs text-dashboard-light">
-                  {t("dashboard.profile.common.fetching")}
-                </span>
-              )}
-            </button>
-            <button
-              aria-label="Instagram"
-              aria-pressed={showInstagramImporter}
-              className="gallery-import-source inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-dashboard bg-dashboard-sidebar px-4 font-poppins text-sm font-semibold text-dashboard transition-colors hover:border-dashboard-accent aria-pressed:border-dashboard-accent aria-pressed:bg-dashboard-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={isScrapingIg}
-              onClick={toggleInstagramImporter}
-              type="button"
-            >
-              <Instagram aria-hidden="true" size={18} strokeWidth={1.75} />
-              <span>Instagram</span>
-              {isScrapingIg && (
                 <span aria-hidden="true" className="animate-pulse text-xs text-dashboard-light">
                   {t("dashboard.profile.common.fetching")}
                 </span>
@@ -1033,176 +783,6 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
                     size="xsmall"
                     btnText={t('dashboard.profile.common.saveToFeed')}
                     onClickHandler={saveSelectedToFeed}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Instagram Importer Panel */}
-      {showInstagramImporter && (
-        <div className="w-full bg-dashboard-sidebar border-dashboard rounded-lg p-4 mb-4">
-          <div className="flex flex-col gap-3">
-            <label className="block text-sm font-poppins text-white font-semibold mb-1">
-              Import media from an Instagram account
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={igUsername}
-                onChange={(e) => setIgUsername(e.target.value)}
-                placeholder="username or https://instagram.com/username"
-                className="w-full placeholder:text-dashboard-muted outline-none p-3 border border-dashboard bg-dashboard-muted font-poppins rounded-md text-sm text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent hover:border-dashboard-accent focus:bg-dashboard-muted"
-                disabled={isScrapingIg}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') fetchInstagramMedia();
-                }}
-              />
-              <Button
-                variant="primary"
-                size="medium"
-                btnText={isScrapingIg ? "Fetching..." : "Fetch"}
-                onClickHandler={fetchInstagramMedia}
-                disabled={isScrapingIg || !igUsername.trim()}
-              />
-            </div>
-
-            {/* Scraping status */}
-            {isScrapingIg && (
-              <div className="flex justify-center py-6 mt-2 bg-dashboard-muted/10 rounded-lg border border-dashed border-dashboard-muted/30">
-                <EarthLoader context="scraping" size="small" />
-              </div>
-            )}
-
-            {/* Fetched Instagram media */}
-            {igFetchedMedia.length > 0 && (
-              <div className="bg-dashboard-sidebar rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-white">
-                    {igSelectedIds.size} selected of {igFetchedMedia.length}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="whiteText"
-                      size="xsmall"
-                      btnText={t('dashboard.profile.common.selectAll')}
-                      onClickHandler={() =>
-                        setIgSelectedIds(
-                          new Set(
-                            igFetchedMedia
-                              .map((f) => f.id!)
-                              .filter((id): id is string => Boolean(id))
-                          )
-                        )
-                      }
-                    />
-                    <Button
-                      variant="whiteText"
-                      size="xsmall"
-                      btnText={t('dashboard.profile.common.clearSelection')}
-                      onClickHandler={() => setIgSelectedIds(new Set())}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                  {igFetchedMedia.map((img) => {
-                    const isSel = img.id ? igSelectedIds.has(img.id) : false;
-                    const isVideo = img.type === 'video';
-                    return (
-                      <button
-                        key={img.id}
-                        type="button"
-                        className="relative group cursor-pointer focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 rounded-lg transition-all duration-200"
-                        onClick={() => img.id && igToggleSelect(img.id)}
-                        aria-label={`${isSel ? "Deselect" : "Select"
-                          } media for feed`}
-                      >
-                        {isVideo ? (
-                          <video
-                            src={img.url}
-                            className="w-full h-32 object-cover rounded-lg border-2 border-transparent group-hover:border-pink-500/50 transition-all duration-200"
-                            muted
-                            preload="metadata"
-                          />
-                        ) : (
-                          <img
-                            src={img.url}
-                            alt={img.fileName || "Instagram media"}
-                            className="w-full h-32 object-cover rounded-lg border-2 border-transparent group-hover:border-pink-500/50 transition-all duration-200"
-                            loading="lazy"
-                          />
-                        )}
-                        {/* Video badge */}
-                        {isVideo && (
-                          <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
-                            Video
-                          </div>
-                        )}
-                        <div
-                          className={`absolute inset-0 rounded-lg transition-all duration-200 ${isSel
-                            ? "bg-pink-500/30 ring-2 ring-pink-500 ring-offset-2"
-                            : "bg-black/0 group-hover:bg-black/10"
-                            }`}
-                        />
-                        <div
-                          className="absolute top-2 right-2"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (img.id) igToggleSelect(img.id);
-                          }}
-                        >
-                          <div
-                            className={`inline-flex items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full text-sm md:text-base font-bold transition-all duration-200 shadow-lg border-2 cursor-pointer ${isSel
-                              ? "bg-pink-500 text-white border-pink-500 scale-110"
-                              : "bg-dashboard-sidebar text-dashboard-light border-dashboard hover:bg-dashboard-muted/80 hover:scale-105"
-                              }`}
-                          >
-                            {isSel ? (
-                              <svg
-                                className="w-4 h-4 md:w-5 md:h-5"
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                                aria-hidden="true"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            ) : (
-                              <svg
-                                className="w-4 h-4 md:w-5 md:h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                                strokeWidth="3"
-                                aria-hidden="true"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                />
-                              </svg>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex justify-end mt-3 gap-2">
-                  <Button
-                    variant="primary"
-                    size="xsmall"
-                    btnText={isUploading ? "Uploading..." : t('dashboard.profile.common.saveToFeed')}
-                    onClickHandler={saveSelectedInstagramToFeed}
-                    disabled={isUploading || igSelectedIds.size === 0}
                   />
                 </div>
               </div>
