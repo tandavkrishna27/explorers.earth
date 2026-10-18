@@ -1,3 +1,4 @@
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { memo, useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import TopPlaceCard from "../../../components/ui/TopPlaceCard";
@@ -265,7 +266,7 @@ const TopPlacesByCategory = memo(
             try {
               const response = await axios.get(
                 `https://maps.googleapis.com/maps/api/geocode/json?latlng=${location.latitude
-                },${location.longitude}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+                },${location.longitude}&key=${mapsBrowserKey()
                 }`
               );
 
@@ -345,7 +346,7 @@ const TopPlacesByCategory = memo(
                 {
                   headers: {
                     "Content-Type": "application/json",
-                    "X-Goog-Api-Key": import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+                    "X-Goog-Api-Key": mapsBrowserKey(),
                     "X-Goog-FieldMask":
                       "places.id,places.displayName,places.rating,places.userRatingCount,places.photos,places.location,places.primaryType,places.priceLevel",
                   },
@@ -367,7 +368,7 @@ const TopPlacesByCategory = memo(
               userLocation.lat,
               userLocation.lng,
               25000, // 25km radius for nature spots
-              import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+              mapsBrowserKey()
             );
 
             // Convert legacy places to new format
@@ -429,7 +430,7 @@ const TopPlacesByCategory = memo(
                 {
                   headers: {
                     "Content-Type": "application/json",
-                    "X-Goog-Api-Key": import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+                    "X-Goog-Api-Key": mapsBrowserKey(),
                     "X-Goog-FieldMask":
                       "places.id,places.displayName,places.rating,places.userRatingCount,places.photos,places.location,places.primaryType,places.priceLevel",
                   },
@@ -564,7 +565,7 @@ const TopPlacesByCategory = memo(
     const getPlacePhotoUrl = (place: GooglePlace): string => {
       if (place.photos && place.photos.length > 0) {
         const photoName = place.photos[0].name;
-        return `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=400&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+        return `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=400&key=${mapsBrowserKey()
           }`;
       }
       // Return null for places without images - we'll handle this in the UI

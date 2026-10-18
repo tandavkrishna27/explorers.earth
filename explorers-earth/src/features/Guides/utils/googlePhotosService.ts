@@ -3,6 +3,7 @@
  * Handles fetching photos from Google Places API for activities
  */
 
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { browserPlacesProvider } from "../../../lib/browserPlacesProvider";
 
 export interface PlacePhoto {
@@ -28,7 +29,7 @@ export const fetchGooglePlacePhotos = async (
   placeId: string,
   maxPhotos: number = 8
 ): Promise<FetchedPhoto[]> => {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const apiKey = mapsBrowserKey();
   
   if (browserPlacesProvider.kind === "google-sdk" && !apiKey) {
     console.error("Google Maps API key not found");

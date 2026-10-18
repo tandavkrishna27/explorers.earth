@@ -1,3 +1,4 @@
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import useAuthStore from "../../../store/store";
 import { KeyValuePair } from "../components/RecommendForm";
 import { toast } from "sonner";
@@ -82,7 +83,7 @@ export const useCreateLocation = ({
         `${GOOGLE_PLACES_API_BASE_URL}/${
           values.placeId
         }?fields=id,displayName,formattedAddress,primaryType,primaryTypeDisplayName,priceRange,rating,userRatingCount,location,photos&key=${
-          import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+          mapsBrowserKey()
         }`
       );
       const photoReferences = placeDetails.data.photos?.map(
@@ -96,7 +97,7 @@ export const useCreateLocation = ({
         const googlePhotoResponse = await fetch(
           `${GOOGLE_PLACES_API_BASE_URL}/${values.placeId}/${
             photoReferences[0]
-          }/media?maxWidthPx=400&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`,
+          }/media?maxWidthPx=400&key=${mapsBrowserKey()}`,
           { redirect: "follow" }
         );
 

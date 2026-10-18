@@ -1,3 +1,4 @@
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { useRef, useState } from "react";
 import { KeyValuePair } from "../components/RecommendForm";
 import axios from "axios";
@@ -382,7 +383,7 @@ export const useAddRecommendation = ({
     try {
       const response = await axios.get(
         `${GOOGLE_PLACES_API_BASE_URL}/${id}?fields=id,displayName,formattedAddress,primaryType,primaryTypeDisplayName,priceRange,rating,userRatingCount,location&key=${
-          import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+          mapsBrowserKey()
         }`
       );
       return response?.data ?? null;

@@ -1,3 +1,4 @@
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { Formik, Form, Field, ErrorMessage, useFormikContext } from "formik";
 import {
   memo,
@@ -403,7 +404,7 @@ const RecommendationForm = memo(
         return await axios.get(
           `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
             address
-          )}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`
+          )}&key=${mapsBrowserKey()}`
         );
       }
       // local state for handling the accordian

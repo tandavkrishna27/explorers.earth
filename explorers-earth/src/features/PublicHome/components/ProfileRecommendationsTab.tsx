@@ -1,3 +1,4 @@
+import { runtimeOrigin } from "../../../lib/publicRuntimeConfig";
 import {
   BookOpen,
   Compass,
@@ -114,8 +115,7 @@ const resolveCoverUrl = (
      * shelf, which resolves through `publicPlaceMedia.ts` and no longer admits this shape.
      */
     const backend =
-      import.meta.env.VITE_REST_API_URL?.replace("/api", "") ||
-      "http://localhost:1337";
+      runtimeOrigin(import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337");
     return `${backend}${path}`;
   }
   return path;
