@@ -1,14 +1,12 @@
 import type { Pool } from "pg";
 import { accountDtoSchema, updateAccountRequestSchema, type AccountDto, type RequestContext,
   type RevisionInput, type UpdateAccountInput } from "../../shared/explorersContract";
+import { isReservedHandle } from "../../shared/explorersReservedHandles";
 import type { Actor } from "./actor";
 import { authorizeOperation } from "./authorization";
 import { AccountConflict, AccountInvalidAttachment, ExplorersAccountRepository } from "../repositories/explorersAccountRepository";
 
 export class ProfileInputError extends Error { constructor(message: string) { super(message); } }
-const reserved = new Set(["api", "auth", "login", "logout", "signup", "onboarding", "profile", "settings",
-  "recommendations", "favorites", "music", "books", "movies", "games", "apps", "products", "people", "places",
-  "guides", "claimaccount", "home", "reactivate", "admin", "assets"]);
 
 export class ProfileService {
   private readonly repository: ExplorersAccountRepository;
@@ -27,7 +25,7 @@ export class ProfileService {
     if (typeof normalized.handle === "string") {
       normalized.handle = normalized.handle.toLowerCase();
       if (!/^[a-z][a-z0-9-]{2,29}$/.test(normalized.handle) || normalized.handle.includes("--")
-        || normalized.handle.endsWith("-") || reserved.has(normalized.handle)) throw new ProfileInputError("Handle is unavailable");
+        || normalized.handle.endsWith("-") || isReservedHandle(normalized.handle)) throw new ProfileInputError("Handle is unavailable");
     }
     const { expectedRevision, ...editable } = normalized;
     try { return accountDtoSchema.parse(await this.repository.update(actor.accountId, editable, expectedRevision)); }

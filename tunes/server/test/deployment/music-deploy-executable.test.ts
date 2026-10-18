@@ -394,7 +394,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
         MUSIC_DEPLOY_TEST_READINESS_FAILURE: options.candidateReadinessFailure ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_COMMITTED_CRASH: options.gateCommittedCrash ? "1" : "0",
         MUSIC_DEPLOY_TEST_GATE_FAILURE: options.gateFailure ? "1" : "0",
-        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0057_retire_music_category",
+        MUSIC_DEPLOY_TEST_CURRENT_MARKER: options.expectedMarkerOverride ?? "0059_explorers_person_suppression_audit",
         MUSIC_DEPLOY_TEST_CURRENT_MARKER_OVERRIDE: options.expectedMarkerOverride ?? "",
         MUSIC_DEPLOY_TEST_READINESS_ATTEMPTS: options.candidateReadinessFailure ? "1" : "30",
         MUSIC_DEPLOY_TEST_ROUTE_DELAY_SECONDS: "0",
@@ -433,7 +433,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
           `postgres=${callerPostgresImage}`,
           `traefik=${callerTraefikImage}`,
           `commit=${commit("a")}`,
-          "migration=0057_retire_music_category",
+          "migration=0059_explorers_person_suppression_audit",
           "proxy_ip=172.18.0.2",
         ].join("\n");
         writeFileSync(fixtureImageAuthority, `${callerPayload}\nmac=${
@@ -651,17 +651,17 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
-      .toContain(`\t${digest("b")}\t${commit("b")}\t0057_retire_music_category\t`);
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0059_explorers_person_suppression_audit\t`);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0057_retire_music_category\tcurrent\t");
+      .toContain("\t0059_explorers_person_suppression_audit\tcurrent\t");
   }, deploymentProcessRecoveryTimeoutMs);
 
   it('upgrades a signed 0035 ledger to 0036 while preserving history and refusing rollback below its new floor',()=>{
     seedVersionedAuthority('0035_explorers_book_cover_import');
     const history=readFileSync(join(root,'deployment-state/secure-images.tsv'),'utf8');
     const deployed=run('deploy',digest('b'),commit('b'));expect(deployed.status,deployed.stderr).toBe(0);
-    const ledger=readFileSync(join(root,'deployment-state/secure-images.tsv'),'utf8');expect(ledger.startsWith(history)).toBe(true);expect(ledger).toContain(`	${digest('b')}	${commit('b')}	0057_retire_music_category	`);
-    for(const path of ['deployment-state/music-schema-floor.tsv','deployment-transactions/schema-epoch.tsv'])expect(readFileSync(join(root,path),'utf8')).toContain('	0057_retire_music_category	current	');
+    const ledger=readFileSync(join(root,'deployment-state/secure-images.tsv'),'utf8');expect(ledger.startsWith(history)).toBe(true);expect(ledger).toContain(`	${digest('b')}	${commit('b')}	0059_explorers_person_suppression_audit	`);
+    for(const path of ['deployment-state/music-schema-floor.tsv','deployment-transactions/schema-epoch.tsv'])expect(readFileSync(join(root,path),'utf8')).toContain('	0059_explorers_person_suppression_audit	current	');
     writeFileSync(eventLog,'');const rollback=run('rollback',digest('a'),'-');expect(rollback.status).not.toBe(0);expect(rollback.stderr).toMatch(/schema compatibility floor/i);expect(readFileSync(eventLog,'utf8')).toBe('');expect(readFileSync(join(root,'deployment-state/secure-images.tsv'),'utf8')).toBe(ledger);
   },deploymentProcessRecoveryTimeoutMs);
 
@@ -702,7 +702,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const interrupted = run("deploy", digest("b"), commit("b"), { failpoint: "after_epoch_before_gate" });
     expect(interrupted.status, interrupted.stderr).toBe(99);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0057_retire_music_category\tpending\t");
+      .toContain("\t0059_explorers_person_suppression_audit\tpending\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8")).toBe(historicalLedger);
 
     writeFileSync(eventLog, "");
@@ -715,7 +715,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     expect(recovered.status, recovered.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").startsWith(historicalLedger)).toBe(true);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0057_retire_music_category\tcurrent\t");
+      .toContain("\t0059_explorers_person_suppression_audit\tcurrent\t");
   }, 40_000);
 
   it.each([
@@ -775,8 +775,8 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
       ["deployment-state/music-schema-floor.tsv", "music-schema-floor-v2"],
       ["deployment-transactions/schema-epoch.tsv", "music-schema-epoch-v1"],
     ] as const) {
-      const payload = [schema, repository, digest("b"), commit("b"), "0057_retire_music_category", "pending"].join("\t");
-      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0057_retire_music_category", "pending",
+      const payload = [schema, repository, digest("b"), commit("b"), "0059_explorers_person_suppression_audit", "pending"].join("\t");
+      writeFileSync(join(root, relativePath), [schema, digest("b"), commit("b"), "0059_explorers_person_suppression_audit", "pending",
         createHmac("sha256", hmacSentinel).update(payload).digest("hex")].join("\t") + "\n");
     }
     writeFileSync(eventLog, "");
@@ -784,9 +784,9 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     const result = run("deploy", digest("b"), commit("b"));
     expect(result.status, result.stderr).toBe(0);
     expect(readFileSync(join(root, "deployment-state/music-schema-floor.tsv"), "utf8"))
-      .toContain("\t0057_retire_music_category\tcurrent\t");
+      .toContain("\t0059_explorers_person_suppression_audit\tcurrent\t");
     expect(readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8"))
-      .toContain(`\t${digest("b")}\t${commit("b")}\t0057_retire_music_category\t`);
+      .toContain(`\t${digest("b")}\t${commit("b")}\t0059_explorers_person_suppression_audit\t`);
   }, deploymentProcessRecoveryTimeoutMs);
 
   it.each([
@@ -1181,7 +1181,7 @@ exec "$MUSIC_DEPLOY_TEST_REAL_NODE" "$@"
     // child process command line where another same-host process can read it.
     bootstrap();
     const row = readFileSync(join(root, "deployment-state/secure-images.tsv"), "utf8").trim().split("\t");
-    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0057_retire_music_category", "GENESIS"].join("\t");
+    const expectedPayload = ["music-ledger-v2", repository, "1", digest("a"), commit("a"), "0059_explorers_person_suppression_audit", "GENESIS"].join("\t");
     expect(row[6]).toBe(createHmac("sha256", hmacSentinel).update(expectedPayload).digest("hex"));
 
     const deployed = run("deploy", digest("b"), commit("b"));

@@ -7,6 +7,7 @@ import { checkMusicDatabaseReadiness } from "../db/readiness";
 import { createCanonicalApp } from "./canonicalApp";
 import { resolveExplorersAuthConfig } from "./betterAuth";
 import { runAccountLifecycleMaintenance } from "../application/accountLifecycleMaintenance";
+import { runMediaCleanupMaintenance } from "../application/mediaCleanupMaintenance";
 import { resolveObjectStorage } from "../services/objectStorage";
 import {resolveAppProviderOwnerChoices} from '../config/app-provider-configuration';
 
@@ -19,10 +20,31 @@ export interface CanonicalStartupOptions {
   port?: number;
 }
 
+/** Recovery-only pause for the two maintenance loops. Both reach object storage:
+ *  the account lifecycle loop deletes objects for pending deletions
+ *  (accountLifecycleMaintenance.ts) and the lazy media sweeper deletes the bytes of
+ *  any ready asset with no remaining references (mediaRepository.ts `abandoned`).
+ *  Booting against a database restored to an earlier point than the bucket would
+ *  therefore destroy bytes the restore is trying to preserve.
+ *
+ *  A truthy-string check is deliberately rejected: an accidental
+ *  EXPLORERS_MAINTENANCE_PAUSED=1 left in production would silently stop every
+ *  account deletion, which is a legal obligation, so only the exact
+ *  acknowledgement is honoured and anything else is a hard startup failure. */
+export function resolveMaintenanceAdmission(environment: Environment): { paused: boolean } {
+  const value = environment.EXPLORERS_MAINTENANCE_PAUSED;
+  if (value === undefined) return { paused: false };
+  if (value !== "RESTORE_IN_PROGRESS") {
+    throw new Error("EXPLORERS_MAINTENANCE_PAUSED must be absent or exactly RESTORE_IN_PROGRESS");
+  }
+  return { paused: true };
+}
+
 export async function startCanonicalServer(
   environment: Environment,
   options: CanonicalStartupOptions = {},
 ): Promise<{ httpServer: Server; shutdown: () => Promise<void> }> {
+  const maintenanceAdmission = resolveMaintenanceAdmission(environment);
   const config = resolveExplorersAuthConfig(environment);
   const appEnrichmentChoices=resolveAppProviderOwnerChoices(environment);
   process.env.TZ = "UTC";
@@ -51,12 +73,17 @@ export async function startCanonicalServer(
     });
     listening = httpServer;
     const storage = resolveObjectStorage(environment);
-    const stopAnalyticsMaintenance=startAnalyticsMaintenance(pool);
+    if (maintenanceAdmission.paused) {
+      process.stderr.write("Maintenance loops are paused for recovery; account deletion and media sweeps will not run\n");
+    }
+    const stopAnalyticsMaintenance = maintenanceAdmission.paused ? async () => undefined : startAnalyticsMaintenance(pool);
     let maintenance: Promise<void> | undefined;
     const maintain = () => {
-      if (maintenance) return;
+      if (maintenance || maintenanceAdmission.paused) return;
       maintenance = runAccountLifecycleMaintenance(pool!, storage).then(()=>undefined).catch(() => {
         process.stderr.write("Account lifecycle maintenance failed; retry is scheduled\n");
+      }).then(() => runMediaCleanupMaintenance(pool!, storage)).then(()=>undefined).catch(() => {
+        process.stderr.write("Media cleanup maintenance failed; retry is scheduled\n");
       }).finally(() => { maintenance = undefined; });
     };
     maintain();

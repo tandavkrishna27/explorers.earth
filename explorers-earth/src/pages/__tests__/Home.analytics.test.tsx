@@ -111,7 +111,8 @@ describe("Home analytics", () => {
     accountScope.current = "account-1";
     useAuthStore.setState({
       isAuthenticated: true,
-      token: "private-user-token",
+      // The state every canonical owner is in: authenticated, no token.
+      token: null,
       user: {
         id: "1",
         documentId: "user-1",
@@ -189,10 +190,11 @@ describe("Home analytics", () => {
     const scope = readEvents.mock.calls[0][0];
     expect(scope).toMatchObject({
       accountId: "account-1",
-      token: "private-user-token",
       fromDate: expect.any(String),
       toDate: expect.any(String),
     });
+    // P5-1: canonical sign-in issues no token; the read rides the session cookie.
+    expect(scope).not.toHaveProperty("token");
     expect(Date.parse(scope.toDate) - Date.parse(scope.fromDate)).toBeLessThanOrEqual(93 * 86_400_000);
     expect(await screen.findByRole("status", { name: "Views · last 90 days: Loading" })).toBeInTheDocument();
   });

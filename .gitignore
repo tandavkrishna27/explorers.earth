@@ -192,3 +192,6 @@ tunes environment/
 tunes/.superpowers/
 tunes/.music-cli-contract-isolated-*/
 tunes/scripts/.*.ts
+
+# Cutover rehearsal output (deploy/rehearsal/rehearse.sh)
+/.rehearsal/

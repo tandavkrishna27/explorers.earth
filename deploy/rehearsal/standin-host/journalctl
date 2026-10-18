@@ -1,0 +1,3 @@
+#!/bin/sh
+# Rehearsal shim: the stand-in host has no journald; show nginx's error log.
+tail -n 100 /var/log/nginx/error.log 2>/dev/null || true

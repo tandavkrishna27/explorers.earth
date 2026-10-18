@@ -167,3 +167,10 @@ it('serves only validated rich note detail through every live public ancestor',a
  await pool.query('UPDATE recommendations SET note=$2::jsonb WHERE id=$1',[f.ids[0],JSON.stringify({...note,html:'<p onclick="x()">unsafe</p>'})]);
  const unsafe=await request(app).get(path);expect(unsafe.status).toBe(503);expect(JSON.stringify(unsafe.body)).not.toContain('onclick');
 });
+
+it('never calls a reserved handle available (P5-2)',async()=>{
+  // Break caught: availability only checked EXISTS, so "music" read as free, the creator
+  // went through five onboarding steps and two uploads, and the final write returned 422.
+  for(const handle of ['music','Recommendations','admin'])
+    expect((await request(app).get(availability(handle))).body).toEqual({available:false});
+});

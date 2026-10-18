@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import useAuthStore from "../store/store";
 import { authClient } from "./authClient";
@@ -16,6 +17,17 @@ describe("verified browser session", () => {
     expect(calls).toEqual(["/api/auth/get-session", "/api/explorers/v1/me"]);
     expect(useAuthStore.getState()).toMatchObject({ status: "active-complete", isAuthenticated: true, accountId: "account-a", token: null });
     expect(localStorage.getItem("qrtoken")).toBeNull();
+  });
+
+  it("applies the account's saved locale once the session is verified", async () => {
+    const change = vi.spyOn(i18n, "changeLanguage").mockResolvedValue((() => "") as never);
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      if (input === "/api/auth/get-session") return new Response(JSON.stringify({ user: { id: "user-a", email: "a@example.invalid" }, session: { id: "session-a" } }), { status: 200 });
+      return new Response(JSON.stringify({ account: { id: "account-a", handle: "alice", onboardingStatus: "complete", revision: 1, locale: "fr" } }), { status: 200 });
+    }));
+    await authClient.refresh();
+    expect(useAuthStore.getState().status).toBe("active-complete");
+    expect(change).toHaveBeenCalledWith("fr");
   });
 
   it("ignores a response from a previous session generation", async () => {

@@ -188,6 +188,7 @@ jobs:
           sh deploy/nginx/render-site.sh deploy/nginx/explorers.conf "$stage/explorers.conf"
           cp deploy/production.compose.yml "$stage/production.compose.yml"
           cp deploy/host/explorers-deploy.sh "$stage/explorers-deploy.sh"
+          cp tunes/deployment/platform-backup.mjs "$stage/platform-backup.mjs"
           {
             echo "IMAGE_NAME=${{ steps.image.outputs.image_name }}"
             echo "IMAGE_DIGEST=$IMAGE_DIGEST"
@@ -224,7 +225,7 @@ jobs:
           } > "$HOME/.ssh/config"
           chmod 600 "$HOME/.ssh/config"
 
-      - name: Upload the release and stage the API
+      - name: Upload the release
         id: stage
         shell: bash
         env:
@@ -238,7 +239,47 @@ jobs:
           scp -q "$RUNNER_TEMP"/stage/* "explorers:$remote/"
           # The job token is read-only and expires with the job; logged out in the last step.
           printf '%s' "$GHCR_TOKEN" | ssh explorers "sudo docker login ghcr.io -u '$GHCR_USER' --password-stdin"
-          ssh explorers "sudo bash '$remote/explorers-deploy.sh' stage '$remote'"
+
+      # Backup and restore (docs/replatform/release-and-recovery.md): nothing migrates
+      # until the database the candidate will migrate has been backed up for exactly
+      # this candidate, and a drill has proven a backup at that schema level restores.
+      - name: Take a pre-deploy backup on the host
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote='${{ steps.stage.outputs.remote }}'
+          ssh explorers "sudo bash '$remote/explorers-deploy.sh' backup '$remote'"
+          scp -q "explorers:$remote/backup-result" "$RUNNER_TEMP/backup-result"
+          if [[ "$(cat "$RUNNER_TEMP/backup-result")" == backed-up ]]; then
+            scp -q "explorers:$remote/backup-manifest.json" "$RUNNER_TEMP/backup-manifest.json"
+          fi
+
+      - name: Refuse the deploy without recovery evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          result="$(cat "$RUNNER_TEMP/backup-result")"
+          if [[ "$result" == fresh ]]; then
+            # Decided on the host from its own Docker state, never from an input.
+            echo "::notice::The host has no migrated canonical database yet; the first deploy has nothing to back up."
+            exit 0
+          fi
+          [[ "$result" == backed-up ]] || { echo "::error::The host reported no backup result."; exit 1; }
+          npm ci --no-audit --no-fund
+          npm ci --prefix tunes --no-audit --no-fund --legacy-peer-deps
+          marker="$(sed -n 's/^x-migration-marker: &migration-marker //p' deploy/production.compose.yml)"
+          npm run --silent platform:recovery-gate -- \
+            --manifest "$RUNNER_TEMP/backup-manifest.json" \
+            --receipt docs/replatform/evidence/recovery-receipt.json \
+            --candidate-digest "$IMAGE_DIGEST" \
+            --candidate-commit "$GITHUB_SHA" \
+            --candidate-marker "$marker"
+
+      - name: Stage the API
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh explorers "sudo bash '${{ steps.stage.outputs.remote }}/explorers-deploy.sh' stage '${{ steps.stage.outputs.remote }}'"
 
       # The API is live from here; the SPA is still the previous one. Fail now rather
       # than after the swap.
@@ -247,32 +288,8 @@ jobs:
         run: |
           set -euo pipefail
           ssh -f -N -o ExitOnForwardFailure=yes -L 15000:127.0.0.1:5000 explorers
-          api=http://127.0.0.1:15000
-          # Present as nginx does, so the API sees the production host and scheme.
-          probe() { curl -s --max-time 10 -H "Host: $EXPLORERS_SERVER_NAME" -H "X-Forwarded-Proto: https" "$@"; }
-          check() {
-            local path="$1" want_status="$2" want_body="$3" out status type body
-            out="$(probe -D - "$api$path")" || { echo "::error::$path did not answer"; return 1; }
-            status="$(printf '%s' "$out" | head -n 1 | awk '{print $2}')"
-            type="$(printf '%s' "$out" | tr -d '\r' | grep -i '^content-type:' | head -n 1 || true)"
-            body="$(printf '%s' "$out" | tr -d '\r' | awk 'f{print} /^$/{f=1}')"
-            [[ "$status" == "$want_status" ]] || { echo "::error::$path answered $status, expected $want_status"; return 1; }
-            [[ "$type" =~ application/json ]] || { echo "::error::$path is not JSON ($type) - the SPA shell or a proxy answered"; return 1; }
-            [[ "$body" =~ $want_body ]] || { echo "::error::$path body did not match $want_body: $body"; return 1; }
-            echo "ok $path -> $status"
-          }
-          check /health/ready 200 '"ready":true'
-          # The probe that actually reaches the database through the auth stack.
-          check /api/explorers/v1/me 401 'UNAUTHENTICATED'
-          # Better Auth itself answering: 200, literally null, never cacheable.
-          check /api/auth/get-session 200 '^null$'
-          probe -D - -o /dev/null "$api/api/auth/get-session" | tr -d '\r' | grep -iq '^cache-control:.*no-store' \
-            || { echo "::error::/api/auth/get-session is cacheable"; exit 1; }
-          # TODO(P2 Task 6, PR #133): replace the checks above with
-          #   verifyCanonicalIngress(origin, { handle, category }, fetchImpl)
-          # from scripts/replatform-route-parity.ts once #133 merges. It also proves the
-          # hidden-category privacy gate, which needs a real handle with a hidden
-          # category - so pass one in, and send the Host header as above.
+          # The same file the cutover rehearsal runs on the stand-in host.
+          bash deploy/host/api-acceptance.sh http://127.0.0.1:15000 "$EXPLORERS_SERVER_NAME"
 
       - name: Switch the SPA and the nginx site
         shell: bash

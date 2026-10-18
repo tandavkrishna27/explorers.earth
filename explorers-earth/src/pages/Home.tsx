@@ -334,7 +334,7 @@ const Home = memo(() => {
       };
     }
 
-    if (canonicalAccount.error || !accountDocumentId || !token) {
+    if (canonicalAccount.error || !accountDocumentId) {
       setAnalyticsData([]);
       setAnalyticsState("unavailable");
       return () => {
@@ -346,7 +346,7 @@ const Home = memo(() => {
     void readExplorersAnalyticsEvents({
       accountId: accountDocumentId,
       ...getHomeRecentAnalyticsScope(),
-      token,
+      ...(token ? { token } : {}),
     })
       .then((records) => {
         if (active) {

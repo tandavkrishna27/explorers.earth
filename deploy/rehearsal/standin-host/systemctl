@@ -1,0 +1,24 @@
+#!/bin/sh
+# Rehearsal shim: the stand-in host has no systemd. Implements only what
+# deploy/host/explorers-deploy.sh calls, for the nginx unit, with nginx itself.
+unit=""; quiet=0; verb=""
+for arg in "$@"; do
+  case "$arg" in
+    --quiet|-q) quiet=1 ;;
+    --no-pager|-l) ;;
+    nginx|nginx.service) unit=nginx ;;
+    -*) ;;
+    *) [ -z "$verb" ] && verb="$arg" ;;
+  esac
+done
+[ "$unit" = nginx ] || { echo "systemctl shim: only the nginx unit exists here" >&2; exit 4; }
+running() { [ -s /run/nginx.pid ] && kill -0 "$(cat /run/nginx.pid)" 2>/dev/null; }
+case "$verb" in
+  is-active) if running; then [ "$quiet" = 1 ] || echo active; exit 0; else [ "$quiet" = 1 ] || echo inactive; exit 3; fi ;;
+  start) running || nginx ;;
+  reload) running || { echo "nginx is not running" >&2; exit 1; }; nginx -s reload ;;
+  restart) running && nginx -s quit; sleep 1; nginx ;;
+  stop) running && nginx -s quit; exit 0 ;;
+  status) if running; then echo "nginx (shim): active, pid $(cat /run/nginx.pid)"; else echo "nginx (shim): inactive"; exit 3; fi ;;
+  *) echo "systemctl shim: unsupported verb $verb" >&2; exit 1 ;;
+esac
