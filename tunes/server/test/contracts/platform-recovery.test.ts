@@ -881,4 +881,12 @@ describe("recovery evidence gate", () => {
       now: Date.parse("2026-10-18T02:05:00.000Z") })).toEqual({ exitCode: 0 });
   });
 
+  it("ships a committed drill receipt the deploy gate can read", () => {
+    // docs/replatform/evidence/recovery-receipt.json is what explorers.yml's gate reads.
+    const committed = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../docs/replatform/evidence/recovery-receipt.json"), "utf8"));
+    expect(drillReceiptSchema.parse(committed).result).toBe("passed");
+    expect(committed.cleanup).toBe("database-dropped-container-removed");
+    expect(committed.proofs.rowCountsMatched).toBe(true);
+    expect(committed.proofs.media.hashesMatched).toBe(committed.proofs.media.objects);
+  });
 });
