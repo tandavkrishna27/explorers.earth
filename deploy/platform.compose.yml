@@ -4,7 +4,7 @@
   "name": "platform-rehearsal",
   "services": {
     "postgres": {
-      "image": "postgres:15-alpine@sha256:fceb6f86328c36f2438fae3b851b0cc57c4a7e69a58c866d9ce24281f2cf0c9c",
+      "image": "ghcr.io/tandavkrishna27/mirror/postgres:15-alpine-fceb6f86@sha256:fceb6f86328c36f2438fae3b851b0cc57c4a7e69a58c866d9ce24281f2cf0c9c",
       "environment": {
         "POSTGRES_USER": "platform_owner",
         "POSTGRES_DB": "platform_qa",
@@ -136,7 +136,7 @@
       "cap_drop": [
         "ALL"
       ],
-      "image": "public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1",
+      "image": "ghcr.io/tandavkrishna27/mirror/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1",
       "read_only": true,
       "command": [
         "node",

@@ -47,7 +47,7 @@ const ownedModel = {
 const ownedContainer = {
   Id: receipt.containerId,
   Name: "/explorers-replatform-local-postgres-1",
-  Config: { Image: "public.ecr.aws/docker/library/postgres:15-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81", Labels: {
+  Config: { Image: "ghcr.io/tandavkrishna27/mirror/postgres:15-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81", Labels: {
     "com.docker.compose.project": receipt.project,
     "com.docker.compose.service": "postgres",
     "com.explorers.replatform.fixture": "true",
@@ -116,12 +116,12 @@ describe("replatform local authority", () => {
     const root = resolve(import.meta.dirname, "../../../..");
     const compose = readFileSync(resolve(root, "docker-compose.replatform.yml"), "utf8");
     const frontend = readFileSync(resolve(root, "explorers-earth/Dockerfile.music-fixture"), "utf8");
-    expect(compose).toContain("image: public.ecr.aws/docker/library/postgres:15-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81");
-    const node = "public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1";
+    expect(compose).toContain("image: ghcr.io/tandavkrishna27/mirror/postgres:15-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81");
+    const node = "ghcr.io/tandavkrishna27/mirror/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1";
     expect(compose).toContain(`image: ${node}`);
     expect(frontend).toContain(`FROM ${node} AS builder`);
     expect(frontend).toContain("COPY tunes/shared/explorersContract.ts /workspace/tunes/shared/explorersContract.ts");
-    expect(frontend).toContain("FROM public.ecr.aws/docker/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS runner");
+    expect(frontend).toContain("FROM ghcr.io/tandavkrishna27/mirror/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS runner");
   });
 
   it("builds the shared API image before starting migration from a cold cache", () => {
@@ -389,8 +389,9 @@ describe("replatform local authority", () => {
   });
   it.each([
     "postgres:15-alpine",
-    "public.ecr.aws/docker/library/postgres:15-alpine",
-    `public.ecr.aws/docker/library/postgres:15-alpine@sha256:${"a".repeat(64)}`,
+    "ghcr.io/tandavkrishna27/mirror/postgres:15-alpine",
+    `ghcr.io/tandavkrishna27/mirror/postgres:15-alpine@sha256:${"a".repeat(64)}`,
+    "public.ecr.aws/docker/library/postgres:15-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81",
   ])("refuses a PostgreSQL image outside the exact mirror pin (%#)", image => {
     expect(() => assertPlatformContainer(receipt, {
       ...ownedContainer, Config: { ...ownedContainer.Config, Image: image },

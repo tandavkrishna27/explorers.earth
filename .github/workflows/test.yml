@@ -438,6 +438,11 @@ jobs:
   platform-fixture:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    # Base images come from this repository's GHCR mirror (base-image-mirror.yml);
+    # anonymous public.ecr.aws pulls were throttled with 429 on shared runner IPs.
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -451,6 +456,12 @@ jobs:
       - run: npm ci
       - run: npm ci --prefix tunes --legacy-peer-deps
       - run: npm ci --prefix explorers-earth
+      - name: Log in to the GHCR base-image mirror
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Provision disposable local platform
         run: npm run platform:local -- provision
       - name: Verify repeatable current-domain seed and mounted routes

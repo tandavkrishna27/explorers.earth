@@ -8,7 +8,7 @@ const read = file => readFileSync(resolve(root, file), 'utf8');
 const digest = 'ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1';
 test('production and fixture builders use the reviewed Node 24.21.0 image', () => {
   for (const file of ['tunes/Dockerfile', 'explorers-earth/Dockerfile', 'explorers-earth/Dockerfile.music-fixture']) {
-    assert.match(read(file), new RegExp(`FROM public\\.ecr\\.aws/docker/library/node:24\\.21\\.0-alpine@sha256:${digest}`));
+    assert.match(read(file), new RegExp(`FROM ghcr\\.io/tandavkrishna27/mirror/node:24\\.21\\.0-alpine@sha256:${digest}`));
     assert.match(read(file), /npm ci.*--engine-strict/);
   }
   assert.match(read('tunes/scripts/music-docker-release-authority.ts'), new RegExp(`node@sha256:${digest}`));
