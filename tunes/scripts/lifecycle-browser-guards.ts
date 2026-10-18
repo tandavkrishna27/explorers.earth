@@ -18,11 +18,11 @@ export const LIFECYCLE_CASES = [
     'held recovery completion preserves verified replacement B',
     'held recovery completion preserves a fresh verified returning A session',
 ] as const;
-export function parseBrowserSuite(args: string[]): 'profile' | 'auth' | 'lifecycle' | 'places' | 'place-links' | 'apps' | 'guides' | 'public-parity' | 'people' | 'apps-enrichment' {
+export function parseBrowserSuite(args: string[]): 'profile' | 'auth' | 'lifecycle' | 'places' | 'place-links' | 'apps' | 'guides' | 'public-parity' | 'people' | 'apps-enrichment' | 'no-strapi' {
     const ack = 'TASK4_FIXTURE_OWNED_DISPOSABLE_PG15';
     if (JSON.stringify(args) === JSON.stringify(['--ack', ack]))
         return 'profile';
-    for (const suite of ['auth', 'lifecycle', 'places', 'place-links', 'apps', 'guides', 'public-parity', 'people', 'apps-enrichment'] as const)
+    for (const suite of ['auth', 'lifecycle', 'places', 'place-links', 'apps', 'guides', 'public-parity', 'people', 'apps-enrichment', 'no-strapi'] as const)
         if (JSON.stringify(args) === JSON.stringify(['--suite', suite, '--ack', ack]))
             return suite;
     throw new Error('Browser E2E requires exact disposable PostgreSQL acknowledgement');

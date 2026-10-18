@@ -2580,3 +2580,22 @@ Codex's Windows sandbox refuses every shell call, so it ran without live reposit
 - **RDS deletion.** It requires listing the instance's databases and connections first.
 
 **The P5-1 signature Codex could not confirm** is confirmed. `9e73fb75` widens `readAccountEvents(scope, request?)` in `explorersAnalyticsRoutes.ts:131`, and passes `req` at `:201`.
+
+---
+
+## Found during execution
+
+Phase A (P6-1 to P6-5) was executed against `fork/main` = `5abc33cb` on 2026-10-19. Each row below is something the plan said that the code or a real run contradicted, and what was done instead. Line numbers in the plan above were not rewritten; re-locate them as the evidence standard says.
+
+### P6-1
+
+| # | The plan said | The code or a run said | Done |
+|---|---|---|---|
+| 1 | `...owner('/instagram', 'instagram')` | The `instagram` route literal no longer exists in `ProtectedRoutes.tsx` (P5-8 removed the surface), so the inventory test fails on a stale claim | Case removed. The table has 176 cases (178 tests with the inventory and self-test) |
+| 2 | `/google-auth/callback` is an ordinary auth page | `GoogleAuthRedirect` bootstraps the session and sends a signed-out visitor to `/login?error=oauth_failed` | The case asserts `lands: /^\/login$/`, with a comment |
+| 3 | `STUBS` names Google Fonts, the loader GIF and `flagcdn` | `RecommendationsHub.tsx` loads two CSS background textures from `www.transparenttextures.com/patterns/` | A named `transparenttextures` stub (image, `/patterns/` only). `local` was not widened |
+| 4 | Public cases pass once landing, broken-state and violation checks hold | **Canonical rate-limits public profile reads to 120 a minute** (`explorersPublicProfileRoutes.ts`, draft-7 `RateLimit` header). Back to back, the public cases exhausted it, and most public category pages rendered **"404 Page Not Found" on an unchanged URL**. The first green run passed all of them | Three changes, all in the spec: (a) before each public case the spec reads the budget and waits for the window when fewer than 40 reads remain; (b) any canonical `429` during a case fails it (`Monitor.throttled`); (c) every public category index, genre, subject and sector case carries the marker `[data-category-page]`, which every public category component renders and `NotFound` does not. Owner editor pages, the hub, home, profile and the profile root carry heading markers read from a green run |
+| 5 | Register the new runner dependency in `snapshotSource()` | `replatform-e2e.test.mjs` also runs `snapshotSource` against a synthetic Git whose tracked list is enumerated in the test; the new `--error-unmatch` call fails there with `not tracked` | `tunes/scripts/no-strapi-outbound-monitor.ts` added to that synthetic tracked list. No seal was touched |
+| 6 | Floors are set from the first green run | Measured: 176 executed cases, 572 distinct `/src/` modules, 45 distinct successful canonical API paths (46 on a later run). The handle is fixed for a run, so `/profiles/<handle>/…` paths do not inflate the count | `ROUTE_FLOOR = 176`, `MODULE_FLOOR = 500`, `API_FLOOR = 40` |
+| 7 | Confirm the diagnostics-channel shapes on Node `24.21.0` | This host runs Node `24.14.0`; the shapes were confirmed there (CI uses `24.21.0`) | Recorded; the monitor's own unit test re-proves them on every run |
+| 8 | `lifecycle-browser-support.test.ts` may pin the suite list | It asserts a subset | `no-strapi` added to the subset it checks |

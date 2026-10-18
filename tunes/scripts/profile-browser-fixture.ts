@@ -24,6 +24,7 @@ import { extractProtectedReceiptArguments, createProtectedReceipt } from './prot
 import { createAppsBrowserFixture, createAppsEnrichmentBrowserFixture, extractAppsFixtureDiagnostic } from './apps-browser-fixture';
 import { createGuidesBrowserFixture, formatGuidesFixtureFailure } from './guides-browser-fixture';
 import { createPublicParityBrowserFixture, formatPublicParityFixtureFailure } from './public-parity-browser-fixture';
+import { installOutboundMonitor, selfTestOutboundMonitor, type OutboundMonitor } from './no-strapi-outbound-monitor';
 
 const receiptArguments = extractProtectedReceiptArguments(process.argv.slice(2));
 const suite = parseBrowserSuite(receiptArguments.args);
@@ -72,6 +73,10 @@ let vite: ChildProcess | undefined;
 let browser: ChildProcess | undefined;
 let interrupted = false;
 let placesPhase: 'startup'|'discovery'|'execution'|'cleanup' = 'startup';
+// The no-Strapi lane's server-side monitor. Detection only: the poisoned STRAPI_* env makes
+// every surviving Strapi reader call a host that never resolves, and this records the attempt.
+let outbound: OutboundMonitor | undefined;
+let noStrapiServerViolation: string | undefined;
 
 async function freePort(min = 55000, max = 60999): Promise<number> {
   for (let i = 0; i < 150; i++) {
@@ -156,6 +161,34 @@ async function main(): Promise<number> {
     const cookie = `${context.authCookies.sessionToken.name}=${session.token}.${signature}`;
     personas[name] = { userId, cookie, handle: `profile${name.toLowerCase()}${runId.slice(0, 4)}` };
   }
+  let ownerAccountId: string | undefined;
+  if (suite === 'no-strapi') {
+    // Onboard ownerA, so owner and public routes have a complete account with a handle; ownerB
+    // stays un-onboarded for the /onboarding case. creator_accounts_complete_valid requires
+    // display_name and account_type once onboarding is complete, as profile.spec.ts sets them.
+    const owner = personas.ownerA;
+    const selected = await ensureInitialAccount(db, owner.userId);
+    ownerAccountId = selected.accountId;
+    const account = await db.query<{ revision: string }>('SELECT revision::text FROM creator_accounts WHERE id=$1', [selected.accountId]);
+    const onboarded = await fetch(`http://127.0.0.1:${apiPort}/api/explorers/v1/account`, {
+      method: 'PATCH',
+      headers: { Cookie: owner.cookie, Origin: origin, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expectedRevision: Number(account.rows[0].revision), handle: owner.handle,
+        displayName: 'No-Strapi Fixture', accountType: 'Personal', onboardingStatus: 'complete', publicProfile: true }),
+    });
+    if (onboarded.status !== 200) throw new Error(`No-Strapi owner onboarding failed: HTTP ${onboarded.status}`);
+    // Public category pages sit behind TabVisibilityGuard defaultVisible={false}, and ensureInitialAccount
+    // writes category settings without an explicit visibility. Make every category public, or the public
+    // cases render a hidden-category redirect instead of the page under test.
+    const me = await (await fetch(`http://127.0.0.1:${apiPort}/api/explorers/v1/me`, { headers: { Cookie: owner.cookie } })).json() as
+      { account: { revision: number; categories: { category: string; isPublic: boolean; displayOrder: number; pinnedOrder: number | null }[] } };
+    const visible = await fetch(`http://127.0.0.1:${apiPort}/api/explorers/v1/account`, {
+      method: 'PATCH',
+      headers: { Cookie: owner.cookie, Origin: origin, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expectedRevision: me.account.revision, categories: me.account.categories.map((c) => ({ ...c, isPublic: true })) }),
+    });
+    if (visible.status !== 200) throw new Error(`No-Strapi category visibility failed: HTTP ${visible.status}`);
+  }
   if (placesSuite) placesControl = await startPlacesControl({pool:db,composed,config,runId,commit,personas,storage:storage!,storageDirectory,port:await freePort(51000,51999),apiOrigin:`http://127.0.0.1:${apiPort}`,lane:suite as 'places'|'place-links'});
   let recoveryProof: string | undefined;
   if (suite === 'auth') {
@@ -180,12 +213,22 @@ async function main(): Promise<number> {
   const fixturePath = join(disposable, 'sessions.json');
   writeFileSync(fixturePath, JSON.stringify({ origin, personas, recoveryProof, lifecycleControl, ...(placesSuite ? {version:1,runId,commit,apiOrigin:`http://127.0.0.1:${apiPort}`,placesControl} : {}) }), { mode: 0o600 });
   vite = spawn(process.execPath, [resolve(frontend, 'node_modules/vite/bin/vite.js'),
-    '--config', 'e2e/replatform/profile.vite.config.ts'], {
+    '--config', suite === 'no-strapi' ? 'e2e/replatform/no-strapi.vite.config.ts' : 'e2e/replatform/profile.vite.config.ts'], {
     cwd: frontend, windowsHide: true, stdio: 'inherit', env: { ...process.env,
       PROFILE_E2E_LOCAL_AUTHORITY: 'owned-disposable-pg15', PROFILE_E2E_WEB_PORT: String(webPort),
       PROFILE_E2E_API_PORT: String(apiPort), ...(placesSuite ? { PROFILE_E2E_SUITE: suite } : {}) },
   });
   await waitFor(origin);
+  if (suite === 'no-strapi') {
+    // Drive the read that historically reached Strapi. No browser case can: the SPA sends it only
+    // with an auth-store token, which canonical never issues. Without this probe the server monitor
+    // would watch a run in which nothing could ever call Strapi.
+    const today = new Date().toISOString().slice(0, 10);
+    const read = await fetch(`http://127.0.0.1:${apiPort}/api/explorers/analytics/events?` + new URLSearchParams({
+      accountId: ownerAccountId!, fromDate: today, toDate: today, timeZone: 'UTC' }), { headers: { Cookie: personas.ownerA.cookie, Origin: origin } });
+    // After P5-1 the canonical read is served from analytics_events: 200. Anything else means the probe did not run the read.
+    if (read.status !== 200) throw new Error(`No-Strapi analytics probe: HTTP ${read.status}`);
+  }
   const lifecycleConfig = ['--config', 'e2e/replatform/lifecycle.playwright.config.ts', '--project=lifecycle-chromium', '--retries=0'];
   const lifecycleEnv = { ...process.env, LIFECYCLE_E2E_FIXTURE_PATH: fixturePath, PLAYWRIGHT_EXTERNAL_BASE_URL: origin };
   let discovered: string[] = [];
@@ -226,6 +269,31 @@ async function main(): Promise<number> {
   }
   return exitCode;
 }
+function reportOutbound(): string | undefined {
+  if (!outbound) return undefined;
+  const strapi = outbound.strapi();
+  outbound.dispose();
+  process.stdout.write(`${JSON.stringify({ noStrapiServer: { observed: outbound.seen.length, strapi: strapi.length, requests: strapi } })}\n`);
+  return strapi.length ? `NO_STRAPI_SERVER_VIOLATION ${JSON.stringify(strapi)}` : undefined;
+}
+/** The no-Strapi lane installs, self-tests and poisons before the canonical app is composed, and reports on every exit path. */
+async function run(): Promise<number> {
+  if (suite !== 'no-strapi') return main();
+  try {
+    outbound = installOutboundMonitor();
+    await selfTestOutboundMonitor(outbound);
+    Object.assign(process.env, {
+      STRAPI_URL: 'https://strapi.poison.invalid',
+      STRAPI_FIXTURE_URL: 'https://strapi.poison.invalid',
+      STRAPI_ACCESS_TOKEN: 'no-strapi-poison',
+      STRAPI_ANALYTICS_ACCESS_TOKEN: 'no-strapi-poison',
+      STRAPI_JWT_SECRET: 'no-strapi-poison',
+    });
+    return await main();
+  } finally {
+    noStrapiServerViolation = reportOutbound();
+  }
+}
 const signal = () => { interrupted = true; stopChild(browser); stopChild(vite); };
 process.once('SIGINT', signal);
 process.once('SIGTERM', signal);
@@ -234,7 +302,7 @@ process.on('message', (message: unknown) => {
   if (protectedReceipt && input.type === 'replatform-cancel' && input.capability === protectedReceipt.capability) signal();
 });
 try {
-  process.exitCode = await main();
+  process.exitCode = await run();
 } catch (error) {
   process.stderr.write(`Profile E2E fixture failed: ${error instanceof Error ? error.message.replaceAll(disposable, '<fixture>') : 'unknown'}\n`);
   process.exitCode = 1;
@@ -271,6 +339,8 @@ try {
   }
   try { assertOwnedCleanup(failures); } catch (error) { process.exitCode = 1; process.stderr.write(`${(error as Error).message}\n`); }
   if (lifecycleReceipt && artifacts) { lifecycleReceipt.cleanup = failures.length ? { failed: failures } : 'owned database dropped; attested container removed; pools/control/children closed; secret removed'; writeFileSync(join(artifacts, 'receipt.json'), JSON.stringify(lifecycleReceipt, null, 2)); process.stdout.write(`Lifecycle receipt: ${join(artifacts, 'receipt.json')}\n`); }
+  // A probe error and a server violation must both survive: the catch above printed the first.
+  if (noStrapiServerViolation) { process.exitCode = 1; process.stderr.write(`${noStrapiServerViolation}\n`); }
   if (interrupted) process.exitCode = 130;
   if (process.connected) process.disconnect();
 }
