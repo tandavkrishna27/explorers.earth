@@ -392,6 +392,284 @@ export function readTar(bytes) {
 
 export const sha256Hex = bytes => createHash("sha256").update(bytes).digest("hex");
 
+/* ------------------------------------------------------------------- media */
+
+/** Derived from media_objects joined to media_assets (migrations/0024). Only
+ *  `ready` assets are claimed: an `uploading` row older than ten minutes becomes
+ *  pending_delete and its object is deleted, so claiming it would put a key in the
+ *  manifest that the system is about to remove. Size and hash come from
+ *  media_objects, where both are NOT NULL. Read inside the dump's snapshot. */
+export const MEDIA_INVENTORY_QUERY = `
+  SELECT json_build_object(
+    'media_id', o.media_id,
+    'object_key', o.object_key,
+    'bytes', o.byte_size,
+    'sha256', encode(o.content_sha256,'hex'),
+    'version', o.storage_version_id
+  )::text
+  FROM media_objects o
+  JOIN media_assets a ON a.id = o.media_id
+  WHERE a.status = 'ready' AND o.variant = 'original' AND o.deleted_at IS NULL
+  ORDER BY o.object_key;`;
+
+export function parseMediaInventory(text, environment) {
+  const rows = [];
+  const key = new RegExp(`^${environment}/[0-9a-f-]{36}/[0-9a-f-]{36}$`);
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const row = JSON.parse(trimmed);
+    if (!key.test(String(row.object_key))) throw new Error(`media inventory contains a key outside the ${environment} prefix`);
+    if (!/^[a-f0-9]{64}$/.test(row.sha256)) throw new Error("media inventory row has no content hash");
+    if (!Number.isSafeInteger(Number(row.bytes)) || Number(row.bytes) < 0) throw new Error("media inventory row has no size");
+    rows.push({ ...row, bytes: Number(row.bytes) });
+  }
+  return rows;
+}
+
+const AWS_ENVIRONMENT = ["--env", "AWS_ACCESS_KEY_ID", "--env", "AWS_SECRET_ACCESS_KEY", "--env", "AWS_SESSION_TOKEN", "--env", "AWS_REGION"];
+
+/** Credentials reach the aws-cli container by name from the docker CLI's own
+ *  environment, never as values on a command line. */
+export function awsEnvironment(values) {
+  const environment = { ...process.env, AWS_REGION: values.get("EXPLORERS_MEDIA_S3_REGION") };
+  for (const name of ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]) {
+    const value = values.get(name);
+    if (value) environment[name] = value;
+  }
+  return environment;
+}
+
+/** Keep the `<accountId>/<id>` tail so the restore can reconstruct the original
+ *  key without a lookup table. */
+export function backupMediaKey(sourceKey, destinationPrefix) {
+  return `${destinationPrefix}${sourceKey.split("/").slice(1).join("/")}`;
+}
+
+export function buildMediaCopyCommand({ bucket, sourceKey, destinationPrefix }) {
+  const destinationKey = backupMediaKey(sourceKey, destinationPrefix);
+  return {
+    file: "docker",
+    args: ["run", "--rm", ...AWS_ENVIRONMENT, AWS_CLI_IMAGE,
+      "s3", "cp", `s3://${bucket}/${sourceKey}`, `s3://${bucket}/${destinationKey}`, "--only-show-errors"],
+    destinationKey,
+  };
+}
+
+/** A list of live mutable URLs is not a media backup (ticket-8-5.md:45). If any
+ *  referenced object failed to copy, the run is incomplete and its manifest's
+ *  complete:false makes it unusable as a restore candidate. */
+export function assertMediaInventoryComplete(inventory, outcome) {
+  const copied = new Set(outcome.copied);
+  const missing = inventory.filter(row => !copied.has(row.object_key));
+  if (missing.length) throw new Error(`${missing.length} referenced object(s) did not copy into the backup prefix`);
+  return true;
+}
+
+function copyMedia({ environment, values, inventory, prefix, run }) {
+  const copied = [], failed = [];
+  for (const row of inventory) {
+    try {
+      if (environment === "prod") {
+        const command = buildMediaCopyCommand({ bucket: values.get("EXPLORERS_MEDIA_S3_BUCKET"), sourceKey: row.object_key, destinationPrefix: prefix });
+        run(command.file, command.args, { encoding: "utf8", env: awsEnvironment(values) });
+      } else {
+        const source = join(values.get("EXPLORERS_MEDIA_LOCAL_ROOT"), ...row.object_key.split("/"));
+        const destination = join(values.get("EXPLORERS_BACKUP_LOCAL_DESTINATION"), ...backupMediaKey(row.object_key, prefix).split("/"));
+        mkdirSync(dirname(destination), { recursive: true, mode: 0o700 });
+        copyFileSync(source, destination);
+        if (sha256Hex(readFileSync(destination)) !== row.sha256) throw new Error("copied bytes do not match the recorded hash");
+      }
+      copied.push(row.object_key);
+    } catch {
+      failed.push(row.object_key);
+    }
+  }
+  return { copied, failed };
+}
+
+/* -------------------------------------------------------- encrypt, publish */
+
+/** Builds the pinned age image once; later runs reuse the local tag. */
+export function ensureAgeImage(run = runCommand) {
+  try { run("docker", ["image", "inspect", "--format", "{{.Id}}", AGE_IMAGE], { encoding: "utf8" }); return; }
+  catch { /* build below */ }
+  run("docker", ["build", "--tag", AGE_IMAGE, "-"], {
+    encoding: "utf8",
+    input: `FROM ${AGE_BASE_IMAGE}\nRUN apk add --no-cache ${AGE_PACKAGE}\nENTRYPOINT ["age"]\n`,
+  });
+}
+
+export function buildEncryptCommand({ recipient, directory, inputName, outputName }) {
+  assertAgeRecipient(recipient);
+  return {
+    file: "docker",
+    args: ["run", "--rm", "--network", "none", "--volume", `${directory}:/work`, AGE_IMAGE,
+      "--encrypt", "--recipient", recipient, "--output", `/work/${outputName}`, `/work/${inputName}`],
+  };
+}
+
+export function buildDecryptCommand({ identityPath, directory, inputName, outputName }) {
+  return {
+    file: "docker",
+    args: ["run", "--rm", "--network", "none", "--volume", `${directory}:/work`,
+      "--volume", `${identityPath}:/identity/key.age:ro`, AGE_IMAGE,
+      "--decrypt", "--identity", "/identity/key.age", "--output", `/work/${outputName}`, `/work/${inputName}`],
+  };
+}
+
+export function buildUploadCommand({ bucket, localPath, key }) {
+  if (!/^(prod|local)\/backups\/[^/]+\/[^/]+$/.test(key) && !/^(prod|local)\/backups\/LATEST\.json$/.test(key)) {
+    throw new Error("backup objects may only be written under a backups prefix");
+  }
+  return {
+    file: "docker",
+    args: ["run", "--rm", ...AWS_ENVIRONMENT, "--volume", `${dirname(localPath)}:/payload:ro`, AWS_CLI_IMAGE,
+      "s3", "cp", `/payload/${basename(localPath)}`, `s3://${bucket}/${key}`, "--only-show-errors"],
+  };
+}
+
+function publish({ environment, values, localPath, key, run }) {
+  if (environment === "prod") {
+    const command = buildUploadCommand({ bucket: values.get("EXPLORERS_MEDIA_S3_BUCKET"), localPath, key });
+    run(command.file, command.args, { encoding: "utf8", env: awsEnvironment(values) });
+    return;
+  }
+  buildUploadCommand({ bucket: "local", localPath, key });
+  const destination = join(values.get("EXPLORERS_BACKUP_LOCAL_DESTINATION"), ...key.split("/"));
+  mkdirSync(dirname(destination), { recursive: true, mode: 0o700 });
+  copyFileSync(localPath, destination);
+}
+
+const REQUIRED_MEMBERS = ["database/dump.pgc", "database/globals.sql", "host/configuration.tar", "media/inventory.jsonl"];
+
+/** The required-member check lives here as well as in the zod schema on purpose:
+ *  the host script does not import zod, so it would otherwise be able to write a
+ *  manifest claiming complete:true that only the drill would later reject. */
+export function buildManifest(input) {
+  const names = new Set((input.members ?? []).map(member => member.name));
+  const absent = REQUIRED_MEMBERS.filter(name => !names.has(name));
+  if (absent.length) throw new Error(`archive is missing a required member: ${absent.join(", ")}`);
+  return { version: "explorers-platform-backup/v1", complete: true, ...input };
+}
+
+export function writeJson(path, value) {
+  const temporary = `${path}.${process.pid}.tmp`;
+  writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600, flag: "wx" });
+  renameSync(temporary, path);
+  return path;
+}
+
+export function runIdentifier() { return randomBytes(16).toString("hex"); }
+
+/** `<UTC start>-<reason>-<first 8 of run id>`. Retention plans from a listing of
+ *  these names alone, so pruning never has to download a manifest. */
+export function runFolderName(startedAt, reason, runId) {
+  const stamp = startedAt.toISOString().replace(/\.\d{3}Z$/, "Z").replaceAll("-", "").replaceAll(":", "");
+  return `${stamp}-${reason}-${runId.slice(0, 8)}`;
+}
+
+export function parseRunFolder(name) {
+  const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z-(scheduled|pre-deploy|manual)-[a-f0-9]{8}$/.exec(name);
+  if (!match) return undefined;
+  const [, year, month, day, hour, minute, second, reason] = match;
+  return { completedAt: `${year}-${month}-${day}T${hour}:${minute}:${second}.000Z`, reason };
+}
+
+/* --------------------------------------------------------------- retention */
+
+/** Engineering defaults proposed by ticket-8-5.md:40 ("a daily backup schedule
+ *  and 14-day retention as initial engineering defaults"), with two additions:
+ *  pre-deploy backups live longer because they are the only migration safety
+ *  net, and one backup a month is kept for a year. Owner decision 3. */
+export const RETENTION = { scheduledDays: 14, preDeployDays: 30, monthlyCount: 12 };
+
+const runPrefixOf = key => {
+  const match = /^((?:prod|local)\/backups\/[^/]+\/)/.exec(key);
+  if (!match) throw new Error("retention candidate is outside the backups prefix");
+  return match[1];
+};
+
+export function planRetention(runs, { now }) {
+  for (const entry of runs) runPrefixOf(entry.key);
+  const monthly = new Set();
+  const keep = [], remove = [];
+  const ordered = [...runs].sort((a, b) => Date.parse(b.completedAt) - Date.parse(a.completedAt));
+  ordered.forEach((entry, index) => {
+    const ageDays = (now - Date.parse(entry.completedAt)) / 86_400_000;
+    const month = entry.completedAt.slice(0, 7);
+    const withinWindow = entry.reason === "pre-deploy" ? ageDays <= RETENTION.preDeployDays : ageDays <= RETENTION.scheduledDays;
+    const monthlyKeeper = !monthly.has(month) && monthly.size < RETENTION.monthlyCount;
+    if (index === 0 || withinWindow || monthlyKeeper) { monthly.add(month); keep.push(entry); }
+    else remove.push(entry);
+  });
+  return { keep, delete: remove };
+}
+
+/** ticket-8-5.md:41 says to inspect existing IAM rather than assume deletion
+ *  authority. A denial is reported as a named gate, never swallowed and never
+ *  fatal, because a backup that succeeded must not be failed by a prune. */
+export function applyRetention(plan, { remove }) {
+  let pruned = 0;
+  for (const entry of plan.delete) {
+    try { remove(runPrefixOf(entry.key)); pruned += 1; }
+    catch { return { pruned, gate: "BACKUP_DELETE_PERMISSION_UNAVAILABLE" }; }
+  }
+  return { pruned };
+}
+
+function listRuns({ environment, values, run }) {
+  let folders;
+  if (environment === "prod") {
+    const output = run("docker", ["run", "--rm", ...AWS_ENVIRONMENT, AWS_CLI_IMAGE, "s3api", "list-objects-v2",
+      "--bucket", values.get("EXPLORERS_MEDIA_S3_BUCKET"), "--prefix", "prod/backups/", "--delimiter", "/",
+      "--query", "CommonPrefixes[].Prefix", "--output", "json"], { encoding: "utf8", env: awsEnvironment(values) });
+    folders = (JSON.parse(output || "null") ?? []).map(prefix => prefix.split("/")[2]);
+  } else {
+    const directory = join(values.get("EXPLORERS_BACKUP_LOCAL_DESTINATION"), "local", "backups");
+    folders = existsSync(directory) ? readdirSync(directory) : [];
+  }
+  return folders.flatMap(folder => {
+    const parsed = parseRunFolder(folder);
+    return parsed ? [{ key: `${environment}/backups/${folder}/`, ...parsed }] : [];
+  });
+}
+
+function removeRun({ environment, values, run }) {
+  return prefix => {
+    if (environment === "prod") {
+      run("docker", ["run", "--rm", ...AWS_ENVIRONMENT, AWS_CLI_IMAGE, "s3", "rm",
+        `s3://${values.get("EXPLORERS_MEDIA_S3_BUCKET")}/${prefix}`, "--recursive", "--only-show-errors"],
+      { encoding: "utf8", env: awsEnvironment(values) });
+      return;
+    }
+    const root = resolve(values.get("EXPLORERS_BACKUP_LOCAL_DESTINATION"));
+    const target = resolve(root, ...prefix.split("/").filter(Boolean));
+    if (!target.startsWith(join(root, "local", "backups") + (process.platform === "win32" ? "\\" : "/"))) throw new Error("refusing to prune outside the destination");
+    rmSync(target, { recursive: true, force: true });
+  };
+}
+
+/* ---------------------------------------------------------- image identity */
+
+/** For a scheduled or manual backup, the image a backup authorizes is the one
+ *  serving: the api container of the compose project, by digest and by the
+ *  revision label tunes.yml stamps on it. */
+export function resolveRunningImage(project, run = runCommand) {
+  const ids = run("docker", ["ps", "--no-trunc", "--quiet",
+    "--filter", `label=com.docker.compose.project=${project}`, "--filter", "label=com.docker.compose.service=api"],
+  { encoding: "utf8" }).split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  if (ids.length !== 1) refuse("no single running api container; pass --candidate-digest and --candidate-commit");
+  const [image, revision] = run("docker", ["inspect", "--format",
+    "{{.Config.Image}}|{{index .Config.Labels \"org.opencontainers.image.revision\"}}", ids[0]], { encoding: "utf8" }).trim().split("|");
+  const digest = /@(sha256:[a-f0-9]{64})$/.exec(image ?? "")?.[1];
+  if (!digest || !/^[a-f0-9]{40}$/.test(revision ?? "")) refuse("the running api image has no digest or revision label");
+  return { digest, commit: revision };
+}
+
+const PERMITTED_GLOBAL_ROLES = ["music_runtime", "app_enrichment_worker", "app_enrichment_worker_owner",
+  "app_enrichment_retention", "app_enrichment_retention_owner"];
+
 /* --------------------------------------------------------------- entry point */
 
 function isEntryPoint() {
@@ -408,8 +686,133 @@ if (isEntryPoint()) {
   );
 }
 
-export async function main(argv) {
+export async function main(argv, { run = runCommand, now = () => new Date() } = {}) {
   const command = parseBackupCommand(argv);
   const context = preflight(process.env.EXPLORERS_BACKUP_ROOT ?? "/opt/explorers", command.environment);
-  return { command, context };
+  const { values } = context;
+  const startedAt = now();
+  const runId = runIdentifier();
+  const folder = runFolderName(startedAt, command.reason, runId);
+  const prefix = `${command.environment}/backups/${folder}/`;
+  const project = values.get("EXPLORERS_BACKUP_COMPOSE_PROJECT") ?? DEFAULT_COMPOSE_PROJECT;
+  const lockPath = join(context.root, "backup.lock");
+  try { writeFileSync(lockPath, `${process.pid}\n`, { mode: 0o600, flag: "wx" }); }
+  catch { refuse("another backup is running"); }
+  const work = join(context.root, "backup-work", runId);
+  let session;
+  let stage = "start";
+  const log = event => process.stdout.write(`${JSON.stringify({ runId, ...event })}\n`);
+  try {
+    mkdirSync(join(work, "members", "database"), { recursive: true, mode: 0o700 });
+    mkdirSync(join(work, "members", "host"), { recursive: true, mode: 0o700 });
+    mkdirSync(join(work, "members", "media"), { recursive: true, mode: 0o700 });
+
+    stage = "identity";
+    const image = command.candidateDigest
+      ? { digest: command.candidateDigest, commit: command.candidateCommit }
+      : resolveRunningImage(project, run);
+
+    stage = "snapshot";
+    const containerId = findPostgresContainer(project, run);
+    session = new SnapshotSession(containerId, values);
+    await session.query("BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY;");
+    const snapshot = await session.query("SELECT pg_export_snapshot();");
+    const journal = JSON.parse((await session.query(JOURNAL_HEAD_QUERY)) || "{}");
+    if (!journal.id) refuse("the database has no migration journal; there is nothing to back up");
+    const tableRowCounts = Object.fromEntries(Object.entries(JSON.parse(await session.query(ROW_COUNT_QUERY)))
+      .map(([table, rows]) => [table, Number(rows)]));
+    const inventoryText = await session.query(MEDIA_INVENTORY_QUERY);
+    log({ stage: "snapshot", migrationMarker: journal.id, tables: Object.keys(tableRowCounts).length });
+
+    stage = "dump";
+    const dumpPath = join(work, "members", "database", "dump.pgc");
+    const dump = buildDumpCommand({ values, containerId, snapshot });
+    const descriptor = openSync(dumpPath, "wx", 0o600);
+    try { run(dump.file, dump.args, { stdio: ["ignore", descriptor, "pipe"] }); }
+    finally { closeSync(descriptor); }
+    assertDumpIsRestorable(readFileSync(dumpPath));
+    await session.close();
+    session = undefined;
+
+    stage = "globals";
+    const globals = buildGlobalsCommand({ values, containerId });
+    const globalsText = run(globals.file, globals.args, { encoding: "utf8" });
+    if (/SCRAM-SHA-256|PASSWORD\s+'/i.test(globalsText)) throw new Error("globals capture contains a password verifier");
+    const declared = [...globalsText.matchAll(/^CREATE ROLE ([a-z_][a-z0-9_]*);?/gm)].map(match => match[1]);
+    if (!declared.includes("music_runtime")) throw new Error("globals capture does not contain music_runtime");
+    writeFileSync(join(work, "members", "database", "globals.sql"), globalsText, { mode: 0o600, flag: "wx" });
+
+    stage = "configuration";
+    writeTar(join(work, "members", "host", "configuration.tar"), readHostEntries(buildConfigurationEntries({ root: context.root, values })));
+
+    stage = "media";
+    const inventory = parseMediaInventory(inventoryText, command.environment);
+    writeFileSync(join(work, "members", "media", "inventory.jsonl"),
+      inventory.map(row => JSON.stringify(row)).join("\n") + (inventory.length ? "\n" : ""), { mode: 0o600, flag: "wx" });
+    const mediaPrefix = `${prefix}media/`;
+    assertMediaInventoryComplete(inventory, copyMedia({ environment: command.environment, values, inventory, prefix: mediaPrefix, run }));
+    log({ stage: "media", objects: inventory.length });
+
+    stage = "archive";
+    const members = REQUIRED_MEMBERS.map(name => {
+      const bytes = readFileSync(join(work, "members", ...name.split("/")));
+      return { name, bytes, sha256: sha256Hex(bytes) };
+    });
+    writeTar(join(work, "archive.tar"), members.map(member => ({ name: member.name, bytes: member.bytes, mode: 0o600, uid: 0, gid: 0 })));
+
+    stage = "encrypt";
+    ensureAgeImage(run);
+    const encrypt = buildEncryptCommand({ recipient: values.get("EXPLORERS_BACKUP_AGE_RECIPIENT"), directory: work, inputName: "archive.tar", outputName: "archive.tar.age" });
+    run(encrypt.file, encrypt.args, { encoding: "utf8" });
+    const ciphertext = readFileSync(join(work, "archive.tar.age"));
+    if (!ciphertext.subarray(0, 21).toString("latin1").startsWith("age-encryption.org/v1")) throw new Error("encrypted archive is not an age file");
+    rmSync(join(work, "archive.tar"));
+
+    stage = "publish";
+    const archiveKey = `${prefix}archive.tar.age`;
+    publish({ environment: command.environment, values, localPath: join(work, "archive.tar.age"), key: archiveKey, run });
+    const manifest = buildManifest({
+      runId, environment: command.environment, startedAt: startedAt.toISOString(), completedAt: now().toISOString(),
+      reason: command.reason, sourceCommit: image.commit, imageDigest: image.digest,
+      migrationMarker: journal.id, journalChecksum: journal.checksum, schemaChecksum: journal.schemaChecksum,
+      archive: { key: archiveKey, bytes: ciphertext.length, sha256: sha256Hex(ciphertext) },
+      members: members.map(({ name, bytes, sha256 }) => ({ name, bytes: bytes.length, sha256 })),
+      roles: PERMITTED_GLOBAL_ROLES.filter(role => declared.includes(role)),
+      migratorRole: values.get("DB_MIGRATOR_USER"), runtimeLoginRole: values.get("DB_RUNTIME_USER"), databaseName: values.get("DB_NAME"),
+      media: { objects: inventory.length, bytes: inventory.reduce((total, row) => total + row.bytes, 0), prefix: mediaPrefix },
+      tableRowCounts,
+    });
+    const manifestPath = writeJson(join(work, "manifest.json"), manifest);
+    publish({ environment: command.environment, values, localPath: manifestPath, key: `${prefix}manifest.json`, run });
+    const latestPath = writeJson(join(work, "LATEST.json"), { runId, manifestKey: `${prefix}manifest.json`, completedAt: manifest.completedAt });
+    publish({ environment: command.environment, values, localPath: latestPath, key: `${command.environment}/backups/LATEST.json`, run });
+    writeJson(join(context.root, "backup-last-success.json"), { runId, completedAt: manifest.completedAt, manifestKey: `${prefix}manifest.json`, reason: command.reason });
+    if (command.outputManifest) copyFileSync(manifestPath, command.outputManifest);
+    log({ stage: "published", manifestKey: `${prefix}manifest.json`, archiveBytes: ciphertext.length,
+      seconds: Math.round((Date.parse(manifest.completedAt) - startedAt.getTime()) / 1000) });
+
+    if (command.prune) {
+      stage = "prune";
+      const plan = planRetention(listRuns({ environment: command.environment, values, run }), { now: now().getTime() });
+      log({ stage: "prune", ...applyRetention(plan, { remove: removeRun({ environment: command.environment, values, run }) }) });
+    }
+    return manifest;
+  } catch (error) {
+    // A failed run is evidence too. It is recorded with complete:false, which the
+    // recovery contract refuses as a restore candidate.
+    const message = (error instanceof Error ? error.message : "failed").slice(0, 400);
+    try {
+      mkdirSync(join(context.root, "backup-failures"), { recursive: true, mode: 0o700 });
+      const failure = writeJson(join(context.root, "backup-failures", `${folder}.json`),
+        { version: "explorers-platform-backup/v1", runId, environment: command.environment, reason: command.reason,
+          startedAt: startedAt.toISOString(), failedAt: now().toISOString(), complete: false, stage, error: message });
+      try { publish({ environment: command.environment, values, localPath: failure, key: `${prefix}manifest.incomplete.json`, run }); }
+      catch { /* the local record stands */ }
+    } catch { /* never mask the original failure */ }
+    throw new Error(`${stage}: ${message}`);
+  } finally {
+    if (session) await session.close().catch(() => undefined);
+    rmSync(work, { recursive: true, force: true });
+    rmSync(lockPath, { force: true });
+  }
 }

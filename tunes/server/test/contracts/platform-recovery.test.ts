@@ -414,3 +414,170 @@ describe("host configuration capture", () => {
     } finally { rmSync(directory, { recursive: true, force: true }); }
   });
 });
+
+import {
+  MEDIA_INVENTORY_QUERY, applyRetention, assertMediaInventoryComplete, buildDecryptCommand, buildEncryptCommand,
+  buildManifest, buildMediaCopyCommand, buildUploadCommand, parseMediaInventory, parseRunFolder, planRetention,
+  RETENTION, runFolderName,
+} from "../../../deployment/platform-backup.mjs";
+
+const ACCOUNT = "11111111-1111-4111-8111-111111111111";
+const MEDIA = "22222222-2222-4222-8222-222222222222";
+
+describe("media capture", () => {
+  it("inventories ready objects with key, version, size and content hash", () => {
+    // Only `ready` rows have bytes that must exist; `uploading` and `pending_delete`
+    // rows are excluded, because the sweeper deletes their objects
+    // (mediaRepository.ts abandoned/pending) and a backup must not claim them.
+    expect(MEDIA_INVENTORY_QUERY).toContain("media_objects");
+    expect(MEDIA_INVENTORY_QUERY).toContain("media_assets");
+    expect(MEDIA_INVENTORY_QUERY).toMatch(/status\s*=\s*'ready'/);
+    expect(MEDIA_INVENTORY_QUERY).toContain("object_key");
+    expect(MEDIA_INVENTORY_QUERY).toContain("content_sha256");
+    expect(MEDIA_INVENTORY_QUERY).toContain("storage_version_id");
+  });
+
+  it("parses the inventory and rejects a key outside the environment prefix", () => {
+    const row = (key: string) => JSON.stringify({ media_id: MEDIA, object_key: key, bytes: 10, sha256: "a".repeat(64), version: null });
+    expect(parseMediaInventory(`${row(`prod/${ACCOUNT}/${MEDIA}`)}\n`, "prod")).toHaveLength(1);
+    expect(() => parseMediaInventory(`${row(`qa/${ACCOUNT}/${MEDIA}`)}\n`, "prod")).toThrow(/outside the prod prefix/);
+    // A key with extra segments is one no application path could have written.
+    expect(() => parseMediaInventory(`${row(`prod/backups/x/${MEDIA}`)}\n`, "prod")).toThrow(/outside the prod prefix/);
+  });
+
+  it("copies bytes server-side into the backup prefix", () => {
+    const command = buildMediaCopyCommand({
+      bucket: "explorers-media",
+      sourceKey: `prod/${ACCOUNT}/${MEDIA}`,
+      destinationPrefix: "prod/backups/20261018T020000Z-scheduled-aaaaaaaa/media/",
+    });
+    const rendered = command.args.join(" ");
+    expect(command.args).toContain(command.args.find(arg => arg.startsWith("amazon/aws-cli@sha256:")));
+    // Server-side: no egress, no host disk, and the copy inherits the bucket's
+    // existing encryption posture.
+    expect(rendered).toContain(`s3 cp s3://explorers-media/prod/${ACCOUNT}/${MEDIA} s3://explorers-media/prod/backups/20261018T020000Z-scheduled-aaaaaaaa/media/${ACCOUNT}/${MEDIA}`);
+    // Credentials pass by name only; values never appear on a command line.
+    expect(rendered).not.toMatch(/AWS_SECRET_ACCESS_KEY=/);
+    // The destination has more than three path segments, so assertObjectKey
+    // (objectStorage.ts) rejects it on every application path.
+    expect(command.destinationKey.split("/").length).toBeGreaterThan(3);
+  });
+
+  it("marks the backup incomplete when a referenced object did not copy", () => {
+    const inventory = [{ object_key: "prod/a/b", bytes: 10, sha256: "a".repeat(64), version: null }];
+    expect(() => assertMediaInventoryComplete(inventory, { copied: [], failed: ["prod/a/b"] }))
+      .toThrow(/1 referenced object/);
+    expect(assertMediaInventoryComplete(inventory, { copied: ["prod/a/b"], failed: [] })).toBe(true);
+  });
+});
+
+describe("archive, encrypt and publish", () => {
+  it("encrypts to a recipient from a pinned image with no network, and never to a passphrase", () => {
+    const command = buildEncryptCommand({ recipient: RECIPIENT, directory: "/work", inputName: "a.tar", outputName: "a.tar.age" });
+    expect(command.args).toEqual(["run", "--rm", "--network", "none", "--volume", "/work:/work",
+      "explorers-backup-age:1.2.1-r0-alpine3.20", "--encrypt", "--recipient", RECIPIENT, "--output", "/work/a.tar.age", "/work/a.tar"]);
+    // A passphrase would have to live on the host, which is the thing we are
+    // protecting against.
+    expect(command.args).not.toContain("--passphrase");
+  });
+
+  it("decrypts only with an identity file mounted read-only", () => {
+    const command = buildDecryptCommand({ identityPath: "/keys/identity.age", directory: "/work", inputName: "a.tar.age", outputName: "a.tar" });
+    expect(command.args.join(" ")).toContain("/keys/identity.age:/identity/key.age:ro");
+    expect(command.args).toContain("--decrypt");
+    expect(command.args).toContain("none");
+  });
+
+  it("uploads the ciphertext under prod/backups/ with no ACL change", () => {
+    const command = buildUploadCommand({ bucket: "explorers-media", localPath: "/tmp/a.tar.age",
+      key: "prod/backups/20261018T020000Z-scheduled-aaaaaaaa/archive.tar.age" });
+    expect(command.args.join(" ")).toContain("s3://explorers-media/prod/backups/20261018T020000Z-scheduled-aaaaaaaa/archive.tar.age");
+    expect(command.args).not.toContain("--acl");
+    expect(() => buildUploadCommand({ bucket: "explorers-media", localPath: "/tmp/a", key: `prod/${ACCOUNT}/${MEDIA}` }))
+      .toThrow(/backups prefix/);
+  });
+
+  const manifestInput = () => ({
+    runId: "a".repeat(32), environment: "prod", reason: "pre-deploy",
+    startedAt: "2026-10-18T02:00:00.000Z", completedAt: "2026-10-18T02:03:11.000Z",
+    sourceCommit: "c".repeat(40), imageDigest: `sha256:${"d".repeat(64)}`,
+    migrationMarker: "0056_explorers_app_enrichment_jobs",
+    journalChecksum: "e".repeat(64), schemaChecksum: "f".repeat(64),
+    archive: { key: "prod/backups/20261018T020000Z-pre-deploy-aaaaaaaa/archive.tar.age", bytes: 4096, sha256: "1".repeat(64) },
+    members: [
+      { name: "database/dump.pgc", bytes: 2048, sha256: "2".repeat(64) },
+      { name: "database/globals.sql", bytes: 64, sha256: "3".repeat(64) },
+      { name: "host/configuration.tar", bytes: 64, sha256: "5".repeat(64) },
+      { name: "media/inventory.jsonl", bytes: 64, sha256: "6".repeat(64) },
+    ],
+    roles: ["music_runtime", "app_enrichment_worker", "app_enrichment_worker_owner",
+      "app_enrichment_retention", "app_enrichment_retention_owner"],
+    migratorRole: "explorers_migrator", runtimeLoginRole: "explorers_runtime", databaseName: "explorers",
+    media: { objects: 1, bytes: 10, prefix: "prod/backups/20261018T020000Z-pre-deploy-aaaaaaaa/media/" },
+    tableRowCounts: { creator_accounts: 2 },
+  });
+
+  it("builds a manifest that the recovery contract accepts", () => {
+    expect(() => backupManifestSchema.parse(buildManifest(manifestInput()))).not.toThrow();
+  });
+
+  it("refuses to build a complete manifest when a required member is absent", () => {
+    expect(() => buildManifest({ ...manifestInput(), members: [{ name: "database/dump.pgc", bytes: 1, sha256: "2".repeat(64) }] }))
+      .toThrow(/required member/);
+  });
+});
+
+describe("retention", () => {
+  const run = (day: number, reason: string) => ({
+    key: `prod/backups/${runFolderName(new Date(Date.UTC(2026, 9, day, 2, 0, 0)), reason, "a".repeat(32))}/archive.tar.age`,
+    completedAt: new Date(Date.UTC(2026, 9, day, 2, 0, 0)).toISOString(),
+    reason,
+  });
+
+  it("keeps the documented windows", () => {
+    expect(RETENTION).toEqual({ scheduledDays: 14, preDeployDays: 30, monthlyCount: 12 });
+  });
+
+  it("names run folders so a listing alone can plan retention", () => {
+    const name = runFolderName(new Date(Date.UTC(2026, 9, 18, 2, 17, 5)), "pre-deploy", "0123456789abcdef0123456789abcdef");
+    expect(name).toBe("20261018T021705Z-pre-deploy-01234567");
+    expect(parseRunFolder(name)).toEqual({ completedAt: "2026-10-18T02:17:05.000Z", reason: "pre-deploy" });
+    expect(parseRunFolder("not-a-run")).toBeUndefined();
+  });
+
+  it("keeps 14 dailies and deletes the rest", () => {
+    const runs = Array.from({ length: 20 }, (_, index) => run(20 - index, "scheduled"));
+    const plan = planRetention(runs, { now: Date.parse("2026-10-20T03:00:00.000Z") });
+    expect(plan.keep).toHaveLength(14);
+    expect(plan.delete).toHaveLength(6);
+  });
+
+  it("keeps a pre-deploy backup for longer than a scheduled one", () => {
+    const plan = planRetention([run(1, "pre-deploy"), run(1, "scheduled")],
+      { now: Date.parse("2026-10-20T03:00:00.000Z") });
+    expect(plan.keep.map(entry => entry.reason)).toEqual(["pre-deploy"]);
+  });
+
+  it("never deletes the newest backup, however old", () => {
+    const plan = planRetention([run(1, "scheduled")], { now: Date.parse("2027-10-20T03:00:00.000Z") });
+    expect(plan.delete).toEqual([]);
+  });
+
+  it("never plans a delete outside the backups prefix", () => {
+    expect(() => planRetention([{ key: "prod/aaaa/bbbb", completedAt: run(1, "scheduled").completedAt, reason: "scheduled" }],
+      { now: Date.parse("2026-10-20T03:00:00.000Z") })).toThrow(/outside the backups prefix/);
+  });
+
+  it("reports a named gate rather than failing when deletion is denied", () => {
+    const outcome = applyRetention({ delete: [run(1, "scheduled")], keep: [] },
+      { remove: () => { throw new Error("AccessDenied"); } });
+    expect(outcome).toEqual({ pruned: 0, gate: "BACKUP_DELETE_PERMISSION_UNAVAILABLE" });
+  });
+
+  it("removes whole run folders, never a single member", () => {
+    const removed: string[] = [];
+    expect(applyRetention({ delete: [run(1, "scheduled")], keep: [] }, { remove: (prefix: string) => { removed.push(prefix); } }))
+      .toEqual({ pruned: 1 });
+    expect(removed).toEqual([`prod/backups/${runFolderName(new Date(Date.UTC(2026, 9, 1, 2)), "scheduled", "a".repeat(32))}/`]);
+  });
+});
