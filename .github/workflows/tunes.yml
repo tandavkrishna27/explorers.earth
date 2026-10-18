@@ -60,8 +60,17 @@ on:
       - "!**/*.md"
   workflow_dispatch:
     inputs:
-      release_production:
-        description: Build, attest and deploy this exact main revision to Tunes production
+      # Two independent release inputs. publish_image alone builds, scans, pushes and
+      # attests the explorers-tunes digest that explorers.yml verifies; it never reaches
+      # deploy-production. deploy_music additionally hands that same-run digest to
+      # tunes-deploy.yml for the legacy Music host, so it requires publish_image too.
+      publish_image:
+        description: Build, scan, push and attest this exact main revision's image (no deploy)
+        type: boolean
+        required: true
+        default: false
+      deploy_music:
+        description: Also deploy the image published in this run to Music production (requires publish_image)
         type: boolean
         required: true
         default: false
@@ -274,7 +283,7 @@ jobs:
             grype-complete.log
           if-no-files-found: error
       - name: Save the qualified image for an explicit release
-        if: success() && steps.scan_reserve.outcome == 'success' && steps.report_valid.outcome == 'success' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
+        if: success() && steps.scan_reserve.outcome == 'success' && steps.report_valid.outcome == 'success' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish_image == true
         shell: bash
         env:
           IMAGE_NAME: ${{ steps.image.outputs.name }}
@@ -282,7 +291,7 @@ jobs:
           set -euo pipefail
           docker save "${IMAGE_NAME}:${GITHUB_SHA}" | gzip -1 > tunes-qualified-image.tar.gz
       - name: Transfer the qualified image to the release job
-        if: success() && steps.scan_reserve.outcome == 'success' && steps.report_valid.outcome == 'success' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
+        if: success() && steps.scan_reserve.outcome == 'success' && steps.report_valid.outcome == 'success' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish_image == true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: tunes-qualified-image-${{ github.sha }}
@@ -291,12 +300,24 @@ jobs:
           retention-days: 1
 
   release-preflight:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (inputs.publish_image == true || inputs.deploy_music == true)
     runs-on: ubuntu-24.04
     permissions:
       actions: read
       contents: read
     steps:
+      - name: Refuse a Music deploy without a publish in this run
+        shell: bash
+        env:
+          PUBLISH_IMAGE: ${{ inputs.publish_image }}
+          DEPLOY_MUSIC: ${{ inputs.deploy_music }}
+        run: |
+          set -euo pipefail
+          # deploy-production deploys only the digest publish-image pushed in this same
+          # run, so deploy_music without publish_image would otherwise skip silently.
+          if [[ "$DEPLOY_MUSIC" == true && "$PUBLISH_IMAGE" != true ]]; then
+            echo "::error::deploy_music requires publish_image in the same dispatch."; exit 1
+          fi
       - name: Require both successful main aggregates for exact source SHA
         shell: bash
         env:
@@ -321,7 +342,7 @@ jobs:
           require_aggregate "$MUSIC_VALIDATED_RUN_ID" .github/workflows/test.yml music-required
 
   publish-image:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish_image == true
     needs: [build-test-scan-push, release-preflight]
     runs-on: ubuntu-24.04
     permissions:
@@ -366,7 +387,7 @@ jobs:
           push-to-registry: true
 
   deploy-production:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.release_production && needs.publish-image.result == 'success'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.publish_image == true && inputs.deploy_music == true && needs.publish-image.result == 'success'
     needs: publish-image
     permissions:
       actions: read
