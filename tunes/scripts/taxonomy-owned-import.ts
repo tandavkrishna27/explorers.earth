@@ -7,7 +7,7 @@ import { z } from 'zod/v3';
 import { validateTaxonomyCatalogImport } from '../server/services/taxonomyCatalogImport';
 import type { TaxonomyImport } from '../shared/explorersTaxonomyContract';
 /** Fixed reviewed DATA only. This loader grants no database/operator authority. */
-export const reviewedTaxonomyInputDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../../fixtures/taxonomy/real-strapi-20261013');
+export const reviewedTaxonomyInputDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../fixtures/taxonomy/real-strapi-20261013');
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 const text = z.string().min(1).max(1024).refine(value => !/[\x00-\x1f\x7f]/.test(value));
 const expected = {
