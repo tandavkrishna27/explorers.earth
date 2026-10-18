@@ -692,7 +692,7 @@
     },
     {
       "Question": "O uso do explorers.earth é gratuito?",
-      "Answer": "Sim.explorers.earth é gratuito para sempre.Você pode criar seu código QR, adicionar recomendações ilimitadas e rastrear análises básicas sem nenhum custo.Recursos premium para empresas e análises avançadas estão disponíveis em nossos planos pagos.",
+      "Answer": "Sim.explorers.earth é gratuito para sempre.Você pode criar seu código QR, adicionar recomendações ilimitadas e rastrear análises sem nenhum custo.",
       "Sequence": 3
     },
     {
@@ -722,7 +722,7 @@
     },
     {
       "Question": "Quanto custa o Local Tunes?",
-      "Answer": "LocalTunes tem um plano gratuito e uma assinatura de ₹ 300/mês (com desconto de 10% no faturamento anual) que oferece playlists ilimitadas, análises e recursos avançados.",
+      "Answer": "LocalTunes é gratuito. Você tem playlists ilimitadas, análises e recursos avançados sem nenhum custo.",
       "Sequence": 9
     },
     {

@@ -692,7 +692,7 @@
     },
     {
       "Question": "L'utilisation de explorers.earth est-elle gratuite ?",
-      "Answer": "Oui.explorers.earth est gratuit pour toujours.Vous pouvez créer votre code QR, ajouter des recommandations illimitées et suivre des analyses de base sans frais.Des fonctionnalités premium pour les entreprises et des analyses avancées sont disponibles via nos forfaits payants.",
+      "Answer": "Oui.explorers.earth est gratuit pour toujours.Vous pouvez créer votre code QR, ajouter des recommandations illimitées et suivre des analyses sans frais.",
       "Sequence": 3
     },
     {
@@ -722,7 +722,7 @@
     },
     {
       "Question": "Combien coûte Local Tunes ?",
-      "Answer": "LocalTunes propose un forfait gratuit et un abonnement de 300 ₹/mois (avec une réduction de 10 % pour la facturation annuelle) offrant des listes de lecture, des analyses et des fonctionnalités avancées illimitées.",
+      "Answer": "LocalTunes est gratuit. Vous bénéficiez de listes de lecture illimitées, d'analyses et de fonctionnalités avancées sans frais.",
       "Sequence": 9
     },
     {
