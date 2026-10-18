@@ -845,3 +845,40 @@ describe("drill receipt", () => {
     expect(drillReceiptSchema.parse(receipt).result).toBe("failed");
   });
 });
+
+import { evaluateGate, parseGateCommand } from "../../../../scripts/platform-recovery-gate";
+
+describe("recovery evidence gate", () => {
+  const args = ["--manifest", "m.json", "--receipt", "r.json",
+    "--candidate-digest", `sha256:${"d".repeat(64)}`, "--candidate-commit", "c".repeat(40),
+    "--candidate-marker", "0056_explorers_app_enrichment_jobs"];
+
+  it("requires both documents and the candidate identity", () => {
+    expect(parseGateCommand(args).candidate).toEqual({ digest: `sha256:${"d".repeat(64)}`, commit: "c".repeat(40),
+      migrationMarker: "0056_explorers_app_enrichment_jobs" });
+  });
+
+  it.each([
+    [["--manifest", "m.json"]],
+    [["--manifest", "m.json", "--receipt", "r.json"]],
+    [[...args.slice(0, 4), "--candidate-digest", "latest", ...args.slice(6)]],
+    // There is deliberately no --assume-verified, --force or --skip flag: the ticket
+    // requires the step "cannot be satisfied by a manually asserted input"
+    // (ticket-8-4.md:69).
+    [[...args, "--assume-verified", "true"]],
+    [[...args, "--force"]],
+  ])("rejects %j", (input) => expect(() => parseGateCommand(input)).toThrow(/arguments rejected/));
+
+  it("exits non-zero with the refusal code on unusable evidence", () => {
+    const outcome = evaluateGate({ manifest: {}, receipt: {},
+      candidate: { digest: `sha256:${"d".repeat(64)}`, commit: "c".repeat(40), migrationMarker: "0056_x" },
+      now: Date.now() });
+    expect(outcome).toEqual({ exitCode: 1, code: "BACKUP_INVALID" });
+  });
+
+  it("admits a fresh production backup with a marker-matched passing drill", () => {
+    expect(evaluateGate({ manifest: manifest(), receipt: receipt(), candidate: candidate(),
+      now: Date.parse("2026-10-18T02:05:00.000Z") })).toEqual({ exitCode: 0 });
+  });
+
+});

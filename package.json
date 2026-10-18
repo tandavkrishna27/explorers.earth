@@ -51,7 +51,8 @@
     "platform:seed": "tsx scripts/replatform-local.ts seed",
     "platform:backup": "node tunes/deployment/platform-backup.mjs",
     "platform:restore-drill": "tsx scripts/platform-restore-drill.ts",
-    "platform:recovery-fixture": "tsx scripts/platform-recovery-fixture.ts"
+    "platform:recovery-fixture": "tsx scripts/platform-recovery-fixture.ts",
+    "platform:recovery-gate": "tsx scripts/platform-recovery-gate.ts"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
