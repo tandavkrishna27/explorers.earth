@@ -138,7 +138,7 @@ describe("Tunes workflow provenance and input boundary", () => {
     for (const name of ["Save the qualified image for an explicit release", "Transfer the qualified image to the release job"]) {
       const step = steps.find((candidate: any) => candidate.name === name);
       expect(step.if).toContain("success() && steps.scan_reserve.outcome == 'success' && steps.report_valid.outcome == 'success'");
-      expect(step.if).toContain("github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_production");
+      expect(step.if).toContain("github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish_image == true");
     }
     const publish = workflow.jobs["publish-image"];
     expect(steps.indexOf(actionable)).toBeLessThan(
@@ -318,7 +318,7 @@ describe("Tunes workflow provenance and input boundary", () => {
     expect(deploy).toContain(
       "$GITHUB_REPOSITORY/.github/workflows/tunes.yml@refs/heads/main",
     );
-    expect(ci).toContain("github.event_name == 'workflow_dispatch' && inputs.release_production");
+    expect(ci).toContain("github.event_name == 'workflow_dispatch' && inputs.publish_image == true && inputs.deploy_music == true");
     expect(ci).toMatch(
       /deploy-production:[\s\S]*?permissions:[\s\S]*?attestations: read/,
     );
