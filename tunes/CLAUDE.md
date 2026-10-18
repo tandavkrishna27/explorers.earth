@@ -10,7 +10,7 @@ Real-time collaborative music playlist management platform for venues. Venue own
 
 **Database**: PostgreSQL + Drizzle ORM 0.39 (@neondatabase/serverless for connection)
 
-**Integrations**: YouTube Data API v3, Spotify API (import), Razorpay (payments), Resend (email)
+**Integrations**: YouTube Data API v3, Spotify API (import), Resend (email)
 
 ## Directory Structure
 
@@ -48,10 +48,8 @@ server/
 │   ├── playlistRoutes.ts       # Playlist CRUD + WebSocket setup
 │   ├── adminRoutes.ts          # Admin panel endpoints
 │   ├── youtubeRoutes.ts        # YouTube search
-│   ├── paymentRoutes.ts        # Razorpay webhooks
 │   ├── emailRoutes.ts          # Email templates & sending
 │   ├── instagramRoutes.ts      # Instagram webhooks
-│   ├── subscriptionRoutes.ts   # Subscription management
 │   ├── pageRoutes.ts           # CMS page content
 │   ├── reactivationRoutes.ts   # Account reactivation endpoints
 │   └── legacyRemainingRoutes.ts # Consolidated legacy endpoints
@@ -116,7 +114,7 @@ npm run music:db:verify -- --mode fixture --target test
 ## API
 
 - REST endpoints under `/api/` — see Swagger docs at `/api-docs`
-- Key route groups: auth, playlists, admin, youtube, payment, email
+- Key route groups: auth, playlists, admin, youtube, email
 - Pattern: routes -> (optional controller) -> storage/service layer
 
 ## Common Tasks

@@ -69,6 +69,27 @@ describe('reference content', () => {
       expect(content.faqs.length).toBeGreaterThan(0);
     });
 
+    // The product launches free (backbone D3). Two FAQ answers advertised paid tiers:
+    // a "paid plans" upsell and a ₹300/month LocalTunes subscription, both in all ten
+    // locales. The sibling assertions here are deliberately about non-emptiness rather
+    // than wording, so nothing else would have caught a false price claim.
+    //
+    // Two assertions, not one, because a paid-tier claim can be regexed reliably in
+    // nine languages only by its NUMBERS. Prose is pinned in English, at the source the
+    // owner actually authors, and the currency markers are pinned everywhere.
+    const PRICE_MARKER = /₹|\bINR\b|\b300\b/;
+
+    it.each(locales)('%s quotes no price in any FAQ answer', async (locale) => {
+      const content = await loadReferenceContent(locale);
+      const answers = content.faqs.map((faq) => faq.Answer).join('\n');
+      expect(answers).not.toMatch(PRICE_MARKER);
+    });
+
+    it('offers no paid tier in the English FAQ copy', () => {
+      const answers = englishReferenceContent.faqs.map((faq) => faq.Answer).join('\n');
+      expect(answers).not.toMatch(/premium|subscription|paid plan/i);
+    });
+
     it('falls back section by section, not locale by locale', async () => {
       // Strapi held Hindi terms and Hindi FAQ but no Hindi privacy policy. The
       // Hindi visitor must keep the translated sections and borrow only the

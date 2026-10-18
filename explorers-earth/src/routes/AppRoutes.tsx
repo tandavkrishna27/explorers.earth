@@ -8,8 +8,6 @@ import AuthRoutes from "./AuthRoutes";
 import PublicRoutes from "./PublicRoutes";
 import ProtectedRoutes from "./ProtectedRoutes";
 import ProtectedRoute from "../components/ProtectedRoute";
-import SubscriptionPlans from "../pages/SubscriptionPlans";
-import Checkout from "../pages/Checkout";
 
 // Import NotFound page
 import NotFound from "../pages/NotFound";
@@ -36,8 +34,6 @@ const AppRoutes = () => {
       
       {/* Test: Subscription Plans route directly in AppRoutes */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/subscription-plans" element={<SubscriptionPlans />} />
-        <Route path="/checkout" element={<Checkout />} />
       </Route>
 
       {/* Public Routes */}

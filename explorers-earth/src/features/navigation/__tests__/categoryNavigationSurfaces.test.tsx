@@ -68,7 +68,6 @@ import { Route, Routes } from 'react-router-dom';
 import { useCityStore } from '../../../store/useCityStore';
 vi.mock('../../Favorites/components/Recommendations', () => ({ default: () => null }));
 vi.mock('../../Settings/components/ProfileAccountSettings', () => ({ default: () => null }));
-vi.mock('../../Settings/components/BillingTab', () => ({ default: () => null }));
 vi.mock('../../Settings/components/LanguageSelector', () => ({ default: () => null, LANGUAGES: [{ code: 'en', name: 'English' }] }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 // These integrations are unrelated to publication: map/location creation,

@@ -425,10 +425,8 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/ListVisibilityModal.tsx
 !explorers-earth/src/components/Loader.tsx
 !explorers-earth/src/components/LoadingSpinner.tsx
-!explorers-earth/src/components/MusicSubscriptionContainment.tsx
 !explorers-earth/src/components/Navbar.tsx
 !explorers-earth/src/components/OnboardingCheckError.tsx
-!explorers-earth/src/components/PaymentModeToggle.tsx
 !explorers-earth/src/components/ProfileSetupAccordion.tsx
 !explorers-earth/src/components/ProtectedRoute.tsx
 !explorers-earth/src/components/PublicNav.tsx
@@ -888,7 +886,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Settings/accountDeactivationCoordinator.ts
 !explorers-earth/src/features/Settings/api/mutation.ts
 !explorers-earth/src/features/Settings/components/AccountDeletionLifecyclePanel.tsx
-!explorers-earth/src/features/Settings/components/BillingTab.tsx
 !explorers-earth/src/features/Settings/components/LanguageSelector.tsx
 !explorers-earth/src/features/Settings/components/ProfileAccountSettings.tsx
 !explorers-earth/src/features/Settings/components/UnpublishCategoryDialog.tsx
@@ -983,7 +980,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/main.tsx
 !explorers-earth/src/pages/About.tsx
 !explorers-earth/src/pages/Analytics.tsx
-!explorers-earth/src/pages/Checkout.tsx
 !explorers-earth/src/pages/Contact.tsx
 !explorers-earth/src/pages/Cookies.tsx
 !explorers-earth/src/pages/EmailConfirmed.tsx
@@ -1005,7 +1001,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/pages/ResetLinkSent.tsx
 !explorers-earth/src/pages/ResetPassword.tsx
 !explorers-earth/src/pages/SettingsPage.tsx
-!explorers-earth/src/pages/SubscriptionPlans.tsx
 !explorers-earth/src/pages/Terms.tsx
 !explorers-earth/src/pages/UseCases.tsx
 !explorers-earth/src/pages/onboardingAccountDecision.ts
@@ -1028,8 +1023,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/services/googleBooksService.ts
 !explorers-earth/src/services/igdbService.ts
 !explorers-earth/src/services/instagramService.ts
-!explorers-earth/src/services/paymentService.ts
-!explorers-earth/src/services/subscriptionService.ts
 !explorers-earth/src/services/tmdbService.ts
 !explorers-earth/src/services/useAccountLifecycleIdentity.ts
 !explorers-earth/src/store/store.ts
@@ -1038,7 +1031,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/store/useSetupStore.ts
 !explorers-earth/src/types/geoTypes.ts
 !explorers-earth/src/types/igdbTypes.ts
-!explorers-earth/src/types/payment.ts
 !explorers-earth/src/utils/analytics.ts
 !explorers-earth/src/utils/aspectRatioUtils.ts
 !explorers-earth/src/utils/categoryMapper.ts

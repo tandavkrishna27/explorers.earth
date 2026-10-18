@@ -11,8 +11,6 @@ import SettingsPage from "../pages/SettingsPage";
 import Home from "../pages/Home";
 import RecommendationsHub from "../pages/RecommendationsHub";
 import Instagram from "../pages/Instagram";
-import SubscriptionPlans from "../pages/SubscriptionPlans";
-import Checkout from "../pages/Checkout";
 import AddRecommendation from "../features/Favorites/components/AddRecommendation";
 import {
   GuidesPage,
@@ -158,8 +156,6 @@ const ProtectedRoutes = ({
 
   return [
     <Route key="protected-wrapper" element={<ProtectedRoute />}>
-      <Route key="subscription-plans" path="/subscription-plans" element={<SubscriptionPlans />} />
-      <Route key="checkout" path="/checkout" element={<Checkout />} />
       <Route key="onboarding" path="/onboarding" element={<OnBoarding />} />
       {isDesktop ? desktopRoutes : mobileRoutes}
     </Route>,

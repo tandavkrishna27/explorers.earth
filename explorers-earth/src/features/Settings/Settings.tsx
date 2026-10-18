@@ -2,7 +2,6 @@ import { NavigationStatus } from "../navigation/NavigationStatus";
 import { useCategoryNavigation } from "../navigation/CategoryNavigationProvider";
 import { CATEGORY_IDS, type CategoryId } from "../navigation/categoryNavigationPolicy";
 import { memo, useState, useEffect, useMemo, useRef, type KeyboardEvent } from "react";
-import BillingTab from "./components/BillingTab";
 import { UnpublishCategoryDialog } from "./components/UnpublishCategoryDialog";
 import EyeOffIcon from "../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../assets/icons/EyeOnIcon";
@@ -887,7 +886,6 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
             }}
           >
             <ProfileAccountSettings section="billing" />
-            <BillingTab />
           </div>
         )}
       </div>

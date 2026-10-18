@@ -13,7 +13,7 @@ Monorepo containing two independent web applications sharing a root workspace.
 
 **explorers-earth**: React 18 + TypeScript + Vite 6.4, Tailwind CSS, Apollo Client (GraphQL), Zustand, React Router DOM, Radix UI, Framer Motion, Google Maps API, i18n. Backend is external Strapi CMS.
 
-**tunes**: React 18 + TypeScript + Vite 5.4 (frontend), Express.js + TypeScript (backend), PostgreSQL + Drizzle ORM, Socket.IO (real-time), Passport.js (auth), shadcn/ui, TanStack Query v5, Zustand. Integrations: YouTube API, Spotify, Razorpay, Resend (email).
+**tunes**: React 18 + TypeScript + Vite 5.4 (frontend), Express.js + TypeScript (backend), PostgreSQL + Drizzle ORM, Socket.IO (real-time), Passport.js (auth), shadcn/ui, TanStack Query v5, Zustand. Integrations: YouTube API, Spotify, Resend (email).
 
 ## How to Run
 
@@ -54,7 +54,7 @@ npm run build:all
 
 ### tunes
 - `tunes/shared/schema.ts` — Drizzle ORM schema model; the append-only migration manifest/chain is deployment authority
-- `tunes/server/routes/` — Express API routes (auth, playlist, admin, youtube, payment, email, instagram, strapi, subscription, page)
+- `tunes/server/routes/` — Express API routes (auth, playlist, admin, youtube, email, instagram, strapi, page)
 - `tunes/server/services/` — Business logic (email, spotify-import, strapi, system-settings, youtube-import, user-sync)
 - `tunes/server/auth.ts` — Passport.js authentication setup
 - `tunes/server/routes/musicIdentityRoutes.ts` — Explorer proof boundary and Music credential issuance
