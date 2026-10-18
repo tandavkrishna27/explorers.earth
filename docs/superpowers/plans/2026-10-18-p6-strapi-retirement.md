@@ -8,30 +8,38 @@
 
 **Architecture:** Thirteen tickets in two phases. **Phase A** can ship now. It touches only code that no deployed system runs: nothing deploys `main` today, and the canonical stack P2 will deploy reads no Strapi variable. **Phase B** waits for the cutover (P2) and for P3-7, which deletes the legacy composition. Every ticket merges to `main` and must leave CI green, the canonical stack bootable, and `legacy-music` mode bootable for as long as it exists.
 
-The guard comes **first**, not last. `e2e/replatform/no-strapi.spec.ts` lands as P6-1, so that every later deletion runs against it. It has a poisoned origin, a monitor self-test, a closure-size floor and a route-coverage floor. The last code ticket re-runs it, and that run is the evidence P6 closes on.
+The guard comes **first**, not last. `e2e/replatform/no-strapi.spec.ts` lands as P6-1, so that every later deletion runs against it. It has the backbone's four properties: a poisoned origin, a monitor self-test, a closure-size floor and a route-coverage floor. It adds a fifth, a per-route landing-and-API proof, because review showed the closure floor alone proves only that the app booted. The last code ticket re-runs it, and that run is the evidence P6 closes on.
 
 **Tech Stack:** TypeScript, Express 5, React 18 + Vite, PostgreSQL 15, Vitest, Playwright, GitHub Actions.
 
-**Revision 1 (2026-10-18), written against `fork/main` = `05a252f6`.** Every load-bearing claim cites `path:line` at that commit, or a command whose output was read. Line numbers drift as P3, P5 and P6 tickets land. Re-locate each one before editing; never edit by line number alone.
+**Revision 2 (2026-10-19).** Written against `fork/main` = `05a252f6`, then corrected by two independent adversarial reviews (see [Corrections from review](#corrections-from-review)). P6-1 and P6-2 were rewritten, because revision 1's guard could not go green and its P6-2 would have undone P5-1.
+
+**Evidence standard.** Every load-bearing claim cites `path:line` at that commit, or a command whose output was read. Line numbers drift as P3, P5 and P6 tickets land. Re-locate each one before editing; never edit by line number alone.
 
 ---
 
 ## Before you start: what this plan decided
 
-**1. The guard opens P6, it does not close it.** The backbone says to "close with" `no-strapi.spec.ts` (backbone P6 section). Built last, the guard protects nothing: every deletion before it is made blind. Built first, it runs against today's tree, where it is expected to pass. Reachable Strapi calls exist only on paths the guard's fixture does not take (see P6-4). So it becomes the regression check for each later ticket. Its self-test and its two floors keep that early pass from being vacuous.
+**1. The guard opens P6, it does not close it.** The backbone says to "close with" `no-strapi.spec.ts` (backbone P6 section). Built last, the guard protects nothing: every deletion before it is made blind. Built first, it is the regression check for each later ticket.
+
+It is gated on P5-1, because until P5-1 canonical's owner analytics read still reaches Strapi, and the guard drives that read on purpose (P6-1 Step 6d). Once P5-1 is in, the guard is expected to pass on `main`: the remaining reachable Strapi calls, the four in P6-4, sit on paths its fixture does not take.
+
+Its self-test, its per-case landing proof and its floors keep that early pass from being vacuous.
 
 **2. Not every P6 ticket is gated on P2 + P3.** The backbone gates all of P6 on both. The inventory shows Phase A is safe today:
 - **Production runs nothing built from `main`.** `EXPLORERS_IMAGE` has no producer in any workflow (`docker-compose.yml:231-232`). `tunes-deploy.yml` has never succeeded. `explorers.yml` runs only on a typed manual dispatch (`explorers.yml:1-42`).
 - **The canonical stack has no Strapi in it.** `deploy/production.compose.yml:86` is `canonical` and names no Strapi variable, which `production-compose.test.ts:97-98` enforces.
 
-**3. One P6 ticket must land BEFORE P3-7, and the P3 plan does not know it.** The historical analytics read, `explorersCanonicalAnalyticsRoutes.ts:13`, dynamically imports `services/explorers-analytics-composition.ts`. That module imports `../db` (`:3`), which pulls the following into the **canonical** closure (inventory, closure walker; `node scripts/check-retired-dependencies.mjs` agrees):
+**3. One P6 ticket must land BEFORE P3-7, and the P3 plan does not know it.** The historical analytics read dynamically imports `services/explorers-analytics-composition.ts` (`explorersCanonicalAnalyticsRoutes.ts:13`; after P5-1 it is only the `!auth` branch). That module imports `../db` (`:3`). Measured with the scanner's own walker, that edge alone holds five modules in the canonical closure:
 - `server/db.ts`
-- `shared/schema.ts`
 - `config/music-local-profile.ts`
 - `config/music-owned-browser-profile.ts`
-- `scripts/music-uat-database.ts`
+- the composition itself
+- `services/explorers-analytics-receipts.ts`
 
-P3-7 lists `shared/schema.ts` as "imported only by legacy code" (P3 plan, P3-7 Step 3). If P3-7 deletes it while the composition still exists, canonical stops type-checking. So P6-2 must precede P3-7. Tell the orchestrator.
+Removing the edge takes the closure from 155 to 150 modules (review A). `db.ts` also imports `@shared/schema`. The scanner does not follow that alias, but `tsc` does: P3-7 lists `shared/schema.ts` as "imported only by legacy code" (P3 plan, P3-7 Step 3), and if P3-7 deletes it while the composition still exists, canonical stops type-checking. So P6-2 must precede P3-7. Tell the orchestrator.
+
+`scripts/music-uat-database.ts` is **not** one of the five. It stays canonical through `scripts/apps-canonical-admission.ts`.
 
 **4. Start fresh means no data tasks.** No Strapi content is imported anywhere in this plan. The content export in P6-13 is optional, because production Strapi holds only test and team data (D1, backbone "Settled decisions").
 
@@ -68,10 +76,18 @@ Renaming any of these is a P8 register entry, not retirement.
 
 In total that is 8 modules and 11 fetch expressions in `server/`. P6-9 sweeps whatever P3-7 leaves.
 
-**The canonical Strapi path is broken, not live.**
+**At `05a252f6` the canonical Strapi path is broken in production, not live:**
 - `explorers-analytics-composition.ts:25-27` throws `STRAPI_ANALYTICS_ACCESS_TOKEN is not configured`, and `deploy/production.compose.yml` sets no Strapi variable.
 - `legacy ??=` (`explorersCanonicalAnalyticsRoutes.ts:13`) memoises the rejected promise, so every later owner `GET /api/explorers/analytics/events` returns 502 (`explorersAnalyticsRoutes.ts:203-205`).
 - Callers: the SPA calls it only with an auth-store `token` (`explorersAnalyticsClient.ts:176`), which canonical sign-in never sets (`AnalyticsDashboard.tsx:70-85`).
+
+In CI it is live against the **fixture** Strapi, because the platform-fixture `tunes` service sets `STRAPI_URL` and `STRAPI_ANALYTICS_ACCESS_TOKEN` (`docker-compose.replatform.yml:93-97`).
+
+**P5-1 changes this** (commit `9e73fb75` on `claude/p5-user-visible-defects`):
+- The canonical runtime serves the GET from `analytics_events`, authorised by the session.
+- Only the `!auth` branch (the legacy runtime) still reaches the composition.
+
+P6-2 is written against that post-P5-1 state.
 
 **Non-network Strapi coupling inside canonical:**
 - `security-containment.ts`
@@ -85,12 +101,32 @@ In total that is 8 modules and 11 fetch expressions in `server/`. P6-9 sweeps wh
 
 **The ratchet already exists.**
 - `node scripts/check-retired-dependencies.mjs` (CI: `tunes.yml:111-112`) prints `canonical closure: 155 modules` and `OK — … one of the 5 allowlisted legacy sites`.
-- The five allowlisted sites are three env reads (`:38-60`) and two client constructions (`:85-100`).
+- The five allowlisted sites are three env reads (`:39-61`) and two client constructions (`:90-104`).
 - It **fails on stale entries** (`:250-269`). So every ticket that removes a site must delete its allowlist entry in the same commit.
+- **It walks one entry point and relative specifiers only.** Its only root is `canonicalStartup.ts` (`:33`), and it skips the `@shared/*` alias (`tunes/tsconfig.json:21`).
+  - The production `migrate` service runs `run-migration-gate.ts` (`deploy/production.compose.yml:51-54`). That reaches `deployment/music-health.ts`, which reads `STRAPI_ACCESS_TOKEN`, `STRAPI_JWT_SECRET` and `STRAPI_URL` (`:57-60`) as legacy readiness inputs.
+  - `run-production-graph-smoke.ts`, bundled by `build:api`, reaches `app.ts:178` (`new StrapiIdentityAbsenceProof`).
+  - P6-3 widens the scan to every `build:api` entry point.
+
+**The live legacy stack is still configured for Strapi.** The root `docker-compose.yml` that production runs today:
+- pins `legacy-music` (`:9`);
+- **requires** `STRAPI_URL`, `MUSIC_STRAPI_ALLOWED_ORIGINS`, `STRAPI_ACCESS_TOKEN`, `STRAPI_ANALYTICS_ACCESS_TOKEN` and `STRAPI_JWT_SECRET` (`:19-27`);
+- mounts the lifecycle-proof secret (`:26,101`).
+
+Its server-to-server Strapi calls carry no `Origin` or `Referer`. Deleting code from `main` does not stop that container; only P2 plus decommissioning it does. That is why P6-13 is gated on the old tunes host, not on the code.
+
+**Smaller Strapi sites found by review**, all swept by P6-9's recompute:
+- `server/config/public-profile-gateway-config.ts:13-15` (`STRAPI_PUBLIC_PROFILE_READ_TOKEN`)
+- `server/config/music-environment.ts:4-8`
+- `tunes/deployment/verify-publication-authority.mjs:129-150`
+- the inert nested `tunes/.github/workflows/main.yml:54-57` (`STRAPI_GRAPHQL_ENDPOINT`, `STRAPI_API_KEY` secrets)
+- `explorers-earth/nginx.music-fixture.conf`
+- `.env.music.example`
+- `explorers-earth/scripts/music-public-*.mjs`
 
 ### Frontend (`explorers-earth/`)
 
-**`gql` documents: exactly 45 non-test documents in 12 files.** This matches the backbone. They were counted by parsing every `` gql` `` occurrence, not with a line-anchored grep. None is executed:
+**`gql` documents: exactly 45 non-test documents in 13 files.** This matches the backbone. They were counted by parsing every `` gql` `` occurrence, not with a line-anchored grep. None is executed:
 - No `useQuery`, `useMutation`, `client.query` or `client.mutate` exists on an Apollo document in non-test source.
 - The only Apollo calls are `clearStore()`, at `AccountGenerationCacheReset.tsx:24` and `useLogout.ts:37`.
 
@@ -137,6 +173,7 @@ In a platform build `VITE_REST_API_URL` is `undefined` (`envPrefix: []`). So the
 - Source repo `MeteoriteLabs/localqr-strapi-v2` (`docs/replatform-audit/revised-direction.md:32`).
 - Hosts "LocalQR-Strapi-Prod" and "LocalQR-Strapi-Dev", Hetzner CAX21 (`docs/plans/database-change-feature.md:24-28`).
 - Production is `https://api.localqr.earth`; hosted dev is `http://77.42.95.255:1337`; "both share RDS" (`docs/operations/music-local-development.md:97`).
+- A third, older host, `http://13.126.235.177:1337` (AWS Mumbai), is commented out in `explorers-earth/vite.config.ts:59,66` and described in `docs/superpowers/plans/2026-07-08-production-e2e-run-notes.md:75`. Whether it still exists or still bills is unknown (Open question 6).
 - Uploads go to S3 through the `aws-s3` provider (`docs/replatform-audit/grooming-media-auth-review.md:13`).
 
 ---
@@ -145,19 +182,25 @@ In a platform build `VITE_REST_API_URL` is `undefined` (`envPrefix: []`). So the
 
 | # | Ticket | Phase | Gate | Must precede |
 |---|---|---|---|---|
-| P6-1 | The no-Strapi browser guard | A | none | every other ticket |
+| P6-1 | The no-Strapi browser guard | A | **P5-1 merged** | every other ticket |
 | P6-2 | Retire the historical analytics read | A | **P5-1 merged** | **P3-7**, P6-3 |
-| P6-3 | Take `security-containment` out of canonical; zero-allowlist ratchet | A | P6-2 | P6-12 |
+| P6-3 | Take `security-containment` out of canonical; widen the ratchet to every production entry point, with no allowlist | A | P6-2 | P6-12 |
 | P6-4 | Remove the SPA's four Strapi REST calls | A | none | P6-8 |
-| P6-5 | CI builds what deploys, and scans the bundle for Strapi | A | none | P6-12 |
+| P6-5 | CI builds what deploys, and scans the bundle for Strapi | A | **P6-4 merged** (the bundle holds `undefined/upload` until then) | P6-12 |
 | P6-6 | Delete the 45 `gql` documents | B | P3-7 merged | P6-7 |
-| P6-7 | Delete Apollo Client | B | P6-6 | P6-12 |
+| P6-7 | Delete Apollo Client | B | P6-6 | P6-9, P6-12 |
 | P6-8 | Retire the legacy SPA build and its Strapi configuration | B | **P2 proven in production**, P6-4 | P6-12 |
-| P6-9 | Remove the fixture Strapi and the Strapi tooling | B | P3-7 merged | P6-10 |
-| P6-10 | Drop `users`, the `0001` baseline and the analytics receipts — migration `0059` | B | **P3-9 merged** | P6-12 |
+| P6-9 | Remove the fixture Strapi and the Strapi tooling | B | P3-7 merged **and P6-7 merged** | P6-10 |
+| P6-10 | Drop `users`, the `0001` baseline and the analytics receipts — next free migration number | B | **P3-9 merged** | P6-12 |
 | P6-11 | Rewrite the docs that describe Strapi as current | B | P6-9 | P6-12 |
 | P6-12 | Close: final guard run and evidence | B | all above | P6-13 |
-| P6-13 | **Owner:** retire the Strapi service and `api.localqr.earth` | owner | P6-12 + 7 quiet days | — |
+| P6-13 | **Owner:** retire the Strapi service and `api.localqr.earth` | owner | P6-12, **the old legacy tunes host running canonical or switched off**, then 7 quiet days | — |
+
+**Why P6-9 waits for P6-7.** It deletes the contained `/graphql` e2e adapter and the CI `VITE_API_URL` env:
+- The required `contained-auth-session` lane uses that adapter until P6-6 deletes its two tests.
+- Apollo reads `VITE_API_URL` until P6-7 removes it.
+
+**Migration numbers are the orchestrator's.** The P5 branch already adds `0058_explorers_place_photo_backfill.sql` and `0059_explorers_person_suppression_audit.sql`, and P3-9 also wants a number. P6-10's file takes the next free number after all of those land. It is written `00NN_retire_strapi_baseline.sql` below.
 
 **Why P6-8 waits for P2 and not merely P3-7.** `explorers-earth/nginx.conf`, the `Dockerfile` legacy stages and `netlify.toml` are the recipe for the SPA production serves today. Until P2 has replaced it in production, deleting the recipe deletes the only way to rebuild what is live.
 
@@ -203,26 +246,37 @@ In a fresh worktree, expect 8 environment-only collection failures unless `npm c
 
 ## P6-1: The no-Strapi browser guard
 
-The guard runs the real SPA against the real canonical app and an owned, disposable PostgreSQL 15. It visits every route in the route table at two viewports and fails if any request, from any channel, heads for Strapi.
+**Gate: P5-1 merged.** Until P5-1 lands, canonical's owner analytics read really does reach Strapi through the composition (see "What Strapi is"). This guard probes that read on purpose (Step 6e), so before P5-1 it is red. That is correct: it is a real canonical Strapi path. Do not land it red, and do not weaken the probe to land it early.
 
-It has four properties, each of which fails loudly if the guard goes blind:
+**What it runs.** The real SPA source runs in **Vite dev mode** against the real canonical app (`createCanonicalApp`, in-process in the runner) and an owned, disposable PostgreSQL 15. It visits every route literal at two viewports, and fails if any request, from any channel, heads for Strapi.
+
+**What it does not run, said plainly.** Dev mode is not the platform build:
+- `MODE` is `development`, so `isCanonicalRuntime()` is false (`publicRuntimeConfig.ts:4`).
+- `runtimeOrigin()` returns its legacy argument, Apollo's `uri` is `VITE_API_URL` (`main.tsx:33`), and `bootstrap.ts` skips `/runtime-config.json`.
+
+So the guard exercises the **legacy-leaning** branches, where Strapi destinations are most reachable, and the poison makes every one of them visible. The **shipped** bundle is covered separately and statically by P6-5's scan. Running the guard against a `--mode platform` build with a served `/runtime-config.json` is a possible extension (Open question 8). It is not claimed here.
+
+Five properties, each of which fails loudly if the guard goes blind:
 
 | Property | What makes it real |
 |---|---|
-| **Poisoned origin** | Every legacy destination the SPA can construct points at `https://strapi.poison.invalid` (`.invalid` is guaranteed never to resolve, RFC 6761). The canonical app process gets `STRAPI_*` variables pointing at the same host. A request there is a violation whatever its path. Same-origin Strapi paths (`/graphql`, `/upload`, `/api/users`, …) and the real hosts (`api.localqr.earth`, `77.42.95.255`, port `1337`) are poisoned too |
-| **Monitor self-test** | Before any route runs, the guard fires one deliberate request down each channel: fetch, same-origin fetch, image, WebSocket, Worker fetch and beacon. It fails unless the monitor saw and refused every one. It also checks that an ordinary canonical call was seen and **allowed**, which proves the monitor is not simply blocking everything. The server-side monitor runs its own self-test the same way |
-| **Closure-size floor** | Vite dev serves each module as its own request. The run fails unless it observed at least `MODULE_FLOOR` distinct `/src/` modules, so an app that crashed on boot, or a route table that rendered nothing, cannot pass |
-| **Route-coverage floor** | The route table must cover **every** `path="…"` literal in the four route files, and stale entries fail too. The run fails unless at least `ROUTE_FLOOR` (route × viewport) cases actually executed |
+| **Poisoned origin** | Every Strapi-only destination the SPA can build (`VITE_API_URL`, `VITE_REST_API_URL`) points at `https://strapi.poison.invalid`, which never resolves (RFC 6761). The canonical app process gets `STRAPI_*` variables pointing at the same host. The real Strapi hosts (`api.localqr.earth`, `77.42.95.255`, `13.126.235.177`), port `1337` and Strapi's same-origin paths (`/graphql`, `/upload`, `/api/users`, …) are poisoned too. **Destinations shared with canonical are not poisoned**: `VITE_PUBLIC_PROFILE_GATEWAY_URL` is the origin for `/api/explorers/v1/profiles/…` (`publicProfileGatewayClient.ts:57-61,160-166`). Poisoning it would make every public page a false positive (review B measured this) |
+| **Monitor self-test** | Before any route runs, the guard fires one deliberate request down each channel: fetch, same-origin fetch, image, WebSocket, Worker fetch and beacon. It fails unless the monitor saw and refused every one. It also checks that a canonical call was seen and **allowed**, so the monitor is not simply blocking everything. The server-side monitor self-tests the same way, and the runner then drives the one canonical read that historically reached Strapi |
+| **Closure-size floor** | The run fails unless at least `MODULE_FLOOR` distinct `/src/` modules were served, so an app that crashed on boot cannot pass. **This proves boot only.** Every route loads the same ~573 modules, because routes are imported statically (`ProtectedRoutes.tsx:6-28`; measured by review B). Per-route proof comes from the next two rows |
+| **Per-case landing and API proof** | Each case asserts the pathname it **landed** on. An owner case must never land on `/login` or `/onboarding`, and must observe a credentialed `GET /api/explorers/v1/me` answering 200. Without this, a broken sign-in silently turns every owner case into a visit to `/login` that passes. Across the run, an **API-surface floor** requires at least `API_FLOOR` distinct canonical API paths |
+| **Route-coverage floor** | Every **occurrence** of a `path="…"` literal in the route files must be claimed by exactly one case or exclusion, keyed `<file>:<path>#<n>`. Matching by set would hide repeats: `:listSlug` occurs six times in `PublicRoutes.tsx`, once per category. Stale claims fail too. `afterAll` requires at least `ROUTE_FLOOR` executed cases |
 
 **Files:**
 - Create: `explorers-earth/e2e/replatform/no-strapi.vite.config.ts`
 - Create: `explorers-earth/e2e/replatform/no-strapi-monitor.ts`
 - Create: `explorers-earth/e2e/replatform/no-strapi-routes.ts`
 - Create: `explorers-earth/e2e/replatform/no-strapi.spec.ts`
+- Create: `explorers-earth/e2e/replatform/tsconfig.no-strapi.json`
 - Create: `tunes/scripts/no-strapi-outbound-monitor.ts`
 - Create: `tunes/server/test/contracts/no-strapi-outbound-monitor.test.ts`
 - Modify: `tunes/scripts/lifecycle-browser-guards.ts:21-28` (`parseBrowserSuite`)
-- Modify: `tunes/scripts/profile-browser-fixture.ts` (around `:120-198`: monitor, poison env, owner onboarding, vite config choice)
+- Modify: `tunes/scripts/profile-browser-fixture.ts` (around `:120-198`)
+- Modify: `scripts/replatform-e2e.mjs` (`snapshotSource`, `:455-500`: register the new runner dependency)
 - Modify: `tunes/package.json` (scripts, next to `:28-49`)
 - Modify: `.github/workflows/frontend-e2e-qualification.yml:114-122` (nightly matrix)
 
@@ -258,14 +312,16 @@ describe('no-Strapi outbound monitor', () => {
 - [ ] **Step 2: Run it and watch it fail**
 
 Run: `npm test --prefix tunes -- --run server/test/contracts/no-strapi-outbound-monitor.test.ts`
-Expected: FAIL, `Cannot find module '../../../scripts/no-strapi-outbound-monitor'`.
+Expected: FAIL, with `Cannot find module '../../../scripts/no-strapi-outbound-monitor'`.
 
 - [ ] **Step 3: Implement the server-side monitor**
 
-`tunes/scripts/no-strapi-outbound-monitor.ts`. Before relying on either channel, confirm that both names, and their message shapes (`message.request.origin`/`.path` for undici; `message.request` as a `ClientRequest` with `.protocol`, `.host`, `.path` for http), exist in Node `24.21.0`:
+`tunes/scripts/no-strapi-outbound-monitor.ts`. Review B confirmed the message shapes on Node 24.14. Confirm them again on `24.21.0` before relying on them:
+- **undici:** `message.request.origin` and `.path`.
+- **http:** `message.request` is a `ClientRequest`. Its `.host` has **no port**, so the port comes from `getHeader('host')`.
 
 ```bash
-node -e "const dc=require('node:diagnostics_channel');for(const n of ['undici:request:create','http.client.request.start'])dc.subscribe(n,m=>console.log(n,Object.keys(m.request)));fetch('https://x.invalid').catch(()=>{});require('node:http').get('http://127.0.0.1:9').on('error',()=>{})"
+node -e "const dc=require('node:diagnostics_channel');dc.subscribe('undici:request:create',m=>console.log('undici',m.request.origin,m.request.path));dc.subscribe('http.client.request.start',m=>console.log('http',m.request.protocol,m.request.getHeader('host'),m.request.path));fetch('https://x.invalid/a').catch(()=>{});require('node:http').get('http://127.0.0.1:1337/b').on('error',()=>{})"
 ```
 
 ```ts
@@ -292,7 +348,8 @@ export function installOutboundMonitor(): OutboundMonitor {
   };
   const onHttp = (message: unknown) => {
     const request = (message as { request: http.ClientRequest }).request;
-    seen.push({ channel: 'http', origin: `${request.protocol}//${request.host}`, path: request.path });
+    // ClientRequest.host carries no port; the Host header does (127.0.0.1:1337).
+    seen.push({ channel: 'http', origin: `${request.protocol}//${String(request.getHeader('host') ?? request.host)}`, path: request.path });
   };
   diagnostics_channel.subscribe('undici:request:create', onUndici);
   diagnostics_channel.subscribe('http.client.request.start', onHttp);
@@ -329,7 +386,7 @@ Expected: PASS, 2 tests.
 
 - [ ] **Step 5: Register the suite**
 
-In `tunes/scripts/lifecycle-browser-guards.ts:21`, add `'no-strapi'` both to the return type union and to the loop list at `:25`:
+In `tunes/scripts/lifecycle-browser-guards.ts:21`, add `'no-strapi'` to both the return type union and the loop list at `:25`:
 
 ```ts
 export function parseBrowserSuite(args: string[]): 'profile' | 'auth' | 'lifecycle' | 'places' | 'place-links' | 'apps' | 'guides' | 'public-parity' | 'people' | 'apps-enrichment' | 'no-strapi' {
@@ -339,20 +396,20 @@ export function parseBrowserSuite(args: string[]): 'profile' | 'auth' | 'lifecyc
     for (const suite of ['auth', 'lifecycle', 'places', 'place-links', 'apps', 'guides', 'public-parity', 'people', 'apps-enrichment', 'no-strapi'] as const)
 ```
 
-Then add to `tunes/package.json` `scripts`, next to `explorers:test:people-browser`:
+Then add this to the `scripts` in `tunes/package.json`, next to `explorers:test:people-browser`:
 
 ```json
 "explorers:test:no-strapi-browser": "tsx scripts/profile-browser-fixture.ts --suite no-strapi",
 ```
 
 Run: `npm test --prefix tunes -- --run server/test/contracts/lifecycle-browser-support.test.ts`
-Expected: PASS. It asserts a subset of suites (`:56-61`), so it should be unaffected. If it pins the exact list, extend it.
+Expected: PASS. It asserts a subset of suites (`:56-61`). If it pins the exact list, extend it.
 
 - [ ] **Step 6: Wire the runner**
 
-`tunes/scripts/profile-browser-fixture.ts`. The `no-strapi` suite takes the default branch, the same one `profile` and `auth` use. Read the file whole first. Then:
+Work in `tunes/scripts/profile-browser-fixture.ts`, and read the whole file first. The `no-strapi` suite takes the default branch, the same one `profile` and `auth` use. In that branch the runner composes the app at `:142`, creates personas at `:147-157`, and then has `db`, `apiPort` and `origin` in scope.
 
-(a) **Before the canonical app is composed** (before the `createCanonicalApp` call at `:142`), install the monitor, run its self-test, and poison the environment. Any Strapi reader that survives then calls the poisoned host and is recorded:
+(a) **Before the canonical app is composed** (before the `createCanonicalApp` call at `:142`), install the monitor, self-test it, and poison the environment. Any Strapi reader that survives then calls the poisoned host, and the monitor records it:
 
 ```ts
 import { installOutboundMonitor, selfTestOutboundMonitor, type OutboundMonitor } from './no-strapi-outbound-monitor';
@@ -363,37 +420,38 @@ if (suite === 'no-strapi') {
   await selfTestOutboundMonitor(outbound);
   Object.assign(process.env, {
     STRAPI_URL: 'https://strapi.poison.invalid',
+    STRAPI_FIXTURE_URL: 'https://strapi.poison.invalid',
     STRAPI_ACCESS_TOKEN: 'no-strapi-poison',
     STRAPI_ANALYTICS_ACCESS_TOKEN: 'no-strapi-poison',
     STRAPI_JWT_SECRET: 'no-strapi-poison',
-    STRAPI_PUBLIC_PROFILE_READ_TOKEN: 'no-strapi-poison',
   });
 }
 ```
 
-`assertBrowserEnvironment` (`lifecycle-browser-guards.ts:30-33`) forbids none of these keys. Check that before relying on it.
+`assertBrowserEnvironment` (`lifecycle-browser-guards.ts:30-33`) forbids none of these keys; confirm that.
 
-(b) **After the personas loop** (`:147-157`), onboard `ownerA` so that owner and public routes have a real account and handle. This copies the `auth` branch's pattern (`:161-170`):
+(b) **After the personas loop**, onboard `ownerA`, so that owner and public routes have a complete account with a handle. `ownerB` stays un-onboarded; the `/onboarding` case uses it. This follows the `auth` branch's pattern (`:161-170`).
+
+`ensureInitialAccount` inserts `creator_accounts DEFAULT VALUES` (`initialAccount.ts:20`). The `creator_accounts_complete_valid` CHECK (`0022_explorers_identity.sql:94-95`) requires `display_name` and `account_type` once onboarding is complete. So the PATCH must set both, as `profile.spec.ts:627-628` does, or the server answers 422:
 
 ```ts
+let ownerAccountId: string | undefined;
 if (suite === 'no-strapi') {
   const owner = personas.ownerA;
   const selected = await ensureInitialAccount(db, owner.userId);
+  ownerAccountId = selected.accountId;
   const account = await db.query<{ revision: string }>('SELECT revision::text FROM creator_accounts WHERE id=$1', [selected.accountId]);
   const onboarded = await fetch(`http://127.0.0.1:${apiPort}/api/explorers/v1/account`, {
     method: 'PATCH',
     headers: { Cookie: owner.cookie, Origin: origin, 'Content-Type': 'application/json' },
     body: JSON.stringify({ expectedRevision: Number(account.rows[0].revision), handle: owner.handle,
-      onboardingStatus: 'complete', publicProfile: true }),
+      displayName: 'No-Strapi Fixture', accountType: 'Personal', onboardingStatus: 'complete', publicProfile: true }),
   });
   if (onboarded.status !== 200) throw new Error(`No-Strapi owner onboarding failed: HTTP ${onboarded.status}`);
 }
 ```
 
-Before relying on these literals, confirm each of the following:
-- `PATCH /api/explorers/v1/account` is the path (`explorersApiClient.ts:756-759`).
-- The body keys are `handle`, `onboardingStatus: "complete"`, `publicProfile` and `expectedRevision` (`tunes/shared/explorersContract.ts:243-247` and the `RevisionInput` type).
-- No `Idempotency-Key` header is required.
+The `auth` branch already imports `ensureInitialAccount`; reuse that import.
 
 (c) **Choose the Vite config by suite** at `:183`:
 
@@ -401,7 +459,21 @@ Before relying on these literals, confirm each of the following:
 '--config', suite === 'no-strapi' ? 'e2e/replatform/no-strapi.vite.config.ts' : 'e2e/replatform/profile.vite.config.ts'], {
 ```
 
-(d) **After the browser child exits** and before cleanup, fail the run on any server-side Strapi request:
+(d) **Drive the historical Strapi read directly, before the browser starts.** No browser case can reach it: the SPA sends it only with an auth-store token, and canonical never issues one. Without this probe, the server monitor would watch a run in which nothing could ever call Strapi.
+
+```ts
+if (suite === 'no-strapi') {
+  const today = new Date().toISOString().slice(0, 10);
+  const read = await fetch(`http://127.0.0.1:${apiPort}/api/explorers/analytics/events?` + new URLSearchParams({
+    accountId: ownerAccountId!, fromDate: today, toDate: today, timeZone: 'UTC' }), { headers: { Cookie: personas.ownerA.cookie, Origin: origin } });
+  // After P5-1 the canonical read is served from analytics_events: 200. Anything else means the probe did not run the read.
+  if (read.status !== 200) throw new Error(`No-Strapi analytics probe: HTTP ${read.status}`);
+}
+```
+
+Confirm the query keys against `readScopeSchema` (`explorersAnalyticsRoutes.ts:75-80`: `accountId`, `fromDate`, `toDate` and `timeZone`) and against P5-1's version of the route.
+
+(e) **After the browser child exits**, and before cleanup, fail on any server-side Strapi request:
 
 ```ts
 if (outbound) {
@@ -414,9 +486,18 @@ if (outbound) {
 
 Put it where the browser exit code is already checked, so that a browser failure and a server violation both make `main()` return non-zero.
 
+(f) **Register the new dependency with the replatform source inventory — same commit.** `scripts/replatform-e2e.mjs` `snapshotSource()` (`:455-500`) follows every relative import out of `profile-browser-fixture.ts`, which is in its `overlay` set. It fails with `Unreviewed relative executed dependency` on any file that is neither `reviewed` nor `overlay`. `replatform-e2e.test.mjs:891-896` runs it on the real repo in the required `test.yml:121` lane. Add the new file the way `appsHelper` is added:
+
+```js
+ const noStrapiMonitor='tunes/scripts/no-strapi-outbound-monitor.ts';
+ git(['ls-files','--error-unmatch',noStrapiMonitor]);
+```
+
+Then add `noStrapiMonitor` to the `reviewed` set and to `dependencies`. `snapshotSource` also fails on **untracked** files under `explorers-earth/e2e/replatform` (`Untracked runtime dependency`). So `git add` every new file before running `node --test scripts/replatform-e2e.test.mjs`.
+
 - [ ] **Step 7: Write the Vite config**
 
-`explorers-earth/e2e/replatform/no-strapi.vite.config.ts`. It is `profile.vite.config.ts`, except that every legacy destination is poisoned:
+`explorers-earth/e2e/replatform/no-strapi.vite.config.ts`. Destinations shared with canonical stay at `origin`, exactly as in `profile.vite.config.ts`. Only Strapi-only destinations are poisoned:
 
 ```ts
 import { defineConfig } from 'vite';
@@ -437,9 +518,13 @@ export default defineConfig({
   envDir: false,
   envPrefix: 'NO_STRAPI_E2E_NEVER_EXPOSE_AMBIENT_',
   define: {
+    // Strapi-only destinations: poisoned.
     'import.meta.env.VITE_API_URL': JSON.stringify(`${poison}/graphql`),
     'import.meta.env.VITE_REST_API_URL': JSON.stringify(`${poison}/api`),
-    'import.meta.env.VITE_PUBLIC_PROFILE_GATEWAY_URL': JSON.stringify(poison),
+    // Shared with canonical (publicProfileGatewayClient.ts:57-61): the real origin, as in profile.vite.config.ts.
+    'import.meta.env.VITE_PUBLIC_PROFILE_GATEWAY_URL': JSON.stringify(origin),
+    // Instagram falls back to localhost:5000 (ImageCropper.tsx:117); same-origin reaches canonical's 410 tombstone.
+    'import.meta.env.VITE_INSTAGRAM_API_URL': JSON.stringify(origin),
     'import.meta.env.VITE_BASE_URL': JSON.stringify(origin),
     'import.meta.env.VITE_LOCAL_TUNES_API_URL': JSON.stringify('https://music-fixture.test'),
     'import.meta.env.VITE_LOCAL_TUNES_ENABLED': JSON.stringify('false'),
@@ -457,10 +542,10 @@ export default defineConfig({
 });
 ```
 
-`hmr: false` matters: it means no WebSocket is legitimate, so the monitor can treat every WebSocket as a violation. List the `VITE_*` reads in `src`, and add any that name a Strapi-shaped destination to the poison set:
+List every `VITE_*` read in `src` and classify each one: Strapi-only (poison it), shared with canonical (use `origin`), or neither (a harmless fixture value):
 
 ```bash
-grep -rhoE "import\.meta\.env\.VITE_[A-Z_]+" explorers-earth/src | sort -u
+grep -rhoE "import\.meta\.env\.VITE_[A-Z_]+" explorers-earth/src | sort | uniq -c
 ```
 
 - [ ] **Step 8: Write the request monitor**
@@ -479,6 +564,14 @@ const POISONED_SAME_ORIGIN = [/^\/graphql\/?$/, /^\/api\/strapi(?:\/|$)/, /^\/ap
   /^\/api\/auth\/local(?:\/|$)/, /^\/api\/connect(?:\/|$)/];
 const GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
 
+/** Named third-party destinations the app legitimately touches. Every entry says why. */
+const STUBS: { name: string; test: (url: URL, resource: string) => boolean }[] = [
+  { name: 'google-fonts', test: (url, resource) => isOptionalFontRequest(url.href, resource) },
+  { name: 'loader-gif', test: (url, resource) => isOptionalLoaderImage(url.href, resource) },
+  // Landing hero country flags (features/LandingPage/components/Hero.tsx:192-193).
+  { name: 'flagcdn', test: (url, resource) => url.hostname === 'flagcdn.com' && resource === 'image' },
+];
+
 export type Verdict = 'poisoned' | 'local' | 'stub' | 'unknown';
 export type Observation = { verdict: Verdict; method: string; url: string; resource: string };
 
@@ -487,13 +580,21 @@ export function classify(raw: string, origin: string, resource = ''): Verdict {
   if (POISONED_HOSTS.has(url.hostname) || url.port === '1337' || /strapi|localqr/i.test(url.hostname)) return 'poisoned';
   if (url.origin === new URL(origin).origin)
     return POISONED_SAME_ORIGIN.some((path) => path.test(url.pathname)) ? 'poisoned' : 'local';
-  if (isOptionalFontRequest(raw, resource) || isOptionalLoaderImage(raw, resource)) return 'stub';
+  if (STUBS.some((stub) => stub.test(url, resource))) return 'stub';
   return 'unknown';
+}
+
+/** Vite 8's client opens ws://<origin>/?token=… on every page, even with hmr:false (review B, measured). */
+function isViteClientSocket(raw: string, origin: string): boolean {
+  const url = new URL(raw);
+  return url.host === new URL(origin).host && url.pathname === '/' && url.searchParams.has('token');
 }
 
 export class Monitor {
   readonly observations: Observation[] = [];
   readonly modules = new Set<string>();
+  /** Canonical API paths, with ids and handles normalised, for the API-surface floor. */
+  readonly apiPaths = new Set<string>();
   violations(): Observation[] {
     return this.observations.filter((o) => (o.verdict === 'poisoned' || o.verdict === 'unknown') && !o.url.includes('nostrapi-selftest='));
   }
@@ -513,6 +614,7 @@ export async function guardedContext(browser: Browser, monitor: Monitor, origin:
     if (verdict === 'local') {
       const path = new URL(request.url()).pathname;
       if (path.startsWith('/src/')) monitor.modules.add(path);
+      if (path.startsWith('/api/explorers/')) monitor.apiPaths.add(path.replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, ':id'));
       return route.continue();
     }
     if (verdict === 'stub')
@@ -523,15 +625,16 @@ export async function guardedContext(browser: Browser, monitor: Monitor, origin:
   });
   await context.routeWebSocket(/.*/, (socket) => {
     const url = socket.url();
-    monitor.observations.push({ verdict: classify(url.replace(/^ws/, 'http'), origin) === 'poisoned' ? 'poisoned' : 'unknown',
-      method: 'WEBSOCKET', url, resource: 'websocket' });
+    const verdict: Verdict = isViteClientSocket(url, origin) ? 'stub'
+      : classify(url.replace(/^ws/, 'http'), origin) === 'poisoned' ? 'poisoned' : 'unknown';
+    monitor.observations.push({ verdict, method: 'WEBSOCKET', url, resource: 'websocket' });
     socket.close();
   });
   return context;
 }
 ```
 
-**`unknown` is a violation on purpose.** Every third-party origin the app touches must be named in `classify`, so a new external call cannot hide among the passes. If the first run reports, for example, a `googletagmanager.com` script from `usePageTracking`, add it to a named stub predicate with a comment saying why. Never widen `local`.
+**`unknown` is a violation on purpose.** Every third-party origin the app touches must be named in `STUBS`, so a new external call cannot hide among the passes. If the first run reports another one, add a named stub with a comment saying why. Never widen `local`. The API-path normaliser above handles UUIDs only. If handles inflate the count, normalise them as well, and record how.
 
 - [ ] **Step 9: Confirm the poisoned same-origin paths are not canonical routes**
 
@@ -539,152 +642,193 @@ export async function guardedContext(browser: Browser, monitor: Monitor, origin:
 grep -rnE "['\"\`]/(graphql|upload|uploads|api/upload|api/users|api/accounts|api/auth/local|api/connect|api/strapi)" tunes/server/auth tunes/server/routes tunes/server/application | grep -v __tests__
 ```
 
-Expected: only tombstone rules in `policies/*` and legacy-only routes (`routes/index.ts`, `seo-routes.ts`) — nothing mounted by `canonicalApp.ts`. If a canonical route matches a pattern, narrow the pattern rather than delete it, and record why.
+Expected: only tombstone rules in `policies/*` and legacy-only routes (`routes/index.ts`, `seo-routes.ts`), and nothing mounted by `canonicalApp.ts`. If a canonical route matches a pattern, narrow the pattern rather than delete it, and record why.
 
-- [ ] **Step 10: Write the route table**
+- [ ] **Step 10: Write the route table — keyed by occurrence**
 
-`explorers-earth/e2e/replatform/no-strapi-routes.ts`. Each entry names the source literal it covers (`<file>:<path>`) and a concrete URL. `:listId`-style parameters take a well-formed id that does not exist, so the page runs its data-loading code and renders its not-found state. Strapi calls happen on load, so that is enough to catch them.
+`explorers-earth/e2e/replatform/no-strapi-routes.ts`. Every occurrence of a `path="…"` literal in a route file is keyed `<file>:<path>#<n>`, where `n` counts that literal's occurrences in that file in source order. Measured at `05a252f6`:
+- `ProtectedRoutes.tsx` holds every literal **twice**, once in the desktop tree (`:42-`) and once in the mobile tree (`:100-`). The one exception is `/onboarding`, which appears once (`:159`). So a desktop case claims `#1` and its mobile case claims `#2`.
+- `PublicRoutes.tsx` holds `:listSlug` six times, in this order: movies, books, games, apps, products, people. It holds `genre/:genreSlug` twice: movies, then games.
+
+Each parameterised case takes a well-formed id that does not exist, so the page runs its loader and renders its not-found state. Strapi calls happen on load, so that is enough to catch them.
 
 ```ts
-export type RouteCase = { source: string[]; url: (handle: string) => string; as: 'anon' | 'owner' };
+export type Viewport = 'desktop' | 'mobile';
+export type RouteCase = {
+  /** Occurrence keys this case claims. */
+  source: string[];
+  url: (handle: string) => string;
+  /** 'owner' = onboarded ownerA, 'fresh' = un-onboarded ownerB, 'anon' = signed out. */
+  as: 'anon' | 'owner' | 'fresh';
+  /** Only this viewport. Owner cases claim the tree the viewport renders. */
+  viewport?: Viewport;
+  /** Where the page must end up. Defaults to the visited path. */
+  lands?: RegExp;
+};
 const ID = '00000000-0000-4000-8000-000000000000';
-const owner = (path: string, ...source: string[]): RouteCase => ({ source: source.map((s) => `ProtectedRoutes.tsx:${s}`), url: () => path, as: 'owner' });
-const pub = (path: string, ...source: string[]): RouteCase => ({ source: source.map((s) => `PublicRoutes.tsx:${s}`), url: (h) => `/${h}${path}`, as: 'anon' });
-const auth = (path: string): RouteCase => ({ source: [`AuthRoutes.tsx:${path}`], url: () => path, as: 'anon' });
+
+/** One owner path visited at both viewports: desktop claims tree #1, mobile claims tree #2. */
+function owner(path: string, literal: string, lands?: RegExp): RouteCase[] {
+  return (['desktop', 'mobile'] as const).map((viewport, index) => ({
+    source: [`ProtectedRoutes.tsx:${literal}#${index + 1}`], url: () => path, as: 'owner', viewport, lands }));
+}
+const pub = (path: string, key: string): RouteCase => ({ source: [`PublicRoutes.tsx:${key}`], url: (h) => `/${h}${path}`, as: 'anon' });
+const auth = (path: string): RouteCase => ({ source: [`AuthRoutes.tsx:${path}#1`], url: () => path, as: 'anon' });
+const ITEM = { movies: 'movieId', books: 'bookId', games: 'gameId', apps: 'appId', products: 'productId', people: 'personId' } as const;
 
 export const ROUTES: RouteCase[] = [
-  owner('/profile', 'profile'),
-  owner('/recommendations', 'recommendations'),
-  owner('/recommendations/places', 'recommendations/places'),
-  owner(`/recommendations/places/${ID}/add-people`, 'recommendations/places/:locationId/add-people'),
-  owner(`/recommendations/places/${ID}/add-products`, 'recommendations/places/:locationId/add-products'),
-  owner(`/${ID}/new`, ':listId/new'),
-  owner(`/${ID}/edit`, ':placeId/edit'),
-  owner('/recommendations/guides', 'recommendations/guides'),
-  owner('/recommendations/guides/new', 'recommendations/guides/new'),
-  owner(`/recommendations/guides/${ID}`, 'recommendations/guides/:guideId'),
-  owner(`/recommendations/guides/${ID}/edit`, 'recommendations/guides/:guideId/edit'),
-  owner(`/recommendations/guides/${ID}/sections/new`, 'recommendations/guides/:guideId/sections/new'),
-  owner(`/recommendations/guides/${ID}/sections/${ID}/edit`, 'recommendations/guides/:guideId/sections/:sectionId/edit'),
-  owner('/guides/new', 'guides/new'),
-  owner(`/guides/${ID}`, 'guides/:guideId'),
-  owner(`/guides/${ID}/edit`, 'guides/:guideId/edit'),
-  owner(`/guides/${ID}/sections/new`, 'guides/:guideId/sections/new'),
-  owner(`/guides/${ID}/sections/${ID}/edit`, 'guides/:guideId/sections/:sectionId/edit'),
-  owner('/analytics', 'analytics'),
-  owner('/settings', 'settings'),
-  owner('/home', 'home'),
-  ...(['movies', 'books', 'games', 'apps', 'products', 'people'] as const).flatMap((c) => {
-    const item = { movies: 'movieId', books: 'bookId', games: 'gameId', apps: 'appId', products: 'productId', people: 'personId' }[c];
-    return [
-      owner(`/recommendations/${c}`, `recommendations/${c}`),
-      owner(`/recommendations/${c}/${ID}`, `recommendations/${c}/:listId`),
-      owner(`/recommendations/${c}/${ID}/add`, `recommendations/${c}/:listId/add`),
-      owner(`/recommendations/${c}/${ID}/edit/${ID}`, `recommendations/${c}/:listId/edit/:${item}`),
-    ];
-  }),
-  { source: ['PublicRoutes.tsx::username/*'], url: (h) => `/${h}`, as: 'anon' },
-  pub('/places', 'places'), pub('/places/no-such-place', ':placeSlug'), pub('/places/map', 'map'),
-  pub('/places/no-such-place/map', ':placeSlug/map'), pub('/places/no-such-place/placesmap', ':place/placesmap'),
-  pub('/guides', 'guides'), pub('/guides/no-such-guide', ':guideSlug'),
-  pub('/movies', 'movies'), pub('/movies/genre/drama', 'genre/:genreSlug'), pub('/movies/no-such-list', ':listSlug'),
-  pub('/books', 'books'), pub('/books/subject/fiction', 'subject/:subjectSlug'),
-  pub('/games', 'games'), pub('/apps', 'apps'), pub('/products', 'products'),
-  pub('/people', 'people'), pub('/people/sector/technology', 'sector/:sectorSlug'),
+  ...owner('/profile', 'profile'),
+  ...owner('/recommendations', 'recommendations'),
+  ...owner('/recommendations/places', 'recommendations/places'),
+  ...owner(`/recommendations/places/${ID}/add-people`, 'recommendations/places/:locationId/add-people'),
+  ...owner(`/recommendations/places/${ID}/add-products`, 'recommendations/places/:locationId/add-products'),
+  ...owner(`/${ID}/new`, ':listId/new'),
+  ...owner(`/${ID}/edit`, ':placeId/edit'),
+  ...owner('/recommendations/guides', 'recommendations/guides'),
+  ...owner('/recommendations/guides/new', 'recommendations/guides/new'),
+  ...owner(`/recommendations/guides/${ID}`, 'recommendations/guides/:guideId'),
+  ...owner(`/recommendations/guides/${ID}/edit`, 'recommendations/guides/:guideId/edit'),
+  ...owner(`/recommendations/guides/${ID}/sections/new`, 'recommendations/guides/:guideId/sections/new'),
+  ...owner(`/recommendations/guides/${ID}/sections/${ID}/edit`, 'recommendations/guides/:guideId/sections/:sectionId/edit'),
+  ...owner('/guides', 'guides', /^\/recommendations\/guides$/),
+  ...owner('/guides/new', 'guides/new'),
+  ...owner(`/guides/${ID}`, 'guides/:guideId'),
+  ...owner(`/guides/${ID}/edit`, 'guides/:guideId/edit'),
+  ...owner(`/guides/${ID}/sections/new`, 'guides/:guideId/sections/new'),
+  ...owner(`/guides/${ID}/sections/${ID}/edit`, 'guides/:guideId/sections/:sectionId/edit'),
+  ...owner('/hub', 'hub', /^\/recommendations$/),
+  ...owner('/music', 'music', /^\/recommendations$/),
+  ...owner('/recommendations/music', 'recommendations/music', /^\/recommendations$/),
+  ...owner('/analytics', 'analytics'),
+  ...owner('/settings', 'settings'),
+  ...owner('/home', 'home'),
+  ...owner('/instagram', 'instagram'),
+  ...(['movies', 'books', 'games', 'apps', 'products', 'people'] as const).flatMap((c) => [
+    ...owner(`/recommendations/${c}`, `recommendations/${c}`),
+    ...owner(`/recommendations/${c}/${ID}`, `recommendations/${c}/:listId`),
+    ...owner(`/recommendations/${c}/${ID}/add`, `recommendations/${c}/:listId/add`),
+    ...owner(`/recommendations/${c}/${ID}/edit/${ID}`, `recommendations/${c}/:listId/edit/:${ITEM[c]}`),
+  ]),
+  { source: ['ProtectedRoutes.tsx:/onboarding#1'], url: () => '/onboarding', as: 'fresh' },
+  { source: ['PublicRoutes.tsx::username/*#1'], url: (h) => `/${h}`, as: 'anon' },
+  pub('/places', 'places#1'), pub('/places/no-such-place', ':placeSlug#1'), pub('/places/map', 'map#1'),
+  pub('/places/no-such-place/map', ':placeSlug/map#1'), pub('/places/no-such-place/placesmap', ':place/placesmap#1'),
+  pub('/guides', 'guides#1'), pub('/guides/no-such-guide', ':guideSlug#1'),
+  pub('/movies', 'movies#1'), pub('/movies/genre/drama', 'genre/:genreSlug#1'), pub('/movies/no-such-list', ':listSlug#1'),
+  pub('/books', 'books#1'), pub('/books/subject/fiction', 'subject/:subjectSlug#1'), pub('/books/no-such-list', ':listSlug#2'),
+  pub('/games', 'games#1'), pub('/games/genre/action', 'genre/:genreSlug#2'), pub('/games/no-such-list', ':listSlug#3'),
+  pub('/apps', 'apps#1'), pub('/apps/no-such-list', ':listSlug#4'),
+  pub('/products', 'products#1'), pub('/products/no-such-list', ':listSlug#5'),
+  pub('/people', 'people#1'), pub('/people/sector/technology', 'sector/:sectorSlug#1'), pub('/people/no-such-list', ':listSlug#6'),
   ...['/', '/login', '/contact', '/about', '/use-cases', '/privacy', '/cookies', '/terms', '/reactivate',
     '/reactivate-confirm', '/google-auth/callback', '/email-verification'].map(auth),
-  { source: ['AppRoutes.tsx:/404', 'AppRoutes.tsx:*', 'PublicRoutes.tsx:*'], url: () => '/no/such/route/at/all', as: 'anon' },
+  { source: ['AppRoutes.tsx:/404#1', 'AppRoutes.tsx:*#1', 'PublicRoutes.tsx:*#1'], url: () => '/no/such/route/at/all', as: 'anon' },
 ];
 
-/** Literals deliberately not visited, each with the reason. A new literal must be added to ROUTES or here. */
+/** Occurrences deliberately not visited, each with the reason. A new occurrence must be claimed here or in ROUTES. */
 export const EXCLUDED: Record<string, string> = {
-  'ProtectedRoutes.tsx:/*': 'layout route; every child is visited',
-  'ProtectedRoutes.tsx:recommendations/music': 'retired Music redirect; P3 removes it',
-  'ProtectedRoutes.tsx:music': 'retired Music redirect; P3 removes it',
-  'ProtectedRoutes.tsx:hub': 'redirect to /recommendations, which is visited',
-  'ProtectedRoutes.tsx:guides': 'redirect to /recommendations/guides, which is visited',
-  'ProtectedRoutes.tsx:instagram': 'P5-8 deletes the Instagram surface; remove this line when it does',
-  'AppRoutes.tsx:/guides': 'StatePreservingRedirect, no data',
-  'AppRoutes.tsx:/music/*': 'StatePreservingRedirect, no data',
-  'AppRoutes.tsx:/hub': 'StatePreservingRedirect, no data',
-  'AuthRoutes.tsx:/register': 'redirects to /login (AuthRoutes.tsx:20-28)',
-  'AuthRoutes.tsx:/forgot-password': 'redirects to /login',
-  'AuthRoutes.tsx:/reset-password': 'redirects to /login',
-  'AuthRoutes.tsx:/reset-link-sent': 'redirects to /login',
-  'AuthRoutes.tsx:/email-confirmed': 'redirects to /login',
+  'ProtectedRoutes.tsx:/*#1': 'desktop layout route; every child is visited',
+  'ProtectedRoutes.tsx:/*#2': 'mobile layout route; every child is visited',
+  'AppRoutes.tsx:/guides#1': 'StatePreservingRedirect to /recommendations/guides, which is visited',
+  'AppRoutes.tsx:/music/*#1': 'StatePreservingRedirect to /recommendations, which is visited',
+  'AppRoutes.tsx:/hub#1': 'StatePreservingRedirect to /recommendations, which is visited',
+  'AuthRoutes.tsx:/register#1': 'Navigate to /login (AuthRoutes.tsx:20-28), which is visited',
+  'AuthRoutes.tsx:/forgot-password#1': 'Navigate to /login',
+  'AuthRoutes.tsx:/reset-password#1': 'Navigate to /login',
+  'AuthRoutes.tsx:/reset-link-sent#1': 'Navigate to /login',
+  'AuthRoutes.tsx:/email-confirmed#1': 'Navigate to /login',
 };
 ```
 
-This table was derived from `src/routes/*.tsx` at `05a252f6`. Before running it, re-derive the table and diff it:
+The `/guides`, `/hub` and `/music` owner cases in `ProtectedRoutes.tsx` (`:52,55,61-62` and `:110,113,119-120`) are `<Navigate>` elements, and they are **visited, not excluded**. Their `lands` asserts the redirect target. `/instagram` renders `<Instagram />` (`:67,125`), so it is visited too. When P5-8 deletes the Instagram surface, the literal goes, and the inventory test forces this case out with it.
+
+Re-derive the occurrence keys before running, and diff them against the table:
 
 ```bash
-cd explorers-earth && for f in src/routes/*.tsx; do grep -o 'path="[^"]*"' "$f" | sed "s|path=\"\(.*\)\"|$(basename "$f"):\1|"; done | sort -u
+cd explorers-earth && node -e "const fs=require('fs');for(const f of fs.readdirSync('src/routes').filter(n=>n.endsWith('.tsx'))){const n={};for(const m of fs.readFileSync('src/routes/'+f,'utf8').matchAll(/path=\"([^\"]*)\"/g)){n[m[1]]=(n[m[1]]||0)+1;console.log(f+':'+m[1]+'#'+n[m[1]])}}" | sort
 ```
 
-Do not take the redirect claims in `EXCLUDED` on trust. Open each element and check what it renders. Where a literal turns out to render data, move it to `ROUTES`. The inventory test in Step 11 enforces set equality both ways.
+Do not take the redirect claims in `EXCLUDED` on trust. Open each element and check what it renders. Move anything that renders data into `ROUTES`.
 
 - [ ] **Step 11: Write the spec**
 
-`explorers-earth/e2e/replatform/no-strapi.spec.ts`:
+`explorers-earth/e2e/replatform/no-strapi.spec.ts`. It reads the fixture **lazily**, so `--list` works without the runner:
 
 ```ts
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { test, expect, type BrowserContext } from '@playwright/test';
+import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { assertFixtureOrigin } from './proxy-fixture-authority.mjs';
 import { Monitor, POISON_ORIGIN, guardedContext } from './no-strapi-monitor';
-import { ROUTES, EXCLUDED } from './no-strapi-routes';
+import { ROUTES, EXCLUDED, type RouteCase } from './no-strapi-routes';
 
 type Persona = { userId: string; cookie: string; handle: string };
 type Fixture = { origin: string; personas: Record<'ownerA' | 'ownerB' | 'ownerC', Persona> };
-const fixturePath = process.env.PROFILE_E2E_FIXTURE_PATH;
-if (!fixturePath) throw new Error('No-Strapi E2E requires the owned loopback fixture runner');
-const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as Fixture;
-assertFixtureOrigin(fixture);
+let cached: Fixture | undefined;
+/** Read on first use, not at import, so `playwright test --list` can enumerate cases without the runner. */
+function fixture(): Fixture {
+  if (cached) return cached;
+  const path = process.env.PROFILE_E2E_FIXTURE_PATH;
+  if (!path) throw new Error('No-Strapi E2E requires the owned loopback fixture runner');
+  const loaded = JSON.parse(readFileSync(path, 'utf8')) as Fixture;
+  assertFixtureOrigin(loaded);
+  return (cached = loaded);
+}
 
 /** Measured on first green run, then fixed here. Lower them only with a written reason. */
-const MODULE_FLOOR = 450;
-const VIEWPORTS = [['desktop', { width: 1365, height: 900 }], ['mobile', { width: 390, height: 844 }]] as const;
-const ROUTE_FLOOR = ROUTES.length * VIEWPORTS.length;
+const MODULE_FLOOR = 500; // review B measured 573 distinct /src/ modules per page at 05a252f6
+const API_FLOOR = 15;     // set to 90% of the first green run's RUN.apiPaths.size
+const VIEWPORT = { desktop: { width: 1365, height: 900 }, mobile: { width: 390, height: 844 } } as const;
+const CASES = ROUTES.flatMap((route) => (route.viewport ? [route.viewport] : (['desktop', 'mobile'] as const))
+  .map((viewport) => ({ route, viewport })));
+const ROUTE_FLOOR = CASES.length;
 
 const RUN = new Monitor();
 const executed = new Set<string>();
 
 async function signIn(context: BrowserContext, persona: Persona) {
+  // The session cookie is the whole sign-in. The persisted auth store discards anything put in
+  // localStorage (store.ts:143-146: partialize to {}, merge keeps current), so no init script is needed.
   const separator = persona.cookie.indexOf('=');
   await context.addCookies([{ name: persona.cookie.slice(0, separator), value: persona.cookie.slice(separator + 1),
-    url: fixture.origin, sameSite: 'Lax' }]);
-  // token: null mirrors production. Canonical sign-in never issues a token (store.ts:68-85), and a
-  // placeholder token would re-enable a client path production cannot take.
-  await context.addInitScript(({ userId, handle }) => {
-    localStorage.setItem('auth-storage', JSON.stringify({ state: { isAuthenticated: true, token: null,
-      user: { id: userId, documentId: userId, username: handle, email: `${userId}@example.invalid`, blocked: false } }, version: 0 }));
-  }, persona);
+    url: fixture().origin, sameSite: 'Lax' }]);
 }
 
-function routeLiterals(): Set<string> {
+function routeOccurrences(): Set<string> {
   const directory = resolve(process.cwd(), 'src/routes');
   const found = new Set<string>();
-  for (const file of readdirSync(directory).filter((name) => /\.tsx$/.test(name)))
-    for (const match of readFileSync(resolve(directory, file), 'utf8').matchAll(/path="([^"]*)"/g)) found.add(`${file}:${match[1]}`);
+  for (const file of readdirSync(directory).filter((name) => /\.tsx$/.test(name))) {
+    const counts = new Map<string, number>();
+    for (const match of readFileSync(resolve(directory, file), 'utf8').matchAll(/path="([^"]*)"/g)) {
+      const n = (counts.get(match[1]) ?? 0) + 1;
+      counts.set(match[1], n);
+      found.add(`${file}:${match[1]}#${n}`);
+    }
+  }
   return found;
 }
 
-test.describe.configure({ mode: 'default' });
+function landedOk(page: Page, route: RouteCase, visited: string): string | null {
+  const landed = new URL(page.url()).pathname;
+  if (route.as === 'owner' && /^\/(login|onboarding)(\/|$)/.test(landed)) return `owner case bounced to ${landed}`;
+  const expected = route.lands ?? new RegExp(`^${visited.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+  return expected.test(landed) ? null : `landed on ${landed}, expected ${expected}`;
+}
 
-test('route table covers every route literal, and nothing stale', () => {
-  const literals = routeLiterals();
+test('route table claims every route-literal occurrence exactly once, and nothing stale', () => {
+  const occurrences = routeOccurrences();
   // VACUITY GUARD: an empty scan (wrong cwd, moved directory) must fail, not pass.
-  expect(literals.size, 'route literal scan found nothing').toBeGreaterThan(60);
-  const covered = new Set([...ROUTES.flatMap((route) => route.source), ...Object.keys(EXCLUDED)]);
-  expect([...literals].filter((literal) => !covered.has(literal)), 'route literal with no case').toEqual([]);
-  expect([...covered].filter((entry) => !literals.has(entry)), 'stale route case').toEqual([]);
+  expect(occurrences.size, 'route literal scan found nothing').toBeGreaterThan(80);
+  const claims = [...ROUTES.flatMap((route) => route.source), ...Object.keys(EXCLUDED)];
+  expect(claims.filter((claim, index) => claims.indexOf(claim) !== index), 'occurrence claimed twice').toEqual([]);
+  expect([...occurrences].filter((key) => !claims.includes(key)), 'route occurrence with no case').toEqual([]);
+  expect(claims.filter((claim) => !occurrences.has(claim)), 'stale claim').toEqual([]);
 });
 
 test('monitor self-test: every channel to Strapi is seen and refused, and canonical is allowed', async ({ browser }) => {
   const monitor = new Monitor();
-  const context = await guardedContext(browser, monitor, fixture.origin, VIEWPORTS[0][1]);
+  const context = await guardedContext(browser, monitor, fixture().origin, VIEWPORT.desktop);
   try {
     const page = await context.newPage();
     await page.goto('/about');
@@ -692,8 +836,11 @@ test('monitor self-test: every channel to Strapi is seen and refused, and canoni
     const outcome = await page.evaluate(async ({ nonce, poison }) => {
       const q = `nostrapi-selftest=${nonce}`;
       const settle = (promise: Promise<unknown>) => promise.then(() => 'reached', () => 'refused');
+      const timeout = <T,>(promise: Promise<T>, label: T) => Promise.race([promise, new Promise<T>((done) => setTimeout(() => done(label), 5000))]);
       const image = new Promise<string>((done) => { const i = new Image(); i.onload = () => done('reached'); i.onerror = () => done('refused'); i.src = `http://localhost:1337/uploads/self-test.png?${q}`; });
-      const socket = new Promise<string>((done) => { const s = new WebSocket(`ws://localhost:1337/self-test?${q}`); s.onopen = () => done('reached'); s.onerror = () => done('refused'); });
+      // A socket closed by routeWebSocket without connecting fires only onclose (review B, measured).
+      const socket = new Promise<string>((done) => { let opened = false; const s = new WebSocket(`ws://localhost:1337/self-test?${q}`);
+        s.onopen = () => { opened = true; }; s.onerror = () => done('refused'); s.onclose = () => done(opened ? 'reached' : 'refused'); });
       const worker = new Promise<string>((done) => {
         const source = `fetch(${JSON.stringify(`${poison}/worker?${q}`)}).then(()=>postMessage('reached'),()=>postMessage('refused'))`;
         new Worker(URL.createObjectURL(new Blob([source], { type: 'text/javascript' }))).onmessage = (event) => done(String(event.data));
@@ -703,57 +850,80 @@ test('monitor self-test: every channel to Strapi is seen and refused, and canoni
         poisonGraphql: await settle(fetch(`${poison}/graphql?${q}`, { method: 'POST', body: '{}' })),
         sameOriginGraphql: await settle(fetch(`/graphql?${q}`, { method: 'POST', body: '{}' })),
         productionStrapi: await settle(fetch(`https://api.localqr.earth/api/users/me?${q}`)),
-        image: await image, socket: await socket, worker: await worker,
+        image: await timeout(image, 'timeout'), socket: await timeout(socket, 'timeout'), worker: await timeout(worker, 'timeout'),
         canonical: (await fetch('/api/explorers/v1/me')).status,
       };
     }, { nonce, poison: POISON_ORIGIN });
     expect(outcome).toMatchObject({ poisonGraphql: 'refused', sameOriginGraphql: 'refused', productionStrapi: 'refused',
       image: 'refused', socket: 'refused', worker: 'refused' });
-    // Negative control: the canonical API answers through the monitor, so the monitor is not blocking everything.
-    expect([200, 401]).toContain(outcome.canonical);
+    // Negative control: an unauthenticated canonical call answers through the monitor (401, canonicalApp.ts:141).
+    expect(outcome.canonical).toBe(401);
     expect(monitor.observations.some((o) => o.verdict === 'local' && o.url.endsWith('/api/explorers/v1/me'))).toBe(true);
-    const expected = [`${POISON_ORIGIN}/graphql`, `${fixture.origin}/graphql`, 'https://api.localqr.earth/api/users/me',
+    const expected = [`${POISON_ORIGIN}/graphql`, `${fixture().origin}/graphql`, 'https://api.localqr.earth/api/users/me',
       'http://localhost:1337/uploads/self-test.png', 'ws://localhost:1337/self-test', `${POISON_ORIGIN}/worker`, `${POISON_ORIGIN}/beacon`];
     await expect.poll(() => expected.filter((target) => !monitor.selfTest(nonce)
       .some((o) => o.verdict === 'poisoned' && o.url.startsWith(target)))).toEqual([]);
-    expect(monitor.violations(), 'loading /about itself reached Strapi').toEqual([]);
+    expect(monitor.violations(), 'loading /about itself reached Strapi or an unclassified origin').toEqual([]);
   } finally {
     await context.close();
   }
 });
 
-for (const [viewportName, viewport] of VIEWPORTS) {
-  for (const route of ROUTES) {
-    test(`${viewportName} ${route.source.join(' + ')} makes no Strapi request`, async ({ browser }) => {
-      const context = await guardedContext(browser, RUN, fixture.origin, viewport);
-      try {
-        if (route.as === 'owner') await signIn(context, fixture.personas.ownerA);
-        const page = await context.newPage();
-        const before = RUN.violations().length;
-        await page.goto(route.url(fixture.personas.ownerA.handle));
-        await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
-        expect(RUN.violations().slice(before)).toEqual([]);
-        executed.add(`${viewportName} ${route.source.join(' + ')}`);
-      } finally {
-        await context.close();
-      }
-    });
-  }
+for (const { route, viewport } of CASES) {
+  const title = `${viewport} ${route.source.join(' + ')} makes no Strapi request`;
+  test(title, async ({ browser }) => {
+    const { origin, personas } = fixture();
+    const context = await guardedContext(browser, RUN, origin, VIEWPORT[viewport]);
+    try {
+      if (route.as === 'owner') await signIn(context, personas.ownerA);
+      if (route.as === 'fresh') await signIn(context, personas.ownerB);
+      const page = await context.newPage();
+      const me = route.as === 'anon' ? undefined
+        : page.waitForResponse((r) => new URL(r.url()).pathname === '/api/explorers/v1/me' && r.status() === 200, { timeout: 20_000 });
+      const before = RUN.violations().length;
+      const visited = route.url(personas.ownerA.handle);
+      await page.goto(visited);
+      if (me) await me; // the owner was really admitted, not bounced before any read
+      await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
+      expect(RUN.violations().slice(before)).toEqual([]);
+      expect(landedOk(page, route, visited)).toBeNull();
+      executed.add(title);
+    } finally {
+      await context.close();
+    }
+  });
 }
 
 test.afterAll(() => {
+  // A failure restarts the Playwright worker, so after one this can also report partial floors. Fix the first failure first.
   expect(RUN.violations(), 'Strapi or unclassified requests').toEqual([]);
   expect(executed.size, 'route-coverage floor').toBeGreaterThanOrEqual(ROUTE_FLOOR);
-  expect(RUN.modules.size, 'closure-size floor').toBeGreaterThanOrEqual(MODULE_FLOOR);
+  expect(RUN.modules.size, 'closure-size floor (boot)').toBeGreaterThanOrEqual(MODULE_FLOOR);
+  expect(RUN.apiPaths.size, 'API-surface floor').toBeGreaterThanOrEqual(API_FLOOR);
 });
 ```
 
 Notes for the engineer:
-- **Tests built in a loop are invisible to a line-anchored grep for `test(`.** Count discovered tests with `npx playwright test e2e/replatform/no-strapi.spec.ts --list`. Expect `2 + 2 × ROUTES.length`.
-- **Why `serviceWorkers: 'block'`:** without it, a service worker's own fetches bypass `context.route`. The Worker case in the self-test proves dedicated workers are covered. If it fails, the monitor is blind to workers: stop and fix the monitor; do not drop the case.
-- **`MODULE_FLOOR = 450` is a starting value.** The platform bundle ships 612 `src` modules, measured from the sourcemaps of a platform build at `05a252f6`. Take the first green run's `RUN.modules.size`, set the floor to 90% of it rounded down, and write the measured number in a comment.
+- **Tests built in a loop are invisible to a line-anchored grep for `test(`.** Count them instead: `npx playwright test e2e/replatform/no-strapi.spec.ts --list` (no fixture needed, because the fixture is read lazily). Expect `2 + CASES.length`.
+- **The first run sets two floors.** Some `:id` pages may redirect when the id does not exist. Record where each lands, then give it an explicit `lands` with a comment. Never use a catch-all `lands: /.*/`. Set `API_FLOOR` to 90% of `RUN.apiPaths.size` from the first green run, rounded down, and write the measured number next to it.
+- **`serviceWorkers: 'block'` exists, and it is needed.** Without it, a service worker's own fetches bypass `context.route`. Review B confirmed that Worker fetches, `sendBeacon` (resource type `ping`), `<img>` and `abort('blockedbyclient')` are all intercepted in Playwright 1.61.1.
 
-- [ ] **Step 12: Run it**
+- [ ] **Step 12: Type-check the e2e files**
+
+`tsconfig.app.json` includes only `src` (`:27`), and Playwright strips types without checking them. Create `explorers-earth/e2e/replatform/tsconfig.no-strapi.json`:
+
+```json
+{
+  "extends": "../../tsconfig.app.json",
+  "compilerOptions": { "noEmit": true, "types": ["node"] },
+  "include": ["no-strapi*.ts", "proxy-fixture-authority.d.mts"]
+}
+```
+
+Run: `cd explorers-earth && npx tsc -p e2e/replatform/tsconfig.no-strapi.json`
+Expected: no output. If `tsconfig.app.json`'s `include` or `paths` fight with this one, set what is needed explicitly instead of extending.
+
+- [ ] **Step 13: Run it**
 
 From the repository root, with Docker running:
 
@@ -762,133 +932,170 @@ docker pull postgres:15-alpine
 npm --prefix tunes run explorers:test:no-strapi-browser -- --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15
 ```
 
-The environment must not contain `DATABASE_URL*`, `DOCKER_HOST`, `DOCKER_CONTEXT`, `NODE_ENV=production`, or any `REPLATFORM_E2E_*` or `PROFILE_E2E_SUITE` variable (`lifecycle-browser-guards.ts:30-33`).
+The environment must not contain any of the following (`lifecycle-browser-guards.ts:30-33`):
+- `DATABASE_URL*`;
+- `DOCKER_HOST` or `DOCKER_CONTEXT`;
+- `NODE_ENV=production`;
+- any `REPLATFORM_E2E_*` or `PROFILE_E2E_SUITE` variable.
 
 Expected: every test passes, and the runner prints `{"noStrapiServer":{"observed":…,"strapi":0}}`.
 
-**If a route test fails with a real Strapi request, that is a finding, not a flake.**
+**If a case fails with a real Strapi request, that is a finding, not a flake.**
 - Record the URL and the route.
 - Do not widen the monitor.
 - If the call is one of the four in P6-4, take P6-4 next.
 
-- [ ] **Step 13: Prove it has teeth — three deliberate breaks, each reverted**
+- [ ] **Step 14: Prove it has teeth — four deliberate breaks, each reverted**
 
-Each must turn the run red and name the cause. Make the change, run Step 12, see red, revert. Commit none of them.
+Each break must turn the run red and name its cause. Make the change, run Step 13, see red, then revert. Commit none of them.
 
-1. Add `void fetch('/graphql', { method: 'POST', body: '{}' });` as the first line of `src/main.tsx`. Every route test should fail on a poisoned `/graphql`.
-2. In `no-strapi-monitor.ts`, make the route handler `return route.continue()` for every verdict. The self-test should fail with `'reached'` outcomes or missing observations.
-3. Change `MODULE_FLOOR` to `100000`. `afterAll` should fail on the closure-size floor.
+1. **Browser monitor.** Add `void fetch('/graphql', { method: 'POST', body: '{}' });` as the first line of `src/main.tsx`. Every case should fail on a poisoned `/graphql`.
+2. **Self-test.** In `no-strapi-monitor.ts`, make the route handler `return route.continue()` for every verdict. The self-test should fail.
+3. **Owner proof.** In `signIn`, use `personas.ownerC.cookie.replace(/.$/, 'x')`, a corrupted session. Every owner case should fail on the `/me` 200 wait or on the bounce check, not pass on a `/login` page.
+4. **Server monitor.** In `explorersCanonicalAnalyticsRoutes.ts`, make `readAccountEvents` call the legacy `historical()` path unconditionally. This is the pre-P5-1 behaviour. Step 6d's probe should then make the runner fail with `NO_STRAPI_SERVER_VIOLATION` naming `strapi.poison.invalid`.
 
-- [ ] **Step 14: Add the nightly lane**
+- [ ] **Step 15: Add the nightly lane**
 
-`.github/workflows/frontend-e2e-qualification.yml`, in the `replatform-real-stack` matrix after `:118`:
+In `.github/workflows/frontend-e2e-qualification.yml`, add this to the `replatform-real-stack` matrix after `:118`:
 
 ```yaml
           - { lane: no-strapi, command: "npm run explorers:test:no-strapi-browser --" }
 ```
 
-The job appends `--ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15`. Confirm that by reading the job's `run:` step.
+The job appends `--ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15`, and review B confirmed the arguments parse.
 
-This lane is nightly and **not required**. Making it required is P7's call, because it costs a PostgreSQL container and roughly 75 × 2 browser contexts per run. Until then, every P6 ticket's verification step runs it locally (Step 12).
+This lane is nightly and **not required**. Making it required is P7's call (Open question 5). Until then, every P6 ticket's verification runs it locally (Step 13).
 
-- [ ] **Step 15: Typecheck and commit**
+- [ ] **Step 16: Run the source-inventory test, typecheck, commit**
 
 ```bash
-cd explorers-earth && npx tsc --noEmit -p tsconfig.app.json && cd ..
+git add explorers-earth/e2e/replatform/no-strapi*.ts explorers-earth/e2e/replatform/tsconfig.no-strapi.json \
+  tunes/scripts/no-strapi-outbound-monitor.ts tunes/server/test/contracts/no-strapi-outbound-monitor.test.ts \
+  tunes/scripts/lifecycle-browser-guards.ts tunes/scripts/profile-browser-fixture.ts tunes/package.json \
+  scripts/replatform-e2e.mjs .github/workflows/frontend-e2e-qualification.yml
+node --test scripts/replatform-e2e.test.mjs
+cd explorers-earth && npx tsc -p e2e/replatform/tsconfig.no-strapi.json && cd ..
 cd tunes && npx tsc --noEmit -p tsconfig.json 2>&1 | grep -E '^(shared|server|scripts)/' ; cd ..
-git add explorers-earth/e2e/replatform/no-strapi*.ts tunes/scripts/no-strapi-outbound-monitor.ts \
-  tunes/server/test/contracts/no-strapi-outbound-monitor.test.ts tunes/scripts/lifecycle-browser-guards.ts \
-  tunes/scripts/profile-browser-fixture.ts tunes/package.json .github/workflows/frontend-e2e-qualification.yml
 git commit -m "test(e2e): add the no-Strapi browser guard with a poisoned origin and a monitor self-test
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-`tsconfig.app.json` may not include `e2e/`. If it does not, type-check the spec through Playwright's own compile with `npx playwright test e2e/replatform/no-strapi.spec.ts --list`.
+`replatform-e2e.test.mjs` holds frozen-source seals. This ticket edits none of the sealed helpers. If a seal fails anyway, an edit strayed: revert that edit. Never regenerate the frozen constant.
 
 ---
 
 ## P6-2: Retire the historical analytics read
 
-The last path in canonical that can reach Strapi. **Gate: P5-1 merged.** **Must precede P3-7.**
+This is the last path in canonical that can reach Strapi. **Gate: P5-1 merged.** **Must precede P3-7.**
 
-- [ ] **Step 1: Check the gate**
+**What P5-1 does, and what is left.** P5-1 does **not** move the dashboard off `GET /api/explorers/analytics/events`. It is commit `9e73fb75` on `claude/p5-user-visible-defects`, read for this revision. It keeps the route and serves it from canonical storage:
+- `createCanonicalAnalyticsDependencies(pool, auth?)` authorises with `requireActor` plus `analytics:read`, and reads with `AnalyticsService.readOwnerEvents`.
+- The SPA still issues the GET (`explorersAnalyticsClient.ts`), now riding the session cookie.
+
+Only the **`!auth` branch** still loads the Strapi composition, through `historical()` and its dynamic `import()`. That branch serves the legacy runtime, which has no Better Auth instance. So this ticket:
+- **keeps** the GET route, `readAccountEvents`, `authorizeOwner` and `readScopeSchema`;
+- makes `auth` **required**;
+- deletes the `!auth` branch and everything only it reaches;
+- gives legacy an ingest-only dependency set whose owner read is refused.
+
+- [ ] **Step 1: Check the gate, and read the file you are about to change**
 
 ```bash
-grep -rn "readExplorersAnalyticsEvents\|analytics/events" explorers-earth/src --include=*.ts --include=*.tsx | grep -v __tests__
-grep -n "import(" tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts
+git log --oneline -1 --grep "P5-1" fork/main
+grep -n "auth?: ExplorersAuth\|historical\|import(" tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts
+grep -rn "createCanonicalAnalyticsDependencies\|createExplorersAnalyticsDependencies\|createLegacyExplorersAnalyticsDependencies" tunes --include=*.ts | grep -v node_modules
 ```
 
-There are three possible outcomes:
-- **The first command finds a GET caller in the SPA, or `explorersAnalyticsClient.ts:169-196` still exists.** P5-1 has not repointed the dashboard. Stop. This ticket would take away a read the SPA still issues.
-- **The second command prints nothing.** P5-1 already removed the dynamic import. Skip to Step 5 and delete only the now-orphaned modules.
-- **Otherwise,** continue.
+What the output tells you:
+- **The first command prints nothing:** P5-1 is not on `main`. Stop.
+- **The second shows `auth?: ExplorersAuth` and `historical`:** this ticket applies as written.
+- **The second shows neither:** someone already removed the branch. Skip to Step 5 and delete only what is orphaned.
+- **The third:** its callers are the canonical setup (`setupCanonicalAnalyticsRoutes`), the composition (`composition.ts:60-61`) and the legacy `routes/index.ts:46,191`. Any other caller must be handled in this ticket.
 
 - [ ] **Step 2: Write the failing test**
 
 `tunes/server/test/contracts/canonical-analytics-no-strapi.test.ts`:
 
 ```ts
-import express from 'express';
-import { readFileSync, existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
-import { createCanonicalAnalyticsDependencies } from '../../routes/explorersCanonicalAnalyticsRoutes';
-import { setupExplorersAnalyticsRoutes } from '../../routes/explorersAnalyticsRoutes';
-import { createLoopbackSupertestScope } from '../helpers/loopback-supertest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createIngestOnlyAnalyticsDependencies } from '../../routes/explorersCanonicalAnalyticsRoutes';
 
 const server = resolve(__dirname, '../..');
 
-describe('canonical analytics has no Strapi path', () => {
-  it('no longer loads the legacy analytics composition', () => {
+describe('analytics has no Strapi path', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('canonical no longer loads the legacy analytics composition', () => {
     expect(readFileSync(resolve(server, 'routes/explorersCanonicalAnalyticsRoutes.ts'), 'utf8')).not.toMatch(/import\s*\(/);
     expect(existsSync(resolve(server, 'services/explorers-analytics-composition.ts'))).toBe(false);
   });
 
-  it('answers the retired owner events read with a 404, not a 502 from a failed Strapi factory', async () => {
-    const app = express();
-    app.use(express.json());
-    setupExplorersAnalyticsRoutes(app, createCanonicalAnalyticsDependencies({} as never));
-    app.use((_request, response) => { response.status(404).json({ code: 'NOT_FOUND' }); });
-    const scope = createLoopbackSupertestScope(app);
-    try {
-      const response = await scope.request().get('/api/explorers/analytics/events?accountId=a&from=2026-01-01&to=2026-01-02');
-      expect(response.status).toBe(404);
-    } finally {
-      await scope.close();
-    }
+  it('the legacy runtime refuses the owner read without calling anything', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const dependencies = createIngestOnlyAnalyticsDependencies({} as never);
+    await expect(dependencies.authorizeOwner({ headers: { authorization: 'Bearer anything' } } as never, 'account-1')).resolves.toBe(false);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
 ```
 
-Confirm the `createLoopbackSupertestScope` API (`tunes/server/test/helpers/loopback-supertest.ts`) and the read-scope query keys (`readScopeSchema` in `explorersAnalyticsRoutes.ts`) before relying on them.
+The canonical owner read itself stays covered by P5-1's integration test, `server/test/explorers-analytics-owner-read.integration.test.ts`. Find its real path with `git show --stat 9e73fb75`. That test reads an owner's events through the canonical app with a session cookie, and gets 403 for a foreign or anonymous caller. Step 8 runs it.
 
 - [ ] **Step 3: Run it and watch it fail**
 
 Run: `npm test --prefix tunes -- --run server/test/contracts/canonical-analytics-no-strapi.test.ts`
-Expected: FAIL. The first test fails on `import(`. The second gets 502 or 403, because the composition throws `STRAPI_ANALYTICS_ACCESS_TOKEN is not configured`.
+Expected: FAIL. `createIngestOnlyAnalyticsDependencies` is not exported, and the source still contains `import(`.
 
-- [ ] **Step 4: Remove the historical read from canonical**
+- [ ] **Step 4: Make `auth` required and remove the historical branch**
 
-`tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts:9-19` becomes:
+In `tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts` (the post-P5-1 version):
+- Factor the existing `ingest` lambda into a helper. Copy it verbatim from the file; do not retype it.
+- Make `auth` required, and delete `legacy`, `historical` and both `if (!auth) …` lines.
+- Update the doc comment.
+- Add the ingest-only set for legacy.
+
+The shape:
 
 ```ts
-export function createCanonicalAnalyticsDependencies(pool: Pool): ExplorersAnalyticsRouteDependencies {
+function canonicalIngest(service: AnalyticsService): ExplorersAnalyticsRouteDependencies['service']['ingest'] {
+    return /* the existing ingest lambda, verbatim from createCanonicalAnalyticsDependencies */;
+}
+/** The canonical runtime: owner reads are authorised by the canonical session and served from analytics_events (P5-1). */
+export function createCanonicalAnalyticsDependencies(pool: Pool, auth: ExplorersAuth): ExplorersAnalyticsRouteDependencies {
     const service = new AnalyticsService(pool), limiter = new InMemoryAnalyticsRateLimiter();
+    const owners = new WeakMap<object, Actor>();
     return {
-        service: { ingest: async (input, context) => { const result = await service.recordAnalyticsEvent(input, { requestId: 'analytics-ingest', resolveCountry: () => resolveCountryFromIp(context.getIp()) }); if (result.status === 'consent-denied')
-                return result; return { status: 'committed', duplicate: result.status === 'duplicate', ...('eventId' in result ? { documentId: result.eventId } : {}), ...('retired' in result ? { retired: true as const } : {}) }; } },
+        service: { ingest: canonicalIngest(service), readAccountEvents: async (scope, request) => {
+                const actor = request ? owners.get(request) : undefined;
+                if (!actor) throw new AuthorizationError(403, 'FORBIDDEN', 'Analytics owner was not authorised');
+                return service.readOwnerEvents(actor, scope);
+            } },
+        authorizeOwner: /* the existing canonical authorizeOwner body, minus its `if (!auth)` line */,
         validatePublicTarget: async () => true, allowWrite: (request, key) => limiter.allow(request, key),
     };
 }
+/**
+ * The legacy composition only, which P3-7 deletes. It has no Better Auth instance, so it cannot
+ * authorise an owner, and the owner read is refused (403) rather than delegated to Strapi.
+ */
+export function createIngestOnlyAnalyticsDependencies(pool: Pool): ExplorersAnalyticsRouteDependencies {
+    const service = new AnalyticsService(pool), limiter = new InMemoryAnalyticsRateLimiter();
+    return { service: { ingest: canonicalIngest(service), readAccountEvents: async () => [] }, authorizeOwner: async () => false,
+        validatePublicTarget: async () => true, allowWrite: (request, key) => limiter.allow(request, key) };
+}
 ```
 
-In `tunes/server/routes/explorersAnalyticsRoutes.ts`:
-- Delete the GET handler (`:191-206`).
-- Remove `readAccountEvents` from the `service` type, and `authorizeOwner` from `ExplorersAnalyticsRouteDependencies` (`:130-133`).
-- Delete `readScopeSchema` if nothing else uses it.
+In `tunes/server/routes/index.ts`:
+- Replace the composition import (`:46`) with `import { createIngestOnlyAnalyticsDependencies } from "./explorersCanonicalAnalyticsRoutes";`.
+- Change its use (`:191`) to `setupExplorersAnalyticsRoutes(app, createIngestOnlyAnalyticsDependencies(pool))`.
+- If the file does not already import `pool`, import it from `../db`.
 
-Leave the POST at `:143` alone. `GET` on the same path now falls through to P1's JSON 404 terminator.
+The behaviour change is confined to `legacy-music` mode, which nothing deploys from `main` (decision 2). There, the owner GET goes from "a Strapi read" to 403. P3-7 then deletes the mode.
+
+In `tunes/server/routes/explorersAnalyticsRoutes.ts:7`, remove the unused `type ExplorersAnalyticsService` import.
 
 - [ ] **Step 5: Delete the composition and the Strapi analytics code — same commit**
 
@@ -899,175 +1106,201 @@ git rm tunes/server/services/explorers-analytics-composition.ts \
   tunes/server/services/__tests__/explorers-analytics-receipts.test.ts
 ```
 
-Make three further edits in the same commit:
+Make two further edits in the same commit:
 
-- **`explorers-analytics-adapters.ts`.** Keep only lines `1-45`: `isPrivateOrLocalIp` and `resolveCountryFromIp`, with the `geoip` import. Delete `CREATE_EVENT`, `READ_EVENTS`, `FIND_EVENT_BY_ID`, the target descriptors, `StrapiAnalyticsTargetValidator` (`:289`), `StrapiAnalyticsPublisher` (`:387`) and `verifyAnalyticsAccountOwnership` (`:500`). In `__tests__/explorers-analytics-adapters.test.ts`, keep only the `resolveCountryFromIp` describes (`:3-10` and `:520-`).
+- **`explorers-analytics-adapters.ts`.** Keep lines `1-45` only: the `geoip` import, `isPrivateOrLocalIp` and `resolveCountryFromIp`. Delete the type and value imports from `./explorers-analytics-service` that become unused. Delete `CREATE_EVENT`, `READ_EVENTS`, `FIND_EVENT_BY_ID`, the target descriptors, `StrapiAnalyticsTargetValidator` (`:289`), `StrapiAnalyticsPublisher` (`:387`) and `verifyAnalyticsAccountOwnership` (`:500`). In `__tests__/explorers-analytics-adapters.test.ts`, keep the imports and the first `resolveCountryFromIp` case (`:2-11`) and the `describe("resolveCountryFromIp")` block (`:520-`); delete the rest.
 
-- **`explorers-analytics-service.ts`.** Delete the publisher-era exports that nothing imports any more. Check each candidate:
+- **`explorers-analytics-service.ts`.** Delete the publisher-era code nothing imports any more. Check each candidate, excluding the files this ticket deletes:
 
   ```bash
-  for s in ExplorersAnalyticsService AnalyticsPublisher AnalyticsReceipt AnalyticsReceiptRepository AnalyticsPublishDispatchError NormalizedExplorersAnalyticsEvent; do echo "== $s"; grep -rn "\b$s\b" tunes --include=*.ts | grep -v node_modules | grep -v "services/explorers-analytics-service.ts"; done
+  for s in ExplorersAnalyticsService AnalyticsPublisher AnalyticsReceipt AnalyticsReceiptRepository AnalyticsPublishDispatchError NormalizedExplorersAnalyticsEvent; do echo "== $s"; grep -rnw "$s" tunes --include=*.ts | grep -v node_modules | grep -v -E "services/explorers-analytics-(service|composition|receipts|adapters)\.ts|__tests__/explorers-analytics-(service|composition|receipts|adapters)\.test\.ts"; done
   ```
 
-  Keep `explorersAnalyticsInputSchema`, `ExplorersAnalyticsInput` and `IdempotencyConflictError`. Canonical imports them (`application/analytics.ts:4`, `repositories/explorersAnalyticsEventRepository.ts:6`, `scripts/apps-canonical-admission.ts:10`).
+  Keep `explorersAnalyticsInputSchema`, `ExplorersAnalyticsInput` and `IdempotencyConflictError`; canonical imports them (`application/analytics.ts:4`, `repositories/explorersAnalyticsEventRepository.ts:6`, `scripts/apps-canonical-admission.ts:10`). **`services/__tests__/explorers-analytics-service.test.ts` tests `ExplorersAnalyticsService` and the publisher.** Trim it to the schema and `IdempotencyConflictError` cases, or delete it if nothing else is left.
 
-- **Legacy wiring.** `tunes/server/routes/index.ts:46` imports `createExplorersAnalyticsDependencies` from the deleted composition. Replace the import and its use at `:191`, so that legacy mounts the same canonical dependencies it already used (`composition.ts:60-61` returned exactly this):
-
-  ```ts
-  import { createCanonicalAnalyticsDependencies } from "./explorersCanonicalAnalyticsRoutes";
-  import { pool } from "../db";
-  // …
-      analyticsPublishing: () => {setupExplorersAnalyticsRoutes(app, createCanonicalAnalyticsDependencies(pool));canonicalAnalyticsEnabled=true;},
-  ```
-
-  If `routes/index.ts` already imports `pool`, reuse that import. `legacy-music` must still boot, because the required platform-fixture job runs `tunes-migrate` in that mode (`docker-compose.replatform.yml:56`).
-
-**Leave the receipts table alone.** `config/music-startup.ts:125` verifies its schema through `startup/explorers-analytics-migration.ts`, so it stays until P3-7 deletes legacy startup. The table goes in P6-10.
+**Leave the receipts table alone.** Legacy `config/music-startup.ts:125` verifies its schema through `startup/explorers-analytics-migration.ts`, a separate module, so deleting `explorers-analytics-receipts.ts` does not break legacy boot. The table goes in P6-10.
 
 - [ ] **Step 6: Trim the ratchet's allowlists — same commit**
 
-`scripts/check-retired-dependencies.mjs` fails on stale entries (`:250-269`). Run it first and read what it reports:
+`scripts/check-retired-dependencies.mjs` fails on stale entries (`:250-269`). Measured against `05a252f6` with the composition edge removed (review A), the closure drops from 155 to 150 modules: `db.ts`, `config/music-local-profile.ts`, `config/music-owned-browser-profile.ts`, the composition and the receipts module. Exactly four entries go stale:
+- `ENV_READ_ALLOWLIST`: the `explorers-analytics-composition.ts` / `STRAPI_URL` entry;
+- `ENV_READ_ALLOWLIST`: the `config/music-local-profile.ts` / `STRAPI_LIFECYCLE_PROOF_TOKEN_FILE` entry (`:39-61` holds the env list);
+- `CLIENT_ALLOWLIST`: both entries (`:90-104`).
 
-```bash
-node scripts/check-retired-dependencies.mjs
-```
-
-Expected after Steps 4-5, as `no-stale-allowlist` violations:
-- the `explorers-analytics-composition.ts` / `STRAPI_URL` env entry (`:47-54`);
-- both `CLIENT_ALLOWLIST` entries (`:85-100`);
-- **probably** the `config/music-local-profile.ts` / `STRAPI_LIFECYCLE_PROOF_TOKEN_FILE` entry (`:55-60`), because that module reached canonical only through `db.ts` inside the dynamic edge.
-
-Delete exactly the entries it reports stale. Leave `security-containment.ts` / `STRAPI_JWT_SECRET`; P6-3 removes it. Then:
+Delete those four, and leave `security-containment.ts` / `STRAPI_JWT_SECRET` for P6-3. Then:
 
 Run: `node scripts/check-retired-dependencies.mjs`
-Expected: `OK`, with a smaller module count. Write the new count in the commit message. If it rises, a dynamic edge was missed.
+Expected: `OK`, with the closure count lower than before. Write both numbers in the commit message. If the count rises, a dynamic edge was missed.
+
+`shared/schema.ts` is **not** in the scanner's closure at all. It is reached only through `db.ts`'s `@shared/schema` alias import, and the scanner follows relative specifiers only. Its membership of the canonical type graph is a `tsc` fact, and that is what decision 3 relies on.
 
 - [ ] **Step 7: Update the tests that pinned the old shape**
 
-Run them first, then fix what fails. Do not pre-edit:
+Run first, then fix only what fails:
 
 ```bash
 npm test --prefix tunes -- --run server/routes/__tests__/explorersAnalyticsRoutes.test.ts \
-  server/test/contracts/analytics-inventory-regression.test.ts \
-  server/test/contracts/api-only-early-cleanup.test.ts server/test/music-surface-policy.test.ts \
-  server/test/music-startup-bootstrap.test.ts server/services/__tests__
+  server/services/__tests__ server/test/contracts/api-only-early-cleanup.test.ts \
+  server/test/music-surface-policy.test.ts server/test/music-startup-bootstrap.test.ts \
+  server/test/contracts/music-openapi-contract.test.ts server/test/contracts/music-authorization-matrix.test.ts \
+  server/test/contracts/runtime-surface-inventory.test.ts server/test/contracts/platform-route-signatures.test.ts
 ```
 
-Expected failures:
-- `explorersAnalyticsRoutes.test.ts`: the GET cases, plus `readAccountEvents` and `authorizeOwner` in `buildApp` (`:18-36`). Delete the GET cases and the two fields.
-- `analytics-inventory-regression.test.ts:5`: it asserts `decisionForRoute(GET /api/explorers/analytics/events) === 'strapi-identity'`.
-  - Policy (`musicSurfacePolicy.ts:134`) still describes a route that no longer exists. Delete that policy row and the test's GET assertion.
-  - Delete the matching `scripts/inventory-runtime-surfaces.ts:80` label.
-  - Regenerate any generated inventory the test reads; the test's error names it.
+The route, its OpenAPI entry, the authorization matrix, the inventory and the route-parity probe (a GET at `scripts/replatform-route-parity.ts:52-55`) all stay valid, **because the route stays**. Expect failures only where a test constructs `createCanonicalAnalyticsDependencies(pool)` without `auth`, or imports a deleted module. Fix each by passing a test `auth`, or by switching to `createIngestOnlyAnalyticsDependencies`. If a generated artifact the tests compare against mentions the composition, regenerate it with the generator its failure message names. Never hand-edit it.
 
 - [ ] **Step 8: Verify, including a real canonical boot**
 
-Integration tests inject a pool and skip startup attestation, so they cannot see a boot failure (`canonicalStartup.ts:31-35`). Run all of these:
+Integration tests inject a pool and skip startup attestation, so on their own they cannot see a boot failure (`canonicalStartup.ts:31-35`). Run all of these:
 
 ```bash
 npm test --prefix tunes -- --run server/test/contracts/canonical-analytics-no-strapi.test.ts
 npm test --prefix tunes -- --run
+npm test --prefix tunes -- --run --config vitest.integration.config.ts <P5-1's owner-read integration test path>
 cd tunes && npx tsc --noEmit -p tsconfig.json 2>&1 | grep -E '^(shared|server)/' ; cd ..
 node scripts/check-retired-dependencies.mjs
-npm test --prefix tunes -- --run server/test/contracts/platform-route-signatures.test.ts
 npm --prefix tunes run explorers:test:no-strapi-browser -- --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15
 ```
 
-`platform-route-parity.test.ts:66` pins `EXPECTED_PLATFORM_PROBE_COUNT = 6`, and one of the probes is the analytics events route (`scripts/replatform-route-parity.ts:52-55`). Read that probe:
-- If it probes **GET** `/api/explorers/analytics/events`, it now gets 404. Change the probe to the POST, which is still mounted, and keep the count at 6. The rule there is append-only (`:17-23`), so editing a probe needs a comment saying why.
+Integration tests need the exact CI PostgreSQL URL and the `MUSIC_C3`–`MUSIC_C9` flags (`tunes.yml:120-126`). The no-Strapi run covers `/analytics` as an owner, so it exercises the canonical owner read end to end with the poisoned `STRAPI_*` env set.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git commit -m "refactor(analytics): retire the historical Strapi owner read from canonical
+git commit -m "refactor(analytics): remove the historical Strapi owner read; auth is required in canonical
 
 Canonical closure: <before> -> <after> modules (check-retired-dependencies.mjs).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-Then tell the orchestrator that **P3-7 is unblocked on the `shared/schema.ts` point** (decision 3 above).
+Then tell the orchestrator that **P3-7 is unblocked on the `shared/schema.ts` point** (decision 3).
 
 ---
 
-## P6-3: Take `security-containment` out of canonical; make the ratchet absolute
+## P6-3: Take `security-containment` out of canonical; make the ratchet absolute and widen it
 
-After P6-2 the ratchet still allows one site: `security-containment.ts` / `STRAPI_JWT_SECRET`. That module is in canonical only for `requestIdFor` (`middleware/explorersPrincipal.ts:7`).
+After P6-2, the ratchet still allows one site: `security-containment.ts` / `STRAPI_JWT_SECRET`. That module is in canonical only because `middleware/explorersPrincipal.ts:7` imports `requestIdFor`.
+
+The ratchet also watches the wrong amount of code, in two ways:
+- **It walks only `canonicalStartup.ts`** (`check-retired-dependencies.mjs:33`). The production `migrate` service runs `deployment/run-migration-gate.ts`, which imports `deploymentImageFromEnvironment` from `deployment/music-health.ts` (`run-migration-gate.ts:7`). That module also reads `STRAPI_ACCESS_TOKEN`, `STRAPI_JWT_SECRET` and `STRAPI_URL` (`:57-60`) inside `setupMusicHealthRoutes`, the legacy readiness route.
+- **It resolves relative specifiers only** (`resolveImport`, `:108-121`), so every `@shared/*` alias import is silently dropped.
 
 **Files:**
 - Create: `tunes/server/http/requestId.ts`
-- Modify: `tunes/server/security-containment.ts:15-22` (re-export)
+- Create: `tunes/server/deployment/deploymentImage.ts`
+- Modify: `tunes/server/security-containment.ts:15-22`
 - Modify: `tunes/server/middleware/explorersPrincipal.ts:7`
+- Modify: `tunes/server/deployment/music-health.ts:15-33`
+- Modify: `tunes/server/deployment/run-migration-gate.ts:7`
 - Modify: `scripts/check-retired-dependencies.mjs`
-- Test: `scripts/check-retired-dependencies.test.mjs` (create if absent; root `scripts/*.test.mjs` run in required `test.yml:122`)
+- Test: `scripts/check-retired-dependencies.test.mjs` (create if absent). Root `scripts/*.test.mjs` run in the required `test.yml:122`.
 
 - [ ] **Step 1: Write the failing ratchet test**
 
-First check whether a test for the script already exists:
-
-```bash
-ls scripts | grep -i retired
-```
-
-Then create or extend `scripts/check-retired-dependencies.test.mjs`:
+The report shape is real: `--json` exists (`:24`, `:283`), and the report fields are listed at `:273-281`. They are `canonicalModuleCount`, `allowlistedEnvReads`, `allowlistedModules`, `allowlistedClientConstructions` (each an allowlist **length**), `violations` and `ok`. This step adds `entries` and `minimumModules`.
 
 ```js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 
-test('canonical closure has no Strapi site and no allowlist', () => {
-  const out = execFileSync(process.execPath, ['scripts/check-retired-dependencies.mjs', '--json'], { encoding: 'utf8' });
-  const report = JSON.parse(out);
-  assert.deepEqual(report.allowlisted, [], 'an allowlisted Strapi site remains in the canonical closure');
+function scan() {
+  // spawnSync, not execFileSync: a failing scan exits 1, and the report is what we want to read.
+  const run = spawnSync(process.execPath, ['scripts/check-retired-dependencies.mjs', '--json'], { encoding: 'utf8' });
+  assert.ok(run.stdout, `scanner printed nothing (exit ${run.status}): ${run.stderr}`);
+  return JSON.parse(run.stdout);
+}
+
+test('every production entry point is Strapi-free, with no allowlist', () => {
+  const report = scan();
   assert.deepEqual(report.violations, []);
+  assert.equal(report.allowlistedEnvReads + report.allowlistedModules + report.allowlistedClientConstructions, 0,
+    'an allowlisted Strapi site remains');
+  assert.ok(report.entries.includes('tunes/server/deployment/run-migration-gate.ts'), 'the migrate service is not scanned');
+});
+
+test('the closure is big enough to mean something', () => {
+  const report = scan();
   // VACUITY GUARD: a mis-resolved entry point yields a tiny closure that trivially contains no Strapi.
-  assert.ok(report.canonicalModuleCount >= report.minimumCanonicalModules, `closure shrank to ${report.canonicalModuleCount}`);
+  assert.ok(report.canonicalModuleCount >= report.minimumModules, `closure shrank to ${report.canonicalModuleCount}`);
 });
 ```
-
-Read the script's real report shape around `:271` (`const report = { entry, canonicalModuleCount, … }`) and its CLI handling. Use its actual field names, and add `--json`, `allowlisted` and `minimumCanonicalModules` only if they are absent.
 
 - [ ] **Step 2: Run it and watch it fail**
 
 Run: `node --test scripts/check-retired-dependencies.test.mjs`
-Expected: FAIL. `allowlisted` holds the `security-containment.ts` entry, or the `--json` flag is missing.
+Expected: FAIL. `allowlistedEnvReads` is 1, and `report.entries` is undefined.
 
-- [ ] **Step 3: Move `requestIdFor`**
+- [ ] **Step 3: Move `requestIdFor` — keeping a local binding**
 
-Read `security-containment.ts:15-22` and move the function **verbatim** to `tunes/server/http/requestId.ts`, along with any imports it uses. Then:
-- In `security-containment.ts`, replace the body with `export { requestIdFor } from "./http/requestId";`, so that the legacy importers (`app.ts`, `auth.ts`, `routes/index.ts`, `routes/musicSurfaceRoutes.ts`) keep working.
-- In `middleware/explorersPrincipal.ts:7`, import from `../http/requestId`.
+Read `security-containment.ts:15-22` and move the function **verbatim** to `tunes/server/http/requestId.ts`, along with the imports and the type it uses (`containmentRequestId`).
 
-Check that no other canonical module imports `security-containment`. Its importers outside tests are `app.ts`, `auth.ts`, `middleware/explorersPrincipal.ts`, `routes/index.ts` and `routes/musicSurfaceRoutes.ts`; only `explorersPrincipal.ts` is canonical.
+`security-containment.ts` itself still calls `requestIdFor`, at `:148`, `:204` and `:353`. A bare `export { requestIdFor } from "./http/requestId";` creates **no local binding**: review A ran it and got TS2552 three times, and legacy would throw a `ReferenceError` per request. Use an import plus a re-export:
 
-- [ ] **Step 4: Make the ratchet absolute**
+```ts
+import { requestIdFor } from "./http/requestId";
+export { requestIdFor };
+```
+
+Then point `middleware/explorersPrincipal.ts:7` at `../http/requestId`. `explorersPrincipal.ts` is the only canonical importer; the others (`app.ts`, `auth.ts`, `routes/index.ts`, `routes/musicSurfaceRoutes.ts`) are legacy and keep working through the re-export.
+
+Review A measured the effect at `05a252f6`: `security-containment.ts`, `shared/musicError.ts` and `registration-route-contract.ts` leave the closure, and `http/requestId.ts` joins it.
+
+**`shared/musicError.ts` leaving is a fact P3 relies on the other way round.** The P3 plan's "never delete" table cites `security-containment.ts:6` as `musicError`'s canonical path. Tell the orchestrator before P3-7 recomputes its deletable set.
+
+- [ ] **Step 4: Take `music-health.ts` out of the migration gate's closure**
+
+Move `deploymentImageFromEnvironment` (`music-health.ts:15-33`, with `ImageCandidate` and whatever it imports) **verbatim** to `tunes/server/deployment/deploymentImage.ts`. In `music-health.ts`, add `import { deploymentImageFromEnvironment } from "./deploymentImage"; export { deploymentImageFromEnvironment };`, then check whether `music-health.ts` itself calls it. Point `run-migration-gate.ts:7` at `./deploymentImage`. The legacy health route keeps its Strapi readiness inputs; P3-7 deletes it.
+
+- [ ] **Step 5: Widen the scanner and make it absolute**
 
 In `scripts/check-retired-dependencies.mjs`:
-- Delete the remaining `ENV_READ_ALLOWLIST` entry. All three allowlists become `[]`; keep the arrays and the stale-entry logic, so that a re-added entry is still checked.
-- Add `const MINIMUM_CANONICAL_MODULES = <90% of the measured count after this step>;`, and fail with invariant `canonical-closure-floor` when `modules.length` falls below it.
-- Change the success line from "one of the 5 allowlisted legacy sites" to `OK — the canonical closure contains no Strapi construction, no STRAPI_* read and no Strapi-named module.`
-- Remove the sentence "This does NOT mean Strapi is retired…" only once P6-12 passes. Until then, keep it.
 
-- [ ] **Step 5: Run it and watch it pass, then commit**
+1. **Scan every production entry point.** Replace `canonicalEntry` with a list, and walk the union of their closures:
+
+   ```js
+   /** Every entry point a production container runs (tunes/package.json build:api, deploy/production.compose.yml). */
+   const PRODUCTION_ENTRIES = [
+     "server/auth/canonicalStartup.ts",
+     "server/deployment/run-migration-gate.ts",
+     "scripts/apply-reviewed-taxonomy.ts",
+   ].map((path) => join(tunesRoot, path));
+   ```
+
+   **`build:api`** (`tunes/package.json:19`) also bundles three more entry points. **Leave them out until P3-7 has dealt with them:**
+   - `server/api.ts` reaches the whole legacy composition until P3-7 collapses `apiMode`.
+   - `run-registration-compat.ts` is Music-only, and P3-7 deletes it.
+   - `run-production-graph-smoke.ts` imports `server/app.ts`.
+
+   P6-12 adds whichever of them survive. Report the list as `entries` (repo-relative) in the JSON report.
+
+2. **Resolve the `@shared/*` alias** in `resolveImport` (`:108-121`): map `@shared/x` to `tunes/shared/x`, using the same candidate list as relative specifiers. If a specifier starts with `@shared/` but resolves to nothing, push a `closure-incomplete` violation rather than returning `null`. Package imports stay ignored.
+
+3. **Empty the last allowlist entry.** All three allowlists become `[]`. Keep the arrays and the stale-entry logic, so a re-added entry is still checked.
+
+4. **Add a floor.** Add `const MINIMUM_MODULES = <90% of the measured union count, rounded down>;`. Fail with invariant `closure-floor` when the union is smaller. Report it as `minimumModules`.
+
+5. **Change the success line** to `OK — no production entry point reaches a Strapi construction, a STRAPI_* read or a Strapi-named module.` Keep the existing "This does NOT mean Strapi is retired…" sentence until P6-12.
+
+Run it before writing the floor, and read every violation it reports. **Resolving `@shared/*` will add modules**, and any of them may read `STRAPI_*`. Each new violation is a real coupling: either cut it in this ticket, the way Step 4 cut `music-health.ts`, or stop and report it. Never re-add an allowlist entry to get green.
+
+- [ ] **Step 6: Run it and watch it pass, then commit**
 
 ```bash
 node --test scripts/check-retired-dependencies.test.mjs
 node scripts/check-retired-dependencies.mjs
 npm test --prefix tunes -- --run
 cd tunes && npx tsc --noEmit -p tsconfig.json 2>&1 | grep -E '^(shared|server)/' ; cd ..
-git add tunes/server/http/requestId.ts tunes/server/security-containment.ts tunes/server/middleware/explorersPrincipal.ts \
+docker build -t ee-p6-3-check ./tunes
+git add tunes/server/http/requestId.ts tunes/server/deployment/deploymentImage.ts tunes/server/security-containment.ts \
+  tunes/server/middleware/explorersPrincipal.ts tunes/server/deployment/music-health.ts tunes/server/deployment/run-migration-gate.ts \
   scripts/check-retired-dependencies.mjs scripts/check-retired-dependencies.test.mjs
-git commit -m "refactor(server): move requestIdFor out of security-containment; canonical closure is Strapi-free
+git commit -m "refactor(server): no production entry point reaches Strapi; the ratchet scans all of them
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-Two earlier claims change once this lands:
-- `shared/musicError.ts` may leave canonical as well, if `security-containment.ts` was its only canonical importer. P3's "never delete" table cites `security-containment.ts:6` as its canonical path.
-- The closure count moves.
-
-Tell the orchestrator, so that P3-7's recomputed closure is read against the new reality.
+The `docker build` matters because `build:api`'s esbuild entries now import a new module. A contract test that pins the gate's import list (search `run-migration-gate` under `tunes/server/test`) must change in the same commit.
 
 ---
 
@@ -1106,7 +1339,7 @@ Expected: FAIL, listing exactly `features/Favorites/components/AddRecommendation
 
 - [ ] **Step 3: Delete the Strapi fallback in `Profile.tsx`**
 
-In `handleImageUpload` (`:1703`), the canonical branch (`:1712-1729`) already returns. Replace everything from `const accountId = await resolveSelectedAccountUploadId();` (`:1731`) down to just before the `} catch (error: any) {` at `:1790`:
+In `handleImageUpload` (`:1703`), the canonical branch (`:1712-1729`) already returns. Replace everything from `const accountId = await resolveSelectedAccountUploadId();` (`:1730`) down to just before the `} catch (error: any) {` at `:1790`:
 
 ```ts
       throw new Error(t("dashboard.profile.common.errors.failedToGetAccountId"));
@@ -1117,11 +1350,15 @@ Make the same change in `handleBackgroundUpload` (`:1803`): keep its canonical b
 Then delete `resolveSelectedAccountUploadId` (`:1679-1697`). Remove whichever imports became unused, checking each one first:
 
 ```bash
-for s in selectExplorerAccountUploadTarget generateProfileUploadPath generateRandomFileName sanitizeUsername axios; do echo "== $s"; grep -n "\b$s\b" explorers-earth/src/pages/Profile.tsx; done
+for s in selectExplorerAccountUploadTarget generateProfileUploadPath generateRandomFileName sanitizeUsername axios token; do echo "== $s"; grep -n "\b$s\b" explorers-earth/src/pages/Profile.tsx; done
 grep -rn "selectExplorerAccountUploadTarget" explorers-earth/src | grep -v "pages/Profile.tsx"
 ```
 
-If `selectExplorerAccountUploadTarget` has no other caller, delete it and its tests too. Leave `generateProfileUploadPath` and friends alone if other modules use them.
+Two things to watch here:
+- **`token`.** It comes from `useAuthStore()` at `Profile.tsx:254` and becomes unused here. `noUnusedLocals` is on (`tsconfig.app.json:22`), so `tsc` fails until you remove it from that destructure.
+- **`selectExplorerAccountUploadTarget`.** If it has no other caller, delete **only that function** and its cases. Its module, `explorerAccountSelection.ts`, exports four other functions that are in use (`categoryNavigationApi.ts:5`, `ProfileAccountSettings.tsx:27`). Its test file is pinned by the `test:music-critical-coverage` script, which `contained-unit.launcher.test.ts:310` asserts, so keep the file.
+
+Leave `generateProfileUploadPath` and friends alone if other modules use them.
 
 The behaviour changes only when `accountQuery.data` is absent. In that case the user now sees the same "failed to get account id" toast that `resolveSelectedAccountUploadId` already threw on its own failure path (`:1682`), instead of a request to Strapi.
 
@@ -1217,8 +1454,8 @@ import { pathToFileURL } from 'node:url';
 /** Phase A holds after P6-4; phase B is switched on by P6-7, once Apollo is gone. */
 const ALWAYS = ['api.localqr.earth', 'localqr-strapi', 'undefined/upload', '/upload/files/', 'users_permissions_users', '77.42.95.255'];
 const PHASE_B = ['"/graphql"', "'/graphql'", '`/graphql`', 'ApolloClient', '__APOLLO_CLIENT__'];
-/** The platform bundle is ~ several MB of JS; anything under this is a broken build, not a clean one. */
-const MIN_JS_BYTES = 500_000;
+/** The platform bundle is ~12 MB of JS; anything under half that is a broken build, not a clean one. */
+const MIN_JS_BYTES = 6_000_000; // measured 12.36 MB of JS at 05a252f6 (review A); re-measure
 
 function files(dir, found = []) {
   for (const entry of readdirSync(dir)) {
@@ -1258,7 +1495,9 @@ npx vite build --config vite.platform.config.ts --mode platform
 node scripts/check-platform-bundle-strapi.mjs dist
 ```
 
-Expected: the tests pass, and the scan prints the byte count with no findings, **provided P6-4 has landed**. Before P6-4 it must fail on `undefined/upload` and `users_permissions_users`, which shows the scanner bites. Measure the real JS byte count, set `MIN_JS_BYTES` to about half of it, and record both numbers in a comment.
+Expected: the tests pass, and the scan prints the byte count with no findings, **provided P6-4 has landed**. Before P6-4 it must fail on `undefined/upload` and `users_permissions_users`, which shows the scanner bites. Review A measured 12.36 MB of JS at `05a252f6`, which is why the floor is 6 MB. Re-measure and adjust it the same way.
+
+**This is why P6-5 is gated on P6-4.** Before P6-4 the bundle really does contain `undefined/upload` (twice), `undefined/upload/files/` and `users_permissions_users` (review A, from `assets/main-*.js`). Switching the required `build` job to this scan before P6-4 lands would turn CI red. Landing both in one PR is also fine.
 
 - [ ] **Step 5: Point the CI build job at the platform build**
 
@@ -1293,13 +1532,15 @@ git commit -m "ci: build the platform SPA that deploys, and fail it on any Strap
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-The scanner's own `node --test` must also run in CI. Find where `explorers-earth/scripts/*.test.mjs` are run today:
+The scanner's own `node --test` must also run in CI, and today **nothing runs `explorers-earth/scripts/*.test.mjs`**:
+- The only `node --test` lines in CI are `test.yml:122` (root `scripts/`) and `tunes.yml:135`.
+- explorers-earth's vitest includes only `src/**` (`vitest.config.ts:46`).
 
-```bash
-grep -rn "scripts/\*.test" .github/workflows
+So add this as the first line of the build job's run block in Step 5:
+
+```yaml
+          node --test scripts/check-platform-bundle-strapi.test.mjs
 ```
-
-If nothing runs them, add `node --test scripts/check-platform-bundle-strapi.test.mjs` to the same build job.
 
 ---
 
@@ -1359,7 +1600,7 @@ describe("retired Apollo document surface", () => {
 ```
 
 Run: `cd explorers-earth && node ./scripts/run-contained-vitest.cjs run src/features/__tests__/retiredApolloDocumentSurface.test.ts --maxWorkers 1`
-Expected: FAIL, listing 12 files.
+Expected: FAIL, listing 13 files.
 
 - [ ] **Step 3: Delete the documents, keeping the hooks**
 
@@ -1367,11 +1608,9 @@ The five category `api/query.ts` files also hold the live `useXCommands` hooks, 
 - Remove each `export const X = gql\`…\`` block.
 - Then remove `gql` from the `@apollo/client` import. Remove the whole import if it becomes empty.
 
-Delete these whole files: `features/PublicHome/api/query.ts`, `features/Settings/api/mutation.ts` and `features/Profile/api/query.ts`. None of them is in the platform bundle (inventory). Before deleting each one, check it holds nothing else that is still imported:
+Delete two whole files: `features/PublicHome/api/query.ts` and `features/Settings/api/mutation.ts`. Neither is in the platform bundle (inventory). `features/Profile/api/query.ts` holds **no** document; it is a one-line `export { getProfile }` with no importers found. Delete it as dead code, not as part of the document count.
 
-```bash
-for f in features/PublicHome/api/query.ts features/Settings/api/mutation.ts features/Profile/api/query.ts; do echo "== $f"; grep -rn "$(basename $(dirname $(dirname $f)))/api/$(basename $f .ts)" explorers-earth/src | grep -v __tests__; done
-```
+A path grep cannot prove these files have no importers, because relative imports such as `../../api/query` do not contain the feature name. The real check is `npx tsc --noEmit -p tsconfig.app.json` plus the whole lane after deleting them.
 
 Delete `categoryNavigationAccountQuery` from `features/navigation/categoryNavigationApi.ts:9`. Also delete the `client?: ApolloClient<object>` compatibility parameter (`:46-47`, "never queried or mutated") together with its callers' argument.
 
@@ -1381,6 +1620,7 @@ Delete `categoryNavigationAccountQuery` from `features/navigation/categoryNaviga
 |---|---|
 | `e2e/public-shell-continuity.spec.ts:562-575` | Delete the `page.evaluate` that imports `PUBLIC_APP_DATA` and calls `window.__APOLLO_CLIENT__.cache.writeQuery`. Nothing reads the Apollo cache, so the seed is dead (no app code references `__APOLLO_CLIENT__`; Apollo exposes it in dev mode on its own). The canonical warm read the test checks next (`warmState.faults.set('PublicAppData', …)`) is unaffected. Run the spec to confirm |
 | `e2e/contained-auth-session.spec.ts:96-139` | Both tests extract `CategoryNavigationAccount` from source and POST it to the contained `/graphql` adapter to check that it denies a wrong owner. That adapter guards a surface the app no longer uses. Delete the two tests; keep the file's other tests |
+| `src/features/Profile/components/__tests__/Profile.live-order-contract.test.tsx:64-67` | It reads `Settings/api/mutation.ts` and expects exactly one `mutation UpdateAccount` document, so it fails with ENOENT once the file goes. Seed its fixture directly, as its own comment suggests |
 | `src/features/__tests__/recommendationMutationsPublish.test.ts:18-87` | Delete the 25 mutation-document cases. Keep the Books/Favorites/Guides describe (`:123-145`) |
 | `features/Books/api/__tests__/detailQueryFields.test.ts`, `Games/api/__tests__/listVars.test.ts`, `Movies/api/__tests__/listVars.test.ts` | They test document shapes. Delete the files, or the document cases if anything else is in them |
 | `PublicHome/api/__tests__/publicPlacesQuery.contract.test.ts`, `PublicProfile.gallery-contract.test.tsx`, `routes/__tests__/UsernameValidator.test.tsx` | They import `accountsDetailQuery` / `getPublicAccountBasicQuery`. Delete those imports and the assertions built on them; keep what tests canonical behaviour |
@@ -1425,7 +1665,7 @@ grep -rln "@apollo/client" explorers-earth/src explorers-earth/e2e explorers-ear
 
 Expected after P6-6:
 - **Source:** `main.tsx`, `lib/apolloCache.ts`, `components/AccountGenerationCacheReset.tsx` and `hooks/useLogout.ts`.
-- **Tests:** about 32 files using `MockedProvider` or a hand-built `ApolloClient`, e.g. `features/navigation/__tests__/surfaceHarness.tsx` and `layouts/__tests__/PublicationLayout.test.tsx`.
+- **Tests:** 32 files import `@apollo/client`. Only 13 use `MockedProvider` or `new ApolloClient`, e.g. `features/navigation/__tests__/surfaceHarness.tsx` and `layouts/__tests__/PublicationLayout.test.tsx`. Others only `vi.mock` an api module (e.g. `appEditorInitialization.test.tsx:13`).
 
 - [ ] **Step 2: Write the failing test**
 
@@ -1447,7 +1687,8 @@ Run it. Expected: FAIL, listing the four source modules.
 - **`AccountGenerationCacheReset.tsx:24` and `hooks/useLogout.ts:37`.** Delete the `client.clearStore()` calls and their `useApolloClient` hooks. The React Query clear next to them stays: it is the cache that holds account data now.
 - **`src/lib/apolloCache.ts` and `lib/__tests__/apolloCache.test.ts`.** Delete both.
 - **`src/__tests__/main.auth.test.tsx`.** It tests the Apollo auth link (`:77`, `:86`, `:97`). Delete those cases. Keep `:63` ("no eager Google Maps") if it is still meaningful.
-- **The ~32 test files.** For each one, remove the `MockedProvider` wrapper, or the hand-built client, and its import. A test that asserted Apollo behaviour is deleted, not rewritten.
+- **Stale path lists.** `scripts/replatform-e2e.mjs:626` (`publicServedSourcePaths`) and `e2e/replatform/people-served-module-diagnostic.ts:2` list `PublicHome/api/query.ts`, `Settings/api/mutation.ts`, `Profile/api/query.ts`, `lib/apolloCache.ts` and its test. Prune the deleted paths. Then run `node --test scripts/replatform-e2e.test.mjs`, because `replatform-e2e.mjs` is source-inventoried. Never regenerate a frozen constant to make that test pass.
+- **The 32 importing test files.** For each one, remove the `MockedProvider` wrapper, or the hand-built client, and its import. A test that asserted Apollo behaviour is deleted, not rewritten.
 
 - [ ] **Step 4: Remove the dependency**
 
@@ -1560,7 +1801,7 @@ grep -rn "legacy-default\|nginx\.conf\b\|--target\|netlify" .github explorers-ea
 cd explorers-earth
 node ./scripts/run-contained-vitest.cjs run src/lib/__tests__/platformBuildLeaks.test.ts --maxWorkers 1
 npm run build
-docker build -t ee-p6-8-check .
+docker build --build-context platform-shared=../tunes/shared -t ee-p6-8-check .   # platform-builder COPYs --from=platform-shared (Dockerfile:53)
 npx tsc --noEmit -p tsconfig.app.json
 node ./scripts/run-contained-vitest.cjs run --maxWorkers 1
 cd .. && npm --prefix tunes run explorers:test:no-strapi-browser -- --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15
@@ -1591,7 +1832,7 @@ Classify every line as a call, config, test, fixture or comment, the same way th
 
 This is the one compose stack P3 keeps (`scripts/replatform-local.ts:216`). Make all of these changes together:
 - **`docker-compose.replatform.yml`.** Delete the `strapi` service (`:31-47`), the `STRAPI_*`, `MUSIC_FIXTURE_STRAPI_ORIGIN`, `MUSIC_E2E_STRAPI_TOKEN` and `MUSIC_STRAPI_HOST_PORT` entries on the tunes services (`:54`, `:93-104`), and `depends_on: strapi` (`:189`). Fix the stale "combined" comment at `:167`. **Edit by grep-located lines; never print the whole file** (backbone, "Growing the migration chain").
-- **`explorers-earth/nginx.replatform.conf:35-69`.** Delete the `strapi:1337` locations.
+- **`explorers-earth/nginx.replatform.conf:35-69`.** Re-point the `strapi:1337` locations; do not just delete them. `location /api/ { proxy_pass http://strapi:1337; }` (`:62-64`) is the catch-all. Without it, every unmatched `/api/*` falls through to `location /`, i.e. a 200 HTML SPA shell instead of canonical's JSON 404, which is exactly what `assertNotApplicationShell` in `scripts/replatform-route-parity.ts` exists to catch. Point `/api/` at the tunes upstream. Point `= /graphql` and `= /api/users/me` at tunes too, which answers them with its tombstone or 404.
 - **`scripts/replatform-local.ts`.** Remove `strapi` from the exact service list (`:86`, `:163`, `:468-476`, `:511`, `:536`, `:662`). If the fixture SPA no longer needs `VITE_API_URL` (`:408`), remove that too.
 - **`tunes/server/test/contracts/replatform-local-authority.test.ts`.** Update `:61`, `:117`, `:266`, `:318` and `:457`.
 - **Delete** `tunes/scripts/music-fixture-server.ts`, `fixtures/strapi/` and their tests (`music-fixture-services.test.ts:9,13,325-339,385-388,618,687-695`, `music-e2e-initial-capture.integration.test.ts:25`), unless P3-7 already did.
@@ -1631,6 +1872,10 @@ The legacy e2e specs still mock `**/graphql` (decision 6). They keep working wit
 | `scripts/music-e2e-state-smoke.mjs:44` | reads the fixture Strapi |
 | `scripts/music-fixture-secret.ts:1410` | lists `STRAPI_*` secrets |
 | `tunes/.env.example:14,46-56` | Strapi env |
+| `server/deployment/music-health.ts:54-60` | legacy readiness `requiredSecrets` and `upstreamUrls.STRAPI_URL`. After P6-3 the gate no longer imports this file; delete `setupMusicHealthRoutes` if P3-7 kept it |
+| `server/config/public-profile-gateway-config.ts:13-15`, `server/config/music-environment.ts:4-8` | Strapi profile-gateway token and fixture env |
+| `tunes/deployment/verify-publication-authority.mjs:129-150` | legacy deploy authority requiring `STRAPI_*` host env |
+| `tunes/.github/workflows/main.yml:54-57` | inert nested workflow with Strapi secrets (P3-7 is meant to delete it) |
 | `.github/workflows/tunes.yml:126` | `STRAPI_ANALYTICS_ACCESS_TOKEN: fixture-analytics-token`, pinned by `tunes/scripts/music-image-ci-tests.ts`, `music-image-ci-tests.test.ts` and `music-reconciliation-workflow.test.ts`. Remove all four together |
 
 For each file: `grep -rn "<basename without extension>" tunes scripts .github` first. Delete it if only deleted code uses it; otherwise cut the Strapi part only. A `music-cli.ts` subcommand used by a lane that still exists keeps its non-Strapi parts.
@@ -1654,24 +1899,28 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-## P6-10: Drop `users`, the `0001` baseline and the analytics receipts — migration `0059`
+## P6-10: Drop `users`, the `0001` baseline and the analytics receipts — migration `00NN`
 
-**Gate: P3-9 merged** (migration `0058`). The migration number is assigned by the orchestrator at merge; `0059` assumes nothing else lands first.
+**Gate: P3-9 merged.** The orchestrator assigns `00NN` at merge: the next free number after P3-9 and P5's two migrations (`0058_explorers_place_photo_backfill`, `0059_explorers_person_suppression_audit` on `claude/p5-user-visible-defects`), so at least `0061`. Below, `<PREV>` is the migration head immediately before yours.
 
-P3 deliberately kept `users` and the `0001` baseline for P6 (P3 plan, "Before you start" item 2; `0058` trailer). After P3-7 and P3-9, no canonical code reads them. The one survivor is the runtime-role attestation, and **that survivor is the trap.**
+P5 also changes the runtime-role lists (it adds `person_suppression_actions` and `refuse_person_suppression_audit_change()`). **Derive every expected list from the tree you are on**, not from this plan's numbers.
+
+P3 deliberately kept `users` and the `0001` baseline for P6 (P3 plan, "Before you start" item 2; the P3-9 migration's trailer). After P3-7 and P3-9, no canonical code reads them. The one survivor is the runtime-role attestation, and **that survivor is the trap.**
 
 **The failure that matters most.** `db/music-runtime-role.ts` is renamed by P3-8; use its current name. It enumerates the schema at boot:
 - `expectedRuntimeTables` (`:6-125`) lists `users` and the baseline tables.
 - `expectedRuntimeSequences` (`:126-153`) lists their sequences.
 - `assertMusicRuntimeDirectPrivilegeBoundary` probes `"TRUNCATE TABLE users"` (`:849`) and expects a privilege denial.
 
-Drop the table without changing the probe, and the probe gets `42P01 undefined_table`, which `requirePrivilegeDenial` (`:1107`) rethrows. **Canonical then refuses to boot, with `0059` already committed.** This is the same class of failure as P3's correction #1. Migration, attestation and manifest therefore go in **one commit**, and Step 7 boots the real gate sequence against an upgraded database.
+Drop the table without changing the probe, and the probe gets `42P01 undefined_table`, which `requirePrivilegeDenial` (`:1107`) rethrows. **Canonical then refuses to boot, with `00NN` already committed.** This is the same class of failure as P3's correction #1. Migration, attestation and manifest therefore go in **one commit**, and Step 7 boots the real gate sequence against an upgraded database.
 
 - [ ] **Step 1: Prove nothing reads these tables**
 
 ```bash
 cd tunes
-grep -o "CREATE TABLE[^(]*" migrations/0001_runtime_baseline.sql | sed 's/CREATE TABLE \(IF NOT EXISTS \)\?//; s/public\.//; s/"//g' > /tmp/baseline.txt; cat /tmp/baseline.txt | tr '\n' ' '
+grep -o "CREATE TABLE[^(]*" migrations/0001_runtime_baseline.sql | sed 's/CREATE TABLE \(IF NOT EXISTS \)\?//; s/public\.//; s/"//g; s/[[:space:]]*$//' > /tmp/baseline.txt
+wc -l < /tmp/baseline.txt   # expect 27; the trailing-space strip matters, without it every -w grep below matches nothing
+tr '\n' ' ' < /tmp/baseline.txt
 for t in $(cat /tmp/baseline.txt) explorers_analytics_receipts; do hits=$(grep -rlE "(FROM|JOIN|INTO|UPDATE|TABLE)\s+(public\.)?\"?$t\"?\b" server shared scripts --include=*.ts | grep -v __tests__ | grep -v "/test/" | tr '\n' ' '); [ -n "$hits" ] && echo "$t: $hits"; done
 ```
 
@@ -1683,7 +1932,7 @@ Better Auth uses `auth_user`, `auth_session`, `auth_account` and `auth_verificat
 
 - [ ] **Step 2: Prove nothing in the database depends on them**
 
-Against a scratch database migrated to `0058` (Step 7 shows how), run:
+Against a scratch database migrated to `<PREV>` (Step 7 shows how), run:
 
 ```sql
 -- Foreign keys INTO these tables from tables that are not themselves being dropped.
@@ -1695,7 +1944,8 @@ FROM pg_constraint c WHERE c.contype = 'f'
 SELECT p.oid::regprocedure FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public' AND p.prosrc ~* ('\m(' || array_to_string($1, '|') || ')\M');
 -- Views, triggers and sequences that would be left dangling.
-SELECT 'view' AS kind, v.oid::regclass::text FROM pg_class v JOIN pg_depend d ON d.objid = v.oid WHERE v.relkind = 'v' AND d.refobjid::regclass::text = ANY($1)
+-- A view's dependencies are recorded against its pg_rewrite rule, not the view itself.
+SELECT 'view' AS kind, r.ev_class::regclass::text FROM pg_rewrite r JOIN pg_depend d ON d.objid = r.oid AND d.classid = 'pg_rewrite'::regclass WHERE d.refobjid::regclass::text = ANY($1) AND r.ev_class::regclass::text <> ALL($1)
 UNION ALL SELECT 'trigger', tgname FROM pg_trigger WHERE NOT tgisinternal AND tgrelid::regclass::text = ANY($1);
 ```
 
@@ -1703,11 +1953,11 @@ Pass the 27 names plus `explorers_analytics_receipts` as `$1`. Expected: no fore
 - `provision_music_runtime_login(name,text)` (kept by P3-9), if its body names a baseline table;
 - any baseline-owned trigger functions, which this migration drops explicitly.
 
-Record every row. `0059` must drop or rewrite each one by name. **Never use `CASCADE`.**
+Record every row. `00NN` must drop or rewrite each one by name. **Never use `CASCADE`.**
 
 - [ ] **Step 3: Check production holds no rows in them**
 
-The owner, on the host, against the production database:
+**Whoever has production database access** runs this, through the host's `docker compose exec postgres psql`. The owner has no server SSH (P6-13); this waits on that access the same way P6-13 does:
 
 ```sql
 SELECT 'users' AS t, count(*) FROM users UNION ALL SELECT 'explorers_analytics_receipts', count(*) FROM explorers_analytics_receipts;
@@ -1715,7 +1965,7 @@ SELECT 'users' AS t, count(*) FROM users UNION ALL SELECT 'explorers_analytics_r
 
 Extend this to every baseline table. Expected: zero everywhere, because the production database was created fresh at P2 and canonical never writes to these tables. **Any non-zero count stops the ticket** and goes to the owner. Start fresh means the rows are not wanted, but someone must look before they are destroyed.
 
-- [ ] **Step 4: Write `tunes/migrations/0059_retire_strapi_baseline.sql`**
+- [ ] **Step 4: Write `tunes/migrations/00NN_retire_strapi_baseline.sql`**
 
 Write it from Step 2's output, in dependency order:
 1. triggers on the doomed tables;
@@ -1726,7 +1976,7 @@ Write it from Step 2's output, in dependency order:
 Shape:
 
 ```sql
--- 0059: retire the Strapi-era baseline (0001) and the Strapi analytics receipts.
+-- 00NN: retire the Strapi-era baseline (0001) and the Strapi analytics receipts.
 -- Nothing reads these since P3-7 and P3-9 (P6 plan, P6-10 Step 1). Never CASCADE:
 -- PostgreSQL does not record plpgsql bodies as dependencies, so CASCADE would hide
 -- exactly the breakage this migration must surface.
@@ -1756,8 +2006,11 @@ In the runtime-role module:
 - Remove every dropped table from `expectedRuntimeTables`, and every dropped sequence from `expectedRuntimeSequences`.
 - Remove any dropped function from `expectedRuntimeFunctions` (`:154-`).
 - The lists are compared in order (`sameRuntimeInventory`, `:1088`), so keep the survivors in the order the live `pg_class`/`pg_proc` queries return.
-- **Replace the `TRUNCATE TABLE users` probe** (`:849`) with a table that survives and that the runtime role must not truncate, e.g. `"TRUNCATE TABLE creator_accounts"`. Confirm against a provisioned database that the role really is denied `TRUNCATE` there; the probe exists to prove a denial.
-- Remove any `GRANT`/`REVOKE` in `provisionMusicRuntimeLogin` (`:635-792`) that names a dropped table. A `GRANT` on a missing table is an error.
+- **Delete the `TRUNCATE TABLE users` probe** (`:849`).
+  - The same statement list already proves a `TRUNCATE` denial on a surviving table: `"TRUNCATE TABLE account_category_content_state"` (`:857`). So removing the probe loses no coverage.
+  - Confirm `:857` is still there after P3-9 and P5 before deleting `:849`. If it is not, retarget `:849` to a surviving table whose denial you have confirmed on a provisioned database. Never leave a probe naming a dropped table.
+- `provisionMusicRuntimeLogin` (`:635-792`) names no baseline table explicitly. It grants on `ALL TABLES IN SCHEMA` (review A). Re-check that after P3-9 and P5, because a `GRANT` on a missing table is an error.
+- The `0019`/`0020` column grants on `users` vanish with the table, and the column-ACL check (`:1075-1084`) then still sees zero.
 
 ```bash
 grep -n -w -E "$(tr '\n' '|' < /tmp/baseline.txt)explorers_analytics_receipts" server/db/*runtime-role*.ts
@@ -1787,40 +2040,58 @@ Do every row of the P3 plan's "Growing the migration chain" table except its "on
 Catch whatever this table missed:
 
 ```bash
-grep -rn "0058_" --include=*.ts --include=*.mjs --include=*.json --include=*.yml --include=*.sh --include=*.py . | grep -v node_modules | grep -v "^./tunes/migrations/"
+grep -rn "<PREV>" --include=*.ts --include=*.mjs --include=*.json --include=*.yml --include=*.sh --include=*.py . | grep -v node_modules | grep -v "^./tunes/migrations/"
+```
+
+That grep finds the migration **head**, not table names. Tests and tooling also pin the dropped **table names** directly. Review A found these at `05a252f6`:
+- `runtime-table-manifest.test.ts:47-56` (its `rawSqlTables` must contain `playback_states`, `youtube_*` and `widgets`);
+- `music-e2e-state-restore.test.ts:37,115,126,145,191` (`COPY public.users` and a table list);
+- `music-e2e-state-capture.test.ts:65`;
+- `music-runtime.integration.test.ts:17-20,166` (`rawTables`, plus a trigger on `playback_states`);
+- `fixtures/db/music-runtime-table-manifest.json:74`.
+
+Some die with P3-7; find what is left, and classify every hit:
+
+```bash
+git grep -n -w -E "$(paste -sd'|' /tmp/baseline.txt)|explorers_analytics_receipts" -- ':!docs' ':!tunes/migrations' ':!**/node_modules/**'
+git grep -n "explorers-analytics-receipts-v1" -- ':!docs'
 ```
 
 - [ ] **Step 7: Run the gate's whole sequence against a fresh database AND an upgraded one**
 
 The integration suite injects a pool and skips the attestation, so it cannot see the crash described above. Reproduce the gate's sequence, in order, as P3-9 Step 7 does:
 1. the two pre-migration checks;
-2. migrate to `0059`;
+2. migrate to `00NN`;
 3. provision and verify the runtime login;
 4. `verifyMusicRuntimeDatabaseConnection` (or its renamed form) with the runtime role's connection, which is what `canonicalStartup.ts` runs at boot.
 
-Run it twice: on a fresh database, and on one first provisioned at `0058` and then upgraded. Put it in `tunes/server/test/migrations/strapi-baseline-retirement.integration.test.ts`:
+Run it twice: on a fresh database, and on one first provisioned at `<PREV>` and then upgraded. Put it in `tunes/server/test/migrations/strapi-baseline-retirement.integration.test.ts`:
 
 ```bash
 npm test --prefix tunes -- --run --config vitest.integration.config.ts server/test/migrations/strapi-baseline-retirement.integration.test.ts
 ```
 
-Use the exact CI PostgreSQL URL and the `MUSIC_C3`–`MUSIC_C9` flags, as in `tunes.yml:120-126`. Then boot the real server against the upgraded database:
+Use the exact CI PostgreSQL URL and the `MUSIC_C3`–`MUSIC_C9` flags, as in `tunes.yml:120-126`.
+
+**This integration test is the evidence, so it must run the attestation itself.**
+- Its upgraded-database case ends by calling `startCanonicalServer` (`canonicalStartup.ts:22`) **without** an injected pool, configured with the runtime role's credentials, so the real `if (!pool)` attestation path runs (`:31-35`).
+- It then asserts that `/health/ready` answers 200.
+
+The no-Strapi browser run is **not** evidence for this step. `profile-browser-fixture.ts` migrates as `music_migrator`, provisions a runtime login only for `lifecycle`, and hands `createCanonicalApp` the pool directly (`:124-142`), so it never attests. Run it anyway, as a regression check:
 
 ```bash
 npm --prefix tunes run explorers:test:no-strapi-browser -- --ack TASK4_FIXTURE_OWNED_DISPOSABLE_PG15
 ```
 
-The runner migrates its own database through the whole chain and boots `createCanonicalApp`. A green run means the attestation accepted `0059`.
-
 - [ ] **Step 8: Commit**
 
 ```bash
-git commit -m "feat(db): 0059 retires the Strapi-era baseline and analytics receipts
+git commit -m "feat(db): 00NN retires the Strapi-era baseline and analytics receipts
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-**No image rollback after this.** `readiness.ts:13` requires an exact migration-id match, so an image older than `0059` refuses to boot. Deploy it like P3-9: back up first (P5b), and keep the owner informed.
+**No image rollback after this.** `readiness.ts:13` requires an exact migration-id match, so an image older than `00NN` refuses to boot. Deploy it like P3-9: back up first (P5b), and keep the owner informed.
 
 ---
 
@@ -1857,6 +2128,22 @@ P3-8 may have renamed the contract test; find it with `ls tunes/server/test/cont
 
 ## P6-12: Close — final guard run and evidence
 
+- [ ] **Step 0: Widen the ratchet to the rest of `build:api`**
+
+P3-7 has now dealt with the three entry points P6-3 left out. Add each that still exists to `PRODUCTION_ENTRIES` in `scripts/check-retired-dependencies.mjs`:
+- `server/api.ts`, collapsed to canonical by P3-7 Step 7;
+- `server/deployment/run-production-graph-smoke.ts`, if P3-7 rewrote it rather than deleting it;
+- `server/deployment/run-registration-compat.ts`, if it somehow survived.
+
+Re-measure `MINIMUM_MODULES`, then:
+
+```bash
+grep -o "esbuild [^&]*" tunes/package.json   # the entry points build:api really bundles
+node --test scripts/check-retired-dependencies.test.mjs
+```
+
+Every entry `build:api` bundles must be in `PRODUCTION_ENTRIES`. Commit this on its own.
+
 - [ ] **Step 1: Run every Strapi gate on `main` after P6-11**
 
 ```bash
@@ -1882,7 +2169,7 @@ List them in the PR body.
 
 - [ ] **Step 2: Re-measure the floors and record them**
 
-Write the final `MODULE_FLOOR`, `ROUTE_FLOOR`, `MINIMUM_CANONICAL_MODULES` and `MIN_JS_BYTES`, with their measured values, into the PR body. If a floor fell since P6-1, say why. Deleting Apollo removes modules, so a lower module count is expected. A floor that **rose** is fine.
+Write the final `MODULE_FLOOR`, `ROUTE_FLOOR`, `MINIMUM_MODULES` and `MIN_JS_BYTES`, with their measured values, into the PR body. If a floor fell since P6-1, say why. Deleting Apollo removes modules, so a lower module count is expected. A floor that **rose** is fine.
 
 - [ ] **Step 3: Remove the "does NOT mean Strapi is retired" line** from `check-retired-dependencies.mjs`. Then commit and push.
 
@@ -1896,12 +2183,27 @@ Write the final `MODULE_FLOOR`, `ROUTE_FLOOR`, `MINIMUM_CANONICAL_MODULES` and `
 
 - [ ] **Step 1: Quiet period — seven days with no traffic to Strapi from the product**
 
-After P6-12, Strapi should receive no request from `explorers.earth`. The owner checks for **requests during the last seven days with an `Origin` or `Referer` of `explorers.earth`**, using whichever of these exists:
+**First, the gate this step depends on.** The old production tunes stack runs root `docker-compose.yml`:
+- It is in `legacy-music` mode (`:9`).
+- The Strapi variables are **required** (`:19-27`).
+- It calls Strapi server to server: identity gateway, reconciler, reactivation `PUT /api/users/:id`, sitemap.
+
+Deleting code from `main` does not stop that container. Before the quiet period starts, the owner confirms from the P2 completion record that this stack is **switched off, or running canonical**. If it still runs `legacy-music`, switching Strapi off breaks it. Stop here until it is retired.
+
+Then, after P6-12, Strapi should receive no request from the product. The owner checks the last seven days in **two** ways:
+- **By source IP.** Look for requests from the explorers host and the old tunes host. This catches server-to-server calls, which carry no `Origin` or `Referer`.
+- **By `Origin`/`Referer`.** Look for requests with an `Origin` or `Referer` of `explorers.earth`. This catches browsers.
+
+Use whichever of these exists:
 - Strapi's access log on LocalQR-Strapi-Prod;
 - the reverse proxy in front of it;
 - the Hetzner/CDN metrics.
 
-Any such request means a client this plan missed, very likely a stale tab or an old cached legacy bundle. Wait out a cached bundle; anything else goes back to the engineer.
+What a match means:
+- **A browser request** means a client this plan missed: most likely a stale tab or an old cached legacy bundle. Wait out a cached bundle.
+- **Server-to-server traffic** means a stack is still running legacy.
+
+Either way, anything you cannot explain goes back to the engineer.
 
 - [ ] **Step 2 (optional): Export the content**
 
@@ -1913,7 +2215,7 @@ Media lives in the Strapi S3 bucket (`grooming-media-auth-review.md:13`). Copy i
 
 - [ ] **Step 3: Confirm the Strapi S3 bucket is not the canonical media bucket**
 
-Compare the bucket in the production `.env` on the explorers host (`EXPLORERS_MEDIA_BUCKET`, or whatever P2's `deploy/production.env.example` calls it) with the Strapi `aws-s3` provider's bucket (Strapi admin → Settings, or the Strapi server env).
+Compare the bucket in the production `.env` on the explorers host (`EXPLORERS_MEDIA_S3_BUCKET`, as named in `deploy/production.compose.yml`) with the Strapi `aws-s3` provider's bucket (Strapi admin → Settings, or the Strapi server env).
 
 **If they are the same bucket, stop.** Deleting it destroys canonical media. The Strapi objects must then be removed by prefix instead, and this step becomes an engineer task.
 
@@ -1935,7 +2237,7 @@ The engineer may run that command. The owner deletes in the GitHub UI, or with `
 
 1. **Stop** the Strapi process on LocalQR-Strapi-Prod and LocalQR-Strapi-Dev. Do not delete anything yet. `api.localqr.earth` now fails. Wait 48 hours, then look for breakage, such as the support inbox and any monitor.
 2. **DNS.** Remove the `api.localqr.earth` record, or point it at a static host answering `410 Gone`. Removing it is simpler; a 410 is kinder to anything that still calls it. The owner chooses.
-3. **Delete** the two Hetzner CAX21 servers, LocalQR-Strapi-Prod and LocalQR-Strapi-Dev (`database-change-feature.md:24-28`).
+3. **Delete** the two Hetzner CAX21 servers, LocalQR-Strapi-Prod and LocalQR-Strapi-Dev (`database-change-feature.md:24-28`). Also check the older AWS Mumbai host `13.126.235.177` (`vite.config.ts:59,66`). If it or its database still exists, it is part of this step.
 4. **Delete** the RDS instance, **only after** Step 2's snapshot decision. This is irreversible.
 5. **Delete** the Strapi S3 bucket, **only if** Step 3 confirmed it is separate. This is irreversible.
 6. **Archive** the `MeteoriteLabs/localqr-strapi-v2` repository on GitHub. Archive it rather than delete it: it is history.
@@ -1953,6 +2255,8 @@ Add a dated line to the backbone's P6 section: what was switched off, when, and 
 3. **`api.localqr.earth` after switch-off:** remove the DNS record, or serve a static 410?
 4. **The legacy e2e `/graphql` mocks** (decision 6): leave them as harmless residue, or schedule a cleanup PR?
 5. **Making the no-Strapi lane required** (P6-1 Step 14). It is nightly here. P7 owns the cost trade-off.
+6. **The AWS Mumbai host `13.126.235.177`** (`vite.config.ts:59,66`, `2026-07-08-production-e2e-run-notes.md:75`). Does it, or an RDS or EC2 behind it, still exist and bill? If so, P6-13 Step 5 retires it too.
+7. **Who runs the production row-count check in P6-10 Step 3?** It needs database access on the host, which the owner does not have yet.
 
 ---
 
@@ -1962,7 +2266,14 @@ Add a dated line to the backbone's P6 section: what was switched off, when, and 
 - "Six server call sites." Re-verified at module granularity, and two more found outside both closures. Five die in P3-7, the sixth in P6-2, and the two outliers in P6-9.
 - "Analytics events route is the last live dependency inside canonical, so P5-1 is its prerequisite." Confirmed for network calls, and found to be broken rather than live. P6-2 is gated on P5-1.
 - "Frontend is mostly deletion — no Apollo operation executes; 45 `gql` documents are inert." Confirmed at 45. Inert by absence of callers, not by a guard, with 35 shipping in the bundle. P6-6 and P6-7 delete them.
-- **`no-strapi.spec.ts` with its four properties.** Covered by P6-1: poisoned origin (Step 7 and Step 6a), monitor self-test (Step 11, plus `selfTestOutboundMonitor`), closure-size floor (`MODULE_FLOOR`), route-coverage floor (`ROUTE_FLOOR` and the literal-inventory test). Step 13 proves each one can fail.
+- **`no-strapi.spec.ts` with its four properties, plus a fifth.** Covered by P6-1:
+  - **Poisoned origin:** Step 7 and Step 6a.
+  - **Monitor self-test:** Step 11 and `selfTestOutboundMonitor`. Step 6d drives the one historical canonical Strapi read.
+  - **Closure-size floor:** `MODULE_FLOOR`, which proves boot.
+  - **Route-coverage floor:** `ROUTE_FLOOR`, plus the occurrence-indexed inventory test.
+  - **Fifth, per-case landing and API proof:** `landedOk`, the `/me` 200 wait and `API_FLOOR`.
+
+  Step 14 proves each property can fail.
 
 **Coverage against the brief:**
 - **Server call sites:** P6-2 and P6-9.
@@ -1996,4 +2307,72 @@ Each Phase A ticket leaves the following unchanged: `legacy-music` boot (P6-2 ke
 
 ## Corrections from review
 
-*To be filled in by the review pass below; each row states what this revision said and what the code says.*
+Revision 1 was reviewed by two independent adversarial reviews, each run against the code:
+- **Review A:** server, database, CI and ordering.
+- **Review B:** the frontend and the guard.
+
+Both executed the plan's literals instead of reading them:
+- the real scanner, with its edges and entry points swapped;
+- the whole tunes server suite before and after applying P6-2's edits;
+- `tsc` on P6-3's re-export;
+- a real platform build, grepped for P6-5's markers;
+- Playwright 1.61.1 channel experiments;
+- the guard's exact Vite config, served over the real SPA (Vite 8.0.16);
+- a diff of the route table against the real literals.
+
+Revision 2 applies every finding.
+
+### Revision 2 — from reviews A and B (2026-10-19)
+
+| # | Revision 1 said | The code says | Applied |
+|---|---|---|---|
+| 1 | P6-2 deletes the owner `GET /api/explorers/analytics/events`, gated on P5-1 having "repointed the dashboard" | **P5-1 keeps that route** and serves it from canonical `analytics_events` with session auth (`9e73fb75`). The SPA still calls it. Revision 1's gate would always say "stop", and its literal code would have undone P5-1, removing the dashboard's only data source in production | P6-2 rewritten against the post-P5-1 file. It keeps the route, makes `auth` required, and deletes only the `!auth` branch and its dynamic import. Legacy gets an ingest-only set whose owner read is refused |
+| 2 | Step 2's test used `createLoopbackSupertestScope(app)` and `from`/`to` | The helper takes no argument and returns `open`/`closeAll`. The scope keys are `fromDate`/`toDate`/`timeZone` (`explorersAnalyticsRoutes.ts:75-80`) | The new test needs no HTTP. The owner read is covered by P5-1's integration test |
+| 3 | Removing the GET breaks `analytics-inventory-regression` | That test passes, because it uses a synthetic row. Removing the GET would break `music-openapi-contract`, `music-authorization-matrix`, `runtime-surface-inventory` and the route-parity probe | Moot: the route stays (row 1) |
+| 4 | P6-3: `export { requestIdFor } from "./http/requestId"` | `security-containment.ts` calls it at `:148`, `:204` and `:353`. An `export … from` creates no local binding: TS2552 three times, and a `ReferenceError` on every legacy request | `import` plus `export { requestIdFor }` |
+| 5 | P6-3 makes "the canonical closure Strapi-free", so the deploy cannot reach Strapi | The scanner walks only `canonicalStartup.ts` and skips `@shared/*`. The `migrate` service's `run-migration-gate.ts` reaches `music-health.ts:57-60`, which reads three `STRAPI_*` variables | P6-3 splits `deploymentImageFromEnvironment` out, scans every production entry point and resolves `@shared/*`. P6-12 Step 0 adds the rest of `build:api` after P3-7 |
+| 6 | The composition edge holds `shared/schema.ts` and `music-uat-database.ts` in canonical, "and the scanner agrees" | The edge holds exactly five modules: `db.ts`, the two music profile configs, the composition and the receipts module (155 → 150). `music-uat-database.ts` stays canonical via `apps-canonical-admission.ts`. `shared/schema.ts` is a `tsc` fact the scanner cannot see | Decision 3 and P6-2 Step 6 corrected. The stale-entry list is now definite: four entries |
+| 7 | P6-5 gate: none | Until P6-4, the bundle contains `undefined/upload` twice, `undefined/upload/files/` and `users_permissions_users`, so P6-5 would turn the required `build` job red | Gated on P6-4. The size floor is set from the measured 12.36 MB: 6 MB, not 0.5 MB. Nothing ran `explorers-earth/scripts/*.test.mjs` in CI, so the scanner's own test is added there |
+| 8 | P6-9 gated only on P3-7 | P6-9 deletes the contained `/graphql` adapter, which the required contained-auth-session lane uses until P6-6. It also deletes CI's `VITE_API_URL`, Apollo's URI until P6-7 | Gated on P6-7 as well |
+| 9 | P6-10: "a green guard run means the attestation accepted the migration" | The runner migrates as `music_migrator`, never attests, and hands `createCanonicalApp` a pool (`profile-browser-fixture.ts:124-142`) | The integration test boots `startCanonicalServer` with no injected pool. The guard run is only a regression check |
+| 10 | P6-10's `sed`, then `grep -w` over the baseline table names | The `sed` left a trailing space on every name, so the grep found 1 hit instead of about 55 | The `sed` strips whitespace and prints a count to check against 27 |
+| 11 | P6-10's catch-all is a grep for the previous migration head | Tests and fixtures pin **table names** directly: `runtime-table-manifest.test.ts:47-56`, `music-e2e-state-restore.test.ts`, `music-e2e-state-capture.test.ts:65`, `music-runtime.integration.test.ts:17-20,166`, the manifest JSON, and the hyphenated marker `explorers-analytics-receipts-v1` | A name grep and a marker grep added |
+| 12 | P3-9 = `0058`, P6-10 = `0059` | The P5 branch already adds `0058` and `0059`, and changes the runtime-role lists | Written as `00NN`, assigned by the orchestrator. Every expected list is derived from the tree |
+| 13 | P6-13's quiet period checks requests by `Origin`/`Referer` | The live root `docker-compose.yml` runs `legacy-music` with the Strapi variables **required** (`:9,19-27`). Its Strapi calls are server-to-server, with no `Origin` | P6-13 is gated on that stack being retired or running canonical. Logs are checked by source IP as well |
+| 14 | P6-10 replaces the `TRUNCATE TABLE users` probe with one on `creator_accounts` | `:857` already proves a `TRUNCATE` denial on `account_category_content_state` | Delete the probe, once `:857` is confirmed still there |
+| 15 | P6-10's view query joined `pg_depend.objid` to the view | View dependencies hang off the view's `pg_rewrite` rule, so that query could never return a row | Joins through `pg_rewrite` |
+| 16 | Guard: the server monitor records `${request.protocol}//${request.host}` | `ClientRequest.host` has no port, so the `:1337` self-test could never match and the monitor always reported itself blind | Uses `getHeader('host')` |
+| 17 | Guard: with `hmr: false`, every WebSocket is a violation | Vite 8 opens `ws://<origin>/?token=…` on every page regardless | That one socket is a named `vite-client` stub. Every other socket is still a violation |
+| 18 | Guard: poison `VITE_PUBLIC_PROFILE_GATEWAY_URL` | It is the origin of canonical `/api/explorers/v1/profiles/…` (`publicProfileGatewayClient.ts:57-61`), so every public page became a false positive | Set to `origin`. `VITE_INSTAGRAM_API_URL` (fallback `localhost:5000`) is set to `origin` too |
+| 19 | Guard: the WebSocket self-test settles on `onopen`/`onerror` | A socket closed by `routeWebSocket` fires only `onclose`, so the evaluate hung until the 90s timeout | Settles on `onclose`, with a 5s timeout on every channel |
+| 20 | Guard: onboard `ownerA` with `{expectedRevision, handle, onboardingStatus, publicProfile}` | `creator_accounts_complete_valid` (`0022:94-95`) requires `display_name` and `account_type`, so this PATCH returns 422 | Adds `displayName` and `accountType: 'Personal'`, as `profile.spec.ts:627-628` does |
+| 21 | Guard: the closure-size floor means "an app that crashed or a route table that rendered nothing cannot pass" | Every route loads the same 573 modules, because routes are imported statically. A broken sign-in bounces every owner case to `/login`, and all of them pass | Each case asserts where it landed. Owner cases must see `/me` return 200 and must never land on `/login` or `/onboarding`. An API-surface floor is added, and the closure floor is relabelled "boot" |
+| 22 | Guard: the route table is set-equal to the route literals | It missed `/onboarding`. Matching by set also hid six unvisited public routes (`:listSlug` occurs six times, `genre/:genreSlug` twice) | Keys are occurrence-indexed: `<file>:<path>#<n>`. The six routes and an un-onboarded `/onboarding` case are added. The redirect literals are visited with a `lands` assertion instead of being excluded |
+| 23 | Guard: the server monitor guards canonical | No browser case can trigger the one historical canonical Strapi read, because it needs an auth-store token. So the monitor watched nothing | The runner drives that read directly. P6-1 is gated on P5-1, so the probe is green for the right reason, and teeth check 4 proves it goes red without P5-1 |
+| 24 | Guard: the runner imports a new module | `snapshotSource()` (`replatform-e2e.mjs:455-500`) fails on any unreviewed relative dependency of `profile-browser-fixture.ts`. It runs in the required `test.yml` lane | The new file is registered in the same commit. New e2e files are committed before the test runs |
+| 25 | Guard: "runs the real SPA"; type-checks via `--list` | It runs Vite **dev** mode, where `isCanonicalRuntime()` is false. `--list` threw without the fixture, and never type-checks anyway | The scope is stated plainly, with P6-5 covering the shipped bundle. The fixture is read lazily, and an e2e tsconfig does the type-check |
+| 26 | Guard: sign in through a `localStorage` init script, because "token: null mirrors production" | The persisted store discards that script (`store.ts:143-146`). Admission is the cookie alone | Init script removed |
+| 27 | P6-4: the fallback starts at `:1731`; delete `selectExplorerAccountUploadTarget` "and its tests" | It starts at `:1730`. `token` (`:254`) becomes unused and fails `noUnusedLocals`. The module exports four live functions, and a coverage script pins its test file | Lines fixed. `token` is added to the unused-symbol check. Only that function and its test cases are deleted |
+| 28 | P6-6: 45 documents in 12 files; `Profile/api/query.ts` is a document file | 13 files. That file holds no document. `Profile.live-order-contract.test.tsx:64-67` reads `Settings/api/mutation.ts` | Counts fixed and the consumer added. The path grep is replaced by `tsc` plus the whole lane |
+| 29 | P6-8: `docker build .` | The platform stages need `--build-context platform-shared=../tunes/shared` (`Dockerfile:53`) | Fixed |
+
+Also applied from the same reviews:
+- **Inventory additions:** `music-health.ts`, `public-profile-gateway-config.ts`, `music-environment.ts`, `verify-publication-authority.mjs`, the nested `tunes/.github/workflows/main.yml`, and a third host, `13.126.235.177` (Open question 6).
+- **Fixture nginx:** P6-9 re-points the catch-all `/api/` instead of deleting it. Deleting it would have served the SPA shell where a JSON 404 belongs.
+- **P6-3's test:** uses `spawnSync` instead of `execFileSync`.
+- **Bucket variable:** the name is `EXPLORERS_MEDIA_S3_BUCKET`.
+- **CI note:** the fixture Strapi makes the historical read live in CI.
+- **P6-7:** counts corrected, and the stale served-source path lists are pruned.
+
+**Confirmed correct by the reviews, and kept:**
+- the 27 baseline tables;
+- no foreign key into `users` survives P3-9, which drops `0018:5`, `0023:17` and `0051:116` and all six triggers;
+- no surviving function body names a baseline table;
+- Better Auth uses only `auth_*` tables;
+- `provisionMusicRuntimeLogin` grants by schema, not by table name;
+- the canonical JSON 404 terminator exists, and a POST-only path falls through to it;
+- the P6-4 leak predicate flags exactly the two files;
+- the `__APOLLO_CLIENT__` dev-mode claim;
+- the `graphql` consumer list;
+- the Playwright config names;
+- the nightly lane's argument parsing.
