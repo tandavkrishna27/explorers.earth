@@ -188,3 +188,229 @@ describe("drill command", () => {
     [["--manifest", "m.json", "--identity", "k.age", "--receipt", "r", "--target", "postgresql://prod/db"]],
   ])("rejects %j", (args) => expect(() => parseDrillCommand(args)).toThrow(/arguments rejected/));
 });
+
+import { spawnSync } from "node:child_process";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import {
+  assertDumpIsRestorable, buildConfigurationEntries, buildDumpCommand, buildGlobalsCommand, readTar, writeTar,
+} from "../../../deployment/platform-backup.mjs";
+
+const backupScript = resolve(import.meta.dirname, "../../../deployment/platform-backup.mjs");
+// A throwaway, syntactically valid age recipient. It is generated material for the
+// shape check only; nothing is ever encrypted to it.
+const RECIPIENT = `age1${"q".repeat(58)}`;
+
+/** A host-shaped root: what deploy/host/explorers-deploy.sh leaves in /opt/explorers. */
+function hostRoot(overrides: Record<string, string | null> = {}): string {
+  const root = mkdtempSync(join(tmpdir(), "platform-backup-host-"));
+  mkdirSync(join(root, "secrets"));
+  const secretMigrator = join(root, "secrets", "db-migrator"), secretRuntime = join(root, "secrets", "db-runtime");
+  writeFileSync(secretMigrator, "throwaway", { mode: 0o600 });
+  writeFileSync(secretRuntime, "throwaway", { mode: 0o600 });
+  const variables: Record<string, string> = {
+    DB_NAME: "explorers",
+    DB_MIGRATOR_USER: "explorers_migrator",
+    DB_RUNTIME_USER: "explorers_runtime",
+    DB_MIGRATOR_PASSWORD_FILE_HOST: secretMigrator,
+    DB_RUNTIME_PASSWORD_FILE_HOST: secretRuntime,
+    EXPLORERS_MEDIA_S3_BUCKET: "explorers-media",
+    EXPLORERS_MEDIA_S3_REGION: "ap-south-1",
+    EXPLORERS_BACKUP_AGE_RECIPIENT: RECIPIENT,
+  };
+  for (const [key, value] of Object.entries(overrides)) if (!key.includes(".") && value !== null) variables[key] = value;
+  const files: Record<string, string> = {
+    "production.compose.yml": "name: explorers-canonical\n",
+    "production.env": Object.entries(variables).map(([key, value]) => `${key}=${value}`).join("\n") + "\n",
+  };
+  for (const [name, body] of Object.entries(files)) {
+    if (overrides[name] === null) continue;
+    writeFileSync(join(root, name), body, { mode: 0o600 });
+  }
+  return root;
+}
+
+/** A fake `docker` first on PATH, so a refusal that leaks past preflight is visible
+ *  as a recorded call instead of a real container. Plain Node, so it works on Windows. */
+function shimDirectory(): string {
+  const directory = mkdtempSync(join(tmpdir(), "platform-backup-shims-"));
+  const log = JSON.stringify(join(directory, "calls.log"));
+  const body = `#!/usr/bin/env node\nrequire("fs").appendFileSync(${log}, process.argv.slice(2).join(" ") + "\\n");\nprocess.exit(97);\n`;
+  writeFileSync(join(directory, "docker"), body, { mode: 0o755 });
+  writeFileSync(join(directory, "docker.cmd"), `@node "%~dp0docker" %*\n`, { mode: 0o755 });
+  return directory;
+}
+
+function runBackup(root: string, extra: string[] = [], environment: Record<string, string> = {}) {
+  const shims = shimDirectory();
+  try {
+    const result = spawnSync(process.execPath, [backupScript, "--environment", "prod", "--reason", "manual", ...extra], {
+      encoding: "utf8",
+      windowsHide: true,
+      env: { ...process.env, PATH: `${shims}${process.platform === "win32" ? ";" : ":"}${process.env.PATH}`,
+        EXPLORERS_BACKUP_ROOT: root, ...environment },
+    });
+    let calls = "";
+    try { calls = readFileSync(join(shims, "calls.log"), "utf8"); } catch { /* no docker call */ }
+    return { ...result, calls };
+  } finally { rmSync(shims, { recursive: true, force: true }); }
+}
+
+describe("host backup preflight", () => {
+  it("refuses a root that is not absolute, is / or is /opt", () => {
+    for (const root of ["relative/path", "/", "/opt"]) {
+      expect(runBackup(root).stderr).toMatch(/backup root is unsafe/);
+    }
+  });
+
+  it("refuses a missing production.env", () => {
+    const root = hostRoot({ "production.env": null });
+    try { expect(runBackup(root).stderr).toMatch(/production\.env/); }
+    finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it("refuses a missing production.compose.yml", () => {
+    const root = hostRoot({ "production.compose.yml": null });
+    try { expect(runBackup(root).stderr).toMatch(/production\.compose\.yml/); }
+    finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it("refuses when no age recipient is configured", () => {
+    const root = hostRoot();
+    writeFileSync(join(root, "production.env"), "DB_NAME=explorers\n", { mode: 0o600 });
+    try { expect(runBackup(root).stderr).toMatch(/EXPLORERS_BACKUP_AGE_RECIPIENT/); }
+    finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it("refuses an age private identity pasted into the recipient variable, without echoing it", () => {
+    const root = hostRoot({ EXPLORERS_BACKUP_AGE_RECIPIENT: `AGE-SECRET-KEY-1${"Q".repeat(58)}` });
+    try {
+      const result = runBackup(root);
+      expect(result.stderr).toMatch(/recipient must be a public age key/);
+      expect(`${result.stdout}${result.stderr}`).not.toMatch(/AGE-SECRET-KEY/);
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it("refuses a secret file variable that points nowhere", () => {
+    const root = hostRoot({ DB_RUNTIME_PASSWORD_FILE_HOST: "/nonexistent/db-runtime" });
+    try { expect(runBackup(root).stderr).toMatch(/DB_RUNTIME_PASSWORD_FILE_HOST/); }
+    finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it("refuses a world-readable secret-bearing file", () => {
+    if (process.platform === "win32") return;
+    const root = hostRoot();
+    chmodSync(join(root, "production.env"), 0o644);
+    try { expect(runBackup(root).stderr).toMatch(/mode must be 0600 or 0400/); }
+    finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it("refuses a symlinked production.env", () => {
+    if (process.platform === "win32") return;
+    const root = hostRoot();
+    rmSync(join(root, "production.env"));
+    symlinkSync("/etc/hostname", join(root, "production.env"));
+    try { expect(runBackup(root).stderr).toMatch(/production\.env must be a regular file/); }
+    finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it("refuses while another backup holds the lock", () => {
+    const root = hostRoot();
+    writeFileSync(join(root, "backup.lock"), "12345\n", { mode: 0o600 });
+    try { expect(runBackup(root).stderr).toMatch(/another backup is running/); }
+    finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it("refuses a pre-deploy backup without the candidate identity", () => {
+    const root = hostRoot();
+    try { expect(runBackup(root, ["--reason", "pre-deploy"]).stderr).toMatch(/arguments rejected/); }
+    finally { rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it("never prints a secret value or starts a container on any refusal path", () => {
+    const root = hostRoot({ DB_RUNTIME_PASSWORD_FILE_HOST: "/nonexistent/db-runtime" });
+    try {
+      const result = runBackup(root);
+      expect(result.status).toBe(1);
+      expect(`${result.stdout}${result.stderr}`).not.toMatch(/age1q{10}/);
+      expect(result.calls).toBe("");
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+});
+
+describe("database capture", () => {
+  const values = new Map([["DB_NAME", "explorers"], ["DB_MIGRATOR_USER", "explorers_migrator"]]);
+  const containerId = "a".repeat(64);
+
+  it("dumps custom format with owners and ACLs retained, inside the exported snapshot", () => {
+    const command = buildDumpCommand({ values, containerId, snapshot: "00000003-00000002-1" });
+    expect(command.args.slice(0, 3)).toEqual(["exec", containerId, "pg_dump"]);
+    expect(command.args).toContain("--format=custom");
+    expect(command.args).toContain("--no-password");
+    expect(command.args).toContain("--snapshot=00000003-00000002-1");
+    // Ownership is attested at boot (music-runtime-role.ts), so a dump that drops it
+    // produces a database the application refuses to start on.
+    expect(command.args).not.toContain("--no-owner");
+    expect(command.args).not.toContain("--no-acl");
+    expect(command.args).not.toContain("--data-only");
+  });
+
+  it("refuses a malformed snapshot identifier", () => {
+    expect(() => buildDumpCommand({ values, containerId, snapshot: "x; rm -rf /" })).toThrow(/snapshot/);
+  });
+
+  it("captures globals without role passwords", () => {
+    const command = buildGlobalsCommand({ values, containerId });
+    expect(command.args).toContain("--globals-only");
+    // SCRAM verifiers are secrets we do not need: the migration gate re-sets the
+    // runtime login password from the secret file on every deploy
+    // (run-migration-gate.ts provisionMusicRuntimeLogin), so the hash is never the authority.
+    expect(command.args).toContain("--no-role-passwords");
+  });
+
+  it("refuses a dump that is empty or not a pg_dump custom archive", () => {
+    expect(() => assertDumpIsRestorable(Buffer.alloc(0))).toThrow(/dump is empty/);
+    expect(() => assertDumpIsRestorable(Buffer.from("-- plain sql\n"))).toThrow(/custom-format/);
+    expect(assertDumpIsRestorable(Buffer.concat([Buffer.from("PGDMP"), Buffer.alloc(64)]))).toBe(true);
+  });
+});
+
+describe("host configuration capture", () => {
+  it("captures production.env, the compose file and every secret file production.env names", () => {
+    const values = new Map([
+      ["DB_MIGRATOR_PASSWORD_FILE_HOST", "/opt/explorers/secrets/db-migrator"],
+      ["DB_RUNTIME_PASSWORD_FILE_HOST", "/opt/explorers/secrets/db-runtime"],
+    ]);
+    const entries = buildConfigurationEntries({ root: "/opt/explorers", values });
+    expect(entries.map(entry => entry.name)).toEqual([
+      "opt/explorers/production.env",
+      "opt/explorers/production.compose.yml",
+      "opt/explorers/secrets/db-migrator",
+      "opt/explorers/secrets/db-runtime",
+    ]);
+  });
+
+  it("refuses a secret path that is not a normalized absolute path", () => {
+    const values = new Map([["DB_RUNTIME_PASSWORD_FILE_HOST", "/srv/secrets/../../etc/shadow"]]);
+    expect(() => buildConfigurationEntries({ root: "/opt/explorers", values })).toThrow(/secret path/);
+  });
+
+  it("round-trips bytes, mode and numeric ownership through the archive format", () => {
+    // explorers-deploy.sh refuses production.env unless it is root-owned 0600, so a
+    // restore that loses either is refused on the very next deploy.
+    const directory = mkdtempSync(join(tmpdir(), "platform-backup-tar-"));
+    try {
+      const path = join(directory, "a.tar");
+      writeTar(path, [
+        { name: "opt/explorers/production.env", bytes: Buffer.from("A=1\n"), mode: 0o600, uid: 0, gid: 0 },
+        { name: "database/dump.pgc", bytes: Buffer.alloc(1500, 7), mode: 0o600, uid: 1000, gid: 1000 },
+      ]);
+      const read = readTar(readFileSync(path));
+      expect(read.map(entry => [entry.name, entry.mode, entry.uid, entry.gid, entry.bytes.length]))
+        .toEqual([["opt/explorers/production.env", 0o600, 0, 0, 4], ["database/dump.pgc", 0o600, 1000, 1000, 1500]]);
+      expect(read[1].bytes.equals(Buffer.alloc(1500, 7))).toBe(true);
+      expect(() => readTar(Buffer.alloc(100))).toThrow(/archive/);
+    } finally { rmSync(directory, { recursive: true, force: true }); }
+  });
+});

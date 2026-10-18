@@ -48,7 +48,8 @@
     "platform:test:routes": "tsx scripts/replatform-local.ts test:routes",
     "platform:test:browser-egress": "node explorers-earth/scripts/replatform-browser-egress.mjs",
     "platform:test:e2e": "node scripts/replatform-e2e.mjs",
-    "platform:seed": "tsx scripts/replatform-local.ts seed"
+    "platform:seed": "tsx scripts/replatform-local.ts seed",
+    "platform:backup": "node tunes/deployment/platform-backup.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
