@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { assertCanonicalPlatformRouteGraph } from "../../config/platform-route-graph";
 import {
@@ -15,20 +17,22 @@ import {
  * the inventory and the count is derived from it rather than typed in — a probe
  * added without a response here fails loudly instead of silently raising a
  * number nobody re-checked.
+ *
+ * Redefined 2026-10-18 (P3-2, Music removal). The fixture now runs
+ * `EXPLORERS_API_MODE=canonical`, and the invariant went from eleven probes to six:
+ * the four legacy Music probes and the Strapi `/api/users/me` boundary cannot pass
+ * against a canonical-only composition, and the behaviour they proved left with
+ * Music. This is a deliberate change to what the fixture proves, recorded here and
+ * in the commit, not a count lowered to accommodate an absent route.
  */
 describe("platform fixture route parity", () => {
   const responses: Record<string, [number, Record<string, unknown>]> = {
-    "/api/check": [401, { authenticated: false }],
-    "/api/csrf-token": [200, { token: "fixture-csrf" }],
-    "/api/user/reactivate": [400, { error: "Token is required" }],
     "/api/explorers/analytics/events": [400, { message: "Invalid analytics scope" }],
-    "/api/music-fixture/readiness": [200, { status: "ready" }],
     "/health/live": [200, { status: "live" }],
     "/api/auth/sign-in/social": [403, { error: { code: "FORBIDDEN", message: "Auth request origin is not trusted" } }],
     "/api/explorers/v1/me": [401, { error: { code: "UNAUTHENTICATED", message: "Sign in is required" } }],
     "/api/explorers/v1/account/lifecycle": [401, { error: { code: "UNAUTHENTICATED", message: "Sign in is required" } }],
     "/api/explorers/v1/collections": [401, { error: { code: "UNAUTHENTICATED", message: "Sign in is required" } }],
-    "/api/users/me": [403, { error: "fixture identity authority denied" }],
   };
 
   function fixtureIngress() {
@@ -42,29 +46,24 @@ describe("platform fixture route parity", () => {
     return { seen, fetchImpl };
   }
 
-  it("requires actual auth, profile, content, lifecycle, analytics, Music and Strapi handler signatures at fixture ingress", async () => {
+  it("requires actual auth, profile, content, lifecycle and analytics handler signatures at fixture ingress", async () => {
     const ingress = fixtureIngress();
     expect(await verifyPlatformIngress("http://127.0.0.1:51474", ingress.fetchImpl))
       .toBe(EXPECTED_PLATFORM_PROBE_COUNT);
     expect(ingress.seen).toEqual([
-      "GET /api/check",
-      "GET /api/csrf-token",
-      "GET /api/user/reactivate",
       "GET /api/explorers/analytics/events",
-      "GET /api/music-fixture/readiness",
       "GET /health/live",
       "POST /api/auth/sign-in/social",
       "GET /api/explorers/v1/me",
       "GET /api/explorers/v1/account/lifecycle",
       "GET /api/explorers/v1/collections",
-      "GET /api/users/me",
     ]);
   });
 
   it("counts the canonical routes, so an absent one cannot pass as a skip", () => {
     // The guard the 1.2 correction asks for in prose: the count must not be
     // lowered to accommodate a missing canonical route.
-    expect(EXPECTED_PLATFORM_PROBE_COUNT).toBe(11);
+    expect(EXPECTED_PLATFORM_PROBE_COUNT).toBe(6);
     const paths = PLATFORM_ROUTE_PROBES.map((probe) => probe.path);
     for (const canonical of [
       "/health/live",
@@ -75,24 +74,26 @@ describe("platform fixture route parity", () => {
     ]) {
       expect(paths).toContain(canonical);
     }
-    // And the original six are not weakened away.
-    for (const legacy of [
+    // The analytics probe survived the P3-2 redefinition and is not weakened away.
+    expect(paths).toContain("/api/explorers/analytics/events");
+    // And the retired Music and Strapi probes do not drift back in.
+    for (const retired of [
       "/api/check",
       "/api/csrf-token",
       "/api/user/reactivate",
-      "/api/explorers/analytics/events",
       "/api/music-fixture/readiness",
+      "/api/users/me",
     ]) {
-      expect(paths).toContain(legacy);
+      expect(paths).not.toContain(retired);
     }
   });
 
   it("fails when a probed route answers with the wrong status", async () => {
     const ingress = fixtureIngress();
-    responses["/api/user/reactivate"] = [403, { error: "fixture identity authority denied" }];
+    responses["/api/explorers/analytics/events"] = [404, { message: "Not found" }];
     await expect(verifyPlatformIngress("http://127.0.0.1:51474", ingress.fetchImpl))
       .rejects.toThrow(/ingress mismatch/);
-    responses["/api/user/reactivate"] = [400, { error: "Token is required" }];
+    responses["/api/explorers/analytics/events"] = [400, { message: "Invalid analytics scope" }];
   });
 
   it("fails when a canonical route answers with the wrong error code", async () => {
@@ -106,14 +107,14 @@ describe("platform fixture route parity", () => {
   });
 
   it("explains itself when a canonical route is absent, instead of failing cryptically", async () => {
-    // This is the failure CI will actually hit while the fixture runs
-    // legacy-music, so the message has to carry its own diagnosis.
+    // The message has to carry its own diagnosis: an absent canonical route means
+    // the fixture composition or its ingress drifted from the canonical app.
     const ingress = fixtureIngress();
     responses["/api/explorers/v1/me"] = [404, { error: { code: "NOT_FOUND", message: "Cannot GET" } }];
     await expect(verifyPlatformIngress("http://127.0.0.1:51474", ingress.fetchImpl))
       .rejects.toThrow(/canonical route absent from the fixture route graph: \/api\/explorers\/v1\/me/);
     await expect(verifyPlatformIngress("http://127.0.0.1:51474", fixtureIngress().fetchImpl))
-      .rejects.toThrow(/EXPLORERS_API_MODE=legacy-music/);
+      .rejects.toThrow(/EXPLORERS_API_MODE=canonical/);
     await expect(verifyPlatformIngress("http://127.0.0.1:51474", fixtureIngress().fetchImpl))
       .rejects.toThrow(/failure, not a skip/);
     responses["/api/explorers/v1/me"] = [401, { error: { code: "UNAUTHENTICATED", message: "Sign in is required" } }];
@@ -122,8 +123,10 @@ describe("platform fixture route parity", () => {
   it("names the SPA shell rather than failing as a JSON parse error", async () => {
     // Regression: the content-type test carried a literal 0x08 byte where `\b` was
     // meant, so the shell always surfaced as a SyntaxError instead.
+    // 400 is the first fixture probe's expected status (analytics, since P3-2), so the
+    // status check passes and the body classification is what is exercised.
     const shell = (async () => new Response("<!doctype html>", {
-      status: 401, headers: { "content-type": "text/html; charset=utf-8" },
+      status: 400, headers: { "content-type": "text/html; charset=utf-8" },
     })) as typeof fetch;
     await expect(verifyPlatformIngress("http://127.0.0.1:51474", shell))
       .rejects.toThrow(/^ingress served the application shell where JSON was expected$/);
@@ -135,9 +138,9 @@ describe("platform fixture route parity", () => {
 });
 
 /**
- * P2 Task 6: the same probe, pointed at a deployed canonical-only host. The
- * fixture invariant above keeps its eleven probes until P3 retires `combined`;
- * this is a second, canonical-only function rather than an edit of that set.
+ * P2 Task 6: the same probe, pointed at a deployed canonical-only host. It is a
+ * second, canonical-only function rather than an edit of the fixture set, which P3-2
+ * (retiring `combined`) redefined to six probes.
  */
 describe("deployed canonical ingress", () => {
   const origin = "https://explorers.example";
@@ -257,5 +260,51 @@ describe("deployed canonical ingress", () => {
     const host = canonicalHost();
     await expect(verifyCanonicalIngress(origin, { handle: "../me", category: "games" }, host.fetchImpl))
       .rejects.toThrow(/unexpected probe \/api\/explorers\/v1\/profiles\/..%2Fme\/recommendations\/games/);
+  });
+});
+
+/**
+ * The fixture's nginx ingress, moved here from `canonical-delegate.test.ts` when
+ * `combined` mode was retired (P3-2). It is the only thing pinning that canonical
+ * paths reach `tunes` and that `/api/auth` gets no synthesised `Origin`: a perfect
+ * canonical app still fails every probe if nginx sends the path to Strapi or to
+ * the SPA shell.
+ */
+describe("platform fixture ingress rules", () => {
+  const repoRoot = resolve(import.meta.dirname, "../../../..");
+  const nginx = readFileSync(resolve(repoRoot, "explorers-earth/nginx.replatform.conf"), "utf8");
+  const block = (location: string) => {
+    const start = nginx.indexOf(`location ${location} {`);
+    expect(start, location).toBeGreaterThanOrEqual(0);
+    return nginx.slice(start, nginx.indexOf("}", start));
+  };
+
+  it("routes every probed path and the public profile reads to Tunes", () => {
+    for (const location of [
+      "= /health/live",
+      "= /api/auth",
+      "^~ /api/auth/",
+      "^~ /api/explorers/v1/",
+      "^~ /api/explorers/v1/profiles/",
+      "^~ /api/explorers/analytics/",
+    ]) {
+      expect(block(location), location).toContain("proxy_pass http://tunes:5000;");
+    }
+  });
+
+  it("keeps no Music-only location", () => {
+    expect(nginx).not.toContain("/api/music-fixture/readiness");
+    expect(nginx).not.toMatch(/location ~ \^\/ws/);
+    expect(nginx).not.toMatch(/api\/(?:check|csrf-token|playlists?|youtube|music)\b/);
+  });
+
+  it("does not synthesise an Origin header onto the canonical routes", () => {
+    /*
+     * The canonical origin guard refuses a non-GET whose Origin is not the
+     * configured baseURL. Setting `Origin $scheme://$http_host` here would forge a
+     * trusted origin onto every cross-origin write, and would also turn the 403
+     * the invariant probes into a Better Auth response.
+     */
+    expect(nginx).not.toContain("proxy_set_header Origin");
   });
 });

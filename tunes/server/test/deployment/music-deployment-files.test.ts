@@ -36,16 +36,16 @@ describe("Music deployment authority files", () => {
    * pinned per file rather than accepted from a set — a service that drifts to a
    * different startup still fails here.
    *
-   * The disposable platform fixture is `combined`: it starts the Music runtime and
-   * delegates the canonical route graph into the same listener, so fixture ingress
-   * mounts both route graphs. Production blue/green and the Music test compose stay
-   * on `legacy-music`.
+   * The disposable platform fixture is `canonical`, like production on the
+   * replatformed stack: since P3-2 retired `combined` it proves the canonical route
+   * graph only. The Music blue/green deployment and the Music test compose stay on
+   * `legacy-music` until P3-7 deletes them.
    */
   it("selects the pinned API startup for every Compose service using the Tunes API image", () => {
     for (const [file, serviceNames, expectedMode] of [
       ["docker-compose.yml", ["tunes-blue", "tunes-green"], "legacy-music"],
       ["docker-compose.music-test.yml", ["tunes"], "legacy-music"],
-      ["docker-compose.replatform.yml", ["tunes"], "combined"],
+      ["docker-compose.replatform.yml", ["tunes"], "canonical"],
     ] as const) {
       const compose = parseYaml(read(file));
       for (const name of serviceNames) {
