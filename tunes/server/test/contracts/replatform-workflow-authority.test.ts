@@ -10,6 +10,35 @@ const require = createRequire(import.meta.url);
 const { load } = require("js-yaml") as { load(source: string): any };
 const workflow = (name: string) => load(read(name));
 
+type DispatchContext = {
+  event: string;
+  ref: string;
+  inputs: Record<string, boolean>;
+  needs?: Record<string, string>;
+};
+
+// Evaluates a job/step `if` that is a pure conjunction of the known release terms,
+// as GitHub would for the given trigger. Any other term shape (an `||`, a bare
+// truthy input, a status function) throws, so a widened gate cannot slip past.
+const evaluateConjunction = (expression: string, context: DispatchContext): boolean =>
+  expression.split(" && ").every((term) => {
+    let match: RegExpMatchArray | null;
+    if (term === "success()") return true;
+    if ((match = term.match(/^github\.event_name == '([^']+)'$/))) return context.event === match[1];
+    if ((match = term.match(/^github\.ref == '([^']+)'$/))) return context.ref === match[1];
+    if ((match = term.match(/^inputs\.([a-z_]+) == true$/))) return context.inputs[match[1]] === true;
+    if ((match = term.match(/^needs\.([a-z-]+)\.result == 'success'$/))) return context.needs?.[match[1]] === "success";
+    if (/^steps\.[a-z_]+\.outcome == 'success'$/.test(term)) return true;
+    throw new Error(`unrecognised release condition term: ${term}`);
+  });
+
+const dispatch = (inputs: Record<string, boolean>, needs: Record<string, string> = {}): DispatchContext => ({
+  event: "workflow_dispatch",
+  ref: "refs/heads/main",
+  inputs: { publish_image: false, deploy_music: false, ...inputs },
+  needs,
+});
+
 describe("replatform workflow authority", () => {
   it("validates every main PR and exact-source integration pushes only in required validation workflows", () => {
     const ci = workflow("ci");
@@ -340,14 +369,17 @@ describe("replatform workflow authority", () => {
     expect(JSON.stringify(frontend.jobs.authorize)).not.toMatch(/secrets\./);
     const image = workflow("tunes");
     expect(image.jobs["deploy-production"].if).toContain("github.event_name == 'workflow_dispatch'");
-    expect(image.jobs["deploy-production"].if).toContain("inputs.release_production");
+    expect(image.jobs["deploy-production"].if).toContain("inputs.deploy_music == true");
+    expect(image.jobs["deploy-production"].if).toContain("inputs.publish_image == true");
     expect(image.jobs["deploy-production"].if).toContain("github.ref == 'refs/heads/main'");
   });
 
   it("requires exact main source and image digest for a deliberate Tunes release", () => {
     const image = workflow("tunes");
     const deploy = workflow("tunes-deploy");
-    expect(image.on.workflow_dispatch.inputs.release_production).toMatchObject({ type: "boolean", default: false });
+    expect(image.on.workflow_dispatch.inputs).not.toHaveProperty("release_production");
+    expect(image.on.workflow_dispatch.inputs.publish_image).toMatchObject({ type: "boolean", default: false });
+    expect(image.on.workflow_dispatch.inputs.deploy_music).toMatchObject({ type: "boolean", default: false });
     expect(image.jobs["deploy-production"].with).toMatchObject({
       digest: "${{ needs.publish-image.outputs.digest }}",
       commit: "${{ needs.publish-image.outputs.commit }}",
@@ -365,7 +397,9 @@ describe("replatform workflow authority", () => {
     expect(image.on.workflow_dispatch.inputs.music_validated_run_id).toMatchObject({ type: "string", required: true });
     const preflight = image.jobs["release-preflight"];
     expect(preflight.permissions).toEqual({ actions: "read", contents: "read" });
-    const step = preflight.steps.find((step: any) => typeof step.run === "string");
+    const step = preflight.steps.find(
+      (step: any) => step.name === "Require both successful main aggregates for exact source SHA",
+    );
     const script = step.run as string;
     expect(step.env.VALIDATED_RUN_ID).toBe("${{ inputs.validated_run_id }}");
     expect(script).toContain("replatform-required");
@@ -375,6 +409,84 @@ describe("replatform workflow authority", () => {
     expect(script).toContain(".github/workflows/ci.yml replatform-required");
     expect(script).toContain(".github/workflows/test.yml music-required");
     expect(image.jobs["publish-image"].needs).toContain("release-preflight");
+  });
+
+  it("lets a publish-only dispatch attest an image without ever reaching the Music deploy", () => {
+    // Production break caught: publishing the explorers.yml image also redeploys the
+    // live legacy Music host, because one input gated both publish and deploy.
+    const image = workflow("tunes");
+    const deploy = image.jobs["deploy-production"];
+    const publish = image.jobs["publish-image"];
+    const preflight = image.jobs["release-preflight"];
+
+    // tunes-deploy.yml (and its host secrets) is reachable from exactly one job.
+    const callers = (Object.entries(image.jobs) as Array<[string, any]>)
+      .filter(([, job]) => String(job.uses ?? "").includes("tunes-deploy.yml"));
+    expect(callers.map(([name]) => name)).toEqual(["deploy-production"]);
+    for (const [name, job] of Object.entries(image.jobs) as Array<[string, any]>) {
+      if (name === "deploy-production") continue;
+      expect(JSON.stringify(job), name).not.toMatch(/TUNES_DEPLOY_(?:HOST|KEY)/);
+    }
+    expect(deploy.uses).toBe("./.github/workflows/tunes-deploy.yml");
+    expect(deploy.needs).toBe("publish-image");
+
+    // Every existing deploy gate survives, plus the new deploy_music input.
+    for (const term of [
+      "github.ref == 'refs/heads/main'",
+      "github.event_name == 'workflow_dispatch'",
+      "inputs.publish_image == true",
+      "inputs.deploy_music == true",
+      "needs.publish-image.result == 'success'",
+    ]) {
+      expect(deploy.if.split(" && "), term).toContain(term);
+    }
+    expect(deploy.if).not.toMatch(/\|\||always\(\)|!cancelled\(\)|failure\(\)/);
+    expect(publish.if).not.toContain("deploy_music");
+    expect(publish.if).not.toMatch(/\|\|/);
+
+    const published = { "publish-image": "success" };
+    // Publish-only: the image is published and attested, the Music deploy is unreachable.
+    expect(evaluateConjunction(publish.if, dispatch({ publish_image: true }))).toBe(true);
+    expect(evaluateConjunction(deploy.if, dispatch({ publish_image: true }, published))).toBe(false);
+    // deploy_music still needs every other gate.
+    expect(evaluateConjunction(deploy.if, dispatch({ publish_image: true, deploy_music: true }, published))).toBe(true);
+    expect(evaluateConjunction(deploy.if, dispatch({ deploy_music: true }, published))).toBe(false);
+    expect(evaluateConjunction(deploy.if, dispatch({ publish_image: true, deploy_music: true }, { "publish-image": "failure" }))).toBe(false);
+    expect(evaluateConjunction(deploy.if, { ...dispatch({ publish_image: true, deploy_music: true }, published), ref: "refs/heads/feature" })).toBe(false);
+    for (const event of ["push", "pull_request"]) {
+      // Neither input exists outside a dispatch, so nothing is published or deployed.
+      const triggered = { event, ref: "refs/heads/main", inputs: {}, needs: published };
+      expect(evaluateConjunction(publish.if, triggered), event).toBe(false);
+      expect(evaluateConjunction(deploy.if, triggered), event).toBe(false);
+    }
+
+    // deploy_music alone must fail loudly in preflight, not skip the deploy silently.
+    expect(preflight.if).toContain("inputs.deploy_music == true");
+    const refusal = preflight.steps[0];
+    expect(refusal.name).toBe("Refuse a Music deploy without a publish in this run");
+    expect(refusal.env).toEqual({
+      PUBLISH_IMAGE: "${{ inputs.publish_image }}",
+      DEPLOY_MUSIC: "${{ inputs.deploy_music }}",
+    });
+    expect(refusal.run).toContain('if [[ "$DEPLOY_MUSIC" == true && "$PUBLISH_IMAGE" != true ]]; then');
+    expect(refusal.run).toMatch(/::error::deploy_music requires publish_image[^\n]*exit 1/);
+
+    // The build job's hand-off steps follow publish_image only.
+    const handoff = image.jobs["build-test-scan-push"].steps.filter((step: any) =>
+      ["Save the qualified image for an explicit release", "Transfer the qualified image to the release job"].includes(step.name));
+    expect(handoff).toHaveLength(2);
+    for (const step of handoff) {
+      expect(evaluateConjunction(step.if, dispatch({ publish_image: true }))).toBe(true);
+      expect(evaluateConjunction(step.if, dispatch({ deploy_music: true }))).toBe(false);
+    }
+
+    // explorers.yml verifies only signer workflow, main ref and commit - never the
+    // dispatch inputs or the deploy job - so a publish-only digest is accepted.
+    const verify = read("explorers");
+    expect(verify).toContain('--signer-workflow "$GITHUB_REPOSITORY/.github/workflows/tunes.yml"');
+    expect(verify).toContain("--source-ref refs/heads/main");
+    expect(verify).toContain('--source-digest "$GITHUB_SHA"');
+    expect(verify).not.toMatch(/deploy_music|deploy-production|release_production|--signer-digest|--cert-identity/);
   });
 
   it("retired temporary direct deployment has no callable workflow file", () => {

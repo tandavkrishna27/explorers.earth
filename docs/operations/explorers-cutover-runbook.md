@@ -28,12 +28,11 @@ It writes `.rehearsal/transcript.log` (every command with its output) and
 These came out of the rehearsal. The PR that added this runbook lists them as gaps; this
 section says what each one means for the cutover.
 
-1. **Publishing the image also deploys to the Music host.** `explorers.yml` needs a digest that
-   `tunes.yml`'s `publish-image` job attested. That job runs only when `tunes.yml` is dispatched
-   with `release_production=true`, and the same input also runs `deploy-production`, which calls
-   `tunes-deploy.yml` against the live Music host. **Do not dispatch it as it stands.** Fix it
-   first: split the input so publishing and the Music deploy are separate choices, or land P3-7,
-   which deletes `tunes-deploy.yml`.
+1. **Fixed (#144): publishing the image no longer deploys to the Music host.** `explorers.yml`
+   needs a digest that `tunes.yml`'s `publish-image` job attested. `tunes.yml` now has two
+   separate dispatch inputs: `publish_image` runs `publish-image` only and never reaches
+   `deploy-production` or `tunes-deploy.yml`; `deploy_music` is what deploys to the live Music
+   host. **For the explorers cutover, tick `publish_image` only. Never tick `deploy_music`.**
 2. **The committed drill receipt is one migration behind, so every deploy after the first is
    refused.** The deploy gate (#141) admits a deploy over an existing database only if
    `docs/replatform/evidence/recovery-receipt.json` was drilled at the database's migration
@@ -230,7 +229,9 @@ first start.
 
 Go only when every box is ticked.
 
-- [ ] Section 0, blocker 1 is fixed. Publishing the image must not deploy to the Music host.
+- [ ] Section 0, blocker 1 is fixed (#144 merged): `tunes.yml` on `main` has the separate
+      `publish_image` and `deploy_music` inputs, so publishing the image cannot deploy to the
+      Music host.
 - [ ] Section 0, blocker 2 is fixed: `recovery-receipt.json` on `main` was drilled at the
       migration head this deploy brings (today `0057_retire_music_category`) less than 30 days ago.
 - [ ] `bash deploy/rehearsal/rehearse.sh all` passed on the exact commit you will deploy.
@@ -265,9 +266,10 @@ changing it back.
 
 ## 5. Cutover, in order
 
-**5.1 Publish the image.** Only after blocker 1 is fixed. In GitHub: Actions → `tunes.yml` → Run
-workflow on `main`, with `release_production` ticked (or the new publish-only input) and the
-two run IDs from section 3. When it finishes, copy the digest from the `publish-image` job's
+**5.1 Publish the image.** In GitHub: Actions → `tunes.yml` → Run workflow on `main`, with
+**`publish_image` ticked and `deploy_music` left unticked**, and the two run IDs from section 3.
+Ticking `deploy_music` would also redeploy the legacy Music host through `tunes-deploy.yml`;
+never tick it during the explorers cutover. When it finishes, copy the digest from the `publish-image` job's
 "Push and expose registry digest" step: the `docker push` output ends with
 `digest: sha256:<64 hex>`.
 

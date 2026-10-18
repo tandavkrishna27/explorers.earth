@@ -125,7 +125,9 @@ Owner actions are marked **[owner]**. Nothing here has been done.
    This is the only irreversible step in the deploy.
 4. Re-run `build-test-scan-push` in run `38932754594` and confirm green (section 3).
 5. **[owner]** Dispatch `tunes.yml` on `main` with:
-   - `release_production: true`
+   - `publish_image: true`
+   - `deploy_music: true` (deploys the image published in the same run; `publish_image`
+     alone only builds, attests and pushes the digest, and never reaches `tunes-deploy.yml`)
    - `validated_run_id: 38932754560`
    - `music_validated_run_id: 38932754401`
 6. **[owner, as `tandavkrishna`]** Approve the `tunes-production` environment request.
