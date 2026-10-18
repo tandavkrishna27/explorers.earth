@@ -126,13 +126,7 @@ export const MUSIC_QUALIFICATION_REQUIREMENTS = [
   "rest-security",
   "graphql-security",
   "socket-security",
-  "google-e2e",
-  "email-e2e",
-  "account-edge-cases",
   "refresh-rename-sharing",
-  "lifecycle-outage-e2e",
-  "axe-viewports",
-  "keyboard-viewports",
   "load-first-ensures",
   "load-cached-owner",
   "load-invalid-token",
@@ -146,7 +140,6 @@ export const MUSIC_QUALIFICATION_REQUIREMENTS = [
   "truncated-pagination",
   "duplicate-reconciliation",
   "credential-rotation-stale-token",
-  "browser-exit",
   "migration-readiness-failure",
   "rollback-exact-digest",
   "kill-switch-secure-floor",
@@ -234,9 +227,6 @@ export function preferredQualificationPort(taskId: string): number {
 }
 
 export function qualificationTaskEnvironment(taskId: string): Record<string, string> {
-  if (taskId === "fixture-fullstack-browser") {
-    return { PLAYWRIGHT_EXTERNAL_BASE_URL: "http://127.0.0.1:55173" };
-  }
   if (!["postgres-integration", "tunes-repository-coverage", "tunes-identity-repository-coverage", "load-postgres", "chaos-postgres", "real-docker-evidence"].includes(taskId)) return {};
   return {
     MUSIC_C3_POSTGRES_TEST: "1",
@@ -299,8 +289,9 @@ export const MUSIC_QUALIFICATION_TASKS = {
     "exec", "--silent", "--prefix", "tunes", "--", "tsx", "tunes/scripts/music-isolated-cli-contract.ts",
   ], ["portable-harness", "secret-free-evidence"]),
   "explorer-music-unit": task("explorer-music-unit", "Explorer Music unit suite", [
-    "run", "test:unit", "--prefix", "explorers-earth", "--", "src/features/music", "src/components/__tests__/MusicDashboard.test.tsx",
-    "src/pages/__tests__/MusicPage.test.tsx", "src/pages/__tests__/PublicMusic.test.tsx",
+    // The SPA Music surface was removed in P3-4; what remains is the boundary that keeps
+    // it removed and the account lifecycle client.
+    "run", "test:unit", "--prefix", "explorers-earth", "--", "src/features/__tests__/musicImportBoundary.test.ts",
     "src/services/__tests__/accountLifecycleService.test.ts",
   ], ["refresh-rename-sharing", "lifecycle"]),
   "explorer-full-unit": task("explorer-full-unit", "Explorer full unit suite", [
@@ -352,18 +343,6 @@ export const MUSIC_QUALIFICATION_TASKS = {
     "server/test/musicReconciler.integration.test.ts", "server/test/reconciliationRepository.integration.test.ts",
     "server/test/load/music-load-postgres.integration.test.ts",
   ] } }),
-  "browser-smoke": task("browser-smoke", "Music browser smoke", [
-    "run", "test:e2e", "--prefix", "explorers-earth", "--", "music.spec.ts", "account-lifecycle.spec.ts", "--project=chromium", "--retries=0",
-  ], ["refresh-rename-sharing", "lifecycle-outage-e2e", "browser-exit"]),
-  "fullstack-browser": task("fullstack-browser", "Google and email full-stack Music journeys", [
-    "run", "test:e2e", "--prefix", "explorers-earth", "--", "music-fullstack.spec.ts", "music-auth-triggers.spec.ts", "--project=chromium", "--retries=0",
-  ], ["google-e2e", "email-e2e", "account-edge-cases", "refresh-rename-sharing", "lifecycle-outage-e2e"]),
-  "accessibility-browser": task("accessibility-browser", "Music axe and keyboard journeys", [
-    "run", "test:e2e", "--prefix", "explorers-earth", "--", "music-accessibility.spec.ts", "--project=chromium", "--retries=0",
-  ], ["axe-viewports", "keyboard-viewports", "secret-free-evidence"]),
-  "fixture-fullstack-browser": task("fixture-fullstack-browser", "Real five-service Music browser identity journey", [
-    "run", "test:e2e", "--prefix", "explorers-earth", "--", "music-fixture-fullstack.spec.ts", "--project=chromium", "--retries=0",
-  ], ["email-e2e", "postgres-repositories", "owner-predicates", "secret-free-evidence"]),
   "load-unit": task("load-unit", "Music identity, owner, token, socket, and guest load", [
     "test", "--prefix", "tunes", "--", "server/test/load/music-load-qualification.test.ts",
     "server/test/music-identity-route.test.ts", "server/test/music-socket-server.test.ts", "--disableConsoleIntercept",
@@ -453,15 +432,12 @@ export const MUSIC_QUALIFICATION_LANES: Record<MusicQualificationLaneName, Music
       { id: "pr-isolated-authority", parallel: false, taskIds: ["isolated-cli-contract"] },
       { id: "pr-postgres", parallel: false, taskIds: ["postgres-integration"] },
       { id: "pr-postgres-coverage", parallel: false, taskIds: ["tunes-repository-coverage", "tunes-identity-repository-coverage"] },
-      { id: "pr-browser", parallel: false, taskIds: ["browser-smoke"] },
     ],
   },
   nightly: {
     budgetMs: 45 * 60_000,
     inherits: ["pr"],
     stages: [
-      { id: "nightly-browser", parallel: true, taskIds: ["fullstack-browser", "accessibility-browser"] },
-      { id: "nightly-fixture-browser", parallel: false, taskIds: ["fixture-fullstack-browser"] },
       { id: "nightly-unit", parallel: true, taskIds: ["load-unit", "chaos-unit"] },
       { id: "nightly-postgres", parallel: false, taskIds: ["load-postgres", "chaos-postgres"] },
       { id: "nightly-recovery", parallel: false, taskIds: ["interrupt-resume"] },
@@ -473,7 +449,7 @@ export const MUSIC_QUALIFICATION_LANES: Record<MusicQualificationLaneName, Music
     inherits: ["pr"],
     stages: [
       { id: "release-evidence", parallel: false, taskIds: ["fixture-drift"] },
-      { id: "release-real-fixture", parallel: false, taskIds: ["fixture-fullstack-browser", "real-docker-evidence", "interrupt-resume"] },
+      { id: "release-real-fixture", parallel: false, taskIds: ["real-docker-evidence", "interrupt-resume"] },
       { id: "release-recovery", parallel: false, taskIds: ["release-rehearsal", "real-docker-release"] },
       { id: "release-backend-default", parallel: false, taskIds: ["default-backend-gate"] },
       { id: "release-backend-real-tool", parallel: false, taskIds: ["real-tool-contracts"] },

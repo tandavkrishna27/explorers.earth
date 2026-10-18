@@ -42,11 +42,9 @@ npm run build:all
 
 ### explorers-earth
 - `explorers-earth/src/features/` — Feature modules (Authentication, Profile, Favorites, Guides, Analytics, Settings, LandingPage, PublicHome)
-- `explorers-earth/src/components/MusicDashboard.tsx` — Embedded tunes music player dashboard
-- `explorers-earth/src/components/AuthSyncManager.tsx` — Authoritative Explorer identity and Account selection boundary
-- `explorers-earth/src/lib/localTunesApiClient.ts` — Short-lived Music credential client and single-flight ensure
-- `explorers-earth/src/features/music/musicApi.ts` — Canonical embedded Music API and identity coordinator
-- `explorers-earth/src/hooks/useTunesDashboard.ts` — Account-scoped Music data fetching
+- `explorers-earth/src/components/AccountGenerationCacheReset.tsx` — Clears private caches when the signed-in account changes
+- `explorers-earth/src/lib/explorerAccountSelection.ts` — Selection of the signed-in user's single Explorer account
+- The SPA's Music surface was removed in P3-4; `docs/archive/music-v1/` and tag `music-v1-final` record it
 - `explorers-earth/src/store/` — Zustand stores (store.ts, useCityStore.ts, useEmailStore.ts, useSetupStore.ts)
 - `explorers-earth/src/services/` — API service layer
 - `explorers-earth/src/hooks/` — Custom hooks (useProfileWalkthrough, useQRActions, useAIGuideQuota)

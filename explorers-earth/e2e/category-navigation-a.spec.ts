@@ -34,8 +34,8 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
       // Apollo cache no longer participates in public category rendering.
       await warm.page.goto(`/${fixtureUser.username}/apps`);
       await expect(warm.page.getByText('Public apps', { exact: true })).toBeVisible();
-      await warm.page.goto(`/${fixtureUser.username}/music`);
-      await expect(warm.page.getByRole('heading', { name: 'Music', level: 1 })).toBeVisible();
+      await warm.page.goto(`/${fixtureUser.username}`);
+      await expect(warm.page.getByRole('navigation', { name: 'Public navigation' })).toBeVisible();
       let releaseWarm!: () => void;
       warmState.faults.set('PublicAppData', [{ gate: new Promise<void>(resolve => { releaseWarm = resolve; }) }]);
       const readsBeforeWarm = warmState.reads.filter(read => read.name === 'PublicAppData').length;
@@ -174,13 +174,6 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
       expect(await exception.page.locator('body').innerText()).not.toHaveLength(0);
       const mapFrames = await assertTask6FrameWindow(exception.page, { banner: 1, nav: 0, earth: 0, nonblank: true });
       evidence.map = { state: 'intentional full-screen exception with truthful fallback', frames: mapFrames };
-
-      await exception.page.goto(`/${fixtureUser.username}/music`);
-      await expect(exception.page.getByRole('heading', { name: 'Music', level: 1 })).toBeVisible();
-      await expectTask6Shell(exception.page);
-      const musicFrames = await assertTask6FrameWindow(exception.page, { banner: 1, nav: 1, earth: 0, nonblank: true });
-      evidence.music = { state: 'typed public availability preserved', frames: musicFrames };
-      await exception.page.screenshot({ path: test.info().outputPath(`task6-music-${viewport.width}.png`), fullPage: true });
     } finally { await closeFixture(exception); }
 
     await test.info().attach(`task6-content-state-evidence-${viewport.width}`, {
@@ -256,7 +249,8 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
 
 test('public shell continuity smoke covers every top-level destination', async ({ browser, baseURL }) => {
   test.setTimeout(180_000);
-  const destinations = TOP_LEVEL_DESTINATIONS;
+  // The Music page is retired; its destination row stays in the shared list until the music category itself is removed.
+  const destinations = TOP_LEVEL_DESTINATIONS.filter(destination => destination.id !== 'music');
   const state = fixtureState({ public_music: 'Yes' }, 'public');
   const visitor = await openFixture(browser, baseURL!, state);
   const evidence: Record<string, unknown> = {};
@@ -470,7 +464,7 @@ test('contained actual Settings boot verifies account without mounting consent o
   try {
     await owner.page.goto('/settings');
     await owner.page.getByRole('button', { name: /Public Visibility/ }).click();
-    await expect(owner.page.getByRole('switch', { name: 'Music public visibility' })).toBeEnabled();
+    await expect(owner.page.getByRole('checkbox', { name: 'Books Tab', exact: true })).toBeEnabled();
     await expect(owner.page.getByTestId('cookie-consent-positioner')).toHaveCount(0);
     expect(await owner.page.evaluate(() => localStorage.getItem('explorers-cookie-consent'))).toBeNull();
     expect(state.writes).toEqual([]); owner.guard.assertClean();

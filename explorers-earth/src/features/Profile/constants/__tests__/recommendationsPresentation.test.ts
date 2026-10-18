@@ -204,7 +204,7 @@ describe("normalizeThemeSettings", () => {
     ).toBe("#38BDF8");
   });
 
-  it("preserves Music as a landing destination while removing it from stale category order", () => {
+  it("falls back from a stored Music landing tab (removed in P3-4) and removes Music from stale category order", () => {
     expect(
       normalizeThemeSettings({
         landingTab: "music",
@@ -216,7 +216,7 @@ describe("normalizeThemeSettings", () => {
         futureTheme: "keep",
       }),
     ).toMatchObject({
-      landingTab: "music",
+      landingTab: "all-recommendations",
       recommendations: {
         layout: "featured",
         categoryOrder: [

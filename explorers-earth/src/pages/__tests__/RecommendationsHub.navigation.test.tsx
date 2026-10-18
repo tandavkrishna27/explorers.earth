@@ -5,7 +5,6 @@ import RecommendationsHub from '../RecommendationsHub';
 import { loginSurface, ordinaryCategories, surfaceHarness, writtenPins, writtenVisibility } from '../../features/navigation/__tests__/surfaceHarness';
 import useAuthStore from '../../store/store';
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
-vi.mock('../../features/music/publicMusicClient', () => ({ publicMusicClient: { discover: vi.fn().mockRejectedValue(new Error('offline')) } }));
 // Decorative SVG path animation is unrelated to consent and emits an existing
 // undefined-stroke warning in jsdom. Keep the actual controls and other motion.
 vi.mock('framer-motion', async original => {

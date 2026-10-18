@@ -292,21 +292,18 @@ jobs:
           cache: npm
           cache-dependency-path: explorers-earth/package-lock.json
       - run: npm ci --prefix explorers-earth
-      - run: npx --prefix explorers-earth playwright install --with-deps chromium firefox webkit
-      - name: Run Music E2E and accessibility contracts
+      - run: npx --prefix explorers-earth playwright install --with-deps chromium
+      - name: Run account lifecycle E2E contract
         env:
           VITE_API_URL: http://localhost:5173/graphql
           VITE_GOOGLE_MAPS_API_KEY: fixture-placeholder
           VITE_PUBLIC_ACCESS_TOKEN: fixture-placeholder
           VITE_LOCAL_TUNES_ENABLED: "true"
           VITE_LOCAL_TUNES_API_URL: https://localtunes.test
-        # Anchored to `e2e/`, as ci.yml already does. Playwright treats each filter as a
-        # regex over the FULL test path, so a bare `music.spec.ts` also matched
-        # `e2e/replatform/music.spec.ts`, which throws `Owned Music fixture missing` at
-        # import because MUSIC_E2E_FIXTURE_PATH is set in no workflow -- so this lane exited
-        # 1 before a single browser test ran. The replatform spec keeps its own protected
-        # lane in frontend-e2e-qualification.yml; nothing is skipped here.
-        run: npm run test:e2e --prefix explorers-earth -- e2e/music.spec.ts e2e/account-lifecycle.spec.ts e2e/music-accessibility.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual --retries=0
+        # Anchored to `e2e/`, as ci.yml already does: Playwright treats each filter as a
+        # regex over the FULL test path. The Music E2E and accessibility specs this lane
+        # used to run were removed with the Music product (P3-4).
+        run: npm run test:e2e --prefix explorers-earth -- e2e/account-lifecycle.spec.ts --project=chromium-pr-safe --retries=0
       # This workflow previously contained no upload-artifact step at all, so the
       # traces Playwright writes under trace: 'retain-on-failure' were discarded
       # with the runner and this lane's failures were reconstructible only from log

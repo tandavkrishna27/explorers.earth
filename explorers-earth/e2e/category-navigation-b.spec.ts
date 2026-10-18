@@ -228,7 +228,7 @@ test('direct dashboard/public/share never mount consent; landing delayed banner 
   const state = fixtureState(); const visitor = await openFixture(browser, baseURL!, state, { owner: true });
   const landing = await openFixture(browser, baseURL!, state);
   try {
-    for (const path of ['/settings', '/recommendations/music', `/${fixtureUser.username}`, `/${fixtureUser.username}/music`, '/music/share/missing-fixture']) {
+    for (const path of ['/settings', '/recommendations', `/${fixtureUser.username}`, `/${fixtureUser.username}/books`]) {
       await visitor.page.goto(path); await visitor.page.waitForTimeout(2200);
       await expect(visitor.page.getByTestId('cookie-consent-positioner')).toHaveCount(0);
       expect(await visitor.page.evaluate(() => localStorage.getItem('explorers-cookie-consent'))).toBeNull(); expect(visitor.guard.vendors).toEqual([]);

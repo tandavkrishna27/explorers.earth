@@ -3,10 +3,7 @@ import { getThemeTokenStyles } from "../../Profile/constants/themePresets";
 import { normalizeThemeSettings } from "../../Profile/constants/recommendationsPresentation";
 import { usePublicAccountIdentity } from "../api/PublicAccountIdentityProvider";
 import { useLocation, useParams } from "react-router-dom";
-import { PublicProfileBrandingFooter, PublicProfileFixedHeader, PublicProfileWallpaper } from "./PublicProfileChromePrimitives";
-import { PublicMusicBackdrop } from '../../music/components/PublicMusicProfileHeader';
-import { getMusicAccentInk } from '../../music/publicMusicPresentation';
-import '../../music/components/PublicMusicPresentation.css';
+import { PublicProfileBrandingFooter, PublicProfileFixedHeader } from "./PublicProfileChromePrimitives";
 import { useTrackAnalytics } from "../../../services/analyticsService";
 import { PublicHeaderDescriptorProvider } from "./PublicHeaderDescriptorContext";
 import { getPublicCategoryThemeStyles, PublicCategoryThemeProvider } from './PublicCategoryThemeContext';
@@ -35,7 +32,6 @@ const PUBLIC_HEADER_ANALYTICS_PAGES: Readonly<Record<string, string>> = {
   apps: "public-apps",
   products: "public-products",
   people: "public-people",
-  music: "public-music",
 };
 
 function hasScrollingCategoryFooter(pathname: string, username?: string): boolean {
@@ -136,13 +132,12 @@ export default function PublicProfileThemeProvider({ children, showShellChrome =
   const identity = usePublicAccountIdentity();
   const location = useLocation();
   const { username } = useParams();
-  const isMusicRoute = /\/music\/?$/.test(location.pathname);
   const routeSegments = location.pathname.split("/").filter(Boolean);
   const isProfileRoot = routeSegments.length === 1 && routeSegments[0]?.toLowerCase() === username?.toLowerCase();
   const ownsPublicRoute = routeSegments[0]?.toLowerCase() === username?.toLowerCase();
   const routeCategory = ownsPublicRoute ? routeSegments[1]?.toLowerCase() : undefined;
-  const isCategoryRoute = Boolean(routeCategory && SCROLLING_CATEGORY_SEGMENTS.has(routeCategory) && !isMusicRoute);
-  const showProviderFooter = isMusicRoute || hasScrollingCategoryFooter(location.pathname, username);
+  const isCategoryRoute = Boolean(routeCategory && SCROLLING_CATEGORY_SEGMENTS.has(routeCategory));
+  const showProviderFooter = hasScrollingCategoryFooter(location.pathname, username);
   const normalizedUsername = username?.trim().toLowerCase();
   const matched = identity.status === 'ready'
     && identity.usernameKey === normalizedUsername
@@ -164,9 +159,8 @@ export default function PublicProfileThemeProvider({ children, showShellChrome =
   const style = useMemo(() => getThemeTokenStyles(theme), [theme]);
   const categoryStyles = useMemo(() => matched && isCategoryRoute ? getPublicCategoryThemeStyles(theme) : null, [isCategoryRoute, matched, theme]);
   const pendingCategorySurface = !matched && routeCategory ? PUBLIC_CATEGORY_NEUTRAL_SURFACES[routeCategory] : undefined;
-  return <div ref={shellRef} className={`public-profile-shell${isMusicRoute ? ' public-music' : ''}${isCategoryRoute ? ' public-profile-shell--category' : ''}`} data-public-profile-chrome data-shell-revealed={showShellChrome ? "true" : "false"} data-theme-preset={theme.preset} data-wallpaper-mode={theme.wallpaperMode} style={{
+  return <div ref={shellRef} className={`public-profile-shell${isCategoryRoute ? ' public-profile-shell--category' : ''}`} data-public-profile-chrome data-shell-revealed={showShellChrome ? "true" : "false"} data-theme-preset={theme.preset} data-wallpaper-mode={theme.wallpaperMode} style={{
     ...style,
-    ...{ '--music-accent-ink': getMusicAccentInk(theme.accentColor) },
     ...(categoryStyles || {}),
       ...(categoryHeader.logo !== 'solid' ? { '--category-header-logo-ink': '#FFFFFF' } : {}),
       ...(categoryHeader.action !== 'solid' ? { '--category-header-action-ink': '#FFFFFF' } : {}),
@@ -181,11 +175,6 @@ export default function PublicProfileThemeProvider({ children, showShellChrome =
       profileName={account?.Account_Name || account?.username || username || "Explorer"}
     >
     {showShellChrome && <PublicProfileFixedHeader onTrackClick={analytics.trackClick} />}
-    {isMusicRoute && <>
-      {theme.wallpaperMode === 'full-wallpaper-image' && <PublicMusicBackdrop url={account?.bg_picture?.url} wallpaper />}
-      {theme.wallpaperMode === 'ambient-gradient' && <PublicProfileWallpaper account={account} theme={theme} />}
-      {theme.wallpaperMode === 'banner-top' && <PublicMusicBackdrop url={account?.bg_picture?.url} />}
-    </>}
     <PublicCategoryThemeProvider styles={categoryStyles}>
       <div className={`public-profile-content-layer${isProfileRoot ? ' public-profile-content-layer--hero' : ''}`} data-public-content-layer>{children}</div>
       {navigation && <div className="public-profile-nav-layer">{navigation}</div>}

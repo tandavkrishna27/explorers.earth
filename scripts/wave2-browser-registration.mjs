@@ -26,12 +26,13 @@ export const PEOPLE_TITLES=Object.freeze([
  'People: configured-empty sector input preserves ordinary recommendations and refuses unknown public sectors',
 ]);
 export const APPS_ENRICHMENT_TITLES=Object.freeze(['Apps enrichment: explicit approved source choices and selected-field acceptance survive reload','Apps enrichment: disable same-source re-enable and different-source rebind preserve manual values']);
-const baseline='db513b66118745388671db54be7254eb70679d372ca626e91d0a1effeb5db7f4';
+// Ten original lanes: the eleven-lane inventory (db513b66...) with the retired Music lane removed.
+const baseline='cb448e4150cc81419cea920a08927aa3403ff643ddefa73d062e980643409ef1';
 function freeze(value){if(value&&typeof value==='object'){for(const child of Object.values(value))freeze(child);Object.freeze(value);}return value;}
 /** Authored registration only; execution receipts must independently prove every identity. */
 export function buildWave2BrowserRegistration(original){
  const lanes=original?.lanes;
- if(!Array.isArray(lanes)||lanes.length!==11)throw Error('Original Wave2 browser inventory changed');
+ if(!Array.isArray(lanes)||lanes.length!==10)throw Error('Original Wave2 browser inventory changed');
  const source=JSON.stringify(lanes.map(l=>({name:l.name,runner:l.runner,config:l.config,spec:l.spec,projects:l.projects,identities:l.identities})));
  if(createHash('sha256').update(source).digest('hex')!==baseline)throw Error('Original Wave2 browser inventory changed');
  const preserved=JSON.parse(JSON.stringify(lanes));
@@ -39,5 +40,5 @@ export function buildWave2BrowserRegistration(original){
   const spec=`explorers-earth/e2e/replatform/${name}.spec.ts`,projects=name==='apps-enrichment'?['apps-desktop','apps-mobile']:[`${name}-desktop`,`${name}-mobile`];
   preserved.push({name,runner:'tunes/scripts/profile-browser-fixture.ts',config:`explorers-earth/e2e/replatform/${name}.playwright.config.ts`,spec,projects,identities:projects.flatMap(project=>titles.map(title=>({file:spec,titlePath:[title],project,repeat:0})))});
  }
- return freeze({version:1,status:'authored',qualified:false,originalIdentityCount:166,originalIdentityDigest:baseline,addedIdentityCount:48,totalIdentityCount:214,lanes:preserved});
+ return freeze({version:1,status:'authored',qualified:false,originalIdentityCount:142,originalIdentityDigest:baseline,addedIdentityCount:48,totalIdentityCount:190,lanes:preserved});
 }

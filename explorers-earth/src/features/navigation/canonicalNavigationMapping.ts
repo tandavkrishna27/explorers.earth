@@ -7,9 +7,13 @@ export function toNavigationSnapshot(input: AccountDto, scope: Scope):Navigation
  const parsed=accountDtoSchema.safeParse(input); if(!parsed.success) return invalid(); const account=parsed.data;
  if(!scope.userDocumentId||account.id!==scope.accountDocumentId||account.status!=='active') throw new NavigationError('blocked','Verified account required.');
  const rows=account.categories;
- if(rows.length!==9||new Set(rows.map(row=>row.category)).size!==9||new Set(rows.map(row=>row.displayOrder)).size!==9) return invalid();
+ // The category set comes from the server, so this bundle accepts the nine-category account
+ // and the eight-category one left after the music category is retired (P3-6). Rows must be
+ // unique by category and display order, and every category must be one this SPA knows.
+ const known=new Set<CategoryKey>(Object.values(keys));
+ if(rows.some(row=>!known.has(row.category))||new Set(rows.map(row=>row.category)).size!==rows.length||new Set(rows.map(row=>row.displayOrder)).size!==rows.length) return invalid();
  const pins=rows.filter(row=>row.pinnedOrder!==null);if(new Set(pins.map(row=>row.pinnedOrder)).size!==pins.length) return invalid();
- const visibility={} as NavigationSnapshot['visibility']; for(const id of CATEGORY_IDS){const row=rows.find(row=>row.category===keys[id]);if(!row)return invalid();visibility[id]=row.isPublic?'Yes':'No';}
+ const visibility={} as NavigationSnapshot['visibility']; for(const id of CATEGORY_IDS){const row=rows.find(row=>row.category===keys[id]);if(!row){if(id==='public_music'){visibility[id]='No';continue;}return invalid();}visibility[id]=row.isPublic?'Yes':'No';}
  const savedPins=['public_profile',...pins.sort((a,b)=>a.pinnedOrder!-b.pinnedOrder!).map(row=>CATEGORY_IDS.find(id=>keys[id]===row.category)!)];
  return {scope:{userDocumentId:scope.userDocumentId,accountDocumentId:scope.accountDocumentId},revision:account.revision,categories:rows.map(row=>({...row})),visibility,savedPins,autoPinning:account.autoPinning};
 }

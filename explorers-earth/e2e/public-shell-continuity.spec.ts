@@ -26,11 +26,14 @@ test('Task 7 fixture/config/checked-in visual matrix contract', () => {
   ]);
   expect(REQUIRED_THEMES).toHaveLength(6);
   expect(REQUIRED_VIEWPORTS).toEqual([320, 390, 768, 1024, 1440]);
-  expect(REQUIRED_HIGH_RISK_ROUTE_TYPES).toEqual(['profile', 'list', 'detail', 'map', 'music']);
+  expect(REQUIRED_HIGH_RISK_ROUTE_TYPES).toEqual(['profile', 'list', 'detail', 'map']);
   expect(REQUIRED_DATA_STATES).toEqual(['success', 'empty', 'error', 'partial']);
   expect(() => assertPublicShellVisualCoverage(PUBLIC_SHELL_VISUAL_MATRIX)).not.toThrow();
   expect(framesAfterActivation(['before', 'first', 'second'], 1)).toEqual(['first', 'second']);
 });
+
+// The Music page is retired; its row stays in TOP_LEVEL_DESTINATIONS until the music category itself is removed.
+const PAGE_DESTINATIONS = TOP_LEVEL_DESTINATIONS.filter(destination => destination.id !== 'music');
 
 async function expectSettledShell(page: import('@playwright/test').Page, options: { map?: boolean; footer?: boolean } = {}) {
   await expect(page.getByRole('status', { name: 'Earth loading' })).toHaveCount(0);
@@ -144,36 +147,6 @@ async function readVisualAudit(page: import('@playwright/test').Page) {
   });
 }
 
-async function expectMusicVisualDataState(page: import('@playwright/test').Page, dataState: PublicShellVisualRow['dataState']) {
-  const empty = page.getByText('Nothing has been shared here yet', { exact: true });
-  const unavailable = page.getByRole('heading', { name: 'Music is temporarily unavailable.' });
-  const successSong = page.getByText('Fixture Music live', { exact: true });
-  const partialSong = page.getByText('Fixture Music preview', { exact: true });
-
-  if (dataState === 'success') {
-    await expect(successSong).toBeVisible();
-    await expect(partialSong).toHaveCount(0);
-    await expect(empty).toHaveCount(0);
-    await expect(unavailable).toHaveCount(0);
-  } else if (dataState === 'partial') {
-    await expect(partialSong).toBeVisible();
-    await expect(page.getByText('Showing 1 of 3', { exact: true })).toBeVisible();
-    await expect(successSong).toHaveCount(0);
-    await expect(empty).toHaveCount(0);
-    await expect(unavailable).toHaveCount(0);
-  } else if (dataState === 'empty') {
-    await expect(empty).toBeVisible();
-    await expect(successSong).toHaveCount(0);
-    await expect(partialSong).toHaveCount(0);
-    await expect(unavailable).toHaveCount(0);
-  } else {
-    await expect(unavailable).toBeVisible();
-    await expect(successSong).toHaveCount(0);
-    await expect(partialSong).toHaveCount(0);
-    await expect(empty).toHaveCount(0);
-  }
-}
-
 test('checked-in visual matrix preserves public chrome geometry contrast focus and accessibility', async ({ browser, baseURL }) => {
   test.skip(test.info().project.name !== 'chromium', 'The complete visual matrix runs once in contained Chromium.');
   test.setTimeout(360_000);
@@ -197,7 +170,6 @@ test('checked-in visual matrix preserves public chrome geometry contrast focus a
       await visitor.page.goto(row.path);
       await expectSettledShell(visitor.page, { map: row.routeType === 'map', footer: row.routeType === 'map' ? false : undefined });
       await expect(visitor.page.locator('[data-public-profile-chrome]')).toHaveAttribute('data-theme-preset', row.theme);
-      if (row.routeType === 'music') await expectMusicVisualDataState(visitor.page, row.dataState);
       const share = visitor.page.getByRole('button', { name: 'Share', exact: true });
       await share.focus();
       await expect(share).toBeFocused();
@@ -391,7 +363,7 @@ test('real toast photo viewer guide map portal and cold Earth obey the public st
 test('cold entry covers every top-level destination with one continuous Earth owner', async ({ browser, baseURL }) => {
   test.setTimeout(180_000);
   const evidence: Record<string, unknown> = {};
-  for (const destination of TOP_LEVEL_DESTINATIONS) {
+  for (const destination of PAGE_DESTINATIONS) {
     const state = fixtureState({
       public_music: 'Yes',
       pinned_nav_tabs: destination.id === 'profile'
@@ -425,7 +397,7 @@ test('cold entry covers every top-level destination with one continuous Earth ow
 test('same-profile continuity covers every destination and first trusted post-click rAF is active', async ({ browser, baseURL }) => {
   test.setTimeout(240_000);
   const evidence: Record<string, unknown> = {};
-  for (const destination of TOP_LEVEL_DESTINATIONS) {
+  for (const destination of PAGE_DESTINATIONS) {
     const source = destination.id === 'profile' ? 'books' : '';
     const state = fixtureState({
       public_music: 'Yes',
@@ -556,7 +528,7 @@ test('ordered five-tab cycle and map chrome exception retain unique shell owners
   test.skip(test.info().project.name !== 'chromium', 'Expanded navigation matrix runs in contained Chromium.');
   const state = fixtureState({
     public_music: 'Yes',
-    pinned_nav_tabs: ['public_profile', 'public_recommendations', 'public_books', 'public_apps', 'public_music'],
+    pinned_nav_tabs: ['public_profile', 'public_recommendations', 'public_books', 'public_apps', 'public_movie'],
   }, 'public');
   state.account.social_media.theme_settings.footerBranding = 'enabled';
   const visitor = await openFixture(browser, baseURL!, state, { width: 390, height: 900 });
@@ -566,7 +538,7 @@ test('ordered five-tab cycle and map chrome exception retain unique shell owners
       { label: 'Places', route: 'places' },
       { label: 'Books', route: 'books' },
       { label: 'Apps', route: 'apps' },
-      { label: 'Music', route: 'music' },
+      { label: 'Movies', route: 'movies' },
       { label: 'Profile', route: '' },
     ]) {
       const link = visitor.page.getByRole('navigation', { name: 'Public navigation' }).getByRole('link', { name: destination.label, exact: true });
@@ -591,8 +563,8 @@ test('cache empty error retry and partial states retain the real shell and safe 
   seedRenderableApp(warmState);
   const warm = await openFixture(browser, baseURL!, warmState, { width: 390, height: 900 });
   try {
-    await warm.page.goto(publicPath('music'));
-    await expect(warm.page.getByRole('heading', { name: 'Music', level: 1 })).toBeVisible();
+    await warm.page.goto(publicPath());
+    await expect(warm.page.getByRole('navigation', { name: 'Public navigation' })).toBeVisible();
     await warm.page.evaluate(async data => {
       const { PUBLIC_APP_DATA } = await import('/src/features/AppsAndTools/api/query.ts');
       (window as any).__APOLLO_CLIENT__.cache.writeQuery({
@@ -661,57 +633,6 @@ test('cache empty error retry and partial states retain the real shell and safe 
   } finally { await closeFixture(partial); }
 
   await test.info().attach('task7-content-states', { contentType: 'application/json', body: JSON.stringify(evidence, null, 2) });
-});
-
-test('Music available revalidating revoked private and retry states preserve continuity', async ({ browser, baseURL }) => {
-  test.skip(test.info().project.name !== 'chromium', 'Expanded Music matrix runs in contained Chromium.');
-  const state = fixtureState({ public_music: 'Yes', pinned_nav_tabs: ['public_profile', 'public_music'] }, 'public');
-  const visitor = await openFixture(browser, baseURL!, state, { width: 390, height: 900 });
-  try {
-    await visitor.page.goto(publicPath('music'));
-    await expect(visitor.page.getByRole('heading', { name: 'Music', level: 1 })).toBeVisible();
-    await expectSettledShell(visitor.page);
-
-    const refresh = new Promise<void>(resolve => {
-      state.faults.set('/api/music/public-profile/browser-account', [{ gate: new Promise<void>(release => {
-        (state as any).__releaseMusicRefresh = () => { release(); resolve(); };
-      }) }]);
-    });
-    await visitor.page.evaluate(() => dispatchEvent(new Event('focus')));
-    await expect(visitor.page.getByRole('status', { name: 'Music availability status' })).toContainText('Checking Music availability');
-    await expect(visitor.page.getByRole('heading', { name: 'Music', level: 1 })).toBeVisible();
-    (state as any).__releaseMusicRefresh();
-    await refresh;
-    await expect(visitor.page.getByRole('status', { name: 'Music availability status' })).toHaveCount(0);
-
-    await beginFrameRecorder(visitor.page);
-    state.mode = 'private';
-    await visitor.page.evaluate(() => dispatchEvent(new Event('focus')));
-    await expect(visitor.page).toHaveURL(`${baseURL}${publicPath()}`);
-    const revokedFrames = await finishFrameRecorder(visitor.page);
-    expect(revokedFrames.frames.every(frame => frame.earth === 0 && frame.nonblank)).toBe(true);
-    await expectSettledShell(visitor.page);
-  } finally { await closeFixture(visitor); }
-
-  const privateState = fixtureState({ public_music: 'Yes', pinned_nav_tabs: ['public_profile', 'public_music'] }, 'private');
-  const privateVisitor = await openFixture(browser, baseURL!, privateState, { width: 390, height: 900 });
-  try {
-    await privateVisitor.page.goto(`${publicPath('music')}?utm_source=private`);
-    await expect(privateVisitor.page).toHaveURL(`${baseURL}${publicPath()}?utm_source=private`);
-    await expectSettledShell(privateVisitor.page);
-  } finally { await closeFixture(privateVisitor); }
-
-  const outageState = fixtureState({ public_music: 'Yes', pinned_nav_tabs: ['public_profile', 'public_music'] }, 'public');
-  outageState.faults.set('/api/music/public-profile/browser-account', [{ kind: 'error' }, { kind: 'error' }]);
-  const outage = await openFixture(browser, baseURL!, outageState, { width: 390, height: 900 });
-  try {
-    await outage.page.goto(publicPath('music'));
-    await expect(outage.page.getByRole('heading', { name: 'Music is temporarily unavailable.' })).toBeVisible();
-    await expectSettledShell(outage.page);
-    await outage.page.getByRole('button', { name: 'Retry', exact: true }).click();
-    await expect(outage.page.getByRole('heading', { name: 'Music', level: 1 })).toBeVisible();
-    await expectSettledShell(outage.page);
-  } finally { await closeFixture(outage); }
 });
 
 test('share fallback copies one canonical bounded URL without external traffic', async ({ browser, baseURL }) => {

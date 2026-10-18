@@ -31,9 +31,6 @@ vi.mock("../../api/usePublicRecommendationCategory", () => ({
   usePublicRecommendationCategory: () => state.places,
 }));
 
-vi.mock("../../../music/PublicMusicAvailabilityProvider", () => ({
-  usePublicMusicAvailability: () => ({ state: "not-public", account: state.shell.data }),
-}));
 vi.mock("../../api/PublicAccountIdentityProvider", () => ({
   usePublicAccountIdentity: () => ({ usernameKey: "alice", status: "ready", account: state.shell.data }),
 }));

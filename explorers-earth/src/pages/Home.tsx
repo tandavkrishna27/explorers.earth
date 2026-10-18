@@ -33,7 +33,6 @@ import type { Guide } from "../features/Guides/types";
 import { getAllUserLocations } from "../utils/geoHelpers";
 import InteractiveMap from "../components/InteractiveMap";
 import { calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
-import { publicMusicShareUrl } from "../features/music/musicShareUrl";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 import { toProfileViewModel } from "../features/Profile/api/profileClient";
 import { useCreateLocation } from "../features/Favorites/hooks/useCreateLocation";
@@ -41,15 +40,10 @@ import { useCreateLocation } from "../features/Favorites/hooks/useCreateLocation
 // Category integrations
 import { useMoviesOwner } from "../features/Movies/api/explorersAdapter";
 import { useGamesOwner } from "../features/Games/hooks/useGamesOwner";
-import { useTunesDashboard } from "../hooks/useTunesDashboard";
 import type { PublicPageAnalyticsData } from "../features/Analytics/api/queries";
 import { getAnalyticsDateRange } from "../features/Analytics/utils/analyticsDateRange";
 import { readExplorersAnalyticsEvents } from "../services/explorersAnalyticsClient";
 
-import { useQueryClient } from "@tanstack/react-query";
-import { X, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
 
 // Modals
 import AddLocationModal from "../components/ui/AddLocationModal";
@@ -63,7 +57,6 @@ import { CreateGuideModal } from "../features/Guides";
 import { CategoryEmptyState } from "../components/CategoryEmptyState";
 
 // Mutations & queries
-import { musicWorkspaceClient } from "../hooks/useTunesDashboard";
 import { isCanonicalMediaPath } from "../lib/canonicalMedia";
 
 type HomeAnalyticsState = "loading" | "ready" | "unavailable";
@@ -109,7 +102,7 @@ export function getHomeAnalyticsCard(
 
 const resolveCoverUrl = (
   path: string | null | undefined,
-  type?: "movie" | "book" | "game" | "place" | "guide" | "music"
+  type?: "movie" | "book" | "game" | "place" | "guide"
 ): string | undefined => {
   if (!path || path === "null" || path === "undefined") return undefined;
 
@@ -216,7 +209,7 @@ const Home = memo(() => {
   const [analyticsData, setAnalyticsData] = useState<PublicPageAnalyticsData[]>([]);
   const [analyticsState, setAnalyticsState] = useState<HomeAnalyticsState>("loading");
   const [activeTab, setActiveTab] = useState<
-    "places" | "movies" | "books" | "games" | "music" | "guides" | "apps" | "products" | "people"
+    "places" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people"
   >("places");
 
   // Left/right swipe to move between category tabs on touch devices. The tab
@@ -224,7 +217,7 @@ const Home = memo(() => {
   // swipe never conflicts with an inner scroll. Swipes that start on the tab bar
   // itself are ignored so it can still scroll horizontally.
   const TAB_ORDER = [
-    "places", "movies", "books", "games", "music", "guides", "apps", "products", "people",
+    "places", "movies", "books", "games", "guides", "apps", "products", "people",
   ] as const;
   const tabBarRef = useRef<HTMLDivElement | null>(null);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -264,14 +257,11 @@ const Home = memo(() => {
   const [showCreateMoviesModal, setShowCreateMoviesModal] = useState<boolean>(false);
   const [showCreateBooksModal, setShowCreateBooksModal] = useState<boolean>(false);
   const [showCreateGamesModal, setShowCreateGamesModal] = useState<boolean>(false);
-  const [showCreateMusicModal, setShowCreateMusicModal] = useState<boolean>(false);
   const [showCreateGuidesModal, setShowCreateGuidesModal] = useState<boolean>(false);
   const [showCreateAppsModal, setShowCreateAppsModal] = useState<boolean>(false);
   const [showCreateProductsModal, setShowCreateProductsModal] = useState<boolean>(false);
   const [showCreatePeopleModal, setShowCreatePeopleModal] = useState<boolean>(false);
   const [prefillTitle, setPrefillTitle] = useState<string>("");
-
-  const queryClient = useQueryClient();
 
   // Create UTM parameters for sharing
   const profileUtmParams = createUtmParams.directShare();
@@ -325,13 +315,6 @@ const Home = memo(() => {
   // Fetch people lists
   const { data: personListsData, refetch: refetchPeople } = usePeopleOwner(undefined, Boolean(accountDocumentId && user?.username));
   const personLists = personListsData?.personLists || [];
-
-  // Fetch music playlists
-  const tunesDashboard = useTunesDashboard(user?.documentId && accountDocumentId ? {
-    userDocumentId: user.documentId,
-    accountDocumentId,
-  } : undefined);
-  const musicPlaylists = tunesDashboard.playlists || [];
 
   // Ticket 5.3. The canonical owner read, which is already scoped to the signed-in owner
   // and returns drafts as well as published guides, so there is nothing to filter and no
@@ -414,16 +397,13 @@ const Home = memo(() => {
     else if (activeTab === "movies") subPath = "movies";
     else if (activeTab === "books") subPath = "books";
     else if (activeTab === "games") subPath = "games";
-    else if (activeTab === "music") {
-      return publicMusicShareUrl(url, tunesDashboard.dashboard?.publication) ?? `${url}/music`;
-    }
     else if (activeTab === "guides") subPath = "guides";
     else if (activeTab === "apps") subPath = "apps";
     else if (activeTab === "products") subPath = "products";
     else if (activeTab === "people") subPath = "people";
 
     return `${url}/${canonicalHandle}/${subPath}`;
-  }, [activeTab, tunesDashboard.dashboard?.publication, url, canonicalHandle]);
+  }, [activeTab, url, canonicalHandle]);
   const listNames = userLists?.recommendationLists;
   const allGuides: Guide[] = guidesData?.guides || [];
   // Show all guides (drafts and published) on Home Dashboard, matching Recommendations behavior
@@ -485,13 +465,12 @@ const Home = memo(() => {
     const activeMovies = movieLists?.filter((list: any) => list.Visibility === true)?.length || 0;
     const activeBooks = bookLists?.filter((list: any) => list.visibility === true)?.length || 0;
     const activeGames = gameLists?.filter((list: any) => list.Visibility === true)?.length || 0;
-    const activeMusic = musicPlaylists?.filter((list: any) => list.isVisibleToGuests === true)?.length || 0;
     const activeGuides = allGuides?.filter((guide: any) => guide.Visibility === true)?.length || 0;
     const activeApps = appLists?.filter((list: any) => list.Visibility === true)?.length || 0;
     const activeProducts = productLists?.filter((list: any) => list.Visibility === true)?.length || 0;
     const activePeople = personLists?.filter((list: any) => list.Visibility === true)?.length || 0;
-    return activePlaces + activeMovies + activeBooks + activeGames + activeMusic + activeGuides + activeApps + activeProducts + activePeople;
-  }, [listNames, movieLists, bookLists, gameLists, musicPlaylists, allGuides, appLists, productLists, personLists]);
+    return activePlaces + activeMovies + activeBooks + activeGames + activeGuides + activeApps + activeProducts + activePeople;
+  }, [listNames, movieLists, bookLists, gameLists, allGuides, appLists, productLists, personLists]);
 
   const totalRecommendationsCount = useMemo(() => {
     const placesRecs = listNames?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_places?.length || 0), 0) || 0;
@@ -604,20 +583,6 @@ const Home = memo(() => {
       )
     );
   }, [gameLists, searchQuery]);
-
-  // Filter music playlists based on search query
-  const filteredMusicPlaylists = useMemo(() => {
-    if (!searchQuery.trim()) return musicPlaylists;
-    const query = searchQuery.toLowerCase();
-    return musicPlaylists.filter((item: any) =>
-      item?.name?.toLowerCase().includes(query) ||
-      item?.description?.toLowerCase().includes(query) ||
-      item?.songs?.some((song: any) =>
-        song?.title?.toLowerCase().includes(query) ||
-        song?.artist?.toLowerCase().includes(query)
-      )
-    );
-  }, [musicPlaylists, searchQuery]);
 
   // Filter app lists based on search query
   const filteredAppLists = useMemo(() => {
@@ -790,7 +755,6 @@ const Home = memo(() => {
     else if (activeTab === "movies") setShowCreateMoviesModal(true);
     else if (activeTab === "books") setShowCreateBooksModal(true);
     else if (activeTab === "games") setShowCreateGamesModal(true);
-    else if (activeTab === "music") setShowCreateMusicModal(true);
     else if (activeTab === "guides") setShowCreateGuidesModal(true);
     else if (activeTab === "apps") setShowCreateAppsModal(true);
     else if (activeTab === "products") setShowCreateProductsModal(true);
@@ -962,7 +926,6 @@ const Home = memo(() => {
                       { id: "movies", label: "Movies", icon: "🎬" },
                       { id: "books", label: "Books", icon: "📚" },
                       { id: "games", label: "Games", icon: "🎮" },
-                      { id: "music", label: "Music", icon: "🎵" },
                       { id: "guides", label: "Guides", icon: "📖" },
                       { id: "apps", label: "Apps & Tools", icon: "🛠️" },
                       { id: "products", label: "Products", icon: "🛍️" },
@@ -1025,7 +988,7 @@ const Home = memo(() => {
                         : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)
                     }
                   </button>
-                  {(activeTab !== "music" || tunesDashboard.dashboard?.publication.mode === "public") && <button
+                  {<button
                     onClick={() => setShowCategoryShareModal(true)}
                     title="Share recommendations link"
                     className="w-10 h-10 rounded-xl bg-[var(--dash-search-bg)] border border-dashboard flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-dashboard-muted flex-shrink-0 text-dashboard-muted hover:text-dashboard"
@@ -1285,63 +1248,6 @@ const Home = memo(() => {
                                   {!isPub && (
                                     <span className="font-poppins text-[hsl(var(--blue-cta))] text-xs bg-[hsl(var(--blue-cta))]/10 border border-[hsl(var(--blue-cta))]/30 px-3 py-2 rounded-full">
                                       {t("dashboard.home.draft")}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 pb-20">
-                          <svg className="w-16 h-16 mx-auto mb-4 text-dashboard-muted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                          <h3 className="text-lg font-semibold text-dashboard mb-1">No matches found</h3>
-                          <p className="text-xs text-dashboard-muted">Try searching with a different name</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {activeTab === "music" && (
-                    <>
-                      {musicPlaylists.length === 0 ? (
-                        <CategoryEmptyState
-                          category="music"
-                          onAddClick={handleAddNewItem}
-                        />
-                      ) : filteredMusicPlaylists.length > 0 ? (
-                        <div className="space-y-3 pb-20">
-                          {filteredMusicPlaylists.map((item: any, index: number) => {
-                            const isPub = item.isVisibleToGuests;
-                            const statusColor = isPub ? "var(--status-pub)" : "var(--status-draft)";
-                            const poster = resolveCoverUrl(item.songs?.[0]?.thumbnailUrl, "music");
-                            return (
-                              <div
-                                key={item.id || index}
-                                onClick={() => navigate("/music")}
-                                className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
-                              >
-                                <div className="flex-shrink-0">
-                                  <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-dashboard-muted" style={{ border: `3px solid ${statusColor}` }}>
-                                    {poster ? (
-                                      <ImageWithFallback src={poster} alt={item.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      "🎵"
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.name}</h4>
-                                  <p className="text-xs text-dashboard-muted truncate">
-                                    {item.songs?.length || 0} tracks · <span style={{ color: statusColor }}>{isPub ? "Visible" : "Hidden"}</span>
-                                  </p>
-                                </div>
-                                <div className="flex-shrink-0">
-                                  {!isPub && (
-                                    <span className="font-poppins text-[hsl(var(--blue-cta))] text-xs bg-[hsl(var(--blue-cta))]/10 border border-[hsl(var(--blue-cta))]/30 px-3 py-2 rounded-full">
-                                      Hidden
                                     </span>
                                   )}
                                 </div>
@@ -1745,22 +1651,6 @@ const Home = memo(() => {
         />
       )}
 
-      {showCreateMusicModal && (
-        <CreatePlaylistModal
-          open={showCreateMusicModal}
-          onClose={() => {
-            setShowCreateMusicModal(false);
-            setPrefillTitle("");
-          }}
-          defaultListName={prefillTitle}
-          onCreated={async () => {
-            setPrefillTitle("");
-            await queryClient.invalidateQueries({ queryKey: ["music-workspace"] });
-            navigate("/music", { state: { justCreatedList: true } });
-          }}
-        />
-      )}
-
       {showCreateGuidesModal && (
         <CreateGuideModal
           open={showCreateGuidesModal}
@@ -1852,126 +1742,5 @@ const Home = memo(() => {
     </>
   );
 });
-
-// ─────────────────────────────────────────────────────────────
-// Music Playlist Creation Modal Component
-// ─────────────────────────────────────────────────────────────
-const CreatePlaylistModal = ({
-  open,
-  onClose,
-  onCreated,
-  defaultListName,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onCreated: (newId?: string) => void;
-  defaultListName?: string;
-}) => {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setName(defaultListName || "");
-    }
-  }, [open, defaultListName]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setLoading(true);
-    try {
-      const res = await musicWorkspaceClient.createPlaylist(
-        name,
-        description || null,
-        `home-playlist-${crypto.randomUUID()}`,
-      );
-      toast.success("Playlist created");
-      onCreated(res?.id?.toString());
-      onClose();
-    } catch {
-      toast.error("Failed to create playlist");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!open) return null;
-
-  return (
-    <AnimatePresence>
-      <motion.div
-        className="dashboard-theme fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex items-center justify-center p-4 md:p-6"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-      >
-        <motion.div
-          className="bg-dashboard-sidebar rounded-xl border border-dashboard-border p-6 md:p-8 w-full max-w-xl shadow-2xl"
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-white font-poppins">Create New Playlist</h2>
-            <button onClick={onClose} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors border-none cursor-pointer">
-              <X size={16} />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="text-xs font-semibold text-white/70 mb-2 block font-poppins">
-                Playlist Name
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter Playlist Name"
-                className="w-full bg-dashboard-muted border border-dashboard-border rounded-lg px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-dashboard-accent transition-colors"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-white/70 mb-2 block font-poppins">
-                Description
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Enter a description for this playlist"
-                rows={4}
-                className="w-full bg-dashboard-muted border border-dashboard-border rounded-lg px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-dashboard-accent transition-colors resize-none font-poppins"
-              />
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-dashboard-border">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-2.5 rounded-lg bg-[#ef4444] hover:bg-[#dc2626] text-sm text-white font-medium transition-colors cursor-pointer border-none"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2.5 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-sm text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer border-none"
-              >
-                {loading && <Loader2 size={14} className="animate-spin" />}
-                Create Playlist
-              </button>
-            </div>
-          </form>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-  );
-};
 
 export default Home;

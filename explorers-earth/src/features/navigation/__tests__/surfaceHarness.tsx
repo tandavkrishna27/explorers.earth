@@ -6,7 +6,6 @@ import { ApolloClient, ApolloLink, ApolloProvider, InMemoryCache, Observable } f
 import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { CategoryNavigationProvider, useCategoryNavigation } from '../CategoryNavigationProvider';
-import { MusicPublishProvider } from '../../music/MusicPublishProvider';
 import type { MusicPinVerifier } from '../accountNavigationWriter';
 import useAuthStore from '../../../store/store';
 import { createInstance } from 'i18next';
@@ -139,7 +138,7 @@ export function surfaceHarness(child: React.ReactNode, options: { initial?: Reco
       void respond().then(data => { observer.next({ data: complete(selection, data) }); observer.complete(); }, error => observer.error(error));
     })) });
   function Probe() { navigation = useCategoryNavigation(); return null; }
-  const tree = (children: React.ReactNode) => <ApolloProvider client={client}><MemoryRouter initialEntries={[options.route ?? '/']}><I18nextProvider i18n={surfaceTranslations}><CategoryNavigationProvider verifyMusicPin={options.verifyMusicPin ?? (async () => 'public')}><MusicPublishProvider><Probe />{children}</MusicPublishProvider></CategoryNavigationProvider></I18nextProvider></MemoryRouter></ApolloProvider>;
+  const tree = (children: React.ReactNode) => <ApolloProvider client={client}><MemoryRouter initialEntries={[options.route ?? '/']}><I18nextProvider i18n={surfaceTranslations}><CategoryNavigationProvider verifyMusicPin={options.verifyMusicPin ?? (async () => 'public')}><Probe />{children}</CategoryNavigationProvider></I18nextProvider></MemoryRouter></ApolloProvider>;
   const view = render(tree(child));
   return { ...view, client, requests, get navigation() { return navigation; }, get saved() { return saved; }, set saved(value) { saved = value; },
     set failMutation(value: boolean) { failMutation = value; }, set failLists(value: boolean) { failLists = value; },

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { installMusicPresentationFixture, populatedPublicResource } from "./setup/music-presentation";
+import { installPublicPresentationFixture } from "./setup/public-presentation";
 import { PUBLIC_SHELL_VISUAL_MATRIX } from "./fixtures/public-shell-visual-matrix";
 import { REQUIRED_THEMES, assertPublicShellVisualCoverage } from "./setup/public-shell-continuity";
 
@@ -78,52 +78,8 @@ async function visitCategoryHeader(page: import("@playwright/test").Page, name: 
   await share.press("Enter");
 }
 
-test("Music footer uses palette chrome while the shared header and controls remain transparent", async ({ page, context, baseURL }, info) => {
-  const fixture = await installMusicPresentationFixture(context, baseURL!, { resource: populatedPublicResource });
-  for (const [preset, expected] of Object.entries(footerColours)) {
-    const chrome = publicChromeColours[preset as keyof typeof publicChromeColours];
-    for (const footerBranding of ["enabled", "minimal", "disabled"] as const) {
-      fixture.setAppearance(preset);
-      fixture.state.account.social_media.theme_settings.footerBranding = footerBranding;
-      fixture.state.account.social_media.theme_settings.customTextColor = "#f43f5e";
-      await page.goto("/fixture-owner/music");
-      await expect.poll(() => page.locator(".public-brand-header").evaluate(header => ({
-        background: getComputedStyle(header).backgroundColor,
-        letter: getComputedStyle(header.querySelector(".public-brand-logo svg path[fill='currentColor']")!).fill,
-        border: getComputedStyle(header).borderTopWidth,
-        radius: getComputedStyle(header).borderRadius,
-        actionBackground: getComputedStyle(header.querySelector(".public-brand-action")!).backgroundColor,
-        actionBorder: getComputedStyle(header.querySelector(".public-brand-action")!).borderTopWidth,
-      }))).toEqual({ background: chrome.header, letter: chrome.ink, border: "0px", radius: "0px", actionBackground: chrome.header, actionBorder: "0px" });
-      const footer = page.getByRole("contentinfo");
-      await expect(footer).toHaveCount(footerBranding === "disabled" ? 0 : 1);
-      if (footerBranding !== "disabled") {
-        const colours = await footer.evaluate(el => ({ background: getComputedStyle(el).backgroundColor, ink: getComputedStyle(el).color }));
-        expect(colours).toEqual(expected);
-        await expect(footer.getByRole("img", { name: "Explorers.Earth" })).toBeVisible();
-        await expect(footer.getByRole("link", { name: "Privacy", exact: true })).toHaveCount(footerBranding === "enabled" ? 1 : 0);
-        await expect(footer.locator(".public-brand-wordmark svg path[fill='currentColor']").first()).toHaveCSS("fill", expected.ink);
-        await expect(footer.locator(".public-brand-wordmark svg path[fill='#32A621']").first()).toHaveCSS("fill", "rgb(50, 166, 33)");
-        await expect(footer.locator(".public-brand-wordmark svg path[fill='#085ABF']").first()).toHaveCSS("fill", "rgb(8, 90, 191)");
-        if (info.project.name === "theme-mobile" && footerBranding === "enabled" && ["cinematic-dark", "glassmorphism", "minimal-light"].includes(preset)) {
-          await footer.scrollIntoViewIfNeeded();
-          await page.screenshot({ path: info.outputPath(`mobile-${preset}-footer.png`) });
-        }
-      }
-      await expect(page.getByRole("button", { name: "Share", exact: true })).toHaveCSS("color", chrome.ink);
-      await expect(page.getByRole("button", { name: "Share", exact: true })).toHaveText("");
-      await expect(page.locator(".public-brand-header .public-brand-icon")).toHaveCount(1);
-      await expect(page.locator(".public-brand-header .public-brand-wordmark")).toHaveCount(0);
-      await expect(page.locator(".public-brand-logo svg path[fill='currentColor']").first()).toHaveCSS("fill", chrome.ink);
-      await expect(page.locator(".public-brand-logo svg path[fill='#32A621']").first()).toHaveCSS("fill", "rgb(50, 166, 33)");
-      await expect(page.locator(".public-brand-logo svg path[fill='#085ABF']").first()).toHaveCSS("fill", "rgb(8, 90, 191)");
-    }
-  }
-  fixture.assertClean();
-});
-
 test("transparent chrome overlays the root hero and leaves one collision-free offset on non-hero routes", async ({ page, context, baseURL }) => {
-  const fixture = await installMusicPresentationFixture(context, baseURL!, { resource: populatedPublicResource });
+  const fixture = await installPublicPresentationFixture(context, baseURL!);
   const analyticsWrites: Array<Record<string, any>> = [];
   await context.addInitScript(() => {
     Object.defineProperty(navigator, "share", { configurable: true, value: async () => undefined });
@@ -299,45 +255,8 @@ test("transparent chrome overlays the root hero and leaves one collision-free of
   fixture.assertClean();
 });
 
-test("footer does not cover the fixed Profile navigation target at the bottom of a friendly page", async ({ page, context, baseURL }) => {
-  const fixture = await installMusicPresentationFixture(context, baseURL!, { resource: populatedPublicResource });
-  fixture.state.account.social_media.theme_settings.footerBranding = "enabled";
-  await page.goto("/fixture-owner/music");
-  const footer = page.getByRole("contentinfo");
-  await expect(footer).toBeVisible();
-  await footer.scrollIntoViewIfNeeded();
-  const profile = page.getByRole("link", { name: "Profile", exact: true });
-  const hit = await profile.evaluate(link => {
-    const rect = link.getBoundingClientRect();
-    const target = document.elementFromPoint(rect.left + Math.min(10, rect.width / 2), rect.top + Math.min(10, rect.height / 2));
-    return target === link || Boolean(target && link.contains(target));
-  });
-  expect(hit).toBe(true);
-  await profile.click();
-  await expect(page).toHaveURL(/\/fixture-owner$/);
-  fixture.assertClean();
-});
-
-test("focused public chrome uses each preset's semantic focus token despite custom text colour", async ({ page, context, baseURL }) => {
-  const fixture = await installMusicPresentationFixture(context, baseURL!, { resource: populatedPublicResource });
-  fixture.state.account.social_media.theme_settings.footerBranding = "enabled";
-  fixture.state.account.social_media.theme_settings.customTextColor = "#f43f5e";
-  for (const [preset, expected] of Object.entries(publicChromeColours)) {
-    fixture.setAppearance(preset);
-    await page.goto("/fixture-owner/music");
-    for (const target of [page.getByRole("link", { name: "Explorers.Earth home" }), page.getByRole("button", { name: "Share" }), page.getByRole("contentinfo").getByRole("link", { name: "Privacy", exact: true })]) {
-      await target.focus();
-      await expect(target).toHaveCSS("outline-style", "solid");
-      await expect(target).toHaveCSS("outline-width", "3px");
-      await expect(target).toHaveCSS("outline-color", expected.focus);
-      await expect(target).toHaveCSS("color", expected.ink);
-    }
-  }
-  fixture.assertClean();
-});
-
 test("each of the 19 changed category headers preserves its native Share payload and responsive chrome", async ({ page, context, baseURL }) => {
-  const fixture = await installMusicPresentationFixture(context, baseURL!, { resource: populatedPublicResource });
+  const fixture = await installPublicPresentationFixture(context, baseURL!);
   await installHeaderShareSpies(context);
   for (const header of categoryHeaders) {
     await visitCategoryHeader(page, header.name, header.path);
@@ -352,9 +271,9 @@ test("each of the 19 changed category headers preserves its native Share payload
 });
 
 test("each of the 19 changed category headers preserves its clipboard Share fallback", async ({ page, context, baseURL }) => {
-  const fixture = await installMusicPresentationFixture(context, baseURL!, { resource: populatedPublicResource });
+  const fixture = await installPublicPresentationFixture(context, baseURL!);
   await installHeaderShareSpies(context);
-  await page.goto("/fixture-owner/music");
+  await page.goto("/fixture-owner");
   await page.evaluate(() => sessionStorage.setItem("public-theme-share-mode", "copy"));
   for (const header of categoryHeaders) {
     await visitCategoryHeader(page, header.name, header.path);
@@ -364,7 +283,7 @@ test("each of the 19 changed category headers preserves its clipboard Share fall
 });
 
 test("all 19 changed category headers resolve dark and light chrome, focus, and native sharing", async ({ page, context, baseURL }) => {
-  const fixture = await installMusicPresentationFixture(context, baseURL!, { resource: populatedPublicResource });
+  const fixture = await installPublicPresentationFixture(context, baseURL!);
   await installHeaderShareSpies(context);
   for (const preset of ["cinematic-dark", "minimal-light"] as const) {
     const expected = publicChromeColours[preset];

@@ -26,7 +26,6 @@ export async function createProtectedReceipt(root:string,laneName:string,options
  let artifactPolicy:{configFile:string;outputDir:string}|undefined;
  const configurationSource=(outputDir:string)=>`import base from ${JSON.stringify(pathToFileURL(join(root,lane.config)).href)};\nimport {protectedBrowserConfiguration} from ${JSON.stringify(pathToFileURL(join(root,'scripts/replatform-e2e.mjs')).href)};\nexport default protectedBrowserConfiguration(base,${JSON.stringify(root)},${JSON.stringify(lane.config)},${JSON.stringify(outputDir)});\n`;
  let diagnostics:unknown[]=[];
- let topology:unknown;
  const decode=(path:string,execution:boolean)=>{
   if(!artifactPolicy)throw new Error('Protected artifact allocation missing');
   const report=JSON.parse(readFileSync(path,'utf8'));
@@ -37,12 +36,6 @@ export async function createProtectedReceipt(root:string,laneName:string,options
  };
  return {
   capability:options.capability,
-  topology(record:unknown){
-   if(laneName!=='music'||lstatSync(directory).isSymbolicLink()||realpathSync(directory)!==directory)throw new Error('Protected topology allocation mismatch');
-   const input=record as {authority:unknown};contract.validateMusicTopology(record,marker.provenance,input?.authority);
-   writeFileSync(join(directory,'topology.json'),JSON.stringify(record,null,2),{mode:0o600,flag:'wx'});
-   topology=record;
-  },
   arguments(args:string[],fixtureDirectory:string){
    if(artifactPolicy)throw new Error('Protected artifact allocation repeated');
    artifactPolicy={configFile:join(fixtureDirectory,'protected.playwright.config.mjs'),outputDir:join(fixtureDirectory,'browser-output')};
@@ -130,7 +123,7 @@ export async function createProtectedReceipt(root:string,laneName:string,options
    if(!artifactPolicy||existsSync(artifactPolicy.configFile)||existsSync(artifactPolicy.outputDir)||lstatSync(directory).isSymbolicLink())throw new Error('Protected artifact ownership changed');
    if(child.status!==0||child.signal){const failure={version:1,lane:laneName,provenance:marker.provenance,results:executed,child,diagnostics,cleanup:{status:'passed'},artifacts:{trace:'off',video:'off',screenshot:'off',cleanup:'passed'}};contract.validateFailureRecord(lane,failure,marker.provenance,child);writeFileSync(join(directory,'failure.json'),JSON.stringify(failure,null,2),{mode:0o600,flag:'wx'});throw new Error('Protected execution failed after owned artifact cleanup');}
    const receipt={version:1,lane:laneName,provenance:marker.provenance,config:lane.config,spec:lane.spec,projects:lane.projects,discovery:discovered,results:executed,errors:[],cleanup:{status:'passed'},artifacts:{trace:'off',video:'off',screenshot:'off',cleanup:'passed'},authority:{owned:true,database:authority.database,containerId:authority.containerId,imageId:authority.imageId},child,startedAt,endedAt:new Date().toISOString(),playwright};
-   contract.validateLaneReceipt(lane,{status:0,signal:null,error:null,receipt,topology},marker.provenance);
+   contract.validateLaneReceipt(lane,{status:0,signal:null,error:null,receipt},marker.provenance);
    writeFileSync(join(directory,'receipt.json'),JSON.stringify(receipt,null,2),{mode:0o600,flag:'wx'});
   }
  };

@@ -101,10 +101,6 @@ const fixedFiles = [
 // without broadening the root (production) Docker context.
 const fixtureOnlyDashboardFiles = [
   "explorers-earth/src/lib/musicDevelopmentTransport.ts",
-  "explorers-earth/src/features/music/components/MusicPlaylistCollection.tsx",
-  "explorers-earth/src/features/music/components/MusicSectionTabs.tsx",
-  "explorers-earth/src/features/music/components/MusicSectionTabs.css",
-  "explorers-earth/src/features/music/components/musicPlaybackCommand.ts",
 ];
 
 function trackedFixtureFiles() {

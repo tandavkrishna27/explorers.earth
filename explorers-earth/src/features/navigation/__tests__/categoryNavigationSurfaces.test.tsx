@@ -70,7 +70,6 @@ vi.mock('../../Favorites/components/Recommendations', () => ({ default: () => nu
 vi.mock('../../Settings/components/ProfileAccountSettings', () => ({ default: () => null }));
 vi.mock('../../Settings/components/BillingTab', () => ({ default: () => null }));
 vi.mock('../../Settings/components/LanguageSelector', () => ({ default: () => null, LANGUAGES: [{ code: 'en', name: 'English' }] }));
-vi.mock('../../music/publicMusicClient', () => ({ publicMusicClient: { discover: vi.fn().mockRejectedValue(new Error('offline')) } }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 // These integrations are unrelated to publication: map/location creation,
 // guided tours, and SEO require browser APIs or external services.
@@ -492,10 +491,10 @@ describe('Settings verified ordinary publication', () => {
     await waitFor(() => expect(h.writes).toHaveLength(1));
     expect(h.writes[0].variables).toEqual(canonicalWrite(undefined, undefined, ['public_profile', 'public_books']));
   });
-  it('does not allow a new hidden Music pin', async () => {
-    const h = surfaceHarness(<Settings />, { initial: { public_music: 'No', pinned_nav_tabs: ['public_profile'] } }); await h.ready();
+  it('offers no Music tab to show or pin, since P3-4 removed Music', async () => {
+    const h = surfaceHarness(<Settings />, { initial: { public_music: 'Yes', pinned_nav_tabs: ['public_profile', 'public_music'] } }); await h.ready();
     fireEvent.click(screen.getByRole('button', { name: /Pinned Navigation Tabs/ }));
-    expect(screen.getByRole('checkbox', { name: 'Pin Music Tab' })).toBeDisabled();
+    expect(screen.queryByRole('checkbox', { name: /Music/ })).toBeNull();
   });
   it('uses canonical navigation without either redundant Settings GraphQL operation', async () => {
     const h = surfaceHarness(<Settings />, { initial: { documentId: 'verified-account' }, respond: name => name === 'SettingsAccount' ? new Promise(() => {}) : undefined }); await h.ready();

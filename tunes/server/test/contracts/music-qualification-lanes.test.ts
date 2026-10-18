@@ -3,7 +3,6 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import ts from "typescript";
 import * as musicCli from "../../../scripts/music-cli";
 import * as musicQualification from "../../../scripts/music-qualification";
 import { validateIntegrationDatabaseTarget } from "../integration-global-setup";
@@ -38,7 +37,6 @@ import {
   parseMusicQualificationLoadMeasurements,
   parseMusicQualificationOperationalMeasurements,
   percentile,
-  preferredQualificationPort,
   qualificationStageConcurrency,
   qualificationTaskUsesFixtureEnvironment,
   qualificationTaskEnvironment,
@@ -781,25 +779,18 @@ describe("portable Music qualification lanes", () => {
     expect(source).toMatch(/writes atomically with owner-only permissions and contains no identity rows[\s\S]*checkpointFilesystemTimeoutMs\);/);
   });
 
-  it("adds real five-service browser and Docker evidence to nightly and release", () => {
-    expect(MUSIC_QUALIFICATION_TASKS["fullstack-browser"].npmArgs)
-      .toContain("music-auth-triggers.spec.ts");
-    expect(MUSIC_QUALIFICATION_TASKS["fixture-fullstack-browser"].npmArgs)
-      .toContain("music-fixture-fullstack.spec.ts");
+  it("adds real five-service Docker evidence to release", () => {
     expect(MUSIC_QUALIFICATION_TASKS["real-docker-evidence"].npmArgs)
       .toContain("tunes/scripts/music-fixture-runtime.ts");
     expect(MUSIC_QUALIFICATION_TASKS["real-docker-release"].npmArgs).toEqual([]);
     expect(MUSIC_QUALIFICATION_TASKS["real-docker-release"].nativeReleaseMode).toBe("rehearsal");
     expect(MUSIC_QUALIFICATION_TASKS["interrupt-resume"].npmArgs)
       .toContain("tunes/scripts/music-interrupt-rehearsal.ts");
-    const nightly = MUSIC_QUALIFICATION_LANES.nightly.stages.flatMap((stage) => stage.taskIds);
     const release = MUSIC_QUALIFICATION_LANES.release.stages.flatMap((stage) => stage.taskIds);
-    expect(nightly).toEqual(expect.arrayContaining(["fullstack-browser", "accessibility-browser", "fixture-fullstack-browser"]));
-    for (const id of ["fullstack-browser", "accessibility-browser", "fixture-fullstack-browser"] as const) {
-      expect(MUSIC_QUALIFICATION_TASKS[id].npmArgs).toEqual(expect.arrayContaining(["test:e2e", "--project=chromium"]));
-    }
+    // The Music browser specs were removed with the Music product (P3-4); no lane runs a browser task.
+    expect(Object.values(MUSIC_QUALIFICATION_TASKS).some((task) => task.npmArgs.includes("test:e2e"))).toBe(false);
     expect(release).toEqual(expect.arrayContaining([
-      "fixture-fullstack-browser", "real-docker-evidence", "real-docker-release", "interrupt-resume",
+      "real-docker-evidence", "real-docker-release", "interrupt-resume",
     ]));
 
     const runtimeEvidence = readFileSync(resolve(import.meta.dirname, "../../../scripts/music-fixture-runtime.ts"), "utf8");
@@ -851,64 +842,11 @@ describe("portable Music qualification lanes", () => {
     expect(dockerfile).toContain("RUN npm run build");
     expect(dockerfile).not.toContain("MUSIC_FIXTURE_BUILD");
     expect(dockerfile).not.toContain("VITE_LOCAL_TUNES_URL");
-    const browserFixture = readFileSync(resolve(root, "explorers-earth/e2e/music-fixture-fullstack.spec.ts"), "utf8");
-    expect(browserFixture).toContain('const fixtureOrigin = "http://localhost:55173"');
-    expect(browserFixture).toContain('url.pathname === "/api/playlist/songs" && response.request().method() === "POST"');
-    expect(browserFixture).not.toContain('context.route("https://music-fixture.invalid/**"');
-    // Exercise the callback URL expressions with delimiter-bearing authority:
-    // a hardcoded token or missing URL encoding must fail this boundary check.
-    const source = ts.createSourceFile("fixture.ts", browserFixture, ts.ScriptTarget.Latest, true);
-    const callbackExpressions: string[] = [];
-    const visit = (node: ts.Node): void => {
-      if (ts.isCallExpression(node) && node.expression.getText(source) === "page.goto"
-          && node.arguments[0]?.getText(source).includes("/google-auth/callback")) {
-        callbackExpressions.push(node.arguments[0].getText(source));
-      }
-      ts.forEachChild(node, visit);
-    };
-    visit(source);
-    expect(callbackExpressions).toHaveLength(2);
-    for (const expression of callbackExpressions) {
-      const token = "fixture-token/+?&=sentinel";
-      const callback = new Function("fixtureStrapiToken", `return (${expression});`)(token);
-      const url = new URL(callback, "http://localhost:55173");
-      expect(url.pathname).toBe("/google-auth/callback");
-      expect([...url.searchParams]).toEqual([["access_token", token]]);
-    }
-    expect(browserFixture).not.toContain("setupMockAuthentication");
-    // Login and authoritative account reads must traverse the fixture proxy,
-    // not be fulfilled by Playwright; mutation cleanup makes repeat runs
-    // independent of an unavailable database reset.
-    expect(browserFixture).not.toContain('context.route("**/api/users/me"');
-    expect(browserFixture).not.toContain('context.route("**/graphql"');
-    expect(browserFixture).toContain("insertedQueueSongIds");
-    expect(browserFixture).toContain("fixture-cleanup-song-");
-    const restoreCallbacks: string[] = [];
-    const findRestore = (node: ts.Node): void => {
-      if (ts.isPropertyAssignment(node) && node.name.getText(source) === "restore") restoreCallbacks.push(node.initializer.getText(source));
-      ts.forEachChild(node, findRestore);
-    };
-    findRestore(source);
-    expect(restoreCallbacks).toHaveLength(1);
-    const restoreCode = ts.transpileModule(`const restore = ${restoreCallbacks[0]};`, {
-      compilerOptions: { target: ts.ScriptTarget.ES2022 },
-    }).outputText;
-    const writes: unknown[] = [];
-    const fixtureState = { guestControls: { allowSongRequests: false } };
-    const restore = new Function("page", "guardedMutation", "fixtureOrigin", "fixtureWriteHeaders", "credential", "state", "expect", `${restoreCode}; return restore;`)(
-      { request: { patch: async (url: string, input: unknown) => { writes.push({ url, input }); return { status: () => 200 }; } } },
-      async (_callsite: string, work: () => Promise<unknown>) => work(),
-      "http://localhost:55173", (credential: string) => ({ Authorization: credential }), "fixture-owner-credential", fixtureState, expect,
-    );
-    const permissions = { allowSongRequests: true, allowGuestPlayOnDevice: false, allowPlaylistSharing: true, allowRecentlyPlayedVisibility: false };
-    await restore({ permissions });
-    expect(writes).toEqual([{ url: "http://localhost:55173/api/music/guest-controls", input: { headers: { Authorization: "fixture-owner-credential" }, data: permissions } }]);
-    expect(fixtureState.guestControls).toBeUndefined();
   });
 
   it("runs the complete Explorer unit suite in PR while fast remains affected-only", () => {
     expect(MUSIC_QUALIFICATION_TASKS["explorer-music-unit"].npmArgs)
-      .toContain("src/features/music");
+      .toContain("src/features/__tests__/musicImportBoundary.test.ts");
     expect(MUSIC_QUALIFICATION_TASKS["explorer-full-unit"].npmArgs)
       .toEqual(["run", "test:unit", "--prefix", "explorers-earth"]);
     expect(MUSIC_QUALIFICATION_LANES.pr.stages.flatMap((stage) => stage.taskIds))
@@ -923,14 +861,6 @@ describe("portable Music qualification lanes", () => {
     expect(end).toBeGreaterThan(start);
     expect(source.slice(start, end)).toContain("catch (error)");
     expect(source.slice(start, end)).toContain("stderr: redactedError(error)");
-  });
-
-  it("gives concurrent browser tasks isolated non-fixture dev-server ports", () => {
-    const ports = ["browser-smoke", "fullstack-browser", "accessibility-browser"].map(preferredQualificationPort);
-    expect(new Set(ports).size).toBe(ports.length);
-    expect(ports.every((port) => Number.isSafeInteger(port) && port >= 56_000 && port <= 60_000)).toBe(true);
-    expect(ports).not.toContain(51_337);
-    expect(ports).not.toContain(55_173);
   });
 
   it("enables every historical Music PostgreSQL gate only for real-DB qualification tasks", () => {

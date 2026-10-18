@@ -41,7 +41,8 @@ describe("live profile order contract against the real appearance component", ()
     render(<ThemeAppearanceSection themeSettings={raw} onChange={vi.fn()} />);
     expect(readRenderedOrder()).toEqual(CANONICAL);
     expect(screen.queryByRole("button", { name: "Move Music up", exact: true })).not.toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "First view" })).toContainHTML('value="music"');
+    // The "Music page" first view was removed in P3-4.
+    expect(screen.getByRole("combobox", { name: "First view" })).not.toContainHTML('value="music"');
   });
 
   it("seeds only the canonical eight recommendation categories", () => {

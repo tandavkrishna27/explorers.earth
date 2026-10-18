@@ -6,7 +6,7 @@ vi.mock('../routes/AppRoutes', () => ({
   default: () => <main><Link to="/settings">Away</Link><Link to="/">Landing</Link></main>,
 }));
 vi.mock('../components/ScrollToTop', () => ({ default: () => null }));
-vi.mock('../components/AuthSyncManager', () => ({ default: () => null }));
+vi.mock('../components/AccountGenerationCacheReset', () => ({ default: () => null }));
 vi.mock('../components/ErrorBoundary', () => ({
   default: ({ children }: { children: React.ReactNode }) => children,
 }));

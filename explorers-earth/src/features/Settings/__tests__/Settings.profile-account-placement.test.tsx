@@ -1,8 +1,6 @@
+// P3-4: the Music product left the SPA; Music-only cases were removed and the generic pin cases now use Books/Games.
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { readyMusic } from "../../music/__tests__/musicPublishHarness";
-import { musicIdentityCoordinator } from "../../music/musicApi";
-import { musicWorkspaceClient } from "../../../hooks/useTunesDashboard";
 import { loginSurface, surfaceAccount, surfaceHarness, writtenPins } from "../../navigation/__tests__/surfaceHarness";
 import { createInstance } from "i18next";
 import { I18nextProvider } from "react-i18next";
@@ -16,13 +14,12 @@ vi.mock("../../Profile/api/useCanonicalAccount", () => ({ useCanonicalAccount: (
   data: { id: navigation.accountId, revision: 1 }, isLoading: false,
 }) }));
 
-const preference = vi.hoisted(() => ({ value: "Yes" as string | undefined }));
 const SECOND_ACCOUNT = "22222222-2222-4222-8222-222222222222";
 // writtenPins reads the canonical categories payload as a pin order, so these
 // assertions stay legible while checking what the client actually sends.
 const lastWrittenPins = () => writtenPins(navigation.mutate.mock.lastCall![0]);
 const translations = createInstance();
-const initialAccount = () => surfaceAccount({ documentId: navigation.accountId, pinned_nav_tabs: navigation.pins, auto_pinning: navigation.auto, public_music: preference.value ?? null, public_books: navigation.booksPublic });
+const initialAccount = () => surfaceAccount({ documentId: navigation.accountId, pinned_nav_tabs: navigation.pins, auto_pinning: navigation.auto, public_books: navigation.booksPublic });
 async function render(ui: ReactElement, options: { deferProfile?: Promise<unknown> } = {}) {
   const wrapped = (child: ReactElement) => <I18nextProvider i18n={translations}>{child}</I18nextProvider>;
   const h = surfaceHarness(wrapped(ui), { initial: initialAccount(), deferProfile: options.deferProfile });
@@ -39,35 +36,26 @@ async function render(ui: ReactElement, options: { deferProfile?: Promise<unknow
     return supplied === undefined ? commitWrite(input) : supplied;
   });
   await act(async () => { if (vi.isFakeTimers()) await vi.advanceTimersByTimeAsync(0); });
-  const settle = async () => {
-    await h.ready();
-    await waitFor(() => expect(musicWorkspaceClient.loadDashboard).toHaveBeenCalled());
-  };
+  const settle = async () => { await h.ready(); };
   // A deferred profile read is the point of those cases, so they settle themselves.
   if (!options.deferProfile) await settle();
   return { ...h, settle, async rerender(next: ReactElement) {
-    if (h.saved.documentId !== navigation.accountId) {
-      await act(async () => readyMusic("u1", navigation.accountId));
-      h.saved = initialAccount();
-    }
+    if (h.saved.documentId !== navigation.accountId) h.saved = initialAccount();
     h.rerenderChild(wrapped(next));
     await h.ready();
     // Switching accounts resets the panel to collapsed, so reopen it before looking for
     // the pin; a new account inheriting the previous one's open panel would be the bug.
-    if (!screen.queryByRole("checkbox", { name: "Pin Music Tab" })) {
+    if (!screen.queryByRole("checkbox", { name: "Pin Books Tab" })) {
       fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
     }
-    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Pin Books Tab" })).toBeEnabled());
   } };
 }
 const navigation = vi.hoisted(() => ({
   pins: ["public_profile"] as string[], auto: false, accountId: "account-1", booksPublic: "Yes",
-  mutate: vi.fn(), discover: vi.fn(), refetch: vi.fn(),
+  mutate: vi.fn(), refetch: vi.fn(),
 }));
-vi.mock("../../music/publicMusicClient", async (original) => ({
-  ...(await original<object>()), publicMusicClient: { discover: navigation.discover },
-}));
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); useAuthStore.getState().logout(); musicIdentityCoordinator.reset(); vi.restoreAllMocks(); preference.value = "Yes"; window.history.replaceState(null, "", "/"); });
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); useAuthStore.getState().logout(); vi.restoreAllMocks(); window.history.replaceState(null, "", "/"); });
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();
@@ -75,26 +63,16 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 });
 
 beforeEach(async () => {
-  await translations.init({ lng: "en", fallbackLng: "en", resources: { en: { translation: english }, ar: { translation: { music: { publication: { label: "ظهور الموسيقى" } } } } }, interpolation: { escapeValue: false } });
+  await translations.init({ lng: "en", fallbackLng: "en", resources: { en: { translation: english } }, interpolation: { escapeValue: false } });
   navigation.pins = ["public_profile"];
   navigation.auto = false; navigation.booksPublic = "Yes";
-  // Must match the account loginSurface() signs in as. It was "account-1", a legacy
-  // style id, so the Music coordinator reconciled against an account the canonical
-  // store had never heard of, never reached "ready", and left useTunesDashboard
-  // disabled — which is why every case in this file timed out waiting for
-  // loadDashboard rather than failing on its own assertion.
+  // Must match the account loginSurface() signs in as, so the canonical store and the
+  // harness agree on which account every write belongs to.
   navigation.accountId = canonicalAccountFixture().id;
   navigation.mutate.mockReset().mockResolvedValue(undefined);
   navigation.refetch.mockReset().mockResolvedValue({ data: {} });
-  navigation.discover.mockReset().mockResolvedValue({ version: "music-public-descriptor/v1", publication: { mode: "public", publicSlug: "test-slug", revision: 1 } });
   sessionStorage.clear();
-  musicIdentityCoordinator.reset();
-  let mode = "public";
-  vi.spyOn(musicWorkspaceClient, "loadDashboard").mockImplementation(async () => ({ queueRevision: 0, songs: [], currentlyPlaying: null, playedSongs: [], publication: { mode, publicSlug: "test-slug" } } as never));
-  vi.spyOn(musicWorkspaceClient, "setPublication").mockImplementation(async next => { mode = next; return { version: "music-publication/v1", publication: { mode: next, publicSlug: "test-slug" } }; });
   loginSurface();
-  // After sign-in: reconciling before it leaves the coordinator with no account.
-  await readyMusic("u1", navigation.accountId);
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: 404 })));
 });
 
@@ -206,15 +184,10 @@ describe("native Games interaction dispatch probe", () => {
 });
 
 describe("Settings moved profile data placement", async () => {
-  it("provides visible keyboard focus on Music visibility and the pin's visible switch", async () => {
+  it("provides visible keyboard focus on a pin's visible switch", async () => {
     const user = userEvent.setup(); await render(<Settings />);
-    await user.click(screen.getByRole("button", { name: /Public Visibility/i }));
-    const visibility = screen.getByRole("switch", { name: "Music public visibility" });
-    visibility.focus();
-    expect(visibility).toHaveFocus();
-    expect(visibility).toHaveClass("focus-visible:ring-2");
     await user.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
-    const pin = screen.getByRole("checkbox", { name: "Pin Music Tab" });
+    const pin = screen.getByRole("checkbox", { name: "Pin Books Tab" });
     pin.focus(); await user.keyboard("{Tab}"); await user.keyboard("{Shift>}{Tab}{/Shift}");
     expect(pin).toHaveFocus();
     // The input is sr-only, so its visible sibling must carry the indicator.
@@ -258,15 +231,16 @@ describe("Settings moved profile data placement", async () => {
     navigation.mutate.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
     await render(<Settings />);
     fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Music Tab" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Books Tab" }));
     await waitFor(() => expect(navigation.mutate).toHaveBeenCalledTimes(1));
-    expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Pin Books Tab" })).toBeDisabled();
     await act(async () => reject(new Error("save failed")));
     expect(await screen.findByRole("alert")).toHaveTextContent(/save/i);
-    expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).not.toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeEnabled();
+    expect(screen.getByRole("checkbox", { name: "Pin Books Tab" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Pin Books Tab" })).toBeEnabled();
   });
-  it("lets the owner explicitly free a hidden saved slot before pinning Music", async () => {
+  it("lets the owner explicitly free a hidden saved slot before pinning Games", async () => {
+    // Books is private but still occupies a saved slot; unpinning it frees room for Games.
     navigation.booksPublic = "No";
     navigation.pins = ["public_profile", "public_recommendations", "public_guides", "public_books", "public_apps"];
     const user = userEvent.setup(); await render(<Settings />);
@@ -274,9 +248,9 @@ describe("Settings moved profile data placement", async () => {
     const books = screen.getByRole("checkbox", { name: "Pin Books Tab" });
     expect(books).toBeEnabled();
     await user.click(books);
-    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeEnabled());
-    await user.click(screen.getByRole("checkbox", { name: "Pin Music Tab" }));
-    await waitFor(() => expect(lastWrittenPins()).toEqual(["public_profile", "public_recommendations", "public_guides", "public_apps", "public_music"]));
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Pin Games Tab" })).toBeEnabled());
+    await user.click(screen.getByRole("checkbox", { name: "Pin Games Tab" }));
+    await waitFor(() => expect(lastWrittenPins()).toEqual(["public_profile", "public_recommendations", "public_guides", "public_apps", "public_games"]));
   });
   it("does not call an empty mutation acknowledgement a confirmed save", async () => {
     // Canonically, an empty acknowledgement is a response that never advanced the
@@ -284,61 +258,27 @@ describe("Settings moved profile data placement", async () => {
     navigation.mutate.mockImplementation(() => explorersApiClient.getMyProfile());
     await render(<Settings />);
     fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Music Tab" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Books Tab" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/save/i);
-    expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Pin Books Tab" })).not.toBeChecked();
   });
-  it("keeps Music settings findable by searching Music", async () => {
+  it("lets owners pin a public category with one whole-array write", async () => {
     await render(<Settings />);
-    fireEvent.change(screen.getByPlaceholderText("Search settings..."), { target: { value: "music" } });
-    fireEvent.click(screen.getByRole("button", { name: /Public Visibility/i }));
-    expect(screen.getByRole("switch", { name: "Music public visibility" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Pinned Navigation Tabs/ })).toBeInTheDocument();
-  });
-  it("supports keyboard and touch removal of hidden saved Music pins but never adds a hidden pin", async () => {
-    preference.value = "No"; navigation.pins = ["public_profile", "public_music"];
-    const user = userEvent.setup();
-    await render(<Settings />);
-    screen.getByRole("button", { name: /Pinned Navigation Tabs/ }).focus();
-    await user.keyboard("{Enter}");
-    const pin = screen.getByRole("checkbox", { name: "Pin Music Tab" });
-    pin.focus(); await user.keyboard("[Space]");
-    await waitFor(() => expect(pin).not.toBeChecked());
-    expect(pin).toBeDisabled();
-    await user.pointer([{ keys: "[TouchA>]", target: pin }, { keys: "[/TouchA]" }]);
-    expect(pin).not.toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Books Tab" }));
+    await waitFor(() => expect(lastWrittenPins()).toEqual(["public_profile", "public_books"]));
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Pin Books Tab" })).toBeChecked());
     expect(navigation.mutate).toHaveBeenCalledTimes(1);
-    expect(lastWrittenPins()).toEqual(["public_profile"]);
   });
-  it("switches translated Music labels live with English fallback, RTL direction and narrow wrapping", async () => {
-    await render(<Settings />);
-    fireEvent.click(screen.getByRole("button", { name: /Public Visibility/i }));
-    await screen.findByText("Music is public.");
-    fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
-    await act(async () => { await translations.changeLanguage("ar"); });
-    const visibility = screen.getByRole("switch", { name: "ظهور الموسيقى" });
-    expect(visibility.closest("[dir]")).toHaveAttribute("dir", "rtl");
-    expect(visibility.closest("[dir]")).toHaveClass("min-w-0", "break-words");
-    expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Pinned Navigation Tabs" })).toBeInTheDocument();
-    await act(async () => { await translations.changeLanguage("en"); });
-    expect(screen.getByRole("switch", { name: "Music public visibility" })).toBeInTheDocument();
-  });
-  it("uses shared auto ranking and does not assume preference means publication", async () => {
+  it("uses shared auto ranking without writing pins", async () => {
+    // With no list counts, auto mode falls back to NAV_TAB_ORDER: Places, Guides,
+    // Movies & Shows, Books fill the four slots after Profile; Apps & Tools does not fit.
     navigation.auto = true;
-    let resolve!: (value: unknown) => void;
-    let discoveryCompleted = false;
-    navigation.discover.mockImplementationOnce(() => new Promise(done => { resolve = value => { discoveryCompleted = true; done(value); }; }));
     await render(<Settings />);
     fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
-    const pin = screen.getByRole("checkbox", { name: "Pin Music Tab" });
-    expect(pin).not.toBeChecked(); expect(pin).toBeDisabled();
-    expect(navigation.discover).toHaveBeenCalled();
-    expect(discoveryCompleted).toBe(false);
-    await act(async () => resolve({ version: "music-public-descriptor/v1", publication: { mode: "public", publicSlug: "test-slug", revision: 1 } }));
-    expect(discoveryCompleted).toBe(true);
-    expect(pin).toBeChecked();
-    expect(screen.getByText(/Available Music comes first/)).toBeInTheDocument();
+    const pin = screen.getByRole("checkbox", { name: "Pin Books Tab" });
+    expect(pin).toBeChecked(); expect(pin).toBeDisabled();
+    expect(screen.getByText(/Categories with the most lists come first/)).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Pin Apps & Tools Tab" })).not.toBeChecked();
     expect(navigation.mutate).not.toHaveBeenCalled();
   });
@@ -347,19 +287,19 @@ describe("Settings moved profile data placement", async () => {
     navigation.mutate.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectOld = reject; }));
     const view = await render(<Settings />);
     fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Music Tab" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Books Tab" }));
     await waitFor(() => expect(navigation.mutate).toHaveBeenCalledTimes(1));
     navigation.accountId = SECOND_ACCOUNT;
     loginSurface("u1", SECOND_ACCOUNT);
     fireEvent.click(screen.getByRole("tab", { name: "Billing" }));
     fireEvent.click(screen.getByRole("tab", { name: "Account" }));
     await view.rerender(<Settings />);
-    expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).not.toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeEnabled();
-    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Music Tab" }));
+    expect(screen.getByRole("checkbox", { name: "Pin Books Tab" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Pin Books Tab" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Books Tab" }));
     await waitFor(() => expect(navigation.mutate).toHaveBeenCalledTimes(2));
     await act(async () => rejectOld(new Error("old save failed")));
-    expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Pin Books Tab" })).toBeChecked();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
   it("opens and focuses public navigation after account data arrives through the hash link", async () => {
@@ -368,46 +308,22 @@ describe("Settings moved profile data placement", async () => {
     const deferProfile = new Promise<void>(resolve => { deliverAccount = resolve; });
     // The account now arrives from the canonical profile read, so that is what is withheld.
     const view = await render(<Settings />, { deferProfile });
-    expect(screen.queryByRole("checkbox", { name: "Pin Music Tab" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Pin Books Tab" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Pinned Navigation Tabs" })).not.toHaveFocus();
     await act(async () => { deliverAccount(); await deferProfile; });
     await view.settle();
     const heading = await screen.findByRole("heading", { name: "Pinned Navigation Tabs" });
     await waitFor(() => expect(heading).toHaveFocus());
-    expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeInTheDocument();
-  });
-  it("shows canonical Music availability and lets owners pin without changing publication", async () => {
-    await render(<Settings />);
-    fireEvent.click(screen.getByRole("button", { name: /Public Visibility/i }));
-    await screen.findByText("Music is public.");
-    fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Music Tab" }));
-    await waitFor(() => expect(lastWrittenPins()).toEqual(["public_profile", "public_music"]));
-    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeChecked());
-    expect(navigation.mutate).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("checkbox", { name: "Pin Books Tab" })).toBeInTheDocument();
   });
   it("rejects a sixth saved slot without mutation or silently evicting another pin", async () => {
     navigation.pins = ["public_profile", "public_recommendations", "public_guides", "public_books", "public_apps"];
     await render(<Settings />);
     fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Music Tab" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Games Tab" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/5/);
     expect(navigation.mutate).not.toHaveBeenCalled();
-    expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).not.toBeChecked();
-  });
-  it("keeps saved Music pins manageable during an outage and restores the confirmed pin after save failure", async () => {
-    navigation.pins = ["public_profile", "public_music"];
-    navigation.discover.mockRejectedValue(new Error("offline"));
-    navigation.mutate.mockRejectedValue(new Error("save unavailable"));
-    await render(<Settings />);
-    await waitFor(() => expect(navigation.discover).toHaveBeenCalled());
-    await expect(navigation.discover.mock.results[0].value).rejects.toThrow("offline");
-    fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
-    const pin = screen.getByRole("checkbox", { name: "Pin Music Tab" });
-    expect(pin).toBeChecked(); expect(pin).toBeEnabled();
-    fireEvent.click(pin);
-    await waitFor(() => expect(pin).toBeChecked());
-    expect(await screen.findByRole("alert")).toHaveTextContent(/save/i);
+    expect(screen.getByRole("checkbox", { name: "Pin Games Tab" })).not.toBeChecked();
   });
   it("serializes whole-array saves", async () => {
     // The "ignores older query data after confirmation" clause went with the Apollo
@@ -416,46 +332,14 @@ describe("Settings moved profile data placement", async () => {
     navigation.mutate.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     await render(<Settings />);
     fireEvent.click(screen.getByRole("button", { name: /Pinned Navigation Tabs/ }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Music Tab" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Books Tab" }));
     expect(screen.getByRole("checkbox", { name: "Pin Places Tab" })).toBeDisabled();
     fireEvent.click(screen.getByRole("checkbox", { name: "Pin Places Tab" }));
     await waitFor(() => expect(navigation.mutate).toHaveBeenCalledTimes(1));
     await act(async () => finish(undefined));
-    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Pin Music Tab" })).toBeChecked());
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Pin Books Tab" })).toBeChecked());
     expect(screen.getByRole("checkbox", { name: "Pin Places Tab" })).toBeEnabled();
     expect(navigation.mutate).toHaveBeenCalledTimes(1);
-  });
-  it("keeps saved pins and confirmed publication during an outage without requiring recommendation lists", async () => {
-    navigation.pins = ["public_profile", "public_music"];
-    vi.mocked(musicWorkspaceClient.setPublication).mockRejectedValue(new Error("offline"));
-    const view = await render(<Settings />);
-    fireEvent.click(screen.getByRole("button", { name: /Public Visibility/i }));
-    const visibility = screen.getByRole("switch", { name: "Music public visibility" });
-    await waitFor(() => expect(visibility).toBeChecked());
-    fireEvent.click(visibility);
-    expect(await screen.findByRole("alert")).toHaveTextContent(/not confirmed/i);
-    expect(visibility).toBeChecked();
-    expect(view.saved.pinned_nav_tabs).toEqual(["public_profile", "public_music"]);
-    expect(navigation.mutate).not.toHaveBeenCalled();
-  });
-  it.each([["Yes", true], ["No", false], [undefined, false]])("combines saved Music preference %s with verified backend publication", async (saved, checked) => {
-    preference.value = saved as string | undefined;
-    await render(<Settings />);
-    fireEvent.click(screen.getByRole("button", { name: /Public Visibility/i }));
-    const visibility = screen.getByRole("switch", { name: "Music public visibility" });
-    await waitFor(() => expect(visibility).toBeEnabled());
-    expect(visibility).toHaveAttribute("aria-checked", String(checked));
-    if (checked) expect(screen.getByText("Music is public.")).toBeInTheDocument();
-    else expect(screen.getByRole("button", { name: "Make private" })).toBeEnabled();
-    expect(screen.queryByText(/does not confirm Music is published or available/)).not.toBeInTheDocument();
-  });
-  it("renders account settings when Music configuration is invalid", async () => {
-    vi.stubEnv("VITE_LOCAL_TUNES_API_URL", "http://localhost:5000");
-    try {
-      await render(<Settings />);
-      expect(screen.getByRole("tab", { name: "Account" })).toBeInTheDocument();
-      expect(screen.getByText("Pinned Navigation Tabs")).toBeInTheDocument();
-    } finally { vi.unstubAllEnvs(); }
   });
   it("places private identity in Account and billing address in Billing", async () => {
     await render(<Settings />);

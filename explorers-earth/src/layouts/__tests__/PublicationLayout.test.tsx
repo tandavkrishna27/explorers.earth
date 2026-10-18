@@ -5,7 +5,6 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import MobileLayout from '../MobileLayout';
 import DashboardLayout from '../DashboardLayout';
 import { useCategoryNavigation } from '../../features/navigation/CategoryNavigationProvider';
-import { useMusicPublish } from '../../features/music/MusicPublishProvider';
 import { loginSurface, surfaceAccount } from '../../features/navigation/__tests__/surfaceHarness';
 import { canonicalAccountFixture, canonicalCategoryAccount } from '../../test/canonicalAccountFixture';
 import useAuthStore from '../../store/store';
@@ -19,14 +18,13 @@ vi.mock('../../routes/validators', () => ({ DashboardRouteValidator: ({ children
 
 function Consumer() {
   const navigation = useCategoryNavigation();
-  const music = useMusicPublish(navigation.authority, { ready: false });
-  return <div data-testid="publication-consumer">{navigation.authority?.accountDocumentId}:{music.state.kind}</div>;
+  return <div data-testid="publication-consumer">{navigation.authority?.accountDocumentId}</div>;
 }
 
 describe('real publication providers at each dashboard layout Outlet', () => {
   beforeEach(() => { loginSurface(); localStorage.setItem('dashboard-theme', 'light'); vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined); });
   afterEach(() => { cleanup(); useAuthStore.getState().logout(); vi.restoreAllMocks(); });
-  it('cold mobile and desktop/remount provide verified category scope with inert not-ready Music', async () => {
+  it('cold mobile and desktop/remount provide verified category scope and call no Music transport', async () => {
     const operations: string[] = [];
     const paths: string[] = [];
     // The verified category scope is read from the canonical owner profile now, so that
@@ -43,15 +41,15 @@ describe('real publication providers at each dashboard layout Outlet', () => {
       observer.complete();
     })) });
     const tree = (mobile: boolean) => <ApolloProvider client={client}><MemoryRouter><Routes><Route element={mobile ? <MobileLayout /> : <DashboardLayout />}><Route index element={<Consumer />} /></Route></Routes></MemoryRouter></ApolloProvider>;
-    const verified = `${canonicalAccountFixture().id}:unknown`;
+    const verified = canonicalAccountFixture().id;
     const view = render(tree(true));
     await waitFor(() => expect(screen.getByTestId('publication-consumer')).toHaveTextContent(verified));
     view.rerender(tree(false));
     await waitFor(() => expect(screen.getByTestId('publication-consumer')).toHaveTextContent(verified));
     view.rerender(tree(true));
     await waitFor(() => expect(screen.getByTestId('publication-consumer')).toHaveTextContent(verified));
-    // The legacy account query is gone; the scope comes from the canonical profile and
-    // Music stays inert through both layouts and the remount.
+    // The legacy account query is gone; the scope comes from the canonical profile, and
+    // since P3-4 no layout mounts a Music provider, so no Music request is made.
     expect(operations.filter(name => name === 'CategoryNavigationAccount')).toEqual([]);
     expect(fetch).toHaveBeenCalled();
     expect(paths).toContain('/api/explorers/v1/me');

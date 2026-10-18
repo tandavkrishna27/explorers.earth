@@ -7,8 +7,6 @@ import { DashboardThemeProvider } from "../contexts/DashboardThemeContext";
 import RouteLoader from "../components/RouteLoader";
 import { EarthLoader } from "../components/EarthLoader";
 import { CategoryNavigationProvider } from "../features/navigation/CategoryNavigationProvider";
-import { MusicPublishProvider } from "../features/music/MusicPublishProvider";
-import { verifyMusicPin } from "../features/music/musicPublicationReadiness";
 
 const isMainLandingPage = (path: string): boolean => {
   const mainPaths = [
@@ -18,7 +16,6 @@ const isMainLandingPage = (path: string): boolean => {
     /^\/recommendations\/places$/,
     /^\/analytics$/,
     /^\/settings$/,
-    /^\/music$/,
     /^\/recommendations\/movies$/,
     /^\/recommendations\/books$/,
     /^\/recommendations\/games$/,
@@ -116,7 +113,7 @@ const MobileLayout = () => {
           <Header />
           <RouteLoader />
           <main className="pt-16">
-            {location.pathname.startsWith("/recommendations/books") ? <Outlet /> : <CategoryNavigationProvider verifyMusicPin={verifyMusicPin}><MusicPublishProvider><Outlet /></MusicPublishProvider></CategoryNavigationProvider>}
+            {location.pathname.startsWith("/recommendations/books") ? <Outlet /> : <CategoryNavigationProvider><Outlet /></CategoryNavigationProvider>}
           </main>
           <Navbar />
         </div>

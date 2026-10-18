@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import {
-  MapPin, Music, Film, BookOpen, Gamepad2,
+  MapPin, Film, BookOpen, Gamepad2,
   ChevronRight, Smartphone, ShoppingBag, Users,
   MoreVertical, ExternalLink, Copy, Check, Globe,
   Pin, PinOff, Lock, Loader2
@@ -14,11 +14,9 @@ import {
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
-import { computePinnedNavTabIds, getNavSlotExclusion, getVisibleNavTabIds } from "../utils/navPinning";
-import MusicNavLimitNotice from "../components/MusicNavLimitNotice";
-import { publicMusicClient } from "../features/music/publicMusicClient";
+import { computePinnedNavTabIds, getVisibleNavTabIds } from "../utils/navPinning";
 
-type CategoryKey = "places" | "music" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
+type CategoryKey = "places" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 
 interface CategoryConfig {
   key: CategoryKey;
@@ -27,8 +25,8 @@ interface CategoryConfig {
   description: string;
   color: string;
   path: string;
-  visibilityField: CategoryId;
-  tabId: CategoryId;
+  visibilityField: Exclude<CategoryId, "public_music">;
+  tabId: Exclude<CategoryId, "public_music">;
 }
 
 const CATEGORIES: CategoryConfig[] = [
@@ -41,16 +39,6 @@ const CATEGORIES: CategoryConfig[] = [
     path: "/recommendations/places",
     visibilityField: "public_recommendations",
     tabId: "public_recommendations"
-  },
-  { 
-    key: "music",   
-    label: "Music",         
-    icon: Music, 
-    description: "The playlists and tracks on repeat, shared with your people.",
-    color: "purple",
-    path: "/recommendations/music",
-    visibilityField: "public_music",
-    tabId: "public_music"
   },
   { 
     key: "movies",  
@@ -222,41 +210,6 @@ const PlacesAnimatedBackground = () => {
   );
 };
 
-const MusicAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
-  const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start end", "end start"] });
-  const y1 = useTransform(scrollYProgress, [0, 1], ["0px", "10px"]);
-  const yMoon = useTransform(scrollYProgress, [0, 1], ["0px", "5px"]);
-  return (
-    <div ref={containerRef} className="absolute inset-0 bg-slate-950 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-purple-900/30 via-slate-950/20 to-slate-950 opacity-90" />
-      <motion.div className="absolute -right-20 -top-10 w-96 h-96 opacity-[0.04] pointer-events-none z-0" animate={{ rotate: isHovering ? 360 : 0 }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }}>
-        <svg viewBox="0 0 100 100" className="w-full h-full !text-white">
-          <circle cx="50" cy="50" r="48" fill="currentColor" />
-          {[...Array(40)].map((_, i) => (
-            <circle key={i} cx="50" cy="50" r={46 - i} stroke="black" strokeWidth="0.1" fill="none" opacity="0.3" />
-          ))}
-          <circle cx="50" cy="50" r="12" fill="#a855f7" opacity="0.4" />
-          <circle cx="50" cy="50" r="2" fill="black" />
-        </svg>
-      </motion.div>
-      <motion.div className="absolute bottom-[-10%] left-[-5%] w-48 h-48 border border-purple-500/10 rounded-full" animate={{ scale: [1, 1.3, 1], opacity: [0.1, 0.3, 0.1] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} />
-      <motion.div style={{ y: yMoon }} className="absolute top-[-10px] left-[15%] w-32 h-32 bg-purple-500/10 rounded-full blur-[50px]" />
-      <motion.svg style={{ y: y1 }} className="absolute bottom-0 w-full h-[50%] opacity-20" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <motion.path
-          d="M0 50 Q 25 40, 50 50 T 100 50 V 100 H 0 Z"
-          fill="currentColor"
-          className="text-purple-300"
-          animate={{ opacity: [0.75, 1, 0.75], scaleY: [1, 0.86, 1] }}
-          transition={{ duration: 6, repeat: Infinity }}
-          style={{ transformOrigin: "50px 100px" }}
-        />
-      </motion.svg>
-      <FloatingItem x={30} delay={0} duration={20}><Music size={14}/></FloatingItem>
-      <FloatingItem x={70} delay={5} duration={25}><Music size={18}/></FloatingItem>
-    </div>
-  );
-};
 
 const MoviesAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => {
   const containerRef = useRef(null);
@@ -501,7 +454,6 @@ const ProductsAnimatedBackground = ({ isHovering }: { isHovering: boolean }) => 
 const CategoryBackground = ({ category, isHovering }: { category: CategoryKey, isHovering: boolean }) => {
   switch (category) {
     case "places": return <PlacesAnimatedBackground />;
-    case "music":  return <MusicAnimatedBackground isHovering={isHovering} />;
     case "movies": return <MoviesAnimatedBackground isHovering={isHovering} />;
     case "books":  return <BooksAnimatedBackground isHovering={isHovering} />;
     case "games":  return <GamesAnimatedBackground isHovering={isHovering} />;
@@ -673,11 +625,7 @@ const RecommendationCard = ({
       </div>
 
       {/* Top Status & Kebab Menu Bar */}
-      {cat.key === "music" ? (
-        <div className="absolute right-3.5 top-3.5 z-40 rounded-full border border-white/10 bg-slate-900/80 px-2.5 py-1 text-xs font-semibold text-white/70">
-          Sharing in Music
-        </div>
-      ) : <div className="absolute top-3.5 right-3.5 z-40 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+      {<div className="absolute top-3.5 right-3.5 z-40 flex items-center gap-2" onClick={e => e.stopPropagation()}>
         {/* Pin indicator — icon only (a pinned category is always public too) */}
         {isPinned && (
           <div
@@ -815,13 +763,7 @@ const RecommendationCard = ({
         </div>
       </div>
 
-      {cat.key === "music" ? (
-        <div className="absolute bottom-0 left-0 right-0 h-12 flex items-end px-0 opacity-40 z-30 overflow-hidden pointer-events-none">
-          {[...Array(40)].map((_, i) => (
-            <motion.div key={i} className="flex-1 mx-[0.5px] rounded-t-[2px]" style={{ backgroundColor: accentColor }} animate={{ height: isHovering ? [(Math.random() * 40 + 40) + "%", (Math.random() * 40 + 60) + "%", (Math.random() * 40 + 40) + "%"] : [(Math.random() * 10 + 10) + "%", (Math.random() * 20 + 15) + "%", (Math.random() * 10 + 10) + "%"] }} transition={{ duration: 1.5 + Math.random() * 1.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.04 }} />
-          ))}
-        </div>
-      ) : cat.key === "movies" ? (
+      {cat.key === "movies" ? (
         <div className="absolute bottom-0 left-0 right-0 h-5 flex items-center opacity-70 z-30 overflow-hidden pointer-events-none border-t border-white/20 bg-black/40">
           <motion.div className="flex gap-1" animate={{ x: ["0%", "-33.3%"] }} transition={{ duration: 12, repeat: Infinity, ease: "linear" }}>
             {[...Array(25)].map((_, i) => (
@@ -878,17 +820,6 @@ const RecommendationsHub = () => {
     documentId: navigation.snapshot.scope.accountDocumentId, ...navigation.snapshot.visibility,
     auto_pinning: navigation.snapshot.autoPinning, pinned_nav_tabs: navigation.snapshot.savedPins,
   } : undefined, [navigation.snapshot]);
-  const [canonicalMusicAvailable, setCanonicalMusicAvailable] = useState(false);
-  useEffect(() => {
-    const controller = new AbortController();
-    setCanonicalMusicAvailable(false);
-    if (account?.public_music === "Yes" && account?.documentId) {
-      publicMusicClient.discover(account.documentId, controller.signal)
-        .then(() => { if (!controller.signal.aborted) setCanonicalMusicAvailable(true); })
-        .catch(() => { if (!controller.signal.aborted) setCanonicalMusicAvailable(false); });
-    }
-    return () => controller.abort();
-  }, [account?.documentId, account?.public_music]);
 
   // Counts are display-only auto-ranking inputs. Publication eligibility is
   // freshly checked by the shared writer after the explicit owner action.
@@ -909,27 +840,24 @@ const RecommendationsHub = () => {
     public_products:        canonicalCounts?.public_products ?? 0,
     public_people:          canonicalCounts?.public_people ?? 0,
     public_guides:          canonicalCounts?.public_guides ?? 0,
-    public_music:           0,
     public_profile:         0,
   }), [canonicalCounts]);
 
   // Effective public-nav state, derived exactly like PublicNav (the live nav).
   const visibleSet = useMemo(() => getVisibleNavTabIds(account), [account]);
-  const musicAvailable = account?.public_music === "Yes" && canonicalMusicAvailable;
-  const pinnedTabIds = useMemo(() => computePinnedNavTabIds(account, countMap, { musicAvailable }), [account, countMap, musicAvailable]);
+  const pinnedTabIds = useMemo(() => computePinnedNavTabIds(account, countMap), [account, countMap]);
   const pinnedSet = useMemo(() => new Set(pinnedTabIds), [pinnedTabIds]);
-  const musicSlotExclusion = getNavSlotExclusion(account, "public_music", { musicAvailable });
 
   // Saved manual intent is distinct from effective (availability-filtered) tabs.
   const savedPins = Array.isArray(navigation.snapshot?.savedPins) ? navigation.snapshot.savedPins : [];
   const handleTogglePin = (cat: CategoryConfig) => {
     const origin = navigation.authority;
-    if (!origin || navigation.busy || navigation.snapshot?.autoPinning || cat.key === "music") return;
+    if (!origin || navigation.busy || navigation.snapshot?.autoPinning) return;
     void navigation.request({ category: cat.tabId, action: savedPins.includes(cat.tabId) ? "unpin" : "pin" }, origin);
   };
   const handleToggleVisibility = (cat: CategoryConfig) => {
     const origin = navigation.authority;
-    if (!origin || navigation.busy || cat.visibilityField === "public_music") return;
+    if (!origin || navigation.busy) return;
     void navigation.request({ category: cat.visibilityField, action: visibleSet.has(cat.tabId) ? "unpublish" : "publish" }, origin);
   };
 
@@ -945,8 +873,6 @@ const RecommendationsHub = () => {
           Curate, organize, and share your favorite places, movies, books, games, tools, and guides across the world.
         </p>
       </div>
-
-      {musicSlotExclusion && <MusicNavLimitNotice maxSlots={musicSlotExclusion.maxSlots} />}
 
       {/* Main 3x3 Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">

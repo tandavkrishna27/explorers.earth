@@ -1,6 +1,6 @@
 /**
  * Selection of the signed-in user's single Explorer account from the account candidates
- * the profile query returns. Moved out of features/music in P3-3: navigation, settings and
+ * the profile query returns. Moved out of the Music feature in P3-3: navigation, settings and
  * the profile page use it, and none of it is about Music.
  */
 export interface ExplorerAccountCandidate {

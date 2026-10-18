@@ -1,7 +1,7 @@
 import { mergeConfig } from 'vite';
-import presentationConfig from './music-presentation.vite.config';
+import presentationConfig from './public-presentation.vite.config';
 
-// Preserve the render-only Music player and original inert Maps fixture.
+// Preserve the render-only public-presentation entry and original inert Maps fixture.
 // All application-local API/base URLs must match the owned fixture origin.
 const origin = 'http://127.0.0.1:55184';
 export default mergeConfig(presentationConfig, {

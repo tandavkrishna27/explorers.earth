@@ -115,7 +115,7 @@ describe("IGDB credentials are not a browser build input (ticket 4.2:38)", () =>
     const launcher = readFileSync(resolve(appRoot, "src/test/__tests__/contained-unit.launcher.test.ts"), "utf8");
     expect(launcher).toContain(SECRET);
     expect(launcher).toContain(`not.toContain('import.meta.env.${SECRET}')`);
-    const local = readFileSync(resolve(appRoot, "src/features/music/__tests__/replatformLocalVite.test.ts"), "utf8");
+    const local = readFileSync(resolve(appRoot, "src/test/__tests__/replatformLocalVite.test.ts"), "utf8");
     expect(local).toContain(`expect(config.env.${SECRET}).toBeUndefined()`);
   });
 });

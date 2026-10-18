@@ -13,10 +13,13 @@ const availableAccount = {
 };
 vi.mock('../../features/PublicHome/api/usePublicRecommendationCategory', () => ({ usePublicRecommendationCategory }));
 
-vi.mock('../../features/music/PublicMusicAvailabilityProvider', () => ({
-  usePublicMusicAvailability: () => ({
-    state: musicAvailability.state,
-    account: musicAvailability.account,
+// Since P3-4 the nav reads the account from the public identity provider, not the
+// removed Music availability provider.
+vi.mock('../../features/PublicHome/api/PublicAccountIdentityProvider', () => ({
+  usePublicAccountIdentity: () => ({
+    usernameKey: 'alice',
+    status: musicAvailability.state === 'loading' && !musicAvailability.account ? 'loading' : 'ready',
+    ...(musicAvailability.account ? { account: musicAvailability.account } : {}),
   }),
 }));
 
@@ -125,18 +128,11 @@ describe('PublicNav immediate semantic activation', () => {
     expect(prevented.pushes).toHaveLength(0);
   });
 
-  it.each(['loading', 'unavailable'])("keeps a manually pinned Music tab during a transient %s check", state => {
-    musicAvailability.state = state;
-    renderHeldRouter('/alice/books');
-
-    expect(screen.getByRole('link', { name: 'Music', exact: true })).toBeInTheDocument();
-  });
-
-  it('removes Music when the publication is conclusively not public', () => {
-    musicAvailability.state = 'not-public';
+  it('shows no Music tab even for an account that saved one as public and pinned (P3-4)', () => {
     renderHeldRouter('/alice/books');
 
     expect(screen.queryByRole('link', { name: 'Music', exact: true })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Books', exact: true })).toBeInTheDocument();
   });
 
   it('auto-pins from authoritative totals instead of tying categories whose first pages are full', () => {
@@ -163,7 +159,8 @@ describe('PublicNav immediate semantic activation', () => {
     renderHeldRouter('/alice');
 
     expect(screen.getAllByRole('link').map(link => link.textContent)).toEqual([
-      'Profile', 'Music', 'Movies', 'Books', 'Apps',
+      // Places (12 lists) takes the fifth slot that available Music used to claim first.
+      'Profile', 'Movies', 'Books', 'Apps', 'Places',
     ]);
   });
 

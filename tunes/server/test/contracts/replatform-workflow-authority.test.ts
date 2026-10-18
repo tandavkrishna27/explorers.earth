@@ -35,9 +35,12 @@ describe("replatform workflow authority", () => {
     expect(required).toBeDefined();
     expect(required.needs).toEqual(expect.arrayContaining([
       "lint", "typecheck", "unit-tests", "build", "integration-tests",
-      "e2e-category-a", "e2e-category-b", "e2e-public-shell", "e2e-publishing", "e2e-music-account",
+      "e2e-category-a", "e2e-category-b", "e2e-public-shell", "e2e-music-account",
     ]));
-    for (const name of ["e2e-category-a", "e2e-category-b", "e2e-public-shell", "e2e-publishing", "e2e-music-account"]) {
+    // The Music publishing lane was removed with the Music product (P3-4).
+    expect(required.needs).not.toContain("e2e-publishing");
+    expect(ci.jobs["e2e-publishing"]).toBeUndefined();
+    for (const name of ["e2e-category-a", "e2e-category-b", "e2e-public-shell", "e2e-music-account"]) {
       expect(ci.jobs[name]).toBeDefined();
       expect(ci.jobs[name]).not.toHaveProperty("needs");
     }
@@ -45,11 +48,10 @@ describe("replatform workflow authority", () => {
       "--config=playwright.category-navigation-a.config.ts",
       "--config=playwright.category-navigation-b.config.ts",
       "--config=playwright.public-shell-continuity.config.ts --project=chromium",
-      "--config=playwright.music-publishing.config.ts",
-      "e2e/music.spec.ts e2e/music-accessibility.spec.ts e2e/account-lifecycle.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual",
+      "e2e/account-lifecycle.spec.ts --project=chromium-pr-safe",
     ];
     const artifacts = new Set<string>();
-    ["e2e-category-a", "e2e-category-b", "e2e-public-shell", "e2e-publishing", "e2e-music-account"].forEach((name, index) => {
+    ["e2e-category-a", "e2e-category-b", "e2e-public-shell", "e2e-music-account"].forEach((name, index) => {
       const job = ci.jobs[name];
       expect(job.steps.some((step: any) => String(step.run ?? "").includes(commands[index]))).toBe(true);
       const run = job.steps.find((step: any) => String(step.run ?? "").includes(commands[index]));
@@ -63,7 +65,7 @@ describe("replatform workflow authority", () => {
       }
       expect(uploads[0].if).toBe("always()");
       // The report upload stays always(). The trace upload is failure() for the
-      // four lanes that fail normally; e2e-music-account is the exception and must
+      // lanes that fail normally; e2e-music-account is the exception and must
       // be always(), because it has been cancelled at its job timeout on every
       // recorded SHA (46eea549, 1a5c6942, 225d83e5) and a cancelled job never
       // satisfies failure() — so the one lane whose failures are least understood

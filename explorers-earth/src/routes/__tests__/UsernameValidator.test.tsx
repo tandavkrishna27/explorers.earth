@@ -80,7 +80,6 @@ describe("UsernameValidator", () => {
     "/tk2727/places/top-beach",
     "/tk2727/places/hello%20world",
     "/tk2727/places/hello-world/map",
-    "/tk2727/music",
     "/tk2727/guides",
     "/tk2727/movies",
     "/tk2727/books",

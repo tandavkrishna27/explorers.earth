@@ -1,5 +1,4 @@
 import type { Page } from '@playwright/test';
-import type { PublicMusicResource, PublicMusicSong } from '../../src/features/music/publicMusicClient';
 import type { FixtureState } from './category-navigation';
 
 export const TOP_LEVEL_DESTINATIONS = [
@@ -19,7 +18,7 @@ export const REQUIRED_THEMES = [
   'cinematic-dark', 'glassmorphism', 'sunset-glow', 'minimal-light', 'emerald-nature', 'neon-cyber',
 ] as const;
 export const REQUIRED_VIEWPORTS = [320, 390, 768, 1024, 1440] as const;
-export const REQUIRED_HIGH_RISK_ROUTE_TYPES = ['profile', 'list', 'detail', 'map', 'music'] as const;
+export const REQUIRED_HIGH_RISK_ROUTE_TYPES = ['profile', 'list', 'detail', 'map'] as const;
 export const REQUIRED_DATA_STATES = ['success', 'empty', 'error', 'partial'] as const;
 
 export type PublicShellVisualRow = {
@@ -182,73 +181,6 @@ export function seedRenderablePlace(state: FixtureState) {
   }];
 }
 
-function musicSong(idCharacter: string, title: string, status: PublicMusicSong['status'], position: number): PublicMusicSong {
-  return {
-    id: idCharacter.repeat(43),
-    youtubeId: 'abcdefghijk',
-    title,
-    artist: 'Fixture artist',
-    thumbnailUrl: null,
-    position,
-    status,
-    playedAt: status === 'played' ? '2026-09-01T12:00:00.000Z' : null,
-  };
-}
-
-function seedMusicResource(state: FixtureState, resource: PublicMusicResource) {
-  state.guestControls = { ...resource.permissions };
-  Object.assign(state.publicResource, resource);
-}
-
-function seedSuccessfulMusic(state: FixtureState) {
-  const permissions = {
-    allowSongRequests: true,
-    allowGuestPlayOnDevice: true,
-    allowPlaylistSharing: true,
-    allowRecentlyPlayedVisibility: true,
-    allowQueueVisibility: true,
-  };
-  seedMusicResource(state, {
-    version: 'music-public-resource/v1',
-    revision: state.revision,
-    user: { username: 'fixture-owner', venueName: 'Fixture Venue' },
-    permissions,
-    currentlyPlaying: musicSong('L', 'Fixture Music live', 'playing', 0),
-    queue: { items: [musicSong('Q', 'Fixture Music next', 'queued', 1)], total: 1, truncated: false },
-    recentlyPlayed: { items: [musicSong('H', 'Fixture Music replay', 'played', 0)], total: 1, truncated: false },
-    playlists: {
-      items: [{
-        id: 'P'.repeat(43),
-        name: 'Fixture shared playlist',
-        description: 'A complete public Music fixture.',
-        songs: { items: [musicSong('S', 'Fixture Music saved', 'saved', 0)], total: 1, truncated: false },
-      }],
-      total: 1,
-      truncated: false,
-    },
-  });
-}
-
-function seedPartialMusic(state: FixtureState) {
-  const permissions = {
-    allowSongRequests: false,
-    allowGuestPlayOnDevice: true,
-    allowPlaylistSharing: false,
-    allowRecentlyPlayedVisibility: false,
-    allowQueueVisibility: true,
-  };
-  seedMusicResource(state, {
-    version: 'music-public-resource/v1',
-    revision: state.revision,
-    user: { username: 'fixture-owner', venueName: 'Fixture Venue' },
-    permissions,
-    currentlyPlaying: musicSong('V', 'Fixture Music preview', 'playing', 0),
-    queue: { items: [musicSong('N', 'Fixture Music partial queue', 'queued', 1)], total: 3, truncated: true },
-    recentlyPlayed: { items: [], total: 0, truncated: false },
-    playlists: { items: [], total: 0, truncated: false },
-  });
-}
-
 export function configureVisualState(state: FixtureState, row: PublicShellVisualRow) {
   state.account.social_media.theme_settings = {
     ...state.account.social_media.theme_settings,
@@ -280,13 +212,6 @@ export function configureVisualState(state: FixtureState, row: PublicShellVisual
     if (row.dataState === 'empty') state.lists.recommendationLists = [];
     if (row.dataState === 'error') state.faults.set('Account', [{ kind: 'error' }]);
     if (row.dataState === 'partial') state.faults.set('Account', [{ kind: 'partial' }]);
-  } else if (row.routeType === 'music') {
-    if (row.dataState === 'success') seedSuccessfulMusic(state);
-    if (row.dataState === 'partial') seedPartialMusic(state);
-    // Public Music discovery deliberately retries one transient failure before
-    // surfacing its unavailable state, so the visual error fixture must fail
-    // both bounded attempts.
-    if (row.dataState === 'error') state.faults.set('/api/music/public-profile/browser-account', [{ kind: 'error' }, { kind: 'error' }]);
   }
   return state;
 }

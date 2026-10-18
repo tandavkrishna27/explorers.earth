@@ -5,20 +5,20 @@ import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 const ts=createRequire(import.meta.url)('../tunes/node_modules/typescript');
-const original=()=>{const value=JSON.parse(readFileSync(new URL('../explorers-earth/e2e/replatform/suite-manifest.json',import.meta.url),'utf8'));return {...value,lanes:value.lanes.slice(0,11),scopeContents:value.lanes.slice(0,11).map(lane=>lane.name)};};
-test('Wave2 registration preserves the exact original166 and adds public32 People12 and enrichment4',async()=>{
+const original=()=>{const value=JSON.parse(readFileSync(new URL('../explorers-earth/e2e/replatform/suite-manifest.json',import.meta.url),'utf8'));return {...value,lanes:value.lanes.slice(0,10),scopeContents:value.lanes.slice(0,10).map(lane=>lane.name)};};
+test('Wave2 registration preserves the exact original142 and adds public32 People12 and enrichment4',async()=>{
  const r=await import('./wave2-browser-registration.mjs');
  const value=r.buildWave2BrowserRegistration(original());
- assert.equal(value.originalIdentityCount,166);assert.equal(value.addedIdentityCount,48);assert.equal(value.totalIdentityCount,214);
- assert.deepEqual(value.lanes.slice(0,11),original().lanes);
- assert.deepEqual(value.lanes.slice(11).map(l=>[l.name,l.identities.length]),[['public-parity',32],['people',12],['apps-enrichment',4]]);
+ assert.equal(value.originalIdentityCount,142);assert.equal(value.addedIdentityCount,48);assert.equal(value.totalIdentityCount,190);
+ assert.deepEqual(value.lanes.slice(0,10),original().lanes);
+ assert.deepEqual(value.lanes.slice(10).map(l=>[l.name,l.identities.length]),[['public-parity',32],['people',12],['apps-enrichment',4]]);
  assert.equal(value.qualified,false);assert.equal(value.status,'authored');
- assert.equal(new Set(value.lanes.flatMap(l=>l.identities.map(i=>JSON.stringify(i)))).size,214);
+ assert.equal(new Set(value.lanes.flatMap(l=>l.identities.map(i=>JSON.stringify(i)))).size,190);
  assert(Object.isFrozen(value));assert(Object.isFrozen(value.lanes.at(-1).identities[0].titlePath));
 });
 test('Wave2 registration refuses old title or order changes rather than relabeling prior qualification',async()=>{
  const r=await import('./wave2-browser-registration.mjs');
- for(const mutate of [m=>m.lanes[0].identities.pop(),m=>m.lanes[0].identities.reverse(),m=>m.lanes[0].identities[0].titlePath[0]='changed',m=>m.lanes[10].projects.reverse(),m=>m.lanes[0].runner='other.ts']){
+ for(const mutate of [m=>m.lanes[0].identities.pop(),m=>m.lanes[0].identities.reverse(),m=>m.lanes[0].identities[0].titlePath[0]='changed',m=>m.lanes[9].projects.reverse(),m=>m.lanes[0].runner='other.ts']){
   const m=original();mutate(m);assert.throws(()=>r.buildWave2BrowserRegistration(m));
  }
 });

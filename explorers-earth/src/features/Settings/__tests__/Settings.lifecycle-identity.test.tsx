@@ -8,9 +8,6 @@ vi.mock("../../navigation/CategoryNavigationProvider", () => ({ useCategoryNavig
   snapshot: undefined, authority: undefined, busy: false, error: undefined,
   refresh: async () => {}, request: vi.fn(), setAutoPinning: vi.fn(),
 }) }));
-vi.mock("../../music/MusicPublishProvider", () => ({ useMusicPublish: () => ({
-  state: { kind: "unknown" }, canChange: false, canRecover: false, request: vi.fn(), resume: vi.fn(), refresh: vi.fn(),
-}) }));
 vi.mock("@apollo/client", async (original) => ({ ...await original<typeof import("@apollo/client")>(),
   useApolloClient: () => ({ clearStore: async () => undefined }), useMutation: () => [apolloMutation],
   useQuery: () => ({ data: {}, loading: false, refetch: vi.fn() }),

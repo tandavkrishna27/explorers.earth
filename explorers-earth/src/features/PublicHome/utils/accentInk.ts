@@ -1,4 +1,4 @@
-/** Black or white, whichever reads better on the given accent colour. Moved out of features/music in P3-3. */
+/** Black or white, whichever reads better on the given accent colour. Moved out of the Music feature in P3-3. */
 export function getAccentInk(accent: string): '#000000' | '#ffffff' {
   const color = /^#[a-f0-9]{6}$/i.test(accent) ? accent : '#10b981';
   const linear = (hex: string) => {

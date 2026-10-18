@@ -5,28 +5,9 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 const SOURCE_ROOT = join(__dirname, "..", "..");
 const MUSIC_ROOT = join(SOURCE_ROOT, "features", "music");
 
-// Music-only imports still inside general files. P3-4 removes each, then empties this list.
-const REMOVED_IN_P3_4: readonly string[] = [
-  // Music pages and the Music workspace: deleted outright.
-  "components/AuthSyncManager.tsx",
-  "components/MusicDashboard.tsx",
-  "hooks/useTunesDashboard.ts",
-  "pages/Music.tsx",
-  "pages/public/ProfileMusic.tsx",
-  "pages/public/PublicMusic.tsx",
-  // General files whose Music usage is removed.
-  "components/PublicNav.tsx",
-  "features/Profile/hooks/useUpdateProfile.ts",
-  "features/PublicHome/components/PublicProfile.tsx",
-  "features/PublicHome/components/PublicProfileThemeProvider.tsx",
-  "features/Settings/Settings.tsx",
-  "hooks/useLogout.ts",
-  "layouts/DashboardLayout.tsx",
-  "layouts/MobileLayout.tsx",
-  "pages/Home.tsx",
-  "pages/RecommendationsHub.tsx",
-  "routes/PublicRoutes.tsx",
-];
+// Emptied by P3-4, which removed the Music surface. features/music no longer exists, so
+// this list must stay empty: nothing outside it may import Music again.
+const REMOVED_IN_P3_4: readonly string[] = [];
 
 function sourceFiles(directory: string, found: string[] = []): string[] {
   for (const entry of readdirSync(directory)) {

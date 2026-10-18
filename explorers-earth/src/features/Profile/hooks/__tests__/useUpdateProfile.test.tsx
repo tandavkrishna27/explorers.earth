@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { authState, updateAccount, updateUsername, refreshIdentity, useAuthStoreMock } = vi.hoisted(() => ({
+const { authState, updateAccount, updateUsername, useAuthStoreMock } = vi.hoisted(() => ({
   authState: {
     user: { id: "user-1", documentId: "user-doc", username: "tinoue" },
     token: "token",
@@ -10,15 +10,12 @@ const { authState, updateAccount, updateUsername, refreshIdentity, useAuthStoreM
   },
   updateAccount: vi.fn(),
   updateUsername: vi.fn(),
-  refreshIdentity: vi.fn(),
   useAuthStoreMock: vi.fn(),
 }));
 
 vi.mock("../../../../lib/explorersApiClient", () => ({
   explorersApiClient: { updateAccount },
 }));
-
-vi.mock("../../../music/musicApi", () => ({ musicApi: { refreshIdentity } }));
 
 vi.mock("../../../../store/store", () => ({
   default: Object.assign(useAuthStoreMock, {
@@ -83,8 +80,6 @@ describe("useUpdateProfile", () => {
   beforeEach(() => {
     updateAccount.mockReset();
     updateUsername.mockReset();
-    refreshIdentity.mockReset();
-    refreshIdentity.mockResolvedValue(undefined);
     useAuthStoreMock.mockReturnValue({ user: authState.user });
     updateAccount.mockResolvedValue(account);
   });
@@ -255,40 +250,6 @@ describe("useUpdateProfile", () => {
     });
 
     expect(updateUsername).toHaveBeenCalledWith("renamed");
-  });
-
-  // The Music venue name follows the account's display name, and ensureMusicAccount only
-  // converges it when something asks - this is what asks. It was inert before the server
-  // side was fixed, so it is pinned here rather than left to look decorative.
-  it("propagates the saved profile to the Music venue, after the account accepted it", async () => {
-    const { result } = renderHook(() => useUpdateProfile(ACCOUNT, vi.fn()));
-
-    await act(async () => {
-      await result.current.handleSubmit(values as never);
-    });
-
-    expect(refreshIdentity).toHaveBeenCalledTimes(1);
-    expect(updateAccount).toHaveBeenCalled();
-  });
-
-  it("does not propagate to Music when the account refused the save", async () => {
-    updateAccount.mockRejectedValue(new Error("conflict"));
-    const { result } = renderHook(() => useUpdateProfile(ACCOUNT, vi.fn()));
-
-    await expect(result.current.handleSubmit(values as never)).rejects.toThrow("conflict");
-    expect(refreshIdentity).not.toHaveBeenCalled();
-  });
-
-  it("keeps the profile save successful when the Music propagation fails", async () => {
-    refreshIdentity.mockRejectedValue(new Error("music unavailable"));
-    const refetch = vi.fn();
-    const { result } = renderHook(() => useUpdateProfile(ACCOUNT, refetch));
-
-    await act(async () => {
-      await expect(result.current.handleSubmit(values as never)).resolves.toBeTruthy();
-    });
-
-    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it("leaves the stored username alone when it did not change", async () => {

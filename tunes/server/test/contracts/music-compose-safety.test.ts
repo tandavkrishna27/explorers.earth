@@ -75,20 +75,14 @@ describe("Music Compose ownership safety", () => {
     const manifest = result.stdout.trim().split(/\r?\n/);
     expect(manifest).toEqual(expect.arrayContaining([
       "explorers-earth/src/lib/musicDevelopmentTransport.ts",
-      "explorers-earth/src/features/music/components/MusicPlaylistCollection.tsx",
-      "explorers-earth/src/features/music/components/MusicSectionTabs.tsx",
-      "explorers-earth/src/features/music/components/MusicSectionTabs.css",
-      "explorers-earth/src/features/music/components/musicPlaybackCommand.ts",
       "tunes/shared/explorersOwnerContentContract.ts",
       "tunes/shared/explorersSearchContract.ts",
       "tunes/shared/explorersPublicContentContract.ts",
       "tunes/shared/explorersBookContract.ts",
       "tunes/shared/explorersBookCoverContract.ts",
     ]));
-    expect(manifest).not.toEqual(expect.arrayContaining([
-      "explorers-earth/src/features/music/components/__tests__/MusicSectionTabs.test.tsx",
-      "explorers-earth/src/features/music/components/__tests__/MusicPlaylistCollection.test.tsx",
-    ]));
+    // features/music was deleted in P3-4; nothing under it may be admitted again.
+    expect(manifest.filter((file) => file.includes("/features/music/"))).toEqual([]);
     const dockerfile = readFileSync(resolve(repositoryRoot, "explorers-earth/Dockerfile.music-fixture"), "utf8");
     for (const source of manifest.filter((file) => file.startsWith("tunes/shared/"))) {
       expect(dockerfile).toContain(`COPY ${source} /workspace/${source}`);

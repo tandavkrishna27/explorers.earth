@@ -7,7 +7,7 @@ import { usePublicAccountIdentity } from "../../features/PublicHome/api/PublicAc
 interface UsernameValidatorProps { children: ReactNode }
 
 const VALID_ROUTES = new Set([
-  "places", "music", "guides", "movies", "books", "games", "apps", "products", "people",
+  "places", "guides", "movies", "books", "games", "apps", "products", "people",
 ]);
 
 function decodedLowerSegments(pathname: string): string[] {
@@ -28,8 +28,7 @@ function isValidPublicPath(pathname: string): boolean {
     return true;
   }
   return !(
-    (currentRoute === "music" && restSegments.length !== 1)
-    || (currentRoute === "guides" && ![1, 2].includes(restSegments.length))
+    (currentRoute === "guides" && ![1, 2].includes(restSegments.length))
     || (currentRoute === "movies" && !(restSegments.length === 1 || restSegments.length === 2 || (restSegments.length === 3 && restSegments[1] === "genre")))
     || (currentRoute === "books" && !(restSegments.length === 1 || restSegments.length === 2 || (restSegments.length === 3 && restSegments[1] === "subject")))
     || (currentRoute === "games" && !(restSegments.length === 1 || restSegments.length === 2 || (restSegments.length === 3 && restSegments[1] === "genre")))
@@ -65,11 +64,6 @@ const UsernameValidator = ({ children }: UsernameValidatorProps) => {
     : undefined;
   const needsCanonicalRedirect = accountMatches && canonicalPathname !== location.pathname;
   const validPath = isValidPublicPath(location.pathname);
-  const [, routeSegment, ...remainingSegments] = decodedLowerSegments(location.pathname);
-  const allowsInlineRecovery = Boolean(error)
-    && !String(error).includes("PUBLIC_PROFILE_404")
-    && routeSegment === "music"
-    && remainingSegments.length === 0;
 
   useEffect(() => {
     if (accountMatches) {
@@ -84,17 +78,15 @@ const UsernameValidator = ({ children }: UsernameValidatorProps) => {
       cold.reportValidation("valid");
       return;
     }
-    if (allowsInlineRecovery) { cold.reportValidation("valid"); return; }
     if (loading) { cold.reportValidation("pending"); return; }
     cold.reportValidation("terminal-invalid");
   }, [accountMatches, canonicalPathname, canonicalUsername, cold.reportValidation, error, loading,
-    location.hash, location.search, navigate, needsCanonicalRedirect, validPath, allowsInlineRecovery]);
+    location.hash, location.search, navigate, needsCanonicalRedirect, validPath]);
 
   if (accountMatches) {
     if (needsCanonicalRedirect || !validPath) return null;
     return <>{children}</>;
   }
-  if (allowsInlineRecovery) return <>{children}</>;
   if (loading) return null;
   return <NotFound />;
 };

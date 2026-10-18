@@ -405,16 +405,6 @@ export const createAnalyticsOptions = {
     autoTrackView: true,
   }),
 
-  music: (
-    accountDocumentId: string,
-    pageUsername?: string,
-  ): UseTrackAnalyticsOptions => ({
-    accountId: accountDocumentId,
-    pageName: 'public-music',
-    pageUsername,
-    autoTrackView: true,
-  }),
-
   movies: (
     accountDocumentId: string,
     pageUsername?: string,

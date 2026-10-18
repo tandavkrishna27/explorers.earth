@@ -48,7 +48,6 @@ export const CANDIDATE_CI_POLICY = freeze({
       { key: 'e2e-category-a', name: '🎭 E2E Category A', allowSkipped: false },
       { key: 'e2e-category-b', name: '🎭 E2E Category B', allowSkipped: false },
       { key: 'e2e-public-shell', name: '🎭 E2E Public shell', allowSkipped: false },
-      { key: 'e2e-publishing', name: '🎭 E2E Publishing', allowSkipped: false },
       { key: 'e2e-music-account', name: '🎭 E2E Music and account', allowSkipped: false },
       { key: 'replatform-required', name: 'replatform-required', allowSkipped: false },
     ] },
