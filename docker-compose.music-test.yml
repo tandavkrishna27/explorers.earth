@@ -60,7 +60,7 @@ services:
       MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
       MUSIC_IMAGE_DIGEST: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       MUSIC_IMAGE_COMMIT: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      MUSIC_MIGRATION_MARKER: 0056_explorers_app_enrichment_jobs
+      MUSIC_MIGRATION_MARKER: 0057_retire_music_category
       MUSIC_GATE_ATTESTATION_KEY: fixture-migration-gate-key-at-least-32-characters
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/fixture.json
     depends_on:
@@ -143,7 +143,7 @@ services:
       MUSIC_FEATURE_COHORT_SALT: fixture-owner-workspace
       MUSIC_FEATURE_COHORT_VERSION: fixture-owner-workspace-v1
       MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: "100"
-      MUSIC_EXPECTED_MIGRATION_ID: 0056_explorers_app_enrichment_jobs
+      MUSIC_EXPECTED_MIGRATION_ID: 0057_retire_music_category
       EXPLORERS_MEDIA_ENVIRONMENT: local
       MUSIC_RECONCILIATION_ENABLED: "false"
       MUSIC_RECONCILIATION_MAX_ROWS: "0"

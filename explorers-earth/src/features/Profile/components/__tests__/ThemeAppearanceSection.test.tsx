@@ -30,7 +30,6 @@ const LANDING_VALUES = [
   "people",
   "gallery",
   "business",
-  "music",
 ] as const;
 
 describe("ThemeAppearanceSection", () => {
@@ -203,7 +202,7 @@ describe("ThemeAppearanceSection", () => {
     );
   });
 
-  it("selects all twelve exact First view wires without dropping future keys", () => {
+  it("selects all eleven exact First view wires without dropping future keys", () => {
     const handleChange = vi.fn();
     const recommendations = {
       layout: "grid" as const,
@@ -226,8 +225,8 @@ describe("ThemeAppearanceSection", () => {
       .map((option) => (option as HTMLOptionElement).value);
 
     expect(values).toEqual(LANDING_VALUES);
-    expect(new Set(values).size).toBe(12);
-    expect(within(firstView).getAllByRole("option", { name: "Music page" })).toHaveLength(1);
+    expect(new Set(values).size).toBe(11);
+    expect(within(firstView).queryAllByRole("option", { name: "Music page" })).toHaveLength(0);
     expect(
       within(firstView).queryByRole("option", {
         name: "Recommendations — Music first",

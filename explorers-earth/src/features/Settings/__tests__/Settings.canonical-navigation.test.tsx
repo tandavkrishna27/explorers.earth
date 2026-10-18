@@ -26,7 +26,7 @@ describe('Settings canonical navigation', () => {
     const labels:Record<string,string>={public_recommendations:'Places Tab',public_movie:'Movies & Shows Tab',public_books:'Books Tab',public_games:'Games Tab',public_apps:'Apps & Tools Tab',public_products:'Products Tab',public_people:'People Tab',public_guides:'Guides Tab'};
     const pin=await screen.findByRole('checkbox',{name:'Pin '+labels[category]});await waitFor(()=>expect(pin).toBeEnabled());fireEvent.click(pin);
     await waitFor(()=>expect(h.writes).toHaveLength(1));
-    const input=h.writes[0].variables.input;expect(input.expectedRevision).toBe(1);expect(input.categories).toHaveLength(9);expect(input.categories.every((row:{isPublic:boolean;pinnedOrder:null})=>row.isPublic&&row.pinnedOrder===null)).toBe(true);
+    const input=h.writes[0].variables.input;expect(input.expectedRevision).toBe(1);expect(input.categories).toHaveLength(8);expect(input.categories.every((row:{isPublic:boolean;pinnedOrder:null})=>row.isPublic&&row.pinnedOrder===null)).toBe(true);
     expect(h.saved.pinned_nav_tabs).toEqual(['public_profile']);
   });
   it('keeps dashboard loading unsettled while current owner content is pending',async()=>{

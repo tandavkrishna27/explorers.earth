@@ -39,8 +39,7 @@ vi.mock("@vis.gl/react-google-maps", () => ({
   useMap: () => null,
 }));
 
-vi.mock("../../features/music/PublicMusicAvailabilityProvider", () => ({
-  PublicMusicAvailabilityProvider: ({ children }: { children: React.ReactNode }) => children,
+vi.mock("../../features/PublicHome/api/PublicAccountIdentityProvider", () => ({
   usePublicAccountIdentity: () => accountIdentity,
 }));
 

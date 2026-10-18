@@ -43,6 +43,10 @@ describe("canonical retired-surface boundary", () => {
     ["post", "/graphql", "GRAPHQL_PROXY_REMOVED"],
     ["get", "/api/strapi/config", "GRAPHQL_PROXY_REMOVED"],
     ["get", "/api/playlists", "LEGACY_OWNER_ROUTE_REMOVED"],
+    // P3-5: the canonical Music identity route and the two Music analytics routes.
+    ["post", "/api/explorers/v1/music/identity/ensure", "LEGACY_OWNER_ROUTE_REMOVED"],
+    ["post", "/api/explorers/analytics/music-account/account-1/events", "LEGACY_OWNER_ROUTE_REMOVED"],
+    ["post", "/api/explorers/analytics/music/public-slug-1/events", "LEGACY_OWNER_ROUTE_REMOVED"],
   ] as const)("tombstones %s %s", async (method, path, code) => {
     // Break caught: a retired path falls through to the JSON 404 and old clients
     // get no signal that the surface was deliberately removed.
@@ -80,7 +84,9 @@ describe("canonical retired-surface boundary", () => {
     const { app } = createCanonicalApp(pool, config);
     for (const path of ["/health/live", "/health/ready", "/robots.txt",
                         "/sitemap.xml", "/api/explorers-sitemap.xml",
-                        "/api/explorers/v1/me", "/api/auth/callback/google"]) {
+                        "/api/explorers/v1/me", "/api/auth/callback/google",
+                        // The generic analytics routes survive the Music analytics tombstones.
+                        "/api/explorers/analytics/summary", "/api/explorers/analytics/events"]) {
       expect((await request(app).get(path)).status).not.toBe(410);
     }
   });

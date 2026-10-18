@@ -31,8 +31,8 @@ export default defineConfig({
     // clearing it here costs no coverage; the fixture is served from 127.0.0.1 with
     // service workers blocked, and the one case that asserts no external traffic reads
     // what was copied rather than the resolver. This is the same per-project
-    // `launchOptions: {}` override that playwright.music-presentation-cross-browser
-    // .config.ts already uses for its own Firefox and WebKit projects.
+    // `launchOptions: {}` override the (since removed) Music presentation
+    // cross-browser config used for its own Firefox and WebKit projects.
     { name: 'firefox', use: { ...devices['Desktop Firefox'], launchOptions: {} } },
     { name: 'webkit', use: { ...devices['Desktop Safari'], launchOptions: {} } },
   ],

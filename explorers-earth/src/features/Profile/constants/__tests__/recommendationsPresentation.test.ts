@@ -204,69 +204,6 @@ describe("normalizeThemeSettings", () => {
     ).toBe("#38BDF8");
   });
 
-  it("preserves Music as a landing destination while removing it from stale category order", () => {
-    expect(
-      normalizeThemeSettings({
-        landingTab: "music",
-        recommendations: {
-          layout: "featured",
-          categoryOrder: ["books", "music", "places"],
-          futureRecommendation: { keep: true },
-        },
-        futureTheme: "keep",
-      }),
-    ).toMatchObject({
-      landingTab: "music",
-      recommendations: {
-        layout: "featured",
-        categoryOrder: [
-          "books",
-          "places",
-          "movies",
-          "games",
-          "guides",
-          "apps",
-          "products",
-          "people",
-        ],
-      },
-    });
-
-    expect(
-      mergeThemeSettingsWire(
-        {
-          landingTab: "music",
-          futureTheme: "keep",
-          recommendations: {
-            categoryOrder: ["music", "books"],
-            futureRecommendation: { keep: true },
-          },
-        },
-        {
-          recommendations: normalizeRecommendationsPresentation({
-            categoryOrder: ["music", "books"],
-          }),
-        },
-      ),
-    ).toEqual({
-      landingTab: "music",
-      futureTheme: "keep",
-      recommendations: {
-        categoryOrder: [
-          "books",
-          "places",
-          "movies",
-          "games",
-          "guides",
-          "apps",
-          "products",
-          "people",
-        ],
-        futureRecommendation: { keep: true },
-        layout: "shelves",
-      },
-    });
-  });
 });
 
 describe("recommendation category visibility", () => {
@@ -320,7 +257,6 @@ describe("landing behavior", () => {
   it.each([
     ["all-recommendations", "recommendations", undefined],
     ["places", "recommendations", "places"],
-    ["music", "recommendations", undefined],
     ["guides", "recommendations", "guides"],
     ["movies", "recommendations", "movies"],
     ["books", "recommendations", "books"],

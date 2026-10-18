@@ -298,12 +298,6 @@ export const ThemeAppearanceSection = memo(
                 "Business",
               )}
             </option>
-            <option value="music">
-              {t(
-                "dashboard.profile.themeAppearance.firstView.music",
-                "Music page",
-              )}
-            </option>
           </select>
           <p className="mt-2 text-xs leading-5 text-dashboard-light">
             {t(

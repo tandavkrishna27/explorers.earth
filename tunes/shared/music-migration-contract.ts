@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0056_explorers_app_enrichment_jobs" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0057_retire_music_category" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -55,6 +55,7 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0053_explorers_taxonomy_catalogs",
   "0054_explorers_place_individual_pins",
   "0055_explorers_app_enrichment",
+  "0056_explorers_app_enrichment_jobs",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -115,6 +116,7 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0053_explorers_taxonomy_catalogs",
   "0054_explorers_place_individual_pins",
   "0055_explorers_app_enrichment",
+  "0056_explorers_app_enrichment_jobs",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 

@@ -18,7 +18,6 @@ export const PROFILE_TAB = "public_profile";
 // This order is the stable tie-breaker when several tabs have equal list counts.
 export const NAV_TAB_ORDER: string[] = [
   "public_recommendations",
-  "public_music",
   "public_guides",
   "public_movie",
   "public_books",
@@ -44,7 +43,6 @@ function isTabVisible(account: AccountLike | null | undefined, tabId: string): b
 export function getVisibleNavTabIds(account: AccountLike | null | undefined): Set<string> {
   const visible = new Set<string>([PROFILE_TAB]);
   for (const tabId of NAV_TAB_ORDER) {
-    if (tabId === "public_music") continue;
     if (isTabVisible(account, tabId)) visible.add(tabId);
   }
   return visible;
@@ -71,10 +69,8 @@ export function normalizePinnedTabs(account: AccountLike | null | undefined): st
 export function computePinnedNavTabIds(
   account: AccountLike | null | undefined,
   countMap: Record<string, number>,
-  options: { musicAvailable?: boolean } = {},
 ): string[] {
   const visible = getVisibleNavTabIds(account);
-  if (account?.public_music === "Yes" && options.musicAvailable === true) visible.add("public_music");
 
   if (resolveAutoPinning(account)) {
     // Auto mode: profile first, then visible categories ranked by list count
@@ -82,7 +78,7 @@ export function computePinnedNavTabIds(
     const others = NAV_TAB_ORDER
       .filter((id) => visible.has(id))
       .sort((a, b) => {
-        const rank = (id: string) => id === "public_music" ? Number.MAX_SAFE_INTEGER : countMap[id] ?? 0;
+        const rank = (id: string) => countMap[id] ?? 0;
         return rank(b) - rank(a);
       });
     return [PROFILE_TAB, ...others].slice(0, MAX_NAV_SLOTS);
@@ -97,12 +93,9 @@ export function computePinnedNavTabIds(
 export function getNavSlotExclusion(
   account: AccountLike | null | undefined,
   tabId: string,
-  options: { musicAvailable?: boolean } = {},
 ): { reason: "slot-limit"; maxSlots: number } | null {
-  if (tabId === "public_music" && !normalizePinnedTabs(account).includes(tabId)) return null;
   const eligible = getVisibleNavTabIds(account);
-  if (account?.public_music === "Yes" && options.musicAvailable) eligible.add("public_music");
   if (!eligible.has(tabId)) return null;
-  const selected = computePinnedNavTabIds(account, {}, options);
+  const selected = computePinnedNavTabIds(account, {});
   return selected.includes(tabId) ? null : { reason: "slot-limit", maxSlots: MAX_NAV_SLOTS };
 }

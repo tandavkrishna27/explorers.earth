@@ -5,17 +5,17 @@ import {explorersApiClient} from '../../../../lib/explorersApiClient';
 import {useBooksNavigation} from '../useBooksNavigation';
 vi.mock('../../../../lib/explorersApiClient',()=>({explorersApiClient:{getMyProfile:vi.fn(),getCompleteMyCategoryTopPicks:vi.fn(),updateAccount:vi.fn()}}));
 vi.mock('../../../PublicHome/api/publicProfileInvalidation',()=>({publishPublicProfileInvalidation:vi.fn()}));
-const profile=(revision=1)=>({id:'owner',revision,handle:'reader',categories:[{category:'books',isPublic:false,pinnedOrder:0},{category:'music',isPublic:true,pinnedOrder:1}],navigationOrderMode:'auto'});
+const profile=(revision=1)=>({id:'owner',revision,handle:'reader',categories:[{category:'books',isPublic:false,pinnedOrder:0},{category:'games',isPublic:true,pinnedOrder:1}],navigationOrderMode:'auto'});
 describe('canonical Books navigation',()=>{
  beforeEach(()=>{vi.clearAllMocks();useAuthStore.setState({generation:2,accountId:'owner'});vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(profile() as never);vi.mocked(explorersApiClient.updateAccount).mockImplementation(async input=>({...profile(input.expectedRevision+1),categories:input.categories}) as never);vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue({collections:[{visibility:'public',publicationState:'published'}]} as never);});
  it('uses a fresh revision on consecutive saves and preserves other categories',async()=>{
   const {result}=renderHook(()=>useBooksNavigation());await waitFor(()=>expect(result.current.authority).toBeTruthy());
   vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(profile(3) as never);
   await act(()=>result.current.request({category:'public_books',action:'publish'},result.current.authority));
-  expect(explorersApiClient.updateAccount).toHaveBeenLastCalledWith({expectedRevision:3,categories:[{category:'books',isPublic:true,pinnedOrder:0},{category:'music',isPublic:true,pinnedOrder:1}]});
+  expect(explorersApiClient.updateAccount).toHaveBeenLastCalledWith({expectedRevision:3,categories:[{category:'books',isPublic:true,pinnedOrder:0},{category:'games',isPublic:true,pinnedOrder:1}]});
   vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(profile(4) as never);
   await act(()=>result.current.request({category:'public_books',action:'unpublish'},result.current.authority));
-  expect(explorersApiClient.updateAccount).toHaveBeenLastCalledWith({expectedRevision:4,categories:[{category:'books',isPublic:false,pinnedOrder:null},{category:'music',isPublic:true,pinnedOrder:1}]});
+  expect(explorersApiClient.updateAccount).toHaveBeenLastCalledWith({expectedRevision:4,categories:[{category:'books',isPublic:false,pinnedOrder:null},{category:'games',isPublic:true,pinnedOrder:1}]});
  });
  it('rejects publishing without an eligible list and rejects prior authority',async()=>{
   vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue({collections:[{visibility:'private',publicationState:'published'}]} as never);

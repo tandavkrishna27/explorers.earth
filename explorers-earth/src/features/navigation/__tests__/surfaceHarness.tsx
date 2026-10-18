@@ -6,8 +6,6 @@ import { ApolloClient, ApolloLink, ApolloProvider, InMemoryCache, Observable } f
 import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { CategoryNavigationProvider, useCategoryNavigation } from '../CategoryNavigationProvider';
-import { MusicPublishProvider } from '../../music/MusicPublishProvider';
-import type { MusicPinVerifier } from '../accountNavigationWriter';
 import useAuthStore from '../../../store/store';
 import { createInstance } from 'i18next';
 import { I18nextProvider } from 'react-i18next';
@@ -15,8 +13,8 @@ import english from '../../../i18n/resources/en.json';
 const surfaceTranslations = createInstance();
 void surfaceTranslations.init({ lng: 'en', resources: { en: { translation: english } }, showSupportNotice: false });
 
-const CANONICAL_FIELDS = ['public_recommendations','public_music','public_guides','public_movie','public_books','public_games','public_apps','public_products','public_people'] as const;
-const CANONICAL_KEYS = ['places','music','guides','movies','books','games','apps','products','people'] as const;
+const CANONICAL_FIELDS = ['public_recommendations','public_guides','public_movie','public_books','public_games','public_apps','public_products','public_people'] as const;
+const CANONICAL_KEYS = ['places','guides','movies','books','games','apps','products','people'] as const;
 type CanonicalRow = { category: string; isPublic?: boolean; pinnedOrder?: number | null };
 /** Pin order a canonical account update writes, mirroring toNavigationSnapshot's savedPins. */
 export function writtenPins(input: { categories?: CanonicalRow[] }) {
@@ -33,11 +31,11 @@ export function loginSurface(id = 'u1', accountId = canonicalAccountFixture().id
   useAuthStore.getState().acceptVerified(generation, { id: accountId, userId: id, username: 'owner', email: 'owner@example.test', onboardingStatus: 'complete', revision: 1 });
 }
 export function surfaceAccount(extra: Record<string, unknown> = {}) {
-  return { __typename: 'Account', documentId: 'a1', Account_Name: 'Owner', Account_Type: 'Personal', mobile_number: '123', public_profile: 'Yes', public_music: 'Yes',
+  return { __typename: 'Account', documentId: 'a1', Account_Name: 'Owner', Account_Type: 'Personal', mobile_number: '123', public_profile: 'Yes',
     public_recommendations: 'Yes', public_movie: 'Yes', public_books: 'Yes', public_games: 'Yes', public_apps: 'Yes', public_products: 'Yes', public_people: 'Yes', public_guides: 'Yes',
-    pinned_nav_tabs: ['public_profile', 'public_music', 'public_books'], auto_pinning: false, ...extra };
+    pinned_nav_tabs: ['public_profile', 'public_books'], auto_pinning: false, ...extra };
 }
-export function surfaceHarness(child: React.ReactNode, options: { initial?: Record<string, unknown>; incompleteFirst?: boolean; route?: string | { pathname: string; state: unknown }; lists?: Record<string, unknown>; content?: Record<string, unknown>; verifyMusicPin?: MusicPinVerifier; deferProfile?: Promise<unknown>; deferContent?: Promise<unknown>; respond?: (name: string, variables: any) => any } = {}) {
+export function surfaceHarness(child: React.ReactNode, options: { initial?: Record<string, unknown>; incompleteFirst?: boolean; route?: string | { pathname: string; state: unknown }; lists?: Record<string, unknown>; content?: Record<string, unknown>; deferProfile?: Promise<unknown>; deferContent?: Promise<unknown>; respond?: (name: string, variables: any) => any } = {}) {
   let saved = surfaceAccount(options.initial);
   let failMutation = false;
   let failLists = false;
@@ -139,7 +137,7 @@ export function surfaceHarness(child: React.ReactNode, options: { initial?: Reco
       void respond().then(data => { observer.next({ data: complete(selection, data) }); observer.complete(); }, error => observer.error(error));
     })) });
   function Probe() { navigation = useCategoryNavigation(); return null; }
-  const tree = (children: React.ReactNode) => <ApolloProvider client={client}><MemoryRouter initialEntries={[options.route ?? '/']}><I18nextProvider i18n={surfaceTranslations}><CategoryNavigationProvider verifyMusicPin={options.verifyMusicPin ?? (async () => 'public')}><MusicPublishProvider><Probe />{children}</MusicPublishProvider></CategoryNavigationProvider></I18nextProvider></MemoryRouter></ApolloProvider>;
+  const tree = (children: React.ReactNode) => <ApolloProvider client={client}><MemoryRouter initialEntries={[options.route ?? '/']}><I18nextProvider i18n={surfaceTranslations}><CategoryNavigationProvider><Probe />{children}</CategoryNavigationProvider></I18nextProvider></MemoryRouter></ApolloProvider>;
   const view = render(tree(child));
   return { ...view, client, requests, get navigation() { return navigation; }, get saved() { return saved; }, set saved(value) { saved = value; },
     set failMutation(value: boolean) { failMutation = value; }, set failLists(value: boolean) { failLists = value; },

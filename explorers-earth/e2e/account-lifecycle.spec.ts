@@ -37,8 +37,8 @@ import { canonicalCategoryAccount } from "../src/test/canonicalAccountFixture";
  * compensation, Music resume after token refresh, and dead-letter escalation.
  * There is no Music step in canonical deactivation or deletion and no Strapi
  * mutation to order against, so those assertions describe a flow the product does
- * not perform. Music credential teardown on logout is still covered, by
- * `music.spec.ts` ("logout boundary clears Explorer authentication in another tab").
+ * not perform. The SPA no longer holds a Music credential (the Music product was
+ * removed in P3-4), so there is no Music teardown on logout left to cover.
  */
 
 type LifecycleStatus = "active" | "suspended" | "pending_deletion" | "deleted";

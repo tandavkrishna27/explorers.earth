@@ -11,7 +11,7 @@ export function assertUnauthenticatedSession(response){
 }
 function assertSchema(schema){
  assert.equal(schema?.ready,true,'CANONICAL_SCHEMA_NOT_READY');
- assert.equal(schema.currentId,'0056_explorers_app_enrichment_jobs','CANONICAL_SCHEMA_VERSION_INVALID');
+ assert.equal(schema.currentId,'0057_retire_music_category','CANONICAL_SCHEMA_VERSION_INVALID');
  for(const key of ['currentChecksum','schemaChecksum'])assert.match(schema[key]??'',/^[a-f0-9]{64}$/,'CANONICAL_SCHEMA_CHECKSUM_INVALID');
 }
 export function assertRestartQualification(result,before){

@@ -1,6 +1,6 @@
 import type { AccountDto } from '../../../../tunes/shared/explorersContract';
 export const CATEGORY_IDS = [
-  'public_recommendations', 'public_music', 'public_guides', 'public_movie',
+  'public_recommendations', 'public_guides', 'public_movie',
   'public_books', 'public_games', 'public_apps', 'public_products', 'public_people',
 ] as const;
 
@@ -8,9 +8,7 @@ export type CategoryId = typeof CATEGORY_IDS[number];
 export type Scope = { userDocumentId: string; accountDocumentId: string };
 export type IntentAuthority = Scope & { generation: number };
 export type CategoryIntent = { category: CategoryId; action: 'publish' | 'unpublish' | 'pin' | 'unpin' };
-export type GenericNavigationIntent =
-  | { category: Exclude<CategoryId, 'public_music'>; action: CategoryIntent['action'] }
-  | { category: 'public_music'; action: 'pin' | 'unpin' };
+export type GenericNavigationIntent = { category: CategoryId; action: CategoryIntent['action'] };
 export type NavigationSnapshot = {
   scope: Scope;
   revision: number;

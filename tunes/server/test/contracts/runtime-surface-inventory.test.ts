@@ -24,7 +24,10 @@ describe("runtime route/event/job inventory", () => {
     // /health/ready. The three SEO paths are deliberately registered twice — once
     // here and once by the Music composition's tunes/server/seo-routes.ts — until
     // Music is deleted; both registrations are real surfaces and both are counted.
-    expect(inventory.routes).toHaveLength(204);
+    // 202 = 204 - the two Music analytics routes P3-5 removed
+    // (POST /api/explorers/analytics/music-account/:id/events and
+    // POST /api/explorers/analytics/music/:publicSlug/events).
+    expect(inventory.routes).toHaveLength(202);
     expect(inventory.events).toHaveLength(15);
     expect(inventory.jobs).toHaveLength(37);
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/application/appEnrichmentLocalScheduler.ts',lifecycle:'scheduled-callback'}));

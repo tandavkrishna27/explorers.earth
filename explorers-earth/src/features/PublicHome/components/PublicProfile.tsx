@@ -9,8 +9,8 @@ import {
 import { RECOMMENDATION_CATEGORY_IDS } from "../../Profile/types/themeTypes";
 import PublicProfileFooter from "./PublicProfileFooter";
 import { PublicProfileHeroBackdrop, PublicProfileIdentity, PublicProfileWallpaper } from "./PublicProfileChromePrimitives";
-import { memo, useEffect, useState, useMemo, useRef, type KeyboardEvent } from "react";
-import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
+import { memo, useEffect, useState, useMemo, type KeyboardEvent } from "react";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { usePublicProfileShell } from "../api/usePublicProfileShell";
 import { useTrackAnalytics, createAnalyticsOptions } from "../../../services/analyticsService";
 import WhatsappIcon from "../../../assets/icons/WhatsappIcon";
@@ -47,7 +47,6 @@ import {
   normalizePublicWebHref,
   sanitizePublicRichText,
 } from "../utils/publicProfileContent";
-import { usePublicMusicAvailability } from "../../music/PublicMusicAvailabilityProvider";
 import { PublicRouteErrorState, PublicRoutePartialNotice } from "./PublicRouteContentState";
 
 // Memoized FeedLayout to prevent unnecessary re-renders
@@ -106,10 +105,7 @@ ProfileSkeleton.displayName = "ProfileSkeleton";
 const PublicProfile = memo(() => {
   const { username } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
-  const musicAvailability = usePublicMusicAvailability();
-  const musicLandingHandled = useRef<string>();
 
   // MediaViewer state
   const { isOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
@@ -123,13 +119,6 @@ const PublicProfile = memo(() => {
     [accountData?.social_media?.theme_settings],
   );
   const themeStyles = getThemeTokenStyles(themeSettings);
-
-  useEffect(() => {
-    if (location.key !== "default" || loading || themeSettings.landingTab !== "music" || musicAvailability.state === "loading") return;
-    if (musicLandingHandled.current === username) return;
-    musicLandingHandled.current = username;
-    if (musicAvailability.state === "available") navigate(`/${username}/music`, { replace: true });
-  }, [loading, location.key, musicAvailability.state, navigate, themeSettings.landingTab, username]);
 
   // Set public profile loaded when query completes successfully
   useEffect(() => {
@@ -269,7 +258,6 @@ const PublicProfile = memo(() => {
         const showMovies = accountData.public_movie === "Yes";
         const showBooks = accountData.public_books === "Yes";
         const showGames = accountData.public_games === "Yes";
-        const showMusic = accountData.public_music === "Yes";
         const showApps = accountData.public_apps === "Yes";
         const showProducts = accountData.public_products === "Yes";
         const showPeople = accountData.public_people === "Yes";
@@ -290,8 +278,6 @@ const PublicProfile = memo(() => {
           navigate(`/${username}/products`, { replace: true });
         } else if (showPeople) {
           navigate(`/${username}/people`, { replace: true });
-        } else if (showMusic) {
-          navigate(`/${username}/music`, { replace: true });
         }
         // If nothing is enabled, stay on profile (will show "not available" or similar)
       }

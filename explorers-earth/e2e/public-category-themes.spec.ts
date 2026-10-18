@@ -1235,17 +1235,16 @@ for (const mode of ['banner-top', 'full-wallpaper-image', 'ambient-gradient', 's
 }
 
 for (const mode of ['banner-top', 'full-wallpaper-image', 'ambient-gradient', 'solid-color']) {
-  test(`@once root and Music ${mode} retain selected absent broken backdrop behavior`, async ({ browser, baseURL }, info) => {
+  test(`@once root ${mode} retains selected absent broken backdrop behavior`, async ({ browser, baseURL }, info) => {
     for (const cover of ['selected', 'absent', 'broken']) {
       const state = seedCategoryThemeState('minimal-light');
       state.mode = 'public';
-      state.account.public_music = 'Yes';
       state.account.social_media.theme_settings.wallpaperMode = mode;
       state.account.bg_picture = cover === 'absent' ? null : { url: cover === 'selected' ? fixtureArtwork : `${baseURL}/images/broken-category-cover.svg` };
       const visitor = await openFixture(browser, baseURL!, state, { width: 390, height: 900, touch: true });
       await visitor.context.route(url => url.origin === new URL(baseURL!).origin && url.pathname === '/images/broken-category-cover.svg', route => route.fulfill({ contentType: 'image/svg+xml', body: 'invalid-image' }));
       try {
-        for (const route of ['', '/music']) {
+        for (const route of ['']) {
           await visitor.page.goto(`/fixture-owner${route}`);
           const shell = visitor.page.locator('[data-public-profile-chrome]');
           await expect(shell).toHaveAttribute('data-theme-preset', 'minimal-light');
@@ -1254,8 +1253,7 @@ for (const mode of ['banner-top', 'full-wallpaper-image', 'ambient-gradient', 's
           const wallpaperCount = mode === 'ambient-gradient' || mode === 'full-wallpaper-image' && (root || cover === 'selected') ? 1 : 0;
           await expect(visitor.page.locator('[data-profile-wallpaper]')).toHaveCount(wallpaperCount);
           await expect(visitor.page.locator('[data-profile-hero-backdrop]')).toHaveCount(root && mode === 'banner-top' ? 1 : 0);
-          await expect(visitor.page.locator('[data-music-cover]')).toHaveCount(!root && mode === 'banner-top' && cover === 'selected' ? 1 : 0);
-          await info.attach(`backdrop-${mode}-${cover}-${root ? 'root' : 'music'}`, { contentType: 'application/json', body: JSON.stringify({ mode, cover, route, wallpaperCount }) });
+          await info.attach(`backdrop-${mode}-${cover}-${root ? 'root' : route}`, { contentType: 'application/json', body: JSON.stringify({ mode, cover, route, wallpaperCount }) });
         }
       } finally { await closeFixture(visitor); }
     }

@@ -4,25 +4,22 @@ import type { AnalyticsQuery } from '../../shared/explorersContract';
 import type { AnalyticsAggregateRow } from '../application/analytics';
 import { AuthorizationError } from '../application/authorization';
 import { IdempotencyConflictError, type ExplorersAnalyticsInput } from '../services/explorers-analytics-service';
-import { hashGuestCapability, verifyGuestCapability } from '../policies/musicSurfacePolicy';
 export interface AnalyticsRequestContext {
     requestId: string;
     resolveCountry?: () => string | null;
-    /** Trusted transport evidence; never copied from a generic browser payload. */
-    music?: {
-        mode: 'public' | 'unlisted' | 'friendly';
-        publicSlug?: string;
-        legacyAccountId?: string;
-        capability?: string;
-    };
 }
 const unavailable = () => new AuthorizationError(404, 'NOT_FOUND', 'Analytics target is unavailable');
-const categoryByPage: Record<string, string> = { 'public-home': 'places', 'recommendation-detail': 'places', 'public-music': 'music', 'public-movies': 'movies', 'public-books': 'books', 'public-games': 'games', 'public-apps': 'apps', 'public-products': 'products', 'public-people': 'people', 'public-guides': 'guides' };
+const categoryByPage: Record<string, string> = { 'public-home': 'places', 'recommendation-detail': 'places', 'public-movies': 'movies', 'public-books': 'books', 'public-games': 'games', 'public-apps': 'apps', 'public-products': 'products', 'public-people': 'people', 'public-guides': 'guides' };
 const uuid = z.string().uuid();
 export class ExplorersAnalyticsEventRepository {
     constructor(private readonly pool: Pool) { }
     private async target(db: PoolClient, input: ExplorersAnalyticsInput, context: AnalyticsRequestContext): Promise<string | null> {
         if (!uuid.safeParse(input.accountId).success)
+            throw unavailable();
+        // The public Music page was removed (P3-4/P3-5); its page value is still in the
+        // contract until the music category is retired, so refuse it explicitly rather
+        // than record an event with no category.
+        if (input.event.page === 'public-music')
             throw unavailable();
         const category = categoryByPage[input.event.page] ?? null;
         if (category === 'guides')
@@ -30,29 +27,9 @@ export class ExplorersAnalyticsEventRepository {
         const account = (await db.query(`SELECT id,handle_key,public_profile,onboarding_status,status FROM creator_accounts WHERE id=$1 FOR SHARE`, [input.accountId])).rows[0];
         if (!account || account.status !== 'active' || account.onboarding_status !== 'complete')
             throw unavailable();
-        if (context.music) {
-            if (category !== 'music' || input.event.canonicalPath !== '/music/share' || input.locationId || input.recommendationId)
-                throw unavailable();
-            const evidence = context.music, capability = evidence.capability, valid = typeof capability === 'string' && /^[A-Za-z0-9_-]{43}$/.test(capability), hash = valid ? hashGuestCapability(capability) : '0'.repeat(64);
-            const users = (await db.query(`SELECT u.id,u.guest_discoverable,u.guest_capability_hash,u.guest_capability_revoked_at FROM users u JOIN account_music_identity i ON i.music_user_id=u.id WHERE i.account_id=$1 AND u.identity_status='active' AND (($2='friendly' AND u.strapi_account_document_id=$3) OR ($2<>'friendly' AND u.guest_url=$4)) FOR SHARE OF u`, [input.accountId, evidence.mode, evidence.legacyAccountId ?? null, evidence.publicSlug ?? null])).rows;
-            if (users.length !== 1)
-                throw unavailable();
-            const user = users[0];
-            if (evidence.mode !== 'friendly' && !user.guest_discoverable && (!valid || user.guest_capability_hash !== hash || user.guest_capability_revoked_at !== null || !verifyGuestCapability(capability!, user.guest_capability_hash)))
-                throw unavailable();
-        }
-        else {
-            const segments = input.event.canonicalPath.split('/').filter(Boolean).map(v => decodeURIComponent(v).toLowerCase());
-            if (!account.public_profile || segments[0] !== account.handle_key)
-                throw unavailable();
-            if (category === 'music') {
-                if (input.locationId || input.recommendationId)
-                    throw unavailable();
-                const bridge = (await db.query("SELECT u.id FROM users u JOIN account_music_identity i ON i.music_user_id=u.id WHERE i.account_id=$1 AND u.identity_status='active' FOR SHARE OF u", [input.accountId])).rows;
-                if (bridge.length !== 1)
-                    throw unavailable();
-            }
-        }
+        const segments = input.event.canonicalPath.split('/').filter(Boolean).map(v => decodeURIComponent(v).toLowerCase());
+        if (!account.public_profile || segments[0] !== account.handle_key)
+            throw unavailable();
         if (category) {
             const settings = (await db.query('SELECT is_public FROM account_category_settings WHERE account_id=$1 AND category=$2 FOR SHARE', [input.accountId, category])).rows[0];
             if (!settings?.is_public)
@@ -97,7 +74,7 @@ export class ExplorersAnalyticsEventRepository {
                 return { status: 'duplicate' as const, ...(prior.event_id ? { eventId: prior.event_id } : { retired: true as const }) };
             }
             const now = (await db.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
-            const occurred = context.music ? now : new Date(input.event.timestamp);
+            const occurred = new Date(input.event.timestamp);
             if (occurred.getTime() < now.getTime() - 366 * 86400000 || occurred.getTime() > now.getTime() + 300000)
                 throw new AuthorizationError(422, 'INVALID_INPUT', 'Analytics timestamp is outside supported bounds');
             const resolved = context.resolveCountry?.(), country = typeof resolved === 'string' && /^[a-z]{2}$/i.test(resolved) ? resolved.toUpperCase() : null;

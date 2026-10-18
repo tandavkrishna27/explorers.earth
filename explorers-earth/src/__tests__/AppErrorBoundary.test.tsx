@@ -12,7 +12,7 @@ vi.mock("../components/ScrollToTop", () => ({
   default: () => null,
 }));
 
-vi.mock("../components/AuthSyncManager", () => ({
+vi.mock("../components/AccountGenerationCacheReset", () => ({
   default: () => null,
 }));
 

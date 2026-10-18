@@ -4,12 +4,9 @@ const port = Number(process.env.PLAYWRIGHT_PORT ?? 5173);
 const externalBaseUrl = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;
 
 const prSafeTestMatch = /\.spec\.ts$/;
-const musicFixtureTestMatch = /music-(?:fixture-fullstack|public-contract)\.spec\.ts$/;
-const musicLiveTestMatch = /(?:music-fixture-fullstack|music-public-contract|profile-theme)\.spec\.ts$/;
-const musicVisualTestMatch = /(?:music|music-accessibility|profile-presentation-visual)\.spec\.ts$/;
-// Ticket 6.2 ":33" requires the owner Music journey at desktop and mobile. Every other
-// Music project is a desktop device, so the owner workspace had no mobile coverage.
-const musicOwnerMobileTestMatch = /music-fullstack\.spec\.ts$/;
+// The cross-browser visual projects keep their historical names; they now
+// collect only the profile presentation visual contract.
+const musicVisualTestMatch = /profile-presentation-visual\.spec\.ts$/;
 
 export default defineConfig({
   testDir: './e2e',
@@ -38,16 +35,6 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], headless: true },
     },
     {
-      name: 'chromium-music-fixture',
-      testMatch: musicFixtureTestMatch,
-      use: { ...devices['Desktop Chrome'], headless: true },
-    },
-    {
-      name: 'chromium-music-live',
-      testMatch: musicLiveTestMatch,
-      use: { ...devices['Desktop Chrome'], headless: true },
-    },
-    {
       name: 'firefox-music-visual',
       testMatch: musicVisualTestMatch,
       use: { ...devices['Desktop Firefox'], headless: true },
@@ -56,11 +43,6 @@ export default defineConfig({
       name: 'webkit-music-visual',
       testMatch: musicVisualTestMatch,
       use: { ...devices['Desktop Safari'], headless: true },
-    },
-    {
-      name: 'chromium-music-owner-mobile',
-      testMatch: musicOwnerMobileTestMatch,
-      use: { ...devices['Pixel 7'], headless: true },
     },
   ],
   webServer: externalBaseUrl ? undefined : {

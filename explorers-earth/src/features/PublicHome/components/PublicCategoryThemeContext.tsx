@@ -1,7 +1,7 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import { getThemeTokenStyles } from '../../Profile/constants/themePresets';
 import type { ThemeSettings } from '../../Profile/types/themeTypes';
-import { getMusicAccentInk } from '../../music/publicMusicPresentation';
+import { getAccentInk } from '../utils/accentInk';
 
 type PublicCategoryThemeStyles = Record<string, string> | null;
 
@@ -33,7 +33,7 @@ export function getPublicCategoryThemeStyles(theme: ThemeSettings): Record<strin
     '--category-border': base['--border-card'],
     '--category-control-border': base['--public-chrome-border'],
     '--category-accent': base['--accent-color'],
-    '--category-accent-ink': getMusicAccentInk(base['--accent-color']),
+    '--category-accent-ink': getAccentInk(base['--accent-color']),
     '--category-focus': base['--public-chrome-focus'],
     // Essential gold rating stars need an ochre shade on the light panel.
     '--category-rating': theme.preset === 'minimal-light' ? '#A16207' : '#FACC15',

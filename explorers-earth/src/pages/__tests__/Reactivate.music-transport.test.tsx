@@ -211,7 +211,7 @@ it("expires ready recovery synchronously when ordinary session verification begi
   expect(screen.getByText(/recovery flow has expired/i)).toBeInTheDocument();
 });
 
-it("binds cold-entry recovery after StrictMode AuthSyncManager bootstrap settles signed out", async () => {
+it("binds cold-entry recovery after the StrictMode cache-reset mount settles signed out", async () => {
   const { StrictMode } = await import("react");
   const { act } = await import("@testing-library/react");
   const { ApolloClient, ApolloProvider, InMemoryCache, ApolloLink } = await import("@apollo/client");
@@ -227,7 +227,7 @@ it("binds cold-entry recovery after StrictMode AuthSyncManager bootstrap settles
     if (url.endsWith("/complete")) return Response.json({ lifecycle: { status: "active", revision: 8 } });
     throw new Error(`Unexpected request: ${url}`);
   }));
-  const { default: Manager } = await import("../../components/AuthSyncManager");
+  const { default: Manager } = await import("../../components/AccountGenerationCacheReset");
   const { default: Page } = await import("../ReactivateConfirm");
   const client = new ApolloClient({ cache: new InMemoryCache(), link: ApolloLink.empty() });
   render(<StrictMode><ApolloProvider client={client}><MemoryRouter><Manager /><Page /></MemoryRouter></ApolloProvider></StrictMode>);

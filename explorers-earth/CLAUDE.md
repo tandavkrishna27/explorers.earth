@@ -38,19 +38,15 @@ src/
 │   ├── LandingPage/    # Marketing/home page
 │   └── PublicHome/     # Public-facing recommendation pages
 ├── components/         # Shared UI components
-│   ├── MusicDashboard.tsx      # Canonical Music workspace and sharing controls
-│   ├── AuthSyncManager.tsx     # Post-auth Music identity convergence
 │   ├── Header.tsx / Navbar.tsx # Navigation
 │   ├── InteractiveMap.tsx      # Google Maps component
 │   ├── ImageCropper.tsx        # Image crop utility
 │   └── ui/             # Radix UI primitive wrappers
 ├── pages/              # Route-level page components
-│   ├── Music.tsx       # Music page (renders MusicDashboard)
 │   ├── ReactivateAccount.tsx # Request account reactivation magic link page
 │   ├── ReactivateConfirm.tsx # Confirm account reactivation page
 │   └── public/         # Public (unauthenticated) pages
 ├── hooks/              # Custom hooks
-│   ├── useTunesDashboard.ts            # Canonical Music workspace data fetching
 │   ├── useProfileWalkthrough.ts        # Profile setup guided walkthrough
 │   ├── useRecommendationsWalkthrough.ts # Recommendations guided walkthrough
 │   ├── useQRActions.tsx                # QR code generation, download, sharing
@@ -64,7 +60,6 @@ src/
 │   ├── useToast.ts                     # Toast notifications
 │   └── useUsernameValidation.ts        # Async username availability check
 ├── lib/
-│   ├── localTunesApiClient.ts # Bodyless identity ensure and in-memory Music credential
 │   └── apolloCache.ts          # Immutable-ID GraphQL normalization policy
 ├── store/              # Zustand global state
 │   ├── store.ts        # Main app store (auth, user data)
@@ -102,14 +97,10 @@ src/
 - QR codes generated dynamically with qrcode.react, exportable as PNG
 - Maps: Google Maps with custom markers, clustering, geocoding
 
-## Music identity and workspace
+## Account lifecycle
 
-- `AuthSyncManager.tsx` is the sole automatic identity trigger. It runs only after verified authentication and completed onboarding and selects the unique complete Account by immutable `documentId`.
-- `localTunesApiClient.ts` sends a bodyless identity ensure request and holds the short-lived Music credential in memory only, with single-flight refresh.
-- `musicIdentityCoordinator.ts` coalesces concurrent identity work for Google and email authentication paths.
-- `musicWorkspaceClient.ts` uses canonical owner routes. `publicMusicClient.ts` uses immutable public slugs and an optional fragment-carried guest capability.
-- `Music.tsx` delegates lifecycle, entitlement, identity, loading, and ready precedence to `musicState.ts`; `MusicDashboard.tsx` owns private/unlisted/public controls.
-- Profile username changes never change Music ownership or identity. Retired username headers, native credentials, browser persistence, and cross-app login routes must not be reintroduced.
+- The Music product was removed from the SPA in P3-4; `docs/archive/music-v1/` and the git tag `music-v1-final` record it.
+- `AccountGenerationCacheReset.tsx` clears private React Query and Apollo caches whenever the auth generation changes, so nothing read for one account survives into the next.
 - **Account Reactivation Flow**: `ReactivateAccount.tsx` and `ReactivateConfirm.tsx` handle the separate Explorer account lifecycle endpoints.
 
 ## Common Tasks

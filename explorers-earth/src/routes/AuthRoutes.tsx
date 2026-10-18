@@ -1,7 +1,6 @@
 import { Navigate, Route } from "react-router-dom";
 import Login from "../pages/Login";
 import GoogleAuthRedirect from "../pages/GoogleAuthRedirect";
-import PublicMusic from "../pages/public/PublicMusic";
 import Landing from "../pages/Landing";
 import Contact from "../pages/Contact";
 import About from "../pages/About";
@@ -38,7 +37,6 @@ const AuthRoutes = [
     path="/google-auth/callback"
     element={<GoogleAuthRedirect />}
   />,
-  <Route key="public-music" path="/music/share/:publicSlug" element={<PublicMusic />} />,
   <Route key="reactivate" path="/reactivate" element={<ReactivateAccount />} />,
   <Route key="reactivate-confirm" path="/reactivate-confirm" element={<ReactivateConfirm />} />,
 ];

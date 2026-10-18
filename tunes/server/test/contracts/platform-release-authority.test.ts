@@ -24,7 +24,7 @@ const frontend = [
   ['lint', '🔍 Lint'], ['typecheck', '🔷 TypeScript'], ['unit-tests', '🧪 Unit Tests'],
   ['build', '🏗️ Build'], ['integration-tests', '🔗 Integration Tests'], ['e2e-category-a', '🎭 E2E Category A'],
   ['e2e-category-b', '🎭 E2E Category B'], ['e2e-public-shell', '🎭 E2E Public shell'],
-  ['e2e-publishing', '🎭 E2E Publishing'], ['e2e-music-account', '🎭 E2E Music and account'],
+  ['e2e-music-account', '🎭 E2E Music and account'],
   ['replatform-required', 'replatform-required'],
 ] as const;
 const backend = ['docs-contracts', 'static', 'unit-coverage', 'contracts', 'database', 'security', 'frontend',

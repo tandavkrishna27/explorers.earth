@@ -156,10 +156,9 @@ test("recommendations hub renders every supported category cleanly", async ({
   ).toBeVisible();
 
   const cards = page.locator(".rec-card");
-  await expect(cards).toHaveCount(9);
+  await expect(cards).toHaveCount(8);
   for (const label of [
     "Places",
-    "Music",
     "Movies & Shows",
     "Books",
     "Games",

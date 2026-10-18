@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Home from "../assets/icons/Home";
 import Profile from "../assets/icons/Profile";
 import SettingsIcon from "../assets/icons/SettingsIcon";
-import MusicNote from "../assets/icons/MusicNote";
 import NavButton from "./ui/NavButton";
 import Analytics from "../assets/icons/Analytics";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
@@ -110,8 +109,6 @@ const Navbar = () => {
             );
           } else if (item.id === "settings") {
             iconElement = <SettingsIcon fill={isActive ? "var(--dash-accent)" : "var(--dash-text-muted)"} />;
-          } else if (item.id === "music") {
-            iconElement = <MusicNote fill={isActive ? "var(--dash-accent)" : "var(--dash-text-muted)"} />;
           }
 
           const handleClick = () => {

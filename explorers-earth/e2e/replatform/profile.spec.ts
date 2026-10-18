@@ -731,7 +731,7 @@ test('canonical navigation: external account preference refresh preserves all ni
   await expect(page.getByRole('region', { name: 'Public visibility settings' }).getByRole('checkbox', { name: 'Books Tab', exact: true })).toBeChecked();
   const refreshed = await navigationAccount(page);
   expect(refreshed.categories).toEqual(categories);
-  expect(refreshed.categories).toHaveLength(9);
+  expect(refreshed.categories).toHaveLength(8);
   expect(legacy).toEqual([]);
 });
 

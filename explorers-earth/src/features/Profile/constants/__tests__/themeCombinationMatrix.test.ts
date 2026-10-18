@@ -27,13 +27,13 @@ const rows = PRESET_IDS.flatMap((preset) =>
 );
 
 describe("theme appearance Cartesian matrix", () => {
-  it("contains exactly 1,728 unique canonical controlled states", () => {
+  it("contains exactly 1,584 unique canonical controlled states", () => {
     expect(PRESET_IDS).toHaveLength(6);
     expect(ACCENT_COLORS).toHaveLength(6);
     expect(WALLPAPER_MODES).toHaveLength(4);
-    expect(LANDING_TAB_IDS).toHaveLength(12);
-    expect(rows).toHaveLength(1_728);
-    expect(new Set(rows.map((row) => JSON.stringify(row))).size).toBe(1_728);
+    expect(LANDING_TAB_IDS).toHaveLength(11);
+    expect(rows).toHaveLength(1_584);
+    expect(new Set(rows.map((row) => JSON.stringify(row))).size).toBe(1_584);
   });
 
   it("covers every pair between every two factors", () => {

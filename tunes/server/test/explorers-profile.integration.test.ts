@@ -184,4 +184,60 @@ describe("canonical profile", () => {
     expect(hidden.status).toBe(200);
     expect((await request(composed.app).get(`/api/explorers/v1/profiles/${handle}`)).status).toBe(404);
   });
+
+  /*
+   * P3-5 made the write path accept both sets; P3-6 (0057) retired the music category.
+   * A tab still holding a nine-row snapshot read before 0057 echoes its music row: that
+   * save must succeed and write no music row - the CHECK would refuse one anyway, and a
+   * 503 would fail an owner's save for a category they can no longer see.
+   */
+  async function categoryRows(accountId: string) {
+    return (await pool.query<{ category: string; display_order: number; pinned_order: number | null }>(
+      "SELECT category,display_order,pinned_order FROM account_category_settings WHERE account_id=$1 ORDER BY category",
+      [accountId])).rows;
+  }
+  it("seeds a new account with the eight surviving categories", async () => {
+    const owner = await persona();
+    const rows = await categoryRows(owner.accountId);
+    expect(rows.map((row) => row.category).sort()).toEqual(["apps", "books", "games", "guides", "movies", "people", "places", "products"]);
+    expect(rows.map((row) => row.display_order).sort()).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+  });
+  it("saves a stale nine-category set that still carries music, without writing a music row", async () => {
+    const owner = await persona();
+    const initial = (await request(composed.app).get("/api/explorers/v1/me").set("cookie", owner.cookie)).body.account;
+    expect(initial.categories).toHaveLength(8);
+    const categories = [
+      ...initial.categories.map((row: { category: string; isPublic: boolean }) => row.category === "books" ? { ...row, isPublic: true } : row),
+      { category: "music", isPublic: true, displayOrder: 8, pinnedOrder: null },
+    ];
+    const saved = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
+      .set("origin", config.baseURL).send({ expectedRevision: initial.revision, categories });
+    expect(saved.status).toBe(200);
+    expect(saved.body.account.categories.map((row: { category: string }) => row.category)).not.toContain("music");
+    const rows = await categoryRows(owner.accountId);
+    expect(rows.find((row) => row.category === "music")).toBeUndefined();
+    expect((await pool.query("SELECT is_public FROM account_category_settings WHERE account_id=$1 AND category='books'",
+      [owner.accountId])).rows).toEqual([{ is_public: true }]);
+  });
+  it("saves a reordered eight-category set", async () => {
+    const owner = await persona();
+    const initial = (await request(composed.app).get("/api/explorers/v1/me").set("cookie", owner.cookie)).body.account;
+    const categories = [...initial.categories].reverse()
+      .map((row: object, index: number) => ({ ...row, displayOrder: index, pinnedOrder: index === 0 ? 0 : null }));
+    const saved = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
+      .set("origin", config.baseURL).send({ expectedRevision: initial.revision, categories });
+    expect(saved.status).toBe(200);
+    const rows = await categoryRows(owner.accountId);
+    expect(rows).toHaveLength(8);
+    expect(new Set(rows.map((row) => row.display_order)).size).toBe(8);
+  });
+  it("still refuses a category set that is neither the eight categories nor those plus the retired music", async () => {
+    const owner = await persona();
+    const initial = (await request(composed.app).get("/api/explorers/v1/me").set("cookie", owner.cookie)).body.account;
+    const categories = initial.categories.filter((row: { category: string }) => row.category !== "books");
+    const refused = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
+      .set("origin", config.baseURL).send({ expectedRevision: initial.revision, categories });
+    expect(refused.status).toBeGreaterThanOrEqual(400);
+    expect((await categoryRows(owner.accountId)).find((row) => row.category === "books")).toBeDefined();
+  });
 });

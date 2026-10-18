@@ -4,7 +4,6 @@ import { useApolloClient } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import useAuthStore from "../../store/store";
 import { useLogout } from "../useLogout";
-import { getMusicCredential, setMusicCredential } from "../../lib/musicCredentialStore";
 import { queryClient } from "../../lib/queryClient";
 
 const mockNavigate = vi.fn();
@@ -36,29 +35,6 @@ describe("useLogout", () => {
     expect(mockClearStore).toHaveBeenCalledTimes(1);
     expect(localStorage.getItem("qrtoken")).toBeNull();
     expect(mockNavigate).toHaveBeenCalledWith("/login");
-  });
-
-  it("clears the Music credential synchronously before async cache clearing or navigation", async () => {
-    let finishClear!: () => void;
-    mockClearStore.mockImplementationOnce(() => new Promise<void>((resolve) => { finishClear = resolve; }));
-    setMusicCredential({ token: "account-a.music.credential", expiresAt: Date.now() + 60_000 });
-    const { result } = renderHook(() => useLogout());
-
-    const logout = result.current();
-    expect(getMusicCredential()).toBeUndefined();
-    expect(mockNavigate).not.toHaveBeenCalled();
-    finishClear();
-    await logout;
-  });
-
-  it("cancels and removes every private Music identity query while preserving unrelated query data", async () => {
-    queryClient.setQueryData(["music-workspace", "user-a", "account-a"], { playlists: ["A"] });
-    queryClient.setQueryData(["music-workspace", "user-b", "account-b"], { playlists: ["B"] });
-    queryClient.setQueryData(["unrelated"], "keep");
-    const { result } = renderHook(() => useLogout());
-    await result.current();
-    expect(queryClient.getQueriesData({ queryKey: ["music-workspace"] })).toEqual([]);
-    expect(queryClient.getQueryData(["unrelated"])).toBe("keep");
   });
 
   it("still redirects even if clearing the cache rejects", async () => {

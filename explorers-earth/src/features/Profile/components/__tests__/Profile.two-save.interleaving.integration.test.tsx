@@ -2,11 +2,10 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider, notifyManager } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { api, auth, setup, music } = vi.hoisted(() => ({
+const { api, auth, setup } = vi.hoisted(() => ({
   api: { getMyProfile: vi.fn(), updateAccount: vi.fn(), createMedia: vi.fn(), deleteMedia: vi.fn() },
   auth: { user: { id: "synthetic-user", documentId: "synthetic-user", username: "synthetic" }, token: "synthetic", generation: 1, updateUsername: vi.fn() },
   setup: { isProfileComplete: true, isRecommendationsComplete: true, setSetupStatus: vi.fn(), bindAccount: vi.fn() },
-  music: { refreshIdentity: vi.fn() },
 }));
 vi.mock("../../../../lib/explorersApiClient", () => ({ explorersApiClient: api }));
 vi.mock("../../../../store/store", () => ({ default: Object.assign(
@@ -16,7 +15,6 @@ vi.mock("../../../../store/store", () => ({ default: Object.assign(
 vi.mock("../../../../store/useSetupStore", () => ({ default:
   (selector?: (state: typeof setup) => unknown) => selector ? selector(setup) : setup,
 }));
-vi.mock("../../../music/musicApi", () => ({ musicApi: music }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn() } }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({
   t: (key: string, fallback?: unknown) => typeof fallback === "string" ? fallback :
@@ -69,7 +67,6 @@ describe("real Profile consecutive save interleaving", () => {
     vi.clearAllMocks();
     api.getMyProfile.mockReset();
     api.updateAccount.mockReset();
-    music.refreshIdentity.mockResolvedValue(undefined);
     auth.generation = 1;
     originalTooltipFlag = localStorage.getItem("hasSeenPublicProfileTooltip");
     localStorage.setItem("hasSeenPublicProfileTooltip", "true");

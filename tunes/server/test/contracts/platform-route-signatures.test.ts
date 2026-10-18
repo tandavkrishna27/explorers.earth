@@ -3,7 +3,7 @@ import request from "supertest";
 
 import { createCanonicalApp } from "../../auth/canonicalApp";
 import type { ExplorersAuthConfig } from "../../auth/betterAuth";
-import { CANONICAL_ROUTES } from "../../../../scripts/replatform-route-parity";
+import { CANONICAL_ROUTES, PLATFORM_ROUTE_PROBES } from "../../../../scripts/replatform-route-parity";
 
 /**
  * Ticket 1.2's route-graph invariant, the half that stops it going stale.
@@ -63,7 +63,9 @@ function readField(body: unknown, field: string): unknown {
 }
 
 describe("canonical route signatures match the parity inventory", () => {
-  it.each(CANONICAL_ROUTES.map((probe) => [probe.path, probe] as const))(
+  // Since P3-2 the fixture runs `canonical`, so every fixture ingress probe - not just
+  // the canonical set - must be answered by the canonical app itself.
+  it.each(PLATFORM_ROUTE_PROBES.map((probe) => [probe.path, probe] as const))(
     "%s answers exactly what the inventory records",
     async (_path, probe) => {
       const { pool } = stubPool();
@@ -88,7 +90,7 @@ describe("canonical route signatures match the parity inventory", () => {
     const { pool, queries } = stubPool();
     const { app } = createCanonicalApp(pool, config);
 
-    for (const probe of CANONICAL_ROUTES) {
+    for (const probe of PLATFORM_ROUTE_PROBES) {
       if (probe.method === "POST") await request(app).post(probe.path);
       else await request(app).get(probe.path);
     }

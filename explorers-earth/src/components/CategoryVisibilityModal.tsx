@@ -40,10 +40,10 @@ export const CategoryVisibilityModal: FC<CategoryVisibilityModalProps> = ({
     && origin.accountDocumentId === navigation.authority?.accountDocumentId
     && origin.userDocumentId === navigation.authority?.userDocumentId
     && origin.generation === navigation.authority?.generation;
-  const supported = visibilityField !== "public_music" && CATEGORY_IDS.includes(visibilityField as CategoryId);
+  const supported = CATEGORY_IDS.includes(visibilityField as CategoryId);
   const handleMakePublic = async () => {
     if (!origin || !current || !supported || loading) return;
-    const result = await navigation.request({ category: visibilityField as Exclude<CategoryId, "public_music">, action: "publish" }, origin);
+    const result = await navigation.request({ category: visibilityField as CategoryId, action: "publish" }, origin);
     if (result.kind !== "confirmed") return;
     toast.success(`${categoryName} visibility updated to Public!`);
     onSuccess?.();

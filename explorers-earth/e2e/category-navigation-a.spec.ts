@@ -10,7 +10,7 @@ import { expectTask6Shell, submitPinnedCategoryUnpublish, beginTask6FrameAudit, 
 // translates the same behavioural check (exact field value, exact pin order,
 // revision carried) into the canonical payload rather than dropping it.
 function preferenceWrite(before: ReturnType<typeof canonicalCategoryAccount>, change: { category?: string; isPublic?: boolean; pins?: string[] }) {
-  const fields = new Map<string,string>([...categories.map(category => [category.route, category.field] as [string,string]), ['music', 'public_music']]);
+  const fields = new Map<string,string>(categories.map(category => [category.route, category.field] as [string,string]));
   return { expectedRevision: before.revision, categories: before.categories.map(row => ({ ...row,
     ...(row.category === change.category ? { isPublic: change.isPublic } : {}),
     ...(change.pins ? { pinnedOrder: change.pins.includes(fields.get(row.category)!) ? change.pins.indexOf(fields.get(row.category)!) - 1 : null } : {}),
@@ -24,8 +24,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
     const options = { ...viewport, touch: viewport.width === 320 };
 
     const warmState = fixtureState({
-      public_music: 'Yes',
-      pinned_nav_tabs: ['public_profile', 'public_books', 'public_apps', 'public_music'],
+      pinned_nav_tabs: ['public_profile', 'public_books', 'public_apps'],
     }, 'public');
     seedTask6App(warmState);
     const warm = await openFixture(browser, baseURL!, warmState, options);
@@ -34,8 +33,8 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
       // Apollo cache no longer participates in public category rendering.
       await warm.page.goto(`/${fixtureUser.username}/apps`);
       await expect(warm.page.getByText('Public apps', { exact: true })).toBeVisible();
-      await warm.page.goto(`/${fixtureUser.username}/music`);
-      await expect(warm.page.getByRole('heading', { name: 'Music', level: 1 })).toBeVisible();
+      await warm.page.goto(`/${fixtureUser.username}`);
+      await expect(warm.page.getByRole('navigation', { name: 'Public navigation' })).toBeVisible();
       let releaseWarm!: () => void;
       warmState.faults.set('PublicAppData', [{ gate: new Promise<void>(resolve => { releaseWarm = resolve; }) }]);
       const readsBeforeWarm = warmState.reads.filter(read => read.name === 'PublicAppData').length;
@@ -162,7 +161,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
       evidence.invalidNested = { state: 'themed not-published state', frames: nestedFrames };
     } finally { await closeFixture(routing); }
 
-    const exceptionState = fixtureState({ public_music: 'Yes', pinned_nav_tabs: ['public_profile', 'public_music'] }, 'public');
+    const exceptionState = fixtureState({ pinned_nav_tabs: ['public_profile'] }, 'public');
     const exception = await openFixture(browser, baseURL!, exceptionState, options);
     try {
       await exception.page.goto(`/${fixtureUser.username}/places/map`);
@@ -174,13 +173,6 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
       expect(await exception.page.locator('body').innerText()).not.toHaveLength(0);
       const mapFrames = await assertTask6FrameWindow(exception.page, { banner: 1, nav: 0, earth: 0, nonblank: true });
       evidence.map = { state: 'intentional full-screen exception with truthful fallback', frames: mapFrames };
-
-      await exception.page.goto(`/${fixtureUser.username}/music`);
-      await expect(exception.page.getByRole('heading', { name: 'Music', level: 1 })).toBeVisible();
-      await expectTask6Shell(exception.page);
-      const musicFrames = await assertTask6FrameWindow(exception.page, { banner: 1, nav: 1, earth: 0, nonblank: true });
-      evidence.music = { state: 'typed public availability preserved', frames: musicFrames };
-      await exception.page.screenshot({ path: test.info().outputPath(`task6-music-${viewport.width}.png`), fullPage: true });
     } finally { await closeFixture(exception); }
 
     await test.info().attach(`task6-content-state-evidence-${viewport.width}`, {
@@ -257,7 +249,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
 test('public shell continuity smoke covers every top-level destination', async ({ browser, baseURL }) => {
   test.setTimeout(180_000);
   const destinations = TOP_LEVEL_DESTINATIONS;
-  const state = fixtureState({ public_music: 'Yes' }, 'public');
+  const state = fixtureState({}, 'public');
   const visitor = await openFixture(browser, baseURL!, state);
   const evidence: Record<string, unknown> = {};
   const pathFor = (route: string) => `/${fixtureUser.username}${route ? `/${route}` : ''}`;
@@ -470,7 +462,7 @@ test('contained actual Settings boot verifies account without mounting consent o
   try {
     await owner.page.goto('/settings');
     await owner.page.getByRole('button', { name: /Public Visibility/ }).click();
-    await expect(owner.page.getByRole('switch', { name: 'Music public visibility' })).toBeEnabled();
+    await expect(owner.page.getByRole('checkbox', { name: 'Books Tab', exact: true })).toBeEnabled();
     await expect(owner.page.getByTestId('cookie-consent-positioner')).toHaveCount(0);
     expect(await owner.page.evaluate(() => localStorage.getItem('explorers-cookie-consent'))).toBeNull();
     expect(state.writes).toEqual([]); owner.guard.assertClean();

@@ -24,7 +24,7 @@ export default defineConfig({
     { name: "theme-mobile", use: { ...devices["Pixel 7"], viewport: { width: 320, height: 900 } } },
   ],
   webServer: {
-    command: "node node_modules/vite/bin/vite.js --config e2e/music-presentation.vite.config.ts",
+    command: "node node_modules/vite/bin/vite.js --config e2e/public-presentation.vite.config.ts",
     url: "http://127.0.0.1:55180",
     reuseExistingServer: false,
     timeout: 120_000,

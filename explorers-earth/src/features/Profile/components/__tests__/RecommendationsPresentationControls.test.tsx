@@ -664,49 +664,11 @@ describe("RecommendationsPresentationControls", () => {
     );
   });
 
-  it("does not promote the dedicated Music landing destination in the illustrative preview", () => {
-    render(
-      <RecommendationsPresentationControls
-        value={{ layout: "featured", categoryOrder: CANONICAL_ORDER }}
-        landingTab="music"
-        onChange={vi.fn()}
-      />,
-    );
-
-    const preview = screen.getByRole("region", {
-      name: "Recommendations layout preview",
-    });
-    expect(preview).toHaveAttribute("data-layout", "featured");
-    const desktopPreview = preview.querySelector(
-      '[data-preview-variant="desktop"]',
-    );
-    expect(desktopPreview).not.toBeNull();
-    expect(
-      within(desktopPreview as HTMLElement)
-        .getAllByTestId("recommendations-preview-category")
-        .map((node) => node.getAttribute("data-category-id")),
-    ).toEqual([
-      "places",
-      "movies",
-      "books",
-      "games",
-      "guides",
-      "apps",
-      "products",
-      "people",
-    ]);
-    expect(
-      within(desktopPreview as HTMLElement).queryByTestId(
-        "recommendations-preview-category-promoted",
-      ),
-    ).not.toBeInTheDocument();
-  });
-
   it("renders only the compact effective-order preview while mobile is collapsed", () => {
     render(
       <RecommendationsPresentationControls
         value={{ layout: "grid", categoryOrder: CANONICAL_ORDER }}
-        landingTab="music"
+        landingTab="all-recommendations"
         onChange={vi.fn()}
       />,
     );
@@ -743,7 +705,7 @@ describe("RecommendationsPresentationControls", () => {
     render(
       <RecommendationsPresentationControls
         value={{ layout: "grid", categoryOrder: CANONICAL_ORDER }}
-        landingTab="music"
+        landingTab="all-recommendations"
         onChange={vi.fn()}
       />,
     );

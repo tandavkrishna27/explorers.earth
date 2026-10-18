@@ -36,16 +36,16 @@ describe("Music deployment authority files", () => {
    * pinned per file rather than accepted from a set — a service that drifts to a
    * different startup still fails here.
    *
-   * The disposable platform fixture is `combined`: it starts the Music runtime and
-   * delegates the canonical route graph into the same listener, so fixture ingress
-   * mounts both route graphs. Production blue/green and the Music test compose stay
-   * on `legacy-music`.
+   * The disposable platform fixture is `canonical`, like production on the
+   * replatformed stack: since P3-2 retired `combined` it proves the canonical route
+   * graph only. The Music blue/green deployment and the Music test compose stay on
+   * `legacy-music` until P3-7 deletes them.
    */
   it("selects the pinned API startup for every Compose service using the Tunes API image", () => {
     for (const [file, serviceNames, expectedMode] of [
       ["docker-compose.yml", ["tunes-blue", "tunes-green"], "legacy-music"],
       ["docker-compose.music-test.yml", ["tunes"], "legacy-music"],
-      ["docker-compose.replatform.yml", ["tunes"], "combined"],
+      ["docker-compose.replatform.yml", ["tunes"], "canonical"],
     ] as const) {
       const compose = parseYaml(read(file));
       for (const name of serviceNames) {
@@ -196,10 +196,10 @@ describe("Music deployment authority files", () => {
       "/app/migrations/0035_explorers_book_cover_import.sql",
     ]) expect(ci).toContain(file);
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
-      'production_current_marker="0056_explorers_app_enrichment_jobs"',
+      'production_current_marker="0057_retire_music_category"',
     );
     expect(read("tunes/scripts/music-docker-release-rehearsal.ts")).toContain(
-      'const marker = "0056_explorers_app_enrichment_jobs"',
+      'const marker = "0057_retire_music_category"',
     );
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
       "verify-publication-authority.mjs",
@@ -494,11 +494,11 @@ describe("Music deployment authority files", () => {
       "STRAPI_JWT_SECRET: fixture-strapi-jwt-secret-at-least-32-characters",
     );
     expect(fixture).toContain("ALLOWED_ORIGINS: http://localhost:55173");
-    expect(fixture).toContain("MUSIC_MIGRATION_MARKER: 0056_explorers_app_enrichment_jobs");
-    expect(fixture).toContain("MUSIC_EXPECTED_MIGRATION_ID: 0056_explorers_app_enrichment_jobs");
-    expect(read("docker-compose.yml")).toContain("TUNES_BLUE_MIGRATION:-0056_explorers_app_enrichment_jobs");
-    expect(read("docker-compose.yml")).toContain("TUNES_GREEN_MIGRATION:-0056_explorers_app_enrichment_jobs");
-    expect(read("docker-compose.yml")).toContain("TUNES_CANDIDATE_MIGRATION:-0056_explorers_app_enrichment_jobs");
+    expect(fixture).toContain("MUSIC_MIGRATION_MARKER: 0057_retire_music_category");
+    expect(fixture).toContain("MUSIC_EXPECTED_MIGRATION_ID: 0057_retire_music_category");
+    expect(read("docker-compose.yml")).toContain("TUNES_BLUE_MIGRATION:-0057_retire_music_category");
+    expect(read("docker-compose.yml")).toContain("TUNES_GREEN_MIGRATION:-0057_retire_music_category");
+    expect(read("docker-compose.yml")).toContain("TUNES_CANDIDATE_MIGRATION:-0057_retire_music_category");
   });
 
   it("proves the built C2 commit contains C1 and carries the observed legacy Compose project through deploy", () => {

@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 
 const initialCategories = [
-  "places", "guides", "music", "movies", "books", "games", "apps", "products", "people",
+  "places", "guides", "movies", "books", "games", "apps", "products", "people",
 ] as const;
 
 export interface InitialAccount { accountId: string }
