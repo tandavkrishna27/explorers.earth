@@ -1,0 +1,85 @@
+{
+  "version": "explorers-platform-restore-drill/v1",
+  "runId": "0bd03e40f28327240268fd0469813b75",
+  "result": "passed",
+  "drilledAt": "2026-10-18T17:43:55.787Z",
+  "drillCommit": "5f21884b23eee5ded201abdaa63edd64235c3462",
+  "manifestDigest": "a12ce0e843fc062069cf177a7b1638490cc50854832e57556e7adcb7071d7066",
+  "migrationMarker": "0056_explorers_app_enrichment_jobs",
+  "schemaChecksum": "7ebfd573ffe446ed440fd81ccf83ac59986571299d97bb1a1189f9cc3187dcc2",
+  "cleanup": "database-dropped-container-removed",
+  "phases": [
+    {
+      "phase": "download",
+      "milliseconds": 1
+    },
+    {
+      "phase": "decrypt",
+      "milliseconds": 576
+    },
+    {
+      "phase": "acquire-target",
+      "milliseconds": 2040
+    },
+    {
+      "phase": "bootstrap-roles",
+      "milliseconds": 7
+    },
+    {
+      "phase": "pg-restore",
+      "milliseconds": 921
+    },
+    {
+      "phase": "repair-known-drift",
+      "milliseconds": 9
+    },
+    {
+      "phase": "attest-schema",
+      "milliseconds": 243
+    },
+    {
+      "phase": "attest-runtime-role",
+      "milliseconds": 312
+    },
+    {
+      "phase": "boot",
+      "milliseconds": 1746
+    },
+    {
+      "phase": "probe",
+      "milliseconds": 320
+    },
+    {
+      "phase": "media",
+      "milliseconds": 43
+    }
+  ],
+  "proofs": {
+    "journal": {
+      "rows": 56,
+      "currentId": "0056_explorers_app_enrichment_jobs"
+    },
+    "identity": {
+      "authUsers": 2,
+      "authSessions": 2,
+      "creatorAccounts": 2
+    },
+    "categories": {
+      "places": 1,
+      "movies": 1,
+      "books": 1,
+      "games": 1,
+      "guides": 0,
+      "apps": 1,
+      "products": 1,
+      "people": 1
+    },
+    "media": {
+      "objects": 2,
+      "hashesMatched": 2,
+      "gatedRouteResolved": 1
+    },
+    "rowCountsMatched": true
+  },
+  "recoveryMilliseconds": 6218
+}

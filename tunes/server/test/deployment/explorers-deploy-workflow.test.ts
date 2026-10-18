@@ -161,6 +161,36 @@ describe("explorers deploy workflow", () => {
     expect(hostScript).toMatch(/readonly READY_TIMEOUT_SECONDS=\d+/);
   });
 
+  it("takes a pre-deploy backup and gates on recovery evidence before anything migrates", () => {
+    // Backup and restore: the pre-deploy backup is the only artifact that makes a bad
+    // migration survivable (there is no rollback, only restore-forward), so the deploy
+    // refuses to reach `stage` - which runs the migration gate - without it.
+    const upload = stepIndex(/Upload the release/);
+    const backup = stepIndex(/explorers-deploy\.sh' backup/);
+    const gate = stepIndex(/platform:recovery-gate/);
+    const stage = stepIndex(/explorers-deploy\.sh' stage/);
+    expect(upload).toBeLessThan(backup);
+    expect(backup).toBeLessThan(gate);
+    expect(gate).toBeLessThan(stage);
+    const gateStep = deploySteps[gate];
+    expect(gateStep.run).toContain("docs/replatform/evidence/recovery-receipt.json");
+    expect(gateStep.run).not.toMatch(/--(force|skip|assume)/);
+    // The only way past the gate without evidence is a host that has never had a
+    // database, and only the host can say so.
+    expect(gateStep.run).toContain("backup-result");
+    expect(raw).toContain("cp tunes/deployment/platform-backup.mjs \"$stage/platform-backup.mjs\"");
+  });
+
+  it("backs up on the host before migrating, and refuses when a database exists but is not running", () => {
+    const backup = hostScript.slice(hostScript.indexOf("backup() {"), hostScript.indexOf("stage() {"));
+    expect(backup).toContain("--reason pre-deploy");
+    expect(backup).toContain("--candidate-digest \"$IMAGE_DIGEST\" --candidate-commit \"$COMMIT\"");
+    expect(backup).toContain("install -m 0700 \"$staging/platform-backup.mjs\" \"$OPT/platform-backup.mjs\"");
+    expect(backup).toMatch(/postgres-data volume exists but postgres is not running/);
+    expect(backup).toContain("printf 'fresh\\n' > \"$staging/backup-result\"");
+    expect(hostScript).toMatch(/backup\) backup ;;/);
+  });
+
   it("backs up the nginx site, swaps the symlink atomically, tests, then reloads", () => {
     const activate = hostScript.slice(hostScript.indexOf("activate() {"));
     const order = ["cp -pL \"$NGINX_SITE_PATH\" \"$backup\"", "mv -Tf \"$SRV/current.next\" \"$SRV/current\"",
