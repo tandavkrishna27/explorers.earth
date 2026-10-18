@@ -26,7 +26,7 @@ execFileSync('git',['archive','--format=tar','--output='+join(stage,'source.tar'
 // Full tracked snapshot, including explicit new-file closure, no ambient untracked files.
 for(const path of sourceFiles){mkdirSync(dirname(join(archive,path)),{recursive:true});copyFileSync(join(root,path),join(archive,path));}
 const manifest=JSON.parse(readFileSync(join(archive,'explorers-earth/e2e/replatform/platform-proxy.manifest.json')));
-writeFileSync(join(stage,'Fixture.Dockerfile'),`FROM public.ecr.aws/docker/library/node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6
+writeFileSync(join(stage,'Fixture.Dockerfile'),`FROM ghcr.io/tandavkrishna27/mirror/node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6
 WORKDIR /source
 COPY tunes/package*.json tunes/
 COPY tunes/auth-runtime/package*.json tunes/auth-runtime/

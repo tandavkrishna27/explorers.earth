@@ -27,7 +27,7 @@ services:
       - ${MUSIC_DB_MIGRATOR_SECRET_FILE_HOST:?MUSIC_DB_MIGRATOR_SECRET_FILE_HOST is required}:/run/secrets/music-db-migrator:ro
 
   strapi:
-    image: public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+    image: ghcr.io/tandavkrishna27/mirror/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
     working_dir: /workspace
     command: ["node", "--experimental-strip-types", "tunes/scripts/music-fixture-server.ts", "--port", "1337"]
     environment:
