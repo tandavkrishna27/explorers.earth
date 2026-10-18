@@ -45,6 +45,7 @@ import {BookCoverImportService} from '../application/bookCoverImport';
 import {BookCatalog} from '../services/bookCatalog';
 import { resolveTrustedProxy } from "../middleware/canonicalTerminator";
 import { setupCanonicalRetiredSurfaces } from "../routes/canonicalRetiredSurfaceRoutes";
+import { setupExplorersSeoRoutes } from "../routes/explorersSeoRoutes";
 
 function errorResponse(res: Response, status: number, code: ApiError["error"]["code"], message: string): void {
   res.status(status).json({ error: { code, message, requestId: randomUUID() } } satisfies ApiError);
@@ -88,6 +89,7 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   app.use(contentBodyParser());
   if(admission)app.use(admission.afterJsonParser);
   app.get("/health/live", (_request, response) => response.status(200).json({ status: "live" }));
+  setupExplorersSeoRoutes(app, pool);
   setupExplorersAccountRoutes(app, pool, auth, config);
   // ADR-006 and ADR-008: canonical Music owner provisioning and credential issue.
   // The issuer is resolved on first use, not at boot. Optional Music configuration
