@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import express from "express";
 import pg from "pg";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -82,12 +83,19 @@ function hasPositiveRecoveryProofCookie(response: { headers: Record<string, unkn
 describe("pinned Google callback recovery adapter", () => {
   beforeAll(() => {
     pool = new pg.Pool({ connectionString: process.env.DATABASE_URL_TEST, max: 5 });
-    composed = createCanonicalApp(pool, config);
-    // This test-only endpoint has the same cookie path as the later lifecycle consumer.
-    composed.app.get("/api/explorers/v1/recovery/probe", (req, res) => {
+    const canonical = createCanonicalApp(pool, config);
+    // The canonical app ends in a JSON 404 terminator, so a route added to it after
+    // construction is unreachable. Serve this test-only probe from an outer app in
+    // front of it instead; the probe reads only the raw Cookie header and needs none
+    // of the canonical middleware. It shares the cookie path of the later lifecycle
+    // consumer.
+    const outer = express();
+    outer.get("/api/explorers/v1/recovery/probe", (req, res) => {
       const raw = req.get("cookie") ?? "";
       res.json({ hasProof: /(?:^|;\s*)explorers_recovery_proof=[A-Za-z0-9_-]{43}(?:;|$)/.test(raw) });
     });
+    outer.use(canonical.app);
+    composed = { ...canonical, app: outer };
   });
   afterAll(async () => { await pool?.end(); });
 
