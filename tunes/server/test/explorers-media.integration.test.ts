@@ -6,6 +6,8 @@ import { createCanonicalApp } from "../auth/canonicalApp";
 import { resolveExplorersAuthConfig } from "../auth/betterAuth";
 import { MediaService, MediaUnavailable } from "../application/media";
 import { runMediaCleanupMaintenance } from "../application/mediaCleanupMaintenance";
+import { writeAppScreenshots } from "../repositories/appCatalogRepository";
+import { writePlacePhotos } from "../repositories/placeCatalogRepository";
 import type { Actor } from "../application/actor";
 import type { ObjectStorage } from "../services/objectStorage";
 import { MediaRepository } from "../repositories/mediaRepository";
@@ -190,6 +192,31 @@ describe("private local media", () => {
       expect(removed).toMatchObject({ id: f.id, status: "pending_delete", storage_environment: "local" });
       expect(removed?.object_key).toBeTruthy();
       expect((await pool.query("SELECT status FROM media_assets WHERE id=$1", [f.id])).rows[0].status).toBe("pending_delete");
+    }, 30_000);
+
+    it.skipIf(!typed)(`${category} media: a detach through the typed writer is swept by the maintenance tick`, async () => {
+      // P5-10: no detach path calls deleteMedia, and that is deliberate - a detached asset
+      // stays the owner's and can be re-attached (guideMediaVisibility pins the re-attach).
+      // The object must still not be orphaned forever: once nothing references it, the
+      // scheduled sweep deletes it, with no further upload from this owner.
+      const f = await fixture(); const attachment = await f.attach();
+      await pool.query("UPDATE media_assets SET created_at=now()-interval '25 hours' WHERE id=$1", [f.id]);
+      const key = (await pool.query("SELECT object_key FROM media_objects WHERE media_id=$1", [f.id])).rows[0].object_key;
+      const removed: string[] = [];
+      const storage: ObjectStorage = { environment: "local", put: async () => undefined, get: async () => png,
+        delete: async (object) => { removed.push(object); } };
+      await runMediaCleanupMaintenance(pool, storage, 100);
+      expect((await f.repository.find(f.id))?.status).toBe("ready");
+      const db = await pool.connect();
+      try {
+        await db.query("BEGIN");
+        if (category === "apps") await writeAppScreenshots(db, attachment.recommendation, f.owner.accountId, []);
+        else await writePlacePhotos(db, attachment.recommendation, f.owner.accountId, []);
+        await db.query("COMMIT");
+      } catch (error) { await db.query("ROLLBACK"); throw error; } finally { db.release(); }
+      await runMediaCleanupMaintenance(pool, storage, 100);
+      expect((await pool.query("SELECT status FROM media_assets WHERE id=$1", [f.id])).rows[0].status).toBe("deleted");
+      expect(removed).toContain(key);
     }, 30_000);
 
     it.skipIf(!typed)(`${category} media: actual schema rejects unsafe typed relations and attached transitions`, async () => {
@@ -380,6 +407,27 @@ describe("private local media", () => {
     await new MediaService(pool, recovered).retryPendingDeletes(owner.accountId);
     expect(removed).toHaveLength(1);
     expect((await pool.query("SELECT status FROM media_assets WHERE id=$1", [pending.rows[0].id])).rows[0].status).toBe("deleted");
+  });
+
+  it("sweeps a replaced profile image on the maintenance tick (P5-10)", async () => {
+    // The SPA replaces a profile image by attaching the new one and never deletes the old,
+    // so before the scheduled sweep every replacement left its predecessor in storage.
+    const owner = await persona();
+    const first = await upload(owner.cookie); const second = await upload(owner.cookie);
+    expect(first.status).toBe(201); expect(second.status).toBe(201);
+    for (const [revision, id] of [[owner.revision, first.body.media.id], [owner.revision + 1, second.body.media.id]] as const) {
+      const attached = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
+        .set("origin", config.baseURL).send({ expectedRevision: revision, profileImageId: id });
+      expect(attached.status).toBe(200);
+    }
+    await pool.query("UPDATE media_assets SET created_at=now()-interval '25 hours' WHERE account_id=$1", [owner.accountId]);
+    const removed: string[] = [];
+    await runMediaCleanupMaintenance(pool, { environment: "local", put: async () => undefined, get: async () => png,
+      delete: async (key) => { removed.push(key); } }, 100);
+    const status = async (id: string) => (await pool.query("SELECT status FROM media_assets WHERE id=$1", [id])).rows[0].status;
+    expect(await status(first.body.media.id)).toBe("deleted");
+    expect(await status(second.body.media.id)).toBe("ready");
+    expect(removed).toContain((await pool.query("SELECT object_key FROM media_objects WHERE media_id=$1", [first.body.media.id])).rows[0].object_key);
   });
 
   it("sweeps pending and abandoned media on the maintenance tick without another upload", async () => {
