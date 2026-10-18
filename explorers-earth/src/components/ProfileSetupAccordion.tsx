@@ -1,3 +1,4 @@
+import { runtimeOrigin } from "../lib/publicRuntimeConfig";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -74,7 +75,7 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
      */
     if (isCanonicalMediaPath(url)) return url;
     if (url.startsWith("/")) {
-      const backendUrl = import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337";
+      const backendUrl = runtimeOrigin(import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337");
       return `${backendUrl}${url}`;
     }
     return url;
