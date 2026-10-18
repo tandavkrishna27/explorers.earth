@@ -497,9 +497,16 @@ for (const category of categories) {
       const enable = owner.page.getByRole('button', { name: 'Enable Public URL', exact: true });
       // Resolved once, deliberately. press() focuses the element itself, so an explicit
       // focus() first bought nothing and opened a second independent resolution of a
-      // locator inside a popover that can be rebuilt between the two - which is the
-      // timeout seen twice in CI, the second time on a markdown-only commit. Keyboard
-      // activation is unchanged: press('Enter') still focuses, then presses.
+      // locator inside the popover. Keyboard activation is unchanged: press('Enter')
+      // still focuses, then presses.
+      //
+      // The press timeouts seen in CI here (and at the pin step below) were not a locator
+      // race: the menu closed itself. RecommendationsHub used to dismiss the menu on any
+      // scroll event, and the layout scroller emits unsolicited ones while the page settles
+      // (the route loader and the verifying/saving banners shift content and clamp
+      // scrollTop), so a click landing in that window lost its menu and Playwright retried
+      // a detached button for the full 12s. The menu now follows its trigger instead of
+      // closing; see docs/replatform/ci-optimization-plan.md.
       await enable.press('Enter');
       await expect.poll(() => state.account[category.field]).toBe('Yes');
       expect(state.writes.at(-1)?.variables).toEqual(preferenceWrite(beforeEnable, { category: category.route, isPublic: true }));
@@ -507,10 +514,9 @@ for (const category of categories) {
       await expect(owner.page.getByRole('checkbox', { name: `Pin ${category.label}`, exact: true })).not.toBeChecked();
       await owner.page.goto('/recommendations'); await card.evaluate(element => element.scrollIntoView({ block: 'center', behavior: 'instant' })); await card.getByTitle('Category options').click();
       const pinAction = owner.page.getByRole('button', { name: 'Pin to Public Nav (Max 5)', exact: true }); await pinAction.focus(); await pinAction.press('Enter');
-      // 30s: this polls a SERVER write that follows a keyboard-activated pin, and the default
-      // 12s budget expired under load -- the same lane passed this test in the sibling run of
-      // the identical commit, so it is a latency bound, not a behavioural assertion. The
-      // expected tab list is unchanged.
+      // 30s: this polls a SERVER write that follows a keyboard-activated pin. The budget
+      // predates the menu fix described above and that fix did not change it. The expected
+      // tab list is unchanged.
       await expect.poll(() => state.account.pinned_nav_tabs, { timeout: 30000 }).toEqual(['public_profile', other, category.field]);
       await guest.page.goto(`/${fixtureUser.username}`);
       await expect(guest.page.getByRole('link', { name: category.route[0].toUpperCase() + category.route.slice(1), exact: true })).toBeVisible();

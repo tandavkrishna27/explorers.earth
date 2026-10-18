@@ -20,6 +20,10 @@ on:
       - ".github/workflows/music-c0-contracts.yml"
       - ".github/workflows/test.yml"
       - "docs/**"
+      # Markdown-only changes need no cross-OS C0 run: the docs-reading contracts also run
+      # on Linux in test.yml (docs-contracts, contracts), which a docs-only PR never skips.
+      # The last matching pattern wins, so non-Markdown files under docs/ still trigger.
+      - "!**/*.md"
   push:
     branches: [main, develop]
     paths:
@@ -39,6 +43,7 @@ on:
       - ".github/workflows/music-c0-contracts.yml"
       - ".github/workflows/test.yml"
       - "docs/**"
+      - "!**/*.md"
 
 permissions:
   contents: read

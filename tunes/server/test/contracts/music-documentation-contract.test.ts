@@ -820,12 +820,13 @@ describe("Music CI publication order", () => {
     const workflow = existsSync(path) ? parseYaml(read(".github/workflows/test.yml")) : {};
     expect(workflow.on).toEqual(expect.objectContaining({ pull_request: expect.anything(), push: expect.anything() }));
     expect(workflow.on).not.toHaveProperty("paths-ignore");
-    expect(workflow.jobs?.["docs-contracts"]).not.toHaveProperty("needs");
-    expect(workflow.jobs?.static).not.toHaveProperty("needs");
-    expect(workflow.jobs?.["unit-coverage"]).not.toHaveProperty("needs");
+    // Lanes stay isolated from one another. The change classifier is the only job a lane may wait on
+    // (it lets a documentation-only PR skip the heavy ones); never another lane's result.
+    const lanesWaitedOn = (name: string) => [workflow.jobs?.[name]?.needs ?? []].flat().filter((need: string) => need !== "changes");
+    for (const name of ["docs-contracts", "static", "unit-coverage"]) expect(lanesWaitedOn(name), name).toEqual([]);
     expect(workflow.jobs?.["unit-coverage"]?.["runs-on"]).toBe("ubuntu-24.04");
     for (const name of ["contracts", "database", "security", "frontend", "browser", "image-deploy-contract"]) {
-      expect(workflow.jobs?.[name]).not.toHaveProperty("needs");
+      expect(lanesWaitedOn(name), name).toEqual([]);
     }
     expect(workflow.jobs?.["load-chaos"]?.needs).toBe("browser");
     const imageSteps = JSON.stringify(workflow.jobs?.["image-deploy-contract"]?.steps ?? []);
@@ -874,13 +875,34 @@ describe("Music CI publication order", () => {
     expect(JSON.stringify(database?.steps ?? [])).toContain("music_fixture");
   });
 
-  it("does not let general or Music contract CI skip documentation-only changes", () => {
+  // Documentation-only pull requests may skip the browser, image and database lanes, but never the
+  // lanes that read the documentation. This used to forbid skipping at all, which sent every
+  // Markdown edit through ~20 minutes of image and browser validation that cannot see Markdown.
+  // What protects the documentation now is that the two jobs below have no gate, no filter and no
+  // dependency on the change classifier, so no diff - however small - can skip them.
+  it("keeps the documentation-reading contracts running on documentation-only changes", () => {
     const general = parseYaml(read(".github/workflows/ci.yml"));
+    const backend = parseYaml(read(".github/workflows/test.yml"));
     const music = parseYaml(read(".github/workflows/music-c0-contracts.yml"));
-    expect(general.on.pull_request).not.toHaveProperty("paths-ignore");
-    expect(general.on.push).not.toHaveProperty("paths-ignore");
-    expect(music.on.pull_request.paths).toContain("docs/**");
-    expect(music.on.push.paths).toContain("docs/**");
+    // A workflow-level filter would stop a required workflow from reporting its check at all.
+    for (const workflow of [general, backend]) {
+      expect(workflow.on.pull_request).not.toHaveProperty("paths");
+      expect(workflow.on.pull_request).not.toHaveProperty("paths-ignore");
+      expect(workflow.on.push).not.toHaveProperty("paths-ignore");
+    }
+    for (const name of ["docs-contracts", "contracts"]) {
+      expect(backend.jobs[name], name).toBeDefined();
+      expect(backend.jobs[name], name).not.toHaveProperty("if");
+      expect(backend.jobs[name], name).not.toHaveProperty("needs");
+    }
+    expect(backend.jobs["docs-contracts"].steps.map((step: any) => String(step.run ?? "")).join("\n")).toContain("music-documentation-contract.test.ts");
+    expect(backend.jobs.contracts.steps.map((step: any) => String(step.run ?? "")).join("\n")).toContain("server/test");
+    // The optional C0 workflow keeps triggering on non-Markdown docs files; only Markdown is excluded,
+    // and the exclusion must come last because the last matching pattern wins.
+    for (const paths of [music.on.pull_request.paths, music.on.push.paths]) {
+      expect(paths).toContain("docs/**");
+      expect(paths.at(-1)).toBe("!**/*.md");
+    }
   });
 });
 
