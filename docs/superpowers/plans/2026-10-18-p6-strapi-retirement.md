@@ -14,7 +14,7 @@ The guard comes **first**, not last. `e2e/replatform/no-strapi.spec.ts` lands as
 
 **Revision 3 (2026-10-19).** Written against `fork/main` = `05a252f6`, then corrected by two independent adversarial reviews and a Codex cross-model review (see [Corrections from review](#corrections-from-review)). P6-1 and P6-2 were rewritten, because revision 1's guard could not go green and its P6-2 would have undone P5-1.
 
-**Evidence standard.** Every load-bearing claim cites `path:line` at that commit, or a command whose output was read. Line numbers drift as P3, P5 and P6 tickets land. Re-locate each one before editing; never edit by line number alone.
+**Evidence standard.** Every load-bearing claim cites `path:line` at that commit (`canonicalStartup.ts` citations are re-checked against `b5b77fa3`, after P5b moved its lines), or a command whose output was read. Line numbers drift as P3, P5 and P6 tickets land. Re-locate each one before editing; never edit by line number alone.
 
 ---
 
@@ -1231,7 +1231,7 @@ The route, its OpenAPI entry, the authorization matrix, the inventory and the ro
 
 - [ ] **Step 8: Verify, including a real canonical boot**
 
-Integration tests inject a pool and skip startup attestation, so on their own they cannot see a boot failure (`canonicalStartup.ts:31-35`). Neither can the no-Strapi run: its runner hands `createCanonicalApp` a migrator-owned pool (`profile-browser-fixture.ts:124-142`). The boot evidence is `startCanonicalServer` called **without** an injected pool. Two existing tests call it: `server/test/deployment/canonical-startup-listener.test.ts` and `server/test/explorers-auth.integration.test.ts`. Read both:
+Integration tests inject a pool and skip startup attestation, so on their own they cannot see a boot failure (`canonicalStartup.ts:52-56`). Neither can the no-Strapi run: its runner hands `createCanonicalApp` a migrator-owned pool (`profile-browser-fixture.ts:124-142`). The boot evidence is `startCanonicalServer` called **without** an injected pool. Two existing tests call it: `server/test/deployment/canonical-startup-listener.test.ts` and `server/test/explorers-auth.integration.test.ts`. Read both:
 - If one boots with no injected pool and provisioned runtime credentials, run it here.
 - If neither does, add that case to `canonical-startup-listener.test.ts`, and reuse it in P6-10 Step 7.
 
@@ -2233,7 +2233,7 @@ npm test --prefix tunes -- --run --config vitest.integration.config.ts server/te
 Use the exact CI PostgreSQL URL and the `MUSIC_C3`–`MUSIC_C9` flags, as in `tunes.yml:120-126`.
 
 **This integration test is the evidence, so it must run the attestation itself.**
-- Its upgraded-database case ends by calling `startCanonicalServer` (`canonicalStartup.ts:22`) **without** an injected pool, configured with the runtime role's credentials, so the real `if (!pool)` attestation path runs (`:31-35`).
+- Its upgraded-database case ends by calling `startCanonicalServer` (`canonicalStartup.ts:42`) **without** an injected pool, configured with the runtime role's credentials, so the real `if (!pool)` attestation path runs (`:52-56`).
 - It then asserts that `/health/ready` answers 200.
 
 The no-Strapi browser run is **not** evidence for this step. `profile-browser-fixture.ts` migrates as `music_migrator`, provisions a runtime login only for `lifecycle`, and hands `createCanonicalApp` the pool directly (`:124-142`), so it never attests. Run it anyway, as a regression check:
