@@ -43,6 +43,7 @@ import {setupExplorersCatalogRoutes} from '../routes/explorersCatalogRoutes';
 import {BookCoverFetcher} from '../services/bookCoverFetch';
 import {BookCoverImportService} from '../application/bookCoverImport';
 import {BookCatalog} from '../services/bookCatalog';
+import { resolveTrustedProxy } from "../middleware/canonicalTerminator";
 
 function errorResponse(res: Response, status: number, code: ApiError["error"]["code"], message: string): void {
   res.status(status).json({ error: { code, message, requestId: randomUUID() } } satisfies ApiError);
@@ -58,6 +59,11 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   const admission=appsInput?createAppsCanonicalAdmission({pool,...appsInput}):undefined;
   const actualApp = express(), instrument=custodyMode?createCanonicalHandlerCustody(actualApp,admission):undefined;
   const app = instrument?.registration ?? actualApp;
+  // Configuration, not a layer — it registers nothing on the router stack and so
+  // shifts no positional index. Set on actualApp: the custody view
+  // (canonicalHandlerCustody.ts:63) overrides only route-registration methods,
+  // so `app.set` would work too; actualApp makes that independence explicit.
+  actualApp.set("trust proxy", resolveTrustedProxy(process.env));
   if(admission)app.use(admission.beforeDispatch);
   const auth = createExplorersAuth(pool, config, appsInput?{appsReadOnlySessionFixture:true}:undefined);
 
