@@ -3,6 +3,7 @@
  * Handles fetching place details from Google Places API
  */
 
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { browserPlacesProvider } from "../../../lib/browserPlacesProvider";
 
 /**
@@ -21,7 +22,7 @@ export interface PlacePriceInfo {
 export const fetchPlacePriceLevel = async (
   placeId: string
 ): Promise<PlacePriceInfo | undefined> => {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const apiKey = mapsBrowserKey();
   
   if (browserPlacesProvider.kind === "google-sdk" && !apiKey) {
     console.error("Google Maps API key not found");

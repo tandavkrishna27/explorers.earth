@@ -1,3 +1,4 @@
+import { runtimeOrigin } from "../../../lib/publicRuntimeConfig";
 import { isCanonicalMediaPath } from "../../../lib/canonicalMedia";
 // ============================================================
 // People Utilities — slug, helpers, rich text, platform icons
@@ -200,7 +201,7 @@ export function buildImageUrl(imageUrl: string | null | undefined): string {
   if (isCanonicalMediaPath(imageUrl)) return imageUrl;
   if (imageUrl.startsWith("/")) {
     const base =
-      import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337";
+      runtimeOrigin(import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337");
     return `${base}${imageUrl}`;
   }
   return imageUrl;
