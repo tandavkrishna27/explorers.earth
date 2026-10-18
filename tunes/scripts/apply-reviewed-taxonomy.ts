@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { resolveMusicDatabaseConnection, type MusicDatabaseConnection } from "../server/config/music-database-config";
+import type { MusicDatabaseConnection } from "../server/config/music-database-config";
+import { assertOperatorMigratorPrincipal } from "./operator-migrator-principal";
 import { assertMusicMigratorAuthority } from "../server/db/music-runtime-role";
 import { applyTaxonomyCatalogImport, dryRunTaxonomyCatalogImport, type TaxonomyImportPlan } from "../server/services/taxonomyCatalogImport";
 import type { TaxonomyImport } from "../shared/explorersTaxonomyContract";
@@ -40,13 +41,7 @@ export function resolveTaxonomyApplyPlan(): { places: TaxonomyImport; people: Ta
 }
 
 export async function assertMigratorPrincipal(environment: Environment): Promise<{ migrator: MusicDatabaseConnection; runtimeLoginRole: string }> {
-  const runtimeLoginRole = environment.MUSIC_RUNTIME_DATABASE_USER;
-  if (!runtimeLoginRole) throw new Error("MUSIC_RUNTIME_DATABASE_USER is required");
-  if (environment.MUSIC_DATABASE_USER === runtimeLoginRole || environment.MUSIC_DATABASE_USER === "music_runtime") {
-    throw new Error("taxonomy apply must run as the database migrator, not the runtime role");
-  }
-  const migrator = await resolveMusicDatabaseConnection(environment, "migrator");
-  return { migrator, runtimeLoginRole };
+  return assertOperatorMigratorPrincipal(environment, "taxonomy apply");
 }
 
 function summarize(plan: TaxonomyImportPlan) {
