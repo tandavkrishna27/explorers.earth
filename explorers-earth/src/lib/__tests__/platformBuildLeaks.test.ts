@@ -76,4 +76,17 @@ describe("platform build leaks", () => {
     // a new builder still fails here.
     expect(unguardedLocalhostOrigins()).toEqual([]);
   });
+
+  it("never calls Strapi's REST API, guarded or not", () => {
+    // Break caught: Profile.tsx fell back to Strapi /upload and /accounts when the canonical
+    // account was absent, and AddRecommendation.tsx DELETEd Strapi /upload/files on every
+    // edit-mode image removal. A platform build sent them to `undefined/upload`. None
+    // contains localhost:1337 or api.localqr.earth, so the two tests above could not see them.
+    // runtimeOrigin(VITE_REST_API_URL…) image builders are a separate, guarded case.
+    const rawRestCalls = sourceFiles(SOURCE_ROOT).filter((path) => readFileSync(path, "utf8")
+      .replace(/\s+/g, " ").split(";")
+      .some((statement) => statement.includes("VITE_REST_API_URL") && !statement.includes("runtimeOrigin(")))
+      .map((path) => relative(SOURCE_ROOT, path).replace(/\\/g, "/"));
+    expect(rawRestCalls).toEqual([]);
+  });
 });

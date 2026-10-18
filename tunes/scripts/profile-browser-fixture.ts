@@ -65,7 +65,9 @@ let lifecycleControl: Awaited<ReturnType<typeof startLifecycleControl>> | undefi
 let placesControl: Awaited<ReturnType<typeof startPlacesControl>> | undefined;
 const placesSuite = suite === 'places' || suite === 'place-links';
 const storageDirectory = resolve(disposable, 'owned-media');
-const storage = placesSuite ? new LocalObjectStorage(storageDirectory) : undefined;
+// The no-Strapi lane uploads a profile picture (P6-4), so it owns media storage too; the whole
+// private fixture directory, storage included, is removed on cleanup.
+const storage = placesSuite || suite === 'no-strapi' ? new LocalObjectStorage(storageDirectory) : undefined;
 let lifecycleReceipt: Record<string, unknown> | undefined;
 const artifacts = suite === 'lifecycle' && !protectedReceipt ? mkdtempSync(join(tmpdir(), 'explorers-lifecycle-artifacts-')) : undefined;
 let apiServer: ReturnType<ReturnType<typeof createCanonicalApp>['app']['listen']> | undefined;

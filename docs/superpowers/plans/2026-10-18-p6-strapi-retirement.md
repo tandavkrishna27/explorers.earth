@@ -2622,3 +2622,13 @@ Phase A (P6-1 to P6-5) was executed against `fork/main` = `5abc33cb` on 2026-10-
 | 5 | `#auth-runtime`: walk it, or record why not | It is a six-line re-export of `better-auth` (`tunes/auth-runtime/index.js`) | Walked, through a `PACKAGE_IMPORTS` map |
 | 6 | Fixture override "used only by the test" | — | `--root <dir> --entry <path>`; the floor applies only to the real tree. Six fixtures under `scripts/__fixtures__/retired-deps/` (five named violations plus a clean control) |
 | 7 | `docker build ./tunes` proves the new esbuild imports | It does: the build succeeded locally | Also checked the output: the bundled `run-migration-gate.js` and every chunk it loads contain **no** `STRAPI_` string |
+
+### P6-4
+
+| # | The plan said | The code or a run said | Done |
+|---|---|---|---|
+| 1 | Step 2 lists exactly `AddRecommendation.tsx` and `Profile.tsx` | Confirmed: exactly those two | — |
+| 2 | `token` in `Profile.tsx` becomes unused | So does `documentId` (`user?.documentId`, read only by the deleted lookup), and `AddRecommendation.tsx`'s auth-store `token` (every remaining use reads a shadowing local `qrtoken`). Both fail `noUnusedLocals` | All three removed. `axios` stays in `AddRecommendation.tsx` (other callers) |
+| 3 | Delete only `selectExplorerAccountUploadTarget` and its cases | Its two types, `SelectedExplorerAccountUploadTarget` and `ExplorerAccountUploadTargetSelection`, have no other user | Deleted with it. The module and its test file stay |
+| 4 | `PROFILE_PICTURE_INPUT` is a lead; the input may sit behind a cropper | It does: `ImageCropper`'s hidden file input opens a crop modal, and the upload runs on the modal's **Confirm**. A 1x1 PNG crops to nothing | The case sets the file on the real input, clicks Confirm, and waits for `POST /api/explorers/v1/media`. It builds a 16x16 PNG itself |
+| 5 | Give `no-strapi` media storage the way the `places` suites do | `storage` is the only switch `createCanonicalApp` reads | The no-Strapi lane gets a `LocalObjectStorage` inside the private fixture directory, which cleanup already removes |

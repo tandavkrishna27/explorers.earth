@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { crc32, deflateSync } from 'node:zlib';
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { assertFixtureOrigin, publicReadBudgetDelayMs } from './proxy-fixture-authority.mjs';
 import { Monitor, POISON_ORIGIN, guardedContext } from './no-strapi-monitor';
@@ -172,6 +173,50 @@ for (const { route, viewport } of CASES) {
     }
   });
 }
+
+/** A solid 16x16 RGB PNG, built here so the case owns its input. A 1x1 image crops to nothing. */
+function solidPng(size = 16): Buffer {
+  const chunk = (type: string, data: Buffer) => {
+    const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const length = Buffer.alloc(4); length.writeUInt32BE(data.length);
+    const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(body));
+    return Buffer.concat([length, body, crc]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(size, 0); header.writeUInt32BE(size, 4); header.set([8, 2, 0, 0, 0], 8);
+  const rows = Buffer.alloc((size * 3 + 1) * size, 0x80);
+  for (let row = 0; row < size; row++) rows[row * (size * 3 + 1)] = 0;
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header), chunk('IDAT', deflateSync(rows)), chunk('IEND', Buffer.alloc(0))]);
+}
+
+/**
+ * The navigation cases cannot see calls made in event handlers. This one drives the profile-picture
+ * upload a user makes (ImageCropper's hidden file input, then the crop modal's Confirm), which is the
+ * handler P6-4 cut the Strapi /upload fallback out of. A reintroduced fallback fails it.
+ */
+const PROFILE_PICTURE_INPUT = '[data-walkthrough="profile-picture"] input[type="file"]';
+test('desktop owner profile-picture upload uses only canonical media', async ({ browser }) => {
+  const { origin, personas } = fixture();
+  const context = await guardedContext(browser, RUN, origin, VIEWPORT.desktop);
+  try {
+    await signIn(context, personas.ownerA);
+    const page = await context.newPage();
+    const me = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/explorers/v1/me' && r.status() === 200);
+    await page.goto('/profile');
+    await me;
+    await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
+    const before = RUN.violations().length;
+    const media = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/explorers/v1/media' && r.request().method() === 'POST');
+    await page.locator(PROFILE_PICTURE_INPUT).setInputFiles({ name: 'p.png', mimeType: 'image/png', buffer: solidPng() });
+    await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+    expect((await media).status()).toBeLessThan(400);
+    await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
+    expect(RUN.violations().slice(before)).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
 
 test.afterAll(() => {
   // A failure restarts the Playwright worker, so after one this can also report partial floors. Fix the first failure first.

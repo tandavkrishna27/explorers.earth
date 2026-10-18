@@ -24,7 +24,6 @@ import { useUpdateProfile } from "../features/Profile/hooks/useUpdateProfile";
 import { useReverseGeocoding } from "../features/Profile/hooks/useReverseGeocoding";
 import { AddressResult, Places } from "../features/Profile/types/types";
 import ImageCropper from "../components/ImageCropper";
-import axios from "axios";
 import { PreviewModal } from "../features/Profile/components/PreviewModal";
 import { EarthLoader } from "../components/EarthLoader";
 import Joyride from "react-joyride";
@@ -46,11 +45,6 @@ import SnapchatIcon from "../assets/icons/SnapchatIcon";
 import LinkTo from "../assets/icons/LinkTo";
 import { Tooltip } from "react-tooltip";
 import { Images, Palette, UserRound } from "lucide-react";
-import {
-  generateProfileUploadPath,
-  generateRandomFileName,
-  sanitizeUsername,
-} from "../utils/uploadPathGenerator";
 import { IMAGE_CONFIG } from "../config";
 import { explorersApiClient } from "../lib/explorersApiClient";
 import UsernameChangeConfirmationModal from "../components/ui/UsernameChangeConfirmationModal";
@@ -75,10 +69,7 @@ import type {
   ProfileWorkspace,
 } from "../features/Profile/types/profileWorkspaces";
 import { normalizePublicEmailHref } from "../features/PublicHome/utils/publicProfileContent";
-import {
-  selectCompletedAccount,
-  selectExplorerAccountUploadTarget,
-} from "../lib/explorerAccountSelection";
+import { selectCompletedAccount } from "../lib/explorerAccountSelection";
 
 // ✅ VISIBILITY FIX: Removed unused Account type - now using GraphQL data directly
 // type Account = { ... }
@@ -251,7 +242,7 @@ const Profile = memo(() => {
     accountId: string; fromRevision: number; toRevision: number;
   } | null>(null);
   // accessing auth data from the zustand store
-  const { user, token, generation: sessionGeneration } = useAuthStore();
+  const { user, generation: sessionGeneration } = useAuthStore();
   // local state for handling accurate address
   const [placesState, setPlacesState] = useState<Places | null>();
   // local state for upload progress
@@ -311,9 +302,6 @@ const Profile = memo(() => {
       toast.success('Address fields updated!');
     }
   };
-
-  // accessing user document Id
-  const documentId = user?.documentId;
 
   const accountQuery = useCanonicalAccount();
   const data: any = accountQuery.data ? { usersPermissionsUser: { username: accountQuery.data.handle,
@@ -1676,26 +1664,6 @@ const Profile = memo(() => {
     profileWorkspaces.find(({ id }) => id === activeTab.key)?.headingId ||
     profileWorkspaces[0].headingId;
 
-  const resolveSelectedAccountUploadId = async (): Promise<string> => {
-    const accountDocumentId = selectedProfileAccount?.documentId;
-    if (!documentId || !accountDocumentId) {
-      throw new Error(t("dashboard.profile.common.errors.failedToGetAccountId"));
-    }
-    const lookup = await axios.get(
-      `${import.meta.env.VITE_REST_API_URL}/accounts?filters%5BdocumentId%5D%5B%24eq%5D=${encodeURIComponent(accountDocumentId)}&filters%5Busers_permissions_users%5D%5BdocumentId%5D%5B%24eq%5D=${encodeURIComponent(documentId)}`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    const selection = selectExplorerAccountUploadTarget(
-      lookup.data?.data,
-      accountDocumentId,
-      { authoritative: true },
-    );
-    if (selection.kind !== "selected") {
-      throw new Error(t("dashboard.profile.common.errors.failedToGetAccountId"));
-    }
-    return selection.account.id;
-  };
-
   // ✅ FIXED: Simplified profile image upload flow
   // STRAPI UPLOAD INSIGHT: When using refId + field + ref parameters,
   // Strapi automatically associates the uploaded file with the specified model field.
@@ -1727,66 +1695,7 @@ const Profile = memo(() => {
         return;
       }
 
-      const accountId = await resolveSelectedAccountUploadId();
-
-      const formData = new FormData();
-
-      // Generate structured path for organized storage
-      const username = sanitizeUsername(user?.username || "user");
-      const randomFileName = generateRandomFileName(file.name);
-      const structuredPath = generateProfileUploadPath(
-        username,
-        "profile",
-        randomFileName
-      );
-
-      formData.append("files", file);
-      formData.append("refId", accountId); // Use REST API account ID
-      formData.append("field", "profile_picture");
-      formData.append("ref", "api::account.account");
-      formData.append("path", structuredPath);
-
-      // Step 1: Upload image to Strapi/S3
-      const uploadResponse = await axios.post(
-        `${import.meta.env.VITE_REST_API_URL}/upload`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (uploadResponse.data && uploadResponse.data[0]?.id) {
-        const uploadedFile = uploadResponse.data[0];
-
-        // The upload already associated the file with the account via refId/field params
-        // No need for additional GraphQL mutation - just update UI and refetch
-        setUploadedImage(uploadedFile.url);
-
-        await refetch();
-        toast.success(t('toast.success.profileImageUpdated'));
-
-        // Auto-advance walkthrough after successful upload if we're on profile picture step
-        if (steps.length > 0 && stepIndex < steps.length) {
-          const currentStep = steps[stepIndex];
-          if (currentStep?.target === '[data-walkthrough="profile-picture"]') {
-            // Mark processing complete and advance instantly
-            markProcessingComplete();
-            // Advance immediately for instant highlighting
-            setTimeout(() => {
-              advanceToNextStep();
-            }, 50); // Minimal delay just to ensure state is cleared
-          } else {
-            markProcessingComplete();
-          }
-        } else {
-          markProcessingComplete();
-        }
-      } else {
-        throw new Error(t('dashboard.profile.common.errors.uploadResponseMissingFileData'));
-      }
+      throw new Error(t("dashboard.profile.common.errors.failedToGetAccountId"));
     } catch (error: any) {
       console.error("Profile image upload error:", error);
       const errorMessage = error?.response?.data?.error?.message ||
@@ -1825,66 +1734,7 @@ const Profile = memo(() => {
         return;
       }
 
-      const accountId = await resolveSelectedAccountUploadId();
-
-      const formData = new FormData();
-
-      // Generate structured path for organized storage
-      const username = sanitizeUsername(user?.username || "user");
-      const randomFileName = generateRandomFileName(file.name);
-      const structuredPath = generateProfileUploadPath(
-        username,
-        "background",
-        randomFileName
-      );
-
-      formData.append("files", file);
-      formData.append("refId", accountId); // Use REST API account ID
-      formData.append("field", "bg_picture");
-      formData.append("ref", "api::account.account");
-      formData.append("path", structuredPath);
-
-      // Step 1: Upload image to Strapi/S3
-      const uploadResponse = await axios.post(
-        `${import.meta.env.VITE_REST_API_URL}/upload`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (uploadResponse.data && uploadResponse.data[0]?.id) {
-        const uploadedFile = uploadResponse.data[0];
-
-        // The upload already associated the file with the account via refId/field params
-        // No need for additional GraphQL mutation - just update UI and refetch
-        setUploadedBackground(uploadedFile.url);
-
-        await refetch();
-        toast.success(t('toast.success.backgroundImageUpdated'));
-
-        // Auto-advance walkthrough after successful upload if we're on cover image step
-        if (steps.length > 0 && stepIndex < steps.length) {
-          const currentStep = steps[stepIndex];
-          if (currentStep?.target === '[data-walkthrough="cover-image"]') {
-            // Mark processing complete and advance instantly
-            markProcessingComplete();
-            // Advance immediately for instant highlighting
-            setTimeout(() => {
-              advanceToNextStep();
-            }, 50); // Minimal delay just to ensure state is cleared
-          } else {
-            markProcessingComplete();
-          }
-        } else {
-          markProcessingComplete();
-        }
-      } else {
-        throw new Error(t('dashboard.profile.common.errors.uploadResponseMissingFileData'));
-      }
+      throw new Error(t("dashboard.profile.common.errors.failedToGetAccountId"));
     } catch (error) {
       toast.error(t('toast.error.backgroundImageUpdateFailed'));
       // Mark processing as complete even on error
