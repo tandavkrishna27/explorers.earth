@@ -136,7 +136,7 @@ export function assertPlatformContainer(receipt: PlatformAuthority, inspect: unk
   const labels = value.Config?.Labels ?? {};
   const bindings = value.HostConfig?.PortBindings;
   if (value.Id !== receipt.containerId || value.Name !== `/${receipt.project}-postgres-1`
-    || value.Config?.Image !== "public.ecr.aws/docker/library/postgres:15-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81"
+    || value.Config?.Image !== "ghcr.io/tandavkrishna27/mirror/postgres:15-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81"
     || labels["com.docker.compose.project"] !== receipt.project
     || labels["com.docker.compose.service"] !== "postgres"
     || labels["com.explorers.replatform.fixture"] !== "true"
