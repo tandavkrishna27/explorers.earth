@@ -16,6 +16,12 @@
 # MUSIC_DATABASE_USER is the migrator; on `api`, it is the runtime login.
 name: explorers-canonical
 
+# THE ONE PLACE TO UPDATE when a migration is added. It must equal the head of the
+# migration chain this image bundles (EXPECTED_MUSIC_MIGRATION_ID in
+# tunes/shared/music-migration-contract.ts): the gate refuses any other value, and
+# production-compose.test.ts fails until the two agree.
+x-migration-marker: &migration-marker 0056_explorers_app_enrichment_jobs
+
 x-logging: &logging
   driver: json-file
   options:
@@ -58,7 +64,7 @@ services:
       MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/db-runtime
       MUSIC_IMAGE_DIGEST: ${EXPLORERS_API_DIGEST:?EXPLORERS_API_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${EXPLORERS_API_COMMIT:?EXPLORERS_API_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: 0056_explorers_app_enrichment_jobs
+      MUSIC_MIGRATION_MARKER: *migration-marker
       MUSIC_GATE_ATTESTATION_KEY: ${MUSIC_GATE_ATTESTATION_KEY:?MUSIC_GATE_ATTESTATION_KEY is required (at least 32 characters)}
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${EXPLORERS_API_DIGEST:?EXPLORERS_API_DIGEST is required}.json
     depends_on:
@@ -88,7 +94,7 @@ services:
       MUSIC_DATABASE_PASSWORD_FILE: /run/secrets/db-runtime
       MUSIC_IMAGE_DIGEST: ${EXPLORERS_API_DIGEST:?EXPLORERS_API_DIGEST is required}
       MUSIC_IMAGE_COMMIT: ${EXPLORERS_API_COMMIT:?EXPLORERS_API_COMMIT is required}
-      MUSIC_MIGRATION_MARKER: 0056_explorers_app_enrichment_jobs
+      MUSIC_MIGRATION_MARKER: *migration-marker
       EXPLORERS_PUBLIC_ORIGIN: ${EXPLORERS_PUBLIC_ORIGIN:?EXPLORERS_PUBLIC_ORIGIN is required}
       EXPLORERS_AUTH_SECRET: ${EXPLORERS_AUTH_SECRET:?EXPLORERS_AUTH_SECRET is required}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID is required}

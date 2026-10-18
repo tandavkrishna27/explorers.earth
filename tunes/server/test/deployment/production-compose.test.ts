@@ -38,7 +38,10 @@ describe("production canonical compose", () => {
       "MUSIC_RUNTIME_DATABASE_USER", "MUSIC_RUNTIME_DATABASE_PASSWORD_FILE", "MUSIC_MODE"]) {
       expect(Object.keys(compose.services.migrate.environment)).toContain(required);
     }
+    // Break caught: a new migration lands and the marker is not bumped, so the gate
+    // throws on its first statement and every deploy fails.
     expect(compose.services.migrate.environment.MUSIC_MIGRATION_MARKER).toBe(EXPECTED_MUSIC_MIGRATION_ID);
+    expect(compose.services.api.environment.MUSIC_MIGRATION_MARKER).toBe(EXPECTED_MUSIC_MIGRATION_ID);
     expect(compose.services.migrate.environment.DATABASE_URL).toBeUndefined();
   });
 
