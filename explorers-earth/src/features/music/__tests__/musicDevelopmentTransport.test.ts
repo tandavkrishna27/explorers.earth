@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createMusicDevelopmentFetch, resolveMusicDevelopmentProxyTarget, resolveMusicSocketTransport } from "../musicDevelopmentTransport";
+import { createMusicDevelopmentFetch, resolveMusicDevelopmentProxyTarget, resolveMusicSocketTransport } from "../../../lib/musicDevelopmentTransport";
 
 describe("Music development transport", () => {
   it("preserves a finite no-cors POST body without turning it into a forbidden stream", async () => {

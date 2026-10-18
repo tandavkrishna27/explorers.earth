@@ -1,4 +1,4 @@
-import { createMusicDevelopmentFetch } from "../features/music/musicDevelopmentTransport";
+import { createMusicDevelopmentFetch } from "../lib/musicDevelopmentTransport";
 import useAuthStore from "../store/store";
 
 export interface CanonicalAccountLifecycleDto {

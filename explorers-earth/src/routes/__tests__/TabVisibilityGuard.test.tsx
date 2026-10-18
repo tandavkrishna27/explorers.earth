@@ -26,7 +26,7 @@ vi.mock("@apollo/client", async (importOriginal) => {
 vi.mock("framer-motion", () => ({
   motion: new Proxy({}, { get: () => "div" }),
 }));
-vi.mock("../../features/music/PublicMusicAvailabilityProvider", () => ({ usePublicAccountIdentity }));
+vi.mock("../../features/PublicHome/api/PublicAccountIdentityProvider", () => ({ usePublicAccountIdentity }));
 
 const mockUseQuery = vi.mocked(useQuery);
 

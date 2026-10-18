@@ -1,7 +1,7 @@
 import { runtimeOrigin } from "../../lib/publicRuntimeConfig";
 import { createLocalTunesApiClient, type LocalTunesApiClient } from "../../lib/localTunesApiClient";
 import { createMusicIdentityCoordinator } from "./musicIdentityCoordinator";
-import { createMusicDevelopmentFetch } from "./musicDevelopmentTransport";
+import { createMusicDevelopmentFetch } from "../../lib/musicDevelopmentTransport";
 
 const musicOrigin = runtimeOrigin(import.meta.env.VITE_LOCAL_TUNES_API_URL || "https://localtunes.earth");
 

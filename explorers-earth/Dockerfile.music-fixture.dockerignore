@@ -838,6 +838,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Profile/types/profileWorkspaces.ts
 !explorers-earth/src/features/Profile/types/themeTypes.ts
 !explorers-earth/src/features/Profile/types/types.ts
+!explorers-earth/src/features/PublicHome/api/PublicAccountIdentityProvider.tsx
 !explorers-earth/src/features/PublicHome/api/publicProfileGatewayClient.ts
 !explorers-earth/src/features/PublicHome/api/publicProfileInvalidation.ts
 !explorers-earth/src/features/PublicHome/api/publicProfilePagination.ts
@@ -887,6 +888,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/PublicHome/components/guideStickyGeometry.ts
 !explorers-earth/src/features/PublicHome/components/publicHeaderDescriptor.ts
 !explorers-earth/src/features/PublicHome/components/publicPlaceMedia.ts
+!explorers-earth/src/features/PublicHome/utils/accentInk.ts
 !explorers-earth/src/features/PublicHome/utils/publicGuidePhotoViewModel.ts
 !explorers-earth/src/features/PublicHome/utils/publicProfileContent.ts
 !explorers-earth/src/features/Settings/Settings.tsx
@@ -922,7 +924,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/music/components/youtubePlayerConfig.ts
 !explorers-earth/src/features/music/fixtureConsoleDiagnostics.ts
 !explorers-earth/src/features/music/musicApi.ts
-!explorers-earth/src/features/music/musicDevelopmentTransport.ts
 !explorers-earth/src/features/music/musicEntitlementContract.ts
 !explorers-earth/src/features/music/musicIdentityCoordinator.ts
 !explorers-earth/src/features/music/musicPublicationCommandRegistry.ts
@@ -1026,9 +1027,11 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/lib/authClient.ts
 !explorers-earth/src/lib/browserPlacesProvider.ts
 !explorers-earth/src/lib/canonicalMedia.ts
+!explorers-earth/src/lib/explorerAccountSelection.ts
 !explorers-earth/src/lib/explorersApiClient.ts
 !explorers-earth/src/lib/localTunesApiClient.ts
 !explorers-earth/src/lib/musicCredentialStore.ts
+!explorers-earth/src/lib/musicDevelopmentTransport.ts
 !explorers-earth/src/lib/publicRuntimeConfig.ts
 !explorers-earth/src/lib/publicRuntimeContract.ts
 !explorers-earth/src/lib/queryClient.ts

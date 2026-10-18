@@ -17,12 +17,18 @@ const identityOverride = vi.hoisted(() => ({ current: undefined as Record<string
 const trackMusic = vi.hoisted(() => vi.fn());
 vi.mock("../../components/SEO", () => ({ default: () => null }));
 vi.mock("@apollo/client", async (importOriginal) => ({ ...(await importOriginal<object>()), useQuery }));
-vi.mock("../../features/PublicHome/api/usePublicProfileShell", () => ({
-  usePublicProfileShell: (username: string | undefined) => {
+// The real hook re-renders its owner when a refetch settles; this Apollo-backed stand-in
+// does too, because since P3-3 the shell is owned by PublicAccountIdentityProvider.
+vi.mock("../../features/PublicHome/api/usePublicProfileShell", async () => {
+  const { useCallback, useState } = await import("react");
+  return { usePublicProfileShell: (username: string | undefined) => {
+    const [, rerender] = useState(0);
     const result = useQuery(undefined, { variables: { filters: { username: { eq: username } } } });
-    return { ...result, data: result.data?.accounts?.[0] };
-  },
-}));
+    const refetch = result.refetch;
+    const settled = useCallback(async () => { await refetch?.(); rerender((value: number) => value + 1); }, [refetch]);
+    return { ...result, refetch: settled, data: result.data?.accounts?.[0] };
+  } };
+});
 vi.mock("../../features/music/publicMusicClient", async (importOriginal) => ({
   ...(await importOriginal<object>()), publicMusicClient: { load, discover },
 }));
@@ -31,7 +37,11 @@ vi.mock("../../features/music/PublicMusicAvailabilityProvider", async (importOri
   return { ...original, usePublicMusicAvailability: () => {
     const actual = original.usePublicMusicAvailability();
     return availability.real ? actual : availability.current;
-  }, usePublicAccountIdentity: () => identityOverride.current ?? original.usePublicAccountIdentity() };
+  } };
+});
+vi.mock("../../features/PublicHome/api/PublicAccountIdentityProvider", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../../features/PublicHome/api/PublicAccountIdentityProvider")>();
+  return { ...original, usePublicAccountIdentity: () => identityOverride.current ?? original.usePublicAccountIdentity() };
 });
 vi.mock("../../features/music/publicMusicAnalytics", async (importOriginal) => ({
   ...(await importOriginal<object>()),

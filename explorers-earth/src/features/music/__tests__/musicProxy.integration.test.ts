@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
 import { createServer as createViteServer, type ViteDevServer, type UserConfig } from "vite";
 import viteConfig from "../../../../vite.config";
-import { createMusicDevelopmentFetch } from "../musicDevelopmentTransport";
+import { createMusicDevelopmentFetch } from "../../../lib/musicDevelopmentTransport";
 
 const { fixtureEnv } = vi.hoisted(() => ({ fixtureEnv: {} as Record<string, string> }));
 vi.mock("vite", async (original) => ({ ...await original<typeof import("vite")>(), loadEnv: () => fixtureEnv }));

@@ -9,7 +9,7 @@ export type PublicMusicProductEvent =
   | { name: "unavailable"; reason: "not_public" | "rate_limited" | "service_unavailable" };
 
 import { z } from "zod";
-import { createMusicDevelopmentFetch } from "./musicDevelopmentTransport";
+import { createMusicDevelopmentFetch } from "../../lib/musicDevelopmentTransport";
 import { useCallback } from "react";
 import type { UTMParameters } from "../../utils/urlHelpers";
 import { getSessionAttributionUtmParams } from "../../utils/urlHelpers";

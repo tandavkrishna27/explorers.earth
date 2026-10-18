@@ -3,7 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import PublicNav from "../components/PublicNav";
 import {
   usePublicAccountIdentity,
-} from "../features/music/PublicMusicAvailabilityProvider";
+} from "../features/PublicHome/api/PublicAccountIdentityProvider";
 import PublicProfileThemeProvider from "../features/PublicHome/components/PublicProfileThemeProvider";
 import { usePublicColdEntry } from "./PublicColdEntryBoundary";
 import PublicRouteErrorBoundary from "./PublicRouteErrorBoundary";

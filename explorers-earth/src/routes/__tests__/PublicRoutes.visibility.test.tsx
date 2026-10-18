@@ -19,6 +19,10 @@ vi.mock("../../features/music/PublicMusicAvailabilityProvider", () => ({
   PublicMusicAvailabilityProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+vi.mock("../../features/PublicHome/api/PublicAccountIdentityProvider", () => ({
+  PublicAccountIdentityProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 vi.mock("../validators/TabVisibilityGuard", () => ({
   default: ({
     children,

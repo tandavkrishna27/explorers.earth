@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { getThemeTokenStyles } from "../../Profile/constants/themePresets";
 import { normalizeThemeSettings } from "../../Profile/constants/recommendationsPresentation";
-import { usePublicAccountIdentity } from "../../music/PublicMusicAvailabilityProvider";
+import { usePublicAccountIdentity } from "../api/PublicAccountIdentityProvider";
 import { useLocation, useParams } from "react-router-dom";
 import { PublicProfileBrandingFooter, PublicProfileFixedHeader, PublicProfileWallpaper } from "./PublicProfileChromePrimitives";
 import { PublicMusicBackdrop } from '../../music/components/PublicMusicProfileHeader';

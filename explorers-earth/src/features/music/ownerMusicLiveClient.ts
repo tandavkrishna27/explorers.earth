@@ -1,6 +1,6 @@
 import { runtimeOrigin, runtimeSocketTransport } from "../../lib/publicRuntimeConfig";
 import { io } from "socket.io-client";
-import { resolveMusicSocketTransport } from "./musicDevelopmentTransport";
+import { resolveMusicSocketTransport } from "../../lib/musicDevelopmentTransport";
 
 const EVENT_KINDS = new Set([
   "publication_changed", "guest_controls_changed", "playback_changed", "queue_changed", "playlists_changed",

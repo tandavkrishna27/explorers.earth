@@ -1,6 +1,6 @@
 import { runtimeOrigin } from "../../lib/publicRuntimeConfig";
 import { z } from "zod";
-import { createMusicDevelopmentFetch } from "./musicDevelopmentTransport";
+import { createMusicDevelopmentFetch } from "../../lib/musicDevelopmentTransport";
 import { publicMusicObservability, type PublicMusicObservability } from "./publicMusicObservability";
 
 export const PUBLIC_MUSIC_RESOURCE_MAX_BYTES = 512 * 1_024;

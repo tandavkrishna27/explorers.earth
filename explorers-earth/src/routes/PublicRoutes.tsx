@@ -19,6 +19,7 @@ import { PublicPeople, PublicPersonList, PublicPersonSector } from "../features/
 import ProfileMusic from "../pages/public/ProfileMusic";
 import PublicMusicVisibilityBoundary from "./validators/PublicMusicVisibilityBoundary";
 import { PublicMusicAvailabilityProvider } from "../features/music/PublicMusicAvailabilityProvider";
+import { PublicAccountIdentityProvider } from "../features/PublicHome/api/PublicAccountIdentityProvider";
 
 // Import layout
 import PublicLayout from "../layouts/PublicLayout";
@@ -30,11 +31,13 @@ const PublicRoutes = [
     path=":username/*"
     element={
       <PublicColdEntryBoundary>
-        <PublicMusicAvailabilityProvider>
-          <UsernameValidator>
-            <PublicLayout />
-          </UsernameValidator>
-        </PublicMusicAvailabilityProvider>
+        <PublicAccountIdentityProvider>
+          <PublicMusicAvailabilityProvider>
+            <UsernameValidator>
+              <PublicLayout />
+            </UsernameValidator>
+          </PublicMusicAvailabilityProvider>
+        </PublicAccountIdentityProvider>
       </PublicColdEntryBoundary>
     }
   >

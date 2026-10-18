@@ -78,7 +78,7 @@ import { normalizePublicEmailHref } from "../features/PublicHome/utils/publicPro
 import {
   selectCompletedAccount,
   selectExplorerAccountUploadTarget,
-} from "../features/music/musicIdentityCoordinator";
+} from "../lib/explorerAccountSelection";
 
 // ✅ VISIBILITY FIX: Removed unused Account type - now using GraphQL data directly
 // type Account = { ... }

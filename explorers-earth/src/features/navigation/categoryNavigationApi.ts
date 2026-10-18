@@ -2,7 +2,7 @@ import { readCanonicalNavigationContent } from './canonicalNavigationContent';
 import { gql, type ApolloClient } from '@apollo/client';
 import { explorersApiClient } from '../../lib/explorersApiClient';
 import { toNavigationSnapshot, toNavigationAccountUpdate } from './canonicalNavigationMapping';
-import { selectExplorerAccountState, type ExplorerAccountCandidate } from '../music/musicIdentityCoordinator';
+import { selectExplorerAccountState, type ExplorerAccountCandidate } from '../../lib/explorerAccountSelection';
 import { NavigationError } from './accountNavigationWriter';
 import { type Scope, type CategoryId, type Eligibility, type IntentAuthority, type NavigationPatch, type NavigationSnapshot } from './categoryNavigationPolicy';
 

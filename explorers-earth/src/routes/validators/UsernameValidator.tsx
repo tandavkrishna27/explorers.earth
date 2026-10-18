@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { usePublicColdEntry } from "../../layouts/PublicColdEntryBoundary";
 import NotFound from "../../pages/NotFound";
-import { usePublicAccountIdentity } from "../../features/music/PublicMusicAvailabilityProvider";
+import { usePublicAccountIdentity } from "../../features/PublicHome/api/PublicAccountIdentityProvider";
 
 interface UsernameValidatorProps { children: ReactNode }
 

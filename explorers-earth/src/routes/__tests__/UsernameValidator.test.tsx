@@ -38,7 +38,7 @@ vi.mock("@apollo/client", async (importOriginal) => {
 vi.mock("../../layouts/PublicColdEntryBoundary", () => ({
   usePublicColdEntry: () => coldReports,
 }));
-vi.mock("../../features/music/PublicMusicAvailabilityProvider", () => ({ usePublicAccountIdentity }));
+vi.mock("../../features/PublicHome/api/PublicAccountIdentityProvider", () => ({ usePublicAccountIdentity }));
 
 describe("UsernameValidator", () => {
   beforeEach(() => {

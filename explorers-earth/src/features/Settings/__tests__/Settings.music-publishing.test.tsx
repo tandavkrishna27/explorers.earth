@@ -12,7 +12,18 @@ import { MusicClientError } from '../../../lib/localTunesApiClient';
 import { Route, Routes } from 'react-router-dom';
 import { PublicMusicAvailabilityProvider, usePublicMusicAvailability } from '../../music/PublicMusicAvailabilityProvider';
 const usePublicProfileShell = vi.hoisted(() => vi.fn());
-vi.mock('../../PublicHome/api/usePublicProfileShell', () => ({ usePublicProfileShell }));
+// The real hook re-renders its owner when a refetch settles; a bare vi.fn() does not,
+// and since P3-3 the shell is owned by PublicAccountIdentityProvider, not the Music provider.
+vi.mock('../../PublicHome/api/usePublicProfileShell', async () => {
+  const { useCallback, useState } = await import('react');
+  return { usePublicProfileShell: (username: string | undefined) => {
+    const [, rerender] = useState(0);
+    const shell = usePublicProfileShell(username);
+    const refetch = shell?.refetch;
+    const settled = useCallback(async () => { await refetch?.(); rerender((value) => value + 1); }, [refetch]);
+    return shell && { ...shell, refetch: settled };
+  } };
+});
 vi.mock('../../Profile/api/useCanonicalAccount', () => ({ useCanonicalAccount: () => ({
   data: { id: '11111111-1111-4111-8111-111111111111', revision: 1 }, isLoading: false,
 }) }));

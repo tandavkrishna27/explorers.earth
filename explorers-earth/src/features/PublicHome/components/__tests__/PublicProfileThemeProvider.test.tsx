@@ -33,6 +33,8 @@ const trackClick = vi.hoisted(() => vi.fn());
 vi.mock("../../../../services/analyticsService", () => ({ createAnalyticsOptions: { profile: () => ({}) }, useTrackAnalytics: () => ({ trackClick }) }));
 vi.mock("../../../music/PublicMusicAvailabilityProvider", () => ({
   usePublicMusicAvailability: () => profile,
+}));
+vi.mock("../../api/PublicAccountIdentityProvider", () => ({
   usePublicAccountIdentity: () => profile.identity,
 }));
 

@@ -74,7 +74,7 @@ describe("Music Compose ownership safety", () => {
     expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
     const manifest = result.stdout.trim().split(/\r?\n/);
     expect(manifest).toEqual(expect.arrayContaining([
-      "explorers-earth/src/features/music/musicDevelopmentTransport.ts",
+      "explorers-earth/src/lib/musicDevelopmentTransport.ts",
       "explorers-earth/src/features/music/components/MusicPlaylistCollection.tsx",
       "explorers-earth/src/features/music/components/MusicSectionTabs.tsx",
       "explorers-earth/src/features/music/components/MusicSectionTabs.css",

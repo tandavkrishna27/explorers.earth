@@ -1,8 +1,9 @@
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PUBLIC_MUSIC_DESCRIPTOR_MAX_AGE_MS, PublicMusicAvailabilityProvider, usePublicAccountIdentity, usePublicMusicAvailability, useOwnerMusicAvailability, notifyMusicPublicationVerified } from "../PublicMusicAvailabilityProvider";
+import { PUBLIC_MUSIC_DESCRIPTOR_MAX_AGE_MS, PublicMusicAvailabilityProvider, usePublicMusicAvailability, useOwnerMusicAvailability, notifyMusicPublicationVerified } from "../PublicMusicAvailabilityProvider";
 import { PublicMusicError } from "../publicMusicClient";
+import { usePublicAccountIdentity } from "../../PublicHome/api/PublicAccountIdentityProvider";
 
 const discover = vi.hoisted(() => vi.fn());
 const useQuery = vi.hoisted(() => vi.fn());

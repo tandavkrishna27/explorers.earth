@@ -1,19 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useParams } from "react-router-dom";
-import { usePublicProfileShell } from "../PublicHome/api/usePublicProfileShell";
+import { PublicAccountIdentityProvider, usePublicAccountShell } from "../PublicHome/api/PublicAccountIdentityProvider";
 import { publicMusicClient, PublicMusicError, type PublicMusicDescriptor } from "./publicMusicClient";
 
 export type AvailabilityState = "loading" | "available" | "revalidating" | "revoked" | "not-public" | "unavailable";
 type Availability = { state: AvailabilityState; account?: Record<string, any>; descriptor?: PublicMusicDescriptor; retryAfterSeconds?: number; retry: () => void };
 type AccountState = { accountId?: string; state: AvailabilityState; descriptor?: PublicMusicDescriptor; retryAfterSeconds?: number };
-export type PublicAccountIdentity = {
-  usernameKey: string;
-  status: "loading" | "ready" | "terminal-error";
-  account?: Record<string, any>;
-  error?: unknown;
-};
 const AvailabilityContext = createContext<Availability | null>(null);
-const AccountIdentityContext = createContext<PublicAccountIdentity | null>(null);
 const unavailableOutsideProfileShell: Availability = { state: "unavailable", retry: () => undefined };
 export const PUBLIC_MUSIC_DESCRIPTOR_MAX_AGE_MS = 30_000;
 const PUBLIC_MUSIC_RECOVERY_BACKOFF_MS = [1_000, 2_000, 4_000, 8_000, 16_000, 30_000] as const;
@@ -83,9 +75,17 @@ export function useOwnerMusicAvailability(accountId?: string, preference?: unkno
   return { state, retry };
 }
 
+/**
+ * Music availability for the public profile tree. The profile shell request is owned by
+ * `PublicAccountIdentityProvider`; a standalone mount (tests) gets one of its own.
+ */
 export function PublicMusicAvailabilityProvider({ children }: { children: ReactNode }) {
-  const { username } = useParams();
-  const usernameKey = (username ?? "").trim().toLowerCase();
+  const shell = usePublicAccountShell();
+  return shell ? <MusicAvailability>{children}</MusicAvailability>
+    : <PublicAccountIdentityProvider><MusicAvailability>{children}</MusicAvailability></PublicAccountIdentityProvider>;
+}
+
+function MusicAvailability({ children }: { children: ReactNode }) {
   const [attempt, setAttempt] = useState(0);
   const [resolved, setResolved] = useState<AccountState>({ state: "loading" });
   const resolvedRef = useRef(resolved);
@@ -94,16 +94,8 @@ export function PublicMusicAvailabilityProvider({ children }: { children: ReactN
   const revocationTimer = useRef<number>();
   const recoveryTimer = useRef<number>();
   const recoveryAttempt = useRef(0);
-  const { data, loading, error, refetch } = usePublicProfileShell(usernameKey);
+  const { data, loading, error, refetch } = usePublicAccountShell()!;
   const account = data as Record<string, any> | undefined;
-  const accountMatches = typeof account?.username === "string"
-    && account.username.trim().toLowerCase() === usernameKey;
-  const accountIdentity = useMemo<PublicAccountIdentity>(() => ({
-    usernameKey,
-    status: accountMatches ? "ready" : loading ? "loading" : "terminal-error",
-    ...(accountMatches ? { account } : {}),
-    ...(!accountMatches && !loading && error ? { error } : {}),
-  }), [account, accountMatches, error, loading, usernameKey]);
   const accountId = typeof account?.documentId === "string" ? account.documentId : undefined;
 
   const invalidate = useCallback(() => {
@@ -186,15 +178,10 @@ export function PublicMusicAvailabilityProvider({ children }: { children: ReactN
   const descriptor = keyed ? resolved.descriptor : undefined;
   const retryAfterSeconds = keyed ? resolved.retryAfterSeconds : undefined;
   const value = useMemo(() => ({ state, account, descriptor, retryAfterSeconds, retry: refresh }), [account, descriptor, refresh, retryAfterSeconds, state]);
-  return <AccountIdentityContext.Provider value={accountIdentity}>
-    <AvailabilityContext.Provider value={value}>{children}</AvailabilityContext.Provider>
-  </AccountIdentityContext.Provider>;
+  return <AvailabilityContext.Provider value={value}>{children}</AvailabilityContext.Provider>;
 }
 
 export function usePublicMusicAvailability(): Availability {
   return useContext(AvailabilityContext) ?? unavailableOutsideProfileShell;
 }
 
-export function usePublicAccountIdentity(): PublicAccountIdentity {
-  return useContext(AccountIdentityContext) ?? { usernameKey: "", status: "terminal-error" };
-}

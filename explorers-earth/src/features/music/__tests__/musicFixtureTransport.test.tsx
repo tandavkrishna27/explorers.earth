@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { createMusicDevelopmentFetch, resolveMusicSocketTransport } from "../musicDevelopmentTransport";
+import { createMusicDevelopmentFetch, resolveMusicSocketTransport } from "../../../lib/musicDevelopmentTransport";
 
 // Exact existing docker-compose.music-test.yml Explorer build/browser authority.
 const fixtureOrigin = "http://localhost:55173";
