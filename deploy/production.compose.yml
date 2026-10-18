@@ -1,0 +1,146 @@
+# Production canonical stack for explorers.earth (P2).
+#
+# Runs beside host nginx, which serves the SPA and proxies /api and /socket.io to
+# 127.0.0.1:5000. This is NOT the root docker-compose.yml: that file runs the live
+# Music stack and auditDeploymentAuthority pins its contents.
+#
+#   docker compose -f deploy/production.compose.yml --env-file /path/to/production.env pull
+#   docker compose -f deploy/production.compose.yml --env-file /path/to/production.env up -d
+#
+# Every secret file is bind-mounted, never declared under `secrets:`. Docker
+# secrets mount 0444 and secure-music-secret-file rejects anything group- or
+# world-readable. The host files must be mode 0600 and owned by root, which the
+# API and gate run as (tunes/Dockerfile declares no USER).
+#
+# The two app services deliberately share no environment anchor. On `migrate`,
+# MUSIC_DATABASE_USER is the migrator; on `api`, it is the runtime login.
+name: explorers-canonical
+
+# THE ONE PLACE TO UPDATE when a migration is added. It must equal the head of the
+# migration chain this image bundles (EXPECTED_MUSIC_MIGRATION_ID in
+# tunes/shared/music-migration-contract.ts): the gate refuses any other value, and
+# production-compose.test.ts fails until the two agree.
+x-migration-marker: &migration-marker 0056_explorers_app_enrichment_jobs
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_MIGRATOR_USER:?DB_MIGRATOR_USER is required}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db-migrator
+      POSTGRES_DB: ${DB_NAME:?DB_NAME is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ${DB_MIGRATOR_PASSWORD_FILE_HOST:?DB_MIGRATOR_PASSWORD_FILE_HOST is required}:/run/secrets/db-migrator:ro
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+
+  migrate:
+    image: ${EXPLORERS_API_IMAGE_NAME:?EXPLORERS_API_IMAGE_NAME is required}@${EXPLORERS_API_DIGEST:?EXPLORERS_API_DIGEST must be the sha256 digest tunes.yml published}
+    restart: "no"
+    command: ["node", "dist/server/deployment/run-migration-gate.js"]
+    environment:
+      NODE_ENV: production
+      MUSIC_MODE: live
+      MUSIC_DATABASE_HOST: postgres
+      MUSIC_DATABASE_PORT: "5432"
+      MUSIC_DATABASE_NAME: ${DB_NAME:?DB_NAME is required}
+      MUSIC_DATABASE_USER: ${DB_MIGRATOR_USER:?DB_MIGRATOR_USER is required}
+      MUSIC_DATABASE_PASSWORD_FILE: /run/secrets/db-migrator
+      MUSIC_RUNTIME_DATABASE_USER: ${DB_RUNTIME_USER:?DB_RUNTIME_USER is required}
+      MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/db-runtime
+      MUSIC_IMAGE_DIGEST: ${EXPLORERS_API_DIGEST:?EXPLORERS_API_DIGEST is required}
+      MUSIC_IMAGE_COMMIT: ${EXPLORERS_API_COMMIT:?EXPLORERS_API_COMMIT is required}
+      MUSIC_MIGRATION_MARKER: *migration-marker
+      MUSIC_GATE_ATTESTATION_KEY: ${MUSIC_GATE_ATTESTATION_KEY:?MUSIC_GATE_ATTESTATION_KEY is required (at least 32 characters)}
+      MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/${EXPLORERS_API_DIGEST:?EXPLORERS_API_DIGEST is required}.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - gate-attestations:/deployment-gates
+      - ${DB_MIGRATOR_PASSWORD_FILE_HOST:?DB_MIGRATOR_PASSWORD_FILE_HOST is required}:/run/secrets/db-migrator:ro
+      - ${DB_RUNTIME_PASSWORD_FILE_HOST:?DB_RUNTIME_PASSWORD_FILE_HOST is required}:/run/secrets/db-runtime:ro
+    networks:
+      - internal
+    logging: *logging
+
+  api:
+    image: ${EXPLORERS_API_IMAGE_NAME:?EXPLORERS_API_IMAGE_NAME is required}@${EXPLORERS_API_DIGEST:?EXPLORERS_API_DIGEST must be the sha256 digest tunes.yml published}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      EXPLORERS_API_MODE: canonical
+      PORT: "5000"
+      MUSIC_MODE: live
+      MUSIC_DATABASE_HOST: postgres
+      MUSIC_DATABASE_PORT: "5432"
+      MUSIC_DATABASE_NAME: ${DB_NAME:?DB_NAME is required}
+      MUSIC_DATABASE_USER: ${DB_RUNTIME_USER:?DB_RUNTIME_USER is required}
+      MUSIC_DATABASE_MIGRATOR_USER: ${DB_MIGRATOR_USER:?DB_MIGRATOR_USER is required}
+      MUSIC_DATABASE_PASSWORD_FILE: /run/secrets/db-runtime
+      MUSIC_IMAGE_DIGEST: ${EXPLORERS_API_DIGEST:?EXPLORERS_API_DIGEST is required}
+      MUSIC_IMAGE_COMMIT: ${EXPLORERS_API_COMMIT:?EXPLORERS_API_COMMIT is required}
+      MUSIC_MIGRATION_MARKER: *migration-marker
+      EXPLORERS_PUBLIC_ORIGIN: ${EXPLORERS_PUBLIC_ORIGIN:?EXPLORERS_PUBLIC_ORIGIN is required}
+      EXPLORERS_AUTH_SECRET: ${EXPLORERS_AUTH_SECRET:?EXPLORERS_AUTH_SECRET is required}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID is required}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?GOOGLE_CLIENT_SECRET is required}
+      # The peer address host nginx reaches the published port from. Unset means
+      # trust nobody, and every visitor then shares one rate-limit bucket.
+      EXPLORERS_TRUSTED_PROXY_IP: ${EXPLORERS_TRUSTED_PROXY_IP:?EXPLORERS_TRUSTED_PROXY_IP is required}
+      EXPLORERS_DEPLOYMENT_TIER: production
+      EXPLORERS_MEDIA_ENVIRONMENT: prod
+      EXPLORERS_MEDIA_S3_BUCKET: ${EXPLORERS_MEDIA_S3_BUCKET:?EXPLORERS_MEDIA_S3_BUCKET is required}
+      EXPLORERS_MEDIA_S3_REGION: ${EXPLORERS_MEDIA_S3_REGION:?EXPLORERS_MEDIA_S3_REGION is required}
+      # resolveObjectStorage passes only the region to S3Client; without these the
+      # SDK's default chain finds nothing and media fails at request time.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID is required}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY is required}
+      GOOGLE_BOOKS_API_KEY: ${GOOGLE_BOOKS_API_KEY:?GOOGLE_BOOKS_API_KEY is required}
+      TMDB_ACCESS_TOKEN: ${TMDB_ACCESS_TOKEN:?TMDB_ACCESS_TOKEN is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ${DB_RUNTIME_PASSWORD_FILE_HOST:?DB_RUNTIME_PASSWORD_FILE_HOST is required}:/run/secrets/db-runtime:ro
+    networks:
+      - internal
+      - egress
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    logging: *logging
+
+networks:
+  # PostgreSQL and the gate never need the internet.
+  internal:
+    driver: bridge
+    internal: true
+  # The API calls Google, S3, TMDB and Google Books, and is published on loopback.
+  egress:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  gate-attestations:
