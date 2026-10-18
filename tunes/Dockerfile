@@ -63,6 +63,9 @@ COPY package.json ./
 COPY drizzle.config.ts ./
 COPY shared ./shared
 COPY migrations ./migrations
+# Reviewed taxonomy data for `node dist/apply-reviewed-taxonomy.js`; the loader
+# resolves it as ../fixtures from that bundle and checks it by realpath.
+COPY fixtures ./fixtures
 
 # Expose application port
 EXPOSE 5000
