@@ -965,6 +965,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/layouts/PublicRouteErrorBoundary.tsx
 !explorers-earth/src/layouts/publicRouteReadiness.ts
 !explorers-earth/src/layouts/publicShellReadiness.ts
+!explorers-earth/src/lib/accountLocale.ts
 !explorers-earth/src/lib/apolloCache.ts
 !explorers-earth/src/lib/authClient.ts
 !explorers-earth/src/lib/browserPlacesProvider.ts

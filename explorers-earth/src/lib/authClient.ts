@@ -1,7 +1,8 @@
 import useAuthStore from "../store/store";
+import { adoptAccountLocale } from "./accountLocale";
 
 type AuthSession = { user?: { id?: string; email?: string }; session?: { id?: string } } | null;
-type CanonicalAccount = { id: string; handle: string | null; onboardingStatus: "incomplete" | "complete"; revision: number };
+type CanonicalAccount = { id: string; handle: string | null; onboardingStatus: "incomplete" | "complete"; revision: number; locale?: string };
 
 async function jsonOrNull(response: Response) { return response.json().catch(() => null); }
 
@@ -36,6 +37,7 @@ export const authClient = {
         id: account.id, userId: session.user.id, username: account.handle ?? "", email: session.user.email ?? "",
         onboardingStatus: account.onboardingStatus, revision: account.revision,
       });
+      void adoptAccountLocale(account.locale).catch(() => undefined);
     } catch { useAuthStore.getState().verificationFailed(generation, "error"); }
   },
   async startGoogleSignIn(recovery = false): Promise<void> {
