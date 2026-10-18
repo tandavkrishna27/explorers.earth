@@ -33,6 +33,7 @@ vi.mock("../../api/placesCommands", () => ({
     updatePlace: mocks.updatePlace,
     correctFacts: mocks.correctFacts,
     upload: mocks.upload,
+    retireDraftIntent: vi.fn(),
     loading: false,
   }),
 }));
@@ -326,5 +327,68 @@ describe("the facts and the context a recommendation carries", () => {
     const blank = recommendationContext({ contactName: "   ", contactNumber: "", socialLink: "" }, { recommendationType: "place", source: "self" });
     expect(blank).toMatchObject({ contactName: null, contactNumber: null, placeSocialUrl: null });
     expect(placeFacts({ address: "  " }).formattedAddress).toBeNull();
+  });
+});
+
+// P5-7. A place holds ten photos (0047's slot bound). The hook used to upload everything
+// selected and then cut the attach to ten with slice(0, 10): the creator was told the save
+// worked, the extras were uploaded and never attached, and the picker counted only the
+// creator's own files under a toast that said "up to 4 files".
+describe("useAddRecommendation ten-photo refusal", () => {
+  // jsdom has no object URLs; the picker only needs a string to preview.
+  if (!URL.createObjectURL) URL.createObjectURL = () => "blob:preview";
+  const photos = (count: number) => Array.from({ length: count }, (_, index) => ({
+    photoBlob: new Blob([`photo-${index}`], { type: "image/jpeg" }), fileName: `p${index}.jpg`, url: `blob:p${index}`, isThumbnail: false,
+  }));
+  const file = (name: string) => new File([name], name, { type: "image/jpeg" });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.createPlace.mockResolvedValue(created);
+    mocks.updatePlace.mockResolvedValue({ id: created.id });
+    let next = 0;
+    mocks.upload.mockImplementation(async () => ({ id: `media-${next++}` }));
+  });
+
+  it("refuses an eleven-photo place before creating or uploading anything", async () => {
+    const { toast } = await import("sonner");
+    const { result } = renderMediaHook(photos(11));
+    await act(async () => { await result.current.handleSubmit(values as never); });
+    expect(toast.error).toHaveBeenCalledWith("toast.error.placePhotoLimit");
+    expect(mocks.createPlace).not.toHaveBeenCalled();
+    expect(mocks.upload).not.toHaveBeenCalled();
+  });
+
+  it("attaches all ten photos when the place is exactly full", async () => {
+    const { result } = renderMediaHook(photos(10));
+    await act(async () => { await result.current.handleSubmit(values as never); });
+    expect(mocks.upload).toHaveBeenCalledTimes(10);
+    expect(mocks.updatePlace).toHaveBeenCalledWith(created.id, {
+      placePhotos: { photoMediaIds: Array.from({ length: 10 }, (_, index) => `media-${index}`) },
+    });
+  });
+
+  it("counts provider photos against the picker's remaining slots", async () => {
+    const { toast } = await import("sonner");
+    const { result } = renderMediaHook(photos(9));
+    await act(async () => { await result.current.addExternalMedia([file("a.jpg"), file("b.jpg")]); });
+    expect(toast.error).toHaveBeenCalledWith("toast.error.placePhotoLimit");
+    await act(async () => { await result.current.handleSubmit(values as never); });
+    expect(mocks.upload).toHaveBeenCalledTimes(10);
+  });
+
+  it("counts an edit's existing photos against the picker, so the save keeps all ten", async () => {
+    const { toast } = await import("sonner");
+    const existing = Array.from({ length: 9 }, (_, index) => `existing-${index}`);
+    const { result } = renderHook(() => useAddRecommendation({ ...defaultProps([]), type: "edit", placeId: "place-1",
+      editObservation: { detail: { category: "places", placePhotos: { photoMediaIds: existing } } } } as never));
+    // Nine already saved leaves one slot: the second file is refused visibly, not uploaded.
+    await act(async () => { await result.current.addExternalMedia([file("a.jpg"), file("b.jpg")]); });
+    await act(async () => { await result.current.handleUpdatePlaceDetails(values as never); });
+    expect(mocks.updatePlace).toHaveBeenCalledWith("place-1", expect.objectContaining({
+      placePhotos: { photoMediaIds: [...existing, "media-0"] },
+    }), expect.anything());
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(toast.error).toHaveBeenCalledWith("toast.error.placePhotoLimit");
   });
 });

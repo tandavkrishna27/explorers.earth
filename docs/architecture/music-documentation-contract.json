@@ -86,7 +86,8 @@
     "0054_explorers_place_individual_pins",
     "0055_explorers_app_enrichment",
     "0056_explorers_app_enrichment_jobs",
-    "0057_retire_music_category"
+    "0057_retire_music_category",
+    "0058_explorers_place_photo_backfill"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",
