@@ -10,6 +10,7 @@ on:
       - "explorers-earth/**"
       - "fixtures/**"
       - "scripts/replatform-local.ts"
+      - "scripts/replatform-route-parity.ts"
       - "scripts/generate-music-fixture-dockerignore.mjs"
       - ".dockerignore"
       - "docker-compose.music-test.yml"
@@ -18,7 +19,6 @@ on:
       - ".github/workflows/**"
       - ".github/workflows/music-c0-contracts.yml"
       - ".github/workflows/test.yml"
-      - ".github/workflows/music-reconcile.yml"
       - "docs/**"
   push:
     branches: [main, develop]
@@ -29,6 +29,7 @@ on:
       - "explorers-earth/**"
       - "fixtures/**"
       - "scripts/replatform-local.ts"
+      - "scripts/replatform-route-parity.ts"
       - "scripts/generate-music-fixture-dockerignore.mjs"
       - ".dockerignore"
       - "docker-compose.music-test.yml"
@@ -37,7 +38,6 @@ on:
       - ".github/workflows/**"
       - ".github/workflows/music-c0-contracts.yml"
       - ".github/workflows/test.yml"
-      - ".github/workflows/music-reconcile.yml"
       - "docs/**"
 
 permissions:

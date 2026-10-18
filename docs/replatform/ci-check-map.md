@@ -25,7 +25,7 @@ The duplicate backend validation job in `ci.yml` was retired. Its real PostgreSQ
 | `explorers.yml` | Keep dormant legacy deployment | No `workflow_run` consumer; no source-revision/digest proof yet. Epic 3.5/8 owns replacement. |
 | `tunes-test-direct-deploy.yml` | Retire | Expired 2026-08-28 and is no longer callable. |
 | `tunes-host-preflight.yml` | Keep | Read-only host inspection uses a deploy-capable SSH key, so the protected reviewer remains required. |
-| `music-reconcile.yml` | Keep | Production report-only schedule; staging apply retains its review checkpoint while the service exists. Epic 6 owns removal. |
+| `music-reconcile.yml` | Retired (P2 Task 8, 2026-10-18) | Deleted: its hourly report reached production Strapi, which the canonical stack retires. It was already `disabled_manually` and could not write. The `music:reconcile` command remains until Epic 8. |
 
 Routine validation and future QA do not require human reviewers. The current `tunes-production` environment (read-only metadata observed 2026-09-30) has protected-branch restriction, one independent reviewer and self-review prevention; no dedicated QA environment was found. No secret values or credential validity were read. The release workflow no longer uses repository `GATE_PROD`; the protected reviewer decides whether external rehearsal evidence is sufficient.
 

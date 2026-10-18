@@ -6,7 +6,7 @@ This command compares Strapi's immutable user/Account bindings with Tunes. It is
 
 The C0 pagination and service-token proof remains BLOCKING in `music-production-preflight.md`. Do not set `MUSIC_RECONCILIATION_LIVE_CONTRACT_VERIFIED=true` until the identity owner records the live schema, exact stable ordering, pagination totals, snapshot/checksum behavior, health contract, rate limits, and dedicated read-only token permissions. Fixture evidence is not production proof.
 
-Every environment defaults to dry-run and apply disabled. Production apply is structurally ineligible in both the service and workflow. The scheduled production report runs hourly at minute 17. The first production run is report-only, even after the C0 proof is accepted. Review one complete scheduled cycle before deciding whether a later release should change any policy.
+Every environment defaults to dry-run and apply disabled. Production apply is structurally ineligible in the service. There is no longer any scheduled run: the hourly `music-reconcile.yml` workflow (already `disabled_manually` in GitHub) was deleted in P2 because it reaches production Strapi, which the canonical stack retires. The workflow-job steps below record what that workflow did; any run is now a manual command run. The first production run is report-only, even after the C0 proof is accepted. Review one complete scheduled cycle before deciding whether a later release should change any policy.
 
 ## Safety model
 
