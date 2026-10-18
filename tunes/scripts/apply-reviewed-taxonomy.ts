@@ -1,0 +1,88 @@
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { resolveMusicDatabaseConnection, type MusicDatabaseConnection } from "../server/config/music-database-config";
+import { assertMusicMigratorAuthority } from "../server/db/music-runtime-role";
+import { applyTaxonomyCatalogImport, dryRunTaxonomyCatalogImport, type TaxonomyImportPlan } from "../server/services/taxonomyCatalogImport";
+import type { TaxonomyImport } from "../shared/explorersTaxonomyContract";
+import { loadReviewedTaxonomyInputs, reviewedTaxonomyInputDirectory } from "./taxonomy-owned-import";
+
+/**
+ * Operator entry for the reviewed taxonomy vocabulary. Production runs the compiled
+ * bundle as `node dist/apply-reviewed-taxonomy.js --dry-run` or
+ * `--apply --reviewed-by <operator>`, with the migrator's MUSIC_DATABASE_* variables
+ * and MUSIC_RUNTIME_DATABASE_USER, exactly as the migration gate is configured.
+ * Only Places is applied: the reviewed People vocabulary is empty and stays UNCONFIGURED.
+ */
+type Environment = Record<string, string | undefined>;
+
+// Pinned with the same value as public-parity-owned-composition.ts and the loader's tests.
+export const reviewedTaxonomyManifestHash = "0087cf143b6f8ae68f60087539083bd0f7992c50c846b4c98a02dc1e9155ccff";
+
+export type TaxonomyApplyArguments = { mode: "dry-run" } | { mode: "apply"; reviewedBy: string };
+
+const usage = "Usage: apply-reviewed-taxonomy --dry-run | --apply --reviewed-by <operator>";
+
+export function parseTaxonomyApplyArguments(argv: readonly string[]): TaxonomyApplyArguments {
+  if (argv.length === 1 && argv[0] === "--dry-run") return { mode: "dry-run" };
+  if (argv.length === 3 && argv[0] === "--apply" && argv[1] === "--reviewed-by") {
+    const reviewedBy = argv[2];
+    // Same rule applyTaxonomyCatalogImport enforces, checked before connecting.
+    if (reviewedBy.length >= 1 && reviewedBy.length <= 200 && reviewedBy.trim() && !/[\u0000-\u001f\u007f]/.test(reviewedBy)) {
+      return { mode: "apply", reviewedBy };
+    }
+  }
+  throw new Error(usage);
+}
+
+export function resolveTaxonomyApplyPlan(): { places: TaxonomyImport; people: TaxonomyImport; appliesPeople: false } {
+  const inputs = loadReviewedTaxonomyInputs({ fixedDirectory: reviewedTaxonomyInputDirectory, expectedManifestHash: reviewedTaxonomyManifestHash });
+  return { places: inputs.places, people: inputs.people, appliesPeople: false };
+}
+
+export async function assertMigratorPrincipal(environment: Environment): Promise<{ migrator: MusicDatabaseConnection; runtimeLoginRole: string }> {
+  const runtimeLoginRole = environment.MUSIC_RUNTIME_DATABASE_USER;
+  if (!runtimeLoginRole) throw new Error("MUSIC_RUNTIME_DATABASE_USER is required");
+  if (environment.MUSIC_DATABASE_USER === runtimeLoginRole || environment.MUSIC_DATABASE_USER === "music_runtime") {
+    throw new Error("taxonomy apply must run as the database migrator, not the runtime role");
+  }
+  const migrator = await resolveMusicDatabaseConnection(environment, "migrator");
+  return { migrator, runtimeLoginRole };
+}
+
+function summarize(plan: TaxonomyImportPlan) {
+  const operations: Record<string, number> = {};
+  for (const change of plan.changes) {
+    const kind = change.split(":").slice(0, 2).join(":");
+    operations[kind] = (operations[kind] ?? 0) + 1;
+  }
+  return { category: plan.category, inputHash: plan.inputHash, observedCatalogVersion: plan.observedCatalogVersion,
+    catalogVersion: plan.catalogVersion, changed: plan.changed, operations, conflicts: plan.conflicts };
+}
+
+async function run(argv: readonly string[], environment: Environment): Promise<void> {
+  const args = parseTaxonomyApplyArguments(argv);
+  const plan = resolveTaxonomyApplyPlan();
+  const { migrator, runtimeLoginRole } = await assertMigratorPrincipal(environment);
+  const { default: pg } = await import("pg");
+  const pool = new pg.Pool({ connectionString: migrator.connectionString, max: 1 });
+  try {
+    await assertMusicMigratorAuthority(pool, { runtimeLoginRole });
+    if (args.mode === "dry-run") {
+      const result = await dryRunTaxonomyCatalogImport(pool, plan.places);
+      process.stdout.write(`${JSON.stringify({ mode: "dry-run", ...summarize(result) })}\n`);
+      if (result.conflicts.length) process.exitCode = 1;
+      return;
+    }
+    const receipt = await applyTaxonomyCatalogImport(pool, plan.places, args.reviewedBy);
+    process.stdout.write(`${JSON.stringify({ mode: "apply", receiptId: receipt.receiptId, reviewedBy: receipt.reviewedBy, ...summarize(receipt) })}\n`);
+  } finally {
+    await pool.end().catch(() => undefined);
+  }
+}
+
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+  run(process.argv.slice(2), process.env).catch((error: unknown) => {
+    console.error("Reviewed taxonomy apply failed:", error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}
