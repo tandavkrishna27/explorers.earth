@@ -39,7 +39,6 @@ describe("complete C10 REST, GraphQL, and socket security qualification", () => 
       expect.objectContaining({ method: "GET", path: "/api/music/public-profile/:accountDocumentId", decision: "public" }),
       expect.objectContaining({ method: "GET", path: "/api/music/public-resource/v1/:publicSlug", decision: "public" }),
       expect.objectContaining({ method: "GET", path: "/api/playlist/:guestUrl", decision: "guest" }),
-      expect.objectContaining({ method: "POST", path: "/api/explorers/analytics/music/:publicSlug/events", decision: "guest" }),
     ]));
     const descriptor = matrix.routes.find(({ method, path }) => method === "GET" && path === "/api/music/public-profile/:accountDocumentId");
     expect(descriptor?.allowed).toMatchObject({

@@ -31,7 +31,6 @@ export const MUSIC_UAT_DATABASE_TEST_FILES = Object.freeze([
   "server/test/explorers-recovery-callback.integration.test.ts",
   "server/test/explorers-profile.integration.test.ts",
   "server/test/explorers-media.integration.test.ts",
-  "server/test/canonical-music-identity.integration.test.ts",
   "server/test/canonical-music-public-lifecycle.integration.test.ts",
   "server/test/explorers/collectionCoverVisibility.integration.test.ts",
   "server/test/explorers/guideMediaVisibility.integration.test.ts",

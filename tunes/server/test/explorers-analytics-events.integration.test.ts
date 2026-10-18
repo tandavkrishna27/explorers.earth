@@ -140,22 +140,15 @@ it('preserves every currently permitted descriptive metadata field without expos
     const summary = await service.getCreatorAnalytics(f.actor, { from: new Date(Date.now() - 60000).toISOString(), to: new Date(Date.now() + 60000).toISOString() });
     expect(JSON.stringify(summary)).not.toContain('Visible title');
 });
-it('canonical Music bridge preserves public/friendly minimal ingestion, server time and missing-map privacy', async () => {
+it('retired Music analytics: both Music routes answer 410 and a public-music event is refused (P3-5)', async () => {
     const f = await fixture(), app = createCanonicalApp(pool, resolveExplorersAuthConfig({ EXPLORERS_PUBLIC_ORIGIN: 'http://127.0.0.1:51474', EXPLORERS_AUTH_SECRET: 'music-analytics-fixture-'.repeat(3), GOOGLE_CLIENT_ID: 'fixture', GOOGLE_CLIENT_SECRET: 'fixture' })).app;
-    await pool.query("INSERT INTO account_category_settings(account_id,category,is_public,display_order) VALUES($1,'music',true,1)", [f.accountId]);
-    const slug = `music-${randomUUID()}`, legacy = `legacy-${randomUUID()}`, user = (await pool.query(`INSERT INTO users(username,password,email,guest_url,venue_name,strapi_user_document_id,strapi_account_document_id,lifecycle_operation_id,guest_capability_hash,guest_discoverable) VALUES($1,'not-a-login-secret',$2,$3,'Music',$4,$5,$5,$6,true) RETURNING id`, [`music-${randomUUID()}`, `${randomUUID()}@example.invalid`, slug, `provider-${randomUUID()}`, legacy, randomUUID().replaceAll('-', '') + randomUUID().replaceAll('-', '')])).rows[0].id;
+    await pool.query("INSERT INTO account_category_settings(account_id,category,is_public,display_order) VALUES($1,'music',true,1) ON CONFLICT (account_id,category) DO UPDATE SET is_public=true", [f.accountId]);
     const body = { consent: true, eventId: `music-event-${randomUUID()}`, event: { name: 'playlist_opened' } };
-    expect((await request(app).post(`/api/explorers/analytics/music/${slug}/events`).send(body)).status).toBe(404);
-    await pool.query('INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)', [f.accountId, user]);
-    expect((await request(app).post(`/api/explorers/analytics/music/${slug}/events`).send(body)).status).toBe(201);
-    expect((await request(app).post(`/api/explorers/analytics/music/${slug}/events`).send(body)).status).toBe(200);
-    expect((await request(app).post(`/api/explorers/analytics/music-account/${legacy}/events`).send({ ...body, eventId: `friendly-${randomUUID()}` })).status).toBe(201);
+    expect((await request(app).post(`/api/explorers/analytics/music/music-${randomUUID()}/events`).send(body)).status).toBe(410);
+    expect((await request(app).post(`/api/explorers/analytics/music-account/legacy-${randomUUID()}/events`).send(body)).status).toBe(410);
     const generic = { ...f.input, locationId: undefined, eventId: `generic-music-${randomUUID()}`, event: { ...f.input.event, page: 'public-music', canonicalPath: f.input.event.canonicalPath.split('/books')[0] + '/music' } };
-    expect((await request(app).post('/api/explorers/analytics/events').send(generic)).status).toBe(201);
-    const times = (await pool.query('SELECT occurred_at,received_at FROM analytics_events WHERE account_id=$1 AND canonical_path=$2', [f.accountId, '/music/share'])).rows;
-    expect(times).toHaveLength(2);
-    for (const row of times)
-        expect(row.occurred_at).toEqual(row.received_at);
+    expect((await request(app).post('/api/explorers/analytics/events').send(generic)).status).toBe(404);
+    expect((await pool.query("SELECT count(*)::int AS n FROM analytics_events WHERE account_id=$1 AND (page='public-music' OR category='music')", [f.accountId])).rows[0].n).toBe(0);
 });
 it('actual protected runtime records/reads and retains payload only through maintenance authority', async () => {
     const f = await fixture(), login = `analytics_runtime_${randomUUID().replaceAll('-', '').slice(0, 12)}`, password = randomUUID().replaceAll('-', '') + randomUUID().replaceAll('-', '');
@@ -169,14 +162,10 @@ it('actual protected runtime records/reads and retains payload only through main
         const service = new AnalyticsService(runtime);
         await service.recordAnalyticsEvent(f.input, { requestId: 'protected' });
         expect((await service.getCreatorAnalytics(f.actor, { from: new Date(Date.now() - 60000).toISOString(), to: new Date(Date.now() + 60000).toISOString() })).totals.views).toBe(1);
-        await pool.query("INSERT INTO account_category_settings(account_id,category,is_public,display_order) VALUES($1,'music',true,1)", [f.accountId]);
-        const legacy = `protected-${randomUUID()}`, music = (await pool.query(`INSERT INTO users(username,password,email,guest_url,venue_name,strapi_user_document_id,strapi_account_document_id,lifecycle_operation_id,guest_capability_hash) VALUES($1,'not-a-login-secret',$2,$3,'Music',$4,$5,$5,$6) RETURNING id`, [`music-${randomUUID()}`, `${randomUUID()}@example.invalid`, `music-${randomUUID()}`, `provider-${randomUUID()}`, legacy, randomUUID().replaceAll('-', '') + randomUUID().replaceAll('-', '')])).rows[0].id;
-        await pool.query('INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)', [f.accountId, music]);
-        await expect(service.recordAnalyticsEvent({ ...f.input, locationId: undefined, eventId: `music-${randomUUID()}`, event: { type: 'interaction', page: 'public-music', timestamp: '1970-01-01T00:00:00Z', canonicalPath: '/music/share', element: 'playlist-opened', metadata: { action: 'playlist_opened' } } }, { requestId: 'protected-music', music: { mode: 'friendly', legacyAccountId: legacy } })).resolves.toMatchObject({ status: 'accepted' });
         await expect(runtime.query('DELETE FROM analytics_events WHERE account_id=$1', [f.accountId])).rejects.toMatchObject({ code: '42501' });
         await expect(runtime.query('UPDATE analytics_event_receipts SET input_hash=$1 WHERE account_id=$2', [Buffer.alloc(32), f.accountId])).rejects.toMatchObject({ code: '42501' });
         await pool.query("UPDATE analytics_events SET occurred_at=now()-interval '367 days' WHERE account_id=$1", [f.accountId]);
-        expect((await runtime.query('SELECT purge_expired_analytics_events(100) AS removed')).rows[0].removed).toBe(2);
+        expect((await runtime.query('SELECT purge_expired_analytics_events(100) AS removed')).rows[0].removed).toBe(1);
         expect(await service.recordAnalyticsEvent(f.input, { requestId: 'protected-retired' })).toEqual({ status: 'duplicate', retired: true });
     }
     finally {

@@ -394,10 +394,20 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 78
+      "line": 71
     },
     {
       "method": "USE",
+      "path": "/api/auth",
+      "classification": "canonical-explorers-auth",
+      "ownerSource": "better-auth-session-or-provider-flow",
+      "policy": "better-auth-handler+trusted-origin-for-mutations",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 73
+    },
+    {
+      "method": "ALL",
       "path": "/api/auth",
       "classification": "canonical-explorers-auth",
       "ownerSource": "better-auth-session-or-provider-flow",
@@ -408,23 +418,13 @@
     },
     {
       "method": "ALL",
-      "path": "/api/auth",
-      "classification": "canonical-explorers-auth",
-      "ownerSource": "better-auth-session-or-provider-flow",
-      "policy": "better-auth-handler+trusted-origin-for-mutations",
-      "lifecycle": "request",
-      "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 87
-    },
-    {
-      "method": "ALL",
       "path": "/api/auth/*splat",
       "classification": "canonical-explorers-auth",
       "ownerSource": "better-auth-session-or-provider-flow",
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 88
+      "line": 81
     },
     {
       "method": "GET",
@@ -434,7 +434,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 92
+      "line": 85
     },
     {
       "method": "GET",
@@ -444,7 +444,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 94
+      "line": 87
     },
     {
       "method": "POST",
@@ -454,7 +454,7 @@
       "policy": "trusted-origin+signed-short-lived-recovery-intent",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 145
+      "line": 118
     },
     {
       "method": "GET",
@@ -464,7 +464,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 163
+      "line": 136
     },
     {
       "method": "GET",
@@ -558,33 +558,13 @@
     },
     {
       "method": "POST",
-      "path": "/api/explorers/analytics/music-account/:accountDocumentId/events",
-      "classification": "public",
-      "ownerSource": "active-local-binding-from-account-descriptor",
-      "policy": "explicit-public-contract",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 191
-    },
-    {
-      "method": "POST",
-      "path": "/api/explorers/analytics/music/:publicSlug/events",
-      "classification": "guest-capability",
-      "ownerSource": "hashed-guest-capability-or-explicit-publication",
-      "policy": "hashed-capability+guest-allowlist",
-      "lifecycle": "request",
-      "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 228
-    },
-    {
-      "method": "POST",
       "path": "/api/explorers/analytics/events",
       "classification": "public",
       "ownerSource": "consent+live-canonical-public-target",
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 280
+      "line": 143
     },
     {
       "method": "GET",
@@ -594,7 +574,7 @@
       "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 328
+      "line": 191
     },
     {
       "method": "PUT",
@@ -704,7 +684,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts",
-      "line": 29
+      "line": 23
     },
     {
       "method": "GET",
@@ -1974,7 +1954,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/musicOpenApiRoutes.ts",
-      "line": 810
+      "line": 736
     },
     {
       "method": "GET",

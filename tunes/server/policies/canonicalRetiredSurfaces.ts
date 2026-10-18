@@ -19,9 +19,23 @@ const RETIRED_LEGACY_IDENTITY_BRIDGES: readonly RetiredMusicRouteRule[] = [
   { family: "legacy-browser-identity", path: "/api/auth/onboarding-status", match: "exact", classification: "tombstone" },
 ] as const;
 
+/**
+ * P3-5 removed the canonical app's own Music routes. Old clients get a deliberate 410
+ * rather than the JSON 404. Canonical-only: the legacy composition still mounts the
+ * analytics pair until P3-7 deletes it, so these are not added to the shared policy.
+ * Both analytics prefixes are listed because prefix matching is segment-wise, so
+ * `/api/explorers/analytics/music` does not cover `.../music-account/...`.
+ */
+const RETIRED_CANONICAL_MUSIC_ROUTES: readonly RetiredMusicRouteRule[] = [
+  { family: "music-identity", path: "/api/explorers/v1/music/identity/ensure", match: "exact", classification: "tombstone" },
+  { family: "analytics", path: "/api/explorers/analytics/music-account", match: "prefix", classification: "tombstone" },
+  { family: "analytics", path: "/api/explorers/analytics/music", match: "prefix", classification: "tombstone" },
+] as const;
+
 export const CANONICAL_RETIRED_ROUTE_RULES: readonly RetiredMusicRouteRule[] = [
   ...RETIRED_MUSIC_ROUTE_RULES.filter((rule) => !(rule.path === "/api/auth" && rule.match === "prefix")),
   ...RETIRED_LEGACY_IDENTITY_BRIDGES,
+  ...RETIRED_CANONICAL_MUSIC_ROUTES,
 ] as const;
 
 /** Verbatim copy of matchRetiredMusicSurface (musicRetirementPolicy.ts:74-77). */

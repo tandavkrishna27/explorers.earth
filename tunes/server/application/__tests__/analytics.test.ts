@@ -8,10 +8,6 @@ describe('canonical analytics contract', () => {
         expect(analyticsInputHash(input)).not.toEqual(analyticsInputHash({ ...input, event: { ...input.event, timestamp: '2026-10-03T12:00:01.000Z' } }));
         expect(analyticsInputHash(input)).not.toEqual(analyticsInputHash({ ...input, event: { ...input.event, type: 'click' } }));
     });
-    it('Music server time never changes minimal semantic identity', () => {
-        expect(analyticsInputHash(input, 'music')).toEqual(analyticsInputHash({ ...input, event: { ...input.event, timestamp: '1970-01-01T00:00:00.000Z' } }, 'music'));
-        expect(analyticsInputHash(input, 'music')).not.toEqual(analyticsInputHash(input));
-    });
     it('accepts366 absolute days and rejects oversized/reversed/timezoneless/foreign authority queries', () => {
         expect(analyticsQuerySchema.safeParse({ from: '2025-01-01T00:00:00Z', to: '2026-01-02T00:00:00Z' }).success).toBe(true);
         for (const q of [{ from: '2025-01-01T00:00:00Z', to: '2026-01-02T00:00:01Z' }, { from: '2026-01-01T00:00:00Z', to: '2026-01-01T00:00:00Z' }, { from: '2026-01-01', to: '2026-01-02' }, { from: '2026-01-01T00:00:00Z', to: '2026-01-02T00:00:00Z', accountId: input.accountId }])

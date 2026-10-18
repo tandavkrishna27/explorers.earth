@@ -19,7 +19,6 @@ export type MusicQualificationLaneName = "fast" | "pr" | "nightly" | "release";
 // aggregation and the lanes contract disagree.
 export const MUSIC_INTEGRATION_FILES = [
   "server/test/account-recovery.test.ts",
-  "server/test/canonical-music-identity.integration.test.ts",
   "server/test/canonical-music-public-lifecycle.integration.test.ts",
   "server/test/explorers-lifecycle.integration.test.ts",
   "server/test/explorers-media.integration.test.ts",

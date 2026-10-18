@@ -10,6 +10,16 @@ const columns: Record<string, string> = {
 };
 const jsonFields = new Set(["bioRich", "primaryAddress", "additionalAddresses", "publicAddress", "profilePlaceDetails"]);
 
+const categoriesWithoutMusic = categoryKeys.filter((category) => category !== "music");
+
+/** The full category set, or the set left once the music category is retired. */
+export function isAcceptedCategorySet(supplied: readonly string[]): boolean {
+  const unique = new Set(supplied);
+  if (unique.size !== supplied.length) return false;
+  return [categoryKeys, categoriesWithoutMusic].some((accepted) =>
+    accepted.length === supplied.length && accepted.every((category) => unique.has(category)));
+}
+
 export class AccountConflict extends Error {
   constructor(readonly kind: "revision" | "handle") { super(kind); }
 }
@@ -64,11 +74,19 @@ export class ExplorersAccountRepository {
         await client.query(`UPDATE creator_accounts SET ${clauses.join(",")},updated_at=now() WHERE id=$1`, [accountId, ...values]);
       }
       if (input.categories) {
-        if (input.categories.length !== categoryKeys.length || new Set(input.categories.map((item) => item.category)).size !== categoryKeys.length
-          || !categoryKeys.every((category) => input.categories?.some((item) => item.category === category))) throw new Error("Invalid category set");
-        for (const item of input.categories) await client.query(`UPDATE account_category_settings
+        if (!isAcceptedCategorySet(input.categories.map((item) => item.category))) throw new Error("Invalid category set");
+        // The music category is being retired (P3). A client may echo the nine rows it
+        // read before the retirement migration or the eight it reads after it, so both
+        // sets are accepted and music is never written. A music row that still exists is
+        // parked after every supplied row, unpinned, so the deferred unique constraints on
+        // display and pinned order cannot collide with the supplied ordering.
+        const written = input.categories.filter((item) => item.category !== "music");
+        for (const item of written) await client.query(`UPDATE account_category_settings
           SET is_public=$3,display_order=$4,pinned_order=$5 WHERE account_id=$1 AND category=$2`,
           [accountId, item.category, item.isPublic, item.displayOrder, item.pinnedOrder]);
+        await client.query(`UPDATE account_category_settings SET display_order=$2,pinned_order=NULL
+          WHERE account_id=$1 AND category='music'`,
+          [accountId, Math.max(-1, ...written.map((item) => item.displayOrder)) + 1]);
       }
       const p: Array<[string, unknown]> = [];
       if (input.themeSettings !== undefined) p.push(["theme_settings", input.themeSettings]);

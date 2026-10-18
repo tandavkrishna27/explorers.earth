@@ -45,20 +45,21 @@ describe("owned image CI PostgreSQL wiring", () => {
       run: "node node_modules/tsx/dist/cli.mjs scripts/music-image-ci-tests.ts --cleanup" });
   });
 
-  it("preserves all forty-nine ordinary database selectors on their existing service", () => {
+  it("preserves all forty-eight ordinary database selectors on their existing service", () => {
     const ordinary = load(read(".github/workflows/test.yml"));
     const job = Object.values(ordinary.jobs).find((job: any) => job.env?.DATABASE_URL_TEST) as any;
     expect(job.env.DATABASE_URL_TEST).toBe("postgresql://music_migrator:music@127.0.0.1:55432/music_fixture");
     const run = job.steps.find((step: any) => step.run?.includes("npm run test:integration")).run;
     const selectors = run.match(/server\/test\/\S+\.integration\.test\.ts/g) ?? [];
     /*
-     * The first sixteen are checked as an exact ordered prefix, because each carries a
+     * The first fifteen (sixteen until P3-5 removed the canonical Music identity
+     * acceptance) are checked as an exact ordered prefix, because each carries a
      * per-ticket reason below and that reason is the thing worth preserving. The
      * thirty-one added afterwards are checked as a set in the next assertion: they were
      * gated as one measured batch with one shared reason, so ordering them here would be
      * bookkeeping that goes stale without catching anything.
      */
-    expect(selectors.slice(0, 16)).toEqual([
+    expect(selectors.slice(0, 15)).toEqual([
       "server/test/migrations/music-migration.integration.test.ts", "server/test/music-identity-projection.integration.test.ts",
       "server/test/music-credential.integration.test.ts", "server/test/music-domain-repository.integration.test.ts",
       "server/test/musicLifecycle.integration.test.ts", "server/test/musicReconciler.integration.test.ts",
@@ -82,8 +83,8 @@ describe("owned image CI PostgreSQL wiring", () => {
        * fixed here - adding a selector for this directory is a CI-surface change of its
        * own.
        */
-      // Ticket 6.1. The named canonical identity acceptance.
-      "server/test/canonical-music-identity.integration.test.ts",
+      // Ticket 6.1's canonical identity acceptance was removed with the canonical Music
+      // identity route in P3-5.
       // Ticket 6.4. Deletion, recovery-callback and authorization against the real schema.
       "server/test/explorers-lifecycle.integration.test.ts",
       "server/test/explorers-recovery-callback.integration.test.ts",
@@ -109,7 +110,7 @@ describe("owned image CI PostgreSQL wiring", () => {
      * combination, because cross-suite pollution is the real risk here and one file
      * demonstrated it.
      */
-    expect([...selectors.slice(16)].sort()).toEqual([
+    expect([...selectors.slice(15)].sort()).toEqual([
       "server/test/book-catalog.integration.test.ts",
       "server/test/book-cover-import.integration.test.ts",
       "server/test/books-public-gateway.integration.test.ts",
@@ -150,8 +151,8 @@ describe("owned image CI PostgreSQL wiring", () => {
        */
       "server/test/user-leak.integration.test.ts",
     ]);
-    expect(selectors).toHaveLength(49);
-    expect(new Set(selectors).size).toBe(49);
+    expect(selectors).toHaveLength(48);
+    expect(new Set(selectors).size).toBe(48);
   });
 
   /*

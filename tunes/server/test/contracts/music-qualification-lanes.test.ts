@@ -52,13 +52,12 @@ import {
 
 const repositoryRoot = resolve(import.meta.dirname, "../../../..");
 
-// Independent mirror of MUSIC_INTEGRATION_FILES. The six canonical-music/explorers
+// Independent mirror of MUSIC_INTEGRATION_FILES. The five canonical-music/explorers
 // members are the ones uat-postgres-integration contributes through
 // MUSIC_UAT_DATABASE_TEST_FILES; the exact-manifest assertion below is what catches a
 // UAT suite landing in the lane without being declared in the integration manifest.
 const EXPECTED_INTEGRATION_FILES = [
   "server/test/account-recovery.test.ts",
-  "server/test/canonical-music-identity.integration.test.ts",
   "server/test/canonical-music-public-lifecycle.integration.test.ts",
   "server/test/explorers-lifecycle.integration.test.ts",
   "server/test/explorers-media.integration.test.ts",

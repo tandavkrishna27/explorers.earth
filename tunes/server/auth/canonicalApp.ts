@@ -23,11 +23,6 @@ import { requireActor, sendActorError } from "../middleware/explorersPrincipal";
 import { AuthorizationError } from "../application/authorization";
 import { ProfileService } from "../application/profiles";
 import { setupExplorersAccountRoutes } from "../routes/explorersAccountRoutes";
-import { setupExplorersMusicIdentityRoutes } from "../routes/explorersMusicIdentityRoutes";
-import { createAccountMusicRepository } from "../music/accountMusicRepository";
-import { MusicIdentityRepository } from "../repositories/musicIdentityRepository";
-import { MusicTokenService, type MusicTokenConfiguration } from "../services/musicTokenService";
-import { resolveCanonicalMusicTokenConfiguration } from "../config/music-identity-config";
 import { setupExplorersPublicProfileRoutes } from "../routes/explorersPublicProfileRoutes";
 import { PublicProfileService } from "../publicProfile/publicProfileService";
 import { PostgresPublicProfileGateway } from "../publicProfile/postgresPublicProfileGateway";
@@ -53,9 +48,7 @@ function errorResponse(res: Response, status: number, code: ApiError["error"]["c
 }
 
 function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
-  options: { mediaStorage?: ObjectStorage; bookCatalog?:BookCatalog; bookCoverFetcher?:BookCoverFetcher;movieCatalog?:MovieCatalog;movieImageFetcher?:MovieImageFetcher;appEnrichmentChoices?:readonly AppSourceChoice[];
-    /** ADR-008. Present whenever this app is the Music credential issuer. */
-    musicToken?: MusicTokenConfiguration } = {}, custodyMode=false,appsInput?:Omit<AppsCanonicalAdmissionOptions,'pool'>,
+  options: { mediaStorage?: ObjectStorage; bookCatalog?:BookCatalog; bookCoverFetcher?:BookCoverFetcher;movieCatalog?:MovieCatalog;movieImageFetcher?:MovieImageFetcher;appEnrichmentChoices?:readonly AppSourceChoice[] } = {}, custodyMode=false,appsInput?:Omit<AppsCanonicalAdmissionOptions,'pool'>,
   /** Fixture-only place-pins injection. Production composition never passes this, so
    * the policy stays unconfigured and the pin feature stays correctly unavailable. */
   placePinsFixtureSetup?:{policy:unknown;storage:true}) {
@@ -107,26 +100,6 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
     response.status(200).json({ ready: true });
   });
   setupExplorersAccountRoutes(app, pool, auth, config);
-  // ADR-006 and ADR-008: canonical Music owner provisioning and credential issue.
-  // The issuer is resolved on first use, not at boot. Optional Music configuration
-  // must not stop accounts, profiles or recommendations from mounting, so a missing
-  // or invalid Music authority fails this one route closed with a 503 instead of
-  // taking down the application or silently serving a 404.
-  const musicSubjects = new MusicIdentityRepository(pool);
-  let musicTokens: MusicTokenService | undefined;
-  setupExplorersMusicIdentityRoutes(app, {
-    pool,
-    auth,
-    config,
-    accounts: createAccountMusicRepository(pool),
-    resolveCanonicalSubject: (accountId) => musicSubjects.resolveCanonicalCredentialSubject(accountId),
-    mintCanonical: async (input) => {
-      musicTokens ??= new MusicTokenService(
-        options.musicToken ?? await resolveCanonicalMusicTokenConfiguration(process.env),
-      );
-      return musicTokens.mintCanonical(input);
-    },
-  });
   setupCanonicalAnalyticsRoutes(app,pool,auth);
   const books=options.bookCatalog??new BookCatalog({apiKey:process.env.GOOGLE_BOOKS_API_KEY,secret:config.secret});
   const movies=options.movieCatalog??new MovieCatalog({accessToken:process.env.TMDB_ACCESS_TOKEN,apiKey:process.env.TMDB_API_KEY,authorize:a=>authorizeOperation(pool,a,'entities:resolve',a.accountId)});

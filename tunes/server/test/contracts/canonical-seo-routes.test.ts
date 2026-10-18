@@ -72,6 +72,12 @@ describe("canonical SEO routes", () => {
     ]) expect(PUBLIC_PROFILE_SITEMAP_SQL).toContain(predicate);
   });
 
+  it("does not advertise Music pages, which the SPA no longer has (P3-5; removed again in P3-6)", () => {
+    // Break caught: every account was seeded with a music category row, so until the
+    // retirement migration deletes them the sitemap would emit /<handle>/music.
+    expect(PUBLIC_PROFILE_SITEMAP_SQL).toContain("FILTER (WHERE s.is_public AND s.category <> 'music')");
+  });
+
   it("never reads a column account_category_settings does not have", () => {
     // Break caught: `s.updated_at` is written from habit. That table has only
     // account_id, category, is_public, display_order, pinned_order
