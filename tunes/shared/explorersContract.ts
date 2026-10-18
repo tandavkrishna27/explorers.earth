@@ -9,9 +9,16 @@ import {productDisplayFieldsSchema,productOfferSchema,resolveManualProductSchema
 import {personDisplayFieldsSchema,resolveManualPersonSchema} from './explorersPersonContract';
 import {placeDisplayFieldsSchema,placeRecommendationContextSchema,placePhotosSchema,placeCollectionDetailsSchema,resolveManualPlaceSchema} from './explorersPlaceContract';
 
+// The music category was retired in P3-6 (migration 0057).
 export const categoryKeys = [
-  "places", "guides", "music", "movies", "books", "games", "apps", "products", "people",
+  "places", "guides", "movies", "books", "games", "apps", "products", "people",
 ] as const;
+/**
+ * Accepted on the account write path only, and dropped there: a tab holding an account
+ * snapshot read before 0057 still echoes its music row. Rejecting it would fail that
+ * owner's save; the repository strips it instead.
+ */
+const retiredCategoryKeySchema = z.enum([...categoryKeys, "music"]);
 export const categoryKeySchema = z.enum(categoryKeys);
 export type CategoryKey = z.infer<typeof categoryKeySchema>;
 
@@ -170,11 +177,16 @@ const themeSettingsSchema = z.object({
   wallpaperUrl: z.string().regex(/^\/api\/explorers\/v1\/media\/[0-9a-f-]{36}\/content$/i).optional(),
   accentColor: z.string().regex(/^#[0-9a-f]{3,8}$/i).optional(),
   customTextColor: z.string().regex(/^#[0-9a-f]{3,8}$/i).optional(),
-  landingTab: z.enum(["all-recommendations", "places", "movies", "books", "games", "guides", "apps", "products", "people", "gallery", "business", "music"]).optional(),
+  // .catch(undefined) degrades an unknown stored value (a "music" first view the 0057
+  // migration missed) to the default instead of failing the owner read. This schema is
+  // shared with writes, so an invalid landingTab on a write is silently dropped too;
+  // that is acceptable for a presentation preference. Order matters: under zod/v3
+  // .catch(undefined).optional() does not type-check.
+  landingTab: z.enum(["all-recommendations", "places", "movies", "books", "games", "guides", "apps", "products", "people", "gallery", "business"]).optional().catch(undefined),
   visibleTabs: z.object({ recommendations: z.boolean().optional(), gallery: z.boolean().optional(), business: z.boolean().optional() }).strict().optional(),
   footerBranding: z.enum(["enabled", "minimal", "disabled"]).optional(),
   recommendations: z.object({ layout: z.enum(["shelves", "grid", "featured"]).optional(),
-    categoryOrder: z.array(categoryKeySchema).max(9).optional() }).strict().optional(),
+    categoryOrder: z.array(categoryKeySchema).max(8).optional() }).strict().optional(),
 }).strict();
 const socialLinkSchema = z.object({ platform: z.enum(["instagram", "youtube", "whatsapp", "website", "facebook",
   "linkedin", "snapchat", "tiktok", "email", "gmail", "X", "spotify", "youtubeMusic", "appleMusic", "localTunes"]),
@@ -243,7 +255,7 @@ export const updateAccountInputSchema = z.object({
   additionalAddresses: z.array(addressSchema).max(20).optional(),
   publicAddress: publicAddressSchema.nullable().optional(),
   profilePlaceDetails: placeDetailsSchema.nullable().optional(),
-  categories: z.array(z.object({ category: categoryKeySchema, isPublic: z.boolean(), displayOrder: z.number().int().nonnegative(), pinnedOrder: z.number().int().nonnegative().nullable() }).strict()).optional(),
+  categories: z.array(z.object({ category: retiredCategoryKeySchema, isPublic: z.boolean(), displayOrder: z.number().int().nonnegative(), pinnedOrder: z.number().int().nonnegative().nullable() }).strict()).optional(),
   themeSettings: themeSettingsSchema.optional(),
   socialLinks: z.array(socialLinkSchema).max(20).optional(),
   businessDetails: businessDetailsSchema.optional(),

@@ -4,19 +4,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PublicNav from '../PublicNav';
 
 const usePublicRecommendationCategory = vi.hoisted(() => vi.fn(() => ({ data: undefined, loading: false, error: null, refetch: vi.fn() })));
-const musicAvailability = vi.hoisted(() => ({ state: 'available', account: null as Record<string, unknown> | null }));
+const publicIdentity = vi.hoisted(() => ({ state: 'available', account: null as Record<string, unknown> | null }));
 const availableAccount = {
   documentId: 'account-1', username: 'alice', public_profile: 'Yes', public_books: 'Yes',
-  public_recommendations: 'No', public_guides: 'No', public_music: 'Yes', public_movie: 'No',
+  public_recommendations: 'No', public_guides: 'No', public_movie: 'No',
   public_games: 'No', public_apps: 'No', public_products: 'No', public_people: 'No',
-  pinned_nav_tabs: ['public_profile', 'public_music', 'public_books'], auto_pinning: false,
+  pinned_nav_tabs: ['public_profile', 'public_books'], auto_pinning: false,
 };
 vi.mock('../../features/PublicHome/api/usePublicRecommendationCategory', () => ({ usePublicRecommendationCategory }));
 
-vi.mock('../../features/music/PublicMusicAvailabilityProvider', () => ({
-  usePublicMusicAvailability: () => ({
-    state: musicAvailability.state,
-    account: musicAvailability.account,
+// The nav reads the account from the public identity provider.
+vi.mock('../../features/PublicHome/api/PublicAccountIdentityProvider', () => ({
+  usePublicAccountIdentity: () => ({
+    usernameKey: 'alice',
+    status: publicIdentity.state === 'loading' && !publicIdentity.account ? 'loading' : 'ready',
+    ...(publicIdentity.account ? { account: publicIdentity.account } : {}),
   }),
 }));
 
@@ -54,8 +56,8 @@ describe('PublicNav immediate semantic activation', () => {
   const frameCallbacks: FrameRequestCallback[] = [];
 
   beforeEach(() => {
-    musicAvailability.state = 'available';
-    musicAvailability.account = availableAccount;
+    publicIdentity.state = 'available';
+    publicIdentity.account = availableAccount;
     window.history.replaceState(null, '', '/alice/books');
     frameCallbacks.length = 0;
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
@@ -125,22 +127,8 @@ describe('PublicNav immediate semantic activation', () => {
     expect(prevented.pushes).toHaveLength(0);
   });
 
-  it.each(['loading', 'unavailable'])("keeps a manually pinned Music tab during a transient %s check", state => {
-    musicAvailability.state = state;
-    renderHeldRouter('/alice/books');
-
-    expect(screen.getByRole('link', { name: 'Music', exact: true })).toBeInTheDocument();
-  });
-
-  it('removes Music when the publication is conclusively not public', () => {
-    musicAvailability.state = 'not-public';
-    renderHeldRouter('/alice/books');
-
-    expect(screen.queryByRole('link', { name: 'Music', exact: true })).not.toBeInTheDocument();
-  });
-
   it('auto-pins from authoritative totals instead of tying categories whose first pages are full', () => {
-    musicAvailability.account = {
+    publicIdentity.account = {
       ...availableAccount,
       auto_pinning: true,
       public_recommendations: 'Yes', public_movie: 'Yes', public_books: 'Yes', public_apps: 'Yes',
@@ -163,13 +151,14 @@ describe('PublicNav immediate semantic activation', () => {
     renderHeldRouter('/alice');
 
     expect(screen.getAllByRole('link').map(link => link.textContent)).toEqual([
-      'Profile', 'Music', 'Movies', 'Books', 'Apps',
+      // Places (12 lists) takes the fifth slot.
+      'Profile', 'Movies', 'Books', 'Apps', 'Places',
     ]);
   });
 
   it('uses the same 48px nav band while the provider has no retained account', () => {
-    musicAvailability.state = 'loading';
-    musicAvailability.account = null;
+    publicIdentity.state = 'loading';
+    publicIdentity.account = null;
     renderHeldRouter('/alice/guides');
 
     const nav = screen.getByRole('navigation', { name: 'Public navigation' });

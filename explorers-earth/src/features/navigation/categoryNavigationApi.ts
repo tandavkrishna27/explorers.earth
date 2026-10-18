@@ -2,7 +2,7 @@ import { readCanonicalNavigationContent } from './canonicalNavigationContent';
 import { gql, type ApolloClient } from '@apollo/client';
 import { explorersApiClient } from '../../lib/explorersApiClient';
 import { toNavigationSnapshot, toNavigationAccountUpdate } from './canonicalNavigationMapping';
-import { selectExplorerAccountState, type ExplorerAccountCandidate } from '../music/musicIdentityCoordinator';
+import { selectExplorerAccountState, type ExplorerAccountCandidate } from '../../lib/explorerAccountSelection';
 import { NavigationError } from './accountNavigationWriter';
 import { type Scope, type CategoryId, type Eligibility, type IntentAuthority, type NavigationPatch, type NavigationSnapshot } from './categoryNavigationPolicy';
 
@@ -46,7 +46,7 @@ export function createCategoryNavigationApi(dependencies: {
  /** Temporary callsite compatibility only; never queried or mutated. */
  client?: ApolloClient<object>;
  isCurrent:(origin:IntentAuthority)=>boolean;
- eligibility?: (category:Exclude<CategoryId,'public_music'>,origin:IntentAuthority)=>Promise<Eligibility>;
+ eligibility?: (category:CategoryId,origin:IntentAuthority)=>Promise<Eligibility>;
 }) {
  const profile=dependencies.profile??explorersApiClient;
  const assertCurrent=(origin:IntentAuthority)=>{if(!dependencies.isCurrent(origin))throw new NavigationError('blocked','Account changed. Reopen this control and try again.');};
@@ -77,7 +77,7 @@ export function createCategoryNavigationApi(dependencies: {
   if(!patchMatches(verified,patch))throw new NavigationError('conflict','Navigation changed elsewhere. Refresh before trying again.',verified);
   return verified;
  }
- async function eligibility(category:Exclude<CategoryId,'public_music'>,origin:IntentAuthority):Promise<Eligibility> {
+ async function eligibility(category:CategoryId,origin:IntentAuthority):Promise<Eligibility> {
   assertCurrent(origin);
   if(!dependencies.eligibility){const content=await readCanonicalNavigationContent(origin,()=>dependencies.isCurrent(origin));assertCurrent(origin);return content.eligibility[category]??'unknown';}
   try {const result=await dependencies.eligibility(category,origin);assertCurrent(origin);return result;}catch{assertCurrent(origin);return 'unknown';}

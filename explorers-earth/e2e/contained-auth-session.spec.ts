@@ -20,13 +20,11 @@ test('owner session and canonical account agree with included cookies and no leg
     expect(result.session).toEqual({ user: { id: fixtureUser.id, email: fixtureUser.email }, session: { id: 'contained-browser-session-id' } });
     expect(result.meStatus).toBe(200);
     expect(result.me).toEqual({ account: canonicalCategoryAccount(state) });
-    expect(result.me.account.categories).toHaveLength(9);
+    expect(result.me.account.categories).toHaveLength(8);
     expect(result.me.account.categories.map((category: { category: string }) => category.category))
-      .toEqual(['places', 'movies', 'books', 'games', 'apps', 'products', 'people', 'guides', 'music']);
+      .toEqual(['places', 'movies', 'books', 'games', 'apps', 'products', 'people', 'guides']);
     expect(result.me.account.categories.find((category: { category: string }) => category.category === 'books'))
       .toEqual({ category: 'books', isPublic: true, displayOrder: 2, pinnedOrder: 1 });
-    expect(result.me.account.categories.find((category: { category: string }) => category.category === 'music'))
-      .toEqual({ category: 'music', isPublic: false, displayOrder: 8, pinnedOrder: null });
     expect(result.session.user.id).not.toBe(result.me.account.id);
     expect(result.lifecycleStatus).toBe(200);
     expect(result.lifecycle).toEqual({ lifecycle: { accountId: result.me.account.id,

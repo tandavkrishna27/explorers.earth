@@ -28,7 +28,6 @@ describe("getPublicHeaderFallback", () => {
     ["sector", "/Requested-Name/PEOPLE/SECTOR/Film%20Makers/", "/alice/people/sector/Film%20Makers", "Alice's People", "people-header"],
     ["guide detail", "/Requested-Name/GUIDES/Hidden%2FValley/", "/alice/guides/Hidden%2FValley", "Alice's Guides", "guides-header"],
     ["map", "/Requested-Name/PLACES/Some%20Place/MAP/", "/alice/places/Some%20Place/map", "Alice's Places", "places-header"],
-    ["music", "/Requested-Name/MUSIC/", "/alice/music", "Alice's Music", "music-header"],
   ])("canonicalizes the %s route while preserving encoded dynamic slugs", (_name, pathname, expectedPath, title, analyticsContext) => {
     const descriptor = getPublicHeaderFallback({
       origin: "https://explorers.earth/ignored/path",

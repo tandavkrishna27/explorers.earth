@@ -9,7 +9,8 @@ describe('ProtectedRoutes Topology Definition', () => {
     expect(fileContent).toContain('path="recommendations" element={<RecommendationsHub />}');
     expect(fileContent).toContain('path="recommendations/places" element={<Favorites />}');
     expect(fileContent).toContain('path="recommendations/guides" element={<GuidesPage />}');
-    expect(fileContent).toContain('path="recommendations/music" element={<Music />}');
+    // The Music page was removed in P3-4; its old route lands on the hub.
+    expect(fileContent).toContain('path="recommendations/music" element={<Navigate to="/recommendations" replace />}');
     expect(fileContent).toContain('path="guides" element={<Navigate to="/recommendations/guides" replace />}');
   });
 });

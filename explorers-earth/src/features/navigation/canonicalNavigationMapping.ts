@@ -1,13 +1,17 @@
 import { accountDtoSchema, type AccountDto, type UpdateAccountInput, type RevisionInput, type CategoryKey } from '../../../../tunes/shared/explorersContract';
 import { NavigationError } from './accountNavigationWriter';
 import { CATEGORY_IDS, type CategoryId, type NavigationSnapshot, type NavigationPatch, type Scope } from './categoryNavigationPolicy';
-const keys: Record<CategoryId, CategoryKey> = {public_recommendations:'places',public_music:'music',public_guides:'guides',public_movie:'movies',public_books:'books',public_games:'games',public_apps:'apps',public_products:'products',public_people:'people'};
+const keys: Record<CategoryId, CategoryKey> = {public_recommendations:'places',public_guides:'guides',public_movie:'movies',public_books:'books',public_games:'games',public_apps:'apps',public_products:'products',public_people:'people'};
 const invalid = ():never => { throw new NavigationError('uncertain','Category settings are incomplete. Refresh to try again.'); };
 export function toNavigationSnapshot(input: AccountDto, scope: Scope):NavigationSnapshot {
  const parsed=accountDtoSchema.safeParse(input); if(!parsed.success) return invalid(); const account=parsed.data;
  if(!scope.userDocumentId||account.id!==scope.accountDocumentId||account.status!=='active') throw new NavigationError('blocked','Verified account required.');
  const rows=account.categories;
- if(rows.length!==9||new Set(rows.map(row=>row.category)).size!==9||new Set(rows.map(row=>row.displayOrder)).size!==9) return invalid();
+ // The category set comes from the server. Rows must be unique by category and display
+ // order, and every category must be one this SPA knows. P3-4 made this tolerant of the
+ // eight-category account; P3-6 (migration 0057) retired the music category.
+ const known=new Set<CategoryKey>(Object.values(keys));
+ if(rows.some(row=>!known.has(row.category))||new Set(rows.map(row=>row.category)).size!==rows.length||new Set(rows.map(row=>row.displayOrder)).size!==rows.length) return invalid();
  const pins=rows.filter(row=>row.pinnedOrder!==null);if(new Set(pins.map(row=>row.pinnedOrder)).size!==pins.length) return invalid();
  const visibility={} as NavigationSnapshot['visibility']; for(const id of CATEGORY_IDS){const row=rows.find(row=>row.category===keys[id]);if(!row)return invalid();visibility[id]=row.isPublic?'Yes':'No';}
  const savedPins=['public_profile',...pins.sort((a,b)=>a.pinnedOrder!-b.pinnedOrder!).map(row=>CATEGORY_IDS.find(id=>keys[id]===row.category)!)];

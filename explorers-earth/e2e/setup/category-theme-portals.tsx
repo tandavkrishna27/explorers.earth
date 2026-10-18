@@ -16,7 +16,7 @@ import { DEFAULT_THEME_SETTINGS, getThemeTokenStyles } from '../../src/features/
 import { getPublicCategoryThemeStyles, PublicCategoryThemeProvider } from '../../src/features/PublicHome/components/PublicCategoryThemeContext';
 import type { ThemePresetId } from '../../src/features/Profile/types/themeTypes';
 import PublicNav from '../../src/components/PublicNav';
-import { PublicMusicAvailabilityProvider } from '../../src/features/music/PublicMusicAvailabilityProvider';
+import { PublicAccountIdentityProvider } from '../../src/features/PublicHome/api/PublicAccountIdentityProvider';
 import '../../src/features/PublicHome/components/PublicBranding.css';
 
 // Direct component coverage for existing dialogs whose PublicHome opening state is unreachable.
@@ -57,7 +57,7 @@ function Harness() {
 function NavHarness() {
   return <MemoryRouter initialEntries={['/fixture-owner/guides']}>
     <Routes>
-      <Route path="/:username/*" element={<PublicMusicAvailabilityProvider><PublicNav /></PublicMusicAvailabilityProvider>} />
+      <Route path="/:username/*" element={<PublicAccountIdentityProvider><PublicNav /></PublicAccountIdentityProvider>} />
     </Routes>
   </MemoryRouter>;
 }

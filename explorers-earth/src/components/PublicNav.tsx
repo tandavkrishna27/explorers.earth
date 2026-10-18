@@ -3,11 +3,10 @@ import NavButton from "./ui/NavButton";
 import DirectionBoard from "../assets/icons/DirectionBoard";
 import Profile from "../assets/icons/Profile";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
-import { Film, BookOpen, Gamepad2, Smartphone, ShoppingBag, Users, Music2 } from "lucide-react";
+import { Film, BookOpen, Gamepad2, Smartphone, ShoppingBag, Users } from "lucide-react";
 import { useLocation, useParams } from "react-router-dom";
 import { computePinnedNavTabIds } from "../utils/navPinning";
-import { usePublicMusicAvailability } from "../features/music/PublicMusicAvailabilityProvider";
-import { appendAttributionParamsToPath } from "../utils/urlHelpers";
+import { usePublicAccountIdentity } from "../features/PublicHome/api/PublicAccountIdentityProvider";
 import { usePublicRecommendationCategory } from "../features/PublicHome/api/usePublicRecommendationCategory";
 
 function navigationCount(account: Record<string, unknown> | null | undefined, tabId: string, fallback: number): number {
@@ -21,9 +20,9 @@ const PublicNav = memo(() => {
   const location = useLocation();
   const { username } = useParams();
 
-  const availability = usePublicMusicAvailability();
-  const accountData = availability.account;
-  const loading = availability.state === "loading" && !accountData;
+  const identity = usePublicAccountIdentity();
+  const accountData = identity.account;
+  const loading = identity.status === "loading" && !accountData;
 
   // Category projections are the only anonymous source of published list data.
   // Their bounded result sizes are sufficient for auto-pin ranking while avoiding
@@ -67,10 +66,6 @@ const PublicNav = memo(() => {
   const showAppsTab = accountData?.public_apps === "Yes";
   const showProductsTab = accountData?.public_products === "Yes";
   const showPeopleTab = accountData?.public_people === "Yes";
-  // A transient Music probe must not reshuffle an owner's saved navigation.
-  // The persisted public preference is the visibility authority; only a
-  // conclusive publication revocation hides an already-public Music tab.
-  const showMusicTab = accountData?.public_music === "Yes" && availability.state !== "not-public";
 
   // Helper function to check if current path is for movies
   const isMoviesPath = (currentPath: string) => {
@@ -208,12 +203,6 @@ const PublicNav = memo(() => {
       text: "Guides",
       path: `/${username}/guides`,
     }] : []),
-    ...(showMusicTab ? [{
-      id: "public_music",
-      icon: <Music2 size={18} color={activePathname.endsWith("/music") ? "white" : "rgba(255,255,255,0.5)"} />,
-      text: "Music",
-      path: appendAttributionParamsToPath(`/${username}/music`, location.search),
-    }] : []),
     // Only add profile tab if visibility is enabled
     ...(showProfileTab ? [{
       id: 'public_profile',
@@ -282,7 +271,7 @@ const PublicNav = memo(() => {
   // ─── Footer Nav Logic ──────────────────────────────────────────────────
   // Single source of truth for pinned/shown tabs (auto-rank vs manual, max 5).
   // See src/utils/navPinning.ts — shared with the Recommendations Hub.
-  const finalNavItems = computePinnedNavTabIds(accountData, categoryListCountMap, { musicAvailable: showMusicTab })
+  const finalNavItems = computePinnedNavTabIds(accountData, categoryListCountMap)
     .map(id => navItems.find(item => item.id === id))
     .filter(Boolean) as typeof navItems;
   // ───────────────────────────────────────────────────────────────────────

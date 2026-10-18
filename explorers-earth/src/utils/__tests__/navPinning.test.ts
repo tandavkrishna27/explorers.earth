@@ -20,18 +20,12 @@ describe("getVisibleNavTabIds", () => {
     const visible = getVisibleNavTabIds({
       public_recommendations: "Yes",
       public_games: null, // unset -> hidden (no magic default)
-      public_music: "No",
       public_movie: "Yes",
     });
     expect(visible.has("public_recommendations")).toBe(true);
     expect(visible.has("public_movie")).toBe(true);
     expect(visible.has("public_games")).toBe(false);
-    expect(visible.has("public_music")).toBe(false);
     expect(visible.has("public_profile")).toBe(true);
-  });
-
-  it("does not derive canonical Music sharing from the retired Account flag", () => {
-    expect(getVisibleNavTabIds({ public_music: "Yes" }).has("public_music")).toBe(false);
   });
 });
 
@@ -48,10 +42,10 @@ describe("resolveAutoPinning", () => {
 
 describe("normalizePinnedTabs", () => {
   it("moves Profile first and removes unknown and duplicate saved pins without reordering categories", () => {
-    const account = { auto_pinning: false, public_music: "Yes", public_recommendations: "Yes",
-      pinned_nav_tabs: ["public_music", "unknown", "public_profile", "public_recommendations", "public_music", null] };
-    expect(normalizePinnedTabs(account)).toEqual(["public_profile", "public_music", "public_recommendations"]);
-    expect(computePinnedNavTabIds(account, {}, { musicAvailable: true })).toEqual(["public_profile", "public_music", "public_recommendations"]);
+    const account = { auto_pinning: false, public_movie: "Yes", public_recommendations: "Yes",
+      pinned_nav_tabs: ["public_movie", "unknown", "public_profile", "public_recommendations", "public_movie", null] };
+    expect(normalizePinnedTabs(account)).toEqual(["public_profile", "public_movie", "public_recommendations"]);
+    expect(computePinnedNavTabIds(account, {})).toEqual(["public_profile", "public_movie", "public_recommendations"]);
   });
   it("falls back to just the profile tab for a fresh account (not a 5-item default)", () => {
     // This is the core of the data-corruption blocker: the old code fabricated
@@ -73,17 +67,6 @@ describe("normalizePinnedTabs", () => {
 });
 
 describe("computePinnedNavTabIds — auto-pinning mode (default)", () => {
-  it("gives available Music a deterministic rank independent of list counts", () => {
-    const account = { public_music: "Yes", public_recommendations: "Yes", public_movie: "Yes" };
-    expect(computePinnedNavTabIds(account, { public_recommendations: 999, public_movie: 1 }, { musicAvailable: true }))
-      .toEqual(["public_profile", "public_music", "public_recommendations", "public_movie"]);
-  });
-
-  it("fails closed for Music without disturbing other navigation items", () => {
-    const account = { public_music: "Yes", public_recommendations: "Yes", public_movie: "Yes" };
-    expect(computePinnedNavTabIds(account, ZERO_COUNTS, { musicAvailable: false }))
-      .toEqual(["public_profile", "public_recommendations", "public_movie"]);
-  });
   it("fresh (null) account shows only the profile — nothing is public yet", () => {
     const pinned = computePinnedNavTabIds(null, ZERO_COUNTS);
     expect(pinned).toEqual(["public_profile"]);
@@ -109,7 +92,6 @@ describe("computePinnedNavTabIds — auto-pinning mode (default)", () => {
   it("never exceeds 5 slots even with many visible categories", () => {
     const account = {
       public_recommendations: "Yes",
-      public_music: "Yes",
       public_guides: "Yes",
       public_movie: "Yes",
       public_books: "Yes",
@@ -127,48 +109,25 @@ describe("computePinnedNavTabIds — auto-pinning mode (default)", () => {
 describe("computePinnedNavTabIds — manual mode", () => {
   it.each([
     [[], ["public_profile"]],
-    [["public_music", "public_recommendations", "public_guides", "public_books"], ["public_profile", "public_music", "public_recommendations", "public_guides", "public_books"]],
-    [["public_music", "public_recommendations", "public_guides", "public_books", "public_apps"], ["public_profile", "public_music", "public_recommendations", "public_guides", "public_books"]],
-    [["public_music", "public_recommendations", "public_guides", "public_books", "public_apps", "public_games"], ["public_profile", "public_music", "public_recommendations", "public_guides", "public_books"]],
+    [["public_movie", "public_recommendations", "public_guides", "public_books"], ["public_profile", "public_movie", "public_recommendations", "public_guides", "public_books"]],
+    [["public_movie", "public_recommendations", "public_guides", "public_books", "public_apps"], ["public_profile", "public_movie", "public_recommendations", "public_guides", "public_books"]],
+    [["public_movie", "public_recommendations", "public_guides", "public_books", "public_apps", "public_games"], ["public_profile", "public_movie", "public_recommendations", "public_guides", "public_books"]],
   ])("caps auto and manual effective navigation for eligible set %j", (eligible, expected) => {
     const account = { ...Object.fromEntries(eligible.map(id => [id, "Yes"])), pinned_nav_tabs: ["public_profile", ...eligible] };
-    expect(computePinnedNavTabIds({ ...account, auto_pinning: false }, {}, { musicAvailable: true })).toEqual(expected);
-    expect(computePinnedNavTabIds({ ...account, auto_pinning: true }, { public_books: 3, public_apps: 2, public_games: 1, public_recommendations: 5, public_guides: 4 }, { musicAvailable: true })).toEqual(expected);
+    expect(computePinnedNavTabIds({ ...account, auto_pinning: false }, {})).toEqual(expected);
+    expect(computePinnedNavTabIds({ ...account, auto_pinning: true }, { public_movie: 6, public_books: 3, public_apps: 2, public_games: 1, public_recommendations: 5, public_guides: 4 })).toEqual(expected);
   });
-  it.each(["Yes", "No", undefined])("keeps saved preference %s distinct from available navigation and outage recovery", (preference) => {
-    const account = { public_music: preference, auto_pinning: false, public_books: "Yes", pinned_nav_tabs: ["public_profile", "public_music", "public_books"] };
-    expect(computePinnedNavTabIds(account, {}, { musicAvailable: false })).toEqual(["public_profile", "public_books"]);
-    expect(normalizePinnedTabs(account)).toEqual(["public_profile", "public_music", "public_books"]);
-    expect(computePinnedNavTabIds(account, {}, { musicAvailable: true })).toEqual(preference === "Yes" ? ["public_profile", "public_music", "public_books"] : ["public_profile", "public_books"]);
-  });
-  it("explains when enabled Music is excluded by the five-slot manual selection", () => {
+  it("explains when an enabled category is excluded by the five-slot manual selection", () => {
     const account = {
       auto_pinning: false,
-      public_music: "Yes",
       public_recommendations: "Yes",
       public_guides: "Yes",
       public_movie: "Yes",
       public_books: "Yes",
-      pinned_nav_tabs: ["public_profile", "public_recommendations", "public_guides", "public_movie", "public_books", "public_music"],
+      public_games: "Yes",
+      pinned_nav_tabs: ["public_profile", "public_recommendations", "public_guides", "public_movie", "public_books", "public_games"],
     };
-    expect(getNavSlotExclusion(account, "public_music", { musicAvailable: true })).toEqual({ reason: "slot-limit", maxSlots: 5 });
-  });
-  it("does not claim slot exclusion for intentionally unpinned or non-public Music", () => {
-    const unpinned = { auto_pinning: false, public_music: "Yes", pinned_nav_tabs: ["public_profile", "public_movie"] };
-    expect(getNavSlotExclusion(unpinned, "public_music", { musicAvailable: true })).toBeNull();
-    const requested = { ...unpinned, pinned_nav_tabs: ["public_profile", "public_movie", "public_music"] };
-    expect(getNavSlotExclusion(requested, "public_music", { musicAvailable: false })).toBeNull();
-  });
-  it("retains a stored Music position while unavailable and restores it without blanks or duplicates", () => {
-    const account = {
-      auto_pinning: false,
-      pinned_nav_tabs: ["public_profile", "public_music", "public_movie", "public_music", ""],
-      public_music: "Yes",
-      public_movie: "Yes",
-    };
-    expect(normalizePinnedTabs(account)).toEqual(["public_profile", "public_music", "public_movie"]);
-    expect(computePinnedNavTabIds(account, ZERO_COUNTS, { musicAvailable: false })).toEqual(["public_profile", "public_movie"]);
-    expect(computePinnedNavTabIds(account, ZERO_COUNTS, { musicAvailable: true })).toEqual(["public_profile", "public_music", "public_movie"]);
+    expect(getNavSlotExclusion(account, "public_games")).toEqual({ reason: "slot-limit", maxSlots: 5 });
   });
   const manual = {
     auto_pinning: false,

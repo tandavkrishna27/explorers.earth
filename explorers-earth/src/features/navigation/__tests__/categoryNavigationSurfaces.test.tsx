@@ -69,7 +69,6 @@ import { useCityStore } from '../../../store/useCityStore';
 vi.mock('../../Favorites/components/Recommendations', () => ({ default: () => null }));
 vi.mock('../../Settings/components/ProfileAccountSettings', () => ({ default: () => null }));
 vi.mock('../../Settings/components/LanguageSelector', () => ({ default: () => null, LANGUAGES: [{ code: 'en', name: 'English' }] }));
-vi.mock('../../music/publicMusicClient', () => ({ publicMusicClient: { discover: vi.fn().mockRejectedValue(new Error('offline')) } }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 // These integrations are unrelated to publication: map/location creation,
 // guided tours, and SEO require browser APIs or external services.
@@ -78,11 +77,13 @@ vi.mock('../../../components/SEO', () => ({ default: () => null }));
 vi.mock('react-joyride', () => ({ default: () => null }));
 vi.mock('../../Favorites/hooks/useCreateLocation', () => ({ useCreateLocation: () => ({ handleLocationSubmit: vi.fn(), accountData: {} }) }));
 
-// Canonical writes include all nine preference rows. Compare the full payload,
+// An unrelated saved pin that must survive every write about `category`.
+function bystander(category?: string) { return category === 'public_books' ? 'public_games' : 'public_books'; }
+// Canonical writes include all eight preference rows. Compare the full payload,
 // including unchanged visibility and pin ranks, rather than a legacy partial patch.
-function canonicalWrite(category?: string, isPublic?: boolean, pins = ['public_profile', 'public_music'], expectedRevision = 1) {
-  const fields = ['public_recommendations','public_music','public_guides','public_movie','public_books','public_games','public_apps','public_products','public_people'];
-  const categories = ['places','music','guides','movies','books','games','apps','products','people'];
+function canonicalWrite(category?: string, isPublic?: boolean, pins = ['public_profile', bystander(category)], expectedRevision = 1) {
+  const fields = ['public_recommendations','public_guides','public_movie','public_books','public_games','public_apps','public_products','public_people'];
+  const categories = ['places','guides','movies','books','games','apps','products','people'];
   return { input: { expectedRevision, categories: categories.map((name, displayOrder) => ({
     category: name, displayOrder, isPublic: fields[displayOrder] === category ? isPublic : true,
     pinnedOrder: pins.includes(fields[displayOrder]) ? pins.indexOf(fields[displayOrder]) - 1 : null,
@@ -130,7 +131,7 @@ describe('ordinary category headers use verified navigation', () => {
     vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue(movieObservation()); await i18n.use(initReactI18next).init({ lng: 'en', resources: { en: { translation: english } } }); });
   afterEach(() => { cleanup(); useAuthStore.getState().logout(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
   it.each(headers)('%s Off removes only the target saved pin and desktop/mobile share confirmed state', async (category, Component) => {
-    const h = surfaceHarness(<Component />, { lists: listFixture, initial: { pinned_nav_tabs: ['public_profile', category, 'public_music'] } }); await h.ready();
+    const h = surfaceHarness(<Component />, { lists: listFixture, initial: { pinned_nav_tabs: ['public_profile', category, bystander(category)] } }); await h.ready();
     const switches = await screen.findAllByRole('checkbox');
     expect(switches[0]).toBeChecked(); fireEvent.click(switches[0]);
     await waitFor(() => expect(h.writes).toHaveLength(1));
@@ -138,7 +139,7 @@ describe('ordinary category headers use verified navigation', () => {
     await waitFor(() => expect(screen.getAllByRole('checkbox')[0]).not.toBeChecked());
   });
   it.each(headers)('%s On only publishes after a fresh content check', async (category, Component) => {
-    const h = surfaceHarness(<Component />, { lists: listFixture, initial: { [category]: 'No', pinned_nav_tabs: ['public_profile', 'public_music'] } }); await h.ready();
+    const h = surfaceHarness(<Component />, { lists: listFixture, initial: { [category]: 'No', pinned_nav_tabs: ['public_profile', bystander(category)] } }); await h.ready();
     fireEvent.click((await screen.findAllByRole('checkbox'))[0]);
     await waitFor(() => expect(h.writes).toHaveLength(1));
     expect(h.writes[0].variables).toEqual(canonicalWrite(category, true));
@@ -154,7 +155,7 @@ describe('ordinary category headers use verified navigation', () => {
     const field = listFields[category];
     const lists: Record<string, unknown> = { [field]: [{ ...listFixture.recommendationLists[0], ...guideFixture,
       List_Name: 'Before refresh', Title: 'Before refresh', recommended_books: [], recommended_movies: [], recommended_games: [], recommended_apps: [], recommended_products: [], recommended_people: [] }] };
-    const h = surfaceHarness(<Component />, { lists, initial: { pinned_nav_tabs: ['public_profile', category, 'public_music'] } }); await h.ready();
+    const h = surfaceHarness(<Component />, { lists, initial: { pinned_nav_tabs: ['public_profile', category, bystander(category)] } }); await h.ready();
     const listQuery = await waitFor(() => {
       const query = [...h.client.getObservableQueries().values()].find(query => Array.isArray(query.getCurrentResult().data?.[field]));
       expect(query?.getCurrentResult().data[field]).toHaveLength(1);
@@ -170,12 +171,12 @@ describe('ordinary category headers use verified navigation', () => {
     await waitFor(() => expect(screen.queryByText('Before refresh')).not.toBeInTheDocument());
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility[category]).toBe('Yes');
-    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', category, 'public_music']);
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', category, bystander(category)]);
   });
   it('public_movie native empty list refresh never changes category visibility or saved pins', async () => {
     const read = vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks);
     read.mockResolvedValue(movieObservation('Before refresh'));
-    const h = surfaceHarness(<MoviesHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_movie', 'public_music'] } });
+    const h = surfaceHarness(<MoviesHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_movie', 'public_books'] } });
     await h.ready();
     expect((await screen.findAllByText('Before refresh')).length).toBeGreaterThan(0);
     const readsBefore = read.mock.calls.length;
@@ -188,12 +189,12 @@ describe('ordinary category headers use verified navigation', () => {
     expect(h.requests.some(request => request.name === 'MovieListsByAccount')).toBe(false);
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_movie).toBe('Yes');
-    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_movie', 'public_music']);
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_movie', 'public_books']);
   });
   it('public_games native empty list refresh never changes category visibility or saved pins', async () => {
     const read = vi.mocked(explorersApiClient.getCompleteMyCategoryContent);
     read.mockResolvedValue(gameObservation('Before refresh'));
-    const h = surfaceHarness(<GamesHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_games', 'public_music'] } });
+    const h = surfaceHarness(<GamesHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_games', 'public_books'] } });
     await h.ready();
     expect((await screen.findAllByText('Before refresh')).length).toBeGreaterThan(0);
     const readsBefore = read.mock.calls.length;
@@ -206,12 +207,12 @@ describe('ordinary category headers use verified navigation', () => {
     expect(h.requests.some(request => request.name === 'GameListsByAccount')).toBe(false);
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_games).toBe('Yes');
-    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_games', 'public_music']);
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_games', 'public_books']);
   });
   it('public_apps native empty list refresh never changes category visibility or saved pins', async () => {
     const read = vi.mocked(explorersApiClient.getCompleteMyCategoryContent);
     read.mockResolvedValue(appObservation('Before refresh'));
-    const h = surfaceHarness(<AppsHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_apps', 'public_music'] } });
+    const h = surfaceHarness(<AppsHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_apps', 'public_books'] } });
     await h.ready();
     expect((await screen.findAllByText('Before refresh')).length).toBeGreaterThan(0);
     const readsBefore = read.mock.calls.length;
@@ -224,12 +225,12 @@ describe('ordinary category headers use verified navigation', () => {
     expect(h.requests.some(request => request.name === 'AppListsByAccount')).toBe(false);
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_apps).toBe('Yes');
-    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_apps', 'public_music']);
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_apps', 'public_books']);
   });
   it('public_products native empty list refresh never changes category visibility or saved pins', async () => {
     const read = vi.mocked(explorersApiClient.getCompleteMyCategoryContent);
     read.mockResolvedValue(productObservation('Before refresh'));
-    const h = surfaceHarness(<ProductsHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_products', 'public_music'] } });
+    const h = surfaceHarness(<ProductsHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_products', 'public_books'] } });
     await h.ready();
     expect((await screen.findAllByText('Before refresh')).length).toBeGreaterThan(0);
     const readsBefore = read.mock.calls.length;
@@ -242,12 +243,12 @@ describe('ordinary category headers use verified navigation', () => {
     expect(h.requests.some(request => request.name === 'ProductListsByAccount')).toBe(false);
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_products).toBe('Yes');
-    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_products', 'public_music']);
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_products', 'public_books']);
   });
   it('public_people native empty list refresh never changes category visibility or saved pins', async () => {
     const read = vi.mocked(explorersApiClient.getCompleteMyCategoryContent);
     read.mockResolvedValue(personObservation('Before refresh'));
-    const h = surfaceHarness(<PeopleHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_people', 'public_music'] } });
+    const h = surfaceHarness(<PeopleHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_people', 'public_books'] } });
     await h.ready();
     expect((await screen.findAllByText('Before refresh')).length).toBeGreaterThan(0);
     const readsBefore = read.mock.calls.length;
@@ -260,7 +261,7 @@ describe('ordinary category headers use verified navigation', () => {
     expect(h.requests.some(request => request.name === 'PersonListsByAccount')).toBe(false);
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_people).toBe('Yes');
-    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_people', 'public_music']);
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_people', 'public_books']);
   });
   it.each(headers)('%s uses the verified selected account, not incomplete accounts[0]', async (_category, Component) => {
     const h = surfaceHarness(<Component />, { incompleteFirst: true, lists: listFixture }); await h.ready();
@@ -277,14 +278,14 @@ describe('ordinary category headers use verified navigation', () => {
     expect(h.saved[category]).toBe('No');
   });
   it.each(headers)('%s mobile visibility explicitly turns Off and On without restoring its pin', async (category, Component) => {
-    const h = surfaceHarness(<Component />, { lists: listFixture, initial: { pinned_nav_tabs: ['public_profile', category, 'public_music'] } }); await h.ready();
+    const h = surfaceHarness(<Component />, { lists: listFixture, initial: { pinned_nav_tabs: ['public_profile', category, bystander(category)] } }); await h.ready();
     fireEvent.click(h.container.querySelector('button.border-l')!);
     fireEvent.click(screen.getAllByRole('checkbox')[1]); await waitFor(() => expect(h.navigation.busy).toBe(false));
     await waitFor(() => expect(screen.getAllByRole('checkbox')[1]).not.toBeChecked());
     fireEvent.click(screen.getAllByRole('checkbox')[1]); await waitFor(() => expect(screen.getAllByRole('checkbox')[1]).toBeChecked());
     expect(h.writes.map(r => r.variables)).toEqual([
       canonicalWrite(category, false),
-      canonicalWrite(category, true, ['public_profile', 'public_music'], 2),
+      canonicalWrite(category, true, undefined, 2),
     ]);
   });
   it.each(headers.filter(([category]) => category !== 'public_movie' && category !== 'public_games' && category !== 'public_apps' && category !== 'public_products' && category !== 'public_people'))('%s failed list refresh has no category side effects', async (_category, Component) => {
@@ -293,7 +294,7 @@ describe('ordinary category headers use verified navigation', () => {
     expect(h.writes).toEqual([]);
   });
   it('public_movie failed native refresh has no category side effects', async () => {
-    const h = surfaceHarness(<MoviesHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_movie', 'public_music'] } });
+    const h = surfaceHarness(<MoviesHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_movie', 'public_books'] } });
     await h.ready();
     await waitFor(() => expect(explorersApiClient.getCompleteMyCategoryTopPicks).toHaveBeenCalledTimes(2));
     vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockRejectedValue(new Error('Native lists unavailable'));
@@ -301,11 +302,11 @@ describe('ordinary category headers use verified navigation', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Movies could not be loaded');
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_movie).toBe('Yes');
-    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_movie', 'public_music']);
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_movie', 'public_books']);
   });
   it('public_people failed native refresh has no category side effects', async () => {
     vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockResolvedValue(personObservation());
-    const h = surfaceHarness(<PeopleHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_people', 'public_music'] } });
+    const h = surfaceHarness(<PeopleHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_people', 'public_books'] } });
     await h.ready();
     await waitFor(() => expect(explorersApiClient.getCompleteMyCategoryContent).toHaveBeenCalledTimes(2));
     vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockRejectedValue(new Error('Native lists unavailable'));
@@ -313,11 +314,11 @@ describe('ordinary category headers use verified navigation', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('People could not be loaded');
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_people).toBe('Yes');
-    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_people', 'public_music']);
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_people', 'public_books']);
   });
   it('public_products failed native refresh has no category side effects', async () => {
     vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockResolvedValue(productObservation());
-    const h = surfaceHarness(<ProductsHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_products', 'public_music'] } });
+    const h = surfaceHarness(<ProductsHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_products', 'public_books'] } });
     await h.ready();
     await waitFor(() => expect(explorersApiClient.getCompleteMyCategoryContent).toHaveBeenCalledTimes(2));
     vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockRejectedValue(new Error('Native lists unavailable'));
@@ -325,11 +326,11 @@ describe('ordinary category headers use verified navigation', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Products could not be loaded');
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_products).toBe('Yes');
-    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_products', 'public_music']);
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_products', 'public_books']);
   });
   it('public_apps failed native refresh has no category side effects', async () => {
     vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockResolvedValue(appObservation());
-    const h = surfaceHarness(<AppsHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_apps', 'public_music'] } });
+    const h = surfaceHarness(<AppsHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_apps', 'public_books'] } });
     await h.ready();
     await waitFor(() => expect(explorersApiClient.getCompleteMyCategoryContent).toHaveBeenCalledTimes(2));
     vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockRejectedValue(new Error('Native lists unavailable'));
@@ -337,10 +338,10 @@ describe('ordinary category headers use verified navigation', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Apps could not be loaded');
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_apps).toBe('Yes');
-    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_apps', 'public_music']);
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_apps', 'public_books']);
   });
   it('public_games failed native refresh has no category side effects', async () => {
-    const h = surfaceHarness(<GamesHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_games', 'public_music'] } });
+    const h = surfaceHarness(<GamesHome />, { initial: { pinned_nav_tabs: ['public_profile', 'public_games', 'public_books'] } });
     await h.ready();
     await waitFor(() => expect(explorersApiClient.getCompleteMyCategoryContent).toHaveBeenCalledTimes(2));
     vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockRejectedValue(new Error('Native lists unavailable'));
@@ -348,7 +349,7 @@ describe('ordinary category headers use verified navigation', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Games could not be loaded');
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_games).toBe('Yes');
-    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_games', 'public_music']);
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_games', 'public_books']);
   });
   it.each([
     ['public_recommendations', Favorites, 'justCreatedList'], ['public_apps', AppsHome, 'justCreatedList'], ['public_guides', GuidesPage, 'justCreatedGuide'],
@@ -356,13 +357,13 @@ describe('ordinary category headers use verified navigation', () => {
     const h = surfaceHarness(<Component />, { initial: { [category]: 'No' }, lists: listFixture, route: { pathname: '/', state: { [stateKey]: true } } }); await h.ready();
     const confirm = await screen.findByRole('button', { name: 'Yes, Make Public' }); expect(confirm).toBeEnabled(); fireEvent.click(confirm);
     await waitFor(() => expect(h.writes).toHaveLength(1));
-    expect(h.writes[0].variables).toEqual(canonicalWrite(category, true, ['public_profile', 'public_music', 'public_books']));
+    expect(h.writes[0].variables).toEqual(canonicalWrite(category, true, ['public_profile', 'public_books']));
   });
   it('GuideDetails existing creation prompt publishes only Guides', async () => {
     const h = surfaceHarness(<Routes><Route path="/guides/:guideId" element={<GuideDetailsPage />} /></Routes>, { initial: { public_guides: 'No' }, lists: { guide: guideFixture }, route: { pathname: '/guides/g1', state: { justCreatedGuide: true } } }); await h.ready();
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, Make Public' }));
     await waitFor(() => expect(h.writes).toHaveLength(1));
-    expect(h.writes[0].variables).toEqual(canonicalWrite('public_guides', true, ['public_profile', 'public_music', 'public_books']));
+    expect(h.writes[0].variables).toEqual(canonicalWrite('public_guides', true, ['public_profile', 'public_books']));
   });
   it.each(['switch', 'switch-back', 'logout-login'])('GuideDetails prompt retains its origin through %s', async transition => {
     const h = surfaceHarness(<Routes><Route path="/guides/:guideId" element={<GuideDetailsPage />} /></Routes>, { initial: { public_guides: 'No' }, lists: { guide: guideFixture }, route: { pathname: '/guides/g1', state: { justCreatedGuide: true } } }); await h.ready();
@@ -406,7 +407,7 @@ describe('ordinary category headers use verified navigation', () => {
     vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue(observation);
     vi.mocked(explorersApiClient.getMyEditableCollection).mockResolvedValue(observed);
     vi.mocked(explorersApiClient.archiveMyCollection).mockResolvedValue({ ...observed.detail, archived: true });
-    const h = surfaceHarness(<Routes><Route path="/list/:listId" element={<MovieListView />} /><Route path="*" element={<div>Returned to lists</div>} /></Routes>, { route: '/list/list-1', initial: { pinned_nav_tabs: ['public_profile', 'public_movie', 'public_music'] } }); await h.ready();
+    const h = surfaceHarness(<Routes><Route path="/list/:listId" element={<MovieListView />} /><Route path="*" element={<div>Returned to lists</div>} /></Routes>, { route: '/list/list-1', initial: { pinned_nav_tabs: ['public_profile', 'public_movie', 'public_books'] } }); await h.ready();
     fireEvent.click(await screen.findByRole('button', { name: /^manage$/i }));
     fireEvent.click(screen.getByRole('button', { name: /^Archive list$/i }));
     expect(explorersApiClient.archiveMyCollection).not.toHaveBeenCalled();
@@ -417,7 +418,7 @@ describe('ordinary category headers use verified navigation', () => {
     expect(h.requests.some(request => request.name === 'DeleteMovieList')).toBe(false);
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_movie).toBe('Yes');
-    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_movie', 'public_music']);
+    expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_movie', 'public_books']);
   });
   it('Favorites per-list Visibility never changes category visibility or saved pins', async () => {
     const list = { ...listFixture.recommendationLists[0], recommended_places: [{ documentId: 'p1' }] };
@@ -439,7 +440,7 @@ describe('Settings verified ordinary publication', () => {
   beforeEach(async () => { loginSurface(); await i18n.use(initReactI18next).init({ lng: 'en', resources: { en: { translation: english } } }); vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 404 }))); });
   afterEach(() => { cleanup(); useAuthStore.getState().logout(); vi.unstubAllGlobals(); });
   it.each(ordinaryCategories)('%s Off uses target-only saved-pin cleanup', async category => {
-    const h = surfaceHarness(<Settings />, { initial: { pinned_nav_tabs: ['public_profile', category, 'public_music'] } }); await h.ready();
+    const h = surfaceHarness(<Settings />, { initial: { pinned_nav_tabs: ['public_profile', category, bystander(category)] } }); await h.ready();
     fireEvent.click(screen.getByRole('button', { name: /Public Visibility/ }));
     const categories = ['public_profile', 'public_recommendations', 'public_guides', 'public_movie', 'public_books', 'public_games', 'public_apps', 'public_products', 'public_people'];
     fireEvent.click(screen.getAllByRole('checkbox')[categories.indexOf(category)]);
@@ -450,7 +451,7 @@ describe('Settings verified ordinary publication', () => {
     expect(h.writes[0].variables).toEqual(canonicalWrite(category, false));
   });
   it.each(ordinaryCategories)('%s cancelling unpublish preserves visibility and saved pins', async category => {
-    const pins = ['public_profile', category, 'public_music'];
+    const pins = ['public_profile', category, bystander(category)];
     const h = surfaceHarness(<Settings />, { initial: { pinned_nav_tabs: pins } }); await h.ready();
     fireEvent.click(screen.getByRole('button', { name: /Public Visibility/ }));
     const categories = ['public_profile', 'public_recommendations', 'public_guides', 'public_movie', 'public_books', 'public_games', 'public_apps', 'public_products', 'public_people'];
@@ -465,7 +466,7 @@ describe('Settings verified ordinary publication', () => {
   });
   it.each(ordinaryCategories)('%s On writes only visibility and hidden Pin cannot publish it', async category => {
     const labels: Record<string, string> = { public_recommendations: 'Places', public_movie: 'Movies & Shows', public_books: 'Books', public_games: 'Games', public_apps: 'Apps & Tools', public_products: 'Products', public_people: 'People', public_guides: 'Guides' };
-    const h = surfaceHarness(<Settings />, { initial: { [category]: 'No', pinned_nav_tabs: ['public_profile', 'public_music'] } }); await h.ready();
+    const h = surfaceHarness(<Settings />, { initial: { [category]: 'No', pinned_nav_tabs: ['public_profile', bystander(category)] } }); await h.ready();
     fireEvent.click(screen.getByRole('button', { name: /Pinned Navigation Tabs/ }));
     const pin = screen.getByRole('checkbox', { name: `Pin ${labels[category]} Tab` }); expect(pin).toBeDisabled(); fireEvent.click(pin); expect(h.writes).toEqual([]);
     await waitFor(() => expect(h.navigation.busy).toBe(false));
@@ -482,7 +483,7 @@ describe('Settings verified ordinary publication', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Auto-pin navigation tabs' }));
     await waitFor(() => expect(h.writes).toHaveLength(1));
     expect(h.writes[0].variables).toEqual({ input: { expectedRevision: 1, autoPinning: false } });
-    expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_music', 'public_books']);
+    expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_books']);
   });
   it.each([null, []])('fresh manual saved pins %j stay unwritten until an explicit Pin', async pins => {
     const h = surfaceHarness(<Settings />, { initial: { pinned_nav_tabs: pins } }); await h.ready();
@@ -490,11 +491,6 @@ describe('Settings verified ordinary publication', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Pin Books Tab' }));
     await waitFor(() => expect(h.writes).toHaveLength(1));
     expect(h.writes[0].variables).toEqual(canonicalWrite(undefined, undefined, ['public_profile', 'public_books']));
-  });
-  it('does not allow a new hidden Music pin', async () => {
-    const h = surfaceHarness(<Settings />, { initial: { public_music: 'No', pinned_nav_tabs: ['public_profile'] } }); await h.ready();
-    fireEvent.click(screen.getByRole('button', { name: /Pinned Navigation Tabs/ }));
-    expect(screen.getByRole('checkbox', { name: 'Pin Music Tab' })).toBeDisabled();
   });
   it('uses canonical navigation without either redundant Settings GraphQL operation', async () => {
     const h = surfaceHarness(<Settings />, { initial: { documentId: 'verified-account' }, respond: name => name === 'SettingsAccount' ? new Promise(() => {}) : undefined }); await h.ready();

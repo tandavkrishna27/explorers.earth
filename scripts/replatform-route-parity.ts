@@ -21,6 +21,15 @@
  *     failure, not a skip;
  *   - this is a shared file. Every epic landing a canonical route appends here
  *     under coordinator allocation rather than forking a second parity script.
+ *
+ * One deliberate redefinition, 2026-10-18 (P3-2, Music removal): the fixture now
+ * runs `EXPLORERS_API_MODE=canonical`, so it proves the canonical route graph
+ * only. Five probes left the invariant with the product they described - the four
+ * legacy Music paths (`/api/check`, `/api/csrf-token`, `/api/user/reactivate`,
+ * `/api/music-fixture/readiness`) and the Strapi boundary (`/api/users/me`) -
+ * because nothing in a canonical-only fixture answers them. That is a change to
+ * what the fixture proves, not an accommodation of an absent route, and the rules
+ * above still apply to every probe that remains.
  */
 type ProbeMethod = "GET" | "POST";
 
@@ -36,17 +45,15 @@ export type RouteProbe = {
   proves: string;
 };
 
+/**
+ * Probed at fixture ingress but not part of `CANONICAL_ROUTES`. The canonical app
+ * mounts the analytics routes (`setupCanonicalAnalyticsRoutes`), so this probe
+ * survived the P3-2 redefinition; `platform-route-signatures.test.ts` measures it
+ * against `createCanonicalApp` alongside the canonical set.
+ */
 const CURRENT_TUNES_ROUTES: RouteProbe[] = [
-  { path: "/api/check", status: 401, field: "authenticated", value: false,
-    proves: "legacy Music session check" },
-  { path: "/api/csrf-token", status: 200, field: "token", value: "nonempty",
-    proves: "legacy CSRF issuance" },
-  { path: "/api/user/reactivate", status: 400, field: "error", value: "Token is required",
-    proves: "legacy reactivation" },
   { path: "/api/explorers/analytics/events", status: 400, field: "message", value: "Invalid analytics scope",
     proves: "analytics ingress reaches its validator" },
-  { path: "/api/music-fixture/readiness", status: 200, field: "status", value: "ready",
-    proves: "Music fixture readiness" },
 ];
 
 /**
@@ -72,8 +79,7 @@ export const CANONICAL_ROUTES: RouteProbe[] = [
 
 export const PLATFORM_ROUTE_PROBES: readonly RouteProbe[] = [...CURRENT_TUNES_ROUTES, ...CANONICAL_ROUTES];
 
-/** The Strapi boundary is checked separately and counts as one probe. */
-export const EXPECTED_PLATFORM_PROBE_COUNT = PLATFORM_ROUTE_PROBES.length + 1;
+export const EXPECTED_PLATFORM_PROBE_COUNT = PLATFORM_ROUTE_PROBES.length;
 
 function readField(body: Record<string, unknown>, field: string): unknown {
   return field.split(".").reduce<unknown>(
@@ -86,29 +92,14 @@ const CANONICAL_PATHS = new Set(CANONICAL_ROUTES.map((probe) => probe.path));
 
 /**
  * A canonical probe failing against the fixture is the invariant working, not a
- * flake, so say what it means. As of 2026-10-08 the fixture compose runs
- * `EXPLORERS_API_MODE: legacy-music` (docker-compose.replatform.yml:56,106) and
- * the legacy composition mounts only analytics and public-profile routes from the
- * Explorers set, so these five are genuinely absent there.
- */
-/*
- * Historical note, kept because the sentence below is a pinned contract.
- *
- * The fixture compose now runs `EXPLORERS_API_MODE: combined`, which starts the
- * Music runtime and delegates the canonical route graph into it on one listener
- * (`server/auth/canonicalDelegate.ts`), and nginx routes `/health/live`,
- * `/api/auth` and `/api/explorers/v1/` to Tunes instead of to Strapi. The text of
- * `INVARIANT_NOTE` still names `legacy-music` because
- * `platform-route-parity.test.ts` asserts on that exact phrase as the diagnosis
- * the operator must see; it describes the composition this invariant was written
- * against, not necessarily the one in the compose file today.
+ * flake, so say what it means.
  */
 const INVARIANT_NOTE =
   "Ticket 1.2's route-graph invariant requires the platform fixture runtime to mount the same "
-  + "canonical route graph as production. As of 2026-10-08 the fixture starts "
-  + "EXPLORERS_API_MODE=legacy-music, whose composition does not mount Better Auth, /health/live, "
-  + "or the /api/explorers/v1 owner routes. This is a failure, not a skip: do not delete the probe "
-  + "or lower the expected count. See docs/replatform-audit/route-graph-invariant.md.";
+  + "canonical route graph as production. The fixture starts EXPLORERS_API_MODE=canonical "
+  + "(docker-compose.replatform.yml), so an absent route means the fixture composition or its "
+  + "nginx ingress has drifted from the canonical app. This is a failure, not a skip: do not "
+  + "delete the probe or lower the expected count. See docs/replatform-audit/route-graph-invariant.md.";
 
 function canonicalAbsent(path: string, expected: number, received: number): string {
   return `canonical route absent from the fixture route graph: ${path} `
@@ -168,10 +159,6 @@ export async function verifyPlatformIngress(origin: string, fetchImpl: typeof fe
     }
     checked++;
   }
-  const strapi = await fetchImpl(`${origin}/api/users/me`, { signal: AbortSignal.timeout(5000) });
-  const strapiBody = await strapi.json() as Record<string, unknown>;
-  if (strapi.status !== 403 || strapiBody.error !== "fixture identity authority denied") throw new Error("fixture Strapi boundary mismatch");
-  checked++;
   return checked;
 }
 
@@ -181,9 +168,9 @@ export type HiddenCategoryTarget = { handle: string; category: string };
 /**
  * The ingress probe for a deployed canonical-only host (P2 Task 6).
  *
- * `verifyPlatformIngress` is the local fixture's invariant: it also probes five legacy
- * Music paths and the fixture's Strapi boundary, none of which exist on the production
- * host, and its count is pinned until P3 retires `combined`. This runs only
+ * `verifyPlatformIngress` is the local fixture's invariant: since P3-2 retired `combined`
+ * it probes `CANONICAL_ROUTES` plus the analytics ingress, at the fixture's loopback
+ * origin with its stable expectations. This runs only
  * `CANONICAL_ROUTES` - whose anonymous `/api/explorers/v1/me` -> 401 is the probe that
  * reaches the database, so a 503 there fails - plus two probes that tell a working
  * deployment from a plausible-looking one:

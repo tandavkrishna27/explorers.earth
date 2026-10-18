@@ -9,10 +9,9 @@ export type { AnalyticsRequestContext } from '../repositories/explorersAnalytics
 function stable(value: unknown): unknown { if (Array.isArray(value))
     return value.map(stable); if (value && typeof value === 'object')
     return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([k, v]) => [k, stable(v)])); return value; }
-export function analyticsInputHash(input: ExplorersAnalyticsInput, mode: 'generic' | 'music' = 'generic'): Buffer {
+export function analyticsInputHash(input: ExplorersAnalyticsInput): Buffer {
+    const mode = 'generic';
     const parsed = explorersAnalyticsInputSchema.parse(input), event = { ...parsed.event };
-    if (mode === 'music')
-        delete (event as Partial<typeof event>).timestamp;
     return createHash('sha256').update(JSON.stringify(stable({ mode, accountId: parsed.accountId, locationId: parsed.locationId ?? null, recommendationId: parsed.recommendationId ?? null, event }))).digest();
 }
 export interface AnalyticsAggregateRow {
@@ -59,7 +58,7 @@ export class AnalyticsService {
         const input = explorersAnalyticsInputSchema.parse(raw);
         if (!input.consent)
             return { status: 'consent-denied' as const };
-        return this.repository.record(input, analyticsInputHash(input, context.music ? 'music' : 'generic'), context);
+        return this.repository.record(input, analyticsInputHash(input), context);
     }
     async getCreatorAnalytics(actor: Actor, raw: unknown): Promise<AnalyticsSummary> {
         const parsed = analyticsQuerySchema.safeParse(raw);

@@ -35,7 +35,6 @@ const ROUTE_LABELS: Record<string, string> = {
   games: "Games",
   guides: "Guides",
   movies: "Movies",
-  music: "Music",
   people: "People",
   places: "Places",
   products: "Products",
@@ -62,7 +61,6 @@ const isValidPublicPath = (pathname: string): boolean => {
   if (tail.length === 0) return true;
   const category = decodedLower(tail[0]);
   if (!category || !ROUTE_LABELS[category]) return false;
-  if (category === "music") return tail.length === 1;
   if (category === "guides" || category === "products") return tail.length <= 2;
   if (category === "apps") return tail.length <= 2;
   if (category === "places") {

@@ -230,8 +230,8 @@ jobs:
           # adapter and must never load the external Google Maps runtime.
           VITE_GOOGLE_MAPS_API_KEY: ""
           VITE_PUBLIC_ACCESS_TOKEN: test-token
-          # Music flow (music.spec.ts) mocks the Local Tunes API and needs the
-          # integration enabled or the playlist UI never renders.
+          # Fixtures mock the Local Tunes API (identity ensure, analytics) and keep
+          # the integration enabled so those contained routes are exercised.
           VITE_LOCAL_TUNES_ENABLED: true
           VITE_LOCAL_TUNES_API_URL: https://localtunes.test
           # Keep the public profile gateway inside the same deterministic
@@ -292,8 +292,8 @@ jobs:
           # adapter and must never load the external Google Maps runtime.
           VITE_GOOGLE_MAPS_API_KEY: ""
           VITE_PUBLIC_ACCESS_TOKEN: test-token
-          # Music flow (music.spec.ts) mocks the Local Tunes API and needs the
-          # integration enabled or the playlist UI never renders.
+          # Fixtures mock the Local Tunes API (identity ensure, analytics) and keep
+          # the integration enabled so those contained routes are exercised.
           VITE_LOCAL_TUNES_ENABLED: true
           VITE_LOCAL_TUNES_API_URL: https://localtunes.test
           # Keep the public profile gateway inside the same deterministic
@@ -354,8 +354,8 @@ jobs:
           # adapter and must never load the external Google Maps runtime.
           VITE_GOOGLE_MAPS_API_KEY: ""
           VITE_PUBLIC_ACCESS_TOKEN: test-token
-          # Music flow (music.spec.ts) mocks the Local Tunes API and needs the
-          # integration enabled or the playlist UI never renders.
+          # Fixtures mock the Local Tunes API (identity ensure, analytics) and keep
+          # the integration enabled so those contained routes are exercised.
           VITE_LOCAL_TUNES_ENABLED: true
           VITE_LOCAL_TUNES_API_URL: https://localtunes.test
           # Keep the public profile gateway inside the same deterministic
@@ -385,68 +385,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  e2e-publishing:
-    name: 🎭 E2E Publishing
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    needs: [changes]
-    if: needs.changes.outputs.docs_only != 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24.21.0'
-          cache: 'npm'
-          cache-dependency-path: explorers-earth/package-lock.json
-      - name: Install dependencies
-        run: npm ci
-      - name: Install Music fixture dependencies
-        run: npm ci --prefix ../tunes --legacy-peer-deps
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-      - name: Run Playwright E2E tests
-        run: npx playwright test --config=playwright.music-publishing.config.ts
-        env:
-          CI: true
-          # Apollo uses VITE_API_URL verbatim as the GraphQL URI (src/main.tsx);
-          # it must end in /graphql for the specs' **/graphql route mocks to match.
-          VITE_API_URL: http://localhost:5173/graphql
-          # Empty by design: the contained public-page fixture uses its map
-          # adapter and must never load the external Google Maps runtime.
-          VITE_GOOGLE_MAPS_API_KEY: ""
-          VITE_PUBLIC_ACCESS_TOKEN: test-token
-          # Music flow (music.spec.ts) mocks the Local Tunes API and needs the
-          # integration enabled or the playlist UI never renders.
-          VITE_LOCAL_TUNES_ENABLED: true
-          VITE_LOCAL_TUNES_API_URL: https://localtunes.test
-          # Keep the public profile gateway inside the same deterministic
-          # request fixture instead of falling back to an external authority.
-          VITE_PUBLIC_PROFILE_GATEWAY_URL: https://localtunes.test
-          # Full-stack Music authority suites belong to the provisioned qualification lanes.
-          PLAYWRIGHT_PR_SAFE: true
-          # Keep billing requests same-origin so the deterministic Playwright
-          # fixture can intercept them instead of constructing /undefined URLs.
-          VITE_PAYMENT_API_URL: http://localhost:5173
-
-
-      - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report-music-publishing
-          path: .artifacts/music-publishing/report.json
-          if-no-files-found: ignore
-          retention-days: 7
-      - name: Upload screenshots/videos on failure
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: e2e-failure-music-publishing
-          path: .artifacts/music-publishing/results/
-          if-no-files-found: ignore
-          retention-days: 7
-
   e2e-music-account:
     name: 🎭 E2E Music and account
     runs-on: ubuntu-latest
@@ -466,14 +404,16 @@ jobs:
       - name: Install Music fixture dependencies
         run: npm ci --prefix ../tunes --legacy-peer-deps
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium firefox webkit
+        run: npx playwright install --with-deps chromium
       - name: Run Playwright E2E tests
         # This lane passes no --config, so it inherits the root playwright.config.ts.
         # retries and the reporter are therefore set explicitly here: without them it
         # inherits CI retries=2 (tripling every failure's wall clock) and a line-only
-        # reporter that produces no machine-readable result. The other four E2E lanes
-        # get both from their own --config; this keeps them consistent.
-        run: npx playwright test e2e/music.spec.ts e2e/music-accessibility.spec.ts e2e/account-lifecycle.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual --retries=0 --reporter=line,json
+        # reporter that produces no machine-readable result. The other E2E lanes
+        # get both from their own --config; this keeps them consistent. The Music
+        # specs this lane used to carry were removed with the Music product (P3-4);
+        # the job keeps its key and name because platform-release-authority pins them.
+        run: npx playwright test e2e/account-lifecycle.spec.ts --project=chromium-pr-safe --retries=0 --reporter=line,json
         env:
           CI: true
           # Must be written somewhere the upload step can actually find it; the
@@ -487,8 +427,8 @@ jobs:
           # adapter and must never load the external Google Maps runtime.
           VITE_GOOGLE_MAPS_API_KEY: ""
           VITE_PUBLIC_ACCESS_TOKEN: test-token
-          # Music flow (music.spec.ts) mocks the Local Tunes API and needs the
-          # integration enabled or the playlist UI never renders.
+          # Fixtures mock the Local Tunes API (identity ensure, analytics) and keep
+          # the integration enabled so those contained routes are exercised.
           VITE_LOCAL_TUNES_ENABLED: true
           VITE_LOCAL_TUNES_API_URL: https://localtunes.test
           # Keep the public profile gateway inside the same deterministic
@@ -525,7 +465,7 @@ jobs:
     name: replatform-required
     runs-on: ubuntu-24.04
     if: always()
-    needs: [changes, lint, typecheck, unit-tests, build, integration-tests, e2e-category-a, e2e-category-b, e2e-public-shell, e2e-publishing, e2e-music-account]
+    needs: [changes, lint, typecheck, unit-tests, build, integration-tests, e2e-category-a, e2e-category-b, e2e-public-shell, e2e-music-account]
     steps:
       - name: Require each validation job to succeed
         working-directory: ${{ github.workspace }}

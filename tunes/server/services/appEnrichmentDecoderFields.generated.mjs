@@ -4386,7 +4386,6 @@ var resolveManualPlaceSchema = external_exports.object({ kind: external_exports.
 var categoryKeys = [
   "places",
   "guides",
-  "music",
   "movies",
   "books",
   "games",
@@ -4394,6 +4393,7 @@ var categoryKeys = [
   "products",
   "people"
 ];
+var retiredCategoryKeySchema = external_exports.enum([...categoryKeys, "music"]);
 var categoryKeySchema = external_exports.enum(categoryKeys);
 var analyticsInstant = external_exports.string().datetime({ offset: true }).refine((value) => Number.isFinite(Date.parse(value)));
 var analyticsQuerySchema = external_exports.object({ from: analyticsInstant, to: analyticsInstant, category: categoryKeySchema.optional(), collectionId: external_exports.string().uuid().optional(), recommendationId: external_exports.string().uuid().optional() }).strict().refine((input) => Date.parse(input.to) > Date.parse(input.from) && Date.parse(input.to) - Date.parse(input.from) <= 366 * 864e5);
@@ -4589,12 +4589,17 @@ var themeSettingsSchema = external_exports.object({
   wallpaperUrl: external_exports.string().regex(/^\/api\/explorers\/v1\/media\/[0-9a-f-]{36}\/content$/i).optional(),
   accentColor: external_exports.string().regex(/^#[0-9a-f]{3,8}$/i).optional(),
   customTextColor: external_exports.string().regex(/^#[0-9a-f]{3,8}$/i).optional(),
-  landingTab: external_exports.enum(["all-recommendations", "places", "movies", "books", "games", "guides", "apps", "products", "people", "gallery", "business", "music"]).optional(),
+  // .catch(undefined) degrades an unknown stored value (a "music" first view the 0057
+  // migration missed) to the default instead of failing the owner read. This schema is
+  // shared with writes, so an invalid landingTab on a write is silently dropped too;
+  // that is acceptable for a presentation preference. Order matters: under zod/v3
+  // .catch(undefined).optional() does not type-check.
+  landingTab: external_exports.enum(["all-recommendations", "places", "movies", "books", "games", "guides", "apps", "products", "people", "gallery", "business"]).optional().catch(void 0),
   visibleTabs: external_exports.object({ recommendations: external_exports.boolean().optional(), gallery: external_exports.boolean().optional(), business: external_exports.boolean().optional() }).strict().optional(),
   footerBranding: external_exports.enum(["enabled", "minimal", "disabled"]).optional(),
   recommendations: external_exports.object({
     layout: external_exports.enum(["shelves", "grid", "featured"]).optional(),
-    categoryOrder: external_exports.array(categoryKeySchema).max(9).optional()
+    categoryOrder: external_exports.array(categoryKeySchema).max(8).optional()
   }).strict().optional()
 }).strict();
 var socialLinkSchema = external_exports.object({
@@ -4681,7 +4686,7 @@ var updateAccountInputSchema = external_exports.object({
   additionalAddresses: external_exports.array(addressSchema).max(20).optional(),
   publicAddress: publicAddressSchema.nullable().optional(),
   profilePlaceDetails: placeDetailsSchema.nullable().optional(),
-  categories: external_exports.array(external_exports.object({ category: categoryKeySchema, isPublic: external_exports.boolean(), displayOrder: external_exports.number().int().nonnegative(), pinnedOrder: external_exports.number().int().nonnegative().nullable() }).strict()).optional(),
+  categories: external_exports.array(external_exports.object({ category: retiredCategoryKeySchema, isPublic: external_exports.boolean(), displayOrder: external_exports.number().int().nonnegative(), pinnedOrder: external_exports.number().int().nonnegative().nullable() }).strict()).optional(),
   themeSettings: themeSettingsSchema.optional(),
   socialLinks: external_exports.array(socialLinkSchema).max(20).optional(),
   businessDetails: businessDetailsSchema.optional(),

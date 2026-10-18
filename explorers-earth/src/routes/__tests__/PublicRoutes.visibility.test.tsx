@@ -15,8 +15,8 @@ vi.mock("../../layouts/PublicColdEntryBoundary", () => ({
   ),
 }));
 
-vi.mock("../../features/music/PublicMusicAvailabilityProvider", () => ({
-  PublicMusicAvailabilityProvider: ({ children }: { children: React.ReactNode }) => children,
+vi.mock("../../features/PublicHome/api/PublicAccountIdentityProvider", () => ({
+  PublicAccountIdentityProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 vi.mock("../validators/TabVisibilityGuard", () => ({
@@ -43,12 +43,6 @@ vi.mock("../../features/PublicHome/components/PublicProfile", () => ({
 }));
 vi.mock("../../pages/public/PublicHomePage", () => ({
   default: () => <div>places-index</div>,
-}));
-vi.mock("../validators/PublicMusicVisibilityBoundary", () => ({
-  default: ({ children }: { children: React.ReactNode }) => <section data-testid="visibility-public_music">{children}</section>,
-}));
-vi.mock("../../pages/public/ProfileMusic", () => ({
-  default: () => <div>profile-music</div>,
 }));
 vi.mock("../../features/PublicHome/components/Community", () => ({
   default: () => <div>community</div>,
@@ -101,7 +95,6 @@ vi.mock("../../features/People", () => ({
 }));
 
 const cases = [
-  ["/tk2727/music", "public_music", "profile-music"],
   ["/tk2727/places", "public_recommendations", "places-index"],
   ["/tk2727/places/paris", "public_recommendations", "places-index"],
   ["/tk2727/places/map", "public_recommendations", "places-map"],
@@ -148,9 +141,10 @@ describe("PublicRoutes category visibility boundaries", () => {
     },
   );
 
-  it("redirects an unknown public-profile child path to the username root", async () => {
+  // /:username/music is one of these since the public Music page was removed (P3-4).
+  it.each(["/tk2727/not-a-real-category", "/tk2727/music"])("redirects an unknown public-profile child path %s to the username root", async (path) => {
     render(
-      <MemoryRouter initialEntries={["/tk2727/not-a-real-category"]}>
+      <MemoryRouter initialEntries={[path]}>
         <Routes>{PublicRoutes}</Routes>
       </MemoryRouter>,
     );

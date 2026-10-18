@@ -28,7 +28,6 @@ export const PUBLIC_LANDING_DESTINATION_IDS = [
   ...RECOMMENDATION_CATEGORY_IDS,
   'gallery',
   'business',
-  'music',
 ] as const;
 
 export type LandingTabId = (typeof PUBLIC_LANDING_DESTINATION_IDS)[number];

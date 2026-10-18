@@ -1,6 +1,6 @@
 import { runtimeOrigin } from "../lib/publicRuntimeConfig";
 import type { UTMParameters } from '../utils/urlHelpers';
-import { createMusicDevelopmentFetch } from '../features/music/musicDevelopmentTransport';
+import { createMusicDevelopmentFetch } from '../lib/musicDevelopmentTransport';
 
 const CONSENT_STORAGE_KEY = 'explorers-cookie-consent';
 export const ANALYTICS_CONSENT_CHANGED_EVENT =

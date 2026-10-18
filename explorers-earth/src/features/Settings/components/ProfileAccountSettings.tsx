@@ -24,7 +24,7 @@ import { EarthLoader } from "../../../components/EarthLoader";
 import useAuthStore from "../../../store/store";
 import { mapAddressComponents } from "../../../utils/mapAddress";
 import { validateUsername } from "../../../utils/usernameValidation";
-import { selectCompletedAccount } from "../../music/musicIdentityCoordinator";
+import { selectCompletedAccount } from "../../../lib/explorerAccountSelection";
 
 interface ProfileAccountSettingsProps {
   section: "account" | "billing";

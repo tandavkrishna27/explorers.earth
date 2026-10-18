@@ -51,8 +51,8 @@ describe("C5 credential configuration contracts", () => {
   });
 
   it("keeps all credential material out of browser source and built-time variable names", () => {
+    // localTunesApiClient.ts, the browser Music credential client, was deleted in P3-4.
     const credentialSources = [
-      "explorers-earth/src/lib/localTunesApiClient.ts",
       "explorers-earth/src/services/accountLifecycleService.ts",
     ].map((path) => readFileSync(resolve(repositoryRoot, path), "utf8"));
     for (const source of credentialSources) {

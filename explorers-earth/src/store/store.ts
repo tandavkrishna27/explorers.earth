@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { clearMusicCredential } from "../lib/musicCredentialStore";
 
 // types for authentication
 interface AuthState {
@@ -66,7 +65,6 @@ const useAuthStore = create<AuthState>()(
 
       beginVerification: () => {
         const generation = get().generation + 1;
-        clearMusicCredential();
         set({ generation, status: "loading", isAuthenticated: false, accountId: null, token: null, user: null });
         return generation;
       },
@@ -84,7 +82,6 @@ const useAuthStore = create<AuthState>()(
       },
       verificationFailed: (generation, status) => {
         if (get().generation !== generation) return;
-        clearMusicCredential();
         set({ status, accountId: null, isAuthenticated: false, token: null, user: null });
       },
       setLogoutError: (failed, attemptId) => {
@@ -101,7 +98,6 @@ const useAuthStore = create<AuthState>()(
       },
 
       login: (data) => {
-        clearMusicCredential();
         set({
           generation: get().generation + 1,
           status: "active-complete",
@@ -121,7 +117,6 @@ const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        clearMusicCredential();
         set({
           generation: get().generation + 1,
           status: "signed-out",

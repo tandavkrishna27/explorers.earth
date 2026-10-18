@@ -106,7 +106,6 @@ const categoryOrder = [
   "books",
   "places",
   "guides",
-  "music",
   "movies",
   "games",
   "apps",

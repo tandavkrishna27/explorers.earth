@@ -75,9 +75,9 @@
   "config": "import {defineConfig} from '@playwright/test';\nif(!process.env.PLACE_LINKS_E2E_FIXTURE_PATH||!/^http:\\/\\/127\\.0\\.0\\.1:[1-9]\\d{3,4}$/.test(process.env.PLAYWRIGHT_EXTERNAL_BASE_URL??''))throw new Error('Places requires its owned fixture');\nexport default defineConfig({testDir:'.',testMatch:'place-links.spec.ts',fullyParallel:false,workers:1,retries:0,timeout:120000,expect:{timeout:15000},reporter:'line',use:{baseURL:process.env.PLAYWRIGHT_EXTERNAL_BASE_URL,headless:true,trace:'off',video:'off',screenshot:'off'},projects:[{name:'place-links-desktop',use:{browserName:'chromium',viewport:{width:1365,height:900}}},{name:'place-links-mobile',use:{browserName:'chromium',viewport:{width:390,height:844},isMobile:true,hasTouch:true}}]});\n",
   "protectedHashes": {
     "explorers-earth/e2e/replatform/place-links.playwright.config.ts": "57a18d7e1ad0fb4b6a517cb947b023e8fb4785996925dbbb635db64b9e2033e2",
-    "explorers-earth/e2e/replatform/suite-manifest.json": "276bb0aca15f0db7c67081e34d407fec7b2d19e811981146140fdb3da6fa5348",
+    "explorers-earth/e2e/replatform/suite-manifest.json": "4338f0d1619d02dedb28bde384bb9262750cf4a494adebff9760844bcc7e4106",
     "tunes/scripts/profile-browser-fixture.ts": "b86916c78380dd1712928de2036f93100e86350dff16ffb82d3cdd7ecf47bbbe",
-    "tunes/scripts/protected-browser-receipt.ts": "76a9d82f1763f7abf87101f90790bdb76174b36011dd60b6594e53442a0c501b",
+    "tunes/scripts/protected-browser-receipt.ts": "7a668e053bd988f17233057634ff40c5fd03ca660def16d7f47092a4d81b6192",
     "scripts/browser-playwright-receipt.mjs": "b6094a409a06969bb0290452203fa68c680ccaf3b7e0b0f500f306a748e60898"
   },
   "stagePlan": [

@@ -9,6 +9,7 @@ describe('Header Category Switcher Registry', () => {
     expect(fileContent).toContain("{ id: 'hub', name: 'All Recommendations', path: '/recommendations' }");
     expect(fileContent).toContain("{ id: 'places', name: 'Places', path: '/recommendations/places' }");
     expect(fileContent).toContain("{ id: 'guides', name: 'Guides', path: '/recommendations/guides' }");
-    expect(fileContent).toContain("{ id: 'music', name: 'Music', path: '/recommendations/music' }");
+    // Music was removed in P3-4.
+    expect(fileContent).not.toContain("id: 'music'");
   });
 });

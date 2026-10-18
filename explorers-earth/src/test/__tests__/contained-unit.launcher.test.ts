@@ -148,7 +148,10 @@ describe('synthetic environment and canonical config', () => {
           const source = await fs.readFile(absolute, 'utf8');
           for (const match of source.matchAll(/\bVITE_[A-Z0-9_]+\b/g)) {
             if (match[0] === 'VITE_IGDB_CLIENT_SECRET') {
-              expect(path.relative(root, absolute).split('\\').join('/')).toBe('src/features/music/__tests__/replatformLocalVite.test.ts');
+              // Only a negative unit test may name this secret (its Music-era holder,
+              // replatformLocalVite.test.ts, is gone); it must assert the key is absent
+              // and never read it from import.meta.env.
+              expect(path.relative(root, absolute).split('\\').join('/')).toMatch(/^src\/(?:.+\/)?__tests__\/[^/]+\.test\.tsx?$/);
               expect(source).toContain('expect(config.env.VITE_IGDB_CLIENT_SECRET).toBeUndefined()');
               expect(source).not.toContain('import.meta.env.VITE_IGDB_CLIENT_SECRET');
               continue;
@@ -304,7 +307,7 @@ describe('launcher and package entrypoints', () => {
   it('rewrites only the leading music-critical Vitest entrypoint', async () => {
     const manifest = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
     expect(manifest.scripts['test:music-critical-coverage']).toBe(
-      'node scripts/run-contained-vitest.cjs run src/features/music/__tests__/musicEntitlementContract.test.ts src/features/music/__tests__/musicIdentityCoordinator.test.ts src/features/music/__tests__/musicPublicationCommandRegistry.test.ts src/features/music/__tests__/musicSessionBoundary.browser-channel.test.ts src/features/music/__tests__/musicSessionBoundary.node.test.ts src/features/music/__tests__/musicSessionBoundary.test.ts src/features/music/__tests__/musicState.test.ts src/features/music/__tests__/musicWorkspaceClient.test.ts src/features/music/__tests__/musicQueueClient.test.ts src/features/music/__tests__/musicSearchClient.test.ts src/features/music/__tests__/publicMusicClient.test.ts src/services/__tests__/accountLifecycleService.test.ts src/features/Settings/components/AccountDeletionLifecyclePanel.test.tsx src/lib/__tests__/musicCredentialStore.test.ts src/lib/__tests__/localTunesApiClient.test.ts src/lib/__tests__/music-critical-client-coverage.test.ts --coverage.enabled=true --coverage.provider=v8 --coverage.reporter=text --coverage.all=true --coverage.include=src/features/music/musicEntitlementContract.ts --coverage.include=src/features/music/musicIdentityCoordinator.ts --coverage.include=src/features/music/musicPublicationCommandRegistry.ts --coverage.include=src/features/music/musicSessionBoundary.ts --coverage.include=src/features/music/musicState.ts --coverage.include=src/features/music/musicWorkspaceClient.ts --coverage.include=src/features/music/musicQueueClient.ts --coverage.include=src/features/music/musicSearchClient.ts --coverage.include=src/features/music/publicMusicClient.ts --coverage.include=src/services/accountLifecycleService.ts --coverage.include=src/features/Settings/components/AccountDeletionLifecyclePanel.tsx --coverage.include=src/lib/musicCredentialStore.ts --coverage.include=src/lib/localTunesApiClient.ts --coverage.thresholds.perFile=true --coverage.thresholds.lines=100 --coverage.thresholds.branches=100 --coverage.thresholds.functions=100 --coverage.thresholds.statements=100',
+      'node scripts/run-contained-vitest.cjs run src/services/__tests__/accountLifecycleService.test.ts src/features/Settings/components/AccountDeletionLifecyclePanel.test.tsx src/lib/__tests__/explorerAccountSelection.test.ts --coverage.enabled=true --coverage.provider=v8 --coverage.reporter=text --coverage.all=true --coverage.include=src/services/accountLifecycleService.ts --coverage.include=src/features/Settings/components/AccountDeletionLifecyclePanel.tsx --coverage.include=src/lib/explorerAccountSelection.ts --coverage.thresholds.perFile=true --coverage.thresholds.lines=100 --coverage.thresholds.branches=100 --coverage.thresholds.functions=100 --coverage.thresholds.statements=100',
     );
   });
 

@@ -372,43 +372,6 @@ describe("PublicProfile recommendation presentation", () => {
     expect(screen.getByRole("link", { name: "Send SMS" })).toHaveAttribute("href", "sms:+15555550123");
   });
 
-  it("treats a saved Music landing destination as unavailable to recommendation ordering", () => {
-    state.account = makeAccount({
-      public_music: "Yes",
-      social_media: {
-        theme_settings: themeSettings({
-          landingTab: "music",
-          recommendations: {
-            layout: "featured",
-            categoryOrder: ["books", "music", "places"],
-          },
-        }),
-      },
-    });
-
-    renderProfile();
-
-    expect(selectedTab()).toHaveAccessibleName("Recommendations");
-    expect(screen.getByTestId("recommendations-content")).toHaveAttribute(
-      "data-layout",
-      "featured",
-    );
-    expect(screen.getByTestId("recommendations-content")).toHaveAttribute(
-      "data-preferred",
-      "",
-    );
-    expect(recommendationProps.at(-1)?.presentation.categoryOrder).toEqual([
-      "books",
-      "places",
-      "movies",
-      "games",
-      "guides",
-      "apps",
-      "products",
-      "people",
-    ]);
-  });
-
   it.each([
     "cinematic-dark",
     "glassmorphism",

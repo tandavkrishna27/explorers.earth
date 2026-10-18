@@ -181,7 +181,7 @@ describe("Music E2E transactional state restore", () => {
       "0049_explorers_collection_location_links",
       "0050_explorers_guide_sections",
       "0051_explorers_launch_controls",
-      "0052_canonical_music_numeric_retirement", "0053_explorers_taxonomy_catalogs", "0054_explorers_place_individual_pins", "0055_explorers_app_enrichment", "0056_explorers_app_enrichment_jobs",
+      "0052_canonical_music_numeric_retirement", "0053_explorers_taxonomy_catalogs", "0054_explorers_place_individual_pins", "0055_explorers_app_enrichment", "0056_explorers_app_enrichment_jobs", "0057_retire_music_category",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },

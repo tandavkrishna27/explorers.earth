@@ -7,7 +7,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import PublicProfileThemeProvider from "../PublicProfileThemeProvider";
 import { usePublicCategoryThemeStyles } from "../PublicCategoryThemeContext";
-import { PublicMusicProfileHeader } from '../../../music/components/PublicMusicProfileHeader';
 import PublicProfileFooter from "../PublicProfileFooter";
 
 const profile = vi.hoisted(() => {
@@ -21,7 +20,7 @@ const profile = vi.hoisted(() => {
     identity: { usernameKey: 'alice', status: 'ready', account },
   };
 });
-function renderProfile(path = '/alice/music', children = <h1>Music</h1>, showShellChrome = true, navigation?: React.ReactNode) {
+function renderProfile(path = '/alice/books', children = <h1>Books</h1>, showShellChrome = true, navigation?: React.ReactNode) {
   return render(<MemoryRouter initialEntries={[path]}><Routes><Route path="/:username/*" element={<PublicProfileThemeProvider showShellChrome={showShellChrome} navigation={navigation}>{children}</PublicProfileThemeProvider>} /></Routes></MemoryRouter>);
 }
 function CategoryThemeProbe({ portal = false, testId }: { portal?: boolean; testId: string }) {
@@ -31,8 +30,7 @@ function CategoryThemeProbe({ portal = false, testId }: { portal?: boolean; test
 }
 const trackClick = vi.hoisted(() => vi.fn());
 vi.mock("../../../../services/analyticsService", () => ({ createAnalyticsOptions: { profile: () => ({}) }, useTrackAnalytics: () => ({ trackClick }) }));
-vi.mock("../../../music/PublicMusicAvailabilityProvider", () => ({
-  usePublicMusicAvailability: () => profile,
+vi.mock("../../api/PublicAccountIdentityProvider", () => ({
   usePublicAccountIdentity: () => profile.identity,
 }));
 
@@ -49,44 +47,6 @@ describe("PublicProfileThemeProvider", () => {
     profile.account.social_media.theme_settings.wallpaperMode = "banner-top";
     profile.account.social_media.theme_settings.footerBranding = "enabled";
   });
-  it("uses the route-aware shared-header descriptor on friendly Music", async () => {
-    Object.defineProperty(navigator, "share", { configurable: true, value: vi.fn().mockResolvedValue(undefined) });
-    renderProfile();
-    fireEvent.click(screen.getByRole("button", { name: "Share" }));
-    await waitFor(() => expect(trackClick).toHaveBeenCalledWith("share-button", { context: "music-header" }));
-  });
-  it("keeps Music branding and selected cover without repeating the profile identity", () => {
-    const view = renderProfile();
-    expect(screen.getByRole("banner")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Share" })).toBeInTheDocument();
-    expect(view.container.querySelector('[data-music-cover]')).toHaveAttribute("src", "https://images.example/hero.jpg");
-    expect(screen.queryByRole("img", { name: "Alice profile photo" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Alice")).not.toBeInTheDocument();
-    expect(screen.queryByText("@alice")).not.toBeInTheDocument();
-    expect(screen.queryByText("Goa")).not.toBeInTheDocument();
-    expect(screen.getAllByRole('heading', {level: 1})).toHaveLength(1);
-    expect(view.container.querySelector('[data-profile-hero-backdrop]')).not.toBeInTheDocument();
-    expect(screen.getAllByRole("img", { name: "Explorers.Earth" })).toHaveLength(1);
-    expect(screen.getByRole("img", { name: "explorers.earth" })).toHaveClass("public-brand-icon");
-    expect(screen.getByRole("contentinfo")).toBeInTheDocument();
-    expect(screen.queryAllByRole("main")).toHaveLength(0);
-  });
-
-  it("never invents a cover when no image was selected", () => {
-    profile.account.bg_picture = null;
-    const view = renderProfile();
-    expect(screen.getByRole("banner")).toBeInTheDocument();
-    expect(view.container.querySelector('[data-music-cover]')).not.toBeInTheDocument();
-    expect(screen.queryByRole("img", { name: "Cover" })).not.toBeInTheDocument();
-    expect(screen.getByRole("contentinfo")).toBeInTheDocument();
-  });
-
-  it("uses one continuous wallpaper without duplicating a banner hero", () => {
-    profile.account.social_media.theme_settings.wallpaperMode = "full-wallpaper-image";
-    const view = renderProfile();
-    expect(screen.queryByRole("img", { name: "Cover" })).not.toBeInTheDocument();
-    expect(view.container.querySelector("[data-profile-wallpaper] img")).toHaveAttribute("src", "https://images.example/hero.jpg");
-  });
   it('does not expose cached identity while loading or after a username change', () => {
     profile.state = 'loading';
     const view = renderProfile();
@@ -94,51 +54,28 @@ describe("PublicProfileThemeProvider", () => {
     expect(screen.queryByRole('img', {name: 'Alice profile photo'})).not.toBeInTheDocument();
     view.unmount();
     profile.state = 'available';
-    renderProfile('/bob/music');
+    renderProfile('/bob/books');
     expect(screen.queryByText('Alice')).not.toBeInTheDocument();
     expect(screen.queryByRole('img', {name: 'Alice profile photo'})).not.toBeInTheDocument();
-  });
-  it('keeps the matching account theme, artwork, and footer while Music availability loads', () => {
-    profile.state = 'loading';
-    const view = renderProfile();
-
-    expect(view.container.querySelector('[data-public-profile-chrome]')).toHaveAttribute('data-theme-preset', 'neon-cyber');
-    expect(view.container.querySelector('[data-public-profile-chrome]')).toHaveAttribute('data-wallpaper-mode', 'banner-top');
-    expect(view.container.querySelector('[data-music-cover]')).toHaveAttribute('src', 'https://images.example/hero.jpg');
-    expect(screen.getByRole('link', { name: 'Privacy', exact: true })).toBeInTheDocument();
   });
   it("does not apply a cached account's theme or artwork to a different username", () => {
     profile.state = 'loading';
-    const view = renderProfile('/bob/music');
+    const view = renderProfile('/bob/books');
 
     expect(view.container.querySelector('[data-public-profile-chrome]')).toHaveAttribute('data-theme-preset', 'cinematic-dark');
-    expect(view.container.querySelector('[data-music-cover]')).not.toBeInTheDocument();
-  });
-  it('retains the standalone identity avatar fallback', () => {
-    render(<PublicMusicProfileHeader name="Alice" username="alice" avatarUrl="https://images.example/avatar.jpg" />);
-    fireEvent.error(screen.getByRole('img', {name: 'Alice profile photo'}));
-    expect(screen.queryByRole('img', {name: 'Alice profile photo'})).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Alice initials')).toHaveTextContent('A');
-  });
-  it.each(['/alice', '/alice/books'])('keeps Music-only wallpaper chrome off the non-Music route %s', (path) => {
-    const view = renderProfile(path);
-    expect(view.container.querySelector('[data-public-profile-chrome]')).not.toHaveClass('public-music');
-    expect(screen.queryByText('Alice')).not.toBeInTheDocument();
-    expect(view.container.querySelector('[data-music-cover]')).not.toBeInTheDocument();
   });
   it.each([
     ['/alice', 1, <><h1>Profile</h1><PublicProfileFooter brandingStyle="enabled" /></>],
     ['/alice/books', 1, <h1>Books</h1>],
     ['/alice/books/favorites', 1, <h1>Favorite books</h1>],
     ['/alice/places/map', 0, <h1>Places map</h1>],
-    ['/alice/music', 1, <h1>Music</h1>],
   ] as const)('owns exactly one shared banner/share on %s while retaining %i footer(s)', (path, footerCount, children) => {
     renderProfile(path, children);
     expect(screen.getAllByRole('banner')).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'Share' })).toHaveLength(1);
     expect(screen.queryAllByRole('contentinfo')).toHaveLength(footerCount);
   });
-  it.each(['/alice', '/alice/books', '/alice/books/favorites', '/alice/places/map', '/alice/music'])('renders no cold header or Share action on %s', (path) => {
+  it.each(['/alice', '/alice/books', '/alice/books/favorites', '/alice/places/map'])('renders no cold header or Share action on %s', (path) => {
     renderProfile(path, <h1>Cold route</h1>, false);
     expect(screen.queryByRole('banner')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument();
@@ -166,26 +103,6 @@ describe("PublicProfileThemeProvider", () => {
     const navigation = screen.getByRole('navigation', { name: 'Fixture public navigation' });
     expect(navigation.parentElement).toHaveClass('public-profile-nav-layer');
     expect(content).not.toContainElement(navigation);
-  });
-  it('reserves exactly one shared-header offset on the real Music provider shell', () => {
-    const styles = document.createElement('style');
-    styles.textContent = [
-      readFileSync(path.resolve(__dirname, '../PublicBranding.css'), 'utf8'),
-      readFileSync(path.resolve(__dirname, '../../../music/components/PublicMusicPresentation.css'), 'utf8'),
-    ].join('\n');
-    document.head.append(styles);
-    try {
-      const view = renderProfile('/alice/music', <div data-testid="music-route-content">Music route content</div>);
-      const shell = view.container.querySelector<HTMLElement>('[data-public-profile-chrome].public-music');
-      const content = view.container.querySelector<HTMLElement>('[data-public-content-layer]');
-
-      expect(shell).not.toBeNull();
-      expect(content).not.toBeNull();
-      expect(getComputedStyle(content!).paddingTop).toBe('var(--public-header-reserved-offset)');
-      expect(getComputedStyle(shell!).paddingTop).toBe('0');
-    } finally {
-      styles.remove();
-    }
   });
   it('lets the root hero start behind transparent borderless chrome while non-hero routes retain the reserved offset', () => {
     const styles = document.createElement('style');
@@ -390,7 +307,7 @@ describe("PublicProfileThemeProvider", () => {
     renderProfile('/alice', <CategoryThemeProbe testId="profile-root-probe" />);
     expect(screen.getByTestId('profile-root-probe')).toHaveAttribute('data-category-page', 'none');
   });
-  it.each(['/alice', '/alice/music'])('does not add category aliases to non-category route %s', (route) => {
+  it.each(['/alice'])('does not add category aliases to non-category route %s', (route) => {
     profile.account.social_media.theme_settings.preset = 'minimal-light';
     const view = renderProfile(route);
     const shell = view.container.querySelector<HTMLElement>('[data-public-profile-chrome]')!;

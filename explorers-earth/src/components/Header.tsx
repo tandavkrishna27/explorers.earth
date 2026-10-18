@@ -25,7 +25,6 @@ const recommendationCategories = [
   { id: 'hub', name: 'All Recommendations', path: '/recommendations' },
   { id: 'places', name: 'Places', path: '/recommendations/places' },
   { id: 'guides', name: 'Guides', path: '/recommendations/guides' },
-  { id: 'music', name: 'Music', path: '/recommendations/music' },
   { id: 'movies', name: 'Movies & Shows', path: '/recommendations/movies' },
   { id: 'books', name: 'Books', path: '/recommendations/books' },
   { id: 'games', name: 'Games', path: '/recommendations/games' },

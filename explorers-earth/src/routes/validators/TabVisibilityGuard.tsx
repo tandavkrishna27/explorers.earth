@@ -2,7 +2,7 @@ import { memo, useEffect, useState } from "react";
 import HeroSkeleton from "../../components/ui/HeroSkeleton";
 import UsernameRootRedirect from "./UsernameRootRedirect";
 import { usePublicColdEntry } from "../../layouts/PublicColdEntryBoundary";
-import { usePublicAccountIdentity } from "../../features/music/PublicMusicAvailabilityProvider";
+import { usePublicAccountIdentity } from "../../features/PublicHome/api/PublicAccountIdentityProvider";
 import { subscribePublicProfileInvalidation } from "../../features/PublicHome/api/publicProfileInvalidation";
 
 interface TabVisibilityGuardProps {

@@ -46,7 +46,7 @@ export function fixtureState(extra: Record<string, unknown> = {}, mode: 'private
         visibleTabs: { recommendations: true, gallery: false, business: false }, footerBranding: 'disabled' },
     }, profile_picture: null, bg_picture: null, mobile_number_visibility: false, recommendation_lists: [],
     createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
-    public_profile: 'Yes', public_music: 'No', ...Object.fromEntries(categories.map(c => [c.field, 'Yes'])),
+    public_profile: 'Yes', ...Object.fromEntries(categories.map(c => [c.field, 'Yes'])),
     pinned_nav_tabs: ['public_profile', 'public_books'], auto_pinning: false, ...extra,
   };
   const lists = Object.fromEntries(categories.map(c => [c.root, [{
@@ -88,8 +88,7 @@ export function canonicalCategoryAccount(state:FixtureState) {
     onboardingStatus:state.account.Account_Name&&state.account.Account_Type&&state.account.mobile_number?'complete':'incomplete',
     publicProfile:state.account.public_profile==='Yes',autoPinning:state.account.auto_pinning,revision:state.canonicalAccountRevision,
     categories:[...categories.map((category,displayOrder)=>({category:category.route,isPublic:state.account[category.field]==='Yes',displayOrder,
-      pinnedOrder:state.account.pinned_nav_tabs.includes(category.field)?state.account.pinned_nav_tabs.indexOf(category.field):null})),
-      {category:'music',isPublic:state.account.public_music==='Yes',displayOrder:8,pinnedOrder:state.account.pinned_nav_tabs.includes('public_music')?state.account.pinned_nav_tabs.indexOf('public_music'):null}],
+      pinnedOrder:state.account.pinned_nav_tabs.includes(category.field)?state.account.pinned_nav_tabs.indexOf(category.field):null}))],
   }));
 }
 
@@ -190,9 +189,9 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       const parsed=updateAccountRequestSchema.safeParse(request.postDataJSON());
       const observed=canonicalCategoryAccount(state);
       if(parsed.success&&parsed.data.expectedRevision!==observed.revision)return fail('CONFLICT',409);
-      if(!parsed.success || !((Object.keys(parsed.data).sort().join(',')==='categories,expectedRevision' && parsed.data.categories?.length===9)
+      if(!parsed.success || !((Object.keys(parsed.data).sort().join(',')==='categories,expectedRevision' && parsed.data.categories?.length===categories.length)
         || Object.keys(parsed.data).sort().join(',')==='autoPinning,expectedRevision')) return fail('INVALID_INPUT',422);
-      if(parsed.data.categories && (new Set(parsed.data.categories.map(row=>row.category)).size!==9
+      if(parsed.data.categories && (new Set(parsed.data.categories.map(row=>row.category)).size!==categories.length
         || parsed.data.categories.some(row=>!observed.categories.some(previous=>previous.category===row.category&&previous.displayOrder===row.displayOrder)))) return fail('INVALID_INPUT',422);
       state.writes.push({name:'PATCH /api/explorers/v1/account',variables:parsed.data,owner:true});
       const fault=state.faults.get(url.pathname)?.shift();
@@ -202,7 +201,7 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       if(fault?.kind==='error')return fail('PROVIDER_UNAVAILABLE',fault.status??503);
       if(parsed.data.categories) {
         const rows=parsed.data.categories;
-        const fields=new Map<string,string>([...categories.map(c=>[c.route,c.field] as const),['music','public_music']]);
+        const fields=new Map<string,string>(categories.map(c=>[c.route,c.field] as const));
         for(const row of rows) state.account[fields.get(row.category)!]=row.isPublic?'Yes':'No';
         state.account.pinned_nav_tabs=['public_profile',...rows.filter(row=>row.pinnedOrder!==null).sort((a,b)=>a.pinnedOrder!-b.pinnedOrder!).map(row=>fields.get(row.category)!)];
       }
@@ -477,7 +476,7 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
             return json({ data: project(definition.selectionSet, { deleteBookList: { documentId: variables.documentId } }) });
           }
           const fields = Object.keys(variables.data ?? {});
-          if (!owner || name !== 'UpdateTabVisibility' || variables.documentId !== state.account.documentId || fields.length === 0 || fields.some(field => !['public_profile', 'public_music', 'pinned_nav_tabs', 'auto_pinning', ...categories.map(c => c.field)].includes(field))) throw new Error('unexpected mutation');
+          if (!owner || name !== 'UpdateTabVisibility' || variables.documentId !== state.account.documentId || fields.length === 0 || fields.some(field => !['public_profile', 'pinned_nav_tabs', 'auto_pinning', ...categories.map(c => c.field)].includes(field))) throw new Error('unexpected mutation');
           Object.assign(state.account, structuredClone(variables.data));
           if (fault?.kind === 'lost') return json({ errors: [{ message: 'Contained lost acknowledgement' }] });
           return json({ data: project(definition.selectionSet, { updateAccount: state.account }) });

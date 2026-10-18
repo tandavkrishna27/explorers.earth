@@ -34,8 +34,6 @@ function liveCanonicalOperations(): string[] {
     ].includes(route.classification) || route.path === "/api-docs"
       || route.path === "/api/music/public-profile/:accountDocumentId"
       || route.path === "/api/music/public-resource/v1/:publicSlug"
-      || route.path === "/api/explorers/analytics/music/:publicSlug/events"
-      || route.path === "/api/explorers/analytics/music-account/:accountDocumentId/events"
       || route.path === "/api/playlist/:guestUrl/youtube/search"
       || route.path === "/api/playlist/:guestUrl/youtube/video-from-url")
     .map((route) => `${route.method.toLowerCase()} ${openApiPath(route.path)}`)
@@ -92,9 +90,7 @@ describe("Music OpenAPI 3.1 executable contract", () => {
       const isHistoricalAnalytics = path === "/api/explorers/analytics/events" && method === "get";
       const isIdentityBoundary = isHistoricalAnalytics || path.includes("/identity/ensure") || path.includes("/identity/lifecycle/");
       const isPublic = path === "/api/music/public-profile/{accountDocumentId}"
-        || path === "/api/music/public-resource/v1/{publicSlug}"
-        || path === "/api/explorers/analytics/music/{publicSlug}/events"
-        || path === "/api/explorers/analytics/music-account/{accountDocumentId}/events";
+        || path === "/api/music/public-resource/v1/{publicSlug}";
       const isOwner = !isIdentityBoundary && !isPublic && !path.includes("{guestUrl}") && path !== "/api-docs";
       if (isIdentityBoundary) expect(operation.security, `${method} ${path}`).toContainEqual({ explorerProof: [] });
       if (isOwner) expect(operation.security, `${method} ${path}`).toContainEqual({ musicCredential: [] });
@@ -149,13 +145,9 @@ describe("Music OpenAPI 3.1 executable contract", () => {
     expect(descriptor.responses["200"]).toHaveProperty("content.application/json.examples.success.value.version", "music-public-descriptor/v1");
     expect(publicResource?.responses["200"]).toHaveProperty("content.application/json.examples.success.value.version", "music-public-resource/v1");
     expect(guestRequest.responses["201"]).toHaveProperty("content.application/json.examples.success.value.accepted", true);
-    const productAnalytics = MUSIC_OPENAPI_DOCUMENT.paths["/api/explorers/analytics/music/{publicSlug}/events"]?.post;
-    expect(productAnalytics?.security).toEqual([{}, { guestCapability: [] }]);
-    expect(productAnalytics?.requestBody).toBeDefined();
-    expect(JSON.stringify(productAnalytics?.requestBody)).not.toMatch(/accountId|publicSlug|capability|query|mediaUrl|credential/i);
-    const friendlyAnalytics = MUSIC_OPENAPI_DOCUMENT.paths["/api/explorers/analytics/music-account/{accountDocumentId}/events"]?.post;
-    expect(friendlyAnalytics?.security).toEqual([{}]);
-    expect(JSON.stringify(friendlyAnalytics?.requestBody)).not.toMatch(/accountId|accountDocumentId|publicSlug|capability|query|mediaUrl|credential/i);
+    // P3-5 removed both Music analytics routes, so neither is documented.
+    expect(MUSIC_OPENAPI_DOCUMENT.paths).not.toHaveProperty(["/api/explorers/analytics/music/{publicSlug}/events"]);
+    expect(MUSIC_OPENAPI_DOCUMENT.paths).not.toHaveProperty(["/api/explorers/analytics/music-account/{accountDocumentId}/events"]);
     expect(MUSIC_OPENAPI_DOCUMENT.components.schemas.PublicMusicResource).toMatchObject({
       type: "object", additionalProperties: false,
       required: ["version", "revision", "user", "permissions", "currentlyPlaying", "queue", "recentlyPlayed", "playlists"],

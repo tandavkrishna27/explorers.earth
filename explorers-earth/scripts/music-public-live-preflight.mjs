@@ -928,66 +928,6 @@ export function classifyLivePreflight({ authorityResult, collectionResult, works
   };
 }
 
-const AUTHORITY_EVALUATION = "import { musicLiveWriteSkipReason } from './e2e/setup/music.ts'; const skipReason=musicLiveWriteSkipReason(); process.stdout.write(JSON.stringify({skipReason}));";
-
-export function runLivePreflight({
-  spawn,
-  processExecPath,
-  tsxCli,
-  playwrightCli,
-  project,
-  cwd,
-  environment,
-  workspaceRoot,
-  knownSecrets = [],
-}) {
-  let resolvedTsxCli = tsxCli;
-  if (!resolvedTsxCli) {
-    try { resolvedTsxCli = resolveDeclaredTsxCli(); } catch (error) {
-      return classifyLivePreflight({
-        authorityResult: {
-          status: null,
-          stdout: "",
-          stderr: "",
-          signal: null,
-          error: { code: typeof error?.code === "string" ? error.code : "MODULE_NOT_FOUND" },
-        },
-        collectionResult: { status: null, stdout: "", stderr: "", signal: null },
-        workspaceRoot,
-        knownSecrets,
-      });
-    }
-  }
-  const childEnvironment = { ...environment };
-  delete childEnvironment.PLAYWRIGHT_JSON_OUTPUT_FILE;
-  delete childEnvironment.PLAYWRIGHT_JSON_OUTPUT_NAME;
-  delete childEnvironment.PLAYWRIGHT_JSON_OUTPUT_DIR;
-  const childOptions = {
-    cwd,
-    encoding: "utf8",
-    env: childEnvironment,
-    windowsHide: true,
-    maxBuffer: 1024 * 1024,
-  };
-  const authorityResult = spawn(processExecPath, [resolvedTsxCli, "-e", AUTHORITY_EVALUATION], childOptions);
-  if (authorityResult?.error || authorityResult?.signal || authorityResult?.status !== 0) {
-    return classifyLivePreflight({
-      authorityResult,
-      collectionResult: { status: null, stdout: "", stderr: "", signal: null },
-      workspaceRoot,
-      knownSecrets,
-    });
-  }
-  const collectionResult = spawn(processExecPath, [
-    playwrightCli,
-    "test",
-    `--project=${project}`,
-    "--list",
-    "--reporter=json",
-  ], childOptions);
-  return classifyLivePreflight({ authorityResult, collectionResult, workspaceRoot, knownSecrets });
-}
-
 export function runPlaywrightJourneyExecution({
   spawn,
   processExecPath,

@@ -603,18 +603,50 @@ function provision(host: string): unknown {
   return check(host, receipt);
 }
 
+/*
+ * The acceptance dataset: one canonical owner with a public profile and one published
+ * book recommendation, written directly in the shape `ensureInitialAccount` and the
+ * owner write path produce. Idempotent - a second seed finds the owner and adds nothing.
+ * Until P3-2 this posted to the legacy `/api/music/identity/ensure`, which the
+ * canonical-only fixture does not mount.
+ */
+const ACCEPTANCE_SEED_SQL = `
+DO $seed$
+DECLARE owner constant text := 'e2e-acceptance-owner'; acc uuid; lst uuid; ent uuid; rec uuid;
+BEGIN
+  IF EXISTS (SELECT 1 FROM auth_user WHERE id = owner) THEN RETURN; END IF;
+  INSERT INTO auth_user(id, name, email) VALUES (owner, 'Acceptance Owner', owner || '@example.invalid');
+  INSERT INTO creator_accounts DEFAULT VALUES RETURNING id INTO acc;
+  INSERT INTO account_memberships(account_id, user_id) VALUES (acc, owner);
+  INSERT INTO initial_account_bindings(account_id, user_id) VALUES (acc, owner);
+  INSERT INTO user_security_state(user_id) VALUES (owner) ON CONFLICT (user_id) DO NOTHING;
+  INSERT INTO account_category_settings(account_id, category, display_order)
+    SELECT acc, category, position - 1
+      FROM unnest(ARRAY['places','guides','movies','books','games','apps','products','people'])
+           WITH ORDINALITY AS initial(category, position);
+  INSERT INTO account_presentation(account_id) VALUES (acc);
+  UPDATE creator_accounts SET handle = 'acceptance-owner', display_name = 'Acceptance Owner',
+    account_type = 'Creator', public_profile = true, onboarding_status = 'complete' WHERE id = acc;
+  UPDATE account_category_settings SET is_public = true WHERE account_id = acc AND category = 'books';
+  INSERT INTO collections(account_id, category, title, slug, visibility, publication_state, display_order)
+    VALUES (acc, 'books', 'Acceptance shelf', 'acceptance-shelf', 'public', 'published', 0) RETURNING id INTO lst;
+  INSERT INTO entities(kind, title, origin) VALUES ('book', 'Acceptance Book', 'manual') RETURNING id INTO ent;
+  INSERT INTO book_entity_details(entity_id, authors) VALUES (ent, ARRAY['Acceptance Author']);
+  INSERT INTO recommendations(account_id, category, entity_id, publication_state)
+    VALUES (acc, 'books', ent, 'published') RETURNING id INTO rec;
+  INSERT INTO collection_items(account_id, category, collection_id, recommendation_id, display_order)
+    VALUES (acc, 'books', lst, rec, 0);
+END
+$seed$;
+`;
+
 async function seed(host: string, receipt: PlatformAuthority): Promise<unknown> {
   check(host, receipt);
-  const response = await fetch("http://127.0.0.1:51474/api/music/identity/ensure", {
-    method: "POST", headers: { authorization: "Bearer fixture-read-only-token", origin: "http://127.0.0.1:51474" },
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok) throw new Error("local acceptance identity seed failed");
-  const body = await response.json() as { identity?: { status?: string } };
-  if (body.identity?.status !== "active") throw new Error("local acceptance identity seed is inactive");
-  const rows = query(host, receipt, "SELECT count(*),min(id),max(id) FROM users WHERE strapi_user_document_id='e2e-public-music-fixture-user'").split("|");
-  if (rows.length !== 3 || rows[0] !== "1" || rows[1] !== rows[2]) refuse();
-  return { dataset: "acceptance", existingMusicIdentityRows: 1, stableMusicIdentityId: rows[1], canonicalDomainSeeds: "pending-owning-epics" };
+  query(host, receipt, ACCEPTANCE_SEED_SQL);
+  const rows = query(host, receipt, "SELECT a.id, count(r.id) FROM creator_accounts a JOIN recommendations r ON r.account_id=a.id "
+    + "WHERE a.handle='acceptance-owner' AND a.public_profile AND r.publication_state='published' GROUP BY a.id").split("|");
+  if (rows.length !== 2 || rows[1] !== "1") refuse();
+  return { dataset: "acceptance", publicProfileHandle: "acceptance-owner", stableAccountId: rows[0], publishedRecommendations: 1 };
 }
 
 async function stop(host: string, receipt: PlatformAuthority): Promise<unknown> {

@@ -19,10 +19,11 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Legacy Redirect Routes (handled before PublicRoutes :username/* matching).
-          StatePreservingRedirect forwards location.state so callers like
-          navigate("/music", { state: { justCreatedList: true } }) don't lose it. */}
+          StatePreservingRedirect forwards location.state to the target page.
+          /music stays registered after Music's removal so it is not read as a
+          profile named "music". */}
       <Route path="/guides" element={<StatePreservingRedirect to="/recommendations/guides" />} />
-      <Route path="/music" element={<StatePreservingRedirect to="/recommendations/music" />} />
+      <Route path="/music/*" element={<StatePreservingRedirect to="/recommendations" />} />
       <Route path="/hub" element={<StatePreservingRedirect to="/recommendations" />} />
 
       {/* Auth Routes */}

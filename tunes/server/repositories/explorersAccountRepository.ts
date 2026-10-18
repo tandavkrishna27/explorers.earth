@@ -10,6 +10,35 @@ const columns: Record<string, string> = {
 };
 const jsonFields = new Set(["bioRich", "primaryAddress", "additionalAddresses", "publicAddress", "profilePlaceDetails"]);
 
+const categoriesWithRetiredMusic = [...categoryKeys, "music"] as const;
+const knownCategories = new Set<string>(categoryKeys);
+
+/**
+ * The category set, or that set plus the music category retired by 0057: a tab still
+ * holding a snapshot read before the migration echoes its music row, and that save must
+ * succeed. The music entry itself is never written (see update()).
+ */
+export function isAcceptedCategorySet(supplied: readonly string[]): boolean {
+  const unique = new Set(supplied);
+  if (unique.size !== supplied.length) return false;
+  return [categoryKeys, categoriesWithRetiredMusic].some((accepted) =>
+    accepted.length === supplied.length && accepted.every((category) => unique.has(category)));
+}
+
+/**
+ * Defensive read: a category row or categoryOrder entry the 0057 migration missed must
+ * degrade, not take the account down - the owner read parses this through
+ * accountDtoSchema, and an unknown category there is a ZodError and a 503 for that owner.
+ */
+function knownThemeSettings(themeSettings: unknown): unknown {
+  if (!themeSettings || typeof themeSettings !== "object" || Array.isArray(themeSettings)) return themeSettings;
+  const settings = themeSettings as { recommendations?: unknown };
+  const recommendations = settings.recommendations as { categoryOrder?: unknown } | undefined;
+  if (!recommendations || typeof recommendations !== "object" || !Array.isArray(recommendations.categoryOrder)) return themeSettings;
+  return { ...settings, recommendations: { ...recommendations,
+    categoryOrder: recommendations.categoryOrder.filter((category) => typeof category === "string" && knownCategories.has(category)) } };
+}
+
 export class AccountConflict extends Error {
   constructor(readonly kind: "revision" | "handle") { super(kind); }
 }
@@ -42,9 +71,10 @@ export class ExplorersAccountRepository {
       bioPlain: row.bio_plain, bioRich: row.bio_rich, primaryAddress: row.primary_address,
       additionalAddresses: row.additional_addresses, publicAddress: row.public_address,
       profilePlaceDetails: row.profile_place_details,
-      categories: settings.rows.map((value) => ({ category: value.category, isPublic: value.is_public,
-        displayOrder: value.display_order, pinnedOrder: value.pinned_order })),
-      themeSettings: p.theme_settings, socialLinks: p.social_links, businessDetails: p.business_details,
+      categories: settings.rows.filter((value) => knownCategories.has(value.category))
+        .map((value) => ({ category: value.category, isPublic: value.is_public,
+          displayOrder: value.display_order, pinnedOrder: value.pinned_order })),
+      themeSettings: knownThemeSettings(p.theme_settings) as AccountDto["themeSettings"], socialLinks: p.social_links, businessDetails: p.business_details,
       profileImage: mediaDto("profile"), backgroundImage: mediaDto("background"),
       feedItems: feed.rows.map((item) => ({ id: item.id, mediaId: item.media_id,
         url: item.media_id ? `/api/explorers/v1/media/${item.media_id}/content` : item.external_url,
@@ -64,11 +94,19 @@ export class ExplorersAccountRepository {
         await client.query(`UPDATE creator_accounts SET ${clauses.join(",")},updated_at=now() WHERE id=$1`, [accountId, ...values]);
       }
       if (input.categories) {
-        if (input.categories.length !== categoryKeys.length || new Set(input.categories.map((item) => item.category)).size !== categoryKeys.length
-          || !categoryKeys.every((category) => input.categories?.some((item) => item.category === category))) throw new Error("Invalid category set");
-        for (const item of input.categories) await client.query(`UPDATE account_category_settings
+        if (!isAcceptedCategorySet(input.categories.map((item) => item.category))) throw new Error("Invalid category set");
+        // The music category is being retired (P3). A client may echo the nine rows it
+        // read before the retirement migration or the eight it reads after it, so both
+        // sets are accepted and music is never written. A music row that still exists is
+        // parked after every supplied row, unpinned, so the deferred unique constraints on
+        // display and pinned order cannot collide with the supplied ordering.
+        const written = input.categories.filter((item) => item.category !== "music");
+        for (const item of written) await client.query(`UPDATE account_category_settings
           SET is_public=$3,display_order=$4,pinned_order=$5 WHERE account_id=$1 AND category=$2`,
           [accountId, item.category, item.isPublic, item.displayOrder, item.pinnedOrder]);
+        await client.query(`UPDATE account_category_settings SET display_order=$2,pinned_order=NULL
+          WHERE account_id=$1 AND category='music'`,
+          [accountId, Math.max(-1, ...written.map((item) => item.displayOrder)) + 1]);
       }
       const p: Array<[string, unknown]> = [];
       if (input.themeSettings !== undefined) p.push(["theme_settings", input.themeSettings]);

@@ -5,21 +5,21 @@ import useAuthStore from '../../../store/store';
 import { CategoryNavigationProvider, useAccountNavigationWriter, useCategoryNavigation } from '../CategoryNavigationProvider';
 import { explorersApiClient } from '../../../lib/explorersApiClient';
 import { canonicalAccountFixture } from '../../../test/canonicalAccountFixture';
-import type { MusicPinVerifier, NavigationOutcome } from '../accountNavigationWriter';
+import type { NavigationOutcome } from '../accountNavigationWriter';
 import type { GenericNavigationIntent } from '../categoryNavigationPolicy';
 
 const publishPublicProfileInvalidation = vi.hoisted(() => vi.fn());
 vi.mock('../../PublicHome/api/publicProfileInvalidation', () => ({ publishPublicProfileInvalidation }));
 
-function account(extra = {}) { return { __typename: 'Account', documentId: 'a1', Account_Name: 'Owner', Account_Type: 'Personal', mobile_number: '123', public_profile: 'Yes', public_music: 'Yes', public_recommendations: 'Yes', public_guides: 'Yes', public_movie: 'Yes', public_books: 'Yes', public_games: 'Yes', public_apps: 'Yes', public_products: 'Yes', public_people: 'Yes', auto_pinning: false, pinned_nav_tabs: ['public_profile', 'public_music'], ...extra }; }
+function account(extra = {}) { return { __typename: 'Account', documentId: 'a1', Account_Name: 'Owner', Account_Type: 'Personal', mobile_number: '123', public_profile: 'Yes', public_recommendations: 'Yes', public_guides: 'Yes', public_movie: 'Yes', public_books: 'Yes', public_games: 'Yes', public_apps: 'Yes', public_products: 'Yes', public_people: 'Yes', auto_pinning: false, pinned_nav_tabs: ['public_profile', 'public_people'], ...extra }; }
 const ownerId = '11111111-1111-4111-8111-111111111111';
 const login = (id = 'u1', accountId = ownerId) => { const generation = useAuthStore.getState().beginVerification(); useAuthStore.getState().acceptVerified(generation, { id: accountId, userId: id, username: 'owner', email: 'owner@example.test', onboardingStatus: 'complete', revision: 1 }); };
-const keys = ['places','music','guides','movies','books','games','apps','products','people'] as const;
-const fields = ['public_recommendations','public_music','public_guides','public_movie','public_books','public_games','public_apps','public_products','public_people'] as const;
+const keys = ['places','guides','movies','books','games','apps','products','people'] as const;
+const fields = ['public_recommendations','public_guides','public_movie','public_books','public_games','public_apps','public_products','public_people'] as const;
 function dto(saved: ReturnType<typeof account>, revision: number) { return canonicalAccountFixture({ id: saved.documentId === 'a1' ? ownerId : saved.documentId, revision, autoPinning: saved.auto_pinning, categories: keys.map((category, displayOrder) => ({ category, displayOrder, isPublic: saved[fields[displayOrder]] === 'Yes', pinnedOrder: Array.isArray(saved.pinned_nav_tabs) && saved.pinned_nav_tabs.includes(fields[displayOrder]) ? saved.pinned_nav_tabs.indexOf(fields[displayOrder]) - 1 : null })) }); }
 const deferred = () => { let resolve!: () => void; const promise = new Promise<void>((r) => { resolve = r; }); return { promise, resolve }; };
 
-function harness(options: { consumer?: boolean; verifyMusicPin?: MusicPinVerifier; initial?: object; failReads?: boolean } = {}) {
+function harness(options: { consumer?: boolean; initial?: object; failReads?: boolean } = {}) {
   let saved = account(options.initial);
   let failMutation = false; let failReads = options.failReads ?? false; let failContent = false; let failReadsAfterMutation = false;
   let pauseRead: Promise<void> | undefined;
@@ -54,7 +54,7 @@ function harness(options: { consumer?: boolean; verifyMusicPin?: MusicPinVerifie
     return dto(saved, revision);
   });
   function Consumer() { value = useCategoryNavigation(); shared = useAccountNavigationWriter(); return <div>{value.snapshot?.scope.accountDocumentId ?? 'loading'}</div>; }
-  const tree = (active: boolean) => <CategoryNavigationProvider key={providerKey} verifyMusicPin={options.verifyMusicPin}>{active ? <Consumer /> : <div>unrelated</div>}</CategoryNavigationProvider>;
+  const tree = (active: boolean) => <CategoryNavigationProvider key={providerKey}>{active ? <Consumer /> : <div>unrelated</div>}</CategoryNavigationProvider>;
   const rendered = render(tree(options.consumer !== false));
   return { requests, get value() { return value; }, get shared() { return shared; },
     get saved() { return saved; }, set saved(next) { saved = next; },
@@ -112,8 +112,7 @@ describe('CategoryNavigationProvider', () => {
   it.each(fields)('safe hide and unpin remains available for %s on owner-content outage',async category=>{
     const h=harness({initial:{pinned_nav_tabs:['public_profile',category]}});h.failContent=true;await h.ready();
     expect((await h.request({category,action:'unpin'})).kind).toBe('confirmed');
-    // Music publication remains owned by its separate coordinator.
-    if(category!=='public_music')expect((await h.request({category,action:'unpublish'})).kind).toBe('confirmed');
+    expect((await h.request({category,action:'unpublish'})).kind).toBe('confirmed');
     expect(h.saved.pinned_nav_tabs).toEqual(['public_profile']);
   });
   it('permits a new native pin when the owner has no content yet',async()=>{
@@ -160,25 +159,16 @@ describe('CategoryNavigationProvider', () => {
     await act(async () => { pause.resolve(); });
     expect(h.value.authority).toEqual(current); expect(h.value.snapshot?.scope.userDocumentId).toBe('u1');
   });
-  it('checks currentness after delayed Music verification before admitting a pin', async () => {
-    const pause = deferred(); let started = false;
-    const h = harness({ initial: { pinned_nav_tabs: ['public_profile'] }, verifyMusicPin: async () => { started = true; await pause.promise; return 'public'; } });
-    await h.ready(); let pending!: Promise<NavigationOutcome>;
-    await act(async () => { pending = h.value.request({ category: 'public_music', action: 'pin' }, h.value.authority!); });
-    await waitFor(() => expect(started).toBe(true));
-    await act(async () => { login('u2'); login(); pause.resolve(); await pending; });
-    expect((await pending).kind).toBe('blocked'); expect(h.requests.some(r => r.name === 'UpdateAccount')).toBe(false);
-  });
   it('fences an admitted write response across A-B-A without publishing its old success', async () => {
     const h = harness(); await h.ready(); const pause = deferred(); h.pauseNextMutation(pause.promise);
     let pending!: Promise<NavigationOutcome>;
     await act(async () => { pending = h.value.request({ category: 'public_books', action: 'pin' }, h.value.authority!); });
     await waitFor(() => expect(h.requests.filter(r => r.name === 'UpdateAccount')).toHaveLength(1));
     await act(async () => { login('u2'); login(); }); await h.ready();
-    expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_music']);
+    expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_people']);
     await act(async () => { pause.resolve(); await pending; });
     expect((await pending).kind).toBe('blocked');
-    expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_music']);
+    expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_people']);
     expect(publishPublicProfileInvalidation).not.toHaveBeenCalled();
     expect(h.value).toMatchObject({ busy: false, pending: [] });
   });
@@ -188,7 +178,7 @@ describe('CategoryNavigationProvider', () => {
     expect(h.value.authority).toBeUndefined(); expect(h.requests).toHaveLength(before);
   });
   it('malformed canonical pin orders fail closed without rewriting saved preferences', async () => {
-    const h = harness(); h.saved = account({ pinned_nav_tabs: ['public_profile','public_music','public_music'] });
+    const h = harness(); h.saved = account({ pinned_nav_tabs: ['public_profile','public_people'] });
     vi.spyOn(explorersApiClient, 'getMyProfile').mockResolvedValue({ ...dto(h.saved, 1), categories: dto(h.saved, 1).categories.map(row => row.category === 'books' ? { ...row, pinnedOrder: 0 } : row) });
     await act(async () => { await h.value.refresh(); });
     await waitFor(() => expect(h.value.error).toBeDefined());
@@ -206,19 +196,18 @@ describe('CategoryNavigationProvider', () => {
     const h = harness({ consumer: false });
     await act(async () => { window.dispatchEvent(new Event('focus')); window.dispatchEvent(new Event('online')); });
     expect(h.requests).toEqual([]);
-    h.active(true); await h.ready(); expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_music']);
+    h.active(true); await h.ready(); expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_people']);
   });
   it('appends a new native pin on owner-content outage without disturbing stored preferences', async () => {
     const h = harness(); await h.ready(); h.failContent = true;
-    h.saved = account({ pinned_nav_tabs: ['public_profile', 'public_music', 'public_guides'] });
+    h.saved = account({ pinned_nav_tabs: ['public_profile', 'public_people', 'public_guides'] });
     expect((await h.request({ category: 'public_books', action: 'pin' })).kind).toBe('confirmed');
     // The existing placements are preserved and the new one is appended, never
     // reordered or replaced, even while content reads are failing.
-    expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_music', 'public_guides', 'public_books']);
+    expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_people', 'public_guides', 'public_books']);
     expect(h.requests.some((r) => r.name === 'CheckPublishedLists')).toBe(false);
   });
   it.each([
-    { category: 'public_music', action: 'publish' }, { category: 'public_music', action: 'unpublish' },
     { category: 'public_profile', action: 'unpin' }, { category: 'public_books', action: 'erase' },
   ])('runtime rejects $category $action before acquiring the writer or reading', async (intent) => {
     const h = harness(); await h.ready(); const before = h.requests.length;
@@ -226,19 +215,6 @@ describe('CategoryNavigationProvider', () => {
     expect((await h.request(intent as GenericNavigationIntent)).kind).toBe('blocked');
     expect(acquisition).not.toHaveBeenCalled();
     expect(h.requests).toHaveLength(before);
-  });
-  it.each(['missing', 'private', 'unlisted', 'outage'] as const)('fails closed for Music pin with %s verification', async (mode) => {
-    const h = harness({ verifyMusicPin: mode === 'missing' ? undefined : async () => { if (mode === 'outage') throw new Error('Unavailable'); return 'not-public'; } });
-    await h.ready(); h.saved = account({ pinned_nav_tabs: ['public_profile'] });
-    expect((await h.request({ category: 'public_music', action: 'pin' })).kind).toBe('blocked');
-    expect(h.requests.some((r) => r.name === 'UpdateAccount')).toBe(false);
-  });
-  it('passes the held transaction to Music verification without a nested lock', async () => {
-    const h = harness({ initial: { pinned_nav_tabs: ['public_profile'] }, verifyMusicPin: async (tx, origin) => {
-      const current = await tx.read(); return current.scope.accountDocumentId === origin.accountDocumentId && tx.isCurrent() ? 'public' : 'unknown';
-    } });
-    await h.ready(); expect((await h.request({ category: 'public_music', action: 'pin' })).kind).toBe('confirmed');
-    expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_music']);
   });
   it('keeps visibility and placement available through a content outage', async () => {
     const h = harness({ initial: { public_books: 'No' } }); h.failContent=true; await h.ready();
@@ -293,16 +269,16 @@ describe('CategoryNavigationProvider', () => {
     await h.ready(); expect(h.value.authority!.generation).not.toBe(origin.generation);
     let result!: NavigationOutcome; await act(async () => { result = await h.value.request({ category: 'public_books', action: 'pin' }, origin); }); expect(result).toMatchObject({ kind: 'blocked' });
   });
-  it('serializes a shared Music transaction and an ordinary command under one writer', async () => {
+  it('serializes a shared writer transaction and an ordinary command under one writer', async () => {
     const h = harness(); await h.ready(); const pause = deferred(); const origin = h.value.authority!;
-    let music!: Promise<unknown>; let ordinary!: Promise<NavigationOutcome>; let competing!: Promise<NavigationOutcome>;
+    let shared!: Promise<unknown>; let ordinary!: Promise<NavigationOutcome>; let competing!: Promise<NavigationOutcome>;
     await act(async () => {
-      music = h.shared.writer.run(origin, async (tx) => { await tx.read(); await pause.promise; return tx.commit({ pinned_nav_tabs: ['public_profile', 'public_music', 'public_movie'] }); });
+      shared = h.shared.writer.run(origin, async (tx) => { await tx.read(); await pause.promise; return tx.commit({ pinned_nav_tabs: ['public_profile', 'public_people', 'public_movie'] }); });
       ordinary = h.value.request({ category: 'public_books', action: 'pin' }, origin); competing = h.value.request({ category: 'public_games', action: 'pin' }, origin); await Promise.resolve();
     });
     expect(h.requests.some((r) => r.name === 'UpdateAccount')).toBe(false);
-    await act(async () => { pause.resolve(); await music; await ordinary; await competing; });
-    expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_music', 'public_movie', 'public_books', 'public_games']);
+    await act(async () => { pause.resolve(); await shared; await ordinary; await competing; });
+    expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_people', 'public_movie', 'public_books', 'public_games']);
   });
   it('reports a lost response without success, and retry fresh-reads actual saved state', async () => {
     const h = harness(); await h.ready(); h.failMutation = true;
@@ -337,7 +313,7 @@ describe('CategoryNavigationProvider', () => {
     const origin = h.value.authority!;
     h.remount(); await h.ready();
     expect(h.value.authority!.generation).not.toBe(origin.generation);
-    expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_music']);
+    expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_people']);
     let second!: Promise<NavigationOutcome>;
     await act(async () => { second = h.value.request({ category: 'public_games', action: 'pin' }, h.value.authority!); });
     const admittedBeforeSettlement = h.requests.filter((r) => r.name === 'UpdateAccount').length;
@@ -345,8 +321,8 @@ describe('CategoryNavigationProvider', () => {
     expect(admittedBeforeSettlement).toBe(1);
     expect((await first).kind).toBe('blocked');
     expect((await second).kind).toBe('confirmed');
-    expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_music', 'public_books', 'public_games']);
-    expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_music', 'public_books', 'public_games']);
+    expect(h.saved.pinned_nav_tabs).toEqual(['public_profile', 'public_people', 'public_books', 'public_games']);
+    expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_people', 'public_books', 'public_games']);
   });
   it('captures a mutable caller authority before any awaited read', async () => {
     const h = harness({ initial: { public_books: 'No' } }); await h.ready();
@@ -362,12 +338,12 @@ describe('CategoryNavigationProvider', () => {
     const h = harness(); await h.ready();
     vi.spyOn(crypto, 'randomUUID').mockImplementation(() => { throw new Error('Unavailable'); });
     expect((await h.request({ category: 'public_books', action: 'pin' })).kind).toBe('confirmed');
-    expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_music', 'public_books']);
+    expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_people', 'public_books']);
   });
   it('reports failed post-save verification without publishing optimistic success', async () => {
     const h = harness(); await h.ready(); h.failReadsAfterMutation = true;
     expect((await h.request({ category: 'public_books', action: 'pin' })).kind).toBe('uncertain');
-    expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_music']);
+    expect(h.value.snapshot?.savedPins).toEqual(['public_profile', 'public_people']);
     expect(h.value.error).toBeDefined(); expect(h.value.busy).toBe(false);
     expect(publishPublicProfileInvalidation).not.toHaveBeenCalled();
   });

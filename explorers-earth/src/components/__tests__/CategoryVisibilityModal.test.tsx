@@ -6,10 +6,10 @@ import { useCategoryNavigation } from '../../features/navigation/CategoryNavigat
 import { loginSurface, ordinaryCategories, surfaceHarness } from '../../features/navigation/__tests__/surfaceHarness';
 import useAuthStore from '../../store/store';
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
-// Canonical row order and the pins surfaceAccount is seeded with (public_music,
-// public_books), used to assert publishing carries them through untouched.
-const CANONICAL_ORDER = ['places', 'music', 'guides', 'movies', 'books', 'games', 'apps', 'products', 'people'] as const;
-const SAVED_PINS: Record<string, number> = { music: 0, books: 1 };
+// Canonical row order and the pin surfaceAccount is seeded with (public_books),
+// used to assert publishing carries it through untouched.
+const CANONICAL_ORDER = ['places', 'guides', 'movies', 'books', 'games', 'apps', 'products', 'people'] as const;
+const SAVED_PINS: Record<string, number> = { books: 0 };
 function Prompt({ category, onSuccess = vi.fn() }: { category: string; onSuccess?: () => void }) {
   const navigation = useCategoryNavigation();
   const [origin, setOrigin] = React.useState<any>();

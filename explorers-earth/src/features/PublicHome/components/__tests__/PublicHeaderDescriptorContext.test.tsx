@@ -154,7 +154,7 @@ describe("PublicHeaderDescriptorProvider", () => {
       const oldKey = useState(location.key)[0];
       return <>
         <ActiveDescriptor descriptor={late} />
-        <button onClick={() => navigate("/alice/music?utm_medium=share")}>navigate</button>
+        <button onClick={() => navigate("/alice/games?utm_medium=share")}>navigate</button>
         <button onClick={() => setLate({
           navigationKey: oldKey,
           title: "stale",
@@ -166,10 +166,10 @@ describe("PublicHeaderDescriptorProvider", () => {
 
     render(<StrictMode><MemoryRouter initialEntries={["/alice/books"]}><Wrapper><Harness /></Wrapper></MemoryRouter></StrictMode>);
     act(() => screen.getByRole("button", { name: "navigate" }).click());
-    expect(readActive()).toMatchObject({ title: "Alice's Music", url: "https://explorers.earth/alice/music?utm_medium=share" });
+    expect(readActive()).toMatchObject({ title: "Alice's Games", url: "https://explorers.earth/alice/games?utm_medium=share" });
 
     act(() => screen.getByRole("button", { name: "publish late" }).click());
-    expect(readActive()).toMatchObject({ title: "Alice's Music", url: "https://explorers.earth/alice/music?utm_medium=share" });
+    expect(readActive()).toMatchObject({ title: "Alice's Games", url: "https://explorers.earth/alice/games?utm_medium=share" });
   });
 
   it("is idempotent for inline descriptors under Strict Mode without update-depth warnings", () => {

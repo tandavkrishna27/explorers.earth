@@ -1,5 +1,3 @@
-import { MusicPublishSwitch } from "../music/components/MusicPublishSwitch";
-import { useMusicPublish } from "../music/MusicPublishProvider";
 import { NavigationStatus } from "../navigation/NavigationStatus";
 import { useCategoryNavigation } from "../navigation/CategoryNavigationProvider";
 import { CATEGORY_IDS, type CategoryId } from "../navigation/categoryNavigationPolicy";
@@ -21,7 +19,6 @@ import { createCanonicalAccountLifecycleService, type CanonicalAccountLifecycleD
 import AccountDeletionLifecyclePanel from "./components/AccountDeletionLifecyclePanel";
 import { useAccountLifecycleIdentity } from "../../services/useAccountLifecycleIdentity";
 import { computePinnedNavTabIds } from "../../utils/navPinning";
-import { useOwnerMusicAvailability } from "../music/PublicMusicAvailabilityProvider";
 import { useCanonicalAccount } from "../Profile/api/useCanonicalAccount";
 import { useLogout } from "../../hooks/useLogout";
 
@@ -34,7 +31,6 @@ const Settings = memo(() => {
 
 const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType<typeof useAccountLifecycleIdentity> }) => {
   const categoryNavigation = useCategoryNavigation();
-  const musicPublishing = useMusicPublish(categoryNavigation.authority, { ready: true });
   // Tab state
   const [activeTab, setActiveTab] = useState<'account' | 'billing'>('account');
   const settingsTabs = ['account', 'billing'] as const;
@@ -108,7 +104,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   const [pinnedNavTabsSectionOpen, setPinnedNavTabsSectionOpen] = useState<boolean>(false);
   const [languageSectionOpen, setLanguageSectionOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [unpublishTarget, setUnpublishTarget] = useState<{ category: Exclude<CategoryId, "public_music">; label: string } | null>(null);
+  const [unpublishTarget, setUnpublishTarget] = useState<{ category: CategoryId; label: string } | null>(null);
   const navigationSaving = categoryNavigation.busy || !categoryNavigation.authority;
   const isCategoryPending = (category: CategoryId) => (categoryNavigation.pending ?? []).some(
     (operation) => operation.kind === "category" && operation.category === category,
@@ -124,7 +120,6 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   const data = { usersPermissionsUser: { provider: "google" } };
 
   const settingsLoading = !categoryNavigation.error && (!categoryNavigation.authority || !categoryNavigation.content);
-  const navigationAccountDocumentId = categoryNavigation.snapshot?.scope.accountDocumentId;
 
   useEffect(() => {
     (window as any).__dashboardLoaded = !settingsLoading;
@@ -135,17 +130,6 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
     const fullKey = `settings.publicNavigation.${key}`;
     const value = t(fullKey, { defaultValue: fallback });
     return value === fullKey ? fallback : value;
-  };
-  const musicPinHints: Record<typeof musicPublishing.state.kind, string | null> = {
-    loading: t('music.publication.checking', { defaultValue: 'Checking Music publication…' }),
-    published: null,
-    draft: t('music.publication.private', { defaultValue: 'Music is private.' }),
-    saving: t('music.publication.saving', { defaultValue: 'Saving and verifying Music publication…' }),
-    'needs-attention': t('music.publication.attention', { defaultValue: 'Music sharing needs attention. Review or make it private.' }),
-    unknown: musicPublishing.state.errorCode === 'scope-changed'
-      ? t('music.publication.notReady', { defaultValue: 'Music is not ready for this account. Other settings remain available.' })
-      : t('music.publication.unknown', { defaultValue: 'Music publication was not confirmed. Refresh or retry the previous action.' }),
-    conflict: t('music.publication.conflict', { defaultValue: 'Music changed or the previous action expired. Confirm a new action after reviewing the current state.' }),
   };
   useEffect(() => {
     const openNavigation = () => {
@@ -235,10 +219,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
     auto_pinning: categoryNavigation.snapshot?.autoPinning,
     pinned_nav_tabs: categoryNavigation.snapshot?.savedPins,
   };
-  const musicAvailability = useOwnerMusicAvailability(navigationAccountDocumentId, effectiveAccount.public_music);
-  const musicAvailable = musicAvailability.state === "available" || musicAvailability.state === "revalidating";
-  const autoPinnedTabs = computePinnedNavTabIds({ ...effectiveAccount, auto_pinning: true }, categoryListCountMap,
-    { musicAvailable });
+  const autoPinnedTabs = computePinnedNavTabIds({ ...effectiveAccount, auto_pinning: true }, categoryListCountMap);
 
   const getPinnedNavTabs = (): string[] => {
     const saved = categoryNavigation.snapshot?.savedPins;
@@ -264,7 +245,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
     void categoryNavigation.request({ category: tabType as CategoryId, action: isPinned ? "pin" : "unpin" }, origin);
   };
 
-  const saveTabVisibility = async (tabType: Exclude<CategoryId, "public_music">, isVisible: boolean, wasPinned = false) => {
+  const saveTabVisibility = async (tabType: CategoryId, isVisible: boolean, wasPinned = false) => {
     const origin = categoryNavigation.authority;
     if (!origin || isCategoryPending(tabType)) return undefined;
     const outcome = await categoryNavigation.request({ category: tabType, action: isVisible ? "publish" : "unpublish" }, origin);
@@ -299,8 +280,8 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   };
 
   const handleTabVisibilityUpdate = (tabType: string, label: string, isVisible: boolean) => {
-    if (tabType === "public_music" || !CATEGORY_IDS.includes(tabType as CategoryId)) return;
-    const category = tabType as Exclude<CategoryId, "public_music">;
+    if (!CATEGORY_IDS.includes(tabType as CategoryId)) return;
+    const category = tabType as CategoryId;
     if (!isVisible && isTabPinned(category)) {
       setUnpublishTarget({ category, label });
       return;
@@ -489,8 +470,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
             {/* ── QUICK ACCESS section ── */}
             {((data?.usersPermissionsUser?.provider !== 'google' && matchesSearch("change password security last changed")) ||
               matchesSearch("language preference display english locale translation") ||
-              matchesSearch("public visibility tab visibility profile control display music") ||
-              matchesSearch("music visibility public navigation") ||
+              matchesSearch("public visibility tab visibility profile control display") ||
               matchesSearch("pinned navigation tabs profile control navigation pin menu")) && (
               <>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-dashboard-muted mb-1 font-poppins">Quick Access</p>
@@ -572,7 +552,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                   )}
 
                   {/* Public Visibility row */}
-                  {matchesSearch("public visibility tab visibility profile control display music") && (
+                  {matchesSearch("public visibility tab visibility profile control display") && (
                     <>
                       <button
                         type="button"
@@ -647,15 +627,13 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                               </svg>
                             )},
-                            { key: 'public_music', label: 'Music Tab', icon: <span aria-hidden="true">♫</span> },
                           ].map(({ key, label, icon }) => {
                             const isProfile = key === 'public_profile';
-                            const rowSaving = !isProfile && key !== 'public_music' && isCategoryPending(key as CategoryId);
+                            const rowSaving = !isProfile && isCategoryPending(key as CategoryId);
                             const rowLabel = <div className="flex items-center gap-2">
                               <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">{icon}</div>
-                              <span className="text-xs text-white font-poppins">{label}{!isProfile && key !== 'public_music' && categoryNavigation.content?.eligibility[key as CategoryId] !== 'allowed' && <span className="text-[10px] text-dashboard-muted ml-2">{categoryNavigation.content?.eligibility[key as CategoryId] === 'no-content' ? 'No content' : 'Unavailable – refresh to verify'}</span>}</span>
+                              <span className="text-xs text-white font-poppins">{label}{!isProfile && categoryNavigation.content?.eligibility[key as CategoryId] !== 'allowed' && <span className="text-[10px] text-dashboard-muted ml-2">{categoryNavigation.content?.eligibility[key as CategoryId] === 'no-content' ? 'No content' : 'Unavailable – refresh to verify'}</span>}</span>
                             </div>;
-                            if (key === 'public_music') return <MusicPublishSwitch key={key} origin={categoryNavigation.authority} ready compactLabel={rowLabel} />;
                             return (
                               <div key={key} aria-busy={rowSaving || undefined} className={`flex items-center justify-between py-1.5 transition-opacity duration-150 ${isProfile ? 'opacity-50 cursor-not-allowed select-none' : ''}`}>
                                 {rowLabel}
@@ -685,7 +663,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
 
                   {/* Pinned Navigation Tabs row */}
                   <NavigationStatus navigation={categoryNavigation} />
-                  {matchesSearch("pinned navigation tabs profile control navigation pin menu music") && (
+                  {matchesSearch("pinned navigation tabs profile control navigation pin menu") && (
                     <>
                       <button
                         type="button"
@@ -737,7 +715,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                             <div className="flex-1 min-w-0 pr-4">
                               <span className="text-xs font-semibold text-dashboard font-poppins">{navText("autoPin", "Auto-pin navigation tabs")}</span>
                               <p className="text-[10px] text-white/40 font-poppins mt-0.5">
-                                {navText("autoDescription", "Available Music is prioritized, followed by public categories ranked by list count.")}
+                                {navText("autoDescription", "Public categories are ranked by list count.")}
                               </p>
                             </div>
                             <div className="flex items-center gap-2">
@@ -759,15 +737,14 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
 
                           <p className="text-[10px] text-white/50 font-poppins mb-1">
                             {isAutoPinningEnabled 
-                              ? navText("autoHelp", "Auto-pinning is active. Available Music comes first, then categories with the most lists, within 5 tabs including Profile.")
-                              : navText("manualHelp", "Select up to 5 saved tabs including Profile. Unavailable Music keeps its saved pin and returns when available.")}
+                              ? navText("autoHelp", "Auto-pinning is active. Categories with the most lists come first, within 5 tabs including Profile.")
+                              : navText("manualHelp", "Select up to 5 saved tabs including Profile.")}
                           </p>
                           <div className="space-y-2">
                             {[
                               { key: 'public_profile', label: 'Profile Tab', icon: (
                                 <svg className="w-3.5 h-3.5 text-dashboard" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
                               )},
-                              { key: 'public_music', label: navText('musicTab', 'Music Tab'), icon: <span aria-hidden="true">♫</span> },
                               { key: 'public_recommendations', label: 'Places Tab', icon: (
                                 <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
                               )},
@@ -800,9 +777,9 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                               )},
                             ].map(({ key, label, icon }) => {
                               const isProfile = key === 'public_profile';
-                              const isEnabled = key === "public_profile" || (key === "public_music" ? musicPublishing.state.kind === "published" : categoryNavigation.snapshot?.visibility[key as CategoryId] === "Yes");
+                              const isEnabled = key === "public_profile" || categoryNavigation.snapshot?.visibility[key as CategoryId] === "Yes";
                               const isPinned = isTabPinned(key);
-                              const pinHint = key === 'public_music' ? musicPinHints[musicPublishing.state.kind] : isProfile ? null : !isEnabled ? 'Visibility off' : categoryNavigation.content?.eligibility[key as CategoryId] === 'no-content' ? 'No content' : categoryNavigation.content?.eligibility[key as CategoryId] !== 'allowed' ? 'Unavailable – refresh to verify' : null;
+                              const pinHint = isProfile ? null : !isEnabled ? 'Visibility off' : categoryNavigation.content?.eligibility[key as CategoryId] === 'no-content' ? 'No content' : categoryNavigation.content?.eligibility[key as CategoryId] !== 'allowed' ? 'Unavailable – refresh to verify' : null;
                               return (
                                 <div key={key} className={`flex min-h-11 min-w-0 items-center justify-between gap-3 py-1.5 transition-opacity duration-150 ${(isProfile || (!isEnabled && !isPinned)) ? 'opacity-50' : ''}`}>
                                   <div className="flex min-w-0 items-center gap-2 break-words">
@@ -825,7 +802,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                                     }`}>
                                       <input
                                         type="checkbox"
-                                        aria-label={key === 'public_music' ? navText('pinMusic', 'Pin Music Tab') : `Pin ${label}`}
+                                        aria-label={`Pin ${label}`}
                                         className="sr-only peer"
                                         checked={isPinned}
                                         disabled={(!isEnabled && !isPinned) || navigationSaving || isProfile || isAutoPinningEnabled}

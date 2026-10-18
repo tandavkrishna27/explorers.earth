@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { loadEnv } from 'vite'
 import { createRequire } from 'node:module'
-import { resolveMusicDevelopmentProxyTarget } from './src/features/music/musicDevelopmentTransport'
+import { resolveMusicDevelopmentProxyTarget } from './src/lib/musicDevelopmentTransport'
 const require = createRequire(import.meta.url)
 
 // https://vite.dev/config/
