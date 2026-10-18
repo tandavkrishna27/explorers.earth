@@ -109,7 +109,16 @@ async function completeBooksContinuation(page:Page,expectedURL:string,title:stri
  // The observer can finish the page while an ordinary click scrolls its target into view.
  if(await settledBooksContinuation(page,expectedURL,title))return;
  try{
-  await page.getByRole('button',{name:'Load more books',exact:true}).click();
+  // The catch path below exists for exactly that race, but it was unreachable: this lane
+  // sets no `actionTimeout`, so the click inherited the whole 120s test budget and
+  // Playwright's auto-retry absorbed the detach instead of failing. Scrolling the control
+  // into view is itself what satisfies the IntersectionObserver, so the observer committed
+  // the remaining rows and removed the button while the click was still retrying - the
+  // action then waited out the full budget for a control that correctly no longer exists,
+  // and the lane failed on the test timeout rather than reaching the settled observation.
+  // Bounding the action at this config's own 15s observation budget lets it fail while the
+  // test can still act on it. One action, same original error when nothing settled.
+  await page.getByRole('button',{name:'Load more books',exact:true}).click({timeout:15_000});
  }catch(actionError){
   try{if(await settledBooksContinuation(page,expectedURL,title))return;}catch{
    // An observation failure cannot replace the original action failure.

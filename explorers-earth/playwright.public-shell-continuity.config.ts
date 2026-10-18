@@ -22,8 +22,19 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    // `--host-resolver-rules` and `--disable-quic` are Chromium switches. Inherited by
+    // this lane's other two projects, they reached WebKit's `pw_run.sh`, which exits on
+    // an option it does not know - so all ten WebKit cases failed at
+    // `browserType.launch` with "Target page, context or browser has been closed" on
+    // every scheduled run, while Chromium and Firefox passed. Firefox ignores the
+    // switches, so the resolver block was already inert for everything but Chromium and
+    // clearing it here costs no coverage; the fixture is served from 127.0.0.1 with
+    // service workers blocked, and the one case that asserts no external traffic reads
+    // what was copied rather than the resolver. This is the same per-project
+    // `launchOptions: {}` override that playwright.music-presentation-cross-browser
+    // .config.ts already uses for its own Firefox and WebKit projects.
+    { name: 'firefox', use: { ...devices['Desktop Firefox'], launchOptions: {} } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'], launchOptions: {} } },
   ],
   webServer: {
     command: 'node node_modules/vite/bin/vite.js --config e2e/public-shell-continuity.vite.config.ts',

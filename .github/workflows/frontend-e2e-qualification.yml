@@ -188,6 +188,24 @@ jobs:
   apps-native:
     name: protected Apps manual qualification
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == 'apps-native' }}
+    # Do not move this to windows-latest: it was tried on this branch and is impossible on
+    # a GitHub-hosted runner. Hosted Windows runners run Docker in Windows-container mode,
+    # and `postgres:15-alpine` is a Linux image, so the fixture can never get a database:
+    #
+    #   docker pull postgres:15-alpine
+    #   no matching manifest for windows(10.0.26100)/amd64 in the manifest list entries
+    #
+    # That is not a missing step - there is no supported way to run Linux containers there
+    # (Docker Desktop and WSL2 are not present), and the fixture's database authority is
+    # Docker-only by construction. So neither hosted OS can host this lane as written:
+    # Linux lacks the ACL inheritance the fixture's privacy model is built on, and hosted
+    # Windows lacks Linux containers. A developer's Windows machine with Docker Desktop has
+    # both, which is consistent with this being a "manual qualification" lane whose own
+    # obligation says "protected native execution".
+    #
+    # It is left on Linux because that is where it gets furthest and stays diagnosable: it
+    # now reaches `stage=execution; nativeUnknownOrigin=artifact-capture`. See the PR body
+    # for the three remaining candidate causes inside `captureBrowserArtifacts`.
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     defaults:
