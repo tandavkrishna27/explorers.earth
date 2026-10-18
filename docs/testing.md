@@ -56,7 +56,7 @@ src/
 │   └── Settings/__tests__/
 ├── hooks/__tests__/                  # useDeviceDetection, etc.
 ├── routes/__tests__/                 # DashboardRouteValidator
-├── services/__tests__/               # paymentService, analyticsService
+├── services/__tests__/               # analyticsService, tmdbService
 ├── store/__tests__/                  # Zustand store tests
 ├── utils/__tests__/                  # uploadPathGenerator, etc.
 └── test/

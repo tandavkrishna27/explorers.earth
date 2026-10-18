@@ -23,7 +23,7 @@ export default function ProtectedRoute() {
   if (account.isLoading) return <EarthLoader context="general" size="default" />;
   if (account.error || !account.data) return <OnboardingCheckError onRetry={() => { void account.refetch(); }} onLogout={logout} />;
   const complete = account.data.onboardingStatus === "complete";
-  const allowedDuringOnboarding = ["/onboarding", "/music", "/recommendations/music", "/instagram", "/subscription-plans", "/checkout"];
+  const allowedDuringOnboarding = ["/onboarding", "/music", "/recommendations/music", "/instagram"];
   if (allowedDuringOnboarding.includes(location.pathname)) {
     if (location.pathname === "/onboarding" && complete) return <Navigate to="/home" replace />;
     return <Outlet />;
