@@ -37,7 +37,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useMenuItems } from "../hooks/useMenuItems";
 // ⭐ Walkthrough Hook
 import { useRecommendationsWalkthrough } from "../../../hooks/useRecommendationsWalkthrough";
-import InstagramPostImport from "./InstagramPostImport";
 import AddPlaceOverlay from "./AddPlaceOverlay";
 import { IMAGE_CONFIG } from "../../../config";
 import { ChevronDown, Users, ShoppingBag } from "lucide-react";
@@ -217,7 +216,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   // local state to trigger TopPlaces refresh when a place is added
   const [topPlacesKey, setTopPlacesKey] = useState<number>(0);
   // local state for Instagram import modal
-  const [showInstagramModal, setShowInstagramModal] = useState<boolean>(false);
   // local state for Add Place overlay
   const [showAddPlaceOverlay, setShowAddPlaceOverlay] = useState<boolean>(false);
   // dropdown for the split Add button
@@ -1194,13 +1192,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
           </div>
         </Modal>
       )}
-
-      {/* Instagram Post Import Modal */}
-      <InstagramPostImport
-        isOpen={showInstagramModal}
-        onClose={() => setShowInstagramModal(false)}
-        listId={selectedCity?.documentId}
-      />
 
       {/* Add Place Overlay */}
       <AddPlaceOverlay

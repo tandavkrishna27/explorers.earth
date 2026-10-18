@@ -582,7 +582,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Favorites/components/AddLinkedProductsPage.tsx
 !explorers-earth/src/features/Favorites/components/AddPlaceOverlay.tsx
 !explorers-earth/src/features/Favorites/components/AddRecommendation.tsx
-!explorers-earth/src/features/Favorites/components/InstagramPostImport.tsx
 !explorers-earth/src/features/Favorites/components/LinksAndQR.tsx
 !explorers-earth/src/features/Favorites/components/ListForm.tsx
 !explorers-earth/src/features/Favorites/components/MediaItem.tsx
@@ -983,12 +982,9 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/pages/Analytics.tsx
 !explorers-earth/src/pages/Contact.tsx
 !explorers-earth/src/pages/Cookies.tsx
-!explorers-earth/src/pages/EmailConfirmed.tsx
 !explorers-earth/src/pages/Favorites.tsx
-!explorers-earth/src/pages/ForgotPassword.tsx
 !explorers-earth/src/pages/GoogleAuthRedirect.tsx
 !explorers-earth/src/pages/Home.tsx
-!explorers-earth/src/pages/Instagram.tsx
 !explorers-earth/src/pages/Landing.tsx
 !explorers-earth/src/pages/Login.tsx
 !explorers-earth/src/pages/NotFound.tsx
@@ -998,9 +994,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/pages/ReactivateAccount.tsx
 !explorers-earth/src/pages/ReactivateConfirm.tsx
 !explorers-earth/src/pages/RecommendationsHub.tsx
-!explorers-earth/src/pages/Register.tsx
-!explorers-earth/src/pages/ResetLinkSent.tsx
-!explorers-earth/src/pages/ResetPassword.tsx
 !explorers-earth/src/pages/SettingsPage.tsx
 !explorers-earth/src/pages/Terms.tsx
 !explorers-earth/src/pages/UseCases.tsx
