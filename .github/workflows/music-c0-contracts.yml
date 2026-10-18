@@ -19,7 +19,6 @@ on:
       - ".github/workflows/**"
       - ".github/workflows/music-c0-contracts.yml"
       - ".github/workflows/test.yml"
-      - ".github/workflows/music-reconcile.yml"
       - "docs/**"
   push:
     branches: [main, develop]
@@ -39,7 +38,6 @@ on:
       - ".github/workflows/**"
       - ".github/workflows/music-c0-contracts.yml"
       - ".github/workflows/test.yml"
-      - ".github/workflows/music-reconcile.yml"
       - "docs/**"
 
 permissions:
