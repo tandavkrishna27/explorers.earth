@@ -1,7 +1,7 @@
 /**
  * Synchronous re-entrancy lock for the canonical onboarding save.
  *
- * Why a ref-backed lock and not the `isCreatingSubscription` state: React state
+ * Why a ref-backed lock and not the `isFinalizing` state: React state
  * updates only on the next render, so a double-click can pass the state guard
  * twice before it flips. Two concurrent saves with the same account revision
  * would produce an avoidable conflict, and each might upload duplicate media.
