@@ -9,6 +9,7 @@
  * - Error handling and fallbacks
  */
 
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import axios from "axios";
 
 export interface LocationImageResult {
@@ -23,7 +24,7 @@ export interface LocationImageResult {
  * @returns Photo URL or null if no photos available
  */
 const fetchPlacePhotoUrl = async (placeId: string): Promise<string | null> => {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const apiKey = mapsBrowserKey();
 
   if (!apiKey) {
     console.error("Google Maps API key not configured");

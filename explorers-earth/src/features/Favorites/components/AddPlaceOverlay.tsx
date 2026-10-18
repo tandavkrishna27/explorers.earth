@@ -1,3 +1,4 @@
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { memo, useEffect, useRef, useState, useCallback } from "react";
 import ReactDOM from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -136,7 +137,7 @@ const AddPlaceOverlay = memo(
                             `https://places.googleapis.com/v1/places/${place.place_id}`,
                             {
                                 headers: {
-                                    "X-Goog-Api-Key": import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+                                    "X-Goog-Api-Key": mapsBrowserKey(),
                                     "X-Goog-FieldMask":
                                         "id,displayName,formattedAddress,types,primaryType,primaryTypeDisplayName,addressComponents,location,rating,userRatingCount",
                                 },

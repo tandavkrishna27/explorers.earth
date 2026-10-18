@@ -1,3 +1,4 @@
+import { runtimeOrigin } from "../../../lib/publicRuntimeConfig";
 import { isCanonicalMediaPath } from "../../../lib/canonicalMedia";
 // ============================================================
 // Apps & Tools Utilities — slug, format helpers, rich text
@@ -177,7 +178,7 @@ export function buildLogoUrl(logoUrl: string | null | undefined): string {
   if (isCanonicalMediaPath(logoUrl)) return logoUrl;
   if (logoUrl.startsWith("/")) {
     const base =
-      import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337";
+      runtimeOrigin(import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337");
     return `${base}${logoUrl}`;
   }
   return logoUrl;
