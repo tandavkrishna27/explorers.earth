@@ -44,6 +44,7 @@ import {BookCoverFetcher} from '../services/bookCoverFetch';
 import {BookCoverImportService} from '../application/bookCoverImport';
 import {BookCatalog} from '../services/bookCatalog';
 import { resolveTrustedProxy } from "../middleware/canonicalTerminator";
+import { setupCanonicalRetiredSurfaces } from "../routes/canonicalRetiredSurfaceRoutes";
 
 function errorResponse(res: Response, status: number, code: ApiError["error"]["code"], message: string): void {
   res.status(status).json({ error: { code, message, requestId: randomUUID() } } satisfies ApiError);
@@ -73,6 +74,7 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   // returned promise alone cannot authorize physical auth stream teardown.
   instrument?.markUncovered(authHandler);
   if(admission)app.get('/api/auth/get-session',createCanonicalSessionNodeHandler(auth,config.baseURL));
+  setupCanonicalRetiredSurfaces(app);
   app.use("/api/auth", (request, response, next) => {
     if (!["GET", "HEAD", "OPTIONS"].includes(request.method)
         && request.get("origin") !== config.baseURL) {
