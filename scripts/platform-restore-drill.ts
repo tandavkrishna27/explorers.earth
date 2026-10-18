@@ -23,7 +23,8 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve as resolvePath, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Pool } from "pg";
+// Root has no pg; its types come from the tunes install the runtime require resolves.
+import type { Pool } from "../tunes/node_modules/@types/pg";
 import {
   backupManifestSchema, canonicalRecoveryDigest, drillReceiptSchema,
   type BackupManifest, type DrillReceipt,
@@ -305,8 +306,8 @@ export class RestoredMediaStore implements ObjectStorage {
     return path;
   }
   async get(key: string): Promise<Buffer> { return readFile(this.path(key)); }
-  async put(): Promise<void> { throw new Error("the restored media store is read-only"); }
-  async delete(): Promise<void> { throw new Error("the restored media store is read-only"); }
+  async put(_key: string, _bytes: Buffer): Promise<void> { throw new Error("the restored media store is read-only"); }
+  async delete(_key: string): Promise<void> { throw new Error("the restored media store is read-only"); }
 }
 
 export interface DrillProbe { path: string; expect: number[]; category?: string }
@@ -421,7 +422,7 @@ export async function runRestoreDrill(argv: string[], environment: Record<string
   let adminPool: Pool | undefined, ownerPool: Pool | undefined, runtimePool: Pool | undefined;
   let server: Server | undefined;
   const drillDatabase = `explorers_restore_drill_${runId.slice(0, 8)}`;
-  const pg = requireFromTunes("pg") as typeof import("pg");
+  const pg = requireFromTunes("pg") as typeof import("../tunes/node_modules/@types/pg");
 
   try {
     // 1. The archive and the media copy, from wherever the backup lives.

@@ -58,7 +58,7 @@ async function up(): Promise<void> {
     "--mount", `type=bind,src=${join(root, "secrets", "db-migrator")},dst=/run/secrets/db-migrator,readonly`,
     "--publish", `127.0.0.1:${port}:5432`, "--tmpfs", "/var/lib/postgresql/data:rw,size=1073741824",
     "postgres:15-alpine"]);
-  const pg = requireFromTunes("pg") as typeof import("pg");
+  const pg = requireFromTunes("pg") as typeof import("../tunes/node_modules/@types/pg");
   const url = `postgresql://${MIGRATOR}:${migratorPassword}@127.0.0.1:${port}/${DATABASE}`;
   const owner = new pg.Pool({ connectionString: url, max: 4 });
   try {
@@ -108,7 +108,7 @@ async function up(): Promise<void> {
 
 /** Seeds through the real application where it can: the account is provisioned by
  *  /me for a real Better Auth session, exactly as a first sign-in does. */
-async function seed(pool: import("pg").Pool, mediaRoot: string, secret: string) {
+async function seed(pool: import("../tunes/node_modules/@types/pg").Pool, mediaRoot: string, secret: string) {
   const { createCanonicalApp } = await import("../tunes/server/auth/canonicalApp");
   const { resolveExplorersAuthConfig } = await import("../tunes/server/auth/betterAuth");
   const { LocalObjectStorage } = await import("../tunes/server/services/objectStorage");
