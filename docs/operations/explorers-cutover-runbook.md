@@ -10,7 +10,8 @@ imported. Production Strapi holds only test and team data. There are no real use
 no user communication and no handle hold.
 
 **Re-run the rehearsal** after any change to `deploy/`, the workflow or the migrations. It needs
-Docker and Node, takes about 3 minutes once the images are cached, and leaves nothing behind:
+Docker and Node, takes about 3 minutes once the images are cached, and leaves the stand-in running for inspection until
+`bash deploy/rehearsal/rehearse.sh down` removes it:
 
 ```bash
 bash deploy/rehearsal/rehearse.sh all

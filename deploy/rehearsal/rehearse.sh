@@ -2,7 +2,8 @@
 # Cutover dress rehearsal: P2 Tasks 9-10 against a local stand-in for the
 # explorers host. Never touches a real host, a real registry or a deploy secret.
 #
-#   bash deploy/rehearsal/rehearse.sh all        # the whole rehearsal, then teardown
+#   bash deploy/rehearsal/rehearse.sh all        # tear down any previous run, then the whole rehearsal;
+#                                              # the stand-in stays up for inspection until `down`
 #   bash deploy/rehearsal/rehearse.sh <stage>... # individual stages, in order
 #   bash deploy/rehearsal/rehearse.sh down       # remove every rehearsal container and volume
 #
