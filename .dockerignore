@@ -1087,6 +1087,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !tunes/shared/explorersProductContract.ts
 !tunes/shared/explorersPublicContentContract.ts
 !tunes/shared/explorersPublicPeopleSectorContract.ts
+!tunes/shared/explorersReservedHandles.ts
 !tunes/shared/explorersRichNoteContract.ts
 !tunes/shared/explorersSearchContract.ts
 !tunes/shared/explorersTaxonomyContract.ts

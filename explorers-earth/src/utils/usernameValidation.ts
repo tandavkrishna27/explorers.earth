@@ -1,3 +1,4 @@
+import { isReservedHandle } from '../../../tunes/shared/explorersReservedHandles';
 
 /**
  * USERNAME VALIDATION UTILITY
@@ -159,7 +160,7 @@ export const validateUsername = (username: string, t?: (key: string) => string):
     return pattern.test(normalizedUsername);
   });
 
-  if (isReserved) {
+  if (isReserved || isReservedHandle(normalizedUsername)) {
     result.isValid = false;
     result.errors.push(t ? t('auth.validations.username.reservedWords') : 'This username contains reserved words and cannot be used');
   }
