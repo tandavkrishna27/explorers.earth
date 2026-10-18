@@ -2,25 +2,16 @@ import { readFile } from "node:fs/promises";
 import type { Express } from "express";
 import type { Pool } from "pg";
 import {
-  CURRENT_MIGRATION_MARKER,
   evaluateReadiness,
   livenessStatus,
   parseMusicCohortConfiguration,
   resolveMusicEntryPolicy,
   type GateAttestation,
-  type ImageCandidate,
 } from "./music-deployment";
 import { checkMusicDatabaseReadiness } from "../db/readiness";
+import { deploymentImageFromEnvironment } from "./deploymentImage";
 
-export function deploymentImageFromEnvironment(env: NodeJS.ProcessEnv): ImageCandidate {
-  return {
-    digest: env.MUSIC_IMAGE_DIGEST ?? "",
-    commit: env.MUSIC_IMAGE_COMMIT ?? "",
-    migrationMarker: env.MUSIC_MIGRATION_MARKER === CURRENT_MIGRATION_MARKER
-      ? CURRENT_MIGRATION_MARKER
-      : env.MUSIC_MIGRATION_MARKER as typeof CURRENT_MIGRATION_MARKER,
-  };
-}
+export { deploymentImageFromEnvironment };
 
 async function readAttestation(path: string | undefined): Promise<GateAttestation | undefined> {
   if (!path) return undefined;

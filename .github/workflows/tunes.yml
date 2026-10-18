@@ -117,8 +117,6 @@ jobs:
           node-version: 24.21.0
           cache: npm
           cache-dependency-path: tunes/package-lock.json
-      - name: Check retired Strapi dependencies (ticket 8.1a)
-        run: node scripts/check-retired-dependencies.mjs
       # A separate step, deliberately: `Test Tunes` runs the whole tunes tree, including the
       # contract suites that read explorers-earth sources and resolve @playwright/test and a
       # CSS asset out of explorers-earth/node_modules. Two contracts
@@ -136,6 +134,11 @@ jobs:
         run: |
           npm ci --legacy-peer-deps
           node node_modules/tsx/dist/cli.mjs scripts/music-image-ci-tests.ts
+      # After `Test Tunes`, because the scan strips comments with tunes' own TypeScript
+      # parser (P6-3), and that step is the one that installs tunes' dependencies.
+      - name: Check retired Strapi dependencies (ticket 8.1a, absolute since P6-3)
+        if: ${{ !cancelled() }}
+        run: node scripts/check-retired-dependencies.mjs
       - name: Verify owned image test cleanup
         if: ${{ always() }}
         working-directory: tunes

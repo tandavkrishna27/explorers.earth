@@ -4,7 +4,7 @@ import { resolveMusicDatabaseConnection } from "../config/music-database-config"
 import { migrateMusicDatabase } from "../db/migrate";
 import { assertMusicMigratorAuthority, assertMusicRuntimeCapabilityPreflight, provisionMusicRuntimeLogin, verifyMusicRuntimeLogin } from "../db/music-runtime-role";
 import { createGateAttestation, CURRENT_MIGRATION_MARKER } from "./music-deployment";
-import { deploymentImageFromEnvironment } from "./music-health";
+import { deploymentImageFromEnvironment } from "./deploymentImage";
 
 async function run(): Promise<void> {
   const image = deploymentImageFromEnvironment(process.env);

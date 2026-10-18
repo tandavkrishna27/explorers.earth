@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import type { Express, NextFunction, Request, Response } from "express";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import { errorEnvelope, type ContainmentCode } from "./containment-error-contract";
@@ -12,14 +12,11 @@ type RequestWithPrincipal = Request & {
   containmentRequestId?: string;
 };
 
-export function requestIdFor(req: Request): string {
-  const request = req as RequestWithPrincipal;
-  const supplied = req.get("x-request-id");
-  request.containmentRequestId ??= supplied && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(supplied)
-    ? supplied
-    : randomUUID();
-  return request.containmentRequestId;
-}
+// Canonical code imports requestIdFor from ./http/requestId, so this module stays out of the
+// canonical closure (P6-3). The import keeps a local binding for the calls below; the re-export
+// keeps the legacy importers working.
+import { requestIdFor } from "./http/requestId";
+export { requestIdFor };
 
 export function sendContainmentError(res: Response, status: number, code: ContainmentCode, requestId: string) {
   res.setHeader("X-Request-Id", requestId);

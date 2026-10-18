@@ -2610,3 +2610,15 @@ Phase A (P6-1 to P6-5) was executed against `fork/main` = `5abc33cb` on 2026-10-
 | 4 | Integration tests need the exact CI URL on `55432` | On a host where `55432` is held by another lineage's database, `integration-global-setup.ts` also accepts a labelled C10 sidecar (`MUSIC_C10_STANDALONE_POSTGRES_*`, container named `music-c10-qualification-<commit7>-pg15`) | Used for the local runs; CI is unchanged |
 | 5 | `services/__tests__/explorers-analytics-service.test.ts`: trim or delete | Its publisher and receipt cases test deleted code | Trimmed to the schema cases and an `IdempotencyConflictError` case |
 | 6 | Import `pool` into `routes/index.ts` if absent | Already imported (`:10`) | Nothing to add |
+
+### P6-3
+
+| # | The plan said | The code or a run said | Done |
+|---|---|---|---|
+| 1 | Any `STRAPI_*` token in code is a violation; resolving more edges may surface real couplings | The widened scan reported `scripts/music-fixture-secret.ts:1410`, a list of `STRAPI_*` names in fixture tooling. Its only path into the closure is `import type {OwnedUatDatabaseAuthority} from './music-uat-database'` in `apps-canonical-admission.ts`: **type-only**, so esbuild and tsc erase it and nothing reaches a bundle | The walker skips whole-statement `import type` / `export type` (a mixed `import { type A, b }` is still an edge), with a control fixture. So decision 3's "`music-uat-database.ts` stays canonical through `apps-canonical-admission.ts`" holds for the **type graph only**, not the runtime closure |
+| 2 | `MINIMUM_MODULES` = 90% of the measured union | Union measured at **150**: canonical 143, migrate gate 11, taxonomy 8. Canonical alone falls from 152 because `security-containment.ts`, `shared/musicError.ts`, `registration-route-contract.ts` and the type-only fixture chain leave, while `@shared/*` and `#auth-runtime` modules join | `MINIMUM_MODULES = 135` |
+| 3 | Replace `codeOnly()` with a stripper on `ts.createScanner` | A bare scanner cannot tell a regex from a division or a template's tail without parser context | Built on `ts.createSourceFile`: every token's leading and trailing comment ranges are blanked, newlines kept. Edges are read from comment-free code too |
+| 4 | Nothing about CI order | `tunes.yml` ran the scan **before** any `npm ci`, and the new stripper needs tunes' `typescript` package | The step moved to just after `Test Tunes` (which installs tunes), with `if: !cancelled()`. Root `scripts/*.test.mjs` already run after the tunes install in `test.yml` |
+| 5 | `#auth-runtime`: walk it, or record why not | It is a six-line re-export of `better-auth` (`tunes/auth-runtime/index.js`) | Walked, through a `PACKAGE_IMPORTS` map |
+| 6 | Fixture override "used only by the test" | — | `--root <dir> --entry <path>`; the floor applies only to the real tree. Six fixtures under `scripts/__fixtures__/retired-deps/` (five named violations plus a clean control) |
+| 7 | `docker build ./tunes` proves the new esbuild imports | It does: the build succeeded locally | Also checked the output: the bundled `run-migration-gate.js` and every chunk it loads contain **no** `STRAPI_` string |
