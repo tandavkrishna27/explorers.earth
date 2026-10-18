@@ -431,7 +431,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/LoadingSpinner.tsx
 !explorers-earth/src/components/MusicDashboard.tsx
 !explorers-earth/src/components/MusicNavLimitNotice.tsx
-!explorers-earth/src/components/MusicSubscriptionContainment.tsx
 !explorers-earth/src/components/Navbar.tsx
 !explorers-earth/src/components/OnboardingCheckError.tsx
 !explorers-earth/src/components/ProfileSetupAccordion.tsx
@@ -1083,8 +1082,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/services/igdbService.ts
 !explorers-earth/src/services/instagramService.ts
 !explorers-earth/src/services/lazyAccountLifecycleService.ts
-!explorers-earth/src/services/paymentService.ts
-!explorers-earth/src/services/subscriptionService.ts
 !explorers-earth/src/services/tmdbService.ts
 !explorers-earth/src/services/useAccountLifecycleIdentity.ts
 !explorers-earth/src/store/store.ts
@@ -1093,7 +1090,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/store/useSetupStore.ts
 !explorers-earth/src/types/geoTypes.ts
 !explorers-earth/src/types/igdbTypes.ts
-!explorers-earth/src/types/payment.ts
 !explorers-earth/src/utils/analytics.ts
 !explorers-earth/src/utils/aspectRatioUtils.ts
 !explorers-earth/src/utils/categoryMapper.ts
