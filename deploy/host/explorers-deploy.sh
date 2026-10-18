@@ -11,7 +11,8 @@
 #
 # stage:    unpack the release beside the live one; place the compose file; refuse
 #           an image whose bundled migration chain is older than the database's;
-#           compose pull + up --wait; gate on /health/ready. The SPA is untouched.
+#           compose pull + up --wait; gate on /health/ready; record the running
+#           image in /opt/explorers/image.env. The SPA is untouched.
 # activate: back up the live nginx site, swap /srv/explorers/current, install the
 #           new site, nginx -t, reload. Any failure restores the previous site and
 #           symlink before exiting non-zero.
@@ -25,6 +26,7 @@ readonly SRV=/srv/explorers
 readonly OPT=/opt/explorers
 readonly ENV_FILE="$OPT/production.env"
 readonly COMPOSE_FILE="$OPT/production.compose.yml"
+readonly IMAGE_ENV="$OPT/image.env"
 readonly READY_URL=http://127.0.0.1:5000/health/ready
 readonly READY_TIMEOUT_SECONDS=180
 readonly KEEP_RELEASES=5
@@ -104,36 +106,52 @@ stage() {
 
   # 2. The compose file, keeping the previous copy.
   install -d -m 0700 "$OPT"
-  [[ -f "$COMPOSE_FILE" ]] && cp -p "$COMPOSE_FILE" "$COMPOSE_FILE.previous"
+  local had_previous=0
+  [[ -f "$COMPOSE_FILE" ]] && cp -p "$COMPOSE_FILE" "$COMPOSE_FILE.previous" && had_previous=1
   install -m 0600 "$staging/production.compose.yml" "$COMPOSE_FILE"
-  compose config --quiet || fail "compose refused to render; check $ENV_FILE against deploy/production.env.example"
+  # Until step 5 starts the new image, a refusal must leave the compose file that
+  # matches what is running; otherwise the next `compose up` pairs the running
+  # image with another release's migration marker and the gate refuses it.
+  refuse() {
+    if (( had_previous )); then cp -p "$COMPOSE_FILE.previous" "$COMPOSE_FILE"; else rm -f "$COMPOSE_FILE"; fi
+    fail "$*; $COMPOSE_FILE left as it was"
+  }
+  compose config --quiet || refuse "compose refused to render; check $ENV_FILE against deploy/production.env.example"
 
   # 3. The verified image, and the migration chain it bundles.
-  compose pull
+  compose pull || refuse "could not pull $IMAGE"
   local revision
   revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$IMAGE")"
-  [[ "$revision" == "$COMMIT" ]] || fail "image revision label is '$revision', expected $COMMIT"
+  [[ "$revision" == "$COMMIT" ]] || refuse "image revision label is '$revision', expected $COMMIT"
   local image_head
   image_head="$(docker run --rm --network none --entrypoint sh "$IMAGE" -c 'ls /app/migrations' | grep -E '^[0-9]{4}_[a-z0-9_]+\.sql$' | sort | tail -n 1)"
   image_head="${image_head%.sql}"
-  [[ -n "$image_head" ]] || fail "could not read the image's bundled migration chain"
+  [[ -n "$image_head" ]] || refuse "could not read the image's bundled migration chain"
 
   # 4. Refuse an image older than the database. Without this an older image pulls,
   #    starts, and crash-loops in verifyMusicDatabase (music-deploy-engine.sh used to
   #    refuse it; that engine does not run here).
-  compose up -d --wait postgres || { compose_diagnostics; fail "postgres did not become healthy"; }
-  local db_head
-  db_head="$(compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA' <<'SQL'
-SELECT CASE WHEN to_regclass('music_schema_migrations') IS NULL THEN ''
-            ELSE (SELECT coalesce(max(id), '') FROM music_schema_migrations) END;
+  compose up -d --wait postgres || { compose_diagnostics; refuse "postgres did not become healthy"; }
+  # Two queries, not one CASE: PostgreSQL resolves every table a statement names
+  # before running it, so a CASE that only reads the journal when it exists still
+  # fails on a fresh database with 'relation does not exist'.
+  local db_head="" journal_exists
+  journal_exists="$(compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA' <<'SQL'
+SELECT to_regclass('public.music_schema_migrations') IS NOT NULL;
 SQL
-)" || fail "could not read the database migration journal"
+)" || refuse "could not query the database"
+  if [[ "$(printf '%s' "$journal_exists" | tr -d '[:space:]')" == t ]]; then
+    db_head="$(compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA' <<'SQL'
+SELECT coalesce(max(id), '') FROM public.music_schema_migrations;
+SQL
+)" || refuse "could not read the database migration journal"
+  fi
   db_head="$(printf '%s' "$db_head" | tr -d '[:space:]')"
   echo "image migration head: $image_head; database migration head: ${db_head:-<none, fresh database>}"
   if [[ -n "$db_head" ]]; then
-    [[ "$db_head" =~ ^[0-9]{4}_[a-z0-9_]+$ ]] || fail "database journal head '$db_head' is malformed"
+    [[ "$db_head" =~ ^[0-9]{4}_[a-z0-9_]+$ ]] || refuse "database journal head '$db_head' is malformed"
     (( $(migration_rank "$image_head") >= $(migration_rank "$db_head") )) \
-      || fail "image bundles migrations up to $image_head but the database is at $db_head; refusing an older image"
+      || refuse "image bundles migrations up to $image_head but the database is at $db_head; refusing an older image"
   fi
 
   # 5. Migrate and start. --wait covers the container healthchecks only.
@@ -149,6 +167,32 @@ SQL
     sleep 3
   done
   echo "API ready: $IMAGE"
+
+  # 7. Record what is running, so an operator's own compose commands (taxonomy
+  #    apply, logs, exec) use the deployed image rather than production.env's
+  #    placeholders: add `--env-file $IMAGE_ENV` after `--env-file $ENV_FILE`.
+  install -m 0600 /dev/null "$IMAGE_ENV.next"
+  printf 'EXPLORERS_API_IMAGE_NAME=%s\nEXPLORERS_API_DIGEST=%s\nEXPLORERS_API_COMMIT=%s\n' \
+    "$IMAGE_NAME" "$IMAGE_DIGEST" "$COMMIT" > "$IMAGE_ENV.next"
+  mv -f "$IMAGE_ENV.next" "$IMAGE_ENV"
+  echo "recorded the running image in $IMAGE_ENV"
+
+  # 8. EXPLORERS_TRUSTED_PROXY_IP must be the egress network's gateway, the address
+  #    host nginx reaches the published port from. Anything else means the API
+  #    trusts nobody and the whole internet shares one rate-limit bucket. Docker
+  #    picks the subnet when the network is first created, so the first deploy can
+  #    only warn; on any later deploy a mismatch means the network was recreated.
+  local api_container gateway configured
+  api_container="$(compose ps -q api)"
+  gateway="$(docker inspect -f '{{with index .NetworkSettings.Networks "explorers-canonical_egress"}}{{.Gateway}}{{end}}' "$api_container")"
+  configured="$(sed -n 's/^EXPLORERS_TRUSTED_PROXY_IP=//p' "$ENV_FILE" | tail -n 1)"
+  if [[ "$gateway" != "$configured" ]]; then
+    local advice="EXPLORERS_TRUSTED_PROXY_IP is '$configured' but nginx reaches the API from '$gateway'. Set it to $gateway in $ENV_FILE, then: docker compose -f $COMPOSE_FILE --env-file $ENV_FILE --env-file $IMAGE_ENV up -d api"
+    if [[ -z "$db_head" ]]; then echo "::warning::first deploy: $advice"
+    else compose_diagnostics; fail "$advice"; fi
+  else
+    echo "trusted proxy: $gateway (matches the egress gateway)"
+  fi
 }
 
 activate() {
@@ -202,12 +246,24 @@ activate() {
   fi
   systemctl is-active --quiet nginx || { nginx_diagnostics; fail "nginx is not active after reload"; }
 
-  # Prove nginx now serves this release and reaches the API, through TLS as a browser would.
-  local served
-  served="$(curl -sk --max-time 10 --resolve "$SERVER_NAME:443:127.0.0.1" "https://$SERVER_NAME/runtime-config.json")"
-  [[ "$served" == "$(cat "$RELEASE/dist/runtime-config.json")" ]] || fail "nginx is not serving release $COMMIT's runtime-config.json"
-  [[ "$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 --resolve "$SERVER_NAME:443:127.0.0.1" "https://$SERVER_NAME/health/ready")" == 200 ]] \
-    || fail "https://$SERVER_NAME/health/ready is not 200 through nginx"
+  # Prove nginx now serves this release and reaches the API, through TLS as a browser
+  # would. `nginx -s reload` (and so `systemctl reload nginx`) returns once the
+  # master has the signal, before new workers listen: on the first deploy :443 is
+  # not open yet, and on later ones the old workers still answer. So poll, bounded.
+  local served="" ready="" expected deadline=$((SECONDS + 15))
+  expected="$(cat "$RELEASE/dist/runtime-config.json")"
+  until [[ "$served" == "$expected" && "$ready" == 200 ]]; do
+    if (( SECONDS >= deadline )); then
+      nginx_diagnostics
+      restore
+      systemctl reload nginx || true
+      [[ "$served" == "$expected" ]] || fail "nginx did not serve release $COMMIT's runtime-config.json within 15s; previous site and release restored"
+      fail "https://$SERVER_NAME/health/ready answered '${ready:-nothing}' through nginx, not 200; previous site and release restored"
+    fi
+    sleep 1
+    served="$(curl -sk --max-time 5 --resolve "$SERVER_NAME:443:127.0.0.1" "https://$SERVER_NAME/runtime-config.json" || true)"
+    ready="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 5 --resolve "$SERVER_NAME:443:127.0.0.1" "https://$SERVER_NAME/health/ready" || true)"
+  done
   echo "release $COMMIT is live"
 
   # Keep the newest releases, never the live one.
