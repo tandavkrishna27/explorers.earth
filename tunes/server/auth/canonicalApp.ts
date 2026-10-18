@@ -43,7 +43,7 @@ import {setupExplorersCatalogRoutes} from '../routes/explorersCatalogRoutes';
 import {BookCoverFetcher} from '../services/bookCoverFetch';
 import {BookCoverImportService} from '../application/bookCoverImport';
 import {BookCatalog} from '../services/bookCatalog';
-import { resolveTrustedProxy } from "../middleware/canonicalTerminator";
+import { resolveTrustedProxy, setupCanonicalTerminator } from "../middleware/canonicalTerminator";
 import { setupCanonicalRetiredSurfaces } from "../routes/canonicalRetiredSurfaceRoutes";
 import { setupExplorersSeoRoutes } from "../routes/explorersSeoRoutes";
 import { checkMusicDatabaseReadiness } from "../db/readiness";
@@ -191,6 +191,7 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
     }
   });
 
+  setupCanonicalTerminator(app);
   instrument?.completeRegistration();
   return {composed:{app:actualApp,auth},custody:instrument?.custody,admission};
 }
