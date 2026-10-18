@@ -44,20 +44,6 @@ const ENV_READ_ALLOWLIST = [
       "Read inside verifyStrapiToken's body, so it cannot fail startup. Its only caller is now security-containment's own legacy bearer path: the legacy jwt-auth-middleware was deleted on 2026-10-09, being unreachable from every entrypoint.",
     disposition: "Deleted with the legacy-music path in step 12 (8.1b/8.2).",
   },
-  {
-    file: "server/services/explorers-analytics-composition.ts",
-    variable: "STRAPI_URL",
-    reason:
-      "Read inside createLegacyExplorersAnalyticsDependencies(). Reachable only via the historical analytics read, which is dead: its client requires an auth-store token that the canonical acceptVerified path sets to null and nothing outside tests ever sets.",
-    disposition:
-      "Deleted once the dashboard is repointed at GET /api/explorers/analytics/summary (ticket 3.4).",
-  },
-  {
-    file: "server/config/music-local-profile.ts",
-    variable: "STRAPI_LIFECYCLE_PROOF_TOKEN_FILE",
-    reason: "Optional, guarded by an explicit !== undefined check, in the local/fixture profile.",
-    disposition: "Retires with the local legacy profile.",
-  },
 ];
 
 /**
@@ -81,27 +67,11 @@ const CLIENT_CONSTRUCTION = /new\s+(Strapi[A-Za-z]*)\s*\(/;
  * Strapi client constructions permitted inside the canonical closure.
  * Keyed by file and class, never by line, so ordinary edits do not break the scan.
  *
- * Both entries sit inside createLegacyExplorersAnalyticsDependencies(), the same
- * dead factory as the STRAPI_URL read allowlisted above: they are constructed
- * only if the historical analytics read runs, and it cannot. Constructing them
- * is also inert on its own — neither touches the network until a method is
- * called.
+ * Empty since P6-2, which deleted the historical analytics read and the legacy
+ * analytics composition that constructed StrapiAnalyticsPublisher and
+ * StrapiAnalyticsTargetValidator.
  */
-const CLIENT_ALLOWLIST = [
-  {
-    file: "server/services/explorers-analytics-composition.ts",
-    symbol: "StrapiAnalyticsPublisher",
-    reason:
-      "Built inside createLegacyExplorersAnalyticsDependencies(), reachable only through the dead historical analytics read. Canonical writes never publish externally.",
-    disposition: "Deleted with the legacy analytics factory once ticket 3.4 repoints the dashboard.",
-  },
-  {
-    file: "server/services/explorers-analytics-composition.ts",
-    symbol: "StrapiAnalyticsTargetValidator",
-    reason: "Same factory, same dead path; validatePublicTarget is replaced canonically by a constant true.",
-    disposition: "Deleted with the legacy analytics factory once ticket 3.4 repoints the dashboard.",
-  },
-];
+const CLIENT_ALLOWLIST = [];
 
 const ENV_READ = /(?:process\.)?env(?:\.|\[["'])([A-Za-z_]*STRAPI[A-Za-z_0-9]*)/g;
 

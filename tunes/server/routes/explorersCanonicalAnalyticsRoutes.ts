@@ -8,30 +8,26 @@ import { InMemoryAnalyticsRateLimiter } from '../services/explorers-analytics-ra
 import { requireActor, sendActorError } from '../middleware/explorersPrincipal';
 import { authorizeOperation, AuthorizationError } from '../application/authorization';
 import type { Actor } from '../application/actor';
+function canonicalIngest(service: AnalyticsService): ExplorersAnalyticsRouteDependencies['service']['ingest'] {
+    return async (input, context) => { const result = await service.recordAnalyticsEvent(input, { requestId: 'analytics-ingest', resolveCountry: () => resolveCountryFromIp(context.getIp()) }); if (result.status === 'consent-denied')
+                return result; return { status: 'committed', duplicate: result.status === 'duplicate', ...('eventId' in result ? { documentId: result.eventId } : {}), ...('retired' in result ? { retired: true as const } : {}) }; };
+}
 /**
- * With `auth` (the canonical runtime) the owner read is served from canonical storage and
- * authorised by the canonical session - P5-1. Before, the canonical GET lazily loaded the
- * legacy Strapi composition, whose Bearer JWT canonical sign-in never issues, so every
- * owner's dashboard was "unavailable". Without `auth` (the legacy runtime composition)
- * the historical Strapi reader is kept until P6 retires it. Canonical writes never
- * publish externally either way.
+ * The canonical runtime: owner reads are authorised by the canonical session and served from
+ * analytics_events (P5-1). The historical Strapi owner read is gone (P6-2), so `auth` is required.
+ * Canonical writes never publish externally.
  */
-export function createCanonicalAnalyticsDependencies(pool: Pool, auth?: ExplorersAuth): ExplorersAnalyticsRouteDependencies {
+export function createCanonicalAnalyticsDependencies(pool: Pool, auth: ExplorersAuth): ExplorersAnalyticsRouteDependencies {
     const service = new AnalyticsService(pool), limiter = new InMemoryAnalyticsRateLimiter();
     // The route authorises before it reads; the read reuses the actor that check resolved.
     const owners = new WeakMap<object, Actor>();
-    let legacy: Promise<ExplorersAnalyticsRouteDependencies> | undefined;
-    const historical = () => legacy ??= import('../services/explorers-analytics-composition').then(module => module.createLegacyExplorersAnalyticsDependencies());
     return {
-        service: { ingest: async (input, context) => { const result = await service.recordAnalyticsEvent(input, { requestId: 'analytics-ingest', resolveCountry: () => resolveCountryFromIp(context.getIp()) }); if (result.status === 'consent-denied')
-                return result; return { status: 'committed', duplicate: result.status === 'duplicate', ...('eventId' in result ? { documentId: result.eventId } : {}), ...('retired' in result ? { retired: true as const } : {}) }; }, readAccountEvents: async (scope, request) => {
-                if (!auth) return (await historical()).service.readAccountEvents(scope);
+        service: { ingest: canonicalIngest(service), readAccountEvents: async (scope, request) => {
                 const actor = request ? owners.get(request) : undefined;
                 if (!actor) throw new AuthorizationError(403, 'FORBIDDEN', 'Analytics owner was not authorised');
                 return service.readOwnerEvents(actor, scope);
             } },
         authorizeOwner: async (request, accountId) => {
-            if (!auth) return (await historical()).authorizeOwner(request, accountId);
             try {
                 const actor = await requireActor(request, auth, pool);
                 if (!actor || actor.accountId !== accountId) return false;
@@ -44,6 +40,15 @@ export function createCanonicalAnalyticsDependencies(pool: Pool, auth?: Explorer
             }
         }, validatePublicTarget: async () => true, allowWrite: (request, key) => limiter.allow(request, key),
     };
+}
+/**
+ * The legacy composition only, which P3-7 deletes. It has no Better Auth instance, so it cannot
+ * authorise an owner, and the owner read is refused (403) rather than delegated to Strapi.
+ */
+export function createIngestOnlyAnalyticsDependencies(pool: Pool): ExplorersAnalyticsRouteDependencies {
+    const service = new AnalyticsService(pool), limiter = new InMemoryAnalyticsRateLimiter();
+    return { service: { ingest: canonicalIngest(service), readAccountEvents: async () => [] }, authorizeOwner: async () => false,
+        validatePublicTarget: async () => true, allowWrite: (request, key) => limiter.allow(request, key) };
 }
 export function setupCanonicalAnalyticsRoutes(app: Express, pool: Pool, auth: ExplorersAuth) {
     setupExplorersAnalyticsRoutes(app, createCanonicalAnalyticsDependencies(pool, auth));

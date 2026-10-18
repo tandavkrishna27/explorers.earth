@@ -2599,3 +2599,14 @@ Phase A (P6-1 to P6-5) was executed against `fork/main` = `5abc33cb` on 2026-10-
 | 6 | Floors are set from the first green run | Measured: 176 executed cases, 572 distinct `/src/` modules, 45 distinct successful canonical API paths (46 on a later run). The handle is fixed for a run, so `/profiles/<handle>/…` paths do not inflate the count | `ROUTE_FLOOR = 176`, `MODULE_FLOOR = 500`, `API_FLOOR = 40` |
 | 7 | Confirm the diagnostics-channel shapes on Node `24.21.0` | This host runs Node `24.14.0`; the shapes were confirmed there (CI uses `24.21.0`) | Recorded; the monitor's own unit test re-proves them on every run |
 | 8 | `lifecycle-browser-support.test.ts` may pin the suite list | It asserts a subset | `no-strapi` added to the subset it checks |
+
+### P6-2
+
+| # | The plan said | The code or a run said | Done |
+|---|---|---|---|
+| 1 | The closure drops from 155 to 150 | At `5abc33cb` it is **157 → 152**. P5 added two canonical modules; the five that leave are the five the plan names | Both numbers are in the commit message |
+| 2 | The route, OpenAPI entry, matrix and inventory "all stay valid" | They do, but removing the unused `type ExplorersAnalyticsService` import shifts line numbers that `docs/architecture/music-runtime-surface-inventory.json` pins (`runtime-surface-inventory.test.ts`) | Regenerated with `npx tsx scripts/inventory-runtime-surfaces.ts --write`; `generate-music-authorization-matrix.ts` produced no change |
+| 3 | If neither existing test boots without an injected pool, add that case to `canonical-startup-listener.test.ts` | Neither does. That file is a stubbed unit test with no database, so it cannot hold a real boot | The case went into `server/test/music-runtime-role.integration.test.ts` (C5), which already provisions a real runtime login and protected secret files. It boots `startCanonicalServer` with **no injected pool and no `STRAPI_*` variable**, gets 401 from `/me` and 403 from the owner analytics read |
+| 4 | Integration tests need the exact CI URL on `55432` | On a host where `55432` is held by another lineage's database, `integration-global-setup.ts` also accepts a labelled C10 sidecar (`MUSIC_C10_STANDALONE_POSTGRES_*`, container named `music-c10-qualification-<commit7>-pg15`) | Used for the local runs; CI is unchanged |
+| 5 | `services/__tests__/explorers-analytics-service.test.ts`: trim or delete | Its publisher and receipt cases test deleted code | Trimmed to the schema cases and an `IdempotencyConflictError` case |
+| 6 | Import `pool` into `routes/index.ts` if absent | Already imported (`:10`) | Nothing to add |

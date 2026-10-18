@@ -359,6 +359,39 @@ describePg("C5 least-privilege Music runtime database authority", () => {
     }
   });
 
+  it("boots the canonical server from the provisioned runtime login with no injected pool and no Strapi configuration", async () => {
+    // P6-2 evidence: every other canonical startup test injects a pool, so none of them exercises
+    // the production path that resolves the runtime credential, attests the role and checks readiness.
+    const { provisionMusicRuntimeLogin } = await import("../db/music-runtime-role");
+    const { startCanonicalServer } = await import("../auth/canonicalStartup");
+    await provisionMusicRuntimeLogin(owner, { loginRole: runtimeUser, password: runtimePassword });
+    const databaseAuthority = new URL(ownerTarget);
+    const environment: Record<string, string> = {
+      EXPLORERS_PUBLIC_ORIGIN: "http://127.0.0.1:51475",
+      EXPLORERS_AUTH_SECRET: "canonical-runtime-boot-secret-".repeat(3),
+      GOOGLE_CLIENT_ID: "fixture-google-id",
+      GOOGLE_CLIENT_SECRET: "fixture-google-secret",
+      MUSIC_MODE: "live",
+      MUSIC_DATABASE_HOST: databaseAuthority.hostname,
+      MUSIC_DATABASE_PORT: databaseAuthority.port,
+      MUSIC_DATABASE_NAME: databaseName,
+      MUSIC_DATABASE_USER: runtimeUser,
+      MUSIC_DATABASE_MIGRATOR_USER: "music_migrator",
+      MUSIC_DATABASE_PASSWORD_FILE: runtimePasswordPath,
+    };
+    expect(Object.keys(environment).filter((key) => key.includes("STRAPI"))).toEqual([]);
+    const server = await startCanonicalServer(environment, { host: "127.0.0.1", port: 0 });
+    try {
+      const { port } = server.httpServer.address() as { port: number };
+      const response = await fetch(`http://127.0.0.1:${port}/api/explorers/v1/me`);
+      expect(response.status).toBe(401);
+      const events = await fetch(`http://127.0.0.1:${port}/api/explorers/analytics/events?accountId=a&fromDate=2026-10-19&toDate=2026-10-19&timeZone=UTC`);
+      expect(events.status).toBe(403);
+    } finally {
+      await server.shutdown();
+    }
+  });
+
   it("rejects an unexpected owner even when runtime effective privileges are unchanged", async () => {
     const authority = await loadAuthority() as {
       provisionMusicRuntimeLogin?: (ownerPool: pg.Pool, input: { loginRole: string; password: string }) => Promise<void>;
