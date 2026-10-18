@@ -1,3 +1,4 @@
+import { runtimeOrigin } from "../lib/publicRuntimeConfig";
 import { memo, useState, useEffect, useMemo, useRef } from "react";
 import { usePlacesOwner } from "../features/Favorites/hooks/usePlacesOwner";
 import { useBooksOwnerContent } from "../features/Books/api/useBooksOwnerContent";
@@ -125,7 +126,7 @@ const resolveCoverUrl = (
 
   // If it starts with /uploads/ (local Strapi upload), prepend backend URL
   if (path.startsWith("/uploads/")) {
-    const backendUrl = import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337";
+    const backendUrl = runtimeOrigin(import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337");
     return `${backendUrl}${path}`;
   }
 
@@ -136,7 +137,7 @@ const resolveCoverUrl = (
 
   // If it starts with / but not /uploads/ for other types, check if we should prepend backend URL anyway
   if (path.startsWith("/")) {
-    const backendUrl = import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337";
+    const backendUrl = runtimeOrigin(import.meta.env.VITE_REST_API_URL?.replace("/api", "") || "http://localhost:1337");
     return `${backendUrl}${path}`;
   }
 

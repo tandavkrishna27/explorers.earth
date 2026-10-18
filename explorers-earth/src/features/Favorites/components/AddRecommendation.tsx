@@ -1,3 +1,4 @@
+import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import SwitchButton from "../../../components/ui/SwitchButton";
@@ -341,7 +342,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
             // First attempt: Try to fetch from Places API
             const placeDetails = await axios.get(
               `${GOOGLE_PLACES_API_BASE_URL}/${places.place_id
-              }?fields=id,displayName,primaryType,primaryTypeDisplayName,priceRange,rating,userRatingCount,photos&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+              }?fields=id,displayName,primaryType,primaryTypeDisplayName,priceRange,rating,userRatingCount,photos&key=${mapsBrowserKey()
               }`
             );
 
@@ -360,7 +361,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
                 try {
                   const reference = photoReferences[i];
                   const url = `${GOOGLE_PLACES_API_BASE_URL}/${places.place_id
-                    }/${reference}/media?maxWidthPx=800&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+                    }/${reference}/media?maxWidthPx=800&key=${mapsBrowserKey()
                     }`;
 
                   const response = await fetch(url);
@@ -458,7 +459,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
             `https://places.googleapis.com/v1/places/${placeId}`,
             {
               headers: {
-                "X-Goog-Api-Key": import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+                "X-Goog-Api-Key": mapsBrowserKey(),
                 "X-Goog-FieldMask":
                   "id,displayName,formattedAddress,types,primaryType,primaryTypeDisplayName,addressComponents,location,rating,userRatingCount",
               },
@@ -619,7 +620,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
             {
               headers: {
                 'Content-Type': 'application/json',
-                'X-Goog-Api-Key': import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+                'X-Goog-Api-Key': mapsBrowserKey(),
                 'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.types,places.primaryType,places.primaryTypeDisplayName,places.addressComponents,places.location,places.photos,places.rating'
               }
             }
