@@ -18,7 +18,13 @@ describe("runtime route/event/job inventory", () => {
     // musicSurfacePolicy's fail-closed owner allowlist has not yet declared them; see the
     // note in that allowlist. That is an authorization-declaration gap, not an extra
     // surface, and the count pin is honest about the surfaces that exist.
-    expect(inventory.routes).toHaveLength(199);
+    // 204 = 199 + the five canonical production-readiness surfaces P1 adds to
+    // tunes/server/auth/canonicalApp.ts: the ALL retired-surface tombstone, GET
+    // /robots.txt, GET /sitemap.xml, GET /api/explorers-sitemap.xml and GET
+    // /health/ready. The three SEO paths are deliberately registered twice — once
+    // here and once by the Music composition's tunes/server/seo-routes.ts — until
+    // Music is deleted; both registrations are real surfaces and both are counted.
+    expect(inventory.routes).toHaveLength(204);
     expect(inventory.events).toHaveLength(15);
     expect(inventory.jobs).toHaveLength(37);
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/application/appEnrichmentLocalScheduler.ts',lifecycle:'scheduled-callback'}));
@@ -67,8 +73,11 @@ describe("runtime route/event/job inventory", () => {
     // pin-storage routes add the twelfth through seventeenth, one ALL guard per pin
     // operation, each answering 405 INVALID_INPUT with no actor resolution.
     // Pin the count so every new surface receives an explicit method-boundary review.
+    // The eighteenth is P1's canonical retired-surface boundary,
+    // tunes/server/routes/canonicalRetiredSurfaceRoutes.ts, which answers 410 on every
+    // method for a retired path and calls next() for everything else.
     expect(inventory.routes.filter((route) => route.method === "ALL"
-      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(21);
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(22);
     // Decision D2. GET reports the address and must not write; POST performs it, which is
     // also what RFC 8058 one-click unsubscribe sends. Both are public: the authority is
     // the purpose-bound HMAC in the token, not the caller.

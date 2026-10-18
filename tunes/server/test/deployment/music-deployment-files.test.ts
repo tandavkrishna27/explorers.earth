@@ -59,7 +59,7 @@ describe("Music deployment authority files", () => {
   it("keeps development dependencies out of the production image", () => {
     const dockerfile = read("tunes/Dockerfile");
     expect(dockerfile).toContain(
-      "FROM public.ecr.aws/docker/library/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS base",
+      "FROM ghcr.io/tandavkrishna27/mirror/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS base",
     );
     expect(dockerfile).toContain("FROM base AS prod-deps");
     expect(dockerfile).toMatch(/ARG BUILD_COMMIT\r?\nRUN : "\$BUILD_COMMIT" && apk upgrade --no-cache/);
