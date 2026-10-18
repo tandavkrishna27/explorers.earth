@@ -5,7 +5,6 @@ import { loginSurface, surfaceHarness } from '../../navigation/__tests__/surface
 import useAuthStore from '../../../store/store';
 vi.mock('../../Profile/api/useCanonicalAccount', () => ({ useCanonicalAccount: () => ({ data: { id: '11111111-1111-4111-8111-111111111111', revision: 1 }, isLoading: false }) }));
 vi.mock('../components/ProfileAccountSettings', () => ({ default: () => null }));
-vi.mock('../components/BillingTab', () => ({ default: () => null }));
 vi.mock('../components/LanguageSelector', () => ({ default: () => null, LANGUAGES: [{ code: 'en', name: 'English' }] }));
 beforeEach(() => { vi.restoreAllMocks(); loginSurface('distinct-auth-user'); window.history.replaceState(null, '', '/settings#public-navigation'); });
 afterEach(() => { cleanup(); useAuthStore.getState().logout(); vi.restoreAllMocks(); vi.unstubAllGlobals(); window.history.replaceState(null, '', '/'); });

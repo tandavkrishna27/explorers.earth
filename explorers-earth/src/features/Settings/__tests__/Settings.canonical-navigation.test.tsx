@@ -6,7 +6,6 @@ import useAuthStore from '../../../store/store';
 import { explorersApiClient } from '../../../lib/explorersApiClient';
 vi.mock('../../Profile/api/useCanonicalAccount', () => ({ useCanonicalAccount: () => ({ data: { id: '11111111-1111-4111-8111-111111111111', revision: 1 }, isLoading: false }) }));
 vi.mock('../components/ProfileAccountSettings', () => ({ default: () => null }));
-vi.mock('../components/BillingTab', () => ({ default: () => null }));
 vi.mock('../components/LanguageSelector', () => ({ default: () => null, LANGUAGES: [{ code: 'en', name: 'English' }] }));
 const legacyNavigation = (name: string) => name === 'SettingsAccount' || name === 'PublicCategoryListCounts';
 describe('Settings canonical navigation', () => {

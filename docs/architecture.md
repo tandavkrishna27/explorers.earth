@@ -87,7 +87,6 @@ Browser
 External APIs:
   ├── YouTube Data API v3 (song search)
   ├── Spotify API (playlist import)
-  ├── Razorpay (payments)
   ├── AWS SES (email)
   └── Google Gemini (AI)
 ```

@@ -7,7 +7,7 @@ tunes is a songs recommendation platform that transforms music sharing across di
 - **Frontend**: React 18 + TypeScript, TanStack Query v5, shadcn/ui, Socket.IO, Tailwind CSS
 - **Backend**: Express 5.2 runtime + TypeScript, Socket.IO, Passport.js (`@types/express` 4.17 is tracked type debt)
 - **Database**: PostgreSQL + Drizzle ORM
-- **Integrations**: YouTube Data API, Spotify, Razorpay, AWS SES, Google Gemini
+- **Integrations**: YouTube Data API, Spotify, AWS SES, Google Gemini
  
 ## Safe Music quick start
 
@@ -53,7 +53,7 @@ Full documentation is in the [`docs/`](../docs/) folder:
 - [Music auth model](../docs/security/music-auth-model.md) — Principal derivation, owner predicates, rotation, redaction
 - [Music testing](../docs/testing/music-identity-testing.md) — Fixture golden path and CI lanes
 - [Music incident runbook](../docs/operations/music-incident-runbook.md) — Containment, recovery, and escalation
-- [Integrations](../docs/tunes/integrations.md) — YouTube, Spotify, Razorpay, etc.
+- [Integrations](../docs/tunes/integrations.md) — YouTube, Spotify, etc.
 - [State Management](../docs/tunes/state-management.md) — TanStack Query, Zustand, Socket.IO
 - [Deployment](../docs/tunes/deployment.md) — Docker, AWS, CI/CD
 - [Contributing](../docs/contributing.md) — Code style, PR process

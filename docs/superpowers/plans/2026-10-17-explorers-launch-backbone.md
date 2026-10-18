@@ -37,7 +37,7 @@ a branch, or a live call from dead code. Skips are not passes. Filtered dispatch
 
 | # | Decision | Consequence |
 |---|---|---|
-| D1 | **Fresh start** — no data import. **Reconfirmed by the owner 2026-10-18 as a launch decision:** existing users begin from zero at cutover, and old profile links break | No import tooling. Users are told in advance per `docs/superpowers/plans/2026-10-18-launch-user-communication.md`. **Old handles are held for their original owners from launch day** — printed QR codes encode `/<handle>/…` (`LinksAndQR.tsx:67`), so a stranger claiming an old handle would hijack them. "Only test accounts exist" was the earlier assumption; the comms plan's first step counts real accounts in production Strapi to confirm it |
+| D1 | **Fresh start** — no data import. **Reconfirmed by the owner 2026-10-18 as a launch decision:** existing users begin from zero at cutover, and old profile links break | No import tooling. **Updated 2026-10-18, later the same day: the owner confirmed there are no real users.** So there is no one to notify and no handle hold (PR #131 was closed unmerged). The QR-hijack reasoning in `docs/superpowers/plans/2026-10-18-launch-user-communication.md` applies only if real users turn up before launch |
 | D2 | **Music parked** — delete frontend and backend, preserve for rebuild | Unblocks pure `canonical`; deletes the legacy composition |
 | D3 | **Subscriptions removed** — product launches free | ~5,600 lines, no database work |
 | D4 | **Pure `canonical`**, not `combined` | Possible only because D2 removes Music |
@@ -56,7 +56,7 @@ a branch, or a live call from dead code. Skips are not passes. Filtered dispatch
 is removed or its taxonomy authored; whether the eight content categories gain `unlisted`;
 whether the standalone `localtunes.earth` Netlify site is still wanted (blocks P3-3).
 
-**A contradiction to resolve before P3-7 is sized.** D1 says only test accounts exist. But the
+**Mostly settled by "no real users" (2026-10-18), but still worth one check before P3-7.** D1 says only test accounts exist. But the
 Music venue release only handles *canonical* venues — `strapi_user_document_id IS NULL AND
 strapi_account_document_id IS NULL` (`accountLifecycleMaintenance.ts:37`) — so any account with
 a legacy Strapi-backed venue is parked today at `MUSIC_BOUNDARY_PENDING` with its deletion
@@ -185,7 +185,8 @@ is gone — it pulls, starts and crash-loops. Rollback restores the *image*, nev
 Strapi users, handles, profiles or recommendations into the canonical schema. Better Auth
 creates a new account on first Google sign-in, so at cutover every existing user loses their
 content and every existing public profile URL 404s. That follows from the settled fresh-start
-decision, but it is a launch decision, not a technical detail.
+decision, but it is a launch decision, not a technical detail. **Since there are no real users
+(confirmed 2026-10-18), nobody loses anything.**
 
 ### P3 — Music removal *(gated on P2 proven)*
 
@@ -259,6 +260,10 @@ completed. Size this against production data before P3-7.
 
 ### P4 — Subscription removal *(independent, ship now)*
 
+**Planned in full at `docs/superpowers/plans/2026-10-18-subscription-removal.md`. That document
+supersedes the table below**, which is kept for history. T1–T6 are implemented in PR #136; T7
+(revoking the Razorpay keys) waits for dashboard access.
+
 | Ticket | Scope |
 |---|---|
 | P4-1 | Delete `BillingTab.tsx` + its mocks, one commit. **Correction:** an earlier revision called this "urgent — stops live Strapi traffic". Wrong on both counts. It calls the *tunes* REST API, already tombstoned (`musicRetirementPolicy.ts:34`); the Strapi read was already deleted (`BillingTab.tsx:83-86` says so). All four queries are `enabled`-gated on accordion state, so nothing fires on render. Still the right first ticket — it is self-contained — but it is not an incident |
@@ -295,6 +300,9 @@ there is **no backup tooling, no restore drill and no measured recovery time**, 
 migrations are forward-only with no down-files and the compatibility floor refuses older
 images once advanced. Ticket 8.5 gates 8.4 and, through Milestone 3, all of Epics 9–10.
 **Start it in parallel with P1 — it depends on nothing else.**
+
+**Planned in full at `docs/superpowers/plans/2026-10-18-backup-restore-recovery.md`.** Not yet
+implemented.
 
 ### P6 — Strapi retirement *(gated on P2 + P3)*
 

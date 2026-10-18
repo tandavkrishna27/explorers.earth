@@ -62,6 +62,14 @@ describe("retired browser Music authority boundary", () => {
     expect(onboarding).not.toContain("ensureIdentity");
   });
 
+  it("names onboarding finalization without any subscription concept", () => {
+    // The product launches free (backbone D3). The finalization path only writes the
+    // Account, so subscription-flavoured names would imply a billing dependency.
+    const onboarding = readFileSync(resolve(process.cwd(), "src/pages/OnBoarding.tsx"), "utf8");
+    expect(onboarding).not.toMatch(/subscription|free plan|selectedPlan/i);
+    expect(onboarding).toMatch(/const saveOnboardingAccount = async[\s\S]*?onboardingStatus: "complete"/);
+  });
+
   it("keeps named authenticated surfaces off positional Account selection", () => {
     const accountConsumers = [
       "src/components/ProtectedRoute.tsx",

@@ -33,24 +33,15 @@
 4. For each track, searches YouTube for a matching video
 5. Adds matched songs to a tunes playlist
 
-## Razorpay
+## Payments
 
-**Purpose**: Payment processing and subscription management.
+There is no payment integration. The product launches free, so tunes has no payment,
+subscription or billing route, service or dependency. Monetization will be designed from
+scratch if it is ever needed (launch backbone decision D3).
 
-**Files**:
-- `server/routes/paymentRoutes.ts` — Payment endpoints and webhook handlers
-- `server/controllers/paymentController.ts` — Payment business logic
-- `server/controllers/subscriptionController.ts` — Subscription management
-- `server/routes/subscriptionRoutes.ts` — Subscription endpoints
-
-**Configuration**:
-- `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` env vars
-
-**How it works**:
-1. Client initiates payment via Razorpay checkout
-2. Razorpay processes the payment
-3. Webhook notifies the server of payment status
-4. Server updates subscription status accordingly
+`/api/subscriptions` and `/api/payments` deliberately answer `410 Gone` from the Music
+retirement policy (`server/policies/musicRetirementPolicy.ts`); that tombstone is not a
+payment integration.
 
 ## AWS SES (Simple Email Service)
 
@@ -118,7 +109,6 @@
 tunes Server
   ├── YouTube API ──────── Song search (REST)
   ├── Spotify API ─────── Playlist import (REST)
-  ├── Razorpay ────────── Payments (REST + Webhooks)
   ├── AWS SES ─────────── Email delivery (SDK)
   ├── Google Gemini ───── AI recommendations (REST)
   ├── Strapi CMS ──────── Content sync (REST)

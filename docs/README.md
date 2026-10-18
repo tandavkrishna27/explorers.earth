@@ -40,7 +40,7 @@ Comprehensive documentation for the explorers.earth monorepo containing two appl
 - [WebSockets](tunes/websockets.md) — Socket.IO event protocol and real-time sync
 - [Deployment](tunes/deployment.md) — Docker, AWS infrastructure, CI/CD
 - [Security](tunes/security.md) — Auth flows, sessions, API tokens, rate limiting
-- [Integrations](tunes/integrations.md) — YouTube, Spotify, Razorpay, AWS SES, Gemini
+- [Integrations](tunes/integrations.md) — YouTube, Spotify, AWS SES, Gemini
 - [State Management](tunes/state-management.md) — TanStack Query, Zustand, Socket.IO patterns
 
 ### Architecture Decision Records (ADRs)

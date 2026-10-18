@@ -137,11 +137,10 @@ Single sign-on via Google accounts.
 
 **Key Files**: `src/services/instagramService.ts`
 
-## Razorpay
+## Payments
 
-**Purpose**: Payment processing for premium features.
-
-**Usage**: Client-side Razorpay checkout integration for subscription payments. Payment verification is handled server-side.
+None. The product launches free (launch backbone decision D3), so explorers-earth has no
+checkout, subscription or payment integration and loads no payment SDK.
 
 ## Local Tunes Integration (Music identity boundary)
 
@@ -189,6 +188,5 @@ explorers-earth Client
   ├── TMDB ────────────────────────────── TMDB API (movies/shows)
   ├── IGDB (via Twitch OAuth) ─────────── IGDB API (game search)
   ├── Instagram Graph API ─────────────── Meta (social integration)
-  ├── Razorpay SDK (dev + prod keys) ───── Razorpay (payments)
   └── localTunesApiClient ─ Music bearer ─ tunes API (identity, playlists, publication)
 ```

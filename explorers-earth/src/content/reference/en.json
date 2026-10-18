@@ -2026,7 +2026,7 @@
     },
     {
       "Question": "Is explorers.earth free to use?",
-      "Answer": "Yes.  explorers.earth is free forever. You can create your QR code, add unlimited recommendations, and track basic analytics at no cost. Premium features for businesses and advanced analytics are available through our paid plans.",
+      "Answer": "Yes.  explorers.earth is free forever. You can create your QR code, add unlimited recommendations, and track analytics at no cost.",
       "Sequence": 3
     },
     {
@@ -2056,7 +2056,7 @@
     },
     {
       "Question": "How much does Local Tunes cost?",
-      "Answer": "LocalTunes has a free plan and a ₹300/month subscription (with a 10% discount for yearly billing) offering unlimited playlists, analytics, and advanced features.",
+      "Answer": "LocalTunes is free. You get unlimited playlists, analytics, and advanced features at no cost.",
       "Sequence": 9
     },
     {

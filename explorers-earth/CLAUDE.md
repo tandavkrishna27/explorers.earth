@@ -76,8 +76,6 @@ src/
 │   ├── googleBooksService.ts   # Google Books API (book search + metadata)
 │   ├── igdbService.ts          # IGDB via Twitch OAuth (game search + metadata)
 │   ├── instagramService.ts     # Instagram integration
-│   ├── paymentService.ts       # Payment processing
-│   ├── subscriptionService.ts  # Subscription management
 │   └── tmdbService.ts          # TMDB (movie/show search, metadata, posters)
 ├── utils/              # Utility functions
 ├── types/              # TypeScript type definitions

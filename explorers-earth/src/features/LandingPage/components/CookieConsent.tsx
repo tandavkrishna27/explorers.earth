@@ -19,7 +19,6 @@ const INTERNAL_FIRST_PATH_SEGMENTS = new Set([
   'about',
   'analytics',
   'claimaccount',
-  'checkout',
   'contact',
   'cookies',
   'email-confirmed',
@@ -41,7 +40,6 @@ const INTERNAL_FIRST_PATH_SEGMENTS = new Set([
   'reset-link-sent',
   'reset-password',
   'sso',
-  'subscription-plans',
   'terms',
   'use-cases',
 ]);
