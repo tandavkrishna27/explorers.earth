@@ -1061,6 +1061,36 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 Owner actions, once, with the engineer present. Nothing in the repo does any of it.
 
+> **Found during rehearsal (2026-10-18).** Tasks 9 and 10 were run end to end against a local
+> stand-in host (`deploy/rehearsal/rehearse.sh`). The executable version is
+> [`docs/operations/explorers-cutover-runbook.md`](../../operations/explorers-cutover-runbook.md);
+> follow that, not the steps below. What changed for this task:
+>
+> - **Steps 2–4 and the checks for 6–9 are now a script:** `deploy/host/explorers-bootstrap.sh
+>   init|check <host>`. It generates the password files, installs and validates `production.env`,
+>   and names the nginx file that serves the hostname today, which answers open question 1 and
+>   gives `EXPLORERS_NGINX_SITE_PATH`.
+> - **Step 1 (backup) has nothing to back up** on a start-fresh cutover; the first backup is after
+>   the first deploy, with #141's tooling (runbook 6.4). **Step 1a is void** (no real users; #131
+>   held out).
+> - **Backups, rehearsed after #141 merged.** A backup on the stand-in restored in the drill in
+>   6.1s. Before cutover: set `EXPLORERS_BACKUP_AGE_RECIPIENT` (now in the env example and the
+>   bootstrap check), put Node 24 on the host, and commit a drill receipt at `0057`. The committed
+>   one is at `0056`, so the deploy gate refuses every deploy after the first,
+>   `DRILL_MARKER_MISMATCH`, rollbacks included.
+> - **Step 4 needs no action.** The postgres image creates the migrator from `DB_MIGRATOR_USER`,
+>   migration 0010 creates `music_runtime`, and the gate creates the runtime login.
+> - **Step 9's command is wrong.** The API is on two networks, so
+>   `{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}` prints `172.20.0.1invalid IP`.
+>   Compose also needs a value before the network exists. `explorers-deploy.sh stage` now
+>   compares the configured value with the egress gateway: it warns on the first deploy and
+>   refuses on later ones. The example's `172.18.0.1` was wrong in the rehearsal (`172.20.0.1`).
+> - **Step 9's proof is wrong.** Through nginx, two client-supplied `X-Forwarded-For` values
+>   correctly share one bucket: only the gateway hop is trusted, and nginx appends the real
+>   peer. The proof is two XFF values sent straight to `127.0.0.1:5000` getting separate buckets.
+> - **Not covered by any step:** Better Auth's own rate limiter cannot see client IPs (it logs a
+>   warning at the first request), so `/api/auth/*` shares one bucket regardless of Step 9.
+
 - [ ] **Step 1: Take a database backup and verify you can restore it.** Rollback is
   forward-only; an unverified backup is not a safety net.
 - [ ] **Step 1a: Export the Strapi user list and load the handle holds — before sign-ups open.**
@@ -1116,6 +1146,30 @@ Owner actions, once, with the engineer present. Nothing in the repo does any of 
 ---
 
 ## Task 10: Cut over and verify
+
+> **Found during rehearsal (2026-10-18).** See the
+> [runbook](../../operations/explorers-cutover-runbook.md), sections 5–7 and 10.
+>
+> - **Step 1 could never pass on an empty database.** `explorers-deploy.sh stage` read the journal
+>   in one `CASE` statement; PostgreSQL resolves `music_schema_migrations` before running it, so
+>   the statement failed with `relation does not exist`. Fixed.
+> - **`activate` exited 7 with no message on the first deploy.** It probed :443 straight after
+>   `nginx -s reload`, before the new workers listened. Fixed: a bounded poll, restoring the
+>   previous site on failure.
+> - **A refused older-image deploy left the wrong compose file** on the host, which broke the next
+>   `compose up`. Fixed: every refusal before the new image starts restores it.
+> - **Step 2's commands fail.** Without `--env-file`, compose cannot render the file, and the
+>   bundle is `dist/apply-reviewed-taxonomy.js`. `stage` now records the running image in
+>   `/opt/explorers/image.env`. The working form is
+>   `docker compose -f … --env-file production.env --env-file image.env run --rm --no-deps migrate node dist/apply-reviewed-taxonomy.js`.
+> - **Step 3 before any sign-in** can only use a handle that does not exist. The hidden-category
+>   proof needs the owner's own account with a category hidden (runbook 6.2).
+> - **Getting the digest Step 1 needs also deploys to the Music host.** `tunes.yml`'s
+>   `release_production` input gates both `publish-image` and `deploy-production` (→
+>   `tunes-deploy.yml`). This blocks cutover until the input is split or P3-7 lands.
+> - **Rollback was rehearsed.** Redeploying the previous image at the same schema took 20s, with
+>   at most 3s of API 503s. Rolling back past a migration was refused with nothing changed, and
+>   forcing it fails in the old image's gate with `unknown future migration in journal`.
 
 - [ ] **Step 1: Deploy.** The workflow builds, ships, migrates, gates on readiness and swaps the
   SPA.

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Rehearsal helper: print the canonical database's migration head, or nothing when
+# postgres is not running or has never been migrated.
+c="$(docker ps -q --filter label=com.docker.compose.project=explorers-canonical --filter label=com.docker.compose.service=postgres)"
+[ -n "$c" ] || exit 0
+q() { docker exec -i "$c" sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA'; }
+[ "$(echo "SELECT to_regclass('public.music_schema_migrations') IS NOT NULL;" | q | tr -d '[:space:]')" = t ] || exit 0
+echo "SELECT max(id) FROM public.music_schema_migrations;" | q | tr -d '[:space:]'

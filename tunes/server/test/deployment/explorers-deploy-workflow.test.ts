@@ -99,6 +99,63 @@ describe("explorers deploy workflow", () => {
     expect(marker).toBeLessThan(fullUp);
   });
 
+  it("reads the migration journal in a statement of its own", () => {
+    // Break caught (cutover rehearsal): one CASE that read the journal only when
+    // to_regclass found it. PostgreSQL resolves every table a statement names
+    // before running it, so the very first deploy, onto an empty database, died
+    // with 'relation "music_schema_migrations" does not exist'.
+    const statements = [...hostScript.matchAll(/<<'SQL'\n([\s\S]*?)\nSQL\n/g)].map((match) => match[1]);
+    expect(statements.length).toBeGreaterThanOrEqual(2);
+    for (const sql of statements) {
+      expect(/to_regclass/.test(sql) && /FROM\s+\S*music_schema_migrations/.test(sql), sql).toBe(false);
+    }
+  });
+
+  it("puts the previous compose file back when stage refuses before starting the image", () => {
+    // Break caught (cutover rehearsal): a refused rollback left the older release's
+    // compose file, with its older migration marker, beside the newer running
+    // image; the next `compose up` then failed the migration gate.
+    const stage = hostScript.slice(hostScript.indexOf("stage() {"), hostScript.indexOf("activate() {"));
+    expect(stage).toMatch(/refuse\(\) \{[\s\S]*?cp -p "\$COMPOSE_FILE\.previous" "\$COMPOSE_FILE"/);
+    const fullUp = stage.indexOf("compose up -d --wait ||");
+    expect(stage.indexOf('refuse "image bundles migrations up to')).toBeGreaterThan(0);
+    expect(stage.indexOf('refuse "image bundles migrations up to')).toBeLessThan(fullUp);
+    expect(stage.slice(stage.indexOf("refuse() {"), fullUp)).not.toMatch(/\|\| fail "/);
+  });
+
+  it("polls nginx after the reload instead of probing it once", () => {
+    // Break caught (cutover rehearsal): `nginx -s reload` returns before the new
+    // workers listen. On the first deploy :443 was not open yet, curl exited 7, and
+    // set -e ended activate with no message and no restore.
+    const activate = hostScript.slice(hostScript.indexOf("activate() {"));
+    const reload = activate.indexOf("systemctl reload nginx ||");
+    const poll = activate.indexOf('until [[ "$served" == "$expected"');
+    expect(reload).toBeGreaterThan(0);
+    expect(poll).toBeGreaterThan(reload);
+    expect(activate.slice(poll, activate.indexOf("is live"))).toContain("restore");
+  });
+
+  it("records the running image for the operator's own compose commands", () => {
+    expect(hostScript).toContain('readonly IMAGE_ENV="$OPT/image.env"');
+    expect(hostScript.indexOf('mv -f "$IMAGE_ENV.next" "$IMAGE_ENV"')).toBeGreaterThan(hostScript.indexOf('echo "API ready: $IMAGE"'));
+  });
+
+  it("runs the same API acceptance file the rehearsal runs", () => {
+    const accept = deploySteps[stepIndex(/API acceptance checks/)];
+    expect(accept.run).toContain("bash deploy/host/api-acceptance.sh http://127.0.0.1:15000");
+    const script = readFileSync(resolve(repositoryRoot, "deploy/host/api-acceptance.sh"), "utf8");
+    for (const probe of ["check /health/ready 200", "check /api/explorers/v1/me 401", "check /api/auth/get-session 200"]) {
+      expect(script).toContain(probe);
+    }
+  });
+
+  it("ships host scripts that parse", () => {
+    for (const file of ["deploy/host/explorers-deploy.sh", "deploy/host/explorers-bootstrap.sh", "deploy/host/api-acceptance.sh", "deploy/rehearsal/rehearse.sh"]) {
+      const result = spawnSync("bash", ["-n", resolve(repositoryRoot, file)], { encoding: "utf8" });
+      expect(result.status, `${file}: ${result.stderr}`).toBe(0);
+    }
+  });
+
   it("gates on readiness with a bounded timeout", () => {
     expect(hostScript).toContain("readonly READY_URL=http://127.0.0.1:5000/health/ready");
     expect(hostScript).toMatch(/readonly READY_TIMEOUT_SECONDS=\d+/);
