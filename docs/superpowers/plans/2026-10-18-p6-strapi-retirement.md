@@ -2632,3 +2632,18 @@ Phase A (P6-1 to P6-5) was executed against `fork/main` = `5abc33cb` on 2026-10-
 | 3 | Delete only `selectExplorerAccountUploadTarget` and its cases | Its two types, `SelectedExplorerAccountUploadTarget` and `ExplorerAccountUploadTargetSelection`, have no other user | Deleted with it. The module and its test file stay |
 | 4 | `PROFILE_PICTURE_INPUT` is a lead; the input may sit behind a cropper | It does: `ImageCropper`'s hidden file input opens a crop modal, and the upload runs on the modal's **Confirm**. A 1x1 PNG crops to nothing | The case sets the file on the real input, clicks Confirm, and waits for `POST /api/explorers/v1/media`. It builds a 16x16 PNG itself |
 | 5 | Give `no-strapi` media storage the way the `places` suites do | `storage` is the only switch `createCanonicalApp` reads | The no-Strapi lane gets a `LocalObjectStorage` inside the private fixture directory, which cleanup already removes |
+
+### P6-5
+
+| # | The plan said | The code or a run said | Done |
+|---|---|---|---|
+| 1 | After P6-4, the phase-A scan prints no findings; `localhost:1337` is a phase-A marker | A real platform build after P6-4 still contains `localhost:1337` eight times: the image-URL builders pass it as `runtimeOrigin()`'s legacy argument, which `platformBuildLeaks.test.ts` deliberately allows (the plan's own inventory, "Seven image-URL builders (8 lines)"). Minified, a guarded and an unguarded use are indistinguishable, so the scan could never go green | `localhost:1337` moved to phase B, with the reason in the scanner. The source-level test still fails any unguarded use. The other two hosts stay in phase A |
+| 2 | Before P6-4 the scan fails on `undefined/upload` and `users_permissions_users` | Measured on a platform build of the P6-3 source: `undefined/upload`, `/upload/files/`, `users_permissions_users` (and `localhost:1337`) | Recorded as the scanner's bite. After P6-4: `platform bundle: 11092748 bytes of JS, no Strapi signature (phase A)` |
+| 3 | The floor is 6 MB from a 12.36 MB measurement | `scanBundle` counts UTF-16 characters, not bytes: 11.09 M characters (12.7 MB on disk) | Floor kept at 6,000,000 |
+| 4 | Check nothing pins the `Build` step | `platform-release-authority.ts` pins the job key `build` and name `🏗️ Build`, not the step | The job is unchanged; only the step is replaced |
+
+### Cross-ticket
+
+| # | The plan said | The code or a run said | Done |
+|---|---|---|---|
+| 1 | Seals that break are the printed-AST helpers in `replatform-e2e.test.mjs`; never regenerate a frozen constant | `scripts/fixtures/place-links-atomic-diagnostic-frozen.json` also pins a SHA-256 of **all** of `tunes/scripts/profile-browser-fixture.ts` as a protected source, so P6-1 Step 6 and P6-4 Step 4a, which both edit that runner, break the `static` lane | The protected hash is re-approved in the P6-1 and P6-4 commits, as `52677f52` and P3-4 (`cb61f167`) did for the same file. The frozen native source, identities and config are untouched |
