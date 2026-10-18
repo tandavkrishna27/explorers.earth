@@ -43,6 +43,10 @@ import {setupExplorersCatalogRoutes} from '../routes/explorersCatalogRoutes';
 import {BookCoverFetcher} from '../services/bookCoverFetch';
 import {BookCoverImportService} from '../application/bookCoverImport';
 import {BookCatalog} from '../services/bookCatalog';
+import { resolveTrustedProxy, setupCanonicalTerminator } from "../middleware/canonicalTerminator";
+import { setupCanonicalRetiredSurfaces } from "../routes/canonicalRetiredSurfaceRoutes";
+import { setupExplorersSeoRoutes } from "../routes/explorersSeoRoutes";
+import { checkMusicDatabaseReadiness } from "../db/readiness";
 
 function errorResponse(res: Response, status: number, code: ApiError["error"]["code"], message: string): void {
   res.status(status).json({ error: { code, message, requestId: randomUUID() } } satisfies ApiError);
@@ -58,6 +62,11 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   const admission=appsInput?createAppsCanonicalAdmission({pool,...appsInput}):undefined;
   const actualApp = express(), instrument=custodyMode?createCanonicalHandlerCustody(actualApp,admission):undefined;
   const app = instrument?.registration ?? actualApp;
+  // Configuration, not a layer — it registers nothing on the router stack and so
+  // shifts no positional index. Set on actualApp: the custody view
+  // (canonicalHandlerCustody.ts:63) overrides only route-registration methods,
+  // so `app.set` would work too; actualApp makes that independence explicit.
+  actualApp.set("trust proxy", resolveTrustedProxy(process.env));
   if(admission)app.use(admission.beforeDispatch);
   const auth = createExplorersAuth(pool, config, appsInput?{appsReadOnlySessionFixture:true}:undefined);
 
@@ -67,6 +76,7 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   // returned promise alone cannot authorize physical auth stream teardown.
   instrument?.markUncovered(authHandler);
   if(admission)app.get('/api/auth/get-session',createCanonicalSessionNodeHandler(auth,config.baseURL));
+  setupCanonicalRetiredSurfaces(app);
   app.use("/api/auth", (request, response, next) => {
     if (!["GET", "HEAD", "OPTIONS"].includes(request.method)
         && request.get("origin") !== config.baseURL) {
@@ -80,6 +90,22 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   app.use(contentBodyParser());
   if(admission)app.use(admission.afterJsonParser);
   app.get("/health/live", (_request, response) => response.status(200).json({ status: "live" }));
+  setupExplorersSeoRoutes(app, pool);
+  app.get("/health/ready", async (_request, response) => {
+    try {
+      await pool.query("SELECT 1");
+    } catch {
+      response.status(503).json({ ready: false, reason: "database-unreachable" });
+      return;
+    }
+    const readiness = await checkMusicDatabaseReadiness(pool)
+      .catch(() => ({ ready: false as const, reason: "migration-state-invalid" as const }));
+    if (!readiness.ready) {
+      response.status(503).json({ ready: false, reason: "migration-state-invalid" });
+      return;
+    }
+    response.status(200).json({ ready: true });
+  });
   setupExplorersAccountRoutes(app, pool, auth, config);
   // ADR-006 and ADR-008: canonical Music owner provisioning and credential issue.
   // The issuer is resolved on first use, not at boot. Optional Music configuration
@@ -165,6 +191,7 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
     }
   });
 
+  setupCanonicalTerminator(app);
   instrument?.completeRegistration();
   return {composed:{app:actualApp,auth},custody:instrument?.custody,admission};
 }
