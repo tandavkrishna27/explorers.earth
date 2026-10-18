@@ -434,7 +434,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/MusicSubscriptionContainment.tsx
 !explorers-earth/src/components/Navbar.tsx
 !explorers-earth/src/components/OnboardingCheckError.tsx
-!explorers-earth/src/components/PaymentModeToggle.tsx
 !explorers-earth/src/components/ProfileSetupAccordion.tsx
 !explorers-earth/src/components/ProtectedRoute.tsx
 !explorers-earth/src/components/PublicNav.tsx
@@ -1036,7 +1035,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/main.tsx
 !explorers-earth/src/pages/About.tsx
 !explorers-earth/src/pages/Analytics.tsx
-!explorers-earth/src/pages/Checkout.tsx
 !explorers-earth/src/pages/Contact.tsx
 !explorers-earth/src/pages/Cookies.tsx
 !explorers-earth/src/pages/EmailConfirmed.tsx
@@ -1059,7 +1057,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/pages/ResetLinkSent.tsx
 !explorers-earth/src/pages/ResetPassword.tsx
 !explorers-earth/src/pages/SettingsPage.tsx
-!explorers-earth/src/pages/SubscriptionPlans.tsx
 !explorers-earth/src/pages/Terms.tsx
 !explorers-earth/src/pages/UseCases.tsx
 !explorers-earth/src/pages/onboardingAccountDecision.ts
