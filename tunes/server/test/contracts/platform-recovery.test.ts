@@ -583,7 +583,7 @@ describe("retention", () => {
 });
 
 import {
-  PERMITTED_RESTORE_ROLES, RestoredMediaStore, assertReceiptDirectory, assertRestoredSchema, assertRowCounts,
+  PERMITTED_RESTORE_ROLES, RESTORE_DEPARSE_REPAIRS, RestoredMediaStore, assertReceiptDirectory, buildDeparseRepairStatements, assertRestoredSchema, assertRowCounts,
   buildDrillReceipt, buildRestoreCommand, drillProbePlan, planRoleBootstrap, signSessionCookie, writeDrillReceipt,
 } from "../../../../scripts/platform-restore-drill";
 import { PUBLIC_RECOMMENDATION_CATEGORIES } from "../../../server/publicProfile/publicProfilePolicy";
@@ -606,7 +606,7 @@ describe("role bootstrap", () => {
 
   const manifest = { roles: [...PERMITTED_RESTORE_ROLES], migratorRole: "explorers_migrator", runtimeLoginRole: "explorers_runtime" };
 
-  it("creates exactly the five capability roles plus an unprivileged stand-in for the production migrator", () => {
+  it("creates exactly the five capability roles plus a stand-in for the production migrator", () => {
     const plan = planRoleBootstrap(globals, manifest, { existingRoles: ["music_migrator"] });
     expect(plan.create).toEqual([
       "music_runtime", "app_enrichment_worker", "app_enrichment_worker_owner",
@@ -617,11 +617,22 @@ describe("role bootstrap", () => {
     expect(plan.statements.join("\n")).toContain("CREATE ROLE music_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT NOREPLICATION NOBYPASSRLS");
   });
 
-  it("never creates a login, a password or a privileged role", () => {
-    const rendered = planRoleBootstrap(globals, manifest, { existingRoles: ["music_migrator"] }).statements.join("\n");
+  it("gives the migrator stand-in the attributes the backup recorded, because SECURITY DEFINER functions run as it", () => {
+    // provision_music_runtime_login (migrations/0010) creates the runtime login with
+    // its owner's authority. Found during execution: an unprivileged stand-in fails
+    // with "permission denied to create role".
+    expect(planRoleBootstrap(globals, manifest, { existingRoles: ["music_migrator"] }).statements.at(-1))
+      .toBe("CREATE ROLE explorers_migrator NOLOGIN SUPERUSER INHERIT CREATEROLE CREATEDB REPLICATION BYPASSRLS");
+    expect(() => planRoleBootstrap(globals.replace(/^ALTER ROLE explorers_migrator.*$/m, ""), manifest, { existingRoles: [] }))
+      .toThrow(/does not record the attributes/);
+  });
+
+  it("never creates a login or a password, and never privileges a capability role", () => {
+    const statements = planRoleBootstrap(globals, manifest, { existingRoles: ["music_migrator"] }).statements;
+    const rendered = statements.join("\n");
     expect(rendered).not.toMatch(/PASSWORD/);
-    expect(rendered).not.toMatch(/ SUPERUSER/);
     expect(rendered).not.toMatch(/ LOGIN/);
+    expect(statements.slice(0, 5).join("\n")).not.toMatch(/ SUPERUSER| CREATEROLE| CREATEDB| BYPASSRLS/);
     // 0056 refuses if app_enrichment_worker has any member.
     expect(rendered).not.toMatch(/GRANT /);
   });
@@ -660,6 +671,24 @@ describe("pg_restore invocation", () => {
   it("refuses a database outside the drill namespace", () => {
     expect(() => buildRestoreCommand({ containerId: "a".repeat(64), database: "explorers", user: "music_migrator", dumpPath: "/r" }))
       .toThrow(/drill namespace/);
+  });
+});
+
+describe("known restore deparse drift", () => {
+  it("re-declares each constraint from text that appears verbatim in its source migration", () => {
+    for (const repair of RESTORE_DEPARSE_REPAIRS) {
+      const source = readFileSync(resolve(import.meta.dirname, "../../../migrations", repair.source), "utf8");
+      expect(source).toContain(`CHECK (${repair.check})`);
+    }
+  });
+
+  it("repairs only constraints that exist, keeping their names", () => {
+    const statements = buildDeparseRepairStatements(new Set(["music_publication_operations.music_publication_operations_request_mode_check"]));
+    expect(statements).toEqual([
+      "ALTER TABLE public.music_publication_operations DROP CONSTRAINT music_publication_operations_request_mode_check, " +
+      "ADD CONSTRAINT music_publication_operations_request_mode_check CHECK (request_mode IN ('private','unlisted','public'))",
+    ]);
+    expect(buildDeparseRepairStatements(new Set())).toEqual([]);
   });
 });
 

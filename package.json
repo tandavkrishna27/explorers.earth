@@ -50,7 +50,8 @@
     "platform:test:e2e": "node scripts/replatform-e2e.mjs",
     "platform:seed": "tsx scripts/replatform-local.ts seed",
     "platform:backup": "node tunes/deployment/platform-backup.mjs",
-    "platform:restore-drill": "tsx scripts/platform-restore-drill.ts"
+    "platform:restore-drill": "tsx scripts/platform-restore-drill.ts",
+    "platform:recovery-fixture": "tsx scripts/platform-recovery-fixture.ts"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

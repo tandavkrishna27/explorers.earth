@@ -146,14 +146,30 @@ export function planRoleBootstrap(
     create.push(role);
     statements.push(`CREATE ROLE ${role} NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE ${ROLE_INHERITANCE[role]} NOREPLICATION NOBYPASSRLS`);
   }
-  // The dump assigns ownership to the production migrator by name. The role must
-  // exist for pg_restore to succeed, but it is created unprivileged and without
-  // login: the drill restores as the disposable container's own superuser.
+  // The dump assigns ownership to the production migrator by name, and
+  // provision_music_runtime_login is SECURITY DEFINER (migrations/0010), so it runs
+  // with its owner's attributes. The stand-in therefore carries exactly the
+  // attributes the globals capture records for the production migrator - read from
+  // the backup, never guessed - but never a login and never a password: the drill
+  // connects as the disposable container's own superuser.
   if (!existing.has(manifest.migratorRole)) {
     create.push(manifest.migratorRole);
-    statements.push(`CREATE ROLE ${manifest.migratorRole} NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT NOREPLICATION NOBYPASSRLS`);
+    statements.push(`CREATE ROLE ${manifest.migratorRole} NOLOGIN ${migratorAttributes(globals, manifest.migratorRole).join(" ")}`);
   }
   return { create, statements };
+}
+
+const ROLE_ATTRIBUTE_PAIRS = [["SUPERUSER", "NOSUPERUSER"], ["INHERIT", "NOINHERIT"], ["CREATEROLE", "NOCREATEROLE"],
+  ["CREATEDB", "NOCREATEDB"], ["REPLICATION", "NOREPLICATION"], ["BYPASSRLS", "NOBYPASSRLS"]] as const;
+
+function migratorAttributes(globals: string, role: string): string[] {
+  const line = new RegExp(`^ALTER ROLE ${role} WITH ([A-Z ]+);?$`, "m").exec(globals);
+  if (!line) throw new Error(`the globals capture does not record the attributes of ${role}`);
+  const tokens = new Set(line[1].trim().split(/\s+/));
+  return ROLE_ATTRIBUTE_PAIRS.map(([granted, denied]) => {
+    if (tokens.has(granted) === tokens.has(denied)) throw new Error(`the globals capture is ambiguous about ${role} ${granted}`);
+    return tokens.has(granted) ? granted : denied;
+  });
 }
 
 /** Owners and ACLs are retained deliberately: music-runtime-role.ts attests the
@@ -168,6 +184,52 @@ export function buildRestoreCommand(input: { containerId: string; database: stri
       "pg_restore", "--exit-on-error", "--single-transaction", "--no-password",
       "--username", input.user, "--dbname", input.database, input.dumpPath],
   };
+}
+
+/* ------------------------------------------------- known restore deparse drift */
+
+/** Found by the first restore ever executed against this schema: three CHECK
+ *  constraints on `character varying` columns do not survive a dump/restore
+ *  textually. PostgreSQL stores `x IN ('a','b')` on a varchar column as
+ *  `x::text = ANY (ARRAY['a'::varchar,'b'::varchar]::text[])`; pg_dump prints that,
+ *  and re-parsing it pushes the cast into each element
+ *  (`ARRAY['a'::varchar::text,...]`). The constraint means the same thing, but
+ *  pg_get_constraintdef differs, so the schema fingerprint the journal recorded no
+ *  longer matches and the application refuses to boot (`schema drift after <id>`).
+ *
+ *  The repair re-declares exactly these constraints from their original migration
+ *  text (0011 and 0015), which reproduces the original stored expression. It is
+ *  not a way to make a lossy restore pass: the fingerprint oracle runs after it
+ *  and must still equal the journal's value exactly. */
+export const RESTORE_DEPARSE_REPAIRS = [
+  { table: "music_publication_operations", constraint: "music_publication_operations_request_mode_check",
+    check: "request_mode IN ('private','unlisted','public')", source: "0011_durable_publication_idempotency.sql" },
+  { table: "music_publication_operations", constraint: "music_publication_operations_operation_state_check",
+    check: "operation_state IN ('completed','replay_expired')", source: "0011_durable_publication_idempotency.sql" },
+  { table: "music_publication_operation_archive", constraint: "music_publication_operation_archive_request_mode_check",
+    check: "request_mode IN ('private','unlisted','public')", source: "0015_publication_operation_archive.sql" },
+] as const;
+
+export function buildDeparseRepairStatements(existingConstraints: ReadonlySet<string>): string[] {
+  return RESTORE_DEPARSE_REPAIRS.filter(repair => existingConstraints.has(`${repair.table}.${repair.constraint}`)).map(repair =>
+    `ALTER TABLE public.${repair.table} DROP CONSTRAINT ${repair.constraint}, ADD CONSTRAINT ${repair.constraint} CHECK (${repair.check})`);
+}
+
+export async function repairRestoreDeparseDrift(pool: Pool): Promise<number> {
+  const existing = new Set((await pool.query<{ name: string }>(
+    `SELECT c.relname || '.' || x.conname AS name FROM pg_constraint x JOIN pg_class c ON c.oid=x.conrelid
+     JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND x.contype='c'`)).rows.map(row => row.name));
+  const statements = buildDeparseRepairStatements(existing);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (const statement of statements) await client.query(statement);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally { client.release(); }
+  return statements.length;
 }
 
 /* --------------------------------------------------------- fidelity oracle */
@@ -412,7 +474,12 @@ export async function runRestoreDrill(argv: string[], environment: Record<string
     const configuration = readTar(members.get("host/configuration.tar")!);
     const productionEnvironment = configuration.find(entry => entry.name.endsWith("/production.env"));
     if (!productionEnvironment) throw new Error("host configuration does not contain production.env");
-    if (productionEnvironment.mode !== 0o600 && productionEnvironment.mode !== 0o400) throw new Error("restored production.env lost its 0600 mode");
+    // explorers-deploy.sh refuses production.env unless it is 0600, so a production
+    // archive that lost the mode would restore a host that refuses its next deploy.
+    // A local rehearsal captured on Windows has no POSIX modes to keep.
+    if (manifest.environment === "prod" && productionEnvironment.mode !== 0o600 && productionEnvironment.mode !== 0o400) {
+      throw new Error("restored production.env lost its 0600 mode");
+    }
     const restoredValues = parseEnvFile(productionEnvironment.bytes.toString("utf8"));
     const inventory = members.get("media/inventory.jsonl")!.toString("utf8").split(/\r?\n/).filter(Boolean)
       .map(line => JSON.parse(line) as { media_id: string; object_key: string; sha256: string; bytes: number });
@@ -439,6 +506,10 @@ export async function runRestoreDrill(argv: string[], environment: Record<string
     await timed("bootstrap-roles", async () => {
       const existingRoles = (await adminPool!.query<{ rolname: string }>("SELECT rolname FROM pg_roles")).rows.map(row => row.rolname);
       for (const statement of planRoleBootstrap(globals, manifest, { existingRoles }).statements) await adminPool!.query(statement);
+      // In production the database is owned by POSTGRES_USER, which is the migrator
+      // (deploy/production.compose.yml), and the runtime attestation requires exactly
+      // that owner.
+      await adminPool!.query(`ALTER DATABASE ${drillDatabase} OWNER TO ${manifest.migratorRole}`);
     });
     await timed("pg-restore", () => {
       const inContainer = `/tmp/explorers-restore-${runId}.pgc`;
@@ -447,6 +518,7 @@ export async function runRestoreDrill(argv: string[], environment: Record<string
       runCommand(restore.file, restore.args, { encoding: "utf8" });
     });
     rmSync(dumpPath);
+    await timed("repair-known-drift", () => repairRestoreDeparseDrift(ownerPool!));
 
     // 5. The oracle: the journal, the live fingerprint, every row count.
     const schema = await timed("attest-schema", () => proveRestoredDatabase(ownerPool!, manifest));
@@ -464,10 +536,21 @@ export async function runRestoreDrill(argv: string[], environment: Record<string
     await timed("attest-runtime-role", async () => {
       const roles = await import("../tunes/server/db/music-runtime-role");
       await roles.provisionMusicRuntimeLogin(ownerPool!, { loginRole: manifest.runtimeLoginRole, password: runtimePassword });
-      await roles.verifyMusicRuntimeDatabaseConnection({
-        connectionString: `postgresql://${manifest.runtimeLoginRole}:${runtimePassword}@127.0.0.1:${authority!.port}/${drillDatabase}`,
-        user: manifest.runtimeLoginRole,
-      } as never, manifest.migratorRole);
+      const connectionString = `postgresql://${manifest.runtimeLoginRole}:${runtimePassword}@127.0.0.1:${authority!.port}/${drillDatabase}`;
+      try {
+        await roles.verifyMusicRuntimeDatabaseConnection({ connectionString, user: manifest.runtimeLoginRole } as never, manifest.migratorRole);
+      } catch (error) {
+        // The attestation reports one generic failure; name the divergent flags so a
+        // failed drill says why.
+        const probe = new pg.Pool({ connectionString, max: 1 });
+        const flags = await probe.query(`SELECT has_database_privilege(current_user,current_database(),'CONNECT') AS connect,
+            has_database_privilege(current_user,current_database(),'CREATE') AS create_in_database,
+            has_database_privilege(current_user,current_database(),'TEMP') AS temp,
+            has_schema_privilege(current_user,'public','USAGE') AS schema_usage,
+            has_schema_privilege(current_user,'public','CREATE') AS schema_create`).then(result => result.rows[0]).catch(() => ({}))
+          .finally(() => probe.end());
+        throw new Error(`${error instanceof Error ? error.message : "runtime attestation failed"} ${JSON.stringify(flags)}`);
+      }
     });
 
     // 7. Boot the canonical application against the restore, as the runtime login,
