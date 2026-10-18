@@ -75,14 +75,23 @@ permissions:
 jobs:
   build-test-scan-push:
     runs-on: ubuntu-24.04
+    # packages: read only pulls the GHCR base-image mirror (base-image-mirror.yml);
+    # publishing stays in publish-image.
     permissions:
       contents: read
+      packages: read
     outputs:
       commit: ${{ github.sha }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
+      - name: Log in to the GHCR base-image mirror
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Prove C1 containment ancestry
         shell: bash
         run: git merge-base --is-ancestor d226f7e4dc5a54195a59804ec729f72b5e8f10d7 "$GITHUB_SHA"
