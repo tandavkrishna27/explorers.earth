@@ -415,21 +415,19 @@ describe('explorersAnalyticsClient', () => {
     expect(rawUrl).not.toContain('synthetic-dashboard-token');
   });
 
-  it('rejects dashboard reads without a user token before any request', async () => {
-    const fetchImpl = vi.fn();
-    await expect(
-      readExplorersAnalyticsEvents(
-        {
-          accountId: 'account-1',
-          fromDate: '2026-08-01',
-          toDate: '2026-08-24',
-          timeZone: 'America/New_York',
-          token: '',
-        },
-        { baseUrl: 'http://localhost:5000', fetchImpl },
-      ),
-    ).rejects.toThrow('authentication');
-    expect(fetchImpl).not.toHaveBeenCalled();
+  it('reads with the canonical session cookie when no bearer token exists (P5-1)', async () => {
+    // Break caught: canonical sign-in never issues a token, and this read refused to run
+    // without one, so every owner's dashboard said "Detailed Analytics Unavailable".
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ events: [] }), {
+      status: 200, headers: { 'Content-Type': 'application/json' } }));
+    await readExplorersAnalyticsEvents(
+      { accountId: 'account-1', fromDate: '2026-08-01', toDate: '2026-08-24', timeZone: 'America/New_York' },
+      { baseUrl: 'http://localhost:5000', fetchImpl },
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [, init] = fetchImpl.mock.calls[0];
+    expect(init).toMatchObject({ method: 'GET', credentials: 'include' });
+    expect(init.headers).toBeUndefined();
   });
 
   it.each(['null', 'false', '1', '"true"', '{"analytics":"false"}', '{"analytics":"true"}', '{"analytics":1}'])('rejects non-boolean opt-in: %s', (stored) => {

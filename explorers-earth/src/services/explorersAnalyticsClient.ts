@@ -163,7 +163,9 @@ export interface AnalyticsReadScope {
   fromDate: string;
   toDate: string;
   timeZone: string;
-  token: string;
+  /** Legacy Strapi bearer only. Canonical sign-in issues none; the read then rides the
+   * same-origin session cookie, which the canonical server authorises (P5-1). */
+  token?: string | null;
 }
 
 export async function readExplorersAnalyticsEvents(
@@ -173,9 +175,6 @@ export async function readExplorersAnalyticsEvents(
     fetchImpl,
   }: ClientOptions = {},
 ): Promise<ExplorersAnalyticsRecord[]> {
-  if (!scope.token) {
-    throw new Error('Analytics dashboard authentication is required');
-  }
   if (!scope.fromDate || !scope.toDate || !scope.timeZone) {
     throw new Error('Analytics dashboard date-only scope is required');
   }
@@ -194,7 +193,7 @@ export async function readExplorersAnalyticsEvents(
 
   const response = await analyticsFetch(url.toString(), {
     method: 'GET',
-    headers: { Authorization: `Bearer ${scope.token}` },
+    ...(scope.token ? { headers: { Authorization: `Bearer ${scope.token}` } } : { credentials: 'include' as const }),
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error(await errorMessage(response));

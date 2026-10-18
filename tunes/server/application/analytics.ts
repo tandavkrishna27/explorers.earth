@@ -4,7 +4,7 @@ import { analyticsQuerySchema, type AnalyticsQuery, type AnalyticsSummary, type 
 import { explorersAnalyticsInputSchema, type ExplorersAnalyticsInput } from '../services/explorers-analytics-service';
 import { authorizeOperation, AuthorizationError } from './authorization';
 import type { Actor } from './actor';
-import { ExplorersAnalyticsEventRepository, type AnalyticsRequestContext } from '../repositories/explorersAnalyticsEventRepository';
+import { ExplorersAnalyticsEventRepository, type AnalyticsRequestContext, type OwnerAnalyticsRecord } from '../repositories/explorersAnalyticsEventRepository';
 export type { AnalyticsRequestContext } from '../repositories/explorersAnalyticsEventRepository';
 function stable(value: unknown): unknown { if (Array.isArray(value))
     return value.map(stable); if (value && typeof value === 'object')
@@ -91,4 +91,31 @@ export class AnalyticsService {
             db.release();
         }
     }
+    /** P5-1: the dashboard's raw read of the actor's own account, authorised like the summary. */
+    async readOwnerEvents(actor: Actor, scope: { accountId: string; from: string; to: string }): Promise<OwnerAnalyticsRecord[]> {
+        if (!actor) throw new AuthorizationError(401, 'UNAUTHENTICATED', 'Sign in is required');
+        if (actor.accountId !== scope.accountId) throw new AuthorizationError(403, 'FORBIDDEN', 'Analytics belong to another account');
+        const db = await this.pool.connect();
+        try {
+            await db.query('BEGIN READ ONLY');
+            await db.query("SET LOCAL statement_timeout='2000ms'");
+            await authorizeOperation(db, actor, 'analytics:read', actor.accountId);
+            const { records, truncated } = await this.repository.ownerEvents(db, actor.accountId, scope.from, scope.to, OWNER_EVENT_READ_LIMIT);
+            if (truncated) process.stderr.write('Owner analytics read truncated at the event bound\n');
+            await db.query('COMMIT');
+            await authorizeOperation(db, actor, 'analytics:read', actor.accountId);
+            return records;
+        }
+        catch (error) {
+            await db.query('ROLLBACK');
+            if ((error as { code?: string; }).code === '57014')
+                throw new AuthorizationError(503, 'INVALID_INPUT', 'Analytics service is unavailable');
+            throw error;
+        }
+        finally {
+            db.release();
+        }
+    }
 }
+/** The 93-day route window bounds the owner read in time; this bounds it in size. */
+export const OWNER_EVENT_READ_LIMIT = 20000;
