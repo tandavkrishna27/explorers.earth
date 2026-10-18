@@ -1,5 +1,13 @@
 # Launch User Communication Plan — Start Fresh
 
+> **Status: not needed (2026-10-18).** Later the same day, the owner confirmed that explorers.earth
+> has **no real users**: only test accounts exist. So there is no one to notify, no user list to
+> export, and no printed QR codes to protect. The handle hold (PR #131) was closed unmerged, and
+> none of the steps below are scheduled.
+>
+> The plan is kept because its reasoning still holds if real users sign up on the old stack
+> before cutover. In that case, reopen it starting at Step 0, the count of real accounts.
+
 **Decision (settled 2026-10-18, backbone D1):** explorers.earth relaunches on the new backend with
 an empty database. Existing users begin from zero, nothing is imported from Strapi, and old profile
 links stop working until their owners come back.
