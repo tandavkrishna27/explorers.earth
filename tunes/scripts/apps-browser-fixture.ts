@@ -236,7 +236,7 @@ const keys = ['platform', 'argv', 'environment', 'temporaryRoot', 'clock', 'rand
 type DiagnosticStage = 'validation' | 'preflight' | 'receipt' | 'create-directory' | 'check-directory' | 'prepare-secret' | 'prepare-database' | 'create-database' | 'create-pool' | 'migrate' | 'current-database' | 'seed-auth' | 'initial-account' | 'config' | 'composition' | 'create-sessions' | 'start-api' | 'baseline' | 'create-control' | 'descriptor' | 'browser-context' | 'vite' | 'startup' | 'discovery' | 'execution' | 'cleanup';
 type DiagnosticCategory = 'refusal' | 'spawn-error' | 'nonzero' | 'signal' | 'output-overflow' | 'deadline' | 'ack-mismatch';
 type CleanupStep = 'request-seal' | 'browser-stop' | 'browser-close' | 'discovery-stop' | 'discovery-close' | 'vite-stop' | 'vite-close' | 'producer-settlement' | 'request-drain' | 'control-close' | 'storage-drain' | 'api-close' | 'artifact-remove' | 'runtime-pool-close' | 'database-budget' | 'admin-pool-open' | 'database-drop' | 'admin-pool-close' | 'database-dispose' | 'root-check' | 'root-remove' | 'secret-clean' | 'failure-receipt' | 'finish-receipt';
-export type NativeUnknownOrigin='clock-callback'|'clock-late-clear'|'guard-expiry'|'child-error'|'child-output-overflow'|'child-stdin'|'powershell-deadline'|'privacy-refusal'|'capture-rejection'|'directory-create'|'secret-create'|'api-failure'|'descriptor-create'|'vite-output-overflow';
+export type NativeUnknownOrigin='clock-callback'|'clock-late-clear'|'guard-expiry'|'child-error'|'child-output-overflow'|'child-stdin'|'powershell-deadline'|'privacy-refusal'|'capture-rejection'|'child-stdio-open'|'artifact-capture'|'directory-create'|'secret-create'|'api-failure'|'descriptor-create'|'vite-output-overflow';
 export type RequestDrainBoundary='native-unknown-before'|'ledger-missing'|'handler-drain'|'remaining-budget'|'support-drain'|'native-unknown-after'|'canonical-evidence';
 type NativeContext=Readonly<{stage:DiagnosticStage;cleanupStep?:CleanupStep}>;
 export type RequestDrainPending=Readonly<{phase:'handler-wait'|'canonical-wait';handlers:number;evidence?:AppsRequestDrainDiagnostic}>;
@@ -254,6 +254,7 @@ type Diagnostic = Readonly<{
     nativeUnknownOrigin?:NativeUnknownDetail;requestDrainBoundary?:RequestDrainBoundary;requestDrain?:AppsRequestDrainDiagnostic;requestDrainPending?:RequestDrainPending;
     control?: AppsControllerDiagnostic;
     vite?:AppsViteDiagnostic;databaseAcquisition?:OwnedUatDatabaseAcquisitionDiagnostic;enrichmentRefresh?:AppsEnrichmentRefreshDiagnostic;enrichmentReset?:AppsEnrichmentResetDiagnostic;
+    preflightStep?:AppsPreflightStep;
 }>;
 const diagnostics = new WeakMap<object, Diagnostic>();
 /** Only runner-branded errors expose finite sanitized diagnostics; foreign getters are never read. */
@@ -263,6 +264,16 @@ export function extractAppsFixtureDiagnostic(error: unknown): Diagnostic | undef
 class Refusal extends Error {
     constructor() { super('Apps owned fixture failed'); }
 }
+/**
+ * Preflight refuses from a dozen independent checks and used to report nothing but
+ * `stage=preflight; category=refusal`, so a lane that failed here every scheduled night
+ * carried no diagnosable signal at all. These tokens are a closed enumeration - never a
+ * path, a digest or any other private value - and the parent decoder validates them
+ * against the same list, exactly as it does for `databaseAcquisitionStage`.
+ */
+const PREFLIGHT_STEPS = Object.freeze(['node-executable', 'private-files-helper', 'playwright-cli', 'vite-cli', 'playwright-config', 'vite-config', 'browser-spec', 'helper-digest', 'temporary-root', 'windows-powershell', 'contract-import', 'source-commit', 'support-binding'] as const);
+export type AppsPreflightStep = typeof PREFLIGHT_STEPS[number];
+let observedPreflightStep: AppsPreflightStep | undefined;
 const uuid = z.string().uuid(), baseline = z.object({ id: uuid, revision: z.number().int().positive().safe(), displayName: z.string().nullable(), handle: z.string().nullable() });
 /** Construction and import perform no allocation. Complete adapters are synthetic. */
 export function createAppsBrowserFixture(dependencies?: Dependencies, family: 'apps'|'apps-enrichment'='apps'): {
@@ -280,7 +291,7 @@ export function createAppsBrowserFixture(dependencies?: Dependencies, family: 'a
     let readViteDiagnostic:(()=>AppsViteDiagnostic|undefined)|undefined;
     const registerViteDiagnostic=(reader:()=>AppsViteDiagnostic|undefined)=>{readViteDiagnostic=reader;};
     const safeViteDiagnostic=()=>{if(stage!=='vite')return undefined;try{return readViteDiagnostic?.();}catch{return undefined;}};
-    const snapshot = (control?:unknown,options?:unknown): Diagnostic => {const enrichmentReset=family==='apps-enrichment'&&stage==='execution'&&category==='refusal'&&typeof extractAppsEnrichmentResetDiagnostic==='function'?extractAppsEnrichmentResetDiagnostic(control):undefined;const enrichmentRefresh=family==='apps-enrichment'&&stage==='execution'&&category==='refusal'&&typeof extractAppsEnrichmentRefreshDiagnostic==='function'?extractAppsEnrichmentRefreshDiagnostic(control):undefined;const vite=safeViteDiagnostic(),detail=extractAppsControlDiagnostic(control),requestDrain=extractAppsRequestDrainDiagnostic(options),requestDrainPending=deadlinePending??(stage==='cleanup'&&cleanupStep==='request-drain'?safeDrainPending():undefined);return Object.freeze({stage,category,...(enrichmentReset?{enrichmentReset}:{}),...(enrichmentRefresh?{enrichmentRefresh}:{}),...(stage==='create-database'&&category==='refusal'&&databaseAcquisition?{databaseAcquisition}:{}),...(vite?{vite}:{}),...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{}),...(nativeUnknownOrigin?{nativeUnknownOrigin}:{}),...(requestDrainBoundary?{requestDrainBoundary}:{}),...(requestDrain?{requestDrain}:{}),...(requestDrainPending?{requestDrainPending}:{})});};
+    const snapshot = (control?:unknown,options?:unknown): Diagnostic => {const enrichmentReset=family==='apps-enrichment'&&stage==='execution'&&category==='refusal'&&typeof extractAppsEnrichmentResetDiagnostic==='function'?extractAppsEnrichmentResetDiagnostic(control):undefined;const enrichmentRefresh=family==='apps-enrichment'&&stage==='execution'&&category==='refusal'&&typeof extractAppsEnrichmentRefreshDiagnostic==='function'?extractAppsEnrichmentRefreshDiagnostic(control):undefined;const vite=safeViteDiagnostic(),detail=extractAppsControlDiagnostic(control),requestDrain=extractAppsRequestDrainDiagnostic(options),requestDrainPending=deadlinePending??(stage==='cleanup'&&cleanupStep==='request-drain'?safeDrainPending():undefined);return Object.freeze({stage,category,...(enrichmentReset?{enrichmentReset}:{}),...(enrichmentRefresh?{enrichmentRefresh}:{}),...(stage==='preflight'&&category==='refusal'&&observedPreflightStep?{preflightStep:observedPreflightStep}:{}),...(stage==='create-database'&&category==='refusal'&&databaseAcquisition?{databaseAcquisition}:{}),...(vite?{vite}:{}),...(stage==='cleanup'&&cleanupStep?{cleanupStep}:{}),...(detail?{control:detail}:{}),...(nativeUnknownOrigin?{nativeUnknownOrigin}:{}),...(requestDrainBoundary?{requestDrainBoundary}:{}),...(requestDrain?{requestDrain}:{}),...(requestDrainPending?{requestDrainPending}:{})});};
     const recordCategory = (value: DiagnosticCategory) => { if (category === 'refusal')
         category = value; };
     let nativeFailure:(()=>void)|undefined;
@@ -773,7 +784,29 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
         output(): string;
     }> {
         const { spawn } = await import('node:child_process');
-        const child = spawn(executable, args, { cwd, env: environment, shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+        // POSIX has no permission inheritance. The disposable directories are created
+        // `mode: 0o700`, but a file a CHILD writes still lands at `0666 & ~umask` - normally
+        // 0644 - and `inspect` refuses anything carrying group or other bits. Playwright
+        // writes `protected-discovery.json` and `protected-execution.json` itself, from the
+        // child, via PLAYWRIGHT_JSON_OUTPUT_NAME, so the fixture cannot choose their mode at
+        // creation. On Windows the equivalent privacy comes from the disposable directory's
+        // restrictive ACL, which new children DO inherit, so there is nothing to do there and
+        // this stays off that path entirely. A umask is therefore the POSIX equivalent of the
+        // Windows guarantee, not a loosening of it: 0o077 is strictly more restrictive than
+        // the default and only ever removes permissions.
+        //
+        // A child inherits the umask at spawn, so this is narrowed to the spawn call itself
+        // and the previous value is restored immediately afterwards - the child keeps the
+        // restrictive mask for its whole life, while nothing else in this process ever
+        // observes the change.
+        const previousUmask = process.platform === 'win32' ? undefined : process.umask(0o077);
+        let child: import('node:child_process').ChildProcessByStdio<import('node:stream').Writable, import('node:stream').Readable, import('node:stream').Readable>;
+        try {
+            child = spawn(executable, args, { cwd, env: environment, shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+        }
+        finally {
+            if (previousUmask !== undefined) process.umask(previousUmask);
+        }
         let output = '', overflow = false;
         const closed = new Promise<{
         code: number | null;
@@ -908,8 +941,36 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
     }, options: Options, discovery = false) {
         const child = await fixedChild(process.execPath, [cli, 'test', ...context.arguments, ...(discovery ? ['--list'] : []), '--reporter=json'], { ...env(), ...context.environment, ...(discovery ? { PLAYWRIGHT_JSON_OUTPUT_NAME: path.join(options.disposableDirectory, 'protected-discovery.json') } : {}) }, frontend);
         const original = child.closed;
-        child.closed = original.then(async (result) => { if (!result.stdioClosed)
-            throw new Refusal(); await captureBrowserArtifacts(options, !discovery); return result; });
+        // `capture-rejection` was latched from a parameterless `.catch()` on this promise,
+        // which rejects for two unrelated reasons - the child's stdio never closing, and the
+        // artifact capture refusing - and discarded the error outright. One token for two
+        // causes made `stage=execution; nativeUnknownOrigin=capture-rejection` impossible to
+        // act on, the same way the Docker `catch {}` and the thirteen-way `stage=preflight`
+        // were. Each cause is now latched where it is known for certain, so the token names
+        // it, and `stdioClosed` needs no separate field: `child-stdio-open` means it was
+        // false, and `artifact-capture` is only reachable once it was true.
+        //
+        // Reporting only. The control flow is unchanged: a non-closed stdio still refuses
+        // before the capture runs, the capture still runs in the same place, and its error is
+        // now rethrown exactly as received rather than swallowed.
+        child.closed = original.then(async (result) => {
+            if (!result.stdioClosed) {
+                latchUnknown('child-stdio-open');
+                throw new Refusal();
+            }
+            try {
+                await captureBrowserArtifacts(options, !discovery);
+            }
+            catch (error) {
+                latchUnknown('artifact-capture');
+                throw error;
+            }
+            return result;
+        });
+        // `latchUnknown` keeps only the first origin, so this stays as the residual: it now
+        // fires only when `child.closed` rejects for neither named reason - the underlying
+        // child promise failing before this handler runs - and `capture-rejection` on a
+        // future marker should be read as exactly that rather than as either named cause.
         child.closed.catch(() => { latchUnknown('capture-rejection'); });
         return child;
     }
@@ -937,28 +998,42 @@ function defaultDependencies(recordCategory: (value: DiagnosticCategory) => void
     return { platform: process.platform, argv: process.argv.slice(2), environment: process.env, temporaryRoot, clock: nativeClock(), randomHex: n => randomBytes(n).toString('hex'), installSignals(callback) { process.on('SIGINT', callback); process.on('SIGTERM', callback); return () => { process.removeListener('SIGINT', callback); process.removeListener('SIGTERM', callback); }; },
         async preflight() {
             const fs = await import('node:fs/promises');
-            for (const file of [process.execPath, helper, cli, viteCli, path.join(frontend, family==='apps-enrichment'?'e2e/replatform/apps-enrichment.playwright.config.ts':'e2e/replatform/apps.playwright.config.ts'), path.join(frontend, 'e2e/replatform/profile.vite.config.ts'), path.join(frontend, family==='apps-enrichment'?'e2e/replatform/apps-enrichment.spec.ts':'e2e/replatform/apps.spec.ts')]) {
+            // Every refusal below now names the check that produced it. The token is set
+            // immediately before the check runs, so whichever one throws leaves its own
+            // name behind for the sealed diagnostic to carry out.
+            const at = (step: AppsPreflightStep) => { observedPreflightStep = step; };
+            const fileSteps: readonly AppsPreflightStep[] = ['node-executable', 'private-files-helper', 'playwright-cli', 'vite-cli', 'playwright-config', 'vite-config', 'browser-spec'];
+            const files = [process.execPath, helper, cli, viteCli, path.join(frontend, family==='apps-enrichment'?'e2e/replatform/apps-enrichment.playwright.config.ts':'e2e/replatform/apps.playwright.config.ts'), path.join(frontend, 'e2e/replatform/profile.vite.config.ts'), path.join(frontend, family==='apps-enrichment'?'e2e/replatform/apps-enrichment.spec.ts':'e2e/replatform/apps.spec.ts')];
+            for (const [index, file] of files.entries()) {
+                at(fileSteps[index]);
                 await canonical(file);
                 if (!(await fs.lstat(file)).isFile())
                     throw new Refusal();
             }
+            at('helper-digest');
             if (createHash('sha256').update(await fs.readFile(helper)).digest('hex') !== 'a43bb8db3ae88ae440fb73d77801a400d2b5fadc0151fd6ac10e61a3cd26bac0')
                 throw new Refusal();
+            at('temporary-root');
             await canonical(temporaryRoot);
             if (process.platform === 'win32') {
+                at('windows-powershell');
                 await canonical(ps);
                 if (!(await fs.lstat(ps)).isFile() || !/^5\.1\.\d+\.\d+$/.test(await fixedPowerShell(['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', '$PSVersionTable.PSVersion.ToString()'])))
                     throw new Refusal();
             }
+            at('contract-import');
             const contract = await import(pathToFileURL(path.join(root, 'scripts/replatform-e2e.mjs')).href);
             const source = contract.snapshotSource(root);if(family==='apps-enrichment')sourceSnapshot=JSON.stringify(source);
+            at('source-commit');
             const commit = source.provenance.commit;
             if (!/^[a-f0-9]{40}$/.test(commit))
                 throw new Refusal();
+            at('support-binding');
             const binding = await support();
             for (const key of ['admitAppsFixtureRequest', 'sealAppsFixtureRequests', 'drainAppsFixtureRequests'] as const)
                 if (typeof binding[key] !== 'function')
                     throw new Refusal();
+            observedPreflightStep = undefined;
             const port = (min: number, max: number) => min + randomBytes(2).readUInt16BE() % (max - min + 1);
             return { commit, pgPort: port(56000, 60999), apiPort: port(54000, 55999), webPort: port(52000, 53999) };
         },

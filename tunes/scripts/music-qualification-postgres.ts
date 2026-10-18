@@ -38,6 +38,26 @@ function authorityError(message: string): Error {
   return new Error(`C10 standalone PostgreSQL authority rejected: ${message}`);
 }
 
+// A bare `catch {}` around the Docker calls collapsed every distinct failure - no daemon,
+// no image, a bad context, a timeout - into one generic sentence. That is how this lane
+// could fail on every scheduled run with no diagnosable signal: the real cause was
+// "postgres:15-alpine is not present", and nothing printed said so. Keep the sentence as
+// the prefix so existing log matching still works, and append the argv, the exit status
+// and the stderr tail behind it.
+function describeDockerFailure(args: string[], cause: unknown): string {
+  const failure = cause as { status?: number | null; signal?: string | null; stderr?: unknown; message?: unknown };
+  const parts: string[] = [`docker ${args.join(" ")}`];
+  if (typeof failure?.status === "number") parts.push(`exit ${failure.status}`);
+  if (failure?.signal) parts.push(`signal ${String(failure.signal)}`);
+  const stderr = typeof failure?.stderr === "string"
+    ? failure.stderr
+    : Buffer.isBuffer(failure?.stderr) ? failure.stderr.toString("utf8") : "";
+  const detail = (stderr.trim() || (typeof failure?.message === "string" ? failure.message.trim() : ""))
+    .split(/\r?\n/).filter((line) => line.trim()).slice(-3).join("; ").slice(0, 500);
+  if (detail) parts.push(detail);
+  return parts.join(" | ");
+}
+
 function requireLocalDockerHost(contextHost: string): void {
   const locallyOwnedSocket = LOCAL_DOCKER_HOSTS.has(contextHost)
     || /^unix:\/\/\/run\/user\/\d+\/docker\.sock$/.test(contextHost);
@@ -105,8 +125,8 @@ function defaultDockerRead(args: string[]): string {
       timeout: 15_000,
       stdio: ["ignore", "pipe", "pipe"],
     });
-  } catch {
-    throw authorityError("read-only Docker attestation failed");
+  } catch (cause) {
+    throw authorityError(`read-only Docker attestation failed: ${describeDockerFailure(args, cause)}`);
   }
 }
 
@@ -126,8 +146,8 @@ function defaultDockerRun(args: string[]): string {
     return execFileSync(dockerExecutable(), args, {
       encoding: "utf8", windowsHide: true, timeout: 45_000, stdio: ["ignore", "pipe", "pipe"],
     }).trim();
-  } catch {
-    throw authorityError("owned Docker mutation failed");
+  } catch (cause) {
+    throw authorityError(`owned Docker mutation failed: ${describeDockerFailure(args, cause)}`);
   }
 }
 
