@@ -19,12 +19,45 @@ defaults:
 
 jobs:
   # ─────────────────────────────────────────
+  # Job 0: Classify the change set
+  # ─────────────────────────────────────────
+  # A pull request that changes only Markdown skips every lane below, but the
+  # `replatform-required` aggregate still runs, still depends on every job, and still
+  # decides the merge. scripts/ci-docs-only.cjs fails closed: every non-pull_request
+  # event, every non-Markdown path and every doubt runs all lanes.
+  changes:
+    name: 🧭 Changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+    outputs:
+      docs_only: ${{ steps.classify.outputs.docs_only }}
+    steps:
+      # Two commits: the PR merge commit and its base parent, which is what it diffs.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+      - name: Classify the change set
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: node scripts/ci-docs-only.cjs
+
+  # ─────────────────────────────────────────
   # Job 1: ESLint Code Quality Check
   # ─────────────────────────────────────────
   lint:
     name: 🔍 Lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -48,6 +81,8 @@ jobs:
     name: 🔷 TypeScript
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -75,6 +110,8 @@ jobs:
     name: 🧪 Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -113,6 +150,8 @@ jobs:
     name: 🏗️ Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -136,7 +175,8 @@ jobs:
     name: 🔗 Integration Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [unit-tests]
+    needs: [changes, unit-tests]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -161,6 +201,8 @@ jobs:
     name: 🎭 E2E Category A
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node.js
@@ -223,6 +265,8 @@ jobs:
     name: 🎭 E2E Category B
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node.js
@@ -283,6 +327,8 @@ jobs:
     name: 🎭 E2E Public shell
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node.js
@@ -343,6 +389,8 @@ jobs:
     name: 🎭 E2E Publishing
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node.js
@@ -403,6 +451,8 @@ jobs:
     name: 🎭 E2E Music and account
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node.js
@@ -475,11 +525,16 @@ jobs:
     name: replatform-required
     runs-on: ubuntu-24.04
     if: always()
-    needs: [lint, typecheck, unit-tests, build, integration-tests, e2e-category-a, e2e-category-b, e2e-public-shell, e2e-publishing, e2e-music-account]
+    needs: [changes, lint, typecheck, unit-tests, build, integration-tests, e2e-category-a, e2e-category-b, e2e-public-shell, e2e-publishing, e2e-music-account]
     steps:
       - name: Require each validation job to succeed
         working-directory: ${{ github.workspace }}
         env:
           REQUIRED_RESULTS: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
+        # Every job must conclude success. The only exception is a lane skipped on a
+        # docs-only pull request, and only when `changes` itself succeeded and said so:
+        # if the classifier fails or is cancelled, every dependent skips, `changes` is
+        # not success, and this aggregate fails.
         run: |
-          node -e "const results=JSON.parse(process.env.REQUIRED_RESULTS); const failures=Object.entries(results).filter(([, job]) => job.result !== 'success'); if(failures.length){ console.error('Required validation did not succeed:', failures.map(([name, job]) => name + '=' + job.result).join(', ')); process.exit(1) }"
+          node -e "const results=JSON.parse(process.env.REQUIRED_RESULTS); const changes=results.changes||{}; const docsOnly=process.env.EVENT_NAME === 'pull_request' && changes.result === 'success' && !!changes.outputs && changes.outputs.docs_only === 'true'; const failures=Object.entries(results).filter(([name, job]) => docsOnly && job.result === 'skipped' && name !== 'changes' ? false : job.result !== 'success'); if(failures.length){ console.error('Required validation did not succeed:', failures.map(([name, job]) => name + '=' + job.result).join(', ')); process.exit(1) }"
