@@ -16,6 +16,8 @@ import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import { createWebPageGEOData } from "../utils/geoHelpers";
 import { useTranslation } from "react-i18next";
 import { isManualAuthEnabled } from "../config/featureFlags";
+import { authClient } from "../lib/authClient";
+import useAuthStore from "../store/store";
 
 /**
  * Ticket 2.4. Password authentication does not exist canonically - betterAuth.ts sets
@@ -35,6 +37,8 @@ const Auth = () => {
   const { t, i18n } = useTranslation();
   const loading = false;
   const location = useLocation();
+  const [error, setError] = useState("");
+  const logoutError = useAuthStore((state) => state.logoutError);
 
   // Create validation schema that updates when language changes
   const validationSchema = useMemo(() => {
@@ -76,14 +80,16 @@ const Auth = () => {
     manualAuthUnavailable();
   };
 
+  // Canonical sign-up is the same operation as canonical sign-in: Better Auth creates
+  // the account on the first Google callback. startGoogleSignIn is async and throws on
+  // every failure path, so the rejection has to be caught and shown - the previous
+  // handler redirected to Strapi's /connect/google unconditionally, which a platform
+  // build cannot reach at all.
   const handleGoogleSignUp = () => {
-    // Use the same hardcoded absolute backend URL as Login.tsx.
-    // VITE_REST_API_URL can be a relative path (/api) in some build configs,
-    // which would produce an invalid OAuth initiation URL.
-    // prompt=select_account forces Google to show the account chooser even when
-    // the user already has an active Google session in the same browser window.
-    const backendBase = "https://api.localqr.earth/api";
-    window.location.href = `${backendBase}/connect/google?prompt=select_account`;
+    if (logoutError) return;
+    void authClient
+      .startGoogleSignIn()
+      .catch(() => setError("Google sign-in is unavailable. Please try again."));
   };
 
   // Generate GEO data for register page
@@ -142,6 +148,13 @@ const Auth = () => {
         enableGEO={true}
         geoData={geoData}
       />
+
+      {(error || logoutError) && (
+        <div role="alert" className="bg-black text-center text-amber-300 py-3">
+          {error ||
+            "Server sign-out is incomplete. Retry signing out before using this account."}
+        </div>
+      )}
 
       {isManualAuthEnabled() ? (
         // Manual registration form (active) on the Earthrise scene
