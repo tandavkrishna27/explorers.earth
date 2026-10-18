@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createCanonicalApp } from "../auth/canonicalApp";
 import { resolveExplorersAuthConfig } from "../auth/betterAuth";
 import { MediaService, MediaUnavailable } from "../application/media";
+import { runMediaCleanupMaintenance } from "../application/mediaCleanupMaintenance";
 import type { Actor } from "../application/actor";
 import type { ObjectStorage } from "../services/objectStorage";
 import { MediaRepository } from "../repositories/mediaRepository";
@@ -379,5 +380,40 @@ describe("private local media", () => {
     await new MediaService(pool, recovered).retryPendingDeletes(owner.accountId);
     expect(removed).toHaveLength(1);
     expect((await pool.query("SELECT status FROM media_assets WHERE id=$1", [pending.rows[0].id])).rows[0].status).toBe("deleted");
+  });
+
+  it("sweeps pending and abandoned media on the maintenance tick without another upload", async () => {
+    // Break caught: retryPendingDeletes ran only inside createMedia and the movie import,
+    // so an owner who never uploaded again kept a pending_delete row and its object forever.
+    const owner = await persona();
+    const busy = await persona();
+    const pendingUpload = await upload(owner.cookie);
+    const abandonedUpload = await upload(owner.cookie);
+    const busyUpload = await upload(busy.cookie);
+    for (const response of [pendingUpload, abandonedUpload, busyUpload]) expect(response.status).toBe(201);
+    await pool.query("UPDATE media_assets SET status='pending_delete',delete_requested_at=now() WHERE id=$1", [pendingUpload.body.media.id]);
+    await pool.query("UPDATE media_assets SET created_at=now()-interval '25 hours' WHERE id = ANY($1)",
+      [[abandonedUpload.body.media.id, busyUpload.body.media.id]]);
+    const keys = async (id: string) => (await pool.query("SELECT object_key FROM media_objects WHERE media_id=$1", [id])).rows[0].object_key as string;
+    const removed: string[] = [];
+    const storage: ObjectStorage = { environment: "local", put: async () => undefined,
+      get: async () => png, delete: async (key) => { removed.push(key); } };
+    // A live writer holds this lock across its put; the sweep must leave that account alone.
+    const writer = await pool.connect();
+    try {
+      await writer.query("SELECT pg_advisory_lock(44024,hashtext($1))", [busy.accountId]);
+      await runMediaCleanupMaintenance(pool, storage, 100);
+    } finally {
+      await writer.query("SELECT pg_advisory_unlock(44024,hashtext($1))", [busy.accountId]);
+      writer.release();
+    }
+    const status = async (id: string) => (await pool.query("SELECT status FROM media_assets WHERE id=$1", [id])).rows[0].status;
+    expect(await status(pendingUpload.body.media.id)).toBe("deleted");
+    expect(await status(abandonedUpload.body.media.id)).toBe("deleted");
+    expect(await status(busyUpload.body.media.id)).toBe("ready");
+    expect(removed).toEqual(expect.arrayContaining([await keys(pendingUpload.body.media.id), await keys(abandonedUpload.body.media.id)]));
+    expect(removed).not.toContain(await keys(busyUpload.body.media.id));
+    await runMediaCleanupMaintenance(pool, storage, 100);
+    expect(await status(busyUpload.body.media.id)).toBe("deleted");
   });
 });
