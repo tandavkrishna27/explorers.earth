@@ -28,9 +28,9 @@ export class ExplorersAnalyticsEventRepository {
         // than record an event with no category.
         if (input.event.page === 'public-music')
             throw unavailable();
+        // A guide is a Guides collection, so guide events target it by locationId like
+        // any other list; the shared category and collection checks below apply.
         const category = categoryByPage[input.event.page] ?? null;
-        if (category === 'guides')
-            throw unavailable(); // Companion guide producer is owned by Epic5.
         const account = (await db.query(`SELECT id,handle_key,public_profile,onboarding_status,status FROM creator_accounts WHERE id=$1 FOR SHARE`, [input.accountId])).rows[0];
         if (!account || account.status !== 'active' || account.onboarding_status !== 'complete')
             throw unavailable();

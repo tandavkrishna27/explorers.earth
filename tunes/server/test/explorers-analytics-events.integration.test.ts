@@ -140,6 +140,41 @@ it('preserves every currently permitted descriptive metadata field without expos
     const summary = await service.getCreatorAnalytics(f.actor, { from: new Date(Date.now() - 60000).toISOString(), to: new Date(Date.now() + 60000).toISOString() });
     expect(JSON.stringify(summary)).not.toContain('Visible title');
 });
+async function publicGuides(f: Awaited<ReturnType<typeof fixture>>) {
+    await pool.query("INSERT INTO account_category_settings(account_id,category,is_public,display_order) VALUES($1,'guides',true,1)", [f.accountId]);
+    const insert = (slug: string) => pool.query("INSERT INTO collections(account_id,category,title,slug,display_order,visibility,publication_state) VALUES($1,'guides',$2,$2,0,'public','published') RETURNING id", [f.accountId, slug]).then(r => r.rows[0].id as string);
+    return [await insert('goa'), await insert('pune')];
+}
+function guideEvent(f: Awaited<ReturnType<typeof fixture>>, type: 'view' | 'click', guideId?: string, metadata?: Record<string, unknown>) {
+    return { ...f.input, locationId: guideId, eventId: `guide-${randomUUID()}`, event: { ...f.input.event, type, page: 'public-guides' as const, canonicalPath: f.input.event.canonicalPath.split('/books')[0] + '/guides',
+        ...(guideId ? { element: 'guide-card', metadata: { listId: guideId, title: 'Goa in 3 days', guideType: 'itinerary', ...metadata } } : {}) } };
+}
+it('accepts public-guides views and guide-card clicks with guideType metadata only while the Guides category is public', async () => {
+    const f = await fixture();
+    await expect(service.recordAnalyticsEvent(guideEvent(f, 'view'), { requestId: 'guides-private' })).rejects.toMatchObject({ status: 404 });
+    const [goa] = await publicGuides(f);
+    await expect(service.recordAnalyticsEvent(guideEvent(f, 'view'), { requestId: 'guides-view' })).resolves.toMatchObject({ status: 'accepted' });
+    await expect(service.recordAnalyticsEvent(guideEvent(f, 'click', goa), { requestId: 'guides-click' })).resolves.toMatchObject({ status: 'accepted' });
+    expect((await pool.query("SELECT event_type,category,collection_id,metadata FROM analytics_events WHERE account_id=$1 AND page='public-guides' ORDER BY event_type DESC", [f.accountId])).rows).toEqual([
+        { event_type: 'view', category: 'guides', collection_id: null, metadata: {} },
+        { event_type: 'click', category: 'guides', collection_id: goa, metadata: { listId: goa, title: 'Goa in 3 days', guideType: 'itinerary' } }]);
+    await expect(service.recordAnalyticsEvent(guideEvent(f, 'click', f.collectionId), { requestId: 'guides-foreign-category' })).rejects.toMatchObject({ status: 404 });
+    await expect(service.recordAnalyticsEvent(guideEvent(f, 'click', goa, { unknownField: 'x' }), { requestId: 'guides-strict' })).rejects.toBeTruthy();
+});
+it('guide events aggregate in the owner summary and reach the owner event read GuidesChart consumes', async () => {
+    const f = await fixture(), [goa, pune] = await publicGuides(f);
+    await service.recordAnalyticsEvent(guideEvent(f, 'view'), { requestId: 'guides-view' });
+    for (const id of [goa, goa, pune])
+        await service.recordAnalyticsEvent(guideEvent(f, 'click', id, { guideType: 'city' }), { requestId: 'guides-click' });
+    const from = new Date(Date.now() - 60000).toISOString(), to = new Date(Date.now() + 60000).toISOString();
+    const summary = await service.getCreatorAnalytics(f.actor, { from, to, category: 'guides' });
+    expect(summary.totals).toEqual({ views: 1, clicks: 3, interactions: 0 });
+    expect(summary.dimensions.category.buckets).toEqual([{ key: 'guides', views: 1, clicks: 3, interactions: 0 }]);
+    const stats = (await service.readOwnerEvents(f.actor, { accountId: f.accountId, from, to })).flatMap(r => r.Stats).filter(s => s.page === 'public-guides');
+    expect(stats.filter(s => s.type === 'view')).toHaveLength(1);
+    expect(stats.filter(s => s.type === 'click').map(s => s.metadata?.listId).sort()).toEqual([goa, goa, pune].sort());
+    expect(stats.every(s => s.type !== 'click' || (s.element === 'guide-card' && s.metadata?.guideType === 'city'))).toBe(true);
+});
 it('retired Music analytics: both Music routes answer 410 and a public-music event is refused (P3-5, P3-6)', async () => {
     const f = await fixture(), app = createCanonicalApp(pool, resolveExplorersAuthConfig({ EXPLORERS_PUBLIC_ORIGIN: 'http://127.0.0.1:51474', EXPLORERS_AUTH_SECRET: 'music-analytics-fixture-'.repeat(3), GOOGLE_CLIENT_ID: 'fixture', GOOGLE_CLIENT_SECRET: 'fixture' })).app;
     const body = { consent: true, eventId: `music-event-${randomUUID()}`, event: { name: 'playlist_opened' } };

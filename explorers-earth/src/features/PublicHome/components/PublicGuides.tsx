@@ -419,8 +419,9 @@ const PublicGuides = memo(() => {
   // Handle guide click - navigate to guide detail page
   const handleGuideClick = (guide: Guide) => {
     // Track guide card click for analytics
+    // A guide is a Guides collection, so it is the list target (listId -> locationId).
     analytics.trackClick('guide-card', {
-      id: guide.documentId,
+      listId: guide.documentId,
       title: guide.Title,
       guideType: guide.Guide_Type,
       category: Array.isArray(guide.Category) ? guide.Category[0] : guide.Category,
