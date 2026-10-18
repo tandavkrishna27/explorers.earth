@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0056_explorers_app_enrichment_jobs",
+    "expectedId": "0057_retire_music_category",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -59,7 +59,8 @@
       "0053_explorers_taxonomy_catalogs.sql",
       "0054_explorers_place_individual_pins.sql",
       "0055_explorers_app_enrichment.sql",
-      "0056_explorers_app_enrichment_jobs.sql"
+      "0056_explorers_app_enrichment_jobs.sql",
+      "0057_retire_music_category.sql"
     ],
     "controlTables": [
       "music_schema_migrations",

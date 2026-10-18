@@ -10,7 +10,7 @@ import {publicPeopleProjection,publicPeopleSectorProjection} from './publicPeopl
 import {publicPlacesProjection} from './publicPlacesProjection';
 import {publicGuidesProjection} from './publicGuidesProjection';
 
-const flag: Record<string, string> = { places: "public_recommendations", guides: "public_guides", music: "public_music",
+const flag: Record<string, string> = { places: "public_recommendations", guides: "public_guides",
   movies: "public_movie", books: "public_books", games: "public_games", apps: "public_apps",
   products: "public_products", people: "public_people" };
 

@@ -622,7 +622,7 @@ BEGIN
   INSERT INTO user_security_state(user_id) VALUES (owner) ON CONFLICT (user_id) DO NOTHING;
   INSERT INTO account_category_settings(account_id, category, display_order)
     SELECT acc, category, position - 1
-      FROM unnest(ARRAY['places','guides','music','movies','books','games','apps','products','people'])
+      FROM unnest(ARRAY['places','guides','movies','books','games','apps','products','people'])
            WITH ORDINALITY AS initial(category, position);
   INSERT INTO account_presentation(account_id) VALUES (acc);
   UPDATE creator_accounts SET handle = 'acceptance-owner', display_name = 'Acceptance Owner',

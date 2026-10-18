@@ -18,7 +18,8 @@ describe('Hub navigation consent', () => {
   async function openBooks() { fireEvent.click((await screen.findAllByTitle('Category options'))[2]); }
   async function openCategory(category: string) { fireEvent.click((await screen.findAllByTitle('Category options'))[ordinaryCategories.indexOf(category as any)]); }
   it.each(ordinaryCategories)('%s Off cleans only target and On never pins', async category => {
-    const h = surfaceHarness(<RecommendationsHub />, { initial: { pinned_nav_tabs: ['public_profile', category, 'public_music'] } }); await h.ready(); await openCategory(category);
+    const other = category === 'public_books' ? 'public_games' : 'public_books';
+    const h = surfaceHarness(<RecommendationsHub />, { initial: { pinned_nav_tabs: ['public_profile', category, other] } }); await h.ready(); await openCategory(category);
     fireEvent.click(screen.getByRole('button', { name: /Disable Public/ }));
     await waitFor(() => expect(h.saved[category]).toBe('No')); await waitFor(() => expect(h.navigation.busy).toBe(false));
     await openCategory(category); fireEvent.click(screen.getByRole('button', { name: /Enable Public/ }));
@@ -26,10 +27,10 @@ describe('Hub navigation consent', () => {
     expect(h.writes).toHaveLength(2);
     // Off: the target goes private and only its own pin is dropped.
     expect(writtenVisibility(h.writes[0].variables.input, category)).toBe(false);
-    expect(writtenPins(h.writes[0].variables.input)).toEqual(['public_profile', 'public_music']);
+    expect(writtenPins(h.writes[0].variables.input)).toEqual(['public_profile', other]);
     // On: it goes public again without the pin coming back.
     expect(writtenVisibility(h.writes[1].variables.input, category)).toBe(true);
-    expect(writtenPins(h.writes[1].variables.input)).toEqual(['public_profile', 'public_music']);
+    expect(writtenPins(h.writes[1].variables.input)).toEqual(['public_profile', other]);
   });
   it.each(ordinaryCategories)('%s hidden Pin remains disabled with no visibility write', async category => {
     const h = surfaceHarness(<RecommendationsHub />, { initial: { [category]: 'No', pinned_nav_tabs: ['public_profile'] } }); await h.ready(); await openCategory(category);
@@ -39,11 +40,11 @@ describe('Hub navigation consent', () => {
     const h = surfaceHarness(<RecommendationsHub />, { initial: { public_books: 'No', pinned_nav_tabs: ['public_profile'] } }); await h.ready(); await openBooks();
     const pin = screen.getByRole('button', { name: /Pin to Public Nav/ }); expect(pin).toBeDisabled(); fireEvent.click(pin); expect(h.writes).toEqual([]);
   });
-  it('Off removes only its stored pin, preserving saved Music during outage', async () => {
-    const h = surfaceHarness(<RecommendationsHub />); await h.ready(); await openBooks();
+  it('Off removes only its stored pin, preserving the other saved pins', async () => {
+    const h = surfaceHarness(<RecommendationsHub />, { initial: { pinned_nav_tabs: ['public_profile', 'public_games', 'public_books'] } }); await h.ready(); await openBooks();
     fireEvent.click(screen.getByRole('button', { name: /Disable Public/ })); await waitFor(() => expect(h.writes).toHaveLength(1));
     expect(writtenVisibility(h.writes[0].variables.input, 'public_books')).toBe(false);
-    expect(writtenPins(h.writes[0].variables.input)).toEqual(['public_profile', 'public_music']);
+    expect(writtenPins(h.writes[0].variables.input)).toEqual(['public_profile', 'public_games']);
   });
   it('automatic placement links to Settings and does not silently change mode', async () => {
     const h = surfaceHarness(<RecommendationsHub />, { initial: { auto_pinning: true } }); await h.ready(); await openBooks();

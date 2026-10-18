@@ -10,14 +10,33 @@ const columns: Record<string, string> = {
 };
 const jsonFields = new Set(["bioRich", "primaryAddress", "additionalAddresses", "publicAddress", "profilePlaceDetails"]);
 
-const categoriesWithoutMusic = categoryKeys.filter((category) => category !== "music");
+const categoriesWithRetiredMusic = [...categoryKeys, "music"] as const;
+const knownCategories = new Set<string>(categoryKeys);
 
-/** The full category set, or the set left once the music category is retired. */
+/**
+ * The category set, or that set plus the music category retired by 0057: a tab still
+ * holding a snapshot read before the migration echoes its music row, and that save must
+ * succeed. The music entry itself is never written (see update()).
+ */
 export function isAcceptedCategorySet(supplied: readonly string[]): boolean {
   const unique = new Set(supplied);
   if (unique.size !== supplied.length) return false;
-  return [categoryKeys, categoriesWithoutMusic].some((accepted) =>
+  return [categoryKeys, categoriesWithRetiredMusic].some((accepted) =>
     accepted.length === supplied.length && accepted.every((category) => unique.has(category)));
+}
+
+/**
+ * Defensive read: a category row or categoryOrder entry the 0057 migration missed must
+ * degrade, not take the account down - the owner read parses this through
+ * accountDtoSchema, and an unknown category there is a ZodError and a 503 for that owner.
+ */
+function knownThemeSettings(themeSettings: unknown): unknown {
+  if (!themeSettings || typeof themeSettings !== "object" || Array.isArray(themeSettings)) return themeSettings;
+  const settings = themeSettings as { recommendations?: unknown };
+  const recommendations = settings.recommendations as { categoryOrder?: unknown } | undefined;
+  if (!recommendations || typeof recommendations !== "object" || !Array.isArray(recommendations.categoryOrder)) return themeSettings;
+  return { ...settings, recommendations: { ...recommendations,
+    categoryOrder: recommendations.categoryOrder.filter((category) => typeof category === "string" && knownCategories.has(category)) } };
 }
 
 export class AccountConflict extends Error {
@@ -52,9 +71,10 @@ export class ExplorersAccountRepository {
       bioPlain: row.bio_plain, bioRich: row.bio_rich, primaryAddress: row.primary_address,
       additionalAddresses: row.additional_addresses, publicAddress: row.public_address,
       profilePlaceDetails: row.profile_place_details,
-      categories: settings.rows.map((value) => ({ category: value.category, isPublic: value.is_public,
-        displayOrder: value.display_order, pinnedOrder: value.pinned_order })),
-      themeSettings: p.theme_settings, socialLinks: p.social_links, businessDetails: p.business_details,
+      categories: settings.rows.filter((value) => knownCategories.has(value.category))
+        .map((value) => ({ category: value.category, isPublic: value.is_public,
+          displayOrder: value.display_order, pinnedOrder: value.pinned_order })),
+      themeSettings: knownThemeSettings(p.theme_settings) as AccountDto["themeSettings"], socialLinks: p.social_links, businessDetails: p.business_details,
       profileImage: mediaDto("profile"), backgroundImage: mediaDto("background"),
       feedItems: feed.rows.map((item) => ({ id: item.id, mediaId: item.media_id,
         url: item.media_id ? `/api/explorers/v1/media/${item.media_id}/content` : item.external_url,

@@ -4,7 +4,7 @@ import { submitPinnedCategoryUnpublish } from './setup/category-navigation-helpe
 import { bookFixtureId } from './setup/books-owner-content';
 
 function preferenceWrite(before: ReturnType<typeof canonicalCategoryAccount>, change: { category?: string; isPublic?: boolean; pins?: string[] }) {
-  const fields = new Map<string,string>([...categories.map(category => [category.route, category.field] as [string,string]), ['music', 'public_music']]);
+  const fields = new Map<string,string>(categories.map(category => [category.route, category.field] as [string,string]));
   return { expectedRevision: before.revision, categories: before.categories.map(row => ({ ...row,
     ...(row.category === change.category ? { isPublic: change.isPublic } : {}),
     ...(change.pins ? { pinnedOrder: change.pins.includes(fields.get(row.category)!) ? change.pins.indexOf(fields.get(row.category)!) - 1 : null } : {}),
@@ -75,7 +75,7 @@ test('Profile mandatory, five slots, unpublished pin blocked and hidden saved ch
 
 for (const failure of ['read', 'write', 'lost', 'verification'] as const) {
   test(`category ${failure} failure remains honest and recovers through explicit Refresh`, async ({ browser, baseURL }) => {
-    const state = fixtureState({ pinned_nav_tabs: ['public_profile', 'public_books', 'public_music'], public_music: 'Yes' }, 'public');
+    const state = fixtureState({ pinned_nav_tabs: ['public_profile', 'public_books', 'public_games'] }, 'public');
     const owner = await openFixture(browser, baseURL!, state, { owner: true });
     try {
       await settings(owner.page, true);
@@ -89,7 +89,7 @@ for (const failure of ['read', 'write', 'lost', 'verification'] as const) {
       await submitPinnedCategoryUnpublish(owner.page, control, 'Books Tab');
       await expect(owner.page.getByRole('alert').filter({ has: owner.page.getByRole('button', { name: 'Refresh', exact: true }) })).toBeVisible();
       const count = state.writes.length; await owner.page.waitForTimeout(250); expect(state.writes).toHaveLength(count);
-      expect(state.account.pinned_nav_tabs).toContain('public_music');
+      expect(state.account.pinned_nav_tabs).toContain('public_games');
       // The failed unpublish intentionally leaves its confirmation dialog open;
       // dismiss it before exercising the independent recovery control.
       await owner.page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -273,8 +273,8 @@ test('catchall deliberately denies unknown external HTTP and WebSocket without f
   } finally { await visitor.context.close(); }
 });
 
-test('offline/online and Music outage preserve unrelated pins until explicit fresh owner action', async ({ browser, baseURL }) => {
-  const state = fixtureState({ public_music: 'Yes', pinned_nav_tabs: ['public_profile', 'public_music', 'public_books'] }, 'public');
+test('offline/online preserves unrelated pins until explicit fresh owner action', async ({ browser, baseURL }) => {
+  const state = fixtureState({ pinned_nav_tabs: ['public_profile', 'public_apps', 'public_books'] }, 'public');
   const owner = await openFixture(browser, baseURL!, state, { owner: true });
   try {
     await settings(owner.page, true);
@@ -282,13 +282,12 @@ test('offline/online and Music outage preserve unrelated pins until explicit fre
     await owner.context.setOffline(true);
     const pin = owner.page.getByRole('checkbox', { name: 'Pin Games Tab' }); await pin.focus(); await pin.press('Space');
     await expect(owner.page.getByRole('button', { name: 'Refresh', exact: true })).toBeVisible(); expect(state.writes).toEqual([]);
-    expect(state.account.pinned_nav_tabs).toEqual(['public_profile', 'public_music', 'public_books']);
+    expect(state.account.pinned_nav_tabs).toEqual(['public_profile', 'public_apps', 'public_books']);
     await owner.context.setOffline(false); await expect(pin).toBeEnabled(); expect(state.writes).toEqual([]);
-    state.faults.set(`/api/music/public-profile/${canonicalCategoryAccount(state).id}`, Array.from({ length: 10 }, () => ({ kind: 'error' as const })));
     const beforePin = canonicalCategoryAccount(state);
     await toggle(pin, true);
-    expect(state.writes.at(-1)?.variables).toEqual(preferenceWrite(beforePin, { pins: ['public_profile', 'public_music', 'public_books', 'public_games'] }));
-    expect(state.account.public_music).toBe('Yes'); expect(state.mode).toBe('public');
+    expect(state.writes.at(-1)?.variables).toEqual(preferenceWrite(beforePin, { pins: ['public_profile', 'public_apps', 'public_books', 'public_games'] }));
+    expect(state.mode).toBe('public');
   } finally { await owner.context.setOffline(false); await closeFixture(owner); }
 });
 

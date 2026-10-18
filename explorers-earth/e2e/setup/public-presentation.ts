@@ -9,7 +9,7 @@ export async function installPublicPresentationFixture(context: BrowserContext, 
 } = {}) {
   let imageMode = options.imageMode ?? 'valid';
   const artwork = origin + '/images/public-presentation-art.svg';
-  const state = fixtureState({ public_music: 'Yes', pinned_nav_tabs: ['public_profile', 'public_music'] }, 'public');
+  const state = fixtureState({ pinned_nav_tabs: ['public_profile'] }, 'public');
   const setAppearance = (preset = 'cinematic-dark', wallpaperMode = 'solid-color', mode = imageMode) => {
     imageMode = mode;
     state.account.social_media.theme_settings = { ...state.account.social_media.theme_settings, preset, wallpaperMode, accentColor: '#10b981' };

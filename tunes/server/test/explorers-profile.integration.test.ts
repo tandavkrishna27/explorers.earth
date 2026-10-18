@@ -186,49 +186,52 @@ describe("canonical profile", () => {
   });
 
   /*
-   * P3-5, ahead of the music category's retirement (P3-6). While that deploys, a client
-   * can echo the nine rows it read before the migration or the eight it reads after it,
-   * against either API. Both must save, and neither may write the music row: an API that
-   * demanded exactly nine answered an eight-row save with 503 "Invalid category set".
+   * P3-5 made the write path accept both sets; P3-6 (0057) retired the music category.
+   * A tab still holding a nine-row snapshot read before 0057 echoes its music row: that
+   * save must succeed and write no music row - the CHECK would refuse one anyway, and a
+   * 503 would fail an owner's save for a category they can no longer see.
    */
   async function categoryRows(accountId: string) {
     return (await pool.query<{ category: string; display_order: number; pinned_order: number | null }>(
       "SELECT category,display_order,pinned_order FROM account_category_settings WHERE account_id=$1 ORDER BY category",
       [accountId])).rows;
   }
-  it("saves a nine-category set that still carries music, without writing the music row", async () => {
+  it("seeds a new account with the eight surviving categories", async () => {
+    const owner = await persona();
+    const rows = await categoryRows(owner.accountId);
+    expect(rows.map((row) => row.category).sort()).toEqual(["apps", "books", "games", "guides", "movies", "people", "places", "products"]);
+    expect(rows.map((row) => row.display_order).sort()).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+  });
+  it("saves a stale nine-category set that still carries music, without writing a music row", async () => {
     const owner = await persona();
     const initial = (await request(composed.app).get("/api/explorers/v1/me").set("cookie", owner.cookie)).body.account;
-    expect(initial.categories).toHaveLength(9);
-    const categories = initial.categories.map((row: { category: string; isPublic: boolean }) =>
-      row.category === "books" || row.category === "music" ? { ...row, isPublic: true } : row);
+    expect(initial.categories).toHaveLength(8);
+    const categories = [
+      ...initial.categories.map((row: { category: string; isPublic: boolean }) => row.category === "books" ? { ...row, isPublic: true } : row),
+      { category: "music", isPublic: true, displayOrder: 8, pinnedOrder: null },
+    ];
     const saved = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
       .set("origin", config.baseURL).send({ expectedRevision: initial.revision, categories });
     expect(saved.status).toBe(200);
-    const music = (await pool.query("SELECT is_public FROM account_category_settings WHERE account_id=$1 AND category='music'",
-      [owner.accountId])).rows;
-    expect(music).toEqual([{ is_public: false }]);
-    const books = (await pool.query("SELECT is_public FROM account_category_settings WHERE account_id=$1 AND category='books'",
-      [owner.accountId])).rows;
-    expect(books).toEqual([{ is_public: true }]);
+    expect(saved.body.account.categories.map((row: { category: string }) => row.category)).not.toContain("music");
+    const rows = await categoryRows(owner.accountId);
+    expect(rows.find((row) => row.category === "music")).toBeUndefined();
+    expect((await pool.query("SELECT is_public FROM account_category_settings WHERE account_id=$1 AND category='books'",
+      [owner.accountId])).rows).toEqual([{ is_public: true }]);
   });
-  it("saves an eight-category set without music, parking a surviving music row past the supplied order", async () => {
+  it("saves a reordered eight-category set", async () => {
     const owner = await persona();
     const initial = (await request(composed.app).get("/api/explorers/v1/me").set("cookie", owner.cookie)).body.account;
-    // Music sits at display order 2 in a new account; the eight rows reuse 0..7, so a naive
-    // write leaves two rows at one display order and the deferred constraint fails at COMMIT.
-    const categories = initial.categories
-      .filter((row: { category: string }) => row.category !== "music")
+    const categories = [...initial.categories].reverse()
       .map((row: object, index: number) => ({ ...row, displayOrder: index, pinnedOrder: index === 0 ? 0 : null }));
-    expect(categories).toHaveLength(8);
     const saved = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
       .set("origin", config.baseURL).send({ expectedRevision: initial.revision, categories });
     expect(saved.status).toBe(200);
     const rows = await categoryRows(owner.accountId);
-    expect(rows.find((row) => row.category === "music")).toEqual({ category: "music", display_order: 8, pinned_order: null });
-    expect(new Set(rows.map((row) => row.display_order)).size).toBe(rows.length);
+    expect(rows).toHaveLength(8);
+    expect(new Set(rows.map((row) => row.display_order)).size).toBe(8);
   });
-  it("still refuses a category set that is neither the full set nor the full set without music", async () => {
+  it("still refuses a category set that is neither the eight categories nor those plus the retired music", async () => {
     const owner = await persona();
     const initial = (await request(composed.app).get("/api/explorers/v1/me").set("cookie", owner.cookie)).body.account;
     const categories = initial.categories.filter((row: { category: string }) => row.category !== "books");

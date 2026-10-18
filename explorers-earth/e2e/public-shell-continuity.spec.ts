@@ -22,7 +22,7 @@ import { PUBLIC_SHELL_VISUAL_MATRIX } from './fixtures/public-shell-visual-matri
 
 test('Task 7 fixture/config/checked-in visual matrix contract', () => {
   expect(TOP_LEVEL_DESTINATIONS.map(destination => destination.id)).toEqual([
-    'profile', 'places', 'guides', 'movies', 'books', 'games', 'apps', 'products', 'people', 'music',
+    'profile', 'places', 'guides', 'movies', 'books', 'games', 'apps', 'products', 'people',
   ]);
   expect(REQUIRED_THEMES).toHaveLength(6);
   expect(REQUIRED_VIEWPORTS).toEqual([320, 390, 768, 1024, 1440]);
@@ -32,8 +32,7 @@ test('Task 7 fixture/config/checked-in visual matrix contract', () => {
   expect(framesAfterActivation(['before', 'first', 'second'], 1)).toEqual(['first', 'second']);
 });
 
-// The Music page is retired; its row stays in TOP_LEVEL_DESTINATIONS until the music category itself is removed.
-const PAGE_DESTINATIONS = TOP_LEVEL_DESTINATIONS.filter(destination => destination.id !== 'music');
+const PAGE_DESTINATIONS = TOP_LEVEL_DESTINATIONS;
 
 async function expectSettledShell(page: import('@playwright/test').Page, options: { map?: boolean; footer?: boolean } = {}) {
   await expect(page.getByRole('status', { name: 'Earth loading' })).toHaveCount(0);
@@ -225,8 +224,7 @@ test('checked-in visual matrix preserves public chrome geometry contrast focus a
 test('real toast photo viewer guide map portal and cold Earth obey the public stacking and reduced-motion contract', async ({ browser, baseURL }) => {
   test.skip(test.info().project.name !== 'chromium', 'Overlay and animation geometry is qualified in contained Chromium.');
   const overlayState = fixtureState({
-    public_music: 'Yes',
-    pinned_nav_tabs: ['public_profile', 'public_guides', 'public_music'],
+    pinned_nav_tabs: ['public_profile', 'public_guides'],
   }, 'public');
   overlayState.account.social_media.theme_settings.footerBranding = 'enabled';
   overlayState.lists.guides[0].guide_sections = [{
@@ -365,7 +363,6 @@ test('cold entry covers every top-level destination with one continuous Earth ow
   const evidence: Record<string, unknown> = {};
   for (const destination of PAGE_DESTINATIONS) {
     const state = fixtureState({
-      public_music: 'Yes',
       pinned_nav_tabs: destination.id === 'profile'
         ? ['public_profile', 'public_books']
         : ['public_profile', destination.field],
@@ -400,7 +397,6 @@ test('same-profile continuity covers every destination and first trusted post-cl
   for (const destination of PAGE_DESTINATIONS) {
     const source = destination.id === 'profile' ? 'books' : '';
     const state = fixtureState({
-      public_music: 'Yes',
       pinned_nav_tabs: destination.id === 'profile'
         ? ['public_profile', 'public_books']
         : ['public_profile', destination.field],
@@ -449,15 +445,14 @@ test('same-profile continuity covers every destination and first trusted post-cl
 test('routing history, canonical username, redirects, attribution, and identity isolation stay truthful', async ({ browser, baseURL }) => {
   test.skip(test.info().project.name !== 'chromium', 'Expanded routing matrix runs in contained Chromium.');
   const state = fixtureState({
-    public_music: 'Yes', public_products: 'No',
-    pinned_nav_tabs: ['public_profile', 'public_books', 'public_music'],
+    public_products: 'No',
+    pinned_nav_tabs: ['public_profile', 'public_books'],
   }, 'public');
   state.account.social_media.theme_settings.footerBranding = 'enabled';
   const secondAccount = structuredClone(state.account);
   secondAccount.documentId = 'browser-account-b';
   secondAccount.username = 'fixture-friend';
   secondAccount.Account_Name = 'Fixture Friend';
-  secondAccount.public_music = 'No';
   secondAccount.social_media.theme_settings = { ...secondAccount.social_media.theme_settings, preset: 'neon-cyber' };
   state.alternateAccounts.set(secondAccount.username, secondAccount);
   const visitor = await openFixture(browser, baseURL!, state, { width: 390, height: 900 });
@@ -527,7 +522,6 @@ test('routing history, canonical username, redirects, attribution, and identity 
 test('ordered five-tab cycle and map chrome exception retain unique shell ownership', async ({ browser, baseURL }) => {
   test.skip(test.info().project.name !== 'chromium', 'Expanded navigation matrix runs in contained Chromium.');
   const state = fixtureState({
-    public_music: 'Yes',
     pinned_nav_tabs: ['public_profile', 'public_recommendations', 'public_books', 'public_apps', 'public_movie'],
   }, 'public');
   state.account.social_media.theme_settings.footerBranding = 'enabled';
@@ -559,7 +553,7 @@ test('cache empty error retry and partial states retain the real shell and safe 
   test.skip(test.info().project.name !== 'chromium', 'Expanded content-state matrix runs in contained Chromium.');
   const evidence: Record<string, unknown> = {};
 
-  const warmState = fixtureState({ public_music: 'Yes', pinned_nav_tabs: ['public_profile', 'public_apps', 'public_music'] }, 'public');
+  const warmState = fixtureState({ pinned_nav_tabs: ['public_profile', 'public_apps'] }, 'public');
   seedRenderableApp(warmState);
   const warm = await openFixture(browser, baseURL!, warmState, { width: 390, height: 900 });
   try {

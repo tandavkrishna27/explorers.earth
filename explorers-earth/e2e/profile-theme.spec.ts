@@ -29,7 +29,6 @@ const FACTORS = {
   firstView: [
     'all-recommendations',
     'places',
-    'music',
     'movies',
     'books',
     'games',
@@ -238,7 +237,8 @@ test('covering array dry run proves all values and all factor pairs', { tag: LIV
   const requiredPairs = allRequiredPairs();
 
   expect(repeated).toEqual(matrix);
-  expect(matrix.length).toBeGreaterThanOrEqual(72);
+  // Pairwise lower bound: the two largest factors (11 first views x 6 accents).
+  expect(matrix.length).toBeGreaterThanOrEqual(FACTORS.firstView.length * FACTORS.accent.length);
   expect(coveredPairs.size).toBe(requiredPairs.size);
   for (const pair of requiredPairs) expect(coveredPairs).toContain(pair);
 
@@ -260,11 +260,6 @@ test('covering array dry run proves all values and all factor pairs', { tag: LIV
     matrix.some(
       (row) =>
         row.layout === 'featured' && row.orderShape === 'preferred-first',
-    ),
-  ).toBe(true);
-  expect(
-    matrix.some(
-      (row) => row.firstView === 'music' && row.firstView !== 'gallery',
     ),
   ).toBe(true);
 

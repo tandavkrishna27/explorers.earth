@@ -8,7 +8,6 @@ export type Transaction = {
 export type AccountNavigationWriter = {
   run: <T>(origin: IntentAuthority, work: (transaction: Transaction) => Promise<T>) => Promise<T>;
 };
-export type MusicPinVerifier = (transaction: Transaction, origin: IntentAuthority) => Promise<'public' | 'not-public' | 'unknown'>;
 export type NavigationOutcome =
   | { kind: 'confirmed'; snapshot: NavigationSnapshot }
   | { kind: 'blocked'; reason: string }

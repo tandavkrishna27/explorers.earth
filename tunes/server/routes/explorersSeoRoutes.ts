@@ -69,7 +69,7 @@ export const PUBLIC_PROFILE_SITEMAP_SQL = `
   SELECT a.handle,
          a.updated_at,
          COALESCE(ARRAY_AGG(s.category ORDER BY s.category)
-                  FILTER (WHERE s.is_public AND s.category <> 'music'), '{}') AS public_categories
+                  FILTER (WHERE s.is_public), '{}') AS public_categories
     FROM creator_accounts a
     JOIN account_presentation p ON p.account_id = a.id
     LEFT JOIN account_category_settings s ON s.account_id = a.id

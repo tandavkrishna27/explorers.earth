@@ -10,7 +10,6 @@ import {
 
 const CATEGORY_IDS = [
   "places",
-  "music",
   "movies",
   "books",
   "games",
@@ -24,7 +23,6 @@ type CategoryId = (typeof CATEGORY_IDS)[number];
 
 const CATEGORY_LABELS: Record<CategoryId, string> = {
   places: "Places",
-  music: "Music",
   movies: "Movies & Shows",
   books: "Books",
   games: "Games",
@@ -224,7 +222,7 @@ const EXPECTED_SAVED_DATA = {
       preset: "sunset-glow",
       wallpaperMode: "ambient-gradient",
       accentColor: "#EC4899",
-      landingTab: "music",
+      landingTab: "movies",
       futureTheme: { keep: "theme-future" },
       recommendations: {
         layout: "featured",
@@ -993,7 +991,7 @@ test.describe("deterministic editor-to-public profile parity", () => {
     await openAppearance(page);
     await page.getByRole("button", { name: /Sunset Glow/ }).click();
     await page.getByLabel("Wallpaper and cover style").selectOption("ambient-gradient");
-    await page.getByLabel("First view").selectOption("music");
+    await page.getByLabel("First view").selectOption("movies");
     await page.getByRole("radio", { name: "Featured First" }).check();
 
     await mouseDragCategory(page, "places", 7);
@@ -1011,7 +1009,7 @@ test.describe("deterministic editor-to-public profile parity", () => {
     expect(synthetic.account).toEqual(preFailureAccount);
     expect(synthetic.successfulMutations).toBe(0);
     expect(await readOrder(page)).toEqual(SAVED_ORDER);
-    await expect(page.getByLabel("First view")).toHaveValue("music");
+    await expect(page.getByLabel("First view")).toHaveValue("movies");
     await expect(page.getByRole("radio", { name: "Featured First" })).toBeChecked();
     await expect(accountName).toHaveValue("Synthetic Explorer Edited");
 
@@ -1025,7 +1023,7 @@ test.describe("deterministic editor-to-public profile parity", () => {
 
     await page.reload({ waitUntil: "domcontentloaded" });
     await openAppearance(page);
-    await expect(page.getByLabel("First view")).toHaveValue("music");
+    await expect(page.getByLabel("First view")).toHaveValue("movies");
     await expect(page.getByRole("radio", { name: "Featured First" })).toBeChecked();
     expect(await readOrder(page)).toEqual(SAVED_ORDER);
 

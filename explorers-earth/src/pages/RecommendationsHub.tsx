@@ -25,8 +25,8 @@ interface CategoryConfig {
   description: string;
   color: string;
   path: string;
-  visibilityField: Exclude<CategoryId, "public_music">;
-  tabId: Exclude<CategoryId, "public_music">;
+  visibilityField: CategoryId;
+  tabId: CategoryId;
 }
 
 const CATEGORIES: CategoryConfig[] = [

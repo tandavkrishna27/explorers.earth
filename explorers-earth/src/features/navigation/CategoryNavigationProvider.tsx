@@ -1,8 +1,8 @@
 import { readCanonicalNavigationContent, type NavigationContent } from './canonicalNavigationContent';
-import { createContext, useContext, useLayoutEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useContext, useLayoutEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { explorersApiClient } from '../../lib/explorersApiClient';
 import useAuthStore from '../../store/store';
-import { createAccountNavigationWriter, NavigationError, type AccountNavigationWriter, type MusicPinVerifier, type NavigationOutcome, type Transaction } from './accountNavigationWriter';
+import { createAccountNavigationWriter, NavigationError, type AccountNavigationWriter, type NavigationOutcome, type Transaction } from './accountNavigationWriter';
 import { createCategoryNavigationApi } from './categoryNavigationApi';
 import { CATEGORY_IDS, planCategoryIntent, type CategoryId, type GenericNavigationIntent, type IntentAuthority, type NavigationSnapshot } from './categoryNavigationPolicy';
 import { publishPublicProfileInvalidation, type PublicProfileInvalidationAction, type PublicProfileInvalidationCategory } from '../PublicHome/api/publicProfileInvalidation';
@@ -31,11 +31,10 @@ function isGenericIntent(value: unknown): value is GenericNavigationIntent {
   if (!value || typeof value !== 'object') return false;
   const intent = value as { category?: unknown; action?: unknown };
   return CATEGORY_IDS.some((category) => category === intent.category)
-    && ['publish', 'unpublish', 'pin', 'unpin'].some((action) => action === intent.action)
-    && !(intent.category === 'public_music' && (intent.action === 'publish' || intent.action === 'unpublish'));
+    && ['publish', 'unpublish', 'pin', 'unpin'].some((action) => action === intent.action);
 }
 
-function createNavigationController(verifier: () => MusicPinVerifier | undefined) {
+function createNavigationController() {
   let state: NavigationState = { busy: false, pending: [] };
   let generation = ++nextGeneration;
   let readSequence = 0;
@@ -190,16 +189,9 @@ function createNavigationController(verifier: () => MusicPinVerifier | undefined
       const snapshot = await transaction.read();
       if (command.action === 'pin') {
         if (snapshot.visibility[command.category] !== 'Yes') return { kind: 'blocked', reason: 'not-public' };
-        if (command.category === 'public_music') {
-          let result: 'public' | 'not-public' | 'unknown' = 'unknown';
-          try { result = await verifier()?.(transaction, captured) ?? 'unknown'; } catch { /* A Music outage fails closed for new pins only. */ }
-          if (!transaction.isCurrent()) throw new NavigationError('blocked', 'Account changed. Reopen this control.');
-          if (result !== 'public') return { kind: 'blocked', reason: result === 'not-public' ? 'not-public' : 'unknown' };
-        }
       }
       // No content-eligibility read at all now: neither visibility nor placement
       // depends on current inventory, which also drops a round-trip from both paths.
-      // Music keeps its own publication verification above.
       const plan = planCategoryIntent(snapshot, command);
       if (plan.kind === 'blocked') return plan;
       if (plan.kind === 'noop') return { kind: 'confirmed', snapshot };
@@ -238,10 +230,8 @@ function createNavigationController(verifier: () => MusicPinVerifier | undefined
 
 const NavigationContext = createContext<ReturnType<typeof createNavigationController> | undefined>(undefined);
 
-export function CategoryNavigationProvider({ children, verifyMusicPin }: { children: ReactNode; verifyMusicPin?: MusicPinVerifier }) {
-  const verifier = useRef(verifyMusicPin);
-  useLayoutEffect(() => { verifier.current = verifyMusicPin; }, [verifyMusicPin]);
-  const controller = useMemo(() => createNavigationController(() => verifier.current), []);
+export function CategoryNavigationProvider({ children }: { children: ReactNode }) {
+  const controller = useMemo(() => createNavigationController(), []);
   useLayoutEffect(() => { controller.mount(); return () => controller.unmount(); }, [controller]);
   return <NavigationContext.Provider value={controller}>{children}</NavigationContext.Provider>;
 }

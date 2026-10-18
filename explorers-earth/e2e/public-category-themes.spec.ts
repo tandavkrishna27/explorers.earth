@@ -1239,7 +1239,6 @@ for (const mode of ['banner-top', 'full-wallpaper-image', 'ambient-gradient', 's
     for (const cover of ['selected', 'absent', 'broken']) {
       const state = seedCategoryThemeState('minimal-light');
       state.mode = 'public';
-      state.account.public_music = 'Yes';
       state.account.social_media.theme_settings.wallpaperMode = mode;
       state.account.bg_picture = cover === 'absent' ? null : { url: cover === 'selected' ? fixtureArtwork : `${baseURL}/images/broken-category-cover.svg` };
       const visitor = await openFixture(browser, baseURL!, state, { width: 390, height: 900, touch: true });

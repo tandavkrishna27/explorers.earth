@@ -11,7 +11,6 @@ export const TOP_LEVEL_DESTINATIONS = [
   { id: 'apps', field: 'public_apps', route: 'apps', label: 'Apps', source: '' },
   { id: 'products', field: 'public_products', route: 'products', label: 'Products', source: '' },
   { id: 'people', field: 'public_people', route: 'people', label: 'People', source: '' },
-  { id: 'music', field: 'public_music', route: 'music', label: 'Music', source: '' },
 ] as const;
 
 export const REQUIRED_THEMES = [
@@ -187,8 +186,7 @@ export function configureVisualState(state: FixtureState, row: PublicShellVisual
     preset: row.theme,
     footerBranding: 'enabled',
   };
-  state.account.public_music = 'Yes';
-  state.account.pinned_nav_tabs = ['public_profile', 'public_apps', 'public_music'];
+  state.account.pinned_nav_tabs = ['public_profile', 'public_apps'];
   state.mode = 'public';
   if (row.routeType === 'list' || row.routeType === 'detail') seedRenderableApp(state);
   if (row.routeType === 'map') seedRenderablePlace(state);

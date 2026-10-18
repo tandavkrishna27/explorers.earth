@@ -1,11 +1,11 @@
 import type { AccountDto } from "../../../tunes/shared/explorersContract";
 
 /** Complete owner response used at the API boundary, with the real account hook. */
-export const CANONICAL_CATEGORY_KEYS = ['places', 'music', 'guides', 'movies', 'books', 'games', 'apps', 'products', 'people'] as const;
+export const CANONICAL_CATEGORY_KEYS = ['places', 'guides', 'movies', 'books', 'games', 'apps', 'products', 'people'] as const;
 
 /**
- * Owner account carrying all nine category rows, which toNavigationSnapshot requires
- * (it rejects anything that is not nine distinct categories and display orders).
+ * Owner account carrying all eight category rows (the music category was retired in
+ * P3-6); toNavigationSnapshot requires every known category exactly once.
  * `pins` lists canonical category keys in pinned order.
  */
 export function canonicalCategoryAccount(overrides: Partial<AccountDto> = {}, pins: readonly string[] = []): AccountDto {

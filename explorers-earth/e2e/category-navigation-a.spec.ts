@@ -10,7 +10,7 @@ import { expectTask6Shell, submitPinnedCategoryUnpublish, beginTask6FrameAudit, 
 // translates the same behavioural check (exact field value, exact pin order,
 // revision carried) into the canonical payload rather than dropping it.
 function preferenceWrite(before: ReturnType<typeof canonicalCategoryAccount>, change: { category?: string; isPublic?: boolean; pins?: string[] }) {
-  const fields = new Map<string,string>([...categories.map(category => [category.route, category.field] as [string,string]), ['music', 'public_music']]);
+  const fields = new Map<string,string>(categories.map(category => [category.route, category.field] as [string,string]));
   return { expectedRevision: before.revision, categories: before.categories.map(row => ({ ...row,
     ...(row.category === change.category ? { isPublic: change.isPublic } : {}),
     ...(change.pins ? { pinnedOrder: change.pins.includes(fields.get(row.category)!) ? change.pins.indexOf(fields.get(row.category)!) - 1 : null } : {}),
@@ -24,8 +24,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
     const options = { ...viewport, touch: viewport.width === 320 };
 
     const warmState = fixtureState({
-      public_music: 'Yes',
-      pinned_nav_tabs: ['public_profile', 'public_books', 'public_apps', 'public_music'],
+      pinned_nav_tabs: ['public_profile', 'public_books', 'public_apps'],
     }, 'public');
     seedTask6App(warmState);
     const warm = await openFixture(browser, baseURL!, warmState, options);
@@ -162,7 +161,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
       evidence.invalidNested = { state: 'themed not-published state', frames: nestedFrames };
     } finally { await closeFixture(routing); }
 
-    const exceptionState = fixtureState({ public_music: 'Yes', pinned_nav_tabs: ['public_profile', 'public_music'] }, 'public');
+    const exceptionState = fixtureState({ pinned_nav_tabs: ['public_profile'] }, 'public');
     const exception = await openFixture(browser, baseURL!, exceptionState, options);
     try {
       await exception.page.goto(`/${fixtureUser.username}/places/map`);
@@ -249,9 +248,8 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
 
 test('public shell continuity smoke covers every top-level destination', async ({ browser, baseURL }) => {
   test.setTimeout(180_000);
-  // The Music page is retired; its destination row stays in the shared list until the music category itself is removed.
-  const destinations = TOP_LEVEL_DESTINATIONS.filter(destination => destination.id !== 'music');
-  const state = fixtureState({ public_music: 'Yes' }, 'public');
+  const destinations = TOP_LEVEL_DESTINATIONS;
+  const state = fixtureState({}, 'public');
   const visitor = await openFixture(browser, baseURL!, state);
   const evidence: Record<string, unknown> = {};
   const pathFor = (route: string) => `/${fixtureUser.username}${route ? `/${route}` : ''}`;

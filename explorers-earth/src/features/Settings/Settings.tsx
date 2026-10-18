@@ -105,7 +105,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   const [pinnedNavTabsSectionOpen, setPinnedNavTabsSectionOpen] = useState<boolean>(false);
   const [languageSectionOpen, setLanguageSectionOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [unpublishTarget, setUnpublishTarget] = useState<{ category: Exclude<CategoryId, "public_music">; label: string } | null>(null);
+  const [unpublishTarget, setUnpublishTarget] = useState<{ category: CategoryId; label: string } | null>(null);
   const navigationSaving = categoryNavigation.busy || !categoryNavigation.authority;
   const isCategoryPending = (category: CategoryId) => (categoryNavigation.pending ?? []).some(
     (operation) => operation.kind === "category" && operation.category === category,
@@ -246,7 +246,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
     void categoryNavigation.request({ category: tabType as CategoryId, action: isPinned ? "pin" : "unpin" }, origin);
   };
 
-  const saveTabVisibility = async (tabType: Exclude<CategoryId, "public_music">, isVisible: boolean, wasPinned = false) => {
+  const saveTabVisibility = async (tabType: CategoryId, isVisible: boolean, wasPinned = false) => {
     const origin = categoryNavigation.authority;
     if (!origin || isCategoryPending(tabType)) return undefined;
     const outcome = await categoryNavigation.request({ category: tabType, action: isVisible ? "publish" : "unpublish" }, origin);
@@ -281,8 +281,8 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   };
 
   const handleTabVisibilityUpdate = (tabType: string, label: string, isVisible: boolean) => {
-    if (tabType === "public_music" || !CATEGORY_IDS.includes(tabType as CategoryId)) return;
-    const category = tabType as Exclude<CategoryId, "public_music">;
+    if (!CATEGORY_IDS.includes(tabType as CategoryId)) return;
+    const category = tabType as CategoryId;
     if (!isVisible && isTabPinned(category)) {
       setUnpublishTarget({ category, label });
       return;

@@ -140,9 +140,8 @@ it('preserves every currently permitted descriptive metadata field without expos
     const summary = await service.getCreatorAnalytics(f.actor, { from: new Date(Date.now() - 60000).toISOString(), to: new Date(Date.now() + 60000).toISOString() });
     expect(JSON.stringify(summary)).not.toContain('Visible title');
 });
-it('retired Music analytics: both Music routes answer 410 and a public-music event is refused (P3-5)', async () => {
+it('retired Music analytics: both Music routes answer 410 and a public-music event is refused (P3-5, P3-6)', async () => {
     const f = await fixture(), app = createCanonicalApp(pool, resolveExplorersAuthConfig({ EXPLORERS_PUBLIC_ORIGIN: 'http://127.0.0.1:51474', EXPLORERS_AUTH_SECRET: 'music-analytics-fixture-'.repeat(3), GOOGLE_CLIENT_ID: 'fixture', GOOGLE_CLIENT_SECRET: 'fixture' })).app;
-    await pool.query("INSERT INTO account_category_settings(account_id,category,is_public,display_order) VALUES($1,'music',true,1) ON CONFLICT (account_id,category) DO UPDATE SET is_public=true", [f.accountId]);
     const body = { consent: true, eventId: `music-event-${randomUUID()}`, event: { name: 'playlist_opened' } };
     expect((await request(app).post(`/api/explorers/analytics/music/music-${randomUUID()}/events`).send(body)).status).toBe(410);
     expect((await request(app).post(`/api/explorers/analytics/music-account/legacy-${randomUUID()}/events`).send(body)).status).toBe(410);
