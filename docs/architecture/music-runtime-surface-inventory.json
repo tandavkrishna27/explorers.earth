@@ -394,7 +394,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 69
+      "line": 78
     },
     {
       "method": "USE",
@@ -404,7 +404,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 70
+      "line": 80
     },
     {
       "method": "ALL",
@@ -414,7 +414,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 77
+      "line": 87
     },
     {
       "method": "ALL",
@@ -424,7 +424,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 78
+      "line": 88
     },
     {
       "method": "GET",
@@ -434,7 +434,17 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 82
+      "line": 92
+    },
+    {
+      "method": "GET",
+      "path": "/health/ready",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/auth/canonicalApp.ts",
+      "line": 94
     },
     {
       "method": "POST",
@@ -444,7 +454,7 @@
       "policy": "trusted-origin+signed-short-lived-recovery-intent",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 119
+      "line": 145
     },
     {
       "method": "GET",
@@ -454,7 +464,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 137
+      "line": 163
     },
     {
       "method": "GET",
@@ -525,6 +535,16 @@
       "lifecycle": "request",
       "source": "tunes/server/publicProfile/localPublicProfileGatewayApp.ts",
       "line": 28
+    },
+    {
+      "method": "ALL",
+      "path": "/{*canonicalRetiredPath}",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/canonicalRetiredSurfaceRoutes.ts",
+      "line": 24
     },
     {
       "method": "PATCH",
@@ -1818,6 +1838,36 @@
     },
     {
       "method": "GET",
+      "path": "/robots.txt",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersSeoRoutes.ts",
+      "line": 115
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers-sitemap.xml",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersSeoRoutes.ts",
+      "line": 140
+    },
+    {
+      "method": "GET",
+      "path": "/sitemap.xml",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersSeoRoutes.ts",
+      "line": 141
+    },
+    {
+      "method": "GET",
       "path": "/api/music/features",
       "classification": "local-music-owner",
       "ownerSource": "req.musicPrincipal.musicUserId",
@@ -2520,7 +2570,7 @@
       "kind": "setInterval",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/auth/canonicalStartup.ts",
-      "line": 60
+      "line": 63
     },
     {
       "kind": "setTimeout",

@@ -36,6 +36,18 @@ function authorityEnvironment(overrides: NodeJS.ProcessEnv = {}): NodeJS.Process
   };
 }
 
+// The custody predicate branches on the runtime platform, so every accepted spelling in
+// this suite has to follow it. A fixed Windows path on Linux is exactly the shape the
+// POSIX branch is built to refuse, and pinning one would assert that the Linux lane can
+// never acquire a database - the defect this suite should catch, not encode. The
+// filesystem is injected throughout, so neither spelling is ever touched on disk.
+const windowsHost = process.platform === "win32";
+// The POSIX spelling deliberately carries an uppercase segment. Two cases in this suite
+// simulate a custody mismatch with `passwordFile.toLowerCase()`, which only differs from
+// the original when the path is not already lower case - an all-lowercase POSIX path made
+// those mutations no-ops and the calls resolved instead of refusing.
+const ownedSecretPath = (name: string) => windowsHost ? `C:\\Users\\TK\\fixture\\${name}` : `/home/runner/Fixture/${name}`;
+
 function ownedInspect() {
   return {
     Id: containerId,
@@ -67,7 +79,7 @@ function ownedInspect() {
 }
 
 describe("staged owned UAT database acquisition", () => {
-  const passwordFile = String.raw`C:\Users\TK\fixture\current-secret`;
+  const passwordFile = ownedSecretPath("current-secret");
   const input = { runId, database, commit, port: 58543, passwordFile };
   const ok = (stdout = "") => ({ status: 0, stdout, timedOut: false });
   function deferred<T>() {
@@ -91,6 +103,7 @@ describe("staged owned UAT database acquisition", () => {
     let image = imageId;
     let readFailure = "";
     let now = 0;
+    const lstatPaths: string[] = [];
     const timers = new Map<number, { at: number; callback: () => void }>();
     let timerId = 0;
     const dependencies = {
@@ -118,13 +131,14 @@ describe("staged owned UAT database acquisition", () => {
       },
       fileSystem: {
         realpath: (path: string) => path === passwordFile ? canonical : path,
-        lstat: (path: string) => ({ dev: 1n, ino: path === passwordFile ? inode : ancestorInode,
+        lstat: (path: string) => (lstatPaths.push(path), { dev: 1n, ino: path === passwordFile ? inode : ancestorInode,
           mode: 0o600n, uid: 1n, gid: 1n, size: 32n, nlink: 1n, mtimeNs: 1n, ctimeNs: 1n,
           isFile: () => path === passwordFile, isDirectory: () => path !== passwordFile,
           isSymbolicLink: () => false }),
       },
     };
-    return { dependencies, commands, setInspect: (value: typeof inspect) => { inspect = value; },
+    return { dependencies, commands, custodyPaths: () => [...lstatPaths],
+      setInspect: (value: typeof inspect) => { inspect = value; },
       getInspect: () => inspect, setAbsent: (value: typeof absent) => { absent = value; },
       setCreation: (value: typeof creation) => { creation = value; },
       setRemoval: (value: typeof removal) => { removal = value; },
@@ -349,12 +363,30 @@ describe("staged owned UAT database acquisition", () => {
     await expect(stage.dispose(async () => {})).rejects.toThrow();
     expect(f.commands.filter(a => a.includes("ls"))).toHaveLength(1);
   });
+  // Every spelling below is refused on both platforms. The Windows-shaped ones are not
+  // absolute under POSIX and the POSIX-shaped ones are not absolute under Windows, so
+  // each list also proves the other branch rejects the foreign shape outright rather
+  // than reinterpreting it.
   it.each([String.raw`c:\Users\TK\fixture\current-secret`, "C:/Users/TK/fixture/current-secret",
     String.raw`C:\Users\TK\fixture\..\current-secret`, String.raw`C:\Users\TK\fixture\\current-secret`,
-    String.raw`\\host\secret`, String.raw`C:\Users\TK\fixture\current-secret:stream`])(
+    String.raw`\\host\secret`, String.raw`C:\Users\TK\fixture\current-secret:stream`,
+    "home/runner/fixture/current-secret", "/home/runner/fixture/../current-secret",
+    "/home/runner/fixture//current-secret", "/home/runner/fixture/./current-secret",
+    "/home/runner/fixture/current,secret", "/home/runner/fixture/current:secret",
+    String.raw`/home/runner/fixture/current\secret`, "/home/runner/fixture/current\u0000secret",
+    "/home/runner/fixture/current\u001fsecret", "/home/runner/fixture/current\u007fsecret", "/", ""])(
     "refuses unknown canonical custody spelling %s", async path => {
       const f = fixture(); await expect(prepareOwnedUatDatabaseAcquisition({ ...input, passwordFile: path }, f.dependencies)).rejects.toThrow();
     });
+  it("walks the accepted secret's ancestors to the platform root", async () => {
+    const f = fixture(); const stage = await prepareOwnedUatDatabaseAcquisition(input, f.dependencies);
+    expect(stage.intent.passwordFile).toBe(passwordFile);
+    // The predicate runs twice (retained, then fresh), so the same chain is walked twice;
+    // the distinct order is what states "walks to the platform root".
+    expect([...new Set(f.custodyPaths())]).toEqual(windowsHost
+      ? [String.raw`C:\Users\TK\fixture\current-secret`, String.raw`C:\Users\TK\fixture`, String.raw`C:\Users\TK`, String.raw`C:\Users`, "C:\\"]
+      : ["/home/runner/Fixture/current-secret", "/home/runner/Fixture", "/home/runner", "/home", "/"]);
+  });
 });
 
 describe("owned Task-4 UAT database lane", () => {
@@ -755,7 +787,7 @@ describe("owned Task-4 UAT database lane", () => {
 });
 
 describe('readonly staged owned database attestation',()=>{
- const passwordFile=String.raw`C:\Users\TK\fixture\current-secret`,authority={owned:true as const,runId,database,commit,containerId,port:58543,imageId,contextHost};
+ const passwordFile=ownedSecretPath("current-secret"),authority={owned:true as const,runId,database,commit,containerId,port:58543,imageId,contextHost};
  function fixture(){let inspect={...ownedInspect(),Config:{...ownedInspect().Config,Image:imageId},Mounts:[{...ownedInspect().Mounts[0],Source:passwordFile}]},host=contextHost,image=imageId,inode=1n,ancestor=2n;const reads:string[][]=[];const dependencies={dockerRead:(args:string[])=>{reads.push([...args]);if(args[0]==='context'&&args[1]==='show')return'desktop-linux';if(args[0]==='context')return JSON.stringify(host);if(args.includes('image'))return image;return JSON.stringify(inspect);},fileSystem:{realpath:(path:string)=>path,lstat:(path:string)=>({dev:1n,ino:path===passwordFile?inode:ancestor,mode:0o600n,uid:1n,gid:1n,size:32n,nlink:1n,mtimeNs:1n,ctimeNs:1n,isFile:()=>path===passwordFile,isDirectory:()=>path!==passwordFile,isSymbolicLink:()=>false})}};return{dependencies,reads,get inspect(){return inspect;},set inspect(value){inspect=value;},set host(value:string){host=value;},set image(value:string){image=value;},mutateSecret(){inode++;},mutateAncestor(){ancestor++;}};}
  it('accepts the actual pinned staged image while legacy tagged attestation continues refusing it',async()=>{const module=await import('../../../scripts/music-uat-database'),f=fixture();expect(()=>module.attestUatDatabaseAuthority(authorityEnvironment(),commit,{dockerRead:f.dependencies.dockerRead})).toThrow();expect(module.attestOwnedStagedUatDatabaseAuthority).toBeTypeOf('function');expect(module.attestOwnedStagedUatDatabaseAuthority(authority,passwordFile,f.dependencies)).toEqual(authority);expect(f.reads.every(args=>!args.some(arg=>['run','rm','create','start','stop'].includes(arg)))).toBe(true);expect(f.reads.some(args=>args.includes('image')&&args.at(-1)===imageId)).toBe(true);});
  it.each(['cid','commit','image','context','mount','health'] as const)('refuses foreign %s without mutation',async mode=>{const module=await import('../../../scripts/music-uat-database'),f=fixture();if(mode==='cid')f.inspect={...f.inspect,Id:'d'.repeat(64)};if(mode==='commit')f.inspect.Config.Labels['com.explorers.music.commit']='d'.repeat(40);if(mode==='image')f.image='sha256:'+'d'.repeat(64);if(mode==='context')f.host='npipe:////./pipe/docker_engine';if(mode==='mount')f.inspect.Mounts[0].Source=passwordFile+'-foreign';if(mode==='health')f.inspect.State.Health.Status='unhealthy';expect(()=>module.attestOwnedStagedUatDatabaseAuthority(authority,passwordFile,f.dependencies)).toThrow();});
