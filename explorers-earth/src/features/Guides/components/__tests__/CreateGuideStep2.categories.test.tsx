@@ -88,3 +88,15 @@ it("does not add whitespace as a category", () => {
   search("   ");
   expect(screen.queryByRole("button", { name: /^Add /i })).not.toBeInTheDocument();
 });
+
+// Budget Type is optional: a guide with no tier chosen moves on and carries null.
+it("continues without a budget type and passes null", () => {
+  history.length = 0;
+  const onNext = vi.fn();
+  render(<CreateGuideStep2 onBack={() => {}} onNext={onNext} initialNumberOfDays={3}
+    initialCategories={["Food", "Trekking", "Budget", "Family"]} />);
+  expect(screen.getByText(/\(optional\)/i)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /next/i }));
+  expect(screen.queryByText(/please select a budget type/i)).not.toBeInTheDocument();
+  expect(onNext).toHaveBeenCalledWith(expect.objectContaining({ budgetType: null, numberOfDays: 3 }));
+});

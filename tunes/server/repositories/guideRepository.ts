@@ -44,7 +44,7 @@ function mapWriteFailure(error:unknown):never{
  throw error;
 }
 
-const DETAIL_COLUMNS=`guide_type,multi_city,number_of_days,estimated_budget::text AS estimated_budget,budget_currency,budget_type,
+const DETAIL_COLUMNS=`guide_type,multi_city,number_of_days,estimated_budget::text AS estimated_budget,budget_currency,budget_type,budget_tier,
  best_time_to_visit,categories,tags,tips_notes,place_snapshot,location_entity_id`;
 
 /**
@@ -58,7 +58,7 @@ export async function readGuideDetails(db:Pick<Pool,'query'>,collectionId:string
  if(!row)return null;
  const parsed=guideCollectionDetailsSchema.safeParse({
   guideType:row.guide_type,multiCity:row.multi_city,numberOfDays:row.number_of_days,
-  estimatedBudget:row.estimated_budget,budgetCurrency:row.budget_currency,budgetType:row.budget_type,
+  estimatedBudget:row.estimated_budget,budgetCurrency:row.budget_currency,budgetType:row.budget_type,budgetTier:row.budget_tier,
   bestTimeToVisit:row.best_time_to_visit,categories:row.categories,tags:row.tags,tipsNotes:row.tips_notes,
   place:row.place_snapshot,locationEntityId:row.location_entity_id,
  });
@@ -152,17 +152,17 @@ export async function writeGuideDetails(db:PoolClient,collectionId:string,accoun
  await lockGuideAtRevision(db,collectionId,accountId,revision);
  try{
   await db.query(`INSERT INTO guide_collection_details(collection_id,account_id,guide_type,multi_city,number_of_days,
-    estimated_budget,budget_currency,budget_type,best_time_to_visit,categories,tags,tips_notes,place_snapshot,location_entity_id)
-   VALUES($1,$2,$3,$4,$5,$6::numeric,$7,$8,$9::jsonb,$10::jsonb,$11::jsonb,$12::jsonb,$13::jsonb,$14)
+    estimated_budget,budget_currency,budget_type,best_time_to_visit,categories,tags,tips_notes,place_snapshot,location_entity_id,budget_tier)
+   VALUES($1,$2,$3,$4,$5,$6::numeric,$7,$8,$9::jsonb,$10::jsonb,$11::jsonb,$12::jsonb,$13::jsonb,$14,$15)
    ON CONFLICT(collection_id) DO UPDATE SET guide_type=excluded.guide_type,multi_city=excluded.multi_city,
     number_of_days=excluded.number_of_days,estimated_budget=excluded.estimated_budget,budget_currency=excluded.budget_currency,
     budget_type=excluded.budget_type,best_time_to_visit=excluded.best_time_to_visit,categories=excluded.categories,
     tags=excluded.tags,tips_notes=excluded.tips_notes,place_snapshot=excluded.place_snapshot,
-    location_entity_id=excluded.location_entity_id`,
+    location_entity_id=excluded.location_entity_id,budget_tier=excluded.budget_tier`,
    [collectionId,accountId,details.guideType,details.multiCity,details.numberOfDays,details.estimatedBudget,
     details.budgetCurrency,details.budgetType,JSON.stringify(details.bestTimeToVisit),JSON.stringify(details.categories),
     JSON.stringify(details.tags),details.tipsNotes===null?null:JSON.stringify(details.tipsNotes),
-    JSON.stringify(details.place),details.locationEntityId]);
+    JSON.stringify(details.place),details.locationEntityId,details.budgetTier]);
  }catch(error){mapWriteFailure(error);}
 }
 
