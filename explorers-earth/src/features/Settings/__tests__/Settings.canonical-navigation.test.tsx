@@ -88,5 +88,22 @@ describe('Settings canonical navigation', () => {
     expect(loadedWrites).toContain(false);
     expect(screen.queryByRole('checkbox', { name: 'Pin Games Tab' })).toBeNull();
   });
+  it('keeps keyboard focus on a pin checkbox while its save is in flight', async () => {
+    const h = surfaceHarness(<Settings />, { initial: { pinned_nav_tabs: ['public_profile', 'public_games'] } }); await h.ready();
+    const pin = await screen.findByRole('checkbox', { name: 'Pin Games Tab' });
+    await waitFor(() => expect(pin).toBeEnabled());
+    // jsdom keeps focus on a control that becomes disabled; real browsers drop it to <body>.
+    const dropFocusWhenDisabled = new MutationObserver(records => records.forEach(record => {
+      const target = record.target as HTMLInputElement;
+      if (target === document.activeElement && target.disabled) target.blur();
+    }));
+    dropFocusWhenDisabled.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['disabled'] });
+    pin.focus(); fireEvent.click(pin);
+    await waitFor(() => expect(h.writes).toHaveLength(1));
+    // The control is disabled while saving (dropping focus to <body>); focus must come back.
+    await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Pin Games Tab' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Pin Games Tab' })).toHaveFocus());
+    dropFocusWhenDisabled.disconnect();
+  });
 });
 

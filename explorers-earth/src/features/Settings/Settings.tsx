@@ -232,9 +232,23 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
     if (origin && !navigationSaving) void categoryNavigation.setAutoPinning(enabled, origin);
   };
 
+  // The pin checkbox is disabled while its save is in flight, and the browser drops focus to
+  // <body> from a control that becomes disabled. Remember which pin had focus and hand it back
+  // when the save settles so keyboard users can keep toggling or Tab on from the same place.
+  const pinFocusKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (categoryNavigation.busy || !pinFocusKey.current) return;
+    const key = pinFocusKey.current;
+    pinFocusKey.current = null;
+    const control = document.querySelector<HTMLInputElement>(`input[data-nav-pin-key="${key}"]`);
+    if (control && !control.disabled && document.activeElement !== control) control.focus();
+  }, [categoryNavigation.busy, navigationSaving]);
+
   const handleNavPinUpdate = (tabType: string, isPinned: boolean) => {
     const origin = categoryNavigation.authority;
     if (!origin || navigationSaving || isAutoPinningEnabled || !CATEGORY_IDS.includes(tabType as CategoryId)) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLInputElement && active.dataset.navPinKey === tabType) pinFocusKey.current = tabType;
     void categoryNavigation.request({ category: tabType as CategoryId, action: isPinned ? "pin" : "unpin" }, origin);
   };
 
@@ -751,6 +765,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                                         aria-label={`Pin ${label}`}
                                         className="sr-only peer"
                                         checked={isPinned}
+                                        data-nav-pin-key={key}
                                         disabled={(!isEnabled && !isPinned) || navigationSaving || isProfile || isAutoPinningEnabled}
                                         onChange={(e) => handleNavPinUpdate(key, e.target.checked)}
                                       />
