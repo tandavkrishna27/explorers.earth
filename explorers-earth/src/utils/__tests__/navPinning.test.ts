@@ -161,3 +161,28 @@ describe("computePinnedNavTabIds — manual mode", () => {
     expect(pinned.length).toBeLessThan(MAX_NAV_SLOTS);
   });
 });
+
+describe("empty public categories", () => {
+  const account = {
+    auto_pinning: false,
+    pinned_nav_tabs: ["public_guides", "public_movie", "public_games"],
+    public_guides: "Yes", public_movie: "Yes", public_games: "Yes",
+  };
+
+  it("hides a pinned tab from visitors while its category has no public content, keeping the pin", () => {
+    const shell = { ...account, public_navigation_counts: { public_guides: 0, public_movie: 2, public_games: 0 } };
+    expect(computePinnedNavTabIds(shell, ZERO_COUNTS)).toEqual(["public_profile", "public_movie"]);
+    expect(normalizePinnedTabs(shell)).toEqual(["public_profile", "public_guides", "public_movie", "public_games"]);
+  });
+
+  it("brings the tab back as soon as the category has public content again", () => {
+    const shell = { ...account, public_navigation_counts: { public_guides: 1, public_movie: 2, public_games: 0 } };
+    expect(computePinnedNavTabIds(shell, ZERO_COUNTS)).toEqual(["public_profile", "public_guides", "public_movie"]);
+  });
+
+  it("hides empty categories in auto mode too, and keeps every tab when counts are unknown", () => {
+    const auto = { ...account, auto_pinning: true, public_navigation_counts: { public_guides: 0, public_movie: 3, public_games: 0 } };
+    expect(computePinnedNavTabIds(auto, ZERO_COUNTS)).toEqual(["public_profile", "public_movie"]);
+    expect(computePinnedNavTabIds(account, ZERO_COUNTS)).toEqual(["public_profile", "public_guides", "public_movie", "public_games"]);
+  });
+});
