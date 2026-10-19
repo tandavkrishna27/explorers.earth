@@ -167,6 +167,7 @@ describe("PublicHome Places category states", () => {
     state.shell = { data: account, loading: false, error: null, refetch: vi.fn().mockResolvedValue(undefined) };
     state.places = { data: undefined, loading: false, error: null, refetch: vi.fn().mockResolvedValue(undefined) };
     state.mapsApiLoaded = false;
+    delete (window as any).google;
     state.modalRenders = [];
   });
 
@@ -370,8 +371,9 @@ describe("PublicHome Places category states", () => {
     expect(await screen.findByTestId("place-card")).toHaveTextContent("Charminar");
     expect(screen.queryByText("Aki")).not.toBeInTheDocument();
     expect(screen.queryByText("Travel Bag")).not.toBeInTheDocument();
-    await click(screen.getByRole("button", { name: "People" }));
-    expect(screen.getByText("No People linked to this location.")).toBeVisible();
+    // A tab with nothing to show is not offered at all.
+    expect(screen.queryByRole("button", { name: "People" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Products/ })).not.toBeInTheDocument();
   });
 
   it("renders valid linked siblings while discarding primitive recommendation entries", async () => {
@@ -400,9 +402,9 @@ describe("PublicHome Places category states", () => {
     state.places.data = { recommendationLists: [updated] };
     await act(async () => { view.rerender(placesTree("/alice/places/tokyo")); });
     expect(screen.queryByText("Aki")).not.toBeInTheDocument();
-    expect(screen.getByText("No People linked to this location.")).toBeVisible();
-    await click(screen.getByRole("button", { name: "Products" }));
-    expect(screen.getByText("No Products linked to this location.")).toBeVisible();
+    // The emptied tabs disappear and the view falls back to Places.
+    expect(screen.queryByRole("button", { name: /People/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Products/ })).not.toBeInTheDocument();
     expect(screen.queryByText("Travel Bag")).not.toBeInTheDocument();
   });
 
@@ -447,7 +449,21 @@ describe("PublicHome Places category states", () => {
     expect(screen.getAllByTestId("place-card")).toHaveLength(4);
   });
 
+  it("shows the no-map fallback, not the map, when Maps loaded without a usable marker library", async () => {
+    state.mapsApiLoaded = true;
+    state.places = {
+      ...state.places,
+      data: { recommendationLists: [list("tokyo", "Tokyo", [place("tokyo-1", "Tokyo Tower")])] },
+    };
+
+    renderPlaces();
+
+    expect((await screen.findAllByText("Map preview unavailable")).length).toBeGreaterThan(0);
+    expect(screen.queryAllByTestId("live-map-preview")).toHaveLength(0);
+  });
+
   it("renders the live map preview when the Maps provider is ready", async () => {
+    (window as any).google = { maps: { marker: { AdvancedMarkerElement: class {} } } };
     state.mapsApiLoaded = true;
     state.places = {
       ...state.places,

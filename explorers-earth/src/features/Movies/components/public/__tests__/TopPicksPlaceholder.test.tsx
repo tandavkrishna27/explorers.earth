@@ -6,6 +6,8 @@ import { FALLBACK_POSTER } from "../../../utils/moviePoster";
 
 const movie = { documentId: "m1", title: "No Poster", poster_path: null, backdrop_path: null, genres: [], runtime: null, year: "2020" } as never;
 
+Element.prototype.scrollIntoView = vi.fn();
+
 describe("Top Picks heroes for a movie without artwork", () => {
   it("uses the shared placeholder instead of a remote image", () => {
     for (const ui of [
