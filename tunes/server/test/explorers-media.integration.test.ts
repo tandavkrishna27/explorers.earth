@@ -295,10 +295,9 @@ describe("private local media", () => {
     expect(published.status).toBe(200);
     const servedPublicly = await request(composed.app).get(url);
     expect(servedPublicly.status).toBe(200);
-    // Public bytes are cacheable, so a repeat view does not re-download them through this
-    // server. The window is short because it also bounds how long an unpublished image can
-    // still be handed out by a shared cache.
-    expect(servedPublicly.headers["cache-control"]).toBe("public, max-age=300, must-revalidate");
+    // Public bytes may be kept by a cache but must be revalidated on every use, so an
+    // unpublished image answers 404 on the next request instead of lingering for a max-age window.
+    expect(servedPublicly.headers["cache-control"]).toBe("public, no-cache");
     expect(servedPublicly.headers.etag).toBeTruthy();
     // Past the window, revalidation costs a request and no bytes. Under no-store a browser
     // kept no ETag, so this branch was unreachable from one.

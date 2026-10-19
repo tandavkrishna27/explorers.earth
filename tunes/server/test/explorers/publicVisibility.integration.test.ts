@@ -361,7 +361,7 @@ describe("ticket 7.1 - public visibility against real PostgreSQL", () => {
     const etag = served.get("ETag");
     // A public attachment is cacheable, which is exactly why the denial below has to be
     // independent of any cached page - the bytes carry their own revalidation.
-    expect(served.get("Cache-Control")).toContain("must-revalidate");
+    expect(served.get("Cache-Control")).toBe("public, no-cache");
 
     await pool.query(
       `UPDATE recommendations SET publication_state='draft' WHERE id=$1`, [seeded.ids[0]]);

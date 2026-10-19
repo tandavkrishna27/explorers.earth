@@ -112,7 +112,7 @@ async function positive(media: Asset, entitlement: "public" | "owner", cookie?: 
   const response = cookie ? await request(composed.app).get(media.url).set("cookie", cookie) : await request(composed.app).get(media.url);
   expect(response.status).toBe(200);
   expect(response.body).toEqual(png);
-  expect(response.headers["cache-control"]).toBe(entitlement === "owner" ? "no-store" : "public, max-age=300, must-revalidate");
+  expect(response.headers["cache-control"]).toBe(entitlement === "owner" ? "no-store" : "public, no-cache");
   expect(response.headers.etag).toBe(`"${createHash("sha256").update(png).digest("hex")}"`);
   return response.headers.etag as string;
 }
