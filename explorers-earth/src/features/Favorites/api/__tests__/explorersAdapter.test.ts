@@ -1,5 +1,6 @@
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 import {PlacesClient} from '../placesClient';
+import {ExplorersApiError} from '../../../../lib/explorersApiClient';
 import {readPlacesOwnerContent} from '../explorersAdapter';
 import useAuthStore from '../../../../store/store';
 
@@ -101,5 +102,20 @@ describe('Places owner read orchestration',()=>{
   const caller=new AbortController(),remove=vi.spyOn(caller.signal,'removeEventListener');
   await readPlacesOwnerContent(caller.signal);
   expect(remove).toHaveBeenCalledTimes(1);expect(PlacesClient.readCompleteOwner).toHaveBeenCalledTimes(2);
+ });
+ it('does not hydrate archived lists, so a deleted list cannot blank the owner read',async()=>{
+  const snapshot={...observed(0,3),collections:[{id:'live',revision:1,archived:false},{id:'gone',revision:1,archived:true},{id:'live2',revision:1}]};
+  vi.mocked(PlacesClient.readCompleteOwner).mockResolvedValue(snapshot as never);
+  vi.mocked(PlacesClient.observeCollection).mockImplementation(async id=>{if(id==='gone')throw new ExplorersApiError(404,'NOT_FOUND','missing');return fresh();});
+  const value=await readPlacesOwnerContent();
+  expect(PlacesClient.observeCollection).not.toHaveBeenCalledWith('gone',expect.anything());
+  expect([...value.lists.keys()].sort()).toEqual(['live','live2']);
+ });
+
+ it('skips a list that returns 404 mid-read instead of failing the page',async()=>{
+  vi.mocked(PlacesClient.readCompleteOwner).mockResolvedValue({...observed(0,2),collections:[{id:'a',revision:1},{id:'b',revision:1}]} as never);
+  vi.mocked(PlacesClient.observeCollection).mockImplementation(async id=>{if(id==='a')throw new ExplorersApiError(404,'NOT_FOUND','missing');return fresh();});
+  const value=await readPlacesOwnerContent();
+  expect([...value.lists.keys()]).toEqual(['b']);
  });
 });
