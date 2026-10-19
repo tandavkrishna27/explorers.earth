@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useApolloClient } from "@apollo/client";
-import useAuthStore from "../store/store";
+import useAuthStore, { broadcastSessionLogout } from "../store/store";
 import { queryClient } from "../lib/queryClient";
 import { authClient } from "../lib/authClient";
 import useSetupStore from "../store/useSetupStore";
@@ -22,6 +22,7 @@ export const useLogout = () => {
   return async (options: { serverRevoked?: boolean } = {}) => {
     const logoutAttemptId = useAuthStore.getState().setLogoutError(true);
     logout();
+    broadcastSessionLogout();
 
     // Clear all explorers storage
     localStorage.removeItem("auth-storage");

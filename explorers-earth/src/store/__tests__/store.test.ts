@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import useAuthStore from '../store';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import useAuthStore, { broadcastSessionLogout } from '../store';
 
 describe('useAuthStore', () => {
   const initialData = {
@@ -106,5 +106,37 @@ describe('useAuthStore', () => {
       id: 'account-a', userId: 'user-a', username: 'A', email: 'a@example.invalid', onboardingStatus: 'complete', revision: 1,
     });
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
+  });
+
+  it('signs this tab out when another tab announces a logout, once per event', () => {
+    // Regression: the Music session boundary carried this until P3-4 removed it, after
+    // which a receiving tab kept rendering owner pages on a revoked session.
+    useAuthStore.getState().login(initialData);
+    const before = useAuthStore.getState().generation;
+    window.dispatchEvent(new StorageEvent('storage', { key: 'explorers-session-logout', newValue: 'event-1' }));
+    expect(useAuthStore.getState()).toMatchObject({ status: 'signed-out', isAuthenticated: false, user: null });
+    expect(useAuthStore.getState().generation).toBe(before + 1);
+    useAuthStore.getState().login(initialData);
+    window.dispatchEvent(new StorageEvent('storage', { key: 'explorers-session-logout', newValue: 'event-1' }));
+    expect(useAuthStore.getState().isAuthenticated).toBe(true);
+  });
+
+  it('ignores the storage removal that follows an announcement', () => {
+    useAuthStore.getState().login(initialData);
+    window.dispatchEvent(new StorageEvent('storage', { key: 'explorers-session-logout', newValue: null }));
+    expect(useAuthStore.getState().isAuthenticated).toBe(true);
+  });
+
+  it('announces a logout to other tabs without signing out the announcing tab twice', () => {
+    const setItem = vi.spyOn(localStorage, 'setItem');
+    useAuthStore.getState().login(initialData);
+    broadcastSessionLogout();
+    const announced = setItem.mock.calls.find(([key]) => key === 'explorers-session-logout');
+    expect(announced?.[1]).toEqual(expect.any(String));
+    expect(localStorage.getItem('explorers-session-logout')).toBeNull();
+    // Its own id is already seen, so an echo cannot bump this tab's generation.
+    window.dispatchEvent(new StorageEvent('storage', { key: 'explorers-session-logout', newValue: announced![1] }));
+    expect(useAuthStore.getState().isAuthenticated).toBe(true);
+    setItem.mockRestore();
   });
 });

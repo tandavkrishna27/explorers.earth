@@ -149,7 +149,35 @@ const useAuthStore = create<AuthState>()(
   )
 );
 
+// A logout in one tab signs out every other open tab: the session cookie they share is
+// already gone, so they must not keep rendering owner pages. Both transports carry the
+// same event id (BroadcastChannel where available, a storage ping everywhere), and a
+// tab never receives its own BroadcastChannel post or storage event.
+const sessionLogoutKey = "explorers-session-logout";
+const seenSessionLogouts = new Set<string>();
+const sessionLogoutChannel = typeof window !== "undefined" && typeof BroadcastChannel !== "undefined"
+  ? new BroadcastChannel(sessionLogoutKey) : undefined;
+
+function receiveSessionLogout(eventId: unknown): void {
+  if (typeof eventId !== "string" || !eventId || seenSessionLogouts.has(eventId)) return;
+  seenSessionLogouts.add(eventId);
+  if (useAuthStore.getState().status !== "signed-out") useAuthStore.getState().logout();
+}
+
+export function broadcastSessionLogout(): void {
+  const eventId = crypto.randomUUID();
+  seenSessionLogouts.add(eventId);
+  sessionLogoutChannel?.postMessage(eventId);
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(sessionLogoutKey, eventId);
+    localStorage.removeItem(sessionLogoutKey);
+  }
+}
+
+sessionLogoutChannel?.addEventListener("message", (event) => receiveSessionLogout(event.data));
+
 if (typeof window !== "undefined") window.addEventListener("storage", (event) => {
+  if (event.key === sessionLogoutKey) { receiveSessionLogout(event.newValue); return; }
   if (event.key !== logoutMarker) return;
   const current = pendingServerLogout();
   useAuthStore.setState({ logoutError: current !== null, logoutAttemptId: current });
