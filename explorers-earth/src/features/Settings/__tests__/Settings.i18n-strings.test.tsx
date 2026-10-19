@@ -35,6 +35,9 @@ describe("Settings and lifecycle dialog strings", () => {
     const flat = (o: Record<string, unknown>, p = ""): [string, string][] =>
       Object.entries(o).flatMap(([k, v]) => typeof v === "object" ? flat(v as Record<string, unknown>, p + k + ".") : [[p + k, String(v)] as [string, string]]);
     const sp = new Map(flat(spanish));
-    for (const [key, value] of flat(english)) expect(sp.get(key), key).toBeTruthy(), expect(sp.get(key), key).not.toBe(value === "Retry" ? "x" : value);
+    for (const [key, value] of flat(english)) {
+      expect(sp.get(key), key).toBeTruthy();
+      expect(sp.get(key), key).not.toBe(value);
+    }
   });
 });

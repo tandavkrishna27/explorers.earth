@@ -30,11 +30,11 @@ it('uses native sector pages beyond 24 and later lists, default label, canonical
  fireEvent.click(screen.getByText('Person 25'));expect(screen.getByRole('dialog').textContent).toBe('handle25|Pune|Code|x|note25');
  expect(screen.getAllByText(/^Person \d+$/)).toHaveLength(25);
 });
-it('keeps a known empty sector valid and unknown404 unavailable without an empty-sector message',async()=>{
+it('keeps a known empty sector valid and unknown404 not-found without an empty-sector message',async()=>{
  mocks.gateway.peopleSectorPage.mockResolvedValue(page([]));mount('/reader/people/sector/canonical-sector');
  await waitFor(()=>expect(screen.getByText('No people recommended in this sector.')).toBeTruthy());cleanup();
  mocks.gateway.peopleSectorPage.mockRejectedValue(Error('PUBLIC_PROFILE_404'));mount('/reader/people/sector/missing');
- await waitFor(()=>expect(screen.getByText('People sector unavailable')).toBeTruthy());expect(screen.queryByText('No people recommended in this sector.')).toBeNull();
+ await waitFor(()=>expect(screen.getByText('Not found')).toBeTruthy());expect(screen.queryByText('No people recommended in this sector.')).toBeNull();expect(screen.queryByRole('button',{name:'Retry'})).toBeNull();
 });
 it('withdraws an open sector modal immediately on public invalidation and ignores late response',async()=>{
  let late!:(p:any)=>void;mocks.gateway.peopleSectorPage.mockResolvedValueOnce(page([person(1)])).mockImplementationOnce(()=>new Promise(resolve=>{late=resolve}));
@@ -58,7 +58,7 @@ it('revokes overview modal and all public rows on eligibility loss',async()=>{
  const list={documentId:id(200),List_Name:'List',slug:'list',recommended_people:[person(1)],recommended_people_next_cursor:null};mocks.gateway.category.mockResolvedValue({personLists:[list]});
  const view=mount('/reader/people');await waitFor(()=>expect(screen.getByText('Person 1')).toBeTruthy());fireEvent.click(screen.getByText('Person 1'));expect(screen.getByRole('dialog')).toBeTruthy();
  mocks.shell.data.public_people='No';view.rerender(<MemoryRouter initialEntries={['/reader/people']}><Path/><Routes><Route path="/:username/people" element={<PublicPeople/>}/><Route path="/:username/people/sector/:sectorSlug" element={<PublicPersonSector/>}/></Routes></MemoryRouter>);
- expect(screen.queryByRole('dialog')).toBeNull();expect(screen.queryByText('Person 1')).toBeNull();expect(screen.getByText('People unavailable')).toBeTruthy();
+ expect(screen.queryByRole('dialog')).toBeNull();expect(screen.queryByText('Person 1')).toBeNull();expect(screen.getByText('Not found')).toBeTruthy();
 });
 it('overview closes its retained modal immediately on public invalidation',async()=>{
  const list={documentId:id(200),List_Name:'List',slug:'list',recommended_people:[person(1)],recommended_people_next_cursor:null};mocks.gateway.category.mockResolvedValueOnce({personLists:[list]}).mockImplementationOnce(()=>new Promise(()=>{}));mount('/reader/people');
