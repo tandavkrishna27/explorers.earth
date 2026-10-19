@@ -588,6 +588,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Favorites/components/Recommendations.tsx
 !explorers-earth/src/features/Favorites/components/TiptapEditor.tsx
 !explorers-earth/src/features/Favorites/components/TopPlacesByCategory.tsx
+!explorers-earth/src/features/Favorites/components/recommendFormCoords.ts
 !explorers-earth/src/features/Favorites/hooks/useAddRecommendation.ts
 !explorers-earth/src/features/Favorites/hooks/useCreateLocation.ts
 !explorers-earth/src/features/Favorites/hooks/useFormFields.ts
@@ -755,6 +756,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Movies/index.ts
 !explorers-earth/src/features/Movies/types/index.ts
 !explorers-earth/src/features/Movies/utils/movieHelpers.ts
+!explorers-earth/src/features/Movies/utils/moviePoster.ts
 !explorers-earth/src/features/People/api/explorersAdapter.ts
 !explorers-earth/src/features/People/api/mutation.ts
 !explorers-earth/src/features/People/api/peopleClient.ts
@@ -875,6 +877,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/PublicHome/components/guideStickyGeometry.ts
 !explorers-earth/src/features/PublicHome/components/publicHeaderDescriptor.ts
 !explorers-earth/src/features/PublicHome/components/publicPlaceMedia.ts
+!explorers-earth/src/features/PublicHome/components/useMapsUsable.ts
 !explorers-earth/src/features/PublicHome/utils/accentInk.ts
 !explorers-earth/src/features/PublicHome/utils/publicGuidePhotoViewModel.ts
 !explorers-earth/src/features/PublicHome/utils/publicProfileContent.ts
@@ -1035,8 +1038,10 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/utils/getCurrentLocation.ts
 !explorers-earth/src/utils/googleMapsDirections.ts
 !explorers-earth/src/utils/guideDescriptionText.ts
+!explorers-earth/src/utils/imageFileValidation.ts
 !explorers-earth/src/utils/mapAddress.ts
 !explorers-earth/src/utils/navPinning.ts
+!explorers-earth/src/utils/notePreviewText.ts
 !explorers-earth/src/utils/passwordValidator.ts
 !explorers-earth/src/utils/placeDetailsFetcher.ts
 !explorers-earth/src/utils/placesConfig.ts
