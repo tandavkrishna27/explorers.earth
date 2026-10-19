@@ -1,6 +1,7 @@
 import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ModalPortal from "../../../../components/ui/ModalPortal";
 import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedPerson } from "../../types";
 import { buildImageUrl, extractNoteText, getPlatformColor } from "../../utils/personHelpers";
@@ -107,6 +108,7 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
   };
 
   return (
+    <ModalPortal>
     <AnimatePresence>
       {open && (
         <>
@@ -328,6 +330,7 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
         </>
       )}
     </AnimatePresence>
+    </ModalPortal>
   );
 };
 

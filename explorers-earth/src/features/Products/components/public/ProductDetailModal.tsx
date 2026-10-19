@@ -1,6 +1,7 @@
 import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ModalPortal from "../../../../components/ui/ModalPortal";
 import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedProduct } from "../../types";
 import { buildImageUrl, extractNoteText, formatPrice } from "../../utils/productHelpers";
@@ -96,6 +97,7 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
   };
 
   return (
+    <ModalPortal>
     <AnimatePresence>
       {open && (
         <>
@@ -308,6 +310,7 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
         </>
       )}
     </AnimatePresence>
+    </ModalPortal>
   );
 };
 

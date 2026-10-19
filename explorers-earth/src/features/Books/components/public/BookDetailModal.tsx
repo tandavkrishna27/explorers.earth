@@ -1,6 +1,7 @@
 import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ModalPortal from "../../../../components/ui/ModalPortal";
 import { X, Star, ExternalLink, Share2, ChevronLeft, ChevronRight, BookOpen, Hash, Calendar } from "lucide-react";
 import type { RecommendedBook } from "../../types";
 import { buildCoverUrl, formatAuthors, extractNoteText, formatRating, formatPageCount } from "../../utils/bookHelpers";
@@ -122,6 +123,7 @@ const BookDetailModal = ({ book, open, onClose, onTrackClick }: BookDetailModalP
   };
 
   return (
+    <ModalPortal>
     <AnimatePresence>
       {open && (
         <>
@@ -385,6 +387,7 @@ const BookDetailModal = ({ book, open, onClose, onTrackClick }: BookDetailModalP
         </>
       )}
     </AnimatePresence>
+    </ModalPortal>
   );
 };
 

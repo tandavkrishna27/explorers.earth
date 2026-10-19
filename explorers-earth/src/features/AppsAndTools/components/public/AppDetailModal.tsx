@@ -1,6 +1,7 @@
 import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ModalPortal from "../../../../components/ui/ModalPortal";
 import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedApp } from "../../types";
 import { buildLogoUrl, extractNoteText, getPriceTierColor, getPlatformColor } from "../../utils/appHelpers";
@@ -109,6 +110,7 @@ const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
   };
 
   return (
+    <ModalPortal>
     <AnimatePresence>
       {open && (
         <>
@@ -327,6 +329,7 @@ const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
         </>
       )}
     </AnimatePresence>
+    </ModalPortal>
   );
 };
 
