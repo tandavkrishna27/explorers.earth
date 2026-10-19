@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { publicProfileGatewayClient } from "./publicProfileGatewayClient";
 import { subscribePublicProfileInvalidation } from "./publicProfileInvalidation";
+import { isPublicProfileNotFound } from "./publicProfileGatewayClient";
+import { usePublicRevalidation } from "./usePublicRevalidation";
 
 export type PublicProfileShellState = {
   data: Record<string, unknown> | undefined;
@@ -42,9 +44,12 @@ export function usePublicProfileShell(username: string | undefined): PublicProfi
     bypassCacheRef.current = false;
     publicProfileGatewayClient.shell(username, controller.signal, bypassCache)
       .then((data) => { if (!controller.signal.aborted && requestGeneration.current === generation) { setState({ username, data: data as Record<string, unknown>, loading: false, error: null }); settleRetries(); } })
-      .catch((error: unknown) => { if (!controller.signal.aborted && requestGeneration.current === generation) { setState((previous) => ({ username, data: previous.username === username ? previous.data : undefined, loading: false, error })); settleRetries(); } });
+      .catch((error: unknown) => { if (!controller.signal.aborted && requestGeneration.current === generation) { setState((previous) => ({ username, data: previous.username === username && !isPublicProfileNotFound(error) ? previous.data : undefined, loading: false, error })); settleRetries(); } });
     return () => controller.abort();
   }, [attempt, settleRetries, username]);
+  // Focus/visibility/interval revalidation: a conditional read (no cache bypass). A 404 clears the
+  // data (the profile became private or was removed); other failures keep what is on screen.
+  usePublicRevalidation(() => setAttempt((value) => value + 1), Boolean(username) && state.data !== undefined);
   useEffect(() => {
     const normalizedUsername = username?.trim().toLowerCase();
     if (!normalizedUsername) return;
